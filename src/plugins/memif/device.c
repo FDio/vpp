@@ -54,8 +54,10 @@ format_memif_device_name (u8 * s, va_list * args)
   u32 dev_instance = va_arg (*args, u32);
   memif_main_t *mm = &memif_main;
   memif_if_t *mif = pool_elt_at_index (mm->interfaces, dev_instance);
+  memif_socket_file_t *msf;
 
-  s = format (s, "memif%lu/%lu", mif->socket_file_index, mif->id);
+  msf = pool_elt_at_index (mm->socket_files, mif->socket_file_index);
+  s = format (s, "memif%lu/%lu", msf->socket_id, mif->id);
   return s;
 }
 #endif

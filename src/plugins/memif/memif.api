@@ -13,7 +13,25 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+/** \brief Create or remove named socket file for memif interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 0 = remove, 1 = add association
+    @param socket_id - non-0 32-bit integer used to identify a socket file
+    @param socket_filename - filename of the socket to be used for connection
+           establishment; id 0 always maps to default "/var/vpp/memif.sock";
+	   no socket filename needed when is_add == 0.
+*/
+autoreply define memif_socket_filename_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;		/* 0 = remove, 1 = add association */
+  u32 socket_id;	/* unique non-0 id for given socket file name */
+  u8 socket_filename[128];	/* NUL terminated filename */
+};
 
 /** \brief Create memory interface
     @param client_index - opaque cookie to identify the sender
@@ -21,10 +39,10 @@ option version = "1.0.0";
     @param role - role of the interface in the connection (master/slave)
     @param mode - interface mode
     @param rx_queues - number of rx queues (only valid for slave)
-    #param tx_queues - number of tx queues (only valid for slave)
+    @param tx_queues - number of tx queues (only valid for slave)
     @param id - 32bit integer used to authenticate and match opposite sides
            of the connection
-    @param socket_filename - filename of the socket to be used for connection
+    @param socket_id - socket filename id to be used for connection
            establishment
     @param ring_size - the number of entries of RX/TX rings
     @param buffer_size - size of the buffer allocated for each ring entry
@@ -40,7 +58,7 @@ define memif_create
   u8 rx_queues; /* optional, default is 1 */
   u8 tx_queues; /* optional, default is 1 */
   u32 id; /* optional, default is 0 */
-  u8 socket_filename[128]; /* optional, default is "/var/vpp/memif.sock" */
+  u32 socket_id; /* optional, default is 0, "/var/vpp/memif.sock" */
   u8 secret[24]; /* optional, default is "" */
   u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
   u16 buffer_size; /* optional, default is 2048 bytes */
@@ -73,6 +91,28 @@ autoreply define memif_delete
 };
 
 /** \brief Memory interface details structure
+    @param context - sender context, to match reply w/ request
+    @param socket_id - u32 used to identify the given socket filename
+    @param socket_filename - correpsonding NUL terminated socket filename
+*/
+define memif_socket_filename_details
+{
+  u32 context;
+  u32 socket_id;
+  u8 socket_filename[128];
+};
+
+/** \brief Dump the table of socket ids and corresponding filenames
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define memif_socket_filename_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Memory interface details structure
     @param context - sender context, to match reply w/ request (memif_dump)
     @param sw_if_index - index of the interface
     @param if_name - name of the interface
@@ -80,7 +120,7 @@ autoreply define memif_delete
     @param id - id associated with the interface
     @param role - role of the interface in the connection (master/slave)
     @param mode - interface mode
-    @param socket_filename - name of the socket used by this interface
+    @param socket_id - id of the socket filename used by this interface
            to establish new connections
     @param ring_size - the number of entries of RX/TX rings
     @param buffer_size - size of the buffer allocated for each ring entry
@@ -100,7 +140,7 @@ define memif_details
   u32 id;
   u8 role; /* 0 = master, 1 = slave */
   u8 mode; /* 0 = ethernet, 1 = ip, 2 = punt/inject */
-  u8 socket_filename[128];
+  u32 socket_id;
   u32 ring_size;
   u16 buffer_size; /* optional, default is 2048 bytes */
 

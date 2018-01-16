@@ -65,6 +65,7 @@
 typedef struct
 {
   u8 *filename;
+  u32 socket_id;
   clib_socket_t *sock;
   clib_socket_t **pending_clients;
   int ref_cnt;
@@ -182,7 +183,7 @@ typedef struct
 
   /* pool of all unix socket files */
   memif_socket_file_t *socket_files;
-  mhash_t socket_file_index_by_filename;
+  uword *socket_file_index_by_sock_id;	/* map user socket id to pool idx */
 
   /* rx buffer cache */
   u32 **rx_buffers;
@@ -202,7 +203,7 @@ enum
 typedef struct
 {
   memif_interface_id_t id;
-  u8 *socket_filename;
+  u32 socket_id;
   u8 *secret;
   u8 is_master;
   memif_interface_mode_t mode:8;
@@ -217,6 +218,8 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
+int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
+				   u8 * sock_filename);
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
