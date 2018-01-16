@@ -26,6 +26,147 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
+
+static clib_error_t *
+memif_socket_filename_create_command_fn (vlib_main_t * vm,
+					 unformat_input_t * input,
+					 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int r;
+  u32 socket_id;
+  u8 *socket_filename;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  socket_id = ~0;
+  socket_filename = 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "id %u", &socket_id))
+	;
+      else if (unformat (line_input, "filename %s", &socket_filename))
+	;
+      else
+	{
+	  vec_free (socket_filename);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      vec_free (socket_filename);
+      return clib_error_return (0, "Invalid socket id");
+    }
+
+  if (!socket_filename || *socket_filename == 0)
+    {
+      vec_free (socket_filename);
+      return clib_error_return (0, "Invalid socket filename");
+    }
+
+  r = memif_socket_filename_add_del (1, socket_id, socket_filename);
+
+  vec_free (socket_filename);
+
+  if (r < 0)
+    {
+      switch (r)
+	{
+	case VNET_API_ERROR_INVALID_ARGUMENT:
+	  return clib_error_return (0, "Invalid argument");
+	case VNET_API_ERROR_SYSCALL_ERROR_1:
+	  return clib_error_return (0, "Syscall error 1");
+	case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
+	  return clib_error_return (0, "Already exists");
+	case VNET_API_ERROR_UNEXPECTED_INTF_STATE:
+	  return clib_error_return (0, "Interface still in use");
+	default:
+	  return clib_error_return (0, "Unknown error");
+	}
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (memif_socket_filename_create_command, static) = {
+  .path = "create memif socket",
+  .short_help = "create memif socket [id <id>] [filename <path>]",
+  .function = memif_socket_filename_create_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+memif_socket_filename_delete_command_fn (vlib_main_t * vm,
+					 unformat_input_t * input,
+					 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int r;
+  u32 socket_id;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  socket_id = ~0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "id %u", &socket_id))
+	;
+      else
+	{
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      return clib_error_return (0, "Invalid socket id");
+    }
+
+  r = memif_socket_filename_add_del (0, socket_id, 0);
+
+  if (r < 0)
+    {
+      switch (r)
+	{
+	case VNET_API_ERROR_INVALID_ARGUMENT:
+	  return clib_error_return (0, "Invalid argument");
+	case VNET_API_ERROR_SYSCALL_ERROR_1:
+	  return clib_error_return (0, "Syscall error 1");
+	case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
+	  return clib_error_return (0, "Already exists");
+	case VNET_API_ERROR_UNEXPECTED_INTF_STATE:
+	  return clib_error_return (0, "Interface still in use");
+	default:
+	  return clib_error_return (0, "Unknown error");
+	}
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (memif_socket_filename_delete_command, static) = {
+  .path = "delete memif socket",
+  .short_help = "delete memif socket [id <id>]",
+  .function = memif_socket_filename_delete_command_fn,
+};
+/* *INDENT-ON* */
+
 static clib_error_t *
 memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
@@ -46,7 +187,7 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "id %u", &args.id))
 	;
-      else if (unformat (line_input, "socket %s", &args.socket_filename))
+      else if (unformat (line_input, "socket-id %u", &args.socket_id))
 	;
       else if (unformat (line_input, "secret %s", &args.secret))
 	;
@@ -91,12 +232,14 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   r = memif_create_if (vm, &args);
 
-  vec_free (args.socket_filename);
   vec_free (args.secret);
 
   if (r <= VNET_API_ERROR_SYSCALL_ERROR_1
       && r >= VNET_API_ERROR_SYSCALL_ERROR_10)
     return clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
+
+  if (r == VNET_API_ERROR_INVALID_ARGUMENT)
+    return clib_error_return (0, "Invalid argument");
 
   if (r == VNET_API_ERROR_INVALID_INTERFACE)
     return clib_error_return (0, "Invalid interface name");
@@ -109,9 +252,10 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_create_command, static) = {
-  .path = "create memif",
-  .short_help = "create memif [id <id>] [socket <path>] "
-                "[ring-size <size>] [buffer-size <size>] [hw-addr <mac-address>] "
+  .path = "create interface memif",
+  .short_help = "create interface memif [id <id>] [socket-id <socket-id>] "
+                "[ring-size <size>] [buffer-size <size>] "
+		"[hw-addr <mac-address>] "
 		"<master|slave> [rx-queues <number>] [tx-queues <number>] "
 		"[mode ip] [secret <string>]",
   .function = memif_create_command_fn,
@@ -162,8 +306,8 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_delete_command, static) = {
-  .path = "delete memif",
-  .short_help = "delete memif {<interface> | sw_if_index <sw_idx>}",
+  .path = "delete interface memif",
+  .short_help = "delete interface memif {<interface> | sw_if_index <sw_idx>}",
   .function = memif_delete_command_fn,
 };
 /* *INDENT-ON* */
@@ -306,8 +450,10 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (mif->remote_if_name)
 	vlib_cli_output (vm, "  remote-interface \"%s\"",
 			 mif->remote_if_name);
-      vlib_cli_output (vm, "  id %d mode %U file %s", mif->id,
-		       format_memif_if_mode, mif, msf->filename);
+      vlib_cli_output (vm, "  id %d mode %U", mif->id,
+		       format_memif_if_mode, mif);
+      vlib_cli_output (vm, "  socket-id %u file %s", msf->socket_id,
+		       msf->filename);
       vlib_cli_output (vm, "  flags%U", format_memif_if_flags, mif->flags);
       vlib_cli_output (vm, "  listener-fd %d conn-fd %d",
 		       msf->sock ? msf->sock->fd : 0,
@@ -347,10 +493,55 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_show_command, static) = {
   .path = "show memif",
-  .short_help = "show memif {<interface>] [descriptors]",
+  .short_help = "show memif [<interface>] [descriptors]",
   .function = memif_show_command_fn,
 };
 /* *INDENT-ON* */
+
+
+static clib_error_t *
+memif_show_sockets_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  memif_main_t *mm = &memif_main;
+  clib_error_t *error = 0;
+  u32 sock_id;
+  u32 msf_idx;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      error = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  vlib_cli_output (vm, "Id      Filename\n");
+  vlib_cli_output (vm, "----------------\n");
+
+  /* *INDENT-OFF* */
+  hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
+    ({
+      memif_socket_file_t *msf;
+      u8 *filename;
+
+      msf = pool_elt_at_index(mm->socket_files, msf_idx);
+      filename = msf->filename;
+      vlib_cli_output(vm, "%u\t%s\n", sock_id, filename);
+    }));
+  /* *INDENT-ON* */
+
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (memif_show_sockets_command, static) = {
+  .path = "show files memif",
+  .short_help = "show files memif",
+  .function = memif_show_sockets_command_fn,
+};
+/* *INDENT-ON* */
+
 
 clib_error_t *
 memif_cli_init (vlib_main_t * vm)
