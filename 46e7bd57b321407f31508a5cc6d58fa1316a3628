@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c1973d6f_108cb68f",
+        "filename": "src/vppinfra/flowhash_24_16.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-17T08:24:29Z",
+      "side": 1,
+      "message": "You can use crc32_u64() instead of SSE-specific here.\nIn vppinfra/crc32.h, this wrapper has been defined as _mm_crc32_u64 if SSE instruction are available, and as __crc32cd for arm platforms if supported.\n\nAlso, clib_crc32c() and crc32_u64() currently are the only crc functions wrappers provided for both platforms. If you think more should be added, or put in a more visible  way, please do not hesitate to tell me and I\u0027ll work on it.",
+      "range": {
+        "startLine": 52,
+        "startChar": 9,
+        "endLine": 52,
+        "endChar": 22
+      },
+      "revId": "46e7bd57b321407f31508a5cc6d58fa1316a3628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
