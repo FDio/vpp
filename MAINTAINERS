@@ -159,6 +159,11 @@ M:  Hongjun Ni <hongjun.ni@intel.com>
 F:  src/plugins/pppoe/
 F:  src/plugins/pppoe.am
 
+Plugin - IPv6 Segment Routing Masquerading Proxy
+M:	Francois Clad <fclad@cisco.com>
+F:	src/plugins/srv6-am/
+F:	src/plugins/srv6_am.am
+
 Plugin - IPv6 Segment Routing Static Proxy
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
