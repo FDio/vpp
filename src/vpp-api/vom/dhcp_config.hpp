@@ -41,14 +41,17 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  dhcp_config(const interface& itf, const std::string& hostname);
+  dhcp_config(const interface& itf,
+              const std::string& hostname,
+              bool set_broadcast_flag = true);
 
   /**
    * Construct a new object matching the desried state
    */
   dhcp_config(const interface& itf,
               const std::string& hostname,
-              const l2_address_t& client_id);
+              const l2_address_t& client_id,
+              bool set_broadcast_flag = true);
 
   /**
    * Copy Constructor
@@ -201,6 +204,11 @@ private:
    * The option-61 client_id in the DHCP configuration
    */
   const l2_address_t m_client_id;
+
+  /**
+   * Flag to control the setting the of DHCP discover's broadcast flag
+   */
+  const bool m_set_broadcast_flag;
 
   /**
    * HW configuration for the binding. The bool representing the

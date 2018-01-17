@@ -24,20 +24,25 @@ singular_db<interface::key_t, dhcp_config> dhcp_config::m_db;
 
 dhcp_config::event_handler dhcp_config::m_evh;
 
-dhcp_config::dhcp_config(const interface& itf, const std::string& hostname)
+dhcp_config::dhcp_config(const interface& itf,
+                         const std::string& hostname,
+                         bool set_broadcast_flag)
   : m_itf(itf.singular())
   , m_hostname(hostname)
   , m_client_id(l2_address_t::ZERO)
+  , m_set_broadcast_flag(set_broadcast_flag)
   , m_binding(0)
 {
 }
 
 dhcp_config::dhcp_config(const interface& itf,
                          const std::string& hostname,
-                         const l2_address_t& client_id)
+                         const l2_address_t& client_id,
+                         bool set_broadcast_flag)
   : m_itf(itf.singular())
   , m_hostname(hostname)
   , m_client_id(client_id)
+  , m_set_broadcast_flag(set_broadcast_flag)
   , m_binding(0)
 {
 }
@@ -46,6 +51,7 @@ dhcp_config::dhcp_config(const dhcp_config& o)
   : m_itf(o.m_itf)
   , m_hostname(o.m_hostname)
   , m_client_id(o.m_client_id)
+  , m_set_broadcast_flag(o.m_set_broadcast_flag)
   , m_binding(0)
 {
 }

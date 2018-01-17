@@ -71,6 +71,10 @@ typedef struct
   /* Information used for event callback */
   u32 client_index;
   u32 pid;
+
+  /* Set the broadcast Flag in the Discover/Request messages */
+  u8 set_broadcast_flag;
+
   void *event_callback;
 } dhcp_client_t;
 
@@ -90,6 +94,7 @@ typedef struct
 {
   int is_add;
   u32 sw_if_index;
+  u8 set_broadcast_flag;
 
   /* vectors, consumed by dhcp client code */
   u8 *hostname;
@@ -118,7 +123,8 @@ int dhcp_client_config (vlib_main_t * vm,
 			u8 * hostname,
 			u8 * client_id,
 			u32 is_add,
-			u32 client_index, void *event_callback, u32 pid);
+			u32 client_index,
+			void *event_callback, u8 set_broadcast_flag, u32 pid);
 
 #endif /* included_dhcp_client_h */
 

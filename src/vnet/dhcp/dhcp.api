@@ -71,6 +71,8 @@ autoreply define dhcp_proxy_set_vss
     @param is_add - add the config if non-zero, else delete
     @param want_dhcp_event - DHCP event sent to the sender
            via dhcp_compl_event API message if non-zero
+    @param set_broadcast_flag - in the DHCP Discover to control
+                                how the resulting OFFER is addressed.
     @param pid - sender's pid
 */
 autoreply define dhcp_client_config
@@ -82,6 +84,7 @@ autoreply define dhcp_client_config
   u8 client_id[64];
   u8 is_add;
   u8 want_dhcp_event;
+  u8 set_broadcast_flag;
   u32 pid;
 };
 

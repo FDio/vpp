@@ -37,7 +37,8 @@ public:
   bind_cmd(HW::item<bool>& item,
            const handle_t& itf,
            const std::string& hostname,
-           const l2_address_t& client_id);
+           const l2_address_t& client_id,
+           bool set_braodcast_flag = false);
 
   /**
    * Issue the command to VPP/HW
@@ -68,6 +69,11 @@ private:
    * The DHCP client's ID
    */
   const l2_address_t m_client_id;
+
+  /**
+   * Flag to control the setting the of DHCP discover's broadcast flag
+   */
+  const bool m_set_broadcast_flag;
 };
 
 /**

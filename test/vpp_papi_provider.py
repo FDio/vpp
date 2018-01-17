@@ -2129,6 +2129,7 @@ class VppPapiProvider(object):
                     hostname,
                     client_id='',
                     is_add=1,
+                    set_broadcast_flag=1,
                     want_dhcp_events=0):
         return self.api(
             self.papi.dhcp_client_config,
@@ -2138,6 +2139,7 @@ class VppPapiProvider(object):
                 'client_id': client_id,
                 'is_add': is_add,
                 'want_dhcp_event': want_dhcp_events,
+                'set_broadcast_flag': set_broadcast_flag,
                 'pid': os.getpid(),
             })
 
