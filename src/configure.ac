@@ -249,6 +249,19 @@ PLUGIN_ENABLED(tlsopenssl)
 ###############################################################################
 AC_CHECK_FUNC([memfd_create], [AC_DEFINE([HAVE_MEMFD_CREATE], [1], [Define if memfd exists])])
 
+DPDK_IS_PMD_ENABLED(CACHE_LINE_SIZE, dpdk_rte_clsz)
+AM_COND_IF([WITH_DPDK_RTE_CLSZ],
+[
+ AX_DPDK_DETECT_CLSZ
+ AM_CONDITIONAL(OVERRIDE_CLIB_LOG2_CLSZ, test "$dpdk_defines_clsz" = "yes")
+ AC_SUBST(CLIB_LOG2_CLSZ, [$dpdk_log2_clsz])
+],
+[
+ AX_VPP_DETECT_CLSZ
+ AM_CONDITIONAL(OVERRIDE_CLIB_LOG2_CLSZ, test "$vpp_defines_clsz" = "yes")
+ AC_SUBST(CLIB_LOG2_CLSZ, [$vpp_log2_clsz])
+])
+
 AM_COND_IF([ENABLE_DPDK_SHARED],
 [
   AC_CHECK_HEADERS([rte_config.h],
