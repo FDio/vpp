@@ -160,6 +160,11 @@ M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
 F:	src/plugins/srv6_as.am
 
+Plugin - IPv6 Segment Routing Masquerading Proxy
+M:	Francois Clad <fclad@cisco.com>
+F:	src/plugins/srv6-am/
+F:	src/plugins/srv6_am.am
+
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
 F:	test/
