@@ -33,3 +33,13 @@ endif
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
 endif
+
+ifneq ($(strip $(CACHE_LINE_SIZE)),)
+ifeq ($(strip $(CACHE_LINE_SIZE)),64)
+vpp_configure_args += --with-clib-log2-cache-line-bytes=6
+else
+ifeq ($(strip $(CACHE_LINE_SIZE)),128)
+vpp_configure_args += --with-clib-log2-cache-line-bytes=7
+endif
+endif
+endif

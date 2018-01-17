@@ -115,6 +115,123 @@ AC_DEFUN([CC_CHECK_FLAG],
   AC_LANG_POP([C])
 ])
 
+AC_DEFUN([FN_CHECK_HEADER_AGAINST],
+[
+ AC_MSG_CHECKING([for $1 against ($2,$3) in $4 ])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+    [[#include <$4>]],
+    [[
+        #if $1 != $2
+            exit(1);
+        #endif
+    ]])],
+    [WITH_$1=$2]
+    [AC_MSG_RESULT([$2])],
+    AC_COMPILE_IFELSE(
+        [AC_LANG_PROGRAM(
+        [[#include <$4>]],
+        [[
+            #if $1 != $3
+                exit(1);
+            #endif
+        ]])],
+        [WITH_$1=$3]
+        [AC_MSG_RESULT([$3])],
+        [WITH_$1="unset"]
+        [AC_MSG_RESULT([unset])]
+    )
+  )
+])
+
+AC_DEFUN([FN_CHECK_WITH_ARG_CLSZ],
+[
+ AC_MSG_CHECKING([for --clib-log2-cache-line-bytes in argument])
+ AC_ARG_WITH(clib-log2-cache-line-bytes,
+           AC_HELP_STRING([--with-clib-log2-cache-line-bytes],
+               [Override CLIB_LOG2_CACHE_LINE_BYTES in vpp. Possible values: 64/128]),
+       [AS_CASE([$with_clib_log2_cache_line_bytes],
+                [6],[vpp_clsz=64; vpp_log2_clsz=6],
+                [7],[vpp_clsz=128; vpp_log2_clsz=7],
+                [vpp_clsz=0; vpp_log2_clsz=0]
+               )
+       ],[vpp_clsz=0; vpp_log2_clsz=0]
+ )
+ AS_IF([test "$vpp_log2_clsz" != 0],
+       [AC_MSG_RESULT([$vpp_log2_clsz, vpp_clsz...$vpp_clsz])
+        m4_append_uniq([list_of_with], [clib_log2_cache_line_bytes], [, ])
+       ],
+       [AC_MSG_RESULT([$vpp_log2_clsz])]
+      )
+])
+
+AC_DEFUN([FN_AUTODETECT_CLSZ],
+[
+ autodetect_clsz=0
+ AC_MSG_CHECKING([for autodetection of cache line size])
+ AC_CHECK_FILE($1,
+    AC_MSG_CHECKING([for autodetection result])
+    [autodetect_clsz=`head -n 1 $1`]
+    AC_MSG_RESULT(["$autodetect_clsz"]),
+    [])
+    autodetect_clsz=m4_normalize($autodetect_clsz)
+    AS_CASE([$autodetect_clsz],
+              [64],[vpp_clsz=64; vpp_log2_clsz=6],
+              [128],[vpp_clsz=128; vpp_log2_clsz=7],
+              []
+    )
+ if test "$vpp_log2_clsz" != 0 ; then
+  enable_cache_autodetect=$vpp_clsz
+  m4_append_uniq([list_of_enabled], [cache_autodetect], [, ])
+ fi
+])
+
+#Validate CACHE LINE SIZE in VPP and DPDK
+AC_DEFUN([FN_CHECK_VPP_DPDK_CLSZ],
+[
+ #Get RTE_CACHE_LINE_SIZE from DPDK
+ FN_CHECK_HEADER_AGAINST(RTE_CACHE_LINE_SIZE,64,128,rte_config.h)
+
+ #Get --with-clib2-log-cache-line-bytes argument value
+ FN_CHECK_WITH_ARG_CLSZ()
+
+ #Autodetect if --with-argument missing
+ AS_IF([test "$vpp_clsz" = 0],
+       [AS_CASE([$build_cpu],
+         [x86_64],
+         [FN_AUTODETECT_CLSZ(/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size)],
+         [aarch64],
+         [FN_AUTODETECT_CLSZ(/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size)],
+         [AC_MSG_ERROR([Unrecognized architecture: $build_cpu])]
+        )],
+
+        #Set vpp_clsz and vpp_log2_clsz as per auto detection
+        [AS_IF([test "$autodetect_clsz" != 0],
+            [AS_CASE([$autodetect_clsz],
+              [64],[vpp_clsz=64; vpp_log2_clsz=6],
+              [128],[vpp_clsz=128; vpp_log2_clsz=7],
+              []
+             )
+            ],
+            []
+        )]
+)
+ AC_MSG_NOTICE([finally vpp_clsz...$vpp_clsz & vpp_log2_clsz...$vpp_log2_clsz])
+ #Throw error if DPDK is not inline with autoconf detection
+ AS_IF([test "$WITH_RTE_CACHE_LINE_SIZE" != "unset"],
+    [AS_IF([test "$vpp_clsz" != 0],
+        [AS_IF([test "$vpp_clsz" != "$WITH_RTE_CACHE_LINE_SIZE"],
+            [AC_MSG_ERROR([Cache Line Size Mismatch: dpdk...$WITH_RTE_CACHE_LINE_SIZE, vpp...$vpp_clsz])],
+            [AC_MSG_NOTICE([DPDK clsz matches with VPP clsz])] #F3
+         )], #T2
+        [AC_MSG_NOTICE([vpp_clsz == 0])] #F2
+    )],[AC_MSG_NOTICE([RTE_CACHE_LINE_SIZE is unset])] #F1
+ )
+ #Enable AC_SUBST(CLIB_LOG2_CACHE_LINE_BYTES) if wither autodetection happened
+ # or valid autoconf arg --with-clib-log2-cache-line-bytes passed
+ AM_CONDITIONAL(AUTOCONF_OVERRIDE_CLSZ, test "$vpp_log2_clsz" != 0)
+])
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -157,6 +274,12 @@ AC_ARG_WITH(pre-data,
 	     esac], [with_pre_data=128])
 
 ###############################################################################
+# Autodetection
+###############################################################################
+
+FN_CHECK_VPP_DPDK_CLSZ()
+
+###############################################################################
 # Target CPU flags
 ###############################################################################
 
@@ -190,7 +313,7 @@ AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
 ###############################################################################
 # Substitutions and defines
 ###############################################################################
-
+AC_SUBST(CLIB_LOG2_CACHE_LINE_BYTES, [$vpp_log2_clsz])
 AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 

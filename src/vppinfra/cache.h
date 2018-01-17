@@ -38,6 +38,7 @@
 #ifndef included_clib_cache_h
 #define included_clib_cache_h
 
+#include <vppinfra/config.h>
 #include <vppinfra/error_bootstrap.h>
 
 /*
