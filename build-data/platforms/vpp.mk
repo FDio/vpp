@@ -14,6 +14,10 @@
 # vector packet processor
 
 MACHINE=$(shell uname -m)
+#Setting Default ARMv8 CACHE LINE SIZE to 128
+export ARMV8CLSZ?=128
+#and corresponding LOG2 variable to 7
+ARMV8_LOG2_CACHESZ?=7
 
 vpp_arch = native
 ifeq ($(TARGET_PLATFORM),thunderx)
@@ -66,3 +70,25 @@ vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -coverage
 vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 
+#Compute ARMV8_LOG2_CACHESZ 
+ifeq ($(MACHINE),$(filter $(MACHINE),aarch64))
+ifneq ($(ARMV8CLSZ),128)
+ifeq ($(ARMV8CLSZ),64)
+ARMV8_LOG2_CACHESZ:=6
+endif
+endif
+ifeq ($(ARMV8_LOG2_CACHESZ),6)
+$(info Adding -DCLIB_LOG2_CACHE_LINE_BYTES=6 to CFLAGS and LDFLAGS)
+vpp_debug_TAG_CFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_debug_TAG_CXXFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_debug_TAG_LDFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_TAG_CFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_TAG_CXXFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_TAG_LDFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_clang_TAG_CFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_clang_TAG_LDFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_gcov_TAG_CFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_gcov_TAG_LDFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+vpp_coverity_TAG_CFLAGS += -DCLIB_LOG2_CACHE_LINE_BYTES=6
+endif 
+endif

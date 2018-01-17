@@ -78,7 +78,6 @@ DPDK_CC=icc
 else
 DPDK_CC=gcc
 endif
-
 ##############################################################################
 # Intel x86
 ##############################################################################
@@ -91,6 +90,13 @@ DPDK_TUNE             ?= core-avx2
 # ARM64
 ##############################################################################
 else ifeq ($(MACHINE),aarch64)
+ifneq ($(ARMV8CLSZ),128)
+ifneq ($(ARMV8CLSZ),64)
+$(info Overriding ARMV8CLSZ from $(ARMV8CLSZ) to 128)
+override ARMV8CLSZ:=128
+endif
+endif
+
 export CROSS=""
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
@@ -179,6 +185,15 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
 
+define setifaarch64
+@if [ "$(MACHINE)"=="aarch64" ]; then\
+    if grep -q CONFIG_$1 $@ ; \
+	    then sed -i -e 's/.*\(CONFIG_$1=\).*/\1$2/' $@ ; \
+	    else echo CONFIG_$1=$2 >> $@ ; \
+    fi ;\
+fi
+endef
+
 define set
 @if grep -q CONFIG_$1 $@ ; \
 	then sed -i -e 's/.*\(CONFIG_$1=\).*/\1$2/' $@ ; \
@@ -192,6 +207,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	@echo --- generating custom config from $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) ---
 	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) $@
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
+	$(call setifaarch64,RTE_CACHE_LINE_SIZE,$(ARMV8CLSZ))
 	@# modify options
 	$(call set,RTE_MAX_LCORE,256)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
