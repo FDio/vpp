@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,13 +59,6 @@ u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
   return s;
 }
 
-
-#define foreach_fixed_header4_offset            \
-    _(0) _(1) _(2) _(3)
-
-#define foreach_fixed_header6_offset            \
-    _(0) _(1) _(2) _(3) _(4) _(5) _(6)
-
 always_inline uword
 vxlan_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -76,7 +70,6 @@ vxlan_encap_inline (vlib_main_t * vm,
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
-  u16 old_l0 = 0, old_l1 = 0;
   u32 thread_index = vlib_get_thread_index();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
@@ -91,6 +84,17 @@ vxlan_encap_inline (vlib_main_t * vm,
   stats_sw_if_index = node->runtime_data[0];
   stats_n_packets = stats_n_bytes = 0;
 
+  STATIC_ASSERT_SIZEOF(ip6_vxlan_header_t, 56);
+  STATIC_ASSERT_SIZEOF(ip4_vxlan_header_t, 36);
+
+  word const underlay_hdr_len = is_ip4 ?
+    sizeof(ip4_vxlan_header_t) : sizeof(ip6_vxlan_header_t);
+  u16 const l3_len = is_ip4 ? sizeof(ip4_header_t) : sizeof(ip6_header_t);
+  u32 const csum_flags = is_ip4 ?
+    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4 |
+    VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
+    VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -100,20 +104,6 @@ vxlan_encap_inline (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-          u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-          u32 flow_hash0, flow_hash1;
-	  u32 len0, len1;
-          ip4_header_t * ip4_0, * ip4_1;
-          ip6_header_t * ip6_0, * ip6_1;
-          udp_header_t * udp0, * udp1;
-          u64 * copy_src0, * copy_dst0;
-          u64 * copy_src1, * copy_dst1;
-          u32 * copy_src_last0, * copy_dst_last0;
-          u32 * copy_src_last1, * copy_dst_last1;
-          u16 new_l0, new_l1;
-          ip_csum_t sum0, sum1;
-
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t * p2, * p3;
@@ -128,20 +118,20 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
-	  bi0 = from[0];
-	  bi1 = from[1];
+	  u32 bi0 = from[0];
+	  u32 bi1 = from[1];
+
+	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+	  vlib_buffer_t * b1 = vlib_get_buffer (vm, bi1);
+          u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
+          u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
+
 	  to_next[0] = bi0;
 	  to_next[1] = bi1;
 	  from += 2;
 	  to_next += 2;
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-          flow_hash0 = vnet_l2_compute_flow_hash (b0);
-          flow_hash1 = vnet_l2_compute_flow_hash (b1);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
@@ -165,162 +155,108 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    }
           vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
 
-          /* Apply the rewrite string. $$$$ vnet_rewrite? */
-          vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
-          vlib_buffer_advance (b1, -(word)_vec_len(t1->rewrite));
+          ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
+          ASSERT(vec_len(t1->rewrite) == underlay_hdr_len);
 
+          vlib_buffer_advance (b0, -underlay_hdr_len);
+          vlib_buffer_advance (b1, -underlay_hdr_len);
+
+ 	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
+ 	  u32 len1 = vlib_buffer_length_in_chain (vm, b1);
+          u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);
+          u16 payload_l1 = clib_host_to_net_u16 (len1 - l3_len);
+
+          udp_header_t * udp0, * udp1;
+          ip6_header_t * ip6_0, * ip6_1;
+          u8 * ip_0, * ip_1;
 	  if (is_ip4)
 	    {
-	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip4_vxlan_header_t));
+              ip4_vxlan_header_t * rewrite0 = (void *)t0->rewrite;
+              ip4_vxlan_header_t * hdr0 = vlib_buffer_get_current(b0);
+              ip4_vxlan_header_t * rewrite1 = (void *)t1->rewrite;
+              ip4_vxlan_header_t * hdr1 = vlib_buffer_get_current(b1);
 
-	      ip4_0 = vlib_buffer_get_current(b0);
-	      ip4_1 = vlib_buffer_get_current(b1);
-
-	      /* Copy the fixed header */
-	      copy_dst0 = (u64 *) ip4_0;
-	      copy_src0 = (u64 *) t0->rewrite;
-	      copy_dst1 = (u64 *) ip4_1;
-	      copy_src1 = (u64 *) t1->rewrite;
-	      /* Copy first 32 octets 8-bytes at a time */
-#define _(offs) copy_dst0[offs] = copy_src0[offs];
-	      foreach_fixed_header4_offset;
-#undef _
-#define _(offs) copy_dst1[offs] = copy_src1[offs];
-	      foreach_fixed_header4_offset;
-#undef _
-	      /* Last 4 octets. Hopefully gcc will be our friend */
-              copy_dst_last0 = (u32 *)(&copy_dst0[4]);
-              copy_src_last0 = (u32 *)(&copy_src0[4]);
-              copy_dst_last0[0] = copy_src_last0[0];
-              copy_dst_last1 = (u32 *)(&copy_dst1[4]);
-              copy_src_last1 = (u32 *)(&copy_src1[4]);
-              copy_dst_last1[0] = copy_src_last1[0];
+              *hdr0 = *rewrite0;
+              *hdr1 = *rewrite1;
 
 	      /* Fix the IP4 checksum and length */
-	      if (csum_offload)
+	      ip4_header_t * ip4_0 = &hdr0->ip4;
+	      ip4_header_t * ip4_1 = &hdr1->ip4;
+              ip4_0->length = clib_host_to_net_u16 (len0);
+              ip4_1->length = clib_host_to_net_u16 (len1);
+
+	      if (!csum_offload)
 	        {
-		  ip4_0->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-		  ip4_1->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b1));
-		  b1->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip4_1 - b1->data;
-	        }
-	      else
-	        {
-		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+                  ip_csum_t sum0 = ip4_0->checksum;
+		  sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
 					 length /* changed member */);
 		  ip4_0->checksum = ip_csum_fold (sum0);
-		  ip4_0->length = new_l0;
-		  sum1 = ip4_1->checksum;
-		  new_l1 = /* old_l1 always 0, see the rewrite setup */
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
-		  sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
+		  ip_csum_t sum1 = ip4_1->checksum;
+		  sum1 = ip_csum_update (sum1, 0, ip4_1->length, ip4_header_t,
 					 length /* changed member */);
 		  ip4_1->checksum = ip_csum_fold (sum1);
-		  ip4_1->length = new_l1;
 	        }
 
-	      /* Fix UDP length and set source port */
-	      udp0 = (udp_header_t *)(ip4_0+1);
-	      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b0)
-					     - sizeof (*ip4_0));
-	      udp0->length = new_l0;
-	      udp0->src_port = flow_hash0;
-	      udp1 = (udp_header_t *)(ip4_1+1);
-	      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b1)
-					     - sizeof (*ip4_1));
-	      udp1->length = new_l1;
-	      udp1->src_port = flow_hash1;
-
-	      /* UDP checksum only if checksum offload is used */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
-		}
+              ip_0 = (u8 *)ip4_0;
+              ip_1 = (u8 *)ip4_1;
+	      udp0 = &hdr0->udp;
+	      udp1 = &hdr1->udp;
 	    }
 	  else /* ipv6 */
 	    {
-              int bogus = 0;
+              ip6_vxlan_header_t * hdr0 = vlib_buffer_get_current(b0);
+              ip6_vxlan_header_t * rewrite0 = (void *) t0->rewrite;
+              ip6_vxlan_header_t * hdr1 = vlib_buffer_get_current(b0);
+              ip6_vxlan_header_t * rewrite1 = (void *) t1->rewrite;
+              *hdr0 = *rewrite0;
+              *hdr1 = *rewrite1;
 
-	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ip6_0 = vlib_buffer_get_current(b0);
-	      ip6_1 = vlib_buffer_get_current(b1);
-
-	      /* Copy the fixed header */
-	      copy_dst0 = (u64 *) ip6_0;
-	      copy_src0 = (u64 *) t0->rewrite;
-	      copy_dst1 = (u64 *) ip6_1;
-	      copy_src1 = (u64 *) t1->rewrite;
-	      /* Copy first 56 (ip6) octets 8-bytes at a time */
-#define _(offs) copy_dst0[offs] = copy_src0[offs];
-	      foreach_fixed_header6_offset;
-#undef _
-#define _(offs) copy_dst1[offs] = copy_src1[offs];
-	      foreach_fixed_header6_offset;
-#undef _
 	      /* Fix IP6 payload length */
-	      new_l0 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				      - sizeof(*ip6_0));
-	      ip6_0->payload_length = new_l0;
-	      new_l1 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
-				      - sizeof(*ip6_1));
-	      ip6_1->payload_length = new_l1;
+              ip6_0 = &hdr0->ip6;
+              ip6_1 = &hdr1->ip6;
+	      ip6_0->payload_length = payload_l0;
+	      ip6_1->payload_length = payload_l1;
 
-	      /* Fix UDP length  and set source port */
-	      udp0 = (udp_header_t *)(ip6_0+1);
-	      udp0->length = new_l0;
-	      udp0->src_port = flow_hash0;
-	      udp1 = (udp_header_t *)(ip6_1+1);
-	      udp1->length = new_l1;
-	      udp1->src_port = flow_hash1;
-
-	      /* IPv6 UDP checksum is mandatory */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip6_1 - b1->data;
-		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
-		}
-	      else
-	        {
-		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp0->checksum == 0)
-		      udp0->checksum = 0xffff;
-		  udp1->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b1, ip6_1, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp1->checksum == 0)
-		      udp1->checksum = 0xffff;
-	        }
+              ip_0 = (u8 *)ip6_0;
+              ip_1 = (u8 *)ip6_1;
+              udp0 = &hdr0->udp;
+              udp1 = &hdr1->udp;
 	    }
 
+          /* Fix UDP length  and set source port */
+          udp0->length = payload_l0;
+          udp0->src_port = flow_hash0;
+          udp1->length = payload_l1;
+          udp1->src_port = flow_hash1;
+
+          if (csum_offload)
+            {
+              b0->flags |= csum_flags;
+              vnet_buffer (b0)->l3_hdr_offset = ip_0 - b0->data;
+              vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+              b1->flags |= csum_flags;
+              vnet_buffer (b1)->l3_hdr_offset = ip_1 - b1->data;
+              vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
+            }
+          /* IPv6 UDP checksum is mandatory */
+          /* IPv4 UDP checksum only if checksum offload is used */
+          else if (!is_ip4)
+          {
+            int bogus = 0;
+
+            udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
+              (vm, b0, ip6_0, &bogus);
+            ASSERT(bogus == 0);
+            if (udp0->checksum == 0)
+              udp0->checksum = 0xffff;
+            udp1->checksum = ip6_tcp_udp_icmp_compute_checksum
+              (vm, b1, ip6_1, &bogus);
+            ASSERT(bogus == 0);
+            if (udp1->checksum == 0)
+              udp1->checksum = 0xffff;
+          }
+
           pkts_encapsulated += 2;
- 	  len0 = vlib_buffer_length_in_chain (vm, b0);
- 	  len1 = vlib_buffer_length_in_chain (vm, b1);
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
 
@@ -378,28 +314,15 @@ vxlan_encap_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0;
-	  vlib_buffer_t * b0;
-          u32 flow_hash0;
-	  u32 len0;
-          ip4_header_t * ip4_0;
-          ip6_header_t * ip6_0;
-          udp_header_t * udp0;
-          u64 * copy_src0, * copy_dst0;
-          u32 * copy_src_last0, * copy_dst_last0;
-          u16 new_l0;
-          ip_csum_t sum0;
+	  u32 bi0 = from[0];
+	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+          u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
-	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-          flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
@@ -412,108 +335,76 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    }
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
-          /* Apply the rewrite string. $$$$ vnet_rewrite? */
-          vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
+          ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
+          vlib_buffer_advance (b0, -underlay_hdr_len);
 
+
+ 	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
+          u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);
+
+          udp_header_t * udp0;
+          ip6_header_t * ip6_0;
+          u8 * ip_0;
 	  if (is_ip4)
 	    {
-	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
-	      ip4_0 = vlib_buffer_get_current(b0);
+              ip4_vxlan_header_t * rewrite = (void *)t0->rewrite;
+              ip4_vxlan_header_t * hdr = vlib_buffer_get_current(b0);
 
-	      /* Copy the fixed header */
-	      copy_dst0 = (u64 *) ip4_0;
-	      copy_src0 = (u64 *) t0->rewrite;
-	      /* Copy first 32 octets 8-bytes at a time */
-#define _(offs) copy_dst0[offs] = copy_src0[offs];
-	      foreach_fixed_header4_offset;
-#undef _
-	      /* Last 4 octets. Hopefully gcc will be our friend */
-              copy_dst_last0 = (u32 *)(&copy_dst0[4]);
-              copy_src_last0 = (u32 *)(&copy_src0[4]);
-              copy_dst_last0[0] = copy_src_last0[0];
+              *hdr = *rewrite;
 
 	      /* Fix the IP4 checksum and length */
-	      if (csum_offload)
+              ip4_header_t * ip4_0 = &hdr->ip4;
+              ip4_0->length = clib_host_to_net_u16 (len0);
+
+	      if (!csum_offload)
 	        {
-		  ip4_0->length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-	        }
-	      else
-	        {
-		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+                  ip_csum_t sum0 = ip4_0->checksum;
+		  sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
 					 length /* changed member */);
 		  ip4_0->checksum = ip_csum_fold (sum0);
-		  ip4_0->length = new_l0;
 	        }
 
-	      /* Fix UDP length and set source port */
-	      udp0 = (udp_header_t *)(ip4_0+1);
-	      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b0)
-					     - sizeof (*ip4_0));
-	      udp0->length = new_l0;
-	      udp0->src_port = flow_hash0;
-
-	      /* UDP checksum only if checksum offload is used */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
+              ip_0 = (u8*)ip4_0;
+	      udp0 = &hdr->udp;
 	    }
-
 	  else /* ip6 path */
 	    {
-              int bogus = 0;
+              ip6_vxlan_header_t * hdr = vlib_buffer_get_current(b0);
+              ip6_vxlan_header_t * rewrite = (void *) t0->rewrite;
+              *hdr = *rewrite;
 
-	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ip6_0 = vlib_buffer_get_current(b0);
-	      /* Copy the fixed header */
-	      copy_dst0 = (u64 *) ip6_0;
-	      copy_src0 = (u64 *) t0->rewrite;
-	      /* Copy first 56 (ip6) octets 8-bytes at a time */
-#define _(offs) copy_dst0[offs] = copy_src0[offs];
-	      foreach_fixed_header6_offset;
-#undef _
 	      /* Fix IP6 payload length */
-	      new_l0 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				      - sizeof(*ip6_0));
-	      ip6_0->payload_length = new_l0;
+              ip6_0 = &hdr->ip6;
+	      ip6_0->payload_length = payload_l0;
 
-	      /* Fix UDP length  and set source port */
-	      udp0 = (udp_header_t *)(ip6_0+1);
-	      udp0->length = new_l0;
-	      udp0->src_port = flow_hash0;
-
-	      /* IPv6 UDP checksum is mandatory */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
-	      else
-	        {
-		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		    (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp0->checksum == 0)
-		    udp0->checksum = 0xffff;
-	        }
+              ip_0 = (u8 *)ip6_0;
+              udp0 = &hdr->udp;
 	    }
 
+          /* Fix UDP length  and set source port */
+          udp0->length = payload_l0;
+          udp0->src_port = flow_hash0;
+
+          if (csum_offload)
+            {
+              b0->flags |= csum_flags;
+              vnet_buffer (b0)->l3_hdr_offset = ip_0 - b0->data;
+              vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+            }
+          /* IPv6 UDP checksum is mandatory */
+          /* IPv4 UDP checksum only if checksum offload is used */
+          else if (!is_ip4)
+          {
+            int bogus = 0;
+
+            udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
+              (vm, b0, ip6_0, &bogus);
+            ASSERT(bogus == 0);
+            if (udp0->checksum == 0)
+              udp0->checksum = 0xffff;
+          }
+
           pkts_encapsulated ++;
-	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
