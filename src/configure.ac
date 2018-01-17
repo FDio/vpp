@@ -224,6 +224,7 @@ PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(nat)
 PLUGIN_ENABLED(stn)
 PLUGIN_ENABLED(l2e)
+PLUGIN_ENABLED(srv6ad)
 
 ###############################################################################
 # Dependency checks
