@@ -724,7 +724,7 @@ API_FILES += vnet/lisp-gpe/lisp_gpe.api
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/dhcp/client.c				\
- vnet/dhcp/client.h				\
+ vnet/dhcp/dhcp_client_detect.c			\
  vnet/dhcp/dhcp_api.c
 
 nobase_include_HEADERS +=			\

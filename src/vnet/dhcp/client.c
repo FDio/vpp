@@ -22,56 +22,6 @@ static u8 *format_dhcp_client_state (u8 * s, va_list * va);
 static vlib_node_registration_t dhcp_client_process_node;
 
 static void
-dhcp_client_add_rx_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
-{
-  /* Install a local entry for the offered address */
-  fib_prefix_t rx = {
-    .fp_len = 32,
-    .fp_addr.ip4 = c->leased_address,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
-
-  fib_table_entry_special_add (fib_table_get_index_for_sw_if_index
-			       (FIB_PROTOCOL_IP4, c->sw_if_index), &rx,
-			       FIB_SOURCE_DHCP, (FIB_ENTRY_FLAG_LOCAL));
-
-  /* And add the server's address as uRPF exempt so we can accept
-   * local packets from it */
-  fib_prefix_t server = {
-    .fp_len = 32,
-    .fp_addr.ip4 = c->dhcp_server,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
-
-  fib_table_entry_special_add (fib_table_get_index_for_sw_if_index
-			       (FIB_PROTOCOL_IP4, c->sw_if_index), &server,
-			       FIB_SOURCE_URPF_EXEMPT, (FIB_ENTRY_FLAG_DROP));
-}
-
-static void
-dhcp_client_remove_rx_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
-{
-  fib_prefix_t rx = {
-    .fp_len = 32,
-    .fp_addr.ip4 = c->leased_address,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
-
-  fib_table_entry_special_remove (fib_table_get_index_for_sw_if_index
-				  (FIB_PROTOCOL_IP4, c->sw_if_index), &rx,
-				  FIB_SOURCE_DHCP);
-  fib_prefix_t server = {
-    .fp_len = 32,
-    .fp_addr.ip4 = c->dhcp_server,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
-
-  fib_table_entry_special_remove (fib_table_get_index_for_sw_if_index
-				  (FIB_PROTOCOL_IP4, c->sw_if_index), &server,
-				  FIB_SOURCE_URPF_EXEMPT);
-}
-
-static void
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
   /*
@@ -233,13 +183,6 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  c->next_transmit = now + 5.0;
 	  break;
 	}
-      /*
-       * in order to accept unicasted ACKs we need to configure the offered
-       * address on the interface. However, at this point we may not know the
-       * subnet-mask (an OFFER may not contain it). So add a temporary receice
-       * and uRPF excempt entry
-       */
-      dhcp_client_add_rx_address (dcm, c);
 
       /* Received an offer, go send a request */
       c->state = DHCP_REQUEST;
@@ -267,9 +210,11 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  void (*fp) (u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) =
 	    c->event_callback;
 
-	  /* replace the temporary RX address with the correct subnet */
-	  dhcp_client_remove_rx_address (dcm, c);
+	  /* add the advertised subnet and disable the feature */
 	  dhcp_client_acquire_address (dcm, c);
+	  vnet_feature_enable_disable ("ip4-unicast",
+				       "ip4-dhcp-client-detect",
+				       c->sw_if_index, 0, 0, 0);
 
 	  /*
 	   * Configure default IP route:
@@ -285,8 +230,19 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 		.ip4 = c->router_address,
 	      };
 
-	      fib_table_entry_path_add (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, c->sw_if_index), &all_0s, FIB_SOURCE_DHCP, FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP4, &nh, c->sw_if_index, ~0, 1, NULL,	// no label stack
-					FIB_ROUTE_PATH_FLAG_NONE);
+              /* *INDENT-OFF* */
+	      fib_table_entry_path_add (
+                  fib_table_get_index_for_sw_if_index (
+                      FIB_PROTOCOL_IP4,
+                      c->sw_if_index),
+                  &all_0s,
+                  FIB_SOURCE_DHCP,
+                  FIB_ENTRY_FLAG_NONE,
+                  DPO_PROTO_IP4,
+                  &nh, c->sw_if_index,
+                  ~0, 1, NULL,	// no label stack
+                  FIB_ROUTE_PATH_FLAG_NONE);
+              /* *INDENT-ON* */
 	    }
 
 	  /*
@@ -418,7 +374,9 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   dhcp->hardware_type = 1;	/* ethernet */
   dhcp->hardware_address_length = 6;
   dhcp->transaction_identifier = c->transaction_id;
-  dhcp->flags = clib_host_to_net_u16 (is_broadcast ? DHCP_FLAG_BROADCAST : 0);
+  dhcp->flags =
+    clib_host_to_net_u16 (is_broadcast && c->set_broadcast_flag ?
+			  DHCP_FLAG_BROADCAST : 0);
   dhcp->magic_cookie.as_u32 = DHCP_MAGIC;
 
   o = (dhcp_option_t *) dhcp->options;
@@ -676,14 +634,13 @@ dhcp_client_process (vlib_main_t * vm,
 	  break;
 
 	case ~0:
-	  pool_foreach (c, dcm->clients, (
-					   {
-					   timeout =
-					   dhcp_client_sm (now, timeout,
-							   (uword) (c -
-								    dcm->clients));
-					   }
-			));
+          /* *INDENT-OFF* */
+	  pool_foreach (c, dcm->clients,
+          ({
+            timeout = dhcp_client_sm (now, timeout,
+                                      (uword) (c - dcm->clients));
+          }));
+          /* *INDENT-ON* */
 	  if (pool_elts (dcm->clients) == 0)
 	    timeout = 100.0;
 	  break;
@@ -785,13 +742,14 @@ show_dhcp_client_command_fn (vlib_main_t * vm,
       return 0;
     }
 
-  pool_foreach (c, dcm->clients, (
-				   {
-				   vlib_cli_output (vm, "%U",
-						    format_dhcp_client, dcm,
-						    c, verbose);
-				   }
-		));
+  /* *INDENT-OFF* */
+  pool_foreach (c, dcm->clients,
+  ({
+    vlib_cli_output (vm, "%U",
+                     format_dhcp_client, dcm,
+                     c, verbose);
+  }));
+  /* *INDENT-ON* */
 
   return 0;
 }
@@ -812,11 +770,6 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   vlib_main_t *vm = dcm->vlib_main;
   dhcp_client_t *c;
   uword *p;
-  fib_prefix_t all_1s = {
-    .fp_len = 32,
-    .fp_addr.ip4.as_u32 = 0xffffffff,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
   fib_prefix_t all_0s = {
     .fp_len = 0,
     .fp_addr.ip4.as_u32 = 0x0,
@@ -840,6 +793,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       c->option_55_data = a->option_55_data;
       c->hostname = a->hostname;
       c->client_identifier = a->client_identifier;
+      c->set_broadcast_flag = a->set_broadcast_flag;
       do
 	{
 	  c->transaction_id = random_u32 (&dcm->seed);
@@ -848,17 +802,18 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       set_l2_rewrite (dcm, c);
       hash_set (dcm->client_by_sw_if_index, a->sw_if_index, c - dcm->clients);
 
-      /* this add is ref counted by FIB so we can add for each itf */
-      fib_table_entry_special_add (fib_table_get_index_for_sw_if_index
-				   (FIB_PROTOCOL_IP4, c->sw_if_index),
-				   &all_1s, FIB_SOURCE_DHCP,
-				   FIB_ENTRY_FLAG_LOCAL);
-
       /*
-       * enable the interface to RX IPv4 packets
-       * this is also ref counted
+       * In order to accept any OFFER, whether broadcasted or unicasted, we
+       * need to configure the dhcp-client-detect feature as an input feature
+       * so the DHCP OFFER is sent to the ip4-local node. Without this a
+       * broadcasted OFFER hits the 255.255.255.255/32 address and a unicast
+       * hits 0.0.0.0/0 both of which default to drop and the latter may forward
+       * of box - not what we want. Nor to we want to change these route for
+       * all interfaces in this table
        */
-      ip4_sw_interface_enable_disable (c->sw_if_index, 1);
+      vnet_feature_enable_disable ("ip4-unicast",
+				   "ip4-dhcp-client-detect",
+				   c->sw_if_index, 1, 0, 0);
 
       vlib_process_signal_event (vm, dhcp_client_process_node.index,
 				 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
@@ -866,10 +821,6 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   else
     {
       c = pool_elt_at_index (dcm->clients, p[0]);
-
-      fib_table_entry_special_remove (fib_table_get_index_for_sw_if_index
-				      (FIB_PROTOCOL_IP4, c->sw_if_index),
-				      &all_1s, FIB_SOURCE_DHCP);
 
       if (c->router_address.as_u32)
 	{
@@ -883,9 +834,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 				       DPO_PROTO_IP4, &nh, c->sw_if_index, ~0,
 				       1, FIB_ROUTE_PATH_FLAG_NONE);
 	}
-      dhcp_client_remove_rx_address (dcm, c);
       dhcp_client_release_address (dcm, c);
-      ip4_sw_interface_enable_disable (c->sw_if_index, 0);
 
       vec_free (c->option_55_data);
       vec_free (c->hostname);
@@ -903,7 +852,8 @@ dhcp_client_config (vlib_main_t * vm,
 		    u8 * hostname,
 		    u8 * client_id,
 		    u32 is_add,
-		    u32 client_index, void *event_callback, u32 pid)
+		    u32 client_index,
+		    void *event_callback, u8 set_broadcast_flag, u32 pid)
 {
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -914,6 +864,7 @@ dhcp_client_config (vlib_main_t * vm,
   a->client_index = client_index;
   a->pid = pid;
   a->event_callback = event_callback;
+  a->set_broadcast_flag = set_broadcast_flag;
   vec_validate (a->hostname, strlen ((char *) hostname) - 1);
   strncpy ((char *) a->hostname, (char *) hostname, vec_len (a->hostname));
   vec_validate (a->client_identifier, strlen ((char *) client_id) - 1);
@@ -990,6 +941,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u8 *hostname = 0;
   u8 sw_if_index_set = 0;
+  u8 set_broadcast_flag = 1;
   int is_add = 1;
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -1003,6 +955,8 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "del"))
 	is_add = 0;
+      else if (unformat (input, "broadcast", &set_broadcast_flag))
+	is_add = 0;
       else
 	break;
     }
@@ -1015,6 +969,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   a->sw_if_index = sw_if_index;
   a->hostname = hostname;
   a->client_identifier = format (0, "vpe 1.0%c", 0);
+  a->set_broadcast_flag = set_broadcast_flag;
 
   /*
    * Option 55 request list. These data precisely match

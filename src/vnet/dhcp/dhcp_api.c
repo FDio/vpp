@@ -248,7 +248,7 @@ static void vl_api_dhcp_client_config_t_handler
 			   mp->hostname, mp->client_id,
 			   mp->is_add, mp->client_index,
 			   mp->want_dhcp_event ? dhcp_compl_event_callback :
-			   NULL, mp->pid);
+			   NULL, mp->set_broadcast_flag, mp->pid);
 
   BAD_SW_IF_INDEX_LABEL;
 

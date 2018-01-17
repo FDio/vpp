@@ -23,11 +23,13 @@ namespace dhcp_config_cmds {
 bind_cmd::bind_cmd(HW::item<bool>& item,
                    const handle_t& itf,
                    const std::string& hostname,
-                   const l2_address_t& client_id)
+                   const l2_address_t& client_id,
+                   bool set_broadcast_flag)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_hostname(hostname)
   , m_client_id(client_id)
+  , m_set_broadcast_flag(set_broadcast_flag)
 {
 }
 
