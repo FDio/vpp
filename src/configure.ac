@@ -115,6 +115,138 @@ AC_DEFUN([CC_CHECK_FLAG],
   AC_LANG_POP([C])
 ])
 
+AC_DEFUN([FN_CHECK_HEADER_AGAINST],
+[
+ AC_MSG_CHECKING([for $1 against ($2,$3) in $4 ])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+    [[#include <$4>]],
+    [[
+        #if $1 != $2
+            exit(1);
+        #endif
+    ]])],
+    [with_$1=$2]
+    [AC_MSG_RESULT([$2])],
+    AC_COMPILE_IFELSE(
+        [AC_LANG_PROGRAM(
+        [[#include <$4>]],
+        [[
+            #if $1 != $3
+                exit(1);
+            #endif
+        ]])],
+        [with_$1=$3]
+        [AC_MSG_RESULT([$3])],
+        [with_$1="unset"]
+        [AC_MSG_RESULT([unset])]
+    )  
+  )  
+])
+
+AC_DEFUN([FN_CHECK_WITH_ARG_CLSZ],
+[
+  AC_MSG_CHECKING([for clib-log2-cache-line-bytes in argument])
+  AC_ARG_WITH(clib-log2-cache-line-bytes,
+            AC_HELP_STRING([--with-clib-log2-cache-line-bytes],
+                 [Override CLIB_LOG2_CACHE_LINE_BYTES in vpp. Possible values: 64/128]),
+        [case $with_clib_log2_cache_line_bytes in
+            5) vpp_cache_line_size=32;;
+            6) vpp_cache_line_size=64;;
+            7) vpp_cache_line_size=128;;
+              *) with_clib_log2_cache_line_bytes="no" ;;
+         esac], [with_clib_log2_cache_line_bytes="no"]
+  )
+  AC_MSG_RESULT([$with_clib_log2_cache_line_bytes])
+  if test $with_clib_log2_cache_line_bytes != "no" ; then
+    AC_MSG_NOTICE([vpp_cache_line_size = $vpp_cache_line_size])
+    m4_append([list_of_with], [clib_log2_cache_line_bytes], [, ])
+  fi
+])
+
+AC_DEFUN([FN_AUTODETECT_CLSZ],
+[
+ autodetect_clsz=0
+ AC_MSG_CHECKING([for autodetection of cache line size])
+ AC_CHECK_FILE($1, 
+    AC_MSG_CHECKING([for autodetection result])
+    [autodetect_clsz=`cat $1 | head -1`]
+    AC_MSG_RESULT(["$autodetect_clsz"]),
+    [])
+    autodetect_clsz=m4_normalize($autodetect_clsz)
+ AS_CASE([$autodetect_clsz],
+    [32],[vpp_cache_line_size=5],
+    [64],[vpp_cache_line_size=6],
+    [128],[vpp_cache_line_size=7],
+    [vpp_cache_line_size=0],
+)
+])
+
+#Validate CACHE LINE SIZE in VPP and DPDK
+AC_DEFUN([FN_CHECK_VPP_DPDK_CLSZ],
+[
+ #Get RTE_CACHE_LINE_SIZE from DPDK
+ FN_CHECK_HEADER_AGAINST(RTE_CACHE_LINE_SIZE,64,128,rte_config.h)
+ 
+ #Get --with-clib2-log-cache-line-bytes argument value
+ vpp_cache_line_size=0
+ FN_CHECK_WITH_ARG_CLSZ()
+ 
+ #If --with-clib2-log-cache-line-bytes not provided 
+ if test $vpp_cache_line_size = 0 ; then
+  #Autodetect cache line size 
+  case $build_cpu in
+     x86_64) FN_AUTODETECT_CLSZ(/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size);;
+     aarch64) FN_AUTODETECT_CLSZ(/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size);; 
+     *);;
+  esac
+
+  #On success autodetection  
+  if test $autodetect_clsz != 0 ; then
+   AC_MSG_NOTICE([checking for possibility to add -DCLIB_LOG2_CACHE_LINE_BYTES to CFLAGS])
+
+   #Check redefinition of -DCLIB_LOG2_CACHE_LINE_BYTES in CFLAGS
+   TEMPFLAGS="${CFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$vpp_cache_line_size"
+   CC_CHECK_FLAG("$TEMPFLAGS")
+   if test $cc_flag_check = "no" ; then
+    AC_MSG_ERROR([-DCLIB-LOG2-CACHE_LINE_BYTES should be removed from CFLAGS])
+   fi
+   #Append -DCLIB_LOG2_CACHE_LINE_BYTES=$vpp_cache_line_size 
+   CFLAGS="${CFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$vpp_cache_line_size"
+   CXXFLAGS="${CXXFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$vpp_cache_line_size"
+   LDFLAGS="${LDFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$vpp_cache_line_size"
+  
+   #Validate DPDK RTE_CACHE_LINE_SIZE is inline with autodetected one
+   if test $with_RTE_CACHE_LINE_SIZE != "unset"; then
+    if test $with_RTE_CACHE_LINE_SIZE != $autodetect_clsz; then
+    AC_MSG_ERROR([RTE_CACHE_LINE_SIZE does not match with autodetect:$autodetect_clsz])
+    fi
+   fi
+  #else NOP if autodetection fails
+  fi
+ #else --with-clib2-log-cache-line-bytes provided
+ else 
+  #Check redefinition of -DCLIB_LOG2_CACHE_LINE_BYTES in CFLAGS
+  AC_MSG_NOTICE([checking for possibility to add -DCLIB_LOG2_CACHE_LINE_BYTES to CFLAGS])
+  TEMPFLAGS="${CFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$with_clib_log2_cache_line_bytes"
+  CC_CHECK_FLAG("$TEMPFLAGS")
+  if test $cc_flag_check = "no" ; then
+   AC_MSG_ERROR([--with-clib-log2-cache-line-bytes and -DCLIB-LOG2-CACHE_LINE_BYTES cannot coexist])
+  fi
+  #Append -DCLIB_LOG2_CACHE_LINE_BYTES=$with_clib_log2_cache_line_bytes
+  CFLAGS="${CFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$with_clib_log2_cache_line_bytes"
+  CXXFLAGS="${CXXFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$with_clib_log2_cache_line_bytes"
+  LDFLAGS="${LDFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$with_clib_log2_cache_line_bytes"
+  
+  #Validate DPDK RTE_CACHE_LINE SIZE is inline with --with-clib2-log-cache-line-bytes
+  if test $with_RTE_CACHE_LINE_SIZE != "unset"; then
+   if test $with_RTE_CACHE_LINE_SIZE != $vpp_cache_line_size;then
+    AC_MSG_ERROR([RTE_CACHE_LINE_SIZE does not match with --with-clib2-cache-line-bytes])
+   fi
+  fi
+ fi
+])
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -155,6 +287,12 @@ AC_ARG_WITH(pre-data,
 	       256) ;;
                *) with_pre_data="pre-data-not-set" ;;
 	     esac], [with_pre_data=128])
+
+###############################################################################
+# Autodetection
+###############################################################################
+
+FN_CHECK_VPP_DPDK_CLSZ()
 
 ###############################################################################
 # Target CPU flags

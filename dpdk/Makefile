@@ -79,6 +79,17 @@ else
 DPDK_CC=gcc
 endif
 
+ifneq ($(CACHE_LINE_SIZE),)
+ifneq ($(CACHE_LINE_SIZE),128)
+ifneq ($(CACHE_LINE_SIZE),64)
+ifneq ($(CACHE_LINE_SIZE),32)
+$(info Overriding CACHE_LINE_SIZE from $(CACHE_LINE_SIZE) to 64)
+override CACHE_LINE_SIZE:=64
+endif
+endif
+endif
+endif
+
 ##############################################################################
 # Intel x86
 ##############################################################################
@@ -179,6 +190,16 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
 
+#Do not touch rte_config.h if $CACHE_LINE_SIZE is not provided
+define setifclsz
+@if [[ ! -z "$(CACHE_LINE_SIZE)" ]]; then \
+    if grep -q CONFIG_$1 $@ ; \
+	    then sed -i -e 's/.*\(CONFIG_$1=\).*/\1$2/' $@ ; \
+    	else echo CONFIG_$1=$2 >> $@ ; \
+    fi ; \
+fi 
+endef
+
 define set
 @if grep -q CONFIG_$1 $@ ; \
 	then sed -i -e 's/.*\(CONFIG_$1=\).*/\1$2/' $@ ; \
@@ -192,6 +213,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	@echo --- generating custom config from $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) ---
 	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) $@
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
+	$(call setifclsz,RTE_CACHE_LINE_SIZE,$(CACHE_LINE_SIZE))
 	@# modify options
 	$(call set,RTE_MAX_LCORE,256)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
