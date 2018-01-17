@@ -249,6 +249,17 @@ PLUGIN_ENABLED(tlsopenssl)
 ###############################################################################
 AC_CHECK_FUNC([memfd_create], [AC_DEFINE([HAVE_MEMFD_CREATE], [1], [Define if memfd exists])])
 
+DPDK_IS_PMD_ENABLED(CACHE_LINE_SIZE, dpdk_rte_cacheline_size)
+AM_COND_IF([WITH_DPDK_RTE_CACHELINE_SIZE],
+[
+ AX_DPDK_DETECT_CACHELINE_SIZE
+ AC_SUBST(AUTOCONF_LOG2_CACHELINE_BYTES, [$dpdk_log2_cacheline_size])
+],
+[
+ AX_VPP_DETECT_CACHELINE_SIZE
+ AC_SUBST(AUTOCONF_LOG2_CACHELINE_BYTES, [$vpp_log2_cacheline_size])
+])
+
 AM_COND_IF([ENABLE_DPDK_SHARED],
 [
   AC_CHECK_HEADERS([rte_config.h],
