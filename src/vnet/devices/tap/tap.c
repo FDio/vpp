@@ -292,6 +292,26 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       goto error;
     }
 
+  if (args->host_ip4_gw_set)
+    {
+      args->error = vnet_netlink_add_ip4_route (0, 0, &args->host_ip4_gw);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
+  if (args->host_ip6_gw_set)
+    {
+      args->error = vnet_netlink_add_ip6_route (0, 0, &args->host_ip6_gw);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
   /* switch back to old net namespace */
   if (args->host_namespace)
     {

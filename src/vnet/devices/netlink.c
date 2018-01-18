@@ -245,6 +245,48 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
   return vnet_netlink_msg_send (&m);
 }
 
+clib_error_t *
+vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
+{
+  vnet_netlink_msg_t m;
+  struct rtmsg rtm = { 0 };
+  u8 dflt[4] = { 0 };
+
+  rtm.rtm_family = AF_INET;
+  rtm.rtm_table = RT_TABLE_MAIN;
+  rtm.rtm_type = RTN_UNICAST;
+  rtm.rtm_dst_len = dst_len;
+
+  vnet_netlink_msg_init (&m, RTM_NEWROUTE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
+			 &rtm, sizeof (struct rtmsg));
+
+  vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 4);
+  vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 4);
+  return vnet_netlink_msg_send (&m);
+}
+
+clib_error_t *
+vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
+{
+  vnet_netlink_msg_t m;
+  struct rtmsg rtm = { 0 };
+  u8 dflt[16] = { 0 };
+
+  rtm.rtm_family = AF_INET6;
+  rtm.rtm_table = RT_TABLE_MAIN;
+  rtm.rtm_type = RTN_UNICAST;
+  rtm.rtm_dst_len = dst_len;
+
+  vnet_netlink_msg_init (&m, RTM_NEWROUTE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
+			 &rtm, sizeof (struct rtmsg));
+
+  vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 16);
+  vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 16);
+  return vnet_netlink_msg_send (&m);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

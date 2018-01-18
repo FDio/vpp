@@ -19,7 +19,7 @@
     the Linux kernel TAP device driver
 */
 
-vl_api_version 1.0.0
+vl_api_version 1.1.0
 
 /** \brief Initialize a new tap interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -43,6 +43,10 @@ vl_api_version 1.0.0
     @param host_ip6_addr_set - host IPv6 ip address should be set
     @param host_ip6_addr - host IPv6 ip address
     @param host_ip6_prefix_len - host IPv6 ip address prefix length
+    @param host_ip4_gw_set - host IPv4 default gateway should be set
+    @param host_ip4_gw - host IPv4 default gateway
+    @param host_ip6_gw_set - host IPv6 default gateway should be set
+    @param host_ip6_gw - host IPv6 default gateway
 */
 define tap_create_v2
 {
@@ -67,6 +71,10 @@ define tap_create_v2
   u8 host_ip6_addr_set;
   u8 host_ip6_addr[16];
   u8 host_ip6_prefix_len;
+  u8 host_ip4_gw_set;
+  u8 host_ip4_gw[4];
+  u8 host_ip6_gw_set;
+  u8 host_ip6_gw[16];
 };
 
 /** \brief Reply for tap create reply
