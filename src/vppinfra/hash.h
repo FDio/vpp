@@ -294,10 +294,12 @@ always_inline void
 hash_unset_mem_free (uword ** h, void *key)
 {
   hash_pair_t *hp = hash_get_pair_mem (*h, key);
-  ASSERT (hp);
-  key = uword_to_pointer (hp->key, void *);
-  hash_unset_mem (*h, key);
-  clib_mem_free (key);
+  if (PREDICT_TRUE (hp != NULL))
+    {
+      key = uword_to_pointer (hp->key, void *);
+      hash_unset_mem (*h, key);
+      clib_mem_free (key);
+    }
 }
 
 /* internal routine to free a hash table */
