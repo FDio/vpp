@@ -7772,8 +7772,12 @@ api_tap_create_v2 (vat_main_t * vam)
   u8 host_mac_addr_set = 0;
   u8 *host_bridge = 0;
   ip4_address_t host_ip4_addr;
+  ip4_address_t host_ip4_gw;
+  u8 host_ip4_gw_set = 0;
   u32 host_ip4_prefix_len = 0;
   ip6_address_t host_ip6_addr;
+  ip6_address_t host_ip6_gw;
+  u8 host_ip6_gw_set = 0;
   u32 host_ip6_prefix_len = 0;
   int ret;
   int rx_ring_sz = 0, tx_ring_sz = 0;
@@ -7804,6 +7808,12 @@ api_tap_create_v2 (vat_main_t * vam)
       else if (unformat (i, "host-ip6-addr %U/%d", unformat_ip6_address,
 			 &host_ip6_addr, &host_ip6_prefix_len))
 	;
+      else if (unformat (i, "host-ip4-gw %U", unformat_ip4_address,
+			 &host_ip4_gw))
+	host_ip4_gw_set = 1;
+      else if (unformat (i, "host-ip6-gw %U", unformat_ip6_address,
+			 &host_ip6_gw))
+	host_ip6_gw_set = 1;
       else if (unformat (i, "rx-ring-size %d", &rx_ring_sz))
 	;
       else if (unformat (i, "tx-ring-size %d", &tx_ring_sz))
@@ -7885,7 +7895,10 @@ api_tap_create_v2 (vat_main_t * vam)
     clib_memcpy (mp->host_ip4_addr, &host_ip4_addr, 4);
   if (host_ip4_prefix_len)
     clib_memcpy (mp->host_ip6_addr, &host_ip6_addr, 16);
-
+  if (host_ip4_gw_set)
+    clib_memcpy (mp->host_ip4_gw, &host_ip4_gw, 4);
+  if (host_ip6_gw_set)
+    clib_memcpy (mp->host_ip6_gw, &host_ip6_gw, 16);
 
   vec_free (host_ns);
   vec_free (host_if_name);
