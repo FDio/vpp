@@ -344,6 +344,35 @@ vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 					   VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 }
 
+/** \brief Allocate buffers into ring
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 * ) buffer index ring
+    @param start - (u32) first slot in the ring
+    @param ring_size - (u32) ring size
+    @param n_buffers - (u32) number of buffers requested
+    @return - (u32) number of buffers actually allocated, may be
+    less than the number requested or zero
+*/
+always_inline u32
+vlib_buffer_alloc_to_ring (vlib_main_t * vm, u32 * ring, u32 start,
+			   u32 ring_size, u32 n_buffers)
+{
+  u32 n_alloc;
+
+  ASSERT (n_buffers <= ring_size);
+
+  if (PREDICT_TRUE (start + n_buffers <= ring_size))
+    return vlib_buffer_alloc (vm, ring + start, n_buffers);
+
+  n_alloc = vlib_buffer_alloc (vm, ring + start, ring_size - start);
+
+  if (PREDICT_TRUE (n_alloc == ring_size - start))
+    n_alloc += vlib_buffer_alloc (vm, ring, n_buffers - n_alloc);
+
+  return n_alloc;
+}
+
 /** \brief Free buffers
     Frees the entire buffer chain for each buffer
 

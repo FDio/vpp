@@ -100,7 +100,7 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   memset (vring->used, 0, i);
 
   ASSERT (vring->buffers == 0);
-  vec_validate_aligned (vring->buffers, sz * 2, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
 
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);

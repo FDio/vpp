@@ -83,10 +83,9 @@ static_always_inline void
 virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
 {
   const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
-  u16 used, next, avail, n_slots, n_alloc;
+  u16 used, next, avail, n_slots;
   u16 sz = vring->size;
   u16 mask = sz - 1;
-  int i;
 
   used = vring->desc_in_use;
 
@@ -96,14 +95,8 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   n_slots = sz - used;
   next = vring->desc_next;
   avail = vring->avail->idx;
-  n_alloc = vlib_buffer_alloc (vm, &vring->buffers[next], n_slots);
-
-  if (PREDICT_FALSE (n_alloc < n_slots))
-    n_slots = n_alloc;
-
-  i = next + n_slots - sz;
-  if (PREDICT_FALSE (i > 0))
-    clib_memcpy (vring->buffers, &vring->buffers[sz], i * sizeof (u32));
+  n_slots = vlib_buffer_alloc_to_ring (vm, vring->buffers, next, vring->size,
+				       n_slots);
 
   while (n_slots)
     {
