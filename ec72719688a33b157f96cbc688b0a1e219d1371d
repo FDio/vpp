@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e7ba5d87_e00c054b",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-18T14:36:51Z",
+      "side": 1,
+      "message": "please respect alphabetical order. And I know, i missed to warn other offenders :)",
+      "range": {
+        "startLine": 227,
+        "startChar": 0,
+        "endLine": 227,
+        "endChar": 14
+      },
+      "revId": "ec72719688a33b157f96cbc688b0a1e219d1371d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f55dbfcf_bc48d3e6",
+        "filename": "src/plugins/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-18T14:36:51Z",
+      "side": 1,
+      "message": "alphabetical order please",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 23
+      },
+      "revId": "ec72719688a33b157f96cbc688b0a1e219d1371d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
