@@ -181,7 +181,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
-  unsigned int offload = 0;
+  unsigned int offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6 | TUN_F_UFO;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
   _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
@@ -290,6 +290,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       args->rv = VNET_API_ERROR_NETLINK_ERROR;
       goto error;
+    }
+  if (args->host_ip4_gw_set)
+    {
+      args->error = vnet_netlink_add_ip4_route (0, 0, &args->host_ip4_gw);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
     }
 
   /* switch back to old net namespace */
