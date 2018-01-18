@@ -576,6 +576,10 @@ static void *vl_api_tap_create_v2_t_print
   if (mp->host_ip6_addr_set)
     s = format (s, "host-ip6-addr %U/%d ", format_ip6_address,
 		mp->host_ip6_addr, mp->host_ip6_prefix_len);
+  if (mp->host_ip4_gw_set)
+    s = format (s, "host-ip4-gw %U ", format_ip4_address, mp->host_ip4_addr);
+  if (mp->host_ip6_gw_set)
+    s = format (s, "host-ip6-gw %U ", format_ip6_address, mp->host_ip6_addr);
   if (mp->tx_ring_sz)
     s = format (s, "tx-ring-size %d ", mp->tx_ring_sz);
   if (mp->rx_ring_sz)

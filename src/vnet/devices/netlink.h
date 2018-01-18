@@ -26,6 +26,8 @@ clib_error_t *vnet_netlink_add_ip4_addr (int ifindex, void *addr,
 					 int pfx_len);
 clib_error_t *vnet_netlink_add_ip6_addr (int ifindex, void *addr,
 					 int pfx_len);
+clib_error_t *vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw);
+clib_error_t *vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw);
 
 #endif /* included_vnet_device_netlink_h */
 

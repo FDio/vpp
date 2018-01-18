@@ -61,10 +61,16 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			     unformat_ip4_address, &args.host_ip4_addr,
 			     &args.host_ip4_prefix_len))
 	    ip_addr_set = 1;
+	  else if (unformat (line_input, "host-ip4-gw %U",
+			     unformat_ip4_address, &args.host_ip4_gw))
+	    args.host_ip4_gw_set = 1;
 	  else if (unformat (line_input, "host-ip6-addr %U/%d",
 			     unformat_ip6_address, &args.host_ip6_addr,
 			     &args.host_ip6_prefix_len))
 	    ip_addr_set = 1;
+	  else if (unformat (line_input, "host-ip6-gw %U",
+			     unformat_ip6_address, &args.host_ip6_gw))
+	    args.host_ip6_gw_set = 1;
 	  else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
 	    ;
 	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
@@ -102,7 +108,8 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
   .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
     "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
-    "[host-ip6-addr <ip6-addr] [host-if-name <name>]",
+    "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
+    "[host-ip6-gw <ip6-addr>] [host-if-name <name>]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

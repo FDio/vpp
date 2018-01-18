@@ -96,6 +96,18 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
       ap->host_ip6_prefix_len = mp->host_ip6_prefix_len;
     }
 
+  if (mp->host_ip4_gw_set)
+    {
+      clib_memcpy (&ap->host_ip4_gw, mp->host_ip4_gw, 4);
+      ap->host_ip4_gw_set = 1;
+    }
+
+  if (mp->host_ip6_gw_set)
+    {
+      clib_memcpy (&ap->host_ip6_gw, mp->host_ip6_gw, 16);
+      ap->host_ip6_gw_set = 1;
+    }
+
   tap_create_if (vm, ap);
 
   reg = vl_api_client_index_to_registration (mp->client_index);
