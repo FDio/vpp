@@ -22,6 +22,30 @@
       "revId": "b56aa7c19048d53dd42c7672188bfe9910384b62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d77a769_63a876ff",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-01-18T06:35:26Z",
+      "side": 1,
+      "message": "I think the IP input node exists, at the very least, so technically should be ok just to use it as a place to record the errors. I don\u0027t terribly like that idea of storing output hits in what is an input node, but I could not find any better place.. Given no other comments, I will add Neale to the next non-draft revision so he can weigh in, maybe he has better ideas, and if not, then we have it as is for now...",
+      "parentUuid": "2704e19f_8017dc85",
+      "range": {
+        "startLine": 120,
+        "startChar": 55,
+        "endLine": 120,
+        "endChar": 56
+      },
+      "revId": "b56aa7c19048d53dd42c7672188bfe9910384b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
