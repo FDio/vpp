@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 2.2.0
+vl_api_version 2.3.0
 
 /**
  * @file nat.api
@@ -352,6 +352,7 @@ define nat44_interface_output_feature_details {
     @param vfr_id - VRF ID
     @param twice_nat - if 1 translate external host address and port, only for
                        1:1 NAPT (addr_only must be 0)
+    @param out2in_only - if 1 rule match only out2in direction
 */
 autoreply define nat44_add_del_static_mapping {
   u32 client_index;
@@ -366,6 +367,7 @@ autoreply define nat44_add_del_static_mapping {
   u32 external_sw_if_index;
   u32 vrf_id;
   u8 twice_nat;
+  u8 out2in_only;
 };
 
 /** \brief Dump NAT44 static mappings
@@ -388,6 +390,7 @@ define nat44_static_mapping_dump {
     @param external_sw_if_index - external interface
     @param vfr_id - VRF ID
     @param twice_nat - if 1 translate external host address and port
+    @param out2in_only - if 1 rule match only out2in direction
 */
 define nat44_static_mapping_details {
   u32 context;
@@ -400,6 +403,7 @@ define nat44_static_mapping_details {
   u32 external_sw_if_index;
   u32 vrf_id;
   u8 twice_nat;
+  u8 out2in_only;
 };
 
 /** \brief Add/delete NAT44 identity mapping
