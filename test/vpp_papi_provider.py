@@ -1235,6 +1235,7 @@ class VppPapiProvider(object):
             vrf_id=0,
             protocol=0,
             twice_nat=0,
+            out2in_only=0,
             is_add=1):
         """Add/delete NAT44 static mapping
 
@@ -1247,6 +1248,7 @@ class VppPapiProvider(object):
         :param vrf_id: VRF ID
         :param protocol: IP protocol (Default value = 0)
         :param twice_nat: 1 if translate external host address and port
+        :param out2in_only: if 1 rule is matching only out2in direction
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -1260,7 +1262,8 @@ class VppPapiProvider(object):
              'external_sw_if_index': external_sw_if_index,
              'vrf_id': vrf_id,
              'protocol': protocol,
-             'twice_nat': twice_nat})
+             'twice_nat': twice_nat,
+             'out2in_only': out2in_only})
 
     def nat44_add_del_identity_mapping(
             self,

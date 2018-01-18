@@ -1029,6 +1029,7 @@ class TestNAT44(MethodHolder):
                 vrf_id=sm.vrf_id,
                 protocol=sm.protocol,
                 twice_nat=sm.twice_nat,
+                out2in_only=sm.out2in_only,
                 is_add=0)
 
         lb_static_mappings = self.vapi.nat44_lb_static_mapping_dump()
@@ -1068,7 +1069,7 @@ class TestNAT44(MethodHolder):
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
                                  is_add=1, external_sw_if_index=0xFFFFFFFF,
-                                 proto=0, twice_nat=0):
+                                 proto=0, twice_nat=0, out2in_only=0):
         """
         Add/delete NAT44 static mapping
 
@@ -1081,6 +1082,7 @@ class TestNAT44(MethodHolder):
         :param external_sw_if_index: External interface instead of IP address
         :param proto: IP protocol (Mandatory if port specified)
         :param twice_nat: 1 if translate external host address and port
+        :param out2in_only: if 1 rule is matching only out2in direction
         """
         addr_only = 1
         if local_port and external_port:
@@ -1097,6 +1099,7 @@ class TestNAT44(MethodHolder):
             vrf_id,
             proto,
             twice_nat,
+            out2in_only,
             is_add)
 
     def nat44_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF, twice_nat=0):
@@ -1492,6 +1495,102 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
+
+    def test_static_with_port_out2(self):
+        """ 1:1 NAPT symmetrical rule """
+
+        external_port = 80
+        local_port = 8080
+
+        self.vapi.nat44_forwarding_enable_disable(1)
+        self.nat44_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
+                                      local_port, external_port,
+                                      proto=IP_PROTOS.tcp, out2in_only=1)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        # from client to service
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=12345, dport=external_port))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        server = None
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.dst, self.pg0.remote_ip4)
+            self.assertEqual(tcp.dport, local_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # from service back to client
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=local_port, dport=12345))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(tcp.sport, external_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # from client to server (no translation)
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4) /
+             TCP(sport=12346, dport=local_port))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        server = None
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.dst, self.pg0.remote_ip4)
+            self.assertEqual(tcp.dport, local_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # from service back to client (no translation)
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=local_port, dport=12346))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg0.remote_ip4)
+            self.assertEqual(tcp.sport, local_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
 
     def test_static_vrf_aware(self):
         """ 1:1 NAT VRF awareness """
@@ -2023,7 +2122,7 @@ class TestNAT44(MethodHolder):
             self.assertEqual(tcp.dport, host_in_port)
             self.check_tcp_checksum(p)
         except:
-            self.logger.error(ppp("Unexpected or invalid packet:"), p)
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
     def test_hairpinning2(self):
@@ -3082,7 +3181,7 @@ class TestNAT44(MethodHolder):
             self.assertEqual(tcp.dport, host_in_port)
             self.check_tcp_checksum(p)
         except:
-            self.logger.error(ppp("Unexpected or invalid packet:"), p)
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
     def test_one_armed_nat44(self):
