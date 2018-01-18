@@ -750,10 +750,12 @@ vnet_delete_sub_interface (u32 sw_if_index)
       si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
       u64 sup_and_sub_key =
 	((u64) (si->sup_sw_if_index) << 32) | (u64) si->sub.id;
 
-      hash_unset_mem (im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+      hash_unset_mem_free (&im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+      hash_unset (hi->sub_interface_sw_if_index_by_id, si->sub.id);
       vnet_delete_sw_interface (vnm, sw_if_index);
     }
   else
