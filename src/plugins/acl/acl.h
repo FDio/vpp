@@ -116,6 +116,10 @@ typedef struct
   u32 ip4_table_index;
   u32 ip6_table_index;
   u32 l2_table_index;
+  /* outacl classifier tables */
+  u32 out_ip4_table_index;
+  u32 out_ip6_table_index;
+  u32 out_l2_table_index;
 } macip_acl_list_t;
 
 /*
