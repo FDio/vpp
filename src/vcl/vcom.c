@@ -1587,8 +1587,6 @@ getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
   if ((errno = -vcom_init ()))
     return -1;
 
-  clib_warning ("LDP<%d>: fd %d (0x%x) ", getpid (), fd, fd);
-
   if (sid != INVALID_SESSION_ID)
     {
       vppcom_endpt_t ep;

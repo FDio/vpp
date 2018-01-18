@@ -441,6 +441,10 @@ vppcom_connect_to_vpp (char *app_name)
       vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
       vcm->my_client_index = am->my_client_index;
       vcm->app_state = STATE_APP_CONN_VPP;
+
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("VCL<%d>: app (%s) is connected to VPP!",
+		      getpid (), app_name);
     }
 
   if (VPPCOM_DEBUG > 0)
@@ -471,9 +475,6 @@ vppcom_connect_to_vpp (char *app_name)
       ed->data = rv;
       /* *INDENT-ON* */
     }
-
-  clib_warning ("VCL<%d>: app (%s) is connected to VPP!",
-		getpid (), app_name);
   return rv;
 }
 
