@@ -371,7 +371,7 @@ readv (int fd, const struct iovec * iov, int iovcnt)
   const char *func_str;
   ssize_t size = 0;
   u32 sid = vcom_sid_from_fd (fd);
-  int rv, i, total = 0;
+  int rv = 0, i, total = 0;
 
   if ((errno = -vcom_init ()))
     return -1;
@@ -508,7 +508,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
   const char *func_str;
   ssize_t size = 0, total = 0;
   u32 sid = vcom_sid_from_fd (fd);
-  int rv, i;
+  int i, rv = 0;
 
   /*
    * Use [f]printf() instead of clib_warning() to prevent recursion SIGSEGV.
@@ -1219,6 +1219,8 @@ socketpair (int domain, int type, int protocol, int fds[2])
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
+      func_str = __func__;
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       rv = -1;
@@ -2175,6 +2177,8 @@ sendmsg (int fd, const struct msghdr * message, int flags)
 
   if (sid != INVALID_SESSION_ID)
     {
+      func_str = __func__;
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       size = -1;
@@ -2269,6 +2273,8 @@ recvmsg (int fd, struct msghdr * message, int flags)
 
   if (sid != INVALID_SESSION_ID)
     {
+      func_str = __func__;
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       size = -1;
@@ -2360,7 +2366,7 @@ getsockopt (int fd, int level, int optname,
   int rv;
   const char *func_str = __func__;
   u32 sid = vcom_sid_from_fd (fd);
-  u32 buflen = (u32) * optlen;
+  u32 buflen = optlen ? (u32) * optlen : 0;
 
   if ((errno = -vcom_init ()))
     return -1;
@@ -2818,6 +2824,7 @@ vcom_accept4 (int listen_fd, __SOCKADDR_ARG addr,
     {
       vppcom_endpt_t ep;
       u8 src_addr[sizeof (struct sockaddr_in6)];
+      memset (&ep, 0, sizeof (ep));
       ep.ip = src_addr;
 
       func_str = "vppcom_session_accept";
@@ -2917,6 +2924,8 @@ shutdown (int fd, int how)
 
   if (sid != INVALID_SESSION_ID)
     {
+      func_str = __func__;
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       rv = -1;
@@ -3107,7 +3116,7 @@ vcom_epoll_pwait (int epfd, struct epoll_event *events,
 		  int maxevents, int timeout, const sigset_t * sigmask)
 {
   const char *func_str;
-  int rv;
+  int rv = 0;
   double time_to_wait = (double) 0;
   double time_out, now = 0;
   u32 vep_idx = vcom_sid_from_fd (epfd);
