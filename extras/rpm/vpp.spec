@@ -91,7 +91,7 @@ vppinfra
 %package plugins
 Summary: Vector Packet Processing--runtime plugins
 Group: System Environment/Libraries
-Requires: vpp = %{_version}-%{_release}
+Requires: vpp = %{_version}-%{_release} numactl-libs
 %description plugins
 This package contains VPP plugins
 
