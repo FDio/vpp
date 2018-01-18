@@ -2466,6 +2466,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
 	  /* Check MTU of outgoing interface. */
+#if 0
 	  error0 =
 	    (vlib_buffer_length_in_chain (vm, p0) >
 	     adj0[0].
@@ -2476,6 +2477,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	     adj1[0].
 	     rewrite_header.max_l3_packet_bytes ? IP4_ERROR_MTU_EXCEEDED :
 	     error1);
+#endif
 
 	  if (is_mcast)
 	    {
@@ -2645,9 +2647,11 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	       vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
+#if 0
 	  error0 = (vlib_buffer_length_in_chain (vm, p0)
 		    > adj0[0].rewrite_header.max_l3_packet_bytes
 		    ? IP4_ERROR_MTU_EXCEEDED : error0);
+#endif
 	  if (is_mcast)
 	    {
 	      error0 = ((adj0[0].rewrite_header.sw_if_index ==

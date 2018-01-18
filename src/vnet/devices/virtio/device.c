@@ -130,6 +130,17 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
   struct vring_desc *d;
   d = &vring->desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
+
+  memset (hdr, 0, hdr_sz);
+  if (b->flags & VNET_BUFFER_F_GSO)
+    {
+      hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
+      hdr->gso_size = vnet_buffer(b)->gso_size;
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      hdr->csum_start = 0x22;
+      hdr->csum_offset = 0x10;
+    }
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
