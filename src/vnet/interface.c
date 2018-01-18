@@ -704,6 +704,7 @@ vnet_register_interface (vnet_main_t * vnm,
   char *tx_node_name, *output_node_name;
 
   pool_get (im->hw_interfaces, hw);
+  memset (hw, 0, sizeof (*hw));
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
@@ -904,18 +905,24 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Call delete callbacks. */
   call_hw_interface_add_del_callbacks (vnm, hw_if_index, /* is_create */ 0);
 
-  /* Delete software interface corresponding to hardware interface. */
-  vnet_delete_sw_interface (vnm, hw->sw_if_index);
-
   /* Delete any sub-interfaces. */
   {
     u32 id, sw_if_index;
     /* *INDENT-OFF* */
-    hash_foreach (id, sw_if_index, hw->sub_interface_sw_if_index_by_id, ({
+    hash_foreach (id, sw_if_index, hw->sub_interface_sw_if_index_by_id,
+    ({
+      vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+      u64 sup_and_sub_key =
+	((u64) (si->sup_sw_if_index) << 32) | (u64) si->sub.id;
+      hash_unset_mem_free (&im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
       vnet_delete_sw_interface (vnm, sw_if_index);
     }));
+    hash_free (hw->sub_interface_sw_if_index_by_id);
     /* *INDENT-ON* */
   }
+
+  /* Delete software interface corresponding to hardware interface. */
+  vnet_delete_sw_interface (vnm, hw->sw_if_index);
 
   {
     vnet_hw_interface_nodes_t *dn;
