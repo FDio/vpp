@@ -24,7 +24,7 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/classify/vnet_classify.h>
-#include <vnet/classify/input_acl.h>
+#include <vnet/classify/in_out_acl.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/l2/l2_classify.h>
@@ -60,7 +60,8 @@ _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
 _(FLOW_CLASSIFY_DUMP, flow_classify_dump)                               \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)     \
-_(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)
+_(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)   \
+_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)
 
 #define foreach_classify_add_del_table_field    \
 _(table_index)                                  \
@@ -269,19 +270,21 @@ static void
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u32 *acl = 0;
 
-  vec_validate (acl, INPUT_ACL_N_TABLES - 1);
+  vec_validate (acl, IN_OUT_ACL_N_TABLES - 1);
   vec_set (acl, ~0);
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  input_acl_main_t *am = &input_acl_main;
+  in_out_acl_main_t *am = &in_out_acl_main;
 
   int if_idx;
   u32 type;
 
-  for (type = 0; type < INPUT_ACL_N_TABLES; type++)
+  for (type = 0; type < IN_OUT_ACL_N_TABLES; type++)
     {
-      u32 *vec_tbl = am->classify_table_index_by_sw_if_index[type];
+      u32 *vec_tbl =
+	am->classify_table_index_by_sw_if_index[IN_OUT_ACL_INPUT_TABLE_GROUP]
+	[type];
       if (vec_len (vec_tbl))
 	{
 	  for (if_idx = 0; if_idx < vec_len (vec_tbl); if_idx++)
@@ -301,9 +304,9 @@ static void
    REPLY_MACRO2(VL_API_CLASSIFY_TABLE_BY_INTERFACE_REPLY,
    ({
      rmp->sw_if_index = ntohl(sw_if_index);
-     rmp->l2_table_id = ntohl(acl[INPUT_ACL_TABLE_L2]);
-     rmp->ip4_table_id = ntohl(acl[INPUT_ACL_TABLE_IP4]);
-     rmp->ip6_table_id = ntohl(acl[INPUT_ACL_TABLE_IP6]);
+     rmp->l2_table_id = ntohl(acl[IN_OUT_ACL_TABLE_L2]);
+     rmp->ip4_table_id = ntohl(acl[IN_OUT_ACL_TABLE_IP4]);
+     rmp->ip6_table_id = ntohl(acl[IN_OUT_ACL_TABLE_IP6]);
    }));
    /* *INDENT-ON* */
   vec_free (acl);
@@ -583,6 +586,29 @@ static void vl_api_input_acl_set_interface_t_handler
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_INPUT_ACL_SET_INTERFACE_REPLY);
+}
+
+static void vl_api_output_acl_set_interface_t_handler
+  (vl_api_output_acl_set_interface_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_output_acl_set_interface_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 ip4_table_index = ntohl (mp->ip4_table_index);
+  u32 ip6_table_index = ntohl (mp->ip6_table_index);
+  u32 l2_table_index = ntohl (mp->l2_table_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  rv = vnet_set_output_acl_intfc (vm, sw_if_index, ip4_table_index,
+				  ip6_table_index, l2_table_index,
+				  mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_OUTPUT_ACL_SET_INTERFACE_REPLY);
 }
 
 /*

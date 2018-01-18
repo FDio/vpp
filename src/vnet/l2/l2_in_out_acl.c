@@ -1,7 +1,7 @@
 /*
- * l2_input_acl.c : layer 2 input acl processing
+ * l2_in_out_acl.c : layer 2 input/output acl processing
  *
- * Copyright (c) 2013 Cisco and/or its affiliates.
+ * Copyright (c) 2013,2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -25,6 +25,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
 #include <vnet/l2/feat_bitmap.h>
 
 #include <vppinfra/error.h>
@@ -32,18 +33,18 @@
 #include <vppinfra/cache.h>
 
 #include <vnet/classify/vnet_classify.h>
-#include <vnet/classify/input_acl.h>
+#include <vnet/classify/in_out_acl.h>
 
 typedef struct
 {
 
   /* Next nodes for each feature */
-  u32 feat_next_node_index[32];
+  u32 feat_next_node_index[IN_OUT_ACL_N_TABLE_GROUPS][32];
 
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-} l2_inacl_main_t;
+} l2_in_out_acl_main_t;
 
 typedef struct
 {
@@ -51,24 +52,38 @@ typedef struct
   u32 next_index;
   u32 table_index;
   u32 offset;
-} l2_inacl_trace_t;
+} l2_in_out_acl_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_l2_inacl_trace (u8 * s, va_list * args)
+format_l2_in_out_acl_trace (u8 * s, u32 is_output, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  l2_inacl_trace_t *t = va_arg (*args, l2_inacl_trace_t *);
+  l2_in_out_acl_trace_t *t = va_arg (*args, l2_in_out_acl_trace_t *);
 
-  s = format (s, "INACL: sw_if_index %d, next_index %d, table %d, offset %d",
+  s = format (s, "%s: sw_if_index %d, next_index %d, table %d, offset %d",
+	      is_output ? "OUTACL" : "INACL",
 	      t->sw_if_index, t->next_index, t->table_index, t->offset);
   return s;
 }
 
-l2_inacl_main_t l2_inacl_main;
+static u8 *
+format_l2_inacl_trace (u8 * s, va_list * args)
+{
+  return format_l2_in_out_acl_trace (s, IN_OUT_ACL_INPUT_TABLE_GROUP, args);
+}
+
+static u8 *
+format_l2_outacl_trace (u8 * s, va_list * args)
+{
+  return format_l2_in_out_acl_trace (s, IN_OUT_ACL_OUTPUT_TABLE_GROUP, args);
+}
+
+l2_in_out_acl_main_t l2_in_out_acl_main;
 
 static vlib_node_registration_t l2_inacl_node;
+static vlib_node_registration_t l2_outacl_node;
 
 #define foreach_l2_inacl_error                  \
 _(NONE, "valid input ACL packets")              \
@@ -77,6 +92,14 @@ _(HIT, "input ACL hits")                        \
 _(CHAIN_HIT, "input ACL hits after chain walk") \
 _(TABLE_MISS, "input ACL table-miss drops")     \
 _(SESSION_DENY, "input ACL session deny drops")
+
+#define foreach_l2_outacl_error                  \
+_(NONE, "valid output ACL packets")              \
+_(MISS, "output ACL misses")                     \
+_(HIT, "output ACL hits")                        \
+_(CHAIN_HIT, "output ACL hits after chain walk") \
+_(TABLE_MISS, "output ACL table-miss drops")     \
+_(SESSION_DENY, "output ACL session deny drops")
 
 
 typedef enum
@@ -93,16 +116,32 @@ static char *l2_inacl_error_strings[] = {
 #undef _
 };
 
-static uword
-l2_inacl_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+typedef enum
+{
+#define _(sym,str) L2_OUTACL_ERROR_##sym,
+  foreach_l2_outacl_error
+#undef _
+    L2_OUTACL_N_ERROR,
+} l2_outacl_error_t;
+
+static char *l2_outacl_error_strings[] = {
+#define _(sym,string) string,
+  foreach_l2_outacl_error
+#undef _
+};
+
+
+static inline uword
+l2_in_out_acl_node_fn (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * frame,
+		       int is_output)
 {
   u32 n_left_from, *from, *to_next;
   acl_next_index_t next_index;
-  l2_inacl_main_t *msm = &l2_inacl_main;
-  input_acl_main_t *am = &input_acl_main;
+  l2_in_out_acl_main_t *msm = &l2_in_out_acl_main;
+  in_out_acl_main_t *am = &in_out_acl_main;
   vnet_classify_main_t *vcm = am->vnet_classify_main;
-  input_acl_table_id_t tid = INPUT_ACL_TABLE_L2;
+  in_out_acl_table_id_t tid = IN_OUT_ACL_TABLE_L2;
   f64 now = vlib_time_now (vm);
   u32 hits = 0;
   u32 misses = 0;
@@ -141,13 +180,15 @@ l2_inacl_node_fn (vlib_main_t * vm,
       bi1 = from[1];
       b1 = vlib_get_buffer (vm, bi1);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 =
+	vnet_buffer (b0)->sw_if_index[is_output ? VLIB_TX : VLIB_RX];
       table_index0 =
-	am->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+	am->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index0];
 
-      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+      sw_if_index1 =
+	vnet_buffer (b1)->sw_if_index[is_output ? VLIB_TX : VLIB_RX];
       table_index1 =
-	am->classify_table_index_by_sw_if_index[tid][sw_if_index1];
+	am->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index1];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
@@ -193,9 +234,10 @@ l2_inacl_node_fn (vlib_main_t * vm,
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 =
+	vnet_buffer (b0)->sw_if_index[is_output ? VLIB_TX : VLIB_RX];
       table_index0 =
-	am->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+	am->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index0];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
@@ -272,8 +314,10 @@ l2_inacl_node_fn (vlib_main_t * vm,
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
 
 	  /* Determine the next node */
-	  next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
-					L2INPUT_FEAT_ACL);
+	  next0 =
+	    vnet_l2_feature_next (b0, msm->feat_next_node_index[is_output],
+				  is_output ? L2OUTPUT_FEAT_ACL :
+				  L2INPUT_FEAT_ACL);
 
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
@@ -299,8 +343,12 @@ l2_inacl_node_fn (vlib_main_t * vm,
 
 		  hits++;
 
-		  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-		    L2_INACL_ERROR_SESSION_DENY : L2_INACL_ERROR_NONE;
+		  if (is_output)
+		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+		      L2_OUTACL_ERROR_SESSION_DENY : L2_INACL_ERROR_NONE;
+		  else
+		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+		      L2_OUTACL_ERROR_SESSION_DENY : L2_OUTACL_ERROR_NONE;
 		  b0->error = node->errors[error0];
 		}
 	      else
@@ -319,8 +367,13 @@ l2_inacl_node_fn (vlib_main_t * vm,
 
 			  misses++;
 
-			  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-			    L2_INACL_ERROR_TABLE_MISS : L2_INACL_ERROR_NONE;
+			  if (is_output)
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      L2_OUTACL_ERROR_TABLE_MISS :
+			      L2_OUTACL_ERROR_NONE;
+			  else
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      L2_INACL_ERROR_TABLE_MISS : L2_INACL_ERROR_NONE;
 			  b0->error = node->errors[error0];
 			  break;
 			}
@@ -344,8 +397,14 @@ l2_inacl_node_fn (vlib_main_t * vm,
 			  hits++;
 			  chain_hits++;
 
-			  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-			    L2_INACL_ERROR_SESSION_DENY : L2_INACL_ERROR_NONE;
+			  if (is_output)
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      L2_OUTACL_ERROR_SESSION_DENY :
+			      L2_OUTACL_ERROR_NONE;
+			  else
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      L2_INACL_ERROR_SESSION_DENY :
+			      L2_INACL_ERROR_NONE;
 			  b0->error = node->errors[error0];
 			  break;
 			}
@@ -356,9 +415,10 @@ l2_inacl_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      l2_inacl_trace_t *t =
+	      l2_in_out_acl_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->sw_if_index =
+		vnet_buffer (b0)->sw_if_index[is_output ? VLIB_TX : VLIB_RX];
 	      t->next_index = next0;
 	      t->table_index = t0 ? t0 - vcm->tables : ~0;
 	      t->offset = (t0 && e0) ? vnet_classify_get_offset (t0, e0) : ~0;
@@ -374,12 +434,31 @@ l2_inacl_node_fn (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm, node->node_index,
+			       is_output ? L2_OUTACL_ERROR_MISS :
 			       L2_INACL_ERROR_MISS, misses);
   vlib_node_increment_counter (vm, node->node_index,
+			       is_output ? L2_OUTACL_ERROR_HIT :
 			       L2_INACL_ERROR_HIT, hits);
   vlib_node_increment_counter (vm, node->node_index,
+			       is_output ? L2_OUTACL_ERROR_CHAIN_HIT :
 			       L2_INACL_ERROR_CHAIN_HIT, chain_hits);
   return frame->n_vectors;
+}
+
+static uword
+l2_inacl_node_fn (vlib_main_t * vm,
+		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return l2_in_out_acl_node_fn (vm, node, frame,
+				IN_OUT_ACL_INPUT_TABLE_GROUP);
+}
+
+static uword
+l2_outacl_node_fn (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return l2_in_out_acl_node_fn (vm, node, frame,
+				IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
 /* *INDENT-OFF* */
@@ -400,12 +479,34 @@ VLIB_REGISTER_NODE (l2_inacl_node,static) = {
        [ACL_NEXT_INDEX_DENY]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
+
+VLIB_REGISTER_NODE (l2_outacl_node,static) = {
+  .function = l2_outacl_node_fn,
+  .name = "l2-output-acl",
+  .vector_size = sizeof (u32),
+  .format_trace = format_l2_outacl_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(l2_outacl_error_strings),
+  .error_strings = l2_outacl_error_strings,
+
+  .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+       [ACL_NEXT_INDEX_DENY]  = "error-drop",
+  },
+};
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2_inacl_node, l2_inacl_node_fn)
-     clib_error_t *l2_inacl_init (vlib_main_t * vm)
+VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
+/* *INDENT-ON* */
+
+
+clib_error_t *
+l2_in_out_acl_init (vlib_main_t * vm)
 {
-  l2_inacl_main_t *mp = &l2_inacl_main;
+  l2_in_out_acl_main_t *mp = &l2_in_out_acl_main;
 
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
@@ -415,12 +516,17 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_inacl_node, l2_inacl_node_fn)
 			       l2_inacl_node.index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
-			       mp->feat_next_node_index);
+			       mp->feat_next_node_index
+			       [IN_OUT_ACL_INPUT_TABLE_GROUP]);
+  feat_bitmap_init_next_nodes (vm, l2_outacl_node.index, L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (),
+			       mp->feat_next_node_index
+			       [IN_OUT_ACL_OUTPUT_TABLE_GROUP]);
 
   return 0;
 }
 
-VLIB_INIT_FUNCTION (l2_inacl_init);
+VLIB_INIT_FUNCTION (l2_in_out_acl_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

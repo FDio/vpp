@@ -1148,14 +1148,13 @@ _(l2fib_init)                                   \
 _(l2_input_classify_init)                             \
 _(l2bd_init)                                    \
 _(l2fwd_init)                                   \
-_(l2_inacl_init)                                \
+_(l2_in_out_acl_init)                           \
 _(l2input_init)                                 \
 _(l2_vtr_init)                                  \
 _(l2_invtr_init)                                \
 _(l2_efp_filter_init)                           \
 _(l2learn_init)                                 \
 _(l2flood_init)                                 \
-_(l2_outacl_init)                               \
 _(l2output_init)				\
 _(l2_patch_init)				\
 _(l2_xcrw_init)
