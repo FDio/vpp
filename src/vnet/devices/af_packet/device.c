@@ -51,7 +51,7 @@ static char *af_packet_tx_func_error_strings[] = {
 };
 
 
-static u8 *
+u8 *
 format_af_packet_device_name (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);

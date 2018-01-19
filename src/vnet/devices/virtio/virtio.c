@@ -109,6 +109,8 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   t.read_function = call_read_ready;
   t.file_descriptor = vring->call_fd;
   t.private_data = vif->dev_instance << 16 | idx;
+  t.description = format (0, "%U vring %u", format_virtio_device_name,
+			  vif->dev_instance, idx);
   vring->call_file_index = clib_file_add (&file_main, &t);
 
   state.index = idx;

@@ -288,6 +288,8 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
     template.file_descriptor = fd;
     template.private_data = if_index;
     template.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
+    template.description = format (0, "%U", format_af_packet_device_name,
+				   if_index);
     apif->clib_file_index = clib_file_add (&file_main, &template);
   }
 
