@@ -1514,13 +1514,19 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       /* Next handle interrupts. */
       {
+	/* unlocked read, for performance */
 	uword l = _vec_len (nm->pending_interrupt_node_runtime_indices);
 	uword i;
-	if (l > 0)
+	if (PREDICT_FALSE (l > 0))
 	  {
 	    u32 *tmp;
 	    if (!is_main)
-	      clib_spinlock_lock (&nm->pending_interrupt_lock);
+	      {
+		clib_spinlock_lock (&nm->pending_interrupt_lock);
+		/* Re-read w/ lock held, in case another thread added an item */
+		l = _vec_len (nm->pending_interrupt_node_runtime_indices);
+	      }
+
 	    tmp = nm->pending_interrupt_node_runtime_indices;
 	    nm->pending_interrupt_node_runtime_indices =
 	      last_node_runtime_indices;
