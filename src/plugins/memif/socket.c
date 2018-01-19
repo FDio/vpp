@@ -440,6 +440,9 @@ memif_msg_receive (memif_if_t ** mifp, clib_socket_t * sock, clib_file_t * uf)
       if ((err = memif_msg_receive_init (mifp, &msg, sock, uf->private_data)))
 	return err;
       mif = *mifp;
+      vec_reset_length (uf->description);
+      uf->description = format (uf->description, "%U ctl",
+				format_memif_device_name, mif->dev_instance);
       memif_msg_enq_ack (mif);
       break;
 
@@ -645,6 +648,7 @@ memif_conn_fd_accept_ready (clib_file_t * uf)
   template.error_function = memif_master_conn_fd_error;
   template.file_descriptor = client->fd;
   template.private_data = uf->private_data;
+  template.description = format (0, "memif in conn on %s", msf->filename);
 
   memif_file_add (&client->private_data, &template);
 

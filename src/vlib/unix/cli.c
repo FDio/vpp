@@ -59,6 +59,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 
 /** ANSI escape code. */
 #define ESC "\x1b"
@@ -2556,6 +2557,9 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   clib_file_t template = { 0 };
   vlib_main_t *vm = um->vlib_main;
   vlib_node_t *n;
+  u8 *file_desc = 0;
+
+  file_desc = format (0, "%s", name);
 
   name = (char *) format (0, "unix-cli-%s", name);
 
@@ -2595,6 +2599,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   template.error_function = unix_cli_error_detected;
   template.file_descriptor = fd;
   template.private_data = cf - cm->cli_file_pool;
+  template.description = file_desc;
 
   cf->process_node_index = n->index;
   cf->clib_file_index = clib_file_add (fm, &template);
@@ -2867,6 +2872,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 
       template.read_function = unix_cli_listen_read_ready;
       template.file_descriptor = s->fd;
+      template.description = format (0, "cli listener %s", s->config);
 
       clib_file_add (fm, &template);
     }
@@ -3111,9 +3117,52 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
-  .path = "show unix-errors",
+  .path = "show unix errors",
   .short_help = "Show Unix system call error history",
   .function = unix_show_errors,
+};
+/* *INDENT-ON* */
+
+/** CLI command to show various unix error statistics. */
+static clib_error_t *
+unix_show_files (vlib_main_t * vm,
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *f;
+  char path[PATH_MAX];
+  u8 *s = 0;
+
+  vlib_cli_output (vm, "%3s %6s %12s %12s %12s %-32s %s", "FD", "Thread",
+		   "Read", "Write", "Error", "File Name", "Description");
+
+  /* *INDENT-OFF* */
+  pool_foreach (f, fm->file_pool,(
+   {
+      int rv;
+      s = format (s, "/proc/self/fd/%d%c", f->file_descriptor, 0);
+      rv = readlink((char *) s, path, PATH_MAX - 1);
+
+      path[rv < 0 ? 0 : rv] = 0;
+
+      vlib_cli_output (vm, "%3d %6d %12d %12d %12d %-32s %v",
+		       f->file_descriptor, f->polling_thread_index,
+		       f->read_events, f->write_events, f->error_events,
+		       path, f->description);
+      vec_reset_length (s);
+    }));
+  /* *INDENT-ON* */
+  vec_free (s);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_unix_show_files, static) = {
+  .path = "show unix files",
+  .short_help = "Show Unix files in use",
+  .function = unix_show_files,
 };
 /* *INDENT-ON* */
 
