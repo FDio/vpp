@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "64bae874_e1f4a5b1",
+        "filename": "src/vnet/dpo/dpo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-19T20:57:46Z",
+      "side": 1,
+      "message": "... then why is vl_api_dpo_proto_t not a single byte ...",
+      "revId": "ad56190477533001013f043dd4245c19add5b6db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55318d10_ab39fbb0",
+        "filename": "src/vnet/dpo/dpo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-19T20:57:46Z",
+      "side": 1,
+      "message": "... and then we don;t need bitfields",
+      "revId": "ad56190477533001013f043dd4245c19add5b6db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d5825f87_41f7442a",
+        "filename": "src/vnet/dpo/dpo_types.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-19T20:57:46Z",
+      "side": 1,
+      "message": "if this indicates \u0027pack to one byte\u0027 ...",
+      "revId": "ad56190477533001013f043dd4245c19add5b6db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
