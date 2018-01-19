@@ -5067,6 +5067,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_BROADCAST),
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_BROADCAST: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_BROADCAST);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5084,6 +5103,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_V6ONLY: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_V6ONLY: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5103,6 +5140,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_V6ONLY), *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_V6ONLY: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_V6ONLY);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5120,6 +5176,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_KEEPALIVE: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_KEEPALIVE: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5140,6 +5214,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_KEEPALIVE),
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_KEEPALIVE: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_KEEPALIVE);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5157,6 +5250,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_NODELAY: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_TCP_NODELAY: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5177,6 +5288,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_NODELAY),
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_TCP_NODELAY: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_TCP_NODELAY);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5194,6 +5324,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5214,6 +5362,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_KEEPIDLE),
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_TCP_KEEPIDLE: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_TCP_KEEPIDLE);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5231,6 +5398,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPINTVL: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5251,6 +5436,25 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_KEEPINTVL),
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_TCP_KEEPINTVL: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						VCL_SESS_ATTR_TCP_KEEPINTVL);
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5267,6 +5471,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_USER_MSS: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_GET_TCP_USER_MSS: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = *(int *) buffer;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5279,9 +5501,27 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  session->user_mss = *(u32 *) buffer;
 
 	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_KEEPINTVL: %u, "
+	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_USER_MSS: %u, "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  session->user_mss, *buflen);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "VPPCOM_ATTR_SET_TCP_USER_MSS: %d buflen=%d",
+		  .format_args = "i4i4",
+		};
+
+	      struct {
+		u32 data[2];
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+	      ed->data[0] = session->user_mss;
+	      ed->data[1] = *buflen;
+	      /* *INDENT-ON* */
+	    }
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -5315,6 +5555,23 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 	    clib_warning ("VCL<%d>: invalid session, "
 			  "sid (%u) has been closed!",
 			  getpid (), session_index);
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      /* *INDENT-OFF* */
+	      ELOG_TYPE_DECLARE (e) =
+		{
+		  .format = "invalid session: %d closed",
+		  .format_args = "i4",
+		};
+
+	      struct {
+		u32 data;
+	      } * ed;
+
+	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
+	      ed->data = session_index;
+	      /* *INDENT-ON* */
+	    }
 	  rv = VPPCOM_EBADFD;
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  goto done;
