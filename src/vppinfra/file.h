@@ -57,6 +57,9 @@ typedef struct clib_file
 #define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
 #define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
 
+  /* polling thread index */
+  u32 polling_thread_index;
+
   /* Data available for function's use. */
   uword private_data;
 
@@ -106,6 +109,17 @@ clib_file_del_by_index (clib_file_main_t * um, uword index)
   clib_file_t *uf;
   uf = pool_elt_at_index (um->file_pool, index);
   clib_file_del (um, uf);
+}
+
+always_inline void
+clib_file_set_polling_thread (clib_file_main_t * um, uword index,
+			      u32 thread_index)
+{
+  clib_file_t *uf;
+  uf = pool_elt_at_index (um->file_pool, index);
+  um->file_update (f, UNIX_FILE_UPDATE_DELETE);
+  um->polling_thread_index = thread_index;
+  um->file_update (f, UNIX_FILE_UPDATE_ADD);
 }
 
 always_inline uword

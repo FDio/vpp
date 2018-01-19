@@ -34,7 +34,7 @@ unix { 									\
 	cli-listen /run/vpp/cli.sock					\
 	gid $(shell id -g)						\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
-}									\
+} cpu { skip-cores 1 workers 4 }					\
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "
