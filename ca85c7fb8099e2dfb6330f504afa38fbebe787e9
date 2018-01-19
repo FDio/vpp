@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e009ced8_9af7f5e1",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-19T20:33:00Z",
+      "side": 1,
+      "message": "create memif socket and \"delete memif socket\"",
+      "range": {
+        "startLine": 108,
+        "startChar": 17,
+        "endLine": 108,
+        "endChar": 30
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e244d4cd_bce81245",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-19T20:33:00Z",
+      "side": 1,
+      "message": "let\u0027s change this to \"create interface memif\" to avoid collision with \"create socket interface\"",
+      "range": {
+        "startLine": 198,
+        "startChar": 11,
+        "endLine": 198,
+        "endChar": 24
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4728f305_0d2e00e9",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-19T20:33:00Z",
+      "side": 1,
+      "message": "I\u0027m adding \"show unix files\" cli in separate patch so this might not be needed.\nIf you want to keep it, just add knob \"files\" tp \"show memif\" above...",
+      "range": {
+        "startLine": 444,
+        "startChar": 0,
+        "endLine": 486,
+        "endChar": 17
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e4979476_1cf50c71",
+        "filename": "src/plugins/memif/memif.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-19T20:33:00Z",
+      "side": 1,
+      "message": "Please bump version",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 20
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c19dc96e_e6b7946e",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-19T20:33:00Z",
+      "side": 1,
+      "message": "please reuse existing error code. Whole idea of plugins is void if we need to add feature specific code into vnet :)",
+      "range": {
+        "startLine": 138,
+        "startChar": 0,
+        "endLine": 138,
+        "endChar": 54
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
