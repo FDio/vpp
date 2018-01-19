@@ -29,6 +29,7 @@ class MRouteEntryFlags:
     MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
 
 
+# XXX: Replace this with vl_api_dpo_proto enum
 class DpoProto:
     DPO_PROTO_IP4 = 0
     DPO_PROTO_IP6 = 1

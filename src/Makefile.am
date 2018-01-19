@@ -71,7 +71,7 @@ include vpp-api-test.am
 include vcl.am
 
 SUBDIRS += plugins
-SUBDIRS += vpp-api/vapi
+#SUBDIRS += vpp-api/vapi
 
 if ENABLE_PAPI
 include vpp-api.am

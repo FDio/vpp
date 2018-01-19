@@ -34,6 +34,9 @@ def exception_handler(exception_type, exception, traceback):
 # Lexer
 #
 class VPPAPILexer(object):
+    def __init__(self, filename):
+        self.filename = filename
+
     reserved = {
         'service': 'SERVICE',
         'rpc': 'RPC',
@@ -96,17 +99,18 @@ class VPPAPILexer(object):
     # Error handling rule
     def t_error(self, t):
         raise ParseError("Illegal character '{}' ({})"
-                         "in line {}".format(t.value[0],
-                                             hex(ord(t.value[0])),
-                                             t.lexer.lineno))
+                         "in {}: line {}".format(t.value[0],
+                                                 hex(ord(t.value[0])),
+                                                 self.filename,
+                                                 t.lexer.lineno))
         t.lexer.skip(1)
 
-        # Define a rule so we can track line numbers
+    # Define a rule so we can track line numbers
     def t_newline(self, t):
         r'\n+'
         t.lexer.lineno += len(t.value)
 
-    literals = "{}[];=.,"
+    literals = ":{}[];=.,"
 
     # A string containing ignored characters (spaces and tabs)
     t_ignore = ' \t'
@@ -173,15 +177,16 @@ class Define():
 
 
 class Enum():
-    def __init__(self, name, block):
+    def __init__(self, name, block, enumtype='u32'):
         self.name = name
+        self.enumtype = enumtype
         count = 0
         for i, b in enumerate(block):
             if type(b) is list:
                 count = b[1]
             else:
-                block[i] = [b, count]
                 count += 1
+                block[i] = [b, count]
 
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
@@ -368,6 +373,19 @@ class VPPAPIParser(object):
         '''enum : ENUM ID '{' enum_statements '}' ';' '''
         p[0] = Enum(p[2], p[4])
 
+    def p_enum_type(self, p):
+        ''' enum : ENUM ID ':' enum_size '{' enum_statements '}' ';' '''
+        if len(p) == 9:
+            p[0] = Enum(p[2], p[6], enumtype=p[4])
+        else:
+            p[0] = Enum(p[2], p[4])
+
+    def p_enum_size(self, p):
+        ''' enum_size : U8
+                      | U16
+                      | U32 '''
+        p[0] = p[1]
+
     def p_define(self, p):
         '''define : DEFINE ID '{' block_statements_opt '}' ';' '''
         self.fields = []
@@ -507,7 +525,7 @@ class VPPAPIParser(object):
 class VPPAPI(object):
 
     def __init__(self, debug=False, filename='', logger=None):
-        self.lexer = lex.lex(module=VPPAPILexer(), debug=debug)
+        self.lexer = lex.lex(module=VPPAPILexer(filename), debug=debug)
         self.parser = yacc.yacc(module=VPPAPIParser(filename, logger),
                                 tabmodule='vppapigentab', debug=debug)
         self.logger = logger
@@ -612,12 +630,10 @@ class VPPAPI(object):
         return s
 
     def process_imports(self, objs):
-        import_objs = []
         for o in objs:
             if isinstance(o, Import):
-                for import_o in o.result:
-                    import_objs.append(import_o)
-        return import_objs
+                return objs + self.process_imports(o.result)
+        return objs
 
 
 # Add message ids to each message.
@@ -680,7 +696,7 @@ def main():
     result = parser.parse_file(args.input, log)
 
     # Build a list of objects. Hash of lists.
-    result += parser.process_imports(result)
+    result = parser.process_imports(result)
     s = parser.process(result)
 
     # Add msg_id field

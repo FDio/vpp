@@ -186,6 +186,7 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
         brpath = &brpaths[ii];
         memset(brpath, 0, sizeof(*brpath));
         brpath->frp_sw_if_index = ~0;
+	dpo_proto_t dpo_proto = ntohl(mp->br_paths[ii].afi);
 
         vec_validate(brpath->frp_label_stack,
                      mp->br_paths[ii].n_labels - 1);
@@ -202,13 +203,13 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
         }
         else
         {
-            if (0 == mp->br_paths[ii].afi)
+	  if (dpo_proto == DPO_PROTO_IP4)
             {
                 clib_memcpy (&brpath->frp_addr.ip4,
                              mp->br_paths[ii].next_hop,
                              sizeof (brpath->frp_addr.ip4));
             }
-            else
+	  else if (dpo_proto == DPO_PROTO_IP6)
             {
                 clib_memcpy (&brpath->frp_addr.ip6,
                              mp->br_paths[ii].next_hop,
@@ -511,6 +512,7 @@ vl_api_bier_disp_entry_add_del_t_handler (vl_api_bier_disp_entry_add_del_t * mp)
         brp = &brps[ii];
         brp->frp_fib_index = ntohl(mp->bde_paths[ii].table_id);
         brp->frp_sw_if_index = ntohl(mp->bde_paths[ii].sw_if_index);
+	dpo_proto_t dpo_proto = ntohl(mp->bde_paths[ii].afi);
 
         if (~0 != ntohl(mp->bde_paths[ii].rpf_id))
         {
@@ -518,13 +520,13 @@ vl_api_bier_disp_entry_add_del_t_handler (vl_api_bier_disp_entry_add_del_t * mp)
             brp->frp_rpf_id = ntohl(mp->bde_paths[ii].rpf_id);
         }
 
-        if (0 == mp->bde_paths[ii].afi)
+        if (dpo_proto == DPO_PROTO_IP4)
         {
             clib_memcpy (&brp->frp_addr.ip4,
                          mp->bde_paths[ii].next_hop,
                          sizeof (brp->frp_addr.ip4));
         }
-        else
+        else if (dpo_proto == DPO_PROTO_IP6)
         {
             clib_memcpy (&brp->frp_addr.ip6,
                          mp->bde_paths[ii].next_hop,

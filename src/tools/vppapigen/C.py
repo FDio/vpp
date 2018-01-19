@@ -96,10 +96,13 @@ def typedefs(s, filename):
 '''
     output = output.format(module=name)
     for e in s['enums']:
+        output += "#ifndef defined_%s\n" % e.name
+        output += "#define defined_%s\n" % e.name
         output += "typedef enum {\n"
         for b in e.block:
             output += "    %s = %s,\n" % (b[0], b[1])
-        output += '} vl_api_%s_t;\n\n' % e.name
+        output += '} vl_api_%s_t;\n' % e.name
+        output += "#endif\n\n"
 
     for t in s['typedefs'] + s['defines']:
         output += "typedef VL_API_PACKED(struct _vl_api_%s {\n" % t.name

@@ -6,7 +6,7 @@ import socket
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto
+    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID
 from vpp_bier import *
 from vpp_udp_encap import *
 
@@ -220,10 +220,10 @@ class TestBier(VppTestCase):
                                  MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
                                  MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 proto=self.vapi.papi.vl_api_dpo_proto_t.DPO_PROTO_BIER,
                                  bier_imp=bi.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
-
+        print('BIER DPO:', self.vapi.papi.vl_api_dpo_proto_t.DPO_PROTO_BIER)
         #
         # inject an IP packet. We expect it to be BIER encapped and
         # replicated.
@@ -374,7 +374,7 @@ class TestBier(VppTestCase):
                                  MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
                                  MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 proto=self.vapi.papi.vl_api_dpo_proto_t.DPO_PROTO_BIER,
                                  bier_imp=bi.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
 
@@ -491,7 +491,7 @@ class TestBier(VppTestCase):
                                  MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
                                  MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 proto=self.vapi.papi.vl_api_dpo_proto_t.DPO_PROTO_BIER,
                                  bier_imp=bi2.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
 
