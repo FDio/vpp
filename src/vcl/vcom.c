@@ -2506,7 +2506,7 @@ getsockopt (int fd, int level, int optname,
 	      if (VCOM_DEBUG > 1)
 		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
 			      "sid %u (0x%x), optlen %d",
-			      getpid (), fd, fd, func_str, sid, sid, *optlen);
+			      getpid (), fd, fd, func_str, sid, sid, buflen);
 	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_RX_FIFO_LEN,
 					optval, optlen);
 	      break;
