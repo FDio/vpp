@@ -66,6 +66,8 @@ int af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name);
 int af_packet_set_l4_cksum_offload (vlib_main_t * vm, u32 sw_if_index,
 				    u8 set);
 
+format_function_t format_af_packet_device_name;
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
