@@ -44,7 +44,7 @@ typedef struct mpls_label_dpo_t
     /**
      * The protocol of the payload/packets that are being encapped
      */
-    dpo_proto_t mld_payload_proto;
+    dpo_proto_t mld_payload_proto:8;
 
     /**
      * Size of the label stack

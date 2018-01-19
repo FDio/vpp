@@ -57,15 +57,11 @@ typedef u32 index_t;
  * When programming a DPO's next node arc from child to parent it is thus required
  * to know the parent's data-path protocol so the correct arc index can be used.
  */
-typedef enum dpo_proto_t_
-{
-    DPO_PROTO_IP4 = 0,
-    DPO_PROTO_IP6,
-    DPO_PROTO_MPLS,
-    DPO_PROTO_ETHERNET,
-    DPO_PROTO_BIER,
-    DPO_PROTO_NSH,
-} __attribute__((packed)) dpo_proto_t;
+
+#define vl_typedefs
+#include <vnet/ip/ip.api.h>
+#undef vl_typedefs
+typedef vl_api_dpo_proto_t dpo_proto_t;
 
 #define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_NSH+1))
 #define DPO_PROTO_NONE ((dpo_proto_t)(DPO_PROTO_NUM+1))
@@ -171,7 +167,7 @@ typedef struct dpo_id_t_ {
     /**
      * the data-path protocol of the type.
      */
-    dpo_proto_t dpoi_proto;
+    dpo_proto_t dpoi_proto:8;
     /**
      * The next VLIB node to follow.
      */

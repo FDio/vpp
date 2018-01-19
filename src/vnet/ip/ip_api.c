@@ -1359,7 +1359,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
   u32 fib_index;
   int rv;
 
-  nh_proto = mp->next_hop_afi;
+  nh_proto = ntohl(mp->next_hop_afi);
   fproto = (mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   rv = add_del_mroute_check (fproto,
 			     mp->table_id,
