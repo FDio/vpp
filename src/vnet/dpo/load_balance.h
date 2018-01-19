@@ -97,7 +97,7 @@ typedef struct load_balance_t_ {
      * need in combination with the flow hash config to determine how to hash.
      * u8.
      */
-    dpo_proto_t lb_proto;
+    dpo_proto_t lb_proto:8;
 
     /**
      * Flags from the load-balance's associated fib_entry_t

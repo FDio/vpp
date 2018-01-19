@@ -24,6 +24,7 @@ import json
 import threading
 import fnmatch
 import atexit
+from enum import IntEnum
 from cffi import FFI
 import cffi
 
@@ -131,11 +132,20 @@ class VPP():
         self.id_msgdef = []
         self.connected = False
         self.header = struct.Struct('>HI')
+        self._api = Empty()
         self.apifiles = []
         self.event_callback = None
         self.message_queue = queue.Queue()
         self.read_timeout = read_timeout
         self.vpp_api = vpp_api
+
+        self.base_types = {'u8': 'B',
+                           'u16': 'H',
+                           'u32': 'I',
+                           'i32': 'i',
+                           'u64': 'Q',
+                           'f64': 'd',}
+
         if async_thread:
             self.event_thread = threading.Thread(
                 target=self.thread_msg_handler)
@@ -156,11 +166,18 @@ class VPP():
         for file in apifiles:
             with open(file) as apidef_file:
                 api = json.load(apidef_file)
+
+                # Enums add types so do those first
+                for e in api['enums']:
+                    self.add_enum(e[0], e[1:])
+
                 for t in api['types']:
                     self.add_type(t[0], t[1:])
 
                 for m in api['messages']:
                     self.add_message(m[0], m[1:])
+
+
         self.apifiles = apifiles
 
         # Basic sanity check
@@ -326,15 +343,10 @@ class VPP():
 
     def __struct(self, t, n=None, e=-1, vl=None):
         """Create a packing structure for a message."""
-        base_types = {'u8': 'B',
-                      'u16': 'H',
-                      'u32': 'I',
-                      'i32': 'i',
-                      'u64': 'Q',
-                      'f64': 'd', }
         pack = None
-        if t in base_types:
-            pack = base_types[t]
+
+        if t in self.base_types:
+            pack = self.base_types[t]
             if not vl:
                 if e > 0 and t == 'u8':
                     # Fixed byte array
@@ -342,11 +354,11 @@ class VPP():
                     return s.size, s
                 if e > 0:
                     # Fixed array of base type
-                    s = struct.Struct('>' + base_types[t])
+                    s = struct.Struct('>' + self.base_types[t])
                     return s.size, [e, s]
                 elif e == 0:
                     # Old style variable array
-                    s = struct.Struct('>' + base_types[t])
+                    s = struct.Struct('>' + self.base_types[t])
                     return s.size, [-1, s]
             else:
                 # Variable length array
@@ -354,10 +366,10 @@ class VPP():
                     s = struct.Struct('>s')
                     return s.size, [vl, s]
                 else:
-                    s = struct.Struct('>' + base_types[t])
+                    s = struct.Struct('>' + self.base_types[t])
                 return s.size, [vl, s]
 
-            s = struct.Struct('>' + base_types[t])
+            s = struct.Struct('>' + self.base_types[t])
             return s.size, s
 
         if t in self.messages:
@@ -515,6 +527,19 @@ class VPP():
             return self.messages[name]['return_tuple']
         return None
 
+    def add_enum(self, name, msgdef):
+        e_hash = {}
+        for i, f in enumerate(msgdef):
+            if type(f) is dict and 'enumtype' in f:
+                continue
+            e_hash[f[0]] = f[1]
+        name = 'vl_api_' + name + '_t'
+        self.base_types[name] = 'I'
+
+        e = IntEnum(name, e_hash)
+        setattr(self._api, name, e)
+        print('E', e, e.DPO_PROTO_BIER)
+
     def add_message(self, name, msgdef, typeonly=False):
         if name in self.messages:
             raise ValueError('Duplicate message name: ' + name)
@@ -585,7 +610,6 @@ class VPP():
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
-        self._api = Empty()
         for name, msgdef in vpp_iterator(self.messages):
             if self.messages[name]['typeonly']:
                 continue
