@@ -852,8 +852,9 @@ vhost_user_socket_read (clib_file_t * uf)
 	    }
 	  vui->region_mmap_addr[i] += vui->regions[i].mmap_offset;
 	  vui->region_mmap_fd[i] = fds[i];
+
+	  vui->nregions++;
 	}
-      vui->nregions = msg.memory.nregions;
       break;
 
     case VHOST_USER_SET_VRING_NUM:
