@@ -306,7 +306,7 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
   int i, r;
   for (i = 0; i < vui->nregions; i++)
     {
-      if (vui->region_mmap_addr[i] != (void *) -1)
+      if (vui->region_mmap_addr[i] != MAP_FAILED)
 	{
 
 	  long page_sz = get_huge_page_size (vui->region_mmap_fd[i]);
@@ -323,7 +323,7 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
 	    ("unmap memory region %d addr 0x%lx len 0x%lx page_sz 0x%x", i,
 	     vui->region_mmap_addr[i], map_sz, page_sz);
 
-	  vui->region_mmap_addr[i] = (void *) -1;
+	  vui->region_mmap_addr[i] = MAP_FAILED;
 
 	  if (r == -1)
 	    {
@@ -829,7 +829,7 @@ vhost_user_socket_read (clib_file_t * uf)
 
 	  long page_sz = get_huge_page_size (fds[i]);
 
-	  /* align size to 2M page */
+	  /* align size to page */
 	  ssize_t map_sz = (vui->regions[i].memory_size +
 			    vui->regions[i].mmap_offset +
 			    page_sz - 1) & ~(page_sz - 1);
@@ -1076,7 +1076,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	  }
 
 	fd = fds[0];
-	/* align size to 2M page */
+	/* align size to page */
 	long page_sz = get_huge_page_size (fd);
 	ssize_t map_sz =
 	  (msg.log.size + msg.log.offset + page_sz - 1) & ~(page_sz - 1);
