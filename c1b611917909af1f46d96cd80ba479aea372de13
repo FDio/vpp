@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed58f8c2_cd729cc0",
+        "filename": "src/vnet/classify/in_out_acl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-21T12:19:34Z",
+      "side": 1,
+      "message": "shouldn\u0027t an is_ouput acl go on the ipX-output feature arc?",
+      "revId": "c1b611917909af1f46d96cd80ba479aea372de13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bdc9fb24_aa52342c",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-21T12:19:34Z",
+      "side": 1,
+      "message": "errors on output in ip4-rewrite are counted against ip4-input too, so i think this is the correct approach..",
+      "revId": "c1b611917909af1f46d96cd80ba479aea372de13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
