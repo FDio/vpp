@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0b66f226_cf7414b5",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-01-21T15:40:07Z",
+      "side": 1,
+      "message": "Really two commands here instead?\nWhy not have the commands grouped together by their functional area rather than some generic verb?\n\nI\u0027ll do as you request, but I\u0027m on record as saying it makes no sense to me.",
+      "parentUuid": "e009ced8_9af7f5e1",
+      "range": {
+        "startLine": 108,
+        "startChar": 17,
+        "endLine": 108,
+        "endChar": 30
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e244d4cd_bce81245",
         "filename": "src/plugins/memif/cli.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-01-19T20:33:00Z",
       "side": 1,
       "message": "let\u0027s change this to \"create interface memif\" to avoid collision with \"create socket interface\"",
+      "range": {
+        "startLine": 198,
+        "startChar": 11,
+        "endLine": 198,
+        "endChar": 24
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4a5fe979_f10de823",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-01-21T15:40:07Z",
+      "side": 1,
+      "message": "So now it is different from the counter part for memif-sockets too?\nWe would then have:\n    create interface memif ....\nand\n    create memif socket ...\n\nWhy not:\n\n    memif socket [add|del] ...\n    memif interface [add|del] ...\n\nOr at least:\n\n    create memif socket ...\n    create memif interface ...\n\nAgain, I\u0027ll do as you request, but I\u0027ll go on record saying it make no sense to me.",
+      "parentUuid": "e244d4cd_bce81245",
       "range": {
         "startLine": 198,
         "startChar": 11,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "b4c6f422_285a1f07",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-01-21T15:40:07Z",
+      "side": 1,
+      "message": "So you want, what?\n\n   show memif files ...?\n   show files memif ....?\n   show memif socket files ...?\n\nsomething else?",
+      "parentUuid": "4728f305_0d2e00e9",
+      "range": {
+        "startLine": 444,
+        "startChar": 0,
+        "endLine": 486,
+        "endChar": 17
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e4979476_1cf50c71",
         "filename": "src/plugins/memif/memif.api",
         "patchSetId": 1
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "8c1699b9_d3c53d35",
+        "filename": "src/plugins/memif/memif.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-01-21T15:40:07Z",
+      "side": 1,
+      "message": "I\u0027m defulting to 2.0.0 unless I hear differently from you!",
+      "parentUuid": "e4979476_1cf50c71",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 20
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c19dc96e_e6b7946e",
         "filename": "src/vnet/api_errno.h",
         "patchSetId": 1
@@ -105,6 +201,30 @@
       "writtenOn": "2018-01-19T20:33:00Z",
       "side": 1,
       "message": "please reuse existing error code. Whole idea of plugins is void if we need to add feature specific code into vnet :)",
+      "range": {
+        "startLine": 138,
+        "startChar": 0,
+        "endLine": 138,
+        "endChar": 54
+      },
+      "revId": "ca85c7fb8099e2dfb6330f504afa38fbebe787e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb8cf267_601d0800",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-01-21T15:40:07Z",
+      "side": 1,
+      "message": "Which error would you suggest?  There is no generic \"still being used\".\n\nAlso, there are other examples where plugins use plugin-specific error codes listed in api_errno.h.\n\nIf we really wanted to separate the concepts as you suggest, we should figure out a means to have plugin register their own error messages into a collective error-numbering scheme.  Perhaps something like the API call enum values as part of the API itself too.",
+      "parentUuid": "c19dc96e_e6b7946e",
       "range": {
         "startLine": 138,
         "startChar": 0,
