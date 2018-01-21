@@ -52,7 +52,7 @@ class BFDAPITestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDAPITestCase, cls).setUpClass()
-
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces(range(2))
             for i in cls.pg_interfaces:
@@ -626,6 +626,7 @@ class BFD4TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFD4TestCase, cls).setUpClass()
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
             cls.create_loopback_interfaces([0])
@@ -1431,6 +1432,7 @@ class BFD6TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFD6TestCase, cls).setUpClass()
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip6()
@@ -1742,6 +1744,7 @@ class BFDSHA1TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDSHA1TestCase, cls).setUpClass()
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip4()
@@ -1974,6 +1977,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip4()
@@ -2179,7 +2183,7 @@ class BFDCLITestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDCLITestCase, cls).setUpClass()
-
+        cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces((0,))
             cls.pg0.config_ip4()
