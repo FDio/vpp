@@ -23,6 +23,7 @@
 #include <vnet/vnet.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_udp.h>
+#include <vlib/log.h>
 
 #define foreach_bfd_mode(F) \
   F (asynchronous)          \
@@ -296,8 +297,11 @@ typedef struct
   /** hashmap - index in pool auth_keys by conf_key_id */
   u32 *auth_key_by_conf_key_id;
 
-  /** A vector of callback notification functions */
+  /** vector of callback notification functions */
   bfd_notify_fn_t *listeners;
+
+  /** log class */
+  vlib_log_class_t log_class;
 } bfd_main_t;
 
 extern bfd_main_t bfd_main;
@@ -358,6 +362,7 @@ void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
 				   bfd_main_t * bm, bfd_session_t * bs,
 				   int is_local);
 u8 *format_bfd_session (u8 * s, va_list * args);
+u8 *format_bfd_session_brief (u8 * s, va_list * args);
 u8 *format_bfd_auth_key (u8 * s, va_list * args);
 void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
 unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
