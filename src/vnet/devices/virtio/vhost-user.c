@@ -54,8 +54,9 @@
 #define DBG_SOCK(args...)			\
   {						\
     vhost_user_main_t *_vum = &vhost_user_main; \
-    if (_vum->debug)				\
+    if (_vum->debug){				\
       clib_warning(args);			\
+    }\
   };
 
 #if VHOST_DEBUG_VQ == 1
