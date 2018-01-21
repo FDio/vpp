@@ -31,6 +31,7 @@
 #include <linux/rtnetlink.h>
 
 #include <vlib/vlib.h>
+#include <vlib/log.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -519,11 +520,19 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   return 0;
 }
 
+#define vlib_log_info(...) vlib_log(VLIB_LOG_LEVEL_INFO, __VA_ARGS__)
+
 static clib_error_t *
 tap_init (vlib_main_t * vm)
 {
   tap_main_t *tm = &tap_main;
+  clib_error_t *error;
+  error = vlib_call_init_function (vm, vlib_log_init);
+  if (error)
+    return error;
   tm->dev_instance_by_interface_id = hash_create (0, sizeof (uword));
+  tm->log_default = vlib_log_register_class ("tap", 0);
+  vlib_log_info (tm->log_default, "initialized");
   return 0;
 }
 
