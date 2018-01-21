@@ -34,6 +34,7 @@
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_main.h>
+#include <vlib/log.h>
 
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
@@ -403,6 +404,8 @@ void
 bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
 {
   BFD_DBG ("\nStarting session: %U", format_bfd_session, bs);
+  vlib_log_info (bm->log_class, "start BFD session: %U",
+		 format_bfd_session_brief, bs);
   bfd_set_effective_required_min_rx (bm, bs,
 				     bs->config_required_min_rx_clocks);
   bfd_recalc_tx_interval (bm, bs);
@@ -419,6 +422,8 @@ bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
   if (admin_up_down)
     {
       BFD_DBG ("Session set admin-up, bs-idx=%u", bs->bs_idx);
+      vlib_log_info (bm->log_class, "set session admin-up: %U",
+		     format_bfd_session_brief, bs);
       bfd_set_state (bm, bs, BFD_STATE_down, 0);
       bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
       bfd_calc_next_tx (bm, bs, now);
@@ -427,6 +432,8 @@ bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
   else
     {
       BFD_DBG ("Session set admin-down, bs-idx=%u", bs->bs_idx);
+      vlib_log_info (bm->log_class, "set session admin-down: %U",
+		     format_bfd_session_brief, bs);
       bfd_set_diag (bs, BFD_DIAG_CODE_admin_down);
       bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
       bfd_calc_next_tx (bm, bs, now);
@@ -668,6 +675,7 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 static void
 bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 {
+  bfd_main_t *bm = &bfd_main;
   if (bs->auth.curr_key)
     {
       const bfd_auth_type_e auth_type = bs->auth.curr_key->auth_type;
@@ -680,8 +688,9 @@ bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 	case BFD_AUTH_TYPE_keyed_md5:
 	  /* fallthrough */
 	case BFD_AUTH_TYPE_meticulous_keyed_md5:
-	  clib_warning ("Internal error, unexpected BFD auth type '%d'",
-			auth_type);
+	  vlib_log_crit (bm->log_class,
+			 "internal error, unexpected BFD auth type '%d'",
+			 auth_type);
 	  break;
 #if WITH_LIBSSL > 0
 	case BFD_AUTH_TYPE_keyed_sha1:
@@ -693,8 +702,9 @@ bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 	case BFD_AUTH_TYPE_keyed_sha1:
 	  /* fallthrough */
 	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  clib_warning ("Internal error, unexpected BFD auth type '%d'",
-			auth_type);
+	  vlib_log_crit (bm->log_class,
+			 "internal error, unexpected BFD auth type '%d'",
+			 auth_type);
 	  break;
 #endif
 	}
@@ -768,7 +778,7 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
       u32 bi;
       if (vlib_buffer_alloc (vm, &bi, 1) != 1)
 	{
-	  clib_warning ("buffer allocation failure");
+	  vlib_log_crit (bm->log_class, "buffer allocation failure");
 	  return;
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
@@ -842,7 +852,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
       u32 bi;
       if (vlib_buffer_alloc (vm, &bi, 1) != 1)
 	{
-	  clib_warning ("buffer allocation failure");
+	  vlib_log_crit (bm->log_class, "buffer allocation failure");
 	  return;
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
@@ -1063,7 +1073,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    }
 	  break;
 	default:
-	  clib_warning ("BUG: event type 0x%wx", event_type);
+	  vlib_log_err (bm->log_class, "BUG: event type 0x%wx", event_type);
 	  break;
 	}
       BFD_DBG ("advancing wheel, now is %lu", now);
@@ -1166,6 +1176,8 @@ bfd_main_init (vlib_main_t * vm)
   const u64 now = clib_cpu_time_now ();
   timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
+  bm->log_class = vlib_log_register_class ("bfd", 0);
+  vlib_log_debug (bm->log_class, "initialized");
   return 0;
 }
 
@@ -1186,8 +1198,9 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
       result->local_discr = random_u32 (&bm->random_seed);
       if (counter > limit)
 	{
-	  clib_warning ("Couldn't allocate unused session discriminator even "
-			"after %u tries!", limit);
+	  vlib_log_crit (bm->log_class,
+			 "couldn't allocate unused session discriminator even "
+			 "after %u tries!", limit);
 	  pool_put (bm->sessions, result);
 	  return NULL;
 	}
@@ -1202,6 +1215,8 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
+  vlib_log_info (bm->log_class, "delete session: %U",
+		 format_bfd_session_brief, bs);
   bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
   if (bs->auth.curr_key)
     {
@@ -1468,23 +1483,27 @@ bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
 			 bfd_session_t * bs, u8 bfd_key_id,
 			 bfd_auth_key_t * auth_key)
 {
+  bfd_main_t *bm = &bfd_main;
   switch (auth_key->auth_type)
     {
     case BFD_AUTH_TYPE_reserved:
-      clib_warning ("Internal error, unexpected auth_type=%d:%s",
+      vlib_log_err (bm->log_class,
+		    "internal error, unexpected auth_type=%d:%s",
 		    auth_key->auth_type,
 		    bfd_auth_type_str (auth_key->auth_type));
       return 0;
     case BFD_AUTH_TYPE_simple_password:
-      clib_warning
-	("Internal error, not implemented, unexpected auth_type=%d:%s",
-	 auth_key->auth_type, bfd_auth_type_str (auth_key->auth_type));
+      vlib_log_err (bm->log_class,
+		    "internal error, not implemented, unexpected auth_type=%d:%s",
+		    auth_key->auth_type,
+		    bfd_auth_type_str (auth_key->auth_type));
       return 0;
     case BFD_AUTH_TYPE_keyed_md5:
       /* fallthrough */
     case BFD_AUTH_TYPE_meticulous_keyed_md5:
-      clib_warning
-	("Internal error, not implemented, unexpected auth_type=%d:%s",
+      vlib_log_err
+	(bm->log_class,
+	 "internal error, not implemented, unexpected auth_type=%d:%s",
 	 auth_key->auth_type, bfd_auth_type_str (auth_key->auth_type));
       return 0;
     case BFD_AUTH_TYPE_keyed_sha1:
@@ -1504,8 +1523,9 @@ bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
 	}
       while (0);
 #else
-      clib_warning
-	("Internal error, attempt to use SHA1 without SSL support");
+      vlib_log_err
+	(bm->log_class,
+	 "internal error, attempt to use SHA1 without SSL support");
       return 0;
 #endif
     }
@@ -1625,8 +1645,9 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	case BFD_AUTH_TYPE_keyed_md5:
 	  /* fallthrough */
 	case BFD_AUTH_TYPE_meticulous_keyed_md5:
-	  clib_warning ("Internal error, unexpected auth_type=%d:%s",
-			auth_type, bfd_auth_type_str (auth_type));
+	  vlib_log_crit (bm->log_class,
+			 "internal error, unexpected auth_type=%d:%s",
+			 auth_type, bfd_auth_type_str (auth_type));
 	  break;
 	case BFD_AUTH_TYPE_keyed_sha1:
 	  /* fallthrough */
@@ -1768,7 +1789,7 @@ u8 *
 format_bfd_session (u8 * s, va_list * args)
 {
   const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
-  u32 indent = format_get_indent (s);
+  u32 indent = format_get_indent (s) + vlib_log_get_indent ();
   s = format (s, "bs_idx=%u local-state=%s remote-state=%s\n"
 	      "%Ulocal-discriminator=%u remote-discriminator=%u\n"
 	      "%Ulocal-diag=%s echo-active=%s\n"
@@ -1800,6 +1821,17 @@ format_bfd_session (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_bfd_session_brief (u8 * s, va_list * args)
+{
+  const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
+  s =
+    format (s, "bs_idx=%u local-state=%s remote-state=%s", bs->bs_idx,
+	    bfd_state_string (bs->local_state),
+	    bfd_state_string (bs->remote_state));
+  return s;
+}
+
 unsigned
 bfd_auth_type_supported (bfd_auth_type_e auth_type)
 {
@@ -1820,7 +1852,8 @@ bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
     hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
   if (!key_idx_p)
     {
-      clib_warning ("Authentication key with config ID %u doesn't exist)",
+      vlib_log_err (bm->log_class,
+		    "authentication key with config ID %u doesn't exist)",
 		    conf_key_id);
       return VNET_API_ERROR_BFD_ENOENT;
     }
@@ -1854,12 +1887,15 @@ bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
     }
   ++key->use_count;
   BFD_DBG ("\nSession auth modified: %U", format_bfd_session, bs);
+  vlib_log_info (bm->log_class, "session auth modified: %U",
+		 format_bfd_session_brief, bs);
   return 0;
 }
 
 vnet_api_error_t
 bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
 {
+  bfd_main_t *bm = &bfd_main;
 #if WITH_LIBSSL > 0
   if (!is_delayed)
     {
@@ -1888,9 +1924,12 @@ bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
       bs->auth.next_key = NULL;
     }
   BFD_DBG ("\nSession auth modified: %U", format_bfd_session, bs);
+  vlib_log_info (bm->log_class, "session auth modified: %U",
+		 format_bfd_session_brief, bs);
   return 0;
 #else
-  clib_warning ("SSL missing, cannot deactivate BFD authentication");
+  vlib_log_err (bm->log_class,
+		"SSL missing, cannot deactivate BFD authentication");
   return VNET_API_ERROR_BFD_NOTSUPP;
 #endif
 }
@@ -1946,6 +1985,8 @@ bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 	bfd_usec_to_clocks (bm, required_min_rx_usec);
       BFD_DBG ("\nChanged session params: %U", format_bfd_session, bs);
 
+      vlib_log_info (bm->log_class, "changed session params: %U",
+		     format_bfd_session_brief, bs);
       vlib_process_signal_event (bm->vlib_main, bm->bfd_process_node_index,
 				 BFD_EVENT_CONFIG_CHANGED, bs->bs_idx);
     }
@@ -1960,24 +2001,24 @@ vnet_api_error_t
 bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
 		  const u8 * key_data)
 {
+  bfd_main_t *bm = &bfd_main;
 #if WITH_LIBSSL > 0
   bfd_auth_key_t *auth_key = NULL;
   if (!key_len || key_len > bfd_max_key_len_for_auth_type (auth_type))
     {
-      clib_warning ("Invalid authentication key length for auth_type=%d:%s "
-		    "(key_len=%u, must be "
-		    "non-zero, expected max=%u)",
+      vlib_log_err (bm->log_class,
+		    "invalid authentication key length for auth_type=%d:%s "
+		    "(key_len=%u, must be non-zero, expected max=%u)",
 		    auth_type, bfd_auth_type_str (auth_type), key_len,
 		    (u32) bfd_max_key_len_for_auth_type (auth_type));
       return VNET_API_ERROR_INVALID_VALUE;
     }
   if (!bfd_auth_type_supported (auth_type))
     {
-      clib_warning ("Unsupported auth type=%d:%s", auth_type,
+      vlib_log_err (bm->log_class, "unsupported auth type=%d:%s", auth_type,
 		    bfd_auth_type_str (auth_type));
       return VNET_API_ERROR_BFD_NOTSUPP;
     }
-  bfd_main_t *bm = &bfd_main;
   uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
   if (key_idx_p)
     {
@@ -1986,9 +2027,10 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
       auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
       if (auth_key->use_count > 0)
 	{
-	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
-			"session(s) - cannot modify",
-			conf_key_id, auth_key->use_count);
+	  vlib_log_err (bm->log_class,
+			"authentication key with conf ID %u in use by %u BFD "
+			"session(s) - cannot modify", conf_key_id,
+			auth_key->use_count);
 	  return VNET_API_ERROR_BFD_EINUSE;
 	}
     }
@@ -2005,7 +2047,8 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
   clib_memcpy (auth_key->key, key_data, key_len);
   return 0;
 #else
-  clib_warning ("SSL missing, cannot manipulate authentication keys");
+  vlib_log_err (bm->log_class,
+		"SSL missing, cannot manipulate authentication keys");
   return VNET_API_ERROR_BFD_NOTSUPP;
 #endif
 }
@@ -2024,9 +2067,10 @@ bfd_auth_del_key (u32 conf_key_id)
       auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
       if (auth_key->use_count > 0)
 	{
-	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
-			"session(s) - cannot delete",
-			conf_key_id, auth_key->use_count);
+	  vlib_log_err (bm->log_class,
+			"authentication key with conf ID %u in use by %u BFD "
+			"session(s) - cannot delete", conf_key_id,
+			auth_key->use_count);
 	  return VNET_API_ERROR_BFD_EINUSE;
 	}
       hash_unset (bm->auth_key_by_conf_key_id, conf_key_id);
@@ -2036,13 +2080,15 @@ bfd_auth_del_key (u32 conf_key_id)
   else
     {
       /* no such key */
-      clib_warning ("Authentication key with conf ID %u does not exist",
+      vlib_log_err (bm->log_class,
+		    "authentication key with conf ID %u does not exist",
 		    conf_key_id);
       return VNET_API_ERROR_BFD_ENOENT;
     }
   return 0;
 #else
-  clib_warning ("SSL missing, cannot manipulate authentication keys");
+  vlib_log_err (bm->log_class,
+		"SSL missing, cannot manipulate authentication keys");
   return VNET_API_ERROR_BFD_NOTSUPP;
 #endif
 }
