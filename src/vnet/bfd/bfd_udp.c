@@ -59,6 +59,8 @@ typedef struct
   u32 ip4_rewrite_idx;
   /* node index of "ip6-rewrite" node */
   u32 ip6_rewrite_idx;
+  /* log class */
+  vlib_log_class_t log_class;
 } bfd_udp_main_t;
 
 static vlib_node_registration_t bfd_udp4_input_node;
@@ -481,7 +483,8 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
   const bfd_session_t *tmp = bfd_lookup_session (bum, key);
   if (tmp)
     {
-      clib_warning ("duplicate bfd-udp session, existing bs_idx=%d",
+      vlib_log_err (bum->log_class,
+		    "duplicate bfd-udp session, existing bs_idx=%d",
 		    tmp->bs_idx);
       bfd_put_session (bum->bfd_main, bs);
       return VNET_API_ERROR_BFD_EEXIST;
@@ -491,6 +494,8 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
 	   bs->bs_idx, key->sw_if_index, format_ip46_address,
 	   &key->local_addr, IP46_TYPE_ANY, format_ip46_address,
 	   &key->peer_addr, IP46_TYPE_ANY);
+  vlib_log_info (bum->log_class, "create BFD session: %U",
+		 format_bfd_session, bs);
   if (BFD_TRANSPORT_UDP4 == t)
     {
       bus->adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
@@ -519,20 +524,24 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 			    const ip46_address_t * local_addr,
 			    const ip46_address_t * peer_addr)
 {
+  bfd_udp_main_t *bum = &bfd_udp_main;
   vnet_sw_interface_t *sw_if =
     vnet_get_sw_interface_safe (bfd_udp_main.vnet_main, sw_if_index);
   u8 local_ip_valid = 0;
   ip_interface_address_t *ia = NULL;
   if (!sw_if)
     {
-      clib_warning ("got NULL sw_if");
+      vlib_log_err (bum->log_class,
+		    "got NULL sw_if when getting interface by index %u",
+		    sw_if_index);
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
   if (ip46_address_is_ip4 (local_addr))
     {
       if (!ip46_address_is_ip4 (peer_addr))
 	{
-	  clib_warning ("IP family mismatch");
+	  vlib_log_err (bum->log_class,
+			"IP family mismatch (local is ipv4, peer is ipv6)");
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
 	}
       ip4_main_t *im = &ip4_main;
@@ -555,7 +564,8 @@ bfd_udp_validate_api_input (u32 sw_if_index,
     {
       if (ip46_address_is_ip4 (peer_addr))
 	{
-	  clib_warning ("IP family mismatch");
+	  vlib_log_err (bum->log_class,
+			"IP family mismatch (local is ipv6, peer is ipv4)");
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
 	}
       ip6_main_t *im = &ip6_main;
@@ -577,7 +587,10 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 
   if (!local_ip_valid)
     {
-      clib_warning ("address not found on interface");
+      vlib_log_err (bum->log_class,
+		    "local address %U not found on interface with index %u",
+		    format_ip46_address, IP46_TYPE_ANY, local_addr,
+		    sw_if_index);
       return VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE;
     }
 
@@ -604,10 +617,11 @@ bfd_udp_find_session_by_api_input (u32 sw_if_index,
 	}
       else
 	{
-	  clib_warning
-	    ("BFD session not found (sw_if_index=%u, local=%U, peer=%U",
-	     sw_if_index, format_ip46_address, local_addr, IP46_TYPE_ANY,
-	     format_ip46_address, peer_addr, IP46_TYPE_ANY);
+	  vlib_log_err (bum->log_class,
+			"BFD session not found, sw_if_index=%u, local=%U, peer=%U",
+			sw_if_index, format_ip46_address, local_addr,
+			IP46_TYPE_ANY, format_ip46_address, peer_addr,
+			IP46_TYPE_ANY);
 	  return VNET_API_ERROR_BFD_ENOENT;
 	}
     }
@@ -620,6 +634,7 @@ bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_usec,
 		       const ip46_address_t * local_addr,
 		       const ip46_address_t * peer_addr)
 {
+  bfd_udp_main_t *bum = &bfd_udp_main;
   vnet_api_error_t rv =
     bfd_udp_validate_api_input (sw_if_index, local_addr, peer_addr);
   if (rv)
@@ -628,12 +643,12 @@ bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_usec,
     }
   if (detect_mult < 1)
     {
-      clib_warning ("detect_mult < 1");
+      vlib_log_err (bum->log_class, "detect_mult < 1");
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
   if (desired_min_tx_usec < 1)
     {
-      clib_warning ("desired_min_tx_usec < 1");
+      vlib_log_err (bum->log_class, "desired_min_tx_usec < 1");
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
   return 0;
@@ -675,7 +690,8 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
       rv = bfd_auth_activate (bs, conf_key_id, bfd_key_id,
 			      0 /* is not delayed */ );
 #else
-      clib_warning ("SSL missing, cannot add authenticated BFD session");
+      vlib_log_err (bfd_udp_main.log_class,
+		    "SSL missing, cannot add authenticated BFD session");
       rv = VNET_API_ERROR_BFD_NOTSUPP;
 #endif
       if (rv)
@@ -763,7 +779,8 @@ bfd_udp_auth_activate (u32 sw_if_index,
     }
   return bfd_auth_activate (bs, conf_key_id, key_id, is_delayed);
 #else
-  clib_warning ("SSL missing, cannot activate BFD authentication");
+  vlib_log_err (bfd_udp_main->log_class,
+		"SSL missing, cannot activate BFD authentication");
   return VNET_API_ERROR_BFD_NOTSUPP;
 #endif
 }
@@ -1443,6 +1460,7 @@ static clib_error_t *
 bfd_udp_sw_if_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
 {
   bfd_session_t **to_be_freed = NULL;
+  bfd_udp_main_t *bum = &bfd_udp_main;
   BFD_DBG ("sw_if_add_del called, sw_if_index=%u, is_create=%u", sw_if_index,
 	   is_create);
   if (!is_create)
@@ -1463,8 +1481,9 @@ bfd_udp_sw_if_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
   bfd_session_t **bs;
   vec_foreach (bs, to_be_freed)
   {
-    clib_warning ("removal of sw_if_index=%u forces removal of bfd session "
-		  "with bs_idx=%u", sw_if_index, (*bs)->bs_idx);
+    vlib_log_notice (bum->log_class,
+		     "removal of sw_if_index=%u forces removal of bfd session "
+		     "with bs_idx=%u", sw_if_index, (*bs)->bs_idx);
     bfd_session_set_flags (*bs, 0);
     bfd_udp_del_session_internal (*bs);
   }
@@ -1502,6 +1521,8 @@ bfd_udp_init (vlib_main_t * vm)
   ASSERT (node);
   bfd_udp_main.ip6_rewrite_idx = node->index;
 
+  bfd_udp_main.log_class = vlib_log_register_class ("bfd", "udp");
+  vlib_log_debug (bfd_udp_main.log_class, "initialized");
   return 0;
 }
 
