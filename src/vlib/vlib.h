@@ -59,6 +59,7 @@ struct vlib_main_t;
 #include <vlib/mc.h>
 #include <vlib/node.h>
 #include <vlib/trace.h>
+#include <vlib/log.h>
 
 /* Main include depends on other vlib/ includes so we put it last. */
 #include <vlib/main.h>
