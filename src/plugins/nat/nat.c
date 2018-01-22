@@ -24,6 +24,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
+#include <nat/nat66.h>
 #include <nat/dslite.h>
 #include <nat/nat_reass.h>
 #include <vnet/fib/fib_table.h>
@@ -1778,6 +1779,8 @@ static clib_error_t * snat_init (vlib_main_t * vm)
     return error;
 
   dslite_init(vm);
+
+  nat66_init();
 
   /* Init virtual fragmenentation reassembly */
   return nat_reass_init(vm);

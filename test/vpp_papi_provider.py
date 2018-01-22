@@ -1860,6 +1860,54 @@ class VppPapiProvider(object):
              'end_addr': end_addr,
              'is_add': is_add})
 
+    def nat66_add_del_interface(
+            self,
+            sw_if_index,
+            is_inside=1,
+            is_add=1):
+        """Enable/disable NAT66 feature on the interface
+           :param sw_if_index: Index of the interface
+           :param is_inside: 1 if inside, 0 if outside (Default value = 1)
+           :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat66_add_del_interface,
+            {'sw_if_index': sw_if_index,
+             'is_inside': is_inside,
+             'is_add': is_add})
+
+    def nat66_add_del_static_mapping(
+            self,
+            in_ip,
+            out_ip,
+            vrf_id=0,
+            is_add=1):
+        """Add/delete NAT66 static mapping
+
+        :param in_ip: Inside IPv6 address
+        :param out_ip: Outside IPv6 address
+        :param vrf_id: VRF ID (Default value = 0)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat66_add_del_static_mapping,
+            {'local_ip_address': in_ip,
+             'external_ip_address': out_ip,
+             'vrf_id': vrf_id,
+             'is_add': is_add})
+
+    def nat66_interface_dump(self):
+        """Dump interfaces with NAT66 feature
+        :return: Dictionary of interfaces with NAT66 feature
+        """
+        return self.api(self.papi.nat66_interface_dump, {})
+
+    def nat66_static_mapping_dump(self):
+        """Dump NAT66 static mappings
+        :return: Dictionary of NAT66 static mappings
+        """
+        return self.api(self.papi.nat66_static_mapping_dump, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
