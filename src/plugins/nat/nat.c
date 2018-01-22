@@ -1399,11 +1399,22 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
                   i->flags &= ~NAT_INTERFACE_FLAG_IS_OUTSIDE;
 
                 if (sm->num_workers > 1 && !sm->deterministic)
-                  del_feature_name = "nat44-handoff-classify";
+                  {
+                    del_feature_name = "nat44-handoff-classify";
+                    feature_name = !is_inside ?  "nat44-in2out-worker-handoff" :
+                                                 "nat44-out2in-worker-handoff";
+                  }
                 else if (sm->deterministic)
-                  del_feature_name = "nat44-det-classify";
+                  {
+                    del_feature_name = "nat44-det-classify";
+                    feature_name = !is_inside ?  "nat44-det-in2out" :
+                                                 "nat44-det-out2in";
+                  }
                 else
-                  del_feature_name = "nat44-classify";
+                  {
+                    del_feature_name = "nat44-classify";
+                    feature_name = !is_inside ?  "nat44-in2out" : "nat44-out2in";
+                  }
 
                 vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
                                              sw_if_index, 0, 0, 0);
