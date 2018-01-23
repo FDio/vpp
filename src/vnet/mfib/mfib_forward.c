@@ -252,8 +252,8 @@ format_mfib_forward_rpf_trace (u8 * s, va_list * args)
     mfib_forward_rpf_trace_t * t = va_arg (*args, mfib_forward_rpf_trace_t *);
 
     s = format (s, "entry %d", t->entry_index);
-    s = format (s, " %d", t->sw_if_index);
-    s = format (s, " %U", format_mfib_itf_flags, t->itf_flags);
+    s = format (s, " itf %d", t->sw_if_index);
+    s = format (s, " flags %U", format_mfib_itf_flags, t->itf_flags);
 
     return s;
 }
@@ -342,7 +342,12 @@ mfib_forward_rpf (vlib_main_t * vm,
 {
     u32 n_left_from, n_left_to_next, * from, * to_next;
     mfib_forward_rpf_next_t next;
+    vlib_node_runtime_t *error_node;
 
+    if (is_v4)
+        error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
+    else
+        error_node = vlib_node_get_runtime (vm, ip6_input_node.index);
     from = vlib_frame_vector_args (frame);
     n_left_from = frame->n_vectors;
     next = MFIB_FORWARD_RPF_NEXT_DROP;
@@ -361,6 +366,7 @@ mfib_forward_rpf (vlib_main_t * vm,
             u32 pi0, next0;
             mfib_itf_flags_t iflags0;
             mfib_entry_flags_t eflags0;
+            u8 error0;
 
             pi0 = from[0];
             to_next[0] = pi0;
@@ -369,6 +375,7 @@ mfib_forward_rpf (vlib_main_t * vm,
             n_left_to_next -= 1;
             n_left_from -= 1;
 
+            error0 = IP4_ERROR_NONE;
             b0 = vlib_get_buffer (vm, pi0);
             mfei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
             mfe0 = mfib_entry_get(mfei0);
@@ -444,7 +451,10 @@ mfib_forward_rpf (vlib_main_t * vm,
             else
             {
                 next0 = MFIB_FORWARD_RPF_NEXT_DROP;
+                error0 = IP4_ERROR_RPF_FAILURE;
             }
+
+            b0->error = error0 ? error_node->errors[error0] : 0;
 
             if (b0->flags & VLIB_BUFFER_IS_TRACED)
             {

@@ -75,7 +75,10 @@
                                                                         \
   /* Errors singalled by ip4-inacl */                                   \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
-  _ (INACL_SESSION_DENY, "input ACL session deny drops")
+  _ (INACL_SESSION_DENY, "input ACL session deny drops")                \
+                                                                        \
+  /* Erros from mfib-forward */                                         \
+  _ (RPF_FAILURE, "Multicast RPF check failed")
 
 typedef enum
 {

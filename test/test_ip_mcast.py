@@ -406,6 +406,15 @@ class TestIPMcast(VppTestCase):
 
         #
         # a stream that matches the route for (*, ff01::/16)
+        # sent on the non-accepting interface
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg1, "2002::1", "ff01:2::255")
+        self.send_and_assert_no_replies(self.pg1, tx, "RPF miss")
+
+        #
+        # a stream that matches the route for (*, ff01::/16)
+        # sent on the accepting interface
         #
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip6(self.pg0, "2002::1", "ff01:2::255")
