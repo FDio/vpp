@@ -131,13 +131,14 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
 
   s = format(s, "%U %U [%lu] %U%s\n"
-                   "%U  new_size:%u\n",
+                   "%U  dscp:%u new_size:%u\n",
                   format_white_space, indent,
                   format_lb_vip_type, vip->type,
                   vip - lbm->vips,
                   format_ip46_prefix, &vip->prefix, (u32) vip->plen, IP46_TYPE_ANY,
                   (vip->flags & LB_VIP_FLAGS_USED)?"":" removed",
                   format_white_space, indent,
+		  vip->dscp,
                   vip->new_flow_table_mask + 1);
 
   //Print counters
@@ -636,10 +637,14 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
   fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
 }
 
-int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_length, u32 *vip_index)
+int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
+	       u32 new_length, u32 *vip_index)
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
+  lb4_l3dsr_key_t key4;
+  uword * p;
+
   lb_get_writer_lock();
   ip46_prefix_normalize(prefix, plen);
 
@@ -655,7 +660,8 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_leng
 
   if (ip46_prefix_is_ip4(prefix, plen) &&
       (type != LB_VIP_TYPE_IP4_GRE4) &&
-      (type != LB_VIP_TYPE_IP4_GRE6))
+      (type != LB_VIP_TYPE_IP4_GRE6) &&
+      (type != LB_VIP_TYPE_IP4_L3DSR))
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
 
 
@@ -667,6 +673,7 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_leng
   vip->plen = plen;
   vip->last_garbage_collection = (u32) vlib_time_now(vlib_get_main());
   vip->type = type;
+  vip->dscp = dscp;
   vip->flags = LB_VIP_FLAGS_USED;
   vip->as_indexes = 0;
 
@@ -691,6 +698,14 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_leng
   *vip_index = vip - lbm->vips;
 
   lb_put_writer_lock();
+
+  /* configure VIP-->DSCP mapping */
+  key4.src = prefix->ip4.as_u32;
+  p = hash_get (lbm->lb4_l3dsr_by_key, key4.src);
+  if (p)
+    return 1;
+  hash_set (lbm->lb4_l3dsr_by_key, key4.src, dscp);
+
   return 0;
 }
 
@@ -698,6 +713,8 @@ int lb_vip_del(u32 vip_index)
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
+  lb4_l3dsr_key_t key4;
+
   lb_get_writer_lock();
   if (!(vip = lb_vip_get_by_index(vip_index))) {
     lb_put_writer_lock();
@@ -728,6 +745,11 @@ int lb_vip_del(u32 vip_index)
   vip->flags &= ~LB_VIP_FLAGS_USED;
 
   lb_put_writer_lock();
+
+  /* Delete VIP-->DSCP mapping */
+  key4.src = vip->prefix.ip4.as_u32;
+  hash_unset (lbm->lb4_l3dsr_by_key, key4.src);
+
   return 0;
 }
 
@@ -820,6 +842,11 @@ lb_init (vlib_main_t * vm)
   lbm->dpo_gre4_type = dpo_register_new_type(&lb_vft, lb_dpo_gre4_nodes);
   lbm->dpo_gre6_type = dpo_register_new_type(&lb_vft, lb_dpo_gre6_nodes);
   lbm->fib_node_type = fib_node_register_new_type(&lb_fib_node_vft);
+
+  /* initialize l3dsr hash */
+  lbm->lb4_l3dsr_by_key = hash_create_mem(0,
+        sizeof(lb4_l3dsr_key_t),
+        sizeof(uword));
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);

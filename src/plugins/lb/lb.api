@@ -25,7 +25,8 @@ autoreply define lb_conf
     @param context - sender context, to match reply w/ request
     @param ip_prefix - IP address (IPv4 in lower order 32 bits). 
     @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).  
-    @param is_gre4 - Encap is ip4 GRE (ip6 GRE otherwise).
+    @param encap - Encap is ip4 GRE or ip6 GRE orL3DSR.
+    @param dscp - DSCP bit corresponding to VIP.
     @param new_flows_table_length - Size of the new connections flow table used
            for this VIP (must be power of 2).
     @param is_del - The VIP should be removed.
@@ -35,7 +36,8 @@ autoreply define lb_add_del_vip {
   u32 context;
   u8 ip_prefix[16];
   u8 prefix_length;
-  u8 is_gre4;
+  u8 encap;
+  u8 dscp;
   u32 new_flows_table_length;
   u8 is_del;
 };

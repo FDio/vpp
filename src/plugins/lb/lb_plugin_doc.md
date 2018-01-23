@@ -51,11 +51,13 @@ timeout:         the number of seconds a connection will remain in the
 
 ### Configure the VIPs
 
-    lb vip <prefix> [encap (gre6|gre4)] [new_len <n>] [del]
+    lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]
     
 new_len is the size of the new-connection-table. It should be 1 or 2 orders of
 magnitude bigger than the number of ASs for the VIP in order to ensure a good
 load balancing.
+Encap l3dsr and dscp is used to map VIP to dscp bit and rewrite DSCP bit in packets.
+So the selected server could get VIP from DSCP bit in this packet and perform DSR.
 
 Examples:
     
@@ -63,6 +65,7 @@ Examples:
     lb vip 2003::/16 encap gre4 new_len 2048
     lb vip 80.0.0.0/8 encap gre6 new_len 16
     lb vip 90.0.0.0/8 encap gre4 new_len 1024
+    lb vip 100.0.0.0/8 encap l3dsr dscp 2 new_len 32
 
 ### Configure the ASs (for each VIP)
 

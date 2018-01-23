@@ -130,13 +130,14 @@ typedef enum {
 
 /**
  * The load balancer supports IPv4 and IPv6 traffic
- * and GRE4 and GRE6 encap.
+ * and GRE4, GRE6 and L3DSR encap.
  */
 typedef enum {
   LB_VIP_TYPE_IP6_GRE6,
   LB_VIP_TYPE_IP6_GRE4,
   LB_VIP_TYPE_IP4_GRE6,
   LB_VIP_TYPE_IP4_GRE4,
+  LB_VIP_TYPE_IP4_L3DSR,
   LB_VIP_N_TYPES,
 } lb_vip_type_t;
 
@@ -196,6 +197,11 @@ typedef struct {
   lb_vip_type_t type;
 
   /**
+   * DSCP bits for L3DSR
+   */
+  u8 dscp;
+
+  /**
    * Flags related to this VIP.
    * LB_VIP_FLAGS_USED means the VIP is active.
    * When it is not set, the VIP in the process of being removed.
@@ -211,6 +217,10 @@ typedef struct {
    */
   u32 *as_indexes;
 } lb_vip_t;
+
+typedef struct {
+  u32 src;
+} lb4_l3dsr_key_t;
 
 #define lb_vip_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP4_GRE6 || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
 #define lb_vip_is_gre4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
@@ -238,6 +248,8 @@ typedef struct {
    * new_flow_tables when no AS has been configured.
    */
   lb_as_t *ass;
+
+  uword * lb4_l3dsr_by_key; /* keyed on vip*/
 
   /**
    * Each AS has an associated reference counter.
@@ -313,8 +325,8 @@ extern vlib_node_registration_t lb4_node;
 int lb_conf(ip4_address_t *ip4_address, ip6_address_t *ip6_address,
             u32 sticky_buckets, u32 flow_timeout);
 
-int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type,
-               u32 new_length, u32 *vip_index);
+int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
+	       u32 new_length, u32 *vip_index);
 int lb_vip_del(u32 vip_index);
 
 int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index);

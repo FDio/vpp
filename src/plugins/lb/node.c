@@ -149,7 +149,7 @@ static_always_inline uword
 lb_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame,
          u8 is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
-         u8 is_encap_v4) //Compile-time parameter stating that is GRE encap is v4 (or v6)
+         u8 encap_type) //Compile-time parameter stating that is GRE encap is v4 (or v6 ) or l3dsr
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
@@ -265,9 +265,27 @@ lb_node_fn (vlib_main_t * vm,
 				    1);
 
       //Now let's encap
+      if ((is_input_v4) && (encap_type == 2)) /* encap ip4 L3DSR*/
+	{
+	  ip4_header_t *ip40;
+	  lb4_l3dsr_key_t key4;
+
+	  ip40 = vlib_buffer_get_current(p0);
+	  ip40->dst_address = lbm->ass[asindex0].address.ip4;
+
+	  /* get VIP->DSCP mapping and rewrite DSCP bit */
+	  key4.src = ip40->dst_address.as_u32;
+	  uword * p = hash_get (lbm->lb4_l3dsr_by_key, key4.src);
+          ip40->tos = (u8)(p[0] & 0x3F) << 2;
+
+	  ip40->checksum = ip4_header_checksum (ip40);
+
+	  goto trace0;
+	}
+
       {
 	gre_header_t *gre0;
-	if (is_encap_v4)
+	if (encap_type == 1) /* encap GRE4*/
 	  {
 	    ip4_header_t *ip40;
 	    vlib_buffer_advance(p0, - sizeof(ip4_header_t) - sizeof(gre_header_t));
@@ -283,7 +301,7 @@ lb_node_fn (vlib_main_t * vm,
 	    ip40->protocol = IP_PROTOCOL_GRE;
 	    ip40->checksum = ip4_header_checksum (ip40);
 	  }
-	else
+	else if (encap_type == 0) /* encap GRE6*/
 	  {
 	    ip6_header_t *ip60;
 	    vlib_buffer_advance(p0, - sizeof(ip6_header_t) - sizeof(gre_header_t));
@@ -303,6 +321,7 @@ lb_node_fn (vlib_main_t * vm,
 	    clib_host_to_net_u16(0x86DD);
       }
 
+    trace0:
       if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof (*tr));
@@ -349,6 +368,13 @@ lb4_gre4_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return lb_node_fn(vm, node, frame, 1, 1);
+}
+
+static uword
+lb4_l3dsr_node_fn (vlib_main_t * vm,
+         vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return lb_node_fn(vm, node, frame, 1, 2);
 }
 
 VLIB_REGISTER_NODE (lb6_gre6_node) =
@@ -419,3 +445,19 @@ VLIB_REGISTER_NODE (lb4_gre4_node) =
   },
 };
 
+VLIB_REGISTER_NODE (lb4_l3dsr_node) =
+{
+  .function = lb4_l3dsr_node_fn,
+  .name = "lb4-l3dsr",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes =
+  {
+      [LB_NEXT_DROP] = "error-drop"
+  },
+};
