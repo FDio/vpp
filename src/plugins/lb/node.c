@@ -149,7 +149,7 @@ static_always_inline uword
 lb_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame,
          u8 is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
-         u8 is_encap_v4) //Compile-time parameter stating that is GRE encap is v4 (or v6)
+	 lb_encap_type_t encap_type) //Compile-time parameter stating that is GRE4 or GRE6 or L3DSR
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
@@ -265,43 +265,54 @@ lb_node_fn (vlib_main_t * vm,
 				    1);
 
       //Now let's encap
-      {
-	gre_header_t *gre0;
-	if (is_encap_v4)
-	  {
-	    ip4_header_t *ip40;
-	    vlib_buffer_advance(p0, - sizeof(ip4_header_t) - sizeof(gre_header_t));
-	    ip40 = vlib_buffer_get_current(p0);
-	    gre0 = (gre_header_t *)(ip40 + 1);
-	    ip40->src_address = lbm->ip4_src_address;
-	    ip40->dst_address = lbm->ass[asindex0].address.ip4;
-	    ip40->ip_version_and_header_length = 0x45;
-	    ip40->ttl = 128;
-	    ip40->fragment_id = 0;
-	    ip40->flags_and_fragment_offset = 0;
-	    ip40->length = clib_host_to_net_u16(len0 + sizeof(gre_header_t) + sizeof(ip4_header_t));
-	    ip40->protocol = IP_PROTOCOL_GRE;
-	    ip40->checksum = ip4_header_checksum (ip40);
-	  }
-	else
-	  {
-	    ip6_header_t *ip60;
-	    vlib_buffer_advance(p0, - sizeof(ip6_header_t) - sizeof(gre_header_t));
-	    ip60 = vlib_buffer_get_current(p0);
-	    gre0 = (gre_header_t *)(ip60 + 1);
-	    ip60->dst_address = lbm->ass[asindex0].address.ip6;
-	    ip60->src_address = lbm->ip6_src_address;
-	    ip60->hop_limit = 128;
-	    ip60->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6<<28);
-	    ip60->payload_length = clib_host_to_net_u16(len0 + sizeof(gre_header_t));
-	    ip60->protocol = IP_PROTOCOL_GRE;
-	  }
+      if ( (encap_type == LB_ENCAP_TYPE_GRE4)
+	   || (encap_type == LB_ENCAP_TYPE_GRE6) )
+        {
+	  gre_header_t *gre0;
+	  if (encap_type == LB_ENCAP_TYPE_GRE4) /* encap GRE4*/
+	    {
+	      ip4_header_t *ip40;
+	      vlib_buffer_advance(p0, - sizeof(ip4_header_t) - sizeof(gre_header_t));
+	      ip40 = vlib_buffer_get_current(p0);
+	      gre0 = (gre_header_t *)(ip40 + 1);
+	      ip40->src_address = lbm->ip4_src_address;
+	      ip40->dst_address = lbm->ass[asindex0].address.ip4;
+	      ip40->ip_version_and_header_length = 0x45;
+	      ip40->ttl = 128;
+	      ip40->fragment_id = 0;
+	      ip40->flags_and_fragment_offset = 0;
+	      ip40->length = clib_host_to_net_u16(len0 + sizeof(gre_header_t) + sizeof(ip4_header_t));
+	      ip40->protocol = IP_PROTOCOL_GRE;
+	      ip40->checksum = ip4_header_checksum (ip40);
+	    }
+	  else /* encap GRE6*/
+	    {
+	      ip6_header_t *ip60;
+	      vlib_buffer_advance(p0, - sizeof(ip6_header_t) - sizeof(gre_header_t));
+	      ip60 = vlib_buffer_get_current(p0);
+	      gre0 = (gre_header_t *)(ip60 + 1);
+	      ip60->dst_address = lbm->ass[asindex0].address.ip6;
+	      ip60->src_address = lbm->ip6_src_address;
+	      ip60->hop_limit = 128;
+	      ip60->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6<<28);
+	      ip60->payload_length = clib_host_to_net_u16(len0 + sizeof(gre_header_t));
+	      ip60->protocol = IP_PROTOCOL_GRE;
+	    }
 
-	gre0->flags_and_version = 0;
-	gre0->protocol = (is_input_v4)?
-	    clib_host_to_net_u16(0x0800):
-	    clib_host_to_net_u16(0x86DD);
-      }
+	  gre0->flags_and_version = 0;
+	  gre0->protocol = (is_input_v4)?
+	      clib_host_to_net_u16(0x0800):
+	      clib_host_to_net_u16(0x86DD);
+      } else if (encap_type == LB_ENCAP_TYPE_L3DSR) /* encap L3DSR*/
+	{
+	  ip4_header_t *ip40;
+
+	  ip40 = vlib_buffer_get_current(p0);
+	  ip40->dst_address = lbm->ass[asindex0].address.ip4;
+	  /* Get and rewrite DSCP bit */
+          ip40->tos = (u8)((vip0->dscp & 0x3F)<<2);
+	  ip40->checksum = ip4_header_checksum (ip40);
+	}
 
       if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -327,28 +338,35 @@ static uword
 lb6_gre6_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return lb_node_fn(vm, node, frame, 0, 0);
+  return lb_node_fn(vm, node, frame, 0, LB_ENCAP_TYPE_GRE6);
 }
 
 static uword
 lb6_gre4_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return lb_node_fn(vm, node, frame, 0, 1);
+  return lb_node_fn(vm, node, frame, 0, LB_ENCAP_TYPE_GRE4);
 }
 
 static uword
 lb4_gre6_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return lb_node_fn(vm, node, frame, 1, 0);
+  return lb_node_fn(vm, node, frame, 1, LB_ENCAP_TYPE_GRE6);
 }
 
 static uword
 lb4_gre4_node_fn (vlib_main_t * vm,
          vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return lb_node_fn(vm, node, frame, 1, 1);
+  return lb_node_fn(vm, node, frame, 1, LB_ENCAP_TYPE_GRE4);
+}
+
+static uword
+lb4_l3dsr_node_fn (vlib_main_t * vm,
+         vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return lb_node_fn(vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR);
 }
 
 VLIB_REGISTER_NODE (lb6_gre6_node) =
@@ -419,3 +437,19 @@ VLIB_REGISTER_NODE (lb4_gre4_node) =
   },
 };
 
+VLIB_REGISTER_NODE (lb4_l3dsr_node) =
+{
+  .function = lb4_l3dsr_node_fn,
+  .name = "lb4-l3dsr",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes =
+  {
+      [LB_NEXT_DROP] = "error-drop"
+  },
+};

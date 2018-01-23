@@ -23,9 +23,10 @@ autoreply define lb_conf
 /** \brief Add a virtual address (or prefix)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param ip_prefix - IP address (IPv4 in lower order 32 bits). 
-    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).  
-    @param is_gre4 - Encap is ip4 GRE (ip6 GRE otherwise).
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param encap - Encap is ip4 GRE(0) or ip6 GRE(1) or L3DSR(2).
+    @param dscp - DSCP bit corresponding to VIP(applicable in L3DSR mode only).
     @param new_flows_table_length - Size of the new connections flow table used
            for this VIP (must be power of 2).
     @param is_del - The VIP should be removed.
@@ -35,7 +36,8 @@ autoreply define lb_add_del_vip {
   u32 context;
   u8 ip_prefix[16];
   u8 prefix_length;
-  u8 is_gre4;
+  u8 encap;
+  u8 dscp;
   u32 new_flows_table_length;
   u8 is_del;
 };
@@ -43,8 +45,8 @@ autoreply define lb_add_del_vip {
 /** \brief Add an application server for a given VIP
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param vip_ip_prefix - VIP IP address (IPv4 in lower order 32 bits). 
-    @param vip_ip_prefix - VIP IP prefix length (96 + 'IPv4 prefix length' for IPv4). 
+    @param vip_ip_prefix - VIP IP address (IPv4 in lower order 32 bits).
+    @param vip_ip_prefix - VIP IP prefix length (96 + 'IPv4 prefix length' for IPv4).
     @param as_address - The application server address (IPv4 in lower order 32 bits).
     @param is_del - The AS should be removed.
 */

@@ -116,14 +116,23 @@ vl_api_lb_add_del_vip_t_handler
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
-    lb_vip_type_t type;
+    lb_vip_type_t type = 0;
+
     if (ip46_prefix_is_ip4(&prefix, mp->prefix_length)) {
-      type = mp->is_gre4?LB_VIP_TYPE_IP4_GRE4:LB_VIP_TYPE_IP4_GRE6;
+        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+  	type = LB_VIP_TYPE_IP4_GRE4;
+        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+  	type = LB_VIP_TYPE_IP4_GRE6;
+        else if (mp->encap == LB_ENCAP_TYPE_L3DSR)
+  	type = LB_VIP_TYPE_IP4_L3DSR;
     } else {
-      type = mp->is_gre4?LB_VIP_TYPE_IP6_GRE4:LB_VIP_TYPE_IP6_GRE6;
+        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+  	type = LB_VIP_TYPE_IP6_GRE4;
+        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+  	type = LB_VIP_TYPE_IP6_GRE6;
     }
 
-    rv = lb_vip_add(&prefix, mp->prefix_length, type,
+    rv = lb_vip_add(&prefix, mp->prefix_length, type, mp->dscp,
                     mp->new_flows_table_length, &vip_index);
   }
  REPLY_MACRO (VL_API_LB_CONF_REPLY);
@@ -136,7 +145,9 @@ static void *vl_api_lb_add_del_vip_t_print
   s = format (0, "SCRIPT: lb_add_del_vip ");
   s = format (s, "%U ", format_ip46_prefix,
               (ip46_address_t *)mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
-  s = format (s, "%s ", mp->is_gre4?"gre4":"gre6");
+
+  s = format (s, "%s ", (mp->encap==LB_ENCAP_TYPE_GRE4)?
+              "gre4":(mp->encap==LB_ENCAP_TYPE_GRE6)?"gre6":"l3dsr");
   s = format (s, "%u ", mp->new_flows_table_length);
   s = format (s, "%s ", mp->is_del?"del":"add");
   FINISH;
