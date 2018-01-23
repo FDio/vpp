@@ -157,7 +157,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   vl_api_lb_add_del_vip_t mps, *mp;
   int ret;
   mps.is_del = 0;
-  mps.is_gre4 = 0;
+  mps.encap = LB_ENCAP_TYPE_GRE4;
 
   if (!unformat(i, "%U",
                 unformat_ip46_prefix, mps.ip_prefix, &mps.prefix_length, IP46_TYPE_ANY)) {
@@ -166,9 +166,11 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   }
 
   if (unformat(i, "gre4")) {
-    mps.is_gre4 = 1;
+    mps.encap = LB_ENCAP_TYPE_GRE4;
   } else if (unformat(i, "gre6")) {
-    mps.is_gre4 = 0;
+    mps.encap = LB_ENCAP_TYPE_GRE6;
+  } else if (unformat(i, "l3dsr")) {
+    mps.encap = LB_ENCAP_TYPE_L3DSR;
   } else {
     errmsg ("no encap\n");
     return -99;

@@ -8,19 +8,26 @@ Wich also means feedback is really welcome regarding features, apis, etc...
 
 ## Overview
 
-This plugin provides load balancing for VPP in a way that is largely inspired 
+This plugin provides load balancing for VPP in a way that is largely inspired
 from Google's MagLev: http://research.google.com/pubs/pub44824.html
 
-The load balancer is configured with a set of Virtual IPs (VIP, which can be 
+The load balancer is configured with a set of Virtual IPs (VIP, which can be
 prefixes), and for each VIP, with a set of Application Server addresses (ASs).
 
+There are four encap types to steer traffic to different ASs:
+1). IPv4+GRE ad IPv6+GRE encap types:
 Traffic received for a given VIP (or VIP prefix) is tunneled using GRE towards
-the different ASs in a way that (tries to) ensure that a given session will 
+the different ASs in a way that (tries to) ensure that a given session will
 always be tunneled to the same AS.
 
+2). IPv4+L3DSR encap types:
+L3DSR is used to overcome Layer 2 limitations of Direct Server Return Load Balancing.
+It maps VIP to DSCP bits, and reuse TOS bits to transfer DSCP bits
+to server, and then server will get VIP from DSCP-to-VIP mapping.
+
 Both VIPs or ASs can be IPv4 or IPv6, but for a given VIP, all ASs must be using
-the same encap. type (i.e. IPv4+GRE or IPv6+GRE). Meaning that for a given VIP,
-all AS addresses must be of the same family.
+the same encap. type (i.e. IPv4+GRE or IPv6+GRE or IPv4+L3DSR).
+Meaning that for a given VIP, all AS addresses must be of the same family.
 
 ## Performances
 
@@ -35,34 +42,36 @@ in next versions.
 
 The load balancer needs to be configured with some parameters:
 
-	lb conf [ip4-src-address <addr>] [ip6-src-address <addr>] 
+	lb conf [ip4-src-address <addr>] [ip6-src-address <addr>]
 	        [buckets <n>] [timeout <s>]
-	       
+
 ip4-src-address: the source address used to send encap. packets using IPv4.
 
 ip6-src-address: the source address used to send encap. packets using IPv6.
 
 buckets:         the *per-thread* established-connexions-table number of buckets.
 
-timeout:         the number of seconds a connection will remain in the 
+timeout:         the number of seconds a connection will remain in the
                  established-connexions-table while no packet for this flow
                  is received.
-                 
 
 ### Configure the VIPs
 
-    lb vip <prefix> [encap (gre6|gre4)] [new_len <n>] [del]
-    
+    lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]
+
 new_len is the size of the new-connection-table. It should be 1 or 2 orders of
 magnitude bigger than the number of ASs for the VIP in order to ensure a good
 load balancing.
+Encap l3dsr and dscp is used to map VIP to dscp bit and rewrite DSCP bit in packets.
+So the selected server could get VIP from DSCP bit in this packet and perform DSR.
 
 Examples:
-    
+
     lb vip 2002::/16 encap gre6 new_len 1024
     lb vip 2003::/16 encap gre4 new_len 2048
     lb vip 80.0.0.0/8 encap gre6 new_len 16
     lb vip 90.0.0.0/8 encap gre4 new_len 1024
+    lb vip 100.0.0.0/8 encap l3dsr dscp 2 new_len 32
 
 ### Configure the ASs (for each VIP)
 
