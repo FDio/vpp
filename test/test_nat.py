@@ -3240,6 +3240,70 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_one_armed_nat44_static(self):
+        """ One armed NAT44 and 1:1 NAPT symmetrical rule """
+        remote_host = self.pg9.remote_hosts[0]
+        local_host = self.pg9.remote_hosts[1]
+        external_port = 80
+        local_port = 8080
+        eh_port_in = 0
+
+        self.vapi.nat44_forwarding_enable_disable(1)
+        self.nat44_add_address(self.nat_addr, twice_nat=1)
+        self.nat44_add_static_mapping(local_host.ip4, self.nat_addr,
+                                      local_port, external_port,
+                                      proto=IP_PROTOS.tcp, out2in_only=1,
+                                      twice_nat=1)
+        self.vapi.nat44_interface_add_del_feature(self.pg9.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg9.sw_if_index,
+                                                  is_inside=0)
+
+        # from client to service
+        p = (Ether(src=self.pg9.remote_mac, dst=self.pg9.local_mac) /
+             IP(src=remote_host.ip4, dst=self.nat_addr) /
+             TCP(sport=12345, dport=external_port))
+        self.pg9.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg9.get_capture(1)
+        p = capture[0]
+        server = None
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.dst, local_host.ip4)
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(tcp.dport, local_port)
+            self.assertNotEqual(tcp.sport, 12345)
+            eh_port_in = tcp.sport
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # from service back to client
+        p = (Ether(src=self.pg9.remote_mac, dst=self.pg9.local_mac) /
+             IP(src=local_host.ip4, dst=self.nat_addr) /
+             TCP(sport=local_port, dport=eh_port_in))
+        self.pg9.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg9.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(ip.dst, remote_host.ip4)
+            self.assertEqual(tcp.sport, external_port)
+            self.assertEqual(tcp.dport, 12345)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
     def test_del_session(self):
         """ Delete NAT44 session """
         self.nat44_add_address(self.nat_addr)
