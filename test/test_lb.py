@@ -15,6 +15,7 @@ from util import ppp
   - IP4 to GRE6 encap
   - IP6 to GRE4 encap
   - IP6 to GRE6 encap
+  - IP4 to L3DSR encap
 
  As stated in comments below, GRE has issues with IPv6.
  All test cases involving IPv6 are executed, but
@@ -94,7 +95,7 @@ class TestLB(VppTestCase):
         self.assertEqual(payload_info.src, self.pg0.sw_if_index)
         self.assertEqual(str(inner), str(self.info.data[IPver]))
 
-    def checkCapture(self, gre4, isv4):
+    def checkCapture(self, encap, isv4):
         self.pg0.assert_nothing_captured()
         out = self.pg1.get_capture(len(self.packets))
 
@@ -104,7 +105,7 @@ class TestLB(VppTestCase):
             try:
                 asid = 0
                 gre = None
-                if gre4:
+                if (encap == 'gre4'):
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
                     self.assertEqual(ip.version, 4)
@@ -115,7 +116,8 @@ class TestLB(VppTestCase):
                     self.assertEqual(len(ip.options), 0)
                     self.assertGreaterEqual(ip.ttl, 64)
                     gre = p[GRE]
-                else:
+                    self.checkInner(gre, isv4)
+                elif (encap == 'gre6'):
                     ip = p[IPv6]
                     asid = ip.dst.split(":")
                     asid = asid[len(asid) - 1]
@@ -132,7 +134,15 @@ class TestLB(VppTestCase):
                     self.assertGreaterEqual(ip.hlim, 64)
                     # self.assertEqual(len(ip.options), 0)
                     gre = GRE(str(p[IPv6].payload))
-                self.checkInner(gre, isv4)
+                    self.checkInner(gre, isv4)
+                if (encap == 'l3dsr'):
+                    ip = p[IP]
+                    asid = int(ip.dst.split(".")[3])
+                    self.assertEqual(ip.version, 4)
+                    self.assertEqual(ip.flags, 0)
+                    self.assertEqual(ip.dst, "10.0.0.%u" % asid)
+                    self.assertEqual(ip.tos, 0x1c)
+                    self.assertEqual(len(ip.options), 0)
                 load[asid] += 1
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
@@ -156,7 +166,7 @@ class TestLB(VppTestCase):
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(gre4=True, isv4=True)
+            self.checkCapture(encap='gre4', isv4=True)
 
         finally:
             for asid in self.ass:
@@ -176,7 +186,7 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(gre4=True, isv4=False)
+            self.checkCapture(encap='gre4', isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % (asid))
@@ -194,7 +204,7 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(gre4=False, isv4=True)
+            self.checkCapture(encap='gre6', isv4=True)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 90.0.0.0/8 2002::%u del" % (asid))
@@ -212,9 +222,27 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(gre4=False, isv4=False)
+            self.checkCapture(encap='gre6', isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre6 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_l3dsr(self):
+        """ Load Balancer IP4 L3DSR """
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap l3dsr dscp 7")
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % (asid))
+
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap='l3dsr', isv4=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 encap l3dsr dscp 7 del")
             self.vapi.cli("test lb flowtable flush")
