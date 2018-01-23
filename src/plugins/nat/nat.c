@@ -387,7 +387,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               if (ip0->dst_address.as_u32 == ap->addr.as_u32)
                 {
                   next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
-                  break;
+                  goto enqueue0;
                 }
             }
 
@@ -401,8 +401,17 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
                 {
                   next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                  goto enqueue0;
                 }
+              udp_header_t * udp0 = ip4_next_header (ip0);
+              m_key0.port = clib_net_to_host_u16 (udp0->dst_port);
+              m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
+              kv0.key = m_key0.as_u64;
+              if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+                next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
             }
+
+        enqueue0:
           /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
