@@ -66,6 +66,7 @@ class VPPAPILexer(object):
         'import': 'IMPORT',
         'true': 'TRUE',
         'false': 'FALSE',
+        'errors': 'ERROR',
     }
 
     tokens = ['STRING_LITERAL',
@@ -156,7 +157,7 @@ class Define():
         for f in flags:
             if f == 'typeonly':
                 self.typeonly = True
-                global_type_add(name)
+                global_type_add(self.name)
             elif f == 'dont_trace':
                 self.dont_trace = True
             elif f == 'manual_print':
@@ -190,7 +191,7 @@ class Enum():
 
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
-        global_type_add(name)
+        global_type_add(self.name)
 
     def __repr__(self):
         return self.name + str(self.block)
@@ -225,6 +226,15 @@ class Option():
 
     def __getitem__(self, index):
         return self.option[index]
+
+
+class Errors():
+    def __init__(self, errorname, errorstring):
+        self.errorname = errorname
+        self.errorstring = errorstring
+
+    def __repr__(self):
+        return self.errorname + str(self.errorstring)
 
 
 class Array():
@@ -326,8 +336,26 @@ class VPPAPIParser(object):
                 | option
                 | import
                 | enum
-                | service'''
+                | service
+                | errors'''
         p[0] = p[1]
+
+    def p_errors(self, p):
+        '''errors : ERROR '{' error_statements '}' ';' '''
+        print('P1', p[3])
+        p[0] = p[3]
+
+    def p_error_statements(self, p):
+        '''error_statements : error_statement
+                            | error_statements error_statement'''
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]
+
+    def p_error_statement(self, p):
+        '''error_statement : ID ',' STRING_LITERAL ';' '''
+        p[0] = Errors(p[1], p[3])
 
     def p_import(self, p):
         '''import : IMPORT STRING_LITERAL ';' '''
@@ -551,6 +579,7 @@ class VPPAPI(object):
         s['options'] = {}
         s['enums'] = []
         s['services'] = []
+        s['errors'] = []
 
         for o in objs:
             if isinstance(o, Define):
@@ -570,6 +599,8 @@ class VPPAPI(object):
                 for o2 in o:
                     if isinstance(o2, Service):
                         s['services'].append(o2)
+                    if isinstance(o2, Errors):
+                        s['errors'].append(o2)
 
         # Create services implicitly
         msgs = {d.name: d for d in s['defines']}
