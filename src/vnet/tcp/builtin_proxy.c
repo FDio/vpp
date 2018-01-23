@@ -561,7 +561,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!bpm->server_uri)
     bpm->server_uri = format (0, "%s%c", "tcp://0.0.0.0/23", 0);
-  if (!bpm->server_uri)
+  if (!bpm->client_uri)
     bpm->client_uri = format (0, "%s%c", "tcp://6.0.2.2/23", 0);
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
