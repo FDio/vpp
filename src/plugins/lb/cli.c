@@ -26,8 +26,9 @@ lb_vip_command_fn (vlib_main_t * vm,
   u32 new_len = 1024;
   u8 del = 0;
   int ret;
-  u32 gre4 = 0;
-  lb_vip_type_t type;
+  u32 encap = 0;
+  u32 dscp = ~0;
+  lb_vip_type_t type = 0;
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -46,9 +47,13 @@ lb_vip_command_fn (vlib_main_t * vm,
     else if (unformat(line_input, "del"))
       del = 1;
     else if (unformat(line_input, "encap gre4"))
-      gre4 = 1;
+      encap = LB_ENCAP_TYPE_GRE4;
     else if (unformat(line_input, "encap gre6"))
-      gre4 = 0;
+      encap = LB_ENCAP_TYPE_GRE6;
+    else if (unformat(line_input, "encap l3dsr"))
+      encap = LB_ENCAP_TYPE_L3DSR;
+    else if (unformat(line_input, "dscp %d", &dscp))
+      ;
     else {
       error = clib_error_return (0, "parse error: '%U'",
                                 format_unformat_error, line_input);
@@ -56,18 +61,39 @@ lb_vip_command_fn (vlib_main_t * vm,
     }
   }
 
+  if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0) )
+    {
+      error = clib_error_return (0, "lb_vip_add error: "
+	        "should not configure dscp for none L3DSR.");
+      goto done;
+    }
+
+  if ((encap == LB_ENCAP_TYPE_L3DSR) && (dscp >= 64 ) )
+    {
+      error = clib_error_return (0, "lb_vip_add error: "
+	        "dscp for L3DSR should be less than 64.");
+      goto done;
+    }
 
   if (ip46_prefix_is_ip4(&prefix, plen)) {
-    type = (gre4)?LB_VIP_TYPE_IP4_GRE4:LB_VIP_TYPE_IP4_GRE6;
+      if (encap == LB_ENCAP_TYPE_GRE4)
+	type = LB_VIP_TYPE_IP4_GRE4;
+      else if (encap == LB_ENCAP_TYPE_GRE6)
+	type = LB_VIP_TYPE_IP4_GRE6;
+      else if (encap == LB_ENCAP_TYPE_L3DSR)
+	type = LB_VIP_TYPE_IP4_L3DSR;
   } else {
-    type = (gre4)?LB_VIP_TYPE_IP6_GRE4:LB_VIP_TYPE_IP6_GRE6;
+      if (encap == LB_ENCAP_TYPE_GRE4)
+	type = LB_VIP_TYPE_IP6_GRE4;
+      else if (encap == LB_ENCAP_TYPE_GRE6)
+	type = LB_VIP_TYPE_IP6_GRE6;
   }
 
   lb_garbage_collection();
 
   u32 index;
   if (!del) {
-    if ((ret = lb_vip_add(&prefix, plen, type, new_len, &index))) {
+    if ((ret = lb_vip_add(&prefix, plen, type, (u8)(dscp & 0x3F), new_len, &index))) {
       error = clib_error_return (0, "lb_vip_add error %d", ret);
       goto done;
     } else {
@@ -92,7 +118,7 @@ done:
 VLIB_CLI_COMMAND (lb_vip_command, static) =
 {
   .path = "lb vip",
-  .short_help = "lb vip <prefix> [encap (gre6|gre4)] [new_len <n>] [del]",
+  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]",
   .function = lb_vip_command_fn,
 };
 
