@@ -15,7 +15,7 @@ top_boilerplate = '''\
     || defined(vl_printfun) ||defined(vl_endianfun) \\
     || defined(vl_api_version)||defined(vl_typedefs) \\
     || defined(vl_msg_name)||defined(vl_msg_name_crc_list) \\
-    || defined(vl_api_version_tuple)
+    || defined(vl_api_version_tuple)||defined(vl_error_id_list)
 /* ok, something was selected */
 #else
 #warning no content included from {input_filename}
@@ -240,8 +240,27 @@ def endianfun(s):
     return output
 
 
+def errorfun(s, suffix):
+    output = '''\
+
+/****** Error message ID / string enum ******/
+
+#ifdef vl_error_id_list
+'''
+    output += "#define foreach_vl_msg_error_%s " % suffix
+
+    for e in s['errors']:
+        output += "\\\n_(VL_ERROR_%s, \"%s\") " % \
+                  (e.errorname, e.errorstring)
+    output += "\n#endif"
+
+    return output
+
+
 def version_tuple(s, module):
     output = '''\
+
+
 /****** Version tuple *****/
 
 #ifdef vl_api_version_tuple
@@ -272,6 +291,7 @@ def run(input_filename, s, file_crc):
     output += typedefs(s, filename + file_extension)
     output += printfun(s)
     output += endianfun(s)
+    output += errorfun(s, filename)
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
                                         file_crc=file_crc)
