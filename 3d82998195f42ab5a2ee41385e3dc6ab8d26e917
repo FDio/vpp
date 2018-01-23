@@ -1,0 +1,337 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c41cc166_d9b6908a",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Same comment as in CLI",
+      "range": {
+        "startLine": 128,
+        "startChar": 6,
+        "endLine": 133,
+        "endChar": 5
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "930e14c9_82837fbc",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Use typedef enum",
+      "range": {
+        "startLine": 54,
+        "startChar": 14,
+        "endLine": 54,
+        "endChar": 15
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "071ce448_8d21abb1",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "What if I give an IPv6 prefix with l3dsr encap ? The type would not be set.\nIt should yield an error.",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 76,
+        "endChar": 3
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b99e8d7_f19acace",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Invalid DSCP type should yield an error rather than changing it without user\u0027s consent.",
+      "range": {
+        "startLine": 82,
+        "startChar": 47,
+        "endLine": 82,
+        "endChar": 64
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3c0db46d_65077009",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "space\nAlso, precise which values to use for each type",
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a4edd4f8_341b9cc9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Print it on a different line and only when type is DSCP",
+      "range": {
+        "startLine": 134,
+        "startChar": 24,
+        "endLine": 134,
+        "endChar": 32
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e4bd49c_cc0b0b6c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 706,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Do this check before you allocate memory. Otherwise you have to clean up everything.\n\nI understand you want to prevent two VIPs from using the same DSCP bits. But what if the two VIPs are using distinct server sets ? I see cases where you could have a valid conf with the same DSCP bits for different VIPs.\nI think this hash table is not required.",
+      "range": {
+        "startLine": 701,
+        "startChar": 0,
+        "endLine": 706,
+        "endChar": 13
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3dbd1e23_230d1f80",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Update the above paragraph such as to explain L3DSR mode.",
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38264b65_dae76861",
+        "filename": "src/plugins/lb/lb_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Use typedef enum rather than hardcoded values",
+      "range": {
+        "startLine": 169,
+        "startChar": 16,
+        "endLine": 169,
+        "endChar": 17
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43bbbefc_8683cdfe",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "Please define a typedef enum {} rather than hardcoded values",
+      "range": {
+        "startLine": 152,
+        "startChar": 9,
+        "endLine": 152,
+        "endChar": 22
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa6b6cdb_2cc2dd41",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "DSCP only supports IPv4 input. You may only check the encap_type.\nAnd please put it in the if-else below",
+      "range": {
+        "startLine": 268,
+        "startChar": 10,
+        "endLine": 268,
+        "endChar": 23
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e49f8688_4d83108c",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "You have access to the VIP structure, which includes the DSCP bits. No need for a hash lookup (and table) at all.",
+      "range": {
+        "startLine": 277,
+        "startChar": 3,
+        "endLine": 279,
+        "endChar": 45
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f827892e_efa8ff12",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "IP checksum support incremental updates. It would be way less expensive than re-computing the checksum. ip-forward, for example, updates the checksum when it decrements TTL.",
+      "range": {
+        "startLine": 281,
+        "startChar": 3,
+        "endLine": 281,
+        "endChar": 47
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "69b83c4b_1cde087a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "No need for this if you include it in the else-if below",
+      "range": {
+        "startLine": 283,
+        "startChar": 3,
+        "endLine": 283,
+        "endChar": 15
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1d8a935_e960d383",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-23T09:46:30Z",
+      "side": 1,
+      "message": "No need for that (see comment above)",
+      "range": {
+        "startLine": 324,
+        "startChar": 0,
+        "endLine": 324,
+        "endChar": 11
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
