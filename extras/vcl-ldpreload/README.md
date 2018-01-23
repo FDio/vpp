@@ -1,4 +1,4 @@
-# vcl-ldpreload a LD_PRELOAD library that uses the VPP Communications Library (VCL).
+# vcl-ldpreload: a LD_PRELOAD library that uses the VPP Communications Library (VCL).  {#vcl_ldpreload_doc}
 
 User can LD_PRELOAD any application that uses POSIX socket API.
 

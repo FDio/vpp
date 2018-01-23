@@ -15,7 +15,9 @@
  *------------------------------------------------------------------
  */
 
-/** @file */
+/** @file
+ *  @defgroup libmemif
+ */
 
 #ifndef _LIBMEMIF_H_
 #define _LIBMEMIF_H_
@@ -78,7 +80,7 @@ typedef enum
 
 /**
  * @defgroup MEMIF_FD_EVENT Types of events that need to be watched for specific fd.
- *
+ * @ingroup libmemif
  * @{
  */
 
@@ -99,6 +101,7 @@ typedef enum
 typedef void *memif_conn_handle_t;
 /**
  * @defgroup CALLBACKS Callback functions definitions
+ * @ingroup libmemif
  *
  * @{
  */
@@ -135,6 +138,7 @@ typedef int (memif_interrupt_t) (memif_conn_handle_t conn, void *private_ctx,
 
 /**
  * @defgroup ARGS_N_BUFS Connection arguments and buffers
+ * @ingroup libmemif
  *
  * @{
  */
@@ -193,6 +197,7 @@ typedef struct
 
 /**
  * @defgroup MEMIF_DETAILS Memif details structs
+ * @ingroup libmemif
  *
  * @{
  */
@@ -256,6 +261,7 @@ typedef struct
 
 /**
  * @defgroup API_CALLS Api calls
+ * @ingroup libmemif
  *
  * @{
  */
