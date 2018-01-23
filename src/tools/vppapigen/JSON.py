@@ -26,6 +26,13 @@ def walk_services(s):
     return r
 
 
+def walk_errors(s):
+    r = []
+    for e in s:
+        r.append([e.errorname, e.errorstring])
+    return r
+
+
 def walk_defs(s):
     r = []
     for t in s:
@@ -62,5 +69,6 @@ def run(filename, s, file_crc):
     j['messages'] = walk_defs(s['defines'])
     j['enums'] = walk_enums(s['enums'])
     j['services'] = walk_services(s['services'])
+    j['errors'] = walk_errors(s['errors'])
     j['vl_api_version'] = hex(file_crc)
     return json.dumps(j, indent=4, separators=(',', ': '))
