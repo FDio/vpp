@@ -1,4 +1,4 @@
-# Kube-proxy plugin for VPP
+# Kube-proxy plugin for VPP    {#kp_plugin_doc}
 
 ## Overview
 
