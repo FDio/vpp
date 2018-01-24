@@ -29,6 +29,7 @@ from jvppgen import jvpp_future_facade_gen
 from jvppgen import jvpp_impl_gen
 from jvppgen import jvpp_c_gen
 from jvppgen import util
+from jvppgen import enum_gen
 
 # Invocation:
 # ~/Projects/vpp/vpp-api/jvpp/gen$ mkdir -p java/io/fd/vpp/jvpp && cd java/io/fd/vpp/jvpp
@@ -88,6 +89,10 @@ os.chdir(work_dir)
 
 for inputfile in args.inputfiles:
     _cfg = json.load(open(cwd + "/" + inputfile, 'r'))
+    if 'enums' in cfg:
+        cfg['enums'].extend(_cfg['enums'])
+    else:
+        cfg['enums'] = _cfg['enums']
     if 'types' in cfg:
         cfg['types'].extend(_cfg['types'])
     else:
@@ -184,11 +189,10 @@ future_package = 'future'
 callback_facade_package = 'callfacade'
 
 types_list, types_name = get_definitions(cfg['types'])
-
-types_gen.generate_types(types_list, plugin_package, types_package, args.inputfiles, logger)
-
 func_list, func_name = get_definitions(cfg['messages'])
 
+enum_gen.generate_enums(cfg['enums'], args.inputfiles, logger)
+types_gen.generate_types(types_list, plugin_package, types_package, args.inputfiles, logger)
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfiles,
                       logger)
 jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, args.inputfiles, logger)
