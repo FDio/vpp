@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "409c216c_293c17b9",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 0,
+      "message": "Seem to be a noop. Could you revert this?",
+      "revId": "af0ff5af0cd471033169e63c6111d23cd801928c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08c2c576_21f0bdca",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 0,
+      "message": "Nit: no-op, could you remove?",
+      "range": {
+        "startLine": 692,
+        "startChar": 35,
+        "endLine": 692,
+        "endChar": 36
+      },
+      "revId": "af0ff5af0cd471033169e63c6111d23cd801928c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

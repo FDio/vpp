@@ -1,0 +1,176 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5110da8c_e66aa970",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 69
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "As far as I can tell, you haven\u0027t updated dpdk/interface output code yet to do checksum offloading. So let\u0027s postpone this till then.",
+      "range": {
+        "startLine": 65,
+        "startChar": 8,
+        "endLine": 65,
+        "endChar": 26
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ae99baa6_84e9ff60",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 69
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Needed for now?",
+      "range": {
+        "startLine": 55,
+        "startChar": 20,
+        "endLine": 55,
+        "endChar": 31
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bb65530b_07088895",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "There\u0027s no SCTP classification here so, this is not needed.",
+      "range": {
+        "startLine": 150,
+        "startChar": 35,
+        "endLine": 150,
+        "endChar": 39
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "53990751_9777ca44",
+        "filename": "src/vnet/map/ip4_map_t.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Since we the code never tests for SCTP, it\u0027s probably fine to leave this as it was or rename it to L4, if indeed MAP would not have anything against SCTP packets.",
+      "range": {
+        "startLine": 24,
+        "startChar": 2,
+        "endLine": 24,
+        "endChar": 33
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "338f9b88_bd4d569f",
+        "filename": "src/vnet/map/ip4_map_t.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Same argument here.",
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "208ea6cb_d988afaf",
+        "filename": "src/vnet/map/ip6_map_t.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Same comments as for v4.",
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2dcd91d2_215865af",
+        "filename": "src/vnet/map/ip6_map_t.c",
+        "patchSetId": 69
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Any reason for renaming this? If it\u0027s just a rebase artifact, could you revert it?",
+      "range": {
+        "startLine": 544,
+        "startChar": 31,
+        "endLine": 544,
+        "endChar": 40
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a35cd690_4c57459e",
+        "filename": "src/vnet/sctp/sctp_crc32c.h",
+        "patchSetId": 69
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T08:14:56Z",
+      "side": 1,
+      "message": "Any idea how this compares to clib_crc32c from vppinfra/crc32.c which uses Intel SSE4.2/ARM intrinsics? It would be best if we could avoid having implementations spread all over the place. If this is better, we should talk to Damjan to see if it\u0027s worth updating the existing code. \n\nFor an example of how the clib implementation is used whenever intrinsincs are not available, see clib_bihash_hash_48_8.",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 6
+      },
+      "revId": "1eb4e17fc51532560120c4c30917c750c7f089ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
