@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c663196_c2b9d05d",
+        "filename": "src/vnet/ip/ip6_forward.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T14:10:45Z",
+      "side": 1,
+      "message": "since i assume you want this to be included in other files to, the necessary includes for this file should be added here.",
+      "revId": "dea375ae7cf26d901ff37ae5a7dd00e77d5dbcfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a60e13dc_7fcdfc6e",
+        "filename": "src/vnet/ip/ip6_forward.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T14:10:45Z",
+      "side": 1,
+      "message": "please remove these trailing blanks.\nalso add the fd.io checkstyle footer in both files.",
+      "revId": "dea375ae7cf26d901ff37ae5a7dd00e77d5dbcfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
