@@ -118,12 +118,8 @@ struct _session_manager_main
   /** Per worker thread session pools */
   stream_session_t **sessions;
 
-  /** Per worker-thread count of threads peeking into the session pool */
-  u32 *session_peekers;
-
-  /** Per worker-thread rw peekers locks */
-  clib_spinlock_t *peekers_readers_locks;
-  clib_spinlock_t *peekers_write_locks;
+  /** Per worker-thread session pool peekers rw locks */
+  clib_rwlock_t *peekers_rw_locks;
 
   /** Pool of listen sessions. Same type as stream sessions to ease lookups */
   stream_session_t **listen_sessions;
@@ -316,11 +312,7 @@ session_pool_add_peeker (u32 thread_index)
   session_manager_main_t *smm = &session_manager_main;
   if (thread_index == vlib_get_thread_index ())
     return;
-  clib_spinlock_lock_if_init (&smm->peekers_readers_locks[thread_index]);
-  smm->session_peekers[thread_index] += 1;
-  if (smm->session_peekers[thread_index] == 1)
-    clib_spinlock_lock_if_init (&smm->peekers_write_locks[thread_index]);
-  clib_spinlock_unlock_if_init (&smm->peekers_readers_locks[thread_index]);
+  clib_rwlock_reader_lock (&smm->peekers_rw_locks[thread_index]);
 }
 
 always_inline void
@@ -329,12 +321,7 @@ session_pool_remove_peeker (u32 thread_index)
   session_manager_main_t *smm = &session_manager_main;
   if (thread_index == vlib_get_thread_index ())
     return;
-  ASSERT (session_manager_main.session_peekers[thread_index] > 0);
-  clib_spinlock_lock_if_init (&smm->peekers_readers_locks[thread_index]);
-  smm->session_peekers[thread_index] -= 1;
-  if (smm->session_peekers[thread_index] == 0)
-    clib_spinlock_unlock_if_init (&smm->peekers_write_locks[thread_index]);
-  clib_spinlock_unlock_if_init (&smm->peekers_readers_locks[thread_index]);
+  clib_rwlock_reader_unlock (&smm->peekers_rw_locks[thread_index]);
 }
 
 /**

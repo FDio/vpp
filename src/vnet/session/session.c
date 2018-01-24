@@ -85,12 +85,12 @@ session_alloc (u32 thread_index)
   pool_get_aligned_will_expand (smm->sessions[thread_index], will_expand,
 				CLIB_CACHE_LINE_BYTES);
   /* If we have peekers, let them finish */
-  if (PREDICT_FALSE (will_expand))
+  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
     {
-      clib_spinlock_lock_if_init (&smm->peekers_write_locks[thread_index]);
+      clib_rwlock_writer_lock (&smm->peekers_rw_locks[thread_index]);
       pool_get_aligned (session_manager_main.sessions[thread_index], s,
 			CLIB_CACHE_LINE_BYTES);
-      clib_spinlock_unlock_if_init (&smm->peekers_write_locks[thread_index]);
+      clib_rwlock_writer_unlock (&smm->peekers_rw_locks[thread_index]);
     }
   else
     {
@@ -1133,9 +1133,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->pending_disconnects, num_threads - 1);
   vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
-  vec_validate (smm->session_peekers, num_threads - 1);
-  vec_validate (smm->peekers_readers_locks, num_threads - 1);
-  vec_validate (smm->peekers_write_locks, num_threads - 1);
+  vec_validate (smm->peekers_rw_locks, num_threads - 1);
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
     for (j = 0; j < num_threads; j++)
@@ -1153,10 +1151,7 @@ session_manager_main_enable (vlib_main_t * vm)
       vec_validate (smm->pending_disconnects[i], 0);
       _vec_len (smm->pending_disconnects[i]) = 0;
       if (num_threads > 1)
-	{
-	  clib_spinlock_init (&smm->peekers_readers_locks[i]);
-	  clib_spinlock_init (&smm->peekers_write_locks[i]);
-	}
+	clib_rwlock_init (&smm->peekers_rw_locks[i]);
     }
 
 #if SESSION_DBG

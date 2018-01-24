@@ -202,7 +202,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
   uri_udp_test_main_t *utm = &uri_udp_test_main;
-  svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_create_args_t _a = { 0 }, *a = &_a;
   int rv;
 
   if (mp->retval)
