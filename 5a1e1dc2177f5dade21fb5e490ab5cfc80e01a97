@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "efe0ee3a_4318a719",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "this initialisation will add cycles to the non-detailed stat collection path. is that a noticeable effect I wonder, and can we do conditional initialisation?",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19614584_8ad0fe73",
+        "filename": "src/plugins/pppoe/pppoe.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "you use these zero_counter and inc_counter macros repeatedly, can they be defined once?",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8fddef4f_f296d1ea",
+        "filename": "src/plugins/pppoe/pppoe_cp_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "no const-folding optimisation here? And elsewhere too.",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b58bee0_df47ce13",
+        "filename": "src/vnet/adj/adj_midchain.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "don\u0027t reindent this whole file! no whitespace only changes please",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ea9e5cd_bed1ad0c",
+        "filename": "src/vnet/dpo/interface_rx_dpo.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "no whitespace only changes.",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58bb14c3_28264486",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "personally I prefer;\nreturn ethernet_input_inline (vm, node, from_frame,\n\t\t\t\t    ETHERNET_INPUT_VARIANT_ETHERNET,\n\t\t\t\t    COLLECT_DETAILED_STATS);\n\nenums FTW",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9693d1dd_0a0b2150",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "check one u32 then one u16?",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4838140f_755db5e0",
+        "filename": "src/vnet/geneve/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1160,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "lots of whitespace only changes in here too. makes it really had to review.",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be55d182_30ec2b32",
+        "filename": "src/vnet/l2/l2_bvi.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-24T10:24:18Z",
+      "side": 1,
+      "message": "when the collect_detailed_state is a function argument, the const-folding optimisation kicks in and the compiler will generate to versions of the function, one with the detailed stats collection always in one with it always out. so there are no branches at runtime and so these PREDICT statements are not needed.\nhence you should always pass the collect_details as an argument to an inline function.",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
