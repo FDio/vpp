@@ -21,6 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/adj/adj.h>
 #include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 #include <srv6-as/as.h>
 
 #define SID_CREATE_IFACE_FEATURE_ERROR  -1
@@ -488,7 +489,7 @@ VNET_FEATURE_INIT (srv6_as6_rewrite, static) =
 VLIB_INIT_FUNCTION (srv6_as_init);
 
 VLIB_PLUGIN_REGISTER () = {
-  .version = "1.0",
+  .version = VPP_BUILD_VER,
   .description = "Static SRv6 proxy",
 };
 /* *INDENT-ON* */
