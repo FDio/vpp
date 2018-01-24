@@ -7,9 +7,9 @@ def walk_enums(s):
     for e in s:
         d = []
         d.append(e.name)
+        d.append({'enumtype': e.enumtype})
         for b in e.block:
             d.append(b)
-        d.append({'enumtype': e.enumtype})
         r.append(d)
     return r
 
