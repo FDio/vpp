@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ae7d4353_81f47657",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-01-24T13:26:18Z",
+      "side": 1,
+      "message": "The only similar-ish definition in all of VPP that I can think of is format_function_t.\n\nMaking this a pointer-type definition will probably confuse people.",
+      "range": {
+        "startLine": 122,
+        "startChar": 2,
+        "endLine": 122,
+        "endChar": 3
+      },
+      "revId": "0873d3ad244a57a0255b510cc1004c734cc41828",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
