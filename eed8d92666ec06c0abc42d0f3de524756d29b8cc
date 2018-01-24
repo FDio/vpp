@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4d19293_517d4fdd",
+        "filename": "src/vnet/sctp/sctp_api.c",
+        "patchSetId": 71
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T10:39:56Z",
+      "side": 1,
+      "message": "If you\u0027re not planning on having anything here soon, just remove the file.",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 18
+      },
+      "revId": "eed8d92666ec06c0abc42d0f3de524756d29b8cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
