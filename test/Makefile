@@ -102,6 +102,7 @@ SANITY_RUN_VPP_CMD=source $(PYTHON_VENV_PATH)/bin/activate && python sanity_run_
 endif
 
 sanity: verify-no-running-vpp
+	@sys_req/dev_shm_size.sh
 	@bash -c "$(SANITY_IMPORT_VPP_PAPI_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot import vpp_papi\" &&\
