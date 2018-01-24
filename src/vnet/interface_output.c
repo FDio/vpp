@@ -513,8 +513,8 @@ vnet_per_buffer_interface_output (vlib_main_t * vm,
 				       vnet_buffer (b1)->sw_if_index
 				       [VLIB_TX]);
 
-	  next0 = hi0->hw_if_index;
-	  next1 = hi1->hw_if_index;
+	  next0 = hi0->output_node_next_index;
+	  next1 = hi1->output_node_next_index;
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, next0,
@@ -541,7 +541,7 @@ vnet_per_buffer_interface_output (vlib_main_t * vm,
 				       vnet_buffer (b0)->sw_if_index
 				       [VLIB_TX]);
 
-	  next0 = hi0->hw_if_index;
+	  next0 = hi0->output_node_next_index;
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -1104,18 +1104,31 @@ vnet_per_buffer_interface_output_hw_interface_add_del (vnet_main_t * vnm,
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   u32 next_index;
 
-  next_index = vlib_node_add_next_with_slot
-    (vnm->vlib_main, vnet_per_buffer_interface_output_node.index,
-     hi->output_node_index,
-     /* next_index */ hw_if_index);
+  if (hi->output_node_index == 0)
+    return 0;
 
-  ASSERT (next_index == hw_if_index);
+  next_index = vlib_node_add_next
+    (vnm->vlib_main, vnet_per_buffer_interface_output_node.index,
+     hi->output_node_index);
+  hi->output_node_next_index = next_index;
 
   return 0;
 }
 
 VNET_HW_INTERFACE_ADD_DEL_FUNCTION
   (vnet_per_buffer_interface_output_hw_interface_add_del);
+
+void
+vnet_set_interface_output_node (vnet_main_t * vnm,
+				u32 hw_if_index, u32 node_index)
+{
+  ASSERT (node_index);
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  u32 next_index = vlib_node_add_next
+    (vnm->vlib_main, vnet_per_buffer_interface_output_node.index, node_index);
+  hi->output_node_next_index = next_index;
+  hi->output_node_index = node_index;
+}
 
 static clib_error_t *
 pcap_drop_trace_command_fn (vlib_main_t * vm,

@@ -746,6 +746,9 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->max_l3_packet_bytes[VLIB_RX] = ~0;
   hw->max_l3_packet_bytes[VLIB_TX] = ~0;
 
+  if (dev_class->tx_function == 0)
+    goto no_output_nodes;	/* No output/tx nodes to create */
+
   tx_node_name = (char *) format (0, "%v-tx", hw->name);
   output_node_name = (char *) format (0, "%v-output", hw->name);
 
@@ -882,6 +885,7 @@ vnet_register_interface (vnet_main_t * vnm,
   setup_output_node (vm, hw->output_node_index, hw_class);
   setup_tx_node (vm, hw->tx_node_index, dev_class);
 
+no_output_nodes:
   /* Call all up/down callbacks with zero flags when interface is created. */
   vnet_sw_interface_set_flags_helper (vnm, hw->sw_if_index, /* flags */ 0,
 				      VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
@@ -897,7 +901,8 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vlib_main_t *vm = vnm->vlib_main;
-
+  vnet_device_class_t *dev_class = vnet_get_device_class (vnm,
+							  hw->dev_class_index);
   /* If it is up, mark it down. */
   if (hw->flags != 0)
     vnet_hw_interface_set_flags (vnm, hw_if_index, /* flags */ 0);
@@ -924,28 +929,31 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Delete software interface corresponding to hardware interface. */
   vnet_delete_sw_interface (vnm, hw->sw_if_index);
 
-  {
-    vnet_hw_interface_nodes_t *dn;
+  if (dev_class->tx_function)
+    {
+      /* Put output/tx nodes into recycle pool */
+      vnet_hw_interface_nodes_t *dn;
 
-    /* *INDENT-OFF* */
-    foreach_vlib_main ({
-      vnet_interface_output_runtime_t *rt =
-        vlib_node_get_runtime_data (this_vlib_main, hw->output_node_index);
+      /* *INDENT-OFF* */
+      foreach_vlib_main
+	({
+	  vnet_interface_output_runtime_t *rt =
+	    vlib_node_get_runtime_data (this_vlib_main, hw->output_node_index);
 
-      /* Mark node runtime as deleted so output node (if called)
-       * will drop packets. */
-      rt->is_deleted = 1;
-    });
-    /* *INDENT-ON* */
+	  /* Mark node runtime as deleted so output node (if called)
+	   * will drop packets. */
+	  rt->is_deleted = 1;
+	});
+      /* *INDENT-ON* */
 
-    vlib_node_rename (vm, hw->output_node_index,
-		      "interface-%d-output-deleted", hw_if_index);
-    vlib_node_rename (vm, hw->tx_node_index, "interface-%d-tx-deleted",
-		      hw_if_index);
-    vec_add2 (im->deleted_hw_interface_nodes, dn, 1);
-    dn->tx_node_index = hw->tx_node_index;
-    dn->output_node_index = hw->output_node_index;
-  }
+      vlib_node_rename (vm, hw->output_node_index,
+			"interface-%d-output-deleted", hw_if_index);
+      vlib_node_rename (vm, hw->tx_node_index, "interface-%d-tx-deleted",
+			hw_if_index);
+      vec_add2 (im->deleted_hw_interface_nodes, dn, 1);
+      dn->tx_node_index = hw->tx_node_index;
+      dn->output_node_index = hw->output_node_index;
+    }
 
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);
