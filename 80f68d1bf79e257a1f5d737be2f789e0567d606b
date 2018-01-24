@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7303135c_886a14f4",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-24T07:01:04Z",
+      "side": 1,
+      "message": "After this, I\u0027d add the session rules table.",
+      "range": {
+        "startLine": 53,
+        "startChar": 2,
+        "endLine": 53,
+        "endChar": 3
+      },
+      "revId": "80f68d1bf79e257a1f5d737be2f789e0567d606b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
