@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74989c8c_618d370b",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-24T15:17:56Z",
+      "side": 1,
+      "message": "wrapper?",
+      "range": {
+        "startLine": 85,
+        "startChar": 6,
+        "endLine": 85,
+        "endChar": 14
+      },
+      "revId": "d652f3b0f285f87dd07baad73bd21f44d71f3596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e845de4_88d25abe",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-24T15:17:56Z",
+      "side": 1,
+      "message": "wrapper?",
+      "range": {
+        "startLine": 116,
+        "startChar": 9,
+        "endLine": 116,
+        "endChar": 20
+      },
+      "revId": "d652f3b0f285f87dd07baad73bd21f44d71f3596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
