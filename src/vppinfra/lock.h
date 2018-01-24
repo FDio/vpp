@@ -18,6 +18,30 @@
 
 #include <vppinfra/clib.h>
 
+#if __x86_64__
+#define CLIB_PAUSE() __builtin_ia32_pause ()
+#else
+#define CLIB_PAUSE()
+#endif
+
+#if CLIB_DEBUG > 1
+#define CLIB_LOCK_DBG(_p)				\
+do {							\
+    (*_p)->frame_address = __builtin_frame_address (0);	\
+    (*_p)->pid = getpid ();				\
+    (*_p)->thread_index = os_get_thread_index ();	\
+} while (0)
+#define CLIB_LOCK_DBG_CLEAR(_p)				\
+do {							\
+    (*_p)->frame_address = 0;				\
+    (*_p)->pid = 0;					\
+    (*_p)->thread_index = 0;				\
+} while (0)
+#else
+#define CLIB_LOCK_DBG(_p)
+#define CLIB_LOCK_DBG_CLEAR(_p)
+#endif
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -50,15 +74,8 @@ static_always_inline void
 clib_spinlock_lock (clib_spinlock_t * p)
 {
   while (__sync_lock_test_and_set (&(*p)->lock, 1))
-#if __x86_64__
-    __builtin_ia32_pause ()
-#endif
-      ;
-#if CLIB_DEBUG > 0
-  (*p)->frame_address = __builtin_frame_address (0);
-  (*p)->pid = getpid ();
-  (*p)->thread_index = os_get_thread_index ();
-#endif
+    CLIB_PAUSE ();
+  CLIB_LOCK_DBG (p);
 }
 
 static_always_inline void
@@ -71,11 +88,7 @@ clib_spinlock_lock_if_init (clib_spinlock_t * p)
 static_always_inline void
 clib_spinlock_unlock (clib_spinlock_t * p)
 {
-#if CLIB_DEBUG > 0
-  (*p)->frame_address = 0;
-  (*p)->pid = 0;
-  (*p)->thread_index = 0;
-#endif
+  CLIB_LOCK_DBG_CLEAR (p);
   /* Make sure all writes are complete before releasing the lock */
   CLIB_MEMORY_BARRIER ();
   (*p)->lock = 0;
@@ -86,6 +99,77 @@ clib_spinlock_unlock_if_init (clib_spinlock_t * p)
 {
   if (PREDICT_FALSE (*p != 0))
     clib_spinlock_unlock (p);
+}
+
+/*
+ * Readers-Writer Lock
+ */
+
+typedef struct clib_rw_lock_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  volatile u32 n_readers;
+  volatile u32 writer_lock;
+#if CLIB_DEBUG > 0
+  pid_t pid;
+  uword thread_index;
+  void *frame_address;
+#endif
+} *clib_rwlock_t;
+
+always_inline void
+clib_rwlock_init (clib_rwlock_t * p)
+{
+  *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
+}
+
+always_inline void
+clib_rwlock_free (clib_rwlock_t * p)
+{
+  if (*p)
+    {
+      clib_mem_free ((void *) *p);
+      *p = 0;
+    }
+}
+
+always_inline void
+clib_rwlock_reader_lock (clib_rwlock_t * p)
+{
+  if (__sync_fetch_and_add (&(*p)->n_readers, 1) == 0)
+    {
+      while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+	CLIB_PAUSE ();
+    }
+  CLIB_LOCK_DBG (p);
+}
+
+always_inline void
+clib_rwlock_reader_unlock (clib_rwlock_t * p)
+{
+  CLIB_LOCK_DBG_CLEAR (p);
+  if (__sync_fetch_and_sub (&(*p)->n_readers, 1) == 1)
+    {
+      CLIB_MEMORY_BARRIER ();
+      (*p)->writer_lock = 0;
+    }
+}
+
+always_inline void
+clib_rwlock_writer_lock (clib_rwlock_t * p)
+{
+  while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+    CLIB_PAUSE ();
+  CLIB_LOCK_DBG (p);
+}
+
+always_inline void
+clib_rwlock_writer_unlock (clib_rwlock_t * p)
+{
+  CLIB_LOCK_DBG_CLEAR (p);
+  CLIB_MEMORY_BARRIER ();
+  (*p)->writer_lock = 0;
 }
 
 #endif
