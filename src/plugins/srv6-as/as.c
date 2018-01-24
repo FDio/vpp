@@ -488,7 +488,7 @@ VNET_FEATURE_INIT (srv6_as6_rewrite, static) =
 VLIB_INIT_FUNCTION (srv6_as_init);
 
 VLIB_PLUGIN_REGISTER () = {
-  .version = "1.0",
+  .version = VPP_BUILD_VER,
   .description = "Static SRv6 proxy",
 };
 /* *INDENT-ON* */
