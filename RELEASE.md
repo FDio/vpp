@@ -51,6 +51,7 @@ More than 560 commits since the 17.10 release.
   - VPP TCP Stack scale / congestion improvements
   - Refactor UDP
   - Namespace support
+  - Session rules table
   - VPP Comms Library (VCL) improvements
 
 - ACL
