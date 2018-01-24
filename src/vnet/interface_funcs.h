@@ -160,6 +160,14 @@ u32 vnet_register_interface (vnet_main_t * vnm,
 			     u32 dev_instance,
 			     u32 hw_class_index, u32 hw_instance);
 
+/**
+ * Set interface output node - for interface registered without its output/tx
+ * nodes created because its VNET_DEVICE_CLASS did not specify any tx_function.
+ * This is typically the case for tunnel interfaces.
+ */
+void vnet_set_interface_output_node (vnet_main_t * vnm,
+				     u32 hw_if_index, u32 node_index);
+
 /* Creates a software interface given template. */
 clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
 					vnet_sw_interface_t * template,

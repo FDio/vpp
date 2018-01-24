@@ -97,14 +97,6 @@ format_gtpu_name (u8 * s, va_list * args)
   return format (s, "gtpu_tunnel%d", dev_instance);
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 static clib_error_t *
 gtpu_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -120,7 +112,6 @@ VNET_DEVICE_CLASS (gtpu_device_class,static) = {
   .name = "GTPU",
   .format_device_name = format_gtpu_name,
   .format_tx_trace = format_gtpu_encap_trace,
-  .tx_function = dummy_interface_tx,
   .admin_up_down_function = gtpu_interface_admin_up_down,
 };
 /* *INDENT-ON* */
@@ -462,6 +453,11 @@ int vnet_gtpu_add_del_tunnel
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	}
 
+      /* Set gtpu tunnel output node */
+      u32 encap_index = !is_ip6 ?
+	gtpu4_encap_node.index : gtpu6_encap_node.index;
+      vnet_set_interface_output_node (vnm, hw_if_index, encap_index);
+
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
 
@@ -481,8 +477,6 @@ int vnet_gtpu_add_del_tunnel
 
       fib_node_init (&t->node, gtm->fib_node_type);
       fib_prefix_t tun_dst_pfx;
-      u32 encap_index = !is_ip6 ?
-	gtpu4_encap_node.index : gtpu6_encap_node.index;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
       fib_prefix_from_ip46_addr (&t->dst, &tun_dst_pfx);
@@ -572,9 +566,6 @@ int vnet_gtpu_add_del_tunnel
 	  dpo_reset (&dpo);
 	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
 	}
-
-      /* Set gtpu tunnel output node */
-      hi->output_node_index = encap_index;
 
       vnet_get_sw_interface (vnet_get_main (), sw_if_index)->flood_class =
 	flood_class;
