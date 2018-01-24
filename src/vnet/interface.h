@@ -444,6 +444,10 @@ typedef struct vnet_hw_interface_t
   /* Software index for this hardware interface. */
   u32 sw_if_index;
 
+  /* Next index in interface-output node for this interface
+     used by node function vnet_per_buffer_interface_output() */
+  u32 output_node_next_index;
+
   /* Maximum transmit rate for this interface in bits/sec. */
   f64 max_rate_bits_per_sec;
 

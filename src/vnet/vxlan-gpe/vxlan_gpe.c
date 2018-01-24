@@ -120,14 +120,6 @@ format_vxlan_gpe_name (u8 * s, va_list * args)
   return format (s, "vxlan_gpe_tunnel%d", dev_instance);
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 /**
  * @brief CLI function for VXLAN GPE admin up/down
  *
@@ -154,7 +146,6 @@ VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .name = "VXLAN_GPE",
   .format_device_name = format_vxlan_gpe_name,
   .format_tx_trace = format_vxlan_gpe_encap_trace,
-  .tx_function = dummy_interface_tx,
   .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
 };
 /* *INDENT-ON* */
@@ -600,8 +591,11 @@ int vnet_vxlan_gpe_add_del_tunnel
 	    (vnm, vxlan_gpe_device_class.index, t - ngm->tunnels,
 	     vxlan_gpe_hw_class.index, t - ngm->tunnels);
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  hi->output_node_index = vxlan_gpe_encap_node.index;
 	}
+
+      /* Set vxlan-gpe tunnel output node */
+      u32 encap_index = vxlan_gpe_encap_node.index;
+      vnet_set_interface_output_node (vnm, hw_if_index, encap_index);
 
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
@@ -620,7 +614,6 @@ int vnet_vxlan_gpe_add_del_tunnel
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
       fib_node_init (&t->node, FIB_NODE_TYPE_VXLAN_GPE_TUNNEL);
       fib_prefix_t tun_remote_pfx;
-      u32 encap_index = vxlan_gpe_encap_node.index;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
       fib_prefix_from_ip46_addr (&t->remote, &tun_remote_pfx);
@@ -710,9 +703,6 @@ int vnet_vxlan_gpe_add_del_tunnel
 	  dpo_reset (&dpo);
 	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
 	}
-
-      /* Set vxlan tunnel output node */
-      hi->output_node_index = encap_index;
 
       vnet_get_sw_interface (vnet_get_main (), sw_if_index)->flood_class =
 	flood_class;
