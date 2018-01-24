@@ -88,6 +88,94 @@ clib_spinlock_unlock_if_init (clib_spinlock_t * p)
     clib_spinlock_unlock (p);
 }
 
+/*
+ * Readers-Writer Lock
+ */
+
+#if __x86_64__
+#define clib_pause() __builtin_ia32_pause ()
+#else
+#define clib_pause()
+#endif
+
+#if CLIB_DEBUG > 1
+#define CLIB_RWLOCK_DBG(_p)				\
+do {							\
+    (*_p)->frame_address = __builtin_frame_address (0);	\
+    (*_p)->pid = getpid ();				\
+    (*_p)->thread_index = os_get_thread_index ();	\
+} while (0)
+#else
+#define CLIB_RWLOCK_DBG(_p)
+#endif
+
+typedef struct clib_rw_lock_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  volatile u32 n_readers;
+  volatile u32 writer_lock;
+#if CLIB_DEBUG > 0
+  pid_t pid;
+  uword thread_index;
+  void *frame_address;
+#endif
+} *clib_rwlock_t;
+
+always_inline void
+clib_rwlock_init (clib_rwlock_t * p)
+{
+  *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
+}
+
+always_inline void
+clib_rwlock_free (clib_rwlock_t * p)
+{
+  if (*p)
+    {
+      clib_mem_free ((void *) *p);
+      *p = 0;
+    }
+}
+
+always_inline void
+clib_rwlock_reader_lock (clib_rwlock_t * p)
+{
+  if (__sync_fetch_and_add (&(*p)->n_readers, 1) == 0)
+    {
+      while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+	clib_pause ();
+    }
+  CLIB_RWLOCK_DBG (p);
+}
+
+always_inline void
+clib_rwlock_reader_unlock (clib_rwlock_t * p)
+{
+  CLIB_RWLOCK_DBG (p);
+  if (__sync_fetch_and_sub (&(*p)->n_readers, 1) == 0)
+    {
+      CLIB_MEMORY_BARRIER ();
+      (*p)->writer_lock = 0;
+    }
+}
+
+always_inline void
+clib_rwlock_writer_lock (clib_rwlock_t * p)
+{
+  while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+    clib_pause ();
+  CLIB_RWLOCK_DBG (p);
+}
+
+always_inline void
+clib_rwlock_writer_unlock (clib_rwlock_t * p)
+{
+  CLIB_RWLOCK_DBG (p);
+  CLIB_MEMORY_BARRIER ();
+  (*p)->writer_lock = 0;
+}
+
 #endif
 
 /*
