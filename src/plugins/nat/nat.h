@@ -427,6 +427,9 @@ void snat_add_del_addr_to_fib (ip4_address_t * addr,
                                int is_add);
 
 format_function_t format_snat_user;
+format_function_t format_snat_static_mapping;
+format_function_t format_snat_static_map_to_resolve;
+format_function_t format_det_map_ses;
 
 typedef struct {
   u32 cached_sw_if_index;
@@ -567,6 +570,9 @@ snat_user_t * nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr,
                                       u32 fib_index, u32 thread_index);
 snat_session_t * nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u,
                                                u32 thread_index);
+void nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset,
+                                       u16 psid_length);
+void nat_set_alloc_addr_and_port_default (void);
 
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)

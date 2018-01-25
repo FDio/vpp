@@ -3722,7 +3722,11 @@ class TestNAT44(MethodHolder):
     def tearDown(self):
         super(TestNAT44, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 verbose"))
+            self.logger.info(self.vapi.cli("show nat44 addresses"))
+            self.logger.info(self.vapi.cli("show nat44 interfaces"))
+            self.logger.info(self.vapi.cli("show nat44 static mappings"))
+            self.logger.info(self.vapi.cli("show nat44 interface address"))
+            self.logger.info(self.vapi.cli("show nat44 sessions detail"))
             self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
             self.vapi.cli("nat addr-port-assignment-alg default")
             self.clear_nat44()
@@ -4486,7 +4490,13 @@ class TestDeterministicNAT(MethodHolder):
     def tearDown(self):
         super(TestDeterministicNAT, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 detail"))
+            self.logger.info(self.vapi.cli("show nat44 interfaces"))
+            self.logger.info(
+                self.vapi.cli("show nat44 deterministic mappings"))
+            self.logger.info(
+                self.vapi.cli("show nat44 deterministic timeouts"))
+            self.logger.info(
+                self.vapi.cli("show nat44 deterministic sessions"))
             self.clear_nat_det()
 
 
