@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d658f885_e0d89ae1",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "efe0ee3a_4318a719",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "19614584_8ad0fe73",
         "filename": "src/plugins/pppoe/pppoe.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2018-01-24T10:24:18Z",
       "side": 1,
       "message": "you use these zero_counter and inc_counter macros repeatedly, can they be defined once?",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "293a5b1a_0636e35f",
+        "filename": "src/plugins/pppoe/pppoe.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "most of the time there are slight differences in arguments and because the foreach variant requires the macros to take 2 arguments, it\u0027s not really possible to parametrize them globally, unless we introduce foreach_combined_interface_counter2, 3, 4 etc. which have extra arguments which are then passed to the underlying macro. But that seems to me quite messy.",
+      "parentUuid": "19614584_8ad0fe73",
       "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "809830cf_f213752e",
+        "filename": "src/plugins/pppoe/pppoe_cp_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "will fix",
+      "parentUuid": "8fddef4f_f296d1ea",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1b58bee0_df47ce13",
         "filename": "src/vnet/adj/adj_midchain.c",
         "patchSetId": 3
@@ -64,6 +118,24 @@
       "writtenOn": "2018-01-24T10:24:18Z",
       "side": 1,
       "message": "don\u0027t reindent this whole file! no whitespace only changes please",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "790bdc9b_01561c0d",
+        "filename": "src/vnet/adj/adj_midchain.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "I will need to reimplement these changes in multiple files. my workflow involves regular reformatting and it\u0027s a habit I have a hard time ignoring...\n\ncounter-question - why doesn\u0027t this file follow the vpp indentation format? why is there no footer which makes it a target for make checkstyle?",
+      "parentUuid": "1b58bee0_df47ce13",
       "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "c19a2fea_fcd68bb3",
+        "filename": "src/vnet/dpo/interface_rx_dpo.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3ea9e5cd_bed1ad0c",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58bb14c3_28264486",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 3
@@ -98,6 +188,24 @@
       "writtenOn": "2018-01-24T10:24:18Z",
       "side": 1,
       "message": "personally I prefer;\nreturn ethernet_input_inline (vm, node, from_frame,\n\t\t\t\t    ETHERNET_INPUT_VARIANT_ETHERNET,\n\t\t\t\t    COLLECT_DETAILED_STATS);\n\nenums FTW",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4cf72a74_ac1827cf",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "good idea",
+      "parentUuid": "58bb14c3_28264486",
       "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "c52ab954_d3a4b21b",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9693d1dd_0a0b2150",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4838140f_755db5e0",
         "filename": "src/vnet/geneve/decap.c",
         "patchSetId": 3
@@ -138,6 +264,24 @@
     },
     {
       "key": {
+        "uuid": "569c3fee_b8dcbc59",
+        "filename": "src/vnet/geneve/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1160,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4838140f_755db5e0",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be55d182_30ec2b32",
         "filename": "src/vnet/l2/l2_bvi.h",
         "patchSetId": 3
@@ -149,6 +293,24 @@
       "writtenOn": "2018-01-24T10:24:18Z",
       "side": 1,
       "message": "when the collect_detailed_state is a function argument, the const-folding optimisation kicks in and the compiler will generate to versions of the function, one with the detailed stats collection always in one with it always out. so there are no branches at runtime and so these PREDICT statements are not needed.\nhence you should always pass the collect_details as an argument to an inline function.",
+      "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eae81aed_32654e62",
+        "filename": "src/vnet/l2/l2_bvi.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be55d182_30ec2b32",
       "revId": "5a1e1dc2177f5dade21fb5e490ab5cfc80e01a97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
