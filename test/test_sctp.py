@@ -45,16 +45,8 @@ class TestSCTP(VppTestCase):
         self.vapi.session_enable_disable(is_enabled=0)
         super(TestSCTP, self).tearDown()
 
-    def test_sctp_unittest(self):
-        """ SCTP Unit Tests """
-        error = self.vapi.cli("test sctp all")
-
-        if error:
-            self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
-
     def test_sctp_transfer(self):
-        """ SCTP builtin client/server transfer """
+        """ SCTP echo client/server transfer """
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
@@ -70,18 +62,19 @@ class TestSCTP(VppTestCase):
 
         # Start builtin server and client
         uri = "sctp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test sctp server appns 0 fifo-size 4 uri " +
+        error = self.vapi.cli("test echo server appns 0 fifo-size 4 uri " +
                               uri)
         if error:
             self.logger.critical(error)
+            self.assertEqual(error.find("failed"), -1)
 
-        error = self.vapi.cli("test sctp client mbytes 10 appns 1" +
+        error = self.vapi.cli("test echo client mbytes 10 appns 1" +
                               " fifo-size 4" +
                               " no-output test-bytes syn-timeout 20 " +
                               " uri " + uri)
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+            self.assertEqual(error.find("failed"), -1)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()

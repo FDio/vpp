@@ -1,6 +1,6 @@
 
 /*
- * builtin_proxy.h - skeleton vpp engine plug-in header file
+ * echo_client.h - built-in application layer echo client
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_builtin_proxy_h__
-#define __included_builtin_proxy_h__
+#ifndef __included_echo_client_h__
+#define __included_echo_client_h__
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -30,67 +30,84 @@
 
 typedef struct
 {
+  u64 bytes_to_send;
+  u64 bytes_sent;
+  u64 bytes_to_receive;
+  u64 bytes_received;
+
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  u64 vpp_server_handle;
-  u64 vpp_active_open_handle;
-} proxy_session_t;
+  u64 vpp_session_handle;
+} session_t;
 
 typedef struct
 {
+  /*
+   * Application setup parameters
+   */
   svm_queue_t *vl_input_queue;	/**< vpe input queue */
-  /** per-thread vectors */
-  svm_queue_t **server_event_queue;
-  svm_queue_t **active_open_event_queue;
-  u8 **rx_buf;				/**< intermediate rx buffers */
+  svm_queue_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
-  u32 server_client_index;		/**< server API client handle */
-  u32 server_app_index;			/**< server app index */
-  u32 active_open_client_index;		/**< active open API client handle */
-  u32 active_open_app_index;		/**< active open index after attach */
-
-  uword *proxy_session_by_server_handle;
-  uword *proxy_session_by_active_open_handle;
+  u32 my_client_index;			/**< loopback API client handle */
+  u32 app_index;			/**< app index after attach */
 
   /*
    * Configuration params
    */
   u8 *connect_uri;			/**< URI for slave's connect */
+  u64 bytes_to_send;			/**< Bytes to send */
   u32 configured_segment_size;
   u32 fifo_size;
+  u32 expected_connections;		/**< Number of clients/connections */
+  u32 connections_per_batch;		/**< Connections to rx/tx at once */
   u32 private_segment_count;		/**< Number of private fifo segs */
   u32 private_segment_size;		/**< size of private fifo segs */
-  int rcv_buffer_size;
-  u8 *server_uri;
-  u8 *client_uri;
 
   /*
    * Test state variables
    */
-  proxy_session_t *sessions;		/**< Session pool, shared */
+  session_t *sessions;			/**< Session pool, shared */
   clib_spinlock_t sessions_lock;
+  u8 **rx_buf;				/**< intermediate rx buffers */
+  u8 *connect_test_data;		/**< Pre-computed test data */
   u32 **connection_index_by_thread;
+  u32 **connections_this_batch_by_thread; /**< active connection batch */
   pthread_t client_thread_handle;
 
+  volatile u32 ready_connections;
+  volatile u32 finished_connections;
+  volatile u64 rx_total;
+  volatile u64 tx_total;
+  volatile int run_test;		/**< Signal start of test */
+
+  f64 test_start_time;
+  f64 test_end_time;
+  u32 prev_conns;
+  u32 repeats;
   /*
    * Flags
    */
   u8 is_init;
+  u8 test_client_attached;
+  u8 no_return;
+  u8 test_return_packets;
+  int i_am_master;
+  int drop_packets;		/**< drop all packets */
   u8 prealloc_fifos;		/**< Request fifo preallocation */
+  u8 no_output;
+  u8 test_bytes;
+  u8 test_failed;
 
-  /*
-   * Convenience
-   */
   vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-  ethernet_main_t *ethernet_main;
-} builtin_proxy_main_t;
+} echo_client_main_t;
 
-extern builtin_proxy_main_t builtin_proxy_main;
+extern echo_client_main_t echo_client_main;
 
-#endif /* __included_builtin_proxy_h__ */
+vlib_node_registration_t echo_clients_node;
+
+#endif /* __included_echo_client_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
