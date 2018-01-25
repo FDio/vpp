@@ -131,6 +131,12 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
 	    vnet_buffer (p)->sw_if_index[VLIB_RX];
 	  vnet_buffer (b)->sw_if_index[VLIB_TX] =
 	    vnet_buffer (p)->sw_if_index[VLIB_TX];
+	  /* Copy Adj_index in case DPO based node is sending for the fragmentation,
+	     the packet would be sent back to the proper DPO next node and Index */
+	  vnet_buffer (b)->ip.adj_index[VLIB_RX] =
+	    vnet_buffer (p)->ip.adj_index[VLIB_RX];
+	  vnet_buffer (b)->ip.adj_index[VLIB_TX] =
+	    vnet_buffer (p)->ip.adj_index[VLIB_TX];
 	  fip4 = (ip4_header_t *) (vlib_buffer_get_current (b) + offset);
 
 	  //Copy offset and ip4 header
@@ -393,6 +399,14 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
 	    vnet_buffer (p)->sw_if_index[VLIB_RX];
 	  vnet_buffer (b)->sw_if_index[VLIB_TX] =
 	    vnet_buffer (p)->sw_if_index[VLIB_TX];
+
+	  /* Copy Adj_index in case DPO based node is sending for the fragmentation,
+	     the packet would be sent back to the proper DPO next node and Index */
+	  vnet_buffer (b)->ip.adj_index[VLIB_RX] =
+	    vnet_buffer (p)->ip.adj_index[VLIB_RX];
+	  vnet_buffer (b)->ip.adj_index[VLIB_TX] =
+	    vnet_buffer (p)->ip.adj_index[VLIB_TX];
+
 	  clib_memcpy (vlib_buffer_get_current (b),
 		       vlib_buffer_get_current (p), headers_len);
 	  clib_memcpy (vlib_buffer_get_current (b) + headers_len,

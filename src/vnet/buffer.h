@@ -289,6 +289,7 @@ typedef struct
     /* IP Fragmentation */
     struct
     {
+      u32 pad[2];		/* do not overlay w/ ip.adj_index[0,1] */
       u16 header_offset;
       u16 mtu;
       u8 next_index;
