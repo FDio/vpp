@@ -81,7 +81,7 @@ public:
   /**
    * Find the instnace of the route domain in the OM
    */
-  static std::shared_ptr<route_domain> find(const route_domain& temp);
+  static std::shared_ptr<route_domain> find(const key_t& temp);
 
   /**
    * Dump all route-doamin into the stream provided

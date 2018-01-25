@@ -403,7 +403,7 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
      * populating the route domain here
      */
     route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(rd_temp);
+    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
     if (!rd) {
       OM::commit(key, rd_temp);
     }
@@ -450,7 +450,7 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
 
     prefix_t pfx(1, payload.address, payload.address_length);
     route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(rd_temp);
+    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
     if (!rd) {
       OM::commit(key, rd_temp);
     }
