@@ -515,8 +515,23 @@ class VPP():
             return self.messages[name]['return_tuple']
         return None
 
+    def duplicate_check_ok(self, name, msgdef):
+        crc = None
+        for c in msgdef:
+            if type(c) is dict and 'crc' in c:
+                crc = c['crc']
+                break
+        if crc:
+            # We can get duplicates because of imports
+            if crc == self.messages[name]['crc']:
+                return True
+        return False
+
     def add_message(self, name, msgdef, typeonly=False):
         if name in self.messages:
+            if typeonly:
+                if self.duplicate_check_ok(name, msgdef):
+                    return
             raise ValueError('Duplicate message name: ' + name)
 
         args = collections.OrderedDict()
