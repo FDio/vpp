@@ -54,7 +54,7 @@ class TestTCP(VppTestCase):
         self.assertEqual(error.find("failed"), -1)
 
     def test_tcp_transfer(self):
-        """ TCP builtin client/server transfer """
+        """ TCP echo client/server transfer """
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
@@ -70,17 +70,18 @@ class TestTCP(VppTestCase):
 
         # Start builtin server and client
         uri = "tcp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test tcp server appns 0 fifo-size 4 uri " +
+        error = self.vapi.cli("test echo server appns 0 fifo-size 4 uri " +
                               uri)
         if error:
             self.logger.critical(error)
+            self.assertEqual(error.find("failed"), -1)
 
-        error = self.vapi.cli("test tcp client mbytes 10 appns 1 fifo-size 4" +
-                              " no-output test-bytes syn-timeout 2 " +
-                              " uri " + uri)
+        error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
+                              "fifo-size 4 no-output test-bytes " +
+                              "syn-timeout 2 uri " + uri)
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+            self.assertEqual(error.find("failed"), -1)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()

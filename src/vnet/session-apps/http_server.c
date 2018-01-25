@@ -27,7 +27,7 @@ typedef struct
   u64 session_handle;
   u64 node_index;
   u8 *data;
-} builtin_http_server_args;
+} http_server_args;
 
 typedef struct
 {
@@ -59,14 +59,14 @@ typedef struct
 http_server_main_t http_server_main;
 
 static void
-free_http_process (builtin_http_server_args * args)
+free_http_process (http_server_args * args)
 {
   vlib_node_runtime_t *rt;
   vlib_main_t *vm = &vlib_global_main;
   http_server_main_t *hsm = &http_server_main;
   vlib_node_t *n;
   u32 node_index;
-  builtin_http_server_args **save_args;
+  http_server_args **save_args;
 
   node_index = args->node_index;
   ASSERT (node_index != 0);
@@ -199,8 +199,8 @@ http_cli_process (vlib_main_t * vm,
 {
   http_server_main_t *hsm = &http_server_main;
   u8 *request = 0, *reply = 0;
-  builtin_http_server_args **save_args;
-  builtin_http_server_args *args;
+  http_server_args **save_args;
+  http_server_args *args;
   stream_session_t *s;
   unformat_input_t input;
   int i;
@@ -281,14 +281,14 @@ out:
 }
 
 static void
-alloc_http_process (builtin_http_server_args * args)
+alloc_http_process (http_server_args * args)
 {
   char *name;
   vlib_node_t *n;
   http_server_main_t *hsm = &http_server_main;
   vlib_main_t *vm = hsm->vlib_main;
   uword l = vec_len (hsm->free_http_cli_process_node_indices);
-  builtin_http_server_args **save_args;
+  http_server_args **save_args;
 
   if (vec_len (hsm->free_http_cli_process_node_indices) > 0)
     {
@@ -326,7 +326,7 @@ alloc_http_process (builtin_http_server_args * args)
 static void
 alloc_http_process_callback (void *cb_args)
 {
-  alloc_http_process ((builtin_http_server_args *) cb_args);
+  alloc_http_process ((http_server_args *) cb_args);
 }
 
 static int
@@ -357,7 +357,7 @@ static int
 http_server_rx_callback (stream_session_t * s)
 {
   http_server_main_t *hsm = &http_server_main;
-  builtin_http_server_args *args;
+  http_server_args *args;
   int rv;
 
   rv = session_rx_request (s);
@@ -427,7 +427,7 @@ out:
 }
 
 static int
-builtin_session_accept_callback (stream_session_t * s)
+http_server_session_accept_callback (stream_session_t * s)
 {
   http_server_main_t *bsm = &http_server_main;
 
@@ -439,7 +439,7 @@ builtin_session_accept_callback (stream_session_t * s)
 }
 
 static void
-builtin_session_disconnect_callback (stream_session_t * s)
+http_server_session_disconnect_callback (stream_session_t * s)
 {
   http_server_main_t *bsm = &http_server_main;
   vnet_disconnect_args_t _a, *a = &_a;
@@ -450,43 +450,42 @@ builtin_session_disconnect_callback (stream_session_t * s)
 }
 
 static void
-builtin_session_reset_callback (stream_session_t * s)
+http_server_session_reset_callback (stream_session_t * s)
 {
   clib_warning ("called.. ");
-
   stream_session_cleanup (s);
 }
 
 static int
-builtin_session_connected_callback (u32 app_index, u32 api_context,
-				    stream_session_t * s, u8 is_fail)
+http_server_session_connected_callback (u32 app_index, u32 api_context,
+					stream_session_t * s, u8 is_fail)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-builtin_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
+http_server_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-builtin_redirect_connect_callback (u32 client_index, void *mp)
+http_server_redirect_connect_callback (u32 client_index, void *mp)
 {
   clib_warning ("called...");
   return -1;
 }
 
-static session_cb_vft_t builtin_session_cb_vft = {
-  .session_accept_callback = builtin_session_accept_callback,
-  .session_disconnect_callback = builtin_session_disconnect_callback,
-  .session_connected_callback = builtin_session_connected_callback,
-  .add_segment_callback = builtin_add_segment_callback,
-  .redirect_connect_callback = builtin_redirect_connect_callback,
+static session_cb_vft_t http_server_session_cb_vft = {
+  .session_accept_callback = http_server_session_accept_callback,
+  .session_disconnect_callback = http_server_session_disconnect_callback,
+  .session_connected_callback = http_server_session_connected_callback,
+  .add_segment_callback = http_server_add_segment_callback,
+  .redirect_connect_callback = http_server_redirect_connect_callback,
   .builtin_server_rx_callback = http_server_rx_callback,
-  .session_reset_callback = builtin_session_reset_callback
+  .session_reset_callback = http_server_session_reset_callback
 };
 
 /* Abuse VPP's input queue */
@@ -500,7 +499,7 @@ create_api_loopback (vlib_main_t * vm)
   shmem_hdr = am->shmem_hdr;
   hsm->vl_input_queue = shmem_hdr->vl_input_queue;
   hsm->my_client_index =
-    vl_api_memclnt_create_internal ("test_http_server", hsm->vl_input_queue);
+    vl_api_memclnt_create_internal ("http_server", hsm->vl_input_queue);
   return 0;
 }
 
@@ -519,7 +518,7 @@ server_attach ()
     segment_size = hsm->private_segment_size;
 
   a->api_client_index = hsm->my_client_index;
-  a->session_cb_vft = &builtin_session_cb_vft;
+  a->session_cb_vft = &http_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] =
@@ -539,7 +538,7 @@ server_attach ()
 }
 
 static int
-server_listen ()
+http_server_listen ()
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_bind_args_t _a, *a = &_a;
@@ -550,7 +549,7 @@ server_listen ()
 }
 
 static int
-server_create (vlib_main_t * vm)
+http_server_create (vlib_main_t * vm)
 {
   http_server_main_t *hsm = &http_server_main;
   u32 num_threads;
@@ -568,7 +567,7 @@ server_create (vlib_main_t * vm)
       clib_warning ("failed to attach server");
       return -1;
     }
-  if (server_listen ())
+  if (http_server_listen ())
     {
       clib_warning ("failed to start listening");
       return -1;
@@ -577,8 +576,9 @@ server_create (vlib_main_t * vm)
 }
 
 static clib_error_t *
-server_create_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+http_server_create_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
 {
   http_server_main_t *hsm = &http_server_main;
   int rv, is_static = 0;
@@ -618,12 +618,12 @@ server_create_command_fn (vlib_main_t * vm,
 
   if (is_static)
     {
-      builtin_session_cb_vft.builtin_server_rx_callback =
+      http_server_session_cb_vft.builtin_server_rx_callback =
 	http_server_rx_callback_static;
       html = format (0, html_header_static);
       static_http = format (0, http_response, vec_len (html), html);
     }
-  rv = server_create (vm);
+  rv = http_server_create (vm);
   switch (rv)
     {
     case 0:
@@ -635,16 +635,16 @@ server_create_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (server_create_command, static) =
+VLIB_CLI_COMMAND (http_server_create_command, static) =
 {
   .path = "test http server",
   .short_help = "test http server",
-  .function = server_create_command_fn,
+  .function = http_server_create_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-builtin_http_server_main_init (vlib_main_t * vm)
+http_server_main_init (vlib_main_t * vm)
 {
   http_server_main_t *hsm = &http_server_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -657,7 +657,7 @@ builtin_http_server_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (builtin_http_server_main_init);
+VLIB_INIT_FUNCTION (http_server_main_init);
 
 /*
 * fd.io coding-style-patch-verification: ON
