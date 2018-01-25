@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "21b650f6_84f98dd8",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c41cc166_d9b6908a",
+      "range": {
+        "startLine": 128,
+        "startChar": 6,
+        "endLine": 133,
+        "endChar": 5
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "930e14c9_82837fbc",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "Use typedef enum",
+      "range": {
+        "startLine": 54,
+        "startChar": 14,
+        "endLine": 54,
+        "endChar": 15
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f82cb240_4156fc5a",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "930e14c9_82837fbc",
       "range": {
         "startLine": 54,
         "startChar": 14,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "c8108dfc_37ef872c",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "071ce448_8d21abb1",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 76,
+        "endChar": 3
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7b99e8d7_f19acace",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "Invalid DSCP type should yield an error rather than changing it without user\u0027s consent.",
+      "range": {
+        "startLine": 82,
+        "startChar": 47,
+        "endLine": 82,
+        "endChar": 64
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa90b4d1_30359a46",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b99e8d7_f19acace",
       "range": {
         "startLine": 82,
         "startChar": 47,
@@ -111,6 +207,24 @@
     },
     {
       "key": {
+        "uuid": "6037ad05_76b28275",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c0db46d_65077009",
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a4edd4f8_341b9cc9",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 1
@@ -122,6 +236,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "Print it on a different line and only when type is DSCP",
+      "range": {
+        "startLine": 134,
+        "startChar": 24,
+        "endLine": 134,
+        "endChar": 32
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5c6f3ccf_36bae9af",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a4edd4f8_341b9cc9",
       "range": {
         "startLine": 134,
         "startChar": 24,
@@ -157,6 +295,30 @@
     },
     {
       "key": {
+        "uuid": "4d85ce31_1104f7f6",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 706,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e4bd49c_cc0b0b6c",
+      "range": {
+        "startLine": 701,
+        "startChar": 0,
+        "endLine": 706,
+        "endChar": 13
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3dbd1e23_230d1f80",
         "filename": "src/plugins/lb/lb_plugin_doc.md",
         "patchSetId": 1
@@ -174,6 +336,24 @@
     },
     {
       "key": {
+        "uuid": "42d01fb6_86a2470b",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3dbd1e23_230d1f80",
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "38264b65_dae76861",
         "filename": "src/plugins/lb/lb_test.c",
         "patchSetId": 1
@@ -185,6 +365,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "Use typedef enum rather than hardcoded values",
+      "range": {
+        "startLine": 169,
+        "startChar": 16,
+        "endLine": 169,
+        "endChar": 17
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50dd6bf8_66deb6f8",
+        "filename": "src/plugins/lb/lb_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38264b65_dae76861",
       "range": {
         "startLine": 169,
         "startChar": 16,
@@ -220,6 +424,30 @@
     },
     {
       "key": {
+        "uuid": "57f69f2d_2c8b9eb1",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43bbbefc_8683cdfe",
+      "range": {
+        "startLine": 152,
+        "startChar": 9,
+        "endLine": 152,
+        "endChar": 22
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa6b6cdb_2cc2dd41",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 1
@@ -231,6 +459,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "DSCP only supports IPv4 input. You may only check the encap_type.\nAnd please put it in the if-else below",
+      "range": {
+        "startLine": 268,
+        "startChar": 10,
+        "endLine": 268,
+        "endChar": 23
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ccebf133_6dfb3654",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa6b6cdb_2cc2dd41",
       "range": {
         "startLine": 268,
         "startChar": 10,
@@ -266,6 +518,30 @@
     },
     {
       "key": {
+        "uuid": "92d58f8c_59b093e0",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e49f8688_4d83108c",
+      "range": {
+        "startLine": 277,
+        "startChar": 3,
+        "endLine": 279,
+        "endChar": 45
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f827892e_efa8ff12",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 1
@@ -277,6 +553,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "IP checksum support incremental updates. It would be way less expensive than re-computing the checksum. ip-forward, for example, updates the checksum when it decrements TTL.",
+      "range": {
+        "startLine": 281,
+        "startChar": 3,
+        "endLine": 281,
+        "endChar": 47
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "66fe0cc2_39783cb8",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Since packet need to update dst IP address, so I think calling ip4_header_checksum is better.",
+      "parentUuid": "f827892e_efa8ff12",
       "range": {
         "startLine": 281,
         "startChar": 3,
@@ -312,6 +612,30 @@
     },
     {
       "key": {
+        "uuid": "2e87e1fe_9ae20a8e",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "69b83c4b_1cde087a",
+      "range": {
+        "startLine": 283,
+        "startChar": 3,
+        "endLine": 283,
+        "endChar": 15
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1d8a935_e960d383",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 1
@@ -323,6 +647,30 @@
       "writtenOn": "2018-01-23T09:46:30Z",
       "side": 1,
       "message": "No need for that (see comment above)",
+      "range": {
+        "startLine": 324,
+        "startChar": 0,
+        "endLine": 324,
+        "endChar": 11
+      },
+      "revId": "3d82998195f42ab5a2ee41385e3dc6ab8d26e917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "12171ce1_f6c5b62a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-01-25T06:40:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a1d8a935_e960d383",
       "range": {
         "startLine": 324,
         "startChar": 0,
