@@ -73,6 +73,9 @@ format_transport_proto_short (u8 * s, va_list * args)
     case TRANSPORT_PROTO_UDP:
       s = format (s, "U");
       break;
+    case TRANSPORT_PROTO_SCTP:
+      s = format (s, "S");
+      break;
     }
   return s;
 }
@@ -89,7 +92,7 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_UDP;
   else if (unformat (input, "UDP"))
     *proto = TRANSPORT_PROTO_UDP;
-  if (unformat (input, "sctp"))
+  else if (unformat (input, "sctp"))
     *proto = TRANSPORT_PROTO_SCTP;
   else if (unformat (input, "SCTP"))
     *proto = TRANSPORT_PROTO_SCTP;
