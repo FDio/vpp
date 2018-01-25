@@ -504,10 +504,6 @@ libvnet_la_SOURCES +=				\
  vnet/tcp/tcp_output.c				\
  vnet/tcp/tcp_input.c				\
  vnet/tcp/tcp_newreno.c				\
- vnet/tcp/builtin_client.c			\
- vnet/tcp/builtin_server.c			\
- vnet/tcp/builtin_http_server.c			\
- vnet/tcp/builtin_proxy.c			\
  vnet/tcp/tcp_test.c				\
  vnet/tcp/tcp.c
 
@@ -526,7 +522,6 @@ API_FILES += vnet/tcp/tcp.api
 libvnet_la_SOURCES +=				\
  vnet/udp/udp.c					\
  vnet/udp/udp_input.c				\
- vnet/udp/builtin_server.c			\
  vnet/udp/udp_format.c				\
  vnet/udp/udp_local.c				\
  vnet/udp/udp_pg.c				\
@@ -550,16 +545,13 @@ libvnet_la_SOURCES +=				\
   vnet/sctp/sctp_pg.c				\
   vnet/sctp/sctp_input.c			\
   vnet/sctp/sctp_output.c			\
-  vnet/sctp/sctp_format.c			\
-  vnet/sctp/builtin_server.c			\
-  vnet/sctp/builtin_client.c
+  vnet/sctp/sctp_format.c
 
 nobase_include_HEADERS +=			\
   vnet/sctp/sctp_error.def                    	\
   vnet/sctp/sctp_packet.h			\
   vnet/sctp/sctp_timer.h			\
-  vnet/sctp/sctp.h				\
-  vnet/sctp/builtin_client.h
+  vnet/sctp/sctp.h
 
 ########################################
 # Tunnel protocol: gre
@@ -962,6 +954,20 @@ nobase_include_HEADERS +=			\
   vnet/session/session.api.h
 
 API_FILES += vnet/session/session.api
+
+########################################
+# session layer applications
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/session-apps/echo_client.c		\
+  vnet/session-apps/echo_server.c		\
+  vnet/session-apps/http_server.c		\
+  vnet/session-apps/proxy.c
+
+nobase_include_HEADERS +=			\
+  vnet/session-apps/echo_client.h		\
+  vnet/session-apps/proxy.h
 
 ########################################
 # Linux packet interface

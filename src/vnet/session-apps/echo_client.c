@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2018 SUSE LLC.
+ * echo_client.c - vpp built-in echo client code
+ *
+ * Copyright (c) 2017 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,24 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <vnet/sctp/builtin_client.h>
 
+#include <vnet/vnet.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vpp/app/version.h>
+#include <vnet/session-apps/echo_client.h>
 
-tclient_main_t tclient_main;
+echo_client_main_t echo_client_main;
 
-#define SCTP_BUILTIN_CLIENT_DBG (0)
+#define ECHO_CLIENT_DBG (0)
 
 static void
 signal_evt_to_cli_i (int *code)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   ASSERT (vlib_get_thread_index () == 0);
-  vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, *code, 0);
+  vlib_process_signal_event (ecm->vlib_main, ecm->cli_node_index, *code, 0);
 }
 
 static void
@@ -43,9 +43,9 @@ signal_evt_to_cli (int code)
 }
 
 static void
-send_test_chunk (tclient_main_t * tm, session_t * s)
+send_data_chunk (echo_client_main_t * ecm, session_t * s)
 {
-  u8 *test_data = tm->connect_test_data;
+  u8 *test_data = ecm->connect_test_data;
   int test_buf_offset;
   u32 bytes_this_chunk;
   session_fifo_event_t evt;
@@ -56,6 +56,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 
   test_buf_offset = s->bytes_sent % vec_len (test_data);
   bytes_this_chunk = vec_len (test_data) - test_buf_offset;
+
   bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
     ? bytes_this_chunk : s->bytes_to_send;
 
@@ -70,7 +71,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
       s->bytes_to_send -= rv;
       s->bytes_sent += rv;
 
-      if (SCTP_BUILTIN_CLIENT_DBG)
+      if (ECHO_CLIENT_DBG)
 	{
           /* *INDENT-OFF* */
           ELOG_TYPE_DECLARE (e) =
@@ -97,7 +98,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 	  evt.event_type = FIFO_EVENT_APP_TX;
 
 	  if (svm_queue_add
-	      (tm->vpp_event_queue[txf->master_thread_index], (u8 *) & evt,
+	      (ecm->vpp_event_queue[txf->master_thread_index], (u8 *) & evt,
 	       0 /* do wait for mutex */ ))
 	    clib_warning ("could not enqueue event");
 	}
@@ -105,20 +106,18 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 }
 
 static void
-receive_test_chunk (tclient_main_t * tm, session_t * s)
+receive_data_chunk (echo_client_main_t * ecm, session_t * s)
 {
   svm_fifo_t *rx_fifo = s->server_rx_fifo;
   u32 my_thread_index = vlib_get_thread_index ();
   int n_read, i;
 
-  /* Allow enqueuing of new event */
-  // svm_fifo_unset_event (rx_fifo);
-
-  if (tm->test_bytes)
+  if (ecm->test_bytes)
     {
       n_read = svm_fifo_dequeue_nowait (rx_fifo,
-					vec_len (tm->rx_buf[my_thread_index]),
-					tm->rx_buf[my_thread_index]);
+					vec_len (ecm->rx_buf
+						 [my_thread_index]),
+					ecm->rx_buf[my_thread_index]);
     }
   else
     {
@@ -126,12 +125,9 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
       svm_fifo_dequeue_drop (rx_fifo, n_read);
     }
 
-  if (SCTP_BUILTIN_CLIENT_DBG)
-    clib_warning ("Receiving test chunk; n_read = %d", n_read);
-
   if (n_read > 0)
     {
-      if (SCTP_BUILTIN_CLIENT_DBG)
+      if (ECHO_CLIENT_DBG)
 	{
           /* *INDENT-OFF* */
           ELOG_TYPE_DECLARE (e) =
@@ -148,40 +144,31 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
 	  ed->data[0] = n_read;
 	}
 
-      if (tm->test_bytes)
+      if (ecm->test_bytes)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (tm->rx_buf[my_thread_index][i]
+	      if (ecm->rx_buf[my_thread_index][i]
 		  != ((s->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
 				n_read, s->bytes_received + i,
-				tm->rx_buf[my_thread_index][i],
+				ecm->rx_buf[my_thread_index][i],
 				((s->bytes_received + i) & 0xff));
-		  tm->test_failed = 1;
+		  ecm->test_failed = 1;
 		}
 	    }
 	}
-
-      if (s->bytes_to_receive < n_read)
-	{
-	  s->bytes_to_receive = 0;
-	  s->bytes_received += s->bytes_received;
-	}
-      else
-	{
-	  s->bytes_to_receive -= n_read;
-	  s->bytes_received += n_read;
-	}
+      s->bytes_to_receive -= n_read;
+      s->bytes_received += n_read;
     }
 }
 
 static uword
-builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * frame)
+echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   int my_thread_index = vlib_get_thread_index ();
   session_t *sp;
   int i;
@@ -190,11 +177,11 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *connections_this_batch;
   u32 nconnections_this_batch;
 
-  connection_indices = tm->connection_index_by_thread[my_thread_index];
+  connection_indices = ecm->connection_index_by_thread[my_thread_index];
   connections_this_batch =
-    tm->connections_this_batch_by_thread[my_thread_index];
+    ecm->connections_this_batch_by_thread[my_thread_index];
 
-  if ((tm->run_test == 0) ||
+  if ((ecm->run_test == 0) ||
       ((vec_len (connection_indices) == 0)
        && vec_len (connections_this_batch) == 0))
     return 0;
@@ -203,7 +190,7 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (vec_len (connections_this_batch) == 0))
     {
       nconnections_this_batch =
-	clib_min (tm->connections_per_batch, vec_len (connection_indices));
+	clib_min (ecm->connections_per_batch, vec_len (connection_indices));
 
       ASSERT (nconnections_this_batch > 0);
       vec_validate (connections_this_batch, nconnections_this_batch - 1);
@@ -214,37 +201,36 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       _vec_len (connection_indices) -= nconnections_this_batch;
     }
 
-  if (PREDICT_FALSE (tm->prev_conns != tm->connections_per_batch
-		     && tm->prev_conns == vec_len (connections_this_batch)))
+  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch
+		     && ecm->prev_conns == vec_len (connections_this_batch)))
     {
-      tm->repeats++;
-      tm->prev_conns = vec_len (connections_this_batch);
-      if (tm->repeats == 500000)
+      ecm->repeats++;
+      ecm->prev_conns = vec_len (connections_this_batch);
+      if (ecm->repeats == 500000)
 	{
 	  clib_warning ("stuck clients");
 	}
     }
   else
     {
-      tm->prev_conns = vec_len (connections_this_batch);
-      tm->repeats = 0;
+      ecm->prev_conns = vec_len (connections_this_batch);
+      ecm->repeats = 0;
     }
 
   for (i = 0; i < vec_len (connections_this_batch); i++)
     {
       delete_session = 1;
 
-      sp = pool_elt_at_index (tm->sessions, connections_this_batch[i]);
+      sp = pool_elt_at_index (ecm->sessions, connections_this_batch[i]);
 
       if (sp->bytes_to_send > 0)
 	{
-	  send_test_chunk (tm, sp);
+	  send_data_chunk (ecm, sp);
 	  delete_session = 0;
 	}
-
       if (sp->bytes_to_receive > 0)
 	{
-	  receive_test_chunk (tm, sp);
+	  receive_data_chunk (ecm, sp);
 	  delete_session = 0;
 	}
       if (PREDICT_FALSE (delete_session == 1))
@@ -252,8 +238,8 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 index, thread_index;
 	  stream_session_t *s;
 
-	  __sync_fetch_and_add (&tm->tx_total, sp->bytes_sent);
-	  __sync_fetch_and_add (&tm->rx_total, sp->bytes_received);
+	  __sync_fetch_and_add (&ecm->tx_total, sp->bytes_sent);
+	  __sync_fetch_and_add (&ecm->rx_total, sp->bytes_received);
 
 	  session_parse_handle (sp->vpp_session_handle,
 				&index, &thread_index);
@@ -263,89 +249,89 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      vnet_disconnect_args_t _a, *a = &_a;
 	      a->handle = session_handle (s);
-	      a->app_index = tm->app_index;
+	      a->app_index = ecm->app_index;
 	      vnet_disconnect_session (a);
 
 	      vec_delete (connections_this_batch, 1, i);
 	      i--;
-	      __sync_fetch_and_add (&tm->ready_connections, -1);
+	      __sync_fetch_and_add (&ecm->ready_connections, -1);
 	    }
 	  else
 	    clib_warning ("session AWOL?");
 
 	  /* Kick the debug CLI process */
-	  if (tm->ready_connections == 0)
+	  if (ecm->ready_connections == 0)
 	    {
 	      signal_evt_to_cli (2);
 	    }
 	}
     }
 
-  tm->connection_index_by_thread[my_thread_index] = connection_indices;
-  tm->connections_this_batch_by_thread[my_thread_index] =
+  ecm->connection_index_by_thread[my_thread_index] = connection_indices;
+  ecm->connections_this_batch_by_thread[my_thread_index] =
     connections_this_batch;
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (builtin_sctp_client_node) =
+VLIB_REGISTER_NODE (echo_clients_node) =
 {
-  .function = builtin_client_node_fn,
-  .name = "builtin-sctp-client",
+  .function = echo_client_node_fn,
+  .name = "echo-clients",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };
 /* *INDENT-ON* */
 
 static int
-create_api_loopback (tclient_main_t * tm)
+create_api_loopback (echo_client_main_t * ecm)
 {
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr;
 
   shmem_hdr = am->shmem_hdr;
-  tm->vl_input_queue = shmem_hdr->vl_input_queue;
-  tm->my_client_index =
-    vl_api_memclnt_create_internal ("sctp_test_client", tm->vl_input_queue);
+  ecm->vl_input_queue = shmem_hdr->vl_input_queue;
+  ecm->my_client_index = vl_api_memclnt_create_internal ("echo_client",
+							 ecm->vl_input_queue);
   return 0;
 }
 
 static int
-sctp_test_clients_init (vlib_main_t * vm)
+echo_clients_init (vlib_main_t * vm)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
 
-  if (create_api_loopback (tm))
+  if (create_api_loopback (ecm))
     return -1;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  /* Init test data. Big buffer */
-  vec_validate (tm->connect_test_data, 1024 * 1024 - 1);
-  for (i = 0; i < vec_len (tm->connect_test_data); i++)
-    tm->connect_test_data[i] = i & 0xff;
+  /* Init test data. Bigecmuffer */
+  vec_validate (ecm->connect_test_data, 1024 * 1024 - 1);
+  for (i = 0; i < vec_len (ecm->connect_test_data); i++)
+    ecm->connect_test_data[i] = i & 0xff;
 
-  vec_validate (tm->rx_buf, num_threads - 1);
+  vec_validate (ecm->rx_buf, num_threads - 1);
   for (i = 0; i < num_threads; i++)
-    vec_validate (tm->rx_buf[i], vec_len (tm->connect_test_data) - 1);
+    vec_validate (ecm->rx_buf[i], vec_len (ecm->connect_test_data) - 1);
 
-  tm->is_init = 1;
+  ecm->is_init = 1;
 
-  vec_validate (tm->connection_index_by_thread, vtm->n_vlib_mains);
-  vec_validate (tm->connections_this_batch_by_thread, vtm->n_vlib_mains);
-  vec_validate (tm->vpp_event_queue, vtm->n_vlib_mains);
+  vec_validate (ecm->connection_index_by_thread, vtm->n_vlib_mains);
+  vec_validate (ecm->connections_this_batch_by_thread, vtm->n_vlib_mains);
+  vec_validate (ecm->vpp_event_queue, vtm->n_vlib_mains);
 
   return 0;
 }
 
 static int
-builtin_session_connected_callback (u32 app_index, u32 api_context,
-				    stream_session_t * s, u8 is_fail)
+echo_clients_session_connected_callback (u32 app_index, u32 api_context,
+					 stream_session_t * s, u8 is_fail)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   session_t *session;
   u32 session_index;
   u8 thread_index = vlib_get_thread_index ();
@@ -359,32 +345,32 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
 
   ASSERT (s->thread_index == thread_index);
 
-  if (!tm->vpp_event_queue[thread_index])
-    tm->vpp_event_queue[thread_index] =
+  if (!ecm->vpp_event_queue[thread_index])
+    ecm->vpp_event_queue[thread_index] =
       session_manager_get_vpp_event_queue (thread_index);
 
   /*
    * Setup session
    */
-  clib_spinlock_lock_if_init (&tm->sessions_lock);
-  pool_get (tm->sessions, session);
-  clib_spinlock_unlock_if_init (&tm->sessions_lock);
+  clib_spinlock_lock_if_init (&ecm->sessions_lock);
+  pool_get (ecm->sessions, session);
+  clib_spinlock_unlock_if_init (&ecm->sessions_lock);
 
   memset (session, 0, sizeof (*session));
-  session_index = session - tm->sessions;
-  session->bytes_to_send = tm->bytes_to_send;
-  session->bytes_to_receive = tm->no_return ? 0ULL : tm->bytes_to_send;
+  session_index = session - ecm->sessions;
+  session->bytes_to_send = ecm->bytes_to_send;
+  session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
   session->server_rx_fifo = s->server_rx_fifo;
   session->server_rx_fifo->client_session_index = session_index;
   session->server_tx_fifo = s->server_tx_fifo;
   session->server_tx_fifo->client_session_index = session_index;
   session->vpp_session_handle = session_handle (s);
 
-  vec_add1 (tm->connection_index_by_thread[thread_index], session_index);
-  __sync_fetch_and_add (&tm->ready_connections, 1);
-  if (tm->ready_connections == tm->expected_connections)
+  vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
+  __sync_fetch_and_add (&ecm->ready_connections, 1);
+  if (ecm->ready_connections == ecm->expected_connections)
     {
-      tm->run_test = 1;
+      ecm->run_test = 1;
       /* Signal the CLI process that the action is starting... */
       signal_evt_to_cli (1);
     }
@@ -393,7 +379,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
 }
 
 static void
-builtin_session_reset_callback (stream_session_t * s)
+echo_clients_session_reset_callback (stream_session_t * s)
 {
   if (s->session_state == SESSION_STATE_READY)
     clib_warning ("Reset active connection %U", format_stream_session, s, 2);
@@ -402,44 +388,44 @@ builtin_session_reset_callback (stream_session_t * s)
 }
 
 static int
-builtin_session_create_callback (stream_session_t * s)
+echo_clients_session_create_callback (stream_session_t * s)
 {
   return 0;
 }
 
 static void
-builtin_session_disconnect_callback (stream_session_t * s)
+echo_clients_session_disconnect_callback (stream_session_t * s)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a, *a = &_a;
   a->handle = session_handle (s);
-  a->app_index = tm->app_index;
+  a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
   return;
 }
 
 static int
-builtin_server_rx_callback (stream_session_t * s)
+echo_clients_rx_callback (stream_session_t * s)
 {
+  clib_warning ("BUG");
   return 0;
 }
 
 /* *INDENT-OFF* */
-static session_cb_vft_t builtin_clients = {
-  .session_reset_callback = builtin_session_reset_callback,
-  .session_connected_callback = builtin_session_connected_callback,
-  .session_accept_callback = builtin_session_create_callback,
-  .session_disconnect_callback = builtin_session_disconnect_callback,
-  .builtin_server_rx_callback = builtin_server_rx_callback
+static session_cb_vft_t echo_clients = {
+  .session_reset_callback = echo_clients_session_reset_callback,
+  .session_connected_callback = echo_clients_session_connected_callback,
+  .session_accept_callback = echo_clients_session_create_callback,
+  .session_disconnect_callback = echo_clients_session_disconnect_callback,
+  .builtin_server_rx_callback = echo_clients_rx_callback
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
-				 u64 appns_secret)
+echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
   u32 prealloc_fifos, segment_size = 2 << 20;
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[16];
   clib_error_t *error = 0;
@@ -447,19 +433,19 @@ attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->api_client_index = tm->my_client_index;
-  a->session_cb_vft = &builtin_clients;
+  a->api_client_index = ecm->my_client_index;
+  a->session_cb_vft = &echo_clients;
 
-  prealloc_fifos = tm->prealloc_fifos ? tm->expected_connections : 1;
+  prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
 
-  if (tm->private_segment_size)
-    segment_size = tm->private_segment_size;
+  if (ecm->private_segment_size)
+    segment_size = ecm->private_segment_size;
 
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  options[APP_OPTIONS_RX_FIFO_SIZE] = tm->fifo_size;
-  options[APP_OPTIONS_TX_FIFO_SIZE] = tm->fifo_size;
-  options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = tm->private_segment_count;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
+  options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -474,28 +460,42 @@ attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
   if ((error = vnet_application_attach (a)))
     return error;
 
-  tm->app_index = a->app_index;
+  ecm->app_index = a->app_index;
   return 0;
 }
 
+static int
+echo_clients_detach ()
+{
+  echo_client_main_t *ecm = &echo_client_main;
+  vnet_app_detach_args_t _da, *da = &_da;
+  int rv;
+
+  da->app_index = ecm->app_index;
+  rv = vnet_application_detach (da);
+  ecm->test_client_attached = 0;
+  ecm->app_index = ~0;
+  return rv;
+}
+
 static void *
-tclient_thread_fn (void *arg)
+echo_client_thread_fn (void *arg)
 {
   return 0;
 }
 
 /** Start a transmit thread */
 int
-start_tx_pthread_sctp (tclient_main_t * tm)
+echo_clients_start_tx_pthread (echo_client_main_t * ecm)
 {
-  if (tm->client_thread_handle == 0)
+  if (ecm->client_thread_handle == 0)
     {
-      int rv = pthread_create (&tm->client_thread_handle,
+      int rv = pthread_create (&ecm->client_thread_handle,
 			       NULL /*attr */ ,
-			       tclient_thread_fn, 0);
+			       echo_client_thread_fn, 0);
       if (rv)
 	{
-	  tm->client_thread_handle = 0;
+	  ecm->client_thread_handle = 0;
 	  return -1;
 	}
     }
@@ -503,9 +503,9 @@ start_tx_pthread_sctp (tclient_main_t * tm)
 }
 
 clib_error_t *
-clients_connect_sctp (vlib_main_t * vm, u8 * uri, u32 n_clients)
+echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a, *a = &_a;
   clib_error_t *error = 0;
   int i;
@@ -513,20 +513,19 @@ clients_connect_sctp (vlib_main_t * vm, u8 * uri, u32 n_clients)
     {
       memset (a, 0, sizeof (*a));
 
-      a->uri = (char *) uri;
+      a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
-      a->app_index = tm->app_index;
+      a->app_index = ecm->app_index;
       a->mp = 0;
 
       if ((error = vnet_connect_uri (a)))
 	return error;
 
-
       /* Crude pacing for call setups  */
       if ((i % 4) == 0)
 	vlib_process_suspend (vm, 10e-6);
-      ASSERT (i + 1 >= tm->ready_connections);
-      while (i + 1 - tm->ready_connections > 1000)
+      ASSERT (i + 1 >= ecm->ready_connections);
+      while (i + 1 - ecm->ready_connections > 1000)
 	{
 	  vlib_process_suspend (vm, 100e-6);
 	}
@@ -534,19 +533,18 @@ clients_connect_sctp (vlib_main_t * vm, u8 * uri, u32 n_clients)
   return 0;
 }
 
-#define CLI_OUTPUT(_fmt, _args...) 			\
-  if (!tm->no_output)  					\
+#define ec_cli_output(_fmt, _args...) 			\
+  if (!ecm->no_output)  					\
     vlib_cli_output(vm, _fmt, ##_args)
 
 static clib_error_t *
-test_sctp_clients_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+echo_clients_command_fn (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  tclient_main_t *tm = &tclient_main;
+  echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
   uword *event_data = 0, event_type;
-  u8 *default_connect_uri = (u8 *) "sctp://6.0.1.1/1234", *uri, *appns_id = 0;
+  u8 *default_uri = (u8 *) "tcp://6.0.1.1/1234", *appns_id = 0;
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   f64 time_before_connects;
@@ -556,42 +554,42 @@ test_sctp_clients_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   int i;
 
-  tm->bytes_to_send = 8192;
-  tm->no_return = 0;
-  tm->fifo_size = 64 << 10;
-  tm->connections_per_batch = 1000;
-  tm->private_segment_count = 0;
-  tm->private_segment_size = 0;
-  tm->no_output = 0;
-  tm->test_bytes = 0;
-  tm->test_failed = 0;
-  tm->vlib_main = vm;
+  ecm->bytes_to_send = 8192;
+  ecm->no_return = 0;
+  ecm->fifo_size = 64 << 10;
+  ecm->connections_per_batch = 1000;
+  ecm->private_segment_count = 0;
+  ecm->private_segment_size = 0;
+  ecm->no_output = 0;
+  ecm->test_bytes = 0;
+  ecm->test_failed = 0;
+  ecm->vlib_main = vm;
   if (thread_main->n_vlib_mains > 1)
-    clib_spinlock_init (&tm->sessions_lock);
-  vec_free (tm->connect_uri);
+    clib_spinlock_init (&ecm->sessions_lock);
+  vec_free (ecm->connect_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "nclients %d", &n_clients))
+      if (unformat (input, "uri %s", &ecm->connect_uri))
+	;
+      else if (unformat (input, "nclients %d", &n_clients))
 	;
       else if (unformat (input, "mbytes %lld", &tmp))
-	tm->bytes_to_send = tmp << 20;
+	ecm->bytes_to_send = tmp << 20;
       else if (unformat (input, "gbytes %lld", &tmp))
-	tm->bytes_to_send = tmp << 30;
-      else if (unformat (input, "bytes %lld", &tm->bytes_to_send))
-	;
-      else if (unformat (input, "uri %s", &tm->connect_uri))
+	ecm->bytes_to_send = tmp << 30;
+      else if (unformat (input, "bytes %lld", &ecm->bytes_to_send))
 	;
       else if (unformat (input, "test-timeout %f", &test_timeout))
 	;
       else if (unformat (input, "syn-timeout %f", &syn_timeout))
 	;
       else if (unformat (input, "no-return"))
-	tm->no_return = 1;
-      else if (unformat (input, "fifo-size %d", &tm->fifo_size))
-	tm->fifo_size <<= 10;
+	ecm->no_return = 1;
+      else if (unformat (input, "fifo-size %d", &ecm->fifo_size))
+	ecm->fifo_size <<= 10;
       else if (unformat (input, "private-segment-count %d",
-			 &tm->private_segment_count))
+			 &ecm->private_segment_count))
 	;
       else if (unformat (input, "private-segment-size %U",
 			 unformat_memory_size, &tmp))
@@ -599,14 +597,14 @@ test_sctp_clients_command_fn (vlib_main_t * vm,
 	  if (tmp >= 0x100000000ULL)
 	    return clib_error_return
 	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
-	  tm->private_segment_size = tmp;
+	  ecm->private_segment_size = tmp;
 	}
       else if (unformat (input, "preallocate-fifos"))
-	tm->prealloc_fifos = 1;
+	ecm->prealloc_fifos = 1;
       else if (unformat (input, "preallocate-sessions"))
 	preallocate_sessions = 1;
       else
-	if (unformat (input, "client-batch %d", &tm->connections_per_batch))
+	if (unformat (input, "client-batch %d", &ecm->connections_per_batch))
 	;
       else if (unformat (input, "appns %_%v%_", &appns_id))
 	;
@@ -620,44 +618,47 @@ test_sctp_clients_command_fn (vlib_main_t * vm,
       else if (unformat (input, "secret %lu", &appns_secret))
 	;
       else if (unformat (input, "no-output"))
-	tm->no_output = 1;
+	ecm->no_output = 1;
       else if (unformat (input, "test-bytes"))
-	tm->test_bytes = 1;
+	ecm->test_bytes = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
   /* Store cli process node index for signalling */
-  tm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  ecm->cli_node_index =
+    vlib_get_current_process (vm)->node_runtime.node_index;
 
-  if (tm->is_init == 0)
+  if (ecm->is_init == 0)
     {
-      if (sctp_test_clients_init (vm))
+      if (echo_clients_init (vm))
 	return clib_error_return (0, "failed init");
     }
 
-  tm->ready_connections = 0;
-  tm->expected_connections = n_clients;
-  tm->rx_total = 0;
-  tm->tx_total = 0;
 
-  uri = default_connect_uri;
-  if (tm->connect_uri)
-    uri = tm->connect_uri;
+  ecm->ready_connections = 0;
+  ecm->expected_connections = n_clients;
+  ecm->rx_total = 0;
+  ecm->tx_total = 0;
 
-#if SCTP_BUILTIN_CLIENT_PTHREAD
-  start_tx_pthread ();
+  if (!ecm->connect_uri)
+    {
+      clib_warning ("No uri provided. Using default: %v", default_uri);
+      ecm->connect_uri = default_uri;
+    }
+
+#if ECHO_CLIENT_PTHREAD
+  echo_clients_start_tx_pthread ();
 #endif
 
   vlib_worker_thread_barrier_sync (vm);
-  vnet_session_enable_disable (vm, 1 /* turn on SCTP, etc. */ );
+  vnet_session_enable_disable (vm, 1 /* turn on session and transports */ );
   vlib_worker_thread_barrier_release (vm);
 
-  if (tm->test_client_attached == 0)
+  if (ecm->test_client_attached == 0)
     {
-      if ((error = attach_builtin_test_clients_app (appns_id, appns_flags,
-						    appns_secret)))
+      if ((error = echo_clients_attach (appns_id, appns_flags, appns_secret)))
 	{
 	  vec_free (appns_id);
 	  clib_error_report (error);
@@ -665,53 +666,51 @@ test_sctp_clients_command_fn (vlib_main_t * vm,
 	}
       vec_free (appns_id);
     }
-  tm->test_client_attached = 1;
+  ecm->test_client_attached = 1;
 
   /* Turn on the builtin client input nodes */
   for (i = 0; i < thread_main->n_vlib_mains; i++)
-    vlib_node_set_state (vlib_mains[i], builtin_sctp_client_node.index,
+    vlib_node_set_state (vlib_mains[i], echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
   if (preallocate_sessions)
     {
       session_t *sp __attribute__ ((unused));
       for (i = 0; i < n_clients; i++)
-	pool_get (tm->sessions, sp);
+	pool_get (ecm->sessions, sp);
       for (i = 0; i < n_clients; i++)
-	pool_put_index (tm->sessions, i);
+	pool_put_index (ecm->sessions, i);
     }
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
-  if ((error = clients_connect_sctp (vm, uri, n_clients)))
+  if ((error = echo_clients_connect (vm, n_clients)))
     return error;
 
   /* Park until the sessions come up, or ten seconds elapse... */
   vlib_process_wait_for_event_or_clock (vm, syn_timeout);
-
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
-      CLI_OUTPUT ("Timeout with only %d sessions active...",
-		  tm->ready_connections);
-      error =
-	clib_error_return (0, "failed: syn timeout (%f) with %d sessions",
-			   syn_timeout, tm->ready_connections);
+      ec_cli_output ("Timeout with only %d sessions active...",
+		     ecm->ready_connections);
+      error = clib_error_return (0, "failed: syn timeout with %d sessions",
+				 ecm->ready_connections);
       goto cleanup;
 
     case 1:
       delta = vlib_time_now (vm) - time_before_connects;
       if (delta != 0.0)
-	CLI_OUTPUT ("%d three-way handshakes in %.2f seconds %.2f/s",
-		    n_clients, delta, ((f64) n_clients) / delta);
+	ec_cli_output ("%d three-way handshakes in %.2f seconds %.2f/s",
+		       n_clients, delta, ((f64) n_clients) / delta);
 
-      tm->test_start_time = vlib_time_now (tm->vlib_main);
-      CLI_OUTPUT ("Test started at %.6f", tm->test_start_time);
+      ecm->test_start_time = vlib_time_now (ecm->vlib_main);
+      ec_cli_output ("Test started at %.6f", ecm->test_start_time);
       break;
 
     default:
-      CLI_OUTPUT ("unexpected event(1): %d", event_type);
+      ec_cli_output ("unexpected event(1): %d", event_type);
       error = clib_error_return (0, "failed: unexpected event(1): %d",
 				 event_type);
       goto cleanup;
@@ -723,102 +722,95 @@ test_sctp_clients_command_fn (vlib_main_t * vm,
   switch (event_type)
     {
     case ~0:
-      CLI_OUTPUT ("Timeout with %d sessions still active...",
-		  tm->ready_connections);
+      ec_cli_output ("Timeout with %d sessions still active...",
+		     ecm->ready_connections);
       error = clib_error_return (0, "failed: timeout with %d sessions",
-				 tm->ready_connections);
+				 ecm->ready_connections);
       goto cleanup;
 
     case 2:
-      tm->test_end_time = vlib_time_now (vm);
-      CLI_OUTPUT ("Test finished at %.6f", tm->test_end_time);
+      ecm->test_end_time = vlib_time_now (vm);
+      ec_cli_output ("Test finished at %.6f", ecm->test_end_time);
       break;
 
     default:
-      CLI_OUTPUT ("unexpected event(2): %d", event_type);
+      ec_cli_output ("unexpected event(2): %d", event_type);
       error = clib_error_return (0, "failed: unexpected event(2): %d",
 				 event_type);
       goto cleanup;
     }
 
-  delta = tm->test_end_time - tm->test_start_time;
-
+  delta = ecm->test_end_time - ecm->test_start_time;
   if (delta != 0.0)
     {
-      total_bytes = (tm->no_return ? tm->tx_total : tm->rx_total);
-      transfer_type = tm->no_return ? "half-duplex" : "full-duplex";
-      CLI_OUTPUT ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
-		  total_bytes, total_bytes / (1ULL << 20),
-		  total_bytes / (1ULL << 30), delta);
-      CLI_OUTPUT ("%.2f bytes/second %s", ((f64) total_bytes) / (delta),
-		  transfer_type);
-      CLI_OUTPUT ("%.4f gbit/second %s",
-		  (((f64) total_bytes * 8.0) / delta / 1e9), transfer_type);
+      total_bytes = (ecm->no_return ? ecm->tx_total : ecm->rx_total);
+      transfer_type = ecm->no_return ? "half-duplex" : "full-duplex";
+      ec_cli_output ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
+		     total_bytes, total_bytes / (1ULL << 20),
+		     total_bytes / (1ULL << 30), delta);
+      ec_cli_output ("%.2f bytes/second %s", ((f64) total_bytes) / (delta),
+		     transfer_type);
+      ec_cli_output ("%.4f gbit/second %s",
+		     (((f64) total_bytes * 8.0) / delta / 1e9),
+		     transfer_type);
     }
   else
     {
-      CLI_OUTPUT ("zero delta-t?");
+      ec_cli_output ("zero delta-t?");
       error = clib_error_return (0, "failed: zero delta-t");
       goto cleanup;
     }
 
-  if (tm->test_bytes && tm->test_failed)
+  if (ecm->test_bytes && ecm->test_failed)
     error = clib_error_return (0, "failed: test bytes");
 
 cleanup:
-  tm->run_test = 0;
-  for (i = 0; i < vec_len (tm->connection_index_by_thread); i++)
+  ecm->run_test = 0;
+  for (i = 0; i < vec_len (ecm->connection_index_by_thread); i++)
     {
-      vec_reset_length (tm->connection_index_by_thread[i]);
-      vec_reset_length (tm->connections_this_batch_by_thread[i]);
+      vec_reset_length (ecm->connection_index_by_thread[i]);
+      vec_reset_length (ecm->connections_this_batch_by_thread[i]);
     }
 
-  pool_free (tm->sessions);
+  pool_free (ecm->sessions);
 
   /* Detach the application, so we can use different fifo sizes next time */
-  if (tm->test_client_attached)
+  if (ecm->test_client_attached)
     {
-      vnet_app_detach_args_t _da, *da = &_da;
-      int rv;
-
-      da->app_index = tm->app_index;
-      rv = vnet_application_detach (da);
-      if (rv)
+      if (echo_clients_detach ())
 	{
 	  error = clib_error_return (0, "failed: app detach");
-	  CLI_OUTPUT ("WARNING: app detach failed...");
+	  ec_cli_output ("WARNING: app detach failed...");
 	}
-      tm->test_client_attached = 0;
-      tm->app_index = ~0;
     }
   if (error)
-    CLI_OUTPUT ("test failed");
+    ec_cli_output ("test failed");
   return error;
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_clients_command, static) =
+VLIB_CLI_COMMAND (echo_clients_command, static) =
 {
-  .path = "test sctp clients",
-  .short_help = "test sctp clients [nclients %d] [[m|g]bytes <bytes>] "
+  .path = "test echo clients",
+  .short_help = "test echo clients [nclients %d][[m|g]bytes <bytes>]"
       "[test-timeout <time>][syn-timeout <time>][no-return][fifo-size <size>]"
       "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
       "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
-      "[uri <sctp://ip/port>][test-bytes][no-output]",
-  .function = test_sctp_clients_command_fn,
+      "[uri <tcp://ip/port>][test-bytes][no-output]",
+  .function = echo_clients_command_fn,
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
 clib_error_t *
-sctp_test_clients_main_init (vlib_main_t * vm)
+echo_clients_main_init (vlib_main_t * vm)
 {
-  tclient_main_t *tm = &tclient_main;
-  tm->is_init = 0;
+  echo_client_main_t *ecm = &echo_client_main;
+  ecm->is_init = 0;
   return 0;
 }
 
-VLIB_INIT_FUNCTION (sctp_test_clients_main_init);
+VLIB_INIT_FUNCTION (echo_clients_main_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

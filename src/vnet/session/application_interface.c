@@ -275,9 +275,8 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
 /**
  * unformat a vnet URI
  *
- * fifo://name
- * tcp://ip46-addr:port
- * udp://ip46-addr:port
+ * transport-proto://ip46-addr:port
+ * eg. tcp://ip46-addr:port
  *
  * u8 ip46_address[16];
  * u16  port_in_host_byte_order;
@@ -293,51 +292,21 @@ uword
 unformat_vnet_uri (unformat_input_t * input, va_list * args)
 {
   session_endpoint_t *sep = va_arg (*args, session_endpoint_t *);
-
-  if (unformat (input, "tcp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+  u32 transport_proto = 0;
+  if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+		&transport_proto, unformat_ip4_address, &sep->ip.ip4,
 		&sep->port))
     {
-      sep->transport_proto = TRANSPORT_PROTO_TCP;
+      sep->transport_proto = transport_proto;
       sep->port = clib_host_to_net_u16 (sep->port);
       sep->is_ip4 = 1;
       return 1;
     }
-  if (unformat (input, "udp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+  if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+		&transport_proto, unformat_ip6_address, &sep->ip.ip6,
 		&sep->port))
     {
-      sep->transport_proto = TRANSPORT_PROTO_UDP;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 1;
-      return 1;
-    }
-  if (unformat (input, "udp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
-		&sep->port))
-    {
-      sep->transport_proto = TRANSPORT_PROTO_UDP;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 0;
-      return 1;
-    }
-  if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
-		&sep->port))
-    {
-      sep->transport_proto = TRANSPORT_PROTO_TCP;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 0;
-      return 1;
-    }
-  if (unformat (input, "sctp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
-		&sep->port))
-    {
-      sep->transport_proto = TRANSPORT_PROTO_SCTP;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 1;
-      return 1;
-    }
-  if (unformat (input, "sctp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
-		&sep->port))
-    {
-      sep->transport_proto = TRANSPORT_PROTO_SCTP;
+      sep->transport_proto = transport_proto;
       sep->port = clib_host_to_net_u16 (sep->port);
       sep->is_ip4 = 0;
       return 1;

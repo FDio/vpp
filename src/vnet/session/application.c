@@ -272,7 +272,9 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   if (!reg)
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
-  if (vl_api_registration_file_index (reg) == ~0)
+  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
+    st = SSVM_N_SEGMENT_TYPES;
+  else if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
     st = SSVM_SEGMENT_SHM;
 
   if (!application_verify_cfg (st))
