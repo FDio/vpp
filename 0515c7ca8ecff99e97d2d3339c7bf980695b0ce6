@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "7b7d41d1_254692b9",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-25T10:48:41Z",
+      "side": 1,
+      "message": "The C standard says\n\n\"The expression that defines the value of an enumeration constant shall be an integer constant expression that has a value representable as an int.\"",
+      "parentUuid": "b449566b_5f66ecab",
+      "range": {
+        "startLine": 91,
+        "startChar": 14,
+        "endLine": 91,
+        "endChar": 17
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "44352762_61954552",
         "filename": "src/vnet/ethernet/packet.h",
         "patchSetId": 2
