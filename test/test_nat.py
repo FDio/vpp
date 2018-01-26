@@ -1030,6 +1030,7 @@ class TestNAT44(MethodHolder):
                 protocol=sm.protocol,
                 twice_nat=sm.twice_nat,
                 out2in_only=sm.out2in_only,
+                tag=sm.tag,
                 is_add=0)
 
         lb_static_mappings = self.vapi.nat44_lb_static_mapping_dump()
@@ -1041,6 +1042,7 @@ class TestNAT44(MethodHolder):
                 vrf_id=lb_sm.vrf_id,
                 twice_nat=lb_sm.twice_nat,
                 out2in_only=lb_sm.out2in_only,
+                tag=lb_sm.tag,
                 is_add=0,
                 local_num=0,
                 locals=[])
@@ -1069,7 +1071,7 @@ class TestNAT44(MethodHolder):
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
                                  is_add=1, external_sw_if_index=0xFFFFFFFF,
-                                 proto=0, twice_nat=0, out2in_only=0):
+                                 proto=0, twice_nat=0, out2in_only=0, tag=""):
         """
         Add/delete NAT44 static mapping
 
@@ -1083,6 +1085,7 @@ class TestNAT44(MethodHolder):
         :param proto: IP protocol (Mandatory if port specified)
         :param twice_nat: 1 if translate external host address and port
         :param out2in_only: if 1 rule is matching only out2in direction
+        :param tag: Opaque string tag
         """
         addr_only = 1
         if local_port and external_port:
@@ -1100,6 +1103,7 @@ class TestNAT44(MethodHolder):
             proto,
             twice_nat,
             out2in_only,
+            tag,
             is_add)
 
     def nat44_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF, twice_nat=0):
@@ -1376,6 +1380,9 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
+        sm = self.vapi.nat44_static_mapping_dump()
+        self.assertEqual(len(sm), 1)
+        self.assertEqual((sm[0].tag).split('\0', 1)[0], '')
 
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1)
@@ -1400,11 +1407,15 @@ class TestNAT44(MethodHolder):
         self.tcp_port_out = 6303
         self.udp_port_out = 6304
         self.icmp_id_out = 6305
+        tag = "testTAG"
 
-        self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip)
+        self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip, tag=tag)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
+        sm = self.vapi.nat44_static_mapping_dump()
+        self.assertEqual(len(sm), 1)
+        self.assertEqual((sm[0].tag).split('\0', 1)[0], tag)
 
         # out2in
         pkts = self.create_stream_out(self.pg1, nat_ip)
@@ -2338,16 +2349,20 @@ class TestNAT44(MethodHolder):
 
     def test_interface_addr_static_mapping(self):
         """ Static mapping with addresses from interface """
+        tag = "testTAG"
+
         self.vapi.nat44_add_interface_addr(self.pg7.sw_if_index)
         self.nat44_add_static_mapping(
             '1.2.3.4',
-            external_sw_if_index=self.pg7.sw_if_index)
+            external_sw_if_index=self.pg7.sw_if_index,
+            tag=tag)
 
         # static mappings with external interface
         static_mappings = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
+        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
 
         # configure interface address and check static mappings
         self.pg7.config_ip4()
@@ -2356,6 +2371,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(static_mappings[0].external_ip_address[0:4],
                          self.pg7.local_ip4n)
         self.assertEqual(0xFFFFFFFF, static_mappings[0].external_sw_if_index)
+        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
 
         # remove interface address and check static mappings
         self.pg7.unconfig_ip4()

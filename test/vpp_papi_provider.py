@@ -1236,6 +1236,7 @@ class VppPapiProvider(object):
             protocol=0,
             twice_nat=0,
             out2in_only=0,
+            tag="",
             is_add=1):
         """Add/delete NAT44 static mapping
 
@@ -1249,6 +1250,7 @@ class VppPapiProvider(object):
         :param protocol: IP protocol (Default value = 0)
         :param twice_nat: 1 if translate external host address and port
         :param out2in_only: if 1 rule is matching only out2in direction
+        :param tag: Opaque string tag
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -1263,7 +1265,8 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'protocol': protocol,
              'twice_nat': twice_nat,
-             'out2in_only': out2in_only})
+             'out2in_only': out2in_only,
+             'tag': tag})
 
     def nat44_add_del_identity_mapping(
             self,
@@ -1273,6 +1276,7 @@ class VppPapiProvider(object):
             addr_only=1,
             vrf_id=0,
             protocol=0,
+            tag='',
             is_add=1):
         """Add/delete NAT44 identity mapping
 
@@ -1282,6 +1286,7 @@ class VppPapiProvider(object):
         :param addr_only: 1 if address only mapping, 0 if address and port
         :param vrf_id: VRF ID
         :param protocol: IP protocol (Default value = 0)
+        :param tag: Opaque string tag
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -1292,6 +1297,7 @@ class VppPapiProvider(object):
              'port': port,
              'sw_if_index': sw_if_index,
              'vrf_id': vrf_id,
+             'tag': tag,
              'protocol': protocol})
 
     def nat44_add_del_address_range(
@@ -1424,12 +1430,14 @@ class VppPapiProvider(object):
             vrf_id=0,
             twice_nat=0,
             out2in_only=0,
+            tag='',
             local_num=0,
             locals=[],
             is_add=1):
         """Add/delete NAT44 load balancing static mapping
 
         :param twice_nat: 1 if translate external host address and port
+        :param tag: Opaque string tag
         :param is_add - 1 if add, 0 if delete
         """
         return self.api(
@@ -1441,6 +1449,7 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'twice_nat': twice_nat,
              'out2in_only': out2in_only,
+             'tag': tag,
              'local_num': local_num,
              'locals': locals})
 

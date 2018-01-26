@@ -623,7 +623,8 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
                                        u32 vrf_id,
                                        snat_protocol_t proto,
                                        int addr_only,
-                                       int is_add)
+                                       int is_add,
+                                       u8 * tag)
 {
   snat_static_map_resolve_t *rp;
 
@@ -636,6 +637,7 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
   rp->proto = proto;
   rp->addr_only = addr_only;
   rp->is_add = is_add;
+  rp->tag = vec_dup (tag);
 }
 
 /**
@@ -653,13 +655,14 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
  * @param is_add If 0 delete static mapping, otherwise add.
  * @param twice_nat If 1 translate external host address and port.
  * @param out2in_only If 1 rule match only out2in direction
+ * @param tag - opaque string tag
  *
  * @returns
  */
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
                             u32 sw_if_index, snat_protocol_t proto, int is_add,
-                            u8 twice_nat, u8 out2in_only)
+                            u8 twice_nat, u8 out2in_only, u8 * tag)
 {
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t *m;
@@ -686,7 +689,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
         {
           snat_add_static_mapping_when_resolved
             (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-             addr_only,  is_add);
+             addr_only,  is_add, tag);
           return 0;
         }
         else
@@ -770,6 +773,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
       pool_get (sm->static_mappings, m);
       memset (m, 0, sizeof (*m));
+      m->tag = vec_dup (tag);
       m->local_addr = l_addr;
       m->external_addr = e_addr;
       m->addr_only = addr_only;
@@ -955,6 +959,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
             }
         }
 
+      vec_free (m->tag);
       /* Delete static mapping from pool */
       pool_put (sm->static_mappings, m);
     }
@@ -986,7 +991,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
-                                     u8 twice_nat, u8 out2in_only)
+                                     u8 twice_nat, u8 out2in_only, u8 *tag)
 {
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t *m;
@@ -1064,6 +1069,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
       pool_get (sm->static_mappings, m);
       memset (m, 0, sizeof (*m));
+      m->tag = vec_dup (tag);
       m->external_addr = e_addr;
       m->addr_only = 0;
       m->vrf_id = vrf_id;
@@ -1243,6 +1249,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
             }
         }
       vec_free(m->locals);
+      vec_free(m->tag);
 
       pool_put (sm->static_mappings, m);
     }
@@ -1287,7 +1294,7 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
                                             m->local_port, m->external_port,
                                             m->vrf_id, m->addr_only, ~0,
                                             m->proto, 0, m->twice_nat,
-                                            m->out2in_only);
+                                            m->out2in_only, m->tag);
       }));
     }
   else
@@ -2661,10 +2668,11 @@ match:
                                             ~0 /* sw_if_index */,
                                             rp->proto,
                                             rp->is_add,
-                                            0, 0);
+                                            0, 0, rp->tag);
               if (rv)
                 clib_warning ("snat_add_static_mapping returned %d",
                               rv);
+              vec_free (rp->tag);
               vec_add1 (indices_to_delete, j);
             }
         }

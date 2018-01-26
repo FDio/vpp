@@ -222,6 +222,7 @@ typedef struct {
   u32 fib_index;
   snat_protocol_t proto;
   u32 worker_index;
+  u8 *tag;
   nat44_lb_addr_port_t *locals;
 } snat_static_mapping_t;
 
@@ -240,6 +241,7 @@ typedef struct {
   int addr_only;
   int twice_nat;
   int is_add;
+  u8 *tag;
 } snat_static_map_resolve_t;
 
 typedef struct {
@@ -548,7 +550,7 @@ void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
                             u32 sw_if_index, snat_protocol_t proto, int is_add,
-                            u8 twice_nat, u8 out2in_only);
+                            u8 twice_nat, u8 out2in_only, u8 *tag);
 clib_error_t * snat_api_init(vlib_main_t * vm, snat_main_t * sm);
 int snat_set_workers (uword * bitmap);
 int snat_interface_add_del(u32 sw_if_index, u8 is_inside, int is_del);
@@ -561,7 +563,7 @@ u8 * format_snat_protocol(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
-                                     u8 twice_nat, u8 out2in_only);
+                                     u8 twice_nat, u8 out2in_only, u8 *tag);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
