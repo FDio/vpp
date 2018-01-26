@@ -20,7 +20,8 @@ import platform
 from collections import Counter
 
 # VPP_VERSION = '1707'
-VPP_VERSION = '1710'
+# VPP_VERSION = '1710'
+VPP_VERSION = '1801'
 
 
 class VPPUtil(object):
@@ -141,10 +142,9 @@ class VPPUtil(object):
 
         reps = 'deb [trusted=yes] https://nexus.fd.io/content/'
         # When using a stable branch
-        # reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n' \
-        #    .format(fdio_release, ubuntu_version)
-        reps += 'repositories/fd.io.ubuntu.{}.main/ ./\n' \
-            .format(ubuntu_version)
+        # reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n'.format(fdio_release, ubuntu_version)
+        # When using release
+        reps += 'repositories/fd.io.ubuntu.{}.main/ ./\n'.format(ubuntu_version)
 
         cmd = 'echo "{0}" | sudo tee {1}'.format(reps, sfile)
         (ret, stdout, stderr) = self.exec_command(cmd)
@@ -207,8 +207,8 @@ class VPPUtil(object):
         # When using stable
         # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.{}.{}/\n'.\
         #     format(fdio_release, centos_version)
-        reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.{}/\n'.\
-            format(centos_version)
+        # When using release
+        reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.{}/\n'.format(centos_version)
         reps += 'enabled=1\n'
         reps += 'gpgcheck=0'
 
@@ -661,6 +661,7 @@ class VPPUtil(object):
                                format(cmd, node['host'],
                                       stdout, stderr))
 
+    # noinspection RegExpRedundantEscape
     @staticmethod
     def status(node):
         """

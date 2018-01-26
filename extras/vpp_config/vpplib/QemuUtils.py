@@ -34,6 +34,7 @@ class NodeType(object):
 class QemuUtils(object):
     """QEMU utilities."""
 
+    # noinspection PyDictCreation
     def __init__(self, qemu_id=1):
         self._qemu_id = qemu_id
         # Path to QEMU binary

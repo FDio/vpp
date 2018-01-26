@@ -323,6 +323,7 @@ def autoconfig_apply(ask_questions=True):
         # Everything is configured start vpp
         VPPUtil.start(node)
 
+
 def autoconfig_dryrun(ask_questions=True):
     """
     Execute the dryrun function.
@@ -496,7 +497,6 @@ def autoconfig_basic_test_menu():
     # 2) List/Create Create VM and Connect to VPP interfaces\n\
     # 9 or q) Back to main menu.'
 
-
     print "{}".format(basic_menu_text)
 
     input_valid = False
@@ -535,7 +535,7 @@ def autoconfig_basic_test():
         if answer == '1':
             autoconfig_ipv4_setup()
         # elif answer == '2':
-         #    autoconfig_create_vm()
+        #    autoconfig_create_vm()
         elif answer == '9' or answer == 'q':
             return
         else:
@@ -618,8 +618,6 @@ def autoconfig_setup(ask_questions=True):
 
     global rootdir
 
-    logging.basicConfig(level=logging.ERROR)
-
     distro = VPPUtil.get_linux_distro()
     if distro[0] == 'Ubuntu':
         rootdir = '/usr/local'
@@ -659,6 +657,12 @@ def autoconfig_setup(ask_questions=True):
                 (os.path.isfile(VPP_REAL_GRUB_FILE) is True):
             autoconfig_cp(node, VPP_REAL_GRUB_FILE, '{}'.format(rootdir + VPP_GRUB_FILE))
 
+        # Be sure the uio_pci_generic driver is installed
+        cmd = 'modprobe uio_pci_generic'
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {}'. format(cmd, node['host'], stderr))
+
 
 def execute_with_args(args):
     """
@@ -692,9 +696,16 @@ def config_main():
     if not os.geteuid() == 0:
         sys.exit('\nPlease run the VPP Configuration Utility as root.')
 
+    if len(sys.argv) > 1 and ((sys.argv[1] == '-d') or (sys.argv[1] == '--debug')):
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.ERROR)
+
     # If no arguments were entered, ask the user questions to get the main parameters
     if len(sys.argv) == 1:
-        # Main menu
+        autoconfig_main()
+        return
+    elif len(sys.argv) == 2 and (sys.argv[1] == '-d' or sys.argv[1] == '--debug'):
         autoconfig_main()
         return
 
@@ -717,5 +728,4 @@ in an interactive mode'
 
 
 if __name__ == '__main__':
-
     config_main()

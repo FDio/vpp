@@ -109,9 +109,8 @@ class AutoConfig(object):
                     answer = raw_input("Please enter the netmask [n.n.n.n]: ")
                     plen = IPAddress(answer).netmask_bits()
                 return '{}/{}'.format(ipaddr, plen)
-            except:
+            except None:
                 print "Please enter a valid IPv4 address."
-                continue
 
     @staticmethod
     def _ask_user_range(question, first, last, default):
@@ -401,14 +400,15 @@ class AutoConfig(object):
                     devices += '    num-tx-desc {}\n'.format(num_tx_desc)
                 devices += '  }'
 
-        if total_mbufs is not 0:
+        # If the total mbufs is not 0 or less than the default, set num-bufs
+        logging.debug("Total mbufs: {}".format(total_mbufs))
+        if total_mbufs is not 0 and total_mbufs > 16384:
             devices += '\n  num-mbufs {}'.format(total_mbufs)
 
         return devices
 
     @staticmethod
-    def _calc_vpp_workers(node, vpp_workers, numa_node,
-                          other_cpus_end, total_vpp_workers,
+    def _calc_vpp_workers(node, vpp_workers, numa_node, other_cpus_end, total_vpp_workers,
                           reserve_vpp_main_core):
         """
         Calculate the VPP worker information
@@ -442,6 +442,7 @@ class AutoConfig(object):
                 start += 1
 
             workers_end = start + total_vpp_workers - 1
+
             if workers_end <= end:
                 if reserve_vpp_main_core:
                     node['cpu']['vpp_main_core'] = start - 1
@@ -459,7 +460,7 @@ class AutoConfig(object):
     @staticmethod
     def _calc_desc_and_queues(total_numa_nodes,
                               total_ports_per_numa,
-                              total_vpp_cpus,
+                              total_rx_queues,
                               ports_per_numa_value):
         """
         Calculate the number of descriptors and queues
@@ -467,26 +468,20 @@ class AutoConfig(object):
         :param total_numa_nodes: The total number of numa nodes
         :param total_ports_per_numa: The total number of ports for this
         numa node
-        :param total_vpp_cpus: The total number of cpus to allocate for vpp
+        :param total_rx_queues: The total number of rx queues / port
         :param ports_per_numa_value: The value from the ports_per_numa
         dictionary
         :type total_numa_nodes: int
         :type total_ports_per_numa: int
-        :type total_vpp_cpus: int
+        :type total_rx_queues: int
         :type ports_per_numa_value: dict
         :returns The total number of message buffers
-        :returns: The total number of vpp workers
-        :rtype: int
         :rtype: int
         """
 
-        # Get the total vpp workers
-        total_vpp_workers = total_vpp_cpus
-        ports_per_numa_value['total_vpp_workers'] = total_vpp_workers
-
         # Get the number of rx queues
-        rx_queues = max(1, total_vpp_workers)
-        tx_queues = total_vpp_workers * total_numa_nodes + 1
+        rx_queues = max(1, total_rx_queues)
+        tx_queues = rx_queues * total_numa_nodes + 1
 
         # Get the descriptor entries
         desc_entries = 1024
@@ -496,7 +491,7 @@ class AutoConfig(object):
                        total_ports_per_numa)
         total_mbufs = total_mbufs
 
-        return total_mbufs, total_vpp_workers
+        return total_mbufs
 
     @staticmethod
     def _create_ports_per_numa(node, interfaces):
@@ -542,8 +537,7 @@ class AutoConfig(object):
 
             # Get the number of cpus to skip, we never use the first cpu
             other_cpus_start = 1
-            other_cpus_end = other_cpus_start + \
-                node['cpu']['total_other_cpus'] - 1
+            other_cpus_end = other_cpus_start + node['cpu']['total_other_cpus'] - 1
             other_workers = None
             if other_cpus_end is not 0:
                 other_workers = (other_cpus_start, other_cpus_end)
@@ -553,28 +547,29 @@ class AutoConfig(object):
             vpp_workers = []
             reserve_vpp_main_core = node['cpu']['reserve_vpp_main_core']
             total_vpp_cpus = node['cpu']['total_vpp_cpus']
+            total_rx_queues = node['cpu']['total_rx_queues']
 
             # If total_vpp_cpus is 0 or is less than the numa nodes with ports
             #  then we shouldn't get workers
-            total_with_main = total_vpp_cpus
+            total_workers_node = total_vpp_cpus / len(ports_per_numa)
+            total_main = 0
             if reserve_vpp_main_core:
-                total_with_main += 1
+                total_main = 1
             total_mbufs = 0
-            if total_with_main is not 0:
+            if total_main + total_workers_node is not 0:
                 for item in ports_per_numa.items():
                     numa_node = item[0]
                     value = item[1]
 
                     # Get the number of descriptors and queues
-                    mbufs, total_vpp_workers = self._calc_desc_and_queues(
-                        len(ports_per_numa),
-                        len(value['interfaces']), total_vpp_cpus, value)
+                    mbufs = self._calc_desc_and_queues(len(ports_per_numa),
+                                                       len(value['interfaces']), total_rx_queues, value)
                     total_mbufs += mbufs
 
                     # Get the VPP workers
-                    reserve_vpp_main_core = self._calc_vpp_workers(
-                        node, vpp_workers, numa_node, other_cpus_end,
-                        total_vpp_workers, reserve_vpp_main_core)
+                    reserve_vpp_main_core = self._calc_vpp_workers(node, vpp_workers, numa_node,
+                                                                   other_cpus_end, total_workers_node,
+                                                                   reserve_vpp_main_core)
 
                 total_mbufs *= 2.5
                 total_mbufs = int(total_mbufs)
@@ -923,26 +918,23 @@ class AutoConfig(object):
 
         print "\nYour system has {} core(s) and {} Numa Nodes.". \
             format(total_cpus, len(numa_nodes))
-        print "To begin, we suggest not reserving any cores for VPP",
-        print "or other processes."
-        print "Then to improve performance try reserving cores as needed. "
-
-        max_other_cores = total_cpus / 2
-        question = '\nHow many core(s) do you want to reserve for processes \
-other than VPP? [0-{}][0]? '.format(str(max_other_cores))
-        total_other_cpus = self._ask_user_range(question, 0, max_other_cores,
-                                                0)
-        node['cpu']['total_other_cpus'] = total_other_cpus
+        print "To begin, we suggest not reserving any cores for VPP or other processes."
+        print "Then to improve performance start reserving cores and adding queues as needed. "
 
         max_vpp_cpus = 4
         total_vpp_cpus = 0
         if max_vpp_cpus > 0:
-            question = "How many core(s) shall we reserve for VPP workers[0-{}][0]? ". \
-                format(max_vpp_cpus)
+            question = "\nHow many core(s) shall we reserve for VPP [0-{}][0]? ".format(max_vpp_cpus)
             total_vpp_cpus = self._ask_user_range(question, 0, max_vpp_cpus, 0)
             node['cpu']['total_vpp_cpus'] = total_vpp_cpus
 
-        max_main_cpus = max_vpp_cpus - total_vpp_cpus
+        max_other_cores = (total_cpus - total_vpp_cpus) / 2
+        question = 'How many core(s) do you want to reserve for processes other than VPP? [0-{}][0]? '. \
+            format(str(max_other_cores))
+        total_other_cpus = self._ask_user_range(question, 0, max_other_cores, 0)
+        node['cpu']['total_other_cpus'] = total_other_cpus
+
+        max_main_cpus = max_vpp_cpus + 1 - total_vpp_cpus
         reserve_vpp_main_core = False
         if max_main_cpus > 0:
             question = "Should we reserve 1 core for the VPP Main thread? "
@@ -952,6 +944,11 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                 reserve_vpp_main_core = True
             node['cpu']['reserve_vpp_main_core'] = reserve_vpp_main_core
             node['cpu']['vpp_main_core'] = 0
+
+        question = "How many RX queues per port shall we use for VPP [1-4][1]? ". \
+            format(max_vpp_cpus)
+        total_rx_queues = self._ask_user_range(question, 1, 4, 1)
+        node['cpu']['total_rx_queues'] = total_rx_queues
 
     def modify_cpu(self, ask_questions=True):
         """
@@ -1002,7 +999,7 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             node['cpu']['cpus_per_node'] = cpus_per_node
 
             # Ask the user some questions
-            if ask_questions:
+            if ask_questions and total_cpus >= 8:
                 self._modify_cpu_questions(node, total_cpus, numa_nodes)
 
             # Populate the interfaces with the numa node
@@ -1042,8 +1039,11 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                     question += " the OS [y/N]? "
                     answer = self._ask_user_yn(question, 'n')
                     if answer == 'y':
-                        driver = device['unused'][0]
-                        VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                            driver = device['unused'][0]
+                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        else:
+                            logging.debug('Could not bind device {}'.format(dvid))
                         vppd[dvid] = device
                 for dit in vppd.items():
                     dvid = dit[0]
@@ -1071,6 +1071,12 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                 for dit in vppd.items():
                     dvid = dit[0]
                     device = dit[1]
+                    if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                        driver = device['unused'][0]
+                        logging.debug('Binding device {} to driver {}'.format(dvid, driver))
+                        VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                    else:
+                        logging.debug('Could not bind device {}'.format(dvid))
                     dpdk_devices[dvid] = device
                     del other_devices[dvid]
 
@@ -1146,6 +1152,12 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                     for dit in vppd.items():
                         dvid = dit[0]
                         device = dit[1]
+                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                            driver = device['unused'][0]
+                            logging.debug('Binding device {} to driver {}'.format(dvid, driver))
+                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        else:
+                            logging.debug('Could not bind device {}'.format(dvid))
                         dpdk_devices[dvid] = device
                         del kernel_devices[dvid]
 
@@ -1169,8 +1181,12 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                     for dit in vppd.items():
                         dvid = dit[0]
                         device = dit[1]
-                        driver = device['unused'][0]
-                        VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                            driver = device['unused'][0]
+                            logging.debug('Binding device {} to driver {}'.format(dvid, driver))
+                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        else:
+                            logging.debug('Could not bind device {}'.format(dvid))
                         kernel_devices[dvid] = device
                         del dpdk_devices[dvid]
 
@@ -1216,8 +1232,7 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
 
             print "\nThere currently a total of {} huge pages.". \
                 format(total)
-            question = \
-                "How many huge pages do you want [{} - {}][{}]? ". \
+            question = "How many huge pages do you want [{} - {}][{}]? ". \
                 format(MIN_TOTAL_HUGE_PAGES, maxpages, MIN_TOTAL_HUGE_PAGES)
             answer = self._ask_user_range(question, 1024, maxpages, 1024)
             node['hugepages']['total'] = str(answer)
