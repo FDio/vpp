@@ -59,4 +59,11 @@ typedef enum _sctp_dbg
 #define SCTP_ADV_DBG_OUTPUT(_fmt, _args...)
 #endif
 
+#define SCTP_CONN_TRACKING_DEBUG (0)
+#if SCTP_CONN_TRACKING_DEBUG
+#define SCTP_CONN_TRACKING_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define SCTP_CONN_TRACKING_DBG(_fmt, _args...)
+#endif
+
 #endif /* included_sctp_debug_h__ */

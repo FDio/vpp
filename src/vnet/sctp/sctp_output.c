@@ -224,16 +224,17 @@ ip6_sctp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 }
 
 void
-sctp_push_ip_hdr (sctp_main_t * tm, sctp_sub_connection_t * tc,
+sctp_push_ip_hdr (sctp_main_t * tm, sctp_sub_connection_t * sctp_sub_conn,
 		  vlib_buffer_t * b)
 {
   sctp_header_t *th = vlib_buffer_get_current (b);
   vlib_main_t *vm = vlib_get_main ();
-  if (tc->c_is_ip4)
+  if (sctp_sub_conn->c_is_ip4)
     {
       ip4_header_t *ih;
-      ih = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip4,
-				 &tc->c_rmt_ip4, IP_PROTOCOL_SCTP, 1);
+      ih = vlib_buffer_push_ip4 (vm, b, &sctp_sub_conn->c_lcl_ip4,
+				 &sctp_sub_conn->c_rmt_ip4, IP_PROTOCOL_SCTP,
+				 1);
       th->checksum = ip4_sctp_compute_checksum (vm, b, ih);
     }
   else
@@ -241,8 +242,8 @@ sctp_push_ip_hdr (sctp_main_t * tm, sctp_sub_connection_t * tc,
       ip6_header_t *ih;
       int bogus = ~0;
 
-      ih = vlib_buffer_push_ip6 (vm, b, &tc->c_lcl_ip6,
-				 &tc->c_rmt_ip6, IP_PROTOCOL_SCTP);
+      ih = vlib_buffer_push_ip6 (vm, b, &sctp_sub_conn->c_lcl_ip6,
+				 &sctp_sub_conn->c_rmt_ip6, IP_PROTOCOL_SCTP);
       th->checksum = ip6_sctp_compute_checksum (vm, b, ih, &bogus);
       ASSERT (!bogus);
     }
@@ -473,6 +474,11 @@ sctp_prepare_init_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
   init_chunk->outbound_streams_count =
     clib_host_to_net_u16 (OUTBOUND_STREAMS_COUNT);
 
+  init_chunk->initial_tsn =
+    clib_host_to_net_u32 (sctp_conn->local_initial_tsn);
+  SCTP_CONN_TRACKING_DBG ("sctp_conn->local_initial_tsn = %u",
+			  sctp_conn->local_initial_tsn);
+
   sctp_conn->local_tag = init_chunk->initiate_tag;
 
   vnet_buffer (b)->sctp.connection_index = sub_conn->c_c_index;
@@ -495,7 +501,8 @@ sctp_compute_mac ()
 }
 
 void
-sctp_prepare_cookie_ack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
+sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn,
+			       vlib_buffer_t * b)
 {
   vlib_main_t *vm = vlib_get_main ();
   u8 idx = sctp_pick_conn_idx_on_chunk (COOKIE_ACK);
@@ -515,18 +522,21 @@ sctp_prepare_cookie_ack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
     vlib_buffer_push_uninit (b, alloc_bytes);
 
   cookie_ack_chunk->sctp_hdr.checksum = 0;
-  cookie_ack_chunk->sctp_hdr.src_port = tc->sub_conn[idx].connection.lcl_port;
-  cookie_ack_chunk->sctp_hdr.dst_port = tc->sub_conn[idx].connection.rmt_port;
-  cookie_ack_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+  cookie_ack_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  cookie_ack_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  cookie_ack_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&cookie_ack_chunk->chunk_hdr, COOKIE_ACK);
   vnet_sctp_set_chunk_length (&cookie_ack_chunk->chunk_hdr, chunk_len);
 
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 void
-sctp_prepare_cookie_echo_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
+sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn,
+				vlib_buffer_t * b,
 				sctp_state_cookie_param_t * sc)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -545,23 +555,23 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
     vlib_buffer_push_uninit (b, alloc_bytes);
   cookie_echo_chunk->sctp_hdr.checksum = 0;
   cookie_echo_chunk->sctp_hdr.src_port =
-    tc->sub_conn[idx].connection.lcl_port;
+    sctp_conn->sub_conn[idx].connection.lcl_port;
   cookie_echo_chunk->sctp_hdr.dst_port =
-    tc->sub_conn[idx].connection.rmt_port;
-  cookie_echo_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  cookie_echo_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&cookie_echo_chunk->chunk_hdr, COOKIE_ECHO);
   vnet_sctp_set_chunk_length (&cookie_echo_chunk->chunk_hdr, chunk_len);
   clib_memcpy (&(cookie_echo_chunk->cookie), sc,
 	       sizeof (sctp_state_cookie_param_t));
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 /**
  * Convert buffer to INIT-ACK
  */
 void
-sctp_prepare_initack_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
+sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 			    ip4_address_t * ip4_addr,
 			    ip6_address_t * ip6_addr)
 {
@@ -588,7 +598,7 @@ sctp_prepare_initack_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
       alloc_bytes += SCTP_IPV6_ADDRESS_TYPE_LENGTH;
     }
 
-  if (tc->sub_conn[idx].connection.is_ip4)
+  if (sctp_conn->sub_conn[idx].connection.is_ip4)
     alloc_bytes += sizeof (sctp_ipv4_addr_param_t);
   else
     alloc_bytes += sizeof (sctp_ipv6_addr_param_t);
@@ -649,11 +659,11 @@ sctp_prepare_initack_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
       pointer_offset += SCTP_IPV6_ADDRESS_TYPE_LENGTH;
     }
 
-  if (tc->sub_conn[idx].connection.is_ip4)
+  if (sctp_conn->sub_conn[idx].connection.is_ip4)
     {
       ip4_param = (sctp_ipv4_addr_param_t *) init_ack_chunk + pointer_offset;
       ip4_param->address.as_u32 =
-	tc->sub_conn[idx].connection.lcl_ip.ip4.as_u32;
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip4.as_u32;
 
       pointer_offset += sizeof (sctp_ipv4_addr_param_t);
     }
@@ -661,44 +671,49 @@ sctp_prepare_initack_chunk (sctp_connection_t * tc, vlib_buffer_t * b,
     {
       ip6_param = (sctp_ipv6_addr_param_t *) init_ack_chunk + pointer_offset;
       ip6_param->address.as_u64[0] =
-	tc->sub_conn[idx].connection.lcl_ip.ip6.as_u64[0];
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip6.as_u64[0];
       ip6_param->address.as_u64[1] =
-	tc->sub_conn[idx].connection.lcl_ip.ip6.as_u64[1];
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip6.as_u64[1];
 
       pointer_offset += sizeof (sctp_ipv6_addr_param_t);
     }
 
   /* src_port & dst_port are already in network byte-order */
   init_ack_chunk->sctp_hdr.checksum = 0;
-  init_ack_chunk->sctp_hdr.src_port = tc->sub_conn[idx].connection.lcl_port;
-  init_ack_chunk->sctp_hdr.dst_port = tc->sub_conn[idx].connection.rmt_port;
-  /* the tc->verification_tag is already in network byte-order (being a copy of the init_tag coming with the INIT chunk) */
-  init_ack_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+  init_ack_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  init_ack_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  /* the sctp_conn->verification_tag is already in network byte-order (being a copy of the init_tag coming with the INIT chunk) */
+  init_ack_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
+  init_ack_chunk->initial_tsn =
+    clib_host_to_net_u32 (sctp_conn->local_initial_tsn);
+  SCTP_CONN_TRACKING_DBG ("init_ack_chunk->initial_tsn = %u",
+			  init_ack_chunk->initial_tsn);
 
   vnet_sctp_set_chunk_type (&init_ack_chunk->chunk_hdr, INIT_ACK);
   vnet_sctp_set_chunk_length (&init_ack_chunk->chunk_hdr, chunk_len);
 
   init_ack_chunk->initiate_tag =
     clib_host_to_net_u32 (random_u32 (&random_seed));
-  /* As per RFC 4960, the initial_tsn may be the same value as the initiate_tag */
-  init_ack_chunk->initial_tsn = init_ack_chunk->initiate_tag;
+
   init_ack_chunk->a_rwnd = clib_host_to_net_u32 (DEFAULT_A_RWND);
   init_ack_chunk->inboud_streams_count =
     clib_host_to_net_u16 (INBOUND_STREAMS_COUNT);
   init_ack_chunk->outbound_streams_count =
     clib_host_to_net_u16 (OUTBOUND_STREAMS_COUNT);
 
-  tc->local_tag = init_ack_chunk->initiate_tag;
+  sctp_conn->local_tag = init_ack_chunk->initiate_tag;
 
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 /**
  * Convert buffer to SHUTDOWN
  */
 void
-sctp_prepare_shutdown_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
+sctp_prepare_shutdown_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 {
   vlib_main_t *vm = vlib_get_main ();
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
@@ -718,30 +733,32 @@ sctp_prepare_shutdown_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
 
   shutdown_chunk->sctp_hdr.checksum = 0;
   /* No need of host_to_net conversion, already in net-byte order */
-  shutdown_chunk->sctp_hdr.src_port = tc->sub_conn[idx].connection.lcl_port;
-  shutdown_chunk->sctp_hdr.dst_port = tc->sub_conn[idx].connection.rmt_port;
-  shutdown_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+  shutdown_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  shutdown_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  shutdown_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&shutdown_chunk->chunk_hdr, SHUTDOWN);
   vnet_sctp_set_chunk_length (&shutdown_chunk->chunk_hdr, chunk_len);
 
-  shutdown_chunk->cumulative_tsn_ack = tc->rcv_las;
+  shutdown_chunk->cumulative_tsn_ack = sctp_conn->last_rcvd_tsn;
 
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 /*
  * Send SHUTDOWN
  */
 void
-sctp_send_shutdown (sctp_connection_t * tc)
+sctp_send_shutdown (sctp_connection_t * sctp_conn)
 {
   vlib_buffer_t *b;
   u32 bi;
   sctp_main_t *tm = vnet_get_sctp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  if (sctp_check_outstanding_data_chunks (tc) > 0)
+  if (sctp_check_outstanding_data_chunks (sctp_conn) > 0)
     return;
 
   if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
@@ -749,18 +766,20 @@ sctp_send_shutdown (sctp_connection_t * tc)
 
   b = vlib_get_buffer (vm, bi);
   sctp_init_buffer (vm, b);
-  sctp_prepare_shutdown_chunk (tc, b);
+  sctp_prepare_shutdown_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
-  sctp_push_ip_hdr (tm, &tc->sub_conn[idx], b);
-  sctp_enqueue_to_output_now (vm, b, bi, tc->sub_conn[idx].connection.is_ip4);
+  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
+  sctp_enqueue_to_output_now (vm, b, bi,
+			      sctp_conn->sub_conn[idx].connection.is_ip4);
 }
 
 /**
  * Convert buffer to SHUTDOWN_ACK
  */
 void
-sctp_prepare_shutdown_ack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
+sctp_prepare_shutdown_ack_chunk (sctp_connection_t * sctp_conn,
+				 vlib_buffer_t * b)
 {
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_ACK);
   u16 alloc_bytes = sizeof (sctp_shutdown_association_chunk_t);
@@ -774,30 +793,30 @@ sctp_prepare_shutdown_ack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
   shutdown_ack_chunk->sctp_hdr.checksum = 0;
   /* No need of host_to_net conversion, already in net-byte order */
   shutdown_ack_chunk->sctp_hdr.src_port =
-    tc->sub_conn[idx].connection.lcl_port;
+    sctp_conn->sub_conn[idx].connection.lcl_port;
   shutdown_ack_chunk->sctp_hdr.dst_port =
-    tc->sub_conn[idx].connection.rmt_port;
-  shutdown_ack_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  shutdown_ack_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
 
   vnet_sctp_set_chunk_type (&shutdown_ack_chunk->chunk_hdr, SHUTDOWN_ACK);
   vnet_sctp_set_chunk_length (&shutdown_ack_chunk->chunk_hdr, chunk_len);
 
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 /*
  * Send SHUTDOWN_ACK
  */
 void
-sctp_send_shutdown_ack (sctp_connection_t * tc)
+sctp_send_shutdown_ack (sctp_connection_t * sctp_conn)
 {
   vlib_buffer_t *b;
   u32 bi;
   sctp_main_t *tm = vnet_get_sctp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  if (sctp_check_outstanding_data_chunks (tc) > 0)
+  if (sctp_check_outstanding_data_chunks (sctp_conn) > 0)
     return;
 
   if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
@@ -805,22 +824,23 @@ sctp_send_shutdown_ack (sctp_connection_t * tc)
 
   b = vlib_get_buffer (vm, bi);
   sctp_init_buffer (vm, b);
-  sctp_prepare_shutdown_ack_chunk (tc, b);
+  sctp_prepare_shutdown_ack_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_ACK);
-  sctp_push_ip_hdr (tm, &tc->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi, tc->sub_conn[idx].connection.is_ip4);
+  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
+  sctp_enqueue_to_ip_lookup (vm, b, bi,
+			     sctp_conn->sub_conn[idx].connection.is_ip4);
 
   /* Start the SCTP_TIMER_T2_SHUTDOWN timer */
-  sctp_timer_set (tc, idx, SCTP_TIMER_T2_SHUTDOWN, SCTP_RTO_INIT);
-  tc->state = SCTP_STATE_SHUTDOWN_ACK_SENT;
+  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN, SCTP_RTO_INIT);
+  sctp_conn->state = SCTP_STATE_SHUTDOWN_ACK_SENT;
 }
 
 /**
  * Convert buffer to SACK
  */
 void
-sctp_prepare_sack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
+sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 {
   vlib_main_t *vm = vlib_get_main ();
   u8 idx = sctp_pick_conn_idx_on_chunk (SACK);
@@ -839,21 +859,84 @@ sctp_prepare_sack_chunk (sctp_connection_t * tc, vlib_buffer_t * b)
   sctp_selective_ack_chunk_t *sack = vlib_buffer_push_uninit (b, alloc_bytes);
 
   sack->sctp_hdr.checksum = 0;
-  sack->sctp_hdr.src_port = tc->sub_conn[idx].connection.lcl_port;
-  sack->sctp_hdr.dst_port = tc->sub_conn[idx].connection.rmt_port;
-  sack->sctp_hdr.verification_tag = tc->remote_tag;
+  sack->sctp_hdr.src_port = sctp_conn->sub_conn[idx].connection.lcl_port;
+  sack->sctp_hdr.dst_port = sctp_conn->sub_conn[idx].connection.rmt_port;
+  sack->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&sack->chunk_hdr, SACK);
   vnet_sctp_set_chunk_length (&sack->chunk_hdr, chunk_len);
 
+  sack->cumulative_tsn_ack = sctp_conn->next_tsn_expected;
+
+  sctp_conn->ack_state = 0;
+
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
+}
+
+/**
+ * Convert buffer to HEARTBEAT
+ */
+void
+sctp_prepare_heartbeat_chunk (sctp_connection_t * sctp_conn,
+			      vlib_buffer_t * b)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u8 idx = sctp_pick_conn_idx_on_chunk (HEARTBEAT);
+  u16 alloc_bytes = sizeof (sctp_hb_req_chunk_t);
+
+  b = sctp_reuse_buffer (vm, b);
+
+  /* As per RFC 4960 the chunk_length value does NOT contemplate
+   * the size of the first header (see sctp_header_t) and any padding
+   */
+  u16 chunk_len = alloc_bytes - sizeof (sctp_header_t);
+
+  alloc_bytes += vnet_sctp_calculate_padding (alloc_bytes);
+
+  sctp_hb_req_chunk_t *hb_req = vlib_buffer_push_uninit (b, alloc_bytes);
+
+  hb_req->sctp_hdr.checksum = 0;
+  /* No need of host_to_net conversion, already in net-byte order */
+  hb_req->sctp_hdr.src_port = sctp_conn->sub_conn[idx].connection.lcl_port;
+  hb_req->sctp_hdr.dst_port = sctp_conn->sub_conn[idx].connection.rmt_port;
+  hb_req->sctp_hdr.verification_tag = sctp_conn->remote_tag;
+  hb_req->hb_info.param_hdr.type = clib_host_to_net_u16 (1);
+  hb_req->hb_info.param_hdr.length =
+    clib_host_to_net_u16 (sizeof (hb_req->hb_info.hb_info));
+
+  vnet_sctp_set_chunk_type (&hb_req->chunk_hdr, HEARTBEAT);
+  vnet_sctp_set_chunk_length (&hb_req->chunk_hdr, chunk_len);
+
+  vnet_buffer (b)->sctp.connection_index =
+    sctp_conn->sub_conn[idx].connection.c_index;
+}
+
+void
+sctp_send_heartbeat (sctp_connection_t * sctp_conn)
+{
+  vlib_buffer_t *b;
+  u32 bi;
+  sctp_main_t *tm = vnet_get_sctp_main ();
+  vlib_main_t *vm = vlib_get_main ();
+
+  if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
+    return;
+
+  b = vlib_get_buffer (vm, bi);
+  sctp_init_buffer (vm, b);
+  sctp_prepare_heartbeat_chunk (sctp_conn, b);
+
+  u8 idx = sctp_pick_conn_idx_on_state (SCTP_STATE_ESTABLISHED);
+  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
+  sctp_enqueue_to_ip_lookup (vm, b, bi,
+			     sctp_conn->sub_conn[idx].connection.is_ip4);
 }
 
 /**
  * Convert buffer to SHUTDOWN_COMPLETE
  */
 void
-sctp_prepare_shutdown_complete_chunk (sctp_connection_t * tc,
+sctp_prepare_shutdown_complete_chunk (sctp_connection_t * sctp_conn,
 				      vlib_buffer_t * b)
 {
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_COMPLETE);
@@ -868,20 +951,20 @@ sctp_prepare_shutdown_complete_chunk (sctp_connection_t * tc,
   shutdown_complete->sctp_hdr.checksum = 0;
   /* No need of host_to_net conversion, already in net-byte order */
   shutdown_complete->sctp_hdr.src_port =
-    tc->sub_conn[idx].connection.lcl_port;
+    sctp_conn->sub_conn[idx].connection.lcl_port;
   shutdown_complete->sctp_hdr.dst_port =
-    tc->sub_conn[idx].connection.rmt_port;
-  shutdown_complete->sctp_hdr.verification_tag = tc->remote_tag;
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  shutdown_complete->sctp_hdr.verification_tag = sctp_conn->remote_tag;
 
   vnet_sctp_set_chunk_type (&shutdown_complete->chunk_hdr, SHUTDOWN_COMPLETE);
   vnet_sctp_set_chunk_length (&shutdown_complete->chunk_hdr, chunk_len);
 
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 void
-sctp_send_shutdown_complete (sctp_connection_t * tc)
+sctp_send_shutdown_complete (sctp_connection_t * sctp_conn)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -893,13 +976,14 @@ sctp_send_shutdown_complete (sctp_connection_t * tc)
 
   b = vlib_get_buffer (vm, bi);
   sctp_init_buffer (vm, b);
-  sctp_prepare_shutdown_complete_chunk (tc, b);
+  sctp_prepare_shutdown_complete_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_COMPLETE);
-  sctp_push_ip_hdr (tm, &tc->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi, tc->sub_conn[idx].connection.is_ip4);
+  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
+  sctp_enqueue_to_ip_lookup (vm, b, bi,
+			     sctp_conn->sub_conn[idx].connection.is_ip4);
 
-  tc->state = SCTP_STATE_CLOSED;
+  sctp_conn->state = SCTP_STATE_CLOSED;
 }
 
 
@@ -907,7 +991,7 @@ sctp_send_shutdown_complete (sctp_connection_t * tc)
  *  Send INIT
  */
 void
-sctp_send_init (sctp_connection_t * tc)
+sctp_send_init (sctp_connection_t * sctp_conn)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -921,20 +1005,20 @@ sctp_send_init (sctp_connection_t * tc)
   u8 idx = sctp_pick_conn_idx_on_chunk (INIT);
 
   sctp_init_buffer (vm, b);
-  sctp_prepare_init_chunk (tc, b);
+  sctp_prepare_init_chunk (sctp_conn, b);
 
   /* Measure RTT with this */
-  tc->rtt_ts = sctp_time_now ();
-  tc->rtt_seq = tc->snd_nxt;
-  tc->rto_boff = 0;
+  sctp_conn->rtt_ts = sctp_time_now ();
+  sctp_conn->rtt_seq = sctp_conn->next_tsn;
 
-  sctp_push_ip_hdr (tm, &tc->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup_now (vm, b, bi, tc->sub_conn[idx].c_is_ip4);
+  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
+  sctp_enqueue_to_ip_lookup_now (vm, b, bi,
+				 sctp_conn->sub_conn[idx].c_is_ip4);
 
   /* Start the T1_INIT timer */
-  sctp_timer_set (tc, idx, SCTP_TIMER_T1_INIT, SCTP_RTO_INIT);
+  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T1_INIT, SCTP_RTO_INIT);
   /* Change state to COOKIE_WAIT */
-  tc->state = SCTP_STATE_COOKIE_WAIT;
+  sctp_conn->state = SCTP_STATE_COOKIE_WAIT;
 }
 
 always_inline u8
@@ -947,7 +1031,7 @@ sctp_in_cong_recovery (sctp_connection_t * sctp_conn)
  * Push SCTP header and update connection variables
  */
 static void
-sctp_push_hdr_i (sctp_connection_t * tc, vlib_buffer_t * b,
+sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 		 sctp_state_t next_state)
 {
   u8 idx = sctp_pick_conn_idx_on_chunk (DATA);
@@ -971,11 +1055,13 @@ sctp_push_hdr_i (sctp_connection_t * tc, vlib_buffer_t * b,
     vlib_buffer_push_uninit (b, bytes_to_add);
 
   data_chunk->sctp_hdr.checksum = 0;
-  data_chunk->sctp_hdr.src_port = tc->sub_conn[idx].connection.lcl_port;
-  data_chunk->sctp_hdr.dst_port = tc->sub_conn[idx].connection.rmt_port;
-  data_chunk->sctp_hdr.verification_tag = tc->remote_tag;
+  data_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  data_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  data_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
 
-  data_chunk->tsn = clib_host_to_net_u32 (0);
+  data_chunk->tsn = clib_host_to_net_u32 (sctp_conn->next_tsn);
   data_chunk->stream_id = clib_host_to_net_u16 (0);
   data_chunk->stream_seq = clib_host_to_net_u16 (0);
 
@@ -985,20 +1071,23 @@ sctp_push_hdr_i (sctp_connection_t * tc, vlib_buffer_t * b,
   SCTP_ADV_DBG_OUTPUT ("POINTER_WITH_DATA = %p, DATA_OFFSET = %u",
 		       b->data, b->current_data);
 
+  sctp_conn->next_tsn += data_len;
+
   vnet_buffer (b)->sctp.connection_index =
-    tc->sub_conn[idx].connection.c_index;
+    sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 u32
-sctp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
+sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
 {
-  sctp_connection_t *tc = sctp_get_connection_from_transport (tconn);
-  sctp_push_hdr_i (tc, b, SCTP_STATE_ESTABLISHED);
+  sctp_connection_t *sctp_conn =
+    sctp_get_connection_from_transport (trans_conn);
+  sctp_push_hdr_i (sctp_conn, b, SCTP_STATE_ESTABLISHED);
 
-  if (tc->rtt_ts == 0 && !sctp_in_cong_recovery (tc))
+  if (sctp_conn->rtt_ts == 0 && !sctp_in_cong_recovery (sctp_conn))
     {
-      tc->rtt_ts = sctp_time_now ();
-      tc->rtt_seq = tc->snd_nxt;
+      sctp_conn->rtt_ts = sctp_time_now ();
+      sctp_conn->rtt_seq = sctp_conn->next_tsn;
     }
   sctp_trajectory_add_start (b0, 3);
 
@@ -1030,7 +1119,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  sctp_header_t *sctp_hdr = 0;
-	  sctp_connection_t *tc0;
+	  sctp_connection_t *sctp_conn;
 	  sctp_tx_trace_t *t0;
 	  sctp_header_t *th0 = 0;
 	  u32 error0 = SCTP_ERROR_PKTS_SENT, next0 =
@@ -1048,80 +1137,82 @@ sctp46_output_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  tc0 = sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
-				     my_thread_index);
+	  sctp_conn =
+	    sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
+				 my_thread_index);
 
-	  if (PREDICT_FALSE (tc0 == 0))
+	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
 	      error0 = SCTP_ERROR_INVALID_CONNECTION;
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 	    }
 
-	  u8 idx = sctp_pick_conn_idx_on_state (tc0->state);
+	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
 
 	  th0 = vlib_buffer_get_current (b0);
 
 	  if (is_ip4)
 	    {
-	      ip4_header_t *th0 = vlib_buffer_push_ip4 (vm,
-							b0,
-							&tc0->sub_conn
-							[idx].connection.
-							lcl_ip.ip4,
-							&tc0->
-							sub_conn
-							[idx].connection.
-							rmt_ip.ip4,
-							IP_PROTOCOL_SCTP, 1);
+	      ip4_header_t *iph4 = vlib_buffer_push_ip4 (vm,
+							 b0,
+							 &sctp_conn->sub_conn
+							 [idx].connection.
+							 lcl_ip.ip4,
+							 &sctp_conn->
+							 sub_conn
+							 [idx].connection.
+							 rmt_ip.ip4,
+							 IP_PROTOCOL_SCTP, 1);
 
-	      u32 checksum = ip4_sctp_compute_checksum (vm, b0, th0);
+	      u32 checksum = ip4_sctp_compute_checksum (vm, b0, iph4);
 
-	      sctp_hdr = ip4_next_header (th0);
+	      sctp_hdr = ip4_next_header (iph4);
 	      sctp_hdr->checksum = checksum;
 
 	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-	      th0->checksum = 0;
 
 #if SCTP_DEBUG_STATE_MACHINE
-	      packet_length = clib_net_to_host_u16 (th0->length);
+	      packet_length = clib_net_to_host_u16 (iph4->length);
 #endif
 	    }
 	  else
 	    {
-	      ip6_header_t *ih0;
-	      ih0 = vlib_buffer_push_ip6 (vm,
-					  b0,
-					  &tc0->sub_conn[idx].
-					  connection.lcl_ip.ip6,
-					  &tc0->sub_conn[idx].
-					  connection.rmt_ip.ip6,
-					  IP_PROTOCOL_SCTP);
+	      ip6_header_t *iph6 = vlib_buffer_push_ip6 (vm,
+							 b0,
+							 &sctp_conn->sub_conn
+							 [idx].
+							 connection.lcl_ip.
+							 ip6,
+							 &sctp_conn->sub_conn
+							 [idx].
+							 connection.rmt_ip.
+							 ip6,
+							 IP_PROTOCOL_SCTP);
 
 	      int bogus = ~0;
-	      u32 checksum = ip6_sctp_compute_checksum (vm, b0, ih0, &bogus);
+	      u32 checksum = ip6_sctp_compute_checksum (vm, b0, iph6, &bogus);
 	      ASSERT (!bogus);
 
-	      sctp_hdr = ip6_next_header (ih0);
+	      sctp_hdr = ip6_next_header (iph6);
 	      sctp_hdr->checksum = checksum;
 
-	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
+	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) iph6 - b0->data;
 	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-	      th0->checksum = 0;
 
 #if SCTP_DEBUG_STATE_MACHINE
-	      packet_length = clib_net_to_host_u16 (ih0->payload_length);
+	      packet_length = clib_net_to_host_u16 (iph6->payload_length);
 #endif
 	    }
 
 	  u8 is_valid =
-	    (tc0->sub_conn[idx].connection.lcl_port ==
+	    (sctp_conn->sub_conn[idx].connection.lcl_port ==
 	     sctp_hdr->src_port
-	     || tc0->sub_conn[idx].connection.lcl_port ==
+	     || sctp_conn->sub_conn[idx].connection.lcl_port ==
 	     sctp_hdr->dst_port)
-	    && (tc0->sub_conn[idx].connection.rmt_port ==
+	    && (sctp_conn->sub_conn[idx].connection.rmt_port ==
 		sctp_hdr->dst_port
-		|| tc0->sub_conn[idx].connection.rmt_port ==
+		|| sctp_conn->sub_conn[idx].connection.rmt_port ==
 		sctp_hdr->src_port);
 
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
@@ -1134,13 +1225,14 @@ sctp46_output_inline (vlib_main_t * vm,
 				      "chunk_type = %u [%s], "
 				      "connection.lcl_port = %u, sctp_hdr->src_port = %u, "
 				      "connection.rmt_port = %u, sctp_hdr->dst_port = %u",
-				      tc0->sub_conn
+				      sctp_conn->sub_conn
 				      [idx].connection.c_index, packet_length,
 				      chunk_type,
 				      sctp_chunk_to_string (chunk_type),
-				      tc0->sub_conn[idx].connection.lcl_port,
-				      sctp_hdr->src_port,
-				      tc0->sub_conn[idx].connection.rmt_port,
+				      sctp_conn->sub_conn[idx].
+				      connection.lcl_port, sctp_hdr->src_port,
+				      sctp_conn->sub_conn[idx].
+				      connection.rmt_port,
 				      sctp_hdr->dst_port);
 
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
@@ -1151,8 +1243,8 @@ sctp46_output_inline (vlib_main_t * vm,
 	  SCTP_DBG_STATE_MACHINE
 	    ("CONN_INDEX = %u, CURR_CONN_STATE = %u (%s), "
 	     "CHUNK_TYPE = %s, " "SRC_PORT = %u, DST_PORT = %u",
-	     tc0->sub_conn[idx].connection.c_index,
-	     tc0->state, sctp_state_to_string (tc0->state),
+	     sctp_conn->sub_conn[idx].connection.c_index,
+	     sctp_conn->state, sctp_state_to_string (sctp_conn->state),
 	     sctp_chunk_to_string (chunk_type), full_hdr->hdr.src_port,
 	     full_hdr->hdr.dst_port);
 
@@ -1160,7 +1252,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	    SCTP_ADV_DBG_OUTPUT ("PACKET_LENGTH = %u", packet_length);
 
 	  /* Let's make sure the state-machine does not send anything crazy */
-	  switch (tc0->state)
+	  switch (sctp_conn->state)
 	    {
 	    case SCTP_STATE_CLOSED:
 	      {
@@ -1169,7 +1261,7 @@ sctp46_output_inline (vlib_main_t * vm,
 		    SCTP_DBG_STATE_MACHINE
 		      ("Sending the wrong chunk (%s) based on state-machine status (%s)",
 		       sctp_chunk_to_string (chunk_type),
-		       sctp_state_to_string (tc0->state));
+		       sctp_state_to_string (sctp_conn->state));
 
 		    error0 = SCTP_ERROR_UNKOWN_CHUNK;
 		    next0 = SCTP_OUTPUT_NEXT_DROP;
@@ -1185,7 +1277,7 @@ sctp46_output_inline (vlib_main_t * vm,
 		  SCTP_DBG_STATE_MACHINE
 		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
 		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (tc0->state));
+		     sctp_state_to_string (sctp_conn->state));
 
 		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
 		  next0 = SCTP_OUTPUT_NEXT_DROP;
@@ -1198,29 +1290,35 @@ sctp46_output_inline (vlib_main_t * vm,
 		  SCTP_DBG_STATE_MACHINE
 		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
 		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (tc0->state));
+		     sctp_state_to_string (sctp_conn->state));
 
 		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
 		  next0 = SCTP_OUTPUT_NEXT_DROP;
 		  goto done;
 		}
 	      /* Change state */
-	      tc0->state = SCTP_STATE_COOKIE_ECHOED;
+	      sctp_conn->state = SCTP_STATE_COOKIE_ECHOED;
 	      break;
 	    default:
 	      SCTP_DBG_STATE_MACHINE
 		("Sending chunk (%s) based on state-machine status (%s)",
 		 sctp_chunk_to_string (chunk_type),
-		 sctp_state_to_string (tc0->state));
+		 sctp_state_to_string (sctp_conn->state));
 	      break;
 	    }
 
 	  if (chunk_type == SHUTDOWN)
 	    {
 	      /* Start the SCTP_TIMER_T2_SHUTDOWN timer */
-	      sctp_timer_set (tc0, idx, SCTP_TIMER_T2_SHUTDOWN,
+	      sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
 			      SCTP_RTO_INIT);
-	      tc0->state = SCTP_STATE_SHUTDOWN_SENT;
+	      sctp_conn->state = SCTP_STATE_SHUTDOWN_SENT;
+	    }
+
+	  if (chunk_type == DATA)
+	    {
+	      sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
+				 SCTP_RTO_INIT);
 	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
@@ -1231,8 +1329,8 @@ sctp46_output_inline (vlib_main_t * vm,
 	  SCTP_DBG_STATE_MACHINE ("CONNECTION_INDEX = %u, "
 				  "NEW_STATE = %s, "
 				  "CHUNK_SENT = %s",
-				  tc0->sub_conn[idx].connection.c_index,
-				  sctp_state_to_string (tc0->state),
+				  sctp_conn->sub_conn[idx].connection.c_index,
+				  sctp_state_to_string (sctp_conn->state),
 				  sctp_chunk_to_string (chunk_type));
 
 	  vnet_sctp_common_hdr_params_host_to_net (&full_hdr->common_hdr);
@@ -1251,7 +1349,7 @@ sctp46_output_inline (vlib_main_t * vm,
 		{
 		  memset (&t0->sctp_header, 0, sizeof (t0->sctp_header));
 		}
-	      clib_memcpy (&t0->sctp_connection, tc0,
+	      clib_memcpy (&t0->sctp_connection, sctp_conn,
 			   sizeof (t0->sctp_connection));
 	    }
 
