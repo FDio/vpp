@@ -2560,16 +2560,14 @@ u8 * format_snat_static_map_to_resolve (u8 * s, va_list * args)
   if (m->addr_only)
       s = format (s, "local %U external %U vrf %d",
                   format_ip4_address, &m->l_addr,
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, m->sw_if_index),
+                  format_vnet_sw_if_index_name, vnm, m->sw_if_index,
                   m->vrf_id);
   else
       s = format (s, "%U local %U:%d external %U:%d vrf %d",
                   format_snat_protocol, m->proto,
                   format_ip4_address, &m->l_addr, m->l_port,
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, m->sw_if_index), m->e_port,
-                  m->vrf_id);
+                  format_vnet_sw_if_index_name, vnm, m->sw_if_index,
+                  m->e_port, m->vrf_id);
 
   return s;
 }
