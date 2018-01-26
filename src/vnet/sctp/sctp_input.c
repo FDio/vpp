@@ -122,17 +122,18 @@ phase_to_string (u8 phase)
   _ (PUNT_PHASE, "ip6-punt")
 
 static u8
-sctp_lookup_is_valid (transport_connection_t * t_conn,
+sctp_lookup_is_valid (transport_connection_t * trans_conn,
 		      sctp_header_t * sctp_hdr)
 {
-  sctp_connection_t *sctp_conn = sctp_get_connection_from_transport (t_conn);
+  sctp_connection_t *sctp_conn =
+    sctp_get_connection_from_transport (trans_conn);
 
   if (!sctp_conn)
     return 1;
 
-  u8 is_valid = (t_conn->lcl_port == sctp_hdr->dst_port
+  u8 is_valid = (trans_conn->lcl_port == sctp_hdr->dst_port
 		 && (sctp_conn->state == SCTP_STATE_CLOSED
-		     || t_conn->rmt_port == sctp_hdr->src_port));
+		     || trans_conn->rmt_port == sctp_hdr->src_port));
 
   return is_valid;
 }
@@ -146,7 +147,7 @@ sctp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_header_t *sctp_hdr;
-  transport_connection_t *tconn;
+  transport_connection_t *trans_conn;
   sctp_connection_t *sctp_conn;
   u8 is_filtered, i;
   if (is_ip4)
@@ -154,14 +155,14 @@ sctp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
       ip4_header_t *ip4_hdr;
       ip4_hdr = vlib_buffer_get_current (b);
       sctp_hdr = ip4_next_header (ip4_hdr);
-      tconn = session_lookup_connection_wt4 (fib_index,
-					     &ip4_hdr->dst_address,
-					     &ip4_hdr->src_address,
-					     sctp_hdr->dst_port,
-					     sctp_hdr->src_port,
-					     TRANSPORT_PROTO_SCTP,
-					     thread_index, &is_filtered);
-      if (tconn == 0)		/* Not primary connection */
+      trans_conn = session_lookup_connection_wt4 (fib_index,
+						  &ip4_hdr->dst_address,
+						  &ip4_hdr->src_address,
+						  sctp_hdr->dst_port,
+						  sctp_hdr->src_port,
+						  TRANSPORT_PROTO_SCTP,
+						  thread_index, &is_filtered);
+      if (trans_conn == 0)	/* Not primary connection */
 	{
 	  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
 	    {
@@ -172,28 +173,28 @@ sctp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 		      connection.rmt_ip.ip4.as_u32 ==
 		      ip4_hdr->src_address.as_u32))
 		{
-		  tconn =
+		  trans_conn =
 		    &tm->connections[thread_index]->sub_conn[i].connection;
 		  break;
 		}
 	    }
 	}
-      ASSERT (tconn != 0);
-      ASSERT (sctp_lookup_is_valid (tconn, sctp_hdr));
+      ASSERT (trans_conn != 0);
+      ASSERT (sctp_lookup_is_valid (trans_conn, sctp_hdr));
     }
   else
     {
       ip6_header_t *ip6_hdr;
       ip6_hdr = vlib_buffer_get_current (b);
       sctp_hdr = ip6_next_header (ip6_hdr);
-      tconn = session_lookup_connection_wt6 (fib_index,
-					     &ip6_hdr->dst_address,
-					     &ip6_hdr->src_address,
-					     sctp_hdr->dst_port,
-					     sctp_hdr->src_port,
-					     TRANSPORT_PROTO_SCTP,
-					     thread_index, &is_filtered);
-      if (tconn == 0)		/* Not primary connection */
+      trans_conn = session_lookup_connection_wt6 (fib_index,
+						  &ip6_hdr->dst_address,
+						  &ip6_hdr->src_address,
+						  sctp_hdr->dst_port,
+						  sctp_hdr->src_port,
+						  TRANSPORT_PROTO_SCTP,
+						  thread_index, &is_filtered);
+      if (trans_conn == 0)	/* Not primary connection */
 	{
 	  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
 	    {
@@ -210,16 +211,16 @@ sctp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 		      sub_conn[i].connection.rmt_ip.ip6.as_u64[1] ==
 		      ip6_hdr->src_address.as_u64[1]))
 		{
-		  tconn =
+		  trans_conn =
 		    &tm->connections[thread_index]->sub_conn[i].connection;
 		  break;
 		}
 	    }
 	}
-      ASSERT (tconn != 0);
-      ASSERT (sctp_lookup_is_valid (tconn, sctp_hdr));
+      ASSERT (trans_conn != 0);
+      ASSERT (sctp_lookup_is_valid (trans_conn, sctp_hdr));
     }
-  sctp_conn = sctp_get_connection_from_transport (tconn);
+  sctp_conn = sctp_get_connection_from_transport (trans_conn);
   return sctp_conn;
 }
 
@@ -321,6 +322,13 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
   /* Save the INITIATE_TAG of the remote peer for this connection:
    * it MUST be used for the VERIFICATION_TAG parameter in the SCTP HEADER */
   sctp_conn->remote_tag = init_chunk->initiate_tag;
+  sctp_conn->remote_initial_tsn =
+    clib_net_to_host_u32 (init_chunk->initial_tsn);
+  sctp_conn->last_rcvd_tsn = sctp_conn->remote_initial_tsn;
+  sctp_conn->next_tsn_expected = sctp_conn->remote_initial_tsn + 1;
+  SCTP_CONN_TRACKING_DBG ("sctp_conn->remote_initial_tsn = %u",
+			  sctp_conn->remote_initial_tsn);
+
   sctp_conn->snd_opts.a_rwnd = clib_net_to_host_u32 (init_chunk->a_rwnd);
 
   /*
@@ -365,7 +373,8 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	      {
 		sctp_cookie_preservative_param_t *cookie_pres =
 		  (sctp_cookie_preservative_param_t *) opt_params_hdr;
-		sctp_conn->life_span_inc = cookie_pres->life_span_inc;
+		sctp_conn->peer_cookie_life_span_increment =
+		  cookie_pres->life_span_inc;
 		break;
 	      }
 	    case SCTP_HOSTNAME_ADDRESS_TYPE:
@@ -443,6 +452,12 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 
   /* remote_tag to be placed in the VERIFICATION_TAG field of the COOKIE_ECHO chunk */
   sctp_conn->remote_tag = init_ack_chunk->initiate_tag;
+  sctp_conn->remote_initial_tsn =
+    clib_net_to_host_u32 (init_ack_chunk->initial_tsn);
+  sctp_conn->last_rcvd_tsn = sctp_conn->remote_initial_tsn;
+  sctp_conn->next_tsn_expected = sctp_conn->remote_initial_tsn + 1;
+  SCTP_CONN_TRACKING_DBG ("sctp_conn->remote_initial_tsn = %u",
+			  sctp_conn->remote_initial_tsn);
   sctp_conn->snd_opts.a_rwnd = clib_net_to_host_u32 (init_ack_chunk->a_rwnd);
 
   u16 length = vnet_sctp_get_chunk_length (sctp_chunk_hdr);
@@ -527,53 +542,79 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 
 /** Enqueue data for delivery to application */
 always_inline int
-sctp_session_enqueue_data (sctp_connection_t * tc, vlib_buffer_t * b,
+sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 			   u16 data_len, u8 conn_idx)
 {
   int written, error = SCTP_ERROR_ENQUEUED;
 
   written =
-    session_enqueue_stream_connection (&tc->sub_conn[conn_idx].connection, b,
-				       0, 1 /* queue event */ , 1);
+    session_enqueue_stream_connection (&sctp_conn->
+				       sub_conn[conn_idx].connection, b, 0,
+				       1 /* queue event */ ,
+				       1);
 
-  /* Update rcv_nxt */
+  /* Update next_tsn_expected */
   if (PREDICT_TRUE (written == data_len))
     {
-      tc->rcv_nxt += written;
+      sctp_conn->next_tsn_expected += written;
 
       SCTP_ADV_DBG ("CONN = %u, WRITTEN [%u] == DATA_LEN [%d]",
-		    tc->sub_conn[conn_idx].connection.c_index,
+		    sctp_conn->sub_conn[conn_idx].connection.c_index,
 		    written, data_len);
     }
   /* If more data written than expected, account for out-of-order bytes. */
   else if (written > data_len)
     {
-      tc->rcv_nxt += written;
+      sctp_conn->next_tsn_expected += written;
 
       SCTP_ADV_DBG ("CONN = %u, WRITTEN [%u] > DATA_LEN [%d]",
-		    tc->sub_conn[conn_idx].connection.c_index,
+		    sctp_conn->sub_conn[conn_idx].connection.c_index,
 		    written, data_len);
     }
   else if (written > 0)
     {
       /* We've written something but FIFO is probably full now */
-      tc->rcv_nxt += written;
+      sctp_conn->next_tsn_expected += written;
 
       error = SCTP_ERROR_PARTIALLY_ENQUEUED;
 
       SCTP_ADV_DBG
 	("CONN = %u, WRITTEN [%u] > 0 (SCTP_ERROR_PARTIALLY_ENQUEUED)",
-	 tc->sub_conn[conn_idx].connection.c_index, written);
+	 sctp_conn->sub_conn[conn_idx].connection.c_index, written);
     }
   else
     {
       SCTP_ADV_DBG ("CONN = %u, WRITTEN == 0 (SCTP_ERROR_FIFO_FULL)",
-		    tc->sub_conn[conn_idx].connection.c_index);
+		    sctp_conn->sub_conn[conn_idx].connection.c_index);
 
       return SCTP_ERROR_FIFO_FULL;
     }
 
   return error;
+}
+
+always_inline u8
+sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 gapping)
+{
+  if (gapping != 0)
+    {
+      SCTP_CONN_TRACKING_DBG
+	("gapping != 0: CONN_INDEX = %u, sctp_conn->ack_state = %u",
+	 sctp_conn->sub_conn[idx].connection.c_index, sctp_conn->ack_state);
+      return 1;
+    }
+
+  if (sctp_conn->ack_state >= MAX_ENQUEABLE_SACKS)
+    {
+      SCTP_CONN_TRACKING_DBG
+	("sctp_conn->ack_state >= MAX_ENQUEABLE_SACKS: CONN_INDEX = %u, sctp_conn->ack_state = %u",
+	 sctp_conn->sub_conn[idx].connection.c_index, sctp_conn->ack_state);
+      return 1;
+    }
+
+  sctp_conn->ack_state += 1;
+
+  return 0;
 }
 
 always_inline u16
@@ -583,6 +624,7 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 {
   u32 error = 0, n_data_bytes;
   u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
+  u8 gapping = 0;
 
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_data_chunk->sctp_hdr.verification_tag)
@@ -592,11 +634,25 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 
   vnet_buffer (b)->sctp.sid = sctp_data_chunk->stream_id;
   vnet_buffer (b)->sctp.ssn = sctp_data_chunk->stream_seq;
-  vnet_buffer (b)->sctp.tsn = sctp_data_chunk->tsn;
+
+  u32 tsn = clib_net_to_host_u32 (sctp_data_chunk->tsn);
 
   vlib_buffer_advance (b, vnet_buffer (b)->sctp.data_offset);
   n_data_bytes = vnet_buffer (b)->sctp.data_len;
   ASSERT (n_data_bytes);
+
+  if (sctp_conn->next_tsn_expected != tsn)	// It means data transmission is GAPPING
+    {
+      SCTP_CONN_TRACKING_DBG
+	("GAPPING: CONN_INDEX = %u, sctp_conn->next_tsn_expected = %u, tsn = %u, diff = %u",
+	 sctp_conn->sub_conn[idx].connection.c_index,
+	 sctp_conn->next_tsn_expected, tsn,
+	 sctp_conn->next_tsn_expected - tsn);
+
+      gapping = 1;
+    }
+
+  sctp_conn->last_rcvd_tsn = tsn;
 
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
@@ -604,10 +660,10 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
    * segments can be enqueued after fifo tail offset changes. */
   error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
 
-  sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX, SCTP_RTO_INIT);
-
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
-  sctp_prepare_sack_chunk (sctp_conn, b);
+
+  if (sctp_is_sack_delayable (sctp_conn, gapping) != 0)
+    sctp_prepare_sack_chunk (sctp_conn, b);
 
   return error;
 }
@@ -741,23 +797,23 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
 
-	  transport_connection_t *t_conn =
+	  transport_connection_t *trans_conn =
 	    &sctp_conn->sub_conn[idx].connection;
 
-	  t_conn->lcl_port = sctp_hdr->dst_port;
-	  t_conn->rmt_port = sctp_hdr->src_port;
-	  t_conn->is_ip4 = is_ip4;
+	  trans_conn->lcl_port = sctp_hdr->dst_port;
+	  trans_conn->rmt_port = sctp_hdr->src_port;
+	  trans_conn->is_ip4 = is_ip4;
 
 	  if (is_ip4)
 	    {
-	      t_conn->lcl_ip.ip4.as_u32 = ip4_hdr->dst_address.as_u32;
-	      t_conn->rmt_ip.ip4.as_u32 = ip4_hdr->src_address.as_u32;
+	      trans_conn->lcl_ip.ip4.as_u32 = ip4_hdr->dst_address.as_u32;
+	      trans_conn->rmt_ip.ip4.as_u32 = ip4_hdr->src_address.as_u32;
 	    }
 	  else
 	    {
-	      clib_memcpy (&t_conn->lcl_ip.ip6, &ip6_hdr->dst_address,
+	      clib_memcpy (&trans_conn->lcl_ip.ip6, &ip6_hdr->dst_address,
 			   sizeof (ip6_address_t));
-	      clib_memcpy (&t_conn->rmt_ip.ip6, &ip6_hdr->src_address,
+	      clib_memcpy (&trans_conn->rmt_ip.ip6, &ip6_hdr->src_address,
 			   sizeof (ip6_address_t));
 	    }
 
@@ -800,7 +856,8 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  new_sctp_conn, b0,
 					  sctp_implied_length);
 
-		  sctp_connection_init_vars (new_sctp_conn);
+		  sctp_init_mss (new_sctp_conn);
+		  //sctp_init_snd_vars (new_sctp_conn);
 
 		  if (session_stream_connect_notify
 		      (&new_sctp_conn->sub_conn[idx].connection, 0))
@@ -1244,12 +1301,18 @@ vlib_node_registration_t sctp6_established_phase_node;
 
 always_inline u16
 sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
-		  sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
+		  sctp_connection_t * sctp_conn, u8 idx, vlib_buffer_t * b0,
 		  u16 * next0)
 {
-  *next0 =
-    sctp_next_output (sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
-		      connection.is_ip4);
+  /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
+  if (sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag)
+    {
+      return SCTP_ERROR_INVALID_TAG;
+    }
+
+  sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX, SCTP_RTO_INIT);
+
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1404,12 +1467,13 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	    case INIT:
 	      sctp_connection_timers_init (child_conn);
 
+	      sctp_init_snd_vars (child_conn);
+
 	      error0 =
 		sctp_handle_init (sctp_hdr, sctp_chunk_hdr, child_conn, b0,
 				  sctp_implied_length);
 
-	      sctp_connection_init_vars (child_conn);
-
+	      sctp_init_mss (child_conn);
 
 	      if (error0 == SCTP_ERROR_NONE)
 		{
@@ -1536,25 +1600,25 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
 
-	  transport_connection_t *t_conn =
+	  transport_connection_t *trans_conn =
 	    &sctp_conn->sub_conn[idx].connection;
 
-	  t_conn->lcl_port = sctp_hdr->dst_port;
-	  t_conn->rmt_port = sctp_hdr->src_port;
-	  t_conn->is_ip4 = is_ip4;
+	  trans_conn->lcl_port = sctp_hdr->dst_port;
+	  trans_conn->rmt_port = sctp_hdr->src_port;
+	  trans_conn->is_ip4 = is_ip4;
 
 	  sctp_conn->sub_conn[idx].parent = sctp_conn;
 
 	  if (is_ip4)
 	    {
-	      t_conn->lcl_ip.ip4.as_u32 = ip4_hdr->dst_address.as_u32;
-	      t_conn->rmt_ip.ip4.as_u32 = ip4_hdr->src_address.as_u32;
+	      trans_conn->lcl_ip.ip4.as_u32 = ip4_hdr->dst_address.as_u32;
+	      trans_conn->rmt_ip.ip4.as_u32 = ip4_hdr->src_address.as_u32;
 	    }
 	  else
 	    {
-	      clib_memcpy (&t_conn->lcl_ip.ip6, &ip6_hdr->dst_address,
+	      clib_memcpy (&trans_conn->lcl_ip.ip6, &ip6_hdr->dst_address,
 			   sizeof (ip6_address_t));
-	      clib_memcpy (&t_conn->rmt_ip.ip6, &ip6_hdr->src_address,
+	      clib_memcpy (&trans_conn->rmt_ip.ip6, &ip6_hdr->src_address,
 			   sizeof (ip6_address_t));
 	    }
 
@@ -1582,7 +1646,7 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case SACK:
 	      error0 =
 		sctp_handle_sack ((sctp_selective_ack_chunk_t *) sctp_hdr,
-				  sctp_conn, b0, &next0);
+				  sctp_conn, idx, b0, &next0);
 	      break;
 
 	    case HEARTBEAT:
@@ -1795,7 +1859,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sctp_header_t *sctp_hdr = 0;
 	  sctp_chunks_common_hdr_t *sctp_chunk_hdr = 0;
 	  sctp_connection_t *sctp_conn;
-	  transport_connection_t *tconn;
+	  transport_connection_t *trans_conn;
 	  ip4_header_t *ip4_hdr;
 	  ip6_header_t *ip6_hdr;
 	  u32 error0 = SCTP_ERROR_NO_LISTENER, next0 = SCTP_INPUT_NEXT_DROP;
@@ -1827,14 +1891,14 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_data_bytes0 =
 		clib_net_to_host_u16 (ip4_hdr->length) - n_advance_bytes0;
 
-	      tconn = session_lookup_connection_wt4 (fib_index0,
-						     &ip4_hdr->dst_address,
-						     &ip4_hdr->src_address,
-						     sctp_hdr->dst_port,
-						     sctp_hdr->src_port,
-						     TRANSPORT_PROTO_SCTP,
-						     my_thread_index,
-						     &is_filtered);
+	      trans_conn = session_lookup_connection_wt4 (fib_index0,
+							  &ip4_hdr->dst_address,
+							  &ip4_hdr->src_address,
+							  sctp_hdr->dst_port,
+							  sctp_hdr->src_port,
+							  TRANSPORT_PROTO_SCTP,
+							  my_thread_index,
+							  &is_filtered);
 	    }
 	  else
 	    {
@@ -1850,14 +1914,14 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 		n_advance_bytes0;
 	      n_advance_bytes0 += sizeof (ip6_hdr[0]);
 
-	      tconn = session_lookup_connection_wt6 (fib_index0,
-						     &ip6_hdr->dst_address,
-						     &ip6_hdr->src_address,
-						     sctp_hdr->dst_port,
-						     sctp_hdr->src_port,
-						     TRANSPORT_PROTO_SCTP,
-						     my_thread_index,
-						     &is_filtered);
+	      trans_conn = session_lookup_connection_wt6 (fib_index0,
+							  &ip6_hdr->dst_address,
+							  &ip6_hdr->src_address,
+							  sctp_hdr->dst_port,
+							  sctp_hdr->src_port,
+							  TRANSPORT_PROTO_SCTP,
+							  my_thread_index,
+							  &is_filtered);
 	    }
 
 	  /* Length check */
@@ -1867,7 +1931,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
-	  sctp_conn = sctp_get_connection_from_transport (tconn);
+	  sctp_conn = sctp_get_connection_from_transport (trans_conn);
 	  vnet_sctp_common_hdr_params_net_to_host (sctp_chunk_hdr);
 
 	  u8 type = vnet_sctp_get_chunk_type (sctp_chunk_hdr);
@@ -1882,7 +1946,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_TRUE (0 != sctp_conn))
 	    {
 	      /* Save connection index */
-	      vnet_buffer (b0)->sctp.connection_index = tconn->c_index;
+	      vnet_buffer (b0)->sctp.connection_index = trans_conn->c_index;
 	      vnet_buffer (b0)->sctp.data_offset = n_advance_bytes0;
 	      vnet_buffer (b0)->sctp.data_len = n_data_bytes0;
 
