@@ -19,6 +19,41 @@
     },
     {
       "key": {
+        "uuid": "f6c7146a_2386d806",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "A fresh install of either .. or RHEL has ...",
+      "parentUuid": "384f796a_1354e058",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "736d0b62_7e372477",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "will have",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5dadb950_b3f18d48",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -36,6 +71,91 @@
         "endLine": 53,
         "endChar": 43
       },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02a623bc_3fee10f8",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "along with the the other VPP RPMs.",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6717acaa_79d78100",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "In the case where VPP",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "34f97cf1_b32e4a33",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "of either VPP upgrade or reinstall of the packages,",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eab4dc8f_de700b71",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "will need to be fixed in order for VPP...",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9d59eea3_9b8f3e2e",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "to fix",
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -134,6 +254,23 @@
     },
     {
       "key": {
+        "uuid": "b219f61c_fdc03c26",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "white space",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d6900262_930215a4",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -150,6 +287,63 @@
         "startChar": 0,
         "endLine": 159,
         "endChar": 6
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ed3b238d_60ba1f46",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "d",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "68d23841_9c1461ef",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "which indicates that the files are log file so they benefit from the associated...",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d7e8674_f4fb3432",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-01-26T16:27:20Z",
+      "side": 1,
+      "message": "that the",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 257,
+        "endChar": 1
       },
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
