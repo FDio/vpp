@@ -142,17 +142,16 @@ def generate_type_setter(handler_name, type_def, c_name_prefix, object_name, ind
     return indent + type_initialization.replace('\n', '\n' + indent)
 
 
-def generate_types(types_list, plugin_package, types_package, inputfile):
+def generate_types(types_list, plugin_package, types_package, inputfile, logger):
     """
     Generates Java representation of custom types defined in api file.
     """
 
-    #
     if not types_list:
-        print "Skipping custom types generation (%s does not define custom types)." % inputfile
+        logger.debug("Skipping custom types generation (%s does not define custom types)." % inputfile)
         return
 
-    print "Generating custom types"
+    logger.debug("Generating custom types for %s" % inputfile)
 
     if not os.path.exists(types_package):
         os.mkdir(types_package)

@@ -60,9 +60,9 @@ send_template = Template("""    @Override
     }""")
 
 
-def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_package, inputfile):
+def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_package, inputfile, logger):
     """ Generates dto objects in a dedicated package """
-    print "Generating DTOs"
+    logger.debug("Generating DTOs for %s" % inputfile)
 
     if not os.path.exists(dto_package):
         os.mkdir(dto_package)

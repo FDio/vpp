@@ -366,9 +366,9 @@ $handler_registration
 """)
 
 
-def generate_jvpp(func_list, plugin_name, inputfile, path):
+def generate_jvpp(func_list, plugin_name, inputfile, path, logger):
     """ Generates jvpp C file """
-    print "Generating jvpp C"
+    logger.debug("Generating jvpp C for %s" % inputfile)
 
     class_cache = generate_class_cache(func_list, plugin_name)
     jni_impl = generate_jni_impl(func_list, plugin_name, inputfile)

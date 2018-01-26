@@ -49,9 +49,10 @@ public interface JVpp${plugin_name}GlobalCallback extends $base_package.$callbac
 """)
 
 
-def generate_callbacks(func_list, base_package, plugin_package, plugin_name, callback_package, dto_package, inputfile):
+def generate_callbacks(func_list, base_package, plugin_package, plugin_name, callback_package, dto_package, inputfile,
+                       logger):
     """ Generates callback interfaces """
-    print "Generating Callback interfaces"
+    logger.debug("Generating Callback interfaces for %s" % inputfile)
 
     if not os.path.exists(callback_package):
         os.mkdir(callback_package)
