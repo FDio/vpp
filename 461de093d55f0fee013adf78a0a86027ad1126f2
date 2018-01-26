@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "4be08372_a85cc2c6",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f6c7146a_2386d806",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "736d0b62_7e372477",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -48,6 +66,24 @@
       "writtenOn": "2018-01-26T16:27:20Z",
       "side": 1,
       "message": "will have",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4bfe8a6f_dc58568b",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "736d0b62_7e372477",
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -77,6 +113,30 @@
     },
     {
       "key": {
+        "uuid": "2046d090_c420b540",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5dadb950_b3f18d48",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 43
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "02a623bc_3fee10f8",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -94,6 +154,24 @@
     },
     {
       "key": {
+        "uuid": "aec6a2a3_0ff277ee",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "02a623bc_3fee10f8",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6717acaa_79d78100",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -105,6 +183,24 @@
       "writtenOn": "2018-01-26T16:27:20Z",
       "side": 1,
       "message": "In the case where VPP",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "514b78e1_c94fe02f",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6717acaa_79d78100",
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -145,6 +241,24 @@
     },
     {
       "key": {
+        "uuid": "7371a365_089f3d5a",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eab4dc8f_de700b71",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9d59eea3_9b8f3e2e",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -162,6 +276,24 @@
     },
     {
       "key": {
+        "uuid": "c8481e2f_ecb5a07c",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d59eea3_9b8f3e2e",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "22285486_94e3e0d2",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -173,6 +305,30 @@
       "writtenOn": "2018-01-26T15:43:21Z",
       "side": 1,
       "message": "Are these persistent tags, or would it have to be repeated after reboot or file deletion?",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 47
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "219e62f8_d841b5b3",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "22285486_94e3e0d2",
       "range": {
         "startLine": 79,
         "startChar": 0,
@@ -208,6 +364,30 @@
     },
     {
       "key": {
+        "uuid": "a79af184_1b0bc382",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2ef1f161_e199d149",
+      "range": {
+        "startLine": 92,
+        "startChar": 38,
+        "endLine": 92,
+        "endChar": 47
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "91ef91f9_6fb6c172",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -219,6 +399,30 @@
       "writtenOn": "2018-01-26T15:43:21Z",
       "side": 1,
       "message": "-s",
+      "range": {
+        "startLine": 106,
+        "startChar": 64,
+        "endLine": 106,
+        "endChar": 65
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87e55bdb_7fe8216a",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "91ef91f9_6fb6c172",
       "range": {
         "startLine": 106,
         "startChar": 64,
@@ -254,6 +458,30 @@
     },
     {
       "key": {
+        "uuid": "85eaa3ac_f8281ba2",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2770b58d_341faa72",
+      "range": {
+        "startLine": 116,
+        "startChar": 19,
+        "endLine": 116,
+        "endChar": 25
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b219f61c_fdc03c26",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -265,6 +493,24 @@
       "writtenOn": "2018-01-26T16:27:20Z",
       "side": 1,
       "message": "white space",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86c2bf52_b05ba550",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b219f61c_fdc03c26",
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -294,6 +540,30 @@
     },
     {
       "key": {
+        "uuid": "1afa5c0e_f49e49d9",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d6900262_930215a4",
+      "range": {
+        "startLine": 159,
+        "startChar": 0,
+        "endLine": 159,
+        "endChar": 6
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ed3b238d_60ba1f46",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -305,6 +575,24 @@
       "writtenOn": "2018-01-26T16:27:20Z",
       "side": 1,
       "message": "d",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e7527ad2_40985c68",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ed3b238d_60ba1f46",
       "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -328,6 +616,24 @@
     },
     {
       "key": {
+        "uuid": "39fffb2a_c8a149c7",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "68d23841_9c1461ef",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0d7e8674_f4fb3432",
         "filename": "extras/selinux/selinux_doc.md",
         "patchSetId": 2
@@ -339,6 +645,30 @@
       "writtenOn": "2018-01-26T16:27:20Z",
       "side": 1,
       "message": "that the",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 257,
+        "endChar": 1
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb69f728_45195652",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-26T22:13:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d7e8674_f4fb3432",
       "range": {
         "startLine": 257,
         "startChar": 0,
