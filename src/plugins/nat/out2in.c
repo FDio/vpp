@@ -264,6 +264,53 @@ snat_out2in_error_t icmp_get_key(ip4_header_t *ip0,
   return -1; /* success */
 }
 
+static_always_inline int
+icmp_get_ed_key(ip4_header_t *ip0, nat_ed_ses_key_t *p_key0)
+{
+  icmp46_header_t *icmp0;
+  nat_ed_ses_key_t key0;
+  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  ip4_header_t *inner_ip0;
+  void *l4_header = 0;
+  icmp46_header_t *inner_icmp0;
+
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
+  echo0 = (icmp_echo_header_t *)(icmp0+1);
+
+  if (!icmp_is_error_message (icmp0))
+    {
+      key0.proto = IP_PROTOCOL_ICMP;
+      key0.l_addr = ip0->dst_address;
+      key0.r_addr = ip0->src_address;
+      key0.l_port = key0.r_port = echo0->identifier;
+    }
+  else
+    {
+      inner_ip0 = (ip4_header_t *)(echo0+1);
+      l4_header = ip4_next_header (inner_ip0);
+      key0.proto = inner_ip0->protocol;
+      key0.l_addr = inner_ip0->src_address;
+      key0.r_addr = inner_ip0->dst_address;
+      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+        {
+        case SNAT_PROTOCOL_ICMP:
+          inner_icmp0 = (icmp46_header_t*)l4_header;
+          inner_echo0 = (icmp_echo_header_t *)(inner_icmp0+1);
+          key0.l_port = key0.r_port = inner_echo0->identifier;
+          break;
+        case SNAT_PROTOCOL_UDP:
+        case SNAT_PROTOCOL_TCP:
+          key0.l_port = ((tcp_udp_header_t*)l4_header)->src_port;
+          key0.r_port = ((tcp_udp_header_t*)l4_header)->dst_port;
+          break;
+        default:
+          return -1;
+        }
+    }
+  *p_key0 = key0;
+  return 0;
+}
+
 /**
  * Get address and port values to be used for ICMP packet translation
  * and create session if needed
@@ -369,8 +416,34 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
           goto out;
         }
 
-      s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                              value0.value);
+      if (PREDICT_FALSE (value0.value == ~0ULL))
+        {
+          nat_ed_ses_key_t key;
+          clib_bihash_kv_16_8_t s_kv, s_value;
+
+          key.as_u64[0] = 0;
+          key.as_u64[1] = 0;
+          if (icmp_get_ed_key (ip0, &key))
+            {
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_UNSUPPORTED_PROTOCOL];
+              next0 = SNAT_OUT2IN_NEXT_DROP;
+              goto out;
+            }
+          key.fib_index = rx_fib_index0;
+          s_kv.key[0] = key.as_u64[0];
+          s_kv.key[1] = key.as_u64[1];
+          if (!clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
+            s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+                                    s_value.value);
+          else
+           {
+              next0 = SNAT_OUT2IN_NEXT_DROP;
+              goto out;
+           }
+        }
+      else
+        s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+                                value0.value);
     }
 
 out:

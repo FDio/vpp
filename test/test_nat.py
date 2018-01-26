@@ -1542,6 +1542,24 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        # ICMP error
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             ICMP(type=11) / capture[0][IP])
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            self.assertEqual(p[IP].src, self.nat_addr)
+            inner = p[IPerror]
+            self.assertEqual(inner.dst, self.nat_addr)
+            self.assertEqual(inner[TCPerror].dport, external_port)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
         # from service back to client
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -1558,6 +1576,24 @@ class TestNAT44(MethodHolder):
             self.assertEqual(tcp.sport, external_port)
             self.check_tcp_checksum(p)
             self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # ICMP error
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             ICMP(type=11) / capture[0][IP])
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            self.assertEqual(p[IP].dst, self.pg0.remote_ip4)
+            inner = p[IPerror]
+            self.assertEqual(inner.src, self.pg0.remote_ip4)
+            self.assertEqual(inner[TCPerror].sport, local_port)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
