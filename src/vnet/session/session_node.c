@@ -649,7 +649,7 @@ skip_dequeue:
 	      continue;
 	    }
 	  s0 = session_get_from_handle (e0->session_handle);
-	  stream_session_disconnect (s0);
+	  stream_session_disconnect_transport (s0);
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
 	  s0 = session_event_get_session (e0, my_thread_index);

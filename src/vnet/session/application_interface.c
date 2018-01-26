@@ -500,8 +500,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   /* We're peeking into another's thread pool. Make sure */
   ASSERT (s->session_index == index);
 
-  session_send_session_evt_to_thread (a->handle, FIFO_EVENT_DISCONNECT,
-				      thread_index);
+  stream_session_disconnect (s);
   return 0;
 }
 

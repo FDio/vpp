@@ -448,6 +448,7 @@ int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
 int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
+void stream_session_disconnect_transport (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
 void session_send_session_evt_to_thread (u64 session_handle,
 					 fifo_event_type_t evt_type,

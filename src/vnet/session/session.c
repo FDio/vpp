@@ -599,7 +599,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
     {
       SESSION_DBG ("failed to notify app");
       if (!is_fail)
-	stream_session_disconnect (new_s);
+	stream_session_disconnect_transport (new_s);
     }
   else
     {
@@ -924,14 +924,30 @@ stream_session_stop_listen (stream_session_t * s)
 }
 
 /**
- * Disconnect session and propagate to transport. This should eventually
- * result in a delete notification that allows us to cleanup session state.
- * Called for both active/passive disconnects.
+ * Initialize session disconnect.
  *
- * Should be called from the session's thread.
+ * Request is always sent to session node to ensure that all outstanding
+ * requests are served before transport is notified.
  */
 void
 stream_session_disconnect (stream_session_t * s)
+{
+  if (!s || s->session_state == SESSION_STATE_CLOSED)
+    return;
+  s->session_state = SESSION_STATE_CLOSED;
+  session_send_session_evt_to_thread (session_handle (s),
+				      FIFO_EVENT_DISCONNECT, s->thread_index);
+}
+
+/**
+ * Notify transport the session can be disconnected. This should eventually
+ * result in a delete notification that allows us to cleanup session state.
+ * Called for both active/passive disconnects.
+ *
+ * Must be called from the session's thread.
+ */
+void
+stream_session_disconnect_transport (stream_session_t * s)
 {
   s->session_state = SESSION_STATE_CLOSED;
   tp_vfts[session_get_transport_proto (s)].close (s->connection_index,
