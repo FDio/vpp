@@ -65,13 +65,13 @@ static void
 sctp_connection_unbind (u32 listener_index)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc;
+  sctp_connection_t *sctp_conn;
 
-  tc = pool_elt_at_index (tm->listener_pool, listener_index);
+  sctp_conn = pool_elt_at_index (tm->listener_pool, listener_index);
 
   /* Poison the entry */
   if (CLIB_DEBUG > 0)
-    memset (tc, 0xFA, sizeof (*tc));
+    memset (sctp_conn, 0xFA, sizeof (*sctp_conn));
 
   pool_put_index (tm->listener_pool, listener_index);
 }
@@ -127,31 +127,32 @@ sctp_alloc_custom_local_endpoint (sctp_main_t * tm, ip46_address_t * lcl_addr,
  * Initialize all connection timers as invalid
  */
 void
-sctp_connection_timers_init (sctp_connection_t * tc)
+sctp_connection_timers_init (sctp_connection_t * sctp_conn)
 {
   int i, j;
 
   /* Set all to invalid */
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
-    for (j = 0; j < SCTP_N_TIMERS; j++)
-      {
-	tc->sub_conn[i].timers[j] = SCTP_TIMER_HANDLE_INVALID;
-      }
-
-  tc->rto = SCTP_RTO_INIT;
+    {
+      sctp_conn->sub_conn[i].RTO = SCTP_RTO_INIT;
+      for (j = 0; j < SCTP_N_TIMERS; j++)
+	{
+	  sctp_conn->sub_conn[i].timers[j] = SCTP_TIMER_HANDLE_INVALID;
+	}
+    }
 }
 
 /**
  * Stop all connection timers
  */
 void
-sctp_connection_timers_reset (sctp_connection_t * tc)
+sctp_connection_timers_reset (sctp_connection_t * sctp_conn)
 {
   int i, j;
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
       for (j = 0; j < SCTP_N_TIMERS; j++)
-	sctp_timer_reset (tc, i, j);
+	sctp_timer_reset (sctp_conn, i, j);
     }
 }
 
@@ -177,22 +178,22 @@ u8 *
 format_sctp_connection_id (u8 * s, va_list * args)
 {
   /*
-     sctp_connection_t *tc = va_arg (*args, sctp_connection_t *);
-     if (!tc)
+     sctp_connection_t *sctp_conn = va_arg (*args, sctp_connection_t *);
+     if (!sctp_conn)
      return s;
-     if (tc->c_is_ip4)
+     if (sctp_conn->c_is_ip4)
      {
-     s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
-     format_ip4_address, &tc->c_lcl_ip4,
-     clib_net_to_host_u16 (tc->c_lcl_port), format_ip4_address,
-     &tc->c_rmt_ip4, clib_net_to_host_u16 (tc->c_rmt_port));
+     s = format (s, "[#%d][%s] %U:%d->%U:%d", sctp_conn->c_thread_index, "T",
+     format_ip4_address, &sctp_conn->c_lcl_ip4,
+     clib_net_to_host_u16 (sctp_conn->c_lcl_port), format_ip4_address,
+     &sctp_conn->c_rmt_ip4, clib_net_to_host_u16 (sctp_conn->c_rmt_port));
      }
      else
      {
-     s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
-     format_ip6_address, &tc->c_lcl_ip6,
-     clib_net_to_host_u16 (tc->c_lcl_port), format_ip6_address,
-     &tc->c_rmt_ip6, clib_net_to_host_u16 (tc->c_rmt_port));
+     s = format (s, "[#%d][%s] %U:%d->%U:%d", sctp_conn->c_thread_index, "T",
+     format_ip6_address, &sctp_conn->c_lcl_ip6,
+     clib_net_to_host_u16 (sctp_conn->c_lcl_port), format_ip6_address,
+     &sctp_conn->c_rmt_ip6, clib_net_to_host_u16 (sctp_conn->c_rmt_port));
      }
    */
   return s;
@@ -201,15 +202,15 @@ format_sctp_connection_id (u8 * s, va_list * args)
 u8 *
 format_sctp_connection (u8 * s, va_list * args)
 {
-  sctp_connection_t *tc = va_arg (*args, sctp_connection_t *);
+  sctp_connection_t *sctp_conn = va_arg (*args, sctp_connection_t *);
   u32 verbose = va_arg (*args, u32);
 
-  if (!tc)
+  if (!sctp_conn)
     return s;
-  s = format (s, "%-50U", format_sctp_connection_id, tc);
+  s = format (s, "%-50U", format_sctp_connection_id, sctp_conn);
   if (verbose)
     {
-      s = format (s, "%-15U", format_sctp_state, tc->state);
+      s = format (s, "%-15U", format_sctp_state, sctp_conn->state);
     }
 
   return s;
@@ -219,23 +220,23 @@ format_sctp_connection (u8 * s, va_list * args)
  * Initialize connection send variables.
  */
 void
-sctp_init_snd_vars (sctp_connection_t * tc)
+sctp_init_snd_vars (sctp_connection_t * sctp_conn)
 {
   u32 time_now;
-
   /*
    * We use the time to randomize iss and for setting up the initial
    * timestamp. Make sure it's updated otherwise syn and ack in the
    * handshake may make it look as if time has flown in the opposite
    * direction for us.
    */
+
   sctp_set_time_now (vlib_get_thread_index ());
   time_now = sctp_time_now ();
 
-  tc->iss = random_u32 (&time_now);
-  tc->snd_una = tc->iss;
-  tc->snd_nxt = tc->iss + 1;
-  tc->snd_una_max = tc->snd_nxt;
+  sctp_conn->local_initial_tsn = random_u32 (&time_now);
+  sctp_conn->remote_initial_tsn = 0x0;
+  sctp_conn->last_rcvd_tsn = sctp_conn->remote_initial_tsn;
+  sctp_conn->next_tsn = sctp_conn->local_initial_tsn + 1;
 }
 
 /**
@@ -245,72 +246,63 @@ sctp_init_snd_vars (sctp_connection_t * tc)
  * also what we advertise to our peer.
  */
 void
-sctp_update_rcv_mss (sctp_connection_t * tc)
+sctp_update_rcv_mss (sctp_connection_t * sctp_conn)
 {
-  /* TODO find our iface MTU */
-  tc->a_rwnd = DEFAULT_A_RWND - sizeof (sctp_full_hdr_t);
-  tc->rcv_opts.a_rwnd = tc->a_rwnd;
-  tc->rcv_a_rwnd = tc->a_rwnd;	/* This will be updated by our congestion algos */
+  sctp_conn->smallest_PMTU = DEFAULT_A_RWND;	/* TODO find our iface MTU */
+  sctp_conn->a_rwnd = DEFAULT_A_RWND - sizeof (sctp_full_hdr_t);
+  sctp_conn->rcv_opts.a_rwnd = sctp_conn->a_rwnd;
+  sctp_conn->rcv_a_rwnd = sctp_conn->a_rwnd;	/* This will be updated by our congestion algos */
 }
 
 void
-sctp_init_mss (sctp_connection_t * tc)
+sctp_init_mss (sctp_connection_t * sctp_conn)
 {
   SCTP_DBG ("CONN_INDEX = %u",
-	    tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
+	    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
 
   u16 default_a_rwnd = 536;
-  sctp_update_rcv_mss (tc);
+  sctp_update_rcv_mss (sctp_conn);
 
   /* TODO cache mss and consider PMTU discovery */
-  tc->snd_a_rwnd = clib_min (tc->rcv_opts.a_rwnd, tc->a_rwnd);
+  sctp_conn->snd_a_rwnd =
+    clib_min (sctp_conn->rcv_opts.a_rwnd, sctp_conn->a_rwnd);
 
-  if (tc->snd_a_rwnd < sizeof (sctp_full_hdr_t))
+  if (sctp_conn->snd_a_rwnd < sizeof (sctp_full_hdr_t))
     {
-      SCTP_ADV_DBG ("tc->snd_a_rwnd < sizeof(sctp_full_hdr_t)");
+      SCTP_ADV_DBG ("sctp_conn->snd_a_rwnd < sizeof(sctp_full_hdr_t)");
       /* Assume that at least the min default mss works */
-      tc->snd_a_rwnd = default_a_rwnd;
-      tc->rcv_opts.a_rwnd = default_a_rwnd;
+      sctp_conn->snd_a_rwnd = default_a_rwnd;
+      sctp_conn->rcv_opts.a_rwnd = default_a_rwnd;
     }
 
-  ASSERT (tc->snd_a_rwnd > sizeof (sctp_full_hdr_t));
-}
-
-/** Initialize sctp connection variables
- *
- * Should be called after having received a msg from the peer, i.e., a SYN or
- * a SYNACK, such that connection options have already been exchanged. */
-void
-sctp_connection_init_vars (sctp_connection_t * tc)
-{
-  sctp_init_mss (tc);
-  sctp_init_snd_vars (tc);
+  ASSERT (sctp_conn->snd_a_rwnd > sizeof (sctp_full_hdr_t));
 }
 
 always_inline sctp_connection_t *
 sctp_sub_connection_add (u8 thread_index)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc = tm->connections[thread_index];
+  sctp_connection_t *sctp_conn = tm->connections[thread_index];
 
-  tc->sub_conn[tc->next_avail_sub_conn].connection.c_index =
-    tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
-  tc->sub_conn[tc->next_avail_sub_conn].connection.thread_index =
-    thread_index;
-  tc->sub_conn[tc->next_avail_sub_conn].parent = tc;
+  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].connection.c_index =
+    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
+  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].
+    connection.thread_index = thread_index;
+  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].parent = sctp_conn;
 
-  tc->next_avail_sub_conn += 1;
+  sctp_conn->next_avail_sub_conn += 1;
 
-  return tc;
+  return sctp_conn;
 }
 
 void
 sctp_sub_connection_add_ip4 (u8 thread_index,
 			     sctp_ipv4_addr_param_t * ipv4_addr)
 {
-  sctp_connection_t *tc = sctp_sub_connection_add (thread_index);
+  sctp_connection_t *sctp_conn = sctp_sub_connection_add (thread_index);
 
-  clib_memcpy (&tc->sub_conn[tc->next_avail_sub_conn].connection.lcl_ip.ip4,
+  clib_memcpy (&sctp_conn->
+	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip4,
 	       &ipv4_addr->address, sizeof (ipv4_addr->address));
 }
 
@@ -318,9 +310,10 @@ void
 sctp_sub_connection_add_ip6 (u8 thread_index,
 			     sctp_ipv6_addr_param_t * ipv6_addr)
 {
-  sctp_connection_t *tc = sctp_sub_connection_add (thread_index);
+  sctp_connection_t *sctp_conn = sctp_sub_connection_add (thread_index);
 
-  clib_memcpy (&tc->sub_conn[tc->next_avail_sub_conn].connection.lcl_ip.ip6,
+  clib_memcpy (&sctp_conn->
+	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip6,
 	       &ipv6_addr->address, sizeof (ipv6_addr->address));
 }
 
@@ -328,39 +321,39 @@ sctp_connection_t *
 sctp_connection_new (u8 thread_index)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc;
+  sctp_connection_t *sctp_conn;
 
-  pool_get (tm->connections[thread_index], tc);
-  memset (tc, 0, sizeof (*tc));
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = tc;
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
-    tc - tm->connections[thread_index];
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
-  tc->local_tag = 0;
-  tc->next_avail_sub_conn = 1;
+  pool_get (tm->connections[thread_index], sctp_conn);
+  memset (sctp_conn, 0, sizeof (*sctp_conn));
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = sctp_conn;
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
+    sctp_conn - tm->connections[thread_index];
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
+  sctp_conn->local_tag = 0;
+  sctp_conn->next_avail_sub_conn = 1;
 
-  return tc;
+  return sctp_conn;
 }
 
 sctp_connection_t *
 sctp_half_open_connection_new (u8 thread_index)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc = 0;
+  sctp_connection_t *sctp_conn = 0;
   ASSERT (vlib_get_thread_index () == 0);
-  pool_get (tm->half_open_connections, tc);
-  memset (tc, 0, sizeof (*tc));
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
-    tc - tm->half_open_connections;
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = tc;
-  return tc;
+  pool_get (tm->half_open_connections, sctp_conn);
+  memset (sctp_conn, 0, sizeof (*sctp_conn));
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
+    sctp_conn - tm->half_open_connections;
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = sctp_conn;
+  return sctp_conn;
 }
 
 static inline int
 sctp_connection_open (transport_endpoint_t * rmt)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc;
+  sctp_connection_t *sctp_conn;
   ip46_address_t lcl_addr;
   u16 lcl_port;
   uword thread_id;
@@ -389,27 +382,27 @@ sctp_connection_open (transport_endpoint_t * rmt)
   ASSERT (thread_id == 0);
 
   clib_spinlock_lock_if_init (&tm->half_open_lock);
-  tc = sctp_half_open_connection_new (thread_id);
+  sctp_conn = sctp_half_open_connection_new (thread_id);
 
-  transport_connection_t *t_conn = &tc->sub_conn[idx].connection;
-  ip_copy (&t_conn->rmt_ip, &rmt->ip, rmt->is_ip4);
-  ip_copy (&t_conn->lcl_ip, &lcl_addr, rmt->is_ip4);
-  tc->sub_conn[idx].parent = tc;
-  t_conn->rmt_port = rmt->port;
-  t_conn->lcl_port = clib_host_to_net_u16 (lcl_port);
-  t_conn->is_ip4 = rmt->is_ip4;
-  t_conn->proto = TRANSPORT_PROTO_SCTP;
-  t_conn->fib_index = rmt->fib_index;
+  transport_connection_t *trans_conn = &sctp_conn->sub_conn[idx].connection;
+  ip_copy (&trans_conn->rmt_ip, &rmt->ip, rmt->is_ip4);
+  ip_copy (&trans_conn->lcl_ip, &lcl_addr, rmt->is_ip4);
+  sctp_conn->sub_conn[idx].parent = sctp_conn;
+  trans_conn->rmt_port = rmt->port;
+  trans_conn->lcl_port = clib_host_to_net_u16 (lcl_port);
+  trans_conn->is_ip4 = rmt->is_ip4;
+  trans_conn->proto = TRANSPORT_PROTO_SCTP;
+  trans_conn->fib_index = rmt->fib_index;
 
-  sctp_connection_timers_init (tc);
+  sctp_connection_timers_init (sctp_conn);
   /* The other connection vars will be initialized after INIT_ACK chunk received */
-  sctp_init_snd_vars (tc);
+  sctp_init_snd_vars (sctp_conn);
 
-  sctp_send_init (tc);
+  sctp_send_init (sctp_conn);
 
   clib_spinlock_unlock_if_init (&tm->half_open_lock);
 
-  return tc->sub_conn[idx].connection.c_index;
+  return sctp_conn->sub_conn[idx].connection.c_index;
 }
 
 /**
@@ -418,7 +411,7 @@ sctp_connection_open (transport_endpoint_t * rmt)
  * No notifications.
  */
 void
-sctp_connection_cleanup (sctp_connection_t * tc)
+sctp_connection_cleanup (sctp_connection_t * sctp_conn)
 {
   sctp_main_t *tm = &sctp_main;
   u8 i;
@@ -426,26 +419,26 @@ sctp_connection_cleanup (sctp_connection_t * tc)
   /* Cleanup local endpoint if this was an active connect */
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     transport_endpoint_cleanup (TRANSPORT_PROTO_SCTP,
-				&tc->sub_conn[i].connection.lcl_ip,
-				tc->sub_conn[i].connection.lcl_port);
+				&sctp_conn->sub_conn[i].connection.lcl_ip,
+				sctp_conn->sub_conn[i].connection.lcl_port);
 
   /* Check if connection is not yet fully established */
-  if (tc->state == SCTP_STATE_COOKIE_WAIT)
+  if (sctp_conn->state == SCTP_STATE_COOKIE_WAIT)
     {
 
     }
   else
     {
       int thread_index =
-	tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.thread_index;
+	sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.thread_index;
 
       /* Make sure all timers are cleared */
-      sctp_connection_timers_reset (tc);
+      sctp_connection_timers_reset (sctp_conn);
 
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
-	memset (tc, 0xFA, sizeof (*tc));
-      pool_put (tm->connections[thread_index], tc);
+	memset (sctp_conn, 0xFA, sizeof (*sctp_conn));
+      pool_put (tm->connections[thread_index], sctp_conn);
     }
 }
 
@@ -456,20 +449,20 @@ sctp_session_open (transport_endpoint_t * tep)
 }
 
 u16
-sctp_check_outstanding_data_chunks (sctp_connection_t * tc)
+sctp_check_outstanding_data_chunks (sctp_connection_t * sctp_conn)
 {
   return 0;			/* Indicates no more data to be read/sent */
 }
 
 void
-sctp_connection_close (sctp_connection_t * tc)
+sctp_connection_close (sctp_connection_t * sctp_conn)
 {
   SCTP_DBG ("Closing connection %u...",
-	    tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
+	    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
 
-  tc->state = SCTP_STATE_SHUTDOWN_PENDING;
+  sctp_conn->state = SCTP_STATE_SHUTDOWN_PENDING;
 
-  sctp_send_shutdown (tc);
+  sctp_send_shutdown (sctp_conn);
 }
 
 void
@@ -477,42 +470,43 @@ sctp_session_close (u32 conn_index, u32 thread_index)
 {
   ASSERT (thread_index == 0);
 
-  sctp_connection_t *tc;
-  tc = sctp_connection_get (conn_index, thread_index);
-  sctp_connection_close (tc);
+  sctp_connection_t *sctp_conn;
+  sctp_conn = sctp_connection_get (conn_index, thread_index);
+  sctp_connection_close (sctp_conn);
 }
 
 void
 sctp_session_cleanup (u32 conn_index, u32 thread_index)
 {
-  sctp_connection_t *tc;
-  tc = sctp_connection_get (conn_index, thread_index);
-  sctp_connection_timers_reset (tc);
+  sctp_connection_t *sctp_conn;
+  sctp_conn = sctp_connection_get (conn_index, thread_index);
+  sctp_connection_timers_reset (sctp_conn);
 
   /* Wait for the session tx events to clear */
-  tc->state = SCTP_STATE_CLOSED;
+  sctp_conn->state = SCTP_STATE_CLOSED;
 }
 
 /**
  * Update snd_mss to reflect the effective segment size that we can send
  */
 void
-sctp_update_snd_mss (sctp_connection_t * tc)
+sctp_update_snd_mss (sctp_connection_t * sctp_conn)
 {
   /* The overhead for the sctp_header_t and sctp_chunks_common_hdr_t
    * (the sum equals to sctp_full_hdr_t) is already taken into account
-   * for the tc->a_rwnd computation.
+   * for the sctp_conn->a_rwnd computation.
    * So let's not account it again here.
    */
-  tc->snd_hdr_length =
+  sctp_conn->snd_hdr_length =
     sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_full_hdr_t);
-  tc->snd_a_rwnd =
-    clib_min (tc->a_rwnd, tc->rcv_opts.a_rwnd) - tc->snd_hdr_length;
+  sctp_conn->snd_a_rwnd =
+    clib_min (sctp_conn->a_rwnd,
+	      sctp_conn->rcv_opts.a_rwnd) - sctp_conn->snd_hdr_length;
 
-  SCTP_DBG ("tc->snd_a_rwnd = %u, tc->snd_hdr_length = %u ",
-	    tc->snd_a_rwnd, tc->snd_hdr_length);
+  SCTP_DBG ("sctp_conn->snd_a_rwnd = %u, sctp_conn->snd_hdr_length = %u ",
+	    sctp_conn->snd_a_rwnd, sctp_conn->snd_hdr_length);
 
-  ASSERT (tc->snd_a_rwnd > 0);
+  ASSERT (sctp_conn->snd_a_rwnd > 0);
 }
 
 u16
@@ -520,7 +514,8 @@ sctp_session_send_mss (transport_connection_t * trans_conn)
 {
   SCTP_DBG ("CONN_INDEX: %u", trans_conn->c_index);
 
-  sctp_connection_t *tc = sctp_get_connection_from_transport (trans_conn);
+  sctp_connection_t *sctp_conn =
+    sctp_get_connection_from_transport (trans_conn);
 
   if (trans_conn == NULL)
     {
@@ -528,17 +523,17 @@ sctp_session_send_mss (transport_connection_t * trans_conn)
       return 0;
     }
 
-  if (tc == NULL)
+  if (sctp_conn == NULL)
     {
-      SCTP_DBG ("tc == NULL");
+      SCTP_DBG ("sctp_conn == NULL");
       return 0;
     }
   /* Ensure snd_mss does accurately reflect the amount of data we can push
    * in a segment. This also makes sure that options are updated according to
    * the current state of the connection. */
-  sctp_update_snd_mss (tc);
+  sctp_update_snd_mss (sctp_conn);
 
-  return tc->snd_a_rwnd;
+  return sctp_conn->snd_a_rwnd;
 }
 
 u16
@@ -566,42 +561,27 @@ sctp_session_send_space (transport_connection_t * trans_conn)
 {
   SCTP_DBG ("CONN_INDEX: %u", trans_conn->c_index);
 
-  sctp_connection_t *tc = sctp_get_connection_from_transport (trans_conn);
+  sctp_connection_t *sctp_conn =
+    sctp_get_connection_from_transport (trans_conn);
 
-  return sctp_snd_space (tc);
-}
-
-u32
-sctp_session_tx_fifo_offset (transport_connection_t * trans_conn)
-{
-  SCTP_DBG ("CONN_INDEX: %u", trans_conn->c_index);
-
-  sctp_connection_t *tc = sctp_get_connection_from_transport (trans_conn);
-
-  if (tc == NULL)
-    {
-      SCTP_DBG ("tc == NULL");
-      return 0;
-    }
-
-  /* This still works if fast retransmit is on */
-  return (tc->snd_nxt - tc->snd_una);
+  return sctp_snd_space (sctp_conn);
 }
 
 transport_connection_t *
 sctp_session_get_transport (u32 conn_index, u32 thread_index)
 {
-  sctp_connection_t *tc = sctp_connection_get (conn_index, thread_index);
-  return &tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+  sctp_connection_t *sctp_conn =
+    sctp_connection_get (conn_index, thread_index);
+  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
 }
 
 transport_connection_t *
 sctp_session_get_listener (u32 listener_index)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
-  sctp_connection_t *tc;
-  tc = pool_elt_at_index (tm->listener_pool, listener_index);
-  return &tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+  sctp_connection_t *sctp_conn;
+  sctp_conn = pool_elt_at_index (tm->listener_pool, listener_index);
+  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
 }
 
 u8 *
@@ -617,28 +597,38 @@ format_sctp_listener_session (u8 * s, va_list * args)
 }
 
 void
-sctp_timer_init_handler (u32 conn_index)
+sctp_timer_init_handler (u32 conn_index, u32 timer_id)
 {
-  sctp_connection_t *tc;
+  sctp_connection_t *sctp_conn;
 
-  tc = sctp_connection_get (conn_index, vlib_get_thread_index ());
+  clib_warning ("");
+  sctp_conn = sctp_connection_get (conn_index, vlib_get_thread_index ());
   /* note: the connection may have already disappeared */
-  if (PREDICT_FALSE (tc == 0))
+  if (PREDICT_FALSE (sctp_conn == 0))
     return;
-  ASSERT (tc->state == SCTP_STATE_COOKIE_ECHOED);
+  ASSERT (sctp_conn->state == SCTP_STATE_COOKIE_ECHOED);
+
+  switch (timer_id)
+    {
+    case SCTP_TIMER_T4_HEARTBEAT:
+      {
+	clib_warning ("Heartbeat timeout");
+	break;
+      }
+    }
   /* Start cleanup. App wasn't notified yet so use delete notify as
    * opposed to delete to cleanup session layer state. */
-  stream_session_delete_notify (&tc->
+  stream_session_delete_notify (&sctp_conn->
 				sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection);
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].timers[SCTP_TIMER_T1_INIT] =
-    SCTP_TIMER_HANDLE_INVALID;
 
-  sctp_connection_cleanup (tc);
+  sctp_connection_timers_reset (sctp_conn);
+
+  sctp_connection_cleanup (sctp_conn);
 }
 
 /* *INDENT OFF* */
-static timer_expiration_handler *sctp_timer_expiration_handlers[SCTP_N_TIMERS]
-  = {
+static sctp_timer_expiration_handler
+  * sctp_timer_expiration_handlers[SCTP_N_TIMERS] = {
   sctp_timer_init_handler
 };
 
@@ -657,8 +647,11 @@ sctp_expired_timers_dispatch (u32 * expired_timers)
       timer_id = expired_timers[i] >> 28;
 
       /* Handle expiration */
-      (*sctp_timer_expiration_handlers[timer_id]) (connection_index);
+      (*sctp_timer_expiration_handlers[timer_id]) (connection_index,
+						   timer_id);
     }
+
+  clib_warning ("");
 }
 
 void
@@ -683,7 +676,7 @@ sctp_main_enable (vlib_main_t * vm)
   clib_error_t *error = 0;
   u32 num_threads;
   int thread;
-  sctp_connection_t *tc __attribute__ ((unused));
+  sctp_connection_t *sctp_conn __attribute__ ((unused));
   u32 preallocated_connections_per_thread;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
@@ -778,16 +771,16 @@ sctp_enable_disable (vlib_main_t * vm, u8 is_en)
 transport_connection_t *
 sctp_half_open_session_get_transport (u32 conn_index)
 {
-  sctp_connection_t *tc = sctp_half_open_connection_get (conn_index);
-  return &tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+  sctp_connection_t *sctp_conn = sctp_half_open_connection_get (conn_index);
+  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
 }
 
 u8 *
 format_sctp_half_open (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
-  sctp_connection_t *tc = sctp_half_open_connection_get (tci);
-  return format (s, "%U", format_sctp_connection_id, tc);
+  sctp_connection_t *sctp_conn = sctp_half_open_connection_get (tci);
+  return format (s, "%U", format_sctp_connection_id, sctp_conn);
 }
 
 /* *INDENT OFF* */

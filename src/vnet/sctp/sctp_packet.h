@@ -503,17 +503,6 @@ vnet_sctp_calculate_padding (u16 base_length)
   return (4 - base_length % 4);
 }
 
-always_inline u16
-vnet_sctp_calculate_payload_data_padding (sctp_payload_data_chunk_t * p)
-{
-  u16 payload_length = vnet_sctp_get_chunk_length (&p->chunk_hdr) -
-    sizeof (p->chunk_hdr) -
-    sizeof (p->tsn) -
-    sizeof (p->stream_id) - sizeof (p->stream_seq) - sizeof (p->payload_id);
-
-  return vnet_sctp_calculate_padding (payload_length);
-}
-
 #define DEFAULT_A_RWND 1480
 #define INBOUND_STREAMS_COUNT 1
 #define OUTBOUND_STREAMS_COUNT 1
