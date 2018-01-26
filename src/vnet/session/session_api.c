@@ -360,6 +360,10 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
       goto done;
     }
 
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
   STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
 		 sizeof (mp->options),
 		 "Out of options, fix api message definition");
@@ -409,8 +413,6 @@ done:
 
   if (rv)
     return;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
 
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
