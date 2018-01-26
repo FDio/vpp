@@ -354,6 +354,10 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   clib_error_t *error = 0;
   int rv = 0;
 
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
   if (session_manager_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
@@ -409,8 +413,6 @@ done:
 
   if (rv)
     return;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
 
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)

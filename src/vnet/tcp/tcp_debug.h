@@ -328,15 +328,18 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_RST_SENT_HANDLER(_tc, ...)				\
 {									\
-  ELOG_TYPE_DECLARE (_e) =						\
+if (_tc)								\
   {									\
-    .format = "rst-tx: snd_nxt %d rcv_nxt %d",				\
-    .format_args = "i4i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 2);						\
-  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
-  TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+    ELOG_TYPE_DECLARE (_e) =						\
+    {									\
+      .format = "rst-tx: snd_nxt %d rcv_nxt %d",			\
+      .format_args = "i4i4",						\
+    };									\
+    DECLARE_ETD(_tc, _e, 2);						\
+    ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+    ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
+    TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+  }									\
 }
 
 #define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)				\
