@@ -310,6 +310,13 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
     {
       ip4_address_t *ip4;
       ip4 = ip_interface_get_first_ip (sw_if_index, 1);
+      if (!ip4)
+	{
+	  clib_warning ("no routable ip4 address on %U",
+			format_vnet_sw_if_index_name, vnet_get_main (),
+			sw_if_index);
+	  return -1;
+	}
       lcl_addr->ip4.as_u32 = ip4->as_u32;
     }
   else
