@@ -98,9 +98,10 @@ no_arg_method_impl_template = Template("""    public final void $name($plugin_pa
 """)
 
 
-def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, callback_package, notification_package, callback_facade_package, inputfile):
+def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, callback_package,
+                  notification_package, callback_facade_package, inputfile, logger):
     """ Generates callback facade """
-    print "Generating JVpp callback facade"
+    logger.debug("Generating JVpp callback facade for %s" % inputfile)
 
     if os.path.exists(callback_facade_package):
         util.remove_folder(callback_facade_package)

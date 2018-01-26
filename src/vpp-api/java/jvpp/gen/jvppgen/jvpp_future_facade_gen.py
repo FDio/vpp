@@ -156,9 +156,10 @@ jvpp_facade_details_callback_method_template = Template("""
 """)
 
 
-def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, callback_package, notification_package, future_facade_package, inputfile):
+def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, callback_package,
+                  notification_package, future_facade_package, inputfile, logger):
     """ Generates JVpp interface and JNI implementation """
-    print "Generating JVpp future facade"
+    logger.debug("Generating JVpp future facade for %s" % inputfile)
 
     if not os.path.exists(future_facade_package):
         os.mkdir(future_facade_package)

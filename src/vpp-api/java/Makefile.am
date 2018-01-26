@@ -68,7 +68,7 @@ JAR_FILES += jvpp-registry-$(PACKAGE_VERSION).jar
 jvpp_registry_ok = jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h
 
 jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h: $(jvpp_registry_src_files)
-	@echo "  JAPIGEN  $@"
+	@echo "  JVPP GEN  $@"
 	@rm -rf jvpp-registry/target
 	@mkdir -p jvpp-registry/target
 	@$(JAVAC) -d jvpp-registry/target $^
@@ -77,7 +77,7 @@ jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h: $(jvpp_registry_src_files)
 	@touch jvpp-registry.ok
 
 define japigen
-	@echo "  JAPIGEN  $@"
+	@echo "  JVPP GEN  $@"
 	@rm -rf jvpp-$(1)/target
 	@ @srcdir@/jvpp/gen/jvpp_gen.py --plugin_name $(1) --root_dir jvpp-$(1) \
 	  -i $(jvpp_$(1)_json_files)

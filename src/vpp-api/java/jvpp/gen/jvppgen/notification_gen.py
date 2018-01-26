@@ -123,9 +123,10 @@ public interface ${plugin_name}EventRegistryProvider extends $base_package.$noti
 """)
 
 
-def generate_notification_registry(func_list, base_package, plugin_package, plugin_name, notification_package, callback_package, dto_package, inputfile):
+def generate_notification_registry(func_list, base_package, plugin_package, plugin_name, notification_package,
+                                   callback_package, dto_package, inputfile, logger):
     """ Generates notification registry interface and implementation """
-    print "Generating Notification interfaces and implementation"
+    logger.debug("Generating Notification interfaces and implementation for %s" % inputfile)
 
     if not os.path.exists(notification_package):
         os.mkdir(notification_package)
