@@ -306,12 +306,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 
 	  /* Instead of directly removing the session call disconnect */
 	  if (session->session_state != SESSION_STATE_CLOSED)
-	    {
-	      session->session_state = SESSION_STATE_CLOSED;
-	      session_send_session_evt_to_thread (session_handle (session),
-						  FIFO_EVENT_DISCONNECT,
-						  thread_index);
-	    }
+	    stream_session_disconnect (session);
 	  fifo = fifo->next;
 	}
 
@@ -611,7 +606,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
       segments = svm_fifo_segment_segments_pool ();
       vlib_cli_output (vm, "%d svm fifo segments allocated",
 		       pool_elts (segments));
-      vlib_cli_output (vm, "%-15s%10s%15s%15s%15s%15s", "Name", "Type",
+      vlib_cli_output (vm, "%-15s%15s%15s%15s%15s%15s", "Name", "Type",
 		       "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
 
       /* *INDENT-OFF* */
@@ -619,7 +614,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 	svm_fifo_segment_info (seg, &address, &size);
 	active_fifos = svm_fifo_segment_num_fifos (seg);
         free_fifos = svm_fifo_segment_num_free_fifos (seg, ~0 /* size */);
-	vlib_cli_output (vm, "%-15v%10U%15llu%15u%15u%15llx",
+	vlib_cli_output (vm, "%-15v%15U%15llu%15u%15u%15llx",
 	                 ssvm_name (&seg->ssvm), format_svm_fifo_segment_type,
 	                 seg, size >> 20ULL, active_fifos, free_fifos,
 	                 address);

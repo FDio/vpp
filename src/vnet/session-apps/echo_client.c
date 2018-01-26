@@ -257,7 +257,10 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      __sync_fetch_and_add (&ecm->ready_connections, -1);
 	    }
 	  else
-	    clib_warning ("session AWOL?");
+	    {
+	      clib_warning ("session AWOL?");
+	      vec_delete (connections_this_batch, 1, i);
+	    }
 
 	  /* Kick the debug CLI process */
 	  if (ecm->ready_connections == 0)
@@ -407,7 +410,6 @@ echo_clients_session_disconnect_callback (stream_session_t * s)
 static int
 echo_clients_rx_callback (stream_session_t * s)
 {
-  clib_warning ("BUG");
   return 0;
 }
 
@@ -424,7 +426,7 @@ static session_cb_vft_t echo_clients = {
 static clib_error_t *
 echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
-  u32 prealloc_fifos, segment_size = 2 << 20;
+  u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[16];
@@ -543,15 +545,16 @@ echo_clients_command_fn (vlib_main_t * vm,
 {
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
-  uword *event_data = 0, event_type;
-  u8 *default_uri = (u8 *) "tcp://6.0.1.1/1234", *appns_id = 0;
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
+  char *default_uri = "tcp://6.0.1.1/1234";
+  uword *event_data = 0, event_type;
   f64 time_before_connects;
   u32 n_clients = 1;
   int preallocate_sessions = 0;
   char *transfer_type;
   clib_error_t *error = 0;
+  u8 *appns_id = 0;
   int i;
 
   ecm->bytes_to_send = 8192;
@@ -644,8 +647,8 @@ echo_clients_command_fn (vlib_main_t * vm,
 
   if (!ecm->connect_uri)
     {
-      clib_warning ("No uri provided. Using default: %v", default_uri);
-      ecm->connect_uri = default_uri;
+      clib_warning ("No uri provided. Using default: %s", default_uri);
+      ecm->connect_uri = format (0, "%s%c", default_uri, 0);
     }
 
 #if ECHO_CLIENT_PTHREAD
@@ -785,6 +788,7 @@ cleanup:
     }
   if (error)
     ec_cli_output ("test failed");
+  vec_free (ecm->connect_uri);
   return error;
 }
 
