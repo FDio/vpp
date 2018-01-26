@@ -1,0 +1,159 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "384f796a_1354e058",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "+s",
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5dadb950_b3f18d48",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "I would typically use the common convention to make file paths appear monospaced by using back-ticks eg `/tmp`. I would also do this for things like `vpp_tmp_t` too.",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 43
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "22285486_94e3e0d2",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "Are these persistent tags, or would it have to be repeated after reboot or file deletion?",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 47
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2ef1f161_e199d149",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "I would backtick these references I think",
+      "range": {
+        "startLine": 92,
+        "startChar": 38,
+        "endLine": 92,
+        "endChar": 47
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "91ef91f9_6fb6c172",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "-s",
+      "range": {
+        "startLine": 106,
+        "startChar": 64,
+        "endLine": 106,
+        "endChar": 65
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2770b58d_341faa72",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "backtick",
+      "range": {
+        "startLine": 116,
+        "startChar": 19,
+        "endLine": 116,
+        "endChar": 25
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6900262_930215a4",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-01-26T15:43:21Z",
+      "side": 1,
+      "message": "backtick instead of normal quotes",
+      "range": {
+        "startLine": 159,
+        "startChar": 0,
+        "endLine": 159,
+        "endChar": 6
+      },
+      "revId": "461de093d55f0fee013adf78a0a86027ad1126f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
