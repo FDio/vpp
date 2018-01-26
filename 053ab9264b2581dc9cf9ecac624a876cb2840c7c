@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0aa4702f_4e4aaeaf",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2018-01-26T20:57:13Z",
+      "side": 1,
+      "message": "could you please pad up the first two words.. for adj_index[RX/TX].. re-usage purpose",
+      "revId": "053ab9264b2581dc9cf9ecac624a876cb2840c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
