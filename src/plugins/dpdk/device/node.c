@@ -325,7 +325,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  clib_memcpy64_x4 (b0, b1, b2, b3, bt);
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 10]);
-	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 6]);
 
 	  bi0 = vlib_get_buffer_index (vm, b0);
 	  bi1 = vlib_get_buffer_index (vm, b1);
@@ -352,7 +352,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    }
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 11]);
-	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 6]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
 
 	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
 			 mb2->ol_flags | mb3->ol_flags);
