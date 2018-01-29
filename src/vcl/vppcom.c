@@ -4558,21 +4558,15 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
-	      .format = "VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd=%s%d buflen=%d",
-	      .format_args = "t1i4i4",
-	      .n_enum_strings = 2,
-	      .enum_strings = {"", "-",},
+	      .format = "VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd=%d",
+	      .format_args = "i4",
 	    };
 	  CLIB_PACKED (struct {
-	    u8 sign;
-	    u32 data[2];
+	    i32 data;
 	  }) * ed;
 
 	  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-
-	  ed->sign = (session->libc_epfd < 0);
-	  ed->data[0] = abs(session->libc_epfd);
-	  ed->data[1] = *buflen;
+	  ed->data = session->libc_epfd;
 	  /* *INDENT-ON* */
 	}
 
