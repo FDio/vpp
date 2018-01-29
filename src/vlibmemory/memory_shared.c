@@ -663,8 +663,8 @@ vl_register_mapped_shmem_region (svm_region_t * rp)
   vec_add1 (am->mapped_shmem_regions, rp);
 }
 
-void
-vl_unmap_shmem (void)
+static void
+vl_unmap_shmem_internal (u8 is_client)
 {
   svm_region_t *rp;
   int i;
@@ -676,17 +676,30 @@ vl_unmap_shmem (void)
   for (i = 0; i < vec_len (am->mapped_shmem_regions); i++)
     {
       rp = am->mapped_shmem_regions[i];
-      svm_region_unmap (rp);
+      is_client ? svm_region_unmap_client (rp) : svm_region_unmap (rp);
     }
 
   vec_free (am->mapped_shmem_regions);
   am->shmem_hdr = 0;
 
-  svm_region_exit ();
+  is_client ? svm_region_exit_client () : svm_region_exit ();
+
   /* $$$ more careful cleanup, valgrind run... */
   vec_free (am->msg_handlers);
   vec_free (am->msg_endian_handlers);
   vec_free (am->msg_print_handlers);
+}
+
+void
+vl_unmap_shmem (void)
+{
+  vl_unmap_shmem_internal (0);
+}
+
+void
+vl_unmap_shmem_client (void)
+{
+  vl_unmap_shmem_internal (1);
 }
 
 void

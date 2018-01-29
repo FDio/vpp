@@ -117,6 +117,7 @@ void *vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg,
 void vl_msg_api_free (void *a);
 int vl_map_shmem (const char *region_name, int is_vlib);
 void vl_unmap_shmem (void);
+void vl_unmap_shmem_client (void);
 void vl_register_mapped_shmem_region (svm_region_t * rp);
 void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
 void vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem);
