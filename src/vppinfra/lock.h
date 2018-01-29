@@ -137,7 +137,7 @@ clib_rwlock_free (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_reader_lock (clib_rwlock_t * p)
 {
-  if (__sync_fetch_and_add (&(*p)->n_readers, 1) == 0)
+  if (__atomic_fetch_add (&(*p)->n_readers, 1, __ATOMIC_ACQUIRE) == 0)
     {
       while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
 	CLIB_PAUSE ();
