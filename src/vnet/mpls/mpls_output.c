@@ -185,8 +185,12 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (is_midchain)
           {
-              adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
-              adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
+	      adj0->sub_type.midchain.fixup_func
+                (vm, adj0, p0,
+                 adj0->sub_type.midchain.fixup_data);
+	      adj1->sub_type.midchain.fixup_func
+                (vm, adj1, p1,
+                 adj1->sub_type.midchain.fixup_data);
           }
 
           p0->error = error_node->errors[error0];
@@ -266,7 +270,9 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (is_midchain)
           {
-              adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+	      adj0->sub_type.midchain.fixup_func
+                (vm, adj0, p0,
+                 adj0->sub_type.midchain.fixup_data);
           }
 
           p0->error = error_node->errors[error0];

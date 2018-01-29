@@ -307,7 +307,8 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
 }
 
 static void
-lisp_gpe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b)
+lisp_gpe_fixup (vlib_main_t * vm,
+		ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
@@ -348,6 +349,7 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   linkt = adj_get_link_type (ai);
   adj_nbr_midchain_update_rewrite
     (ai, lisp_gpe_fixup,
+     NULL,
      (VNET_LINK_ETHERNET == linkt ?
       ADJ_FLAG_MIDCHAIN_NO_COUNT :
       ADJ_FLAG_NONE),

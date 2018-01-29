@@ -77,11 +77,22 @@ extern void adj_mcast_update_rewrite(adj_index_t adj_index,
  * @param
  *  The index of the adj to update
  *
+ * @param fixup
+ *  The function that will be invoked at paket switch time to 'fixup'
+ *  the rewrite applied with necessary per-packet info (i.e. length, checksums).
+ * @param fixup_data
+ *  Context data set by the caller that is provided as an argument in the
+ *  fixup function.
+ *
+ * @param flags
+ *  Flags controlling the adjacency behaviour
+ *
  * @param
  *  The new rewrite
  */
 extern void adj_mcast_midchain_update_rewrite(adj_index_t adj_index,
                                               adj_midchain_fixup_t fixup,
+                                              const void *fixup_data,
                                               adj_flags_t flags,
                                               u8 *rewrite,
                                               u8 offset,

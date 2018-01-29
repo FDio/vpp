@@ -377,7 +377,8 @@ mpls_tunnel_admin_up_down (vnet_main_t * vnm,
 static void
 mpls_tunnel_fixup (vlib_main_t *vm,
                    ip_adjacency_t *adj,
-                   vlib_buffer_t *b0)
+                   vlib_buffer_t *b0,
+                   const void*data)
 {
     /*
      * A no-op w.r.t. the header. but reset the 'have we pushed any
@@ -403,6 +404,7 @@ mpls_tunnel_update_adj (vnet_main_t * vnm,
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
         adj_nbr_midchain_update_rewrite(ai, mpls_tunnel_fixup,
+                                        NULL,
                                         ADJ_FLAG_NONE,
                                         mpls_tunnel_build_rewrite_i());
         break;
@@ -412,6 +414,7 @@ mpls_tunnel_update_adj (vnet_main_t * vnm,
          * There's no MAC fixup, so the last 2 parameters are 0
          */
         adj_mcast_midchain_update_rewrite(ai, mpls_tunnel_fixup,
+                                          NULL,
                                           ADJ_FLAG_NONE,
                                           mpls_tunnel_build_rewrite_i(),
                                           0, 0);

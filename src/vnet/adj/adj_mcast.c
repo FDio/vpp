@@ -139,6 +139,7 @@ adj_mcast_update_rewrite (adj_index_t adj_index,
 void
 adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
                                    adj_midchain_fixup_t fixup,
+                                   const void *fixup_data,
                                    adj_flags_t flags,
                                    u8 *rewrite,
                                    u8 offset,
@@ -160,7 +161,7 @@ adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
      */
     ASSERT(NULL != rewrite);
 
-    adj_midchain_setup(adj_index, fixup, flags);
+    adj_midchain_setup(adj_index, fixup, fixup_data, flags);
 
     /*
      * update the adj's rewrite string and build the arc
@@ -354,14 +355,13 @@ format_adj_mcast_midchain (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
-    vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
     s = format(s, "%U-mcast-midchain: ",
                format_fib_protocol, adj->ia_nh_proto);
     s = format (s, "%U",
 		format_vnet_rewrite,
-		vnm->vlib_main, &adj->rewrite_header,
+		&adj->rewrite_header,
                 sizeof (adj->rewrite_data), 0);
     s = format (s, "\n%Ustacked-on:\n%U%U",
 		format_white_space, indent,

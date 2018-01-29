@@ -146,16 +146,23 @@ pppoe_build_rewrite (vnet_main_t * vnm,
  * @brief Fixup the adj rewrite post encap. Insert the packet's length
  */
 static void
-pppoe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
+pppoe_fixup (vlib_main_t * vm,
+	     ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
+  const pppoe_session_t *t;
   pppoe_header_t *pppoe0;
 
+  /* update the rewrite string */
   pppoe0 = vlib_buffer_get_current (b0) + sizeof (ethernet_header_t);
 
   pppoe0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 					 - sizeof (pppoe_header_t)
 					 + sizeof (pppoe0->ppp_proto)
 					 - sizeof (ethernet_header_t));
+  /* Swap to the the packet's output interface to the encap (not the
+   * session) interface */
+  t = data;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->encap_if_index;
 }
 
 static void
@@ -170,12 +177,14 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ASSERT (ADJ_INDEX_INVALID != ai);
 
   adj = adj_get (ai);
+  session_id = pem->session_index_by_sw_if_index[sw_if_index];
+  t = pool_elt_at_index (pem->sessions, session_id);
 
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
-      adj_nbr_midchain_update_rewrite (ai, pppoe_fixup,
+      adj_nbr_midchain_update_rewrite (ai, pppoe_fixup, t,
 				       ADJ_FLAG_NONE,
 				       pppoe_build_rewrite (vnm,
 							    sw_if_index,
@@ -187,7 +196,7 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
        * Construct a partial rewrite from the known ethernet mcast dest MAC
        * There's no MAC fixup, so the last 2 parameters are 0
        */
-      adj_mcast_midchain_update_rewrite (ai, pppoe_fixup,
+      adj_mcast_midchain_update_rewrite (ai, pppoe_fixup, t,
 					 ADJ_FLAG_NONE,
 					 pppoe_build_rewrite (vnm,
 							      sw_if_index,
@@ -207,8 +216,6 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
       break;
     }
 
-  session_id = pem->session_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (pem->sessions, session_id);
   interface_tx_dpo_add_or_lock (vnet_link_to_dpo_proto (adj->ia_link),
 				t->encap_if_index, &dpo);
 
