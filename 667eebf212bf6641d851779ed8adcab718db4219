@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "203e9f75_1e79cd2e",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-29T14:04:33Z",
+      "side": 1,
+      "message": "Can you please just put this under previous CLI, no need for special knob.",
+      "range": {
+        "startLine": 501,
+        "startChar": 0,
+        "endLine": 544,
+        "endChar": 0
+      },
+      "revId": "667eebf212bf6641d851779ed8adcab718db4219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
