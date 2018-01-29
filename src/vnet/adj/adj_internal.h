@@ -95,6 +95,7 @@ extern void adj_nbr_update_rewrite_internal(ip_adjacency_t *adj,
                                             u8 *rewrite);
 extern void adj_midchain_setup(adj_index_t adj_index,
                                adj_midchain_fixup_t fixup,
+                               const void *data,
                                adj_flags_t flags);
 
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);

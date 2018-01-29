@@ -460,6 +460,7 @@ adj_nbr_midchain_get_feature_node (ip_adjacency_t *adj)
 void
 adj_midchain_setup (adj_index_t adj_index,
                     adj_midchain_fixup_t fixup,
+                    const void *data,
                     adj_flags_t flags)
 {
     u32 feature_index, tx_node;
@@ -471,6 +472,7 @@ adj_midchain_setup (adj_index_t adj_index,
     adj = adj_get(adj_index);
 
     adj->sub_type.midchain.fixup_func = fixup;
+    adj->sub_type.midchain.fixup_data = data;
     adj->ia_flags |= flags;
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
@@ -503,6 +505,7 @@ adj_midchain_setup (adj_index_t adj_index,
 void
 adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 				 adj_midchain_fixup_t fixup,
+                                 const void *fixup_data,
 				 adj_flags_t flags,
 				 u8 *rewrite)
 {
@@ -522,7 +525,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      */
     ASSERT(NULL != rewrite);
 
-    adj_midchain_setup(adj_index, fixup, flags);
+    adj_midchain_setup(adj_index, fixup, fixup_data, flags);
 
     /*
      * update the rewirte with the workers paused.

@@ -111,7 +111,9 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
 
                 if (is_midchain)
                 {
-                    adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+                    adj0->sub_type.midchain.fixup_func(
+                        vm, adj0, p0,
+                        adj0->sub_type.midchain.fixup_data);
                 }
 
                 vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;

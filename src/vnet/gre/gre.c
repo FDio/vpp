@@ -261,8 +261,9 @@ gre_build_rewrite (vnet_main_t * vnm,
 
 #define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
 
-void
-gre4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
+static void
+gre4_fixup (vlib_main_t * vm,
+	    ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   ip4_header_t *ip0;
 
@@ -274,8 +275,9 @@ gre4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
   ip0->checksum = ip4_header_checksum (ip0);
 }
 
-void
-gre6_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
+static void
+gre6_fixup (vlib_main_t * vm,
+	    ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   ip6_header_t *ip0;
 
@@ -301,6 +303,7 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
   adj_nbr_midchain_update_rewrite (ai, !is_ipv6 ? gre4_fixup : gre6_fixup,
+				   NULL,
 				   (VNET_LINK_ETHERNET ==
 				    adj_get_link_type (ai) ?
 				    ADJ_FLAG_MIDCHAIN_NO_COUNT :

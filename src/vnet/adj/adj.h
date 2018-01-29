@@ -141,7 +141,8 @@ struct ip_adjacency_t_;
  */
 typedef void (*adj_midchain_fixup_t) (vlib_main_t * vm,
 				      struct ip_adjacency_t_ * adj,
-				      vlib_buffer_t * b0);
+				      vlib_buffer_t * b0,
+                                      const void *data);
 
 /**
  * @brief Flags on an IP adjacency
@@ -242,6 +243,10 @@ typedef struct ip_adjacency_t_
        * A function to perform the post-rewrite fixup
        */
       adj_midchain_fixup_t fixup_func;
+      /**
+       * Fixup data passed back to the client in the fixup function
+       */
+      const void *fixup_data;
     } midchain;
     /**
      * IP_LOOKUP_NEXT_GLEAN
