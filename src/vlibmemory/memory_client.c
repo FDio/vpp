@@ -261,7 +261,7 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
   am->vl_input_queue = 0;
 }
 
-void
+int
 vl_client_disconnect (void)
 {
   vl_api_memclnt_delete_t *mp;
@@ -302,7 +302,7 @@ vl_client_disconnect (void)
 	  am->my_client_index = ~0;
 	  am->my_registration = 0;
 	  am->shmem_hdr = 0;
-	  break;
+	  return -1;
 	}
       if (svm_queue_sub (vl_input_queue, (u8 *) & rp, SVM_Q_NOWAIT, 0) < 0)
 	continue;
@@ -317,6 +317,7 @@ vl_client_disconnect (void)
       vl_msg_api_handler ((void *) rp);
       break;
     }
+  return 0;
 }
 
 /**
@@ -376,7 +377,7 @@ vl_client_api_map (const char *region_name)
 void
 vl_client_api_unmap (void)
 {
-  vl_unmap_shmem ();
+  vl_unmap_shmem_client ();
 }
 
 u8

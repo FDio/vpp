@@ -1034,7 +1034,7 @@ svm_region_unlink (svm_region_t * rp)
  * a new region client showing up at the wrong moment.
  */
 void
-svm_region_unmap (void *rp_arg)
+svm_region_unmap_internal (void *rp_arg, u8 is_client)
 {
   int i, mypid = getpid ();
   int nclients_left;
@@ -1134,7 +1134,12 @@ found:
       vec_free (name);
 
       region_unlock (rp);
-      svm_region_unlink (rp);
+
+      /* If a client asks for the cleanup, don't unlink the backing
+       * file since we can't tell if it has been recreated. */
+      if (!is_client)
+	svm_region_unlink (rp);
+
       munmap ((void *) virtual_base, virtual_size);
       region_unlock (root_rp);
       svm_pop_heap (oldheap);
@@ -1147,11 +1152,23 @@ found:
   munmap ((void *) virtual_base, virtual_size);
 }
 
+void
+svm_region_unmap (void *rp_arg)
+{
+  svm_region_unmap_internal (rp_arg, 0 /* is_client */ );
+}
+
+void
+svm_region_unmap_client (void *rp_arg)
+{
+  svm_region_unmap_internal (rp_arg, 1 /* is_client */ );
+}
+
 /*
  * svm_region_exit
  */
-void
-svm_region_exit ()
+static void
+svm_region_exit_internal (u8 is_client)
 {
   void *oldheap;
   int i, mypid = getpid ();
@@ -1191,7 +1208,7 @@ svm_region_exit ()
 
 found:
 
-  if (vec_len (root_rp->client_pids) == 0)
+  if (!is_client && vec_len (root_rp->client_pids) == 0)
     svm_region_unlink (root_rp);
 
   region_unlock (root_rp);
@@ -1199,6 +1216,18 @@ found:
 
   root_rp = 0;
   munmap ((void *) virtual_base, virtual_size);
+}
+
+void
+svm_region_exit (void)
+{
+  svm_region_exit_internal (0 /* is_client */ );
+}
+
+void
+svm_region_exit_client (void)
+{
+  svm_region_exit_internal (1 /* is_client */ );
 }
 
 void
