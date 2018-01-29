@@ -288,6 +288,16 @@ dslite_show_sessions_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 
+/*?
+ * @cliexpar
+ * @cliexstart{dslite add pool address}
+ * Add/delete DS-Lite pool address for AFTR element.
+ * To add DS-Lite pool address use:
+ *  vpp# dslite add pool address 10.1.1.3
+ * To add DS-Lite pool address range use:
+ *  vpp# dslite add pool address 10.1.1.5 - 10.1.1.7
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_add_pool_address_command, static) = {
   .path = "dslite add pool address",
   .short_help = "dslite add pool address <ip4-range-start> [- <ip4-range-end>] "
@@ -295,36 +305,95 @@ VLIB_CLI_COMMAND (dslite_add_pool_address_command, static) = {
   .function = dslite_add_del_pool_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show dslite pool}
+ * Show DS-lite pool addresses.
+ * vpp# show dslite pool
+ * DS-Lite pool:
+ * 10.0.0.3
+ * 10.0.0.5
+ * 10.0.0.6
+ * 10.0.0.7
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_dslite_pool_command, static) = {
   .path = "show dslite pool",
   .short_help = "show dslite pool",
   .function = dslite_show_pool_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{dslite set aftr-tunnel-endpoint-address}
+ * Set IPv6 tunnel endpoint address of the AFTR element.
+ * To set AFTR tunnel endpoint address use:
+ * vpp# dslite set aftr-tunnel-endpoint-address 2001:db8:85a3::8a2e:370:1
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_set_aftr_tunnel_addr, static) = {
   .path = "dslite set aftr-tunnel-endpoint-address",
   .short_help = "dslite set aftr-tunnel-endpoint-address <ip6>",
   .function = dslite_set_aftr_tunnel_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show dslite aftr-tunnel-endpoint-address}
+ * Show IPv6 tunnel endpoint address of the AFTR element.
+ * vpp# show dslite aftr-tunnel-endpoint-address
+ * 2001:db8:85a3::8a2e:370:1
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_show_aftr_ip6_addr, static) = {
   .path = "show dslite aftr-tunnel-endpoint-address",
   .short_help = "show dslite aftr-tunnel-endpoint-address",
   .function = dslite_show_aftr_ip6_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{dslite set b4-tunnel-endpoint-address}
+ * Set IPv6 tunnel endpoint address of the B4 element.
+ * To set B4 tunnel endpoint address use:
+ * vpp# dslite set b4-tunnel-endpoint-address 2001:db8:62aa::375e:f4c1:1
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_set_b4_tunnel_addr, static) = {
   .path = "dslite set b4-tunnel-endpoint-address",
   .short_help = "dslite set b4-tunnel-endpoint-address <ip6>",
   .function = dslite_set_b4_tunnel_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show dslite b4-tunnel-endpoint-address}
+ * Show IPv6 tunnel endpoint address of the B4 element.
+ * vpp# show dslite b4-tunnel-endpoint-address
+ * 2001:db8:62aa::375e:f4c1:1
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_show_b4_ip6_addr, static) = {
   .path = "show dslite b4-tunnel-endpoint-address",
   .short_help = "show dslite b4-tunnel-endpoint-address",
   .function = dslite_show_b4_ip6_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show dslite sessions}
+ * Show DS-Lite sessions.
+ * vpp# show dslite sessions
+ * B4 fd01:2::2 1 sessions
+ *   in 192.168.1.1:20000 out 10.0.0.3:16253 protocol udp
+ *     total pkts 2, total bytes 136
+ * B4 fd01:2::3 2 sessions
+ *   in 192.168.1.1:20001 out 10.0.0.3:18995 protocol tcp
+ *     total pkts 2, total bytes 160
+ *   in 192.168.1.1:4000 out 10.0.0.3:53893 protocol icmp
+ *     total pkts 2, total bytes 136
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (dslite_show_sessions, static) = {
   .path = "show dslite sessions",
   .short_help = "show dslite sessions",
