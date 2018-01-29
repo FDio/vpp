@@ -16,6 +16,24 @@
       "revId": "7ddedeced379b0fc286d3dd1033c245923761775",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "40bdef9c_79c2a69c",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-29T12:32:18Z",
+      "side": 1,
+      "message": "Can you describe such use case in detail ideally along with vpp config to configure it?",
+      "parentUuid": "41a6cb5a_ee731c55",
+      "revId": "7ddedeced379b0fc286d3dd1033c245923761775",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
