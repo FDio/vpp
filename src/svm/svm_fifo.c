@@ -505,7 +505,7 @@ svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
 
   /* Atomically increase the queue length */
   ASSERT (cursize + total_copy_bytes <= nitems);
-  __sync_fetch_and_add (&f->cursize, total_copy_bytes);
+  __atomic_fetch_add(&f->cursize, total_copy_bytes, __ATOMIC_RELAXED);
 
   return (total_copy_bytes);
 }
