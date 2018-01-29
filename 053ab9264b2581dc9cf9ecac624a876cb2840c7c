@@ -16,6 +16,24 @@
       "revId": "053ab9264b2581dc9cf9ecac624a876cb2840c7c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5d5a51ab_d8af8ebe",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-01-29T09:48:18Z",
+      "side": 1,
+      "message": "(gdb) p \u0026(((vnet_buffer_opaque_t*)(0))-\u003eip.adj_index[0])\n$5 \u003d (u32 *) 0x10\n(gdb) p \u0026(((vnet_buffer_opaque_t*)(0))-\u003eip.adj_index[1])\n$6 \u003d (u32 *) 0x14\n(gdb) p \u0026(((vnet_buffer_opaque_t*)(0))-\u003eip.reass.fragment_first)\n$7 \u003d (u16 *) 0x18\n(gdb) p \u0026(((vnet_buffer_opaque_t*)(0))-\u003eip.reass)\n$8 \u003d (struct {...} *) 0x18\n\nI don\u0027t see the need for padding...",
+      "parentUuid": "0aa4702f_4e4aaeaf",
+      "revId": "053ab9264b2581dc9cf9ecac624a876cb2840c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
