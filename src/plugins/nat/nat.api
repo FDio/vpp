@@ -564,12 +564,31 @@ define nat44_user_session_details {
   u32 total_pkts;
 };
 
+/** \brief NAT44 load-balancing address and port pair
+    @param addr - IPv4 address of the internal node
+    @param port - L4 port number of the internal node
+    @param probability - probability of the internal node to be randomly matched
+*/
 typeonly manual_endian define nat44_lb_addr_port {
   u8 addr[4];
   u16 port;
   u8 probability;
 };
 
+/** \brief Add/delete NAT44 load-balancing static mapping rule
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param vrf_id - internal network VRF ID
+    @param twice_nat - if 1 translate external host address and port
+    @param out2in_only - if 1 rule match only out2in direction
+    @param tag - opaque string tag
+    @param local_num - number of local network nodes
+    @param locals - local network nodes
+*/
 autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u32 client_index;
   u32 context;
@@ -585,11 +604,28 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
 
+/** \brief Dump NAT44 load-balancing static mapping rules
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
 define nat44_lb_static_mapping_dump {
   u32 client_index;
   u32 context;
 };
 
+/** \brief NAT44 load-balancing static mapping rule details response
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param vrf_id - internal network VRF ID
+    @param twice_nat - if 1 translate external host address and port
+    @param out2in_only - if 1 rule match only out2in direction
+    @param tag - opaque string tag
+    @param local_num - number of local network nodes
+    @param locals - local network nodes
+*/
 manual_endian define nat44_lb_static_mapping_details {
   u32 context;
   u8 external_addr[4];
