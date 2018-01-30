@@ -3309,11 +3309,18 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
       if (clib_net_to_host_u16 (eh->type) == ETHERNET_TYPE_ARP)
 	{
 	  ah = (ethernet_arp_header_t *) (((u8 *) eh) + sizeof (*eh));
+	  gid_address_type (dst) = GID_ADDR_ARP;
+
 	  if (clib_net_to_host_u16 (ah->opcode)
 	      != ETHERNET_ARP_OPCODE_request)
-	    return;
+	    {
+	      memset (&gid_address_arp_ndp_ip (dst), 0,
+		      sizeof (ip_address_t));
+	      ip_addr_version (&gid_address_arp_ndp_ip (dst)) = IP4;
+	      gid_address_arp_ndp_bd (dst) = ~0;
+	      return;
+	    }
 
-	  gid_address_type (dst) = GID_ADDR_ARP;
 	  gid_address_arp_bd (dst) = lisp_get_bd_from_buffer_eth (b);
 	  clib_memcpy (&gid_address_arp_ip4 (dst),
 		       &ah->ip4_over_ethernet[1].ip4, 4);
@@ -3331,13 +3338,23 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 		  ndh = ip6_next_header (ip);
 		  if (ndh->icmp.type == ICMP6_neighbor_solicitation)
 		    {
+		      gid_address_type (dst) = GID_ADDR_NDP;
+
+		      /* check that source link layer address option is present */
 		      opt = (void *) (ndh + 1);
 		      if ((opt->header.type !=
 			   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address)
 			  || (opt->header.n_data_u64s != 1))
-			return;	/* source link layer address option not present */
+			{
+			  memset (&gid_address_arp_ndp_ip (dst), 0,
+				  sizeof (ip_address_t));
+			  ip_addr_version (&gid_address_arp_ndp_ip (dst)) =
+			    IP6;
+			  gid_address_arp_ndp_bd (dst) = ~0;
+			  gid_address_type (src) = GID_ADDR_NO_ADDRESS;
+			  return;
+			}
 
-		      gid_address_type (dst) = GID_ADDR_NDP;
 		      gid_address_ndp_bd (dst) =
 			lisp_get_bd_from_buffer_eth (b);
 		      ip_address_set (&gid_address_arp_ndp_ip (dst),
