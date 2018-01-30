@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff3729ea_fb720a8b",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-01-30T14:34:30Z",
+      "side": 1,
+      "message": "I am talking about this file.",
+      "revId": "77cc50942d43d8926b2077357c45ef0883f7cb43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
