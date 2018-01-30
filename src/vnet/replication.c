@@ -220,8 +220,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
 
 #if (CLIB_DEBUG > 0)
 	  if (vm->buffer_main->callbacks_registered == 0)
-	    vlib_buffer_set_known_state (vm, bi0,
-					 VLIB_BUFFER_KNOWN_ALLOCATED);
+	    vlib_buffer_set_known_state (bi0, VLIB_BUFFER_KNOWN_ALLOCATED);
 #endif
 
 	  /* If buffer is traced, mark frame as traced */

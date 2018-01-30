@@ -1462,14 +1462,10 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  to_add -= 2;
 
 #if 0
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, bi0));
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, bi1));
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, fi0));
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, fi1));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (bi0));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (bi1));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (fi0));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (fi1));
 #endif
 
 	  b0 = vlib_get_buffer (vm, bi0);
@@ -1680,10 +1676,8 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  to_add -= 1;
 
 #if 0
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, bi0));
-	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
-		  vlib_buffer_is_known (vm, fi0));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (bi0));
+	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED == vlib_buffer_is_known (fi0));
 #endif
 
 	  b0 = vlib_get_buffer (vm, bi0);

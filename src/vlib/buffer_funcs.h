@@ -222,9 +222,9 @@ void vlib_buffer_validate_alloc_free (vlib_main_t * vm, u32 * buffers,
 				      expected_state);
 
 always_inline vlib_buffer_known_state_t
-vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
+vlib_buffer_is_known (u32 buffer_index)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_main_t *bm = vlib_global_main.buffer_main;
 
   clib_spinlock_lock (&bm->buffer_known_hash_lockp);
   uword *p = hash_get (bm->buffer_known_hash, buffer_index);
@@ -233,11 +233,11 @@ vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 }
 
 always_inline void
-vlib_buffer_set_known_state (vlib_main_t * vm,
-			     u32 buffer_index,
+vlib_buffer_set_known_state (u32 buffer_index,
 			     vlib_buffer_known_state_t state)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_main_t *bm = vlib_global_main.buffer_main;
+
   clib_spinlock_lock (&bm->buffer_known_hash_lockp);
   hash_set (bm->buffer_known_hash, buffer_index, state);
   clib_spinlock_unlock (&bm->buffer_known_hash_lockp);

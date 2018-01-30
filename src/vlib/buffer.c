@@ -185,7 +185,7 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
       vlib_buffer_known_state_t k;
       u8 *msg, *result;
 
-      k = vlib_buffer_is_known (vm, b->next_buffer);
+      k = vlib_buffer_is_known (b->next_buffer);
       if (k != VLIB_BUFFER_KNOWN_ALLOCATED)
 	return format (0, "next 0x%x: %U",
 		       b->next_buffer, format_vlib_buffer_known_state, k);
@@ -243,7 +243,7 @@ vlib_validate_buffers (vlib_main_t * vm,
 	  goto done;
 	}
 
-      k = vlib_buffer_is_known (vm, bi);
+      k = vlib_buffer_is_known (bi);
       if (k != known_state)
 	{
 	  msg = format (0, "is %U; expected %U",
@@ -317,7 +317,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
       bi = b[0];
       b += 1;
-      known = vlib_buffer_is_known (vm, bi);
+      known = vlib_buffer_is_known (bi);
       if (known != expected_state)
 	{
 	  ASSERT (0);
@@ -328,8 +328,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 	}
 
       vlib_buffer_set_known_state
-	(vm, bi,
-	 is_free ? VLIB_BUFFER_KNOWN_FREE : VLIB_BUFFER_KNOWN_ALLOCATED);
+	(bi, is_free ? VLIB_BUFFER_KNOWN_FREE : VLIB_BUFFER_KNOWN_ALLOCATED);
     }
 }
 
@@ -580,7 +579,7 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
 	  bi[i] = vlib_get_buffer_index (vm, b);
 
 	  if (CLIB_DEBUG > 0)
-	    vlib_buffer_set_known_state (vm, bi[i], VLIB_BUFFER_KNOWN_FREE);
+	    vlib_buffer_set_known_state (bi[i], VLIB_BUFFER_KNOWN_FREE);
 	  b = vlib_buffer_next_contiguous (b, fl->n_data_bytes);
 	}
 
