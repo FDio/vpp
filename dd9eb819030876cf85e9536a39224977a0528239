@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "39249b56_2053f2d9",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-01-30T14:37:42Z",
+      "side": 1,
+      "message": "Just found out the hard way this is an infinite loop ;-)",
+      "range": {
+        "startLine": 173,
+        "startChar": 6,
+        "endLine": 173,
+        "endChar": 29
+      },
+      "revId": "dd9eb819030876cf85e9536a39224977a0528239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
