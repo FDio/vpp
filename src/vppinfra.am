@@ -43,6 +43,7 @@ TESTS  +=  test_bihash_template \
 	   test_time \
 	   test_timing_wheel \
 	   test_tw_timer \
+	   test_valloc \
 	   test_vec \
 	   test_zvec
 endif
@@ -77,6 +78,7 @@ test_socket_SOURCES = vppinfra/test_socket.c
 test_time_SOURCES = vppinfra/test_time.c
 test_timing_wheel_SOURCES = vppinfra/test_timing_wheel.c
 test_tw_timer_SOURCES = vppinfra/test_tw_timer.c
+test_valloc_SOURCES = vppinfra/test_valloc.c
 test_vec_SOURCES = vppinfra/test_vec.c
 test_zvec_SOURCES = vppinfra/test_zvec.c
 
@@ -109,6 +111,7 @@ test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_tw_timer_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_valloc_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
@@ -139,6 +142,7 @@ test_socket_LDADD =	libvppinfra.la
 test_time_LDADD =	libvppinfra.la -lm
 test_timing_wheel_LDADD =	libvppinfra.la -lm
 test_tw_timer_LDADD =	libvppinfra.la
+test_valloc_LDADD =	libvppinfra.la
 test_vec_LDADD =	libvppinfra.la
 test_zvec_LDADD =	libvppinfra.la
 
@@ -169,6 +173,7 @@ test_socket_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_tw_timer_LDFLAGS = -static
+test_valloc_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
@@ -249,6 +254,7 @@ nobase_include_HEADERS = \
   vppinfra/tw_timer_template.c \
   vppinfra/types.h \
   vppinfra/unix.h \
+  vppinfra/valloc.h \
   vppinfra/vec.h \
   vppinfra/vec_bootstrap.h \
   vppinfra/vector.h \
@@ -308,6 +314,7 @@ CLIB_CORE = \
   vppinfra/tw_timer_1t_3w_1024sl_ov.h \
   vppinfra/tw_timer_1t_3w_1024sl_ov.c \
   vppinfra/unformat.c \
+  vppinfra/valloc.c \
   vppinfra/vec.c \
   vppinfra/vector.c \
   vppinfra/zvec.c

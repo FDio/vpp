@@ -219,7 +219,7 @@ test_valloc_main (unformat_input_t * i)
 	;
       else if (unformat (i, "item-size %u", &tm->item_size))
 	;
-      else if (unformat (i, "check-every-add_del"))
+      else if (unformat (i, "check-every-add-del"))
 	tm->check_every_add_del = 1;
       else if (unformat (i, "verbose %d", &tm->verbose))
 	;
