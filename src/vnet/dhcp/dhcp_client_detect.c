@@ -319,7 +319,7 @@ VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-dhcp-client-detect",
-  .runs_before = VNET_FEATURES ("ip4-drop"),
+  .runs_before = VNET_FEATURES ("ip4-not-enabled"),
 };
 
 /* *INDENT-ON* */

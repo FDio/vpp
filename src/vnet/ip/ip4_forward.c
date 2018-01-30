@@ -883,11 +883,11 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
       if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
 	return;
     }
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
 			       !is_enable, 0, 0);
 
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-drop",
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
 			       sw_if_index, !is_enable, 0, 0);
 }
 
@@ -1066,10 +1066,10 @@ VNET_FEATURE_INIT (ip4_vxlan_bypass, static) =
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
-VNET_FEATURE_INIT (ip4_drop, static) =
+VNET_FEATURE_INIT (ip4_not_enabled, static) =
 {
   .arc_name = "ip4-unicast",
-  .node_name = "ip4-drop",
+  .node_name = "ip4-not-enabled",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
@@ -1095,10 +1095,10 @@ VNET_FEATURE_INIT (ip4_vpath_mc, static) =
   .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
 };
 
-VNET_FEATURE_INIT (ip4_mc_drop, static) =
+VNET_FEATURE_INIT (ip4_mc_not_enabled, static) =
 {
   .arc_name = "ip4-multicast",
-  .node_name = "ip4-drop",
+  .node_name = "ip4-not-enabled",
   .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
 };
 
@@ -1166,11 +1166,11 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       /* *INDENT-ON* */
     }
 
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
 			       is_add, 0, 0);
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-drop", sw_if_index,
-			       is_add, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
+			       sw_if_index, is_add, 0, 0);
 
   return /* no error */ 0;
 }
