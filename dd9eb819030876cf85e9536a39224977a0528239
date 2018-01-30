@@ -69,6 +69,30 @@
       "revId": "dd9eb819030876cf85e9536a39224977a0528239",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf302b37_e75948e8",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-30T16:23:43Z",
+      "side": 1,
+      "message": "yep, jerome already spotted it last week...",
+      "parentUuid": "717ebf66_4ec184f8",
+      "range": {
+        "startLine": 502,
+        "startChar": 61,
+        "endLine": 502,
+        "endChar": 69
+      },
+      "revId": "dd9eb819030876cf85e9536a39224977a0528239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
