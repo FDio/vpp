@@ -28,7 +28,7 @@ VNET_FEATURE_ARC_INIT (ip6_punt) =
 VNET_FEATURE_ARC_INIT (ip6_drop) =
 {
   .arc_name  = "ip6-drop",
-  .start_nodes = VNET_FEATURES ("ip6-drop"),
+  .start_nodes = VNET_FEATURES ("ip6-drop", "ip6-not-enabled"),
 };
 /* *INDENT-ON* */
 
@@ -89,6 +89,18 @@ ip6_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 static uword
+ip6_not_enabled (vlib_main_t * vm,
+		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+
+  return ip_drop_or_punt (vm, node, frame,
+			  vnet_feat_arc_ip6_drop.feature_arc_index);
+
+}
+
+static uword
 ip6_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
@@ -112,6 +124,20 @@ VLIB_REGISTER_NODE (ip6_drop_node, static) =
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_drop_node, ip6_drop);
+
+VLIB_REGISTER_NODE (ip6_not_enabled_node, static) =
+{
+  .function = ip6_not_enabled,
+  .name = "ip6-not-enabled",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_forward_next_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_not_enabled_node, ip6_not_enabled);
 
 VLIB_REGISTER_NODE (ip6_punt_node, static) =
 {

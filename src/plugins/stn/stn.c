@@ -382,9 +382,11 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
 				  1, 0, 0);
       vnet_feature_enable_disable("ip6-unicast", "ip6-lookup", args->sw_if_index,
 				  1, 0, 0);
-      vnet_feature_enable_disable("ip4-unicast", "ip4-drop", args->sw_if_index,
+      vnet_feature_enable_disable("ip4-unicast", "ip4-not-enabled",
+                                  args->sw_if_index,
 				  0, 0, 0);
-      vnet_feature_enable_disable("ip6-unicast", "ip6-drop", args->sw_if_index,
+      vnet_feature_enable_disable("ip6-unicast", "ip6-not-enabled",
+                                  args->sw_if_index,
 				  0, 0, 0);
     }
   else if (r)
