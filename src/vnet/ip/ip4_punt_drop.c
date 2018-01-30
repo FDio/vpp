@@ -28,7 +28,7 @@ VNET_FEATURE_ARC_INIT (ip4_punt) =
 VNET_FEATURE_ARC_INIT (ip4_drop) =
 {
   .arc_name  = "ip4-drop",
-  .start_nodes = VNET_FEATURES ("ip4-drop"),
+  .start_nodes = VNET_FEATURES ("ip4-drop", "ip4-not-enabled"),
 };
 /* *INDENT-ON* */
 
@@ -187,6 +187,17 @@ ip4_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 static uword
+ip4_not_enabled (vlib_main_t * vm,
+		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+
+  return ip_drop_or_punt (vm, node, frame,
+			  vnet_feat_arc_ip4_drop.feature_arc_index);
+}
+
+static uword
 ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
@@ -210,6 +221,20 @@ VLIB_REGISTER_NODE (ip4_drop_node, static) =
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop);
+
+VLIB_REGISTER_NODE (ip4_not_enabled_node, static) =
+{
+  .function = ip4_not_enabled,
+  .name = "ip4-not-enabled",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_forward_next_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_not_enabled_node, ip4_not_enabled);
 
 VLIB_REGISTER_NODE (ip4_punt_node, static) =
 {
