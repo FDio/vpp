@@ -252,6 +252,27 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
                                  rx_fib_index0);
 }
 
+static inline int
+nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
+                                  u32 proto0, u32 thread_index)
+{
+  udp_header_t * udp0 = ip4_next_header (ip0);
+  snat_session_key_t key0;
+  clib_bihash_kv_8_8_t kv0, value0;
+
+  key0.addr = ip0->src_address;
+  key0.port = udp0->src_port;
+  key0.protocol = proto0;
+  key0.fib_index = sm->outside_fib_index;
+  kv0.key = key0.as_u64;
+
+  if (!clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
+                              &value0))
+    return 1;
+
+  return 0;
+}
+
 static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                       ip4_header_t * ip0,
                       u32 rx_fib_index0,
@@ -497,12 +518,23 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
                               &value0))
     {
-      if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
-          IP_PROTOCOL_ICMP, rx_fib_index0, thread_index) &&
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] == ~0))
+      if (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)
         {
-          dont_translate = 1;
-          goto out;
+          if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
+              ip0, IP_PROTOCOL_ICMP, thread_index)))
+            {
+              dont_translate = 1;
+              goto out;
+            }
+        }
+      else
+        {
+          if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+              ip0, IP_PROTOCOL_ICMP, rx_fib_index0, thread_index)))
+            {
+              dont_translate = 1;
+              goto out;
+            }
         }
 
       if (PREDICT_FALSE(icmp_is_error_message (icmp0)))
@@ -1517,9 +1549,18 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
-                      ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
-                    goto trace00;
+                  if (is_output_feature)
+                    {
+                      if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
+                          ip0, proto0, thread_index)))
+                        goto trace00;
+                    }
+                  else
+                    {
+                      if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                          ip0, proto0, rx_fib_index0, thread_index)))
+                        goto trace00;
+                    }
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, thread_index);
@@ -1696,9 +1737,18 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1,
-                      ip1, proto1, rx_fib_index1, thread_index)) && !is_output_feature)
-                    goto trace01;
+                  if (is_output_feature)
+                    {
+                      if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
+                          ip1, proto1, thread_index)))
+                        goto trace00;
+                    }
+                  else
+                    {
+                      if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1,
+                          ip1, proto1, rx_fib_index1, thread_index)))
+                        goto trace01;
+                    }
 
                   next1 = slow_path (sm, b1, ip1, rx_fib_index1, &key1,
                                      &s1, node, next1, thread_index);
@@ -1907,9 +1957,18 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
-                      ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
-                    goto trace0;
+                  if (is_output_feature)
+                    {
+                      if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
+                          ip0, proto0, thread_index)))
+                        goto trace0;
+                    }
+                  else
+                    {
+                      if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                          ip0, proto0, rx_fib_index0, thread_index)))
+                        goto trace0;
+                    }
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, thread_index);

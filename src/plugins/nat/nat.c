@@ -774,7 +774,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                 }
             }
           /* External address must be allocated */
-          if (!a)
+          if (!a && (l_addr.as_u32 != e_addr.as_u32))
             return VNET_API_ERROR_NO_SUCH_ENTRY;
         }
 
