@@ -69,13 +69,15 @@ typedef struct
   char *segment_name;
   u32 segment_size;
   u32 *new_segment_indices;
-  u32 rx_fifo_size;
-  u32 tx_fifo_size;
-  u32 preallocated_fifo_pairs;
-  u32 private_segment_count;
-  u32 seg_protected_space;
+//  u32 rx_fifo_size;
+//  u32 tx_fifo_size;
+//  u32 preallocated_fifo_pairs;
+//  u32 private_segment_count;
+//  u32 seg_protected_space;
   int memfd_fd;
 } svm_fifo_segment_create_args_t;
+
+#define svm_fifo_segment_flags(_seg) _seg->h->flags
 
 static inline svm_fifo_segment_private_t *
 svm_fifo_segment_get_segment (u32 segment_index)

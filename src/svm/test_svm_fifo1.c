@@ -30,9 +30,9 @@ hello_world (int verbose)
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
-  a->rx_fifo_size = 4096;
-  a->tx_fifo_size = 4096;
-  a->preallocated_fifo_pairs = 4;
+//  a->rx_fifo_size = 4096;
+//  a->tx_fifo_size = 4096;
+//  a->preallocated_fifo_pairs = 4;
 
   rv = svm_fifo_segment_create (a);
 

@@ -258,8 +258,8 @@ int
 application_init (application_t * app, u32 api_client_index, u64 * options,
 		  session_cb_vft_t * cb_fns)
 {
-  ssvm_segment_type_t st = SSVM_SEGMENT_MEMFD;
-  u32 app_evt_queue_size, first_seg_size;
+  u32 app_evt_queue_size, first_seg_size, prealloc_fifo_pairs;
+  ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   segment_manager_properties_t *props;
   vl_api_registration_t *reg;
   segment_manager_t *sm;
@@ -273,11 +273,11 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
   if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
-    st = SSVM_N_SEGMENT_TYPES;
+    seg_type = SSVM_N_SEGMENT_TYPES;
   else if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-    st = SSVM_SEGMENT_SHM;
+    seg_type = SSVM_SEGMENT_SHM;
 
-  if (!application_verify_cfg (st))
+  if (!application_verify_cfg (seg_type))
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
   /*
@@ -296,18 +296,17 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
     props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
   if (options[APP_OPTIONS_TX_FIFO_SIZE])
     props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
-  props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
-  props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
-  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
-    props->segment_type = SSVM_N_SEGMENT_TYPES;
-  else
-    props->segment_type = st;
+  props->segment_type = seg_type;
 
   app_evt_queue_size = options[APP_OPTIONS_EVT_QUEUE_SIZE] > 0 ?
     options[APP_OPTIONS_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
   first_seg_size = options[APP_OPTIONS_SEGMENT_SIZE];
+  prealloc_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
+//  props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
+//  props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
+
   if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size,
-				  app_evt_queue_size)))
+	                          app_evt_queue_size, prealloc_fifo_pairs)))
     return rv;
   sm->first_is_protected = 1;
 
@@ -321,14 +320,15 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   app->ns_index = options[APP_OPTIONS_NAMESPACE];
   app->listeners_table = hash_create (0, sizeof (u64));
   app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
+  app->event_queue = segment_manager_event_queue (sm);
 
   /* If no scope enabled, default to global */
   if (!application_has_global_scope (app)
       && !application_has_local_scope (app))
     app->flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 
-  /* Allocate app event queue in the first shared-memory segment */
-  app->event_queue = segment_manager_alloc_queue (sm, app_evt_queue_size);
+//  /* Allocate app event queue in the first shared-memory segment */
+//  app->event_queue = segment_manager_alloc_queue (sm, app_evt_queue_size);
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (cb_fns);

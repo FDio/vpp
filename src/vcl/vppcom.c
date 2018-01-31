@@ -2821,9 +2821,9 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	format ((u8 *) a->segment_name, "%d:segment%d%c",
 		getpid (), vcm->unique_segment_index++, 0);
       a->segment_size = vcm->cfg.segment_size;
-      a->preallocated_fifo_pairs = vcm->cfg.preallocated_fifo_pairs;
-      a->rx_fifo_size = vcm->cfg.rx_fifo_size;
-      a->tx_fifo_size = vcm->cfg.tx_fifo_size;
+//      a->preallocated_fifo_pairs = vcm->cfg.preallocated_fifo_pairs;
+//      a->rx_fifo_size = vcm->cfg.rx_fifo_size;
+//      a->tx_fifo_size = vcm->cfg.tx_fifo_size;
 
       rv = svm_fifo_segment_create (a);
       if (PREDICT_FALSE (rv))
@@ -2850,6 +2850,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
       vec_free (a->new_segment_indices);
 
       seg = svm_fifo_segment_get_segment (client_session->sm_seg_index);
+      if (vcm->cfg.preallocated_fifo_pairs)
+	svm_fifo_segment_preallocate_fifo_pairs (
+	    seg, vcm->cfg.rx_fifo_size, vcm->cfg.tx_fifo_size,
+	    vcm->cfg.preallocated_fifo_pairs);
       client_session->server_rx_fifo =
 	svm_fifo_segment_alloc_fifo (seg, vcm->cfg.rx_fifo_size,
 				     FIFO_SEGMENT_RX_FREELIST);
