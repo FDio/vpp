@@ -310,7 +310,7 @@ bier_test_mpls_spf (void)
             .as_u32 = clib_host_to_net_u32(0x01010101),
         },
     };
-    fib_route_path_t *paths_1_1_1_1 = NULL;
+    fib_route_path_t *paths_1_1_1_1 = NULL, *input_paths_1_1_1_1;
     fib_route_path_t path_1_1_1_1 = {
         .frp_addr = nh_1_1_1_1,
         .frp_bier_fib_index = bti,
@@ -325,7 +325,8 @@ bier_test_mpls_spf (void)
     };
     index_t bei_1;
 
-    bier_table_route_add(&bt_0_0_0_256, 1, paths_1_1_1_1);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_add(&bt_0_0_0_256, 1, input_paths_1_1_1_1);
     bei_1 = bier_table_lookup(bier_table_get(bti), 1);
 
     BIER_TEST((INDEX_INVALID != bei_1), "BP:1 present");
@@ -477,7 +478,8 @@ bier_test_mpls_spf (void)
      */
     index_t bei_2;
 
-    bier_table_route_add(&bt_0_0_0_256, 2, paths_1_1_1_1);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_add(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
     bei_2 = bier_table_lookup(bier_table_get(bti), 2);
 
     bier_entry_contribute_forwarding(bei_2, &dpo_bei);
@@ -498,13 +500,14 @@ bier_test_mpls_spf (void)
         .fp_len = 32,
         .fp_proto = FIB_PROTOCOL_IP4,
     };
-    fib_route_path_t *paths_1_1_1_2 = NULL, path_1_1_1_2 = {
+    fib_route_path_t *paths_1_1_1_2 = NULL, *input_paths_1_1_1_2, path_1_1_1_2 = {
         .frp_addr = nh_1_1_1_2,
         .frp_bier_fib_index = bti,
         .frp_sw_if_index = ~0,
     };
     vec_add1(path_1_1_1_2.frp_label_stack, 501);
     vec_add1(paths_1_1_1_2, path_1_1_1_2);
+    input_paths_1_1_1_2 = vec_dup(paths_1_1_1_2);
     index_t bei_3;
 
     mpls_label_t *out_lbl_101 = NULL;
@@ -520,7 +523,7 @@ bier_test_mpls_spf (void)
                                    1,
                                    out_lbl_101,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    bier_table_route_add(&bt_0_0_0_256, 3, paths_1_1_1_2);
+    bier_table_route_add(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
     bei_3 = bier_table_lookup(bier_table_get(bti), 3);
 
     BIER_TEST((INDEX_INVALID != bei_3), "BP:3 present");
@@ -562,7 +565,8 @@ bier_test_mpls_spf (void)
      * Load-balance BP:3 over both next-hops
      */
     paths_1_1_1_1[0] = path_1_1_1_1;
-    bier_table_route_add(&bt_0_0_0_256, 3, paths_1_1_1_1);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_add(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
 
     BIER_TEST(bier_test_validate_entry(bei_3, 2,
                                        &dpo_o_bfm_1_1_1_1,
@@ -630,7 +634,8 @@ bier_test_mpls_spf (void)
     /*
      * remove the original 1.1.1.2 fmask from BP:3
      */
-    bier_table_route_remove(&bt_0_0_0_256, 3, paths_1_1_1_2);
+    input_paths_1_1_1_2 = vec_dup(paths_1_1_1_2);
+    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
     bier_entry_contribute_forwarding(bei_3, &dpo_bei);
     BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
               "BP:3 stacks on fmask 1.1.1.1");
@@ -648,10 +653,14 @@ bier_test_mpls_spf (void)
     /*
      * remove the routes added
      */
-    bier_table_route_remove(&bt_0_0_0_256, 2, paths_1_1_1_1);
-    bier_table_route_remove(&bt_0_0_0_256, 3, paths_1_1_1_2);
-    bier_table_route_remove(&bt_0_0_0_256, 3, paths_1_1_1_1);
-    bier_table_route_remove(&bt_0_0_0_256, 1, paths_1_1_1_1);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_remove(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
+    input_paths_1_1_1_2 = vec_dup(paths_1_1_1_2);
+    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
+    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
+    bier_table_route_remove(&bt_0_0_0_256, 1, input_paths_1_1_1_1);
 
     /*
      * delete the table
@@ -685,6 +694,8 @@ bier_test_mpls_spf (void)
 
     vec_free(paths_1_1_1_1);
     vec_free(paths_1_1_1_2);
+    vec_free(input_paths_1_1_1_1);
+    vec_free(input_paths_1_1_1_2);
 
     return (0);
 }
