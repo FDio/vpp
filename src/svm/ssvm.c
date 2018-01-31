@@ -19,11 +19,11 @@ typedef int (*init_fn) (ssvm_private_t *);
 typedef void (*delete_fn) (ssvm_private_t *);
 
 static init_fn master_init_fns[SSVM_N_SEGMENT_TYPES] =
-  { ssvm_master_init_shm, ssvm_master_init_memfd };
+  { ssvm_master_init_shm, ssvm_master_init_memfd, ssvm_master_init_private };
 static init_fn slave_init_fns[SSVM_N_SEGMENT_TYPES] =
-  { ssvm_slave_init_shm, ssvm_slave_init_memfd };
+  { ssvm_slave_init_shm, ssvm_slave_init_memfd, ssvm_slave_init_private };
 static delete_fn delete_fns[SSVM_N_SEGMENT_TYPES] =
-  { ssvm_delete_shm, ssvm_delete_memfd };
+  { ssvm_delete_shm, ssvm_delete_memfd, ssvm_delete_private };
 
 int
 ssvm_master_init_shm (ssvm_private_t * ssvm)
@@ -313,6 +313,59 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
   vec_free (memfd->name);
   clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
   close (memfd->fd);
+}
+
+/**
+ * Initialize segment in a private heap
+ */
+int
+ssvm_master_init_private (ssvm_private_t * ssvm)
+{
+  u32 pagesize = clib_mem_get_page_size ();
+  ssvm_shared_header_t *sh;
+  mheap_t *heap_header;
+  u32 rnd_size = 0;
+  u8 *heap;
+
+  rnd_size = (ssvm->ssvm_size + (pagesize - 1)) & ~pagesize;
+  heap = mheap_alloc (0, rnd_size);
+  if (heap == 0)
+    {
+      clib_unix_warning ("mheap alloc");
+      return -1;
+    }
+  heap_header = mheap_header (heap);
+  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+
+  ssvm->ssvm_size = rnd_size;
+  ssvm->i_am_master = 1;
+  ssvm->my_pid = getpid ();
+  ssvm->requested_va = ~0;
+
+  /* Allocate a [sic] shared memory header, in process memory... */
+  sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
+  ssvm->sh = sh;
+
+  memset (sh, 0, sizeof (*sh));
+  sh->heap = heap;
+  sh->type = SSVM_SEGMENT_PRIVATE;
+
+  return 0;
+}
+
+int
+ssvm_slave_init_private (ssvm_private_t * ssvm)
+{
+  clib_warning ("BUG: this should not be called!");
+  return -1;
+}
+
+void
+ssvm_delete_private (ssvm_private_t * ssvm)
+{
+  vec_free (ssvm->name);
+  mheap_free (ssvm->sh->heap);
+  clib_mem_free (ssvm->sh);
 }
 
 int

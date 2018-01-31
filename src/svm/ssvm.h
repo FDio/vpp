@@ -49,6 +49,7 @@ typedef enum ssvm_segment_type_
 {
   SSVM_SEGMENT_SHM = 0,
   SSVM_SEGMENT_MEMFD,
+  SSVM_SEGMENT_PRIVATE,
   SSVM_N_SEGMENT_TYPES		/**< Private segments */
 } ssvm_segment_type_t;
 
@@ -194,6 +195,10 @@ void ssvm_delete_shm (ssvm_private_t * ssvm);
 int ssvm_master_init_memfd (ssvm_private_t * memfd);
 int ssvm_slave_init_memfd (ssvm_private_t * memfd);
 void ssvm_delete_memfd (ssvm_private_t * memfd);
+
+int ssvm_master_init_private (ssvm_private_t * ssvm);
+int ssvm_slave_init_private (ssvm_private_t * ssvm);
+void ssvm_delete_private (ssvm_private_t * ssvm);
 
 ssvm_segment_type_t ssvm_type (const ssvm_private_t * ssvm);
 u8 *ssvm_name (const ssvm_private_t * ssvm);

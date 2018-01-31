@@ -1115,6 +1115,7 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
 static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
+  segment_manager_main_init_args_t _sm_args = { 0 }, *sm_args = &_sm_args;
   session_manager_main_t *smm = &session_manager_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
@@ -1162,8 +1163,9 @@ session_manager_main_enable (vlib_main_t * vm)
   session_vpp_event_queues_allocate (smm);
 
   /* Initialize fifo segment main baseva and timeout */
-  svm_fifo_segment_init (smm->session_baseva + smm->evt_qs_segment_size,
-			 smm->segment_timeout);
+  sm_args->baseva = smm->session_baseva + smm->evt_qs_segment_size;
+  sm_args->size = smm->session_va_space_size;
+  segment_manager_main_init (sm_args);
 
   /* Preallocate sessions */
   if (smm->preallocated_sessions)
@@ -1237,7 +1239,7 @@ session_manager_main_init (vlib_main_t * vm)
 {
   session_manager_main_t *smm = &session_manager_main;
   smm->session_baseva = 0x200000000ULL;
-  smm->segment_timeout = 20;
+  smm->session_va_space_size = (u64) 128 << 30;
   smm->evt_qs_segment_size = 64 << 20;
   smm->is_enabled = 0;
   return 0;

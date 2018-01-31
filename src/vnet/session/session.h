@@ -70,7 +70,8 @@ _(FIFO_FULL, "Packets dropped for lack of rx fifo space")               \
 _(EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")      \
 _(API_QUEUE_FULL, "Sessions not created for lack of API queue space")   \
 _(NEW_SEG_NO_SPACE, "Created segment, couldn't allocate a fifo pair")   \
-_(NO_SPACE, "Couldn't allocate a fifo pair")
+_(NO_SPACE, "Couldn't allocate a fifo pair")				\
+_(SEG_CREATE, "Couldn't create a new segment")
 
 typedef enum
 {
@@ -171,7 +172,7 @@ struct _session_manager_main
 
   /** Session ssvm segment configs*/
   uword session_baseva;
-  u32 segment_timeout;
+  uword session_va_space_size;
   u32 evt_qs_segment_size;
   u8 evt_qs_use_memfd_seg;
 
