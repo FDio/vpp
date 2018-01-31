@@ -66,18 +66,17 @@ class VppObjectRegistry(object):
             return
         logger.info("REG: Removing VPP configuration for registered objects")
         # remove the config in reverse order as there might be dependencies
+        failed = []
         for obj in reversed(self._object_registry):
             if obj.query_vpp_config():
                 logger.info("REG: Removing configuration for %s" % obj)
                 obj.remove_vpp_config()
+                if obj.query_vpp_config():
+                    failed.append(obj)
             else:
                 logger.info(
                     "REG: Skipping removal for %s, configuration not present" %
                     obj)
-        failed = []
-        for obj in self._object_registry:
-            if obj.query_vpp_config():
-                failed.append(obj)
         self.unregister_all(logger)
         if failed:
             logger.error("REG: Couldn't remove configuration for object(s):")

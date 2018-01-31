@@ -210,7 +210,7 @@ bier_disp_table_lookup_hton(index_t bdti,
 {
     bier_hdr_src_id_t src = bp;
 
-    return (bier_disp_table_lookup(bdti, clib_host_to_net_u32(src)));
+    return (bier_disp_table_lookup(bdti, clib_host_to_net_u16(src)));
 }
 
 void

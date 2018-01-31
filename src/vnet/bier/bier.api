@@ -109,7 +109,9 @@ define bier_route_details
     @param context - sender context, to match reply w/ request
     @param bi_tbl_id - The BIER table-id used to forward post encap
     @param bi_src - The source Bit-position in the encap.
-    @param bi_n_bytes - The number of bytes in the following bit-string
+    @param bi_n_bytes - The number of bytes in the following bit-string.
+                        VPP only supports BSL of 1024 and less, so this is
+			a u8 field.
     @param bi_bytes - The bit-string represented as a byte array (MSB first)
 */
 define bier_imp_add

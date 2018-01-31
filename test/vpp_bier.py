@@ -219,11 +219,12 @@ class VppBierDispEntry(VppObject):
     BIER Disposition Entry
     """
 
-    def __init__(self, test, tbl_id, bp, payload_proto, nh, nh_tbl,
-                 rpf_id=~0):
+    def __init__(self, test, tbl_id, bp, payload_proto, nh_proto,
+                 nh, nh_tbl, rpf_id=~0):
         self._test = test
         self.tbl_id = tbl_id
         self.nh_tbl = nh_tbl
+        self.nh_proto = nh_proto
         self.bp = bp
         self.payload_proto = payload_proto
         self.rpf_id = rpf_id
@@ -234,6 +235,7 @@ class VppBierDispEntry(VppObject):
             self.tbl_id,
             self.bp,
             self.payload_proto,
+            self.nh_proto,
             self.nh,
             self.nh_tbl,
             self.rpf_id,
@@ -245,6 +247,7 @@ class VppBierDispEntry(VppObject):
             self.tbl_id,
             self.bp,
             self.payload_proto,
+            self.nh_proto,
             self.nh,
             self.nh_tbl,
             self.rpf_id,

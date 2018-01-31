@@ -84,6 +84,7 @@ bier_lookup (vlib_main_t * vm,
     u32 n_left_from, next_index, * from, * to_next;
     bier_lookup_main_t *blm = &bier_lookup_main;
     u32 thread_index = vlib_get_thread_index();
+    bier_bit_mask_bucket_t buckets_copy[BIER_HDR_BUCKETS_4096];
 
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
@@ -98,7 +99,6 @@ bier_lookup (vlib_main_t * vm,
 
         while (n_left_from > 0 && n_left_to_next > 0)
         {
-            bier_bit_mask_bucket_t buckets_copy[BIER_HDR_BUCKETS_256];
             u32 next0, bi0, n_bytes, bti0, bfmi0;
             const bier_fmask_t *bfm0;
             const bier_table_t *bt0;
@@ -199,6 +199,9 @@ bier_lookup (vlib_main_t * vm,
                         /*
                          * go to the next bit-position set
                          */
+                        vlib_node_increment_counter(
+                            vm, node->node_index,
+                            BIER_LOOKUP_ERROR_FMASK_UNRES, 1);
                         bucket = ((int*)bbs.bbs_buckets)[index];
                         continue;
                     }
@@ -210,19 +213,19 @@ bier_lookup (vlib_main_t * vm,
              * Create the number of clones we need based on the number
              * of fmasks we are sending to.
              */
-            u8 num_cloned, clone;
+            u16 num_cloned, clone;
             u32 n_clones;
 
             n_clones = vec_len(blm->blm_fmasks[thread_index]);
 
             if (PREDICT_TRUE(0 != n_clones))
             {
-                ASSERT(n_clones < 256);
                 num_cloned = vlib_buffer_clone(vm, bi0,
                                                blm->blm_clones[thread_index],
-                                               n_clones, 128);
+                                               n_clones,
+                                               n_bytes + 8);
 
-                if (num_cloned != n_clones)
+                if (num_cloned != vec_len(blm->blm_fmasks[thread_index]))
                 {
                     vlib_node_increment_counter
                         (vm, node->node_index,
@@ -301,12 +304,12 @@ bier_lookup (vlib_main_t * vm,
             }
         }
 
-        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+        vlib_put_next_frame(vm, node, next_index, n_left_to_next);
     }
 
-    vlib_node_increment_counter (vm, bier_lookup_node.index,
-                                 BIER_LOOKUP_ERROR_NONE,
-                                 from_frame->n_vectors);
+    vlib_node_increment_counter(vm, bier_lookup_node.index,
+                                BIER_LOOKUP_ERROR_NONE,
+                                from_frame->n_vectors);
     return (from_frame->n_vectors);
 }
 
@@ -355,11 +358,11 @@ bier_lookup_module_init (vlib_main_t * vm)
          thread_index++)
     {
         /*
-         *  4096 is the most we will ever need to support
-         * a Bit-Mask length of 4096
+         *  1024 is the most we will ever need to support
+         * a Bit-Mask length of 1024
          */
-        vec_validate(blm->blm_fmasks[thread_index], 4095);
-        vec_validate(blm->blm_clones[thread_index], 4095);
+        vec_validate(blm->blm_fmasks[thread_index], 1023);
+        vec_validate(blm->blm_clones[thread_index], 1023);
     }
 
     return 0;
