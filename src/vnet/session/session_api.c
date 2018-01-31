@@ -290,7 +290,7 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
       return -1;
     }
 
-  props = segment_manager_properties_get (app->sm_properties);
+  props = application_segment_manager_properties (app);
   mp->options[APP_OPTIONS_RX_FIFO_SIZE] = props->rx_fifo_size;
   mp->options[APP_OPTIONS_TX_FIFO_SIZE] = props->tx_fifo_size;
 

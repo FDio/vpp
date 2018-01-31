@@ -97,7 +97,7 @@ typedef struct _application
   u8 first_segment_manager_in_use;
 
   /** Segment manager properties. Shared by all segment managers */
-  u32 sm_properties;
+  segment_manager_properties_t sm_properties;
 
   u16 proxied_transports;
 } application_t;
@@ -132,7 +132,7 @@ segment_manager_t *application_get_connect_segment_manager (application_t *
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
-int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
+int application_add_segment_notify (u32 app_index, ssvm_private_t * fs);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
 u8 *application_name_from_index (u32 app_index);
@@ -145,6 +145,11 @@ stream_session_t *application_first_listener (application_t * app,
 					      u8 transport_proto);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
+
+segment_manager_properties_t *application_get_segment_manager_properties (u32
+									  app_index);
+segment_manager_properties_t
+  * application_segment_manager_properties (application_t * app);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

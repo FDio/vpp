@@ -406,7 +406,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   a->app_event_queue_address = pointer_to_uword (app->event_queue);
   sm = segment_manager_get (app->first_segment_manager);
-  fs = segment_manager_get_segment (sm->segment_indices[0]);
+  fs = segment_manager_get_segment_w_lock (sm, 0);
 
   if (application_is_proxy (app))
     application_setup_proxy (app);
@@ -414,6 +414,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   ASSERT (vec_len (fs->ssvm.name) <= 128);
   a->segment = &fs->ssvm;
   a->app_index = app->index;
+
+  segment_manager_segment_reader_unlock (sm);
 
   return 0;
 }

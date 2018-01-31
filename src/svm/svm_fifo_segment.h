@@ -31,10 +31,8 @@ typedef enum
 #define FIFO_SEGMENT_MAX_FIFO_SIZE (8<<20)	/* 8mb max fifo size */
 #define FIFO_SEGMENT_ALLOC_CHUNK_SIZE 32	/* Allocation quantum */
 
-#define FIFO_SEGMENT_F_IS_PRIVATE 	1 << 0	/* Private segment */
-#define FIFO_SEGMENT_F_IS_MAIN_HEAP	1 << 1	/* Segment is main heap */
-#define FIFO_SEGMENT_F_IS_PREALLOCATED	1 << 2	/* Segment is preallocated */
-#define FIFO_SEGMENT_F_WILL_DELETE	1 << 3	/* Segment will be removed */
+#define FIFO_SEGMENT_F_IS_PREALLOCATED	1 << 0	/* Segment is preallocated */
+#define FIFO_SEGMENT_F_WILL_DELETE	1 << 1	/* Segment will be removed */
 
 typedef struct
 {
@@ -69,13 +67,10 @@ typedef struct
   char *segment_name;
   u32 segment_size;
   u32 *new_segment_indices;
-  u32 rx_fifo_size;
-  u32 tx_fifo_size;
-  u32 preallocated_fifo_pairs;
-  u32 private_segment_count;
-  u32 seg_protected_space;
   int memfd_fd;
 } svm_fifo_segment_create_args_t;
+
+#define svm_fifo_segment_flags(_seg) _seg->h->flags
 
 static inline svm_fifo_segment_private_t *
 svm_fifo_segment_get_segment (u32 segment_index)
@@ -96,19 +91,14 @@ svm_fifo_segment_get_fifo_list (svm_fifo_segment_private_t * fifo_segment)
   return fifo_segment->h->fifos;
 }
 
-#define foreach_ssvm_fifo_segment_api_error             \
-_(OUT_OF_SPACE, "Out of space in segment", -200)
-
-typedef enum
-{
-#define _(n,s,c) SSVM_FIFO_SEGMENT_API_ERROR_##n = c,
-  foreach_ssvm_fifo_segment_api_error
-#undef _
-} ssvm_fifo_segment_api_error_enum_t;
-
+int svm_fifo_segment_init (svm_fifo_segment_private_t * s);
 int svm_fifo_segment_create (svm_fifo_segment_create_args_t * a);
 int svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t
 					     * a);
+void svm_fifo_segment_preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
+					      u32 rx_fifo_size,
+					      u32 tx_fifo_size,
+					      u32 * n_fifo_pairs);
 int svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a);
 void svm_fifo_segment_delete (svm_fifo_segment_private_t * s);
 
@@ -118,7 +108,7 @@ svm_fifo_t *svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 void svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s,
 				 svm_fifo_t * f,
 				 svm_fifo_segment_freelist_t index);
-void svm_fifo_segment_init (u64 baseva, u32 timeout_in_seconds);
+void svm_fifo_segment_main_init (u64 baseva, u32 timeout_in_seconds);
 u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *

@@ -99,6 +99,44 @@ static session_cb_vft_t dummy_session_cbs = {
 /* *INDENT-ON* */
 
 static int
+session_create_lookpback (u32 table_id, u32 * sw_if_index,
+			  ip4_address_t * intf_addr)
+{
+  u8 intf_mac[6];
+
+  memset (intf_mac, 0, sizeof (intf_mac));
+
+  if (vnet_create_loopback_interface (sw_if_index, intf_mac, 0, 0))
+    {
+      clib_warning ("couldn't create loopback. stopping the test!");
+      return -1;
+    }
+
+  if (table_id != 0)
+    ip_table_bind (FIB_PROTOCOL_IP4, *sw_if_index, table_id, 0);
+
+  vnet_sw_interface_set_flags (vnet_get_main (), *sw_if_index,
+			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+
+  if (ip4_add_del_interface_address (vlib_get_main (), *sw_if_index,
+				     intf_addr, 24, 0))
+    {
+      clib_warning ("couldn't assign loopback ip %U", format_ip4_address,
+		    intf_addr);
+      return -1;
+    }
+
+  return 0;
+}
+
+static void
+session_delete_loopback (u32 sw_if_index)
+{
+  /* fails spectacularly  */
+  /* vnet_delete_loopback_interface (sw_if_index); */
+}
+
+static int
 session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
@@ -174,7 +212,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   session_endpoint_t client_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t intf_sep = SESSION_ENDPOINT_NULL;
   clib_error_t *error = 0;
-  u8 *ns_id = format (0, "appns1"), intf_mac[6];
+  u8 *ns_id = format (0, "appns1");
   app_namespace_t *app_ns;
   application_t *server;
   stream_session_t *s;
@@ -185,7 +223,6 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   client_sep.is_ip4 = 1;
   client_sep.port = dummy_port;
   memset (options, 0, sizeof (options));
-  memset (intf_mac, 0, sizeof (intf_mac));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
@@ -440,15 +477,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Create loopback interface
    */
-  if (vnet_create_loopback_interface (&sw_if_index, intf_mac, 0, 0))
-    {
-      clib_warning ("couldn't create loopback. stopping the test!");
-      return 0;
-    }
-  vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index,
-			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-  ip4_add_del_interface_address (vlib_get_main (), sw_if_index, &intf_addr,
-				 24, 0);
+  session_create_lookpback (0, &sw_if_index, &intf_addr);
 
   /*
    * Update namespace
@@ -492,8 +521,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    * Cleanup
    */
   vec_free (ns_id);
-  /* fails in multi core scenarions .. */
-  /* vnet_delete_loopback_interface (sw_if_index); */
+  session_delete_loopback (sw_if_index);
   return 0;
 }
 
@@ -1014,8 +1042,6 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   sep.ip.ip4.as_u32 -= 1 << 24;
 
-
-
   /*
    * Delete masking rule: 1.2.3.4/32 1234 5.6.7.8/32 4321 allow
    */
@@ -1337,7 +1363,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
-  u8 intf_mac[6], sst, is_filtered = 0;
+  u8 sst, is_filtered = 0;
   stream_session_t *s;
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
@@ -1377,21 +1403,13 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Create loopback interface
    */
-  memset (intf_mac, 0, sizeof (intf_mac));
-  if (vnet_create_loopback_interface (&sw_if_index, intf_mac, 0, 0))
-    {
-      clib_warning ("couldn't create loopback. stopping the test!");
-      return 0;
-    }
-  vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index,
-			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-  ip4_add_del_interface_address (vlib_get_main (), sw_if_index, &lcl_ip,
-				 24, 0);
+  session_create_lookpback (0, &sw_if_index, &lcl_ip);
 
   app_ns = app_namespace_get_default ();
   app_ns->sw_if_index = sw_if_index;
 
   memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_PROXY;
   options[APP_OPTIONS_PROXY_TRANSPORT] = 1 << TRANSPORT_PROTO_TCP;

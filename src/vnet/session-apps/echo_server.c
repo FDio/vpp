@@ -96,8 +96,8 @@ echo_server_session_connected_callback (u32 app_index, u32 api_context,
 int
 echo_server_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
 {
-  clib_warning ("called...");
-  return -1;
+  /* New heaps may be added */
+  return 0;
 }
 
 int
@@ -290,6 +290,7 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   a->session_cb_vft = &echo_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = esm->private_segment_count;

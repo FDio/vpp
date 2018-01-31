@@ -413,13 +413,21 @@ echo_clients_rx_callback (stream_session_t * s)
   return 0;
 }
 
+int
+echo_client_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
+{
+  /* New heaps may be added */
+  return 0;
+}
+
 /* *INDENT-OFF* */
 static session_cb_vft_t echo_clients = {
   .session_reset_callback = echo_clients_session_reset_callback,
   .session_connected_callback = echo_clients_session_connected_callback,
   .session_accept_callback = echo_clients_session_create_callback,
   .session_disconnect_callback = echo_clients_session_disconnect_callback,
-  .builtin_server_rx_callback = echo_clients_rx_callback
+  .builtin_server_rx_callback = echo_clients_rx_callback,
+  .add_segment_callback = echo_client_add_segment_callback
 };
 /* *INDENT-ON* */
 
@@ -445,6 +453,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
@@ -625,7 +634,7 @@ echo_clients_command_fn (vlib_main_t * vm,
       else if (unformat (input, "test-bytes"))
 	ecm->test_bytes = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
+	return clib_error_return (0, "failed: unknown input `%U'",
 				  format_unformat_error, input);
     }
 

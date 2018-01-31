@@ -109,6 +109,7 @@ typedef struct clib_rw_lock_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 n_readers;
+  volatile u32 n_readers_lock;
   volatile u32 writer_lock;
 #if CLIB_DEBUG > 0
   pid_t pid;
@@ -137,23 +138,39 @@ clib_rwlock_free (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_reader_lock (clib_rwlock_t * p)
 {
-  if (__sync_fetch_and_add (&(*p)->n_readers, 1) == 0)
+  while (__sync_lock_test_and_set (&(*p)->n_readers_lock, 1))
+    CLIB_PAUSE ();
+
+  (*p)->n_readers += 1;
+  if ((*p)->n_readers == 1)
     {
       while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
 	CLIB_PAUSE ();
     }
+  CLIB_MEMORY_BARRIER ();
+  (*p)->n_readers_lock = 0;
+
   CLIB_LOCK_DBG (p);
 }
 
 always_inline void
 clib_rwlock_reader_unlock (clib_rwlock_t * p)
 {
+  ASSERT ((*p)->n_readers > 0);
   CLIB_LOCK_DBG_CLEAR (p);
-  if (__sync_fetch_and_sub (&(*p)->n_readers, 1) == 1)
+
+  while (__sync_lock_test_and_set (&(*p)->n_readers_lock, 1))
+    CLIB_PAUSE ();
+
+  (*p)->n_readers -= 1;
+  if ((*p)->n_readers == 0)
     {
       CLIB_MEMORY_BARRIER ();
       (*p)->writer_lock = 0;
     }
+
+  CLIB_MEMORY_BARRIER ();
+  (*p)->n_readers_lock = 0;
 }
 
 always_inline void
