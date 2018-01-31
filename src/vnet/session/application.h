@@ -132,7 +132,7 @@ segment_manager_t *application_get_connect_segment_manager (application_t *
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
-int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
+int application_add_segment_notify (u32 app_index, ssvm_private_t *fs);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
 u8 *application_name_from_index (u32 app_index);
