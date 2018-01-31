@@ -157,7 +157,7 @@ format_bier_imp (u8* s, va_list *args)
         bier_hdr_ntoh(&copy);
         bier_bit_string_init(&bbs,
                              bier_hdr_get_len_id(&copy),
-                             bi->bi_bits.bits);
+                             bi->bi_bits);
 
         s = format(s, "\n%U%U",
                    format_white_space, indent,

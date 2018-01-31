@@ -73,34 +73,41 @@ vl_api_bier_table_add_del_t_handler (vl_api_bier_table_add_del_t * mp)
     vnm = vnet_get_main ();
     vnm->api_errno = 0;
 
-    bier_table_id_t bti = {
-        .bti_set = mp->bt_tbl_id.bt_set,
-        .bti_sub_domain = mp->bt_tbl_id.bt_sub_domain,
-        .bti_hdr_len = mp->bt_tbl_id.bt_hdr_len_id,
-        .bti_type = BIER_TABLE_MPLS_SPF,
-        .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
-    };
-
-    if (mp->bt_is_add)
+    if (mp->bt_tbl_id.bt_hdr_len_id >= BIER_HDR_LEN_2048)
     {
-        mpls_label_t label = ntohl(mp->bt_label);
-
-        /*
-         * convert acceptable 'don't want a label' values from 
-         * the API to the correct internal INVLID value
-         */
-        if ((0 == label) || (~0 == label))
-        {
-            label = MPLS_LABEL_INVALID;
-        }
-        bier_table_add_or_lock(&bti, label);
+        rv = VNET_API_ERROR_BIER_BSL_UNSUP;
     }
     else
     {
-        bier_table_unlock(&bti);
-    }
+        bier_table_id_t bti = {
+            .bti_set = mp->bt_tbl_id.bt_set,
+            .bti_sub_domain = mp->bt_tbl_id.bt_sub_domain,
+            .bti_hdr_len = mp->bt_tbl_id.bt_hdr_len_id,
+            .bti_type = BIER_TABLE_MPLS_SPF,
+            .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
+        };
 
-    rv = vnm->api_errno;
+        if (mp->bt_is_add)
+        {
+            mpls_label_t label = ntohl(mp->bt_label);
+
+            /*
+             * convert acceptable 'don't want a label' values from 
+             * the API to the correct internal INVLID value
+             */
+            if ((0 == label) || (~0 == label))
+            {
+                label = MPLS_LABEL_INVALID;
+            }
+            bier_table_add_or_lock(&bti, label);
+        }
+        else
+        {
+            bier_table_unlock(&bti);
+        }
+
+        rv = vnm->api_errno;
+    }
 
     REPLY_MACRO (VL_API_BIER_TABLE_ADD_DEL_REPLY);
 }
@@ -161,10 +168,14 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
 
     vnm = vnet_get_main ();
     vnm->api_errno = 0;
-
     bp = ntohl(mp->br_bp);
     brpaths = NULL;
 
+    if (mp->br_tbl_id.bt_hdr_len_id >= BIER_HDR_LEN_2048)
+    {
+        rv = VNET_API_ERROR_BIER_BSL_UNSUP;
+        goto done;
+    }
     if (0 == bp || bp > BIER_BP_MAX)
     {
         rv = -1;
@@ -242,9 +253,9 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
     {
         bier_table_route_remove(&bti, bp, brpaths);
     }
+    vec_free(brpaths);
 
 done:
-    vec_free(brpaths);
     rv = (rv == 0) ? vnm->api_errno : rv;
 
     REPLY_MACRO (VL_API_BIER_ROUTE_ADD_DEL_REPLY);
@@ -333,26 +344,35 @@ vl_api_bier_imp_add_t_handler (vl_api_bier_imp_add_t * mp)
     vnm = vnet_get_main ();
     vnm->api_errno = 0;
 
-    bier_table_id_t bti = {
-        .bti_set = mp->bi_tbl_id.bt_set,
-        .bti_sub_domain = mp->bi_tbl_id.bt_sub_domain,
-        .bti_hdr_len = mp->bi_tbl_id.bt_hdr_len_id,
-        .bti_type = BIER_TABLE_MPLS_SPF,
-        .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
-    };
-    bier_bit_string_t bs = {
-        .bbs_len = mp->bi_n_bytes,
-        .bbs_buckets = mp->bi_bytes,
-    };
+    /*
+     * The BSL support by VPP is limited to the size of the
+     * available space in the vlib_buffer_t
+     */
+    if (mp->bi_tbl_id.bt_hdr_len_id >= BIER_HDR_LEN_2048)
+    {
+        rv = VNET_API_ERROR_BIER_BSL_UNSUP;
+    }
+    else
+    {
+        bier_table_id_t bti = {
+            .bti_set = mp->bi_tbl_id.bt_set,
+            .bti_sub_domain = mp->bi_tbl_id.bt_sub_domain,
+            .bti_hdr_len = mp->bi_tbl_id.bt_hdr_len_id,
+            .bti_type = BIER_TABLE_MPLS_SPF,
+            .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
+        };
+        bier_bit_string_t bs = {
+            .bbs_len = mp->bi_n_bytes,
+            .bbs_buckets = mp->bi_bytes,
+        };
 
-    bii = bier_imp_add_or_lock(&bti, ntohs(mp->bi_src), &bs);
+        bii = bier_imp_add_or_lock(&bti, ntohs(mp->bi_src), &bs);
+    }
 
-    /* *INDENT-OFF* */
     REPLY_MACRO2 (VL_API_BIER_IMP_ADD_REPLY,
     ({
         rmp->bi_index = ntohl (bii);
     }));
-    /* *INDENT-OM* */
 }
 
 static void
@@ -395,10 +415,9 @@ send_bier_imp_details (vl_api_registration_t * reg,
     mp->bi_tbl_id.bt_sub_domain = bi->bi_tbl.bti_sub_domain;
     mp->bi_tbl_id.bt_hdr_len_id = bi->bi_tbl.bti_hdr_len;
 
-
     mp->bi_src = htons(bier_hdr_get_src_id(&copy));
     mp->bi_n_bytes = n_bytes;
-    memcpy(mp->bi_bytes, bi->bi_bits.bits, n_bytes);
+    memcpy(mp->bi_bytes, bi->bi_bits, n_bytes);
 
     vl_api_send_msg (reg, (u8 *) mp);
 }
