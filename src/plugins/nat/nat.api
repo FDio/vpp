@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.4.0";
+option version = "2.4.1";
 
 /**
  * @file nat.api
@@ -343,9 +343,9 @@ define nat44_interface_output_feature_details {
     @param addr_only - 1 if address only mapping
     @param local_ip_address - local IPv4 address
     @param external_ip_address - external IPv4 address
-    @param protocol - IP protocol
-    @param local_port - local port number
-    @param external_port - external port number
+    @param protocol - IP protocol, used only if addr_only=0
+    @param local_port - local port number, used only if addr_only=0
+    @param external_port - external port number, used only if addr_only=0
     @param external_sw_if_index - external interface (if set
                                   external_ip_address is ignored, ~0 means not
                                   used)
@@ -386,9 +386,9 @@ define nat44_static_mapping_dump {
     @param addr_only - 1 if address only mapping
     @param local_ip_address - local IPv4 address
     @param external_ip_address - external IPv4 address
-    @param protocol - IP protocol
-    @param local_port - local port number
-    @param external_port - external port number
+    @param protocol - IP protocol, valid only if addr_only=0
+    @param local_port - local port number, valid only if addr_only=0
+    @param external_port - external port number, valid only if addr_only=0
     @param external_sw_if_index - external interface
     @param vfr_id - VRF ID
     @param twice_nat - if 1 translate external host address and port

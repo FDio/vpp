@@ -764,14 +764,17 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
   rmp->addr_only = m->addr_only;
   clib_memcpy (rmp->local_ip_address, &(m->local_addr), 4);
   clib_memcpy (rmp->external_ip_address, &(m->external_addr), 4);
-  rmp->local_port = htons (m->local_port);
-  rmp->external_port = htons (m->external_port);
   rmp->external_sw_if_index = ~0;
   rmp->vrf_id = htonl (m->vrf_id);
-  rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
   rmp->twice_nat = m->twice_nat;
   rmp->out2in_only = m->out2in_only;
+  if (m->addr_only == 0)
+    {
+      rmp->protocol = snat_proto_to_ip_proto (m->proto);
+      rmp->external_port = htons (m->external_port);
+      rmp->local_port = htons (m->local_port);
+    }
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 
@@ -792,13 +795,16 @@ send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
     ntohs (VL_API_NAT44_STATIC_MAPPING_DETAILS + sm->msg_id_base);
   rmp->addr_only = m->addr_only;
   clib_memcpy (rmp->local_ip_address, &(m->l_addr), 4);
-  rmp->local_port = htons (m->l_port);
-  rmp->external_port = htons (m->e_port);
   rmp->external_sw_if_index = htonl (m->sw_if_index);
   rmp->vrf_id = htonl (m->vrf_id);
-  rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
   rmp->twice_nat = m->twice_nat;
+  if (m->addr_only == 0)
+    {
+      rmp->protocol = snat_proto_to_ip_proto (m->proto);
+      rmp->external_port = htons (m->e_port);
+      rmp->local_port = htons (m->l_port);
+    }
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 
