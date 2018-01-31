@@ -155,7 +155,7 @@ JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 	$(shell grep -c ^processor /proc/cpuinfo), 2)
 
 # compiler/linker custom arguments
-DPDK_CPU_CFLAGS := -pie -fPIC
+DPDK_CPU_CFLAGS := -pie -fPIC -Wno-unused-command-line-argument
 
 ifeq ($(DPDK_DEBUG),n)
 DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
