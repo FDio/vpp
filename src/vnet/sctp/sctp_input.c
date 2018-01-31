@@ -540,6 +540,61 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   return SCTP_ERROR_NONE;
 }
 
+/** Enqueue data out-of-order for delivery to application */
+always_inline int
+sctp_session_enqueue_data_ooo (sctp_connection_t * sctp_conn,
+			       vlib_buffer_t * b, u16 data_len, u8 conn_idx)
+{
+  int written, error = SCTP_ERROR_ENQUEUED;
+
+  written =
+    session_enqueue_stream_connection (&sctp_conn->
+				       sub_conn[conn_idx].connection, b, 0,
+				       1 /* queue event */ ,
+				       0);
+
+  /* Update next_tsn_expected */
+  if (PREDICT_TRUE (written == data_len))
+    {
+      sctp_conn->next_tsn_expected += written;
+
+      SCTP_ADV_DBG ("CONN = %u, WRITTEN [%u] == DATA_LEN [%d]",
+		    sctp_conn->sub_conn[conn_idx].connection.c_index,
+		    written, data_len);
+    }
+  /* If more data written than expected, account for out-of-order bytes. */
+  else if (written > data_len)
+    {
+      sctp_conn->next_tsn_expected += written;
+
+      SCTP_ADV_DBG ("CONN = %u, WRITTEN [%u] > DATA_LEN [%d]",
+		    sctp_conn->sub_conn[conn_idx].connection.c_index,
+		    written, data_len);
+    }
+  else if (written > 0)
+    {
+      /* We've written something but FIFO is probably full now */
+      sctp_conn->next_tsn_expected += written;
+
+      error = SCTP_ERROR_PARTIALLY_ENQUEUED;
+
+      SCTP_ADV_DBG
+	("CONN = %u, WRITTEN [%u] > 0 (SCTP_ERROR_PARTIALLY_ENQUEUED)",
+	 sctp_conn->sub_conn[conn_idx].connection.c_index, written);
+    }
+  else
+    {
+      SCTP_ADV_DBG ("CONN = %u, WRITTEN == 0 (SCTP_ERROR_FIFO_FULL)",
+		    sctp_conn->sub_conn[conn_idx].connection.c_index);
+
+      return SCTP_ERROR_FIFO_FULL;
+    }
+
+  /* TODO: Update out_of_order_map & SACK list */
+
+  return error;
+}
+
 /** Enqueue data for delivery to application */
 always_inline int
 sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
@@ -617,6 +672,22 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 gapping)
   return 0;
 }
 
+always_inline void
+sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
+			    u8 * gapping)
+{
+  if (sctp_conn->next_tsn_expected != tsn)	// It means data transmission is GAPPING
+    {
+      SCTP_CONN_TRACKING_DBG
+	("GAPPING: CONN_INDEX = %u, sctp_conn->next_tsn_expected = %u, tsn = %u, diff = %u",
+	 sctp_conn->sub_conn[idx].connection.c_index,
+	 sctp_conn->next_tsn_expected, tsn,
+	 sctp_conn->next_tsn_expected - tsn);
+
+      *gapping = 1;
+    }
+}
+
 always_inline u16
 sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 		  sctp_connection_t * sctp_conn, vlib_buffer_t * b,
@@ -624,7 +695,7 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 {
   u32 error = 0, n_data_bytes;
   u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
-  u8 gapping = 0;
+  u8 is_gapping = 0;
 
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_data_chunk->sctp_hdr.verification_tag)
@@ -641,28 +712,48 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
   n_data_bytes = vnet_buffer (b)->sctp.data_len;
   ASSERT (n_data_bytes);
 
-  if (sctp_conn->next_tsn_expected != tsn)	// It means data transmission is GAPPING
-    {
-      SCTP_CONN_TRACKING_DBG
-	("GAPPING: CONN_INDEX = %u, sctp_conn->next_tsn_expected = %u, tsn = %u, diff = %u",
-	 sctp_conn->sub_conn[idx].connection.c_index,
-	 sctp_conn->next_tsn_expected, tsn,
-	 sctp_conn->next_tsn_expected - tsn);
-
-      gapping = 1;
-    }
+  sctp_is_connection_gapping (sctp_conn, tsn, &is_gapping);
 
   sctp_conn->last_rcvd_tsn = tsn;
 
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
-  /* In order data, enqueue. Fifo figures out by itself if any out-of-order
-   * segments can be enqueued after fifo tail offset changes. */
-  error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+  u8 bbit = vnet_sctp_get_bbit (&sctp_data_chunk->chunk_hdr);
+  u8 ebit = vnet_sctp_get_ebit (&sctp_data_chunk->chunk_hdr);
+
+  if (bbit == 1 && ebit == 1)	/* Unfragmented message */
+    {
+      /* In order data, enqueue. Fifo figures out by itself if any out-of-order
+       * segments can be enqueued after fifo tail offset changes. */
+      error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+    }
+  else if (bbit == 1 && ebit == 0)	/* First piece of a fragmented user message */
+    {
+      error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+    }
+  else if (bbit == 0 && ebit == 1)	/* Last piece of a fragmented user message */
+    {
+      if (PREDICT_FALSE (is_gapping == 1))
+	error =
+	  sctp_session_enqueue_data_ooo (sctp_conn, b, n_data_bytes, idx);
+      else
+	error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+    }
+  else				/* Middle piece of a fragmented user message */
+    {
+      if (PREDICT_FALSE (is_gapping == 1))
+	error =
+	  sctp_session_enqueue_data_ooo (sctp_conn, b, n_data_bytes, idx);
+      else
+	error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+    }
+  sctp_conn->last_rcvd_tsn = tsn;
 
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
-  if (sctp_is_sack_delayable (sctp_conn, gapping) != 0)
+  SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
+
+  if (sctp_is_sack_delayable (sctp_conn, is_gapping) != 0)
     sctp_prepare_sack_chunk (sctp_conn, b);
 
   return error;
@@ -677,10 +768,25 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
   /* Build TCB */
   u8 idx = sctp_pick_conn_idx_on_chunk (COOKIE_ECHO);
 
+  sctp_cookie_echo_chunk_t *cookie_echo =
+    (sctp_cookie_echo_chunk_t *) sctp_hdr;
+
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
       return SCTP_ERROR_INVALID_TAG;
+    }
+
+  u32 now = sctp_time_now ();
+  u32 creation_time =
+    clib_net_to_host_u32 (cookie_echo->cookie.creation_time);
+  u32 cookie_lifespan =
+    clib_net_to_host_u32 (cookie_echo->cookie.cookie_lifespan);
+  if (now > creation_time + cookie_lifespan)
+    {
+      SCTP_DBG ("now (%u) > creation_time (%u) + cookie_lifespan (%u)",
+		now, creation_time, cookie_lifespan);
+      return SCTP_ERROR_COOKIE_ECHO_VIOLATION;
     }
 
   sctp_prepare_cookie_ack_chunk (sctp_conn, b0);
