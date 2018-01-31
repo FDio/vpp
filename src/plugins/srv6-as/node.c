@@ -27,6 +27,7 @@ typedef struct
 
 typedef struct
 {
+  u8 error;
   ip6_address_t src, dst;
 } srv6_as_rewrite_trace_t;
 
@@ -46,6 +47,11 @@ format_srv6_as_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_as_rewrite_trace_t *t = va_arg (*args, srv6_as_rewrite_trace_t *);
+
+  if (PREDICT_FALSE (t->error != 0))
+    {
+      return format (s, "SRv6-AS-rewrite: cache is empty");
+    }
 
   return format (s, "SRv6-AS-rewrite: src %U dst %U",
 		 format_ip6_address, &t->src, format_ip6_address, &t->dst);
@@ -323,10 +329,19 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 	    {
 	      srv6_as_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof *tr);
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			   sizeof tr->src.as_u8);
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			   sizeof tr->dst.as_u8);
+	      tr->error = 0;
+
+	      if (next0 == SRV6_AS_REWRITE_NEXT_ERROR)
+		{
+		  tr->error = 1;
+		}
+	      else
+		{
+		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+			       sizeof tr->src.as_u8);
+		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+			       sizeof tr->dst.as_u8);
+		}
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -443,10 +458,19 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 	    {
 	      srv6_as_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof *tr);
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			   sizeof tr->src.as_u8);
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			   sizeof tr->dst.as_u8);
+	      tr->error = 0;
+
+	      if (next0 == SRV6_AS_REWRITE_NEXT_ERROR)
+		{
+		  tr->error = 1;
+		}
+	      else
+		{
+		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+			       sizeof tr->src.as_u8);
+		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+			       sizeof tr->dst.as_u8);
+		}
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
