@@ -30,9 +30,6 @@ hello_world (int verbose)
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
-  a->rx_fifo_size = 4096;
-  a->tx_fifo_size = 4096;
-  a->preallocated_fifo_pairs = 4;
 
   rv = svm_fifo_segment_create (a);
 
@@ -276,7 +273,7 @@ test_ssvm_fifo1 (unformat_input_t * input)
   int verbose = 0;
   int test_id = 0;
 
-  svm_fifo_segment_init (0x200000000ULL, 20);
+  svm_fifo_segment_main_init (0x200000000ULL, 20);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
