@@ -56,6 +56,11 @@ typedef enum bier_hdr_len_id_t_ {
     BIER_HDR_LEN_256,
     BIER_HDR_LEN_512,
     BIER_HDR_LEN_1024,
+    /**
+     * Bit-string lengths greater than 1024 are not supported due to the
+     * limited about pf space available in a vlib_buffer_t to prepend a
+     * BIER header at imposition.
+     */
     BIER_HDR_LEN_2048,
     BIER_HDR_LEN_4096,
     BIER_HDR_LEN_INVALID,
@@ -252,56 +257,6 @@ typedef enum bier_hdr_ctrl_sub_code_t_ {
 typedef u8 bier_bit_mask_bucket_t;
 
 /**
- * A BIER Bit-String value of length 64 bits.
- */
-typedef struct bier_bit_mask_64_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_64];
-} bier_bit_mask_64_t;
-
-/**
- * A BIER Bit-String value of length 128 bits.
- */
-typedef struct bier_bit_mask_128_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_128];
-} bier_bit_mask_128_t;
-
-/**
- * A BIER Bit-String value of length 256 bits.
- */
-typedef struct bier_bit_mask_256_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_256];
-} bier_bit_mask_256_t;
-
-/**
- * A BIER Bit-String value of length 512 bits.
- */
-typedef struct bier_bit_mask_512_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_512];
-} bier_bit_mask_512_t;
-
-/**
- * A BIER Bit-String value of length 1024 bits.
- */
-typedef struct bier_bit_mask_1024_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_1024];
-} bier_bit_mask_1024_t;
-
-/**
- * A BIER Bit-String value of length 2048 bits.
- */
-typedef struct bier_bit_mask_2048_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_2048];
-} bier_bit_mask_2048_t;
-
-/**
- * A BIER Bit-String value of length 4096 bits.
- */
-typedef struct bier_bit_mask_4096_t_ {
-    bier_bit_mask_bucket_t bits[BIER_HDR_BUCKETS_4096];
-} bier_bit_mask_4096_t;
-
-
-/**
  * 256 bits = 32 bytes
  */
 #define BIER_BIT_MASK_NUM_BUCKETS 32
@@ -331,13 +286,6 @@ typedef struct bier_bit_string_t_ {
      */
     bier_bit_mask_bucket_t *bbs_buckets;
 } bier_bit_string_t;
-
-/**
- * A BIER Bit-mask value
- *
- * The size of this mask represents this platforms BIER capabilities
- */
-typedef bier_bit_mask_256_t bier_bit_mask_t;
 
 /**
  * A bit positon

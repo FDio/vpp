@@ -599,7 +599,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 */
 always_inline u16
 vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
-		       u16 n_buffers, u16 head_end_offset)
+                       u16 n_buffers, u16 head_end_offset)
 {
   u16 i;
   vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
@@ -675,7 +675,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 */
 always_inline u16
 vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
-		   u16 n_buffers, u16 head_end_offset)
+                   u16 n_buffers, u16 head_end_offset)
 {
   vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
   u16 n_cloned = 0;
@@ -684,15 +684,17 @@ vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
     {
       vlib_buffer_t *copy;
       copy = vlib_buffer_copy (vm, s);
-      n_cloned += vlib_buffer_clone_256 (vm,
-					 vlib_get_buffer_index (vm, copy),
-					 (buffers + n_cloned),
-					 256, head_end_offset);
+      n_cloned += vlib_buffer_clone_256(vm,
+                                        vlib_get_buffer_index(vm, copy),
+                                        (buffers + n_cloned),
+                                        256,
+                                        head_end_offset);
       n_buffers -= 256;
     }
-  n_cloned += vlib_buffer_clone_256 (vm, src_buffer,
-				     buffers + n_cloned,
-				     n_buffers, head_end_offset);
+  n_cloned += vlib_buffer_clone_256(vm, src_buffer,
+                                    buffers + n_cloned,
+                                    n_buffers,
+                                    head_end_offset);
 
   return n_cloned;
 }

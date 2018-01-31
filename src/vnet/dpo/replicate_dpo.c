@@ -667,7 +667,8 @@ replicate_inline (vlib_main_t * vm,
 
 	    vec_validate (rm->clones[thread_index], rep0->rep_n_buckets - 1);
 
-	    num_cloned = vlib_buffer_clone (vm, bi0, rm->clones[thread_index], rep0->rep_n_buckets, 128);
+	    num_cloned = vlib_buffer_clone (vm, bi0, rm->clones[thread_index],
+                                            rep0->rep_n_buckets, 128);
 
 	    if (num_cloned != rep0->rep_n_buckets)
 	      {
