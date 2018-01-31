@@ -15,6 +15,7 @@
 #include <vnet/sctp/sctp.h>
 #include <vnet/sctp/sctp_debug.h>
 #include <vppinfra/random.h>
+#include <openssl/hmac.h>
 
 vlib_node_registration_t sctp4_output_node;
 vlib_node_registration_t sctp6_output_node;
@@ -494,10 +495,35 @@ sctp_prepare_init_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 			  init_chunk->sctp_hdr.dst_port);
 }
 
-u64
-sctp_compute_mac ()
+void
+sctp_compute_mac (sctp_connection_t * sctp_conn,
+		  sctp_state_cookie_param_t * state_cookie)
 {
-  return 0x0;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX *ctx;
+#else
+  HMAC_CTX ctx;
+  const EVP_MD *md = EVP_sha1 ();
+#endif
+  unsigned int len = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  ctx = HMAC_CTX_new ();
+  HMAC_Init_ex (&ctx, &state_cookie->creation_time,
+		sizeof (state_cookie->creation_time), md, NULL);
+  HMAC_Update (ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
+  HMAC_Final (ctx, state_cookie->mac, &len);
+#else
+  HMAC_CTX_init (&ctx);
+  HMAC_Init_ex (&ctx, &state_cookie->creation_time,
+		sizeof (state_cookie->creation_time), md, NULL);
+
+  HMAC_Update (&ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
+  HMAC_Final (&ctx, state_cookie->mac, &len);
+  HMAC_CTX_cleanup (&ctx);
+#endif
+
+  ENDIANESS_SWAP (state_cookie->mac);
 }
 
 void
@@ -626,7 +652,8 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
   state_cookie_param->creation_time = clib_host_to_net_u32 (sctp_time_now ());
   state_cookie_param->cookie_lifespan =
     clib_host_to_net_u32 (SCTP_VALID_COOKIE_LIFE);
-  state_cookie_param->mac = clib_host_to_net_u64 (sctp_compute_mac ());
+
+  sctp_compute_mac (sctp_conn, state_cookie_param);
 
   pointer_offset += sizeof (sctp_state_cookie_param_t);
 
@@ -1067,6 +1094,9 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 
   vnet_sctp_set_chunk_type (&data_chunk->chunk_hdr, DATA);
   vnet_sctp_set_chunk_length (&data_chunk->chunk_hdr, chunk_length);
+
+  vnet_sctp_set_bbit (&data_chunk->chunk_hdr);
+  vnet_sctp_set_ebit (&data_chunk->chunk_hdr);
 
   SCTP_ADV_DBG_OUTPUT ("POINTER_WITH_DATA = %p, DATA_OFFSET = %u",
 		       b->data, b->current_data);

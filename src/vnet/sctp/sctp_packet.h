@@ -267,6 +267,15 @@ typedef struct
 #define CHUNK_FLAGS_MASK 0x00FF0000
 #define CHUNK_FLAGS_SHIFT 16
 
+#define CHUNK_UBIT_MASK 0x000F0000
+#define CHUNK_UBIT_SHIFT 18
+
+#define CHUNK_BBIT_MASK 0x000F0000
+#define CHUNK_BBIT_SHIFT 17
+
+#define CHUNK_EBIT_MASK 0x000F0000
+#define CHUNK_EBIT_SHIFT 16
+
 #define CHUNK_LENGTH_MASK 0x0000FFFF
 #define CHUNK_LENGTH_SHIFT 0
 
@@ -280,6 +289,45 @@ always_inline void
 vnet_sctp_common_hdr_params_net_to_host (sctp_chunks_common_hdr_t * h)
 {
   h->params = clib_net_to_host_u32 (h->params);
+}
+
+always_inline void
+vnet_sctp_set_ubit (sctp_chunks_common_hdr_t * h)
+{
+  h->params &= ~(CHUNK_UBIT_MASK);
+  h->params |= (1 << CHUNK_UBIT_SHIFT) & CHUNK_UBIT_MASK;
+}
+
+always_inline u8
+vnet_sctp_get_ubit (sctp_chunks_common_hdr_t * h)
+{
+  return ((h->params & CHUNK_UBIT_MASK) >> CHUNK_UBIT_SHIFT);
+}
+
+always_inline void
+vnet_sctp_set_bbit (sctp_chunks_common_hdr_t * h)
+{
+  h->params &= ~(CHUNK_BBIT_MASK);
+  h->params |= (1 << CHUNK_BBIT_SHIFT) & CHUNK_BBIT_MASK;
+}
+
+always_inline u8
+vnet_sctp_get_bbit (sctp_chunks_common_hdr_t * h)
+{
+  return ((h->params & CHUNK_BBIT_MASK) >> CHUNK_BBIT_SHIFT);
+}
+
+always_inline void
+vnet_sctp_set_ebit (sctp_chunks_common_hdr_t * h)
+{
+  h->params &= ~(CHUNK_EBIT_MASK);
+  h->params |= (1 << CHUNK_EBIT_SHIFT) & CHUNK_EBIT_MASK;
+}
+
+always_inline u8
+vnet_sctp_get_ebit (sctp_chunks_common_hdr_t * h)
+{
+  return ((h->params & CHUNK_EBIT_MASK) >> CHUNK_EBIT_SHIFT);
 }
 
 always_inline void
@@ -406,45 +454,6 @@ typedef struct
   u32 data[];
 
 } sctp_payload_data_chunk_t;
-
-always_inline void
-vnet_sctp_set_ebit (sctp_payload_data_chunk_t * p, u8 enable)
-{
-  //p->chunk_hdr.flags = clib_host_to_net_u16 (enable);
-}
-
-always_inline u8
-vnet_sctp_get_ebit (sctp_payload_data_chunk_t * p)
-{
-  //return (clib_net_to_host_u16 (p->chunk_hdr.flags));
-  return 0;
-}
-
-always_inline void
-vnet_sctp_set_bbit (sctp_payload_data_chunk_t * p, u8 enable)
-{
-  //p->chunk_hdr.flags = clib_host_to_net_u16 (enable << 1);
-}
-
-always_inline u8
-vnet_sctp_get_bbit (sctp_payload_data_chunk_t * p)
-{
-  //return (clib_net_to_host_u16 (p->chunk_hdr.flags >> 1));
-  return 0;
-}
-
-always_inline void
-vnet_sctp_set_ubit (sctp_payload_data_chunk_t * p, u8 enable)
-{
-  //p->chunk_hdr.flags = clib_host_to_net_u16 (enable << 2);
-}
-
-always_inline u8
-vnet_sctp_get_ubit (sctp_payload_data_chunk_t * p)
-{
-  //return (clib_net_to_host_u16 (p->chunk_hdr.flags >> 2));
-  return 0;
-}
 
 always_inline void
 vnet_sctp_set_tsn (sctp_payload_data_chunk_t * p, u32 tsn)
@@ -680,6 +689,14 @@ typedef struct
  */
 typedef sctp_init_chunk_t sctp_init_ack_chunk_t;
 
+typedef struct
+{
+  u16 type;
+  u16 length;
+
+} sctp_opt_params_hdr_t;
+
+#define SHA1_OUTPUT_LENGTH 20
 /*
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -693,16 +710,9 @@ typedef sctp_init_chunk_t sctp_init_ack_chunk_t;
  */
 typedef struct
 {
-  u16 type;
-  u16 length;
-
-} sctp_opt_params_hdr_t;
-
-typedef struct
-{
   sctp_opt_params_hdr_t param_hdr;
 
-  u64 mac;			/* RFC 2104 */
+  unsigned char mac[SHA1_OUTPUT_LENGTH];	/* RFC 2104 */
   u32 creation_time;
   u32 cookie_lifespan;
 

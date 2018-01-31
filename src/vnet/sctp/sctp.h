@@ -110,9 +110,25 @@ typedef struct
 
 } sctp_options_t;
 
-#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
-#define ClearBit(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )
-#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
+/* Useful macros to deal with the out_of_order_map (array of bit) */
+#define SET_BIT(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
+#define CLEAR_BIT(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )
+#define TEST_BIT(A,k)    ( A[(k/32)] & (1 << (k%32)) )
+
+always_inline void
+_bytes_swap (void *pv, size_t n)
+{
+  char *p = pv;
+  size_t lo, hi;
+  for (lo = 0, hi = n - 1; hi > lo; lo++, hi--)
+    {
+      char tmp = p[lo];
+      p[lo] = p[hi];
+      p[hi] = tmp;
+    }
+}
+
+#define ENDIANESS_SWAP(x) _bytes_swap(&x, sizeof(x));
 
 #define MAX_INFLIGHT_PACKETS	128
 #define MAX_ENQUEABLE_SACKS 2
@@ -181,6 +197,10 @@ typedef struct _sctp_connection
 
   u32 rtt_ts;
   u32 rtt_seq;
+
+  u8 overall_sending_status; /**< 0 indicates first fragment of a user message
+  	  	  	  	  	  	  	  	  1 indicates normal stream
+  	  	  	  	  	  	  	  	  2 indicates last fragment of a user message */
 
   sctp_options_t rcv_opts;
   sctp_options_t snd_opts;
