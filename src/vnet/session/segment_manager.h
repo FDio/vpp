@@ -20,6 +20,7 @@
 #include <svm/queue.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/lock.h>
+#include <vppinfra/valloc.h>
 
 typedef struct _segment_manager_properties
 {
@@ -28,7 +29,7 @@ typedef struct _segment_manager_properties
   u32 tx_fifo_size;
 
   /** Preallocated pool sizes */
-  u32 preallocated_fifo_pairs;
+//  u32 preallocated_fifo_pairs;
 
   /** Configured additional segment size */
   u32 add_segment_size;
@@ -40,12 +41,15 @@ typedef struct _segment_manager_properties
   ssvm_segment_type_t segment_type;
 
   /** Use one or more private mheaps, instead of the global heap */
-  u32 private_segment_count;
+//  u32 private_segment_count;
 } segment_manager_properties_t;
 
 typedef struct _segment_manager
 {
   clib_spinlock_t lockp;
+
+  /** Pool of segments allocated by this manager */
+  svm_fifo_segment_private_t *segments;
 
   /** segments mapped by this manager */
   u32 *segment_indices;
@@ -65,7 +69,31 @@ typedef struct _segment_manager
    * allocated for the app.
    */
   u8 first_is_protected;
+
+  /**
+   * App event queue allocated in first segment
+   */
+  svm_queue_t *event_queue;
 } segment_manager_t;
+
+#define segment_manager_foreach_segment(VAR, SM, BODY)		\
+    pool_foreach((VAR), (SM->segments), (BODY))
+
+typedef struct segment_manager_main_
+{
+  /** Virtual address allocator */
+  clib_valloc_main_t va_allocator;
+
+} segment_manager_main_t;
+
+extern segment_manager_main_t segment_manager_main;
+
+typedef struct segment_manager_main_init_args_
+{
+  u64 baseva;
+  u64 size;
+  u32 shm_segment_timeout;
+} segment_manager_main_init_args_t;
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
@@ -92,9 +120,16 @@ segment_manager_index (segment_manager_t * sm)
   return sm - segment_managers;
 }
 
+always_inline svm_queue_t *
+segment_manager_event_queue (segment_manager_t *sm)
+{
+  return sm->event_queue;
+}
+
 segment_manager_t *segment_manager_new ();
 int segment_manager_init (segment_manager_t * sm, u32 props_index,
-			  u32 seg_size, u32 evt_queue_size);
+                          u32 first_seg_size, u32 evt_q_size,
+                          u32 prealloc_fifo_pairs);
 
 svm_fifo_segment_private_t *segment_manager_get_segment (u32 segment_index);
 int segment_manager_add_first_segment (segment_manager_t * sm,
@@ -116,6 +151,8 @@ svm_queue_t *segment_manager_alloc_queue (segment_manager_t * sm,
 					  u32 queue_size);
 void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);
+
+void segment_manager_main_init (segment_manager_main_init_args_t *a);
 
 segment_manager_properties_t *segment_manager_properties_alloc (void);
 void segment_manager_properties_free (segment_manager_properties_t * p);
