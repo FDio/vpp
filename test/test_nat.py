@@ -1676,6 +1676,37 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         self.pg3.assert_nothing_captured()
 
+    def test_dynamic_to_static(self):
+        """ Switch from dynamic translation to 1:1NAT """
+        nat_ip = "10.0.0.10"
+        self.tcp_port_out = 6303
+        self.udp_port_out = 6304
+        self.icmp_id_out = 6305
+
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        # dynamic
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        # 1:1NAT
+        self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip)
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
+        self.assertEqual(len(sessions), 0)
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip, True)
+
     def test_identity_nat(self):
         """ Identity NAT """
 

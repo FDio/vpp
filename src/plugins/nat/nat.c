@@ -674,6 +674,13 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   snat_interface_t *interface;
   int i;
   snat_main_per_thread_data_t *tsm;
+  snat_user_key_t u_key;
+  snat_user_t *u;
+  dlist_elt_t * head, * elt;
+  u32 elt_index, head_index;
+  u32 ses_index;
+  u64 user_index;
+  snat_session_t * s;
 
   /* If the external address is a specific interface address */
   if (sw_if_index != ~0)
@@ -831,6 +838,51 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
             clib_warning ("out2in key add failed");
         }
 
+      /* Delete dynamic sessions matching local address (+ local port) */
+      if (!(sm->static_mapping_only))
+        {
+          u_key.addr = m->local_addr;
+          u_key.fib_index = m->fib_index;
+          kv.key = u_key.as_u64;
+          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+            {
+              user_index = value.value;
+              u = pool_elt_at_index (tsm->users, user_index);
+              if (u->nsessions)
+                {
+                  head_index = u->sessions_per_user_list_head_index;
+                  head = pool_elt_at_index (tsm->list_pool, head_index);
+                  elt_index = head->next;
+                  elt = pool_elt_at_index (tsm->list_pool, elt_index);
+                  ses_index = elt->value;
+                  while (ses_index != ~0)
+                    {
+                      s =  pool_elt_at_index (tsm->sessions, ses_index);
+                      elt = pool_elt_at_index (tsm->list_pool, elt->next);
+                      ses_index = elt->value;
+
+                      if (snat_is_session_static (s))
+                        continue;
+
+                      if (!addr_only)
+                        {
+                          if ((s->out2in.addr.as_u32 != e_addr.as_u32) &&
+                              (clib_net_to_host_u16 (s->out2in.port) != e_port))
+                            continue;
+                        }
+
+                      nat_free_session_data (sm, s, tsm - sm->per_thread_data);
+                      clib_dlist_remove (tsm->list_pool, s->per_user_index);
+                      pool_put_index (tsm->list_pool, s->per_user_index);
+                      pool_put (tsm->sessions, s);
+                      u->nsessions--;
+
+                      if (!addr_only)
+                        break;
+                    }
+                }
+            }
+        }
     }
   else
     {
@@ -906,14 +958,6 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       if (!(sm->static_mapping_only) ||
           (sm->static_mapping_only && sm->static_mapping_connection_tracking))
         {
-          snat_user_key_t u_key;
-          snat_user_t *u;
-          dlist_elt_t * head, * elt;
-          u32 elt_index, head_index;
-          u32 ses_index;
-          u64 user_index;
-          snat_session_t * s;
-
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
