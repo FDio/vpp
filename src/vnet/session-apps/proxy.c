@@ -445,7 +445,7 @@ active_open_attach (void)
   return 0;
 }
 
-static int
+int
 proxy_server_listen ()
 {
   proxy_main_t *pm = &proxy_main;
