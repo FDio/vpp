@@ -171,6 +171,7 @@ struct _session_manager_main
 
   /** Session ssvm segment configs*/
   uword session_baseva;
+  uword session_va_space_size;
   u32 segment_timeout;
   u32 evt_qs_segment_size;
   u8 evt_qs_use_memfd_seg;
