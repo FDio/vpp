@@ -71,10 +71,16 @@ format_vlib_buffer (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   u32 indent = format_get_indent (s);
+  u8 *a = 0;
 
-  s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
-	      b->current_data, b->current_length,
-	      vlib_buffer_get_free_list_index (b), b->n_add_refs);
+#define _(bit, name, v) \
+  if (v && (b->flags & VLIB_BUFFER_##name)) \
+    a = format (a, "%s ", v);
+  foreach_vlib_buffer_flag
+#undef _
+    s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
+		b->current_data, b->current_length,
+		vlib_buffer_get_free_list_index (b), b->n_add_refs);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -82,6 +88,10 @@ format_vlib_buffer (u8 * s, va_list * args)
 
   if (b->flags & VLIB_BUFFER_IS_TRACED)
     s = format (s, ", trace 0x%x", b->trace_index);
+
+  if (a)
+    s = format (s, "\n%U%v", format_white_space, indent, a);
+  vec_free (a);
 
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {

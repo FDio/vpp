@@ -254,22 +254,27 @@ vlib_buffer_round_size (u32 size)
   return round_pow2 (size, sizeof (vlib_buffer_t));
 }
 
-always_inline u32
+always_inline u16
 vlib_buffer_get_free_list_index (vlib_buffer_t * b)
 {
-  return b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NON_DEFAULT_FREELIST) == 0))
+    return 0;
+  else
+    return b->free_list_index;
 }
 
 always_inline void
-vlib_buffer_set_free_list_index (vlib_buffer_t * b, u32 index)
+vlib_buffer_set_free_list_index (vlib_buffer_t * b, u16 index)
 {
-  /* if there is an need for more free lists we should consider
-     storig data in the 2nd cacheline */
-  ASSERT (VLIB_BUFFER_FREE_LIST_INDEX_MASK & 1);
-  ASSERT (index <= VLIB_BUFFER_FREE_LIST_INDEX_MASK);
-
-  b->flags &= ~VLIB_BUFFER_FREE_LIST_INDEX_MASK;
-  b->flags |= index & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+  if (PREDICT_TRUE (index == 0))
+    {
+      b->flags &= ~VLIB_BUFFER_NON_DEFAULT_FREELIST;
+    }
+  else
+    {
+      b->flags |= VLIB_BUFFER_NON_DEFAULT_FREELIST;
+      b->free_list_index = index;
+    }
 }
 
 /** \brief Allocate buffers from specific freelist into supplied array
