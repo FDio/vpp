@@ -575,8 +575,8 @@ clear_sr_localsid_counters_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_sr_localsid_counters_command, static) = {
-  .path = "clear sr localsid counters",
-  .short_help = "clear sr localsid counters",
+  .path = "clear sr localsid-counters",
+  .short_help = "clear sr localsid-counters",
   .function = clear_sr_localsid_counters_command_fn,
 };
 /* *INDENT-ON* */
