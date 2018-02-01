@@ -122,6 +122,8 @@ typedef struct
 
 typedef struct
 {
+  u32 sw_if_index;
+  u8 router_address[16];
   u8 current_hop_limit;
   u8 flags;
   u16 router_lifetime_in_sec;
