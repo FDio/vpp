@@ -531,8 +531,8 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_steering_policies_command, static) = {
-  .path = "show sr steering policies",
-  .short_help = "show sr steering policies",
+  .path = "show sr steering-policies",
+  .short_help = "show sr steering-policies",
   .function = show_sr_steering_policies_command_fn,
 };
 /* *INDENT-ON* */
