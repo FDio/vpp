@@ -270,7 +270,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int end_psp = 0;
   ip6_address_t resulting_address;
   ip46_address_t next_hop;
-  char address_set = 0;
   char behavior = 0;
   void *ls_plugin_mem = 0;
 
@@ -279,18 +278,15 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   memset (&resulting_address, 0, sizeof (ip6_address_t));
   ip46_address_reset (&next_hop);
 
+
+  if (!unformat (input, "%U", unformat_ip6_address, &resulting_address))
+    return clib_error_return (0,
+			      "Error: SRv6 LocalSID address is mandatory.");
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
 	is_del = 1;
-      else if (!address_set
-	       && unformat (input, "address %U", unformat_ip6_address,
-			    &resulting_address))
-	address_set = 1;
-      else if (!address_set
-	       && unformat (input, "addr %U", unformat_ip6_address,
-			    &resulting_address))
-	address_set = 1;
       else if (unformat (input, "fib-table %u", &fib_index));
       else if (vlan_index == (u32) ~ 0
 	       && unformat (input, "vlan %u", &vlan_index));
@@ -359,9 +355,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!behavior && end_psp)
     behavior = SR_BEHAVIOR_END;
 
-  if (!address_set)
-    return clib_error_return (0,
-			      "Error: SRv6 LocalSID address is mandatory.");
   if (!is_del && !behavior)
     return clib_error_return (0,
 			      "Error: SRv6 LocalSID behavior is mandatory.");
@@ -408,7 +401,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_localsid_command, static) = {
   .path = "sr localsid",
-  .short_help = "sr localsid (del) address XX:XX::YY:YY"
+  .short_help = "sr localsid XX:XX::YY:YY (del) "
       "(fib-table 8) behavior STRING",
   .long_help =
     "Create SR LocalSID and binds it to a particular behavior\n"
@@ -575,8 +568,8 @@ clear_sr_localsid_counters_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_sr_localsid_counters_command, static) = {
-  .path = "clear sr localsid counters",
-  .short_help = "clear sr localsid counters",
+  .path = "clear sr localsid-counters",
+  .short_help = "clear sr localsid-counters",
   .function = clear_sr_localsid_counters_command_fn,
 };
 /* *INDENT-ON* */

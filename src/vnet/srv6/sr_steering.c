@@ -399,11 +399,10 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			    &sw_if_index))
 	traffic_type = SR_STEER_L2;
       else if (!sr_policy_set
-	       && unformat (input, "via sr policy index %d",
-			    &sr_policy_index))
+	       && unformat (input, "via index %d", &sr_policy_index))
 	sr_policy_set = 1;
       else if (!sr_policy_set
-	       && unformat (input, "via sr policy bsid %U",
+	       && unformat (input, "via bsid %U",
 			    unformat_ip6_address, &bsid))
 	sr_policy_set = 1;
       else if (fib_table == (u32) ~ 0
@@ -465,8 +464,8 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_steer_policy_command, static) = {
   .path = "sr steer",
-  .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <sf_if>]"
-    "via sr policy [index <sr_policy_index>|bsid <bsid_ip6_addr>]"
+  .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <sf_if>] "
+    "via [index <sr_policy_index>|bsid <bsid_ip6_addr>] "
     "(fib-table <fib_table_index>)",
   .long_help =
     "\tSteer a L2 or L3 traffic through an existing SR policy.\n"
@@ -531,8 +530,8 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_steering_policies_command, static) = {
-  .path = "show sr steering policies",
-  .short_help = "show sr steering policies",
+  .path = "show sr steering-policies",
+  .short_help = "show sr steering-policies",
   .function = show_sr_steering_policies_command_fn,
 };
 /* *INDENT-ON* */
