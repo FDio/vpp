@@ -456,12 +456,6 @@ mcast_shared_remove (ip46_address_t * remote)
   hash_unset_mem_free (&vxlan_gpe_main.mcast_shared, remote);
 }
 
-static inline fib_protocol_t
-fib_ip_proto (bool is_ip6)
-{
-  return (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
-}
-
 /**
  * @brief Add or Del a VXLAN GPE tunnel
  *
