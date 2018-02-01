@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "adbcca8a_dfd157ca",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "edbc99c0_c0821a80",
+      "range": {
+        "startLine": 151,
+        "startChar": 36,
+        "endLine": 151,
+        "endChar": 37
+      },
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3d0e9722_65425ca3",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 5
@@ -36,6 +60,30 @@
       "writtenOn": "2018-01-31T09:54:43Z",
       "side": 1,
       "message": "Please rather return an error when someone provides an out-of-bound value rather than masking it.",
+      "range": {
+        "startLine": 92,
+        "startChar": 52,
+        "endLine": 92,
+        "endChar": 63
+      },
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e8d130c5_8f25ca39",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d0e9722_65425ca3",
       "range": {
         "startLine": 92,
         "startChar": 52,
@@ -65,6 +113,24 @@
     },
     {
       "key": {
+        "uuid": "ed682bfb_5cb373a4",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "12759683_491f8e16",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2ae70d8f_d93503fa",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 5
@@ -76,6 +142,24 @@
       "writtenOn": "2018-01-31T09:54:43Z",
       "side": 1,
       "message": "the new space here was intentional, since there is one in the previous line as well.\nOther lines have it too. This is to shift text when listing vips.",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4afbcde0_bdb0d0b8",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2ae70d8f_d93503fa",
       "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -99,6 +183,24 @@
     },
     {
       "key": {
+        "uuid": "cbbc7281_7ecec41b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a6f387ed_a23efa43",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ceaa4dc0_8b4e8539",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 5
@@ -110,6 +212,24 @@
       "writtenOn": "2018-01-31T09:54:43Z",
       "side": 1,
       "message": "rogue new line",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7c89671c_2a171024",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 722,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ceaa4dc0_8b4e8539",
       "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -133,6 +253,24 @@
     },
     {
       "key": {
+        "uuid": "1b0b7797_7ec7e976",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eefc525e_b361d2e3",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f4607b4b_3bbf5077",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 5
@@ -144,6 +282,24 @@
       "writtenOn": "2018-01-31T09:54:43Z",
       "side": 1,
       "message": "rogue new line",
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "94df0eea_3ae7f164",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f4607b4b_3bbf5077",
       "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -173,6 +329,30 @@
     },
     {
       "key": {
+        "uuid": "70ed039b_5ba677a4",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b1bd2d4_6ecaf70a",
+      "range": {
+        "startLine": 149,
+        "startChar": 2,
+        "endLine": 149,
+        "endChar": 24
+      },
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aa7291ec_38f0469c",
         "filename": "src/plugins/lb/lb_plugin_doc.md",
         "patchSetId": 5
@@ -184,6 +364,30 @@
       "writtenOn": "2018-01-31T09:54:43Z",
       "side": 1,
       "message": "Is it worth leaving it here ? Do you plan to implement it ?",
+      "range": {
+        "startLine": 23,
+        "startChar": 19,
+        "endLine": 23,
+        "endChar": 29
+      },
+      "revId": "4a62615f5a2df6fe3d2488484864e42f723ed7ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "75ccfb2f_397a0766",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-01T03:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aa7291ec_38f0469c",
       "range": {
         "startLine": 23,
         "startChar": 19,
