@@ -480,6 +480,13 @@ class VppPapiProvider(object):
                          'mrd': mrd,
                          'sw_if_index': sw_if_index})
 
+    def ip6_nd_address_autoconfig(self, sw_if_index, enable,
+                                  install_default_routes):
+        return self.api(self.papi.ip6_nd_address_autoconfig,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable,
+                         'install_default_routes': install_default_routes})
+
     def want_macs_learn_events(self, enable_disable=1, scan_delay=0,
                                max_macs_in_event=0, learn_limit=0):
         return self.api(self.papi.want_l2_macs_events,
