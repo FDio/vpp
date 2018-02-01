@@ -362,9 +362,6 @@ typedef struct
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
 
-  /* vlib buffer free list, must be same size as an rte_mbuf */
-  u32 vlib_buffer_free_list_index;
-
   /* pcap tracing [only works if (CLIB_DEBUG > 0)] */
   int tx_pcap_enable;
   pcap_main_t pcap_main;

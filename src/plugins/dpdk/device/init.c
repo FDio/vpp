@@ -224,15 +224,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   if (CLIB_DEBUG > 0)
     clib_warning ("DPDK drivers found %d ports...", nports);
 
-  /*
-   * All buffers are all allocated from the same rte_mempool.
-   * Thus they all have the same number of data bytes.
-   */
-  dm->vlib_buffer_free_list_index =
-    vlib_buffer_get_or_create_free_list (vm,
-					 VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
-					 "dpdk rx");
-
   if (dm->conf->enable_tcp_udp_checksum)
     dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
 				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
