@@ -58,6 +58,37 @@
     of typing to make it so.
 */
 
+/**
+ * Flags that are set in the high order bits of ((vlib_buffer*)b)->flags
+ */
+#define foreach_vlib_buffer_flag \
+  _( 0, NON_DEFAULT_FREELIST, "non-default-fl")		\
+  _( 1, IS_TRACED, 0)					\
+  _( 2, NEXT_PRESENT, 0)				\
+  _( 3, IS_RECYCLED, "is-recycled")			\
+  _( 4, TOTAL_LENGTH_VALID, 0)				\
+  _( 5, REPL_FAIL, "repl-fail")				\
+  _( 6, RECYCLE, "recycle")				\
+  _( 7, EXT_HDR_VALID, "ext-hdr-valid")
+
+enum
+{
+#define _(bit, name, v) VLIB_BUFFER_##name  = (1 << (bit)),
+  foreach_vlib_buffer_flag
+#undef _
+};
+
+enum
+{
+#define _(bit, name, v) VLIB_BUFFER_LOG2_##name  = (bit),
+  foreach_vlib_buffer_flag
+#undef _
+};
+
+  /* User defined buffer flags. */
+#define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
+#define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
+
 /* VLIB buffer representation. */
 typedef struct
 {
@@ -79,30 +110,11 @@ typedef struct
                 <br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
                 <br> VLIB_BUFFER_REPL_FAIL: packet replication failure
                 <br> VLIB_BUFFER_RECYCLE: as it says
-                <br> VLIB_BUFFER_FLOW_REPORT: buffer is a flow report,
                 <br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
                 set to avoid adding it to a flow report
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
 
-/* any change to the following line requres update of
- * vlib_buffer_get_free_list_index(...) and
- * vlib_buffer_set_free_list_index(...) functions */
-#define VLIB_BUFFER_FREE_LIST_INDEX_MASK ((1 << 5) - 1)
-
-#define VLIB_BUFFER_IS_TRACED (1 << 5)
-#define VLIB_BUFFER_LOG2_NEXT_PRESENT (6)
-#define VLIB_BUFFER_NEXT_PRESENT (1 << VLIB_BUFFER_LOG2_NEXT_PRESENT)
-#define VLIB_BUFFER_IS_RECYCLED (1 << 7)
-#define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 8)
-#define VLIB_BUFFER_REPL_FAIL (1 << 9)
-#define VLIB_BUFFER_RECYCLE (1 << 10)
-#define VLIB_BUFFER_FLOW_REPORT (1 << 11)
-#define VLIB_BUFFER_EXT_HDR_VALID (1 << 12)
-
-  /* User defined buffer flags. */
-#define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
-#define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
 
     STRUCT_MARK (template_end);
 
@@ -143,7 +155,9 @@ typedef struct
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
   */
-  u32 align_pad; /**< available */
+  u16 free_list_index; /** < only used if VLIB_BUFFER_NON_DEFAULT_FREELIST flag
+			 is set */
+  u16 align_pad; /**< available */
   u32 opaque2[12];  /**< More opaque data, see ../vnet/vnet/buffer.h */
 
   /***** end of second cache line */
