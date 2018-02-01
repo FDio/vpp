@@ -156,6 +156,8 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  u32 *custom_instance_by_real_instance;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -173,6 +175,8 @@ typedef struct {
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of abreaking change */
   u8 is_ip6;
+  u8 renumber;
+  u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;

@@ -83,6 +83,8 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
   vnet_vxlan_add_del_tunnel_args_t a = {
     .is_add = mp->is_add,
     .is_ip6 = mp->is_ipv6,
+    .renumber = mp->renumber,
+    .instance = ntohl (mp->instance),
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
@@ -104,6 +106,13 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
       goto out;
     }
 
+  /* Check requested instance number */
+  if (a.renumber && a.instance == ~0)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto out;
+    }
+
   u32 sw_if_index = ~0;
   rv = vnet_vxlan_add_del_tunnel (&a, &sw_if_index);
 
@@ -119,6 +128,7 @@ out:
 static void send_vxlan_tunnel_details
   (vxlan_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vl_api_vxlan_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
@@ -139,6 +149,11 @@ static void send_vxlan_tunnel_details
       memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
     }
+
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+  strncpy ((char *) rmp->if_name, (char *) hi->name,
+	   sizeof (rmp->if_name) - 1);
+
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   rmp->decap_next_index = htonl (t->decap_next_index);
