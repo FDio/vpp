@@ -1543,6 +1543,8 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
 
   s = format (s, "vni %d ", ntohl (mp->vni));
 
+  s = format (s, "instance %d ", ntohl (mp->instance));
+
   if (mp->is_add == 0)
     s = format (s, "del ");
 

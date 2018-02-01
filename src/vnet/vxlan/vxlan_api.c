@@ -83,6 +83,7 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
   vnet_vxlan_add_del_tunnel_args_t a = {
     .is_add = mp->is_add,
     .is_ip6 = mp->is_ipv6,
+    .instance = ntohl (mp->instance),
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
@@ -101,6 +102,13 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
       !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  /* Check requested instance number */
+  if (a.renumber && a.instance == ~0)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
       goto out;
     }
 
@@ -139,6 +147,8 @@ static void send_vxlan_tunnel_details
       memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
     }
+
+  rmp->instance = htonl (t->user_instance);
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   rmp->decap_next_index = htonl (t->decap_next_index);
