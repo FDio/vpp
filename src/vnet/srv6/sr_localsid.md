@@ -55,4 +55,4 @@ The contents of the 'My LocalSID Table' is shown with:
 
 The traffic counters can be reset with:
 
-    vpp# clear sr localsid counters
+    vpp# clear sr localsid-counters
