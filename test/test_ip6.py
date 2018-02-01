@@ -1005,6 +1005,181 @@ class TestIPv6RD(TestIPv6ND):
         self.verify_prefix_info(ev.prefixes[1], prefix_info_2)
 
 
+class TestIPv6RDControlPlane(TestIPv6ND):
+    """ IPv6 Router Discovery Control Plane Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6RDControlPlane, cls).setUpClass()
+
+    def setUp(self):
+        super(TestIPv6RDControlPlane, self).setUp()
+
+        # create 1 pg interface
+        self.create_pg_interfaces(range(1))
+
+        self.interfaces = list(self.pg_interfaces)
+
+        # setup all interfaces
+        for i in self.interfaces:
+            i.admin_up()
+            i.config_ip6()
+
+    def tearDown(self):
+        super(TestIPv6RDControlPlane, self).tearDown()
+
+    @staticmethod
+    def create_ra_packet(pg, routerlifetime=None):
+        src_ip = pg.remote_ip6_ll
+        dst_ip = pg.local_ip6
+        if routerlifetime is not None:
+            ra = ICMPv6ND_RA(routerlifetime=routerlifetime)
+        else:
+            ra = ICMPv6ND_RA()
+        p = (Ether(dst=pg.local_mac, src=pg.remote_mac) /
+             IPv6(dst=dst_ip, src=src_ip) / ra)
+        return p
+
+    @staticmethod
+    def get_default_routes(fib):
+        list = []
+        for entry in fib:
+            if entry.address_length == 0:
+                for path in entry.path:
+                    if path.sw_if_index != 0xFFFFFFFF:
+                        defaut_route = {}
+                        defaut_route['sw_if_index'] = path.sw_if_index
+                        defaut_route['next_hop'] = path.next_hop
+                        list.append(defaut_route)
+        return list
+
+    @staticmethod
+    def get_interface_addresses(fib, pg):
+        list = []
+        for entry in fib:
+            if entry.address_length == 128:
+                path = entry.path[0]
+                if path.sw_if_index == pg.sw_if_index:
+                    list.append(entry.address)
+        return list
+
+    def test_all(self):
+        """ Test handling of SLAAC addresses and default routes """
+
+        fib = self.vapi.ip6_fib_dump()
+        default_routes = self.get_default_routes(fib)
+        initial_addresses = set(self.get_interface_addresses(fib, self.pg0))
+        self.assertEqual(default_routes, [])
+        router_address = self.pg0.remote_ip6n_ll
+
+        self.vapi.ip6_nd_address_autoconfig(self.pg0.sw_if_index, 1, 1)
+
+        self.sleep(0.1)
+
+        # send RA
+        packet = (self.create_ra_packet(self.pg0) / ICMPv6NDOptPrefixInfo(
+            prefix="1::",
+            prefixlen=64,
+            validlifetime=2,
+            preferredlifetime=2,
+            L=1,
+            A=1,
+        ) / ICMPv6NDOptPrefixInfo(
+            prefix="7::",
+            prefixlen=20,
+            validlifetime=1500,
+            preferredlifetime=1000,
+            L=1,
+            A=0,
+        ))
+        self.pg0.add_stream([packet])
+        self.pg_start()
+
+        self.sleep(0.1)
+
+        fib = self.vapi.ip6_fib_dump()
+
+        # check FIB for new address
+        addresses = set(self.get_interface_addresses(fib, self.pg0))
+        new_addresses = addresses.difference(initial_addresses)
+        self.assertEqual(len(new_addresses), 1)
+        prefix = list(new_addresses)[0][:8] + '\0\0\0\0\0\0\0\0'
+        self.assertEqual(inet_ntop(AF_INET6, prefix), '1::')
+
+        # check FIB for new default route
+        default_routes = self.get_default_routes(fib)
+        self.assertEqual(len(default_routes), 1)
+        dr = default_routes[0]
+        self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
+        self.assertEqual(dr['next_hop'], router_address)
+
+        # send RA to delete default route
+        packet = self.create_ra_packet(self.pg0, routerlifetime=0)
+        self.pg0.add_stream([packet])
+        self.pg_start()
+
+        self.sleep(0.1)
+
+        # check that default route is deleted
+        fib = self.vapi.ip6_fib_dump()
+        default_routes = self.get_default_routes(fib)
+        self.assertEqual(len(default_routes), 0)
+
+        self.sleep(0.1)
+
+        # send RA
+        packet = self.create_ra_packet(self.pg0)
+        self.pg0.add_stream([packet])
+        self.pg_start()
+
+        self.sleep(0.1)
+
+        # check FIB for new default route
+        fib = self.vapi.ip6_fib_dump()
+        default_routes = self.get_default_routes(fib)
+        self.assertEqual(len(default_routes), 1)
+        dr = default_routes[0]
+        self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
+        self.assertEqual(dr['next_hop'], router_address)
+
+        # send RA, updating router lifetime to 1s
+        packet = self.create_ra_packet(self.pg0, 1)
+        self.pg0.add_stream([packet])
+        self.pg_start()
+
+        self.sleep(0.1)
+
+        # check that default route still exists
+        fib = self.vapi.ip6_fib_dump()
+        default_routes = self.get_default_routes(fib)
+        self.assertEqual(len(default_routes), 1)
+        dr = default_routes[0]
+        self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
+        self.assertEqual(dr['next_hop'], router_address)
+
+        self.sleep(1)
+
+        # check that default route is deleted
+        fib = self.vapi.ip6_fib_dump()
+        default_routes = self.get_default_routes(fib)
+        self.assertEqual(len(default_routes), 0)
+
+        # check FIB still contains the SLAAC address
+        addresses = set(self.get_interface_addresses(fib, self.pg0))
+        new_addresses = addresses.difference(initial_addresses)
+        self.assertEqual(len(new_addresses), 1)
+        prefix = list(new_addresses)[0][:8] + '\0\0\0\0\0\0\0\0'
+        self.assertEqual(inet_ntop(AF_INET6, prefix), '1::')
+
+        self.sleep(1)
+
+        # check that SLAAC address is deleted
+        fib = self.vapi.ip6_fib_dump()
+        addresses = set(self.get_interface_addresses(fib, self.pg0))
+        new_addresses = addresses.difference(initial_addresses)
+        self.assertEqual(len(new_addresses), 0)
+
+
 class IPv6NDProxyTest(TestIPv6ND):
     """ IPv6 ND ProxyTest Case """
 

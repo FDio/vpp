@@ -1,4 +1,4 @@
-option version = "1.0.0";
+option version = "1.1.0";
 
 service {
   rpc want_interface_events returns want_interface_events_reply
@@ -333,6 +333,30 @@ autoreply define sw_interface_set_mac_address
     u32 client_index;
     u32 context;
     u32 sw_if_index;
+    u8 mac_address[6];
+};
+
+/** \brief Get interface's MAC address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose MAC will be returned
+*/
+define sw_interface_get_mac_address
+{
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+/** \brief Reply for get interface's MAC address request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param mac_addr - returned interface's MAC address
+*/
+define sw_interface_get_mac_address_reply
+{
+    u32 context;
+    i32 retval;
     u8 mac_address[6];
 };
 

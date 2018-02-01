@@ -342,6 +342,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip6_neighbor.c				\
  vnet/ip/ip6_pg.c				\
  vnet/ip/ip6_reassembly.c                       \
+ vnet/ip/rd_cp.c                                \
  vnet/ip/ip_api.c				\
  vnet/ip/ip_checksum.c				\
  vnet/ip/ip_frag.c				\
@@ -360,6 +361,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/icmp6.h				\
  vnet/ip/igmp_packet.h				\
  vnet/ip/ip.api.h				\
+ vnet/ip/rd_cp.api.h                            \
  vnet/ip/ip4_error.h				\
  vnet/ip/ip4.h					\
  vnet/ip/ip4_mtrie.h				\
@@ -382,6 +384,7 @@ nobase_include_HEADERS +=			\
 
 API_FILES += 					\
  vnet/ip/ip.api 				\
+ vnet/ip/rd_cp.api                              \
  vnet/ip/punt.api
 
 ########################################

@@ -55,16 +55,6 @@ class VppInterface(object):
         return socket.inet_pton(socket.AF_INET6, self.local_ip6)
 
     @property
-    def local_ip6_ll(self):
-        """Local IPv6 linnk-local address on VPP interface (string)."""
-        return self._local_ip6_ll
-
-    @property
-    def local_ip6n_ll(self):
-        """Local IPv6 link-local address - raw, suitable as API parameter."""
-        return self.local_ip6n_ll
-
-    @property
     def remote_ip6(self):
         """IPv6 address of remote peer "connected" to this interface."""
         return self._remote_hosts[0].ip6
@@ -73,6 +63,28 @@ class VppInterface(object):
     def remote_ip6n(self):
         """IPv6 address of remote peer - raw, suitable as API parameter"""
         return socket.inet_pton(socket.AF_INET6, self.remote_ip6)
+
+    @property
+    def local_ip6_ll(self):
+        """Local IPv6 linnk-local address on VPP interface (string)."""
+        return self._local_ip6_ll
+
+    @property
+    def local_ip6n_ll(self):
+        """Local IPv6 link-local address - raw, suitable as API parameter."""
+        return self._local_ip6n_ll
+
+    @property
+    def remote_ip6_ll(self):
+        """Link-local IPv6 address of remote peer
+        "connected" to this interface."""
+        return self._remote_ip6_ll
+
+    @property
+    def remote_ip6n_ll(self):
+        """Link-local IPv6 address of remote peer
+        - raw, suitable as API parameter"""
+        return self._remote_ip6n_ll
 
     @property
     def name(self):
@@ -196,6 +208,9 @@ class VppInterface(object):
         self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._local_ip6n_ll = socket.inet_pton(socket.AF_INET6,
                                                self.local_ip6_ll)
+        self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
+        self._remote_ip6n_ll = socket.inet_pton(socket.AF_INET6,
+                                                self.remote_ip6_ll)
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
