@@ -45,7 +45,7 @@
 /**
  * Flags that are set in the high order bits of ((vlib_buffer*)b)->flags
  */
-#define foreach_vnet_buffer_field \
+#define foreach_vnet_buffer_flag \
   _( 1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed")	\
   _( 2, L4_CHECKSUM_CORRECT, "l4-cksum-correct")	\
   _( 3, VLAN_2_DEEP, "vlan-2-deep")			\
@@ -61,7 +61,9 @@
   _(13, IS_NATED, "nated")				\
   _(14, L2_HDR_OFFSET_VALID, 0)				\
   _(15, L3_HDR_OFFSET_VALID, 0)				\
-  _(16, L4_HDR_OFFSET_VALID, 0)
+  _(16, L4_HDR_OFFSET_VALID, 0)				\
+  _(17, FLOW_REPORT, "flow-report")			\
+  _(18, IS_DVR, "dvr")
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -69,37 +71,16 @@
 enum
 {
 #define _(bit, name, v) VNET_BUFFER_F_##name  = (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit)),
-  foreach_vnet_buffer_field
+  foreach_vnet_buffer_flag
 #undef _
 };
 
 enum
 {
 #define _(bit, name, v) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
-  foreach_vnet_buffer_field
+  foreach_vnet_buffer_flag
 #undef _
 };
-
-/**
- * @brief Flags set in ((vnet_buffer(b)->flags
- */
-#define foreach_vnet_opaque_flag \
-  _( 1, IS_DVR, "DVR-processed")
-
-enum
-{
-#define _(bit, name, v) VNET_OPAQUE_F_##name  = (1 << bit),
-  foreach_vnet_opaque_flag
-#undef _
-};
-
-enum
-{
-#define _(bit, name, v) VNET_OPAQUE_F_LOG2_##name  = bit,
-  foreach_vnet_opaque_flag
-#undef _
-};
-
 
 #define foreach_buffer_opaque_union_subtype     \
 _(ip)                                           \
@@ -134,7 +115,7 @@ typedef struct
   i16 l2_hdr_offset;
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;
-  u16 flags;
+  u16 dont_waste_me;
 
   union
   {
