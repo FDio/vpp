@@ -254,22 +254,28 @@ vlib_buffer_round_size (u32 size)
   return round_pow2 (size, sizeof (vlib_buffer_t));
 }
 
-always_inline u32
+always_inline vlib_buffer_free_list_index_t
 vlib_buffer_get_free_list_index (vlib_buffer_t * b)
 {
-  return b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NON_DEFAULT_FREELIST) == 0))
+    return 0;
+  else
+    return b->free_list_index;
 }
 
 always_inline void
-vlib_buffer_set_free_list_index (vlib_buffer_t * b, u32 index)
+vlib_buffer_set_free_list_index (vlib_buffer_t * b,
+				 vlib_buffer_free_list_index_t index)
 {
-  /* if there is an need for more free lists we should consider
-     storig data in the 2nd cacheline */
-  ASSERT (VLIB_BUFFER_FREE_LIST_INDEX_MASK & 1);
-  ASSERT (index <= VLIB_BUFFER_FREE_LIST_INDEX_MASK);
-
-  b->flags &= ~VLIB_BUFFER_FREE_LIST_INDEX_MASK;
-  b->flags |= index & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+  if (PREDICT_TRUE (index == 0))
+    {
+      b->flags &= ~VLIB_BUFFER_NON_DEFAULT_FREELIST;
+    }
+  else
+    {
+      b->flags |= VLIB_BUFFER_NON_DEFAULT_FREELIST;
+      b->free_list_index = index;
+    }
 }
 
 /** \brief Allocate buffers from specific freelist into supplied array
@@ -283,7 +289,8 @@ vlib_buffer_set_free_list_index (vlib_buffer_t * b, u32 index)
 always_inline u32
 vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
 				  u32 * buffers,
-				  u32 n_buffers, u32 free_list_index)
+				  u32 n_buffers,
+				  vlib_buffer_free_list_index_t index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *fl;
@@ -292,7 +299,7 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
 
   ASSERT (bm->cb.vlib_buffer_fill_free_list_cb);
 
-  fl = pool_elt_at_index (bm->buffer_free_list_pool, free_list_index);
+  fl = pool_elt_at_index (bm->buffer_free_list_pool, index);
 
   len = vec_len (fl->buffers);
 
@@ -429,10 +436,12 @@ vlib_buffer_free_one (vlib_main_t * vm, u32 buffer_index)
 }
 
 /* Add/delete buffer free lists. */
-u32 vlib_buffer_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
-				  char *fmt, ...);
+vlib_buffer_free_list_index_t vlib_buffer_create_free_list (vlib_main_t * vm,
+							    u32 n_data_bytes,
+							    char *fmt, ...);
 always_inline void
-vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
+vlib_buffer_delete_free_list (vlib_main_t * vm,
+			      vlib_buffer_free_list_index_t free_list_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
 
@@ -442,8 +451,12 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
 }
 
 /* Find already existing public free list with given size or create one. */
-u32 vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
-					 char *fmt, ...);
+vlib_buffer_free_list_index_t vlib_buffer_get_or_create_free_list (vlib_main_t
+								   * vm,
+								   u32
+								   n_data_bytes,
+								   char *fmt,
+								   ...);
 
 /* Merge two free lists */
 void vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
@@ -455,7 +468,7 @@ void vlib_buffer_free_list_fill_unaligned (vlib_main_t * vm,
 					   free_list,
 					   uword n_unaligned_buffers);
 
-always_inline u32
+always_inline vlib_buffer_free_list_index_t
 vlib_buffer_get_free_list_with_size (vlib_main_t * vm, u32 size)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
@@ -467,17 +480,18 @@ vlib_buffer_get_free_list_with_size (vlib_main_t * vm, u32 size)
 
 always_inline vlib_buffer_free_list_t *
 vlib_buffer_get_buffer_free_list (vlib_main_t * vm, vlib_buffer_t * b,
-				  u32 * index)
+				  vlib_buffer_free_list_index_t * index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  u32 i;
+  vlib_buffer_free_list_index_t i;
 
   *index = i = vlib_buffer_get_free_list_index (b);
   return pool_elt_at_index (bm->buffer_free_list_pool, i);
 }
 
 always_inline vlib_buffer_free_list_t *
-vlib_buffer_get_free_list (vlib_main_t * vm, u32 free_list_index)
+vlib_buffer_get_free_list (vlib_main_t * vm,
+			   vlib_buffer_free_list_index_t free_list_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
@@ -491,10 +505,10 @@ vlib_buffer_get_free_list (vlib_main_t * vm, u32 free_list_index)
 }
 
 always_inline u32
-vlib_buffer_free_list_buffer_size (vlib_main_t * vm, u32 free_list_index)
+vlib_buffer_free_list_buffer_size (vlib_main_t * vm,
+				   vlib_buffer_free_list_index_t index)
 {
-  vlib_buffer_free_list_t *f =
-    vlib_buffer_get_free_list (vm, free_list_index);
+  vlib_buffer_free_list_t *f = vlib_buffer_get_free_list (vm, index);
   return f->n_data_bytes;
 }
 
@@ -525,7 +539,7 @@ vlib_copy_buffers (u32 * dst, u32 * src, u32 n)
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
 u32 vlib_buffer_add_data (vlib_main_t * vm,
-			  u32 free_list_index,
+			  vlib_buffer_free_list_index_t free_list_index,
 			  u32 buffer_index, void *data, u32 n_data_bytes);
 
 /* duplicate all buffers in chain */
@@ -772,7 +786,7 @@ vlib_buffer_chain_increase_length (vlib_buffer_t * first,
  * Returns the number of copied bytes. */
 always_inline u16
 vlib_buffer_chain_append_data (vlib_main_t * vm,
-			       u32 free_list_index,
+			       vlib_buffer_free_list_index_t free_list_index,
 			       vlib_buffer_t * first,
 			       vlib_buffer_t * last, void *data, u16 data_len)
 {
@@ -795,10 +809,11 @@ vlib_buffer_chain_append_data (vlib_main_t * vm,
  * chained and points to the last buffer in the chain. */
 u16
 vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
-					  u32 free_list_index,
+					  vlib_buffer_free_list_index_t
+					  free_list_index,
 					  vlib_buffer_t * first,
-					  vlib_buffer_t ** last,
-					  void *data, u16 data_len);
+					  vlib_buffer_t ** last, void *data,
+					  u16 data_len);
 void vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * first);
 
 format_function_t format_vlib_buffer, format_vlib_buffer_and_data,
@@ -814,7 +829,7 @@ typedef struct
   u32 min_n_buffers_each_physmem_alloc;
 
   /* Buffer free list for this template. */
-  u32 free_list_index;
+  vlib_buffer_free_list_index_t free_list_index;
 
   u32 *free_buffers;
 } vlib_packet_template_t;
@@ -1065,7 +1080,7 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
       return;
     }
   /* probe free list to find allocated buffer size to avoid overfill */
-  u32 index;
+  vlib_buffer_free_list_index_t index;
   vlib_buffer_free_list_t *free_list =
     vlib_buffer_get_buffer_free_list (vm, first, &index);
 

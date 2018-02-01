@@ -27,7 +27,7 @@ format_vnet_buffer (u8 * s, va_list * args)
 #define _(bit, name, v) \
   if (v && (b->flags & VNET_BUFFER_F_##name)) \
     a = format (a, "%s ", v);
-  foreach_vnet_buffer_field
+  foreach_vnet_buffer_flag
 #undef _
     if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
     a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
