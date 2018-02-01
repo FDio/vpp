@@ -790,6 +790,8 @@ define ip6_ra_event
 {
   u32 client_index;
   u32 pid;
+  u32 sw_if_index;
+  u8 router_address[16];
   u8 current_hop_limit;
   u8 flags;
   u16 router_lifetime_in_sec;

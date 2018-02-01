@@ -1893,6 +1893,9 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		      radv_info->keep_sending_rs = 0;
 
 		      ra_report_t r;
+
+		      memcpy (r.router_address, &ip0->src_address, 16);
+
 		      r.current_hop_limit = h0->current_hop_limit;
 		      r.flags = h0->flags;
 		      r.router_lifetime_in_sec =

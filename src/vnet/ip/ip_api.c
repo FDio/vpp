@@ -2414,6 +2414,10 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		    event->client_index = reg->client_index;
 		    event->pid = reg->client_pid;
 
+		    event->sw_if_index = clib_host_to_net_u32 (ra_events[i].sw_if_index);
+
+		    memcpy (event->router_address, ra_events[i].router_address, 16);
+
 		    event->current_hop_limit = ra_events[i].current_hop_limit;
 		    event->flags = ra_events[i].flags;
 		    event->router_lifetime_in_sec =
@@ -2670,7 +2674,7 @@ vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
     {
       if (mp->enable_disable)
 	{
-	  clib_warning ("pid %d: already enabled...", mp->pid);
+	  clib_warning ("pid %d: already enabled...", ntohl (mp->pid));
 	  rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  goto reply;
 	}
@@ -2686,13 +2690,13 @@ vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
     }
   if (mp->enable_disable == 0)
     {
-      clib_warning ("pid %d: already disabled...", mp->pid);
+      clib_warning ("pid %d: already disabled...", ntohl (mp->pid));
       rv = VNET_API_ERROR_INVALID_REGISTRATION;
       goto reply;
     }
   pool_get (am->ip6_ra_events_registrations, rp);
   rp->client_index = mp->client_index;
-  rp->client_pid = mp->pid;
+  rp->client_pid = ntohl (mp->pid);
   hash_set (am->ip6_ra_events_registration_hash, rp->client_index,
 	    rp - am->ip6_ra_events_registrations);
   ra_set_publisher_node (wc_arp_process_node.index, RA_REPORT);

@@ -61,6 +61,7 @@ _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)           \
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)           \
 _(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)   \
+_(SW_INTERFACE_GET_MAC_ADDRESS, sw_interface_get_mac_address)   \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                         \
 _(CREATE_SUBIF, create_subif)                                   \
 _(DELETE_SUBIF, delete_subif)                                   \
@@ -901,6 +902,37 @@ static void vl_api_sw_interface_set_mac_address_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MAC_ADDRESS_REPLY);
+}
+
+static void vl_api_sw_interface_get_mac_address_t_handler
+  (vl_api_sw_interface_get_mac_address_t * mp)
+{
+  vl_api_sw_interface_get_mac_address_reply_t *rmp;
+  vl_api_registration_t *reg;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si;
+  ethernet_interface_t *eth_if = 0;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  si = vnet_get_sup_sw_interface (vnm, sw_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
+    eth_if = ethernet_get_interface (&ethernet_main, si->hw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_SW_INTERFACE_GET_MAC_ADDRESS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = htonl (rv);
+  if (!rv && eth_if)
+    memcpy (rmp->mac_address, eth_if->address, 6);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void vl_api_sw_interface_set_rx_mode_t_handler
