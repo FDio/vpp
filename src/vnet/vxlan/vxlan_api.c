@@ -70,10 +70,11 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
 {
   vl_api_vxlan_add_del_tunnel_reply_t *rmp;
   int rv = 0;
-  ip4_main_t *im = &ip4_main;
+  u32 fib_index;
 
-  uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
-  if (!p)
+  fib_index = fib_table_find (fib_ip_proto (mp->is_ipv6),
+			      ntohl (mp->encap_vrf_id));
+  if (fib_index == ~0)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
       goto out;
@@ -83,7 +84,7 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     .is_add = mp->is_add,
     .is_ip6 = mp->is_ipv6,
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
-    .encap_fib_index = p[0],
+    .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
     .vni = ntohl (mp->vni),
     .dst = to_ip46 (mp->is_ipv6, mp->dst_address),
