@@ -290,8 +290,8 @@ dvr_dpo_inline (vlib_main_t * vm,
                     (u8*)ethernet_buffer_get_header(b1));
             vnet_buffer(b0)->l2.l2_len = len0;
             vnet_buffer(b1)->l2.l2_len = len1;
-            vnet_buffer(b0)->flags |= VNET_OPAQUE_F_IS_DVR;
-            vnet_buffer(b1)->flags |= VNET_OPAQUE_F_IS_DVR;
+            b0->flags |= VNET_BUFFER_F_IS_DVR;
+            b1->flags |= VNET_BUFFER_F_IS_DVR;
 
             vlib_buffer_advance(b0, -len0);
             vlib_buffer_advance(b1, -len1);
@@ -350,7 +350,7 @@ dvr_dpo_inline (vlib_main_t * vm,
             len0 = ((u8*)vlib_buffer_get_current(b0) -
                     (u8*)ethernet_buffer_get_header(b0));
             vnet_buffer(b0)->l2.l2_len = len0;
-            vnet_buffer(b0)->flags |= VNET_OPAQUE_F_IS_DVR;
+            b0->flags |= VNET_BUFFER_F_IS_DVR;
             vlib_buffer_advance(b0, -len0);
 
             /*
@@ -464,13 +464,13 @@ dvr_reinject_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
             b1 = vlib_get_buffer (vm, bi1);
 
-            if (vnet_buffer(b0)->flags & VNET_OPAQUE_F_IS_DVR)
+            if (b0->flags & VNET_BUFFER_F_IS_DVR)
                 next0 = DVR_REINJECT_OUTPUT;
             else
                 vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_TX],
                                   &next0, b0);
 
-            if (vnet_buffer(b1)->flags & VNET_OPAQUE_F_IS_DVR)
+            if (b1->flags & VNET_BUFFER_F_IS_DVR)
                 next1 = DVR_REINJECT_OUTPUT;
             else
                 vnet_feature_next(vnet_buffer(b1)->sw_if_index[VLIB_TX],
@@ -511,7 +511,7 @@ dvr_reinject_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
 
-            if (vnet_buffer(b0)->flags & VNET_OPAQUE_F_IS_DVR)
+            if (b0->flags & VNET_BUFFER_F_IS_DVR)
                 next0 = DVR_REINJECT_OUTPUT;
             else
                 vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_TX],
