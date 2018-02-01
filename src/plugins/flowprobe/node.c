@@ -657,7 +657,8 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 
       b0->current_data = 0;
       b0->current_length = flowprobe_get_headersize ();
-      b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_FLOW_REPORT);
+      b0->flags |=
+	(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
       fm->context[which].next_record_offset_per_worker[my_cpu_number] =
@@ -782,7 +783,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
-	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    add_to_flow_record_state (vm, node, fm, b0, timestamp, len0,
 				      flowprobe_get_variant
 				      (which, fm->context[which].flags,
@@ -792,7 +793,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  ethernet_header_t *eh1 = vlib_buffer_get_current (b1);
 	  u16 ethertype1 = clib_net_to_host_u16 (eh1->type);
 
-	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b1->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    add_to_flow_record_state (vm, node, fm, b1, timestamp, len1,
 				      flowprobe_get_variant
 				      (which, fm->context[which].flags,
@@ -828,7 +829,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
-	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    {
 	      flowprobe_trace_t *t = 0;
 	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
