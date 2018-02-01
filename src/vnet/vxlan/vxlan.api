@@ -13,7 +13,21 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
+
+/** \brief Create or delete a VXLAN tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param is_ipv6 - Use 0 for IPv4, 1 for IPv6
+    @param instance - optional unique custom device instance, else ~0.
+    @param src_address - Source IP address
+    @param dst_address - Destination IP address, can be multicast
+    @param mcast_sw_if_index - Interface for multicast destination
+    @param encap_vrf_id - Encap route table FIB index
+    @param decap_next_index - Name of decap next graph node
+    @param vni - The VXLAN Network Identifier, uint24
+*/
 
 define vxlan_add_del_tunnel
 {
@@ -21,6 +35,7 @@ define vxlan_add_del_tunnel
   u32 context;
   u8 is_add;
   u8 is_ipv6;
+  u32 instance;		/* If non-~0, specifies a custom dev instance */
   u8 src_address[16];
   u8 dst_address[16];
   u32 mcast_sw_if_index;
@@ -47,6 +62,7 @@ define vxlan_tunnel_details
 {
   u32 context;
   u32 sw_if_index;
+  u32 instance;
   u8 src_address[16];
   u8 dst_address[16];
   u32 mcast_sw_if_index;

@@ -55,9 +55,16 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 {
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
   vxlan_main_t * ngm = &vxlan_main;
+  u32 dev_instance;
+  u32 user_instance;
 
-  s = format (s, "[%d] src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
-              t - ngm->tunnels,
+  dev_instance = t - ngm->tunnels;
+  user_instance = t->user_instance;
+
+  s = format (s,
+	      "[%d] instance %d src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
+	      dev_instance,
+	      user_instance,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
               format_ip46_address, &t->dst, IP46_TYPE_ANY,
               t->vni, t->encap_fib_index, t->sw_if_index);
@@ -76,7 +83,18 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 static u8 * format_vxlan_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
-  return format (s, "vxlan_tunnel%d", dev_instance);
+  vxlan_main_t * vxm = &vxlan_main;
+  vxlan_tunnel_t *t;
+
+  if (dev_instance == ~0)
+    return format(s, "<cached-unused>");
+
+  if (dev_instance >= vec_len(vxm->tunnels))
+    return format(s, "<improperly-referenced>");
+
+  t = pool_elt_at_index(vxm->tunnels, dev_instance);
+
+  return format (s, "vxlan_tunnel%d", t->user_instance);
 }
 
 static clib_error_t *
@@ -89,9 +107,16 @@ vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static int
+vxlan_name_renumber (vnet_hw_interface_t *hi, u32 new_dev_instance)
+{
+  return 0;
+}
+
 VNET_DEVICE_CLASS (vxlan_device_class,static) = {
   .name = "VXLAN",
   .format_device_name = format_vxlan_name,
+  .name_renumber = vxlan_name_renumber,
   .format_tx_trace = format_vxlan_encap_trace,
   .admin_up_down_function = vxlan_interface_admin_up_down,
 };
@@ -348,10 +373,12 @@ int vnet_vxlan_add_del_tunnel
       key6.vni = clib_host_to_net_u32 (a->vni << 8);
       p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
     }
-  
+
   if (a->is_add)
     {
       l2input_main_t * l2im = &l2input_main;
+      u32 dev_instance;		/* real dev instance tunnel index */
+      u32 user_instance;	/* request and actual instance number */
 
       /* adding a tunnel: tunnel must not already exist */
       if (p)
@@ -365,7 +392,8 @@ int vnet_vxlan_add_del_tunnel
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
-      
+      dev_instance = t - vxm->tunnels;
+
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_copy_field;
@@ -377,6 +405,22 @@ int vnet_vxlan_add_del_tunnel
           pool_put (vxm->tunnels, t);
           return rv;
         }
+
+      /*
+       * Reconcile the real dev_instance and a possible requested instance.
+       */
+      user_instance = a->instance;
+      if (user_instance == ~0) 
+	user_instance = dev_instance;
+      if (hash_get (vxm->instance_used, user_instance))
+	{
+	  pool_put (vxm->tunnels, t);
+	  return VNET_API_ERROR_INSTANCE_IN_USE;
+	}
+      hash_set (vxm->instance_used, user_instance, 1);
+
+      t->dev_instance = dev_instance;		/* actual */
+      t->user_instance = user_instance;		/* name */
 
       /* copy the key */
       if (is_ip6)
@@ -394,11 +438,13 @@ int vnet_vxlan_add_del_tunnel
           _vec_len (vxm->free_vxlan_tunnel_hw_if_indices) -= 1;
           
           hi = vnet_get_hw_interface (vnm, hw_if_index);
-          hi->dev_instance = t - vxm->tunnels;
-          hi->hw_instance = hi->dev_instance;
+          hi->dev_instance = dev_instance;
+          hi->hw_instance = dev_instance;
+
+	  sw_if_index = hi->sw_if_index;
+	  vnet_interface_name_renumber(sw_if_index, user_instance);
 
 	  /* clear old stats of freed tunnel before reuse */
-	  sw_if_index = hi->sw_if_index;
 	  vnet_interface_counter_lock(im);
 	  vlib_zero_combined_counter 
 	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX], sw_if_index);
@@ -425,7 +471,7 @@ int vnet_vxlan_add_del_tunnel
       t->sw_if_index = sw_if_index = hi->sw_if_index;
 
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
-      vxm->tunnel_index_by_sw_if_index[sw_if_index] = t - vxm->tunnels;
+      vxm->tunnel_index_by_sw_if_index[sw_if_index] = dev_instance;
 
       /* setup l2 input config with l2 feature and bd 0 to drop packet */
       vec_validate (l2im->configs, sw_if_index);
@@ -455,7 +501,7 @@ int vnet_vxlan_add_del_tunnel
             (t->encap_fib_index, &tun_dst_pfx, FIB_SOURCE_RR,
 	     FIB_ENTRY_FLAG_NONE);
           t->sibling_index = fib_entry_child_add
-            (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, t - vxm->tunnels);
+            (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, dev_instance);
           vxlan_tunnel_restack_dpo(t);
 	} 
       else
@@ -538,18 +584,19 @@ int vnet_vxlan_add_del_tunnel
       if (!p)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      t = pool_elt_at_index (vxm->tunnels, p[0]);
+      u32 instance = p[0];
+      t = pool_elt_at_index (vxm->tunnels, instance);
 
       sw_if_index = t->sw_if_index;
-      vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
-      vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, t->sw_if_index);
+      vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
+      vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
 
       /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode(vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0, 0, 0, 0);
+      set_int_l2_mode(vxm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
       vec_add1 (vxm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
 
-      vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
+      vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 
       if (!is_ip6)
         hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
@@ -566,6 +613,12 @@ int vnet_vxlan_add_del_tunnel
         {
 	  mcast_shared_remove(&t->dst);
         }
+
+      vnet_hw_interface_t *hi;
+      hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+      hi->dev_instance = ~0;
+
+      hash_unset (vxlan_main.instance_used, instance);
 
       fib_node_deinit(&t->node);
       vec_free (t->rewrite);
@@ -621,6 +674,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 grp_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
+  u32 instance = ~0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
@@ -644,6 +698,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       {
         is_add = 0;
       }
+    else if (unformat (line_input, "instance %d", &instance))
+      ;
     else if (unformat (line_input, "src %U",
                        unformat_ip4_address, &src.ip4))
       {
@@ -770,11 +826,12 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;
+  a->instance = instance;
 
 #define _(x) a->x = x;
   foreach_copy_field;
 #undef _
-  
+
   rv = vnet_vxlan_add_del_tunnel (a, &tunnel_sw_if_index);
 
   switch(rv)
@@ -791,6 +848,14 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
+
+    case VNET_API_ERROR_INVALID_ARGUMENT:
+      error = clib_error_return (0, "Invalid argument");
+      goto done;
+
+    case VNET_API_ERROR_INSTANCE_IN_USE:
+      error = clib_error_return (0, "Instance is in use");
       goto done;
 
     default:
@@ -822,6 +887,8 @@ done:
  * @cliexpar
  * Example of how to create a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 encap-vrf-id 7}
+ * Example of how to create a VXLAN Tunnel with a known name, vxlan_tunnel42:
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -831,6 +898,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr>"
   " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
+  " [instance <id>]"
   " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
@@ -1075,3 +1143,9 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION(vxlan_init);
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

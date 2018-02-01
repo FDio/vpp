@@ -111,6 +111,9 @@ typedef struct {
    * The tunnels sibling index on the FIB entry's dependency list.
    */
   u32 sibling_index;
+
+  u32 dev_instance;	/* Real device instance in tunnel vector */
+  u32 user_instance;	/* Instance name being shown to user */
 } vxlan_tunnel_t;
 
 #define foreach_vxlan_input_next        \
@@ -156,6 +159,9 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  /* Record used instances */
+  uword *instance_used;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -173,6 +179,7 @@ typedef struct {
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of abreaking change */
   u8 is_ip6;
+  u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
@@ -186,3 +193,9 @@ int vnet_vxlan_add_del_tunnel
 void vnet_int_vxlan_bypass_mode
 (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_vxlan_h */
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
