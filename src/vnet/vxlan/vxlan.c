@@ -56,8 +56,9 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
   vxlan_main_t * ngm = &vxlan_main;
 
-  s = format (s, "[%d] src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
+  s = format (s, "[%d] id %d src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
               t - ngm->tunnels,
+	      t->instance,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
               format_ip46_address, &t->dst, IP46_TYPE_ANY,
               t->vni, t->encap_fib_index, t->sw_if_index);
@@ -89,10 +90,21 @@ vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static int
+vxlan_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
+{
+  /*
+   * No need to do anything as the rest of the bookkeeping has
+   * been done within the free-list re-use case.
+   */
+  return 0;
+}
+
 VNET_DEVICE_CLASS (vxlan_device_class,static) = {
   .name = "VXLAN",
   .format_device_name = format_vxlan_name,
   .format_tx_trace = format_vxlan_encap_trace,
+  .name_renumber = vxlan_name_renumber,
   .admin_up_down_function = vxlan_interface_admin_up_down,
 };
 
@@ -322,6 +334,77 @@ mcast_shared_remove(ip46_address_t *dst)
     hash_unset_mem_free (&vxlan_main.mcast_shared, dst);
 }
 
+
+/*
+ * Maintain a bitmap of allocated VXLAN instance numbers.
+ */
+static u32
+vxlan_instance_alloc (u32 wanted_id)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+
+  if (wanted_id == ~0)
+    {
+      u32 bit;
+
+      /*
+       * Dynamicaly allocate from available set.
+       */
+      bit = clib_bitmap_first_clear (vxm->bm_vxlan_instances);
+      if (bit >= VXLAN_MAX_INSTANCE)
+	{
+	  return ~0;
+	}
+      vxm->bm_vxlan_instances = clib_bitmap_set (vxm->bm_vxlan_instances,
+						 bit, 1);
+      return bit;
+    }
+
+  /*
+   * User request instance in range?
+   */
+  if (wanted_id >= VXLAN_MAX_INSTANCE)
+    {
+      return ~0;
+    }
+
+  /*
+   * Already in use?
+   */
+  if (clib_bitmap_get (vxm->bm_vxlan_instances, wanted_id))
+    {
+      return ~0;
+    }
+
+  /*
+   * Grant allocation request.
+   */
+  vxm->bm_vxlan_instances = clib_bitmap_set (vxm->bm_vxlan_instances,
+					     wanted_id, 1);
+
+  return wanted_id;
+}
+
+static int
+vxlan_instance_free (u32 instance)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+
+  if (instance >= VXLAN_MAX_INSTANCE)
+  {
+    return -1;
+  }
+
+  if (clib_bitmap_get (vxm->bm_vxlan_instances, instance) == 0)
+    {
+      return -1;
+    }
+
+  vxm->bm_vxlan_instances = clib_bitmap_set (vxm->bm_vxlan_instances,
+					     instance, 0);
+  return 0;
+}
+
 int vnet_vxlan_add_del_tunnel 
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
@@ -363,9 +446,19 @@ int vnet_vxlan_add_del_tunnel
       if (!vxlan_decap_next_is_valid(vxm, is_ip6, a->decap_next_index))
 	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
+      /* Determine the instance id. */
+      u32 instance;
+      instance = vxlan_instance_alloc(a->instance);
+      if (instance == ~0)
+	{
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
-      
+
+      t->instance = instance;
+
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_copy_field;
@@ -394,8 +487,8 @@ int vnet_vxlan_add_del_tunnel
           _vec_len (vxm->free_vxlan_tunnel_hw_if_indices) -= 1;
           
           hi = vnet_get_hw_interface (vnm, hw_if_index);
-          hi->dev_instance = t - vxm->tunnels;
-          hi->hw_instance = hi->dev_instance;
+          hi->dev_instance = instance;
+          hi->hw_instance = t - vxm->tunnels;
 
 	  /* clear old stats of freed tunnel before reuse */
 	  sw_if_index = hi->sw_if_index;
@@ -407,11 +500,13 @@ int vnet_vxlan_add_del_tunnel
 	  vlib_zero_simple_counter 
 	    (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
 	  vnet_interface_counter_unlock(im);
+
+	  vnet_interface_name_renumber (sw_if_index, instance);
         }
       else
         {
           hw_if_index = vnet_register_interface
-            (vnm, vxlan_device_class.index, t - vxm->tunnels,
+	     (vnm, vxlan_device_class.index, instance,
              vxlan_hw_class.index, t - vxm->tunnels);
           hi = vnet_get_hw_interface (vnm, hw_if_index);
         }
@@ -567,6 +662,8 @@ int vnet_vxlan_add_del_tunnel
 	  mcast_shared_remove(&t->dst);
         }
 
+      vxlan_instance_free(t->instance);
+
       fib_node_deinit(&t->node);
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
@@ -621,6 +718,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 grp_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
+  u32 instance = ~0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
@@ -644,6 +742,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       {
         is_add = 0;
       }
+    else if (unformat (line_input, "instance %d", &instance))
+	      ;
     else if (unformat (line_input, "src %U",
                        unformat_ip4_address, &src.ip4))
       {
@@ -770,11 +870,12 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;
+  a->instance = instance;
 
 #define _(x) a->x = x;
   foreach_copy_field;
 #undef _
-  
+
   rv = vnet_vxlan_add_del_tunnel (a, &tunnel_sw_if_index);
 
   switch(rv)
@@ -791,6 +892,10 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
+
+    case VNET_API_ERROR_INVALID_ARGUMENT:
+      error = clib_error_return (0, "Invalid argument");
       goto done;
 
     default:
@@ -822,6 +927,8 @@ done:
  * @cliexpar
  * Example of how to create a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 encap-vrf-id 7}
+ * Example of how to create a VXLAN Tunnel with a known name, vxlan_tunnel42:
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -831,6 +938,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr>"
   " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
+  " [instance <id>]"
   " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
   .function = vxlan_add_del_tunnel_command_fn,
 };

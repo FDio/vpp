@@ -111,7 +111,11 @@ typedef struct {
    * The tunnels sibling index on the FIB entry's dependency list.
    */
   u32 sibling_index;
+
+  u32 instance;			/* User assignable, 0..16383 */
 } vxlan_tunnel_t;
+
+#define VXLAN_MAX_INSTANCE	(16 * 1024)
 
 #define foreach_vxlan_input_next        \
 _(DROP, "error-drop")                   \
@@ -156,6 +160,9 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  /* Allocated VXLAN instance ids */
+  uword *bm_vxlan_instances;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -173,6 +180,7 @@ typedef struct {
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of abreaking change */
   u8 is_ip6;
+  u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
