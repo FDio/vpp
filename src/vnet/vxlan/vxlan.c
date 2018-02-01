@@ -322,12 +322,6 @@ mcast_shared_remove(ip46_address_t *dst)
     hash_unset_mem_free (&vxlan_main.mcast_shared, dst);
 }
 
-static inline fib_protocol_t
-fib_ip_proto(bool is_ip6)
-{
-  return (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
-}
-
 int vnet_vxlan_add_del_tunnel 
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {

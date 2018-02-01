@@ -16,6 +16,7 @@
 #ifndef __FIB_TYPES_H__
 #define __FIB_TYPES_H__
 
+#include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
@@ -70,6 +71,16 @@ typedef enum fib_protocol_t_ {
     for (_item = FIB_PROTOCOL_IP4;         \
 	 _item <= FIB_PROTOCOL_IP6;        \
 	 _item++)
+
+/**
+ * @brief Convert from boolean is_ip6 to FIB protocol.
+ * Drop MPLS on the floor in favor of IPv4.
+ */
+static inline fib_protocol_t
+fib_ip_proto(bool is_ip6)
+{
+  return (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
+}
 
 /**
  * @brief Convert from a protocol to a link type
