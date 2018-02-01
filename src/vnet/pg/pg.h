@@ -90,7 +90,7 @@ typedef struct
   u32 *buffer_fifo;
 
   /* Buffer free list for this buffer index in stream. */
-  u32 free_list_index;
+  vlib_buffer_free_list_index_t free_list_index;
 } pg_buffer_index_t;
 
 typedef struct pg_stream_t

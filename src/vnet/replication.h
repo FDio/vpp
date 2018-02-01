@@ -39,7 +39,7 @@ typedef struct
    * data saved from the start of replication and restored
    * at the end of replication
    */
-  u32 saved_free_list_index;	/* from vlib buffer */
+  vlib_buffer_free_list_index_t saved_free_list_index;	/* from vlib buffer */
 
   /* data saved from the original packet and restored for each replica */
   u64 l2_header[3];		/*  24B (must be at least 22B for l2 packets) */
