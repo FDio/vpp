@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3411a750_322ac5a3",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 700,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-01T10:07:46Z",
+      "side": 1,
+      "message": "Please add dscp \u003c 64 check in case of L3DSR VIP.\nThe check is already done in CLI, but not in API, and it is good practice to have the check at the ABI entry point.",
+      "range": {
+        "startLine": 700,
+        "startChar": 14,
+        "endLine": 700,
+        "endChar": 18
+      },
+      "revId": "43a8341a2da8628f2ac1cae9d9ff73552374a52a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
