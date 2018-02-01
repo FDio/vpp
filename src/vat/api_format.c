@@ -12512,6 +12512,7 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
   u8 src_set = 0;
   u8 dst_set = 0;
   u8 grp_set = 0;
+  u32 instance = ~0;
   u32 mcast_sw_if_index = ~0;
   u32 encap_vrf_id = 0;
   u32 decap_next_index = ~0;
@@ -12526,6 +12527,8 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "instance %d", &instance))
+	;
       else
 	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
 	{
@@ -12645,6 +12648,8 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
       clib_memcpy (mp->src_address, &src.ip4, sizeof (src.ip4));
       clib_memcpy (mp->dst_address, &dst.ip4, sizeof (dst.ip4));
     }
+
+  mp->instance = htonl (instance);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_next_index = ntohl (decap_next_index);
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
@@ -12664,8 +12669,9 @@ static void vl_api_vxlan_tunnel_details_t_handler
   ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
   ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
 
-  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
+  print (vam->ofp, "%11d%11d%24U%24U%14d%18d%13d%19d",
 	 ntohl (mp->sw_if_index),
+	 ntohl (mp->instance),
 	 format_ip46_address, &src, IP46_TYPE_ANY,
 	 format_ip46_address, &dst, IP46_TYPE_ANY,
 	 ntohl (mp->encap_vrf_id),
@@ -12688,6 +12694,9 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_object_add_uint (node, "instance", ntohl (mp->instance));
+
   if (mp->is_ipv6)
     {
       struct in6_addr ip6;
@@ -12741,8 +12750,8 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%19s",
-	     "sw_if_index", "src_address", "dst_address",
+      print (vam->ofp, "%11s%11s%24s%24s%14s%18s%13s%19s",
+	     "sw_if_index", "instance", "src_address", "dst_address",
 	     "encap_vrf_id", "decap_next_index", "vni", "mcast_sw_if_index");
     }
 
@@ -22867,7 +22876,7 @@ _(l2tpv3_set_lookup_key,                                                \
 _(sw_if_l2tpv3_tunnel_dump, "")                                         \
 _(vxlan_add_del_tunnel,                                                 \
   "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
-  "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
+  "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"		\
   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
 _(geneve_add_del_tunnel,                                                \
   "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
