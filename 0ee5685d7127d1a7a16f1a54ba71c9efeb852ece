@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9dfec501_5f4ceeb8",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-01T15:06:14Z",
+      "side": 1,
+      "message": "... and please don\u0027t waste them, we only have N free...",
+      "revId": "0ee5685d7127d1a7a16f1a54ba71c9efeb852ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e9b2ff0_0f984333",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-01T15:06:14Z",
+      "side": 1,
+      "message": "Any reason to believe that we\u0027ll need \u003e 255 freelists? AKA, u8 vs. u16...",
+      "revId": "0ee5685d7127d1a7a16f1a54ba71c9efeb852ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "76631072_5eb73236",
+        "filename": "src/vnet/dns/dns.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2806,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-01T15:06:14Z",
+      "side": 1,
+      "message": "Hmmm. Regardless of where the buffer came from, shouldn\u0027t that bit be set correctly, along with the (optional) 2nd cache line free list index?",
+      "revId": "0ee5685d7127d1a7a16f1a54ba71c9efeb852ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24ad9bba_94d6a6d4",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-01T15:06:14Z",
+      "side": 1,
+      "message": "Are you sure about this?",
+      "revId": "0ee5685d7127d1a7a16f1a54ba71c9efeb852ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fab286be_a8fb7a16",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1302,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-01T15:06:14Z",
+      "side": 1,
+      "message": "Same comment...",
+      "revId": "0ee5685d7127d1a7a16f1a54ba71c9efeb852ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
