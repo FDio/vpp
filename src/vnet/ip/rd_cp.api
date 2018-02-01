@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Enable/disable IPv6 ND address autoconfiguration
+           and setting up default routes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to enable the autoconfigutation on
+    @param enable - 1 to enable address autoconfiguration, 0 to disable
+    @param install_default_routes - 1 to enable installing defaut routes,
+                                    0 to disable installing defaut routes,
+                                    the value is ignored (and taken as 0)
+                                    when enable param is set to 0
+*/
+autoreply define ip6_nd_address_autoconfig
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable;
+  u8 install_default_routes;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
