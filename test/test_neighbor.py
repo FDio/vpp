@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import binascii
 from socket import AF_INET, AF_INET6, inet_pton
 
 from framework import VppTestCase, VppTestRunner
@@ -13,6 +14,7 @@ from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
 from scapy.contrib.mpls import MPLS
 
+from util import ppp
 # not exported by scapy, so redefined here
 arp_opts = {"who-has": 1, "is-at": 2}
 
@@ -1144,6 +1146,74 @@ class ARPTestCase(VppTestCase):
         self.pg2.unconfig_ip4()
         self.pg2.set_table_ip4(0)
 
+    @staticmethod
+    def build_ip_mask(proto='', src_ip='', dst_ip='',
+                      src_port='', dst_port=''):
+        """Build IP ACL mask data with hexstring format
 
+        :param str proto: protocol number <0-ff>
+        :param str src_ip: source ip address <0-ffffffff>
+        :param str dst_ip: destination ip address <0-ffffffff>
+        :param str src_port: source port number <0-ffff>
+        :param str dst_port: destination port number <0-ffff>
+        """
+
+        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(
+            proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
+
+    def add_classify_config(self, key, mask, data_offset=0, is_add=1):
+        """Create Classify Table
+
+        :param str key: key for classify table (ex, ACL name).
+        :param str mask: mask value for interested traffic.
+        :param int match_n_vectors:
+        :param int is_add: option to configure classify table.
+            - create(1) or delete(0)
+        """
+        r = self.vapi.classify_add_del_table(
+            is_add,
+            binascii.unhexlify(mask),
+            match_n_vectors=(len(mask) - 1) // 32 + 1,
+            miss_next_index=0,
+            current_data_flag=1,
+            current_data_offset=data_offset)
+        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        table_index = r.new_table_index
+        r = self.vapi.classify_set_interface_ip_table(
+            is_ipv6=1,
+            sw_if_index=self.pg1.sw_if_index,
+            table_index=table_index)
+        self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
+
+    def test_arp_w_classify(self):
+        """ ARP plus Classify Config"""
+        self.pg1.generate_remote_hosts(1)
+        self.pg1.admin_down()
+        self.pg1.admin_up()
+        self.add_classify_config('ip', self.build_ip_mask(src_ip='ffffffff'))
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                   src=self.pg1._remote_hosts[0].mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg1._remote_hosts[0].mac,
+                 pdst=self.pg1.local_ip4,
+                 psrc=self.pg1._remote_hosts[0].ip4))
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg1.local_mac,
+                             self.pg1._remote_hosts[0].mac,
+                             self.pg1.local_ip4,
+                             self.pg1._remote_hosts[0].ip4)
+
+        #
+        # VPP should have learned the mapping for the remote host
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1._remote_hosts[0].ip4))
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
