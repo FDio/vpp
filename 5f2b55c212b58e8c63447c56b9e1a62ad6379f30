@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8eee2a87_be5f3fa1",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-02T21:49:19Z",
+      "side": 1,
+      "message": "why change file mode?\n\nold mode 100644\nnew mode 100755",
+      "revId": "5f2b55c212b58e8c63447c56b9e1a62ad6379f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8a7db780_cdd58586",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-02T21:49:19Z",
+      "side": 1,
+      "message": "this import is unused",
+      "revId": "5f2b55c212b58e8c63447c56b9e1a62ad6379f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffd0f7d5_7777b6d1",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1180,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-02T21:49:19Z",
+      "side": 1,
+      "message": "these asserts are unneeded, as the existence of response is verified at API bindings level. So is the retval within the response. No need to check either manually.",
+      "range": {
+        "startLine": 1180,
+        "startChar": 8,
+        "endLine": 1180,
+        "endChar": 72
+      },
+      "revId": "5f2b55c212b58e8c63447c56b9e1a62ad6379f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1dc2305_e19c7b25",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1186,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-02T21:49:19Z",
+      "side": 1,
+      "message": "same as above",
+      "revId": "5f2b55c212b58e8c63447c56b9e1a62ad6379f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3bc6d104_bcf09366",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2134,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-02T21:49:19Z",
+      "side": 1,
+      "message": "this parameter does not exist - should it be is_ipv6?",
+      "range": {
+        "startLine": 2134,
+        "startChar": 15,
+        "endLine": 2134,
+        "endChar": 21
+      },
+      "revId": "5f2b55c212b58e8c63447c56b9e1a62ad6379f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
