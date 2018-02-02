@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dd66bb10_74d95a06",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-02T19:54:15Z",
+      "side": 1,
+      "message": "Please remove these whitespace only diffs.",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 250,
+        "endChar": 27
+      },
+      "revId": "a60de1ca29b6dd234480540d5d144fc9aa539dc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
