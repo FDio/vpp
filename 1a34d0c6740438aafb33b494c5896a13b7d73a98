@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "668b760d_b4d53fd5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-02T16:24:32Z",
+      "side": 1,
+      "message": "In order to follow our current \"best practices\", could you add an \"sctp:\" or \"SCTP:\" in front of the commit message?",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 9
+      },
+      "revId": "1a34d0c6740438aafb33b494c5896a13b7d73a98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
