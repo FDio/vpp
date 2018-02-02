@@ -22,6 +22,30 @@
       "revId": "43a8341a2da8628f2ac1cae9d9ff73552374a52a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7560aeb6_8d5ce4c5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 700,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-02-02T02:20:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3411a750_322ac5a3",
+      "range": {
+        "startLine": 700,
+        "startChar": 14,
+        "endLine": 700,
+        "endChar": 18
+      },
+      "revId": "43a8341a2da8628f2ac1cae9d9ff73552374a52a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
