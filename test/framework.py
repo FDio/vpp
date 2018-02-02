@@ -319,7 +319,7 @@ class VppTestCase(unittest.TestCase):
         Remove shared memory files, start vpp and connect the vpp-api
         """
         gc.collect()  # run garbage collection first
-        random.seed(1)
+        random.seed()
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
