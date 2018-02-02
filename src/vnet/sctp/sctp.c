@@ -135,6 +135,7 @@ sctp_connection_timers_init (sctp_connection_t * sctp_conn)
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
       sctp_conn->sub_conn[i].RTO = SCTP_RTO_INIT;
+
       for (j = 0; j < SCTP_N_TIMERS; j++)
 	{
 	  sctp_conn->sub_conn[i].timers[j] = SCTP_TIMER_HANDLE_INVALID;
@@ -601,7 +602,6 @@ sctp_timer_init_handler (u32 conn_index, u32 timer_id)
 {
   sctp_connection_t *sctp_conn;
 
-  clib_warning ("");
   sctp_conn = sctp_connection_get (conn_index, vlib_get_thread_index ());
   /* note: the connection may have already disappeared */
   if (PREDICT_FALSE (sctp_conn == 0))
@@ -650,8 +650,6 @@ sctp_expired_timers_dispatch (u32 * expired_timers)
       (*sctp_timer_expiration_handlers[timer_id]) (connection_index,
 						   timer_id);
     }
-
-  clib_warning ("");
 }
 
 void
@@ -783,6 +781,15 @@ format_sctp_half_open (u8 * s, va_list * args)
   return format (s, "%U", format_sctp_connection_id, sctp_conn);
 }
 
+void
+sctp_update_time (f64 now, u8 thread_index)
+{
+  sctp_set_time_now (thread_index);
+  tw_timer_expire_timers_16t_2w_512sl (&sctp_main.timer_wheels[thread_index],
+				       now);
+  sctp_flush_frames_to_output (thread_index);
+}
+
 /* *INDENT OFF* */
 const static transport_proto_vft_t sctp_proto = {
   .enable = sctp_enable_disable,
@@ -795,6 +802,7 @@ const static transport_proto_vft_t sctp_proto = {
   .send_mss = sctp_session_send_mss,
   .send_space = sctp_session_send_space,
   .tx_fifo_offset = NULL,	//sctp_session_tx_fifo_offset,
+  .update_time = sctp_update_time,
   .get_connection = sctp_session_get_transport,
   .get_listener = sctp_session_get_listener,
   .get_half_open = sctp_half_open_session_get_transport,

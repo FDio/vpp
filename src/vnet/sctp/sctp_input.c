@@ -427,8 +427,8 @@ sctp_is_valid_init_ack (sctp_header_t * sctp_hdr,
 always_inline u16
 sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 		      sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-		      sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
-		      u16 sctp_implied_length)
+		      sctp_connection_t * sctp_conn, u8 idx,
+		      vlib_buffer_t * b0, u16 sctp_implied_length)
 {
   sctp_init_ack_chunk_t *init_ack_chunk =
     (sctp_init_ack_chunk_t *) (sctp_hdr);
@@ -449,6 +449,8 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
    */
   if (sctp_is_bundling (sctp_implied_length, &init_ack_chunk->chunk_hdr))
     return SCTP_ERROR_BUNDLING_VIOLATION;
+
+  sctp_calculate_rto (sctp_conn, idx);
 
   /* remote_tag to be placed in the VERIFICATION_TAG field of the COOKIE_ECHO chunk */
   sctp_conn->remote_tag = init_ack_chunk->initiate_tag;
@@ -535,7 +537,7 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 
   /* Start the T1_COOKIE timer */
   sctp_timer_set (sctp_conn, sctp_pick_conn_idx_on_chunk (COOKIE_ECHO),
-		  SCTP_TIMER_T1_COOKIE, SCTP_RTO_INIT);
+		  SCTP_TIMER_T1_COOKIE, sctp_conn->sub_conn[idx].RTO);
 
   return SCTP_ERROR_NONE;
 }
@@ -764,6 +766,7 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 			 sctp_chunks_common_hdr_t * sctp_chunk_hdr,
 			 sctp_connection_t * sctp_conn, vlib_buffer_t * b0)
 {
+  u32 now = sctp_time_now ();
 
   /* Build TCB */
   u8 idx = sctp_pick_conn_idx_on_chunk (COOKIE_ECHO);
@@ -777,7 +780,8 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
       return SCTP_ERROR_INVALID_TAG;
     }
 
-  u32 now = sctp_time_now ();
+  sctp_calculate_rto (sctp_conn, idx);
+
   u32 creation_time =
     clib_net_to_host_u32 (cookie_echo->cookie.creation_time);
   u32 cookie_lifespan =
@@ -815,13 +819,13 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
       return SCTP_ERROR_INVALID_TAG;
     }
 
+  sctp_calculate_rto (sctp_conn, idx);
+
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_COOKIE);
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
 
   stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
-
-  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T3_RXTX, SCTP_RTO_INIT);
 
   return SCTP_ERROR_NONE;
 
@@ -959,11 +963,10 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  error0 =
 		    sctp_handle_init_ack (sctp_hdr, sctp_chunk_hdr,
-					  new_sctp_conn, b0,
+					  new_sctp_conn, idx, b0,
 					  sctp_implied_length);
 
 		  sctp_init_mss (new_sctp_conn);
-		  //sctp_init_snd_vars (new_sctp_conn);
 
 		  if (session_stream_connect_notify
 		      (&new_sctp_conn->sub_conn[idx].connection, 0))
@@ -1416,7 +1419,12 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
       return SCTP_ERROR_INVALID_TAG;
     }
 
-  sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX, SCTP_RTO_INIT);
+  sctp_calculate_rto (sctp_conn, idx);
+
+  sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
+		     sctp_conn->sub_conn[idx].RTO);
+
+  sctp_conn->sub_conn[idx].RTO_pending = 0;
 
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
 
