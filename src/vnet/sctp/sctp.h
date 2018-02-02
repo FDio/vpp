@@ -79,9 +79,11 @@ typedef struct _sctp_sub_connection
   u32 cwnd; /**< The current congestion window. */
   u32 ssthresh;	/**< The current ssthresh value. */
 
+  u32 rtt_ts;	/**< USED to hold the timestamp of when the packet has been sent */
+
   u32 RTO; /**< The current retransmission timeout value. */
   u32 SRTT; /**< The current smoothed round-trip time. */
-  u32 RTTVAR; /**< The current RTT variation. */
+  f32 RTTVAR; /**< The current RTT variation. */
 
   u32 partially_acked_bytes; /**< The tracking method for increase of cwnd when in
   	  	  	  	  congestion avoidance mode (see Section 7.2.2).*/
@@ -194,9 +196,6 @@ typedef struct _sctp_connection
 
   u32 rcv_a_rwnd;		/**< LOCAL max seg size that includes options. To be updated by congestion algos, etc. */
   u32 snd_a_rwnd;		/**< REMOTE max seg size that includes options. To be updated if peer pushes back on window, etc.*/
-
-  u32 rtt_ts;
-  u32 rtt_seq;
 
   u8 overall_sending_status; /**< 0 indicates first fragment of a user message
   	  	  	  	  	  	  	  	  1 indicates normal stream
@@ -523,7 +522,7 @@ sctp_timer_set (sctp_connection_t * tc, u8 conn_idx, u8 timer_id,
 	  SCTP_TIMER_HANDLE_INVALID);
 
   sctp_sub_connection_t *sub = &tc->sub_conn[conn_idx];
-  tc->sub_conn[conn_idx].timers[timer_id] =
+  sub->timers[timer_id] =
     tw_timer_start_16t_2w_512sl (&sctp_main.timer_wheels[sub->c_thread_index],
 				 sub->c_c_index, timer_id, interval);
 }
@@ -540,15 +539,6 @@ sctp_timer_reset (sctp_connection_t * tc, u8 conn_idx, u8 timer_id)
   tw_timer_stop_16t_2w_512sl (&sctp_main.timer_wheels[sub->c_thread_index],
 			      sub->timers[timer_id]);
   sub->timers[timer_id] = SCTP_TIMER_HANDLE_INVALID;
-}
-
-always_inline void
-sctp_update_time (f64 now, u32 thread_index)
-{
-  sctp_set_time_now (thread_index);
-  tw_timer_expire_timers_16t_2w_512sl (&sctp_main.timer_wheels[thread_index],
-				       now);
-  sctp_flush_frames_to_output (thread_index);
 }
 
 /**
@@ -597,6 +587,61 @@ always_inline u32
 sctp_time_now (void)
 {
   return sctp_main.time_now[vlib_get_thread_index ()];
+}
+
+#define ABS(x) ((x) > 0) ? (x) : -(x);
+
+always_inline void
+sctp_calculate_rto (sctp_connection_t * sctp_conn, u8 conn_idx)
+{
+  /* See RFC4960, 6.3.1.  RTO Calculation */
+  u32 RTO = 0;
+  f32 RTTVAR = 0;
+  u32 now = sctp_time_now ();
+  u32 prev_ts = sctp_conn->sub_conn[conn_idx].rtt_ts;
+  u32 R = prev_ts - now;
+
+  if (sctp_conn->sub_conn[conn_idx].RTO == 0)	// C1: Let's initialize our RTO
+    {
+      sctp_conn->sub_conn[conn_idx].RTO = SCTP_RTO_MIN;
+      return;
+    }
+
+  if (sctp_conn->sub_conn[conn_idx].RTO == SCTP_RTO_MIN && sctp_conn->sub_conn[conn_idx].SRTT == 0)	// C2: First RTT calculation
+    {
+      sctp_conn->sub_conn[conn_idx].SRTT = R;
+      RTTVAR = R / 2;
+
+      if (RTTVAR == 0)
+	RTTVAR = 100e-3;	/* 100 ms */
+
+      sctp_conn->sub_conn[conn_idx].RTTVAR = RTTVAR;
+    }
+  else				// C3: RTT already exists; let's recalculate
+    {
+      RTTVAR = (1 - SCTP_RTO_BETA) * sctp_conn->sub_conn[conn_idx].RTTVAR +
+	SCTP_RTO_BETA * ABS (sctp_conn->sub_conn[conn_idx].SRTT - R);
+
+      if (RTTVAR == 0)
+	RTTVAR = 100e-3;	/* 100 ms */
+
+      sctp_conn->sub_conn[conn_idx].RTTVAR = RTTVAR;
+
+      sctp_conn->sub_conn[conn_idx].SRTT =
+	(1 - SCTP_RTO_ALPHA) * sctp_conn->sub_conn[conn_idx].SRTT +
+	SCTP_RTO_ALPHA * R;
+    }
+
+  RTO =
+    sctp_conn->sub_conn[conn_idx].SRTT +
+    4 * sctp_conn->sub_conn[conn_idx].RTTVAR;
+  if (RTO < SCTP_RTO_MIN)	// C6
+    RTO = SCTP_RTO_MIN;
+
+  if (RTO > SCTP_RTO_MAX)	// C7
+    RTO = SCTP_RTO_MAX;
+
+  sctp_conn->sub_conn[conn_idx].RTO = RTO;
 }
 
 always_inline void
