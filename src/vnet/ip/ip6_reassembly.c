@@ -451,6 +451,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  trim_end = vlib_buffer_length_in_chain (vm, tmp) - data_len -
 	    (vnet_buffer (tmp)->ip.reass.ip6_frag_hdr_offset +
 	     sizeof (*frag_hdr));
+	  ASSERT (vlib_buffer_length_in_chain (vm, tmp) - trim_end > 0);
 	}
       u32 keep_data =
 	vlib_buffer_length_in_chain (vm, tmp) - trim_front - trim_end;

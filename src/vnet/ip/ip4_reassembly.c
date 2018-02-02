@@ -412,6 +412,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  trim_front = 0;
 	  trim_end = vlib_buffer_length_in_chain (vm, tmp) - data_len -
 	    ip4_header_bytes (ip);
+	  ASSERT (vlib_buffer_length_in_chain (vm, tmp) - trim_end > 0);
 	}
       u32 keep_data =
 	vlib_buffer_length_in_chain (vm, tmp) - trim_front - trim_end;
