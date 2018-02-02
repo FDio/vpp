@@ -2125,6 +2125,23 @@ class VppPapiProvider(object):
              'l2_table_index': l2_table_index,
              'is_add': is_add})
 
+    def classify_set_interface_ip_table(
+            self,
+            is_ipv6,
+            sw_if_index,
+            table_index=0xFFFFFFFF):
+        """
+        :param is_add:
+        :param sw_if_index:
+        :param table_index:  (Default value = 0xFFFFFFFF)
+        """
+
+        return self.api(
+            self.papi.classify_set_interface_ip_table,
+            {'is_ipv6': is_ipv6,
+            'sw_if_index': sw_if_index,
+            'table_index': table_index})
+
     def set_ipfix_exporter(
             self,
             collector_address,
