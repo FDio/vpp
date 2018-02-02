@@ -21,6 +21,13 @@
 #include <sys/poll.h>
 #include <sys/epoll.h>
 
+/* *INDENT-OFF* */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+/* *INDENT-ON* */
+
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
@@ -243,6 +250,12 @@ extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
 				  vppcom_endpt_t * ep);
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
+
+/* *INDENT-OFF* */
+#ifdef __cplusplus
+}
+#endif
+/* *INDENT-ON* */
 
 #endif /* included_vppcom_h */
 

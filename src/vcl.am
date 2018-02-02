@@ -16,28 +16,27 @@ lib_LTLIBRARIES += libvppcom.la libvcl_ldpreload.la
 libvppcom_la_SOURCES =
 libvcl_ldpreload_la_SOURCES =
 libvppcom_la_DEPENDENCIES = 	\
-	libvppinfra.la		\
-	libvlib.la		\
 	libsvm.la 		\
 	libvlibmemoryclient.la
 
-libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread -lrt
-libvcl_ldpreload_la_LIBADD = -lpthread -lrt -ldl
+libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
 
 libvppcom_la_SOURCES +=				\
-  vcl/vppcom.c
-
-nobase_include_HEADERS +=			\
-  vcl/vppcom.h
-
-libvcl_ldpreload_la_SOURCES +=			\
-  vcl/vcom_socket_wrapper.c			\
-  vcl/vcom.c					\
-  $(libvppcom_la_SOURCES)			\
+  vcl/vppcom.c					\
   $(libvppinfra_la_SOURCES)			\
   $(libvlib_la_SOURCES)				\
   $(libsvm_la_SOURCES)				\
   $(libvlibmemoryclient_la_SOURCES)
+
+nobase_include_HEADERS +=			\
+  vcl/vppcom.h
+
+libvcl_ldpreload_la_LIBADD =  $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
+
+libvcl_ldpreload_la_SOURCES +=			\
+  vcl/vcom_socket_wrapper.c			\
+  vcl/vcom.c					\
+  $(libvppcom_la_SOURCES)
 
 nobase_include_HEADERS +=			\
   vcl/vcom_socket_wrapper.h			\
