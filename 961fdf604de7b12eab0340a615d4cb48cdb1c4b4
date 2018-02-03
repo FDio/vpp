@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80722d2e_768970ab",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-03T20:00:24Z",
+      "side": 1,
+      "message": "please use u16",
+      "range": {
+        "startLine": 74,
+        "startChar": 49,
+        "endLine": 74,
+        "endChar": 54
+      },
+      "revId": "961fdf604de7b12eab0340a615d4cb48cdb1c4b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
