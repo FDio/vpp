@@ -22,6 +22,30 @@
       "revId": "961fdf604de7b12eab0340a615d4cb48cdb1c4b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6b71909d_b59bef5c",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1243
+      },
+      "writtenOn": "2018-02-04T11:10:54Z",
+      "side": 1,
+      "message": "Why? The whole point of this patch is that ETHERNET_TYPE_VLAN is an int and _mm_set_epi16 takes shorts:\n\n__m128i _mm_set_epi16 (short e7, short e6, short e5, short e4, short e3, short e2, short e1, short e0)\n\nSome of these constants are too big to fit in a short (but would fit in an unsigned short) so my compiler is producing warnings (which are fatal because of -Werror). The intrinsic isn\u0027t available for unsigned short.",
+      "parentUuid": "80722d2e_768970ab",
+      "range": {
+        "startLine": 74,
+        "startChar": 49,
+        "endLine": 74,
+        "endChar": 54
+      },
+      "revId": "961fdf604de7b12eab0340a615d4cb48cdb1c4b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
