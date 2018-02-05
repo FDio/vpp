@@ -232,6 +232,8 @@ nat64_init (vlib_main_t * vm)
   nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
   nm->tcp_incoming_syn_timeout = SNAT_TCP_INCOMING_SYN;
 
+  nm->total_enabled_count = 0;
+
   /* Set up the interface address add/del callback */
   cb4.function = nat64_ip4_add_del_interface_address_cb;
   cb4.function_opaque = 0;
@@ -430,6 +432,12 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 	interface->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
       else
 	interface->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
+
+      nm->total_enabled_count++;
+      vlib_process_signal_event (nm->sm->vlib_main,
+				 nm->nat64_expire_walk_node_index,
+				 NAT64_CLEANER_RESCHEDULE, 0);
+
     }
   else
     {
@@ -443,6 +451,8 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 	  ~NAT_INTERFACE_FLAG_IS_OUTSIDE;
       else
 	pool_put (nm->interfaces, interface);
+
+      nm->total_enabled_count--;
     }
 
   if (!is_inside)
@@ -1164,6 +1174,8 @@ VLIB_REGISTER_NODE (nat64_expire_worker_walk_node, static) = {
 };
 /* *INDENT-ON* */
 
+static vlib_node_registration_t nat64_expire_walk_node;
+
 /**
  * @brief Centralized process to drive per worker expire walk.
  */
@@ -1171,8 +1183,12 @@ static uword
 nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		      vlib_frame_t * f)
 {
+  nat64_main_t *nm = &nat64_main;
   vlib_main_t **worker_vms = 0, *worker_vm;
   int i;
+  uword event_type, *event_data = 0;
+
+  nm->nat64_expire_walk_node_index = nat64_expire_walk_node.index;
 
   if (vec_len (vlib_mains) == 0)
     vec_add1 (worker_vms, vm);
@@ -1188,8 +1204,28 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 10.0);
-      vlib_process_get_events (vm, NULL);
+      if (nm->total_enabled_count)
+	{
+	  vlib_process_wait_for_event_or_clock (vm, 10.0);
+	  event_type = vlib_process_get_events (vm, &event_data);
+	}
+      else
+	{
+	  vlib_process_wait_for_event (vm);
+	  event_type = vlib_process_get_events (vm, &event_data);
+	}
+
+      switch (event_type)
+	{
+	case ~0:
+	  break;
+	case NAT64_CLEANER_RESCHEDULE:
+	  break;
+	default:
+	  clib_warning ("unknown event %u", event_type);
+	  break;
+	}
+
       for (i = 0; i < vec_len (worker_vms); i++)
 	{
 	  worker_vm = worker_vms[i];
@@ -1200,8 +1236,6 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   return 0;
 }
-
-static vlib_node_registration_t nat64_expire_walk_node;
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {

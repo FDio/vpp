@@ -39,6 +39,11 @@ typedef enum
 #undef _
 } nat64_tcp_ses_state_t;
 
+enum
+{
+  NAT64_CLEANER_RESCHEDULE = 1,
+} nat64_cleaner_process_event_e;
+
 typedef struct
 {
   ip6_address_t prefix;
@@ -98,6 +103,11 @@ typedef struct
   u32 tcp_trans_timeout;
   u32 tcp_est_timeout;
   u32 tcp_incoming_syn_timeout;
+
+  /* Total count of interfaces enabled */
+  u32 total_enabled_count;
+  /* The process node which orcherstrates the cleanup */
+  u32 nat64_expire_walk_node_index;
 
   ip4_main_t *ip4_main;
   snat_main_t *sm;
