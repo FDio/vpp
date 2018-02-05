@@ -225,6 +225,8 @@ typedef struct {
   uword fa_conn_table_hash_memory_size;
   u64 fa_conn_table_max_entries;
 
+  int trace_sessions;
+
   /*
    * If the cleaner has to delete more than this number
    * of connections, it halves the sleep time.
