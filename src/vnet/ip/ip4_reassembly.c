@@ -1001,6 +1001,7 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
   ip4_reass_main.timeout = (f64) timeout_ms / (f64) MSEC_PER_SEC;
   ip4_reass_main.max_reass_n = max_reassemblies;
   ip4_reass_main.expire_walk_interval_ms = expire_walk_interval_ms;
+
   vlib_process_signal_event (ip4_reass_main.vlib_main,
 			     ip4_reass_main.ip4_reass_expire_node_idx,
 			     IP4_EVENT_CONFIG_CHANGED, 0);
@@ -1048,12 +1049,18 @@ ip4_reass_init_function (vlib_main_t * vm)
   ip4_reass_main_t *rm = &ip4_reass_main;
   clib_error_t *error = 0;
   u32 nbuckets;
+  vlib_node_t *node;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
 
   rm->reass_n = 0;
   pool_alloc (rm->pool, rm->max_reass_n);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-reassembly-expire-walk");
+  ASSERT (node);
+  rm->ip4_reass_expire_node_idx = node->index;
+
   ip4_reass_set (IP4_REASS_TIMEOUT_DEFAULT_MS,
 		 IP4_REASS_MAX_REASSEMBLIES_DEAFULT,
 		 IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
@@ -1061,12 +1068,9 @@ ip4_reass_init_function (vlib_main_t * vm)
   nbuckets = ip4_reass_get_nbuckets ();
   clib_bihash_init_24_8 (&rm->hash, "ip4-reass", nbuckets, nbuckets * 1024);
 
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
   ASSERT (node);
   rm->ip4_drop_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-reassembly-expire-walk");
-  ASSERT (node);
-  rm->ip4_reass_expire_node_idx = node->index;
   return error;
 }
 
