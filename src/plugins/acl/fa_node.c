@@ -922,6 +922,7 @@ acl_fa_check_idle_sessions(acl_main_t *am, u16 thread_index, u64 now)
 	    && (acl_fa_conn_time_to_check(am, pw, now, thread_index,
 					  pw->fa_conn_list_head[tt]))) {
 	fsid.session_index = pw->fa_conn_list_head[tt];
+        elog_acl_maybe_trace_X2(am, "acl_fa_check_idle_sessions: expire session %d on thread %d", "i4i4", (u32)fsid.session_index, (u32)thread_index);
 	vec_add1(pw->expired, fsid.session_index);
 	acl_fa_conn_list_delete_session(am, fsid);
       }
@@ -1410,9 +1411,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
    u16 thread_index = os_get_thread_index ();
    acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
    int num_expired;
-#ifdef FA_NODE_VERBOSE_DEBUG
-   clib_warning("\nacl_fa_worker_conn_cleaner: thread index %d now %lu\n\n", thread_index, now);
-#endif
+   elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner interrupt: now %lu", "i8", now);
    /* allow another interrupt to be queued */
    pw->interrupt_is_pending = 0;
    if (pw->clear_in_process) {
@@ -1430,9 +1429,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
         */
        if ((pw->pending_clear_sw_if_index_bitmap == 0)
            || (pw->serviced_sw_if_index_bitmap == 0)) {
-#ifdef FA_NODE_VERBOSE_DEBUG
-         clib_warning("WORKER-CLEAR: someone tried to call clear, but one of the bitmaps are empty");
-#endif
+         elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner: now %lu, someone tried to call clear but one of the bitmaps are empty", "i8", now);
 	 clib_bitmap_zero(pw->pending_clear_sw_if_index_bitmap);
        } else {
 #ifdef FA_NODE_VERBOSE_DEBUG
@@ -1446,9 +1443,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
 
        if (clib_bitmap_is_zero(pw->pending_clear_sw_if_index_bitmap)) {
          /* if the cross-section is a zero vector, no need to do anything. */
-#ifdef FA_NODE_VERBOSE_DEBUG
-         clib_warning("WORKER: clearing done - nothing to do");
-#endif
+         elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner: now %lu, clearing done, nothing to do", "i8", now);
          pw->clear_in_process = 0;
        } else {
 #ifdef FA_NODE_VERBOSE_DEBUG
@@ -1456,6 +1451,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
                       format_bitmap_hex, pw->pending_clear_sw_if_index_bitmap,
                       format_bitmap_hex, pw->serviced_sw_if_index_bitmap);
 #endif
+         elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner: swiping until %lu", "i8", now);
          /* swipe through the connection lists until enqueue timestamps become above "now" */
          pw->swipe_end_time = now;
        }
@@ -1463,18 +1459,15 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
    }
    num_expired = acl_fa_check_idle_sessions(am, thread_index, now);
    // clib_warning("WORKER-CLEAR: checked %d sessions (clear_in_progress: %d)", num_expired, pw->clear_in_process);
+   elog_acl_maybe_trace_X2(am, "acl_fa_worker_conn_cleaner: checked %d sessions (clear_in_process: %d)", "i4i4", (u32)num_expired, (u32)pw->clear_in_process);
    if (pw->clear_in_process) {
      if (0 == num_expired) {
        /* we were clearing but we could not process any more connections. time to stop. */
        clib_bitmap_zero(pw->pending_clear_sw_if_index_bitmap);
        pw->clear_in_process = 0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-       clib_warning("WORKER: clearing done, all done");
-#endif
+       elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner: now %lu, clearing done - all done", "i8", now);
      } else {
-#ifdef FA_NODE_VERBOSE_DEBUG
-       clib_warning("WORKER-CLEAR: more work to do, raising interrupt");
-#endif
+       elog_acl_maybe_trace_X1(am, "acl_fa_worker_conn_cleaner: now %lu, more work to do - requesting interrupt", "i8", now);
        /* should continue clearing.. So could they please sent an interrupt again? */
        pw->interrupt_is_needed = 1;
      }
@@ -1492,6 +1485,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
        pw->interrupt_is_needed = 0;
        pw->interrupt_is_unwanted = 0;
      }
+     elog_acl_maybe_trace_X3(am, "acl_fa_worker_conn_cleaner: now %lu, interrupt needed: %u, interrupt unwanted: %u", "i8i4i4", now, ((u32)pw->interrupt_is_needed), ((u32)pw->interrupt_is_unwanted));
    }
    pw->interrupt_generation = am->fa_interrupt_generation;
    return 0;
@@ -1505,6 +1499,7 @@ send_one_worker_interrupt (vlib_main_t * vm, acl_main_t *am, int thread_index)
     pw->interrupt_is_pending = 1;
     vlib_node_set_interrupt_pending (vlib_mains[thread_index],
                   acl_fa_worker_session_cleaner_process_node.index);
+    elog_acl_maybe_trace_X1(am, "send_one_worker_interrupt: send interrupt to worker %d", "i4", ((u32)thread_index));
     /* if the interrupt was requested, mark that done. */
     /* pw->interrupt_is_needed = 0; */
   }
@@ -1562,9 +1557,8 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
         for(tt = 0; tt < vec_len(pw->fa_conn_list_head); tt++) {
           u64 head_expiry = acl_fa_get_list_head_expiry_time(am, pw, now, ti, tt);
           if ((head_expiry < next_expire) && !pw->interrupt_is_pending) {
-#ifdef FA_NODE_VERBOSE_DEBUG
-            clib_warning("Head expiry: %lu, now: %lu, next_expire: %lu (worker: %d, tt: %d)", head_expiry, now, next_expire, ti, tt);
-#endif
+            elog_acl_maybe_trace_X3(am, "acl_fa_session_cleaner_process: now %lu, worker: %d tt: %d", "i8i2i2", now, ti, tt);
+            elog_acl_maybe_trace_X2(am, "acl_fa_session_cleaner_process: head expiry: %lu, is earlier than curr next expire: %lu", "i8i8", head_expiry, next_expire);
             next_expire = head_expiry;
 	  }
           if (~0 != pw->fa_conn_list_head[tt]) {
@@ -1577,6 +1571,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (!has_pending_conns && (0 == am->fa_total_enabled_count))
         {
           am->fa_cleaner_cnt_wait_without_timeout++;
+          elog_acl_maybe_trace_X1(am, "acl_conn_cleaner: now %lu entering wait without timeout", "i8", now);
           (void) vlib_process_wait_for_event (vm);
           event_type = vlib_process_get_events (vm, &event_data);
         }
@@ -1591,6 +1586,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  else
 	    {
               am->fa_cleaner_cnt_wait_with_timeout++;
+              elog_acl_maybe_trace_X2(am, "acl_conn_cleaner: now %lu entering wait with timeout %.6f sec", "i8f8", now, timeout);
 	      (void) vlib_process_wait_for_event_or_clock (vm, timeout);
 	      event_type = vlib_process_get_events (vm, &event_data);
 	    }
@@ -1609,17 +1605,12 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
             uword *clear_sw_if_index_bitmap = 0;
 	    uword *sw_if_index0;
             int clear_all = 0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-	    clib_warning("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX received");
-#endif
+            now = clib_cpu_time_now ();
+            elog_acl_maybe_trace_X1(am, "acl_fa_session_cleaner_process: now %lu, received ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX", "i8", now);
 	    vec_foreach (sw_if_index0, event_data)
 	    {
               am->fa_cleaner_cnt_delete_by_sw_index++;
-#ifdef FA_NODE_VERBOSE_DEBUG
-	      clib_warning
-		("ACL_FA_NODE_CLEAN: ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX: %d",
-		 *sw_if_index0);
-#endif
+              elog_acl_maybe_trace_X1(am, "acl_fa_session_cleaner_process: ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX %d", "i4", *sw_if_index0);
               if (*sw_if_index0 == ~0)
                 {
                   clear_all = 1;
@@ -1639,9 +1630,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
               CLIB_MEMORY_BARRIER ();
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
-#ifdef FA_NODE_VERBOSE_DEBUG
-                clib_warning("ACL_FA_NODE_CLEAN: waiting previous cleaning cycle to finish on %d...", pw0 - am->per_worker_data);
-#endif
+                elog_acl_maybe_trace_X1(am, "ACL_FA_NODE_CLEAN: waiting previous cleaning cycle to finish on %d", "i4", (u32)(pw0 - am->per_worker_data));
                 vlib_process_suspend(vm, 0.0001);
                 if (pw0->interrupt_is_needed) {
                   send_one_worker_interrupt(vm, am, (pw0 - am->per_worker_data));
@@ -1673,9 +1662,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
               CLIB_MEMORY_BARRIER ();
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
-#ifdef FA_NODE_VERBOSE_DEBUG
-                clib_warning("ACL_FA_NODE_CLEAN: waiting for my cleaning cycle to finish on %d...", pw0 - am->per_worker_data);
-#endif
+                elog_acl_maybe_trace_X1(am, "ACL_FA_NODE_CLEAN: waiting for my cleaning cycle to finish on %d", "i4", (u32)(pw0 - am->per_worker_data));
                 vlib_process_suspend(vm, 0.0001);
                 if (pw0->interrupt_is_needed) {
                   send_one_worker_interrupt(vm, am, (pw0 - am->per_worker_data));

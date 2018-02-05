@@ -2522,6 +2522,21 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
 		  goto done;
 		}
 	    }
+	  if (unformat (input, "event-trace"))
+	    {
+	      if (!unformat (input, "%u", &val))
+		{
+		  error = clib_error_return (0,
+					     "expecting trace level, got `%U`",
+					     format_unformat_error, input);
+		  goto done;
+		}
+	      else
+		{
+		  am->trace_sessions = val;
+		  goto done;
+		}
+	    }
 	  goto done;
 	}
       if (unformat (input, "timeout"))
