@@ -1064,12 +1064,18 @@ ip6_reass_init_function (vlib_main_t * vm)
   ip6_reass_main_t *rm = &ip6_reass_main;
   clib_error_t *error = 0;
   u32 nbuckets;
+  vlib_node_t *node;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
 
   rm->reass_n = 0;
   pool_alloc (rm->pool, rm->max_reass_n);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-reassembly-expire-walk");
+  ASSERT (node);
+  rm->ip6_reass_expire_node_idx = node->index;
+
   ip6_reass_set (IP6_REASS_TIMEOUT_DEFAULT_MS,
 		 IP6_REASS_MAX_REASSEMBLIES_DEAFULT,
 		 IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
@@ -1077,12 +1083,9 @@ ip6_reass_init_function (vlib_main_t * vm)
   nbuckets = ip6_reass_get_nbuckets ();
   clib_bihash_init_48_8 (&rm->hash, "ip6-reass", nbuckets, nbuckets * 1024);
 
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-drop");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-drop");
   ASSERT (node);
   rm->ip6_drop_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip6-reassembly-expire-walk");
-  ASSERT (node);
-  rm->ip6_reass_expire_node_idx = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "ip6-icmp-error");
   ASSERT (node);
   rm->ip6_icmp_error_idx = node->index;

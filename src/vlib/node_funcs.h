@@ -775,6 +775,8 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
   uword p_flags, add_to_pending, delete_from_wheel;
   void *data_to_be_written_by_caller;
 
+  ASSERT (n->type == VLIB_NODE_TYPE_PROCESS);
+
   ASSERT (!pool_is_free_index (p->event_type_pool, t));
 
   vec_validate (p->pending_event_data_by_type_index, t);
