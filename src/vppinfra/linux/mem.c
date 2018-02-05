@@ -194,7 +194,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
     }
 
   if (fd != -1)
-    if ((ftruncate (fd, a->size)) == -1)
+    if ((ftruncate (fd, n_pages * (1 << log2_page_size))) == -1)
       {
 	err = clib_error_return_unix (0, "ftruncate");
 	goto error;
