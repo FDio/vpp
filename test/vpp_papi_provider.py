@@ -3125,3 +3125,30 @@ class VppPapiProvider(object):
     def ip_reassembly_get(self, is_ip6=0):
         """ Get IP reassembly parameters """
         return self.api(self.papi.ip_reassembly_get, {'is_ip6': is_ip6})
+
+    def gbp_endpoint_add_del(self, is_add, sw_if_index, addr, is_ip6, epg):
+        """ GBP endpoint Add/Del """
+        return self.api(self.papi.gbp_endpoint_add_del,
+                        {'is_add': is_add,
+                         'endpoint': {
+                             'is_ip6': is_ip6,
+                             'sw_if_index': sw_if_index,
+                             'address': addr,
+                             'epg_id': epg}})
+
+    def gbp_endpoint_dump(self):
+        """ GBP endpoint Dump """
+        return self.api(self.papi.gbp_endpoint_dump, {})
+
+    def gbp_contract_add_del(self, is_add, src_epg, dst_epg, acl_index):
+        """ GBP contract Add/Del """
+        return self.api(self.papi.gbp_contract_add_del,
+                        {'is_add': is_add,
+                         'contract': {
+                             'acl_index': acl_index,
+                             'src_epg': src_epg,
+                             'dst_epg': dst_epg}})
+
+    def gbp_contract_dump(self):
+        """ GBP contract Dump """
+        return self.api(self.papi.gbp_contract_dump, {})

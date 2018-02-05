@@ -57,6 +57,10 @@ libvom_la_SOURCES = 			\
 	connection.cpp			\
 	dhcp_config_cmds.cpp		\
 	dhcp_config.cpp			\
+	gbp_endpoint_cmds.cpp		\
+	gbp_endpoint.cpp		\
+	gbp_contract_cmds.cpp		\
+	gbp_contract.cpp		\
 	hw_cmds.cpp			\
 	hw.cpp				\
 	inspect.cpp			\
@@ -123,6 +127,8 @@ vominclude_HEADERS =			\
 	dump_cmd.hpp			\
 	enum_base.hpp			\
 	event_cmd.hpp			\
+	gbp_endpoint.hpp		\
+	gbp_contract.hpp		\
 	hw.hpp				\
 	inspect.hpp			\
 	interface.hpp			\

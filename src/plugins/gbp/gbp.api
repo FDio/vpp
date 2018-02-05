@@ -1,0 +1,83 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Endpoint
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+typeonly define gbp_endpoint
+{
+  u32 sw_if_index;
+  u32 epg_id;
+  u8  is_ip6;
+  u8  address[16];
+};
+
+autoreply define gbp_endpoint_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_endpoint_t endpoint;
+};
+
+define gbp_endpoint_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_endpoint_details
+{
+  u32 context;
+  vl_api_gbp_endpoint_t endpoint;
+};
+
+typeonly define gbp_contract
+{
+  u32 src_epg;
+  u32 dst_epg;
+  u32 acl_index;
+};
+
+autoreply define gbp_contract_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_contract_t contract;
+};
+
+define gbp_contract_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_contract_details
+{
+  u32 context;
+  vl_api_gbp_contract_t contract;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

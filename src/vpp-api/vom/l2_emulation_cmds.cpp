@@ -51,7 +51,7 @@ std::string
 enable_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "L2-emulation: " << m_hw_item.to_string()
+  s << "L2-emulation-enable: " << m_hw_item.to_string()
     << " itf:" << m_itf.to_string();
 
   return (s.str());
@@ -89,7 +89,7 @@ std::string
 disable_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "L2-emulation: " << m_hw_item.to_string()
+  s << "L2-emulation-disable: " << m_hw_item.to_string()
     << " itf:" << m_itf.to_string();
 
   return (s.str());
