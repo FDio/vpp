@@ -133,6 +133,7 @@ class ACLPluginConnTestCase(VppTestCase):
         super(ACLPluginConnTestCase, self).setUpClass()
         # create pg0 and pg1
         self.create_pg_interfaces(range(2))
+        self.logger.info(self.vapi.cli("set acl-plugin session table event-trace 1"))
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip4()
@@ -151,6 +152,7 @@ class ACLPluginConnTestCase(VppTestCase):
             self.logger.info(self.vapi.cli("show acl-plugin acl"))
             self.logger.info(self.vapi.cli("show acl-plugin interface"))
             self.logger.info(self.vapi.cli("show acl-plugin tables"))
+            self.logger.info(self.vapi.cli("show event-logger all"))
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic conn timeout test """
