@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "48b3c4b4_abfc7030",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-02-05T15:04:51Z",
+      "side": 1,
+      "message": "Let\u0027s leave it up to VPP maintainers to make the call on wrappers.\n\nI\u0027ve +1\u0027d the code... I think we just need Damjan to take another look.",
+      "parentUuid": "596824b6_8112c154",
+      "range": {
+        "startLine": 85,
+        "startChar": 6,
+        "endLine": 85,
+        "endChar": 14
+      },
+      "revId": "d652f3b0f285f87dd07baad73bd21f44d71f3596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1e845de4_88d25abe",
         "filename": "src/vnet/ethernet/ethernet.h",
         "patchSetId": 7
