@@ -38,16 +38,55 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/fib/fib_table.h>
 #include <vppinfra/hash.h>
-
+#include <vppinfra/bihash_8_8.h>
 #include <lb/lbhash.h>
 
 #define LB_DEFAULT_PER_CPU_STICKY_BUCKETS 1 << 10
 #define LB_DEFAULT_FLOW_TIMEOUT 40
+#define LB_MAPPING_BUCKETS  1024
+#define LB_MAPPING_MEMORY_SIZE  64<<20
 
 typedef enum {
   LB_NEXT_DROP,
   LB_N_NEXT,
 } lb_next_t;
+
+typedef enum {
+  LB_NAT4_IN2OUT_NEXT_DROP,
+  LB_NAT4_IN2OUT_NEXT_LOOKUP,
+  LB_NAT4_IN2OUT_N_NEXT,
+} LB_nat4_in2out_next_t;
+
+#define foreach_lb_nat_in2out_error                       \
+_(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
+_(IN2OUT_PACKETS, "Good in2out packets processed")      \
+_(NO_TRANSLATION, "No translation")
+
+typedef enum {
+#define _(sym,str) LB_NAT_IN2OUT_ERROR_##sym,
+  foreach_lb_nat_in2out_error
+#undef _
+  LB_NAT_IN2OUT_N_ERROR,
+} lb_nat_in2out_error_t;
+
+/**
+ * lb for kube-proxy supports three types of service
+ */
+typedef enum {
+  LB_SVR_TYPE_VIP_PORT,
+  LB_SVR_TYPE_NODEIP_PORT,
+  LB_SVR_TYPE_EXT_LB,
+  LB_SVR_N_TYPES,
+} lb_svr_type_t;
+
+typedef enum {
+  LB_NODEPORT_NEXT_IP4_NAT4,
+  LB_NODEPORT_NEXT_IP4_NAT6,
+  LB_NODEPORT_NEXT_IP6_NAT4,
+  LB_NODEPORT_NEXT_IP6_NAT6,
+  LB_NODEPORT_NEXT_DROP,
+  LB_NODEPORT_N_NEXT,
+} lb_nodeport_next_t;
 
 /**
  * Each VIP is configured with a set of
@@ -133,12 +172,14 @@ typedef enum {
   LB_ENCAP_TYPE_GRE4,
   LB_ENCAP_TYPE_GRE6,
   LB_ENCAP_TYPE_L3DSR,
+  LB_ENCAP_TYPE_NAT4,
+  LB_ENCAP_TYPE_NAT6,
   LB_ENCAP_N_TYPES,
 } lb_encap_type_t;
 
 /**
  * The load balancer supports IPv4 and IPv6 traffic
- * and GRE4, GRE6 and L3DSR encap.
+ * and GRE4, GRE6, L3DSR and NAT4, NAT6 encap.
  */
 typedef enum {
   LB_VIP_TYPE_IP6_GRE6,
@@ -146,6 +187,10 @@ typedef enum {
   LB_VIP_TYPE_IP4_GRE6,
   LB_VIP_TYPE_IP4_GRE4,
   LB_VIP_TYPE_IP4_L3DSR,
+  LB_VIP_TYPE_IP4_NAT4,
+  LB_VIP_TYPE_IP4_NAT6,
+  LB_VIP_TYPE_IP6_NAT4,
+  LB_VIP_TYPE_IP6_NAT6,
   LB_VIP_N_TYPES,
 } lb_vip_type_t;
 
@@ -200,6 +245,21 @@ typedef struct {
   u8 plen;
 
   /**
+   * Service port. network byte order
+   */
+  u16 port;
+
+  /**
+   * Pod's port corresponding to specific service. network byte order
+   */
+  u16 target_port;
+
+  /**
+   * Node's port, can access service via NodeIP:node_port. network byte order
+   */
+  u16 node_port;
+
+  /**
    * The type of traffic for this.
    * LB_TYPE_UNDEFINED if unknown.
    */
@@ -229,20 +289,91 @@ typedef struct {
 
 #define lb_vip_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP4_GRE6 \
                             || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
-			    || (vip)->type == LB_VIP_TYPE_IP4_L3DSR )
+			    || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
+			    || (vip)->type == LB_VIP_TYPE_IP4_NAT4 \
+			    || (vip)->type == LB_VIP_TYPE_IP4_NAT6 )
 
 #define lb_vip_is_gre4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
+
 #define lb_vip_is_gre6(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE6)
+
 #define lb_vip_is_l3dsr(vip) ((vip)->type == LB_VIP_TYPE_IP4_L3DSR)
+
+#define lb_vip_is_nat4(vip) ((vip)->type == LB_VIP_TYPE_IP6_NAT4 \
+                            || (vip)->type == LB_VIP_TYPE_IP4_NAT4)
+
+#define lb_vip_is_nat6(vip) ((vip)->type == LB_VIP_TYPE_IP6_NAT6 \
+                            || (vip)->type == LB_VIP_TYPE_IP4_NAT6)
 
 #define lb_encap_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
-			     || (vip)->type == LB_VIP_TYPE_IP4_L3DSR)
+			     || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
+			     || (vip)->type == LB_VIP_TYPE_IP4_NAT4 \
+			     || (vip)->type == LB_VIP_TYPE_IP6_NAT4 )
 
 format_function_t format_lb_vip;
 format_function_t format_lb_vip_detailed;
+
+#define foreach_lb_nat_protocol \
+  _(UDP, 0, udp, "udp")       \
+  _(TCP, 1, tcp, "tcp")
+
+typedef enum {
+#define _(N, i, n, s) LB_NAT_PROTOCOL_##N = i,
+  foreach_lb_nat_protocol
+#undef _
+} lb_nat_protocol_t;
+
+always_inline u32
+lb_ip_proto_to_nat_proto (u8 ip_proto)
+{
+  u32 nat_proto = ~0;
+
+  nat_proto = (ip_proto == IP_PROTOCOL_UDP) ? LB_NAT_PROTOCOL_UDP : nat_proto;
+  nat_proto = (ip_proto == IP_PROTOCOL_TCP) ? LB_NAT_PROTOCOL_TCP : nat_proto;
+
+  return nat_proto;
+}
+
+/* Key for Pod's egress SNAT */
+typedef struct {
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u16 port;
+      u16 protocol:3,
+        fib_index:13;
+    };
+    u64 as_u64;
+  };
+} lb_snat4_key_t;
+
+typedef struct
+{
+  ip6_address_t prefix;
+  u8 plen;
+  u32 vrf_id;
+  u32 fib_index;
+} lb_snat6_key_t;
+
+typedef struct {
+  lb_svr_type_t svr_type;
+  ip46_address_t vip;
+  ip46_address_t node_ip;
+  ip46_address_t pod_ip;
+  u8 vip_is_ipv6;
+  u8 node_ip_is_ipv6;
+  u8 pod_ip_is_ipv6;
+  u16 port;        /* Network byte order */
+  u16 node_port;   /* Network byte order */
+  u16 target_port; /* Network byte order */
+  u32 vrf_id;
+  u32 fib_index;
+} lb_snat_mapping_t;
 
 typedef struct {
   /**
@@ -272,6 +403,9 @@ typedef struct {
    * starts at 0 and is decremented instead. i.e. do not use it.
    */
   vlib_refcount_t as_refcount;
+
+  /* hash lookup vip_index by key: {u16: nodeport} */
+  uword * nodeport_by_key;
 
   /**
    * Some global data is per-cpu
@@ -314,11 +448,19 @@ typedef struct {
   dpo_type_t dpo_gre4_type;
   dpo_type_t dpo_gre6_type;
   dpo_type_t dpo_l3dsr_type;
+  dpo_type_t dpo_nat4_type;
+  dpo_type_t dpo_nat6_type;
 
   /**
    * Node type for registering to fib changes.
    */
   fib_node_type_t fib_node_type;
+
+  /* Find a static mapping by pod IP : target_port */
+  clib_bihash_8_8_t mapping_by_as;
+
+  /* Static mapping pool */
+  lb_snat_mapping_t * snat_mappings;
 
   /**
    * API dynamically registered base ID.
@@ -326,11 +468,18 @@ typedef struct {
   u16 msg_id_base;
 
   volatile u32 *writer_lock;
+
+  /* convenience */
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } lb_main_t;
 
 extern lb_main_t lb_main;
-extern vlib_node_registration_t lb6_node;
 extern vlib_node_registration_t lb4_node;
+extern vlib_node_registration_t lb6_node;
+extern vlib_node_registration_t lb4_nodeport_node;
+extern vlib_node_registration_t lb6_nodeport_node;
+extern vlib_node_registration_t lb_nat4_in2out_node;
 
 /**
  * Fix global load-balancer parameters.
@@ -341,8 +490,11 @@ extern vlib_node_registration_t lb4_node;
 int lb_conf(ip4_address_t *ip4_address, ip6_address_t *ip6_address,
             u32 sticky_buckets, u32 flow_timeout);
 
-int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
-	       u32 new_length, u32 *vip_index);
+int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type,
+	       u32 new_length, u32 *vip_index,
+	       u8 dscp,
+	       u16 port, u16 target_port, u16 node_port);
+
 int lb_vip_del(u32 vip_index);
 
 int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index);
@@ -355,6 +507,8 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
 u32 lb_hash_time_now(vlib_main_t * vm);
 
 void lb_garbage_collection();
+
+int lb_nat4_interface_add_del (u32 sw_if_index, int is_del);
 
 format_function_t format_lb_main;
 
