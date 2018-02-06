@@ -798,6 +798,9 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
 
+  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
+		  sctp_conn->sub_conn[idx].RTO);
+
   stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
 
   return SCTP_ERROR_NONE;
@@ -824,6 +827,9 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_COOKIE);
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
+
+  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
+		  sctp_conn->sub_conn[idx].RTO);
 
   stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
 
@@ -1433,17 +1439,34 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
 
 always_inline u16
 sctp_handle_heartbeat (sctp_hb_req_chunk_t * sctp_hb_chunk,
-		       sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
-		       u16 * next0)
+		       sctp_connection_t * sctp_conn, u8 idx,
+		       vlib_buffer_t * b0, u16 * next0)
 {
+  /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
+  if (sctp_conn->local_tag != sctp_hb_chunk->sctp_hdr.verification_tag)
+    {
+      return SCTP_ERROR_INVALID_TAG;
+    }
+
+  sctp_prepare_heartbeat_ack_chunk (sctp_conn, b0);
+
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
+
   return SCTP_ERROR_NONE;
 }
 
 always_inline u16
 sctp_handle_heartbeat_ack (sctp_hb_ack_chunk_t * sctp_hb_ack_chunk,
-			   sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
-			   u16 * next0)
+			   sctp_connection_t * sctp_conn, u8 idx,
+			   vlib_buffer_t * b0, u16 * next0)
 {
+  sctp_conn->sub_conn[idx].unacknowledged_hb -= 1;
+
+  sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
+		     sctp_conn->sub_conn[idx].RTO);
+
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
+
   return SCTP_ERROR_NONE;
 }
 
@@ -1766,13 +1789,13 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case HEARTBEAT:
 	      error0 =
 		sctp_handle_heartbeat ((sctp_hb_req_chunk_t *) sctp_hdr,
-				       sctp_conn, b0, &next0);
+				       sctp_conn, idx, b0, &next0);
 	      break;
 
 	    case HEARTBEAT_ACK:
 	      error0 =
 		sctp_handle_heartbeat_ack ((sctp_hb_ack_chunk_t *) sctp_hdr,
-					   sctp_conn, b0, &next0);
+					   sctp_conn, idx, b0, &next0);
 	      break;
 
 	    case DATA:
