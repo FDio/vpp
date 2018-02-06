@@ -16,6 +16,8 @@ from util import ppp
   - IP6 to GRE4 encap
   - IP6 to GRE6 encap
   - IP4 to L3DSR encap
+  - IP4 to NAT4 encap
+  - IP6 to NAT6 encap
 
  As stated in comments below, GRE has issues with IPv6.
  All test cases involving IPv6 are executed, but
@@ -135,7 +137,7 @@ class TestLB(VppTestCase):
                     # self.assertEqual(len(ip.options), 0)
                     gre = GRE(str(p[IPv6].payload))
                     self.checkInner(gre, isv4)
-                if (encap == 'l3dsr'):
+                elif (encap == 'l3dsr'):
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
                     self.assertEqual(ip.version, 4)
@@ -143,6 +145,33 @@ class TestLB(VppTestCase):
                     self.assertEqual(ip.dst, "10.0.0.%u" % asid)
                     self.assertEqual(ip.tos, 0x1c)
                     self.assertEqual(len(ip.options), 0)
+                elif (encap == 'nat4'):
+                    ip = p[IP]
+                    asid = int(ip.dst.split(".")[3])
+                    self.assertEqual(ip.version, 4)
+                    self.assertEqual(ip.flags, 0)
+                    self.assertEqual(ip.dst, "10.0.0.%u" % asid)
+                    self.assertEqual(ip.proto, 17)
+                    self.assertEqual(len(ip.options), 0)
+                    self.assertGreaterEqual(ip.ttl, 63)
+                    udp = p[UDP]
+                    self.assertEqual(udp.dport, 3307)
+                elif (encap == 'nat6'):
+                    ip = p[IPv6]
+                    asid = ip.dst.split(":")
+                    asid = asid[len(asid) - 1]
+                    asid = 0 if asid == "" else int(asid)
+                    self.assertEqual(ip.version, 6)
+                    self.assertEqual(ip.tc, 0)
+                    self.assertEqual(ip.fl, 0)
+                    self.assertEqual(
+                        socket.inet_pton(socket.AF_INET6, ip.dst),
+                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid)
+                    )
+                    self.assertEqual(ip.nh, 17)
+                    self.assertGreaterEqual(ip.hlim, 63)
+                    udp = UDP(str(p[IPv6].payload))
+                    self.assertEqual(udp.dport, 3307)
                 load[asid] += 1
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
@@ -245,4 +274,44 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap l3dsr dscp 7 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_nat4(self):
+        """ Load Balancer IP4 NAT4 """
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap nat4"
+                          " port 3306 target_port 3307")
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % (asid))
+
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap='nat4', isv4=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 encap nat4"
+                          " port 3306 target_port 3307 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_nat6(self):
+        """ Load Balancer IP6 NAT6 """
+        try:
+            self.vapi.cli("lb vip 2001::/16 encap nat6"
+                          " port 3306 target_port 3307")
+            for asid in self.ass:
+                self.vapi.cli("lb as 2001::/16 2002::%u" % (asid))
+
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap='nat6', isv4=False)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
+            self.vapi.cli("lb vip 2001::/16 encap nat6"
+                          " port 3306 target_port 3307 del")
             self.vapi.cli("test lb flowtable flush")

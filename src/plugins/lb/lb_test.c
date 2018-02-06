@@ -171,6 +171,10 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     mps.encap = LB_ENCAP_TYPE_GRE6;
   } else if (unformat(i, "l3dsr")) {
     mps.encap = LB_ENCAP_TYPE_L3DSR;
+  } else if (unformat(i, "nat4")) {
+    mps.encap = LB_ENCAP_TYPE_NAT4;
+  } else if (unformat(i, "nat6")) {
+    mps.encap = LB_ENCAP_TYPE_NAT6;
   } else {
     errmsg ("no encap\n");
     return -99;
@@ -221,7 +225,9 @@ static int api_lb_add_del_as (vat_main_t * vam)
  */
 #define foreach_vpe_api_msg                             \
 _(lb_conf, "<ip4-src-addr> <ip6-src-address> <sticky_buckets_per_core> <flow_timeout>") \
-_(lb_add_del_vip, "<ip-prefix> [gre4|gre6] <new_table_len> [del]") \
+_(lb_add_del_vip, "<ip-prefix> [gre4|gre6|l3dsr|nat4|nat6] " \
+                  "<dscp> <port> <target_port> <node_port> " \
+                  "<new_table_len> [del]") \
 _(lb_add_del_as, "<vip-ip-prefix> <address> [del]")
 
 static void 
