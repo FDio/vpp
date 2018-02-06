@@ -184,6 +184,12 @@ typedef struct {
   u32 *acl_dot1q_output_classify_table_by_sw_if_index;
   u32 *acl_dot1ad_output_classify_table_by_sw_if_index;
 
+  u32 *acl_etype_input_classify_table_by_sw_if_index;
+  u32 *acl_etype_output_classify_table_by_sw_if_index;
+
+  u16 **input_etype_whitelist_by_sw_if_index;
+  u16 **output_etype_whitelist_by_sw_if_index;
+
   /* MACIP (input) ACLs associated with the interfaces */
   u32 *macip_acl_by_sw_if_index;
 

@@ -67,6 +67,7 @@ _(acl_del_reply) \
 _(acl_interface_add_del_reply) \
 _(macip_acl_interface_add_del_reply) \
 _(acl_interface_set_acl_list_reply) \
+_(acl_interface_set_etype_whitelist_reply) \
 _(macip_acl_del_reply)
 
 #define foreach_reply_retval_aclindex_handler  \
@@ -269,6 +270,7 @@ _(ACL_ADD_REPLACE_REPLY, acl_add_replace_reply) \
 _(ACL_DEL_REPLY, acl_del_reply) \
 _(ACL_INTERFACE_ADD_DEL_REPLY, acl_interface_add_del_reply)  \
 _(ACL_INTERFACE_SET_ACL_LIST_REPLY, acl_interface_set_acl_list_reply) \
+_(ACL_INTERFACE_SET_ETYPE_WHITELIST_REPLY, acl_interface_set_etype_whitelist_reply) \
 _(ACL_INTERFACE_LIST_DETAILS, acl_interface_list_details)  \
 _(ACL_DETAILS, acl_details)  \
 _(MACIP_ACL_ADD_REPLY, macip_acl_add_reply) \
@@ -746,6 +748,63 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
     return ret;
 }
 
+static int api_acl_interface_set_etype_whitelist (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_acl_interface_set_etype_whitelist_t * mp;
+    u32 sw_if_index = ~0;
+    u32 ethertype = ~0;
+    u16 *etypes_in = 0;
+    u16 *etypes_out = 0;
+    u8 is_input = 1;
+    int ret;
+
+//  acl_interface_set_etype_whitelist <intfc> | sw_if_index <if-idx> input [ethertype list] output [ethertype list]
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            ;
+        else if (unformat (i, "sw_if_index %d", &sw_if_index))
+            ;
+        else if (unformat (i, "%x", &ethertype))
+          {
+            ethertype = ethertype & 0xffff;
+            if(is_input)
+              vec_add1(etypes_in, htons(ethertype));
+            else
+              vec_add1(etypes_out, htons(ethertype));
+          }
+        else if (unformat (i, "input"))
+            is_input = 1;
+        else if (unformat (i, "output"))
+            is_input = 0;
+        else
+            break;
+    }
+
+    if (sw_if_index == ~0) {
+        errmsg ("missing interface name / explicit sw_if_index number \n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M2(ACL_INTERFACE_SET_ETYPE_WHITELIST, mp, sizeof(u32) * (vec_len(etypes_in) + vec_len(etypes_out)));
+    mp->sw_if_index = ntohl(sw_if_index);
+    mp->n_input = vec_len(etypes_in);
+    mp->count = vec_len(etypes_in) + vec_len(etypes_out);
+    vec_append(etypes_in, etypes_out);
+    if (vec_len(etypes_in) > 0)
+      clib_memcpy(mp->whitelist, etypes_in, vec_len(etypes_in)*sizeof(etypes_in[0]));
+
+    /* send it... */
+    S(mp);
+
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
+}
+
 static void
 api_acl_send_control_ping(vat_main_t *vam)
 {
@@ -1163,6 +1222,7 @@ _(acl_del, "<acl-idx>") \
 _(acl_dump, "[<acl-idx>]") \
 _(acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] [input|output] acl <acl-idx>") \
 _(acl_interface_set_acl_list, "<intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]") \
+_(acl_interface_set_etype_whitelist, "<intfc> | sw_if_index <if-idx> input [ethertype list] output [ethertype list]") \
 _(acl_interface_list_dump, "[<intfc> | sw_if_index <if-idx>]") \
 _(macip_acl_add, "...") \
 _(macip_acl_add_replace, "<acl-idx> [<ipv4|ipv6> <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...") \

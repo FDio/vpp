@@ -360,6 +360,30 @@ vl_api_acl_interface_set_acl_list_t_print (vl_api_acl_interface_set_acl_list_t
 }
 
 static inline void *
+vl_api_acl_interface_set_etype_whitelist_t_print (vl_api_acl_interface_set_etype_whitelist_t
+					   * a, void *handle)
+{
+  u8 *s;
+  int i;
+
+  s = format
+    (0, "SCRIPT: acl_interface_set_etype_whitelist sw_if_index %d count %d\n",
+     clib_net_to_host_u32 (a->sw_if_index), (u32) a->count);
+
+  s = format (s, "    input ");
+
+  for (i = 0; i < a->count; i++)
+    {
+      if (i == a->n_input)
+        s = format (s, "output ");
+      s = format (s, "%x ", clib_net_to_host_u16 (a->whitelist[i]));
+    }
+
+  PRINT_S;
+  return handle;
+}
+
+static inline void *
 vl_api_acl_interface_add_del_t_print (vl_api_acl_interface_add_del_t * a,
 				      void *handle)
 {
