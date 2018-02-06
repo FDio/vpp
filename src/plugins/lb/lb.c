@@ -17,6 +17,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/api_errno.h>
+#include <vnet/udp/udp.h>
 
 //GC runs at most once every so many seconds
 #define LB_GARBAGE_RUN 60
@@ -54,6 +55,22 @@ const static char* const * const lb_dpo_l3dsr_nodes[DPO_PROTO_NUM] =
 	[DPO_PROTO_IP4]  = lb_dpo_l3dsr_ip4,
     };
 
+const static char * const lb_dpo_nat4_ip4[] = { "lb4-nat4" , NULL };
+const static char * const lb_dpo_nat4_ip6[] = { "lb6-nat4" , NULL };
+const static char* const * const lb_dpo_nat4_nodes[DPO_PROTO_NUM] =
+    {
+	[DPO_PROTO_IP4]  = lb_dpo_nat4_ip4,
+	[DPO_PROTO_IP6]  = lb_dpo_nat4_ip6,
+    };
+
+const static char * const lb_dpo_nat6_ip4[] = { "lb4-nat6" , NULL };
+const static char * const lb_dpo_nat6_ip6[] = { "lb6-nat6" , NULL };
+const static char* const * const lb_dpo_nat6_nodes[DPO_PROTO_NUM] =
+    {
+	[DPO_PROTO_IP4]  = lb_dpo_nat6_ip4,
+	[DPO_PROTO_IP6]  = lb_dpo_nat6_ip6,
+    };
+
 u32 lb_hash_time_now(vlib_main_t * vm)
 {
   return (u32) (vlib_time_now(vm) + 10000);
@@ -88,6 +105,10 @@ static char *lb_vip_type_strings[] = {
     [LB_VIP_TYPE_IP4_GRE6] = "ip4-gre6",
     [LB_VIP_TYPE_IP4_GRE4] = "ip4-gre4",
     [LB_VIP_TYPE_IP4_L3DSR] = "ip4-l3dsr",
+    [LB_VIP_TYPE_IP4_NAT4] = "ip4-nat44",
+    [LB_VIP_TYPE_IP4_NAT6] = "ip4-nat46",
+    [LB_VIP_TYPE_IP6_NAT4] = "ip6-nat64",
+    [LB_VIP_TYPE_IP6_NAT6] = "ip6-nat66",
 };
 
 u8 *format_lb_vip_type (u8 * s, va_list * args)
@@ -115,12 +136,27 @@ uword unformat_lb_vip_type (unformat_input_t * input, va_list * args)
 u8 *format_lb_vip (u8 * s, va_list * args)
 {
   lb_vip_t *vip = va_arg (*args, lb_vip_t *);
-  return format(s, "%U %U new_size:%u #as:%u%s",
+  s = format(s, "%U %U new_size:%u #as:%u%s\n",
              format_lb_vip_type, vip->type,
              format_ip46_prefix, &vip->prefix, vip->plen, IP46_TYPE_ANY,
              vip->new_flow_table_mask + 1,
              pool_elts(vip->as_indexes),
              (vip->flags & LB_VIP_FLAGS_USED)?"":" removed");
+
+  if (vip->type == LB_VIP_TYPE_IP4_L3DSR)
+    {
+      s = format(s, "  dscp:%u", vip->dscp);
+    }
+
+  if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
+      || (vip->type == LB_VIP_TYPE_IP6_NAT6))
+    {
+      s = format(s, "  port:%u target_port:%u node_port:%u",
+		 ntohs(vip->port), ntohs(vip->target_port),
+		 ntohs(vip->node_port));
+    }
+
+  return s;
 }
 
 u8 *format_lb_as (u8 * s, va_list * args)
@@ -152,6 +188,15 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
       s = format(s, "%U  dscp:%u\n",
                     format_white_space, indent,
 		    vip->dscp);
+    }
+
+  if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
+      || (vip->type == LB_VIP_TYPE_IP6_NAT6))
+    {
+      s = format(s, "%U  port:%u target_port:%u node_port:%u\n",
+                 format_white_space, indent,
+		 ntohs(vip->port), ntohs(vip->target_port),
+		 ntohs(vip->node_port));
     }
 
   //Print counters
@@ -453,6 +498,9 @@ int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
   u32 *to_be_updated = 0;
   u32 i;
   u32 *ip;
+  lb_snat_mapping_t *m;
+  lb_snat4_key_t m_key4;
+  clib_bihash_kv_8_8_t kv;
 
   //Sanity check
   while (n--) {
@@ -532,6 +580,34 @@ next:
 			    as - lbm->ass);
 
     lb_as_stack(as);
+
+    /* Add SNAT static mapping */
+    pool_get (lbm->snat_mappings, m);
+    memset (m, 0, sizeof (*m));
+    if (lb_vip_is_nat4(vip)) {
+	m_key4.addr = as->address.ip4;
+	m_key4.port = vip->target_port;
+	m_key4.protocol = 0;
+	m_key4.fib_index = 0;
+
+        m->vip.ip4 = vip->prefix.ip4;;
+        m->node_ip.ip4.as_u32 = 0;
+        m->pod_ip.ip4 = as->address.ip4;
+        m->vip_is_ipv6 = 0;
+        m->node_ip_is_ipv6 = 0;
+        m->pod_ip_is_ipv6 = 0;
+        m->port = vip->port;
+        m->node_port = vip->node_port;
+        m->target_port = vip->target_port;
+	m->vrf_id = 0;
+	m->fib_index = 0;
+
+	kv.key = m_key4.as_u64;
+	kv.value = m - lbm->snat_mappings;
+	clib_bihash_add_del_8_8(&lbm->mapping_by_as, &kv, 1);
+    } else {
+	/* TBD */
+    }
   }
   vec_free(to_be_added);
 
@@ -631,6 +707,10 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
     dpo_type = lbm->dpo_gre6_type;
   else if (lb_vip_is_l3dsr(vip))
     dpo_type = lbm->dpo_l3dsr_type;
+  else if(lb_vip_is_nat4(vip))
+    dpo_type = lbm->dpo_nat4_type;
+  else if (lb_vip_is_nat6(vip))
+    dpo_type = lbm->dpo_nat6_type;
 
   dpo_set(&dpo, dpo_type, proto, vip - lbm->vips);
   fib_table_entry_special_dpo_add(0,
@@ -659,10 +739,13 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
   fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
 }
 
-int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
-	       u32 new_length, u32 *vip_index)
+int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type,
+	       u32 new_length, u32 *vip_index,
+	       u8 dscp,
+	       u16 port, u16 target_port, u16 node_port)
 {
   lb_main_t *lbm = &lb_main;
+  vlib_main_t *vm = lbm->vlib_main;
   lb_vip_t *vip;
 
   lb_get_writer_lock();
@@ -681,12 +764,16 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
   if (ip46_prefix_is_ip4(prefix, plen) &&
       (type != LB_VIP_TYPE_IP4_GRE4) &&
       (type != LB_VIP_TYPE_IP4_GRE6) &&
-      (type != LB_VIP_TYPE_IP4_L3DSR))
+      (type != LB_VIP_TYPE_IP4_L3DSR) &&
+      (type != LB_VIP_TYPE_IP4_NAT4) &&
+      (type != LB_VIP_TYPE_IP4_NAT6))
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
 
   if ((!ip46_prefix_is_ip4(prefix, plen)) &&
       (type != LB_VIP_TYPE_IP6_GRE4) &&
-      (type != LB_VIP_TYPE_IP6_GRE6))
+      (type != LB_VIP_TYPE_IP6_GRE6) &&
+      (type != LB_VIP_TYPE_IP6_NAT4) &&
+      (type != LB_VIP_TYPE_IP6_NAT6))
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
 
   if ((type == LB_VIP_TYPE_IP4_L3DSR) && (dscp >= 64 ) )
@@ -703,6 +790,9 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
   vip->last_garbage_collection = (u32) vlib_time_now(vlib_get_main());
   vip->type = type;
   vip->dscp = dscp;
+  vip->port = clib_host_to_net_u16(port);
+  vip->target_port = clib_host_to_net_u16(target_port);
+  vip->node_port = clib_host_to_net_u16(node_port);
   vip->flags = LB_VIP_FLAGS_USED;
   vip->as_indexes = 0;
 
@@ -722,6 +812,29 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
 
   //Create adjacency to direct traffic
   lb_vip_add_adjacency(lbm, vip);
+
+  if (lb_vip_is_nat4(vip)
+      || lb_vip_is_nat6(vip))
+    {
+      u32 key, *key_copy;
+      uword * entry;
+
+      //Create maping from nodeport to vip_index
+      key = clib_host_to_net_u16(node_port);
+      entry = hash_get_mem (lbm->nodeport_by_key, &key);
+      if (entry) {
+        lb_put_writer_lock();
+        return VNET_API_ERROR_VALUE_EXIST;
+      }
+
+      key_copy = clib_mem_alloc (sizeof (*key_copy));
+      clib_memcpy (key_copy, &key, sizeof (*key_copy));
+      hash_set_mem (lbm->nodeport_by_key, key_copy, vip - lbm->vips);
+
+      /* receive packets destined to NodeIP:NodePort */
+      udp_register_dst_port (vm, node_port, lb4_nodeport_node.index, 1);
+      udp_register_dst_port (vm, node_port, lb6_nodeport_node.index, 0);
+    }
 
   //Return result
   *vip_index = vip - lbm->vips;
@@ -819,6 +932,10 @@ lb_as_stack (lb_as_t *as)
     dpo_type = lbm->dpo_gre6_type;
   else if (lb_vip_is_l3dsr(vip))
     dpo_type = lbm->dpo_l3dsr_type;
+  else if(lb_vip_is_nat4(vip))
+    dpo_type = lbm->dpo_nat4_type;
+  else if (lb_vip_is_nat6(vip))
+    dpo_type = lbm->dpo_nat6_type;
 
   dpo_stack(dpo_type,
 	    lb_vip_is_ip4(vip)?DPO_PROTO_IP4:DPO_PROTO_IP6,
@@ -835,11 +952,30 @@ lb_fib_node_back_walk_notify (fib_node_t *node,
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
+int lb_nat4_interface_add_del (u32 sw_if_index, int is_del)
+{
+  if (is_del)
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "lb-nat4-in2out",
+                                   sw_if_index, 0, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "lb-nat4-in2out",
+                                   sw_if_index, 1, 0, 0);
+    }
+
+  return 0;
+}
+
 clib_error_t *
 lb_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   lb_main_t *lbm = &lb_main;
+  lbm->vnet_main = vnet_get_main ();
+  lbm->vlib_main = vm;
+
   lb_as_t *default_as;
   fib_node_vft_t lb_fib_node_vft = {
       .fnv_get = lb_fib_node_get_node,
@@ -865,6 +1001,8 @@ lb_init (vlib_main_t * vm)
   lbm->dpo_gre4_type = dpo_register_new_type(&lb_vft, lb_dpo_gre4_nodes);
   lbm->dpo_gre6_type = dpo_register_new_type(&lb_vft, lb_dpo_gre6_nodes);
   lbm->dpo_l3dsr_type = dpo_register_new_type(&lb_vft, lb_dpo_l3dsr_nodes);
+  lbm->dpo_nat4_type = dpo_register_new_type(&lb_vft, lb_dpo_nat4_nodes);
+  lbm->dpo_nat6_type = dpo_register_new_type(&lb_vft, lb_dpo_nat6_nodes);
   lbm->fib_node_type = fib_node_register_new_type(&lb_fib_node_vft);
 
   //Init AS reference counters
@@ -878,6 +1016,13 @@ lb_init (vlib_main_t * vm)
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
+
+  lbm->nodeport_by_key
+    = hash_create_mem (0, sizeof(u16), sizeof (uword));
+
+  clib_bihash_init_8_8 (&lbm->mapping_by_as,
+                        "mapping_by_as", LB_MAPPING_BUCKETS,
+			LB_MAPPING_MEMORY_SIZE);
 
 #define _(a,b,c) lbm->vip_counters[c].name = b;
   lb_foreach_vip_counter
