@@ -606,33 +606,43 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
   /* note: the connection may have already disappeared */
   if (PREDICT_FALSE (sctp_conn == 0))
     return;
-  ASSERT (sctp_conn->state == SCTP_STATE_COOKIE_ECHOED);
+
+  SCTP_DBG ("%s expired", sctp_timer_to_string (timer_id));
 
   switch (timer_id)
     {
+    case SCTP_TIMER_T1_INIT:
+    case SCTP_TIMER_T1_COOKIE:
+    case SCTP_TIMER_T2_SHUTDOWN:
+    case SCTP_TIMER_T3_RXTX:
+      clib_smp_atomic_add (&sctp_conn->sub_conn[conn_index].unacknowledged_hb,
+			   1);
+      sctp_timer_reset (sctp_conn, conn_index, timer_id);
+      break;
     case SCTP_TIMER_T4_HEARTBEAT:
-      {
-	clib_warning ("Heartbeat timeout");
-	break;
-      }
+      sctp_timer_reset (sctp_conn, conn_index, timer_id);
+      goto heartbeat;
     }
-  /* Start cleanup. App wasn't notified yet so use delete notify as
-   * opposed to delete to cleanup session layer state. */
-  stream_session_delete_notify (&sctp_conn->
-				sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection);
 
-  sctp_connection_timers_reset (sctp_conn);
+  if (sctp_conn->sub_conn[conn_index].unacknowledged_hb >
+      SCTP_ASSOCIATION_MAX_RETRANS)
+    {
+      // The remote-peer is considered to be unreachable hence shutting down
 
-  sctp_connection_cleanup (sctp_conn);
+      /* Start cleanup. App wasn't notified yet so use delete notify as
+       * opposed to delete to cleanup session layer state. */
+      stream_session_delete_notify (&sctp_conn->sub_conn
+				    [MAIN_SCTP_SUB_CONN_IDX].connection);
+
+      sctp_connection_timers_reset (sctp_conn);
+
+      sctp_connection_cleanup (sctp_conn);
+    }
+  return;
+
+heartbeat:
+  sctp_send_heartbeat (sctp_conn);
 }
-
-/* *INDENT OFF* */
-static sctp_timer_expiration_handler
-  * sctp_timer_expiration_handlers[SCTP_N_TIMERS] = {
-  sctp_expired_timers_cb
-};
-
-/* *INDENT ON* */
 
 static void
 sctp_expired_timers_dispatch (u32 * expired_timers)
@@ -649,8 +659,7 @@ sctp_expired_timers_dispatch (u32 * expired_timers)
       SCTP_DBG ("Expired timer ID: %u", timer_id);
 
       /* Handle expiration */
-      (*sctp_timer_expiration_handlers[timer_id]) (connection_index,
-						   timer_id);
+      sctp_expired_timers_cb (connection_index, timer_id);
     }
 }
 

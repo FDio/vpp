@@ -352,6 +352,13 @@ sctp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 }
 
 always_inline void
+sctp_enqueue_to_output (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
+			u8 is_ip4)
+{
+  sctp_enqueue_to_output_i (vm, b, bi, is_ip4, 0);
+}
+
+always_inline void
 sctp_enqueue_to_output_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			    u8 is_ip4)
 {
@@ -404,13 +411,6 @@ sctp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			   u8 is_ip4)
 {
   sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 0);
-}
-
-always_inline void
-sctp_enqueue_to_ip_lookup_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			       u8 is_ip4)
-{
-  sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 1);
 }
 
 /**
@@ -806,9 +806,8 @@ sctp_send_shutdown (sctp_connection_t * sctp_conn)
   sctp_prepare_shutdown_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
-  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_output_now (vm, b, bi,
-			      sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_enqueue_to_output (vm, b, bi,
+			  sctp_conn->sub_conn[idx].connection.is_ip4);
 
   /* Measure RTT with this */
   sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
@@ -867,9 +866,8 @@ sctp_send_shutdown_ack (sctp_connection_t * sctp_conn)
   sctp_prepare_shutdown_ack_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_ACK);
-  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi,
-			     sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_enqueue_to_output (vm, b, bi,
+			  sctp_conn->sub_conn[idx].connection.is_ip4);
 
   /* Measure RTT with this */
   sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
@@ -918,17 +916,53 @@ sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 }
 
 /**
+ * Convert buffer to HEARTBEAT_ACK
+ */
+void
+sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn,
+				  vlib_buffer_t * b)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  u8 idx = sctp_pick_conn_idx_on_chunk (HEARTBEAT_ACK);
+  u16 alloc_bytes = sizeof (sctp_hb_ack_chunk_t);
+
+  sctp_reuse_buffer (vm, b);
+
+  /* As per RFC 4960 the chunk_length value does NOT contemplate
+   * the size of the first header (see sctp_header_t) and any padding
+   */
+  u16 chunk_len = alloc_bytes - sizeof (sctp_header_t);
+
+  alloc_bytes += vnet_sctp_calculate_padding (alloc_bytes);
+
+  sctp_hb_ack_chunk_t *hb_ack = vlib_buffer_push_uninit (b, alloc_bytes);
+
+  hb_ack->sctp_hdr.checksum = 0;
+  /* No need of host_to_net conversion, already in net-byte order */
+  hb_ack->sctp_hdr.src_port = sctp_conn->sub_conn[idx].connection.lcl_port;
+  hb_ack->sctp_hdr.dst_port = sctp_conn->sub_conn[idx].connection.rmt_port;
+  hb_ack->sctp_hdr.verification_tag = sctp_conn->remote_tag;
+  hb_ack->hb_info.param_hdr.type = clib_host_to_net_u16 (1);
+  hb_ack->hb_info.param_hdr.length =
+    clib_host_to_net_u16 (sizeof (hb_ack->hb_info.hb_info));
+
+  vnet_sctp_set_chunk_type (&hb_ack->chunk_hdr, HEARTBEAT_ACK);
+  vnet_sctp_set_chunk_length (&hb_ack->chunk_hdr, chunk_len);
+
+  vnet_buffer (b)->sctp.connection_index =
+    sctp_conn->sub_conn[idx].connection.c_index;
+}
+
+/**
  * Convert buffer to HEARTBEAT
  */
 void
 sctp_prepare_heartbeat_chunk (sctp_connection_t * sctp_conn,
 			      vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
   u8 idx = sctp_pick_conn_idx_on_chunk (HEARTBEAT);
   u16 alloc_bytes = sizeof (sctp_hb_req_chunk_t);
-
-  b = sctp_reuse_buffer (vm, b);
 
   /* As per RFC 4960 the chunk_length value does NOT contemplate
    * the size of the first header (see sctp_header_t) and any padding
@@ -971,9 +1005,10 @@ sctp_send_heartbeat (sctp_connection_t * sctp_conn)
   sctp_prepare_heartbeat_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_state (SCTP_STATE_ESTABLISHED);
-  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi,
-			     sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_enqueue_to_output_now (vm, b, bi,
+			      sctp_conn->sub_conn[idx].connection.is_ip4);
+
+  sctp_conn->sub_conn[idx].unacknowledged_hb += 1;
 }
 
 /**
@@ -1023,9 +1058,8 @@ sctp_send_shutdown_complete (sctp_connection_t * sctp_conn)
   sctp_prepare_shutdown_complete_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_COMPLETE);
-  sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi,
-			     sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_enqueue_to_output (vm, b, bi,
+			  sctp_conn->sub_conn[idx].connection.is_ip4);
 
   sctp_conn->state = SCTP_STATE_CLOSED;
 }
@@ -1052,8 +1086,7 @@ sctp_send_init (sctp_connection_t * sctp_conn)
   sctp_prepare_init_chunk (sctp_conn, b);
 
   sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup_now (vm, b, bi,
-				 sctp_conn->sub_conn[idx].c_is_ip4);
+  sctp_enqueue_to_ip_lookup (vm, b, bi, sctp_conn->sub_conn[idx].c_is_ip4);
 
   /* Measure RTT with this */
   sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
@@ -1124,6 +1157,21 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
     sctp_get_connection_from_transport (trans_conn);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (DATA);
+
+  if (sctp_conn->sub_conn[idx].unacknowledged_hb >
+      SCTP_ASSOCIATION_MAX_RETRANS)
+    {
+      // The remote-peer is considered to be unreachable hence shutting down
+
+      /* Start cleanup. App wasn't notified yet so use delete notify as
+       * opposed to delete to cleanup session layer state. */
+      stream_session_delete_notify (&sctp_conn->sub_conn
+				    [MAIN_SCTP_SUB_CONN_IDX].connection);
+
+      sctp_connection_timers_reset (sctp_conn);
+
+      sctp_connection_cleanup (sctp_conn);
+    }
 
   sctp_push_hdr_i (sctp_conn, idx, b, SCTP_STATE_ESTABLISHED);
 
