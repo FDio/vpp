@@ -680,8 +680,7 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
   if (PREDICT_TRUE (ip6_addr != NULL))
     {
       sctp_ipv6_addr_param_t *ipv6_addr =
-	(sctp_ipv6_addr_param_t *) init_ack_chunk +
-	sizeof (sctp_init_chunk_t) + pointer_offset;
+	(sctp_ipv6_addr_param_t *) init_ack_chunk + pointer_offset;
 
       ipv6_addr->param_hdr.type =
 	clib_host_to_net_u16 (SCTP_IPV6_ADDRESS_TYPE);
