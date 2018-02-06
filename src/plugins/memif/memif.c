@@ -586,12 +586,15 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
   memif_disconnect (mif, err);
   clib_error_free (err);
 
-  /* remove the interface */
-  if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-    vnet_delete_hw_interface (vnm, mif->hw_if_index);
-  else
-    ethernet_delete_interface (vnm, mif->hw_if_index);
-  mif->hw_if_index = ~0;
+  if (mif->hw_if_index != ~0)
+    {
+      /* remove the interface */
+      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+	vnet_delete_hw_interface (vnm, mif->hw_if_index);
+      else
+	ethernet_delete_interface (vnm, mif->hw_if_index);
+      mif->hw_if_index = ~0;
+    }
 
   /* free interface data structures */
   clib_spinlock_free (&mif->lockp);
