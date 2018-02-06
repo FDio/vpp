@@ -97,10 +97,11 @@
  */
 #define VHOST_USER_TX_COPY_THRESHOLD (VHOST_USER_COPY_ARRAY_N - 40)
 
-#define UNIX_GET_FD(unixfd_idx) \
-    (unixfd_idx != ~0) ? \
+#define UNIX_GET_FD(unixfd_idx) ({ \
+    typeof(unixfd_idx) __unixfd_idx = (unixfd_idx); \
+    (__unixfd_idx != ~0) ? \
 	pool_elt_at_index (file_main.file_pool, \
-			   unixfd_idx)->file_descriptor : -1;
+			   __unixfd_idx)->file_descriptor : -1; })
 
 #define foreach_virtio_trace_flags \
   _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining") \
@@ -1213,7 +1214,15 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
   if (client_fd < 0)
     return clib_error_return_unix (0, "accept");
 
-  DBG_SOCK ("New client socket for vhost interface %d", vui->sw_if_index);
+  if (vui->clib_file_index != ~0)
+    {
+      DBG_SOCK ("Close client socket for vhost interface %d, fd %d",
+		vui->sw_if_index, UNIX_GET_FD (vui->clib_file_index));
+      clib_file_del (&file_main, file_main.file_pool + vui->clib_file_index);
+    }
+
+  DBG_SOCK ("New client socket for vhost interface %d, fd %d",
+	    vui->sw_if_index, client_fd);
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
   template.file_descriptor = client_fd;
