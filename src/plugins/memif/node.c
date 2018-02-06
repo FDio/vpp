@@ -140,6 +140,9 @@ memif_copy_buffer_from_rx_ring (vlib_main_t * vm, memif_if_t * mif,
 	  prev_bi = *bi;
 	  *bi = nm->rx_buffers[thread_index][last_buf];
 	  b = vlib_get_buffer (vm, *bi);
+	  /* Clear the error first to ensure following node forget setting it */
+	  /* It will cause null-node error counter increasement instead of potential crash */
+	  b->error = 0x0;
 	  _vec_len (nm->rx_buffers[thread_index]) = last_buf;
 	  (*n_free_bufs)--;
 	  if (PREDICT_FALSE (*n_free_bufs == 0))
@@ -266,6 +269,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   head = ring->head;
+  mq->last_head = ring->tail;
   if (head == mq->last_head)
     return 0;
 
@@ -309,6 +313,10 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						     &first_bi1, &bi1,
 						     &num_slots);
 
+	  if (PREDICT_FALSE(!first_bi0 || !first_bi1))
+	    {
+          goto _invalid_pkt01;
+	    }
 	  /* enqueue buffer */
 	  to_next[0] = first_bi0;
 	  to_next[1] = first_bi1;
@@ -376,6 +384,66 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* next packet */
 	  n_rx_packets += 2;
 	  n_rx_bytes += b0_total + b1_total;
+
+	  continue;
+	  _invalid_pkt01:
+	  if (!first_bi0 && !first_bi1)
+	    {
+	      continue;
+	    }
+	  if (first_bi1)
+	    {
+	      first_bi0 = first_bi1;
+	      first_b0 = first_b1;
+	      bi0 = bi1;
+	      b0_total = b1_total;
+	    }
+
+	  if (mode == MEMIF_INTERFACE_MODE_IP)
+	    {
+	      next0 = memif_next_from_ip_hdr (node, first_b0);
+	    }
+	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
+	    {
+	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
+	        next0 = mif->per_interface_next_index;
+	      else
+	        /* redirect if feature path
+	         * enabled */
+	        vnet_feature_start_device_input_x1 (mif->sw_if_index, &next0,
+                                                    first_b0);
+	    }
+
+	  /* trace */
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+
+	  if (PREDICT_FALSE (n_trace > 0))
+	    {
+	      if (PREDICT_TRUE (first_b0 != 0))
+	        {
+	          memif_input_trace_t *tr;
+	          vlib_trace_buffer (vm, node, next0, first_b0,
+	          /* follow_chain */0);
+	          vlib_set_trace_count (vm, node, --n_trace);
+	          tr = vlib_add_trace (vm, node, first_b0, sizeof(*tr));
+	          tr->next_index = next0;
+	          tr->hw_if_index = mif->hw_if_index;
+	          tr->ring = qid;
+	        }
+	    }
+
+	  /* enqueue buffer */
+	  to_next[0] = first_bi0;
+	  to_next += 1;
+	  n_left_to_next--;
+
+	  /* enqueue */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, first_bi0, next0);
+
+	  /* next packet */
+	  n_rx_packets++;
+	  n_rx_bytes += b0_total;
 	}
       while (num_slots && n_left_to_next)
 	{
@@ -387,6 +455,10 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						     &n_free_bufs, &first_b0,
 						     &first_bi0, &bi0,
 						     &num_slots);
+	  if (PREDICT_FALSE(!first_bi0))
+	    {
+	      goto _invalid_pkt0;
+	    }
 
 	  if (mode == MEMIF_INTERFACE_MODE_IP)
 	    {
@@ -433,11 +505,17 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* next packet */
 	  n_rx_packets++;
 	  n_rx_bytes += b0_total;
+	  continue;
+	  _invalid_pkt0:
+	  ;
 	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (PREDICT_TRUE(n_rx_packets !=0))
+        {
+          vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+        }
     }
   CLIB_MEMORY_STORE_BARRIER ();
-  ring->tail = head;
+  ring->tail = mq->last_head;
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
