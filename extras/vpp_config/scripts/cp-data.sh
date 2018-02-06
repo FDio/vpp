@@ -64,11 +64,16 @@ sudo mkdir $ROOTDIR/vpp/vpp-config
 sudo mkdir $ROOTDIR/vpp/vpp-config/dryrun
 sudo mkdir $ROOTDIR/vpp/vpp-config/scripts
 sudo mkdir $ROOTDIR/vpp/vpp-config/configs
+sudo mkdir $ROOTDIR/vpp/vpp-config/images
 sudo mkdir $ROOTDIR/vpp/vpp-config/dryrun/default
 sudo mkdir $ROOTDIR/vpp/vpp-config/dryrun/sysctl.d
 sudo mkdir $ROOTDIR/vpp/vpp-config/dryrun/vpp
+sudo cp scripts/dpdk-devbind.py $ROOTDIR/vpp/vpp-config/scripts/.
 sudo cp data/auto-config.yaml $ROOTDIR/vpp/vpp-config/configs/.
+sudo cp data/cloud-config.iso $ROOTDIR/vpp/vpp-config/configs/.
+sudo cp data/iperf-centos.xml.template $ROOTDIR/vpp/vpp-config/configs/.
+sudo cp data/iperf-ubuntu.xml.template $ROOTDIR/vpp/vpp-config/configs/.
+sudo cp data/xenial-mod.img $ROOTDIR/vpp/vpp-config/images/.
+sudo cp data/80-vpp.conf.template $ROOTDIR/vpp/vpp-config/dryrun/sysctl.d/.
 sudo cp data/grub.template $ROOTDIR/vpp/vpp-config/dryrun/default/.
 sudo cp data/startup.conf.template $ROOTDIR/vpp/vpp-config/dryrun/vpp/.
-sudo cp data/80-vpp.conf.template $ROOTDIR/vpp/vpp-config/dryrun/sysctl.d/.
-sudo cp scripts/dpdk-devbind.py $ROOTDIR/vpp/vpp-config/scripts/.

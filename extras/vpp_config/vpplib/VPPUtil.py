@@ -753,8 +753,10 @@ class VPPUtil(object):
 
         :param node: VPP node.
         :type node: dict
+        :returns: A list of interfaces
         """
 
+        ifaces = []
         cmd = 'vppctl show bridge'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
@@ -766,7 +768,7 @@ class VPPUtil(object):
         for line in lines:
             if line == 'no bridge-domains in use':
                 print line
-                return
+                return ifaces
             if len(line) == 0:
                 continue
 
@@ -781,4 +783,13 @@ class VPPUtil(object):
                 raise RuntimeError('{} failed on node {} {} {}'.
                                    format(cmd, node['host'],
                                           stdout, stderr))
-            print stdout
+
+        lines = stdout.split('\r\n')
+        for line in lines:
+            iface = re.findall(r'[a-zA-z]+\d+/\d+/\d+', line)
+            if len(iface):
+                ifcidx ={'name': iface[0], 'index': line.split()[1] }
+                ifaces.append(ifcidx)
+
+        print stdout
+        return ifaces
