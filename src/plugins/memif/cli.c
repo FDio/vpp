@@ -361,7 +361,7 @@ format_memif_queue (u8 * s, va_list * args)
 
   s = format (s, "%U%s ring %u:\n",
 	      format_white_space, indent,
-	      (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ?
+	      (mq->type == MEMIF_RING_S2M) ?
 	      "slave-to-master" : "master-to-slave", i);
   s = format (s, "%Uregion %u offset %u ring-size %u int-fd %d\n",
 	      format_white_space, indent + 4,
