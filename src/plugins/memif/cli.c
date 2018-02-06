@@ -354,14 +354,13 @@ format_memif_if_mode (u8 * s, va_list * args)
 static u8 *
 format_memif_queue (u8 * s, va_list * args)
 {
-  memif_if_t *mif = va_arg (*args, memif_if_t *);
   memif_queue_t *mq = va_arg (*args, memif_queue_t *);
   uword i = va_arg (*args, uword);
   u32 indent = format_get_indent (s);
 
   s = format (s, "%U%s ring %u:\n",
 	      format_white_space, indent,
-	      (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ?
+	      (mq->type == MEMIF_RING_S2M) ?
 	      "slave-to-master" : "master-to-slave", i);
   s = format (s, "%Uregion %u offset %u ring-size %u int-fd %d\n",
 	      format_white_space, indent + 4,
@@ -514,14 +513,14 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vec_foreach_index (i, mif->tx_queues)
       {
 	mq = vec_elt_at_index (mif->tx_queues, i);
-	vlib_cli_output (vm, "  %U", format_memif_queue, mif, mq, i);
+	vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	if (show_descr)
 	  vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
       }
       vec_foreach_index (i, mif->rx_queues)
       {
 	mq = vec_elt_at_index (mif->rx_queues, i);
-	vlib_cli_output (vm, "  %U", format_memif_queue, mif, mq, i);
+	vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	if (show_descr)
 	  vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
       }
