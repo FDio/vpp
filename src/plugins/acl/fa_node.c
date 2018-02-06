@@ -24,6 +24,7 @@
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
+#include <vnet/ip/icmp46_packet.h>
 
 #include "fa_node.h"
 #include "hash_lookup.h"
@@ -38,6 +39,37 @@ typedef struct
   u32 trace_bitmap;
   u8 action;
 } acl_fa_trace_t;
+
+/* ICMPv4 invert type for stateful ACL */
+static const u8 icmp4_invmap[] = {
+  [ICMP4_echo_reply] = ICMP4_echo_request + 1,
+  [ICMP4_timestamp_reply] = ICMP4_timestamp_request + 1,
+  [ICMP4_information_reply] = ICMP4_information_request + 1,
+  [ICMP4_address_mask_reply] = ICMP4_address_mask_request + 1
+};
+
+/* Supported ICMPv4 messages for session creation */
+static const u8 icmp4_valid_new[] = {
+  [ICMP4_echo_request] = 1,
+  [ICMP4_timestamp_request] = 1,
+  [ICMP4_information_request] = 1,
+  [ICMP4_address_mask_request] = 1
+};
+
+/* ICMPv6 invert type for stateful ACL */
+static const u8 icmp6_invmap[] = {
+  [ICMP6_echo_reply - 128]   = ICMP6_echo_request + 1,
+  [ICMP6_node_information_response - 128] = ICMP6_node_information_request + 1
+};
+
+/* Supported ICMPv6 messages for session creation */
+static const u8 icmp6_valid_new[] = {
+  [ICMP6_echo_request - 128] = 1,
+  [ICMP6_node_information_request - 128] = 1
+};
+
+/* IP4 and IP6 protocol numbers of ICMP */
+static u8 icmp_protos[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
 
 static u8 *
 format_fa_5tuple (u8 * s, va_list * args)
@@ -365,9 +397,6 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   u16 ports[2];
   u16 proto;
 
-  /* IP4 and IP6 protocol numbers of ICMP */
-  static u8 icmp_protos[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
-
   if (is_l2_path)
     {
       l3_offset = ethernet_buffer_header_size(b0);
@@ -529,22 +558,6 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
 }
 
-
-/* Session keys match the packets received, and mirror the packets sent */
-static void
-acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
-			     fa_5tuple_t * p5tuple_sess)
-{
-  int src_index = is_input ? 0 : 1;
-  int dst_index = is_input ? 1 : 0;
-  p5tuple_sess->addr[src_index] = p5tuple_pkt->addr[0];
-  p5tuple_sess->addr[dst_index] = p5tuple_pkt->addr[1];
-  p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
-  p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
-  p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
-}
-
-
 static int
 acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
 {
@@ -563,6 +576,70 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 {
   int it_has = clib_bitmap_get (am->fa_out_acl_on_sw_if_index, sw_if_index0);
   return it_has;
+}
+
+/* Session keys match the packets received, and mirror the packets sent */
+static u32
+acl_make_5tuple_session_key (acl_main_t * am, int is_input, int is_ip6,
+                             u32 sw_if_index, fa_5tuple_t * p5tuple_pkt,
+                             fa_5tuple_t * p5tuple_sess)
+{
+  int src_index = is_input ? 0 : 1;
+  int dst_index = is_input ? 1 : 0;
+  u32 valid_new_sess = 1;
+  p5tuple_sess->addr[src_index] = p5tuple_pkt->addr[0];
+  p5tuple_sess->addr[dst_index] = p5tuple_pkt->addr[1];
+  p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
+
+  if (PREDICT_TRUE(p5tuple_pkt->l4.proto != icmp_protos[is_ip6]))
+    {
+      p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
+      p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+    }
+  else
+    {
+      static const u8 * icmp_invmap[] = { icmp4_invmap, icmp6_invmap };
+      static const u8 * icmp_valid_new[] = { icmp4_valid_new, icmp6_valid_new };
+      static const u8 icmp_invmap_size[] = { sizeof(icmp4_invmap),
+                                             sizeof(icmp6_invmap) };
+      static const u8 icmp_valid_new_size[] = { sizeof(icmp4_valid_new),
+                                                sizeof(icmp6_valid_new) };
+      int type = is_ip6 ? p5tuple_pkt->l4.port[0]-128: p5tuple_pkt->l4.port[0];
+
+      p5tuple_sess->l4.port[0] = p5tuple_pkt->l4.port[0];
+      p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[1];
+
+      /*
+       * Invert ICMP type for valid icmp_invmap messages:
+       *  1) input node with outbound ACL interface
+       *  2) output node with inbound ACL interface
+       *
+       */
+      if ((is_input && acl_fa_ifc_has_out_acl(am, sw_if_index)) ||
+          (!is_input && acl_fa_ifc_has_in_acl(am, sw_if_index)))
+        {
+          if (type >= 0 &&
+              type <= icmp_invmap_size[is_ip6] &&
+              icmp_invmap[is_ip6][type])
+            {
+              p5tuple_sess->l4.port[0] = icmp_invmap[is_ip6][type] - 1;
+            }
+        }
+
+      /*
+       * ONLY ICMP messages defined in icmp4_valid_new/icmp6_valid_new table
+       * are allowed to create stateful ACL.
+       * The other messages will be forwarded without creating a reflexive ACL.
+       */
+      if (type < 0 ||
+          type > icmp_valid_new_size[is_ip6] ||
+          !icmp_valid_new[is_ip6][type])
+        {
+          valid_new_sess = 0;
+        }
+    }
+
+    return valid_new_sess;
 }
 
 
@@ -1016,6 +1093,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u32 match_acl_in_index = ~0;
 	  u32 match_rule_index = ~0;
 	  u8 error0 = 0;
+	  u32 valid_new_sess;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -1040,7 +1118,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	  valid_new_sess = acl_make_5tuple_session_key (am, is_input, is_ip6, sw_if_index0,  &fa_5tuple, &kv_sess);
 	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
           fa_5tuple.pkt.is_ip6 = is_ip6;
           fa_5tuple.pkt.is_input = is_input;
@@ -1124,11 +1202,21 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
-                      fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
-					                       &kv_sess);
-                      acl_fa_track_session (am, is_input, sw_if_index0, now,
-                                            sess, &fa_5tuple);
-		      pkts_new_session += 1;
+                      if (PREDICT_TRUE (valid_new_sess)) {
+                        fa_session_t *sess = acl_fa_add_session (am, is_input,
+                                                                 sw_if_index0,
+                                                                 now, &kv_sess);
+                        acl_fa_track_session (am, is_input, sw_if_index0, now,
+                                              sess, &fa_5tuple);
+                        pkts_new_session += 1;
+                      } else {
+                        /*
+                         *  ICMP packets with non-icmp_valid_new type will be
+                         *  forwared without being dropped.
+                         */
+                        action = 1;
+                        pkts_acl_permit += 1;
+                      }
 		    }
 		  else
 		    {
