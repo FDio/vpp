@@ -341,6 +341,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     mq->region = 0;
     mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
     mq->last_head = 0;
+    mq->type = MEMIF_RING_S2M;
   }
 
   ASSERT (mif->rx_queues == 0);
@@ -357,6 +358,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     mq->region = 0;
     mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
     mq->last_head = 0;
+    mq->type = MEMIF_RING_M2S;
   }
 
   return 0;
@@ -592,12 +594,15 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
   memif_disconnect (mif, err);
   clib_error_free (err);
 
-  /* remove the interface */
-  if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-    vnet_delete_hw_interface (vnm, mif->hw_if_index);
-  else
-    ethernet_delete_interface (vnm, mif->hw_if_index);
-  mif->hw_if_index = ~0;
+  if (mif->hw_if_index != ~0)
+    {
+      /* remove the interface */
+      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+	vnet_delete_hw_interface (vnm, mif->hw_if_index);
+      else
+	ethernet_delete_interface (vnm, mif->hw_if_index);
+      mif->hw_if_index = ~0;
+    }
 
   /* free interface data structures */
   clib_spinlock_free (&mif->lockp);
