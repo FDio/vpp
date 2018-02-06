@@ -41,6 +41,27 @@ typedef enum _sctp_timers
 
 #define SCTP_TIMER_HANDLE_INVALID ((u32) ~0)
 
+always_inline char *
+sctp_timer_to_string (u8 timer_id)
+{
+  switch (timer_id)
+    {
+    case SCTP_TIMER_T1_INIT:
+      return "SCTP_TIMER_T1_INIT";
+    case SCTP_TIMER_T1_COOKIE:
+      return "SCTP_TIMER_T1_COOKIE";
+    case SCTP_TIMER_T2_SHUTDOWN:
+      return "SCTP_TIMER_T2_SHUTDOWN";
+    case SCTP_TIMER_T3_RXTX:
+      return "SCTP_TIMER_T3_RXTX";
+    case SCTP_TIMER_T4_HEARTBEAT:
+      return "SCTP_TIMER_T4_HEARTBEAT";
+    case SCTP_TIMER_T5_SHUTDOWN_GUARD:
+      return "SCTP_TIMER_T5_SHUTDOWN_GUARD";
+    }
+  return NULL;
+}
+
 typedef enum _sctp_error
 {
 #define sctp_error(n,s) SCTP_ERROR_##n,
@@ -103,6 +124,9 @@ typedef struct _sctp_sub_connection
 
   u32 last_time; /**< The time to which this destination was last sent a packet to.
   	  	  	  	  This can be used to determine if a HEARTBEAT is needed. */
+
+  u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
+  	  	  	  	  If more than Max.Retransmit then connetion is considered unreachable. */
 
 } sctp_sub_connection_t;
 
@@ -216,15 +240,16 @@ void sctp_sub_connection_add_ip4 (u8 thread_index,
 				  sctp_ipv4_addr_param_t * ipv4_addr);
 void sctp_sub_connection_add_ip6 (u8 thread_index,
 				  sctp_ipv6_addr_param_t * ipv6_addr);
-void sctp_connection_close (sctp_connection_t * tc);
-void sctp_connection_cleanup (sctp_connection_t * tc);
-void sctp_connection_del (sctp_connection_t * tc);
+void sctp_connection_close (sctp_connection_t * sctp_conn);
+void sctp_connection_cleanup (sctp_connection_t * sctp_conn);
+void sctp_connection_del (sctp_connection_t * sctp_conn);
 
 u32 sctp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
-void sctp_send_init (sctp_connection_t * tc);
-void sctp_send_shutdown (sctp_connection_t * tc);
-void sctp_send_shutdown_ack (sctp_connection_t * tc);
-void sctp_send_shutdown_complete (sctp_connection_t * tc);
+void sctp_send_init (sctp_connection_t * sctp_conn);
+void sctp_send_shutdown (sctp_connection_t * sctp_conn);
+void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn);
+void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn);
+void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
 				 u8 is_ip4);
 void sctp_flush_frames_to_output (u8 thread_index);
@@ -253,6 +278,8 @@ void sctp_prepare_cookie_echo_chunk (sctp_connection_t * tc,
 void sctp_prepare_cookie_ack_chunk (sctp_connection_t * tc,
 				    vlib_buffer_t * b);
 void sctp_prepare_sack_chunk (sctp_connection_t * tc, vlib_buffer_t * b);
+void sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn,
+				       vlib_buffer_t * b);
 
 u16 sctp_check_outstanding_data_chunks (sctp_connection_t * tc);
 
