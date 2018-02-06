@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "31d6787d_07b2c604",
+        "filename": "src/vnet/sctp/sctp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1463,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-06T15:55:59Z",
+      "side": 1,
+      "message": "Since this is pe sub connection, and each connection is attached to a thread, does it need to be atomic?",
+      "range": {
+        "startLine": 1463,
+        "startChar": 2,
+        "endLine": 1463,
+        "endChar": 21
+      },
+      "revId": "4220573bf14f5d6dd21e7d6ecc336a79880909ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e8970071_e3856b2a",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1011,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-06T15:55:59Z",
+      "side": 1,
+      "message": "Same question",
+      "range": {
+        "startLine": 1011,
+        "startChar": 2,
+        "endLine": 1011,
+        "endChar": 21
+      },
+      "revId": "4220573bf14f5d6dd21e7d6ecc336a79880909ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
