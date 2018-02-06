@@ -67,6 +67,8 @@ test-driver
 .project
 .cproject
 .vscode/
+CMakeLists.txt
+cmake-build*/
 
 # cscope and ctags
 /cscope.*
