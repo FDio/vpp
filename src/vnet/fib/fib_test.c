@@ -355,7 +355,7 @@ fib_test_validate_rep_v (const replicate_t *rep,
 
 int
 fib_test_validate_lb_v (const load_balance_t *lb,
-			u16 n_buckets,
+			int n_buckets,
 			va_list *ap)
 {
     const dpo_id_t *dpo;
@@ -603,7 +603,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 
 int
 fib_test_validate_lb (const dpo_id_t *dpo,
-                     u16 n_buckets,
+                     int n_buckets,
                      ...)
 {
     const load_balance_t *lb;
