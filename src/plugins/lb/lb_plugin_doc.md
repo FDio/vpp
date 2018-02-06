@@ -29,6 +29,32 @@ Both VIPs or ASs can be IPv4 or IPv6, but for a given VIP, all ASs must be using
 the same encap. type (i.e. IPv4+GRE or IPv6+GRE or IPv4+L3DSR).
 Meaning that for a given VIP, all AS addresses must be of the same family.
 
+3). IPv4/IPv6 + NAT4/NAT6 encap types:
+This type provides kube-proxy data plane on user space,
+which is used to replace linux kernal's kube-proxy based on iptables.
+
+Currently, kube-proxy plugin supports three service types:
+a) Cluster IP plus Port: support any protocols, including TCP, UDP.
+b) Node IP plus Node Port: currently only support UDP.
+c) External Load Balancer.
+
+For Cluster IP plus Port case:
+kube-proxy is configured with a set of Virtual IPs (VIP, which can be
+prefixes), and for each VIP, with a set of AS addresses (ASs).
+
+For a specific session received for a given VIP (or VIP prefix), 
+first packet selects a AS according to internal load balancing algorithm, 
+then does DNAT operation and sent to chosen AS.
+At the same time, will create a session entry to store AS chosen result.
+Following packets for that session will look up session table first, 
+which ensures that a given session will always be routed to the same AS.
+
+For returned packet from AS, it will do SNAT operation and sent out.
+
+Please refer to below for details: 
+https://schd.ws/hosted_files/ossna2017/1e/VPP_K8S_GTPU_OSSNA.pdf
+
+
 ## Performances
 
 The load balancer has been tested up to 1 millions flows and still forwards more
@@ -46,8 +72,10 @@ The load balancer needs to be configured with some parameters:
 	        [buckets <n>] [timeout <s>]
 
 ip4-src-address: the source address used to send encap. packets using IPv4.
+                 (applicable in GRE4/GRE6/NAT4/NAT6 mode only)
 
 ip6-src-address: the source address used to send encap. packets using IPv6.
+                 (applicable in GRE4/GRE6/NAT4/NAT6 mode only)
 
 buckets:         the *per-thread* established-connexions-table number of buckets.
 
@@ -57,13 +85,15 @@ timeout:         the number of seconds a connection will remain in the
 
 ### Configure the VIPs
 
-    lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]
+    lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] \
+      [dscp <n>] [port <n> target_port <n> node_port <n>] [new_len <n>] [del]
 
 new_len is the size of the new-connection-table. It should be 1 or 2 orders of
 magnitude bigger than the number of ASs for the VIP in order to ensure a good
 load balancing.
 Encap l3dsr and dscp is used to map VIP to dscp bit and rewrite DSCP bit in packets.
 So the selected server could get VIP from DSCP bit in this packet and perform DSR.
+Encap nat4/nat6 and port/target_port/node_port is used to do kube-proxy data plane.
 
 Examples:
 
@@ -72,6 +102,7 @@ Examples:
     lb vip 80.0.0.0/8 encap gre6 new_len 16
     lb vip 90.0.0.0/8 encap gre4 new_len 1024
     lb vip 100.0.0.0/8 encap l3dsr dscp 2 new_len 32
+    lb vip 90.1.2.1/32 encap nat4 port 3306 target_port 3307 node_port 30964 new_len 1024
 
 ### Configure the ASs (for each VIP)
 
@@ -87,7 +118,13 @@ Examples:
     lb as 80.0.0.0/8 2001::2
     lb as 90.0.0.0/8 10.0.0.1
     
-    
+### Configure SNAT
+
+    lb set interface nat4 in <intfc> [del]
+
+Set SNAT feature in a specific interface.
+(applicable in NAT4/NAT6 mode only)
+
 
 ## Monitoring
 

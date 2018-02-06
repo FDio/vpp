@@ -59,10 +59,6 @@ if ENABLE_IXGE_PLUGIN
 include ixge.am
 endif
 
-if ENABLE_KUBEPROXY_PLUGIN
-include kubeproxy.am
-endif
-
 if ENABLE_LB_PLUGIN
 include lb.am
 endif

@@ -28,13 +28,16 @@ lb_vip_command_fn (vlib_main_t * vm,
   int ret;
   u32 encap = 0;
   u32 dscp = ~0;
+  u32 port = 0;
+  u32 target_port = 0;
+  u32 node_port = 0;
   lb_vip_type_t type = 0;
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY)) {
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY, &plen)) {
     error = clib_error_return (0, "invalid vip prefix: '%U'",
                                format_unformat_error, line_input);
     goto done;
@@ -52,7 +55,17 @@ lb_vip_command_fn (vlib_main_t * vm,
       encap = LB_ENCAP_TYPE_GRE6;
     else if (unformat(line_input, "encap l3dsr"))
       encap = LB_ENCAP_TYPE_L3DSR;
+    else if (unformat(line_input, "encap nat4"))
+      encap = LB_ENCAP_TYPE_NAT4;
+    else if (unformat(line_input, "encap nat6"))
+      encap = LB_ENCAP_TYPE_NAT6;
     else if (unformat(line_input, "dscp %d", &dscp))
+      ;
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else if (unformat(line_input, "target_port %d", &target_port))
+      ;
+    else if (unformat(line_input, "node_port %d", &node_port))
       ;
     else {
       error = clib_error_return (0, "parse error: '%U'",
@@ -82,18 +95,27 @@ lb_vip_command_fn (vlib_main_t * vm,
 	type = LB_VIP_TYPE_IP4_GRE6;
       else if (encap == LB_ENCAP_TYPE_L3DSR)
 	type = LB_VIP_TYPE_IP4_L3DSR;
+      else if (encap == LB_ENCAP_TYPE_NAT4)
+	type = LB_VIP_TYPE_IP4_NAT4;
+      else if (encap == LB_ENCAP_TYPE_NAT6)
+	type = LB_VIP_TYPE_IP4_NAT6;
   } else {
       if (encap == LB_ENCAP_TYPE_GRE4)
 	type = LB_VIP_TYPE_IP6_GRE4;
       else if (encap == LB_ENCAP_TYPE_GRE6)
 	type = LB_VIP_TYPE_IP6_GRE6;
+      else if (encap == LB_ENCAP_TYPE_NAT4)
+	type = LB_VIP_TYPE_IP6_NAT4;
+      else if (encap == LB_ENCAP_TYPE_NAT6)
+	type = LB_VIP_TYPE_IP6_NAT6;
   }
 
   lb_garbage_collection();
 
   u32 index;
   if (!del) {
-    if ((ret = lb_vip_add(&prefix, plen, type, (u8)(dscp & 0x3F), new_len, &index))) {
+    if ((ret = lb_vip_add(&prefix, plen, type, new_len, &index, (u8)(dscp & 0x3F),
+			  (u16)port, (u16)target_port, (u16)node_port))) {
       error = clib_error_return (0, "lb_vip_add error %d", ret);
       goto done;
     } else {
@@ -118,7 +140,8 @@ done:
 VLIB_CLI_COMMAND (lb_vip_command, static) =
 {
   .path = "lb vip",
-  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]",
+  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] "
+      "[dscp <n>] [port <n> target_port <n> node_port <n>] [new_len <n>] [del]",
   .function = lb_vip_command_fn,
 };
 
@@ -298,6 +321,71 @@ VLIB_CLI_COMMAND (lb_show_vips_command, static) =
   .path = "show lb vips",
   .short_help = "show lb vips [verbose]",
   .function = lb_show_vips_command_fn,
+};
+
+static clib_error_t *
+lb_set_interface_nat4_command_fn (vlib_main_t * vm,
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t * vnm = vnet_get_main();
+  clib_error_t * error = 0;
+  u32 sw_if_index;
+  u32 * inside_sw_if_indices = 0;
+  int is_del = 0;
+  int i;
+
+  sw_if_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "in %U", unformat_vnet_sw_interface,
+                    vnm, &sw_if_index))
+        vec_add1 (inside_sw_if_indices, sw_if_index);
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (vec_len (inside_sw_if_indices))
+    {
+      for (i = 0; i < vec_len(inside_sw_if_indices); i++)
+        {
+          sw_if_index = inside_sw_if_indices[i];
+
+	  if (lb_nat4_interface_add_del (sw_if_index, is_del))
+	    {
+	      error = clib_error_return (0, "%s %U failed",
+					 is_del ? "del" : "add",
+					 format_vnet_sw_interface_name, vnm,
+					 vnet_get_sw_interface (vnm,
+								sw_if_index));
+	      goto done;
+	    }
+        }
+    }
+
+done:
+  unformat_free (line_input);
+  vec_free (inside_sw_if_indices);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (lb_set_interface_nat4_command, static) = {
+  .path = "kube-proxy set interface nat4",
+  .function = lb_set_interface_nat4_command_fn,
+  .short_help = "kube-proxy set interface nat4 in <intfc> [del]",
 };
 
 static clib_error_t *
