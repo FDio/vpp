@@ -20,6 +20,17 @@ then
 	exit 1
 fi
 
+if test "$DOCKER_TEST" = "True"
+then
+	echo "=============================================================================="
+	echo "DOCKER_TEST is set to '$DOCKER_TEST'."
+	echo "Skipping verification of some system parameters."
+	echo "Make sure these are set properly, otherwise tests might fail."
+	echo "Required values/criteria are in '`readlink -e $file`'."
+	echo "=============================================================================="
+	exit 0
+fi
+
 cat $file | grep -v -e '^#.*$' | grep -v -e '^ *$' | while read line
 do
 	value_file=`echo $line | awk '{print $1}'`
