@@ -12,8 +12,8 @@ api-trace {{
 
 cpu {{
 {cpu}
-  scheduler-policy fifo
-  scheduler-priority 50
+  # scheduler-policy fifo
+  # scheduler-priority 50
 
         ## In the VPP there is one main thread and optionally the user can create worker(s)
 	## The main thread and worker thread(s) can be pinned to CPU core(s) manually or automatically

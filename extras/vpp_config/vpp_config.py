@@ -464,14 +464,16 @@ def autoconfig_ipv4_setup():
     acfg.ipv4_interface_setup()
 
 
-def autoconfig_create_vm():
+def autoconfig_create_iperf_vm():
     """
     Setup IPv4 interfaces
 
     """
 
     acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
-    acfg.create_and_bridge_virtual_interfaces()
+    acfg.destroy_iperf_vm('iperf-server')
+    acfg.create_and_bridge_iperf_virtual_interface()
+    acfg.create_iperf_vm('iperf-server')
 
 
 def autoconfig_not_implemented():
@@ -491,11 +493,8 @@ def autoconfig_basic_test_menu():
 
     basic_menu_text = '\nWhat would you like to do?\n\n\
 1) List/Create Simple IPv4 Setup\n\
+2) Create an iperf VM and Connect to VPP an interface\n\
 9 or q) Back to main menu.'
-
-    # 1) List/Create Simple IPv4 Setup\n\
-    # 2) List/Create Create VM and Connect to VPP interfaces\n\
-    # 9 or q) Back to main menu.'
 
     print "{}".format(basic_menu_text)
 
@@ -534,8 +533,8 @@ def autoconfig_basic_test():
         answer = autoconfig_basic_test_menu()
         if answer == '1':
             autoconfig_ipv4_setup()
-        # elif answer == '2':
-        #    autoconfig_create_vm()
+        elif answer == '2':
+            autoconfig_create_iperf_vm()
         elif answer == '9' or answer == 'q':
             return
         else:
@@ -664,6 +663,7 @@ def autoconfig_setup(ask_questions=True):
             raise RuntimeError('{} failed on node {} {}'. format(cmd, node['host'], stderr))
 
 
+# noinspection PyUnresolvedReferences
 def execute_with_args(args):
     """
     Execute the configuration utility with agruments.
