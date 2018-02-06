@@ -17,6 +17,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/api_errno.h>
+#include <vnet/udp/udp.h>
 
 //GC runs at most once every so many seconds
 #define LB_GARBAGE_RUN 60
@@ -36,22 +37,34 @@ const static char * const lb_dpo_gre4_ip4[] = { "lb4-gre4" , NULL };
 const static char * const lb_dpo_gre4_ip6[] = { "lb6-gre4" , NULL };
 const static char* const * const lb_dpo_gre4_nodes[DPO_PROTO_NUM] =
     {
-	[DPO_PROTO_IP4]  = lb_dpo_gre4_ip4,
-	[DPO_PROTO_IP6]  = lb_dpo_gre4_ip6,
+        [DPO_PROTO_IP4]  = lb_dpo_gre4_ip4,
+        [DPO_PROTO_IP6]  = lb_dpo_gre4_ip6,
     };
 
 const static char * const lb_dpo_gre6_ip4[] = { "lb4-gre6" , NULL };
 const static char * const lb_dpo_gre6_ip6[] = { "lb6-gre6" , NULL };
 const static char* const * const lb_dpo_gre6_nodes[DPO_PROTO_NUM] =
     {
-	[DPO_PROTO_IP4]  = lb_dpo_gre6_ip4,
-	[DPO_PROTO_IP6]  = lb_dpo_gre6_ip6,
+        [DPO_PROTO_IP4]  = lb_dpo_gre6_ip4,
+        [DPO_PROTO_IP6]  = lb_dpo_gre6_ip6,
     };
 
 const static char * const lb_dpo_l3dsr_ip4[] = { "lb4-l3dsr" , NULL };
 const static char* const * const lb_dpo_l3dsr_nodes[DPO_PROTO_NUM] =
     {
-	[DPO_PROTO_IP4]  = lb_dpo_l3dsr_ip4,
+        [DPO_PROTO_IP4]  = lb_dpo_l3dsr_ip4,
+    };
+
+const static char * const lb_dpo_nat4_ip4[] = { "lb4-nat4" , NULL };
+const static char* const * const lb_dpo_nat4_nodes[DPO_PROTO_NUM] =
+    {
+        [DPO_PROTO_IP4]  = lb_dpo_nat4_ip4,
+    };
+
+const static char * const lb_dpo_nat6_ip6[] = { "lb6-nat6" , NULL };
+const static char* const * const lb_dpo_nat6_nodes[DPO_PROTO_NUM] =
+    {
+        [DPO_PROTO_IP6]  = lb_dpo_nat6_ip6,
     };
 
 u32 lb_hash_time_now(vlib_main_t * vm)
@@ -88,6 +101,8 @@ static char *lb_vip_type_strings[] = {
     [LB_VIP_TYPE_IP4_GRE6] = "ip4-gre6",
     [LB_VIP_TYPE_IP4_GRE4] = "ip4-gre4",
     [LB_VIP_TYPE_IP4_L3DSR] = "ip4-l3dsr",
+    [LB_VIP_TYPE_IP4_NAT4] = "ip4-nat4",
+    [LB_VIP_TYPE_IP6_NAT6] = "ip6-nat6",
 };
 
 u8 *format_lb_vip_type (u8 * s, va_list * args)
@@ -115,20 +130,39 @@ uword unformat_lb_vip_type (unformat_input_t * input, va_list * args)
 u8 *format_lb_vip (u8 * s, va_list * args)
 {
   lb_vip_t *vip = va_arg (*args, lb_vip_t *);
-  return format(s, "%U %U new_size:%u #as:%u%s",
+  s = format(s, "%U %U new_size:%u #as:%u%s",
              format_lb_vip_type, vip->type,
              format_ip46_prefix, &vip->prefix, vip->plen, IP46_TYPE_ANY,
              vip->new_flow_table_mask + 1,
              pool_elts(vip->as_indexes),
              (vip->flags & LB_VIP_FLAGS_USED)?"":" removed");
+
+  if (vip->type == LB_VIP_TYPE_IP4_L3DSR)
+    {
+      s = format(s, "  dscp:%u", vip->encap_args.dscp);
+    }
+  else if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
+          || (vip->type == LB_VIP_TYPE_IP6_NAT6))
+    {
+      if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+        s = format (s, "  type:clusterip port:%u target_port:%u",
+                    ntohs (vip->encap_args.port),
+                    ntohs (vip->encap_args.target_port));
+      else
+        s = format (s, "  type:nodeport node_port:%u target_port:%u",
+                    ntohs (vip->encap_args.node_port),
+                    ntohs (vip->encap_args.target_port));
+    }
+
+  return s;
 }
 
 u8 *format_lb_as (u8 * s, va_list * args)
 {
   lb_as_t *as = va_arg (*args, lb_as_t *);
   return format(s, "%U %s", format_ip46_address,
-		&as->address, IP46_TYPE_ANY,
-		(as->flags & LB_AS_FLAGS_USED)?"used":"removed");
+                &as->address, IP46_TYPE_ANY,
+                (as->flags & LB_AS_FLAGS_USED)?"used":"removed");
 }
 
 u8 *format_lb_vip_detailed (u8 * s, va_list * args)
@@ -151,7 +185,20 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
     {
       s = format(s, "%U  dscp:%u\n",
                     format_white_space, indent,
-		    vip->dscp);
+                    vip->encap_args.dscp);
+    }
+  else if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
+          || (vip->type == LB_VIP_TYPE_IP6_NAT6))
+    {
+      if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+        s = format (s, "%U  type:clusterip port:%u target_port:%u",
+                    format_white_space, indent, ntohs (vip->encap_args.port),
+                    ntohs (vip->encap_args.target_port));
+      else
+        s = format (s, "%U  type:nodeport node_port:%u target_port:%u",
+                    format_white_space, indent,
+                    ntohs (vip->encap_args.node_port),
+                    ntohs (vip->encap_args.target_port));
     }
 
   //Print counters
@@ -219,6 +266,11 @@ static int lb_pseudorand_compare(void *a, void *b)
 static void lb_vip_garbage_collection(lb_vip_t *vip)
 {
   lb_main_t *lbm = &lb_main;
+  lb_snat4_key_t m_key4;
+  clib_bihash_kv_8_8_t kv4, value4;
+  lb_snat6_key_t m_key6;
+  clib_bihash_kv_24_8_t kv6, value6;
+  lb_snat_mapping_t *m = 0;
   ASSERT (lbm->writer_lock[0]);
 
   u32 now = (u32) vlib_time_now(vlib_get_main());
@@ -231,18 +283,52 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
   pool_foreach(as_index, vip->as_indexes, {
       as = &lbm->ass[*as_index];
       if (!(as->flags & LB_AS_FLAGS_USED) && //Not used
-	  clib_u32_loop_gt(now, as->last_used + LB_CONCURRENCY_TIMEOUT) && //Not recently used
-	  (vlib_refcount_get(&lbm->as_refcount, as - lbm->ass) == 0))
-	{ //Not referenced
-	  fib_entry_child_remove(as->next_hop_fib_entry_index,
-				 as->next_hop_child_index);
-	  fib_table_entry_delete_index(as->next_hop_fib_entry_index,
-				       FIB_SOURCE_RR);
-	  as->next_hop_fib_entry_index = FIB_NODE_INDEX_INVALID;
+          clib_u32_loop_gt(now, as->last_used + LB_CONCURRENCY_TIMEOUT) && //Not recently used
+          (vlib_refcount_get(&lbm->as_refcount, as - lbm->ass) == 0))
+        { //Not referenced
 
-	  pool_put(vip->as_indexes, as_index);
-	  pool_put(lbm->ass, as);
-	}
+          if (lb_vip_is_nat4(vip)) {
+              m_key4.addr = as->address.ip4;
+              m_key4.port = vip->encap_args.target_port;
+              m_key4.protocol = 0;
+              m_key4.fib_index = 0;
+
+              kv4.key = m_key4.as_u64;
+              if(!clib_bihash_search_8_8(&lbm->mapping_by_as4, &kv4, &value4))
+                m = pool_elt_at_index (lbm->snat_mappings, value4.value);
+              ASSERT (m);
+
+              kv4.value = m - lbm->snat_mappings;
+              clib_bihash_add_del_8_8(&lbm->mapping_by_as4, &kv4, 0);
+             pool_put (lbm->snat_mappings, m);
+          } else if (lb_vip_is_nat6(vip)) {
+              m_key6.addr.as_u64[0] = as->address.ip6.as_u64[0];
+              m_key6.addr.as_u64[1] = as->address.ip6.as_u64[1];
+              m_key6.port = vip->encap_args.target_port;
+              m_key6.protocol = 0;
+              m_key6.fib_index = 0;
+
+              kv6.key[0] = m_key6.as_u64[0];
+              kv6.key[1] = m_key6.as_u64[1];
+              kv6.key[2] = m_key6.as_u64[2];
+
+              if (!clib_bihash_search_24_8 (&lbm->mapping_by_as6, &kv6, &value6))
+                m = pool_elt_at_index (lbm->snat_mappings, value6.value);
+              ASSERT (m);
+
+              kv6.value = m - lbm->snat_mappings;
+              clib_bihash_add_del_24_8(&lbm->mapping_by_as6, &kv6, 0);
+              pool_put (lbm->snat_mappings, m);
+          }
+          fib_entry_child_remove(as->next_hop_fib_entry_index,
+                                as->next_hop_child_index);
+          fib_table_entry_delete_index(as->next_hop_fib_entry_index,
+                                       FIB_SOURCE_RR);
+          as->next_hop_fib_entry_index = FIB_NODE_INDEX_INVALID;
+
+          pool_put(vip->as_indexes, as_index);
+          pool_put(lbm->ass, as);
+        }
   });
 }
 
@@ -453,6 +539,7 @@ int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
   u32 *to_be_updated = 0;
   u32 i;
   u32 *ip;
+  lb_snat_mapping_t *m;
 
   //Sanity check
   while (n--) {
@@ -512,26 +599,96 @@ next:
      */
     fib_prefix_t nh = {};
     if (lb_encap_is_ip4(vip)) {
-	nh.fp_addr.ip4 = as->address.ip4;
-	nh.fp_len = 32;
-	nh.fp_proto = FIB_PROTOCOL_IP4;
+        nh.fp_addr.ip4 = as->address.ip4;
+        nh.fp_len = 32;
+        nh.fp_proto = FIB_PROTOCOL_IP4;
     } else {
-	nh.fp_addr.ip6 = as->address.ip6;
-	nh.fp_len = 128;
-	nh.fp_proto = FIB_PROTOCOL_IP6;
+        nh.fp_addr.ip6 = as->address.ip6;
+        nh.fp_len = 128;
+        nh.fp_proto = FIB_PROTOCOL_IP6;
     }
 
     as->next_hop_fib_entry_index =
 	fib_table_entry_special_add(0,
-				    &nh,
-				    FIB_SOURCE_RR,
-				    FIB_ENTRY_FLAG_NONE);
+                                    &nh,
+                                    FIB_SOURCE_RR,
+                                    FIB_ENTRY_FLAG_NONE);
     as->next_hop_child_index =
 	fib_entry_child_add(as->next_hop_fib_entry_index,
-			    lbm->fib_node_type,
-			    as - lbm->ass);
+                            lbm->fib_node_type,
+                            as - lbm->ass);
 
     lb_as_stack(as);
+
+    if ( lb_vip_is_nat4(vip) || lb_vip_is_nat6(vip) )
+      {
+        /* Add SNAT static mapping */
+        pool_get (lbm->snat_mappings, m);
+        memset (m, 0, sizeof (*m));
+        if (lb_vip_is_nat4(vip)) {
+            lb_snat4_key_t m_key4;
+            clib_bihash_kv_8_8_t kv4;
+            m_key4.addr = as->address.ip4;
+            m_key4.port = vip->encap_args.target_port;
+            m_key4.protocol = 0;
+            m_key4.fib_index = 0;
+
+            if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+              {
+                m->src_ip.ip4 = vip->prefix.ip4;
+                m->src_port = vip->encap_args.port;
+              }
+            else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
+              {
+                m->src_ip.ip4 = lbm->ip4_src_address;
+                m->src_port = vip->encap_args.node_port;
+              }
+            m->src_ip_is_ipv6 = 0;
+            m->as_ip.ip4 = as->address.ip4;
+            m->as_ip_is_ipv6 = 0;;
+            m->target_port = vip->encap_args.target_port;
+            m->vrf_id = 0;
+            m->fib_index = 0;
+
+            kv4.key = m_key4.as_u64;
+            kv4.value = m - lbm->snat_mappings;
+            clib_bihash_add_del_8_8(&lbm->mapping_by_as4, &kv4, 1);
+        } else {
+            lb_snat6_key_t m_key6;
+            clib_bihash_kv_24_8_t kv6;
+            m_key6.addr.as_u64[0] = as->address.ip6.as_u64[0];
+            m_key6.addr.as_u64[1] = as->address.ip6.as_u64[1];
+            m_key6.port = vip->encap_args.target_port;
+            m_key6.protocol = 0;
+            m_key6.fib_index = 0;
+
+            if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+              {
+                m->src_ip.ip6.as_u64[0] = vip->prefix.ip6.as_u64[0];
+                m->src_ip.ip6.as_u64[1] = vip->prefix.ip6.as_u64[1];
+                m->src_port = vip->encap_args.port;
+              }
+            else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
+              {
+                m->src_ip.ip6.as_u64[0] = lbm->ip6_src_address.as_u64[0];
+                m->src_ip.ip6.as_u64[1] = lbm->ip6_src_address.as_u64[1];
+                m->src_port = vip->encap_args.node_port;
+              }
+            m->src_ip_is_ipv6 = 1;
+            m->as_ip.ip6.as_u64[0] = as->address.ip6.as_u64[0];
+            m->as_ip.ip6.as_u64[1] = as->address.ip6.as_u64[1];
+            m->as_ip_is_ipv6 = 1;
+            m->target_port = vip->encap_args.target_port;
+            m->vrf_id = 0;
+            m->fib_index = 0;
+
+            kv6.key[0] = m_key6.as_u64[0];
+            kv6.key[1] = m_key6.as_u64[1];
+            kv6.key[2] = m_key6.as_u64[2];
+            kv6.value = m - lbm->snat_mappings;
+            clib_bihash_add_del_24_8(&lbm->mapping_by_as6, &kv6, 1);
+        }
+      }
   }
   vec_free(to_be_added);
 
@@ -631,13 +788,17 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
     dpo_type = lbm->dpo_gre6_type;
   else if (lb_vip_is_l3dsr(vip))
     dpo_type = lbm->dpo_l3dsr_type;
+  else if(lb_vip_is_nat4(vip))
+    dpo_type = lbm->dpo_nat4_type;
+  else if (lb_vip_is_nat6(vip))
+    dpo_type = lbm->dpo_nat6_type;
 
   dpo_set(&dpo, dpo_type, proto, vip - lbm->vips);
   fib_table_entry_special_dpo_add(0,
-				  &pfx,
-				  FIB_SOURCE_PLUGIN_HI,
-				  FIB_ENTRY_FLAG_EXCLUSIVE,
-				  &dpo);
+                                  &pfx,
+                                  FIB_SOURCE_PLUGIN_HI,
+                                  FIB_ENTRY_FLAG_EXCLUSIVE,
+                                  &dpo);
   dpo_reset(&dpo);
 }
 
@@ -659,37 +820,41 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
   fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
 }
 
-int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
-	       u32 new_length, u32 *vip_index)
+int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
 {
   lb_main_t *lbm = &lb_main;
+  vlib_main_t *vm = vlib_get_main();
   lb_vip_t *vip;
+  lb_vip_type_t type = args.type;
+  u16 node_port = args.encap_args.node_port;
 
   lb_get_writer_lock();
-  ip46_prefix_normalize(prefix, plen);
+  ip46_prefix_normalize(&(args.prefix), args.plen);
 
-  if (!lb_vip_find_index_with_lock(prefix, plen, vip_index)) {
+  if (!lb_vip_find_index_with_lock(&(args.prefix), args.plen, vip_index)) {
     lb_put_writer_lock();
     return VNET_API_ERROR_VALUE_EXIST;
   }
 
-  if (!is_pow2(new_length)) {
+  if (!is_pow2(args.new_length)) {
     lb_put_writer_lock();
     return VNET_API_ERROR_INVALID_MEMORY_SIZE;
   }
 
-  if (ip46_prefix_is_ip4(prefix, plen) &&
+  if (ip46_prefix_is_ip4(&(args.prefix), args.plen) &&
       (type != LB_VIP_TYPE_IP4_GRE4) &&
       (type != LB_VIP_TYPE_IP4_GRE6) &&
-      (type != LB_VIP_TYPE_IP4_L3DSR))
+      (type != LB_VIP_TYPE_IP4_L3DSR) &&
+      (type != LB_VIP_TYPE_IP4_NAT4))
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
 
-  if ((!ip46_prefix_is_ip4(prefix, plen)) &&
+  if ((!ip46_prefix_is_ip4(&(args.prefix), args.plen)) &&
       (type != LB_VIP_TYPE_IP6_GRE4) &&
-      (type != LB_VIP_TYPE_IP6_GRE6))
+      (type != LB_VIP_TYPE_IP6_GRE6) &&
+      (type != LB_VIP_TYPE_IP6_NAT6))
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
 
-  if ((type == LB_VIP_TYPE_IP4_L3DSR) && (dscp >= 64 ) )
+  if ((type == LB_VIP_TYPE_IP4_L3DSR) && (args.encap_args.dscp >= 64 ) )
     {
       return VNET_API_ERROR_VALUE_EXIST;
     }
@@ -698,11 +863,23 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
   pool_get(lbm->vips, vip);
 
   //Init
-  vip->prefix = *prefix;
-  vip->plen = plen;
+  memcpy (&(vip->prefix), &(args.prefix), sizeof(args.prefix));
+  vip->plen = args.plen;
   vip->last_garbage_collection = (u32) vlib_time_now(vlib_get_main());
-  vip->type = type;
-  vip->dscp = dscp;
+  vip->type = args.type;
+
+  if (args.type == LB_VIP_TYPE_IP4_L3DSR) {
+      vip->encap_args.dscp = args.encap_args.dscp;
+    }
+  else if ((args.type == LB_VIP_TYPE_IP4_NAT4)
+	    ||(args.type == LB_VIP_TYPE_IP6_NAT6)) {
+      vip->encap_args.srv_type = args.encap_args.srv_type;
+      vip->encap_args.port = clib_host_to_net_u16(args.encap_args.port);
+      vip->encap_args.target_port =
+          clib_host_to_net_u16(args.encap_args.target_port);
+      vip->encap_args.node_port = clib_host_to_net_u16(node_port);
+    }
+
   vip->flags = LB_VIP_FLAGS_USED;
   vip->as_indexes = 0;
 
@@ -714,7 +891,7 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
   }
 
   //Configure new flow table
-  vip->new_flow_table_mask = new_length - 1;
+  vip->new_flow_table_mask = args.new_length - 1;
   vip->new_flow_table = 0;
 
   //Create a new flow hash table full of the default entry
@@ -722,6 +899,27 @@ int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u8 dscp,
 
   //Create adjacency to direct traffic
   lb_vip_add_adjacency(lbm, vip);
+
+  if ( (lb_vip_is_nat4(vip) || lb_vip_is_nat6(vip))
+      && (args.encap_args.srv_type == LB_SRV_TYPE_NODEPORT) )
+    {
+      u32 key;
+      uword * entry;
+
+      //Create maping from nodeport to vip_index
+      key = clib_host_to_net_u16(node_port);
+      entry = hash_get_mem (lbm->vip_index_by_nodeport, &key);
+      if (entry) {
+        lb_put_writer_lock();
+        return VNET_API_ERROR_VALUE_EXIST;
+      }
+
+      hash_set_mem (lbm->vip_index_by_nodeport, &key, vip - lbm->vips);
+
+      /* receive packets destined to NodeIP:NodePort */
+      udp_register_dst_port (vm, node_port, lb4_nodeport_node.index, 1);
+      udp_register_dst_port (vm, node_port, lb6_nodeport_node.index, 0);
+    }
 
   //Return result
   *vip_index = vip - lbm->vips;
@@ -819,12 +1017,16 @@ lb_as_stack (lb_as_t *as)
     dpo_type = lbm->dpo_gre6_type;
   else if (lb_vip_is_l3dsr(vip))
     dpo_type = lbm->dpo_l3dsr_type;
+  else if(lb_vip_is_nat4(vip))
+    dpo_type = lbm->dpo_nat4_type;
+  else if (lb_vip_is_nat6(vip))
+    dpo_type = lbm->dpo_nat6_type;
 
   dpo_stack(dpo_type,
-	    lb_vip_is_ip4(vip)?DPO_PROTO_IP4:DPO_PROTO_IP6,
-	    &as->dpo,
-	    fib_entry_contribute_ip_forwarding(
-		as->next_hop_fib_entry_index));
+            lb_vip_is_ip4(vip)?DPO_PROTO_IP4:DPO_PROTO_IP6,
+            &as->dpo,
+            fib_entry_contribute_ip_forwarding(
+                as->next_hop_fib_entry_index));
 }
 
 static fib_node_back_walk_rc_t
@@ -835,11 +1037,46 @@ lb_fib_node_back_walk_notify (fib_node_t *node,
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
+int lb_nat4_interface_add_del (u32 sw_if_index, int is_del)
+{
+  if (is_del)
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "lb-nat4-in2out",
+                                   sw_if_index, 0, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "lb-nat4-in2out",
+                                   sw_if_index, 1, 0, 0);
+    }
+
+  return 0;
+}
+
+int lb_nat6_interface_add_del (u32 sw_if_index, int is_del)
+{
+  if (is_del)
+    {
+      vnet_feature_enable_disable ("ip6-unicast", "lb-nat6-in2out",
+                                   sw_if_index, 0, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip6-unicast", "lb-nat6-in2out",
+                                   sw_if_index, 1, 0, 0);
+    }
+
+  return 0;
+}
+
 clib_error_t *
 lb_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   lb_main_t *lbm = &lb_main;
+  lbm->vnet_main = vnet_get_main ();
+  lbm->vlib_main = vm;
+
   lb_as_t *default_as;
   fib_node_vft_t lb_fib_node_vft = {
       .fnv_get = lb_fib_node_get_node,
@@ -865,6 +1102,8 @@ lb_init (vlib_main_t * vm)
   lbm->dpo_gre4_type = dpo_register_new_type(&lb_vft, lb_dpo_gre4_nodes);
   lbm->dpo_gre6_type = dpo_register_new_type(&lb_vft, lb_dpo_gre6_nodes);
   lbm->dpo_l3dsr_type = dpo_register_new_type(&lb_vft, lb_dpo_l3dsr_nodes);
+  lbm->dpo_nat4_type = dpo_register_new_type(&lb_vft, lb_dpo_nat4_nodes);
+  lbm->dpo_nat6_type = dpo_register_new_type(&lb_vft, lb_dpo_nat6_nodes);
   lbm->fib_node_type = fib_node_register_new_type(&lb_fib_node_vft);
 
   //Init AS reference counters
@@ -878,6 +1117,17 @@ lb_init (vlib_main_t * vm)
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
+
+  lbm->vip_index_by_nodeport
+    = hash_create_mem (0, sizeof(u16), sizeof (uword));
+
+  clib_bihash_init_8_8 (&lbm->mapping_by_as4,
+                        "mapping_by_as4", LB_MAPPING_BUCKETS,
+                        LB_MAPPING_MEMORY_SIZE);
+
+  clib_bihash_init_24_8 (&lbm->mapping_by_as6,
+                        "mapping_by_as6", LB_MAPPING_BUCKETS,
+                        LB_MAPPING_MEMORY_SIZE);
 
 #define _(a,b,c) lbm->vip_counters[c].name = b;
   lb_foreach_vip_counter
