@@ -22,6 +22,30 @@
       "revId": "2822c486893166aa4c787c8ed49ada3b145cee4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f89ba6ee_03a9eae8",
+        "filename": "src/vnet/sctp/sctp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-02-06T20:42:23Z",
+      "side": 1,
+      "message": "Yes, conn_index can never be invalid. I thought - like you said - that the pool_elt_at_index() would cover the pool check however I was fooled by coverity scan warning. I guess the issue (in coverity scan) for this particular case is a false positive. I will mark it so in the tool and remove the ASSERT here since it\u0027s not required.",
+      "parentUuid": "ec0fee6f_409e815b",
+      "range": {
+        "startLine": 513,
+        "startChar": 0,
+        "endLine": 513,
+        "endChar": 22
+      },
+      "revId": "2822c486893166aa4c787c8ed49ada3b145cee4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
