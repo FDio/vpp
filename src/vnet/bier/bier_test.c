@@ -158,7 +158,7 @@ bier_test_mk_intf (u32 ninterfaces)
 
 static int
 bier_test_validate_entry (index_t bei,
-                          u16 n_buckets,
+                          int n_buckets,
                           ...)
 {
     dpo_id_t dpo = DPO_INVALID;

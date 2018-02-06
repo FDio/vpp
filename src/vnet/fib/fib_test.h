@@ -118,11 +118,11 @@ extern int fib_test_validate_rep_v(const replicate_t *rep,
                                    va_list *ap);
 
 extern int fib_test_validate_lb_v(const load_balance_t *lb,
-                                  u16 n_buckets,
+                                  int n_buckets,
                                   va_list *ap);
 
 extern int fib_test_validate_lb(const dpo_id_t *dpo,
-				u16 n_buckets,
+				int n_buckets,
 				...);
 
 extern int fib_test_validate_entry(fib_node_index_t fei,
