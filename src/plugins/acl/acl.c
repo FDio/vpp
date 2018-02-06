@@ -75,7 +75,8 @@ _(MACIP_ACL_DEL, macip_acl_del) \
 _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
 _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
-_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump)
+_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump) \
+_(ACL_INTERFACE_SET_ETYPE_WHITELIST, acl_interface_set_etype_whitelist)
 
 
 /* *INDENT-OFF* */
@@ -84,6 +85,24 @@ VLIB_PLUGIN_REGISTER () = {
     .description = "Access Control Lists",
 };
 /* *INDENT-ON* */
+
+/* Format vec16. */
+u8 *
+format_vec16 (u8 * s, va_list * va)
+{
+  u16 *v = va_arg (*va, u16 *);
+  char *fmt = va_arg (*va, char *);
+  uword i;
+  for (i = 0; i < vec_len (v); i++)
+    {
+      if (i > 0)
+	s = format (s, ", ");
+      s = format (s, fmt, v[i]);
+    }
+  return s;
+}
+
+
 
 
 static void *
@@ -402,6 +421,10 @@ u8 ip4_5tuple_mask[] =
    _(padpad) __ __ __ __
    _(padeth) __ __;
 
+ u8 ethertype_mask[] =
+   _("             dmac               smac          etype ")
+   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v XX XX __ __;
+
 /* *INDENT-ON* */
 #undef XX
 #undef __
@@ -486,6 +509,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   u32 dot1q_table_index = ~0;
   u32 dot1ad_table_index = ~0;
+  u32 etype_table_index = ~0;
   void *oldheap = acl_set_heap (am);
 
   vec_validate_init_empty (am->acl_ip4_input_classify_table_by_sw_if_index,
@@ -495,6 +519,8 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   vec_validate_init_empty (am->acl_dot1q_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
   vec_validate_init_empty (am->acl_dot1ad_input_classify_table_by_sw_if_index,
+			   sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_etype_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
 
   /* switch to global heap while calling vnet_* functions */
@@ -539,6 +565,15 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				       sizeof (dot1ad_5tuple_mask) - 1, ~0,
 				       ~0, &dot1ad_table_index, 0);
     }
+  if (am->acl_etype_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      etype_table_index =
+	am->acl_etype_input_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_etype_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, ethertype_mask,
+				       sizeof (ethertype_mask) - 1, ~0,
+				       ~0, &etype_table_index, 0);
+    }
   clib_mem_set_heap (oldheap);
   return 0;
 }
@@ -551,6 +586,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   u32 dot1q_table_index = ~0;
   u32 dot1ad_table_index = ~0;
+  u32 etype_table_index = ~0;
   void *oldheap = acl_set_heap (am);
 
   vec_validate_init_empty (am->acl_ip4_output_classify_table_by_sw_if_index,
@@ -561,6 +597,8 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 			   sw_if_index, ~0);
   vec_validate_init_empty
     (am->acl_dot1ad_output_classify_table_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_etype_output_classify_table_by_sw_if_index,
+			   sw_if_index, ~0);
 
   /* switch to global heap while calling vnet_* functions */
   clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -604,6 +642,15 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
 				       sizeof (dot1ad_5tuple_mask) - 1, ~0,
 				       ~0, &dot1ad_table_index, 0);
+    }
+  if (am->acl_etype_output_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      etype_table_index =
+	am->acl_etype_output_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_etype_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, ethertype_mask,
+				       sizeof (ethertype_mask) - 1, ~0,
+				       ~0, &etype_table_index, 0);
     }
   clib_mem_set_heap (oldheap);
   return 0;
@@ -677,6 +724,45 @@ acl_add_vlan_session (acl_main_t * am, u32 table_index, u8 is_output,
 }
 
 static int
+intf_has_etype_whitelist (acl_main_t * am, u32 sw_if_index, int is_input)
+{
+  u16 **v = is_input
+    ? am->input_etype_whitelist_by_sw_if_index
+    : am->output_etype_whitelist_by_sw_if_index;
+  return ((vec_len (v) > sw_if_index) && vec_elt (v, sw_if_index));
+}
+
+static int
+etype_whitelist_add_sessions (acl_main_t * am, u32 sw_if_index, int is_input,
+			      u32 etype_table_index)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  u16 **v = is_input
+    ? am->input_etype_whitelist_by_sw_if_index
+    : am->output_etype_whitelist_by_sw_if_index;
+  u8 *match = ethertype_mask;
+
+  int i;
+  int rv = 0;
+  u16 *whitelist = vec_elt (v, sw_if_index);
+  u32 next = ~0;		/* permit */
+  for (i = 0; i < vec_len (whitelist); i++)
+    {
+      /* big-endian */
+      match[12] = (whitelist[i] >> 8) & 0xff;
+      match[13] = whitelist[i] & 0xff;
+      rv = rv
+	|| vnet_classify_add_del_session (cm, etype_table_index, match, next,
+					  whitelist[i], 0, 0, 0, 1);
+    }
+
+  /* restore the mask */
+  match[12] = 0xff;
+  match[13] = 0xff;
+  return rv;
+}
+
+static int
 acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
@@ -684,6 +770,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   u32 dot1q_table_index = ~0;
   u32 dot1ad_table_index = ~0;
+  u32 etype_table_index = ~0;
   int rv;
 
   void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -712,10 +799,18 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
       goto done;
     }
 
+  if (intf_has_etype_whitelist (am, sw_if_index, 1))
+    {
+      acl_classify_add_del_table_tiny (cm, ethertype_mask, sizeof (ethertype_mask) - 1, ~0, 0,	/* drop if no match */
+				       &etype_table_index, 1);
+      etype_whitelist_add_sessions (am, sw_if_index, 1, etype_table_index);
+    }
+
   rv =
     acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
-				     sizeof (dot1ad_5tuple_mask) - 1, ~0,
-				     ~0, &dot1ad_table_index, 1);
+				     sizeof (dot1ad_5tuple_mask) - 1,
+				     etype_table_index, ~0,
+				     &dot1ad_table_index, 1);
   rv =
     acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
 				     sizeof (dot1q_5tuple_mask) - 1,
@@ -774,6 +869,10 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
     dot1q_table_index;
   am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index] =
     dot1ad_table_index;
+  am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index] =
+    dot1ad_table_index;
+  am->acl_etype_input_classify_table_by_sw_if_index[sw_if_index] =
+    etype_table_index;
 
   vnet_l2_input_classify_enable_disable (sw_if_index, 1);
 done:
@@ -789,6 +888,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   u32 dot1q_table_index = ~0;
   u32 dot1ad_table_index = ~0;
+  u32 etype_table_index = ~0;
   int rv;
 
   void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -816,10 +916,19 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       goto done;
     }
 
+  if (intf_has_etype_whitelist (am, sw_if_index, 0))
+    {
+      acl_classify_add_del_table_tiny (cm, ethertype_mask, sizeof (ethertype_mask) - 1, ~0, 0,	/* drop if no match */
+				       &etype_table_index, 1);
+      etype_whitelist_add_sessions (am, sw_if_index, 0, etype_table_index);
+    }
+
+
   rv =
     acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
-				     sizeof (dot1ad_5tuple_mask) - 1, ~0,
-				     ~0, &dot1ad_table_index, 1);
+				     sizeof (dot1ad_5tuple_mask) - 1,
+				     etype_table_index, ~0,
+				     &dot1ad_table_index, 1);
   rv =
     acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
 				     sizeof (dot1q_5tuple_mask) - 1,
@@ -881,6 +990,8 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
     dot1q_table_index;
   am->acl_dot1ad_output_classify_table_by_sw_if_index[sw_if_index] =
     dot1ad_table_index;
+  am->acl_etype_output_classify_table_by_sw_if_index[sw_if_index] =
+    etype_table_index;
 
   vnet_l2_output_classify_enable_disable (sw_if_index, 1);
 done:
@@ -1185,6 +1296,43 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
   return rv;
+}
+
+static int
+acl_set_etype_whitelists (acl_main_t * am, u32 sw_if_index, u16 * vec_in,
+			  u16 * vec_out)
+{
+  vec_validate (am->input_etype_whitelist_by_sw_if_index, sw_if_index);
+  vec_validate (am->output_etype_whitelist_by_sw_if_index, sw_if_index);
+
+  vec_free (am->input_etype_whitelist_by_sw_if_index[sw_if_index]);
+  vec_free (am->output_etype_whitelist_by_sw_if_index[sw_if_index]);
+
+  am->input_etype_whitelist_by_sw_if_index[sw_if_index] = vec_in;
+  am->output_etype_whitelist_by_sw_if_index[sw_if_index] = vec_out;
+
+  /*
+   * if there are already inbound/outbound ACLs applied, toggle the
+   * enable/disable - this will recreate the necessary tables.
+   */
+
+  if (vec_len (am->input_acl_vec_by_sw_if_index) > sw_if_index)
+    {
+      if (vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]) > 0)
+	{
+	  acl_interface_in_enable_disable (am, sw_if_index, 0);
+	  acl_interface_in_enable_disable (am, sw_if_index, 1);
+	}
+    }
+  if (vec_len (am->output_acl_vec_by_sw_if_index) > sw_if_index)
+    {
+      if (vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]) > 0)
+	{
+	  acl_interface_out_enable_disable (am, sw_if_index, 0);
+	  acl_interface_out_enable_disable (am, sw_if_index, 1);
+	}
+    }
+  return 0;
 }
 
 
@@ -2279,6 +2427,38 @@ static void
     }
 }
 
+static void
+  vl_api_acl_interface_set_etype_whitelist_t_handler
+  (vl_api_acl_interface_set_etype_whitelist_t * mp)
+{
+  acl_main_t *am = &acl_main;
+  vl_api_acl_interface_set_etype_whitelist_reply_t *rmp;
+  int rv = 0;
+  int i;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u16 *vec_in = 0, *vec_out = 0;
+  void *oldheap = acl_set_heap (am);
+
+  if (pool_is_free_index (im->sw_interfaces, sw_if_index))
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
+    {
+      for (i = 0; i < mp->count; i++)
+	{
+	  if (i < mp->n_input)
+	    vec_add1 (vec_in, ntohs (mp->whitelist[i]));
+	  else
+	    vec_add1 (vec_out, ntohs (mp->whitelist[i]));
+	}
+      rv = acl_set_etype_whitelists (am, sw_if_index, vec_in, vec_out);
+    }
+
+  clib_mem_set_heap (oldheap);
+  REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ETYPE_WHITELIST_REPLY);
+}
+
+
 /* Set up the API message handling tables */
 static clib_error_t *
 acl_plugin_api_hookup (vlib_main_t * vm)
@@ -2773,6 +2953,19 @@ acl_plugin_show_interface (acl_main_t * am, u32 sw_if_index, int show_acl)
 	continue;
 
       vlib_cli_output (vm, "sw_if_index %d:\n", swi);
+
+      if (intf_has_etype_whitelist (am, swi, 1))
+	{
+	  vlib_cli_output (vm, "  input etype whitelist: %U", format_vec16,
+			   am->input_etype_whitelist_by_sw_if_index[swi],
+			   "%04x");
+	}
+      if (intf_has_etype_whitelist (am, swi, 0))
+	{
+	  vlib_cli_output (vm, " output etype whitelist: %U", format_vec16,
+			   am->output_etype_whitelist_by_sw_if_index[swi],
+			   "%04x");
+	}
 
       if ((swi < vec_len (am->input_acl_vec_by_sw_if_index)) &&
 	  (vec_len (am->input_acl_vec_by_sw_if_index[swi]) > 0))

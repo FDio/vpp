@@ -2654,6 +2654,16 @@ class VppPapiProvider(object):
                          'acls': acls},
                         expected_retval=expected_retval)
 
+    def acl_interface_set_etype_whitelist(self, sw_if_index,
+                                          n_input, whitelist,
+                                          expected_retval=0):
+        return self.api(self.papi.acl_interface_set_etype_whitelist,
+                        {'sw_if_index': sw_if_index,
+                         'count': len(whitelist),
+                         'n_input': n_input,
+                         'whitelist': whitelist},
+                        expected_retval=expected_retval)
+
     def acl_interface_add_del(self,
                               sw_if_index,
                               acl_index,
