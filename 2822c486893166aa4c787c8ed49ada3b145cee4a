@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec0fee6f_409e815b",
+        "filename": "src/vnet/sctp/sctp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-06T19:37:09Z",
+      "side": 1,
+      "message": "How about:  if (pool_is_free_index ..) return 0? As is, the code will always asserts if conn_index is invalid. If the assumption is that conn_index cannot be invalid, then no need to do the pool check. Also note that pool_elt_at_index () will assert if the index is invalid so it covers the intent of the assert you\u0027ve added. \n\nIf need be, you can have two variants of this function, one that\u0027s not safe, when you know for sure your conn_index is not invalid and one that is safe (i.e., suffix with *_if_valid()) which checks if the element does not exist and returns 0, should that be the case.",
+      "range": {
+        "startLine": 513,
+        "startChar": 0,
+        "endLine": 513,
+        "endChar": 22
+      },
+      "revId": "2822c486893166aa4c787c8ed49ada3b145cee4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
