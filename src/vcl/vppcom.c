@@ -4838,7 +4838,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  /* VPP-TBD */
 	  session->rcvbuf_size = *(u32 *) buffer;
 	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TX_FIFO_LEN: %u (0x%x), "
+	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_RX_FIFO_LEN: %u (0x%x), "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  session->sndbuf_size, session->sndbuf_size,
 			  *buflen);
@@ -4847,7 +4847,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	      /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
-		  .format = "VPPCOM_ATTR_SET_TX_FIFO_LEN: 0x%x buflen=%d",
+		  .format = "VPPCOM_ATTR_SET_RX_FIFO_LEN: 0x%x buflen=%d",
 		  .format_args = "i4i4",
 		};
 
