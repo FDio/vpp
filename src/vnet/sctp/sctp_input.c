@@ -432,8 +432,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 {
   sctp_init_ack_chunk_t *init_ack_chunk =
     (sctp_init_ack_chunk_t *) (sctp_hdr);
-  ip4_address_t *ip4_addr = 0;
-  ip6_address_t *ip6_addr = 0;
   sctp_state_cookie_param_t state_cookie;
 
   char hostname[FQDN_MAX_LENGTH];
@@ -483,8 +481,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 	      {
 		sctp_ipv4_addr_param_t *ipv4 =
 		  (sctp_ipv4_addr_param_t *) opt_params_hdr;
-		clib_memcpy (ip4_addr, &ipv4->address,
-			     sizeof (ip4_address_t));
 
 		sctp_sub_connection_add_ip4 (vlib_get_thread_index (), ipv4);
 
@@ -494,8 +490,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 	      {
 		sctp_ipv6_addr_param_t *ipv6 =
 		  (sctp_ipv6_addr_param_t *) opt_params_hdr;
-		clib_memcpy (ip6_addr, &ipv6->address,
-			     sizeof (ip6_address_t));
 
 		sctp_sub_connection_add_ip6 (vlib_get_thread_index (), ipv6);
 
@@ -879,12 +873,6 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sctp_conn =
 	    sctp_half_open_connection_get (vnet_buffer (b0)->
 					   sctp.connection_index);
-
-	  if (PREDICT_FALSE (sctp_conn == 0))
-	    {
-	      error0 = SCTP_ERROR_INVALID_CONNECTION;
-	      goto drop;
-	    }
 
 	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
@@ -1323,10 +1311,14 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	    {
 	      sctp_trace =
 		vlib_add_trace (vm, node, b0, sizeof (*sctp_trace));
-	      clib_memcpy (&sctp_trace->sctp_header, sctp_hdr,
-			   sizeof (sctp_trace->sctp_header));
-	      clib_memcpy (&sctp_trace->sctp_connection, sctp_conn,
-			   sizeof (sctp_trace->sctp_connection));
+
+	      if (sctp_hdr != NULL)
+		clib_memcpy (&sctp_trace->sctp_header, sctp_hdr,
+			     sizeof (sctp_trace->sctp_header));
+
+	      if (sctp_conn != NULL)
+		clib_memcpy (&sctp_trace->sctp_connection, sctp_conn,
+			     sizeof (sctp_trace->sctp_connection));
 	    }
 
 	  b0->error = node->errors[error0];
@@ -2215,7 +2207,7 @@ do {                                                       	\
    * _(SHUTDOWN_RECEIVED, "SHUTDOWN_RECEIVED")   \
    * _(SHUTDOWN_ACK_SENT, "SHUTDOWN_ACK_SENT")
    */
-  //_(CLOSED, DATA, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);     /* UNEXPECTED DATA chunk which requires special handling */
+  _(CLOSED, DATA, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED DATA chunk which requires special handling */
   _(CLOSED, INIT, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);
   _(CLOSED, INIT_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED INIT_ACK chunk */
   _(CLOSED, SACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SACK_CHUNK_VIOLATION);	/* UNEXPECTED SACK chunk */
