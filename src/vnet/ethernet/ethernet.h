@@ -71,15 +71,16 @@ static_always_inline int
 ethernet_frame_is_tagged (u16 type)
 {
 #if __SSE4_2__
-  const __m128i ethertype_mask = _mm_set_epi16 (ETHERNET_TYPE_VLAN,
-						ETHERNET_TYPE_DOT1AD,
-						ETHERNET_TYPE_VLAN_9100,
-						ETHERNET_TYPE_VLAN_9200,
+  const __m128i ethertype_mask = _mm_set_epi16 ((u16) ETHERNET_TYPE_VLAN,
+						(u16) ETHERNET_TYPE_DOT1AD,
+						(u16) ETHERNET_TYPE_VLAN_9100,
+						(u16) ETHERNET_TYPE_VLAN_9200,
 						/* duplicate last one to
 						   fill register */
-						ETHERNET_TYPE_VLAN_9200,
-						ETHERNET_TYPE_VLAN_9200,
-						ETHERNET_TYPE_VLAN_9200,
+						(u16) ETHERNET_TYPE_VLAN_9200,
+						(u16) ETHERNET_TYPE_VLAN_9200,
+						(u16) ETHERNET_TYPE_VLAN_9200,
+						(u16)
 						ETHERNET_TYPE_VLAN_9200);
 
   __m128i r = _mm_set1_epi16 (type);
