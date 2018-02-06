@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a51ba332_6ad2e9af",
+        "filename": "src/plugins/acl/fa_node.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-06T17:19:15Z",
+      "side": 1,
+      "message": "Hmm, not sure about this. You *can* use the worker track for logging these events but I think it may be more useful if you have some other context, like an acl session. That would enable you to do per-session, fine grained, event tracking as opposed to per worker, i.e., bunch of sessions.",
+      "range": {
+        "startLine": 193,
+        "startChar": 58,
+        "endLine": 193,
+        "endChar": 71
+      },
+      "revId": "001fd0e76454e93081ff4b28193cc32ae708b30e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
