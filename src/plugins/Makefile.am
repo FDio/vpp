@@ -75,10 +75,6 @@ if ENABLE_IXGE_PLUGIN
 include ixge.am
 endif
 
-if ENABLE_KUBEPROXY_PLUGIN
-include kubeproxy.am
-endif
-
 if ENABLE_LACP_PLUGIN
 include lacp.am
 endif
