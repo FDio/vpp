@@ -46,6 +46,30 @@
       "revId": "2822c486893166aa4c787c8ed49ada3b145cee4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2c8579f_c713ec79",
+        "filename": "src/vnet/sctp/sctp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-06T21:09:15Z",
+      "side": 1,
+      "message": "In that case, just remove the pool_is_free_index check since you don\u0027t need to guard against invalid values. With that, I suspect coverity won\u0027t complain anymore.",
+      "parentUuid": "f89ba6ee_03a9eae8",
+      "range": {
+        "startLine": 513,
+        "startChar": 0,
+        "endLine": 513,
+        "endChar": 22
+      },
+      "revId": "2822c486893166aa4c787c8ed49ada3b145cee4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
