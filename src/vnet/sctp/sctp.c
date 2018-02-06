@@ -597,11 +597,10 @@ format_sctp_listener_session (u8 * s, va_list * args)
 }
 
 void
-sctp_timer_init_handler (u32 conn_index, u32 timer_id)
+sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 {
   sctp_connection_t *sctp_conn;
 
-  clib_warning ("");
   sctp_conn = sctp_connection_get (conn_index, vlib_get_thread_index ());
   /* note: the connection may have already disappeared */
   if (PREDICT_FALSE (sctp_conn == 0))
@@ -629,7 +628,7 @@ sctp_timer_init_handler (u32 conn_index, u32 timer_id)
 /* *INDENT OFF* */
 static sctp_timer_expiration_handler
   * sctp_timer_expiration_handlers[SCTP_N_TIMERS] = {
-  sctp_timer_init_handler
+  sctp_expired_timers_cb
 };
 
 /* *INDENT ON* */
@@ -646,12 +645,12 @@ sctp_expired_timers_dispatch (u32 * expired_timers)
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
 
+      SCTP_DBG ("Expired timer ID: %u", timer_id);
+
       /* Handle expiration */
       (*sctp_timer_expiration_handlers[timer_id]) (connection_index,
 						   timer_id);
     }
-
-  clib_warning ("");
 }
 
 void
@@ -736,6 +735,7 @@ sctp_main_enable (vlib_main_t * vm)
 
   if (num_threads > 1)
     {
+      clib_spinlock_init (&tm->half_open_lock);
     }
 
   vec_validate (tm->tx_frames[0], num_threads - 1);
@@ -783,6 +783,15 @@ format_sctp_half_open (u8 * s, va_list * args)
   return format (s, "%U", format_sctp_connection_id, sctp_conn);
 }
 
+void
+sctp_update_time (f64 now, u8 thread_index)
+{
+  sctp_set_time_now (thread_index);
+  tw_timer_expire_timers_16t_2w_512sl (&sctp_main.timer_wheels[thread_index],
+				       now);
+  sctp_flush_frames_to_output (thread_index);
+}
+
 /* *INDENT OFF* */
 const static transport_proto_vft_t sctp_proto = {
   .enable = sctp_enable_disable,
@@ -795,6 +804,7 @@ const static transport_proto_vft_t sctp_proto = {
   .send_mss = sctp_session_send_mss,
   .send_space = sctp_session_send_space,
   .tx_fifo_offset = NULL,	//sctp_session_tx_fifo_offset,
+  .update_time = sctp_update_time,
   .get_connection = sctp_session_get_transport,
   .get_listener = sctp_session_get_listener,
   .get_half_open = sctp_half_open_session_get_transport,
