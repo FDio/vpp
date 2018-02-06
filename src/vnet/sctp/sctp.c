@@ -598,7 +598,7 @@ format_sctp_listener_session (u8 * s, va_list * args)
 }
 
 void
-sctp_timer_init_handler (u32 conn_index, u32 timer_id)
+sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 {
   sctp_connection_t *sctp_conn;
 
@@ -629,7 +629,7 @@ sctp_timer_init_handler (u32 conn_index, u32 timer_id)
 /* *INDENT OFF* */
 static sctp_timer_expiration_handler
   * sctp_timer_expiration_handlers[SCTP_N_TIMERS] = {
-  sctp_timer_init_handler
+  sctp_expired_timers_cb
 };
 
 /* *INDENT ON* */
@@ -645,6 +645,8 @@ sctp_expired_timers_dispatch (u32 * expired_timers)
       /* Get session index and timer id */
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
+
+      SCTP_DBG ("Expired timer ID: %u", timer_id);
 
       /* Handle expiration */
       (*sctp_timer_expiration_handlers[timer_id]) (connection_index,
@@ -734,6 +736,7 @@ sctp_main_enable (vlib_main_t * vm)
 
   if (num_threads > 1)
     {
+      clib_spinlock_init (&tm->half_open_lock);
     }
 
   vec_validate (tm->tx_frames[0], num_threads - 1);
