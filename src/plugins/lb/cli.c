@@ -21,20 +21,24 @@ lb_vip_command_fn (vlib_main_t * vm,
               unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t prefix;
-  u8 plen;
-  u32 new_len = 1024;
+  lb_vip_add_args_t args;
   u8 del = 0;
   int ret;
   u32 encap = 0;
   u32 dscp = ~0;
-  lb_vip_type_t type = 0;
+  u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
+  u32 port = 0;
+  u32 target_port = 0;
+  u32 node_port = 0;
   clib_error_t *error = 0;
+
+  args.new_length = 1024;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY)) {
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &(args.prefix),
+                &(args.plen), IP46_TYPE_ANY, &(args.plen))) {
     error = clib_error_return (0, "invalid vip prefix: '%U'",
                                format_unformat_error, line_input);
     goto done;
@@ -42,7 +46,7 @@ lb_vip_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
   {
-    if (unformat(line_input, "new_len %d", &new_len))
+    if (unformat(line_input, "new_len %d", &(args.new_length)))
       ;
     else if (unformat(line_input, "del"))
       del = 1;
@@ -52,7 +56,21 @@ lb_vip_command_fn (vlib_main_t * vm,
       encap = LB_ENCAP_TYPE_GRE6;
     else if (unformat(line_input, "encap l3dsr"))
       encap = LB_ENCAP_TYPE_L3DSR;
+    else if (unformat(line_input, "encap nat4"))
+      encap = LB_ENCAP_TYPE_NAT4;
+    else if (unformat(line_input, "encap nat6"))
+      encap = LB_ENCAP_TYPE_NAT6;
     else if (unformat(line_input, "dscp %d", &dscp))
+      ;
+    else if (unformat(line_input, "type clusterip"))
+      srv_type = LB_SRV_TYPE_CLUSTERIP;
+    else if (unformat(line_input, "type nodeport"))
+      srv_type = LB_SRV_TYPE_NODEPORT;
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else if (unformat(line_input, "target_port %d", &target_port))
+      ;
+    else if (unformat(line_input, "node_port %d", &node_port))
       ;
     else {
       error = clib_error_return (0, "parse error: '%U'",
@@ -61,46 +79,75 @@ lb_vip_command_fn (vlib_main_t * vm,
     }
   }
 
-  if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0) )
+  if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
     {
-      error = clib_error_return (0, "lb_vip_add error: "
-	        "should not configure dscp for none L3DSR.");
+      error = clib_error_return(0, "lb_vip_add error: "
+                                "should not configure dscp for none L3DSR.");
       goto done;
     }
 
-  if ((encap == LB_ENCAP_TYPE_L3DSR) && (dscp >= 64 ) )
+  if ((encap == LB_ENCAP_TYPE_L3DSR) && (dscp >= 64))
     {
-      error = clib_error_return (0, "lb_vip_add error: "
-	        "dscp for L3DSR should be less than 64.");
+      error = clib_error_return(0, "lb_vip_add error: "
+                                "dscp for L3DSR should be less than 64.");
       goto done;
     }
 
-  if (ip46_prefix_is_ip4(&prefix, plen)) {
+  if (ip46_prefix_is_ip4(&(args.prefix), (args.plen)))
+    {
       if (encap == LB_ENCAP_TYPE_GRE4)
-	type = LB_VIP_TYPE_IP4_GRE4;
+        args.type = LB_VIP_TYPE_IP4_GRE4;
       else if (encap == LB_ENCAP_TYPE_GRE6)
-	type = LB_VIP_TYPE_IP4_GRE6;
+        args.type = LB_VIP_TYPE_IP4_GRE6;
       else if (encap == LB_ENCAP_TYPE_L3DSR)
-	type = LB_VIP_TYPE_IP4_L3DSR;
-  } else {
+        args.type = LB_VIP_TYPE_IP4_L3DSR;
+      else if (encap == LB_ENCAP_TYPE_NAT4)
+        args.type = LB_VIP_TYPE_IP4_NAT4;
+      else if (encap == LB_ENCAP_TYPE_NAT6)
+        {
+          error = clib_error_return(0, "currently does not support NAT46");
+          goto done;
+        }
+    }
+  else
+    {
       if (encap == LB_ENCAP_TYPE_GRE4)
-	type = LB_VIP_TYPE_IP6_GRE4;
+        args.type = LB_VIP_TYPE_IP6_GRE4;
       else if (encap == LB_ENCAP_TYPE_GRE6)
-	type = LB_VIP_TYPE_IP6_GRE6;
-  }
+        args.type = LB_VIP_TYPE_IP6_GRE6;
+      else if (encap == LB_ENCAP_TYPE_NAT6)
+        args.type = LB_VIP_TYPE_IP6_NAT6;
+      else if (encap == LB_ENCAP_TYPE_NAT4)
+        {
+          error = clib_error_return(0, "currently does not support NAT64");
+          goto done;
+        }
+    }
 
   lb_garbage_collection();
 
   u32 index;
   if (!del) {
-    if ((ret = lb_vip_add(&prefix, plen, type, (u8)(dscp & 0x3F), new_len, &index))) {
+    if (encap == LB_ENCAP_TYPE_L3DSR) {
+        args.encap_args.dscp = (u8)(dscp & 0x3F);
+      }
+      else if ((encap == LB_ENCAP_TYPE_NAT4)
+               || (encap == LB_ENCAP_TYPE_NAT6))
+        {
+          args.encap_args.srv_type = (u8) srv_type;
+          args.encap_args.port = (u16) port;
+          args.encap_args.target_port = (u16) target_port;
+          args.encap_args.node_port = (u16) node_port;
+        }
+
+    if ((ret = lb_vip_add(args, &index))) {
       error = clib_error_return (0, "lb_vip_add error %d", ret);
       goto done;
     } else {
       vlib_cli_output(vm, "lb_vip_add ok %d", index);
     }
   } else {
-    if ((ret = lb_vip_find_index(&prefix, plen, &index))) {
+    if ((ret = lb_vip_find_index(&(args.prefix), args.plen, &index))) {
       error = clib_error_return (0, "lb_vip_find_index error %d", ret);
       goto done;
     } else if ((ret = lb_vip_del(index))) {
@@ -118,7 +165,10 @@ done:
 VLIB_CLI_COMMAND (lb_vip_command, static) =
 {
   .path = "lb vip",
-  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr)] [dscp <n>] [new_len <n>] [del]",
+  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] "
+      "[dscp <n>] "
+      "[type (nodeport|clusterip) port <n> target_port <n> node_port <n>] "
+      "[new_len <n>] [del]",
   .function = lb_vip_command_fn,
 };
 
@@ -298,6 +348,99 @@ VLIB_CLI_COMMAND (lb_show_vips_command, static) =
   .path = "show lb vips",
   .short_help = "show lb vips [verbose]",
   .function = lb_show_vips_command_fn,
+};
+
+static clib_error_t *
+lb_set_interface_nat_command_fn (vlib_main_t * vm,
+                                 unformat_input_t * input,
+                                 vlib_cli_command_t * cmd,
+                                 u8 is_nat6)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t * vnm = vnet_get_main();
+  clib_error_t * error = 0;
+  u32 * sw_if_index = 0;
+  u32 * inside_sw_if_indices = 0;
+  int is_del = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "in %U", unformat_vnet_sw_interface,
+                    vnm, sw_if_index))
+        vec_add1 (inside_sw_if_indices, *sw_if_index);
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+    vec_foreach (sw_if_index, inside_sw_if_indices)
+    {
+      if (!is_nat6)
+        {
+          if (lb_nat4_interface_add_del (*sw_if_index, is_del))
+            {
+              error = clib_error_return(
+                  0, "%s %U failed", is_del ? "del" : "add",
+                  format_vnet_sw_interface_name, vnm,
+                  vnet_get_sw_interface (vnm, *sw_if_index));
+              goto done;
+            }
+        }
+      else
+        {
+          if (lb_nat6_interface_add_del (*sw_if_index, is_del))
+            {
+              error = clib_error_return(
+                  0, "%s %U failed", is_del ? "del" : "add",
+                  format_vnet_sw_interface_name, vnm,
+                  vnet_get_sw_interface (vnm, *sw_if_index));
+              goto done;
+            }
+        }
+    }
+
+done:
+  unformat_free (line_input);
+  vec_free (inside_sw_if_indices);
+
+  return error;
+}
+
+static clib_error_t *
+lb_set_interface_nat4_command_fn (vlib_main_t * vm,
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
+{
+  return lb_set_interface_nat_command_fn(vm, input, cmd, 0);
+}
+
+VLIB_CLI_COMMAND (lb_set_interface_nat4_command, static) = {
+  .path = "lb set interface nat4",
+  .function = lb_set_interface_nat4_command_fn,
+  .short_help = "lb set interface nat4 in <intfc> [del]",
+};
+
+static clib_error_t *
+lb_set_interface_nat6_command_fn (vlib_main_t * vm,
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
+{
+  return lb_set_interface_nat_command_fn(vm, input, cmd, 1);
+}
+
+VLIB_CLI_COMMAND (lb_set_interface_nat6_command, static) = {
+  .path = "lb set interface nat6",
+  .function = lb_set_interface_nat6_command_fn,
+  .short_help = "lb set interface nat6 in <intfc> [del]",
 };
 
 static clib_error_t *
