@@ -91,6 +91,12 @@ typedef struct
   int fd;
 } memif_msg_fifo_elt_t;
 
+typedef enum
+{
+  MEMIF_QUEUE_TYPE_RX = 0,
+  MEMIF_QUEUE_TYPE_TX = 1,
+} memif_queue_type_t;
+
 typedef struct
 {
   /* ring data */
@@ -106,6 +112,9 @@ typedef struct
   int int_fd;
   uword int_clib_file_index;
   u64 int_count;
+
+  /* queue type */
+  memif_queue_type_t type;
 } memif_queue_t;
 
 #define foreach_memif_if_flag \

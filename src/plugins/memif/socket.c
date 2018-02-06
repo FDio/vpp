@@ -351,11 +351,16 @@ memif_msg_receive_add_ring (memif_if_t * mif, memif_msg_t * msg, int fd)
       mif->run.num_m2s_rings = vec_len (mif->tx_queues);
     }
 
+  // clear previous cache data if interface reconncected
+  memset (mq, 0, sizeof (memif_queue_t));
   mq->int_fd = fd;
   mq->int_clib_file_index = ~0;
   mq->log2_ring_size = ar->log2_ring_size;
   mq->region = ar->region;
   mq->offset = ar->offset;
+  mq->type =
+    (ar->flags & MEMIF_MSG_ADD_RING_FLAG_S2M) ? MEMIF_QUEUE_TYPE_RX :
+    MEMIF_QUEUE_TYPE_TX;
 
   return 0;
 }
