@@ -1,0 +1,4 @@
+set int state AVF0/d8/2/0 up
+set int state AVF0/d8/a/0 up
+set int ip address AVF0/d8/2/0 172.16.0.1/24
+set int ip address AVF0/d8/a/0 172.16.1.1/24
