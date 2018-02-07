@@ -32,7 +32,6 @@ extern "C"
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
 #define INVALID_SESSION_ID                   (~0)
-#define VPPCOM_VRF_DEFAULT                   0
 #define VPPCOM_CONF_DEFAULT                  "/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      "VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     "VCL_DEBUG"
@@ -77,7 +76,6 @@ typedef enum
 
 typedef struct vppcom_endpt_t_
 {
-  uint32_t vrf;
   uint8_t is_cut_thru;
   uint8_t is_ip4;
   uint8_t *ip;
@@ -215,8 +213,7 @@ vppcom_retval_str (int retval)
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
 
-extern int vppcom_session_create (uint32_t vrf, uint8_t proto,
-				  uint8_t is_nonblocking);
+extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
 extern int vppcom_session_close (uint32_t session_index);
 
 extern int vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep);

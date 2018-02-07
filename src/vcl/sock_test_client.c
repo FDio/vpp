@@ -508,8 +508,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	  tsock = &scm->test_socket[i];
 #ifdef VCL_TEST
 	  tsock->fd =
-	    vppcom_session_create (VPPCOM_VRF_DEFAULT, VPPCOM_PROTO_TCP,
-				   1 /* is_nonblocking */ );
+	    vppcom_session_create (VPPCOM_PROTO_TCP, 1 /* is_nonblocking */ );
 	  if (tsock->fd < 0)
 	    {
 	      errno = -tsock->fd;
@@ -945,7 +944,7 @@ main (int argc, char **argv)
     }
   else
     {
-      ctrl->fd = vppcom_session_create (VPPCOM_VRF_DEFAULT, VPPCOM_PROTO_TCP,
+      ctrl->fd = vppcom_session_create (VPPCOM_PROTO_TCP,
 					0 /* is_nonblocking */ );
       if (ctrl->fd < 0)
 	{
@@ -973,7 +972,6 @@ main (int argc, char **argv)
   scm->server_addr.sin_port = htons (atoi (argv[optind]));
 
 #ifdef VCL_TEST
-  scm->server_endpt.vrf = VPPCOM_VRF_DEFAULT;
   scm->server_endpt.is_ip4 = (scm->server_addr.sin_family == AF_INET);
   scm->server_endpt.ip = (uint8_t *) & scm->server_addr.sin_addr;
   scm->server_endpt.port = (uint16_t) scm->server_addr.sin_port;

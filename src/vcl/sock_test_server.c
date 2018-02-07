@@ -394,8 +394,7 @@ main (int argc, char **argv)
   else
     {
       ssm->listen_fd =
-	vppcom_session_create (VPPCOM_VRF_DEFAULT, VPPCOM_PROTO_TCP,
-			       0 /* is_nonblocking */ );
+	vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */ );
     }
 #else
   ssm->listen_fd = socket (AF_INET, SOCK_STREAM, 0);
@@ -416,7 +415,6 @@ main (int argc, char **argv)
   servaddr.sin_port = htons (port);
 
 #ifdef VCL_TEST
-  endpt.vrf = VPPCOM_VRF_DEFAULT;
   endpt.is_ip4 = (servaddr.sin_family == AF_INET);
   endpt.ip = (uint8_t *) & servaddr.sin_addr;
   endpt.port = (uint16_t) servaddr.sin_port;
