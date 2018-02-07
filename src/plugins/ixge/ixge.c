@@ -2862,7 +2862,7 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   if (error)
     return error;
 
-  error = vlib_pci_map_resource (h, 0, &r);
+  error = vlib_pci_map_region (h, 0, &r);
   if (error)
     return error;
 

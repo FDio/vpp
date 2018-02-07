@@ -55,7 +55,8 @@ typedef struct
   void *heap;
   u32 flags;
 #define VLIB_PHYSMEM_F_INIT_MHEAP (1<<0)
-#define VLIB_PHYSMEM_F_FAKE (1<<2)
+#define VLIB_PHYSMEM_F_HUGETLB (1<<2)
+#define VLIB_PHYSMEM_F_SHARED (1<<3)
 
   u8 numa_node;
   u64 *page_table;
@@ -66,6 +67,9 @@ typedef struct
 
 typedef struct
 {
+  u32 flags;
+#define VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP	(1 << 0)
+#define VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU		(1 << 1)
   vlib_physmem_region_t *regions;
 } vlib_physmem_main_t;
 
