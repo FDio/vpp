@@ -22,6 +22,30 @@
       "revId": "2fb09b88285413d81bafe15dbe3468321095983a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "718b29a5_b83b482c",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1520,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-02-07T19:11:15Z",
+      "side": 1,
+      "message": "This is called only from the main thread. So it is either main-\u003eworker or main-\u003emain.",
+      "parentUuid": "b1044459_8aeb19a4",
+      "range": {
+        "startLine": 1519,
+        "startChar": 0,
+        "endLine": 1520,
+        "endChar": 41
+      },
+      "revId": "2fb09b88285413d81bafe15dbe3468321095983a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
