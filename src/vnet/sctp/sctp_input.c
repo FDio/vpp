@@ -686,11 +686,10 @@ sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
 
 always_inline u16
 sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
-		  sctp_connection_t * sctp_conn, vlib_buffer_t * b,
+		  sctp_connection_t * sctp_conn, u8 idx, vlib_buffer_t * b,
 		  u16 * next0)
 {
   u32 error = 0, n_data_bytes;
-  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
   u8 is_gapping = 0;
 
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
@@ -758,12 +757,10 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 always_inline u16
 sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 			 sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-			 sctp_connection_t * sctp_conn, vlib_buffer_t * b0)
+			 sctp_connection_t * sctp_conn, u8 idx,
+			 vlib_buffer_t * b0, u16 * next0)
 {
   u32 now = sctp_time_now ();
-
-  /* Build TCB */
-  u8 idx = sctp_pick_conn_idx_on_chunk (COOKIE_ECHO);
 
   sctp_cookie_echo_chunk_t *cookie_echo =
     (sctp_cookie_echo_chunk_t *) sctp_hdr;
@@ -791,6 +788,7 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
@@ -804,12 +802,9 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 always_inline u16
 sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
 			sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-			sctp_connection_t * sctp_conn, vlib_buffer_t * b0)
+			sctp_connection_t * sctp_conn, u8 idx,
+			vlib_buffer_t * b0, u16 * next0)
 {
-
-  /* Stop T1_COOKIE timer */
-  u8 idx = sctp_pick_conn_idx_on_chunk (COOKIE_ACK);
-
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
@@ -821,6 +816,7 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_COOKIE);
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
@@ -1090,8 +1086,9 @@ vlib_node_registration_t sctp6_shutdown_phase_node;
 always_inline u16
 sctp_handle_shutdown (sctp_header_t * sctp_hdr,
 		      sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-		      sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
-		      u16 sctp_implied_length)
+		      sctp_connection_t * sctp_conn, u8 idx,
+		      vlib_buffer_t * b0, u16 sctp_implied_length,
+		      u16 * next0)
 {
   sctp_shutdown_association_chunk_t *shutdown_chunk =
     (sctp_shutdown_association_chunk_t *) (sctp_hdr);
@@ -1113,12 +1110,15 @@ sctp_handle_shutdown (sctp_header_t * sctp_hdr,
     case SCTP_STATE_ESTABLISHED:
       if (sctp_check_outstanding_data_chunks (sctp_conn) == 0)
 	sctp_conn->state = SCTP_STATE_SHUTDOWN_RECEIVED;
+      sctp_send_shutdown_ack (sctp_conn, b0);
       break;
 
     case SCTP_STATE_SHUTDOWN_SENT:
-      sctp_send_shutdown_ack (sctp_conn);
+      sctp_send_shutdown_ack (sctp_conn, b0);
       break;
     }
+
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1126,8 +1126,9 @@ sctp_handle_shutdown (sctp_header_t * sctp_hdr,
 always_inline u16
 sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
 			  sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-			  sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
-			  u16 sctp_implied_length)
+			  sctp_connection_t * sctp_conn, u8 idx,
+			  vlib_buffer_t * b0, u16 sctp_implied_length,
+			  u16 * next0)
 {
   sctp_shutdown_ack_chunk_t *shutdown_ack_chunk =
     (sctp_shutdown_ack_chunk_t *) (sctp_hdr);
@@ -1153,14 +1154,17 @@ sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
 		    SCTP_TIMER_T2_SHUTDOWN);
   sctp_send_shutdown_complete (sctp_conn);
 
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
+
   return SCTP_ERROR_NONE;
 }
 
 always_inline u16
 sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
 			       sctp_chunks_common_hdr_t * sctp_chunk_hdr,
-			       sctp_connection_t * sctp_conn,
-			       vlib_buffer_t * b0, u16 sctp_implied_length)
+			       sctp_connection_t * sctp_conn, u8 idx,
+			       vlib_buffer_t * b0, u16 sctp_implied_length,
+			       u16 * next0)
 {
   sctp_shutdown_complete_chunk_t *shutdown_complete =
     (sctp_shutdown_complete_chunk_t *) (sctp_hdr);
@@ -1184,6 +1188,8 @@ sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
 
   stream_session_disconnect_notify (&sctp_conn->sub_conn
 				    [MAIN_SCTP_SUB_CONN_IDX].connection);
+
+  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1257,30 +1263,31 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	  sctp_implied_length =
 	    sctp_calculate_implied_length (ip4_hdr, ip6_hdr, is_ip4);
 
-	  switch (vnet_sctp_get_chunk_type (sctp_chunk_hdr))
+	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
+
+	  u8 chunk_type = vnet_sctp_get_chunk_type (sctp_chunk_hdr);
+	  switch (chunk_type)
 	    {
 	    case SHUTDOWN:
 	      error0 =
-		sctp_handle_shutdown (sctp_hdr, sctp_chunk_hdr, sctp_conn, b0,
-				      sctp_implied_length);
-	      next0 = sctp_next_output (is_ip4);
+		sctp_handle_shutdown (sctp_hdr, sctp_chunk_hdr, sctp_conn,
+				      idx, b0, sctp_implied_length, &next0);
 	      break;
 
 	    case SHUTDOWN_ACK:
 	      error0 =
 		sctp_handle_shutdown_ack (sctp_hdr, sctp_chunk_hdr, sctp_conn,
-					  b0, sctp_implied_length);
-	      next0 = sctp_next_output (is_ip4);
+					  idx, b0, sctp_implied_length,
+					  &next0);
 	      break;
 
 	    case SHUTDOWN_COMPLETE:
 	      error0 =
 		sctp_handle_shutdown_complete (sctp_hdr, sctp_chunk_hdr,
-					       sctp_conn, b0,
-					       sctp_implied_length);
+					       sctp_conn, idx, b0,
+					       sctp_implied_length, &next0);
 
 	      sctp_connection_cleanup (sctp_conn);
-	      next0 = sctp_next_output (is_ip4);
 	      break;
 
 	      /*
@@ -1290,8 +1297,7 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	    case DATA:
 	      error0 =
 		sctp_handle_data ((sctp_payload_data_chunk_t *) sctp_hdr,
-				  sctp_conn, b0, &next0);
-	      next0 = sctp_next_output (is_ip4);
+				  sctp_conn, idx, b0, &next0);
 	      break;
 
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
@@ -1761,15 +1767,13 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case COOKIE_ECHO:
 	      error0 =
 		sctp_handle_cookie_echo (sctp_hdr, sctp_chunk_hdr, sctp_conn,
-					 b0);
-	      next0 = sctp_next_output (is_ip4);
+					 idx, b0, &next0);
 	      break;
 
 	    case COOKIE_ACK:
 	      error0 =
 		sctp_handle_cookie_ack (sctp_hdr, sctp_chunk_hdr, sctp_conn,
-					b0);
-	      next0 = sctp_next_output (is_ip4);
+					idx, b0, &next0);
 	      break;
 
 	    case SACK:
@@ -1793,7 +1797,7 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case DATA:
 	      error0 =
 		sctp_handle_data ((sctp_payload_data_chunk_t *) sctp_hdr,
-				  sctp_conn, b0, &next0);
+				  sctp_conn, idx, b0, &next0);
 	      break;
 
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
@@ -2064,7 +2068,6 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_sctp_common_hdr_params_net_to_host (sctp_chunk_hdr);
 
 	  u8 type = vnet_sctp_get_chunk_type (sctp_chunk_hdr);
-
 #if SCTP_DEBUG_STATE_MACHINE
 	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
 #endif
