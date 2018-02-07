@@ -1516,7 +1516,7 @@ send_interrupts_to_workers (vlib_main_t * vm, acl_main_t *am)
   int i;
   /* Can't use vec_len(am->per_worker_data) since the threads might not have come up yet; */
   int n_threads = vec_len(vlib_mains);
-  for (i = n_threads > 1 ? 1 : 0; i < n_threads; i++) {
+  for (i = 0; i < n_threads; i++) {
     send_one_worker_interrupt(vm, am, i);
   }
 }
