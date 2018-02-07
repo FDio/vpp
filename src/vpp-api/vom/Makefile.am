@@ -37,6 +37,8 @@ libvom_la_SOURCES = 			\
 	types.cpp			\
 	acl_binding_cmds.cpp		\
 	acl_binding.cpp			\
+	acl_ethertype_cmds.cpp		\
+	acl_ethertype.cpp		\
 	acl_l2_rule.cpp			\
 	acl_l3_rule.cpp			\
 	acl_list_cmds.cpp		\
@@ -110,6 +112,7 @@ vomincludedir = $(includedir)/vom
 
 vominclude_HEADERS =			\
 	acl_binding.hpp			\
+	acl_ethertype.hpp		\
 	acl_l2_rule.hpp			\
 	acl_l3_rule.hpp			\
 	acl_list.hpp			\
