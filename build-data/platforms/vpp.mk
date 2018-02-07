@@ -44,7 +44,7 @@ endif
 
 # To disable the VPP object model build - and save about half the build time -
 # uncomment the following...
-# vpp_configure_args_vpp += --disable-vom
+vpp_configure_args_vpp += --disable-vom --disable-japi
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror
