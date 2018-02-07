@@ -2130,6 +2130,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 			IP4_ERROR_SAME_INTERFACE : error1);
 	    }
 
+	  p0->error = error_node->errors[error0];
+	  p1->error = error_node->errors[error1];
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants
 	   * to see the IP headerr */
 	  if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
