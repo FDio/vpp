@@ -256,7 +256,76 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
       return (void *) (vui->region_mmap_addr[i] + addr -
 		       vui->regions[i].guest_phys_addr);
     }
+#elif __aarch64__ && __ARM_NEON
+  uint64x2_t al, ah, rl, rh, r;
+  uint32_t u32 = 0;
 
+  al = vdupq_n_u64 (addr + 1);
+  ah = vdupq_n_u64 (addr);
+
+  /*First Iteration */
+  rl = vld1q_u64 (&vui->region_guest_addr_lo[0]);
+  rl = vcgtq_u64 (al, rl);
+  rh = vld1q_u64 (&vui->region_guest_addr_hi[0]);
+  rh = vcgtq_u64 (rh, ah);
+  r = vandq_u64 (rl, rh);
+  u32 |= (vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 1);
+
+  if (u32)
+    {
+      i = __builtin_ctzll (u32);
+      goto vhost_map_guest_mem_done;
+    }
+
+  /*Second Iteration */
+  rl = vld1q_u64 (&vui->region_guest_addr_lo[2]);
+  rl = vcgtq_u64 (al, rl);
+  rh = vld1q_u64 (&vui->region_guest_addr_hi[2]);
+  rh = vcgtq_u64 (rh, ah);
+  r = vandq_u64 (rl, rh);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 2);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 3);
+
+  if (u32)
+    {
+      i = __builtin_ctzll (u32);
+      goto vhost_map_guest_mem_done;
+    }
+
+  /*Third Iteration */
+  rl = vld1q_u64 (&vui->region_guest_addr_lo[4]);
+  rl = vcgtq_u64 (al, rl);
+  rh = vld1q_u64 (&vui->region_guest_addr_hi[4]);
+  rh = vcgtq_u64 (rh, ah);
+  r = vandq_u64 (rl, rh);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 4);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 5);
+
+  if (u32)
+    {
+      i = __builtin_ctzll (u32);
+      goto vhost_map_guest_mem_done;
+    }
+
+  /*Fourth Iteration */
+  rl = vld1q_u64 (&vui->region_guest_addr_lo[6]);
+  rl = vcgtq_u64 (al, rl);
+  rh = vld1q_u64 (&vui->region_guest_addr_hi[6]);
+  rh = vcgtq_u64 (rh, ah);
+  r = vandq_u64 (rl, rh);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 6);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 7);
+
+  i = __builtin_ctzll (u32 | (1 << VHOST_MEMORY_MAX_NREGIONS));
+
+vhost_map_guest_mem_done:
+  if (i < vui->nregions)
+    {
+      *hint = i;
+      return (void *) (vui->region_mmap_addr[i] + addr -
+		       vui->regions[i].guest_phys_addr);
+    }
 #else
   for (i = 0; i < vui->nregions; i++)
     {
