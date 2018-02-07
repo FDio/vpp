@@ -87,6 +87,7 @@ af_packet_interface_tx (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, rd->dev_instance);
+  clib_spinlock_lock_if_init (&apif->lockp);
   int block = 0;
   u32 block_size = apif->tx_req->tp_block_size;
   u32 frame_size = apif->tx_req->tp_frame_size;
@@ -95,8 +96,6 @@ af_packet_interface_tx (vlib_main_t * vm,
   u32 tx_frame = apif->next_tx_frame;
   struct tpacket2_hdr *tph;
   u32 frame_not_ready = 0;
-
-  clib_spinlock_lock_if_init (&apif->lockp);
 
   while (n_left > 0)
     {
