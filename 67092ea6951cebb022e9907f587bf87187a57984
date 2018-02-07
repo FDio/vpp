@@ -1,0 +1,257 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0cc1fed1_793f2ebf",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "This should be:\nhash_set (..user_instance_used, user_instance, 1);\nHowever, see my comment later about getting rid of vxlan_instance_alloc() and vxlan_instance_free functions and put the code inline.",
+      "range": {
+        "startLine": 389,
+        "startChar": 5,
+        "endLine": 389,
+        "endChar": 18
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0baa312f_c1227280",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "I think it is actually cleaner to jsut make the simple logic inline instead of calling function vxlan_instance_alloc() and vxlan_instance_free() on vxlan delete. As all other tunnel code such as GRE replicate user instance support, these 2 functions won\u0027t have to be replicated. It is more reasonable to replicate the inline code, unless we make generic instance_alloc() and instance_free functions that are called by for all tunnels to use. What do you think?\n\nThe inline code logic here will be something like:\nif (user_instance \u003d\u003d ~0) \n  user_instance \u003d device_instance;\nif (hash_get (user_instance_used, user_instance))\n  {\n    pool_put...\n    return VNET_API_ERROR...\n  }\nhash_set (user_instance_used, user_instance, 1);",
+      "range": {
+        "startLine": 467,
+        "startChar": 1,
+        "endLine": 467,
+        "endChar": 2
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "956ac586_99d4f24c",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "It is probably less confusing to use just dev_instance for both of the above 2 assignments.",
+      "range": {
+        "startLine": 489,
+        "startChar": 28,
+        "endLine": 489,
+        "endChar": 30
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "14c9456e_f14a22e4",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "This is not necessary because of line 518 below.",
+      "range": {
+        "startLine": 510,
+        "startChar": 21,
+        "endLine": 510,
+        "endChar": 32
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9801533_e8a88390",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 522,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Let\u0027s also use dev_instance here.",
+      "range": {
+        "startLine": 522,
+        "startChar": 11,
+        "endLine": 522,
+        "endChar": 38
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4d8a7d8_0fd61c01",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 552,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Use dev_instance here.",
+      "range": {
+        "startLine": 552,
+        "startChar": 65,
+        "endLine": 552,
+        "endChar": 68
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e925f7a3_3ae6b289",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 640,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Let\u0027s use just sw_if_index in the above 2 function calls.",
+      "range": {
+        "startLine": 640,
+        "startChar": 60,
+        "endLine": 640,
+        "endChar": 61
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ed76280c_a30b3b88",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 644,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Use sw_if_index.",
+      "range": {
+        "startLine": 644,
+        "startChar": 27,
+        "endLine": 644,
+        "endChar": 36
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8244dee_1d32b46b",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Use sw_if_index.",
+      "range": {
+        "startLine": 647,
+        "startChar": 40,
+        "endLine": 647,
+        "endChar": 42
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cb004ae8_d52d70ab",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "Call hash_unset() directly, as per earlier comment about calling hash... functions inline.",
+      "range": {
+        "startLine": 669,
+        "startChar": 26,
+        "endLine": 669,
+        "endChar": 34
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ec71795_89ba8286",
+        "filename": "src/vnet/vxlan/vxlan.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T06:34:04Z",
+      "side": 1,
+      "message": "I just realized this is the wrong and confusing name for the purpose of hash lookup. It should really be called something like \"user_instance_used\" with hash lookup via user_instance. The result will then indicate if user_instance is in use or not.",
+      "range": {
+        "startLine": 164,
+        "startChar": 9,
+        "endLine": 164,
+        "endChar": 39
+      },
+      "revId": "67092ea6951cebb022e9907f587bf87187a57984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
