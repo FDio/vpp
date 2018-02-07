@@ -751,11 +751,8 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 void
 sctp_prepare_shutdown_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
   u16 alloc_bytes = sizeof (sctp_shutdown_association_chunk_t);
-
-  b = sctp_reuse_buffer (vm, b);
 
   /* As per RFC 4960 the chunk_length value does NOT contemplate
    * the size of the first header (see sctp_header_t) and any padding
@@ -805,8 +802,8 @@ sctp_send_shutdown (sctp_connection_t * sctp_conn)
   sctp_prepare_shutdown_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
-  sctp_enqueue_to_output (vm, b, bi,
-			  sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_enqueue_to_output_now (vm, b, bi,
+			      sctp_conn->sub_conn[idx].connection.is_ip4);
 
   /* Measure RTT with this */
   sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
@@ -847,34 +844,21 @@ sctp_prepare_shutdown_ack_chunk (sctp_connection_t * sctp_conn,
  * Send SHUTDOWN_ACK
  */
 void
-sctp_send_shutdown_ack (sctp_connection_t * sctp_conn)
+sctp_send_shutdown_ack (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 {
-  vlib_buffer_t *b;
-  u32 bi;
-  sctp_main_t *tm = vnet_get_sctp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
   if (sctp_check_outstanding_data_chunks (sctp_conn) > 0)
     return;
 
-  if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
-    return;
+  sctp_reuse_buffer (vm, b);
 
-  b = vlib_get_buffer (vm, bi);
-  sctp_init_buffer (vm, b);
   sctp_prepare_shutdown_ack_chunk (sctp_conn, b);
 
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_ACK);
-  sctp_enqueue_to_output (vm, b, bi,
-			  sctp_conn->sub_conn[idx].connection.is_ip4);
 
   /* Measure RTT with this */
   sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
-
-  /* Start the SCTP_TIMER_T2_SHUTDOWN timer */
-  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
-		  sctp_conn->sub_conn[idx].RTO);
-  sctp_conn->state = SCTP_STATE_SHUTDOWN_ACK_SENT;
 }
 
 /**
@@ -1228,6 +1212,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
 	  sctp_conn =
 	    sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
 				 my_thread_index);
@@ -1390,6 +1375,30 @@ sctp46_output_inline (vlib_main_t * vm,
 	      /* Change state */
 	      sctp_conn->state = SCTP_STATE_COOKIE_ECHOED;
 	      break;
+	    case SCTP_STATE_SHUTDOWN_SENT:
+	      if (chunk_type != SHUTDOWN_COMPLETE)
+		{
+		  SCTP_DBG_STATE_MACHINE
+		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
+		     sctp_chunk_to_string (chunk_type),
+		     sctp_state_to_string (sctp_conn->state));
+
+		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
+		  next0 = SCTP_OUTPUT_NEXT_DROP;
+		  goto done;
+		}
+	    case SCTP_STATE_SHUTDOWN_RECEIVED:
+	      if (chunk_type != SHUTDOWN_ACK)
+		{
+		  SCTP_DBG_STATE_MACHINE
+		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
+		     sctp_chunk_to_string (chunk_type),
+		     sctp_state_to_string (sctp_conn->state));
+
+		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
+		  next0 = SCTP_OUTPUT_NEXT_DROP;
+		  goto done;
+		}
 	    default:
 	      SCTP_DBG_STATE_MACHINE
 		("Sending chunk (%s) based on state-machine status (%s)",
@@ -1398,18 +1407,30 @@ sctp46_output_inline (vlib_main_t * vm,
 	      break;
 	    }
 
-	  if (chunk_type == SHUTDOWN)
+	  switch (chunk_type)
 	    {
-	      /* Start the SCTP_TIMER_T2_SHUTDOWN timer */
-	      sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
-			      sctp_conn->sub_conn[idx].RTO);
-	      sctp_conn->state = SCTP_STATE_SHUTDOWN_SENT;
-	    }
-
-	  if (chunk_type == DATA)
-	    {
-	      sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
-				 sctp_conn->sub_conn[idx].RTO);
+	    case DATA:
+	      {
+		sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
+				   sctp_conn->sub_conn[idx].RTO);
+		break;
+	      }
+	    case SHUTDOWN:
+	      {
+		/* Start the SCTP_TIMER_T2_SHUTDOWN timer */
+		sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
+				sctp_conn->sub_conn[idx].RTO);
+		sctp_conn->state = SCTP_STATE_SHUTDOWN_SENT;
+		break;
+	      }
+	    case SHUTDOWN_ACK:
+	      {
+		/* Start the SCTP_TIMER_T2_SHUTDOWN timer */
+		sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
+				sctp_conn->sub_conn[idx].RTO);
+		sctp_conn->state = SCTP_STATE_SHUTDOWN_ACK_SENT;
+		break;
+	      }
 	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;

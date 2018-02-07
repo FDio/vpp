@@ -247,7 +247,8 @@ void sctp_connection_del (sctp_connection_t * sctp_conn);
 u32 sctp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
 void sctp_send_init (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown (sctp_connection_t * sctp_conn);
-void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn);
+void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn,
+			     vlib_buffer_t * b);
 void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn);
 void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
