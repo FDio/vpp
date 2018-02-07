@@ -18,6 +18,8 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+SUDO?=sudo
+DISABLED_PLUGINS=dpdk
 
 ,:=,
 define disable_plugins
@@ -34,7 +36,7 @@ unix { 									\
 	cli-listen /run/vpp/cli.sock					\
 	gid $(shell id -g)						\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
-}									\
+} cpu { main-core 3 corelist-workers 4,60 }	\
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "
@@ -405,13 +407,13 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) \
+	  $(SUDO) $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) \
 	    plugin_path $(subst $(subst ,, ),:,$(wildcard $(1)/*/lib*/vpp_plugins))
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') \
+	  $(SUDO) $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') \
 	    plugin_path $(subst $(subst ,, ),:,$(wildcard $(1)/*/lib*/vpp_plugins))
 endef
 endif
