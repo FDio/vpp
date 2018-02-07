@@ -61,11 +61,12 @@ typedef struct
       u32 offset;
       u8 linear_search;
       u8 log2_pages;
-      u16 cache_lru;
+      i16 refcnt;
     };
     u64 as_u64;
   };
 #if BIHASH_KVP_CACHE_SIZE > 0
+  u16 cache_lru;
     BVT (clib_bihash_kv) cache[BIHASH_KVP_CACHE_SIZE];
 #endif
 } BVT (clib_bihash_bucket);
@@ -82,7 +83,6 @@ typedef struct
 
   u32 nbuckets;
   u32 log2_nbuckets;
-  u32 linear_buckets;
   u8 *name;
 
   u64 cache_hits;
@@ -102,12 +102,10 @@ typedef struct
 static inline void
 BV (clib_bihash_update_lru) (BVT (clib_bihash_bucket) * b, u8 slot)
 {
+#if BIHASH_KVP_CACHE_SIZE > 1
   u16 value, tmp, mask;
   u8 found_lru_pos;
   u16 save_hi;
-
-  if (BIHASH_KVP_CACHE_SIZE < 2)
-    return;
 
   ASSERT (slot < BIHASH_KVP_CACHE_SIZE);
 
@@ -154,6 +152,7 @@ BV (clib_bihash_update_lru) (BVT (clib_bihash_bucket) * b, u8 slot)
   value = save_hi | (tmp << 3) | slot;
 
   b->cache_lru = value;
+#endif
 }
 
 void
@@ -197,28 +196,29 @@ static inline void BV (clib_bihash_reset_cache) (BVT (clib_bihash_bucket) * b)
 
 static inline int BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
 {
-  BVT (clib_bihash_bucket) tmp_b;
-  u64 rv;
+#if BIHASH_KVP_CACHE_SIZE > 0
+  u16 cache_lru_bit;
+  u16 rv;
 
-  tmp_b.as_u64 = 0;
-  tmp_b.cache_lru = 1 << 15;
+  cache_lru_bit = 1 << 15;
 
-  rv = __sync_fetch_and_or (&b->as_u64, tmp_b.as_u64);
-  tmp_b.as_u64 = rv;
+  rv = __sync_fetch_and_or (&b->cache_lru, cache_lru_bit);
   /* Was already locked? */
-  if (tmp_b.cache_lru & (1 << 15))
+  if (rv & (1 << 15))
     return 0;
+#endif
   return 1;
 }
 
 static inline void BV (clib_bihash_unlock_bucket)
   (BVT (clib_bihash_bucket) * b)
 {
-  BVT (clib_bihash_bucket) tmp_b;
+#if BIHASH_KVP_CACHE_SIZE > 0
+  u16 cache_lru;
 
-  tmp_b.as_u64 = b->as_u64;
-  tmp_b.cache_lru &= ~(1 << 15);
-  b->as_u64 = tmp_b.as_u64;
+  cache_lru = b->cache_lru & ~(1 << 15);
+  b->cache_lru = cache_lru;
+#endif
 }
 
 static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
