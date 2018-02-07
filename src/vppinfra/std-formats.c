@@ -313,7 +313,8 @@ format_hexdump (u8 * s, va_list * args)
 
   if (vec_len (line_hex))
     s = format (s, "%U%05x: %v[%v]",
-		format_white_space, indent, index, line_hex, line_str);
+		format_white_space, index ? indent : 0,
+		index, line_hex, line_str);
 
   vec_free (line_hex);
   vec_free (line_str);
