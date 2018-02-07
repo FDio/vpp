@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1044459_8aeb19a4",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1520,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-07T18:44:17Z",
+      "side": 1,
+      "message": "I dont think this is thread safe.... We don\u0027t support sending interrupts from worker to main today....",
+      "range": {
+        "startLine": 1519,
+        "startChar": 0,
+        "endLine": 1520,
+        "endChar": 41
+      },
+      "revId": "2fb09b88285413d81bafe15dbe3468321095983a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
