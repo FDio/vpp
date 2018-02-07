@@ -545,6 +545,31 @@ u32x4_is_zero (u32x4 x)
   return u32x4_is_equal (x, zero);
 }
 
+
+always_inline int
+u8x16_is_all_zero (u8x16 x)
+{
+  return _mm_testz_si128 ((__m128i) x, (__m128i) x);
+}
+
+always_inline int
+u16x8_is_all_zero (u16x8 x)
+{
+  return _mm_testz_si128 ((__m128i) x, (__m128i) x);
+}
+
+always_inline int
+u32x4_is_all_zero (u32x4 x)
+{
+  return _mm_testz_si128 ((__m128i) x, (__m128i) x);
+}
+
+always_inline int
+u64x2_is_all_zero (u64x2 x)
+{
+  return _mm_testz_si128 ((__m128i) x, (__m128i) x);
+}
+
 #define u32x4_select(A,MASK)						\
 ({									\
   u32x4 _x, _y;								\
