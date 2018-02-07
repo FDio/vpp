@@ -22,6 +22,30 @@
       "revId": "001fd0e76454e93081ff4b28193cc32ae708b30e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86aedbc1_aa5ee3b7",
+        "filename": "src/plugins/acl/fa_node.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-02-07T21:02:24Z",
+      "side": 1,
+      "message": "I have read the tracks have scalability of O(1000), whereas I might potentially have the ~1m sessions - even scalability aside, seems like navigating such a number would be tricky ? (also, at least this debug code is primarily worker-context-focused, rather than session-focused), to debug the interactions between the main thread and the worker threads..",
+      "parentUuid": "a51ba332_6ad2e9af",
+      "range": {
+        "startLine": 193,
+        "startChar": 58,
+        "endLine": 193,
+        "endChar": 71
+      },
+      "revId": "001fd0e76454e93081ff4b28193cc32ae708b30e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
