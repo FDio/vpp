@@ -1,0 +1,652 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3b25d245_f5df3c13",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "There is a little bit of redundancy in the name. E.g., nat44 already reflects that the input is ipv4. I think it should be called ip4-nat4, ip4-nat6, ip6-nat6, ip6-nat4.",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 41
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "20cbf66d_2ee11d2f",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "else",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "79bd70e1_cbdd552a",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "else",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "632bdaef_277bf6a6",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "I am pretty sure there are a few things to remove, objects to free, in case of NAT mode.",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b589d168_7b41815f",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 609,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Shouldn\u0027t you only allocate a mapping with pool_get in case of NAT4 VIP ?\nHere I can see a memory leak if you allocate one for other VIPs.",
+      "range": {
+        "startLine": 609,
+        "startChar": 1,
+        "endLine": 609,
+        "endChar": 10
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bfab8863_315030b9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Shouldn\u0027t there be some support for IPv6 here ?",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3470d24_d234bb82",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Why not use vlib_get_main() instead ?\nThere are multiple vlib_mains allocated (one per thread). Although lb_vip_add is probably only called by main thread, I am not sure this \u0027convenience\u0027 is a good practice. I would rather use vlib_get_main().",
+      "range": {
+        "startLine": 748,
+        "startChar": 20,
+        "endLine": 748,
+        "endChar": 35
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0594698c_9785d4ce",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 769,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Seeing this, I wonder if it wouldn\u0027t be cleaner refactor the type a little bit, separating \u0027input\u0027 and \u0027encap\u0027 modes.\nBut maybe not for this patch. Just an open question for now.",
+      "range": {
+        "startLine": 765,
+        "startChar": 6,
+        "endLine": 769,
+        "endChar": 37
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bc99aa97_14f8af8c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "The hash structure lets you store uwords without having to allocate memory.\nSince you store a u32, you shouldn\u0027t have to use any kind of memory alloc.",
+      "range": {
+        "startLine": 830,
+        "startChar": 6,
+        "endLine": 830,
+        "endChar": 14
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9f33fe97_ba8f8986",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Should\u0027t this be called vip_index_by_nodeport since it gets the vip index.",
+      "range": {
+        "startLine": 832,
+        "startChar": 25,
+        "endLine": 832,
+        "endChar": 40
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "69548c44_192d12ae",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 835,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Does that mean that the LB only uses a single port as source port to send packet to ASs ? If the AS address and port is fixed, that means that there can be only a single active connection per AS per VIP.",
+      "range": {
+        "startLine": 835,
+        "startChar": 33,
+        "endLine": 835,
+        "endChar": 42
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f14d5258_5517fbe9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 836,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Why would you register port on both ? It either one or the other. Depends on VIP type.",
+      "range": {
+        "startLine": 836,
+        "startChar": 6,
+        "endLine": 836,
+        "endChar": 72
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "742fd120_467e3443",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "I am coming back here after a look at node.c . And I am confused. You create a DPO to direct traffic toward the VIP to the lb nodes. But here you do the same based on the port. But to get anything toward that port, you also need the address to be configured locally on VPP.\nI don\u0027t understand why you have two different node paths to go to lb nodes.",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b9279d6_74e93ce4",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Where is the equivalent for IPv6 ?",
+      "range": {
+        "startLine": 955,
+        "startChar": 4,
+        "endLine": 955,
+        "endChar": 29
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0281569d_363bc905",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Would it make sense to make a union with the dscp bits, since those are used in different VIP types ?",
+      "range": {
+        "startLine": 250,
+        "startChar": 0,
+        "endLine": 260,
+        "endChar": 16
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a89ffec4_31094d7a",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Could you create a typedef struct { } lb_vip_add_args_t including all the arguments with a union for different cases and use it as unique argument to lb_vip_add ? It will help future extensions.",
+      "range": {
+        "startLine": 493,
+        "startChar": 0,
+        "endLine": 496,
+        "endChar": 50
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89e23225_f681c7bd",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "missing newline",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ec8c585_6a9affe6",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Could we trace the VIP and AS here ?",
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9cff5864_29e52068",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "You didn\u0027t do incremental checksum in your L3DSR patch.",
+      "range": {
+        "startLine": 338,
+        "startChar": 3,
+        "endLine": 338,
+        "endChar": 47
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "314f8f42_d62b74f0",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "You cannot assume protocol is TCP or UDP. There are plenty of other protocols.\nNot need to support them all, but you have to at least check and drop packet when that happens.",
+      "range": {
+        "startLine": 351,
+        "startChar": 7,
+        "endLine": 351,
+        "endChar": 42
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4fde4fc0_775258fd",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Why is the variable called \u0027port\u0027 if it is a udp header ?",
+      "range": {
+        "startLine": 351,
+        "startChar": 7,
+        "endLine": 351,
+        "endChar": 12
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3c5b6655_955bfbef",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Please do incremental checksum.",
+      "range": {
+        "startLine": 353,
+        "startChar": 7,
+        "endLine": 353,
+        "endChar": 51
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7ab05116_3aa66452",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Not reviewing this part then.",
+      "range": {
+        "startLine": 357,
+        "startChar": 17,
+        "endLine": 357,
+        "endChar": 20
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c4f22821_b2c36619",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "NAT64 and NAT46 are a bit more complicated than 44 and 66.",
+      "range": {
+        "startLine": 381,
+        "startChar": 7,
+        "endLine": 381,
+        "endChar": 16
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bed7bace_569be0ae",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "incremental checksum",
+      "range": {
+        "startLine": 393,
+        "startChar": 7,
+        "endLine": 393,
+        "endChar": 51
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d70bb2ec_d99b9171",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Shouldn\u0027t you update the UDP/TCP checksum after doing that ?",
+      "range": {
+        "startLine": 396,
+        "startChar": 3,
+        "endLine": 396,
+        "endChar": 39
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c0e5543e_65ebfb8c",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "This should be named vip_index_by_port",
+      "range": {
+        "startLine": 506,
+        "startChar": 33,
+        "endLine": 506,
+        "endChar": 48
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9b1d6d03_483bbc53",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "You don\u0027t really need this variable. Using a is_input_v4?A:B might help compiler to optimize",
+      "range": {
+        "startLine": 529,
+        "startChar": 32,
+        "endLine": 529,
+        "endChar": 37
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b550e40_35886d52",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Copying and then passing by copy to a function. There probably is a faster way to do that lookup.",
+      "range": {
+        "startLine": 656,
+        "startChar": 42,
+        "endLine": 656,
+        "endChar": 46
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "11e6211b_b7528e03",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1010,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-02-07T10:49:06Z",
+      "side": 1,
+      "message": "Feature not defined for IPv6 ?",
+      "range": {
+        "startLine": 1010,
+        "startChar": 19,
+        "endLine": 1010,
+        "endChar": 41
+      },
+      "revId": "598524576b97c43ed23b7adbcd108dfc2cb7f759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
