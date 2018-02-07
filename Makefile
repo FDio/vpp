@@ -18,6 +18,7 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+DISABLED_PLUGINS=dpdk
 
 ,:=,
 define disable_plugins
@@ -34,7 +35,7 @@ unix { 									\
 	cli-listen /run/vpp/cli.sock					\
 	gid $(shell id -g)						\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
-}									\
+} cpu { main-core 3 corelist-workers 4,60 }	\
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "

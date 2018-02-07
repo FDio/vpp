@@ -117,6 +117,10 @@ typedef struct
   u16 vendor_id, device_id;
 } pci_device_id_t;
 
+typedef void (pci_intx_handler_function_t) (vlib_pci_dev_handle_t handle);
+typedef void (pci_msix_handler_function_t) (vlib_pci_dev_handle_t handle,
+					    u16 line);
+
 typedef struct _pci_device_registration
 {
   /* Driver init function. */
@@ -124,7 +128,7 @@ typedef struct _pci_device_registration
 				  vlib_pci_dev_handle_t handle);
 
   /* Interrupt handler */
-  void (*interrupt_handler) (vlib_pci_dev_handle_t handle);
+  pci_intx_handler_function_t *interrupt_handler;
 
   /* List of registrations */
   struct _pci_device_registration *next_registration;
@@ -245,12 +249,29 @@ vlib_pci_bus_master_enable (vlib_pci_dev_handle_t h)
   return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
-clib_error_t *vlib_pci_map_resource (vlib_pci_dev_handle_t h, u32 resource,
-				     void **result);
+clib_error_t *vlib_pci_device_open (vlib_pci_addr_t * addr,
+				    pci_device_id_t ids[],
+				    vlib_pci_dev_handle_t * handle);
+void vlib_pci_device_close (vlib_pci_dev_handle_t h);
 
-clib_error_t *vlib_pci_map_resource_fixed (vlib_pci_dev_handle_t h,
-					   u32 resource, u8 * addr,
-					   void **result);
+clib_error_t *vlib_pci_map_region (vlib_pci_dev_handle_t h, u32 resource,
+				   void **result);
+
+clib_error_t *vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h,
+					 u32 resource, u8 * addr,
+					 void **result);
+
+clib_error_t *vlib_pci_register_intx_handler (vlib_pci_dev_handle_t h,
+					      pci_intx_handler_function_t *
+					      intx_handler);
+clib_error_t *vlib_pci_register_msix_handler (vlib_pci_dev_handle_t h,
+					      u32 start, u32 count,
+					      pci_msix_handler_function_t *
+					      msix_handler);
+clib_error_t *vlib_pci_enable_msix_irq (vlib_pci_dev_handle_t h, u16 start,
+					u16 count);
+clib_error_t *vlib_pci_disable_msix_irq (vlib_pci_dev_handle_t h, u16 start,
+					 u16 count);
 
 unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
