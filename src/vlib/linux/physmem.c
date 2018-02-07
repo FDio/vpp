@@ -157,6 +157,14 @@ unix_physmem_region_iommu_register (vlib_physmem_region_t * pr)
     dma_map.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
     dma_map.size = 1 << pr->log2_page_size;
     dma_map.iova = pr->page_table[i];
+    clib_warning ("%lx -> %lx (flags %x)", dma_map.vaddr, dma_map.iova,
+		  dma_map.flags);
+    if (ioctl (fd, VFIO_IOMMU_MAP_DMA, &dma_map) != 0)
+      return clib_error_return_unix (0, "ioctl (VFIO_IOMMU_MAP_DMA)");
+
+    dma_map.iova = dma_map.vaddr;
+    clib_warning ("%lx -> %lx (flags %x)", dma_map.vaddr, dma_map.iova,
+		  dma_map.flags);
     if (ioctl (fd, VFIO_IOMMU_MAP_DMA, &dma_map) != 0)
       return clib_error_return_unix (0, "ioctl (VFIO_IOMMU_MAP_DMA)");
   }
@@ -234,9 +242,12 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	}
       pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
 					      pr->n_pages);
-      error = unix_physmem_region_iommu_register (pr);
-      if (error)
-	clib_error_report (error);
+      vlib_physmem_region_t *pr2;
+      pool_foreach (pr2, vpm->regions,
+		    {
+		    error = unix_physmem_region_iommu_register (pr2);
+		    if (error) clib_error_report (error);}
+      );
     }
 
   if (flags & VLIB_PHYSMEM_F_INIT_MHEAP)
