@@ -19,7 +19,7 @@
 
 #define BIHASH_TYPE _40_8
 #define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_KVP_CACHE_SIZE 2
+#define BIHASH_KVP_CACHE_SIZE 0
 
 #ifndef __included_bihash_40_8_h__
 #define __included_bihash_40_8_h__

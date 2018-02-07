@@ -290,6 +290,7 @@ int BV (clib_bihash_add_del)
       *v->kvp = *add_v;
       tmp_b.as_u64 = 0;
       tmp_b.offset = BV (clib_bihash_get_offset) (h, v);
+      tmp_b.refcnt = 1;
 
       b->as_u64 = tmp_b.as_u64;
       goto unlock;
@@ -329,6 +330,7 @@ int BV (clib_bihash_add_del)
 	      clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
 	      CLIB_MEMORY_BARRIER ();
 	      b->as_u64 = h->saved_bucket.as_u64;
+	      b->refcnt++;
 	      goto unlock;
 	    }
 	}
@@ -342,8 +344,17 @@ int BV (clib_bihash_add_del)
 	    {
 	      memset (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
 	      CLIB_MEMORY_BARRIER ();
-	      b->as_u64 = h->saved_bucket.as_u64;
-	      goto unlock;
+	      if (PREDICT_TRUE (h->saved_bucket.refcnt > 1))
+		{
+		  h->saved_bucket.refcnt -= 1;
+		  b->as_u64 = h->saved_bucket.as_u64;
+		  goto unlock;
+		}
+	      else
+		{
+		  tmp_b.as_u64 = 0;
+		  goto free_old_bucket;
+		}
 	    }
 	}
       rv = -3;
@@ -411,18 +422,18 @@ int BV (clib_bihash_add_del)
     goto try_resplit;
 
 expand_ok:
-  /* Keep track of the number of linear-scan buckets */
-  if (tmp_b.linear_search ^ mark_bucket_linear)
-    h->linear_buckets += (mark_bucket_linear == 1) ? 1 : -1;
-
   tmp_b.log2_pages = new_log2_pages;
   tmp_b.offset = BV (clib_bihash_get_offset) (h, save_new_v);
   tmp_b.linear_search = mark_bucket_linear;
+  tmp_b.refcnt = h->saved_bucket.refcnt + 1;
+
+free_old_bucket:
 
   CLIB_MEMORY_BARRIER ();
   b->as_u64 = tmp_b.as_u64;
   v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
-  BV (value_free) (h, v, old_log2_pages);
+
+  BV (value_free) (h, v, h->saved_bucket.log2_pages);
 
 unlock:
   BV (clib_bihash_reset_cache) (b);
@@ -541,6 +552,8 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   BVT (clib_bihash_value) * v;
   int i, j, k;
   u64 active_elements = 0;
+  u64 active_buckets = 0;
+  u64 linear_buckets = 0;
 
   s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
 
@@ -553,6 +566,11 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 	    s = format (s, "[%d]: empty\n", i);
 	  continue;
 	}
+
+      active_buckets++;
+
+      if (b->linear_search)
+	linear_buckets++;
 
       if (verbose)
 	{
@@ -593,11 +611,30 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 	}
     }
 
-  s = format (s, "    %lld active elements\n", active_elements);
+  s = format (s, "    %lld active elements %lld active buckets\n",
+	      active_elements, active_buckets);
   s = format (s, "    %d free lists\n", vec_len (h->freelists));
-  s = format (s, "    %d linear search buckets\n", h->linear_buckets);
+
+  for (i = 0; i < vec_len (h->freelists); i++)
+    {
+      u32 nfree = 0;
+      BVT (clib_bihash_value) * free_elt;
+
+      free_elt = h->freelists[i];
+      while (free_elt)
+	{
+	  nfree++;
+	  free_elt = free_elt->next_free;
+	}
+
+      s = format (s, "       [len %d] %u free elts\n", 1 << i, nfree);
+    }
+
+  s = format (s, "    %lld linear search buckets\n", linear_buckets);
   s = format (s, "    %lld cache hits, %lld cache misses\n",
 	      h->cache_hits, h->cache_misses);
+  if (h->mheap)
+    s = format (s, "    mheap: %U", format_mheap, h->mheap, 0 /* verbose */ );
   return s;
 }
 

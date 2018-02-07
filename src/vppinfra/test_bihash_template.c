@@ -15,6 +15,8 @@
 #include <vppinfra/time.h>
 #include <vppinfra/cache.h>
 #include <vppinfra/error.h>
+#include <sys/resource.h>
+#include <stdio.h>
 
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_template.h>
@@ -26,6 +28,8 @@ typedef struct
   u64 seed;
   u32 nbuckets;
   u32 nitems;
+  u32 ncycles;
+  u32 report_every_n;
   u32 search_iter;
   int careful_delete_tests;
   int verbose;
@@ -93,144 +97,185 @@ test_bihash (test_main_t * tm)
   f64 before, delta;
   BVT (clib_bihash) * h;
   BVT (clib_bihash_kv) kv;
+  u32 acycle;
 
   h = &tm->hash;
 
   BV (clib_bihash_init) (h, "test", tm->nbuckets, 3ULL << 30);
 
-  fformat (stdout, "Pick %lld unique %s keys...\n",
-	   tm->nitems, tm->non_random_keys ? "non-random" : "random");
 
-  for (i = 0; i < tm->nitems; i++)
+  for (acycle = 0; acycle < tm->ncycles; acycle++)
     {
-      u64 rndkey;
-
-      if (tm->non_random_keys == 0)
+      if ((acycle % tm->report_every_n) == 0)
 	{
+	  fformat (stdout, "Cycle %lld out of %lld...\n",
+		   acycle, tm->ncycles);
 
-	again:
-	  rndkey = random_u64 (&tm->seed);
-
-	  p = hash_get (tm->key_hash, rndkey);
-	  if (p)
-	    goto again;
+	  fformat (stdout, "Pick %lld unique %s keys...\n",
+		   tm->nitems, tm->non_random_keys ? "non-random" : "random");
 	}
-      else
-	rndkey = (u64) (i + 1) << 16;
 
-      hash_set (tm->key_hash, rndkey, i + 1);
-      vec_add1 (tm->keys, rndkey);
-    }
-
-  fformat (stdout, "Add items...\n");
-  for (i = 0; i < tm->nitems; i++)
-    {
-      kv.key = tm->keys[i];
-      kv.value = i + 1;
-
-      BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
-
-      if (tm->verbose > 1)
+      for (i = 0; i < tm->nitems; i++)
 	{
-	  fformat (stdout, "--------------------\n");
-	  fformat (stdout, "After adding key %llu value %lld...\n",
-		   tm->keys[i], (u64) (i + 1));
-	  fformat (stdout, "%U", BV (format_bihash), h,
-		   2 /* very verbose */ );
+	  u64 rndkey;
+
+	  if (tm->non_random_keys == 0)
+	    {
+
+	    again:
+	      rndkey = random_u64 (&tm->seed);
+
+	      p = hash_get (tm->key_hash, rndkey);
+	      if (p)
+		goto again;
+	    }
+	  else
+	    rndkey = (u64) (i + 1) << 16;
+	  rndkey += acycle;
+
+	  hash_set (tm->key_hash, rndkey, i + 1);
+	  vec_add1 (tm->keys, rndkey);
 	}
-    }
 
-  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
 
-  fformat (stdout, "Search for items %d times...\n", tm->search_iter);
+      if ((acycle % tm->report_every_n) == 0)
+	fformat (stdout, "Add items...\n");
 
-  before = clib_time_now (&tm->clib_time);
-
-  for (j = 0; j < tm->search_iter; j++)
-    {
       for (i = 0; i < tm->nitems; i++)
 	{
 	  kv.key = tm->keys[i];
-	  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-	    if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-	      clib_warning ("[%d] search for key %lld failed unexpectedly\n",
-			    i, tm->keys[i]);
-	  if (kv.value != (u64) (i + 1))
-	    clib_warning
-	      ("[%d] search for key %lld returned %lld, not %lld\n", i,
-	       tm->keys, kv.value, (u64) (i + 1));
+	  kv.value = i + 1;
+
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+
+	  if (tm->verbose > 1)
+	    {
+	      fformat (stdout, "--------------------\n");
+	      fformat (stdout, "After adding key %llu value %lld...\n",
+		       tm->keys[i], (u64) (i + 1));
+	      fformat (stdout, "%U", BV (format_bihash), h,
+		       2 /* very verbose */ );
+	    }
 	}
-    }
 
-  delta = clib_time_now (&tm->clib_time) - before;
-  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  fformat (stdout, "%U", BV (format_bihash), h,
+		   0 /* very verbose */ );
 
-  if (delta > 0)
-    fformat (stdout, "%.f searches per second\n",
-	     ((f64) total_searches) / delta);
+	  fformat (stdout, "Search for items %d times...\n", tm->search_iter);
+	}
 
-  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches, delta);
+      before = clib_time_now (&tm->clib_time);
 
-  fformat (stdout, "Standard E-hash search for items %d times...\n",
-	   tm->search_iter);
+      for (j = 0; j < tm->search_iter; j++)
+	{
+	  for (i = 0; i < tm->nitems; i++)
+	    {
+	      kv.key = tm->keys[i];
+	      if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		  clib_warning
+		    ("[%d] search for key %lld failed unexpectedly\n", i,
+		     tm->keys[i]);
+	      if (kv.value != (u64) (i + 1))
+		clib_warning
+		  ("[%d] search for key %lld returned %lld, not %lld\n", i,
+		   tm->keys, kv.value, (u64) (i + 1));
+	    }
+	}
 
-  before = clib_time_now (&tm->clib_time);
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  delta = clib_time_now (&tm->clib_time) - before;
+	  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
 
-  for (j = 0; j < tm->search_iter; j++)
-    {
+	  if (delta > 0)
+	    fformat (stdout, "%.f searches per second\n",
+		     ((f64) total_searches) / delta);
+
+	  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches,
+		   delta);
+
+	  fformat (stdout, "Standard E-hash search for items %d times...\n",
+		   tm->search_iter);
+	}
+
+      before = clib_time_now (&tm->clib_time);
+
+      for (j = 0; j < tm->search_iter; j++)
+	{
+	  for (i = 0; i < tm->nitems; i++)
+	    {
+	      p = hash_get (tm->key_hash, tm->keys[i]);
+	      if (p == 0 || p[0] != (uword) (i + 1))
+		clib_warning ("ugh, couldn't find %lld\n", tm->keys[i]);
+	    }
+	}
+
+      delta = clib_time_now (&tm->clib_time) - before;
+      total_searches = (uword) tm->search_iter * (uword) tm->nitems;
+
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  fformat (stdout, "%lld searches in %.6f seconds\n",
+		   total_searches, delta);
+
+	  if (delta > 0)
+	    fformat (stdout, "%.f searches per second\n",
+		     ((f64) total_searches) / delta);
+	  fformat (stdout, "Delete items...\n");
+	}
+
       for (i = 0; i < tm->nitems; i++)
 	{
-	  p = hash_get (tm->key_hash, tm->keys[i]);
-	  if (p == 0 || p[0] != (uword) (i + 1))
-	    clib_warning ("ugh, couldn't find %lld\n", tm->keys[i]);
-	}
-    }
+	  int j;
+	  int rv;
 
-  delta = clib_time_now (&tm->clib_time) - before;
-  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
+	  kv.key = tm->keys[i];
+	  kv.value = (u64) (i + 1);
+	  rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
 
-  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches, delta);
+	  if (rv < 0)
+	    clib_warning ("delete key %lld not ok but should be",
+			  tm->keys[i]);
 
-  if (delta > 0)
-    fformat (stdout, "%.f searches per second\n",
-	     ((f64) total_searches) / delta);
-
-  fformat (stdout, "Delete items...\n");
-
-  for (i = 0; i < tm->nitems; i++)
-    {
-      int j;
-      int rv;
-
-      kv.key = tm->keys[i];
-      kv.value = (u64) (i + 1);
-      rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
-
-      if (rv < 0)
-	clib_warning ("delete key %lld not ok but should be", tm->keys[i]);
-
-      if (tm->careful_delete_tests)
-	{
-	  for (j = 0; j < tm->nitems; j++)
+	  if (tm->careful_delete_tests)
 	    {
-	      kv.key = tm->keys[j];
-	      rv = BV (clib_bihash_search) (h, &kv, &kv);
-	      if (j <= i && rv >= 0)
+	      for (j = 0; j < tm->nitems; j++)
 		{
-		  clib_warning
-		    ("i %d j %d search ok but should not be, value %lld",
-		     i, j, kv.value);
-		}
-	      if (j > i && rv < 0)
-		{
-		  clib_warning ("i %d j %d search not ok but should be",
-				i, j);
+		  kv.key = tm->keys[j];
+		  rv = BV (clib_bihash_search) (h, &kv, &kv);
+		  if (j <= i && rv >= 0)
+		    {
+		      clib_warning
+			("i %d j %d search ok but should not be, value %lld",
+			 i, j, kv.value);
+		    }
+		  if (j > i && rv < 0)
+		    {
+		      clib_warning ("i %d j %d search not ok but should be",
+				    i, j);
+		    }
 		}
 	    }
 	}
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  struct rusage r_usage;
+	  getrusage (RUSAGE_SELF, &r_usage);
+	  fformat (stdout, "Kernel RSS: %ld bytes\n", r_usage.ru_maxrss);
+	  fformat (stdout, "%U\n", BV (format_bihash), h, 0 /* verbose */ );
+	}
+
+      /* Clean up side-bet hash table and random key vector */
+      for (i = 0; i < tm->nitems; i++)
+	hash_unset (tm->key_hash, tm->keys[i]);
+
+      vec_reset_length (tm->keys);
     }
 
-  fformat (stdout, "After deletions, should be empty...\n");
+  fformat (stdout, "End of run, should be empty...\n");
 
   fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
   return 0;
@@ -276,6 +321,8 @@ test_bihash_main (test_main_t * tm)
   clib_error_t *error;
   int which = 0;
 
+  tm->report_every_n = 1;
+
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "seed %u", &tm->seed))
@@ -287,11 +334,15 @@ test_bihash_main (test_main_t * tm)
 	tm->non_random_keys = 1;
       else if (unformat (i, "nitems %d", &tm->nitems))
 	;
+      else if (unformat (i, "ncycles %d", &tm->ncycles))
+	;
       else if (unformat (i, "careful %d", &tm->careful_delete_tests))
 	;
       else if (unformat (i, "verbose %d", &tm->verbose))
 	;
       else if (unformat (i, "search %d", &tm->search_iter))
+	;
+      else if (unformat (i, "report-every %d", &tm->report_every_n))
 	;
       else if (unformat (i, "vec64"))
 	which = 1;
@@ -341,6 +392,7 @@ main (int argc, char *argv[])
 
   tm->nbuckets = 2;
   tm->nitems = 5;
+  tm->ncycles = 1;
   tm->verbose = 1;
   tm->search_iter = 1;
   tm->careful_delete_tests = 0;
