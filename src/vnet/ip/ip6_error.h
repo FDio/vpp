@@ -72,6 +72,9 @@
  /* Erros singalled by ip6-inacl */                                     \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
   _ (INACL_SESSION_DENY, "input ACL session deny drops")                \
+ /* Erros singalled by ip6-outacl */                                    \
+  _ (OUTACL_TABLE_MISS, "output ACL table-miss drops")                  \
+  _ (OUTACL_SESSION_DENY, "output ACL session deny drops")              \
                                                                         \
   /* Errors signalled by ip6-reassembly */                              \
   _ (REASS_MISSING_UPPER, "missing-upper layer drops")                  \

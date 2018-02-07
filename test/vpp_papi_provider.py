@@ -2125,6 +2125,29 @@ class VppPapiProvider(object):
              'l2_table_index': l2_table_index,
              'is_add': is_add})
 
+    def output_acl_set_interface(
+            self,
+            is_add,
+            sw_if_index,
+            ip4_table_index=0xFFFFFFFF,
+            ip6_table_index=0xFFFFFFFF,
+            l2_table_index=0xFFFFFFFF):
+        """
+        :param is_add:
+        :param sw_if_index:
+        :param ip4_table_index:  (Default value = 0xFFFFFFFF)
+        :param ip6_table_index:  (Default value = 0xFFFFFFFF)
+        :param l2_table_index:  (Default value = 0xFFFFFFFF)
+        """
+
+        return self.api(
+            self.papi.output_acl_set_interface,
+            {'sw_if_index': sw_if_index,
+             'ip4_table_index': ip4_table_index,
+             'ip6_table_index': ip6_table_index,
+             'l2_table_index': l2_table_index,
+             'is_add': is_add})
+
     def set_ipfix_exporter(
             self,
             collector_address,
