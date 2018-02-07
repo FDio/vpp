@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72547b21_7b1767cd",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T00:58:01Z",
+      "side": 1,
+      "message": "I don\u0027t see how this while loop will get a usable user_instance. Don\u0027t we need something like user_instance++ in the loop with while (instp !\u003d 0) as the loop control?  Anyway, I thought it would be OK to just fail and return ~0 if dev_instance is not available to simplify this code and also safer in case of excessive looping.",
+      "range": {
+        "startLine": 375,
+        "startChar": 15,
+        "endLine": 375,
+        "endChar": 28
+      },
+      "revId": "ce7d76a7b14fa30b26f4e5d8f67f938ebecd7841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6fe17fd2_72935fb1",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T00:58:01Z",
+      "side": 1,
+      "message": "Don\u0027t we need to call vnet_interface_name_renumber() or do something similar to update the hardware device name with the new user instance? If it is not quite right to call the interface-renumber function, may be we need a new function like vnet_interface_name_refresh()?",
+      "range": {
+        "startLine": 488,
+        "startChar": 32,
+        "endLine": 488,
+        "endChar": 44
+      },
+      "revId": "ce7d76a7b14fa30b26f4e5d8f67f938ebecd7841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5cf9aeeb_e6c9e1ba",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 635,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T00:58:01Z",
+      "side": 1,
+      "message": "This should not be here if vxlan_instance_free() is called later",
+      "range": {
+        "startLine": 635,
+        "startChar": 28,
+        "endLine": 635,
+        "endChar": 58
+      },
+      "revId": "ce7d76a7b14fa30b26f4e5d8f67f938ebecd7841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "14dcdb70_0b289f89",
+        "filename": "src/vnet/vxlan/vxlan.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-07T00:58:01Z",
+      "side": 1,
+      "message": "We should remove renumber if it is not part of the API nor used by vnet_vxlan_add_del_tunnel.",
+      "range": {
+        "startLine": 182,
+        "startChar": 5,
+        "endLine": 182,
+        "endChar": 13
+      },
+      "revId": "ce7d76a7b14fa30b26f4e5d8f67f938ebecd7841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
