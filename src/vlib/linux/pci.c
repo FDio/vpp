@@ -633,8 +633,12 @@ add_device_uio (vlib_main_t * vm, linux_pci_device_t * p,
   t.private_data = p->handle;
 
   p->clib_file_index = clib_file_add (&file_main, &t);
-  p->interrupt_handler = r->interrupt_handler;
-  err = r->init_function (vm, p->handle);
+
+  if (r)
+    {
+      p->interrupt_handler = r->interrupt_handler;
+      err = r->init_function (vm, p->handle);
+    }
 
 error:
   free (s);
@@ -818,7 +822,8 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
       linux_pci_vfio_unmask_intx (p);
     }
 
-  p->interrupt_handler = r->interrupt_handler;
+  if (r)
+    p->interrupt_handler = r->interrupt_handler;
 
   s = format (s, "%s/%U/config%c", sysfs_pci_dev_path,
 	      format_vlib_pci_addr, &di->addr, 0);
@@ -832,7 +837,8 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
       goto error;
     }
 
-  err = r->init_function (vm, p->handle);
+  if (r)
+    err = r->init_function (vm, p->handle);
 
 error:
   vec_free (s);
@@ -934,6 +940,50 @@ vlib_pci_map_resource_fixed (vlib_pci_dev_handle_t h,
 			     u32 resource, u8 * addr, void **result)
 {
   return (vlib_pci_map_resource_int (h, resource, addr, result));
+}
+
+clib_error_t *
+vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
+		      pci_device_id_t ids[], vlib_pci_dev_handle_t * handle)
+{
+  linux_pci_main_t *lpm = &linux_pci_main;
+  vlib_pci_device_info_t *di;
+  linux_pci_device_t *p;
+  clib_error_t *err = 0;
+  pci_device_id_t *i;
+
+  di = vlib_pci_get_device_info (addr, &err);
+
+  if (err)
+    return err;
+  for (i = ids; i->vendor_id != 0; i++)
+    if (i->vendor_id == di->vendor_id && i->device_id == di->device_id)
+      break;
+
+  if (i->vendor_id == 0)
+    return clib_error_return (0, "Wrong vendor or device id");
+
+  pool_get (lpm->linux_pci_devices, p);
+  p->handle = p - lpm->linux_pci_devices;
+
+  if (di->iommu_group != -1)
+    err = add_device_vfio (vm, p, di, 0);
+  else
+    err = add_device_uio (vm, p, di, 0);
+  if (err)
+    goto error;
+
+  *handle = p->handle;
+
+error:
+  vlib_pci_free_device_info (di);
+  if (err)
+    {
+      memset (p, 0, sizeof (linux_pci_device_t));
+      pool_put (lpm->linux_pci_devices, p);
+    }
+
+  return err;
 }
 
 void
