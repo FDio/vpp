@@ -274,6 +274,55 @@ operator<<(std::ostream& os, const direction_t& dir)
   return os;
 }
 
+const ethertype_t ethertype_t::ARP(0x0806, "arp");
+const ethertype_t ethertype_t::FCOE(0x8906, "fcoe");
+const ethertype_t ethertype_t::IPV4(0x0800, "ipv4");
+const ethertype_t ethertype_t::IPV6(0x86DD, "ipv6");
+const ethertype_t ethertype_t::MAC_SECURITY(0x88E5, "mac-security");
+const ethertype_t ethertype_t::MPLS_UNICAST(0x8847, "mpls-unicast");
+const ethertype_t ethertype_t::TRILL(0x22F3, "trill");
+const ethertype_t ethertype_t::UNSPECIFIED(0x0, "unspecified");
+
+ethertype_t::ethertype_t(int v, const std::string s)
+  : enum_base(v, s)
+{
+}
+
+std::ostream&
+operator<<(std::ostream& os, const ethertype_t& ether)
+{
+  os << ether.to_string();
+  return os;
+}
+
+const ethertype_t&
+ethertype_t::from_numeric_val(uint16_t numeric)
+{
+  if (0x0806 == numeric) {
+    return (ethertype_t::ARP);
+  }
+  if (0x8906 == numeric) {
+    return (ethertype_t::FCOE);
+  }
+  if (0x0800 == numeric) {
+    return (ethertype_t::IPV4);
+  }
+  if (0x86DD == numeric) {
+    return (ethertype_t::IPV6);
+  }
+  if (0x88E5 == numeric) {
+    return (ethertype_t::MAC_SECURITY);
+  }
+  if (0x8847 == numeric) {
+    return (ethertype_t::MPLS_UNICAST);
+  }
+  if (0x22F3 == numeric) {
+    return (ethertype_t::TRILL);
+  }
+
+  return (ethertype_t::UNSPECIFIED);
+}
+
 }; // namespace VOM
 
 /*

@@ -159,6 +159,72 @@ struct direction_t : public enum_base<direction_t>
 std::ostream& operator<<(std::ostream& os, const direction_t& dir);
 
 /**
+ * Feature Ethertype
+ */
+struct ethertype_t : public enum_base<ethertype_t>
+{
+  /**
+   * Constructor
+   */
+  ethertype_t(int v, const std::string s);
+
+  /**
+   * Destructor
+   */
+  ~ethertype_t() = default;
+
+  /**
+   * Ethertype Arp
+   */
+  const static ethertype_t ARP;
+
+  /**
+   * Ethertype FCoE
+   */
+  const static ethertype_t FCOE;
+
+  /**
+   * Ethertype IPv4
+   */
+  const static ethertype_t IPV4;
+
+  /**
+   * Ethertype Ipv6
+   */
+  const static ethertype_t IPV6;
+
+  /**
+   * Ethertype MAC Security
+   */
+  const static ethertype_t MAC_SECURITY;
+
+  /**
+   * Ethertype MPLS unicast
+   */
+  const static ethertype_t MPLS_UNICAST;
+
+  /**
+   * Ethertype TRILL
+   */
+  const static ethertype_t TRILL;
+
+  /**
+   * Ethertype Unspecified
+   */
+  const static ethertype_t UNSPECIFIED;
+
+  /**
+   * Get the ethertype from the numeric value
+   */
+  static const ethertype_t& from_numeric_val(uint16_t numeric);
+};
+
+/**
+ * Output ostream for ethertype_t
+ */
+std::ostream& operator<<(std::ostream& os, const ethertype_t& eth);
+
+/**
  * A type declaration of an interface handle in VPP
  */
 struct handle_t

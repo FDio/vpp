@@ -39,6 +39,8 @@
 #include "vom/vxlan_tunnel_cmds.hpp"
 #include "vom/sub_interface.hpp"
 #include "vom/sub_interface_cmds.hpp"
+#include "vom/acl_ethertype.hpp"
+#include "vom/acl_ethertype_cmds.hpp"
 #include "vom/acl_list.hpp"
 #include "vom/acl_binding.hpp"
 #include "vom/acl_list_cmds.hpp"
@@ -279,6 +281,10 @@ public:
                     else if (typeid(*f_exp) == typeid(sub_interface_cmds::delete_cmd))
                     {
                         rc = handle_derived<sub_interface_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(ACL::acl_ethertype_cmds::bind_cmd))
+                    {
+                        rc = handle_derived<ACL::acl_ethertype_cmds::bind_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(ACL::list_cmds::l3_update_cmd))
                     {
@@ -984,6 +990,15 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(fyodor, itf1));
 
+    ACL::ethertype_rule_t e1(ethertype_t::ARP, direction_t::INPUT);
+    ACL::ethertype_rule_t e2(ethertype_t::ARP, direction_t::OUTPUT);
+    ACL::ethertype_rule_t e3(ethertype_t::IPV4, direction_t::INPUT);
+    ACL::acl_ethertype::ethertype_rules_t l_e = {e1, e2, e3};
+    ACL::acl_ethertype *a_e = new ACL::acl_ethertype(itf1, l_e);
+    HW::item<bool> ae_binding(true, rc_t::OK);
+    ADD_EXPECT(ACL::acl_ethertype_cmds::bind_cmd(ae_binding, hw_ifh.data(), l_e));
+    TRY_CHECK_RC(OM::write(fyodor, *a_e));
+
     route::prefix_t src("10.10.10.10", 32);
     ACL::l3_rule r1(10, ACL::action_t::PERMIT, src, route::prefix_t::ZERO);
     ACL::l3_rule r2(20, ACL::action_t::DENY, route::prefix_t::ZERO, route::prefix_t::ZERO);
@@ -1038,6 +1053,7 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     TRY_CHECK(OM::remove(leo));
 
     delete l3b;
+    delete a_e;
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
                                                   rc_t::OK);
     STRICT_ORDER_OFF();
