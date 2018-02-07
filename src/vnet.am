@@ -148,12 +148,11 @@ libvnet_la_SOURCES +=				\
  vnet/l2/l2_fib.c				\
  vnet/l2/l2_flood.c				\
  vnet/l2/l2_fwd.c				\
- vnet/l2/l2_input_acl.c				\
  vnet/l2/l2_input.c				\
  vnet/l2/l2_input_vtr.c				\
  vnet/l2/l2_learn.c				\
- vnet/l2/l2_output_acl.c			\
  vnet/l2/l2_output.c				\
+ vnet/l2/l2_in_out_acl.c			\
  vnet/l2/l2_patch.c				\
  vnet/l2/l2_rw.c				\
  vnet/l2/l2_vtr.c				\
@@ -307,7 +306,7 @@ API_FILES += vnet/lldp/lldp.api
 libvnet_la_SOURCES +=				\
   vnet/classify/vnet_classify.c			\
   vnet/classify/ip_classify.c			\
-  vnet/classify/input_acl.c			\
+  vnet/classify/in_out_acl.c			\
   vnet/classify/policer_classify.c		\
   vnet/classify/flow_classify.c                 \
   vnet/classify/flow_classify_node.c            \
@@ -316,7 +315,7 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/classify/vnet_classify.h	                \
-  vnet/classify/input_acl.h                     \
+  vnet/classify/in_out_acl.h                     \
   vnet/classify/policer_classify.h              \
   vnet/classify/flow_classify.h					\
   vnet/classify/classify.api.h
@@ -357,7 +356,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_frag.c				\
  vnet/ip/ip.c					\
  vnet/ip/ip_init.c				\
- vnet/ip/ip_input_acl.c				\
+ vnet/ip/ip_in_out_acl.c				\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
  vnet/ip/punt_api.c				\

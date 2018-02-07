@@ -1963,6 +1963,24 @@ static void *vl_api_input_acl_set_interface_t_print
   FINISH;
 }
 
+static void *vl_api_output_acl_set_interface_t_print
+  (vl_api_output_acl_set_interface_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: output_acl_set_interface ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "ip4-table %d ", ntohl (mp->ip4_table_index));
+  s = format (s, "ip6-table %d ", ntohl (mp->ip6_table_index));
+  s = format (s, "l2-table %d ", ntohl (mp->l2_table_index));
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
 static void *vl_api_ip_address_dump_t_print
   (vl_api_ip_address_dump_t * mp, void *handle)
 {
@@ -3491,7 +3509,8 @@ _(DNS_ENABLE_DISABLE, dns_enable_disable)                               \
 _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)                     \
 _(DNS_RESOLVE_NAME, dns_resolve_name)					\
 _(DNS_RESOLVE_IP, dns_resolve_ip)					\
-_(SESSION_RULE_ADD_DEL, session_rule_add_del)
+_(SESSION_RULE_ADD_DEL, session_rule_add_del)                           \
+_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

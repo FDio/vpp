@@ -1121,6 +1121,13 @@ VNET_FEATURE_INIT (ip4_source_and_port_range_check_tx, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "ip4-source-and-port-range-check-tx",
+  .runs_before = VNET_FEATURES ("ip4-outacl"),
+};
+
+VNET_FEATURE_INIT (ip4_outacl, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "ip4-outacl",
   .runs_before = VNET_FEATURES ("ipsec-output-ip4"),
 };
 
