@@ -20,7 +20,7 @@
 #include <acl/acl.h>
 
 #include <vnet/l2/l2_classify.h>
-#include <vnet/classify/input_acl.h>
+#include <vnet/classify/in_out_acl.h>
 #include <vpp/app/version.h>
 
 #include <vlibapi/api.h>

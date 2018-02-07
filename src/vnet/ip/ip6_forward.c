@@ -670,6 +670,12 @@ VNET_FEATURE_ARC_INIT (ip6_output, static) =
   .arc_index_ptr = &ip6_main.lookup_main.output_feature_arc_index,
 };
 
+VNET_FEATURE_INIT (ip6_outacl, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "ip6-outacl",
+  .runs_before = VNET_FEATURES ("ipsec-output-ip6"),
+};
+
 VNET_FEATURE_INIT (ip6_ipsec_output, static) = {
   .arc_name = "ip6-output",
   .node_name = "ipsec-output-ip6",

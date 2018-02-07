@@ -33,7 +33,7 @@
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/l2/l2_vtr.h>
-#include <vnet/classify/input_acl.h>
+#include <vnet/classify/in_out_acl.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/mpls/mpls.h>
@@ -5391,7 +5391,8 @@ _(tcp_configure_src_addresses_reply)			\
 _(dns_enable_disable_reply)                             \
 _(dns_name_server_add_del_reply)			\
 _(session_rule_add_del_reply)				\
-_(ip_container_proxy_add_del_reply)
+_(ip_container_proxy_add_del_reply)                     \
+_(output_acl_set_interface_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5719,6 +5720,7 @@ _(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)				\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
+_(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -14126,6 +14128,59 @@ api_input_acl_set_interface (vat_main_t * vam)
     }
 
   M (INPUT_ACL_SET_INTERFACE, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->ip4_table_index = ntohl (ip4_table_index);
+  mp->ip6_table_index = ntohl (ip6_table_index);
+  mp->l2_table_index = ntohl (l2_table_index);
+  mp->is_add = is_add;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_output_acl_set_interface (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_output_acl_set_interface_t *mp;
+  u32 sw_if_index;
+  int sw_if_index_set;
+  u32 ip4_table_index = ~0;
+  u32 ip6_table_index = ~0;
+  u32 l2_table_index = ~0;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "ip4-table %d", &ip4_table_index))
+	;
+      else if (unformat (i, "ip6-table %d", &ip6_table_index))
+	;
+      else if (unformat (i, "l2-table %d", &l2_table_index))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (OUTPUT_ACL_SET_INTERFACE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->ip4_table_index = ntohl (ip4_table_index);
@@ -23113,6 +23168,9 @@ _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 _(session_rules_dump, "")						\
 _(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
+_(output_acl_set_interface,                                             \
+  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
+  "  [l2-table <nn>] [del]")                                            \
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
