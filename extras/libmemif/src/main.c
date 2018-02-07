@@ -1398,11 +1398,13 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
   uint16_t head = ring->head;
   uint16_t tail = ring->tail;
+  uint16_t ring_size;
   uint16_t s0, s1, ns;
   *count_out = 0;
   int i, err = MEMIF_ERR_SUCCESS;	/* 0 */
 
-  ns = (1 << mq->log2_ring_size) - head + tail;
+  ring_size = (1 << mq->log2_ring_size);
+  ns = ring_size - head + tail;
 
   /* calculate number of chain buffers */
   if (size > ring->desc[0].buffer_length)

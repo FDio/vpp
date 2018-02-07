@@ -519,6 +519,7 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
       mq =
 	(memif_queue_t *) realloc (c->rx_queues,
 				   sizeof (memif_queue_t) * (ar->index + 1));
+	memset(mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
       c->rx_queues = mq;
@@ -538,6 +539,7 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
       mq =
 	(memif_queue_t *) realloc (c->tx_queues,
 				   sizeof (memif_queue_t) * (ar->index + 1));
+	memset(mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
       c->tx_queues = mq;
