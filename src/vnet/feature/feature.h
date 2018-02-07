@@ -223,6 +223,13 @@ vnet_feature_next (u32 sw_if_index, u32 * next0, vlib_buffer_t * b0)
   vnet_feature_next_with_data (sw_if_index, next0, b0, 0);
 }
 
+static_always_inline int
+vnet_device_input_have_features (u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  return vnet_have_features (fm->device_input_feature_arc_index, sw_if_index);
+}
+
 static_always_inline void
 vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
 				    vlib_buffer_t * b0)
