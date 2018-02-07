@@ -157,7 +157,6 @@ typedef struct
   u32 wait_cont_idx;
   vppcom_epoll_t vep;
   int libc_epfd;
-  u32 vrf;
   vppcom_ip46_t lcl_addr;
   vppcom_ip46_t peer_addr;
   u16 lcl_port;			// network order
@@ -1043,7 +1042,6 @@ vppcom_send_connect_sock (session_t * session, u32 session_index)
   cmp->client_index = vcm->my_client_index;
   cmp->context = session_index;
 
-  cmp->vrf = session->vrf;
   cmp->is_ip4 = session->peer_addr.is_ip4;
   clib_memcpy (cmp->ip, &session->peer_addr.ip46, sizeof (cmp->ip));
   cmp->port = session->peer_port;
@@ -1488,7 +1486,6 @@ vppcom_send_bind_sock (session_t * session, u32 session_index)
   bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
   bmp->client_index = vcm->my_client_index;
   bmp->context = session_index;
-  bmp->vrf = session->vrf;
   bmp->is_ip4 = session->lcl_addr.is_ip4;
   clib_memcpy (bmp->ip, &session->lcl_addr.ip46, sizeof (bmp->ip));
   bmp->port = session->lcl_port;
@@ -2402,7 +2399,7 @@ vppcom_app_destroy (void)
 }
 
 int
-vppcom_session_create (u32 vrf, u8 proto, u8 is_nonblocking)
+vppcom_session_create (u8 proto, u8 is_nonblocking)
 {
   session_t *session;
   u32 session_index;
@@ -2412,7 +2409,6 @@ vppcom_session_create (u32 vrf, u8 proto, u8 is_nonblocking)
   memset (session, 0, sizeof (*session));
   session_index = session - vcm->sessions;
 
-  session->vrf = vrf;
   session->proto = proto;
   session->state = STATE_START;
   session->is_nonblocking = is_nonblocking ? 1 : 0;
@@ -2432,20 +2428,19 @@ vppcom_session_create (u32 vrf, u8 proto, u8 is_nonblocking)
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
       {
-	.format = "session_create:vrf:%d proto:%d state:%d is_nonblocking:%d",
-	.format_args = "i4i4i4i4",
+	.format = "session_create:proto:%d state:%d is_nonblocking:%d",
+	.format_args = "i4i4i4",
       };
 
       struct
       {
-	u32 data[4];
+	u32 data[3];
       } *ed;
 
       ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-      ed->data[0] = session->vrf;
-      ed->data[1] = session->proto;
-      ed->data[2] = session->state;
-      ed->data[3] = session->is_nonblocking;
+      ed->data[0] = session->proto;
+      ed->data[1] = session->state;
+      ed->data[2] = session->is_nonblocking;
       /* *INDENT-ON* */
     }
 
@@ -2607,7 +2602,6 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
       goto done;
     }
 
-  session->vrf = ep->vrf;
   session->lcl_addr.is_ip4 = ep->is_ip4;
   session->lcl_addr.ip46 = to_ip46 (!ep->is_ip4, ep->ip);
   session->lcl_port = ep->port;
@@ -2795,7 +2789,6 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
   if (ep)
     {
-      ep->vrf = client_session->vrf;
       ep->is_cut_thru = client_session->is_cut_thru;
       ep->is_ip4 = client_session->peer_addr.is_ip4;
       ep->port = client_session->peer_port;
@@ -3054,7 +3047,6 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
       goto done;
     }
 
-  session->vrf = server_ep->vrf;
   session->peer_addr.is_ip4 = server_ep->is_ip4;
   session->peer_addr.ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
   session->peer_port = server_ep->port;
@@ -4423,7 +4415,6 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       if (PREDICT_TRUE (buffer && buflen &&
 			(*buflen >= sizeof (*ep)) && ep->ip))
 	{
-	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->peer_addr.is_ip4;
 	  ep->port = session->peer_port;
 	  if (session->peer_addr.is_ip4)
@@ -4490,7 +4481,6 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       if (PREDICT_TRUE (buffer && buflen &&
 			(*buflen >= sizeof (*ep)) && ep->ip))
 	{
-	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->lcl_addr.is_ip4;
 	  ep->port = session->lcl_port;
 	  if (session->lcl_addr.is_ip4)
@@ -5574,7 +5564,6 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  goto done;
 	}
-      ep->vrf = session->vrf;
       ep->is_ip4 = session->peer_addr.is_ip4;
       ep->port = session->peer_port;
       if (session->peer_addr.is_ip4)

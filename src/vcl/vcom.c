@@ -1142,19 +1142,18 @@ socket (int domain, int type, int protocol)
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
       int sid;
-      u32 vrf = VPPCOM_VRF_DEFAULT;
       u8 proto = ((sock_type == SOCK_DGRAM) ?
 		  VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
 
       func_str = "vppcom_session_create";
 
       if (VCOM_DEBUG > 0)
-	clib_warning ("LDP<%d>: : calling %s(): vrf %u, "
+	clib_warning ("LDP<%d>: : calling %s(): "
 		      "proto %u (%s), is_nonblocking %u",
-		      getpid (), func_str, vrf, proto,
+		      getpid (), func_str, proto,
 		      vppcom_proto_str (proto), is_nonblocking);
 
-      sid = vppcom_session_create (vrf, proto, is_nonblocking);
+      sid = vppcom_session_create (proto, is_nonblocking);
       if (sid < 0)
 	{
 	  errno = -sid;
@@ -1268,7 +1267,6 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 
       func_str = "vppcom_session_bind";
 
-      ep.vrf = VPPCOM_VRF_DEFAULT;
       switch (addr->sa_family)
 	{
 	case AF_INET:
@@ -1493,7 +1491,6 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 
       func_str = "vppcom_session_connect";
 
-      ep.vrf = VPPCOM_VRF_DEFAULT;
       switch (addr->sa_family)
 	{
 	case AF_INET:
@@ -2019,7 +2016,6 @@ sendto (int fd, const void *buf, size_t n, int flags,
       if (addr)
 	{
 	  ep = &_ep;
-	  ep->vrf = VPPCOM_VRF_DEFAULT;
 	  switch (addr->sa_family)
 	    {
 	    case AF_INET:
