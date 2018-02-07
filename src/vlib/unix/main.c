@@ -61,6 +61,7 @@ char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
 clib_file_main_t file_main;
+vlib_physmem_main_t physmem_main;
 
 static clib_error_t *
 unix_main_init (vlib_main_t * vm)

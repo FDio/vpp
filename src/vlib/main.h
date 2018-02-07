@@ -105,8 +105,6 @@ typedef struct vlib_main_t
 
   vlib_buffer_main_t *buffer_main;
 
-  vlib_physmem_main_t physmem_main;
-
   /* Allocate/free buffer memory for DMA transfers, descriptor rings, etc.
      buffer memory is guaranteed to be cache-aligned. */
 
