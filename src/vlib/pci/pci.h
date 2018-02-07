@@ -249,6 +249,11 @@ vlib_pci_bus_master_enable (vlib_pci_dev_handle_t h)
   return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
+clib_error_t *vlib_pci_device_open (vlib_pci_addr_t * addr,
+				    pci_device_id_t ids[],
+				    vlib_pci_dev_handle_t * handle);
+void vlib_pci_device_close (vlib_pci_dev_handle_t h);
+
 clib_error_t *vlib_pci_map_region (vlib_pci_dev_handle_t h, u32 resource,
 				   void **result);
 
@@ -256,6 +261,9 @@ clib_error_t *vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h,
 					 u32 resource, u8 * addr,
 					 void **result);
 
+clib_error_t *vlib_pci_register_intx_handler (vlib_pci_dev_handle_t h,
+					      pci_intx_handler_function_t *
+					      intx_handler);
 clib_error_t *vlib_pci_register_msix_handler (vlib_pci_dev_handle_t h,
 					      u32 start, u32 count,
 					      pci_msix_handler_function_t *

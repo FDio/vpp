@@ -1,0 +1,57 @@
+# Copyright (c) 2018 Cisco Systems, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+vppplugins_LTLIBRARIES += avf_plugin.la
+
+avf_plugin_la_LIBADD =
+avf_plugin_la_SOURCES = \
+	avf/cli.c			\
+	avf/device.c			\
+	avf/format.c			\
+	avf/input.c			\
+	avf/output.c			\
+	avf/plugin.c
+
+noinst_HEADERS += avf/avf.h
+
+if CPU_X86_64
+avf_multiversioning_files = 					\
+	avf/input.c						\
+	avf/output.c
+
+if CC_SUPPORTS_AVX2
+###############################################################
+# AVX2
+###############################################################
+libavf_plugin_avx2_la_SOURCES = $(avf_multiversioning_files)
+libavf_plugin_avx2_la_CFLAGS =				\
+	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
+	-DCLIB_MULTIARCH_VARIANT=avx2
+noinst_LTLIBRARIES += libavf_plugin_avx2.la
+avf_plugin_la_LIBADD += libavf_plugin_avx2.la
+endif
+
+if CC_SUPPORTS_AVX512
+###############################################################
+# AVX512
+###############################################################
+libavf_plugin_avx512_la_SOURCES = $(avf_multiversioning_files)
+libavf_plugin_avx512_la_CFLAGS =				\
+	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
+	-DCLIB_MULTIARCH_VARIANT=avx512
+noinst_LTLIBRARIES += libavf_plugin_avx512.la
+avf_plugin_la_LIBADD += libavf_plugin_avx512.la
+endif
+endif
+
+# vi:syntax=automake
