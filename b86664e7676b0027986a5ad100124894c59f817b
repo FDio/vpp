@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "670c9865_c572c674",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-07T11:50:20Z",
+      "side": 1,
+      "message": "Can you simply store this information into memif_queue_t, seems to be useful.\n\ni.e. \n\ntypedef enum {\n  // ....\n  memif_ring_type_t type;\n} memif_queue_t;",
+      "range": {
+        "startLine": 360,
+        "startChar": 0,
+        "endLine": 360,
+        "endChar": 38
+      },
+      "revId": "b86664e7676b0027986a5ad100124894c59f817b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
