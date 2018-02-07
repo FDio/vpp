@@ -622,13 +622,64 @@ vlib_set_buffer_free_callback (vlib_main_t * vm, void *fp)
 }
 
 static_always_inline void
+recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
+		 vlib_buffer_t * b, u32 follow_buffer_next)
+{
+  vlib_buffer_free_list_t *fl;
+  vlib_buffer_free_list_index_t fi;
+  fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
+
+  /* The only current use of this callback:
+   * multicast recycle */
+  if (PREDICT_FALSE (fl->buffers_added_to_freelist_function != 0))
+    {
+      int j;
+
+      vlib_buffer_add_to_free_list (vm, fl, bi,
+				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
+      for (j = 0; j < vec_len (bm->announce_list); j++)
+	{
+	  if (fl == bm->announce_list[j])
+	    goto already_announced;
+	}
+      vec_add1 (bm->announce_list, fl);
+    already_announced:
+      ;
+    }
+  else
+    {
+      if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
+	{
+	  u32 flags, next;
+
+	  do
+	    {
+	      vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
+	      flags = nb->flags;
+	      next = nb->next_buffer;
+	      if (nb->n_add_refs)
+		nb->n_add_refs--;
+	      else
+		{
+		  vlib_buffer_validate_alloc_free (vm, &bi, 1,
+						   VLIB_BUFFER_KNOWN_ALLOCATED);
+		  vlib_buffer_add_to_free_list (vm, fl, bi, 1);
+		}
+	      bi = next;
+	    }
+	  while (follow_buffer_next && (flags & VLIB_BUFFER_NEXT_PRESENT));
+
+	}
+    }
+}
+
+static_always_inline void
 vlib_buffer_free_inline (vlib_main_t * vm,
 			 u32 * buffers, u32 n_buffers, u32 follow_buffer_next)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  vlib_buffer_free_list_t *fl;
-  vlib_buffer_free_list_index_t fi;
-  int i;
+  vlib_buffer_t *p, *b0, *b1, *b2, *b3;
+  int i = 0;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	     u32 follow_buffer_next);
 
@@ -640,59 +691,43 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   if (!n_buffers)
     return;
 
-  for (i = 0; i < n_buffers; i++)
+  while (i + 11 < n_buffers)
     {
-      vlib_buffer_t *b;
-      u32 bi = buffers[i];
+      p = vlib_get_buffer (vm, buffers[i + 8]);
+      vlib_prefetch_buffer_header (p, LOAD);
+      p = vlib_get_buffer (vm, buffers[i + 9]);
+      vlib_prefetch_buffer_header (p, LOAD);
+      p = vlib_get_buffer (vm, buffers[i + 10]);
+      vlib_prefetch_buffer_header (p, LOAD);
+      p = vlib_get_buffer (vm, buffers[i + 11]);
+      vlib_prefetch_buffer_header (p, LOAD);
 
-      b = vlib_get_buffer (vm, bi);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
-      fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
+      b0 = vlib_get_buffer (vm, buffers[i]);
+      b1 = vlib_get_buffer (vm, buffers[i + 1]);
+      b2 = vlib_get_buffer (vm, buffers[i + 2]);
+      b3 = vlib_get_buffer (vm, buffers[i + 3]);
 
-      /* The only current use of this callback: multicast recycle */
-      if (PREDICT_FALSE (fl->buffers_added_to_freelist_function != 0))
-	{
-	  int j;
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b2);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b3);
 
-	  vlib_buffer_add_to_free_list
-	    (vm, fl, buffers[i], (b->flags & VLIB_BUFFER_RECYCLE) == 0);
+      recycle_or_free (vm, bm, buffers[i], b0, follow_buffer_next);
+      recycle_or_free (vm, bm, buffers[i + 1], b1, follow_buffer_next);
+      recycle_or_free (vm, bm, buffers[i + 2], b2, follow_buffer_next);
+      recycle_or_free (vm, bm, buffers[i + 3], b3, follow_buffer_next);
 
-	  for (j = 0; j < vec_len (bm->announce_list); j++)
-	    {
-	      if (fl == bm->announce_list[j])
-		goto already_announced;
-	    }
-	  vec_add1 (bm->announce_list, fl);
-	already_announced:
-	  ;
-	}
-      else
-	{
-	  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
-	    {
-	      u32 flags, next;
-
-	      do
-		{
-		  vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
-		  flags = nb->flags;
-		  next = nb->next_buffer;
-		  if (nb->n_add_refs)
-		    nb->n_add_refs--;
-		  else
-		    {
-		      vlib_buffer_validate_alloc_free (vm, &bi, 1,
-						       VLIB_BUFFER_KNOWN_ALLOCATED);
-		      vlib_buffer_add_to_free_list (vm, fl, bi, 1);
-		    }
-		  bi = next;
-		}
-	      while (follow_buffer_next
-		     && (flags & VLIB_BUFFER_NEXT_PRESENT));
-
-	    }
-	}
+      i += 4;
     }
+
+  while (i < n_buffers)
+    {
+      b0 = vlib_get_buffer (vm, buffers[i]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      recycle_or_free (vm, bm, buffers[i], b0, follow_buffer_next);
+      i++;
+    }
+
   if (vec_len (bm->announce_list))
     {
       vlib_buffer_free_list_t *fl;
