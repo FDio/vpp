@@ -954,8 +954,7 @@ init_device_from_registered (vlib_main_t * vm, vlib_pci_device_info_t * di)
   while (r)
     {
       for (i = r->supported_devices; i->vendor_id != 0; i++)
-	if (i->vendor_id == di->config0.header.vendor_id &&
-	    i->device_id == di->config0.header.device_id)
+	if (i->vendor_id == di->vendor_id && i->device_id == di->device_id)
 	  {
 	    if (di->iommu_group != -1)
 	      err = add_device_vfio (vm, p, di, r);
