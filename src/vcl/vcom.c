@@ -3194,7 +3194,7 @@ vcom_epoll_pwait (int epfd, struct epoll_event *events,
 			  getpid (), epfd, epfd, func_str,
 			  libc_epfd, libc_epfd, events, maxevents, sigmask);
 
-	  rv = libc_epoll_pwait (epfd, events, maxevents, 1, sigmask);
+	  rv = libc_epoll_pwait (libc_epfd, events, maxevents, 1, sigmask);
 	  if (rv != 0)
 	    goto done;
 	}
@@ -3207,6 +3207,8 @@ vcom_epoll_pwait (int epfd, struct epoll_event *events,
 done:
   if (VCOM_DEBUG > 3)
     {
+      if (libc_epfd > 0)
+	epfd = libc_epfd;
       if (rv < 0)
 	{
 	  int errno_val = errno;
