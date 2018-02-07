@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe4d865e_0792354b",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-02-07T00:09:05Z",
+      "side": 1,
+      "message": "why is this change needed? It does not appear to me it is doing anything useful.",
+      "revId": "d390348111c277b8406233c8fe5e053ee6a2770d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7bc0a8e1_b00321ef",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1221,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-02-07T00:09:05Z",
+      "side": 1,
+      "message": "I am wondering why we prefer the new connection over an existing connection. Shouldn\u0027t we just return an error if the existing connection exists to avoid the bounce?",
+      "revId": "d390348111c277b8406233c8fe5e053ee6a2770d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
