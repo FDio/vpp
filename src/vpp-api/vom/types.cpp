@@ -274,6 +274,27 @@ operator<<(std::ostream& os, const direction_t& dir)
   return os;
 }
 
+const ethertype_t ethertype_t::ETHERTYPE_ARP(0x0806, "arp");
+const ethertype_t ethertype_t::ETHERTYPE_FCOE(0x8906, "fcoe");
+const ethertype_t ethertype_t::ETHERTYPE_IPV4(0x0800, "ipv4");
+const ethertype_t ethertype_t::ETHERTYPE_IPV6(0x86DD, "ipv6");
+const ethertype_t ethertype_t::ETHERTYPE_MAC_SECURITY(0x88E5, "mac-security");
+const ethertype_t ethertype_t::ETHERTYPE_MPLS_UNICAST(0x8847, "mpls-unicast");
+const ethertype_t ethertype_t::ETHERTYPE_TRILL(0x22F3, "trill");
+const ethertype_t ethertype_t::ETHERTYPE_UNSPECIFIED(0x0, "unspecified");
+
+ethertype_t::ethertype_t(int v, const std::string s)
+  : enum_base(v, s)
+{
+}
+
+std::ostream&
+operator<<(std::ostream& os, const ethertype_t& ether)
+{
+  os << ether.to_string();
+  return os;
+}
+
 }; // namespace VOM
 
 /*
