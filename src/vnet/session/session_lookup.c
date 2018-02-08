@@ -1234,37 +1234,6 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   return 0;
 }
 
-u64
-session_lookup_local_listener_make_handle (session_endpoint_t * sep)
-{
-  return ((u64) SESSION_LOCAL_TABLE_PREFIX << 32
-	  | (u32) sep->port << 16 | (u32) sep->transport_proto << 8
-	  | (u32) sep->is_ip4);
-}
-
-u8
-session_lookup_local_is_handle (u64 handle)
-{
-  if (handle >> 32 == SESSION_LOCAL_TABLE_PREFIX)
-    return 1;
-  return 0;
-}
-
-int
-session_lookup_local_listener_parse_handle (u64 handle,
-					    session_endpoint_t * sep)
-{
-  u32 local_table_handle;
-  if (handle >> 32 != SESSION_LOCAL_TABLE_PREFIX)
-    return -1;
-  local_table_handle = handle & 0xFFFFFFFFULL;
-  sep->is_ip4 = local_table_handle & 0xff;
-  local_table_handle >>= 8;
-  sep->transport_proto = local_table_handle & 0xff;
-  sep->port = local_table_handle >> 8;
-  return 0;
-}
-
 clib_error_t *
 vnet_session_rule_add_del (session_rule_add_del_args_t * args)
 {

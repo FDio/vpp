@@ -1212,7 +1212,7 @@ API_FILES += vnet/bier/bier.api
 # Test apps
 ########################################
 
-noinst_PROGRAMS += tcp_echo udp_echo
+bin_PROGRAMS += tcp_echo udp_echo
 
 TEST_APPS_LDADD = libvlibmemoryclient.la libsvm.la libvppinfra.la
 TEST_APPS_LDADD += -lpthread -lm -lrt

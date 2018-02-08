@@ -94,7 +94,6 @@ static session_cb_vft_t dummy_session_cbs = {
   .session_accept_callback = dummy_session_accept_callback,
   .session_disconnect_callback = dummy_session_disconnect_callback,
   .builtin_server_rx_callback = dummy_server_rx_callback,
-  .redirect_connect_callback = dummy_redirect_connect_callback,
 };
 /* *INDENT-ON* */
 
