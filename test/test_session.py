@@ -84,10 +84,18 @@ class TestSession(VppTestCase):
         if error:
             self.logger.critical(error)
             self.assertEqual(error.find("failed"), -1)
+        if self.vpp_dead:
+            self.assert_equal(0)
+
+        if error:
+            self.logger.critical(error)
+            self.assertEqual(error.find("failed"), -1)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
