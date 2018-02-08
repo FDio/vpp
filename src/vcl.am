@@ -34,14 +34,14 @@ nobase_include_HEADERS +=			\
 libvcl_ldpreload_la_LIBADD =  $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
 
 libvcl_ldpreload_la_SOURCES +=			\
-  vcl/vcom_socket_wrapper.c			\
-  vcl/vcom.c					\
+  vcl/ldp_socket_wrapper.c			\
+  vcl/ldp.c					\
   $(libvppcom_la_SOURCES)
 
 nobase_include_HEADERS +=			\
-  vcl/vcom_socket_wrapper.h			\
-  vcl/vcom_glibc_socket.h			\
-  vcl/vcom.h
+  vcl/ldp_socket_wrapper.h			\
+  vcl/ldp_glibc_socket.h			\
+  vcl/ldp.h
 
 noinst_PROGRAMS +=				\
 	vcl_test_server				\
