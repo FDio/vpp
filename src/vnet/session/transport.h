@@ -71,6 +71,7 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_TCP,
   TRANSPORT_PROTO_UDP,
   TRANSPORT_PROTO_SCTP,
+  TRANSPORT_PROTO_NONE,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
