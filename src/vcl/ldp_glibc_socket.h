@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef included_vcom_glibc_socket_h
-#define included_vcom_glibc_socket_h
+#ifndef included_ldp_glibc_socket_h
+#define included_ldp_glibc_socket_h
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -341,7 +341,7 @@ extern int ppoll (struct pollfd *__fds, nfds_t __nfds,
 #endif
 
 
-#endif /* included_vcom_glibc_socket_h */
+#endif /* included_ldp_glibc_socket_h */
 
 /*
  * fd.io coding-style-patch-verification: ON

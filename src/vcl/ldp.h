@@ -13,30 +13,30 @@
  * limitations under the License.
  */
 
-#ifndef included_vcom_h
-#define included_vcom_h
+#ifndef included_ldp_h
+#define included_ldp_h
 
 #if (CLIB_DEBUG > 0)
-/* Set VCOM_DEBUG 2 for connection debug, 3 for read/write debug output */
-#define VCOM_DEBUG_INIT 1
+/* Set LDP_DEBUG 2 for connection debug, 3 for read/write debug output */
+#define LDP_DEBUG_INIT 1
 #else
-#define VCOM_DEBUG_INIT 0
+#define LDP_DEBUG_INIT 0
 #endif
 
 #include <vppinfra/error.h>
 #include <vppinfra/types.h>
-#include <vcl/vcom_glibc_socket.h>
+#include <vcl/ldp_glibc_socket.h>
 
-#define VCOM_ENV_DEBUG     "VCOM_DEBUG"
-#define VCOM_ENV_APP_NAME  "VCOM_APP_NAME"
-#define VCOM_ENV_SID_BIT   "VCOM_SID_BIT"
+#define LDP_ENV_DEBUG     "LDP_DEBUG"
+#define LDP_ENV_APP_NAME  "LDP_APP_NAME"
+#define LDP_ENV_SID_BIT   "LDP_SID_BIT"
 
-#define VCOM_SID_BIT_MIN   9
-#define VCOM_SID_BIT_MAX   30
+#define LDP_SID_BIT_MIN   9
+#define LDP_SID_BIT_MAX   30
 
-#define VCOM_APP_NAME_MAX  256
+#define LDP_APP_NAME_MAX  256
 
-#endif /* included_vcom_h */
+#endif /* included_ldp_h */
 
 /*
  * fd.io coding-style-patch-verification: ON

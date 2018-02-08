@@ -55,8 +55,8 @@
    is set.
 */
 
-#ifndef included_vcom_socket_wrapper_h
-#define included_vcom_socket_wrapper_h
+#ifndef included_ldp_socket_wrapper_h
+#define included_ldp_socket_wrapper_h
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -66,7 +66,7 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <stdlib.h>
-#include <vcl/vcom.h>
+#include <vcl/ldp.h>
 
 
 /* GCC have printf type attribute check. */
@@ -224,7 +224,7 @@ void swrap_constructor (void);
 
 void swrap_destructor (void);
 
-#endif /* included_vcom_socket_wrapper_h */
+#endif /* included_ldp_socket_wrapper_h */
 
 /*
  * fd.io coding-style-patch-verification: ON

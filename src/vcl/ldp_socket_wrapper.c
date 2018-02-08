@@ -63,7 +63,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/ldp_socket_wrapper.h>
 
 
 enum swrap_dbglvl_e
