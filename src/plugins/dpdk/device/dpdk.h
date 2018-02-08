@@ -172,9 +172,6 @@ typedef struct
   struct rte_mbuf ***tx_vectors;	/* one per worker thread */
   struct rte_mbuf ***rx_vectors;
 
-  /* vector of traced contexts, per device */
-  u32 **d_trace_buffers;
-
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
