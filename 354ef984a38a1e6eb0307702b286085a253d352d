@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43e18bf5_3d5511ec",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-08T10:00:47Z",
+      "side": 1,
+      "message": "I would prefer to reuse existing memif_ring_type_t from memif.h here, per my 1st comment.",
+      "range": {
+        "startLine": 117,
+        "startChar": 2,
+        "endLine": 117,
+        "endChar": 26
+      },
+      "revId": "354ef984a38a1e6eb0307702b286085a253d352d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
