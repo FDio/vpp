@@ -471,19 +471,11 @@ http_server_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
   return -1;
 }
 
-static int
-http_server_redirect_connect_callback (u32 client_index, void *mp)
-{
-  clib_warning ("called...");
-  return -1;
-}
-
 static session_cb_vft_t http_server_session_cb_vft = {
   .session_accept_callback = http_server_session_accept_callback,
   .session_disconnect_callback = http_server_session_disconnect_callback,
   .session_connected_callback = http_server_session_connected_callback,
   .add_segment_callback = http_server_add_segment_callback,
-  .redirect_connect_callback = http_server_redirect_connect_callback,
   .builtin_server_rx_callback = http_server_rx_callback,
   .session_reset_callback = http_server_session_reset_callback
 };

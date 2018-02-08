@@ -36,6 +36,26 @@ typedef enum
   SESSION_STATE_N_STATES,
 } stream_session_state_t;
 
+/* TODO convert to macro once cleanup completed */
+typedef struct app_session_
+{
+  /** fifo pointers. Once allocated, these do not move */
+  svm_fifo_t *server_rx_fifo;
+  svm_fifo_t *server_tx_fifo;
+
+  /** Type */
+  session_type_t session_type;
+
+  /** State */
+  volatile u8 session_state;
+
+  /** Session index in owning pool */
+  u32 session_index;
+
+  /** Application index */
+  u32 app_index;
+} app_session_t;
+
 typedef struct _stream_session_t
 {
   /** fifo pointers. Once allocated, these do not move */
@@ -48,6 +68,12 @@ typedef struct _stream_session_t
   /** State */
   volatile u8 session_state;
 
+  /** Session index in per_thread pool */
+  u32 session_index;
+
+  /** stream server pool index */
+  u32 app_index;
+
   u8 thread_index;
 
   /** To avoid n**2 "one event per frame" check */
@@ -56,20 +82,49 @@ typedef struct _stream_session_t
   /** svm segment index where fifos were allocated */
   u32 svm_segment_index;
 
-  /** Session index in per_thread pool */
-  u32 session_index;
-
   /** Transport specific */
   u32 connection_index;
-
-  /** stream server pool index */
-  u32 app_index;
 
   /** Parent listener session if the result of an accept */
   u32 listener_index;
 
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } stream_session_t;
+
+typedef struct local_session_
+{
+  /** fifo pointers. Once allocated, these do not move */
+  svm_fifo_t *server_rx_fifo;
+  svm_fifo_t *server_tx_fifo;
+
+  /** Type */
+  session_type_t session_type;
+
+  /** State */
+  volatile u8 session_state;
+
+  /** Session index */
+  u32 session_index;
+
+  /** Server index */
+  u32 app_index;
+
+  /** Segment index where fifos were allocated */
+  u32 svm_segment_index;
+
+  u64 server_evt_q;
+  u32 listener_id;
+
+  /**
+   * Client data
+   */
+  u32 client_index;
+  u16 client_port;
+  u32 client_opaque;
+  u64 client_evt_q;
+
+    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+} local_session_t;
 
 typedef struct _session_endpoint
 {

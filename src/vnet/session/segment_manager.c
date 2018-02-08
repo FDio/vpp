@@ -27,8 +27,9 @@ static u32 segment_name_counter = 0;
 /**
  * Default fifo and segment size. TODO config.
  */
-u32 default_fifo_size = 1 << 12;
-u32 default_segment_size = 1 << 20;
+static u32 default_fifo_size = 1 << 12;
+static u32 default_segment_size = 1 << 20;
+static u32 default_app_evt_queue_size = 128;
 
 segment_manager_properties_t *
 segment_manager_properties_get (segment_manager_t * sm)
@@ -42,6 +43,7 @@ segment_manager_properties_init (segment_manager_properties_t * props)
   props->add_segment_size = default_segment_size;
   props->rx_fifo_size = default_fifo_size;
   props->tx_fifo_size = default_fifo_size;
+  props->evt_q_size = default_app_evt_queue_size;
   return props;
 }
 
@@ -67,7 +69,7 @@ segment_manager_segment_index (segment_manager_t * sm,
 /**
  * Remove segment without lock
  */
-always_inline void
+void
 segment_manager_del_segment (segment_manager_t * sm,
 			     svm_fifo_segment_private_t * fs)
 {
@@ -131,6 +133,7 @@ segment_manager_get_segment_w_lock (segment_manager_t * sm, u32 segment_index)
 void
 segment_manager_segment_reader_unlock (segment_manager_t * sm)
 {
+  ASSERT (sm->segments_rwlock->n_readers > 0);
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
 }
 
@@ -146,7 +149,7 @@ segment_manager_segment_writer_unlock (segment_manager_t * sm)
  * If needed a writer's lock is acquired before allocating a new segment
  * to avoid affecting any of the segments pool readers.
  */
-always_inline int
+int
 segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
 {
   segment_manager_main_t *smm = &segment_manager_main;
@@ -242,8 +245,7 @@ segment_manager_new ()
  * Returns error if ssvm segment(s) allocation fails.
  */
 int
-segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
-		      u32 evt_q_size, u32 prealloc_fifo_pairs)
+segment_manager_init (segment_manager_t * sm, u32 first_seg_size, u32 prealloc_fifo_pairs)
 {
   u32 rx_fifo_size, tx_fifo_size, pair_size;
   u32 rx_rounded_data_size, tx_rounded_data_size;
@@ -283,10 +285,11 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 	      return seg_index;
 	    }
 
-	  if (i == 0)
-	    sm->event_queue = segment_manager_alloc_queue (sm, evt_q_size);
-
 	  segment = segment_manager_get_segment (sm, seg_index);
+	  if (i == 0)
+	    sm->event_queue = segment_manager_alloc_queue (segment,
+		                                           props->evt_q_size);
+
 	  svm_fifo_segment_preallocate_fifo_pairs (segment,
 						   props->rx_fifo_size,
 						   props->tx_fifo_size,
@@ -304,7 +307,9 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 	  clib_warning ("Failed to allocate segment");
 	  return seg_index;
 	}
-      sm->event_queue = segment_manager_alloc_queue (sm, evt_q_size);
+      segment = segment_manager_get_segment (sm, seg_index);
+      sm->event_queue = segment_manager_alloc_queue (segment,
+	                                             props->evt_q_size);
     }
 
   return 0;
@@ -422,10 +427,10 @@ segment_manager_init_del (segment_manager_t * sm)
     }
 }
 
-always_inline int
-segment_try_alloc_fifos (svm_fifo_segment_private_t * fifo_segment,
-			 u32 rx_fifo_size, u32 tx_fifo_size,
-			 svm_fifo_t ** rx_fifo, svm_fifo_t ** tx_fifo)
+int
+segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fifo_segment,
+                                 u32 rx_fifo_size, u32 tx_fifo_size,
+                                 svm_fifo_t ** rx_fifo, svm_fifo_t ** tx_fifo)
 {
   rx_fifo_size = clib_max (rx_fifo_size, default_fifo_size);
   *rx_fifo = svm_fifo_segment_alloc_fifo (fifo_segment, rx_fifo_size,
@@ -481,9 +486,10 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 
   /* *INDENT-OFF* */
   segment_manager_foreach_segment_w_lock (fifo_segment, sm, ({
-    alloc_fail = segment_try_alloc_fifos (fifo_segment, props->rx_fifo_size,
-                                          props->tx_fifo_size, rx_fifo,
-                                          tx_fifo);
+    alloc_fail = segment_manager_try_alloc_fifos (fifo_segment,
+                                                  props->rx_fifo_size,
+                                                  props->tx_fifo_size,
+                                                  rx_fifo, tx_fifo);
     /* Exit with lock held, drop it after notifying app */
     if (!alloc_fail)
       goto alloc_success;
@@ -528,9 +534,10 @@ alloc_check:
 	  return SESSION_ERROR_SEG_CREATE;
 	}
       fifo_segment = segment_manager_get_segment_w_lock (sm, new_fs_index);
-      alloc_fail = segment_try_alloc_fifos (fifo_segment, props->rx_fifo_size,
-					    props->tx_fifo_size, rx_fifo,
-					    tx_fifo);
+      alloc_fail = segment_manager_try_alloc_fifos (fifo_segment,
+                                                    props->rx_fifo_size,
+                                                    props->tx_fifo_size,
+                                                    rx_fifo, tx_fifo);
       added_a_segment = 1;
       goto alloc_check;
     }
@@ -588,16 +595,13 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
  * Must be called with lock held
  */
 svm_queue_t *
-segment_manager_alloc_queue (segment_manager_t * sm, u32 queue_size)
+segment_manager_alloc_queue (svm_fifo_segment_private_t *segment,
+                             u32 queue_size)
 {
-  svm_fifo_segment_private_t *segment;
   ssvm_shared_header_t *sh;
   svm_queue_t *q;
   void *oldheap;
 
-  ASSERT (!pool_is_free_index (sm->segments, 0));
-
-  segment = segment_manager_get_segment (sm, 0);
   sh = segment->ssvm.sh;
 
   oldheap = ssvm_push_heap (sh);
