@@ -98,7 +98,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
         add or del tunnels sharing the same mcast dst
         to test geneve ref_count mechanism
         """
-        n_shared_dst_tunnels = 2000
+        n_shared_dst_tunnels = 10
         vni_start = 10000
         vni_end = vni_start + n_shared_dst_tunnels
         for vni in range(vni_start, vni_end):
@@ -124,7 +124,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
         """
         add or del tunnels to test geneve stability
         """
-        n_distinct_dst_tunnels = 200
+        n_distinct_dst_tunnels = 10
         ip_range_start = 10
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
         for dest_ip4n in ip4n_range(cls.mcast_ip4n, ip_range_start,
