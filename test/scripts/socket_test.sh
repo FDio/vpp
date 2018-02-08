@@ -1,7 +1,14 @@
-#! /bin/bash
+#! /usr/bin/env bash
 #
 # socket_test.sh -- script to run socket tests.
 #
+
+if [ $USER != "root" ] ; then
+    echo "Restarting script with sudo..."
+    sudo $0 ${*}
+    exit
+fi
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 vpp_dir="$WS_ROOT/build-root/install-vpp-native/vpp/bin/"
 vpp_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/bin/"
