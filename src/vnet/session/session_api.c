@@ -111,6 +111,40 @@ send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
 }
 
 static int
+send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
+{
+  vl_api_unmap_segment_t *mp;
+  vl_api_registration_t *reg;
+
+  reg = vl_mem_api_client_index_to_registration (api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", api_client_index);
+      return -1;
+    }
+
+  if (ssvm_type (fs) == SSVM_SEGMENT_MEMFD
+      && vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+    {
+      clib_warning ("can't send memfd fd");
+      return -1;
+    }
+
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
+  strncpy ((char *) mp->segment_name, (char *) fs->name,
+	   sizeof (mp->segment_name) - 1);
+
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
+
+  if (ssvm_type (fs) == SSVM_SEGMENT_MEMFD)
+    return session_send_memfd_fd (reg, fs);
+
+  return 0;
+}
+
+static int
 send_session_accept_callback (stream_session_t * s)
 {
   application_t *server = application_get (s->app_index);
@@ -121,7 +155,6 @@ send_session_accept_callback (stream_session_t * s)
   stream_session_t *listener;
   svm_queue_t *vpp_queue;
 
-  vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
   reg = vl_mem_api_client_index_to_registration (server->api_client_index);
   if (!reg)
     {
@@ -134,30 +167,65 @@ send_session_accept_callback (stream_session_t * s)
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server->index;
-  listener = listen_session_get (s->session_type, s->listener_index);
-  tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
-  tc = tp_vft->get_connection (s->connection_index, s->thread_index);
-  mp->listener_handle = listen_session_get_handle (listener);
-
-  if (application_is_proxy (server))
-    {
-      listener =
-	application_first_listener (server,
-				    transport_connection_fib_proto (tc),
-				    tc->proto);
-      if (listener)
-	mp->listener_handle = listen_session_get_handle (listener);
-    }
-  mp->handle = session_handle (s);
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
-  mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-  mp->port = tc->rmt_port;
-  mp->is_ip4 = tc->is_ip4;
-  clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+
+  if (session_has_transport (s))
+    {
+      listener = listen_session_get(s->session_type, s->listener_index);
+      mp->listener_handle = listen_session_get_handle (listener);
+      if (application_is_proxy (server))
+	{
+	  listener = application_first_listener (
+	      server, session_get_fib_proto (s),
+	      session_get_transport_proto (s));
+	  if (listener)
+	    mp->listener_handle = listen_session_get_handle (listener);
+	}
+      vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
+      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      mp->handle = session_handle (s);
+      tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
+      tc = tp_vft->get_connection (s->connection_index, s->thread_index);
+      mp->port = tc->rmt_port;
+      mp->is_ip4 = tc->is_ip4;
+      clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof(tc->rmt_ip));
+    }
+  else
+    {
+      local_session_t *ls = (local_session_t *) s;
+      session_handle_t lh;
+      lh = local_session_listener_handle_from_id (ls->listener_id);
+      mp->listener_handle = lh;
+      mp->handle = local_session_handle (ls);
+      mp->port = ls->client_port;
+      mp->vpp_event_queue_address = ls->client_evt_q;
+      mp->server_event_queue_address = ls->server_evt_q;
+    }
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
   return 0;
+}
+
+void
+send_local_session_disconnect_callback (u32 app_index, local_session_t * ls)
+{
+  application_t *app = application_get (app_index);
+  vl_api_disconnect_session_t *mp;
+  vl_api_registration_t *reg;
+
+  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", app->api_client_index);
+      return;
+    }
+
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
+  mp->handle = local_session_handle (ls);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 }
 
 static void
@@ -227,21 +295,34 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   if (is_fail)
     goto done;
 
-  tc = session_get_transport (s);
-  if (!tc)
+  if (session_has_transport (s))
     {
-      is_fail = 1;
-      goto done;
-    }
+      tc = session_get_transport (s);
+      if (!tc)
+	{
+	  is_fail = 1;
+	  goto done;
+	}
 
-  vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
-  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
-  mp->handle = session_handle (s);
-  mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-  clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-  mp->is_ip4 = tc->is_ip4;
-  mp->lcl_port = tc->lcl_port;
+      vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
+      mp->handle = session_handle (s);
+      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
+      mp->is_ip4 = tc->is_ip4;
+      mp->lcl_port = tc->lcl_port;
+      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+    }
+  else
+    {
+      local_session_t *ls = (local_session_t *) s;
+      mp->handle = local_session_handle (ls);
+      mp->lcl_port = ls->client_port;
+      mp->vpp_event_queue_address = ls->server_evt_q;
+      mp->client_event_queue_address = ls->client_evt_q;
+      mp->server_rx_fifo = pointer_to_uword (s->server_tx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->server_rx_fifo);
+    }
 
 done:
   mp->retval = is_fail ?
@@ -250,87 +331,13 @@ done:
   return 0;
 }
 
-/**
- * Redirect a connect_uri message to the indicated server.
- * Only sent if the server has bound the related port with
- * URI_OPTIONS_FLAGS_USE_FIFO
- */
-static int
-redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
-{
-  vl_api_connect_sock_t *mp = mp_arg;
-  svm_queue_t *server_q, *client_q;
-  segment_manager_properties_t *props;
-  vlib_main_t *vm = vlib_get_main ();
-  f64 timeout = vlib_time_now (vm) + 0.5;
-  application_t *app;
-  int rv = 0;
-
-  server_q = vl_api_client_index_to_input_queue (server_api_client_index);
-
-  if (!server_q)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
-
-  client_q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!client_q)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE_2;
-      goto out;
-    }
-
-  /* Tell the server the client's API queue address, so it can reply */
-  mp->client_queue_address = pointer_to_uword (client_q);
-  app = application_lookup (mp->client_index);
-  if (!app)
-    {
-      clib_warning ("no client application");
-      return -1;
-    }
-
-  props = application_segment_manager_properties (app);
-  mp->options[APP_OPTIONS_RX_FIFO_SIZE] = props->rx_fifo_size;
-  mp->options[APP_OPTIONS_TX_FIFO_SIZE] = props->tx_fifo_size;
-
-  /*
-   * Bounce message handlers MUST NOT block the data-plane.
-   * Spin waiting for the queue lock, but
-   */
-
-  while (vlib_time_now (vm) < timeout)
-    {
-      rv = svm_queue_add (server_q, (u8 *) & mp, 1 /*nowait */ );
-      switch (rv)
-	{
-	  /* correctly enqueued */
-	case 0:
-	  return VNET_API_ERROR_SESSION_REDIRECT;
-
-	  /* continue spinning, wait for pthread_mutex_trylock to work */
-	case -1:
-	  continue;
-
-	  /* queue stuffed, drop the msg */
-	case -2:
-	  rv = VNET_API_ERROR_QUEUE_FULL;
-	  goto out;
-	}
-    }
-out:
-  /* Dispose of the message */
-  vl_msg_api_free (mp);
-  return rv;
-}
-
 static session_cb_vft_t session_cb_vft = {
   .session_accept_callback = send_session_accept_callback,
   .session_disconnect_callback = send_session_disconnect_callback,
   .session_connected_callback = send_session_connected_callback,
   .session_reset_callback = send_session_reset_callback,
   .add_segment_callback = send_add_segment_callback,
-  .redirect_connect_callback = redirect_connect_callback
+  .del_segment_callback = send_del_segment_callback,
 };
 
 static void
@@ -644,9 +651,9 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
 static void
 vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 {
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  local_session_t *ls;
   stream_session_t *s;
-  u32 session_index, thread_index;
-  vnet_disconnect_args_t _a, *a = &_a;
 
   /* Server isn't interested, kill the session */
   if (mp->retval)
@@ -654,19 +661,33 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
       a->app_index = mp->context;
       a->handle = mp->handle;
       vnet_disconnect_session (a);
+      return;
+    }
+
+  if (session_handle_is_local (mp->handle))
+    {
+      ls = application_get_local_session_from_handle (mp->handle);
+      if (!ls || ls->app_index != mp->context)
+	{
+	  clib_warning ("server %u doesn't own local handle %llu",
+	                mp->context, mp->handle);
+	  return;
+	}
+      if (application_local_session_connect_notify (ls))
+	return;
+     ls->session_state = SESSION_STATE_READY;
     }
   else
     {
-      session_parse_handle (mp->handle, &session_index, &thread_index);
-      s = session_get_if_valid (session_index, thread_index);
+      s = session_get_from_handle_if_valid(mp->handle);
       if (!s)
 	{
-	  clib_warning ("session doesn't exist");
+	  clib_warning("session doesn't exist");
 	  return;
 	}
       if (s->app_index != mp->context)
 	{
-	  clib_warning ("app doesn't own session");
+	  clib_warning("app doesn't own session");
 	  return;
 	}
       s->session_state = SESSION_STATE_READY;
