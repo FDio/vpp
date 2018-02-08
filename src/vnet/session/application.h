@@ -32,6 +32,9 @@ typedef struct _stream_session_cb_vft
   /** Notify server of new segment */
   int (*add_segment_callback) (u32 api_client_index,
 			       const ssvm_private_t * ssvm_seg);
+  /** Notify server of new segment */
+  int (*del_segment_callback) (u32 api_client_index,
+			       const ssvm_private_t * ssvm_seg);
 
   /** Notify server of newly accepted session */
   int (*session_accept_callback) (stream_session_t * new_session);
@@ -49,8 +52,6 @@ typedef struct _stream_session_cb_vft
   /** Direct RX callback, for built-in servers */
   int (*builtin_server_rx_callback) (stream_session_t * session);
 
-  /** Redirect connection to local server */
-  int (*redirect_connect_callback) (u32 api_client_index, void *mp);
 } session_cb_vft_t;
 
 typedef struct _application
@@ -81,8 +82,9 @@ typedef struct _application
   session_cb_vft_t cb_fns;
 
   /*
-   * svm segment management
+   * ssvm (fifo) segment management
    */
+  /** Segment manager used for outgoing connects issued by the app */
   u32 connects_seg_manager;
 
   /** Lookup tables for listeners. Value is segment manager index */
@@ -100,6 +102,19 @@ typedef struct _application
   segment_manager_properties_t sm_properties;
 
   u16 proxied_transports;
+
+  /*
+   * Local "cut through" connections specific
+   */
+
+  /** Segment manager used for incoming "cut through" connects */
+  u32 local_segment_manager;
+
+  /** Pool of local sessions the app owns (as a server) */
+  local_session_t *local_sessions;
+
+  /** Hash table of the app's local connects */
+  uword *local_connects;
 } application_t;
 
 #define APP_INVALID_INDEX ((u32)~0)
@@ -117,8 +132,14 @@ application_t *application_lookup (u32 api_client_index);
 u32 application_get_index (application_t * app);
 
 int application_start_listen (application_t * app,
-			      session_endpoint_t * tep, u64 * handle);
-int application_stop_listen (application_t * srv, u64 handle);
+			      session_endpoint_t * tep,
+			      session_handle_t * handle);
+int application_start_local_listen (application_t * server,
+				    session_endpoint_t * sep,
+				    session_handle_t * handle);
+int application_stop_listen (application_t * srv, session_handle_t handle);
+int application_stop_local_listen (application_t * server,
+				   session_handle_t listener_handle);
 int application_open_session (application_t * app, session_endpoint_t * tep,
 			      u32 api_context);
 int application_api_queue_is_full (application_t * app);
@@ -150,6 +171,22 @@ segment_manager_properties_t *application_get_segment_manager_properties (u32
 									  app_index);
 segment_manager_properties_t
   * application_segment_manager_properties (application_t * app);
+
+local_session_t *application_alloc_local_session (application_t * app);
+void application_free_local_session (application_t * app,
+				     local_session_t * s);
+local_session_t *application_get_local_session (application_t * app,
+						u32 session_index);
+local_session_t *application_get_local_session_from_handle (session_handle_t
+							    handle);
+int application_local_session_connect (u32 table_index,
+				       application_t * client,
+				       application_t * server,
+				       session_endpoint_t * sep, u32 opaque);
+int application_local_session_connect_notify (local_session_t * ls);
+int application_local_session_disconnect (u32 app_index,
+					  local_session_t * ls);
+void application_local_sessions_del (application_t * app);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

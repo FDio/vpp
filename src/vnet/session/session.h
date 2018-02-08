@@ -87,12 +87,14 @@ typedef struct
   void *arg;
 } rpc_args_t;
 
+typedef u64 session_handle_t;
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   union
     {
       svm_fifo_t * fifo;
-      u64 session_handle;
+      session_handle_t session_handle;
       rpc_args_t rpc_args;
     };
   u8 event_type;
@@ -251,38 +253,109 @@ session_get_if_valid (u64 si, u32 thread_index)
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
 }
 
-always_inline u64
+always_inline session_handle_t
 session_handle (stream_session_t * s)
 {
   return ((u64) s->thread_index << 32) | (u64) s->session_index;
 }
 
 always_inline u32
-session_index_from_handle (u64 handle)
+session_index_from_handle (session_handle_t handle)
 {
   return handle & 0xFFFFFFFF;
 }
 
 always_inline u32
-session_thread_from_handle (u64 handle)
+session_thread_from_handle (session_handle_t handle)
 {
   return handle >> 32;
 }
 
 always_inline void
-session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
+session_parse_handle (session_handle_t handle, u32 * index,
+		      u32 * thread_index)
 {
   *index = session_index_from_handle (handle);
   *thread_index = session_thread_from_handle (handle);
 }
 
 always_inline stream_session_t *
-session_get_from_handle (u64 handle)
+session_get_from_handle (session_handle_t handle)
 {
   session_manager_main_t *smm = &session_manager_main;
-  return
-    pool_elt_at_index (smm->sessions[session_thread_from_handle (handle)],
-		       session_index_from_handle (handle));
+  u32 session_index, thread_index;
+  session_parse_handle (handle, &session_index, &thread_index);
+  return pool_elt_at_index (smm->sessions[thread_index], session_index);
+}
+
+always_inline stream_session_t *
+session_get_from_handle_if_valid (session_handle_t handle)
+{
+  u32 session_index, thread_index;
+  session_parse_handle (handle, &session_index, &thread_index);
+  return session_get_if_valid (session_index, thread_index);
+}
+
+always_inline session_handle_t
+local_session_handle (local_session_t * s)
+{
+  ASSERT (s->app_index < (2 << 16) && s->session_index < (2 << 16));
+  return ((u64) SESSION_LOCAL_TABLE_PREFIX << 32)
+    | (u64) s->app_index << 16 | (u64) s->session_index;
+}
+
+always_inline void
+local_session_parse_handle (session_handle_t handle, u32 * server_index,
+			    u32 * session_index)
+{
+  u32 bottom;
+  ASSERT (handle >> 32 == SESSION_LOCAL_TABLE_PREFIX);
+  bottom = (handle & 0xFFFFFFFF);
+  *server_index = bottom >> 16;
+  *session_index = bottom & 0xFFFF;
+}
+
+always_inline u8
+session_handle_is_local (session_handle_t handle)
+{
+  if (handle >> 32 == SESSION_LOCAL_TABLE_PREFIX)
+    return 1;
+  return 0;
+}
+
+always_inline u32
+local_session_listener_id (session_endpoint_t * sep)
+{
+  return ((u32) sep->port << 16 | (u32) sep->transport_proto << 8
+	  | (u32) sep->is_ip4);
+}
+
+always_inline session_handle_t
+local_session_listener_handle (session_endpoint_t * sep)
+{
+  return ((u64) SESSION_LOCAL_TABLE_PREFIX << 32
+	  | local_session_listener_id (sep));
+}
+
+always_inline session_handle_t
+local_session_listener_handle_from_id (u32 listener_id)
+{
+  return ((u64) SESSION_LOCAL_TABLE_PREFIX << 32 | (u64) listener_id);
+}
+
+always_inline int
+local_session_parse_listener_handle (session_handle_t handle,
+				     session_endpoint_t * sep)
+{
+  u32 local_table_handle;
+  if (handle >> 32 != SESSION_LOCAL_TABLE_PREFIX)
+    return -1;
+  local_table_handle = handle & 0xFFFFFFFFULL;
+  sep->is_ip4 = local_table_handle & 0xff;
+  local_table_handle >>= 8;
+  sep->transport_proto = local_table_handle & 0xff;
+  sep->port = local_table_handle >> 8;
+  return 0;
 }
 
 always_inline transport_proto_t
@@ -291,10 +364,23 @@ session_get_transport_proto (stream_session_t * s)
   return (s->session_type >> 1);
 }
 
+always_inline fib_protocol_t
+session_get_fib_proto (stream_session_t * s)
+{
+  u8 is_ip4 = s->session_type & 1;
+  return (is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+}
+
 always_inline session_type_t
 session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 {
   return (proto << 1 | is_ip4);
+}
+
+always_inline u8
+session_has_transport (stream_session_t * s)
+{
+  return (session_get_transport_proto (s) != TRANSPORT_PROTO_NONE);
 }
 
 /**
@@ -470,7 +556,7 @@ listen_session_get_handle (stream_session_t * s)
 }
 
 always_inline stream_session_t *
-listen_session_get_from_handle (u64 handle)
+listen_session_get_from_handle (session_handle_t handle)
 {
   session_manager_main_t *smm = &session_manager_main;
   stream_session_t *s;
