@@ -33,7 +33,7 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   clib_mem_vm_map_t mapa = { 0 };
   u8 junk = 0, *ssvm_filename;
   ssvm_shared_header_t *sh;
-  uword page_size;
+  uword page_size, requested_va;
   void *oldheap;
 
   if (ssvm->ssvm_size == 0)
@@ -75,9 +75,12 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
 
   page_size = clib_mem_vm_get_page_size (ssvm_fd);
   if (ssvm->requested_va)
-    clib_mem_vm_randomize_va (&ssvm->requested_va, min_log2 (page_size));
+    {
+      requested_va = ssvm->requested_va;
+      clib_mem_vm_randomize_va (&requested_va, min_log2 (page_size));
+    }
 
-  mapa.requested_va = ssvm->requested_va;
+  mapa.requested_va = requested_va;
   mapa.size = ssvm->ssvm_size;
   mapa.fd = ssvm_fd;
   if (clib_mem_vm_ext_map (&mapa))
