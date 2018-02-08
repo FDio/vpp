@@ -126,6 +126,8 @@ typedef struct
   svm_fifo_segment_main_t *segment_main;
 
   u8 *connect_test_data;
+
+  uword *segments_table;
 } uri_udp_test_main_t;
 
 #if CLIB_DEBUG > 0
@@ -173,8 +175,9 @@ application_send_attach (uri_udp_test_main_t * utm)
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = utm->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  bmp->options[APP_OPTIONS_FLAGS] =
-    APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 2;
   bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
@@ -308,7 +311,7 @@ cut_through_thread_fn (void *arg)
       /* We read from the tx fifo and write to the rx fifo */
       do
 	{
-	  actual_transfer = svm_fifo_dequeue_nowait (tx_fifo,
+	  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo,
 						     vec_len (my_copy_buffer),
 						     my_copy_buffer);
 	}
@@ -319,7 +322,7 @@ cut_through_thread_fn (void *arg)
       buffer_offset = 0;
       while (actual_transfer > 0)
 	{
-	  rv = svm_fifo_enqueue_nowait (rx_fifo, actual_transfer,
+	  rv = svm_fifo_enqueue_nowait (tx_fifo, actual_transfer,
 					my_copy_buffer + buffer_offset);
 	  if (rv > 0)
 	    {
@@ -605,7 +608,10 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
+  uri_udp_test_main_t *utm = &uri_udp_test_main;
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_private_t *seg;
+  u8 *seg_name;
   int rv;
 
   memset (a, 0, sizeof (*a));
@@ -619,8 +625,35 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 		    mp->segment_name);
       return;
     }
-  clib_warning ("Mapped new segment '%s' size %d", mp->segment_name,
-		mp->segment_size);
+  seg = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  clib_warning ("Mapped new segment '%s' size %d", seg->ssvm.name,
+		seg->ssvm.ssvm_size);
+  seg_name = format (0, "%s", (char *) mp->segment_name);
+  hash_set_mem (utm->segments_table, seg_name, a->new_segment_indices[0]);
+  vec_free (seg_name);
+}
+
+static void
+vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
+{
+  uri_udp_test_main_t *utm = &uri_udp_test_main;
+  svm_fifo_segment_private_t *seg;
+  u64 *seg_indexp;
+  u8 *seg_name;
+
+
+  seg_name = format (0, "%s", mp->segment_name);
+  seg_indexp = hash_get_mem (utm->segments_table, seg_name);
+  if (!seg_indexp)
+    {
+      clib_warning ("segment not mapped: %s", seg_name);
+      return;
+    }
+  hash_unset_mem (utm->segments_table, seg_name);
+  seg = svm_fifo_segment_get_segment ((u32) seg_indexp[0]);
+  svm_fifo_segment_delete (seg);
+  clib_warning ("Unmapped segment '%s'", seg_name);
+  vec_free (seg_name);
 }
 
 /**
@@ -720,6 +753,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   svm_fifo_t *rx_fifo, *tx_fifo;
   session_t *session;
   static f64 start_time;
+  u32 session_index;
+  int rv = 0;
 
   if (start_time == 0.0)
     start_time = clib_time_now (&utm->clib_time);
@@ -727,19 +762,42 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   utm->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
 
-  pool_get (utm->sessions, session);
-
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session - utm->sessions;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  tx_fifo->client_session_index = session - utm->sessions;
 
-  session->server_rx_fifo = rx_fifo;
-  session->server_tx_fifo = tx_fifo;
+  pool_get (utm->sessions, session);
+  memset (session, 0, sizeof (*session));
+  session_index = session - utm->sessions;
 
-  hash_set (utm->session_index_by_vpp_handles, mp->handle,
-	    session - utm->sessions);
+  /* Cut-through case */
+  if (mp->server_event_queue_address)
+    {
+      clib_warning ("cut-through session");
+      utm->our_event_queue = uword_to_pointer (mp->server_event_queue_address,
+					       svm_queue_t *);
+      rx_fifo->master_session_index = session_index;
+      tx_fifo->master_session_index = session_index;
+      utm->cut_through_session_index = session_index;
+      session->server_rx_fifo = rx_fifo;
+      session->server_tx_fifo = tx_fifo;
 
+      rv = pthread_create (&utm->cut_through_thread_handle,
+			   NULL /*attr */ , cut_through_thread_fn, 0);
+      if (rv)
+	{
+	  clib_warning ("pthread_create returned %d", rv);
+	  rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
+    }
+  else
+    {
+      rx_fifo->client_session_index = session_index;
+      tx_fifo->client_session_index = session_index;
+      session->server_rx_fifo = rx_fifo;
+      session->server_tx_fifo = tx_fifo;
+    }
+
+  hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
   if (pool_elts (utm->sessions) && (pool_elts (utm->sessions) % 20000) == 0)
     {
       f64 now = clib_time_now (&utm->clib_time);
@@ -753,6 +811,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
   rmp->handle = mp->handle;
   rmp->context = mp->context;
+  rmp->retval = rv;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 
   CLIB_MEMORY_BARRIER ();
@@ -787,6 +846,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
   rmp->retval = rv;
   rmp->handle = mp->handle;
+  rmp->context = mp->context;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 }
 
@@ -804,34 +864,6 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
       return;
     }
 
-  /* We've been redirected */
-  if (mp->segment_name_length > 0)
-    {
-      svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
-      svm_fifo_segment_create_args_t _a, *a = &_a;
-      u32 segment_index;
-      svm_fifo_segment_private_t *seg;
-      int rv;
-
-      memset (a, 0, sizeof (*a));
-      a->segment_name = (char *) mp->segment_name;
-
-      sleep (1);
-
-      rv = svm_fifo_segment_attach (a);
-      if (rv)
-	{
-	  clib_warning ("sm_fifo_segment_create ('%v') failed",
-			mp->segment_name);
-	  return;
-	}
-
-      segment_index = a->new_segment_indices[0];
-      vec_add2 (utm->seg, seg, 1);
-      memcpy (seg, sm->segments + segment_index, sizeof (*seg));
-      sleep (1);
-    }
-
   pool_get (utm->sessions, session);
   session->server_rx_fifo = uword_to_pointer (mp->server_rx_fifo,
 					      svm_fifo_t *);
@@ -840,8 +872,16 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 					      svm_fifo_t *);
   ASSERT (session->server_tx_fifo);
 
-  if (mp->segment_name_length > 0)
-    utm->cut_through_session_index = session - utm->sessions;
+  /* Cut-through case */
+  if (mp->client_event_queue_address)
+    {
+      clib_warning ("cut-through session");
+      utm->cut_through_session_index = session - utm->sessions;
+      utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
+					       svm_queue_t *);
+      utm->our_event_queue = uword_to_pointer (mp->client_event_queue_address,
+					       svm_queue_t *);
+    }
   else
     {
       utm->connected_session = session - utm->sessions;
@@ -859,6 +899,7 @@ _(UNBIND_URI_REPLY, unbind_uri_reply)           	\
 _(ACCEPT_SESSION, accept_session)			\
 _(DISCONNECT_SESSION, disconnect_session)		\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)		\
+_(UNMAP_SEGMENT, unmap_segment)				\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)	\
 
@@ -1068,6 +1109,7 @@ main (int argc, char **argv)
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   utm->my_pid = getpid ();
   utm->configured_segment_size = 1 << 20;
+  utm->segments_table = hash_create_vec (0, sizeof (u8), sizeof (u64));
 
   clib_time_init (&utm->clib_time);
   init_error_string_table (utm);

@@ -245,7 +245,6 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
-  .redirect_connect_callback = echo_server_redirect_connect_callback,
   .builtin_server_rx_callback = echo_server_rx_callback,
   .session_reset_callback = echo_server_session_reset_callback
 };
@@ -387,7 +386,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 server_uri_set = 0, *appns_id = 0;
   u64 tmp, appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
-  int rv;
+  int rv, is_stop = 0;
 
   esm->no_echo = 0;
   esm->fifo_size = 64 << 10;
@@ -431,9 +430,27 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	appns_flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
       else if (unformat (input, "secret %lu", &appns_secret))
 	;
+      else if (unformat (input, "stop"))
+	is_stop = 1;
       else
 	return clib_error_return (0, "failed: unknown input `%U'",
 				  format_unformat_error, input);
+    }
+
+  if (is_stop)
+    {
+      if (esm->app_index == (u32) ~ 0)
+	{
+	  clib_warning ("server not running");
+	  return clib_error_return (0, "failed: server not running");
+	}
+      rv = echo_server_detach ();
+      if (rv)
+	{
+	  clib_warning ("failed: detach");
+	  return clib_error_return (0, "failed: server detach %d", rv);
+	}
+      return 0;
     }
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );

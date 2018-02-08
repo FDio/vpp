@@ -87,12 +87,12 @@ typedef struct _vnet_connect_args
 
   /* Used for redirects */
   void *mp;
-  u64 session_handle;
+  session_handle_t session_handle;
 } vnet_connect_args_t;
 
 typedef struct _vnet_disconnect_args_t
 {
-  u64 handle;
+  session_handle_t handle;
   u32 app_index;
 } vnet_disconnect_args_t;
 
@@ -151,6 +151,9 @@ clib_error_t *vnet_unbind (vnet_unbind_args_t * a);
 int
 api_parse_session_handle (u64 handle, u32 * session_index,
 			  u32 * thread_index);
+
+void send_local_session_disconnect_callback (u32 app_index,
+					     local_session_t * ls);
 
 #endif /* __included_uri_h__ */
 
