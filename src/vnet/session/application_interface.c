@@ -119,12 +119,8 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
    */
   if (application_has_local_scope (app) && session_endpoint_is_zero (sep))
     {
-      table_index = application_local_session_table (app);
-      listener = session_lookup_endpoint_listener (table_index, sep, 1);
-      if (listener != SESSION_INVALID_HANDLE)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-      session_lookup_add_session_endpoint (table_index, sep, app->index);
-      *handle = session_lookup_local_listener_make_handle (sep);
+      if ((rv = application_start_local_listen (app, sep, handle)))
+	return rv;
       have_local = 1;
     }
 
@@ -143,47 +139,21 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 }
 
 int
-vnet_unbind_i (u32 app_index, u64 handle)
+vnet_unbind_i (u32 app_index, session_handle_t handle)
 {
-  application_t *app = application_get_if_valid (app_index);
-  stream_session_t *listener = 0;
-  u32 table_index;
+  application_t *app;
+  int rv;
 
-  if (!app)
+  if (!(app = application_get_if_valid (app_index)))
     {
       SESSION_DBG ("app (%d) not attached", app_index);
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  /*
-   * Clean up local session table. If we have a listener session use it to
-   * find the port and proto. If not, the handle must be a local table handle
-   * so parse it.
-   */
-
   if (application_has_local_scope (app))
     {
-      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
-      if (!session_lookup_local_is_handle (handle))
-	listener = listen_session_get_from_handle (handle);
-      if (listener)
-	{
-	  if (listen_session_get_local_session_endpoint (listener, &sep))
-	    {
-	      clib_warning ("broken listener");
-	      return -1;
-	    }
-	}
-      else
-	{
-	  if (session_lookup_local_listener_parse_handle (handle, &sep))
-	    {
-	      clib_warning ("can't parse handle");
-	      return -1;
-	    }
-	}
-      table_index = application_local_session_table (app);
-      session_lookup_del_session_endpoint (table_index, &sep);
+      if ((rv = application_stop_local_listen (app, handle)))
+	return rv;
     }
 
   /*
@@ -194,35 +164,28 @@ vnet_unbind_i (u32 app_index, u64 handle)
   return 0;
 }
 
-static int
-app_connect_redirect (application_t * server, void *mp)
-{
-  return server->cb_fns.redirect_connect_callback (server->api_client_index,
-						   mp);
-}
-
 int
-vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
+vnet_connect_i (u32 client_index, u32 api_context, session_endpoint_t * sep,
 		void *mp)
 {
-  application_t *server, *app;
+  application_t *server, *client;
   u32 table_index, server_index;
   stream_session_t *listener;
 
   if (session_endpoint_is_zero (sep))
     return VNET_API_ERROR_INVALID_VALUE;
 
-  app = application_get (app_index);
-  session_endpoint_update_for_app (sep, app);
+  client = application_get (client_index);
+  session_endpoint_update_for_app (sep, client);
 
   /*
-   * First check the the local scope for locally attached destinations.
+   * First check the local scope for locally attached destinations.
    * If we have local scope, we pass *all* connects through it since we may
    * have special policy rules even for non-local destinations, think proxy.
    */
-  if (application_has_local_scope (app))
+  if (application_has_local_scope (client))
     {
-      table_index = application_local_session_table (app);
+      table_index = application_local_session_table (client);
       server_index = session_lookup_local_endpoint (table_index, sep);
       if (server_index == APP_DROP_INDEX)
 	return VNET_API_ERROR_APP_CONNECT_FILTERED;
@@ -232,15 +195,12 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
        * can happen if client is a generic proxy. Route connect through
        * global table instead.
        */
-      if (server_index != app_index)
+      if (server_index != client_index)
 	{
-	  server = application_get (server_index);
-	  /*
-	   * Server is willing to have a direct fifo connection created
-	   * instead of going through the state machine, etc.
-	   */
-	  if (server && (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT))
-	    return app_connect_redirect (server, mp);
+	  if ((server = application_get (server_index)))
+	    return application_local_session_connect (table_index, client,
+		                                      server, sep, 0,
+		                                      api_context);
 	}
     }
 
@@ -251,23 +211,24 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
   if (session_endpoint_is_local (sep))
     return VNET_API_ERROR_SESSION_CONNECT;
 
-  if (!application_has_global_scope (app))
+  if (!application_has_global_scope (client))
     return VNET_API_ERROR_APP_CONNECT_SCOPE;
 
-  table_index = application_session_table (app,
-					   session_endpoint_fib_proto (sep));
+  table_index = application_session_table (client,
+	                                   session_endpoint_fib_proto (sep));
   listener = session_lookup_listener (table_index, sep);
   if (listener)
     {
       server = application_get (listener->app_index);
-      if (server && (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT))
-	return app_connect_redirect (server, mp);
+      if (server)
+	return application_local_session_connect (table_index, client, server,
+	                                          sep, listener, api_context);
     }
 
   /*
    * Not connecting to a local server, propagate to transport
    */
-  if (application_open_session (app, sep, api_context))
+  if (application_open_session (client, sep, api_context))
     return VNET_API_ERROR_SESSION_CONNECT;
   return 0;
 }
@@ -490,19 +451,30 @@ vnet_connect_uri (vnet_connect_args_t * a)
 int
 vnet_disconnect_session (vnet_disconnect_args_t * a)
 {
-  u32 index, thread_index;
-  stream_session_t *s;
+  if (session_handle_is_local (a->handle))
+    {
+      local_session_t *ls;
+      ls = application_get_local_session_from_handle (a->handle);
+      if (ls->app_index != a->app_index && ls->client_index != a->app_index)
+	{
+	  clib_warning("app %u is neither client nor server for session %u",
+		       a->app_index, a->app_index);
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+      return application_local_session_disconnect (a->app_index, ls);
+    }
+  else
+    {
+      stream_session_t *s;
+      s = session_get_from_handle_if_valid (a->handle);
+      if (!s || s->app_index != a->app_index)
+	return VNET_API_ERROR_INVALID_VALUE;
 
-  session_parse_handle (a->handle, &index, &thread_index);
-  s = session_get_if_valid (index, thread_index);
+      /* We're peeking into another's thread pool. Make sure */
+      ASSERT(s->session_index == session_thread_from_handle (a->handle));
 
-  if (!s || s->app_index != a->app_index)
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  /* We're peeking into another's thread pool. Make sure */
-  ASSERT (s->session_index == index);
-
-  stream_session_disconnect (s);
+      stream_session_disconnect (s);
+    }
   return 0;
 }
 
