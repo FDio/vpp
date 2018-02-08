@@ -31,8 +31,8 @@ typedef enum
 #define FIFO_SEGMENT_MAX_FIFO_SIZE (8<<20)	/* 8mb max fifo size */
 #define FIFO_SEGMENT_ALLOC_CHUNK_SIZE 32	/* Allocation quantum */
 
-#define FIFO_SEGMENT_F_IS_PREALLOCATED	1 << 0	/* Segment is preallocated */
-#define FIFO_SEGMENT_F_WILL_DELETE	1 << 1	/* Segment will be removed */
+#define FIFO_SEGMENT_F_IS_PREALLOCATED	(1 << 0)
+#define FIFO_SEGMENT_F_WILL_DELETE	(1 << 1)
 
 typedef struct
 {

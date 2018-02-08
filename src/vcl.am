@@ -68,3 +68,5 @@ sock_test_client_SOURCES = vcl/sock_test_client.c
 
 nobase_include_HEADERS +=			\
   vcl/sock_test.h
+
+# vi:syntax=automake
