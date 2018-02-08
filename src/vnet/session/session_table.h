@@ -55,6 +55,7 @@ typedef struct _session_lookup_table
 #define SESSION_LOCAL_TABLE_PREFIX ((u32)~0)
 #define SESSION_INVALID_INDEX ((u32)~0)
 #define SESSION_INVALID_HANDLE ((u64)~0)
+#define SESSION_DROP_HANDLE (((u64)~0) - 1)
 
 typedef int (*ip4_session_table_walk_fn_t) (clib_bihash_kv_16_8_t * kvp,
 					    void *ctx);

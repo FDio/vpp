@@ -53,12 +53,20 @@ dummy_session_connected_callback (u32 app_index, u32 api_context,
   return -1;
 }
 
+static u32 dummy_segment_count;
+
 int
-dummy_add_segment_callback (u32 client_index, const u8 * seg_name,
-			    u32 seg_size)
+dummy_add_segment_callback (u32 client_index, const ssvm_private_t * fs)
 {
-  clib_warning ("called...");
-  return -1;
+  dummy_segment_count = 1;
+  return 0;
+}
+
+int
+dummy_del_segment_callback (u32 client_index, const ssvm_private_t * fs)
+{
+  dummy_segment_count = 0;
+  return 0;
 }
 
 int
@@ -73,11 +81,14 @@ dummy_session_disconnect_callback (stream_session_t * s)
   clib_warning ("called...");
 }
 
+static u32 dummy_accept;
+
 int
 dummy_session_accept_callback (stream_session_t * s)
 {
-  clib_warning ("called...");
-  return -1;
+  dummy_accept = 1;
+  s->session_state = SESSION_STATE_READY;
+  return 0;
 }
 
 int
@@ -94,7 +105,8 @@ static session_cb_vft_t dummy_session_cbs = {
   .session_accept_callback = dummy_session_accept_callback,
   .session_disconnect_callback = dummy_session_disconnect_callback,
   .builtin_server_rx_callback = dummy_server_rx_callback,
-  .redirect_connect_callback = dummy_redirect_connect_callback,
+  .add_segment_callback = dummy_add_segment_callback,
+  .del_segment_callback = dummy_del_segment_callback,
 };
 /* *INDENT-ON* */
 
@@ -146,7 +158,6 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   memset (options, 0, sizeof (options));
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   vnet_app_attach_args_t attach_args = {
@@ -205,7 +216,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
   u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u32 server_index, server_st_index, server_local_st_index;
-  u32 dummy_port = 1234, local_listener, client_index;
+  u32 dummy_port = 1234, client_index;
   u32 dummy_api_context = 4321, dummy_client_api_index = 1234;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
@@ -216,6 +227,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   app_namespace_t *app_ns;
   application_t *server;
   stream_session_t *s;
+  u64 handle;
   int code;
 
   server_sep.is_ip4 = 1;
@@ -225,7 +237,6 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   memset (options, 0, sizeof (options));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   vnet_app_attach_args_t attach_args = {
     .api_client_index = ~0,
     .options = options,
@@ -361,9 +372,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
-  local_listener =
-    session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
+  SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
 		"listener should exist in local table");
 
   /*
@@ -381,12 +391,15 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   code = clib_error_get_code (error);
   SESSION_TEST ((code == VNET_API_ERROR_INVALID_VALUE),
 		"error code should be invalid value (zero ip)");
+  SESSION_TEST ((dummy_segment_count == 0),
+		"shouldn't have received request to map new segment");
   connect_args.sep.ip.ip4.as_u8[0] = 127;
   error = vnet_connect (&connect_args);
-  SESSION_TEST ((error != 0), "client connect should return error code");
+  SESSION_TEST ((error == 0), "client connect should not return error code");
   code = clib_error_get_code (error);
-  SESSION_TEST ((code == VNET_API_ERROR_SESSION_REDIRECT),
-		"error code should be redirect");
+  SESSION_TEST ((dummy_segment_count == 1),
+		"should've received request to map new segment");
+  SESSION_TEST ((dummy_accept == 1), "should've received accept request");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
@@ -413,9 +426,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s == 0), "listener should not exist in global table");
-  local_listener =
-    session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((s == 0), "listener should not exist in local table");
+  handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE),
+		"listener should not exist in local table");
 
   detach_args.app_index = server_index;
   vnet_application_detach (&detach_args);
@@ -438,18 +451,16 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s == 0), "listener should not exist in global table");
   server_local_st_index = application_local_session_table (server);
-  local_listener =
-    session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
+  SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
 		"listener should exist in local table");
 
   unbind_args.handle = bind_args.handle;
   error = vnet_unbind (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 
-  local_listener =
-    session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((local_listener == SESSION_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE),
 		"listener should not exist in local table");
 
   /*
@@ -510,9 +521,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
-  local_listener =
-    session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
+  SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
 		"zero listener should exist in local table");
   detach_args.app_index = server_index;
   vnet_application_detach (&detach_args);
@@ -800,7 +810,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   u64 options[APP_OPTIONS_N_OPTIONS];
   u16 lcl_port = 1234, rmt_port = 4321;
-  u32 server_index, server_index2, app_index;
+  u32 server_index, server_index2;
   u32 dummy_server_api_index = ~0;
   transport_connection_t *tc;
   u32 dummy_port = 1111;
@@ -811,6 +821,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   u32 local_ns_index = default_ns->local_table_index;
   int verbose = 0, rv;
   app_namespace_t *app_ns;
+  u64 handle;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -844,7 +855,6 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
    * Attach server with global and local default scope
    */
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.namespace_id = 0;
@@ -918,8 +928,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     .port = rmt_port,
     .transport_proto = TRANSPORT_PROTO_TCP,
   };
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index != server_index), "local session endpoint lookup "
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle != server_index), "local session endpoint lookup "
 		"should not work (global scope)");
 
   tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
@@ -943,8 +953,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"optimized lookup for lcl port + 1 should work");
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == server_index), "local session endpoint lookup "
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == server_index), "local session endpoint lookup "
 		"should work (lcl ip was zeroed)");
 
   /*
@@ -976,8 +986,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		"should fail (deny rule)");
   SESSION_TEST ((is_filtered == 1), "lookup should be filtered (deny)");
 
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234 "
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 4321 in local table should return deny");
 
   tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
@@ -1011,9 +1021,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		"should fail (allow without app)");
   SESSION_TEST ((is_filtered == 0), "lookup should NOT be filtered");
 
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_INVALID_INDEX), "lookup for 1.2.3.4/32 1234"
-		" 5.6.7.8/32 4321 in local table should return invalid");
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE), "lookup for 1.2.3.4/32 "
+		"1234 5.6.7.8/32 4321 in local table should return invalid");
 
   if (verbose)
     {
@@ -1023,8 +1033,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     }
 
   sep.ip.ip4.as_u32 += 1 << 24;
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234"
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234"
 		" 5.6.7.9/32 4321 in local table should return deny");
 
   vnet_connect_args_t connect_args = {
@@ -1075,8 +1085,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 					     TRANSPORT_PROTO_TCP);
     }
 
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_DROP_INDEX),
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE),
 		"local session endpoint lookup should return deny");
 
   /*
@@ -1091,8 +1101,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 deny");
 
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE),
 		"local session endpoint lookup should return invalid");
 
   /*
@@ -1108,8 +1118,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.rmt_port = 4321;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 0/0 * 5.6.7.8/16 4321");
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index != server_index), "local session endpoint lookup "
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle != server_index), "local session endpoint lookup "
 		"should not work (removed)");
 
   args.table_args.is_add = 0;
@@ -1296,14 +1306,14 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Lookup default namespace
    */
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_INVALID_INDEX),
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE),
 		"lookup for 1.2.3.4/32 1234 5.6.7.8/32 4321 in local table "
 		"should return allow (invalid)");
 
   sep.port += 1;
-  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234 "
+  handle = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 432*2* in local table should return deny");
 
   connect_args.app_index = server_index;
@@ -1317,8 +1327,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Lookup test namespace
    */
-  app_index = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
-  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234 "
+  handle = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 4321 in local table should return deny");
 
   connect_args.app_index = server_index;

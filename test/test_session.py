@@ -85,6 +85,9 @@ class TestSession(VppTestCase):
             self.logger.critical(error)
             self.assertEqual(error.find("failed"), -1)
 
+        if self.vpp_dead:
+            self.assert_equal(0)
+
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
