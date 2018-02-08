@@ -53,12 +53,20 @@ dummy_session_connected_callback (u32 app_index, u32 api_context,
   return -1;
 }
 
+static u32 dummy_segment_count;
+
 int
-dummy_add_segment_callback (u32 client_index, const u8 * seg_name,
-			    u32 seg_size)
+dummy_add_segment_callback (u32 client_index, const ssvm_private_t *fs)
 {
-  clib_warning ("called...");
-  return -1;
+  dummy_segment_count = 1;
+  return 0;
+}
+
+int
+dummy_del_segment_callback (u32 client_index, const ssvm_private_t *fs)
+{
+  dummy_segment_count = 0;
+  return 0;
 }
 
 int
@@ -73,11 +81,14 @@ dummy_session_disconnect_callback (stream_session_t * s)
   clib_warning ("called...");
 }
 
+static u32 dummy_accept;
+
 int
 dummy_session_accept_callback (stream_session_t * s)
 {
-  clib_warning ("called...");
-  return -1;
+  dummy_accept = 1;
+  s->session_state = SESSION_STATE_READY;
+  return 0;
 }
 
 int
@@ -94,7 +105,8 @@ static session_cb_vft_t dummy_session_cbs = {
   .session_accept_callback = dummy_session_accept_callback,
   .session_disconnect_callback = dummy_session_disconnect_callback,
   .builtin_server_rx_callback = dummy_server_rx_callback,
-  .redirect_connect_callback = dummy_redirect_connect_callback,
+  .add_segment_callback = dummy_add_segment_callback,
+  .del_segment_callback = dummy_del_segment_callback,
 };
 /* *INDENT-ON* */
 
@@ -146,7 +158,6 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   memset (options, 0, sizeof (options));
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   vnet_app_attach_args_t attach_args = {
@@ -225,7 +236,6 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   memset (options, 0, sizeof (options));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   vnet_app_attach_args_t attach_args = {
     .api_client_index = ~0,
     .options = options,
@@ -381,12 +391,16 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   code = clib_error_get_code (error);
   SESSION_TEST ((code == VNET_API_ERROR_INVALID_VALUE),
 		"error code should be invalid value (zero ip)");
+  SESSION_TEST ((dummy_segment_count == 0),
+                "shouldn't have received request to map new segment");
   connect_args.sep.ip.ip4.as_u8[0] = 127;
   error = vnet_connect (&connect_args);
-  SESSION_TEST ((error != 0), "client connect should return error code");
+  SESSION_TEST ((error == 0), "client connect should not return error code");
   code = clib_error_get_code (error);
-  SESSION_TEST ((code == VNET_API_ERROR_SESSION_REDIRECT),
-		"error code should be redirect");
+  SESSION_TEST ((dummy_segment_count == 1),
+                "should've received request to map new segment");
+  SESSION_TEST ((dummy_accept == 1),
+                "should've received accept request");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
@@ -415,7 +429,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((s == 0), "listener should not exist in global table");
   local_listener =
     session_lookup_local_endpoint (server_local_st_index, &server_sep);
-  SESSION_TEST ((s == 0), "listener should not exist in local table");
+  SESSION_TEST((local_listener == SESSION_INVALID_INDEX),
+	       "listener should not exist in local table");
 
   detach_args.app_index = server_index;
   vnet_application_detach (&detach_args);
@@ -844,7 +859,6 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
    * Attach server with global and local default scope
    */
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.namespace_id = 0;
