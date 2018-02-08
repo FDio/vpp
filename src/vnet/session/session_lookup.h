@@ -80,11 +80,6 @@ transport_connection_t *session_lookup_half_open_connection (u64 handle,
 							     u8 is_ip4);
 u32 session_lookup_get_index_for_fib (u32 fib_proto, u32 fib_index);
 
-u64 session_lookup_local_listener_make_handle (session_endpoint_t * sep);
-u8 session_lookup_local_is_handle (u64 handle);
-int session_lookup_local_listener_parse_handle (u64 handle,
-						session_endpoint_t * sep);
-
 void session_lookup_show_table_entries (vlib_main_t * vm,
 					session_table_t * table, u8 type,
 					u8 is_local);
