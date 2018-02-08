@@ -573,10 +573,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vec_reset_length (xd->rx_vectors[j]);
 	}
 
-      vec_validate_aligned (xd->d_trace_buffers, tm->n_vlib_mains,
-			    CLIB_CACHE_LINE_BYTES);
-
-
       /* count the number of descriptors used for this device */
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
 
