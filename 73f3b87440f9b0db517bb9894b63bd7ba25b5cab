@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df52e3c3_026dc583",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-08T20:30:41Z",
+      "side": 1,
+      "message": "Is this going to trace packets out of sequence?",
+      "range": {
+        "startLine": 380,
+        "startChar": 0,
+        "endLine": 400,
+        "endChar": 6
+      },
+      "revId": "73f3b87440f9b0db517bb9894b63bd7ba25b5cab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
