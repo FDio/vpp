@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -72,6 +72,17 @@ autoreply define map_another_segment {
     u8 segment_name[128];
 };
 
+/** \brief vpp->client unmap shared memory segment
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param segment_name - 
+*/
+autoreply define unmap_segment {
+    u32 client_index;
+    u32 context;
+    u8 segment_name[128];
+};
+
  /** \brief Bind to a given URI
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -122,10 +133,12 @@ autoreply define connect_uri {
     @param context - sender context, to match reply w/ request
     @param listener_handle - tells client which listener this pertains to
     @param handle - unique session identifier
-    @param session_thread_index - thread index of new session
     @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
     @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address
+    @param vpp_event_queue_address - vpp's event queue address or client's
+    									event queue for cut through
+    @param server_event_queue_address - server's event queue address for
+    									   cut through sessions
     @param port - remote port
     @param is_ip4 - 1 if the ip is ip4
     @param ip - remote ip
@@ -138,6 +151,7 @@ define accept_session {
   u64 server_rx_fifo;
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;
+  u64 server_event_queue_address;
   u16 port;
   u8 is_ip4;
   u8 ip[16];
@@ -176,7 +190,6 @@ define disconnect_session {
     @param handle - session handle
 */
 define disconnect_session_reply {
-  u32 client_index;
   u32 context;
   i32 retval;
   u64 handle;
@@ -302,6 +315,7 @@ define connect_session {
     @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
     @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
     @param vpp_event_queue_address - vpp's event queue address
+    @param client_event_queue_address - client's event queue address
     @param segment_size - size of segment to be attached. Only for redirects.
     @param segment_name_length - non-zero if the client needs to attach to 
                                  the fifo segment
@@ -317,6 +331,7 @@ define connect_session_reply {
   u64 server_rx_fifo;
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;
+  u64 client_event_queue_address;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[128];

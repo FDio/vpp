@@ -479,6 +479,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
   rmp->retval = rv;
   rmp->handle = mp->handle;
+  rmp->context = mp->context;
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & rmp);
 
   if (session)
