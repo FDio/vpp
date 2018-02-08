@@ -28,9 +28,12 @@ vnet_in_out_acl_ip_feature_enable (vlib_main_t * vnm,
 
   if (tid == IN_OUT_ACL_TABLE_L2)
     {
-      l2input_intf_bitmap_enable (sw_if_index,
-				  is_output ? L2OUTPUT_FEAT_ACL :
-				  L2INPUT_FEAT_ACL, feature_enable);
+      if (is_output)
+	l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_ACL,
+				     feature_enable);
+      else
+	l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_ACL,
+				    feature_enable);
     }
   else
     {				/* IP[46] */
