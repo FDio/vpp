@@ -39,79 +39,79 @@ snat_main_t snat_main;
 VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out",
-  .runs_before = VNET_FEATURES ("nat44-out2in"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_nat_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-classify",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_det_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-in2out",
-  .runs_before = VNET_FEATURES ("nat44-det-out2in"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_det_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-out2in",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_nat_det_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-classify",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out-worker-handoff",
-  .runs_before = VNET_FEATURES ("nat44-out2in-worker-handoff"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_out2in_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in-worker-handoff",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-handoff-classify",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out-fast",
-  .runs_before = VNET_FEATURES ("nat44-out2in-fast"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in-fast",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_hairpin_dst, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-hairpin-dst",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 
 /* Hook up output features */
 VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-in2out-output",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_output_worker_handoff, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-in2out-output-worker-handoff",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-hairpin-src",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 
 /* Hook up ip4-local features */
