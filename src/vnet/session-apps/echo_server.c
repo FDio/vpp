@@ -245,7 +245,6 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
-  .redirect_connect_callback = echo_server_redirect_connect_callback,
   .builtin_server_rx_callback = echo_server_rx_callback,
   .session_reset_callback = echo_server_session_reset_callback
 };
