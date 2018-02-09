@@ -1,0 +1,186 @@
+{
+    "services": {
+        "request_two_args": {
+            "reply": "request_two_args_reply"
+        },
+        "foo_dump": {
+            "reply": "foo_details",
+            "stream": true
+        },
+        "request_no_args": {
+            "reply": "request_no_args_reply"
+        },
+        "request_single_arg": {
+            "reply": "request_single_arg_reply"
+        }
+    },
+    "vl_api_version": "0xf486498f",
+    "enums": [],
+    "messages": [
+        [
+            "request_no_args",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            {
+                "crc": "0x51077d14"
+            }
+        ],
+        [
+            "request_no_args_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804"
+            }
+        ],
+        [
+            "request_single_arg",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u8",
+                "val_u8"
+            ],
+            {
+                "crc": "0x4199095a"
+            }
+        ],
+        [
+            "request_single_arg_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804"
+            }
+        ],
+        [
+            "request_two_args",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u8",
+                "val_i8"
+            ],
+            [
+                "u8",
+                "val_u16"
+            ],
+            {
+                "crc": "0x25ffac9b"
+            }
+        ],
+        [
+            "request_two_args_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u8",
+                "val_i8"
+            ],
+            [
+                "u8",
+                "val_u16"
+            ],
+            {
+                "crc": "0x9910a325"
+            }
+        ],
+        [
+            "foo_dump",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            {
+                "crc": "0x8ac76db6"
+            }
+        ],
+        [
+            "foo_details",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            {
+                "crc": "0xe18f0c91"
+            }
+        ]
+    ],
+    "types": []
+}
