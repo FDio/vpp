@@ -1,0 +1,117 @@
+option version = "1.0.1";
+
+/**
+To generate json file from api file:
+python ~/vpp/src/tools/vppapigen/vppapigen.py --input test.api --pluginpath ~/vpp/src/tools/vppapigen/ --output test.api.json JSON
+
+  i8 val_i8;
+  u16 val_u16;
+  i16 val_i16;
+  u8 val_u8;
+  u8 val_u8;
+*/
+
+define control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+define control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+autoreply define request_no_args
+{
+  u32 client_index;
+  u32 context;
+};
+
+autoreply define request_single_arg
+{
+  u32 client_index;
+  u32 context;
+  u8 val_u8;
+};
+
+define request_two_args
+{
+  u32 client_index;
+  u32 context;
+  i8 val_i8;
+  u16 val_u16;
+};
+
+define request_two_args_reply
+{
+  u32 context;
+  i32 retval;
+  i8 val_i8;
+  u16 val_u16;
+};
+
+define request_with_single_array
+{
+  u32 client_index;
+  u32 context;
+  u8 request_array[16];
+};
+
+define request_with_single_array_reply
+{
+  u32 context;
+  i32 retval;
+  u8 reply_array[16];
+};
+
+define request_with_arrays
+{
+  u32 client_index;
+  u32 context;
+  u16 array1[2];
+  u32 array2[4];
+  u64 array3[8];
+};
+
+define request_with_arrays_reply
+{
+  u32 context;
+  i32 retval;
+  u16 array1[2];
+  u32 array2[4];
+  u64 array3[8];
+};
+
+
+define request_with_variable_length_array
+{
+  u32 client_index;
+  u32 context;
+  u32 vla_size;
+  u16 vla[vla_size];
+};
+
+define request_with_variable_length_array_reply
+{
+  u32 context;
+  i32 retval;
+  u32 vla_size;
+  u16 vla[vla_size];
+};
+
+define foo_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 index;
+};
+
+define foo_details
+{
+  u32 context;
+  u32 index;
+};
