@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "331f0585_f97de8b5",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-09T17:21:00Z",
+      "side": 1,
+      "message": "It does. We don\u0027t typically use that many worker threads.",
+      "parentUuid": "c89cdbf0_6d205d7a",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "700b3019_e2c7158c",
         "filename": "src/vppinfra/lock.h",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2018-02-09T16:50:36Z",
       "side": 1,
       "message": "This looks like a clumsy way of acquiring a lock (potentially two atomic RMW operations). Is __sync_fetch_and_add() especially efficient on x86, compared to e.g. __atomic_compare_exchange() so this pattern is preferred?\n\nOne alternative design would use one atomic operation (__atomic_compare_exchange) to update a combined n_readers and writer_lock variable.\n\nOn architectures using some form of LL/SC (e.g. ARM), both fetch_and_add and compare_and_exchange would be implemented using LL/SC so have the same performance.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c7212aa3_dd53adf0",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-09T17:21:00Z",
+      "side": 1,
+      "message": "Check master please, as I\u0027ve changed this since to use two spinlocks. Also, feel free to propose improvements in another patch. The current implementation does not claim to be optimized.",
+      "parentUuid": "700b3019_e2c7158c",
       "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "73ee9359_b0728bfb",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-09T17:21:00Z",
+      "side": 1,
+      "message": "As mentioned during last vpp call: it would be good to introduce atomic.h under vppinfra and have architecture dependent macros there and afterwards we can start fixing the rest of the code. Up to this point we haven\u0027t used anything but __sync* intrinsics, it would be great to switch to __atomic*",
+      "parentUuid": "8f4b68c3_0ae99270",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1d9da068_92cf68e3",
         "filename": "src/vppinfra/lock.h",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2018-02-09T16:50:36Z",
       "side": 1,
       "message": "Test-and-set locks are not very scalable (but seem to work well on x86). That\u0027s why test-and-test-and-set locks were invented, spin using a load instead of trying to perform some form of TAS or exchange which always will write the line even if the lock cannot be taken. Write contention is what kills scalability.\n\nBest (at least for ARM) would be to spin using __atomic_load_n(__ATOMIC_ACQUIRE) and use __atomic_compare_exchange(__ATOMIC_RELAXED) when trying to take the (supposedly available) lock.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "283b59ba_73fd069e",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-09T17:21:00Z",
+      "side": 1,
+      "message": "This sounds pretty good. Please push a patch against the current implementation in master!",
+      "parentUuid": "1d9da068_92cf68e3",
       "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
