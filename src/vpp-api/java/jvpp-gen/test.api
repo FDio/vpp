@@ -1,0 +1,57 @@
+option version = "1.0.1";
+
+/**
+  i8 val_i8;
+  u16 val_u16;
+  i16 val_i16;
+  u8 val_u8;
+  u8 val_u8;
+*/
+
+autoreply define request_no_args
+{
+  u32 client_index;
+  u32 context;
+};
+
+autoreply define request_single_arg
+{
+  u32 client_index;
+  u32 context;
+  u8 val_u8;
+};
+
+define request_two_args
+{
+  u32 client_index;
+  u32 context;
+  u8 val_i8;
+  u8 val_u16;
+};
+
+define request_two_args_reply
+{
+  u32 client_index;
+  u32 context;
+  u8 val_i8;
+  u8 val_u16;
+};
+
+/** \brief Foo dump definition
+    @param index - an index of u32 type
+*/
+define foo_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 index;
+};
+
+/** \brief Foo details definition
+    @param index - an index of u32 type
+*/
+define foo_details
+{
+  u32 context;
+  u32 index;
+};
