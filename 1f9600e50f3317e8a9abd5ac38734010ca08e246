@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c89cdbf0_6d205d7a",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-09T16:50:36Z",
+      "side": 1,
+      "message": "Doesn\u0027t this design prioritise readers over writers? Is this OK/desired? In a busy system with many threads, writers could starve.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "700b3019_e2c7158c",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-09T16:50:36Z",
+      "side": 1,
+      "message": "This looks like a clumsy way of acquiring a lock (potentially two atomic RMW operations). Is __sync_fetch_and_add() especially efficient on x86, compared to e.g. __atomic_compare_exchange() so this pattern is preferred?\n\nOne alternative design would use one atomic operation (__atomic_compare_exchange) to update a combined n_readers and writer_lock variable.\n\nOn architectures using some form of LL/SC (e.g. ARM), both fetch_and_add and compare_and_exchange would be implemented using LL/SC so have the same performance.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f4b68c3_0ae99270",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-09T16:50:36Z",
+      "side": 1,
+      "message": "The __sync builtins already provide full (acquire+release) memory ordering so do we need the CLIB_MEMORY_BARRIER() below?\n\nActually I think the __sync builtins should be avoided (unnecessary ordering makes the critical section longer \u003d\u003e slower, less scalability).\n\nAlso when releasing a reader lock, we only need a barrier for loads (DMB LD on ARMv8), not a full barrier.\n\nSMP_RMB(); //Does VPP have a load-only barrier?\nif (__atomic_fetch_sub(\u0026(*p)-\u003en_readers, 1, __ATOMIC_RELAXED) \u003d\u003d 1)\n{\n    //Last reader releases the lock\n    __atomic_store_n(\u0026(*p)-\u003ewriter_lock, 0, __ATOMIC_RELAXED);\n}\n\nThis should be optimal for ARMv8/AArch64.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1d9da068_92cf68e3",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-09T16:50:36Z",
+      "side": 1,
+      "message": "Test-and-set locks are not very scalable (but seem to work well on x86). That\u0027s why test-and-test-and-set locks were invented, spin using a load instead of trying to perform some form of TAS or exchange which always will write the line even if the lock cannot be taken. Write contention is what kills scalability.\n\nBest (at least for ARM) would be to spin using __atomic_load_n(__ATOMIC_ACQUIRE) and use __atomic_compare_exchange(__ATOMIC_RELAXED) when trying to take the (supposedly available) lock.",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
