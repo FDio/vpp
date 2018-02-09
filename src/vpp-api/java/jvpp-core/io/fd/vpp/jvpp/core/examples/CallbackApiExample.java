@@ -21,15 +21,9 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.GetNodeIndexReplyCallback;
-import io.fd.vpp.jvpp.core.callback.ShowVersionReplyCallback;
-import io.fd.vpp.jvpp.core.callback.SwInterfaceDetailsCallback;
-import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
-import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
-import io.fd.vpp.jvpp.core.dto.ShowVersion;
-import io.fd.vpp.jvpp.core.dto.ShowVersionReply;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceSetFlagsReplyCallback;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlags;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlagsReply;
 import java.nio.charset.StandardCharsets;
 
 public class CallbackApiExample {
@@ -44,20 +38,12 @@ public class CallbackApiExample {
              final JVpp jvpp = new JVppCoreImpl()) {
             registry.register(jvpp, new TestCallback());
 
-            System.out.println("Sending ShowVersion request...");
-            final int result = jvpp.send(new ShowVersion());
-            System.out.printf("ShowVersion send result = %d%n", result);
-
-            System.out.println("Sending GetNodeIndex request...");
-            GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-            getNodeIndexRequest.nodeName = "non-existing-node".getBytes(StandardCharsets.UTF_8);
-            jvpp.send(getNodeIndexRequest);
-
-            System.out.println("Sending SwInterfaceDump request...");
-            SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
-            swInterfaceDumpRequest.nameFilterValid = 0;
-            swInterfaceDumpRequest.nameFilter = "".getBytes(StandardCharsets.UTF_8);
-            jvpp.send(swInterfaceDumpRequest);
+            System.out.println("Sending SwInterfaceSetFlags request...");
+            final SwInterfaceSetFlags swInterfaceSetFlagsRequest = new SwInterfaceSetFlags();
+            swInterfaceSetFlagsRequest.swIfIndex = 0;
+            swInterfaceSetFlagsRequest.adminUpDown = 1;
+            final int result = jvpp.send(swInterfaceSetFlagsRequest);
+            System.out.printf("SwInterfaceSetFlags send result = %d%n", result);
 
             Thread.sleep(1000);
             System.out.println("Disconnecting...");
@@ -65,30 +51,11 @@ public class CallbackApiExample {
         Thread.sleep(1000);
     }
 
-    static class TestCallback implements GetNodeIndexReplyCallback, ShowVersionReplyCallback, SwInterfaceDetailsCallback {
+    static class TestCallback implements SwInterfaceSetFlagsReplyCallback {
 
         @Override
-        public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
-            System.out.printf("Received GetNodeIndexReply: %s%n", msg);
-        }
-
-        @Override
-        public void onShowVersionReply(final ShowVersionReply msg) {
-            System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
-                    + "buildDate=%s, buildDirectory=%s%n",
-                msg.context,
-                new String(msg.program, StandardCharsets.UTF_8),
-                new String(msg.version, StandardCharsets.UTF_8),
-                new String(msg.buildDate, StandardCharsets.UTF_8),
-                new String(msg.buildDirectory, StandardCharsets.UTF_8));
-        }
-
-        @Override
-        public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
-            System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
-                msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
+        public void onSwInterfaceSetFlagsReply(final SwInterfaceSetFlagsReply msg) {
+            System.out.printf("Received SwInterfaceSetFlagsReply: %s%n", msg);
         }
 
         @Override
