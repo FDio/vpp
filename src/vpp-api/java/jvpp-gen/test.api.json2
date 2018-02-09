@@ -1,0 +1,96 @@
+{
+    "services": {
+        "foo_request": {
+            "reply": "foo_request_reply"
+        },
+        "foo_dump": {
+            "reply": "foo_details",
+            "stream": true
+        }
+    },
+    "vl_api_version": "0x3b314224",
+    "enums": [],
+    "messages": [
+        [
+            "foo_request",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u8",
+                "val_u8"
+            ],
+            {
+                "crc": "0x4199095a"
+            }
+        ],
+        [
+            "foo_request_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804"
+            }
+        ],
+        [
+            "foo_dump",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            {
+                "crc": "0x8ac76db6"
+            }
+        ],
+        [
+            "foo_details",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            {
+                "crc": "0xe18f0c91"
+            }
+        ]
+    ],
+    "types": []
+}
