@@ -120,6 +120,8 @@ u16x8_zero_byte_mask (u16x8 input)
   return (u32) (vgetq_lane_u64 (merge3, 1) << 8) + vgetq_lane_u64 (merge3, 0);
 }
 
+#define u32x4_zero_byte_mask(x) u16x8_zero_byte_mask((u16x8) x)
+
 #endif /* included_vector_neon_h */
 
 /*
