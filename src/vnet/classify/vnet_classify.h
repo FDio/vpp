@@ -41,10 +41,6 @@ extern vlib_node_registration_t ip6_classify_node;
 
 #define CLASSIFY_TRACE 0
 
-#if !defined( __aarch64__) && !defined(__arm__)
-#define CLASSIFY_USE_SSE	//Allow usage of SSE operations
-#endif
-
 #define U32X4_ALIGNED(p) PREDICT_TRUE((((intptr_t)p) & 0xf) == 0)
 
 /*
@@ -233,9 +229,9 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
 
   ASSERT (t);
   mask = t->mask;
-#ifdef CLASSIFY_USE_SSE
+#ifdef CLIB_HAVE_VEC128
   if (U32X4_ALIGNED (h))
-    {				//SSE can't handle unaligned data
+    { /* take care not to do unalign-access within a vector instruction */
       u32x4 *data = (u32x4 *) h;
       xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
       switch (t->match_n_vectors)
@@ -259,7 +255,7 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
 	}
     }
   else
-#endif /* CLASSIFY_USE_SSE */
+#endif /* CLIB_HAVE_VEC128 */
     {
       u32 skip_u64 = t->skip_n_vectors * 2;
       u64 *data64 = (u64 *) h;
@@ -407,7 +403,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 
   v = vnet_classify_entry_at_index (t, v, value_index);
 
-#ifdef CLASSIFY_USE_SSE
+#ifdef CLIB_HAVE_VEC128
   if (U32X4_ALIGNED (h))
     {
       u32x4 *data = (u32x4 *) h;
@@ -452,7 +448,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 	}
     }
   else
-#endif /* CLASSIFY_USE_SSE */
+#endif /* CLIB_HAVE_VEC128 */
     {
       u32 skip_u64 = t->skip_n_vectors * 2;
       u64 *data64 = (u64 *) h;
