@@ -1852,6 +1852,24 @@ macip_destroy_classify_tables (acl_main_t * am, u32 macip_acl_index)
 					0);
       a->l2_table_index = ~0;
     }
+  if (a->out_ip4_table_index != ~0)
+    {
+      acl_classify_add_del_table_small (cm, 0, ~0, ~0, ~0,
+					&a->out_ip4_table_index, 0);
+      a->out_ip4_table_index = ~0;
+    }
+  if (a->out_ip6_table_index != ~0)
+    {
+      acl_classify_add_del_table_small (cm, 0, ~0, ~0, ~0,
+					&a->out_ip6_table_index, 0);
+      a->out_ip6_table_index = ~0;
+    }
+  if (a->out_l2_table_index != ~0)
+    {
+      acl_classify_add_del_table_small (cm, 0, ~0, ~0, ~0,
+					&a->out_l2_table_index, 0);
+      a->out_l2_table_index = ~0;
+    }
 }
 
 static int
@@ -3031,6 +3049,10 @@ macip_acl_print (acl_main_t * am, u32 macip_acl_index)
 {
   vlib_main_t *vm = am->vlib_main;
   int i;
+
+  /* Don't attempt to show the ACLs that do not exist */
+  if (pool_is_free_index (am->macip_acls, macip_acl_index))
+    return;
 
   /* Don't try to print someone else's memory */
   if (macip_acl_index > vec_len (am->macip_acls))
