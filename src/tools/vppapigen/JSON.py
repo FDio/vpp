@@ -15,14 +15,14 @@ def walk_enums(s):
 
 
 def walk_services(s):
-    r = []
+    r = {}
     for e in s:
         d = {'reply': e.reply}
         if e.stream:
             d['stream'] = True
         if e.events:
             d['events'] = e.events
-        r.append({e.caller: d})
+        r[e.caller] = d
     return r
 
 
