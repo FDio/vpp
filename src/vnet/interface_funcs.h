@@ -292,6 +292,9 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 					       vnet_hw_interface_rx_mode
 					       mode);
 
+/* Set the MTU on the HW interface */
+void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;

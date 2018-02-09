@@ -629,6 +629,16 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'admin_up_down': admin_up_down})
 
+    def sw_interface_set_mtu(self, sw_if_index, mtu):
+        """
+        :param sw_if_index:
+        :param mtu:
+
+        """
+        return self.api(self.papi.sw_interface_set_mtu,
+                        {'sw_if_index': sw_if_index,
+                         'mtu': mtu})
+
     def create_subif(self, sw_if_index, sub_id, outer_vlan, inner_vlan,
                      no_tags=0, one_tag=0, two_tags=0, dot1ad=0, exact_match=0,
                      default_sub=0, outer_vlan_id_any=0, inner_vlan_id_any=0):

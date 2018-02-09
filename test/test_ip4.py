@@ -1287,6 +1287,32 @@ class TestIPInput(VppTestCase):
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
+        #
+        # MTU exceeded
+        #
+        p_mtu = (Ether(src=self.pg0.remote_mac,
+                       dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4,
+                    dst=self.pg1.remote_ip4,
+                    ttl=10) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 2000))
+
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, 1500)
+
+        rx = self.send_and_expect(self.pg0, p_mtu * 65, self.pg0)
+        rx = rx[0]
+        icmp = rx[ICMP]
+
+        self.assertEqual(icmptypes[icmp.type], "dest-unreach")
+        self.assertEqual(icmpcodes[icmp.type][icmp.code],
+                         "fragmentation-needed")
+        self.assertEqual(icmp.src, self.pg0.remote_ip4)
+        self.assertEqual(icmp.dst, self.pg1.remote_ip4)
+
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, 2500)
+        rx = self.send_and_expect(self.pg0, p_mtu * 65, self.pg1)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

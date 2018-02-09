@@ -345,6 +345,12 @@ extern const u8* adj_get_rewrite (adj_index_t ai);
 extern void adj_feature_update (u32 sw_if_index, u8 arc_index, u8 is_enable);
 
 /**
+ * @brief Notify the adjacency subsystem that the MTU settings for
+ * an HW interface have changed
+ */
+extern void adj_mtu_update (u32 hw_if_index);
+
+/**
  * @brief
  * The global adjacnecy pool. Exposed for fast/inline data-plane access
  */

@@ -77,15 +77,14 @@ format_vnet_rewrite (u8 * s, va_list * args)
       vnet_sw_interface_t *si;
       si = vnet_get_sw_interface_safe (vnm, rw->sw_if_index);
       if (NULL != si)
-	s = format (s, "%U: ", format_vnet_sw_interface_name, vnm, si);
+	s = format (s, "%U:", format_vnet_sw_interface_name, vnm, si);
       else
 	s = format (s, "DELETED:%d", rw->sw_if_index);
     }
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
-
-    s = format (s, "%U",
+    s = format (s, " %U",
 		format_hex_bytes,
 		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
 
@@ -108,6 +107,13 @@ vnet_rewrite_init (vnet_main_t * vnm,
   rw->next_index = vlib_node_add_next (vnm->vlib_main, this_node, next_node);
   rw->max_l3_packet_bytes =
     vnet_sw_interface_get_mtu (vnm, sw_if_index, VLIB_TX);
+}
+
+void
+vnet_rewrite_update_mtu (vnet_main_t * vnm, vnet_rewrite_header_t * rw)
+{
+  rw->max_l3_packet_bytes =
+    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index, VLIB_TX);
 }
 
 void
