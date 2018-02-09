@@ -328,6 +328,9 @@ void vnet_rewrite_init (struct vnet_main_t *vnm,
 			u32 this_node,
 			u32 next_node, vnet_rewrite_header_t * rw);
 
+void vnet_rewrite_update_mtu (struct vnet_main_t *vnm,
+			      vnet_rewrite_header_t * rw);
+
 u8 *vnet_build_rewrite_for_sw_interface (struct vnet_main_t *vnm,
 					 u32 sw_if_index,
 					 vnet_link_t packet_type,

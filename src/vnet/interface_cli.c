@@ -1132,7 +1132,6 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index, mtu;
-  u32 flags = ETHERNET_INTERFACE_FLAG_MTU;
   ethernet_main_t *em = &ethernet_main;
 
   if (unformat (input, "%d %U", &mtu,
@@ -1153,11 +1152,7 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	return clib_error_return (0, "Invalid mtu (%d): must be <= (%d)", mtu,
 				  hi->max_supported_packet_bytes);
 
-      if (hi->max_packet_bytes != mtu)
-	{
-	  hi->max_packet_bytes = mtu;
-	  ethernet_set_flags (vnm, hw_if_index, flags);
-	}
+      vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
     }
   else
     return clib_error_return (0, "unknown input `%U'",

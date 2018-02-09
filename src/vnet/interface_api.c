@@ -98,7 +98,6 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
 {
   vl_api_sw_interface_set_mtu_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 flags = ETHERNET_INTERFACE_FLAG_MTU;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u16 mtu = ntohs (mp->mtu);
   ethernet_main_t *em = &ethernet_main;
@@ -134,11 +133,7 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
       goto bad_sw_if_index;
     }
 
-  if (hi->max_packet_bytes != mtu)
-    {
-      hi->max_packet_bytes = mtu;
-      ethernet_set_flags (vnm, si->hw_if_index, flags);
-    }
+  vnet_hw_interface_set_mtu (vnm, si->hw_if_index, mtu);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
