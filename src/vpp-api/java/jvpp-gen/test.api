@@ -1,0 +1,38 @@
+option version = "1.0.1";
+
+/**
+  i8 val_i8;
+  u16 val_u16;
+  i16 val_i16;
+  u8 val_u8;
+  u8 val_u8;
+*/
+
+/** \brief Foo request definition
+    @param val_u8 - a value of u8 type
+*/
+autoreply define foo_request
+{
+  u32 client_index;
+  u32 context;
+  u8 val_u8;
+};
+
+/** \brief Foo dump definition
+    @param index - an index of u32 type
+*/
+define foo_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 index;
+};
+
+/** \brief Foo details definition
+    @param index - an index of u32 type
+*/
+define foo_details
+{
+  u32 context;
+  u32 index;
+};

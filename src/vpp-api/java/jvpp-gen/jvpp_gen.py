@@ -1,0 +1,72 @@
+#!/usr/bin/env python2
+#
+# Copyright (c) 2018 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import os
+import logging
+import sys
+import argparse
+
+from jvpp_json_parser import JsonParser
+from jvpp_dto_gen import DtoGenerator
+
+class JvppGenerator(object):
+    def __init__(self, jsonparser, logger):
+        self.jsonparser = jsonparser
+        self.logger = logger
+        self.dto_generator = DtoGenerator(jsonparser, logger)
+
+    def generate(self):
+        # self.generate_enums()
+        # self.generate_types()
+        self.dto_generator.generate()
+        # self.generate_java_impl()
+        # self.generate_c_impl()
+        # self.generate_callbacks() # todo understand how they are used
+        # self.generate_notifications()
+        # self.generate_future_api()
+        # self.generate_callfacade_api()
+
+
+if __name__ == '__main__':
+    # Initialize logger
+    try:
+        verbose = int(os.getenv("V", 0))
+    except:
+        verbose = 0
+
+    log_level = logging.WARNING
+    if verbose == 1:
+        log_level = logging.INFO
+    elif verbose >= 2:
+        log_level = logging.DEBUG
+
+    logging.basicConfig(stream=sys.stdout, level=log_level)
+    logger = logging.getLogger("JVPP GEN")
+    logger.setLevel(log_level)
+
+    argparser = argparse.ArgumentParser(description='VPP Java API generator')
+    argparser.add_argument('-i', nargs='+', metavar='api_file.json', help='json vpp api file(s)')
+    argparser.add_argument('--plugin_name')
+    args = argparser.parse_args()
+
+    jsonparser = JsonParser(logger, args.i, args.plugin_name)
+    generator = JvppGenerator(jsonparser, logger)
+    generator.generate()
+
+    # car = Car()
+    # car.accept(CarElementPrintVisitor())
+    # car.accept(CarElementDoVisitor())
+    # jvpp.generate(DtoGenerator())
