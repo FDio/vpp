@@ -1,0 +1,77 @@
+@startuml
+class JsonParser {
+  messages
+  types
+}
+JsonParser "1" *--> "*" Message : messages
+JsonParser "1" *--> "*" Type : types
+
+class Field {
+  name
+  type
+}
+Field --> Type : type
+
+class Type {
+  name
+}
+
+class SimpleType {
+}
+Type <|-- SimpleType
+
+class Array {
+  length
+  lengthField [*]
+}
+Type <|-- Array
+
+
+class Class {
+  crc
+  fields
+}
+Type <|-- Class
+Class "1" *--> "*" Field : fields
+
+class Enum {
+  {field} size (u8 | u16 | u32)
+  crc
+}
+Type <|-- Enum
+
+class Message {
+  name
+  crc
+  fields
+}
+Message "1" *--> "*" Field : fields
+
+class Event {
+}
+Message <|-- Event
+
+class Service {
+  reply : Message
+}
+Message <|-- Service
+
+class Request {
+}
+Service <|-- Request
+Request --> Reply
+
+class Reply {
+}
+Message <|-- Reply
+
+class Dump {
+}
+Service <|-- Dump
+Dump --> Details
+
+class Details {
+}
+Message <|-- Details
+
+@enduml
