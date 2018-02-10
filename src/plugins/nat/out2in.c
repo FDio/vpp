@@ -994,8 +994,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	{
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
-          u32 next0 = SNAT_OUT2IN_NEXT_LOOKUP;
-          u32 next1 = SNAT_OUT2IN_NEXT_LOOKUP;
+          u32 next0, next1;
           u32 sw_if_index0, sw_if_index1;
           ip4_header_t * ip0, *ip1;
           ip_csum_t sum0, sum1;
@@ -1036,6 +1035,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
+
+	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+                             &next0, b0);
+          vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_RX],
+                             &next1, b1);
 
           vnet_buffer (b0)->snat.flags = 0;
           vnet_buffer (b1)->snat.flags = 0;
@@ -1375,7 +1379,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	{
           u32 bi0;
 	  vlib_buffer_t * b0;
-          u32 next0 = SNAT_OUT2IN_NEXT_LOOKUP;
+          u32 next0;
           u32 sw_if_index0;
           ip4_header_t * ip0;
           ip_csum_t sum0;
@@ -1399,6 +1403,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
+	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+                             &next0, b0);
 
           vnet_buffer (b0)->snat.flags = 0;
 
