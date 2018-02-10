@@ -46,7 +46,7 @@
 #define F_SEAL_WRITE    0x0008	/* prevent writes */
 #endif
 
-uword
+u64
 clib_mem_vm_get_page_size (int fd)
 {
   struct stat st = { 0 };
@@ -87,7 +87,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
   int log2_page_size;
   int n_pages;
   int old_mpol = -1;
-  u64 old_mask[16] = { 0 };
+  unsigned long old_mask[16] = { 0 };
 
   /* save old numa mem policy if needed */
   if (a->flags & (CLIB_MEM_VM_F_NUMA_PREFER | CLIB_MEM_VM_F_NUMA_FORCE))
@@ -203,7 +203,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
   if (old_mpol != -1)
     {
       int rv;
-      u64 mask[16] = { 0 };
+      unsigned long mask[16] = { 0 };
       mask[0] = 1 << a->numa_node;
       rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
       if (rv)

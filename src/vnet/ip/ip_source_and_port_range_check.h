@@ -16,6 +16,9 @@
 #ifndef included_ip_ip_source_and_port_range_check_h
 #define included_ip_ip_source_and_port_range_check_h
 
+#define _vector_size(n) __attribute__ ((vector_size (n)))
+typedef u16 u16x8 _vector_size (16);
+
 
 typedef struct
 {

@@ -497,8 +497,15 @@ static inline
   if (nticks == 0)
     return callback_vector_arg;
 
+
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
+  if (nticks > 0xffffff)
+    {
+      clib_warning("AYXX: time glitch... set the last_run_time correctly"); 
+      tw->last_run_time = now;
+      return callback_vector_arg;
+    }
 
   if (callback_vector_arg == 0)
     {
