@@ -477,7 +477,7 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 			    vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from;
-  ethernet_main_t *em = ethernet_get_main (vm);
+  ethernet_main_t *em = vnet_get_ethernet_main ();
   dhcp_proxy_main_t *dpm = &dhcp_proxy_main;
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
