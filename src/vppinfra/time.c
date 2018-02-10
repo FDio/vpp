@@ -226,6 +226,36 @@ clib_time_verify_frequency (clib_time_t * c)
     c->log2_clocks_per_frequency_verify += 1;
 }
 
+
+u64 clib_cpu_time_now_rpi(void) {
+    static long long int *timer = 0;
+
+#define ST_BASE (0x3F003000)
+#define TIMER_OFFSET (4)
+
+    if (timer == 0) {
+      int fd;
+      void *st_base; // byte ptr to simplify offset math
+
+      // get access to system core memory
+      if (-1 == (fd = open("/dev/mem", O_RDONLY))) {
+          fprintf(stderr, "open() failed.\n");
+          return 255;
+      }
+
+      // map a specific page into process's address space
+      if (MAP_FAILED == (st_base = mmap(NULL, 4096,
+                          PROT_READ, MAP_SHARED, fd, ST_BASE))) {
+          fprintf(stderr, "mmap() failed.\n");
+          return 254;
+      }
+
+      // set up pointer, based on mapped page
+      timer = (long long int *)((char *)st_base + TIMER_OFFSET); //<- here is problem
+    }
+    return (*timer)*1200ULL;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

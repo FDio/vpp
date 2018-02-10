@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #define SOCK_TEST_TOKEN_HELP           "#H"
 #define SOCK_TEST_TOKEN_EXIT           "#X"
@@ -212,10 +213,10 @@ sock_test_cfg_dump (sock_test_cfg_t * cfg, uint8_t is_client)
 	  "           ctrl handle:  %d (0x%x)\n"
 	  "%-5s num test sockets:  %u (0x%08x)\n"
 	  "%-5s          verbose:  %s (%d)\n"
-	  "%-5s       rxbuf size:  %lu (0x%08lx)\n"
-	  "%-5s       txbuf size:  %lu (0x%08lx)\n"
-	  "%-5s       num writes:  %lu (0x%08lx)\n"
-	  "       client tx bytes:  %lu (0x%08lx)\n"
+	  "%-5s       rxbuf size:  %" PRIu64 " (0x%" PRIx64 ")\n"
+	  "%-5s       txbuf size:  %" PRIu64 " (0x%" PRIx64 ")\n"
+	  "%-5s       num writes:  %" PRIu64 " (0x%" PRIx64 ")\n"
+	  "       client tx bytes:  %" PRIu64 " (0x%" PRIx64 ")\n"
           SOCK_TEST_SEPARATOR_STRING,
 	  (void *) cfg, cfg->magic,
           is_client && (cfg->test == SOCK_TEST_TYPE_UNI) ?
@@ -260,7 +261,7 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
 
   total_bytes = stats->tx_bytes + stats->rx_bytes;
   rate = (double) total_bytes * 8 / duration / ONE_GIG;
-  printf ("\n%s: Streamed %lu bytes\n"
+  printf ("\n%s: Streamed %" PRIu64 " bytes\n"
           "  in %lf seconds (%lf Gbps %s-duplex)!\n",
               header, total_bytes, duration, rate,
           (show_rx && show_tx) ? "full" : "half");
@@ -270,8 +271,8 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
       printf (SOCK_TEST_SEPARATOR_STRING
               "  tx stats (0x%p):\n"
               SOCK_TEST_SEPARATOR_STRING
-              "         writes:  %lu (0x%08lx)\n"
-              "       tx bytes:  %lu (0x%08lx)\n"
+              "         writes:  %" PRIu64 " (0x%" PRIx64 ")\n"
+              "       tx bytes:  %" PRIu64 " (0x%" PRIx64 ")\n"
               "      tx eagain:  %u (0x%08x)\n"
               "  tx incomplete:  %u (0x%08x)\n",
               (void *)stats, stats->tx_xacts, stats->tx_xacts,
@@ -284,8 +285,8 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
       printf (SOCK_TEST_SEPARATOR_STRING
               "  rx stats (0x%p):\n"
               SOCK_TEST_SEPARATOR_STRING
-              "          reads:  %lu (0x%08lx)\n"
-              "       rx bytes:  %lu (0x%08lx)\n"
+              "          reads:  %" PRIu64 " (0x%" PRIx64 ")\n"
+              "       rx bytes:  %" PRIu64 " (0x%" PRIx64 ")\n"
               "      rx eagain:  %u (0x%08x)\n"
               "  rx incomplete:  %u (0x%08x)\n",
               (void *)stats, stats->rx_xacts, stats->rx_xacts,

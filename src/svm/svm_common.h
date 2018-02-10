@@ -20,6 +20,7 @@
 
 #include <stdarg.h>
 #include <pthread.h>
+#include <sys/types.h>
 #include <vppinfra/types.h>
 
 #define SVM_VERSION ((1<<16) | 1)	/* set to declare region ready. */
@@ -66,8 +67,8 @@ typedef struct svm_map_region_args_
 {
   const char *root_path;	/* NULL means use the truly global arena */
   const char *name;
-  u64 baseva;
-  u64 size;
+  ssize_t baseva;
+  ssize_t size;
   u64 pvt_heap_size;
   uword flags;
   char *backing_file;

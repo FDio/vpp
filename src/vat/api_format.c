@@ -14506,6 +14506,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 	  is_ipv6 = 1;
 	  is_ip_any = 0;
 	}
+#if WITH_LIBSSL > 0
       else
 	if (unformat (i, "action %U", unformat_ipsec_policy_action, &policy))
 	{
@@ -14515,6 +14516,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 	      return -99;
 	    }
 	}
+#endif
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -14614,6 +14616,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	  is_tunnel = 1;
 	  is_tunnel_ipv6 = 1;
 	}
+#if WITH_LIBSSL > 0
       else
 	if (unformat
 	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
@@ -14640,6 +14643,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	      return -99;
 	    }
 	}
+#endif
       else if (unformat (i, "integ_key %U", unformat_hex_string, &ik))
 	;
       else
@@ -14784,6 +14788,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "remote_integ_key %U", unformat_hex_string, &rik))
 	;
+#if WITH_LIBSSL > 0
       else
 	if (unformat
 	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
@@ -14808,6 +14813,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	      return -99;
 	    }
 	}
+#endif
       else
 	{
 	  errmsg ("parse error '%U'\n", format_unformat_error, i);
@@ -15001,6 +15007,7 @@ api_ipsec_tunnel_if_set_key (vat_main_t * vam)
     {
       if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
 	;
+#if WITH_LIBSSL > 0
       else
 	if (unformat (i, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
@@ -15012,6 +15019,7 @@ api_ipsec_tunnel_if_set_key (vat_main_t * vam)
       else
 	if (unformat (i, "remote integ %U", unformat_ipsec_integ_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
+#endif
       else if (unformat (i, "%U", unformat_hex_string, &key))
 	;
       else
@@ -15174,9 +15182,11 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
     {
       if (unformat (i, "name %U", unformat_token, valid_chars, &name))
 	vec_add1 (name, 0);
+#if WITH_LIBSSL > 0
       else if (unformat (i, "auth_method %U",
 			 unformat_ikev2_auth_method, &auth_method))
 	;
+#endif
       else if (unformat (i, "auth_data 0x%U", unformat_hex_string, &data))
 	is_hex = 1;
       else if (unformat (i, "auth_data %v", &data))
@@ -15245,8 +15255,10 @@ api_ikev2_profile_set_id (vat_main_t * vam)
     {
       if (unformat (i, "name %U", unformat_token, valid_chars, &name))
 	vec_add1 (name, 0);
+#if WITH_LIBSSL > 0
       else if (unformat (i, "id_type %U", unformat_ikev2_id_type, &id_type))
 	;
+#endif
       else if (unformat (i, "id_data %U", unformat_ip4_address, &ip4))
 	{
 	  data = vec_new (u8, 4);

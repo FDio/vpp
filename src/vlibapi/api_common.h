@@ -283,10 +283,10 @@ typedef struct
   int api_gid;
 
   /** base virtual address for global VM region */
-  u64 global_baseva;
+  ssize_t global_baseva;
 
   /** size of the global VM region */
-  u64 global_size;
+  ssize_t global_size;
 
   /** size of the API region */
   u64 api_size;

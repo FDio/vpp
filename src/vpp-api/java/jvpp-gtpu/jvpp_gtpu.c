@@ -47,7 +47,9 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_gtpu_JVppGtpuImpl_init0
   clib_warning ("Java_io_fd_vpp_jvpp_gtpu_JVppGtpuImpl_init0");
 
   plugin_main->my_client_index = my_client_index;
+#ifdef AYXX_FIXME
   plugin_main->vl_input_queue = (svm_queue_t *)queue_address;
+#endif
 
   plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
   plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));

@@ -435,8 +435,8 @@ dump_thread_0_event_queue (void)
 	  break;
 
 	case FIFO_EVENT_RPC:
-	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
-		   i, (u64) (e->rpc_args.fp), (u64) (e->rpc_args.arg));
+	  fformat (stdout, "[%04d] RPC call %p with %p\n",
+		   i, (e->rpc_args.fp), (e->rpc_args.arg));
 	  break;
 
 	default:

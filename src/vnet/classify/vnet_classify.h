@@ -35,9 +35,13 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 #include <vppinfra/xxhash.h>
+#include <vppinfra/vector.h>
 
 extern vlib_node_registration_t ip4_classify_node;
 extern vlib_node_registration_t ip6_classify_node;
+
+#define _vector_size(n) __attribute__ ((vector_size (n)))
+typedef u32 u32x4 _vector_size (16);
 
 #define CLASSIFY_TRACE 0
 

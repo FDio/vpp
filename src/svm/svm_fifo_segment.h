@@ -55,7 +55,7 @@ typedef struct
   /** pool of segments */
   svm_fifo_segment_private_t *segments;
   /* Where to put the next one */
-  u64 next_baseva;
+  ssize_t next_baseva;
   u32 timeout_in_seconds;
 } svm_fifo_segment_main_t;
 
@@ -108,7 +108,7 @@ svm_fifo_t *svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 void svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s,
 				 svm_fifo_t * f,
 				 svm_fifo_segment_freelist_t index);
-void svm_fifo_segment_main_init (u64 baseva, u32 timeout_in_seconds);
+void svm_fifo_segment_main_init (ssize_t baseva, u32 timeout_in_seconds);
 u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
