@@ -1105,10 +1105,14 @@ snat_out2in_node_fn (vlib_main_t * vm,
                        * Send DHCP packets to the ipv4 stack, or we won't
                        * be able to use dhcp client on the outside interface
                        */
-                      if (proto0 != SNAT_PROTOCOL_UDP
+                      if (PREDICT_TRUE (proto0 != SNAT_PROTOCOL_UDP
                           || (udp0->dst_port
-                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client))))
                         next0 = SNAT_OUT2IN_NEXT_DROP;
+                      else
+                        vnet_feature_next
+                          (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+                           &next0, b0);
                       goto trace0;
                     }
                   else
@@ -1268,10 +1272,14 @@ snat_out2in_node_fn (vlib_main_t * vm,
                        * Send DHCP packets to the ipv4 stack, or we won't
                        * be able to use dhcp client on the outside interface
                        */
-                      if (proto1 != SNAT_PROTOCOL_UDP
+                      if (PREDICT_TRUE (proto1 != SNAT_PROTOCOL_UDP
                           || (udp1->dst_port
-                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client))))
                         next1 = SNAT_OUT2IN_NEXT_DROP;
+                      else
+                        vnet_feature_next
+                          (vnet_buffer (b1)->sw_if_index[VLIB_RX],
+                           &next1, b1);
                       goto trace1;
                     }
                   else
@@ -1467,10 +1475,14 @@ snat_out2in_node_fn (vlib_main_t * vm,
                        * Send DHCP packets to the ipv4 stack, or we won't
                        * be able to use dhcp client on the outside interface
                        */
-                      if (proto0 != SNAT_PROTOCOL_UDP
+                      if (PREDICT_TRUE (proto0 != SNAT_PROTOCOL_UDP
                           || (udp0->dst_port
-                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client))))
                         next0 = SNAT_OUT2IN_NEXT_DROP;
+                      else
+                        vnet_feature_next
+                          (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+                           &next0, b0);
                       goto trace00;
                     }
                   else
@@ -1707,10 +1719,14 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                            * Send DHCP packets to the ipv4 stack, or we won't
                            * be able to use dhcp client on the outside interface
                            */
-                          if (proto0 != SNAT_PROTOCOL_UDP
+                          if (PREDICT_TRUE (proto0 != SNAT_PROTOCOL_UDP
                               || (udp0->dst_port
-                                  != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                                  != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client))))
                             next0 = SNAT_OUT2IN_NEXT_DROP;
+                          else
+                            vnet_feature_next
+                              (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+                               &next0, b0);
                           goto trace0;
                         }
                       else
