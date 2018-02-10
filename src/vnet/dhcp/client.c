@@ -66,6 +66,58 @@ dhcp_client_proc_callback (uword * client_index)
 			     EVENT_DHCP_CLIENT_WAKEUP, *client_index);
 }
 
+static void
+dhcp_client_addr_callback (dhcp_client_t * c)
+{
+  dhcp_client_main_t *dcm = &dhcp_client_main;
+  void (*fp) (u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) = c->event_callback;
+
+  /* add the advertised subnet and disable the feature */
+  dhcp_client_acquire_address (dcm, c);
+  vnet_feature_enable_disable ("ip4-unicast",
+			       "ip4-dhcp-client-detect",
+			       c->sw_if_index, 0, 0, 0);
+
+  /*
+   * Configure default IP route:
+   */
+  if (c->router_address.as_u32)
+    {
+      fib_prefix_t all_0s = {
+	.fp_len = 0,
+	.fp_addr.ip4.as_u32 = 0x0,
+	.fp_proto = FIB_PROTOCOL_IP4,
+      };
+      ip46_address_t nh = {
+	.ip4 = c->router_address,
+      };
+
+      /* *INDENT-OFF* */
+      fib_table_entry_path_add (
+	fib_table_get_index_for_sw_if_index (
+	  FIB_PROTOCOL_IP4,
+	  c->sw_if_index),
+	  &all_0s,
+	  FIB_SOURCE_DHCP,
+	  FIB_ENTRY_FLAG_NONE,
+          DPO_PROTO_IP4,
+          &nh, c->sw_if_index,
+          ~0, 1, NULL,	// no label stack
+          FIB_ROUTE_PATH_FLAG_NONE);
+      /* *INDENT-ON* */
+    }
+
+  /*
+   * Call the user's event callback to report DHCP information
+   */
+  if (fp)
+    (*fp) (c->client_index,	/* clinet index */
+	   c->pid, c->hostname, c->subnet_mask_width, 0,	/* is_ipv6 */
+	   (u8 *) & c->leased_address,	/* host IP address */
+	   (u8 *) & c->router_address,	/* router IP address */
+	   (u8 *) (c->l2_rewrite + 6));	/* host MAC address */
+}
+
 /*
  * dhcp_client_for_us - server-to-client callback.
  * Called from proxy_node.c:dhcp_proxy_to_client_input().
@@ -206,55 +258,8 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	}
       /* OK, we own the address (etc), add to the routing table(s) */
       if (c->state == DHCP_REQUEST)
-	{
-	  void (*fp) (u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) =
-	    c->event_callback;
-
-	  /* add the advertised subnet and disable the feature */
-	  dhcp_client_acquire_address (dcm, c);
-	  vnet_feature_enable_disable ("ip4-unicast",
-				       "ip4-dhcp-client-detect",
-				       c->sw_if_index, 0, 0, 0);
-
-	  /*
-	   * Configure default IP route:
-	   */
-	  if (c->router_address.as_u32)
-	    {
-	      fib_prefix_t all_0s = {
-		.fp_len = 0,
-		.fp_addr.ip4.as_u32 = 0x0,
-		.fp_proto = FIB_PROTOCOL_IP4,
-	      };
-	      ip46_address_t nh = {
-		.ip4 = c->router_address,
-	      };
-
-              /* *INDENT-OFF* */
-	      fib_table_entry_path_add (
-                  fib_table_get_index_for_sw_if_index (
-                      FIB_PROTOCOL_IP4,
-                      c->sw_if_index),
-                  &all_0s,
-                  FIB_SOURCE_DHCP,
-                  FIB_ENTRY_FLAG_NONE,
-                  DPO_PROTO_IP4,
-                  &nh, c->sw_if_index,
-                  ~0, 1, NULL,	// no label stack
-                  FIB_ROUTE_PATH_FLAG_NONE);
-              /* *INDENT-ON* */
-	    }
-
-	  /*
-	   * Call the user's event callback to report DHCP information
-	   */
-	  if (fp)
-	    (*fp) (c->client_index,	/* clinet index */
-		   c->pid, c->hostname, c->subnet_mask_width, 0,	/* is_ipv6 */
-		   (u8 *) & c->leased_address,	/* host IP address */
-		   (u8 *) & c->router_address,	/* router IP address */
-		   (u8 *) (c->l2_rewrite + 6));	/* host MAC address */
-	}
+	vl_api_rpc_call_main_thread (dhcp_client_addr_callback,
+				     (u8 *) c, sizeof (*c));
 
       c->state = DHCP_BOUND;
       c->retry_count = 0;

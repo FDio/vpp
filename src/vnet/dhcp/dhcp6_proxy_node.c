@@ -563,7 +563,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
 {
 
   u32 n_left_from, *from;
-  ethernet_main_t *em = ethernet_get_main (vm);
+  ethernet_main_t *em = vnet_get_ethernet_main ();
   dhcp_proxy_main_t *dm = &dhcp_proxy_main;
   dhcp_proxy_t *proxy;
   dhcp_server_t *server;
