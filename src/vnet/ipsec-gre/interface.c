@@ -161,8 +161,13 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
       t->sw_if_index = sw_if_index;
       t->local_sa_id = a->lsa;
       t->remote_sa_id = a->rsa;
+#if WITH_LIBSSL > 0
       t->local_sa = ipsec_get_sa_index_by_sa_id (a->lsa);
       t->remote_sa = ipsec_get_sa_index_by_sa_id (a->rsa);
+#else
+      t->local_sa = 0;
+      t->remote_sa = 0;
+#endif
 
       ip4_sw_interface_enable_disable (sw_if_index, 1);
 
@@ -215,8 +220,11 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
-
+#if WITH_LIBSSL > 0
   return ipsec_add_del_ipsec_gre_tunnel (vnm, &args);
+#else
+  return -1;
+#endif
 }
 
 static clib_error_t *

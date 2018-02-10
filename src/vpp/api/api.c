@@ -497,7 +497,7 @@ static clib_error_t *
 api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 *chroot_path;
-  u64 baseva, size, pvt_heap_size;
+  ssize_t baseva, size, pvt_heap_size;
   int uid, gid, rv;
   const int max_buf_size = 4096;
   char *s, *buf;

@@ -28,8 +28,14 @@ vpp_configure_args_arm32 = --with-dpdk --without-libssl
 arm32_dpdk_arch = "armv7a"
 arm32_dpdk_target = "arm-armv7a-linuxapp-gcc"
 arm32_dpdk_make_extra_args = "CPU_CFLAGS='-mfloat-abi=hard' \
-	CONFIG_RTE_EAL_IGB_UIO=y \
-	CONFIG_RTE_LIBRTE_E1000_PMD=y \
+	CONFIG_RTE_EAL_IGB_UIO=n \
+	CONFIG_RTE_LIBRTE_E1000_PMD=n \
+	CONFIG_RTE_ARCH_ARM_TUNE=arm7 \
+	CONFIG_RTE_LIBRTE_PMD_VHOST=n \
+	CONFIG_RTE_LIBRTE_VIRTIO_PMD=n \
+	CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y \
+	CONFIG_RTE_APP_CRYPTO_PERF=n \
+	CONFIG_RTE_APP_EVENTDEV=n \
 	CONFIG_RTE_MAX_LCORE=4 \
 	CONFIG_RTE_MAX_NUMA_NODES=1"
 
@@ -43,3 +49,6 @@ arm32_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector -fPIC -Werror
 arm32_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector -fPIC -Werror
+
+# disable building VPP object model and java api
+vpp_configure_args_arm32 += --disable-vom --disable-japi

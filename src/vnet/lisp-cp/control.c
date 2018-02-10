@@ -76,21 +76,25 @@ auth_data_len_by_key_id (lisp_key_type_t key_id)
   return (u16) ~ 0;
 }
 
+#if WITH_LIBSSL > 0
 static const EVP_MD *
 get_encrypt_fcn (lisp_key_type_t key_id)
 {
   switch (key_id)
     {
+#if WITH_LIBSSL > 0
     case HMAC_SHA_1_96:
       return EVP_sha1 ();
     case HMAC_SHA_256_128:
       return EVP_sha256 ();
+#endif
     default:
       clib_warning ("unsupported encryption key type: %d!", key_id);
       break;
     }
   return 0;
 }
+#endif
 
 static int
 queue_map_request (gid_address_t * seid, gid_address_t * deid,
@@ -2745,6 +2749,7 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
 			       lisp_key_type_t key_id, u8 * key,
 			       u16 auth_data_len, u32 msg_len)
 {
+#if WITH_LIBSSL > 0
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
 
@@ -2754,6 +2759,9 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   clib_memcpy (MREG_DATA (map_reg_hdr), result, auth_data_len);
 
   return 0;
+#else
+  return -1;
+#endif
 }
 
 static vlib_buffer_t *
@@ -3932,10 +3940,14 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
   /* get hash of the message */
+#if WITH_LIBSSL > 0
   unsigned char *code = HMAC (get_encrypt_fcn (key_id), key, vec_len (key),
 			      (unsigned char *) h, msg_len, NULL, NULL);
 
   result = memcmp (code, auth_data, auth_data_len);
+#else
+  result = 1; /* pretend they differ */
+#endif
 
   vec_free (auth_data);
 

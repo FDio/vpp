@@ -16,6 +16,7 @@
  * @file
  * @brief BFD UDP transport layer implementation
  */
+#include <sys/types.h>
 #include <vppinfra/types.h>
 #include <vlibmemory/api.h>
 #include <vlib/vlib.h>

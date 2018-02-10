@@ -227,9 +227,9 @@ extern int vppcom_session_read (uint32_t session_index, void *buf, size_t n);
 extern int vppcom_session_write (uint32_t session_index, void *buf, size_t n);
 
 extern int vppcom_select (unsigned long n_bits,
-			  unsigned long *read_map,
-			  unsigned long *write_map,
-			  unsigned long *except_map, double wait_for_time);
+			  size_t *read_map,
+			  size_t *write_map,
+			  size_t *except_map, double wait_for_time);
 
 extern int vppcom_epoll_create (void);
 extern int vppcom_epoll_ctl (uint32_t vep_idx, int op,
