@@ -452,7 +452,7 @@ VLIB_REGISTER_NODE (ipsec_output_node) = {
   .name = "ipsec-output-ip4",
 };
 
-VLIB_REGISTER_NODE (ipsec_output_node) = {
+VLIB_REGISTER_NODE (ipsec_output_node_v6) = {
   .vector_size = sizeof (u32),
   .function = ipsec_output_node_fn,
   .name = "ipsec-output-ip6",

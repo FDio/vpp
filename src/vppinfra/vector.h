@@ -42,6 +42,10 @@
 
 /* Vector types. */
 
+#if defined (__ARM_FEATURE_SIMD32)
+// #define CLIB_HAVE_VEC128
+#endif
+
 #if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__)
 #define CLIB_HAVE_VEC64
 #endif
@@ -276,6 +280,10 @@ _(i64, 2);
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
 #include <vppinfra/vector_funcs.h>
+#endif
+
+#if defined (__ARM_FEATURE_SIMD32)
+// #include <vppinfra/vector_arm32.h>
 #endif
 
 #endif /* included_clib_vector_h */

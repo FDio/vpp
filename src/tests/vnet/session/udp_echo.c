@@ -1071,7 +1071,7 @@ main (int argc, char **argv)
 
   clib_time_init (&utm->clib_time);
   init_error_string_table (utm);
-  svm_fifo_segment_main_init (0x200000000ULL, 20);
+  svm_fifo_segment_main_init ((ssize_t)0x200000000ULL, 20);
   unformat_init_command_line (a, argv);
 
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)

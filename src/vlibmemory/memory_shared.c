@@ -342,7 +342,7 @@ vl_set_memory_gid (int gid)
 }
 
 void
-vl_set_global_memory_baseva (u64 baseva)
+vl_set_global_memory_baseva (ssize_t baseva)
 {
   api_main_t *am = &api_main;
 
@@ -350,7 +350,7 @@ vl_set_global_memory_baseva (u64 baseva)
 }
 
 void
-vl_set_global_memory_size (u64 size)
+vl_set_global_memory_size (ssize_t size)
 {
   api_main_t *am = &api_main;
 

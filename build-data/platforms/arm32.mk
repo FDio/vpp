@@ -28,8 +28,14 @@ vpp_configure_args_arm32 = --with-dpdk --without-libssl
 arm32_dpdk_arch = "armv7a"
 arm32_dpdk_target = "arm-armv7a-linuxapp-gcc"
 arm32_dpdk_make_extra_args = "CPU_CFLAGS='-mfloat-abi=hard' \
-	CONFIG_RTE_EAL_IGB_UIO=y \
-	CONFIG_RTE_LIBRTE_E1000_PMD=y \
+	CONFIG_RTE_EAL_IGB_UIO=n \
+	CONFIG_RTE_LIBRTE_E1000_PMD=n \
+	CONFIG_RTE_ARCH_ARM_TUNE=arm7 \
+	CONFIG_RTE_LIBRTE_PMD_VHOST=n \
+	CONFIG_RTE_LIBRTE_VIRTIO_PMD=n \
+	CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y \
+	CONFIG_RTE_APP_CRYPTO_PERF=n \
+	CONFIG_RTE_APP_EVENTDEV=n \
 	CONFIG_RTE_MAX_LCORE=4 \
 	CONFIG_RTE_MAX_NUMA_NODES=1"
 
