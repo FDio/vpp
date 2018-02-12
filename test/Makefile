@@ -47,7 +47,7 @@ UNITTEST_EXTRA_OPTS=$(UNITTEST_FAILFAST_OPTS) -d $(EXTERN_TESTS)
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=faulthandler six scapy==2.3.3 pexpect pycrypto subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
+PYTHON_DEPENDS=faulthandler six scapy==2.3.3 pexpect pycrypto subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup py2-ipaddress
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 

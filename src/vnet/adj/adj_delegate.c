@@ -17,6 +17,11 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
 
+/*
+ * The per-type vector of virtual function tables
+ */
+static adj_delegate_vft_t *fn_vfts;
+
 static adj_delegate_t *
 adj_delegate_find_i (const ip_adjacency_t *adj,
                      adj_delegate_type_t type,
@@ -105,6 +110,15 @@ adj_delegate_find_or_add (ip_adjacency_t *adj,
     return (adj_delegate_get(adj, adt));
 }
 
+void adj_delegate_vft_lock_gone (ip_adjacency_t *adj)
+{
+    adj_delegate_t *delegate;
+    vec_foreach(delegate, adj->ia_delegates) {
+      if (fn_vfts[delegate->ad_type].fnv_last_lock)
+	fn_vfts[delegate->ad_type].fnv_last_lock(adj, delegate);
+    }
+}
+
 /**
  * typedef for printing a delegate
  */
@@ -134,11 +148,36 @@ static adj_delegate_format_t aed_formatters[] =
 };
 
 u8 *
-format_adj_deletegate (u8 * s, va_list * args)
+format_adj_delegate (u8 * s, va_list * args)
 {
     adj_delegate_t *aed;
 
     aed = va_arg (*args, adj_delegate_t *);
 
     return (aed_formatters[aed->ad_type](aed, s));
+}
+
+/**
+ * adj_delegate_register_type
+ *
+ * Register the function table for a given type
+ */
+
+void
+adj_delegate_register_type (adj_delegate_type_t type,
+			    const adj_delegate_vft_t *vft)
+{
+  /*
+   * assert that one only registration is made per-node type
+   */
+  if (vec_len(fn_vfts) > type)
+    ASSERT(NULL == fn_vfts[type].fnv_last_lock);
+
+  /*
+   * Assert that we are getting each of the required functions
+   */
+  ASSERT(NULL != vft->fnv_last_lock);
+
+  vec_validate(fn_vfts, type);
+  fn_vfts[type] = *vft;
 }

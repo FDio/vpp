@@ -195,7 +195,7 @@ class TestBier(VppTestCase):
         self.bier_midpoint(BIERLength.BIER_LEN_128, 16, 128)
 
     def test_bier_midpoint_64(self):
-        """BIER midpoint BSL:256"""
+        """BIER midpoint BSL:64"""
         self.bier_midpoint(BIERLength.BIER_LEN_64, 8, 64)
 
     def test_bier_head(self):
