@@ -1144,6 +1144,69 @@ class ARPTestCase(VppTestCase):
         self.pg2.unconfig_ip4()
         self.pg2.set_table_ip4(0)
 
+    def test_arp_incomplete(self):
+        """ ARP Incomplete"""
+        self.pg1.generate_remote_hosts(3)
+
+        p0 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4,
+                 dst=self.pg1.remote_hosts[1].ip4) /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+        p1 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4,
+                 dst=self.pg1.remote_hosts[2].ip4) /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+
+        #
+        # a packet to an unresolved destination generates an ARP request
+        #
+        rx = self.send_and_expect(self.pg0, [p0], self.pg1)
+        self.verify_arp_req(rx[0],
+                            self.pg1.local_mac,
+                            self.pg1.local_ip4,
+                            self.pg1._remote_hosts[1].ip4)
+
+        #
+        # add a neighbour for remote host 1
+        #
+        static_arp = VppNeighbor(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[1].mac,
+                                 self.pg1.remote_hosts[1].ip4,
+                                 is_static=1)
+        static_arp.add_vpp_config()
+
+        #
+        # change the interface's MAC
+        #
+        mac = [chr(0x00), chr(0x00), chr(0x00),
+               chr(0x33), chr(0x33), chr(0x33)]
+        mac_string = ''.join(mac)
+
+        self.vapi.sw_interface_set_mac_address(self.pg1.sw_if_index,
+                                               mac_string)
+
+        #
+        # now ARP requests come from the new source mac
+        #
+        rx = self.send_and_expect(self.pg0, [p1], self.pg1)
+        self.verify_arp_req(rx[0],
+                            "00:00:00:33:33:33",
+                            self.pg1.local_ip4,
+                            self.pg1._remote_hosts[2].ip4)
+
+        #
+        # packets to the resolved host also have the new source mac
+        #
+        rx = self.send_and_expect(self.pg0, [p0], self.pg1)
+        self.verify_ip(rx[0],
+                       "00:00:00:33:33:33",
+                       self.pg1.remote_hosts[1].mac,
+                       self.pg0.remote_ip4,
+                       self.pg1.remote_hosts[1].ip4)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

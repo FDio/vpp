@@ -639,6 +639,11 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'mtu': mtu})
 
+    def sw_interface_set_mac_address(self, sw_if_index, mac):
+        return self.api(self.papi.sw_interface_set_mac_address,
+                        {'sw_if_index': sw_if_index,
+                         'mac_address': mac})
+
     def create_subif(self, sw_if_index, sub_id, outer_vlan, inner_vlan,
                      no_tags=0, one_tag=0, two_tags=0, dot1ad=0, exact_match=0,
                      default_sub=0, outer_vlan_id_any=0, inner_vlan_id_any=0):

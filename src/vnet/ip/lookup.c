@@ -255,47 +255,6 @@ format_ip_flow_hash_config (u8 * s, va_list * args)
 }
 
 u8 *
-format_ip_lookup_next (u8 * s, va_list * args)
-{
-  /* int promotion of ip_lookup_next_t */
-  ip_lookup_next_t n = va_arg (*args, int);
-  char *t = 0;
-
-  switch (n)
-    {
-    default:
-      s = format (s, "unknown %d", n);
-      return s;
-
-    case IP_LOOKUP_NEXT_DROP:
-      t = "drop";
-      break;
-    case IP_LOOKUP_NEXT_PUNT:
-      t = "punt";
-      break;
-    case IP_LOOKUP_NEXT_ARP:
-      t = "arp";
-      break;
-    case IP_LOOKUP_NEXT_MIDCHAIN:
-      t = "midchain";
-      break;
-    case IP_LOOKUP_NEXT_GLEAN:
-      t = "glean";
-      break;
-    case IP_LOOKUP_NEXT_MCAST:
-      t = "mcast";
-      break;
-    case IP_LOOKUP_NEXT_REWRITE:
-      break;
-    }
-
-  if (t)
-    vec_add (s, t, strlen (t));
-
-  return s;
-}
-
-u8 *
 format_ip_adjacency_packet_data (u8 * s, va_list * args)
 {
   u32 adj_index = va_arg (*args, u32);

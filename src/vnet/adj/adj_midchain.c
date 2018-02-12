@@ -590,8 +590,9 @@ format_adj_midchain (u8* s, va_list *ap)
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);
-    s = format (s, " via %U ",
-		format_ip46_address, &adj->sub_type.nbr.next_hop);
+    s = format (s, " via %U",
+		format_ip46_address, &adj->sub_type.nbr.next_hop,
+		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, " %U",
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
