@@ -99,7 +99,6 @@ extern int adj_delegate_add(ip_adjacency_t *adj,
                             adj_delegate_type_t fdt,
                             index_t adi);
 
-
 /**
  * @brief Get a delegate from an adjacency
  *
