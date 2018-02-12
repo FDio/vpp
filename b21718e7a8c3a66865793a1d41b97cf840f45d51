@@ -16,6 +16,24 @@
       "revId": "b21718e7a8c3a66865793a1d41b97cf840f45d51",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fe145ec6_509b84a4",
+        "filename": "src/vpp-api/vom/acl_ethertype.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-02-12T15:36:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "91b24abb_aadc4efb",
+      "revId": "b21718e7a8c3a66865793a1d41b97cf840f45d51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
