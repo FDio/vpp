@@ -44,8 +44,20 @@
  *  as the source address in packets when the ARP/ND packet is sent
  */
 extern adj_index_t adj_glean_add_or_lock(fib_protocol_t proto,
+                                         vnet_link_t linkt,
 					 u32 sw_if_index,
 					 const ip46_address_t *nh_addr);
+
+/**
+ * adj_glean_update_rewrite
+ *
+ * Called by an adjacency provider (an interface type) to configure
+ * a glean adj (i.e. and adjacency linked to a connected prefix) to
+ * its default behaviour.
+ * Other interface types (i.e. 6RD tunnels) can can choose not to use
+ * glean behaviour on an adjacency liked to a connected prefix.
+ */
+extern void adj_glean_update_rewrite(adj_index_t adj_index);
 
 /**
  * @brief Format/display a glean adjacency.

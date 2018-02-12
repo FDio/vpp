@@ -78,6 +78,8 @@ adj_fib_proto_2_nd (fib_protocol_t fp)
     return (0);
 }
 
+extern ip46_type_t adj_proto_to_46(fib_protocol_t proto);
+
 /**
  * @brief
  * Get a pointer to an adjacency object from its index

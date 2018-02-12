@@ -516,10 +516,12 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj = adj_get(adj_index);
 
     /*
-     * one time only update. since we don't support chainging the tunnel
+     * one time only update. since we don't support changing the tunnel
      * src,dst, this is all we need.
      */
-    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
+    ASSERT((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP) ||
+           (adj->lookup_next_index == IP_LOOKUP_NEXT_GLEAN));
+
     /*
      * tunnels can always provide a rewrite.
      */
@@ -590,8 +592,10 @@ format_adj_midchain (u8* s, va_list *ap)
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);
-    s = format (s, " via %U ",
-		format_ip46_address, &adj->sub_type.nbr.next_hop);
+    s = format (s, " via %U",
+		format_ip46_address,
+                &adj->sub_type.nbr.next_hop,
+		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, " %U",
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
