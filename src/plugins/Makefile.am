@@ -38,6 +38,10 @@ if ENABLE_DPDK_PLUGIN
 include dpdk.am
 endif
 
+if ENABLE_DPDK_OFFLOAD_PLUGIN
+include dpdk_offload.am
+endif
+
 if ENABLE_FLOWPROBE_PLUGIN
 include flowprobe.am
 endif

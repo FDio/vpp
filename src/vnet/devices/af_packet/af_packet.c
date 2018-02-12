@@ -324,7 +324,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
   hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
-  vnet_hw_interface_set_input_node (vnm, apif->hw_if_index,
+  vnet_hw_interface_set_input_node (vnm, apif->hw_if_index, 0,
 				    af_packet_input_node.index);
 
   vnet_hw_interface_assign_rx_thread (vnm, apif->hw_if_index, 0,	/* queue */

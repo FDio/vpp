@@ -35,7 +35,10 @@ vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
   plugin_info_t *pi;
 
   if ((p = hash_get_mem (pm->plugin_by_name_hash, plugin_name)) == 0)
-    return 0;
+    {
+      clib_warning ("plugin not found");
+      return 0;
+    }
 
   pi = vec_elt_at_index (pm->plugin_info, p[0]);
   return dlsym (pi->handle, symbol_name);

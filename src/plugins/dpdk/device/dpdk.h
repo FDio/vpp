@@ -228,6 +228,8 @@ typedef struct
   clib_error_t *errors;
 } dpdk_device_t;
 
+STATIC_ASSERT_CACHELINE (dpdk_device_t, cacheline0, cacheline1);
+
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
 #define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
 
@@ -390,6 +392,8 @@ typedef struct
 } dpdk_main_t;
 
 extern dpdk_main_t dpdk_main;
+
+dpdk_main_t *dpdk_get_main ();
 
 typedef struct
 {

@@ -134,6 +134,8 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   dpdk_get_xstats (xd);
 }
 
+u32 dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

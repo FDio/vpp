@@ -474,7 +474,7 @@ typedef struct vnet_hw_interface_t
 #define VNET_HW_INTERFACE_BOND_INFO_SLAVE ((uword *) ~0)
 
   /* Input node */
-  u32 input_node_index;
+  u32 *input_node_index_by_queue;
 
   /* input node cpu index by queue */
   u32 *input_node_thread_index_by_queue;
