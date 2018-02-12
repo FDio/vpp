@@ -233,6 +233,12 @@ typedef struct _sctp_connection
 
 } sctp_connection_t;
 
+/* Flags and macro to operate on the sctp.flags field within the vnet_buffer structure */
+#define SCTP_PACKET_READY_SHIFT 7
+#define SCTP_SET_FLAG(var, pos) ((var) |= (1 << pos))
+#define SCTP_UNSET_FLAG(var, pos) ((var) &= ~(1 << pos))
+#define SCTP_IS_FLAG_SET(var,pos) (((var)>>(pos)) & 1)
+
 typedef void (sctp_timer_expiration_handler) (u32 conn_index, u32 timer_id);
 
 sctp_connection_t *sctp_connection_new (u8 thread_index);

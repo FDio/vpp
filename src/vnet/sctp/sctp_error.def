@@ -14,6 +14,7 @@
  */
 sctp_error (NONE, "no error")
 sctp_error (PKTS_SENT, "Packets sent")
+sctp_error (NOT_READY, "Packet not ready for sending")
 sctp_error (INVALID_CONNECTION, "Invalid connection")
 sctp_error (INVALID_TAG, "Invalid verification tag")
 sctp_error (INVALID_TAG_FOR_INIT, "Invalid verification tag for INIT chunk")
