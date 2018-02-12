@@ -134,6 +134,39 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   dpdk_get_xstats (xd);
 }
 
+static inline u32
+dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+{
+  u32 n_buffers;
+  u32 n_left;
+  u32 n_this_chunk;
+
+  n_left = VLIB_FRAME_SIZE;
+  n_buffers = 0;
+
+  if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
+    {
+      while (n_left)
+	{
+	  n_this_chunk = rte_eth_rx_burst (xd->device_index, queue_id,
+					   xd->rx_vectors[queue_id] +
+					   n_buffers, n_left);
+	  n_buffers += n_this_chunk;
+	  n_left -= n_this_chunk;
+
+	  /* Empirically, DPDK r1.8 produces vectors w/ 32 or fewer elts */
+	  if (n_this_chunk < 32)
+	    break;
+	}
+    }
+  else
+    {
+      ASSERT (0);
+    }
+
+  return n_buffers;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
