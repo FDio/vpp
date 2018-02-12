@@ -67,6 +67,9 @@
 #define CLIB_CACHE_LINE_BYTES (1 << CLIB_LOG2_CACHE_LINE_BYTES)
 #define CLIB_CACHE_LINE_ALIGN_MARK(mark) u8 mark[0] __attribute__((aligned(CLIB_CACHE_LINE_BYTES)))
 
+#define STATIC_ASSERT_CACHELINE(t, b, e) \
+  STATIC_ASSERT (CLIB_CACHE_LINE_BYTES >= STRUCT_OFFSET_OF(t, e) - STRUCT_OFFSET_OF(t, b), "Size of " #b " - " #e " in type " #t " is bigger than cacheline")
+
 /* Read/write arguments to __builtin_prefetch. */
 #define CLIB_PREFETCH_READ 0
 #define CLIB_PREFETCH_LOAD 0	/* alias for read */
