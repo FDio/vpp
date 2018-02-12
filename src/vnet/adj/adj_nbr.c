@@ -968,7 +968,7 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .function = adj_nbr_show,
 };
 
-static ip46_type_t
+ip46_type_t
 adj_proto_to_46 (fib_protocol_t proto)
 {
     switch (proto)
