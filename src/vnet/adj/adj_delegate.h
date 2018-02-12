@@ -26,12 +26,14 @@ typedef enum adj_delegate_type_t_ {
      * BFD session state
      */
     ADJ_DELEGATE_BFD,
+    ADJ_DELEGATE_6RD,
+    ADJ_DELEGATE_LAST,
 } adj_delegate_type_t;
 
 #define FOR_EACH_ADJ_DELEGATE(_adj, _adt, _aed, _body)        \
 {                                                             \
     for (_adt = ADJ_DELEGATE_BFD;                             \
-         _adt <= ADJ_DELEGATE_BFD;                            \
+         _adt < ADJ_DELEGATE_LAST;                            \
          _adt++)                                              \
     {                                                         \
         _aed = adj_delegate_get(_adj, _adt);                  \
@@ -88,6 +90,9 @@ typedef struct adj_delegate_t_
              */
             u32 ad_bfd_index;
         };
+      struct {
+	u32 sixrd_fib_entry_index;
+      };
     };
 } adj_delegate_t;
 
