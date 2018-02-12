@@ -1923,7 +1923,8 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
   if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
     {
       adj_unlock (ai);
-      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4, sw_if_index, &nh);
+      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
+				  sw_if_index, &nh);
       adj = adj_get (ai);
     }
 
