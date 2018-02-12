@@ -9546,7 +9546,7 @@ vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
   if (mp->is_ipv6)
     print (vam->ofp,
 	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
-	   "VSS VPN-ID '%s', VSS FIB-ID %d, VSS OUI %d",
+	   "VSS ASCII VPN-ID '%s', VSS RFC2685 VPN-ID (oui:id) %d:%d",
 	   ntohl (mp->rx_vrf_id),
 	   format_ip6_address, mp->dhcp_src_address,
 	   mp->vss_type, mp->vss_vpn_ascii_id,
@@ -9554,7 +9554,7 @@ vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
   else
     print (vam->ofp,
 	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
-	   "VSS VPN-ID '%s', VSS FIB-ID %d, VSS OUI %d",
+	   "VSS ASCII VPN-ID '%s', VSS RFC2685 VPN-ID (oui:id) %d:%d",
 	   ntohl (mp->rx_vrf_id),
 	   format_ip4_address, mp->dhcp_src_address,
 	   mp->vss_type, mp->vss_vpn_ascii_id,
