@@ -503,13 +503,12 @@ sctp_compute_mac (sctp_connection_t * sctp_conn,
   HMAC_CTX *ctx;
 #else
   HMAC_CTX ctx;
-  const EVP_MD *md = EVP_sha1 ();
 #endif
   unsigned int len = 0;
-
+  const EVP_MD *md = EVP_sha1 ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   ctx = HMAC_CTX_new ();
-  HMAC_Init_ex (&ctx, &state_cookie->creation_time,
+  HMAC_Init_ex (ctx, &state_cookie->creation_time,
 		sizeof (state_cookie->creation_time), md, NULL);
   HMAC_Update (ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
   HMAC_Final (ctx, state_cookie->mac, &len);
@@ -517,7 +516,6 @@ sctp_compute_mac (sctp_connection_t * sctp_conn,
   HMAC_CTX_init (&ctx);
   HMAC_Init_ex (&ctx, &state_cookie->creation_time,
 		sizeof (state_cookie->creation_time), md, NULL);
-
   HMAC_Update (&ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
   HMAC_Final (&ctx, state_cookie->mac, &len);
   HMAC_CTX_cleanup (&ctx);
@@ -561,6 +559,8 @@ sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 void
@@ -598,6 +598,8 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /**
@@ -743,6 +745,8 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /**
@@ -778,6 +782,8 @@ sctp_prepare_shutdown_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /*
@@ -838,6 +844,8 @@ sctp_prepare_shutdown_ack_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /*
@@ -896,6 +904,8 @@ sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /**
@@ -935,6 +945,8 @@ sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 /**
@@ -970,6 +982,8 @@ sctp_prepare_heartbeat_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 void
@@ -1023,6 +1037,8 @@ sctp_prepare_shutdown_complete_chunk (sctp_connection_t * sctp_conn,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 void
@@ -1131,6 +1147,8 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, u8 idx, vlib_buffer_t * b,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
+
+  SCTP_SET_FLAG (vnet_buffer (b)->sctp.flags, SCTP_PACKET_READY_SHIFT);
 }
 
 u32
@@ -1220,6 +1238,16 @@ sctp46_output_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
 	      error0 = SCTP_ERROR_INVALID_CONNECTION;
+	      next0 = SCTP_OUTPUT_NEXT_DROP;
+	      goto done;
+	    }
+
+	  if (!SCTP_IS_FLAG_SET
+	      (vnet_buffer (b0)->sctp.flags, SCTP_PACKET_READY_SHIFT))
+	    {
+	      SCTP_ADV_DBG_OUTPUT
+		("Packet being dropped due to SCTP_PACKET_READY flag not set");
+	      error0 = SCTP_ERROR_NOT_READY;
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 	    }
@@ -1448,6 +1476,9 @@ sctp46_output_inline (vlib_main_t * vm,
 	  vnet_sctp_common_hdr_params_host_to_net (&full_hdr->common_hdr);
 
 	done:
+	  SCTP_UNSET_FLAG (vnet_buffer (b0)->sctp.flags,
+			   SCTP_PACKET_READY_SHIFT);
+
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
