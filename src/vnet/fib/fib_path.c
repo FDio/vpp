@@ -707,6 +707,7 @@ fib_path_attached_get_adj (fib_path_t *path,
     else
     {
         return (adj_glean_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
+				      link,
                                       path->attached.fp_interface,
                                       NULL));
     }
