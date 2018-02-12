@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8b374853_a86a0985",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1479,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-12T16:27:38Z",
+      "side": 1,
+      "message": "Shouldn\u0027t you be making sure the bit is unset/set when preparing the packets? You can\u0027t be sure what the buffer metadata looks like when you get a packet.",
+      "range": {
+        "startLine": 1479,
+        "startChar": 3,
+        "endLine": 1479,
+        "endChar": 18
+      },
+      "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
