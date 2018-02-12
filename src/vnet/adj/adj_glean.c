@@ -68,15 +68,12 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 	    adj->sub_type.glean.receive_addr = *nh_addr;
 	}
 
+	adj->rewrite_header.sw_if_index = sw_if_index;
 	adj->rewrite_header.data_bytes = 0;
 
-	vnet_rewrite_for_sw_interface(vnet_get_main(),
-				      adj_fib_proto_2_nd(proto),
-				      sw_if_index,
-				      adj_get_glean_node(proto)->index,
-				      VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
-				      &adj->rewrite_header,
-				      sizeof (adj->rewrite_data));
+	vnet_update_adjacency_for_sw_interface(vnet_get_main(),
+                                               sw_if_index,
+                                               adj_get_index(adj));
     }
     else
     {
@@ -86,6 +83,27 @@ adj_glean_add_or_lock (fib_protocol_t proto,
     adj_lock(adj_get_index(adj));
 
     return (adj_get_index(adj));
+}
+
+/**
+ * adj_glean_update_rewrite
+ */
+void
+adj_glean_update_rewrite (adj_index_t adj_index)
+{
+    ip_adjacency_t *adj;
+
+    ASSERT(ADJ_INDEX_INVALID != adj_index);
+
+    adj = adj_get(adj_index);
+
+    vnet_rewrite_for_sw_interface(vnet_get_main(),
+                                  adj_fib_proto_2_nd(adj->ia_nh_proto),
+                                  adj->rewrite_header.sw_if_index,
+                                  adj_get_glean_node(adj->ia_nh_proto)->index,
+                                  VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
+                                  &adj->rewrite_header,
+                                  sizeof (adj->rewrite_data));
 }
 
 void
