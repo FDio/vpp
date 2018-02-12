@@ -3210,3 +3210,19 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+
+    def sixrd_add_tunnel(self, fib_index, ip6_prefix, ip6_prefix_len,
+                         ip4_prefix, ip4_prefix_len, ip4_src):
+        """ 6RD tunnel Add """
+        return self.api(self.papi.sixrd_add_tunnel,
+                        {'fib_index': fib_index,
+                         'ip6_prefix': ip6_prefix,
+                         'ip6_prefix_len': ip6_prefix_len,
+                         'ip4_prefix': ip4_prefix,
+                         'ip4_prefix_len': ip4_prefix_len,
+                         'ip4_src': ip4_src})
+
+    def sixrd_del_tunnel(self, sw_if_index):
+        """ 6RD tunnel Delete """
+        return self.api(self.papi.sixrd_del_tunnel,
+                        {'index': sw_if_index})
