@@ -48,6 +48,7 @@ adj_get_glean_node (fib_protocol_t proto)
  */
 adj_index_t
 adj_glean_add_or_lock (fib_protocol_t proto,
+                       vnet_link_t linkt,
 		       u32 sw_if_index,
 		       const ip46_address_t *nh_addr)
 {
@@ -61,12 +62,17 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 
 	adj->lookup_next_index = IP_LOOKUP_NEXT_GLEAN;
 	adj->ia_nh_proto = proto;
+        adj->ia_link = linkt;
 	adj_gleans[proto][sw_if_index] = adj_get_index(adj);
 
 	if (NULL != nh_addr)
 	{
 	    adj->sub_type.glean.receive_addr = *nh_addr;
 	}
+        else
+        {
+            adj->sub_type.glean.receive_addr = zero_addr;
+        }
 
 	adj->rewrite_header.sw_if_index = sw_if_index;
 	adj->rewrite_header.data_bytes = 0;
