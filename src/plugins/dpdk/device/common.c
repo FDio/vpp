@@ -56,7 +56,8 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_device_stop (xd);
     }
 
-  rv = rte_eth_dev_configure (xd->device_index, xd->rx_q_used,
+  int n_rx_queues = xd->rx_q_used + xd->vxlan_rx.queues.count;
+  rv = rte_eth_dev_configure (xd->device_index, n_rx_queues,
 			      xd->tx_q_used, &xd->port_conf);
 
   if (rv < 0)
@@ -79,9 +80,9 @@ dpdk_device_setup (dpdk_device_t * xd)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
     }
 
-  vec_validate_aligned (xd->buffer_pool_for_queue, xd->rx_q_used - 1,
+  vec_validate_aligned (xd->buffer_pool_for_queue, n_rx_queues,
 			CLIB_CACHE_LINE_BYTES);
-  for (j = 0; j < xd->rx_q_used; j++)
+  for (j = 0; j < n_rx_queues; j++)
     {
       dpdk_mempool_private_t *privp;
       uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
