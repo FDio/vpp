@@ -176,6 +176,27 @@ dpdk_ring_alloc (struct rte_mempool *mp)
   return 0;
 }
 
+
+static int
+dpdk_set_rss_reta (dpdk_device_t * xd, int reta_size)
+{
+  if (reta_size == 0 || reta_size > ETH_RSS_RETA_SIZE_512)
+    return -1;
+
+  enum { reta_max_size = ETH_RSS_RETA_SIZE_512 / RTE_RETA_GROUP_SIZE };
+  struct rte_eth_rss_reta_entry64 reta_conf[reta_max_size] = {0};
+  for (uint32_t i = 0; i < reta_size; i++)
+    {
+      u32 reta_id = i / RTE_RETA_GROUP_SIZE;
+      u32 reta_pos = i % RTE_RETA_GROUP_SIZE;
+      u16 q = i % xd->rx_q_used;
+      reta_conf[reta_id].mask = UINT64_MAX;
+      reta_conf[reta_id].reta[reta_pos] = q;
+    }
+  /* RETA update */
+  return rte_eth_dev_rss_reta_update(xd->device_index, reta_conf, reta_size);
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -328,16 +349,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  && devconf->num_tx_queues < xd->tx_q_used)
 	xd->tx_q_used = clib_min (xd->tx_q_used, devconf->num_tx_queues);
 
-      if (devconf->num_rx_queues > 1
-	  && dev_info.max_rx_queues >= devconf->num_rx_queues)
+      if (devconf->num_rx_queues > 1)
 	{
-	  xd->rx_q_used = devconf->num_rx_queues;
+	  xd->rx_q_used = clib_min (devconf->num_rx_queues, dev_info.max_rx_queues);
 	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
 	  if (devconf->rss_fn == 0)
 	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
 	      ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
 	  else
 	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
+          dpdk_set_rss_reta (xd, dev_info.reta_size);
 	}
       else
 	xd->rx_q_used = 1;
@@ -603,8 +624,39 @@ dpdk_lib_init (dpdk_main_t * dm)
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
 	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
-						~1);
+	    				~1);
 	  }
+
+      if (devconf->vxlan_offload_enabled)
+        {
+	   xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+           xd->vxlan_rx.queues.first = xd->rx_q_used;
+           xd->vxlan_rx.queues.count = devconf->vxlan_offload.num_rx_queues;
+           xd->offload_next_index =
+             vlib_node_add_next (vm, dpdk_input_node.index, dpdk_vxlan_passthru_input_node.index);
+	   u32 n_rx_queues = xd->rx_q_used + xd->vxlan_rx.queues.count;
+	   u32 node_idx = dpdk_vxlan_offload_input_node.index;
+
+	   clib_bitmap_foreach (i, devconf->vxlan_offload.workers, ({
+	     vnet_queue_assign_rx_thread (dm->vnet_main, node_idx, xd->hw_if_index, q++,
+                 vdm->first_worker_thread_index + i);
+	   }));
+	   ASSERT (!devconf->vxlan_offload.workers || q == n_rx_queues);
+	   for (; q < n_rx_queues; q++)
+	   {
+	     vnet_queue_assign_rx_thread(dm->vnet_main, node_idx, xd->hw_if_index, q,
+                 vnet_dev_next_worker_thread_index(&vnet_device_main));
+	   }
+	}
+
+      int n_rx_queues = xd->rx_q_used + xd->vxlan_rx.queues.count;
+      vec_validate_aligned (xd->rx_vectors, n_rx_queues, CLIB_CACHE_LINE_BYTES);
+      for (j = 0; j < n_rx_queues; j++)
+      {
+        vec_validate_aligned (xd->rx_vectors[j], VLIB_FRAME_SIZE - 1,
+            CLIB_CACHE_LINE_BYTES);
+        vec_reset_length (xd->rx_vectors[j]);
+      }
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
@@ -830,6 +882,15 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
       else
 	if (unformat
+	    (input, "vxlan-offload %U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  devconf->vxlan_offload_enabled = 1;
+	  error = unformat_offload (&sub_input, &devconf->vxlan_offload);
+	  if (error)
+	    break;
+	}
+      else
+	if (unformat
 	    (input, "hqos %U", unformat_vlib_cli_sub_input, &sub_input))
 	{
 	  devconf->hqos_enabled = 1;
@@ -852,16 +913,17 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
   if (error)
     return error;
 
-  if (devconf->workers && devconf->num_rx_queues == 0)
-    devconf->num_rx_queues = clib_bitmap_count_set_bits (devconf->workers);
-  else if (devconf->workers &&
-	   clib_bitmap_count_set_bits (devconf->workers) !=
-	   devconf->num_rx_queues)
-    error =
-      clib_error_return (0,
-			 "%U: number of worker threadds must be "
-			 "equal to number of rx queues", format_vlib_pci_addr,
-			 &pci_addr);
+  int n_workers = clib_bitmap_count_set_bits (devconf->workers);
+  if (n_workers == 0)
+    return 0;
+
+  if (devconf->num_rx_queues == 0)
+    devconf->num_rx_queues = n_workers;
+  else if (n_workers != devconf->num_rx_queues)
+    return clib_error_return (0,
+                       "%U: number of worker threads must be "
+                       "equal to number of rx queues", format_vlib_pci_addr,
+                       &pci_addr);
 
   return error;
 }
@@ -1177,6 +1239,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     /* default per-device config items */
     foreach_dpdk_device_config_item
 
+    if (devconf->vxlan_offload_enabled == 0 && conf->default_devconf.vxlan_offload_enabled)
+      {
+        devconf->vxlan_offload_enabled = conf->default_devconf.vxlan_offload_enabled;
+        devconf->vxlan_offload = conf->default_devconf.vxlan_offload; 
+      }
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
       {
@@ -1359,6 +1426,9 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  break;
 	case ETH_SPEED_NUM_40G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
+	  break;
+	case ETH_SPEED_NUM_100G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100G;
 	  break;
 	case 0:
 	  break;

@@ -58,6 +58,8 @@
 
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
+extern vlib_node_registration_t dpdk_vxlan_offload_input_node;
+extern vlib_node_registration_t dpdk_vxlan_passthru_input_node;
 
 #define foreach_dpdk_pmd          \
   _ ("net_thunderx", THUNDERX)    \
@@ -156,24 +158,33 @@ typedef struct
 
 typedef struct
 {
+  u16 first;
+  u16 count;
+} dpdk_queue_range_t;
+
+typedef struct
+{
+  clib_bitmap_t *enabled; //sw_if_indexes
+  u32 count;
+  void **flows;
+  dpdk_queue_range_t queues;
+} dpdk_sw_if_flows_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 **lockp;
-
-  /* Instance ID */
-  dpdk_portid_t device_index;
 
   u32 hw_if_index;
   u32 vlib_sw_if_index;
 
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
+  u32 offload_next_index;
 
   /* dpdk rte_mbuf rx and tx vectors, VLIB_FRAME_SIZE */
   struct rte_mbuf ***tx_vectors;	/* one per worker thread */
   struct rte_mbuf ***rx_vectors;
-
-  dpdk_pmd_t pmd:8;
-  i8 cpu_socket;
 
   u16 flags;
 #define DPDK_DEVICE_FLAG_ADMIN_UP           (1 << 0)
@@ -189,7 +200,13 @@ typedef struct
 #define DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM   (1 << 10)
 
   u16 nb_tx_desc;
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  /* Instance ID */
+  dpdk_portid_t device_index;
+
+  dpdk_pmd_t pmd:8;
+  i8 cpu_socket;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u8 *interface_name_suffix;
 
@@ -232,7 +249,12 @@ typedef struct
 
   /* error string */
   clib_error_t *errors;
+
+  /* offload related */
+  dpdk_sw_if_flows_t vxlan_rx;
 } dpdk_device_t;
+
+STATIC_ASSERT_CACHELINE(dpdk_device_t, cacheline0, cacheline1);
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
 #define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
@@ -286,6 +308,12 @@ clib_error_t *dpdk_port_setup_hqos (dpdk_device_t * xd,
 void dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
 			     struct rte_mbuf **pkts, u32 n_pkts);
 
+typedef struct
+{
+  uword num_rx_queues;
+  clib_bitmap_t * workers;
+} dpdk_device_config_offload_t;
+
 #define foreach_dpdk_device_config_item \
   _ (num_rx_queues) \
   _ (num_tx_queues) \
@@ -308,6 +336,8 @@ typedef struct
     clib_bitmap_t * workers;
   u32 hqos_enabled;
   dpdk_device_config_hqos_t hqos;
+  u32 vxlan_offload_enabled;
+  dpdk_device_config_offload_t vxlan_offload;
 } dpdk_device_config_t;
 
 typedef struct
@@ -433,7 +463,8 @@ int dpdk_port_state_callback (dpdk_portid_t port_id,
   _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
   _(RX_ALLOC_FAIL, "rx buf alloc from free list failed")		\
   _(RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")		\
-  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")
+  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")        \
+  _(RX_BAD_PKT_TYPE, "rx packets type mismatch")
 
 typedef enum
 {
@@ -442,6 +473,10 @@ typedef enum
 #undef _
     DPDK_N_ERROR,
 } dpdk_error_t;
+
+#ifndef CLIB_MULTIARCH_VARIANT
+extern char *dpdk_error_strings[];
+#endif
 
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
@@ -456,6 +491,8 @@ unformat_function_t unformat_dpdk_log_level;
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
+clib_error_t *unformat_offload (unformat_input_t * input,
+			     dpdk_device_config_offload_t * hqos);
 
 uword
 admin_up_down_process (vlib_main_t * vm,

@@ -52,7 +52,10 @@ dpdk_plugin_la_SOURCES =					\
   dpdk/ipsec/crypto_node.c					\
   dpdk/ipsec/cli.c						\
   dpdk/ipsec/ipsec.c						\
-  dpdk/api/dpdk_plugin.api.h
+  dpdk/api/dpdk_plugin.api.h					\
+  dpdk/offload/cli.c           				\
+  dpdk/offload/flow.c           				\
+  dpdk/offload/node.c
 
 API_FILES += dpdk/api/dpdk.api
 
