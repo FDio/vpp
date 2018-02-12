@@ -503,13 +503,12 @@ sctp_compute_mac (sctp_connection_t * sctp_conn,
   HMAC_CTX *ctx;
 #else
   HMAC_CTX ctx;
-  const EVP_MD *md = EVP_sha1 ();
 #endif
   unsigned int len = 0;
-
+  const EVP_MD *md = EVP_sha1 ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   ctx = HMAC_CTX_new ();
-  HMAC_Init_ex (&ctx, &state_cookie->creation_time,
+  HMAC_Init_ex (ctx, &state_cookie->creation_time,
 		sizeof (state_cookie->creation_time), md, NULL);
   HMAC_Update (ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
   HMAC_Final (ctx, state_cookie->mac, &len);
@@ -517,7 +516,6 @@ sctp_compute_mac (sctp_connection_t * sctp_conn,
   HMAC_CTX_init (&ctx);
   HMAC_Init_ex (&ctx, &state_cookie->creation_time,
 		sizeof (state_cookie->creation_time), md, NULL);
-
   HMAC_Update (&ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
   HMAC_Final (&ctx, state_cookie->mac, &len);
   HMAC_CTX_cleanup (&ctx);
