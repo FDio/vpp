@@ -82,6 +82,8 @@ format_vnet_rewrite (u8 * s, va_list * args)
 	s = format (s, "DELETED:%d", rw->sw_if_index);
     }
 
+  s = format (s, " mtu:%d", rw->max_l3_packet_bytes);
+
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
     s = format (s, " %U",
