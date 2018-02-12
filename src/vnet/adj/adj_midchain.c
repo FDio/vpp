@@ -519,7 +519,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      * one time only update. since we don't support chainging the tunnel
      * src,dst, this is all we need.
      */
-    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
+    //ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
     /*
      * tunnels can always provide a rewrite.
      */
