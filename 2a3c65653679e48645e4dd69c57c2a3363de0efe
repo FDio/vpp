@@ -22,6 +22,30 @@
       "revId": "2a3c65653679e48645e4dd69c57c2a3363de0efe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e41c1610_e0e9824a",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-02-12T13:53:02Z",
+      "side": 1,
+      "message": "Right. I had not thought of that.\nIs there a point to having an optimized version of ethernet_frame_is_any_tagged() then ?\nI do not see a way for it to scale with an added ethernet type.",
+      "parentUuid": "22a8315a_07b58fd0",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 4
+      },
+      "revId": "2a3c65653679e48645e4dd69c57c2a3363de0efe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
