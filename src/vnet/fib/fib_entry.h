@@ -81,10 +81,6 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_MAP,
     /**
-     * SIXRD
-     */
-    FIB_SOURCE_SIXRD,
-    /**
      * DHCP
      */
     FIB_SOURCE_DHCP,
@@ -151,7 +147,6 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_ADJ] = "adjacency",			\
     [FIB_SOURCE_MAP] = "MAP",			        \
     [FIB_SOURCE_SR] = "SR",			        \
-    [FIB_SOURCE_SIXRD] = "SixRD",			\
     [FIB_SOURCE_LISP] = "LISP", 			\
     [FIB_SOURCE_CLASSIFY] = "classify",			\
     [FIB_SOURCE_DHCP] = "DHCP",   			\

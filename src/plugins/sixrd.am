@@ -13,14 +13,15 @@
 
 libsixrd_plugin_la_SOURCES =			\
 	sixrd/sixrd.c				\
-	sixrd/sixrd_dpo.c			\
-	sixrd/ip4_sixrd.c			\
-	sixrd/ip6_sixrd.c
+	sixrd/ip4_sixrd.c
 
 noinst_HEADERS +=				\
 	sixrd/sixrd.h                           \
-	sixrd/sixrd_dpo.h
+	sixrd/sixrd_all_api_h.h \
+	sixrd/sixrd_msg_enum.h
 
 vppplugins_LTLIBRARIES += libsixrd_plugin.la
+
+API_FILES += sixrd/sixrd.api
 
 # vi:syntax=automake
