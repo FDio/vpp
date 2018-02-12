@@ -1,0 +1,40 @@
+# Copyright (c) 2016 Cisco Systems, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#vppapitestplugins_LTLIBRARIES += dpdk_offload_test_plugin.la
+vppplugins_LTLIBRARIES += dpdkoffload_plugin.la
+
+# if ENABLE_DPDK_SHARED
+# dpdkoffload_plugin_la_LDFLAGS = $(AM_LDFLAGS) -ldpdk -----ssjjs
+# else
+# dpdkoffload_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
+# endif
+# if WITH_AESNI_MB_LIB
+# dpdkoffload_plugin_la_LDFLAGS += -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a
+# endif
+# if WITH_ISA_L_CRYPTO_LIB
+# dpdkoffload_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
+# endif
+# if WITH_IBVERBS_LIB
+# dpdkoffload_plugin_la_LDFLAGS += -Wl,-libverbs
+# endif
+# dpdkoffload_plugin_la_LDFLAGS += -Wl,-lnuma,-lm,-ldl
+# dpdkoffload_plugin_la_CFLAGS = $(AM_CFLAGS)
+dpdkoffload_plugin_la_SOURCES =					\
+  dpdk_offload/cli.c           				\
+  dpdk_offload/flow.c           				\
+  dpdk_offload/node.c   \
+  dpdk_offload/main.c
+
+
+# vi:syntax=automake

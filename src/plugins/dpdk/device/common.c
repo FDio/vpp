@@ -27,6 +27,23 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
+#include <rte_flow.h>
+void
+dpdk_flow_destroy (dpdk_device_t * xd, void *handle)
+{
+  rte_flow_destroy (xd->device_index, handle, 0);
+}
+
+void *
+dpdk_flow_create (dpdk_device_t * xd,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item pattern[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
+{
+  return rte_flow_create (xd->device_index, attr, pattern, actions, error);
+}
+
 void
 dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {

@@ -86,7 +86,7 @@ dpdk_add_trace (vlib_main_t * vm,
 }
 
 static inline u32
-dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+dpdk_rx_burst_inline (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 {
   u32 n_buffers;
   u32 n_left;
@@ -117,6 +117,14 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
   return n_buffers;
 }
+
+#ifndef CLIB_MULTIARCH_VARIANT
+u32
+dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+{
+  return dpdk_rx_burst_inline (dm, xd, queue_id);
+}
+#endif
 
 static_always_inline void
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -200,7 +208,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
 
-  n_buffers = dpdk_rx_burst (dm, xd, queue_id);
+  n_buffers = dpdk_rx_burst_inline (dm, xd, queue_id);
 
   if (n_buffers == 0)
     {
@@ -286,7 +294,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  to_next[3] = bi3;
 	  to_next += 4;
 	  n_left_to_next -= 4;
-
 	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	    {
 	      next0 = next1 = next2 = next3 = xd->per_interface_next_index;
@@ -298,6 +305,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	      next2 = dpdk_rx_next_from_etype (mb2);
 	      next3 = dpdk_rx_next_from_etype (mb3);
 	    }
+
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 11]);
 	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
