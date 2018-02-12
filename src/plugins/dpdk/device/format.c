@@ -810,6 +810,35 @@ unformat_hqos (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
   return error;
 }
 
+clib_error_t *
+unformat_offload (unformat_input_t * input,
+		  dpdk_device_config_offload_t * offload)
+{
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "num-rx-queues %u", &offload->num_rx_queues))
+	continue;
+      if (unformat
+	  (input, "workers %U", unformat_bitmap_list, &offload->workers))
+	continue;
+      return clib_error_return (0, "unknown input `%U'",
+				format_unformat_error, input);
+    }
+
+  /* match workers to rx queues */
+  int n_workers = clib_bitmap_count_set_bits (offload->workers);
+  if (n_workers == 0)
+    return 0;
+
+  if (offload->num_rx_queues == 0)
+    offload->num_rx_queues = n_workers;
+  else if (offload->num_rx_queues != n_workers)
+    return clib_error_return (0, "number of offload worker threads must be"
+			      " equal to number of offload rx queues");
+
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

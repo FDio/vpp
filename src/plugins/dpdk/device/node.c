@@ -29,7 +29,7 @@
 #include <dpdk/device/dpdk_priv.h>
 
 #ifndef CLIB_MULTIARCH_VARIANT
-static char *dpdk_error_strings[] = {
+char *dpdk_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_error
 #undef _
@@ -83,39 +83,6 @@ dpdk_add_trace (vlib_main_t * vm,
   clib_memcpy (&t0->buffer, b, sizeof b[0] - sizeof b->pre_data);
   clib_memcpy (t0->buffer.pre_data, b->data, sizeof t0->buffer.pre_data);
   clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof t0->data);
-}
-
-static inline u32
-dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
-{
-  u32 n_buffers;
-  u32 n_left;
-  u32 n_this_chunk;
-
-  n_left = VLIB_FRAME_SIZE;
-  n_buffers = 0;
-
-  if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
-    {
-      while (n_left)
-	{
-	  n_this_chunk = rte_eth_rx_burst (xd->device_index, queue_id,
-					   xd->rx_vectors[queue_id] +
-					   n_buffers, n_left);
-	  n_buffers += n_this_chunk;
-	  n_left -= n_this_chunk;
-
-	  /* Empirically, DPDK r1.8 produces vectors w/ 32 or fewer elts */
-	  if (n_this_chunk < 32)
-	    break;
-	}
-    }
-  else
-    {
-      ASSERT (0);
-    }
-
-  return n_buffers;
 }
 
 static_always_inline void
@@ -287,23 +254,69 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  to_next += 4;
 	  n_left_to_next -= 4;
 
-	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
+	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
+			 mb2->ol_flags | mb3->ol_flags);
+#if 1
+	  u64 and_ol_flags = (mb0->ol_flags & mb1->ol_flags &
+			      mb2->ol_flags & mb3->ol_flags);
+	  if (and_ol_flags & PKT_RX_FDIR_ID)
 	    {
-	      next0 = next1 = next2 = next3 = xd->per_interface_next_index;
+	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = mb0->hash.fdir.hi;
+	      vnet_buffer (b1)->sw_if_index[VLIB_RX] = mb1->hash.fdir.hi;
+	      vnet_buffer (b2)->sw_if_index[VLIB_RX] = mb2->hash.fdir.hi;
+	      vnet_buffer (b3)->sw_if_index[VLIB_RX] = mb3->hash.fdir.hi;
+	      next0 = next1 = next2 = next3 = xd->offload_next_index;
 	    }
 	  else
+#endif
+#if 1
 	    {
-	      next0 = dpdk_rx_next_from_etype (mb0);
-	      next1 = dpdk_rx_next_from_etype (mb1);
-	      next2 = dpdk_rx_next_from_etype (mb2);
-	      next3 = dpdk_rx_next_from_etype (mb3);
+	      if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
+		{
+		  next0 = next1 = next2 = next3 =
+		    xd->per_interface_next_index;
+		}
+	      else
+		{
+		  next0 = dpdk_rx_next_from_etype (mb0);
+		  next1 = dpdk_rx_next_from_etype (mb1);
+		  next2 = dpdk_rx_next_from_etype (mb2);
+		  next3 = dpdk_rx_next_from_etype (mb3);
+		  if (or_ol_flags & PKT_RX_FDIR_ID)
+		    {
+		      if (mb0->ol_flags & PKT_RX_FDIR_ID)
+			{
+			  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
+			    mb0->hash.fdir.hi;
+			  next0 = xd->offload_next_index;
+			}
+		      if (mb1->ol_flags & PKT_RX_FDIR_ID)
+			{
+			  vnet_buffer (b1)->sw_if_index[VLIB_RX] =
+			    mb1->hash.fdir.hi;
+			  next1 = xd->offload_next_index;
+			}
+		      if (mb2->ol_flags & PKT_RX_FDIR_ID)
+			{
+			  vnet_buffer (b2)->sw_if_index[VLIB_RX] =
+			    mb2->hash.fdir.hi;
+			  next2 = xd->offload_next_index;
+			}
+		      if (mb3->ol_flags & PKT_RX_FDIR_ID)
+			{
+			  vnet_buffer (b3)->sw_if_index[VLIB_RX] =
+			    mb3->hash.fdir.hi;
+			  next3 = xd->offload_next_index;
+			}
+		    }
+		}
 	    }
+#endif
+
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 11]);
 	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
 
-	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
-			 mb2->ol_flags | mb3->ol_flags);
 	  if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
 	    {
 	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
@@ -351,7 +364,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    mb3->data_off - RTE_PKTMBUF_HEADROOM;
 	  b3->current_length = mb3->data_len - offset3;
 	  n_rx_bytes += mb3->pkt_len;
-
 
 	  /* Process subsequent segments of multi-segment packets */
 	  if (maybe_multiseg)
@@ -437,6 +449,12 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    next0 = xd->per_interface_next_index;
 	  else
 	    next0 = dpdk_rx_next_from_etype (mb0);
+
+	  if (mb0->ol_flags & PKT_RX_FDIR_ID)
+	    {
+	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = mb0->hash.fdir.hi;
+	      next0 = xd->offload_next_index;
+	    }
 
 	  dpdk_rx_error_from_mb (mb0, &next0, &error0);
 	  b0->error = node->errors[error0];
