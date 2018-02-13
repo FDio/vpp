@@ -89,21 +89,6 @@ typedef struct _vnet_interface_function_list_elt
   clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 if_index, u32 flags);
 } _vnet_interface_function_list_elt_t;
 
-#define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
-                                                                        \
-static void __vnet_interface_function_init_##tag##_##f (void)           \
-    __attribute__((__constructor__)) ;                                  \
-                                                                        \
-static void __vnet_interface_function_init_##tag##_##f (void)           \
-{                                                                       \
- vnet_main_t * vnm = vnet_get_main();                                   \
- static _vnet_interface_function_list_elt_t init_function;              \
- init_function.next_interface_function =                                \
-   vnm->tag##_functions[VNET_ITF_FUNC_PRIORITY_LOW];                    \
- vnm->tag##_functions[VNET_ITF_FUNC_PRIORITY_LOW] = &init_function;     \
- init_function.fp = (void *) &f;                                        \
-}
-
 #define _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,p)                    \
                                                                         \
 static void __vnet_interface_function_init_##tag##_##f (void)           \
@@ -117,6 +102,9 @@ static void __vnet_interface_function_init_##tag##_##f (void)           \
  vnm->tag##_functions[p] = &init_function;                              \
  init_function.fp = (void *) &f;                                        \
 }
+
+#define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
+  _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,VNET_ITF_FUNC_PRIORITY_LOW)
 
 #define VNET_HW_INTERFACE_ADD_DEL_FUNCTION(f)			\
   _VNET_INTERFACE_FUNCTION_DECL(f,hw_interface_add_del)
