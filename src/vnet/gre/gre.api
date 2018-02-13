@@ -13,18 +13,32 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
+/** \brief Create or delete a GRE tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param is_ipv6 - Use 0 for IPv4, 1 for IPv6
+    @param tunnel_type - 0: L3, 1: TEB, 2: ERSPAN
+    @param instance - optional unique custom device instance, else ~0.
+    @param src_address - Source IP address
+    @param dst_address - Destination IP address, can be multicast
+    @param outer_fib_id - Encap FIB table ID
+    @param session_id - session for ERSPAN tunnel, range 0-1023
+*/
 define gre_add_del_tunnel
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 is_ipv6;
-  u8 teb;
+  u8 tunnel_type;
+  u32 instance;		/* If non-~0, specifies a custom dev instance */
   u8 src_address[16];
   u8 dst_address[16];
   u32 outer_fib_id;
+  u16 session_id;
 };
 
 define gre_add_del_tunnel_reply
@@ -45,11 +59,13 @@ define gre_tunnel_details
 {
   u32 context;
   u32 sw_if_index;
+  u32 instance;
   u8 is_ipv6;
-  u8 teb;
+  u8 tunnel_type;
   u8 src_address[16];
   u8 dst_address[16];
   u32 outer_fib_id;
+  u16 session_id;
 };
 
 /*
