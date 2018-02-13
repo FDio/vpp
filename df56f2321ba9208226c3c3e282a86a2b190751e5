@@ -93,6 +93,30 @@
       "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b7ef60a_d32be21c",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1479,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-02-13T08:27:59Z",
+      "side": 1,
+      "message": "I am clearing it explicitly here due to the \"dirty\" packets I see floating around (see my \u0027general\u0027 comment). So, if the internal-functions are not invoked to reuse a buffer... the flag would never be unset. :(",
+      "parentUuid": "945f729e_449d0cb6",
+      "range": {
+        "startLine": 1479,
+        "startChar": 3,
+        "endLine": 1479,
+        "endChar": 18
+      },
+      "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
