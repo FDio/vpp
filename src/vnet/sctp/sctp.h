@@ -128,6 +128,8 @@ typedef struct _sctp_sub_connection
   u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
   	  	  	  	  If more than Max.Retransmit then connetion is considered unreachable. */
 
+  u8 is_retransmitting;	/**< A flag (0 = no, 1 = yes) indicating whether the connection is retransmitting a previous packet */
+
 } sctp_sub_connection_t;
 
 typedef struct
@@ -284,20 +286,6 @@ void sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn,
 
 u16 sctp_check_outstanding_data_chunks (sctp_connection_t * tc);
 
-#define SCTP_TICK 0.001			/**< SCTP tick period (s) */
-#define STHZ (u32) (1/SCTP_TICK)		/**< SCTP tick frequency */
-#define SCTP_TSTAMP_RESOLUTION SCTP_TICK	/**< Time stamp resolution */
-#define SCTP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
-#define SCTP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
-#define SCTP_MAX_OPTION_SPACE 40
-
-#define SCTP_DUPACK_THRESHOLD 	3
-#define SCTP_MAX_RX_FIFO_SIZE 	4 << 20
-#define SCTP_MIN_RX_FIFO_SIZE	4 << 10
-#define SCTP_IW_N_SEGMENTS 	10
-#define SCTP_ALWAYS_ACK		1	/**< On/off delayed acks */
-#define SCTP_USE_SACKS		1	/**< Disable only for testing */
-
 #define IP_PROTOCOL_SCTP	132
 
 /** SSCTP FSM state definitions as per RFC4960. */
@@ -408,6 +396,7 @@ sctp_optparam_type_to_string (u8 type)
 
 #define SCTP_TICK 0.001			/**< SCTP tick period (s) */
 #define SHZ (u32) (1/SCTP_TICK)		/**< SCTP tick frequency */
+#define SCTP_TSTAMP_RESOLUTION SCTP_TICK	/**< Time stamp resolution */
 
 /* As per RFC4960, page 83 */
 #define SCTP_RTO_INIT 3 * SHZ	/* 3 seconds */
