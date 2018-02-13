@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65404162_11c912ec",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-13T17:31:44Z",
+      "side": 1,
+      "message": "The name_renumber for vxlan_device_class and its function vxlan_name_renumber() should be removed now as it was only used for recycled interface to update its name to the new user instance.",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 19
+      },
+      "revId": "8ab2d512d9a1948849ff76d0e39572454d3a0067",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
