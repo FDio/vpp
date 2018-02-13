@@ -171,8 +171,8 @@ typedef struct vppcom_cfg_t_
 {
   u64 heapsize;
   u32 vpp_api_q_length;
-  u64 segment_baseva;
-  u32 segment_size;
+  uword segment_baseva;
+  uword segment_size;
   u32 add_segment_size;
   u32 preallocated_fifo_pairs;
   u32 rx_fifo_size;
@@ -1701,7 +1701,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 
   vcl_cfg->heapsize = (256ULL << 20);
   vcl_cfg->vpp_api_q_length = 1024;
-  vcl_cfg->segment_baseva = 0x200000000ULL;
+  vcl_cfg->segment_baseva = (uword) 0x200000000ULL;
   vcl_cfg->segment_size = (256 << 20);
   vcl_cfg->add_segment_size = (128 << 20);
   vcl_cfg->preallocated_fifo_pairs = 8;
@@ -2242,8 +2242,8 @@ vppcom_app_create (char *app_name)
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
       if (env_var_str)
 	{
-	  u64 tmp;
-	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
+	  uword tmp;
+	  if (sscanf (env_var_str, "%zu", &tmp) != 1)
 	    clib_warning ("VCL<%d>: Invalid namespace secret specified in "
 			  "the environment variable "
 			  VPPCOM_ENV_APP_NAMESPACE_SECRET
@@ -3528,8 +3528,8 @@ done:
 }
 
 int
-vppcom_select (unsigned long n_bits, unsigned long *read_map,
-	       unsigned long *write_map, unsigned long *except_map,
+vppcom_select (unsigned long n_bits, size_t *read_map,
+	       size_t *write_map, size_t *except_map,
 	       double time_to_wait)
 {
   u32 session_index;

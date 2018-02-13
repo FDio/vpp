@@ -138,6 +138,11 @@ else
 $(warning Unknown Cavium CPU)
 endif
 endif
+else ifeq ($(MACHINE),armv7l)
+export CROSS=""
+DPDK_TARGET           ?= arm-armv7a-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          ?= armv7-a
+DPDK_TUNE             ?= arm700
 
 ##############################################################################
 # Unknown platform

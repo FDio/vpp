@@ -481,7 +481,7 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
 }
 
 void
-svm_fifo_segment_main_init (u64 baseva, u32 timeout_in_seconds)
+svm_fifo_segment_main_init (uword baseva, u32 timeout_in_seconds)
 {
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
 

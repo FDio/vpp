@@ -2296,19 +2296,19 @@ static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t * sm = &snat_main;
-  u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128<<20;
+  u32 translation_buckets = 128;
+  u32 translation_memory_size = 1<<15;
   u32 user_buckets = 128;
-  u32 user_memory_size = 64<<20;
+  u32 user_memory_size = 1<<15;
   u32 max_translations_per_user = 100;
   u32 outside_vrf_id = 0;
   u32 inside_vrf_id = 0;
   u32 static_mapping_buckets = 1024;
-  u32 static_mapping_memory_size = 64<<20;
-  u32 nat64_bib_buckets = 1024;
-  u32 nat64_bib_memory_size = 128 << 20;
-  u32 nat64_st_buckets = 2048;
-  u32 nat64_st_memory_size = 256 << 20;
+  u32 static_mapping_memory_size = 1<<15;
+  u32 nat64_bib_buckets = 128;
+  u32 nat64_bib_memory_size = 1 << 15;
+  u32 nat64_st_buckets = 128;
+  u32 nat64_st_memory_size = 1 << 15;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
   snat_main_per_thread_data_t *tsm;

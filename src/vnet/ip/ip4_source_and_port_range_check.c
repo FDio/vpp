@@ -99,6 +99,7 @@ static inline u32
 check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 			 u16 dst_port, u32 next)
 {
+#ifdef CLIB_HAVE_VEC128
   u16x8vec_t key;
   u16x8vec_t diff1;
   u16x8vec_t diff2;
@@ -142,6 +143,9 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
       if (winner_mask)
 	return next;
     }
+#else
+  clib_warning("AYXXFIXME: please supply the code for SIMD-incapable architectures");
+#endif
   return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
 }
 

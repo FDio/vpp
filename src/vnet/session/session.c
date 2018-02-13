@@ -1238,8 +1238,8 @@ clib_error_t *
 session_manager_main_init (vlib_main_t * vm)
 {
   session_manager_main_t *smm = &session_manager_main;
-  smm->session_baseva = 0x200000000ULL;
-  smm->session_va_space_size = (u64) 128 << 30;
+  smm->session_baseva = (uword) 0x200000000ULL;
+  smm->session_va_space_size = (uword) 128 << (sizeof(uword) > 4 ? 30 : 20);
   smm->evt_qs_segment_size = 64 << 20;
   smm->is_enabled = 0;
   return 0;

@@ -39,6 +39,12 @@
 #define included_time_h
 
 #include <vppinfra/clib.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 typedef struct
 {
@@ -134,6 +140,17 @@ clib_cpu_time_now (void)	/* We may run arm64 in aarch32 mode, to leverage 64bit 
   return tsc;
 }
 #elif defined(__ARM_ARCH_7A__)
+#ifdef RASPBERRY_PI_32
+/* This is a hackety hack, but the rdtsc via kernel module fluctuates 10x, so this is better */
+extern u64
+clib_cpu_time_now_rpi (void);
+
+always_inline u64
+clib_cpu_time_now(void) {
+  return clib_cpu_time_now_rpi();
+}
+#else
+
 always_inline u64
 clib_cpu_time_now (void)
 {
@@ -141,6 +158,7 @@ clib_cpu_time_now (void)
   asm volatile ("mrc p15, 0, %0, c9, c13, 0":"=r" (tsc));
   return (u64) tsc;
 }
+#endif
 #else
 always_inline u64
 clib_cpu_time_now (void)

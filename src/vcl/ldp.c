@@ -526,7 +526,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 	    {
 	      if (LDP_DEBUG > 4)
 		printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
-			"sid %u (0x%x), buf %p, nbytes %ld, total %ld",
+			"sid %u (0x%x), buf %p, nbytes %zd, total %zu",
 			__func__, __LINE__, getpid (), fd, fd, func_str,
 			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
 
@@ -541,7 +541,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 		    {
 		      if (LDP_DEBUG > 4)
 			printf ("%s:%d: LDP<%d>: fd %d (0x%x): "
-				"rv (%d) < iov[%d].iov_len (%ld)",
+				"rv (%d) < iov[%d].iov_len (%zu)",
 				__func__, __LINE__, getpid (), fd, fd,
 				rv, i, iov[i].iov_len);
 		      break;
@@ -579,12 +579,12 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 	  perror (func_str);
 	  fprintf (stderr,
 		   "%s:%d: LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-		   "rv %ld, errno = %d\n", __func__, __LINE__, getpid (), fd,
+		   "rv %zu, errno = %d\n", __func__, __LINE__, getpid (), fd,
 		   fd, func_str, size, errno_val);
 	  errno = errno_val;
 	}
       else
-	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %ld\n",
+	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %zu\n",
 		__func__, __LINE__, getpid (), fd, fd, size);
     }
   return size;
@@ -1747,7 +1747,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	      errno_val = errno;
 	      clib_warning ("LDP<%d>: ERROR: out fd %d (0x%x): %s(): "
 			    "SEEK_SET failed: in_fd %d, offset %p, "
-			    "*offset %ld, rv %ld, errno %d", getpid (),
+			    "*offset %zd, rv %zd, errno %d", getpid (),
 			    out_fd, out_fd, in_fd, offset, *offset, off,
 			    errno_val);
 	      errno = errno_val;

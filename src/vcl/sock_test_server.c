@@ -24,6 +24,8 @@
 #include <vcl/sock_test.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <inttypes.h>
+
 
 #define SOCK_SERVER_USE_EPOLL 1
 #define VPPCOM_SESSION_ATTR_UNIT_TEST 0
@@ -596,7 +598,7 @@ main (int argc, char **argv)
 		      if (rx_bytes != sizeof (*rx_cfg))
 			{
 			  printf ("SERVER (fd %d): Invalid cfg message "
-				  "size (%d)!\n  Should be %lu bytes.\n",
+				  "size (%d)!\n  Should be %zu bytes.\n",
 				  client_fd, rx_bytes, sizeof (*rx_cfg));
 			  conn->cfg.rxbuf_size = 0;
 			  conn->cfg.num_writes = 0;
@@ -698,7 +700,7 @@ main (int argc, char **argv)
 		    fprintf (stderr, "SERVER: ERROR: "
 			     "FIFO not drained in previous test!\n"
 			     "       extra chunks %u (0x%x)\n"
-			     "        extra bytes %lu (0x%lx)\n",
+			     "        extra bytes %" PRIu64 " (0x%" PRIx64 ")\n",
 			     xtra, xtra, xtra_bytes, xtra_bytes);
 
 		  xtra = 0;

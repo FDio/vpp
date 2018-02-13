@@ -44,7 +44,7 @@ nat66_init (void)
 {
   nat66_main_t *nm = &nat66_main;
   u32 static_mapping_buckets = 1024;
-  uword static_mapping_memory_size = 64 << 20;
+  uword static_mapping_memory_size = 1 << 20;
 
   clib_bihash_init_24_8 (&nm->sm_l, "nat66-static-map-by-local",
 			 static_mapping_buckets, static_mapping_memory_size);
