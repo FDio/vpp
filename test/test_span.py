@@ -252,7 +252,7 @@ class TestSpan(VppTestCase):
 
         gre_if = VppGreInterface(self, self.pg2.local_ip4,
                                  self.pg2.remote_ip4,
-                                 is_teb=1)
+                                 type=1)
 
         gre_if.add_vpp_config()
         gre_if.admin_up()
