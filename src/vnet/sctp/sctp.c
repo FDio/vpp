@@ -470,10 +470,10 @@ void
 sctp_session_close (u32 conn_index, u32 thread_index)
 {
   ASSERT (thread_index == 0);
-
   sctp_connection_t *sctp_conn;
   sctp_conn = sctp_connection_get (conn_index, thread_index);
-  sctp_connection_close (sctp_conn);
+  if (sctp_conn != NULL)
+    sctp_connection_close (sctp_conn);
 }
 
 void
@@ -481,10 +481,13 @@ sctp_session_cleanup (u32 conn_index, u32 thread_index)
 {
   sctp_connection_t *sctp_conn;
   sctp_conn = sctp_connection_get (conn_index, thread_index);
-  sctp_connection_timers_reset (sctp_conn);
 
-  /* Wait for the session tx events to clear */
-  sctp_conn->state = SCTP_STATE_CLOSED;
+  if (sctp_conn != NULL)
+    {
+      sctp_connection_timers_reset (sctp_conn);
+      /* Wait for the session tx events to clear */
+      sctp_conn->state = SCTP_STATE_CLOSED;
+    }
 }
 
 /**

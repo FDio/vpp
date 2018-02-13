@@ -645,14 +645,14 @@ sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 }
 
 always_inline u8
-sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 gapping)
+sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 is_gapping)
 {
-  if (gapping != 0)
+  if (is_gapping != 0)
     {
       SCTP_CONN_TRACKING_DBG
 	("gapping != 0: CONN_INDEX = %u, sctp_conn->ack_state = %u",
 	 sctp_conn->sub_conn[idx].connection.c_index, sctp_conn->ack_state);
-      return 1;
+      return 0;
     }
 
   if (sctp_conn->ack_state >= MAX_ENQUEABLE_SACKS)
@@ -660,12 +660,12 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 gapping)
       SCTP_CONN_TRACKING_DBG
 	("sctp_conn->ack_state >= MAX_ENQUEABLE_SACKS: CONN_INDEX = %u, sctp_conn->ack_state = %u",
 	 sctp_conn->sub_conn[idx].connection.c_index, sctp_conn->ack_state);
-      return 1;
+      return 0;
     }
 
   sctp_conn->ack_state += 1;
 
-  return 0;
+  return 1;
 }
 
 always_inline void
@@ -748,7 +748,7 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
-  if (sctp_is_sack_delayable (sctp_conn, is_gapping) != 0)
+  if (!sctp_is_sack_delayable (sctp_conn, is_gapping))
     sctp_prepare_sack_chunk (sctp_conn, b);
 
   return error;
@@ -1152,6 +1152,7 @@ sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
    */
   sctp_timer_reset (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
 		    SCTP_TIMER_T2_SHUTDOWN);
+
   sctp_send_shutdown_complete (sctp_conn);
 
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
