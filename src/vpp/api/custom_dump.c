@@ -26,6 +26,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/srmpls/sr_mpls.h>
+#include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/geneve/geneve.h>
 #include <vnet/classify/policer_classify.h>
@@ -1622,8 +1623,13 @@ static void *vl_api_gre_add_del_tunnel_t_print
 	      (ip46_address_t *) & (mp->src_address),
 	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
 
-  if (mp->teb)
+  s = format (s, "instance %d ", ntohl (mp->instance));
+
+  if (mp->tunnel_type == GRE_TUNNEL_TYPE_TEB)
     s = format (s, "teb ");
+
+  if (mp->tunnel_type == GRE_TUNNEL_TYPE_ERSPAN)
+    s = format (s, "erspan %d ", ntohs (mp->session_id));
 
   if (mp->outer_fib_id)
     s = format (s, "outer-fib-id %d ", ntohl (mp->outer_fib_id));

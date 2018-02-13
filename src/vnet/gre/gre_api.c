@@ -66,8 +66,10 @@ static void vl_api_gre_add_del_tunnel_t_handler
   memset (a, 0, sizeof (*a));
 
   a->is_add = mp->is_add;
-  a->teb = mp->teb;
+  a->tunnel_type = mp->tunnel_type;
   a->is_ipv6 = mp->is_ipv6;
+  a->instance = ntohl (mp->instance);
+  a->session_id = ntohs (mp->session_id);
 
   /* ip addresses sent in network byte order */
   if (!mp->is_ipv6)
@@ -102,23 +104,25 @@ static void send_gre_tunnel_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_GRE_TUNNEL_DETAILS);
+  rmp->_vl_msg_id = htons (VL_API_GRE_TUNNEL_DETAILS);
   if (!is_ipv6)
     {
       clib_memcpy (rmp->src_address, &(t->tunnel_src.ip4.as_u8), 4);
       clib_memcpy (rmp->dst_address, &(t->tunnel_dst.fp_addr.ip4.as_u8), 4);
       ft = fib_table_get (t->outer_fib_index, FIB_PROTOCOL_IP4);
-      rmp->outer_fib_id = ft->ft_table_id;
+      rmp->outer_fib_id = htonl (ft->ft_table_id);
     }
   else
     {
       clib_memcpy (rmp->src_address, &(t->tunnel_src.ip6.as_u8), 16);
       clib_memcpy (rmp->dst_address, &(t->tunnel_dst.fp_addr.ip6.as_u8), 16);
       ft = fib_table_get (t->outer_fib_index, FIB_PROTOCOL_IP6);
-      rmp->outer_fib_id = ft->ft_table_id;
+      rmp->outer_fib_id = htonl (ft->ft_table_id);
     }
-  rmp->teb = (GRE_TUNNEL_TYPE_TEB == t->type);
+  rmp->tunnel_type = t->type;
+  rmp->instance = htonl (t->user_instance);
   rmp->sw_if_index = htonl (t->sw_if_index);
+  rmp->session_id = htons (t->session_id);
   rmp->context = context;
   rmp->is_ipv6 = is_ipv6;
 
