@@ -16,6 +16,24 @@
       "revId": "49c7f0ca1770304183a8bdfa23a5df751a056401",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "072556b5_95b4c65f",
+        "filename": "src/vpp-api/vom/acl_ethertype.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-02-13T11:27:13Z",
+      "side": 1,
+      "message": "Currently there is no unbind command for ether-type ACL in acl plugin. I am anticipating it in feature as we also need the functionality to update the rules.",
+      "parentUuid": "f35f551e_f4309730",
+      "revId": "49c7f0ca1770304183a8bdfa23a5df751a056401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
