@@ -22,6 +22,30 @@
       "revId": "8f58f83236e4e205c2db18c2e57d828279dd13e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e12cd1e_a01be4d9",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-02-13T18:18:04Z",
+      "side": 1,
+      "message": "Very nice catch, thanks! This one I can\u0027t even blame no the blunt knife... :-) Finally it finished the recompile with uword, it is all happy. So will push a new rev.",
+      "parentUuid": "3e0bdaee_a1fb633f",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 49,
+        "endChar": 3
+      },
+      "revId": "8f58f83236e4e205c2db18c2e57d828279dd13e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
