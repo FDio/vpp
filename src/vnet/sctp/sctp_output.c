@@ -499,6 +499,7 @@ void
 sctp_compute_mac (sctp_connection_t * sctp_conn,
 		  sctp_state_cookie_param_t * state_cookie)
 {
+#if WITH_LIBSSL > 0
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   HMAC_CTX *ctx;
 #else
@@ -521,6 +522,7 @@ sctp_compute_mac (sctp_connection_t * sctp_conn,
   HMAC_Update (&ctx, (const unsigned char *) &sctp_conn, sizeof (sctp_conn));
   HMAC_Final (&ctx, state_cookie->mac, &len);
   HMAC_CTX_cleanup (&ctx);
+#endif
 #endif
 
   ENDIANESS_SWAP (state_cookie->mac);

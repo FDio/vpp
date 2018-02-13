@@ -129,7 +129,7 @@ echo_test_client ()
       _rfdset = rd_fdset;
 
 #ifdef VCL_TEST
-      rv = vppcom_select (nfds, (uint64_t *) rfdset, (uint64_t *) wfdset,
+      rv = vppcom_select (nfds, (size_t *) rfdset, (size_t *) wfdset,
 			  NULL, 0);
 #else
       {
@@ -186,8 +186,8 @@ echo_test_client ()
 			  tsock->fd, rx_bytes, tsock->rxbuf);
 
 		  if (tsock->stats.rx_bytes != tsock->stats.tx_bytes)
-		    printf ("CLIENT: WARNING: bytes read (%lu) "
-			    "!= bytes written (%lu)!\n",
+		    printf ("CLIENT: WARNING: bytes read (%" PRIu64 ") "
+			    "!= bytes written (%" PRIu64 ")!\n",
 			    tsock->stats.rx_bytes, tsock->stats.tx_bytes);
 		}
 	    }
@@ -301,7 +301,7 @@ stream_test_client (sock_test_t test)
       _rfdset = rd_fdset;
 
 #ifdef VCL_TEST
-      rv = vppcom_select (nfds, (uint64_t *) rfdset, (uint64_t *) wfdset,
+      rv = vppcom_select (nfds, (size_t *) rfdset, (size_t *) wfdset,
 			  NULL, 0);
 #else
       {
@@ -603,7 +603,7 @@ cfg_txbuf_size_set (void)
       sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr, "CLIENT: ERROR: Invalid txbuf size (%lu) < "
+    fprintf (stderr, "CLIENT: ERROR: Invalid txbuf size (%" PRIu64 ") < "
 	     "minimum buf size (%u)!\n",
 	     txbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 }
@@ -668,7 +668,7 @@ cfg_rxbuf_size_set (void)
       sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr, "CLIENT: ERROR: Invalid rxbuf size (%lu) < "
+    fprintf (stderr, "CLIENT: ERROR: Invalid rxbuf size (%" PRIu64 ") < "
 	     "minimum buf size (%u)!\n",
 	     rxbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 }
@@ -829,8 +829,8 @@ main (int argc, char **argv)
 	break;
 
       case 'N':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.num_writes) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.num_writes) != 1)
+	if (sscanf (optarg, "0x%" PRIx64, &ctrl->cfg.num_writes) != 1)
+	  if (sscanf (optarg, "%" PRId64, &ctrl->cfg.num_writes) != 1)
 	    {
 	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
 		       "option -%c!\n", c);
@@ -840,8 +840,8 @@ main (int argc, char **argv)
 	break;
 
       case 'R':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.rxbuf_size) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.rxbuf_size) != 1)
+	if (sscanf (optarg, "0x%" PRIx64, &ctrl->cfg.rxbuf_size) != 1)
+	  if (sscanf (optarg, "%" PRId64, &ctrl->cfg.rxbuf_size) != 1)
 	    {
 	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
 		       "option -%c!\n", c);
@@ -856,7 +856,7 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: rxbuf size (%lu) "
+	    fprintf (stderr, "CLIENT: ERROR: rxbuf size (%" PRIu64 ") "
 		     "less than minumum (%u)\n",
 		     ctrl->cfg.rxbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
@@ -865,8 +865,8 @@ main (int argc, char **argv)
 	break;
 
       case 'T':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.txbuf_size) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.txbuf_size) != 1)
+	if (sscanf (optarg, "0x%" PRIx64, &ctrl->cfg.txbuf_size) != 1)
+	  if (sscanf (optarg, "%" PRId64, &ctrl->cfg.txbuf_size) != 1)
 	    {
 	      fprintf (stderr, "CLIENT: ERROR: Invalid value "
 		       "for option -%c!\n", c);
@@ -883,7 +883,7 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: txbuf size (%lu) "
+	    fprintf (stderr, "CLIENT: ERROR: txbuf size (%" PRIu64 ") "
 		     "less than minumum (%u)!\n",
 		     ctrl->cfg.txbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();

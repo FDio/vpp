@@ -66,8 +66,8 @@ typedef struct svm_map_region_args_
 {
   const char *root_path;	/* NULL means use the truly global arena */
   const char *name;
-  u64 baseva;
-  u64 size;
+  uword baseva;
+  uword size;
   u64 pvt_heap_size;
   uword flags;
   char *backing_file;

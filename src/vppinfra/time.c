@@ -226,6 +226,57 @@ clib_time_verify_frequency (clib_time_t * c)
     c->log2_clocks_per_frequency_verify += 1;
 }
 
+#ifdef RASPBERRY_PI_32
+
+/*
+ * This is a bit of a hackety hack, but appears to work well for what it is.
+ *
+ * When toying with VPP build using the kernel module to allow the rdtsc,
+ * I noticed the VPP was very unstable, randomly crashing in the timer code.
+ *
+ * A bit of investigation revealed that calling clib_cpu_time_now() once a second
+ * gave deltas which were varying about 10x. No wonder the VPP code was unhappy.
+ *
+ * While looking at the alternatives, I noticed the posts talking about an internal
+ * 1Mhz-clocked timer on Raspberry Pi. So this code uses that timer in order
+ * to implement a very low-precision but not trippy approximation of rdtsc,
+ * with an added bonus being that no kernel tweaks are needed.
+ *
+ * How this affects the performance and the overall functioning is another question,
+ * but hey, it is a Raspberry Pi, so we are not in a carrier space anyway!
+ *
+ */
+
+u64 clib_cpu_time_now_rpi(void) {
+    static long long int *timer = 0;
+
+#define ST_BASE (0x3F003000)
+#define TIMER_OFFSET (4)
+
+    if (timer == 0) {
+      int fd;
+      void *st_base;
+
+      if (-1 == (fd = open("/dev/mem", O_RDONLY))) {
+          fprintf(stderr, "open() failed.\n");
+          return 0;
+      }
+
+      if (MAP_FAILED == (st_base = mmap(NULL, 4096,
+                          PROT_READ, MAP_SHARED, fd, ST_BASE))) {
+          fprintf(stderr, "mmap() failed.\n");
+          return 0;
+      }
+
+      timer = (long long int *)((char *)st_base + TIMER_OFFSET);
+    }
+    /* The timer is 1Mhz, the CPU clock is 1.2Ghz. */
+#define TIMER_TO_CPU_CYCLES 1200ULL
+
+    return (*timer) * TIMER_TO_CPU_CYCLES;
+}
+#endif /* RASPBERRY_PI_32 */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -152,7 +152,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
   segment_manager_main_t *smm = &segment_manager_main;
   u32 rnd_margin = 128 << 10, seg_index;
   segment_manager_properties_t *props;
-  uword baseva = (u64) ~ 0, alloc_size;
+  uword baseva = (uword) ~ 0, alloc_size;
   svm_fifo_segment_private_t *seg;
   u8 *seg_name;
   int rv;

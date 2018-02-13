@@ -89,8 +89,8 @@ extern segment_manager_main_t segment_manager_main;
 
 typedef struct segment_manager_main_init_args_
 {
-  u64 baseva;
-  u64 size;
+  uword baseva;
+  uword size;
 } segment_manager_main_init_args_t;
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)

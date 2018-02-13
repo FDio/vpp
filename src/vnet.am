@@ -438,8 +438,8 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec/ikev2_format.c			\
  vnet/ipsec/ipsec_api.c
 
-API_FILES += vnet/ipsec/ipsec.api
 endif
+API_FILES += vnet/ipsec/ipsec.api
 
 libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec_output.c

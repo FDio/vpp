@@ -1308,6 +1308,7 @@ bfd_session_switch_auth_to_next (bfd_session_t * bs)
   bs->auth.curr_bfd_key_id = bs->auth.next_bfd_key_id;
 }
 
+#if WITH_LIBSSL > 0
 static int
 bfd_auth_type_is_meticulous (bfd_auth_type_e auth_type)
 {
@@ -1462,6 +1463,7 @@ bfd_verify_pkt_auth_key_sha1 (const bfd_pkt_t * pkt, u32 pkt_size,
 	   format_hex_bytes, result, SHA_DIGEST_LENGTH);
   return 0;
 }
+#endif
 
 static int
 bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
