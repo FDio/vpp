@@ -150,9 +150,6 @@ typedef struct {
   /* mcast shared info */
   uword * mcast_shared; /* keyed on mcast ip46 addr */
 
-  /* Free vlib hw_if_indices */
-  u32 * free_vxlan_tunnel_hw_if_indices;
-
   /* Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;
 

@@ -107,16 +107,9 @@ vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
-static int
-vxlan_name_renumber (vnet_hw_interface_t *hi, u32 new_dev_instance)
-{
-  return 0;
-}
-
 VNET_DEVICE_CLASS (vxlan_device_class,static) = {
   .name = "VXLAN",
   .format_device_name = format_vxlan_name,
-  .name_renumber = vxlan_name_renumber,
   .format_tx_trace = format_vxlan_encap_trace,
   .admin_up_down_function = vxlan_interface_admin_up_down,
 };
@@ -214,7 +207,7 @@ _(decap_next_index)                             \
 _(src)                                          \
 _(dst)
 
-static int
+static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 {
   union {
@@ -263,7 +256,6 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
   vnet_set_vni_and_flags(vxlan, t->vni);
 
   t->rewrite = r.rw;
-  return (0);
 }
 
 static bool
@@ -354,9 +346,7 @@ int vnet_vxlan_add_del_tunnel
   vxlan_tunnel_t *t = 0;
   vnet_main_t * vnm = vxm->vnet_main;
   uword * p;
-  u32 hw_if_index = ~0;
   u32 sw_if_index = ~0;
-  int rv;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
   u32 is_ip6 = a->is_ip6;
@@ -391,7 +381,7 @@ int vnet_vxlan_add_del_tunnel
 	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      memset (t, 0, sizeof (*t));
+      *t = (vxlan_tunnel_t){ 0 };
       dev_instance = t - vxm->tunnels;
 
       /* copy from arg structure */
@@ -399,13 +389,7 @@ int vnet_vxlan_add_del_tunnel
       foreach_copy_field;
 #undef _
 
-      rv = vxlan_rewrite (t, is_ip6);
-      if (rv)
-        {
-          pool_put (vxm->tunnels, t);
-          return rv;
-        }
-
+      vxlan_rewrite (t, is_ip6);
       /*
        * Reconcile the real dev_instance and a possible requested instance.
        */
@@ -424,50 +408,20 @@ int vnet_vxlan_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-        hash_set_mem_alloc (&vxm->vxlan6_tunnel_by_key, &key6, 
-			    t - vxm->tunnels);
+        hash_set_mem_alloc (&vxm->vxlan6_tunnel_by_key, &key6, dev_instance);
       else
-        hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
+        hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, dev_instance);
 
-      vnet_hw_interface_t * hi;
-      if (vec_len (vxm->free_vxlan_tunnel_hw_if_indices) > 0)
-        {
-	  vnet_interface_main_t * im = &vnm->interface_main;
-          hw_if_index = vxm->free_vxlan_tunnel_hw_if_indices
-            [vec_len (vxm->free_vxlan_tunnel_hw_if_indices)-1];
-          _vec_len (vxm->free_vxlan_tunnel_hw_if_indices) -= 1;
-          
-          hi = vnet_get_hw_interface (vnm, hw_if_index);
-          hi->dev_instance = dev_instance;
-          hi->hw_instance = dev_instance;
-
-	  sw_if_index = hi->sw_if_index;
-	  vnet_interface_name_renumber(sw_if_index, user_instance);
-
-	  /* clear old stats of freed tunnel before reuse */
-	  vnet_interface_counter_lock(im);
-	  vlib_zero_combined_counter 
-	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX], sw_if_index);
-	  vlib_zero_combined_counter 
-	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX], sw_if_index);
-	  vlib_zero_simple_counter 
-	    (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
-	  vnet_interface_counter_unlock(im);
-        }
-      else
-        {
-          hw_if_index = vnet_register_interface
-            (vnm, vxlan_device_class.index, t - vxm->tunnels,
-             vxlan_hw_class.index, t - vxm->tunnels);
-          hi = vnet_get_hw_interface (vnm, hw_if_index);
-        }
+      t->hw_if_index = vnet_register_interface
+        (vnm, vxlan_device_class.index, dev_instance,
+         vxlan_hw_class.index, dev_instance);
+      vnet_hw_interface_t * hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 
       /* Set vxlan tunnel output node */
       u32 encap_index = !is_ip6 ?
 	  vxlan4_encap_node.index : vxlan6_encap_node.index;
-      vnet_set_interface_output_node (vnm, hw_if_index, encap_index);
+      vnet_set_interface_output_node (vnm, t->hw_if_index, encap_index);
 
-      t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
 
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
@@ -589,12 +543,6 @@ int vnet_vxlan_add_del_tunnel
 
       sw_if_index = t->sw_if_index;
       vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
-      vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, sw_if_index);
-      si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
-
-      /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode(vxm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
-      vec_add1 (vxm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
 
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 
@@ -614,10 +562,7 @@ int vnet_vxlan_add_del_tunnel
 	  mcast_shared_remove(&t->dst);
         }
 
-      vnet_hw_interface_t *hi;
-      hi = vnet_get_hw_interface (vnm, t->hw_if_index);
-      hi->dev_instance = ~0;
-
+      vnet_delete_hw_interface (vnm, t->hw_if_index);
       hash_unset (vxlan_main.instance_used, instance);
 
       fib_node_deinit(&t->node);
