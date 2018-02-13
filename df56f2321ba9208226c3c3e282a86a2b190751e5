@@ -22,6 +22,30 @@
       "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b8c8167_2bb0af61",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1479,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-02-13T07:53:08Z",
+      "side": 1,
+      "message": "I set that bit in each \"prepare_\" function dealing with chunk creation.",
+      "parentUuid": "8b374853_a86a0985",
+      "range": {
+        "startLine": 1479,
+        "startChar": 3,
+        "endLine": 1479,
+        "endChar": 18
+      },
+      "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
