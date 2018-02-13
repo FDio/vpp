@@ -87,7 +87,8 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
       if (mirror_frames[i] == 0)
         {
           if (sf == SPAN_FEAT_L2)
-            mirror_frames[i] = vlib_get_frame_to_node (vnm->vlib_main, l2output_node.index);
+            mirror_frames[i] = vlib_get_frame_to_node (vnm->vlib_main,
+						       l2output_node.index);
           else
             mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
 	}
@@ -108,8 +109,16 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
               span_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
               t->src_sw_if_index = sw_if_index0;
               t->mirror_sw_if_index = i;
-            }
-        }
+#if 0
+	      /* Enable this path to allow packet trace of SPAN packets.
+	         Note that all SPAN packets will show up on the trace output
+	         with the first SPAN packet (since they are in the same frame)
+	         thus making trace output of the original packet confusing */
+	      mirror_frames[i]->flags |= VLIB_FRAME_TRACE;
+	      c0->flags |= VLIB_BUFFER_IS_TRACED;
+#endif
+	    }
+	}
     }));
   /* *INDENT-ON* */
 }
