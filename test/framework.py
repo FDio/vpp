@@ -474,7 +474,7 @@ class VppTestCase(unittest.TestCase):
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace,
                                                     vpp_api_trace_log))
             os.rename(tmp_api_trace, vpp_api_trace_log)
-            self.logger.info(self.vapi.ppcli("api trace dump %s" %
+            self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
         else:
             self.registry.unregister_all(self.logger)

@@ -1806,9 +1806,15 @@ static void *vl_api_cli_inband_t_print
   (vl_api_cli_inband_t * mp, void *handle)
 {
   u8 *s;
+  u8 *cmd = 0;
+  u32 length = ntohl (mp->length);
 
-  s = format (0, "SCRIPT: cli_inband ");
+  vec_validate (cmd, length);
+  clib_memcpy (cmd, mp->cmd, length);
 
+  s = format (0, "SCRIPT: exec %v ", cmd);
+
+  vec_free (cmd);
   FINISH;
 }
 
