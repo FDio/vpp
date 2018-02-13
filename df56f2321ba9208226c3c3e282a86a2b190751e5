@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "0d227dd2_228c53e5",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1246,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-13T08:18:02Z",
+      "side": 1,
+      "message": "What I\u0027m trying to understand, and probably I\u0027m missing the point because I\u0027m not familiar with SCTP, is why we get packets here that are not ready? I guess they can be originated by either the session node or one of the sctp input nodes but shouldn\u0027t those enqueue buffers only when they\u0027re ready?",
+      "range": {
+        "startLine": 1246,
+        "startChar": 8,
+        "endLine": 1246,
+        "endChar": 19
+      },
+      "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8b374853_a86a0985",
         "filename": "src/vnet/sctp/sctp_output.c",
         "patchSetId": 3
@@ -37,6 +60,30 @@
       "side": 1,
       "message": "I set that bit in each \"prepare_\" function dealing with chunk creation.",
       "parentUuid": "8b374853_a86a0985",
+      "range": {
+        "startLine": 1479,
+        "startChar": 3,
+        "endLine": 1479,
+        "endChar": 18
+      },
+      "revId": "df56f2321ba9208226c3c3e282a86a2b190751e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "945f729e_449d0cb6",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1479,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-13T08:18:02Z",
+      "side": 1,
+      "message": "But what\u0027s the intended goal of the unsetting of the flag? These buffers are to be recycled and whomever (as in node) uses them next, needs to properly initialize them.",
+      "parentUuid": "7b8c8167_2bb0af61",
       "range": {
         "startLine": 1479,
         "startChar": 3,
