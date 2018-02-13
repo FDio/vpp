@@ -986,7 +986,9 @@ class VppPapiProvider(object):
                            src_address,
                            dst_address,
                            outer_fib_id=0,
-                           is_teb=0,
+                           tunnel_type=0,
+                           instance=0xFFFFFFFF,
+                           session_id=0,
                            is_add=1,
                            is_ip6=0):
         """ Add a GRE tunnel
@@ -994,19 +996,23 @@ class VppPapiProvider(object):
         :param src_address:
         :param dst_address:
         :param outer_fib_id:  (Default value = 0)
+        :param tunnel_type:  (Default value = 0)
+        :param instance:  (Default value = 0xFFFFFFFF)
+        :param session_id: (Defalt value = 0)
         :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
-        :param is_teb:  (Default value = 0)
         """
 
         return self.api(
             self.papi.gre_add_del_tunnel,
             {'is_add': is_add,
              'is_ipv6': is_ip6,
-             'teb': is_teb,
+             'tunnel_type': tunnel_type,
+             'instance': instance,
              'src_address': src_address,
              'dst_address': dst_address,
-             'outer_fib_id': outer_fib_id}
+             'outer_fib_id': outer_fib_id,
+             'session_id': session_id}
         )
 
     def udp_encap_add_del(self,

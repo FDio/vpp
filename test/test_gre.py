@@ -18,6 +18,12 @@ from scapy.volatile import RandMAC, RandIP
 from util import ppp, ppc
 
 
+class GreTunnelTypes:
+    TT_L3 = 0
+    TT_TEB = 1
+    TT_ERSPAN = 2
+
+
 class TestGRE(VppTestCase):
     """ GRE Test Case """
 
@@ -720,10 +726,10 @@ class TestGRE(VppTestCase):
         #
         gre_if1 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.2",
-                                  is_teb=1)
+                                  type=GreTunnelTypes.TT_TEB)
         gre_if2 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.3",
-                                  is_teb=1)
+                                  type=GreTunnelTypes.TT_TEB)
         gre_if1.add_vpp_config()
         gre_if2.add_vpp_config()
 

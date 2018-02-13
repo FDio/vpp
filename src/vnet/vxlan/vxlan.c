@@ -795,10 +795,6 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "tunnel does not exist...");
       goto done;
 
-    case VNET_API_ERROR_INVALID_ARGUMENT:
-      error = clib_error_return (0, "Invalid argument");
-      goto done;
-
     case VNET_API_ERROR_INSTANCE_IN_USE:
       error = clib_error_return (0, "Instance is in use");
       goto done;

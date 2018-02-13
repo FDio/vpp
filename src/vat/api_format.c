@@ -13055,10 +13055,12 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   u8 is_add = 1;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
-  u8 teb = 0;
+  u8 t_type = GRE_TUNNEL_TYPE_L3;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
+  u32 session_id = 0;
+  u32 instance = ~0;
   int ret;
 
   memset (&src4, 0, sizeof src4);
@@ -13070,6 +13072,8 @@ api_gre_add_del_tunnel (vat_main_t * vam)
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "instance %d", &instance))
+	;
       else if (unformat (line_input, "src %U", unformat_ip4_address, &src4))
 	{
 	  src_set = 1;
@@ -13093,7 +13097,9 @@ api_gre_add_del_tunnel (vat_main_t * vam)
       else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
 	;
       else if (unformat (line_input, "teb"))
-	teb = 1;
+	t_type = GRE_TUNNEL_TYPE_TEB;
+      else if (unformat (line_input, "erspan %d", &session_id))
+	t_type = GRE_TUNNEL_TYPE_ERSPAN;
       else
 	{
 	  errmsg ("parse error '%U'", format_unformat_error, line_input);
@@ -13130,9 +13136,11 @@ api_gre_add_del_tunnel (vat_main_t * vam)
       clib_memcpy (&mp->src_address, &src6, 16);
       clib_memcpy (&mp->dst_address, &dst6, 16);
     }
-  mp->outer_fib_id = ntohl (outer_fib_id);
+  mp->instance = htonl (instance);
+  mp->outer_fib_id = htonl (outer_fib_id);
   mp->is_add = is_add;
-  mp->teb = teb;
+  mp->session_id = htons ((u16) session_id);
+  mp->tunnel_type = t_type;
   mp->is_ipv6 = ipv6_set;
 
   S (mp);
@@ -13147,11 +13155,12 @@ static void vl_api_gre_tunnel_details_t_handler
   ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
   ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
-  print (vam->ofp, "%11d%24U%24U%6d%14d",
+  print (vam->ofp, "%11d%11d%24U%24U%13d%14d%12d",
 	 ntohl (mp->sw_if_index),
+	 ntohl (mp->instance),
 	 format_ip46_address, &src, IP46_TYPE_ANY,
 	 format_ip46_address, &dst, IP46_TYPE_ANY,
-	 mp->teb, ntohl (mp->outer_fib_id));
+	 mp->tunnel_type, ntohl (mp->outer_fib_id), ntohl (mp->session_id));
 }
 
 static void vl_api_gre_tunnel_details_t_handler_json
@@ -13171,6 +13180,7 @@ static void vl_api_gre_tunnel_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "instance", ntohl (mp->instance));
   if (!mp->is_ipv6)
     {
       clib_memcpy (&ip4, &mp->src_address, sizeof (ip4));
@@ -13185,9 +13195,10 @@ static void vl_api_gre_tunnel_details_t_handler_json
       clib_memcpy (&ip6, &mp->dst_address, sizeof (ip6));
       vat_json_object_add_ip6 (node, "dst_address", ip6);
     }
-  vat_json_object_add_uint (node, "teb", mp->teb);
+  vat_json_object_add_uint (node, "tunnel_type", mp->tunnel_type);
   vat_json_object_add_uint (node, "outer_fib_id", ntohl (mp->outer_fib_id));
   vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6);
+  vat_json_object_add_uint (node, "session_id", mp->session_id);
 }
 
 static int
@@ -13216,9 +13227,9 @@ api_gre_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%6s%14s",
-	     "sw_if_index", "src_address", "dst_address", "teb",
-	     "outer_fib_id");
+      print (vam->ofp, "%11s%11s%24s%24s%13s%14s%12s",
+	     "sw_if_index", "instance", "src_address", "dst_address",
+	     "tunnel_type", "outer_fib_id", "session_id");
     }
 
   /* Get list of gre-tunnel interfaces */
@@ -22885,7 +22896,8 @@ _(geneve_add_del_tunnel,                                                \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(geneve_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                   \
 _(gre_add_del_tunnel,                                                   \
-  "src <ip-addr> dst <ip-addr> [outer-fib-id <nn>] [teb] [del]\n")    \
+  "src <ip-addr> dst <ip-addr> [outer-fib-id <nn>] [instance <n>]\n"    \
+  "[teb | erspan <session-id>] [del]")                                	\
 _(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
