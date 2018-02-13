@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "ba613e72_fe96d650",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-02-13T14:18:08Z",
+      "side": 1,
+      "message": "Working with Damjan on how we go about replacing __sync. Would like to finalize on this before moving fwd.",
+      "parentUuid": "73ee9359_b0728bfb",
+      "revId": "1f9600e50f3317e8a9abd5ac38734010ca08e246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1d9da068_92cf68e3",
         "filename": "src/vppinfra/lock.h",
         "patchSetId": 4
