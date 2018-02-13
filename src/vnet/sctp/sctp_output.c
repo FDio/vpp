@@ -554,9 +554,6 @@ sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn,
   vnet_sctp_set_chunk_type (&cookie_ack_chunk->chunk_hdr, COOKIE_ACK);
   vnet_sctp_set_chunk_length (&cookie_ack_chunk->chunk_hdr, chunk_len);
 
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
-
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
 }
@@ -590,9 +587,6 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn,
   vnet_sctp_set_chunk_length (&cookie_echo_chunk->chunk_hdr, chunk_len);
   clib_memcpy (&(cookie_echo_chunk->cookie), sc,
 	       sizeof (sctp_state_cookie_param_t));
-
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
@@ -736,9 +730,6 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 
   sctp_conn->local_tag = init_ack_chunk->initiate_tag;
 
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
-
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
 }
@@ -802,9 +793,6 @@ sctp_send_shutdown (sctp_connection_t * sctp_conn)
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN);
   sctp_enqueue_to_output_now (vm, b, bi,
 			      sctp_conn->sub_conn[idx].connection.is_ip4);
-
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
 }
 
 /**
@@ -852,11 +840,6 @@ sctp_send_shutdown_ack (sctp_connection_t * sctp_conn, vlib_buffer_t * b)
   sctp_reuse_buffer (vm, b);
 
   sctp_prepare_shutdown_ack_chunk (sctp_conn, b);
-
-  u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_ACK);
-
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
 }
 
 /**
@@ -1041,8 +1024,6 @@ sctp_send_shutdown_complete (sctp_connection_t * sctp_conn)
   u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_COMPLETE);
   sctp_enqueue_to_output (vm, b, bi,
 			  sctp_conn->sub_conn[idx].connection.is_ip4);
-
-  sctp_conn->state = SCTP_STATE_CLOSED;
 }
 
 
@@ -1069,15 +1050,15 @@ sctp_send_init (sctp_connection_t * sctp_conn)
   sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
   sctp_enqueue_to_ip_lookup (vm, b, bi, sctp_conn->sub_conn[idx].c_is_ip4);
 
-  /* Measure RTT with this */
-  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
-
   /* Start the T1_INIT timer */
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T1_INIT,
 		  sctp_conn->sub_conn[idx].RTO);
 
   /* Change state to COOKIE_WAIT */
   sctp_conn->state = SCTP_STATE_COOKIE_WAIT;
+
+  /* Measure RTT with this */
+  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
 }
 
 /**
@@ -1156,16 +1137,49 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
 
   sctp_push_hdr_i (sctp_conn, idx, b, SCTP_STATE_ESTABLISHED);
 
-  if (sctp_conn->sub_conn[idx].RTO_pending == 0)
-    {
-      sctp_conn->sub_conn[idx].RTO_pending = 1;
-      sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
-    }
-
   sctp_trajectory_add_start (b0, 3);
 
   return 0;
 
+}
+
+always_inline u8
+sctp_validate_output_state_machine (sctp_connection_t * sctp_conn,
+				    u8 chunk_type)
+{
+  u8 result = 0;
+  switch (sctp_conn->state)
+    {
+    case SCTP_STATE_CLOSED:
+      if (chunk_type != INIT && chunk_type != INIT_ACK)
+	result = 1;
+      break;
+    case SCTP_STATE_ESTABLISHED:
+      if (chunk_type != DATA && chunk_type != HEARTBEAT &&
+	  chunk_type != HEARTBEAT_ACK && chunk_type != SACK &&
+	  chunk_type != COOKIE_ACK && chunk_type != SHUTDOWN)
+	result = 1;
+      break;
+    case SCTP_STATE_COOKIE_WAIT:
+      if (chunk_type != COOKIE_ECHO)
+	result = 1;
+      break;
+    case SCTP_STATE_SHUTDOWN_SENT:
+      if (chunk_type != SHUTDOWN_COMPLETE)
+	result = 1;
+      break;
+    case SCTP_STATE_SHUTDOWN_RECEIVED:
+      if (chunk_type != SHUTDOWN_ACK)
+	result = 1;
+      break;
+    }
+  return result;
+}
+
+always_inline u8
+sctp_is_retransmitting (sctp_connection_t * sctp_conn, u8 idx)
+{
+  return sctp_conn->sub_conn[idx].is_retransmitting;
 }
 
 always_inline uword
@@ -1322,93 +1336,49 @@ sctp46_output_inline (vlib_main_t * vm,
 	     sctp_chunk_to_string (chunk_type), full_hdr->hdr.src_port,
 	     full_hdr->hdr.dst_port);
 
-	  if (chunk_type == DATA)
-	    SCTP_ADV_DBG_OUTPUT ("PACKET_LENGTH = %u", packet_length);
-
 	  /* Let's make sure the state-machine does not send anything crazy */
-	  switch (sctp_conn->state)
+#if SCTP_DEBUG_STATE_MACHINE
+	  if (sctp_validate_output_state_machine (sctp_conn, chunk_type) != 0)
 	    {
-	    case SCTP_STATE_CLOSED:
-	      {
-		if (chunk_type != INIT && chunk_type != INIT_ACK)
-		  {
-		    SCTP_DBG_STATE_MACHINE
-		      ("Sending the wrong chunk (%s) based on state-machine status (%s)",
-		       sctp_chunk_to_string (chunk_type),
-		       sctp_state_to_string (sctp_conn->state));
-
-		    error0 = SCTP_ERROR_UNKOWN_CHUNK;
-		    next0 = SCTP_OUTPUT_NEXT_DROP;
-		    goto done;
-		  }
-		break;
-	      }
-	    case SCTP_STATE_ESTABLISHED:
-	      if (chunk_type != DATA && chunk_type != HEARTBEAT &&
-		  chunk_type != HEARTBEAT_ACK && chunk_type != SACK &&
-		  chunk_type != COOKIE_ACK && chunk_type != SHUTDOWN)
-		{
-		  SCTP_DBG_STATE_MACHINE
-		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
-		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (sctp_conn->state));
-
-		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
-		  next0 = SCTP_OUTPUT_NEXT_DROP;
-		  goto done;
-		}
-	      break;
-	    case SCTP_STATE_COOKIE_WAIT:
-	      if (chunk_type != COOKIE_ECHO)
-		{
-		  SCTP_DBG_STATE_MACHINE
-		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
-		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (sctp_conn->state));
-
-		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
-		  next0 = SCTP_OUTPUT_NEXT_DROP;
-		  goto done;
-		}
-	      /* Change state */
-	      sctp_conn->state = SCTP_STATE_COOKIE_ECHOED;
-	      break;
-	    case SCTP_STATE_SHUTDOWN_SENT:
-	      if (chunk_type != SHUTDOWN_COMPLETE)
-		{
-		  SCTP_DBG_STATE_MACHINE
-		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
-		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (sctp_conn->state));
-
-		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
-		  next0 = SCTP_OUTPUT_NEXT_DROP;
-		  goto done;
-		}
-	    case SCTP_STATE_SHUTDOWN_RECEIVED:
-	      if (chunk_type != SHUTDOWN_ACK)
-		{
-		  SCTP_DBG_STATE_MACHINE
-		    ("Sending the wrong chunk (%s) based on state-machine status (%s)",
-		     sctp_chunk_to_string (chunk_type),
-		     sctp_state_to_string (sctp_conn->state));
-
-		  error0 = SCTP_ERROR_UNKOWN_CHUNK;
-		  next0 = SCTP_OUTPUT_NEXT_DROP;
-		  goto done;
-		}
-	    default:
 	      SCTP_DBG_STATE_MACHINE
-		("Sending chunk (%s) based on state-machine status (%s)",
+		("Sending the wrong chunk (%s) based on state-machine status (%s)",
 		 sctp_chunk_to_string (chunk_type),
 		 sctp_state_to_string (sctp_conn->state));
-	      break;
+
+	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      next0 = SCTP_OUTPUT_NEXT_DROP;
+	      goto done;
+	    }
+#endif
+
+	  /* Karn's algorithm: RTT measurements MUST NOT be made using
+	   * packets that were retransmitted
+	   */
+	  if (!sctp_is_retransmitting (sctp_conn, idx))
+	    {
+	      /* Measure RTT with this */
+	      if (chunk_type == DATA
+		  && sctp_conn->sub_conn[idx].RTO_pending == 0)
+		{
+		  sctp_conn->sub_conn[idx].RTO_pending = 1;
+		  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
+		}
+	      else
+		sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
 	    }
 
+	  /* Let's take care of TIMERS */
 	  switch (chunk_type)
 	    {
+	    case COOKIE_ECHO:
+	      {
+		sctp_conn->state = SCTP_STATE_COOKIE_ECHOED;
+		break;
+	      }
 	    case DATA:
 	      {
+		SCTP_ADV_DBG_OUTPUT ("PACKET_LENGTH = %u", packet_length);
+
 		sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
 				   sctp_conn->sub_conn[idx].RTO);
 		break;
@@ -1427,6 +1397,11 @@ sctp46_output_inline (vlib_main_t * vm,
 		sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN,
 				sctp_conn->sub_conn[idx].RTO);
 		sctp_conn->state = SCTP_STATE_SHUTDOWN_ACK_SENT;
+		break;
+	      }
+	    case SHUTDOWN_COMPLETE:
+	      {
+		sctp_conn->state = SCTP_STATE_CLOSED;
 		break;
 	      }
 	    }
