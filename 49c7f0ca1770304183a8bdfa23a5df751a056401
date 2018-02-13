@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f35f551e_f4309730",
+        "filename": "src/vpp-api/vom/acl_ethertype.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-13T11:21:57Z",
+      "side": 1,
+      "message": "why is this empty?",
+      "revId": "49c7f0ca1770304183a8bdfa23a5df751a056401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
