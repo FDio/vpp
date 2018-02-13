@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e0bdaee_a1fb633f",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-13T17:13:22Z",
+      "side": 1,
+      "message": "sure about this?",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 49,
+        "endChar": 3
+      },
+      "revId": "8f58f83236e4e205c2db18c2e57d828279dd13e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
