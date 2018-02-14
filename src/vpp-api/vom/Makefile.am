@@ -33,8 +33,9 @@ libvom_la_LIBADD = 					\
 	$(BOOST_ASIO_LIB) 				\
 	-lm -lrt
 
-libvom_la_SOURCES = 			\
-	types.cpp			\
+ACL_SOURCES =
+if ENABLE_ACL_PLUGIN
+ACL_SOURCES += 				\
 	acl_binding_cmds.cpp		\
 	acl_binding.cpp			\
 	acl_ethertype_cmds.cpp		\
@@ -43,7 +44,36 @@ libvom_la_SOURCES = 			\
 	acl_l3_rule.cpp			\
 	acl_list_cmds.cpp		\
 	acl_list.cpp			\
-	acl_types.cpp			\
+	acl_types.cpp
+endif
+
+NAT_SOURCES =
+if ENABLE_NAT_PLUGIN
+NAT_SOURCES += 				\
+	nat_static.cpp			\
+	nat_static_cmds.cpp		\
+	nat_binding.cpp			\
+	nat_binding_cmds.cpp
+endif
+
+L2E_SOURCES =
+if ENABLE_L2E_PLUGIN
+L2E_SOURCES +=				\
+	l2_emulation_cmds.cpp		\
+	l2_emulation.cpp
+endif
+
+GBP_SOURCES =
+if ENABLE_GBP_PLUGIN
+GBP_SOURCES += 				\
+	gbp_endpoint_cmds.cpp		\
+	gbp_endpoint.cpp		\
+	gbp_contract_cmds.cpp		\
+	gbp_contract.cpp
+endif
+
+libvom_la_SOURCES = 			\
+	types.cpp			\
 	arp_proxy_binding_cmds.cpp 	\
 	arp_proxy_binding.cpp		\
 	arp_proxy_config_cmds.cpp	\
@@ -59,10 +89,6 @@ libvom_la_SOURCES = 			\
 	connection.cpp			\
 	dhcp_config_cmds.cpp		\
 	dhcp_config.cpp			\
-	gbp_endpoint_cmds.cpp		\
-	gbp_endpoint.cpp		\
-	gbp_contract_cmds.cpp		\
-	gbp_contract.cpp		\
 	hw_cmds.cpp			\
 	hw.cpp				\
 	inspect.cpp			\
@@ -77,8 +103,6 @@ libvom_la_SOURCES = 			\
 	ip_unnumbered.cpp		\
 	l2_binding_cmds.cpp		\
 	l2_binding.cpp			\
-	l2_emulation_cmds.cpp		\
-	l2_emulation.cpp		\
 	l3_binding_cmds.cpp		\
 	l3_binding.cpp			\
 	lldp_binding_cmds.cpp		\
@@ -86,10 +110,6 @@ libvom_la_SOURCES = 			\
 	lldp_global_cmds.cpp		\
 	lldp_global.cpp			\
 	logger.cpp			\
-	nat_static.cpp			\
-	nat_static_cmds.cpp		\
-	nat_binding.cpp			\
-	nat_binding_cmds.cpp		\
 	neighbour.cpp			\
 	neighbour_cmds.cpp		\
 	object_base.cpp			\
@@ -106,17 +126,47 @@ libvom_la_SOURCES = 			\
 	tap_interface.cpp		\
 	tap_interface_cmds.cpp		\
 	vxlan_tunnel_cmds.cpp 		\
-	vxlan_tunnel.cpp
+	vxlan_tunnel.cpp		\
+	$(ACL_SOURCES) 			\
+	$(NAT_SOURCES) 			\
+	$(L2E_SOURCES) 			\
+	$(GBP_SOURCES)
+
 
 vomincludedir = $(includedir)/vom
 
-vominclude_HEADERS =			\
+ACL_INCLUDES =
+if ENABLE_ACL_PLUGIN
+ACL_INCLUDES += 				\
 	acl_binding.hpp			\
 	acl_ethertype.hpp		\
 	acl_l2_rule.hpp			\
 	acl_l3_rule.hpp			\
 	acl_list.hpp			\
-	acl_types.hpp			\
+	acl_types.hpp
+endif
+
+NAT_INCLUDES =
+if ENABLE_NAT_PLUGIN
+NAT_INCLUDES += 				\
+	nat_static.hpp			\
+	nat_binding.hpp
+endif
+
+L2E_INCLUDES =
+if ENABLE_L2E_PLUGIN
+L2E_INCLUDES +=				\
+	l2_emulation.hpp
+endif
+
+GBP_INCLUDES =
+if ENABLE_GBP_PLUGIN
+GBP_INCLUDES += 				\
+	gbp_endpoint.hpp		\
+	gbp_contract.hpp
+endif
+
+vominclude_INCLUDES =			\
 	arp_proxy_binding.hpp		\
 	arp_proxy_config.hpp		\
 	bridge_domain.hpp		\
@@ -130,8 +180,6 @@ vominclude_HEADERS =			\
 	dump_cmd.hpp			\
 	enum_base.hpp			\
 	event_cmd.hpp			\
-	gbp_endpoint.hpp		\
-	gbp_contract.hpp		\
 	hw.hpp				\
 	inspect.hpp			\
 	interface.hpp			\
@@ -140,13 +188,10 @@ vominclude_HEADERS =			\
 	interface_span.hpp		\
 	ip_unnumbered.hpp		\
 	l2_binding.hpp			\
-	l2_emulation.hpp		\
 	l3_binding.hpp			\
 	lldp_binding.hpp		\
 	lldp_global.hpp			\
 	logger.hpp			\
-	nat_static.hpp			\
-	nat_binding.hpp			\
 	neighbour.hpp			\
 	object_base.hpp			\
 	om.hpp				\
@@ -160,6 +205,10 @@ vominclude_HEADERS =			\
 	sub_interface.hpp		\
 	tap_interface.hpp		\
 	types.hpp			\
-	vxlan_tunnel.hpp
+	vxlan_tunnel.hpp		\
+	$(ACL_INCLUDES) 		\
+	$(NAT_INCLUDES) 		\
+	$(L2E_INCLUDES) 		\
+	$(GBP_INCLUDES)
 
 # vi:syntax=automake

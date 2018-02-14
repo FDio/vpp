@@ -139,14 +139,6 @@ nat_static::dump(std::ostream& os)
   m_db.dump(os);
 }
 
-std::ostream&
-operator<<(std::ostream& os, const nat_static::key_t& key)
-{
-  os << "[" << key.first << ", " << key.second << "]";
-
-  return (os);
-}
-
 nat_static::event_handler::event_handler()
 {
   OM::register_listener(this);
