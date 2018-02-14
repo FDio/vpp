@@ -163,7 +163,8 @@ typedef enum
   COOKIE_ACK,
   ECNE,
   CWR,
-  SHUTDOWN_COMPLETE
+  SHUTDOWN_COMPLETE,
+  UNKNOWN
 } sctp_chunk_type;
 
 /*

@@ -1024,23 +1024,17 @@ sctp_prepare_shutdown_complete_chunk (sctp_connection_t * sctp_conn,
 }
 
 void
-sctp_send_shutdown_complete (sctp_connection_t * sctp_conn)
+sctp_send_shutdown_complete (sctp_connection_t * sctp_conn,
+			     vlib_buffer_t * b0)
 {
-  vlib_buffer_t *b;
-  u32 bi;
-  sctp_main_t *tm = vnet_get_sctp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
+  if (sctp_check_outstanding_data_chunks (sctp_conn) > 0)
     return;
 
-  b = vlib_get_buffer (vm, bi);
-  sctp_init_buffer (vm, b);
-  sctp_prepare_shutdown_complete_chunk (sctp_conn, b);
+  sctp_reuse_buffer (vm, b0);
 
-  u8 idx = sctp_pick_conn_idx_on_chunk (SHUTDOWN_COMPLETE);
-  sctp_enqueue_to_output (vm, b, bi,
-			  sctp_conn->sub_conn[idx].connection.is_ip4);
+  sctp_prepare_shutdown_complete_chunk (sctp_conn, b0);
 
   sctp_conn->state = SCTP_STATE_CLOSED;
 }
@@ -1279,6 +1273,18 @@ sctp46_output_inline (vlib_main_t * vm,
 #endif
 	    }
 
+	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
+	  u8 chunk_type = vnet_sctp_get_chunk_type (&full_hdr->common_hdr);
+	  if (chunk_type >= UNKNOWN)
+	    {
+	      clib_warning
+		("Trying to send an unrecognized chunk... something is really bad.");
+	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      next0 = SCTP_OUTPUT_NEXT_DROP;
+	      goto done;
+	    }
+
+#if SCTP_DEBUG_STATE_MACHINE
 	  u8 is_valid =
 	    (sctp_conn->sub_conn[idx].connection.lcl_port ==
 	     sctp_hdr->src_port
@@ -1289,9 +1295,6 @@ sctp46_output_inline (vlib_main_t * vm,
 		|| sctp_conn->sub_conn[idx].connection.rmt_port ==
 		sctp_hdr->src_port);
 
-	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
-	  u8 chunk_type = vnet_sctp_get_chunk_type (&full_hdr->common_hdr);
-
 	  if (!is_valid)
 	    {
 	      SCTP_DBG_STATE_MACHINE ("BUFFER IS INCORRECT: conn_index = %u, "
@@ -1299,8 +1302,8 @@ sctp46_output_inline (vlib_main_t * vm,
 				      "chunk_type = %u [%s], "
 				      "connection.lcl_port = %u, sctp_hdr->src_port = %u, "
 				      "connection.rmt_port = %u, sctp_hdr->dst_port = %u",
-				      sctp_conn->sub_conn
-				      [idx].connection.c_index, packet_length,
+				      sctp_conn->sub_conn[idx].
+				      connection.c_index, packet_length,
 				      chunk_type,
 				      sctp_chunk_to_string (chunk_type),
 				      sctp_conn->sub_conn[idx].
@@ -1313,7 +1316,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 	    }
-
+#endif
 	  SCTP_DBG_STATE_MACHINE
 	    ("CONN_INDEX = %u, CURR_CONN_STATE = %u (%s), "
 	     "CHUNK_TYPE = %s, " "SRC_PORT = %u, DST_PORT = %u",
