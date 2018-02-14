@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "98346c2a_f18d121f",
+        "filename": "src/vnet/gre/gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-14T14:47:45Z",
+      "side": 1,
+      "message": "session_id is a u16. if it\u0027s shift 2 bits, do you lose the 2 most significant?",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f882c7e_6d712437",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-14T14:47:45Z",
+      "side": 1,
+      "message": "\u003e not \u003e\u003d",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "36654c00_34a4b13f",
+        "filename": "src/vnet/gre/packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-14T14:47:45Z",
+      "side": 1,
+      "message": "reindent",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39b7c78e_a540fcd8",
+        "filename": "test/test_gre.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 726,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-14T14:47:45Z",
+      "side": 1,
+      "message": "i\u0027d prefer a python-esque enum here (e.g. see DpoProto)",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
