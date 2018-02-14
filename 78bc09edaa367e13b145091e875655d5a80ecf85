@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fffd907f_f53377f1",
+        "filename": "src/vnet/gre/gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-14T15:43:12Z",
+      "side": 1,
+      "message": "session_ID is only 10 bits stored in u16. Both CLI/API do check range to make sure it is \u003c 1024. Thus we won\u0027t loose anything here.",
+      "parentUuid": "98346c2a_f18d121f",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8f882c7e_6d712437",
         "filename": "src/vnet/gre/node.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2018-02-14T14:47:45Z",
       "side": 1,
       "message": "\u003e not \u003e\u003d",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e654c61f_b81a9b1f",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-14T15:43:12Z",
+      "side": 1,
+      "message": "Will fix.",
+      "parentUuid": "8f882c7e_6d712437",
       "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f735a0b4_bb7d474f",
+        "filename": "src/vnet/gre/packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-14T15:43:12Z",
+      "side": 1,
+      "message": "will fix.",
+      "parentUuid": "36654c00_34a4b13f",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "39b7c78e_a540fcd8",
         "filename": "test/test_gre.py",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2018-02-14T14:47:45Z",
       "side": 1,
       "message": "i\u0027d prefer a python-esque enum here (e.g. see DpoProto)",
+      "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e166bb4_608417f7",
+        "filename": "test/test_gre.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 726,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-02-14T15:43:12Z",
+      "side": 1,
+      "message": "will do.",
+      "parentUuid": "39b7c78e_a540fcd8",
       "revId": "78bc09edaa367e13b145091e875655d5a80ecf85",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
