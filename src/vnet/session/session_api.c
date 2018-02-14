@@ -200,12 +200,14 @@ send_session_accept_callback (stream_session_t * s)
 	  listener = listen_session_get (ls->listener_session_type,
 					 ls->listener_index);
 	  mp->listener_handle = listen_session_get_handle (listener);
+	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
 	}
       else
 	{
 	  ll = application_get_local_listen_session (server,
 						     ls->listener_index);
 	  mp->listener_handle = application_local_session_handle (ll);
+	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
 	}
       mp->handle = application_local_session_handle (ls);
       mp->port = ls->port;

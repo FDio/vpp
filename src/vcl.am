@@ -43,7 +43,7 @@ nobase_include_HEADERS +=			\
   vcl/ldp_glibc_socket.h			\
   vcl/ldp.h
 
-noinst_PROGRAMS +=				\
+bin_PROGRAMS +=				\
 	vcl_test_server				\
 	vcl_test_client				\
 	sock_test_server			\

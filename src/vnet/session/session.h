@@ -25,6 +25,7 @@
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
 #define SESSION_PROXY_LISTENER_INDEX ((u32)~0 - 1)
+#define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
 
 /* TODO decide how much since we have pre-data as well */
 #define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
@@ -299,7 +300,7 @@ session_get_from_handle_if_valid (session_handle_t handle)
 always_inline u8
 session_handle_is_local (session_handle_t handle)
 {
-  if ((handle >> 32) == SESSION_LOCAL_TABLE_PREFIX)
+  if ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX)
     return 1;
   return 0;
 }
@@ -308,6 +309,12 @@ always_inline transport_proto_t
 session_type_transport_proto (session_type_t st)
 {
   return (st >> 1);
+}
+
+always_inline u8
+session_type_is_ip4 (session_type_t st)
+{
+  return (st & 1);
 }
 
 always_inline transport_proto_t
