@@ -209,7 +209,7 @@ local_session_parse_handle (session_handle_t handle, u32 * server_index,
 			    u32 * session_index)
 {
   u32 bottom;
-  ASSERT ((handle >> 32) == SESSION_LOCAL_TABLE_PREFIX);
+  ASSERT ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX);
   bottom = (handle & 0xFFFFFFFF);
   local_session_parse_id (bottom, server_index, session_index);
 }
@@ -217,13 +217,24 @@ local_session_parse_handle (session_handle_t handle, u32 * server_index,
 always_inline session_handle_t
 application_local_session_handle (local_session_t * ls)
 {
-  return ((u64) SESSION_LOCAL_TABLE_PREFIX << 32) | local_session_id (ls);
+  return ((u64) SESSION_LOCAL_HANDLE_PREFIX << 32)
+    | (u64) local_session_id (ls);
 }
 
 always_inline local_session_t *
 application_get_local_listen_session (application_t * app, u32 session_index)
 {
   return pool_elt_at_index (app->local_listen_sessions, session_index);
+}
+
+always_inline local_session_t *
+application_get_local_listener_w_handle (session_handle_t handle)
+{
+  u32 server_index, session_index;
+  application_t *app;
+  local_session_parse_handle (handle, &server_index, &session_index);
+  app = application_get (server_index);
+  return application_get_local_listen_session (app, session_index);
 }
 
 always_inline u8
