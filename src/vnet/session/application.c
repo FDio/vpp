@@ -831,6 +831,7 @@ application_start_local_listen (application_t * server,
   /* Store the original session type for the unbind */
   ll->listener_session_type =
     session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+  ll->transport_listener_index = ~0;
 
   *handle = application_local_session_handle (ll);
   session_lookup_add_session_endpoint (table_index, sep, *handle);

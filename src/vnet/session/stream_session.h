@@ -119,6 +119,7 @@ typedef struct local_session_
 
   /** Has transport embedded when listener not purely local */
   session_type_t listener_session_type;
+  u32 transport_listener_index;
 
   /**
    * Client data

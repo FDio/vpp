@@ -91,10 +91,10 @@ session_endpoint_update_for_app (session_endpoint_t * sep,
 static int
 vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 {
+  u64 lh, ll_handle = SESSION_INVALID_HANDLE;
   application_t *app;
   u32 table_index;
-  u64 listener;
-  int rv, have_local = 0;
+  int rv;
 
   app = application_get_if_valid (app_index);
   if (!app)
@@ -109,8 +109,8 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 
   table_index = application_session_table (app,
 					   session_endpoint_fib_proto (sep));
-  listener = session_lookup_endpoint_listener (table_index, sep, 1);
-  if (listener != SESSION_INVALID_HANDLE)
+  lh = session_lookup_endpoint_listener (table_index, sep, 1);
+  if (lh != SESSION_INVALID_HANDLE)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
   /*
@@ -121,11 +121,11 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
     {
       if ((rv = application_start_local_listen (app, sep, handle)))
 	return rv;
-      have_local = 1;
+      ll_handle = *handle;
     }
 
   if (!application_has_global_scope (app))
-    return (have_local - 1);
+    return (ll_handle == SESSION_INVALID_HANDLE ? -1 : 0);
 
   /*
    * Add session endpoint to global session table
@@ -133,8 +133,22 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 
   /* Setup listen path down to transport */
   rv = application_start_listen (app, sep, handle);
-  if (rv && have_local)
+  if (rv && ll_handle != SESSION_INVALID_HANDLE)
     session_lookup_del_session_endpoint (table_index, sep);
+
+  /*
+   * Store in local table listener the index of the transport layer
+   * listener. We'll need local listeners are hit and we need to
+   * return global handle
+   */
+  if (ll_handle != SESSION_INVALID_HANDLE)
+    {
+      local_session_t *ll;
+      stream_session_t *tl;
+      ll = application_get_local_listener_w_handle (ll_handle);
+      tl = listen_session_get_from_handle (*handle);
+      ll->transport_listener_index = tl->session_index;
+    }
   return rv;
 }
 
@@ -192,6 +206,9 @@ vnet_connect_i (u32 client_index, u32 api_context, session_endpoint_t * sep,
       if (lh == SESSION_DROP_HANDLE)
 	return VNET_API_ERROR_APP_CONNECT_FILTERED;
 
+      if (lh == SESSION_INVALID_HANDLE)
+	goto global_scope;
+
       local_session_parse_handle (lh, &server_index, &li);
 
       /*
@@ -199,9 +216,9 @@ vnet_connect_i (u32 client_index, u32 api_context, session_endpoint_t * sep,
        * can happen if client is a generic proxy. Route connect through
        * global table instead.
        */
-      if (server_index != client_index
-	  && (server = application_get_if_valid (server_index)))
+      if (server_index != client_index)
 	{
+	  server = application_get (server_index);
 	  ll = application_get_local_listen_session (server, li);
 	  return application_local_session_connect (table_index, client,
 						    server, ll, api_context);
@@ -212,6 +229,8 @@ vnet_connect_i (u32 client_index, u32 api_context, session_endpoint_t * sep,
    * If nothing found, check the global scope for locally attached
    * destinations. Make sure first that we're allowed to.
    */
+
+global_scope:
   if (session_endpoint_is_local (sep))
     return VNET_API_ERROR_SESSION_CONNECT;
 
