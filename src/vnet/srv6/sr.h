@@ -54,6 +54,30 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+typedef struct
+{
+  u8 ver_flags;
+  u8 type;
+  u16 length;     /* length in octets of the payload */
+  u32 teid;
+  u16 sequence;
+  u8 pdu_number;
+  u8 next_ext_type;
+} gtpu_header_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct
+{
+  ip4_header_t ip4;            /* 20 bytes */
+  udp_header_t udp;            /* 8 bytes */
+  gtpu_header_t gtpu;        /* 8 bytes */
+}) ip4_gtpu_header_t;
+/* *INDENT-ON* */
+#define GTPU_V1_VER   (1<<5)
+
+#define GTPU_PT_GTP    (1<<4)
+#define GTPU_TYPE_GTPU  255
+
 /**
  * @brief SR Segment List (SID list)
  */
@@ -140,6 +164,8 @@ typedef struct
   u8 *def_str;								/**< Behavior definition (i.e. Endpoint with cross-connect) */
 
   u8 *params_str;							/**< Behavior parameters (i.e. <oif> <IP46next_hop>) */
+
+  u8 prefix_length;
 
   dpo_type_t dpo;							/**< DPO type registration */
 
@@ -250,7 +276,7 @@ extern void sr_dpo_unlock (dpo_id_t * dpo);
 extern int
 sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, dpo_type_t * dpo,
+			       u8 * params_str, u8 prefix_length, dpo_type_t * dpo,
 			       format_function_t * ls_format,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,

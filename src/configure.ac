@@ -228,6 +228,7 @@ PLUGIN_ENABLED(srv6ad)
 PLUGIN_ENABLED(srv6am)
 PLUGIN_ENABLED(srv6as)
 PLUGIN_ENABLED(stn)
+PLUGIN_ENABLED(srv6togtp)
 
 ###############################################################################
 # Dependency checks

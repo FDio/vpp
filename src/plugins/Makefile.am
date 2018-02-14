@@ -111,6 +111,10 @@ if ENABLE_GBP_PLUGIN
 include gbp.am
 endif
 
+if ENABLE_SRV6TOGTP_PLUGIN
+include srv6_gtp.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
