@@ -27,7 +27,8 @@ static char *sctp_error_strings[] = {
 
 /* All SCTP nodes have the same outgoing arcs */
 #define foreach_sctp_state_next                  \
-  _ (DROP, "error-drop")                        \
+  _ (DROP4, "ip4-drop")                         \
+  _ (DROP6, "ip6-drop")                         \
   _ (SCTP4_OUTPUT, "sctp4-output")                \
   _ (SCTP6_OUTPUT, "sctp6-output")
 
@@ -233,6 +234,8 @@ typedef struct
 #define sctp_next_output(is_ip4) (is_ip4 ? SCTP_NEXT_SCTP4_OUTPUT          \
                                         : SCTP_NEXT_SCTP6_OUTPUT)
 
+#define sctp_next_drop(is_ip4) (is_ip4 ? SCTP_NEXT_DROP4                  \
+                                      : SCTP_NEXT_DROP6)
 
 void
 sctp_set_rx_trace_data (sctp_rx_trace_t * rx_trace,
@@ -744,7 +747,7 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
     }
   sctp_conn->last_rcvd_tsn = tsn;
 
-  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
+  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
@@ -816,7 +819,7 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_COOKIE);
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
-  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
+  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
@@ -977,7 +980,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	    default:
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
 
@@ -985,7 +988,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      clib_warning ("error while parsing chunk");
 	      sctp_connection_cleanup (sctp_conn);
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
 
@@ -1152,7 +1155,7 @@ sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
    */
   sctp_timer_reset (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
 		    SCTP_TIMER_T2_SHUTDOWN);
-  sctp_send_shutdown_complete (sctp_conn);
+  sctp_send_shutdown_complete (sctp_conn, b0);
 
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
@@ -1189,7 +1192,7 @@ sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
   stream_session_disconnect_notify (&sctp_conn->sub_conn
 				    [MAIN_SCTP_SUB_CONN_IDX].connection);
 
-  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
+  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1306,7 +1309,7 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	       */
 	    default:
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
 
@@ -1314,7 +1317,7 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	    {
 	      clib_warning ("error while parsing chunk");
 	      sctp_connection_cleanup (sctp_conn);
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
 
@@ -1430,7 +1433,7 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
 
   sctp_conn->sub_conn[idx].RTO_pending = 0;
 
-  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
+  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1463,7 +1466,7 @@ sctp_handle_heartbeat_ack (sctp_hb_ack_chunk_t * sctp_hb_ack_chunk,
   sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		     sctp_conn->sub_conn[idx].RTO);
 
-  *next0 = sctp_next_output (sctp_conn->sub_conn[idx].connection.is_ip4);
+  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   return SCTP_ERROR_NONE;
 }
@@ -1590,7 +1593,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		 connection.c_index, sctp_chunk_to_string (chunk_type));
 
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
 
@@ -1698,7 +1701,8 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip4_hdr = 0;
 	  ip6_header_t *ip6_hdr = 0;
 	  sctp_connection_t *sctp_conn;
-	  u16 error0 = SCTP_ERROR_NONE, next0 = SCTP_ESTABLISHED_PHASE_N_NEXT;
+	  u16 error0 = SCTP_ERROR_ENQUEUED, next0 =
+	    SCTP_ESTABLISHED_PHASE_N_NEXT;
 	  u8 idx;
 
 	  bi0 = from[0];
@@ -1806,7 +1810,7 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	    default:
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
-	      next0 = SCTP_NEXT_DROP;
+	      next0 = sctp_next_drop (is_ip4);
 	      goto done;
 	    }
 
@@ -2067,7 +2071,16 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sctp_conn = sctp_get_connection_from_transport (trans_conn);
 	  vnet_sctp_common_hdr_params_net_to_host (sctp_chunk_hdr);
 
-	  u8 type = vnet_sctp_get_chunk_type (sctp_chunk_hdr);
+	  u8 chunk_type = vnet_sctp_get_chunk_type (sctp_chunk_hdr);
+	  if (chunk_type >= UNKNOWN)
+	    {
+	      clib_warning
+		("Received an unrecognized chunk... something is really bad.");
+	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      next0 = SCTP_INPUT_NEXT_DROP;
+	      goto done;
+	    }
+
 #if SCTP_DEBUG_STATE_MACHINE
 	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
 #endif
@@ -2082,8 +2095,8 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vnet_buffer (b0)->sctp.data_offset = n_advance_bytes0;
 	      vnet_buffer (b0)->sctp.data_len = n_data_bytes0;
 
-	      next0 = tm->dispatch_table[sctp_conn->state][type].next;
-	      error0 = tm->dispatch_table[sctp_conn->state][type].error;
+	      next0 = tm->dispatch_table[sctp_conn->state][chunk_type].next;
+	      error0 = tm->dispatch_table[sctp_conn->state][chunk_type].error;
 
 	      SCTP_DBG_STATE_MACHINE ("CONNECTION_INDEX = %u: "
 				      "CURRENT_CONNECTION_STATE = %s,"
@@ -2095,7 +2108,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 				      sctp_chunk_to_string (type),
 				      phase_to_string (next0));
 
-	      if (type == DATA)
+	      if (chunk_type == DATA)
 		SCTP_ADV_DBG ("n_advance_bytes0 = %u, n_data_bytes0 = %u",
 			      n_advance_bytes0, n_data_bytes0);
 
