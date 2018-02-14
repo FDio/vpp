@@ -1013,6 +1013,13 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     ADD_EXPECT(ACL::list_cmds::l3_update_cmd(hw_acl, acl_name, rules));
     TRY_CHECK_RC(OM::write(fyodor, acl1));
 
+    ACL::l3_rule r3(30, ACL::action_t::PERMIT, route::prefix_t::ZERO, route::prefix_t::ZERO);
+    ACL::l3_list acl2(acl_name);
+    acl2.insert(r3);
+    ACL::l3_list::rules_t rules2 = {r3};
+    ADD_EXPECT(ACL::list_cmds::l3_update_cmd(hw_acl, acl_name, rules2));
+    TRY_CHECK_RC(OM::write(fyodor, acl2));
+
     ACL::l3_binding *l3b = new ACL::l3_binding(direction_t::INPUT, itf1, acl1);
     HW::item<bool> hw_binding(true, rc_t::OK);
     ADD_EXPECT(ACL::binding_cmds::l3_bind_cmd(hw_binding, direction_t::INPUT,
