@@ -251,7 +251,8 @@ void sctp_send_init (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn,
 			     vlib_buffer_t * b);
-void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn);
+void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn,
+				  vlib_buffer_t * b0);
 void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
 				 u8 is_ip4);
@@ -718,6 +719,9 @@ sctp_pick_conn_idx_on_chunk (sctp_chunk_type chunk_type)
     case CWR:
     case SHUTDOWN_COMPLETE:
       idx = MAIN_SCTP_SUB_CONN_IDX;
+      break;
+    default:
+      idx = 0;
     }
   return idx;
 }
