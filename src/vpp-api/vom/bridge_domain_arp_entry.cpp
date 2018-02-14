@@ -174,6 +174,14 @@ bridge_domain_arp_entry::event_handler::show(std::ostream& os)
 {
   m_db.dump(os);
 }
+
+std::ostream&
+operator<<(std::ostream& os, const bridge_domain_arp_entry::key_t& key)
+{
+  os << "[" << key.first << ", " << key.second << "]";
+
+  return (os);
+}
 }
 /*
  * fd.io coding-style-patch-verification: ON
