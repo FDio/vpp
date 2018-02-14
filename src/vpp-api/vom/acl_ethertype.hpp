@@ -76,12 +76,12 @@ private:
   /**
    * ethertype for this rule
    */
-  const ethertype_t& m_eth;
+  const ethertype_t m_eth;
 
   /**
    * direction in which ethertype will be applied w.r.t. intf
    */
-  const direction_t& m_dir;
+  const direction_t m_dir;
 };
 
 class acl_ethertype : public object_base
@@ -102,7 +102,7 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  acl_ethertype(const interface& itf, ethertype_rules_t le);
+  acl_ethertype(const interface& itf, const ethertype_rules_t& le);
 
   /**
    * Copy Constructor

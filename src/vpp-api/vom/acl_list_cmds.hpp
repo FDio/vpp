@@ -59,7 +59,11 @@ public:
   std::string to_string() const
   {
     std::ostringstream s;
-    s << "ACL-list-update: " << this->item().to_string();
+    s << "ACL-list-update:[ " << this->item().to_string() << " rule-list:[";
+    for (auto rule : m_rules) {
+      s << " " << rule.to_string();
+    }
+    s << "]]";
 
     return (s.str());
   }

@@ -70,7 +70,7 @@ singular_db<interface::key_t, acl_ethertype> acl_ethertype::m_db;
 acl_ethertype::event_handler acl_ethertype::m_evh;
 
 acl_ethertype::acl_ethertype(const interface& itf,
-                             acl_ethertype::ethertype_rules_t le)
+                             const acl_ethertype::ethertype_rules_t& le)
   : m_itf(itf.singular())
   , m_le(le)
   , m_binding(true)
@@ -146,15 +146,17 @@ acl_ethertype::to_string() const
 }
 
 void
-acl_ethertype::update(const acl_ethertype& old)
+acl_ethertype::update(const acl_ethertype& desired)
 {
   /*
    * always update the instance with the latest rules
    */
-  if (!m_binding || old.m_le != m_le) {
+  if (!m_binding || desired.m_le != m_le) {
     HW::enqueue(
       new acl_ethertype_cmds::bind_cmd(m_binding, m_itf->handle(), m_le));
   }
+
+  m_le = desired.m_le;
 }
 
 std::shared_ptr<acl_ethertype>
