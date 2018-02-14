@@ -131,6 +131,10 @@ if ENABLE_TLSOPENSSL_PLUGIN
 include tlsopenssl.am
 endif
 
+if ENABLE_SRV6TOGTP_PLUGIN
+include srv6_gtp.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
