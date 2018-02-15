@@ -166,7 +166,7 @@ GBP_INCLUDES += 				\
 	gbp_contract.hpp
 endif
 
-vominclude_INCLUDES =			\
+vominclude_HEADERS =			\
 	arp_proxy_binding.hpp		\
 	arp_proxy_config.hpp		\
 	bridge_domain.hpp		\
