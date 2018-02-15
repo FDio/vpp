@@ -533,7 +533,8 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   sctp_prepare_cookie_echo_chunk (sctp_conn, b0, &state_cookie);
 
   /* Start the T1_COOKIE timer */
-  sctp_timer_set (sctp_conn, sctp_pick_conn_idx_on_chunk (COOKIE_ECHO),
+  sctp_timer_set (sctp_conn,
+		  sctp_pick_conn_idx_on_chunk (sctp_conn, COOKIE_ECHO),
 		  SCTP_TIMER_T1_COOKIE, sctp_conn->sub_conn[idx].RTO);
 
   return SCTP_ERROR_NONE;
@@ -648,7 +649,7 @@ sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 }
 
 always_inline u8
-sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 is_gapping)
+sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
 {
   if (is_gapping != 0)
     {
@@ -679,7 +680,7 @@ sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
     {
       SCTP_CONN_TRACKING_DBG
 	("GAPPING: CONN_INDEX = %u, sctp_conn->next_tsn_expected = %u, tsn = %u, diff = %u",
-	 sctp_conn->sub_conn[idx].connection.c_index,
+	 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index,
 	 sctp_conn->next_tsn_expected, tsn,
 	 sctp_conn->next_tsn_expected - tsn);
 
@@ -723,7 +724,11 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
     {
       /* In order data, enqueue. Fifo figures out by itself if any out-of-order
        * segments can be enqueued after fifo tail offset changes. */
-      error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
+      if (PREDICT_FALSE (is_gapping == 1))
+	error =
+	  sctp_session_enqueue_data_ooo (sctp_conn, b, n_data_bytes, idx);
+      else
+	error = sctp_session_enqueue_data (sctp_conn, b, n_data_bytes, idx);
     }
   else if (bbit == 1 && ebit == 0)	/* First piece of a fragmented user message */
     {
@@ -751,8 +756,10 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
-  if (!sctp_is_sack_delayable (sctp_conn, is_gapping))
-    sctp_prepare_sack_chunk (sctp_conn, b);
+  if (!sctp_is_sack_delayable (sctp_conn, idx, is_gapping))
+    sctp_prepare_sack_chunk (sctp_conn, idx, b);
+
+  sctp_conn->sub_conn[idx].enqueue_state = error;
 
   return error;
 }
@@ -791,6 +798,7 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
+  sctp_conn->sub_conn[idx].state = SCTP_SUBCONN_STATE_UP;
   *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
@@ -819,6 +827,8 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_COOKIE);
   /* Change state */
   sctp_conn->state = SCTP_STATE_ESTABLISHED;
+  sctp_conn->sub_conn[idx].state = SCTP_SUBCONN_STATE_UP;
+
   *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
@@ -1427,6 +1437,8 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
       return SCTP_ERROR_INVALID_TAG;
     }
 
+  sctp_conn->sub_conn[idx].last_seen = sctp_time_now ();
+
   sctp_calculate_rto (sctp_conn, idx);
 
   sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
@@ -1462,6 +1474,8 @@ sctp_handle_heartbeat_ack (sctp_hb_ack_chunk_t * sctp_hb_ack_chunk,
 			   sctp_connection_t * sctp_conn, u8 idx,
 			   vlib_buffer_t * b0, u16 * next0)
 {
+  sctp_conn->sub_conn[idx].last_seen = sctp_time_now ();
+
   sctp_conn->sub_conn[idx].unacknowledged_hb -= 1;
 
   sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
@@ -1729,38 +1743,18 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ip4_hdr = vlib_buffer_get_current (b0);
 	      sctp_hdr = ip4_next_header (ip4_hdr);
+	      idx = sctp_v4_return_sub_connection_idx (sctp_conn, ip4_hdr);
 	    }
 	  else
 	    {
 	      ip6_hdr = vlib_buffer_get_current (b0);
 	      sctp_hdr = ip6_next_header (ip6_hdr);
+	      idx = sctp_v6_return_sub_connection_idx (sctp_conn, ip6_hdr);
 	    }
-
-	  idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
-
-	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
-
-	  transport_connection_t *trans_conn =
-	    &sctp_conn->sub_conn[idx].connection;
-
-	  trans_conn->lcl_port = sctp_hdr->dst_port;
-	  trans_conn->rmt_port = sctp_hdr->src_port;
-	  trans_conn->is_ip4 = is_ip4;
 
 	  sctp_conn->sub_conn[idx].parent = sctp_conn;
 
-	  if (is_ip4)
-	    {
-	      trans_conn->lcl_ip.ip4.as_u32 = ip4_hdr->dst_address.as_u32;
-	      trans_conn->rmt_ip.ip4.as_u32 = ip4_hdr->src_address.as_u32;
-	    }
-	  else
-	    {
-	      clib_memcpy (&trans_conn->lcl_ip.ip6, &ip6_hdr->dst_address,
-			   sizeof (ip6_address_t));
-	      clib_memcpy (&trans_conn->rmt_ip.ip6, &ip6_hdr->src_address,
-			   sizeof (ip6_address_t));
-	    }
+	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
 
 	  sctp_chunk_hdr =
 	    (sctp_chunks_common_hdr_t *) (&full_hdr->common_hdr);
@@ -2106,7 +2100,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 				      sctp_conn->sub_conn
 				      [idx].connection.c_index,
 				      sctp_state_to_string (sctp_conn->state),
-				      sctp_chunk_to_string (type),
+				      sctp_chunk_to_string (chunk_type),
 				      phase_to_string (next0));
 
 	      if (chunk_type == DATA)
