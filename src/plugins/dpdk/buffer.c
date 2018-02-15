@@ -471,11 +471,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   i32 ret;
 
   obj_size = rte_mempool_calc_obj_size (elt_size, 0, 0);
-#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
-  size = rte_mempool_xmem_size (num_elts, obj_size, 21);
-#else
   size = rte_mempool_xmem_size (num_elts, obj_size, 21, 0);
-#endif
 
   error =
     vlib_physmem_region_alloc (vm, (i8 *) pool_name, size, numa, 0, pri);
@@ -492,15 +488,9 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 
   rte_mempool_set_ops_byname (mp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
 
-#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
-  ret =
-    rte_mempool_populate_phys_tab (mp, pr->mem, pr->page_table, pr->n_pages,
-				   pr->log2_page_size, NULL, NULL);
-#else
   ret =
     rte_mempool_populate_iova_tab (mp, pr->mem, pr->page_table, pr->n_pages,
 				   pr->log2_page_size, NULL, NULL);
-#endif
   if (ret != (i32) mp->size)
     {
       rte_mempool_free (mp);
