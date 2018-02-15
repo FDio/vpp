@@ -383,19 +383,22 @@ gre_interface_tx (vlib_main_t * vm,
 	      adj_index0 = gt0->l2_adj_index;
 	    }
 
-	  if (sw_if_index0 == vnet_buffer (b1)->sw_if_index[VLIB_TX])
+	  if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index1 = sw_if_index0;
-	      gt1 = gt0;
-	      adj_index1 = adj_index0;
-	    }
-	  else if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	      vnet_hw_interface_t *hi1 =
-		vnet_get_sup_hw_interface (vnm, sw_if_index1);
-	      gt1 = &gm->tunnels[hi1->dev_instance];
-	      adj_index1 = gt1->l2_adj_index;
+	      if (sw_if_index0 == vnet_buffer (b1)->sw_if_index[VLIB_TX])
+		{
+		  sw_if_index1 = sw_if_index0;
+		  gt1 = gt0;
+		  adj_index1 = adj_index0;
+		}
+	      else
+		{
+		  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+		  vnet_hw_interface_t *hi1 =
+		    vnet_get_sup_hw_interface (vnm, sw_if_index1);
+		  gt1 = &gm->tunnels[hi1->dev_instance];
+		  adj_index1 = gt1->l2_adj_index;
+		}
 	    }
 
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = adj_index0;

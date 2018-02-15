@@ -69,14 +69,15 @@ vxlan_encap_inline (vlib_main_t * vm,
   vxlan_main_t * vxm = &vxlan_main;
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
-  vlib_combined_counter_main_t * tx_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
+  vlib_combined_counter_main_t * tx_counter = 
+      im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
   u32 pkts_encapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
-  vnet_hw_interface_t * hi0, * hi1;
   vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
+  index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -138,23 +139,38 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
 	    {
 	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	      vnet_hw_interface_t *hi0 = 
+		  vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may be set to drop */
+	      /* Note: change to always set next0 if it may set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
+	      dpoi_idx0 = t0->next_dpo.dpoi_index;
 	    }
-          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index1 != vnet_buffer(b1)->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
-	      hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1); 
-	      t1 = &vxm->tunnels[hi1->dev_instance];
-	      /* Note: change to always set next1 if it may be set to drop */
-	      next1 = t1->next_dpo.dpoi_next_node;
+	      if (sw_if_index0 == vnet_buffer(b1)->sw_if_index[VLIB_TX])
+	        {
+		  sw_if_index1 = sw_if_index0;
+		  t1 = t0;
+		  next1 = next0;
+		  dpoi_idx1 = dpoi_idx0;
+	        }
+	      else
+	        {
+		  sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
+		  vnet_hw_interface_t *hi1 = 
+		      vnet_get_sup_hw_interface (vnm, sw_if_index1);
+		  t1 = &vxm->tunnels[hi1->dev_instance];
+		  /* Note: change to always set next1 if it may set to drop */
+		  next1 = t1->next_dpo.dpoi_next_node;
+		  dpoi_idx1 = t1->next_dpo.dpoi_index;
+	        }
 	    }
-          vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+
+          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
+          vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
           ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
           ASSERT(vec_len(t1->rewrite) == underlay_hdr_len);
@@ -321,7 +337,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
 	    {
 	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	      vnet_hw_interface_t *hi0 = 
+		  vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
