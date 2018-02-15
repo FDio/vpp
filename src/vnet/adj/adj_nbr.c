@@ -968,6 +968,21 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .function = adj_nbr_show,
 };
 
+static ip46_type_t
+adj_proto_to_46 (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (IP46_TYPE_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (IP46_TYPE_IP6);
+    default:
+	return (IP46_TYPE_IP4);
+    }
+    return (IP46_TYPE_IP4);
+}
+
 u8*
 format_adj_nbr_incomplete (u8* s, va_list *ap)
 {
