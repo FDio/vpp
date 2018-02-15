@@ -497,7 +497,7 @@ vppcom_init_error_string_table (void)
 {
   vcm->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (vcm->error_string_by_error_number, -v, s);
+#define _(n, v, s) hash_set (vcm->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
@@ -1321,7 +1321,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
       if (session->peer_addr.is_ip4)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	  {
 	    .format =
@@ -1683,7 +1683,7 @@ _(MAP_ANOTHER_SEGMENT, map_another_segment)
 static void
 vppcom_api_hookup (void)
 {
-#define _(N,n)                                                  \
+#define _(N, n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
@@ -2236,8 +2236,8 @@ vppcom_app_create (char *app_name)
 
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VCL<%d>: configured namespace_id (%v) from "
-			  VPPCOM_ENV_APP_NAMESPACE_ID "!", getpid (),
-			  vcm->cfg.namespace_id);
+			  VPPCOM_ENV_APP_NAMESPACE_ID
+			  "!", getpid (), vcm->cfg.namespace_id);
 	}
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
       if (env_var_str)
@@ -2253,8 +2253,9 @@ vppcom_app_create (char *app_name)
 	      vcm->cfg.namespace_secret = tmp;
 	      if (VPPCOM_DEBUG > 0)
 		clib_warning ("VCL<%d>: configured namespace secret "
-			      "(%lu) from " VPPCOM_ENV_APP_NAMESPACE_ID "!",
-			      getpid (), vcm->cfg.namespace_secret);
+			      "(%lu) from "
+			      VPPCOM_ENV_APP_NAMESPACE_ID
+			      "!", getpid (), vcm->cfg.namespace_secret);
 	    }
 	}
       if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP))
@@ -2262,7 +2263,8 @@ vppcom_app_create (char *app_name)
 	  vcm->cfg.app_proxy_transport_tcp = 1;
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VCL<%d>: configured app_proxy_transport_tcp "
-			  "(%u) from " VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP
+			  "(%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP
 			  "!", getpid (), vcm->cfg.app_proxy_transport_tcp);
 	}
       if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP))
@@ -2270,7 +2272,8 @@ vppcom_app_create (char *app_name)
 	  vcm->cfg.app_proxy_transport_udp = 1;
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VCL<%d>: configured app_proxy_transport_udp "
-			  "(%u) from " VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP
+			  "(%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP
 			  "!", getpid (), vcm->cfg.app_proxy_transport_udp);
 	}
       if (getenv (VPPCOM_ENV_APP_SCOPE_LOCAL))
@@ -2278,16 +2281,16 @@ vppcom_app_create (char *app_name)
 	  vcm->cfg.app_scope_local = 1;
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VCL<%d>: configured app_scope_local (%u) from "
-			  VPPCOM_ENV_APP_SCOPE_LOCAL "!", getpid (),
-			  vcm->cfg.app_scope_local);
+			  VPPCOM_ENV_APP_SCOPE_LOCAL
+			  "!", getpid (), vcm->cfg.app_scope_local);
 	}
       if (getenv (VPPCOM_ENV_APP_SCOPE_GLOBAL))
 	{
 	  vcm->cfg.app_scope_global = 1;
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VCL<%d>: configured app_scope_global (%u) from "
-			  VPPCOM_ENV_APP_SCOPE_GLOBAL "!", getpid (),
-			  vcm->cfg.app_scope_global);
+			  VPPCOM_ENV_APP_SCOPE_GLOBAL
+			  "!", getpid (), vcm->cfg.app_scope_global);
 	}
 
       vcm->main_cpu = os_get_thread_index ();
@@ -2619,7 +2622,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
     {
       if (session->lcl_addr.is_ip4)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	  {
 	    .format = "bind local:%s:%d.%d.%d.%d:%d ",
@@ -2970,7 +2973,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
       if (client_session->lcl_addr.is_ip4)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e2) =
 	  {
 	    .format = "accept cut-thru: S:%d %d.%d.%d.%d:%d ",
@@ -3886,7 +3889,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 		      event->events, event->data.u64);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "epoll_ctladd: events:%x data:%x",
@@ -4002,7 +4005,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 		      getpid (), vep_idx, session_index);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "epoll_ctldel: vep:%d",
@@ -4072,7 +4075,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		      getpid (), vep_idx);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "WRN: vep_idx:%d empty",
@@ -4122,7 +4125,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      getpid (), vep_idx);
 	      if (VPPCOM_DEBUG > 0)
 		{
-		  /* *INDENT-OFF* */
+                  /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "ERR:vep_idx:%d is vep",
@@ -4149,7 +4152,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      "a vep session!", getpid (), sid);
 	      if (VPPCOM_DEBUG > 0)
 		{
-		  /* *INDENT-OFF* */
+                  /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "ERR:SID:%d not vep",
@@ -4298,7 +4301,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "VPPCOM_ATTR_GET_NREAD: nread=%d",
@@ -4324,7 +4327,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), session_index, rv);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "VPPCOM_ATTR_GET_NWRITE: nwrite=%d",
@@ -4353,7 +4356,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  session_index, *flags, session->is_nonblocking);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_FLAGS: flags=%x is_nonblk=%d",
@@ -4388,7 +4391,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  session->is_nonblocking);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_FLAGS: flags=%x is_nonblk=%d",
@@ -4434,7 +4437,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    {
 	      if (ep->is_ip4)
 		{
-		  /* *INDENT-OFF* */
+                    /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_PEER_ADDR: addr:%d.%d.%d.%d:%d",
@@ -4456,7 +4459,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		}
 	      else
 		{
-		  /* *INDENT-OFF* */
+                    /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_PEER_ADDR: addr:IP6:%d",
@@ -4500,7 +4503,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    {
 	      if (ep->is_ip4)
 		{
-		  /* *INDENT-OFF* */
+                    /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_LCL_ADDR: addr:%d.%d.%d.%d:%d",
@@ -4522,7 +4525,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		}
 	      else
 		{
-		  /* *INDENT-OFF* */
+                    /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_LCL_ADDR: addr:IP6:%d",
@@ -4550,7 +4553,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
-	  /* *INDENT-OFF* */
+          /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd=%d",
@@ -4580,7 +4583,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_LIBC_EPFD: libc_epfd=%s%d buflen=%d",
@@ -4617,7 +4620,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(int *) buffer ? "UDP" : "TCP", *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_PROTOCOL: %s buflen=%d",
@@ -4653,7 +4656,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  "buflen %d", getpid (), *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_LISTEN: %d buflen=%d",
@@ -4686,7 +4689,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_ERROR: %d buflen=%d",
@@ -4727,7 +4730,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TX_FIFO_LEN: 0x%x buflen=%d",
@@ -4760,7 +4763,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TX_FIFO_LEN: 0x%x buflen=%d",
@@ -4801,7 +4804,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_RX_FIFO_LEN: 0x%x buflen=%d",
@@ -4834,7 +4837,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_RX_FIFO_LEN: 0x%x buflen=%d",
@@ -4869,7 +4872,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_REUSEADDR: %d buflen=%d",
@@ -4908,7 +4911,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_REUSEADDR: %d buflen=%d",
@@ -4944,7 +4947,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_REUSEPORT: %d buflen=%d",
@@ -4983,7 +4986,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_REUSEPORT: %d buflen=%d",
@@ -5019,7 +5022,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_BROADCAST: %d buflen=%d",
@@ -5057,7 +5060,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_BROADCAST: %d buflen=%d",
@@ -5093,7 +5096,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_V6ONLY: %d buflen=%d",
@@ -5130,7 +5133,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 					      VCL_SESS_ATTR_V6ONLY), *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_V6ONLY: %d buflen=%d",
@@ -5166,7 +5169,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_KEEPALIVE: %d buflen=%d",
@@ -5204,7 +5207,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_KEEPALIVE: %d buflen=%d",
@@ -5240,7 +5243,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_NODELAY: %d buflen=%d",
@@ -5278,7 +5281,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_NODELAY: %d buflen=%d",
@@ -5314,7 +5317,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
@@ -5352,7 +5355,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_KEEPIDLE: %d buflen=%d",
@@ -5388,7 +5391,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
@@ -5426,7 +5429,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_KEEPINTVL: %d buflen=%d",
@@ -5461,7 +5464,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_USER_MSS: %d buflen=%d",
@@ -5494,7 +5497,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  session->user_mss, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+                /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_USER_MSS: %d buflen=%d",
@@ -5545,7 +5548,7 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 			  getpid (), session_index);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-	      /* *INDENT-OFF* */
+              /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "invalid session: %d closed",
