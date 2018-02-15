@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "967679e0_1d25028f",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2020,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-15T13:14:14Z",
+      "side": 1,
+      "message": "Any reason for this not being in stats_main_t ?\n\nAlso have you considered adding a getter for the poll_interval?",
+      "range": {
+        "startLine": 2020,
+        "startChar": 0,
+        "endLine": 2020,
+        "endChar": 33
+      },
+      "revId": "deb3bd15a3196dd5617b0fae7c8254edf4c7e196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
