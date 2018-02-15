@@ -309,7 +309,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
   else
     {
       /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
-      u8 address[6] = { 0xd0, 0x0b, 0xee, 0xd0, (u8) t_idx >> 8, (u8) t_idx };
+      u8 address[6] = {0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx};
       error = ethernet_register_interface (vnm, gre_device_class.index, t_idx,
 					   address, &hw_if_index, 0);
       if (error)
