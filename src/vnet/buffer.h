@@ -333,6 +333,7 @@ typedef struct
       u16 hdr_offset;		/**< offset relative to ip hdr */
       u16 data_offset;		/**< offset relative to ip hdr */
       u16 data_len;		/**< data len */
+      u8 conn_idx;
       u8 flags;
     } sctp;
 

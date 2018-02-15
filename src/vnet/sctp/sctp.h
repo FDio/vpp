@@ -89,6 +89,13 @@ typedef enum _sctp_error
 #define sctp_trajectory_add_start(b, start)
 #endif
 
+enum _sctp_subconn_state
+{
+  SCTP_SUBCONN_STATE_DOWN = 0,
+  SCTP_SUBCONN_STATE_UP,
+  SCTP_SUBCONN_STATE_ALLOW_HB
+};
+
 typedef struct _sctp_sub_connection
 {
   transport_connection_t connection;	      /**< Common transport data. First! */
@@ -122,13 +129,15 @@ typedef struct _sctp_sub_connection
   	  	  	  	  Every time the RTT calculation completes (i.e., the DATA chunk is SACK'd),
   	  	  	  	  clear this flag. */
 
-  u32 last_time; /**< The time to which this destination was last sent a packet to.
+  u32 last_seen; /**< The time to which this destination was last sent a packet to.
   	  	  	  	  This can be used to determine if a HEARTBEAT is needed. */
 
   u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
-  	  	  	  	  If more than Max.Retransmit then connetion is considered unreachable. */
+  	  	  	  	  If more than SCTP_PATH_MAX_RETRANS then connection is considered unreachable. */
 
   u8 is_retransmitting;	/**< A flag (0 = no, 1 = yes) indicating whether the connection is retransmitting a previous packet */
+
+  u8 enqueue_state;
 
 } sctp_sub_connection_t;
 
@@ -249,9 +258,9 @@ void sctp_connection_del (sctp_connection_t * sctp_conn);
 u32 sctp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
 void sctp_send_init (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown (sctp_connection_t * sctp_conn);
-void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn,
+void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn, u8 idx,
 			     vlib_buffer_t * b);
-void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn,
+void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn, u8 idx,
 				  vlib_buffer_t * b0);
 void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
@@ -268,24 +277,25 @@ u8 *format_sctp_header (u8 * s, va_list * args);
 u8 *format_sctp_tx_trace (u8 * s, va_list * args);
 
 clib_error_t *sctp_init (vlib_main_t * vm);
-void sctp_connection_timers_init (sctp_connection_t * tc);
-void sctp_connection_timers_reset (sctp_connection_t * tc);
-void sctp_init_snd_vars (sctp_connection_t * tc);
-void sctp_init_mss (sctp_connection_t * tc);
+void sctp_connection_timers_init (sctp_connection_t * sctp_conn);
+void sctp_connection_timers_reset (sctp_connection_t * sctp_conn);
+void sctp_init_snd_vars (sctp_connection_t * sctp_conn);
+void sctp_init_mss (sctp_connection_t * sctp_conn);
 
-void sctp_prepare_initack_chunk (sctp_connection_t * ts, vlib_buffer_t * b,
-				 ip4_address_t * ip4_addr,
+void sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
+				 vlib_buffer_t * b, ip4_address_t * ip4_addr,
 				 ip6_address_t * ip6_addr);
-void sctp_prepare_cookie_echo_chunk (sctp_connection_t * tc,
+void sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				     vlib_buffer_t * b,
 				     sctp_state_cookie_param_t * sc);
-void sctp_prepare_cookie_ack_chunk (sctp_connection_t * tc,
+void sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				    vlib_buffer_t * b);
-void sctp_prepare_sack_chunk (sctp_connection_t * tc, vlib_buffer_t * b);
-void sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn,
+void sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, u8 idx,
+			      vlib_buffer_t * b);
+void sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				       vlib_buffer_t * b);
 
-u16 sctp_check_outstanding_data_chunks (sctp_connection_t * tc);
+u16 sctp_check_outstanding_data_chunks (sctp_connection_t * sctp_conn);
 
 #define IP_PROTOCOL_SCTP	132
 
@@ -407,7 +417,11 @@ sctp_optparam_type_to_string (u8 type)
 #define SCTP_RTO_ALPHA 1/8
 #define SCTP_RTO_BETA 1/4
 #define SCTP_VALID_COOKIE_LIFE 60 * SHZ	/* 60 seconds */
-#define SCTP_ASSOCIATION_MAX_RETRANS 10
+#define SCTP_ASSOCIATION_MAX_RETRANS 10	// the overall connection
+#define SCTP_PATH_MAX_RETRANS 5	// number of attempts per destination address
+#define SCTP_MAX_INIT_RETRANS 8	// number of attempts
+#define SCTP_HB_INTERVAL 30 * SHZ
+#define SCTP_HB_MAX_BURST 1
 
 #define SCTP_TO_TIMER_TICK       SCTP_TICK*10	/* Period for converting from SCTP_TICK */
 
@@ -696,56 +710,64 @@ sctp_connection_get (u32 conn_index, u32 thread_index)
   return pool_elt_at_index (sctp_main.connections[thread_index], conn_index);
 }
 
-always_inline u8
-sctp_pick_conn_idx_on_chunk (sctp_chunk_type chunk_type)
-{
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+#define SELECT_MAX_RETRIES 8
 
-  switch (chunk_type)
+always_inline u8
+sctp_data_subconn_select (sctp_connection_t * sctp_conn)
+{
+  u8 i = 0;
+  u8 state = SCTP_SUBCONN_STATE_DOWN;
+  u32 sub = MAIN_SCTP_SUB_CONN_IDX;
+  u32 data_subconn_seed = random_default_seed ();
+
+  while (state == SCTP_SUBCONN_STATE_DOWN && i < SELECT_MAX_RETRIES)
     {
-    case DATA:
-    case INIT:
-    case INIT_ACK:
-    case SACK:
-    case HEARTBEAT:
-    case HEARTBEAT_ACK:
-    case ABORT:
-    case SHUTDOWN:
-    case SHUTDOWN_ACK:
-    case OPERATION_ERROR:
-    case COOKIE_ECHO:
-    case COOKIE_ACK:
-    case ECNE:
-    case CWR:
-    case SHUTDOWN_COMPLETE:
-      idx = MAIN_SCTP_SUB_CONN_IDX;
-      break;
-    default:
-      idx = 0;
+      u32 sub = random_u32 (&data_subconn_seed) % MAX_SCTP_CONNECTIONS;
+      if (sctp_conn->sub_conn[sub].state == SCTP_SUBCONN_STATE_UP)
+	break;
+      i++;
     }
-  return idx;
+  return sub;
 }
 
 always_inline u8
-sctp_pick_conn_idx_on_state (sctp_state_t state)
+sctp_sub_conn_id_via_ip6h (sctp_connection_t * sctp_conn, ip6_header_t * ip6h)
 {
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+  u8 i;
 
-  switch (state)
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
-    case SCTP_STATE_CLOSED:
-    case SCTP_STATE_COOKIE_WAIT:
-    case SCTP_STATE_COOKIE_ECHOED:
-    case SCTP_STATE_ESTABLISHED:
-    case SCTP_STATE_SHUTDOWN_PENDING:
-    case SCTP_STATE_SHUTDOWN_SENT:
-    case SCTP_STATE_SHUTDOWN_RECEIVED:
-    case SCTP_STATE_SHUTDOWN_ACK_SENT:
-      idx = MAIN_SCTP_SUB_CONN_IDX;
-    default:
-      idx = MAIN_SCTP_SUB_CONN_IDX;
+      if (sctp_conn->sub_conn[i].connection.lcl_ip.ip6.as_u64[0] ==
+	  ip6h->dst_address.as_u64[0] &&
+	  sctp_conn->sub_conn[i].connection.lcl_ip.ip6.as_u64[1] ==
+	  ip6h->dst_address.as_u64[1] &&
+	  sctp_conn->sub_conn[i].connection.rmt_ip.ip6.as_u64[0] ==
+	  ip6h->src_address.as_u64[0] &&
+	  sctp_conn->sub_conn[i].connection.rmt_ip.ip6.as_u64[1] ==
+	  ip6h->src_address.as_u64[1])
+	return i;
     }
-  return idx;
+  clib_warning ("Did not find a sub-connection; defaulting to %u",
+		MAIN_SCTP_SUB_CONN_IDX);
+  return MAIN_SCTP_SUB_CONN_IDX;
+}
+
+always_inline u8
+sctp_sub_conn_id_via_ip4h (sctp_connection_t * sctp_conn, ip4_header_t * ip4h)
+{
+  u8 i;
+
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      if (sctp_conn->sub_conn[i].connection.lcl_ip.ip4.as_u32 ==
+	  ip4h->dst_address.as_u32
+	  && sctp_conn->sub_conn[i].connection.rmt_ip.ip4.as_u32 ==
+	  ip4h->src_address.as_u32)
+	return i;
+    }
+  clib_warning ("Did not find a sub-connection; defaulting to %u",
+		MAIN_SCTP_SUB_CONN_IDX);
+  return MAIN_SCTP_SUB_CONN_IDX;
 }
 
 /**

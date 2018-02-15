@@ -360,7 +360,7 @@ sctp_connection_open (transport_endpoint_t * rmt)
   uword thread_id;
   int rv;
 
-  u8 idx = sctp_pick_conn_idx_on_state (SCTP_STATE_CLOSED);
+  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
 
   /*
    * Allocate local endpoint
@@ -452,6 +452,21 @@ sctp_session_open (transport_endpoint_t * tep)
 u16
 sctp_check_outstanding_data_chunks (sctp_connection_t * sctp_conn)
 {
+  u8 i;
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      if (sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
+	continue;
+
+      if (sctp_conn->sub_conn[i].is_retransmitting == 1 ||
+	  sctp_conn->sub_conn[i].enqueue_state != SCTP_ERROR_ENQUEUED)
+	{
+	  SCTP_DBG_OUTPUT
+	    ("Connection %u has still DATA to be enqueued inboud / outboud");
+	  return 1;
+	}
+
+    }
   return 0;			/* Indicates no more data to be read/sent */
 }
 
@@ -622,8 +637,6 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
     case SCTP_TIMER_T1_COOKIE:
     case SCTP_TIMER_T2_SHUTDOWN:
     case SCTP_TIMER_T3_RXTX:
-      clib_smp_atomic_add (&sctp_conn->sub_conn[conn_index].unacknowledged_hb,
-			   1);
       sctp_timer_reset (sctp_conn, conn_index, timer_id);
       break;
     case SCTP_TIMER_T4_HEARTBEAT:
@@ -632,18 +645,34 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
     }
 
   if (sctp_conn->sub_conn[conn_index].unacknowledged_hb >
-      SCTP_ASSOCIATION_MAX_RETRANS)
+      SCTP_PATH_MAX_RETRANS)
     {
       // The remote-peer is considered to be unreachable hence shutting down
+      u8 i, total_subs_down = 1;
+      for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+	{
+	  if (sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
+	    continue;
 
-      /* Start cleanup. App wasn't notified yet so use delete notify as
-       * opposed to delete to cleanup session layer state. */
-      stream_session_delete_notify (&sctp_conn->sub_conn
-				    [MAIN_SCTP_SUB_CONN_IDX].connection);
+	  u32 now = sctp_time_now ();
+	  if (now > (sctp_conn->sub_conn[i].last_seen + SCTP_HB_INTERVAL))
+	    {
+	      total_subs_down += 1;
+	      sctp_conn->sub_conn[i].state = SCTP_SUBCONN_STATE_DOWN;
+	    }
+	}
 
-      sctp_connection_timers_reset (sctp_conn);
+      if (total_subs_down == MAX_SCTP_CONNECTIONS)
+	{
+	  /* Start cleanup. App wasn't notified yet so use delete notify as
+	   * opposed to delete to cleanup session layer state. */
+	  stream_session_delete_notify (&sctp_conn->sub_conn
+					[MAIN_SCTP_SUB_CONN_IDX].connection);
 
-      sctp_connection_cleanup (sctp_conn);
+	  sctp_connection_timers_reset (sctp_conn);
+
+	  sctp_connection_cleanup (sctp_conn);
+	}
     }
   return;
 
