@@ -139,7 +139,7 @@ format_ip_adjacency (u8 * s, va_list * args)
 	s = format(s, "\n delegates:\n  ");
         FOR_EACH_ADJ_DELEGATE(adj, adt, aed,
         {
-            s = format(s, "  %U\n", format_adj_deletegate, aed);
+            s = format(s, "  %U\n", format_adj_delegate, aed);
         });
 
 	s = format(s, "\n children:\n  ");
@@ -161,6 +161,8 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 
     ASSERT(0 == fib_node_list_get_size(adj->ia_node.fn_children));
     ADJ_DBG(adj, "last-lock-gone");
+
+    adj_delegate_vft_lock_gone(adj);
 
     vlib_worker_thread_barrier_sync (vm);
 
