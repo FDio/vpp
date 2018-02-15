@@ -478,7 +478,6 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   u8 added_a_segment = 0;
   u32 sm_index;
 
-  ASSERT (pool_elts (sm->segments) != 0);
   props = segment_manager_properties_get (sm);
 
   /*
