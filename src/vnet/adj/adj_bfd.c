@@ -168,6 +168,23 @@ adj_bfd_notify (bfd_listen_event_e event,
     adj_unlock(ai);
 }
 
+/**
+ * Print a delegate that represents BFD tracking
+ */
+static u8 *
+adj_delegate_fmt_bfd (const adj_delegate_t *aed, u8 *s)
+{
+    s = format(s, "BFD:[state:%d index:%d]",
+               aed->ad_bfd_state,
+               aed->ad_bfd_index);
+
+    return (s);
+}
+
+const static adj_delegate_vft_t adj_delegate_vft = {
+  .adv_format = adj_delegate_fmt_bfd,
+};
+
 static clib_error_t *
 adj_bfd_main_init (vlib_main_t * vm)
 {
@@ -177,6 +194,8 @@ adj_bfd_main_init (vlib_main_t * vm)
         return (error);
 
     bfd_register_listener(adj_bfd_notify);
+
+    adj_delegate_register_type (ADJ_DELEGATE_BFD, &adj_delegate_vft);
 
     return (error);
 }
