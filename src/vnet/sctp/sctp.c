@@ -576,7 +576,11 @@ sctp_session_get_transport (u32 conn_index, u32 thread_index)
 {
   sctp_connection_t *sctp_conn =
     sctp_connection_get (conn_index, thread_index);
-  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+
+  if (PREDICT_TRUE (sctp_conn != NULL))
+    return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+
+  return NULL;
 }
 
 transport_connection_t *
