@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9b114b55_50a948d7",
+        "filename": "src/vnet/adj/adj_delegate.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-15T16:12:17Z",
+      "side": 1,
+      "message": "this will leak the original \u0027s\u0027 vector. use return format(s, \"unknown delegate\");",
+      "revId": "0332b68d8a038a67b513d943b65843d65e3ee383",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fecbe04e_7675947c",
+        "filename": "src/vnet/adj/adj_delegate.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-15T16:12:17Z",
+      "side": 1,
+      "message": "can we move this declaration to adj_internal.h? the rest of these functions are for the provider of the delegate, whereas this one is private to the adj sub-system",
+      "revId": "0332b68d8a038a67b513d943b65843d65e3ee383",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
