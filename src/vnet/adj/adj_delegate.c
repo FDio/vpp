@@ -17,6 +17,11 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
 
+/*
+ * The per-type vector of virtual function tables
+ */
+static adj_delegate_vft_t *ad_vfts;
+
 static adj_delegate_t *
 adj_delegate_find_i (const ip_adjacency_t *adj,
                      adj_delegate_type_t type,
@@ -105,40 +110,47 @@ adj_delegate_find_or_add (ip_adjacency_t *adj,
     return (adj_delegate_get(adj, adt));
 }
 
-/**
- * typedef for printing a delegate
- */
-typedef u8 * (*adj_delegate_format_t)(const adj_delegate_t *aed,
-                                      u8 *s);
-
-/**
- * Print a delegate that represents BFD tracking
- */
-static u8 *
-adj_delegate_fmt_bfd (const adj_delegate_t *aed,
-                      u8 *s)
+void adj_delegate_vft_lock_gone (ip_adjacency_t *adj)
 {
-    s = format(s, "BFD:[state:%d index:%d]",
-               aed->ad_bfd_state,
-               aed->ad_bfd_index);
-
-    return (s);
+    adj_delegate_t *delegate;
+    vec_foreach(delegate, adj->ia_delegates) {
+      if (ad_vfts[delegate->ad_type].adv_last_lock)
+	ad_vfts[delegate->ad_type].adv_last_lock(adj, delegate);
+    }
 }
 
-/**
- * A delegate type to formatter map
- */
-static adj_delegate_format_t aed_formatters[] =
-{
-    [ADJ_DELEGATE_BFD] = adj_delegate_fmt_bfd,
-};
-
 u8 *
-format_adj_deletegate (u8 * s, va_list * args)
+format_adj_delegate (u8 * s, va_list * args)
 {
     adj_delegate_t *aed;
 
     aed = va_arg (*args, adj_delegate_t *);
+    if (ad_vfts[aed->ad_type].adv_format)
+      return ad_vfts[aed->ad_type].adv_format(aed, s);
+    return (u8 *)"fixme";
+}
 
-    return (aed_formatters[aed->ad_type](aed, s));
+/**
+ * adj_delegate_register_type
+ *
+ * Register the function table for a given type
+ */
+
+void
+adj_delegate_register_type (adj_delegate_type_t type,
+			    const adj_delegate_vft_t *vft)
+{
+  /*
+   * assert that one only registration is made per-node type
+   */
+  if (vec_len(ad_vfts) > type)
+    ASSERT(NULL == ad_vfts[type].adv_last_lock);
+
+  /*
+   * Assert that we are getting each of the required functions
+   */
+  ASSERT(NULL != vft->adv_last_lock);
+
+  vec_validate(ad_vfts, type);
+  ad_vfts[type] = *vft;
 }

@@ -91,6 +91,16 @@ typedef struct adj_delegate_t_
     };
 } adj_delegate_t;
 
+/**
+ * An ADJ delegate virtual function table
+ */
+typedef void (*adj_delegate_last_lock_gone_t)(ip_adjacency_t *adj, adj_delegate_t *aed);
+typedef u8 * (*adj_delegate_format_t)(const adj_delegate_t *aed, u8 *s);
+typedef struct adj_delegate_vft_t_ {
+  adj_delegate_format_t adv_format;
+  adj_delegate_last_lock_gone_t adv_last_lock;
+} adj_delegate_vft_t;
+
 extern void adj_delegate_remove(ip_adjacency_t *adj,
                                 adj_delegate_type_t type);
 
@@ -99,6 +109,8 @@ extern adj_delegate_t *adj_delegate_find_or_add(ip_adjacency_t *adj,
 extern adj_delegate_t *adj_delegate_get(const ip_adjacency_t *adj,
                                         adj_delegate_type_t type);
 
-extern u8 *format_adj_deletegate(u8 * s, va_list * args);
+extern u8 *format_adj_delegate(u8 * s, va_list * args);
+extern void adj_delegate_register_type(adj_delegate_type_t type, const adj_delegate_vft_t *vft);
+extern void adj_delegate_vft_lock_gone(ip_adjacency_t *adj);
 
 #endif
