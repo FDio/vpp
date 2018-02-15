@@ -79,10 +79,6 @@
   _(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, "outer-ipv4-cksum") \
   _(DEV_TX_OFFLOAD_QINQ_INSERT, "qinq-insert")
 
-#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
-#define PKT_RX_VLAN PKT_RX_VLAN_PKT
-#endif
-
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                  \
   _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \

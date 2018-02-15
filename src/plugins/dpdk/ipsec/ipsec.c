@@ -806,11 +806,7 @@ crypto_op_init (struct rte_mempool *mempool,
   op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
   op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
   op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
-  op->phys_addr = rte_mempool_virt2phy (NULL, _obj);
-#else
   op->phys_addr = rte_mempool_virt2iova (_obj);
-#endif
   op->mempool = mempool;
 }
 

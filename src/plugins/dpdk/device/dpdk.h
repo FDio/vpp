@@ -39,9 +39,7 @@
 #include <rte_eth_bond.h>
 #include <rte_sched.h>
 #include <rte_net.h>
-#if RTE_VERSION >= RTE_VERSION_NUM(17, 11, 0, 0)
 #include <rte_bus_pci.h>
-#endif
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/devices.h>
@@ -119,11 +117,7 @@ typedef struct
   u64 tx_tail;
 } tx_ring_hdr_t;
 
-#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
-typedef uint8_t dpdk_portid_t;
-#else
 typedef uint16_t dpdk_portid_t;
-#endif
 
 typedef struct
 {
