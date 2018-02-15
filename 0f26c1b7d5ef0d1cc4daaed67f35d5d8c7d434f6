@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8ff86239_cf7b503c",
+        "filename": "src/vnet/adj/adj_delegate.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-15T15:32:35Z",
+      "side": 1,
+      "message": "\u0027fn\u0027 is short for \u0027FIB node\u0027 :) perhaps \u0027ad\u0027.\nmaybe also register a format function.",
+      "revId": "0f26c1b7d5ef0d1cc4daaed67f35d5d8c7d434f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
