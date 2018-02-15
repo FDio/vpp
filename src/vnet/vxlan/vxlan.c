@@ -54,17 +54,10 @@ static u8 * format_decap_next (u8 * s, va_list * args)
 u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 {
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
-  vxlan_main_t * ngm = &vxlan_main;
-  u32 dev_instance;
-  u32 user_instance;
-
-  dev_instance = t - ngm->tunnels;
-  user_instance = t->user_instance;
 
   s = format (s,
 	      "[%d] instance %d src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
-	      dev_instance,
-	      user_instance,
+	      t->dev_instance, t->user_instance,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
               format_ip46_address, &t->dst, IP46_TYPE_ANY,
               t->vni, t->encap_fib_index, t->sw_if_index);
@@ -563,7 +556,7 @@ int vnet_vxlan_add_del_tunnel
         }
 
       vnet_delete_hw_interface (vnm, t->hw_if_index);
-      hash_unset (vxlan_main.instance_used, instance);
+      hash_unset (vxm->instance_used, instance);
 
       fib_node_deinit(&t->node);
       vec_free (t->rewrite);
