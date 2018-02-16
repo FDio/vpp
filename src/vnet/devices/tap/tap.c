@@ -80,6 +80,7 @@ void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *thm = vlib_get_thread_main ();
   virtio_main_t *vim = &virtio_main;
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
@@ -397,6 +398,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+  if (thm->n_vlib_mains > 1)
+    clib_spinlock_init (&vif->lockp);
   goto done;
 
 error:
@@ -453,6 +456,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vec_free (vif->vrings);
 
   hash_unset (tm->dev_instance_by_interface_id, vif->id);
+  clib_spinlock_free (&vif->lockp);
   memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
 
