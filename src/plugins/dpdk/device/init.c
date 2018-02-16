@@ -180,6 +180,7 @@ static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
   u32 nports;
+  u32 mtu, max_rx_frame;
   u32 nb_desc = 0;
   int i;
   clib_error_t *error;
@@ -466,39 +467,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
 	}
 
-      /*
-       * Ensure default mtu is not > the mtu read from the hardware.
-       * Otherwise rte_eth_dev_configure() will fail and the port will
-       * not be available.
-       */
-      if (ETHERNET_MAX_PACKET_BYTES > dev_info.max_rx_pktlen)
-	{
-	  /*
-	   * This device does not support the platforms's max frame
-	   * size. Use it's advertised mru instead.
-	   */
-	  xd->port_conf.rxmode.max_rx_pkt_len = dev_info.max_rx_pktlen;
-	}
-      else
-	{
-	  xd->port_conf.rxmode.max_rx_pkt_len = ETHERNET_MAX_PACKET_BYTES;
-
-	  /*
-	   * Some platforms do not account for Ethernet FCS (4 bytes) in
-	   * MTU calculations. To interop with them increase mru but only
-	   * if the device's settings can support it.
-	   */
-	  if ((dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)) &&
-	      xd->port_conf.rxmode.hw_strip_crc)
-	    {
-	      /*
-	       * Allow additional 4 bytes (for Ethernet FCS). These bytes are
-	       * stripped by h/w and so will not consume any buffer memory.
-	       */
-	      xd->port_conf.rxmode.max_rx_pkt_len += 4;
-	    }
-	}
-
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
 	  f64 now = vlib_time_now (vm);
@@ -583,6 +551,62 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (error)
 	return error;
 
+      /*
+       * Ensure default mtu is not > the mtu read from the hardware.
+       * Otherwise rte_eth_dev_configure() will fail and the port will
+       * not be available.
+       * Calculate max_frame_size and mtu supported by NIC
+       */
+      if (ETHERNET_MAX_PACKET_BYTES > dev_info.max_rx_pktlen)
+	{
+	  /*
+	   * This device does not support the platforms's max frame
+	   * size. Use it's advertised mru instead.
+	   */
+	  max_rx_frame = dev_info.max_rx_pktlen;
+	  mtu = dev_info.max_rx_pktlen - sizeof (ethernet_header_t);
+	}
+      else
+	{
+	  /* VPP treats MTU and max_rx_pktlen both equal to
+	   * ETHERNET_MAX_PACKET_BYTES, if dev_info.max_rx_pktlen >=
+	   * ETHERNET_MAX_PACKET_BYTES + sizeof(ethernet_header_t)
+	   */
+	  if (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
+					  sizeof (ethernet_header_t)))
+	    {
+	      mtu = ETHERNET_MAX_PACKET_BYTES;
+	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
+
+	      /*
+	       * Some platforms do not account for Ethernet FCS (4 bytes) in
+	       * MTU calculations. To interop with them increase mru but only
+	       * if the device's settings can support it.
+	       */
+	      if (xd->port_conf.rxmode.hw_strip_crc &&
+		  (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
+					       sizeof (ethernet_header_t) +
+					       4)))
+		{
+		  max_rx_frame += 4;
+		}
+	    }
+	  else
+	    {
+	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
+	      mtu = ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
+
+	      if (xd->port_conf.rxmode.hw_strip_crc &&
+		  (dev_info.max_rx_pktlen >=
+		   (ETHERNET_MAX_PACKET_BYTES + 4)))
+		{
+		  max_rx_frame += 4;
+		}
+	    }
+	}
+      /*Set port rxmode config */
+      xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
+
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->vlib_sw_if_index = sw->sw_if_index;
       vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
@@ -606,7 +630,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 						~1);
 	  }
 
+      /*Get vnet hardware interface */
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+
+      /*Override default max_packet_bytes and max_supported_bytes set in
+       * ethernet_register_interface() above*/
+      if (hi)
+	{
+	  hi->max_packet_bytes = max_rx_frame;
+	  hi->max_supported_packet_bytes = max_rx_frame;
+	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
@@ -658,7 +691,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
 	xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
 
-      rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
+      rte_eth_dev_set_mtu (xd->device_index, mtu);
     }
 
   if (nb_desc > dm->conf->num_mbufs)
