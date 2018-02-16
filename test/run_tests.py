@@ -6,6 +6,7 @@ import os
 import select
 import unittest
 import argparse
+import time
 from multiprocessing import Process, Pipe
 from framework import VppTestRunner
 from debug import spawn_gdb
@@ -60,31 +61,39 @@ def run_forked(suite):
     last_test = None
     result = None
     failed = set()
-    while result is None:
+    last_heard = time.time()
+    while True:
         readable = select.select([keep_alive_parent_end.fileno(),
                                   result_parent_end.fileno(),
                                   failed_parent_end.fileno(),
                                   ],
-                                 [], [], test_timeout)[0]
-        timeout = True
+                                 [], [], 1)[0]
         if result_parent_end.fileno() in readable:
             result = result_parent_end.recv()
-            timeout = False
+            break
         if keep_alive_parent_end.fileno() in readable:
             while keep_alive_parent_end.poll():
                 last_test, last_test_vpp_binary,\
                     last_test_temp_dir, vpp_pid = keep_alive_parent_end.recv()
-            timeout = False
+            last_heard = time.time()
         if failed_parent_end.fileno() in readable:
             while failed_parent_end.poll():
                 failed_test = failed_parent_end.recv()
                 failed.add(failed_test.__name__)
-            timeout = False
-        if timeout:
+            last_heard = time.time()
+        fail = False
+        if last_heard + test_timeout < time.time():
+            fail = True
             global_logger.critical("Timeout while waiting for child test "
                                    "runner process (last test running was "
                                    "`%s' in `%s')!" %
                                    (last_test, last_test_temp_dir))
+        elif not child.is_alive():
+            fail = True
+            global_logger.critical("Child process unexpectedly died (last "
+                                   "test running was `%s' in `%s')!" %
+                                   (last_test, last_test_temp_dir))
+        if fail:
             failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
             lttd = last_test_temp_dir.split("/")[-1]
             link_path = '%s%s-FAILED' % (failed_dir, lttd)
@@ -106,6 +115,7 @@ def run_forked(suite):
                                   global_logger)
             child.terminate()
             result = -1
+            break
     keep_alive_parent_end.close()
     result_parent_end.close()
     failed_parent_end.close()
