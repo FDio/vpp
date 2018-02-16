@@ -35,8 +35,8 @@ typedef struct
   u64 bytes_to_receive;
   u64 bytes_received;
 
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   u64 vpp_session_handle;
 } session_t;

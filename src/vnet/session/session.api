@@ -148,8 +148,8 @@ define accept_session {
   u32 context;
   u64 listener_handle;
   u64 handle; 
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
+  u64 rx_fifo;
+  u64 tx_fifo;
   u64 vpp_event_queue_address;
   u64 server_event_queue_address;
   u16 port;
@@ -312,8 +312,8 @@ define connect_session {
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - connection handle
-    @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
-    @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
+    @param rx_fifo - rx (vpp -> vpp-client) fifo address
+    @param tx_fifo - tx (vpp-client -> vpp) fifo address
     @param vpp_event_queue_address - vpp's event queue address
     @param client_event_queue_address - client's event queue address
     @param segment_size - size of segment to be attached. Only for redirects.
@@ -328,8 +328,8 @@ define connect_session_reply {
   u32 context;
   i32 retval;
   u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
+  u64 rx_fifo;
+  u64 tx_fifo;
   u64 vpp_event_queue_address;
   u64 client_event_queue_address;
   u32 segment_size;

@@ -60,7 +60,7 @@ send_data_chunk (echo_client_main_t * ecm, session_t * s)
   bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
     ? bytes_this_chunk : s->bytes_to_send;
 
-  txf = s->server_tx_fifo;
+  txf = s->tx_fifo;
   rv = svm_fifo_enqueue_nowait (txf, bytes_this_chunk,
 				test_data + test_buf_offset);
 
@@ -108,7 +108,7 @@ send_data_chunk (echo_client_main_t * ecm, session_t * s)
 static void
 receive_data_chunk (echo_client_main_t * ecm, session_t * s)
 {
-  svm_fifo_t *rx_fifo = s->server_rx_fifo;
+  svm_fifo_t *rx_fifo = s->rx_fifo;
   u32 my_thread_index = vlib_get_thread_index ();
   int n_read, i;
 
@@ -363,10 +363,10 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session_index = session - ecm->sessions;
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->server_rx_fifo = s->server_rx_fifo;
-  session->server_rx_fifo->client_session_index = session_index;
-  session->server_tx_fifo = s->server_tx_fifo;
-  session->server_tx_fifo->client_session_index = session_index;
+  session->rx_fifo = s->rx_fifo;
+  session->rx_fifo->client_session_index = session_index;
+  session->tx_fifo = s->tx_fifo;
+  session->tx_fifo->client_session_index = session_index;
   session->vpp_session_handle = session_handle (s);
 
   vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);

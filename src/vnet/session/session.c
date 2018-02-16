@@ -114,23 +114,23 @@ session_free (stream_session_t * s)
 static int
 session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
 {
-  svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
+  svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
   u32 fifo_segment_index;
   int rv;
 
-  if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
-						 &server_tx_fifo,
+  if ((rv = segment_manager_alloc_session_fifos (sm, &rx_fifo,
+						 &tx_fifo,
 						 &fifo_segment_index)))
     return rv;
   /* Initialize backpointers */
-  server_rx_fifo->master_session_index = s->session_index;
-  server_rx_fifo->master_thread_index = s->thread_index;
+  rx_fifo->master_session_index = s->session_index;
+  rx_fifo->master_thread_index = s->thread_index;
 
-  server_tx_fifo->master_session_index = s->session_index;
-  server_tx_fifo->master_thread_index = s->thread_index;
+  tx_fifo->master_session_index = s->session_index;
+  tx_fifo->master_thread_index = s->thread_index;
 
-  s->server_rx_fifo = server_rx_fifo;
-  s->server_tx_fifo = server_tx_fifo;
+  s->rx_fifo = rx_fifo;
+  s->tx_fifo = tx_fifo;
   s->svm_segment_index = fifo_segment_index;
   return 0;
 }
@@ -244,7 +244,7 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 	continue;
       if (is_in_order)
 	{
-	  rv = svm_fifo_enqueue_nowait (s->server_rx_fifo, len, data);
+	  rv = svm_fifo_enqueue_nowait (s->rx_fifo, len, data);
 	  if (rv == len)
 	    {
 	      written += rv;
@@ -267,7 +267,7 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 	}
       else
 	{
-	  rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset, len,
+	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len,
 					     data);
 	  if (rv)
 	    {
@@ -312,7 +312,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo,
+      enqueued = svm_fifo_enqueue_nowait (s->rx_fifo,
 					  b->current_length,
 					  vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -326,7 +326,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset,
+      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
 					 b->current_length,
 					 vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
@@ -361,9 +361,9 @@ session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
 {
   int enqueued = 0, rv, in_order_off;
 
-  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
+  if (svm_fifo_max_enqueue (s->rx_fifo) < b->current_length)
     return -1;
-  enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
+  enqueued = svm_fifo_enqueue_nowait (s->rx_fifo, b->current_length,
 				      vlib_buffer_get_current (b));
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
     {
@@ -400,7 +400,7 @@ stream_session_no_space (transport_connection_t * tc, u32 thread_index,
   if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
     return 1;
 
-  if (data_len > svm_fifo_max_enqueue (s->server_rx_fifo))
+  if (data_len > svm_fifo_max_enqueue (s->rx_fifo))
     return 1;
 
   return 0;
@@ -410,9 +410,9 @@ u32
 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  if (!s->server_tx_fifo)
+  if (!s->tx_fifo)
     return 0;
-  return svm_fifo_max_dequeue (s->server_tx_fifo);
+  return svm_fifo_max_dequeue (s->tx_fifo);
 }
 
 int
@@ -420,14 +420,14 @@ stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_peek (s->server_tx_fifo, offset, max_bytes, buffer);
+  return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
 }
 
 u32
 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_dequeue_drop (s->server_tx_fifo, max_bytes);
+  return svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
 }
 
 /**
@@ -448,9 +448,9 @@ session_enqueue_notify (stream_session_t * s, u8 block)
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
     {
       /* Session is closed so app will never clean up. Flush rx fifo */
-      u32 to_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
+      u32 to_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
       if (to_dequeue)
-	svm_fifo_dequeue_drop (s->server_rx_fifo, to_dequeue);
+	svm_fifo_dequeue_drop (s->rx_fifo, to_dequeue);
       return 0;
     }
 
@@ -468,10 +468,10 @@ session_enqueue_notify (stream_session_t * s, u8 block)
     return app->cb_fns.builtin_server_rx_callback (s);
 
   /* If no event, send one */
-  if (svm_fifo_set_event (s->server_rx_fifo))
+  if (svm_fifo_set_event (s->rx_fifo))
     {
       /* Fabricate event */
-      evt.fifo = s->server_rx_fifo;
+      evt.fifo = s->rx_fifo;
       evt.event_type = FIFO_EVENT_APP_RX;
 
       /* Add event to server's event queue */
@@ -491,7 +491,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
       ed->data[0] = evt.event_type;
-      ed->data[1] = svm_fifo_max_dequeue (s->server_rx_fifo);
+      ed->data[1] = svm_fifo_max_dequeue (s->rx_fifo);
   }));
   /* *INDENT-ON* */
 
@@ -541,8 +541,8 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 {
   stream_session_t *s;
   s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_init_pointers (s->server_rx_fifo, rx_pointer);
-  svm_fifo_init_pointers (s->server_tx_fifo, tx_pointer);
+  svm_fifo_init_pointers (s->rx_fifo, rx_pointer);
+  svm_fifo_init_pointers (s->tx_fifo, tx_pointer);
 }
 
 int
@@ -626,8 +626,8 @@ session_switch_pool (void *cb_args)
   stream_session_t *s;
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
-  s->server_tx_fifo->master_session_index = args->new_session_index;
-  s->server_tx_fifo->master_thread_index = args->new_thread_index;
+  s->tx_fifo->master_session_index = args->new_session_index;
+  s->tx_fifo->master_thread_index = args->new_thread_index;
   tp = session_get_transport_proto (s);
   tp_vfts[tp].cleanup (s->connection_index, s->thread_index);
   session_free (s);
@@ -650,8 +650,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
    */
   new_s = session_clone_safe (tc->s_index, old_thread_index);
   new_s->connection_index = tc->c_index;
-  new_s->server_rx_fifo->master_session_index = new_s->session_index;
-  new_s->server_rx_fifo->master_thread_index = new_s->thread_index;
+  new_s->rx_fifo->master_session_index = new_s->session_index;
+  new_s->rx_fifo->master_thread_index = new_s->thread_index;
   new_s->session_state = SESSION_STATE_READY;
   session_lookup_add_connection (tc, session_handle (new_s));
 
@@ -715,8 +715,8 @@ stream_session_delete (stream_session_t * s)
     clib_warning ("hash delete error, rv %d", rv);
 
   /* Cleanup fifo segments */
-  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
-				 s->server_tx_fifo);
+  segment_manager_dealloc_fifos (s->svm_segment_index, s->rx_fifo,
+				 s->tx_fifo);
   session_free (s);
 }
 
