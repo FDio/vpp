@@ -520,6 +520,9 @@ write_script_header() {
     if [ -n "$VCL_CONFIG" ] ; then
         echo "export VCL_CONFIG=${vcl_config_dir}${vcl_config}" >> $1
     fi
+    if [ -n "$VCL_API_PREFIX" ] ; then
+        echo "export VCL_API_PREFIX=$VCL_API_PREFIX" >> $1
+    fi
     if [ -n "$VCL_DEBUG" ] ; then
         echo "export VCL_DEBUG=$VCL_DEBUG" >> $1
     fi
