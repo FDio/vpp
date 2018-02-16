@@ -1121,12 +1121,14 @@ class Worker(Thread):
         self.logger = logger
         self.args = args
         self.result = None
+        self.env = {}
         super(Worker, self).__init__()
 
     def run(self):
         executable = self.args[0]
         self.logger.debug("Running executable w/args `%s'" % self.args)
         env = os.environ.copy()
+        env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
         self.process = subprocess.Popen(
             self.args, shell=False, env=env, preexec_fn=os.setpgrp,
