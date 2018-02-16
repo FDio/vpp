@@ -78,6 +78,21 @@ adj_fib_proto_2_nd (fib_protocol_t fp)
     return (0);
 }
 
+static inline ip46_type_t
+adj_proto_to_46 (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (IP46_TYPE_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (IP46_TYPE_IP6);
+    default:
+	return (IP46_TYPE_IP4);
+    }
+    return (IP46_TYPE_IP4);
+}
+
 /**
  * @brief
  * Get a pointer to an adjacency object from its index

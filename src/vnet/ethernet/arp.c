@@ -455,8 +455,10 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
   switch (adj->lookup_next_index)
     {
-    case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
+      adj_glean_update_rewrite (ai);
+      break;
+    case IP_LOOKUP_NEXT_ARP:
       if (NULL != e)
 	{
 	  adj_nbr_walk_nh4 (sw_if_index,
@@ -2480,6 +2482,7 @@ ethernet_arp_change_mac (u32 sw_if_index)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e;
+  adj_index_t ai;
 
   /* *INDENT-OFF* */
   pool_foreach (e, am->ip4_entry_pool,
@@ -2487,6 +2490,11 @@ ethernet_arp_change_mac (u32 sw_if_index)
     change_arp_mac (sw_if_index, e);
   }));
   /* *INDENT-ON* */
+
+  ai = adj_glean_get (FIB_PROTOCOL_IP4, sw_if_index);
+
+  if (ADJ_INDEX_INVALID != ai)
+    adj_glean_update_rewrite (ai);
 }
 
 void
