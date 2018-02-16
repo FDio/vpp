@@ -136,7 +136,7 @@ echo_server_builtin_server_rx_callback_no_echo (stream_session_t * s)
   int actual_transfer;
   svm_fifo_t *rx_fifo;
 
-  rx_fifo = s->server_rx_fifo;
+  rx_fifo = s->rx_fifo;
 
   do
     {
@@ -160,14 +160,14 @@ echo_server_rx_callback (stream_session_t * s)
 
   ASSERT (s->thread_index == thread_index);
 
-  rx_fifo = s->server_rx_fifo;
-  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
 
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
 
-  max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
-  max_enqueue = svm_fifo_max_enqueue (s->server_tx_fifo);
+  max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
+  max_enqueue = svm_fifo_max_enqueue (s->tx_fifo);
 
   if (PREDICT_FALSE (max_dequeue == 0))
     return 0;

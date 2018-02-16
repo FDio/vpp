@@ -168,7 +168,7 @@ proxy_rx_callback (stream_session_t * s)
   if (PREDICT_TRUE (p != 0))
     {
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
-      active_open_tx_fifo = s->server_rx_fifo;
+      active_open_tx_fifo = s->rx_fifo;
 
       /*
        * Send event for active open tx fifo
@@ -185,13 +185,13 @@ proxy_rx_callback (stream_session_t * s)
     }
   else
     {
-      rx_fifo = s->server_rx_fifo;
-      tx_fifo = s->server_tx_fifo;
+      rx_fifo = s->rx_fifo;
+      tx_fifo = s->tx_fifo;
 
       ASSERT (rx_fifo->master_thread_index == thread_index);
       ASSERT (tx_fifo->master_thread_index == thread_index);
 
-      max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
+      max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
 
       if (PREDICT_FALSE (max_dequeue == 0))
 	return 0;
@@ -206,8 +206,8 @@ proxy_rx_callback (stream_session_t * s)
       clib_spinlock_lock_if_init (&pm->sessions_lock);
       pool_get (pm->sessions, ps);
       memset (ps, 0, sizeof (*ps));
-      ps->server_rx_fifo = rx_fifo;
-      ps->server_tx_fifo = tx_fifo;
+      ps->rx_fifo = rx_fifo;
+      ps->tx_fifo = tx_fifo;
       ps->vpp_server_handle = session_handle (s);
 
       proxy_index = ps - pm->sessions;
@@ -259,23 +259,23 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   ps = pool_elt_at_index (pm->sessions, opaque);
   ps->vpp_active_open_handle = session_handle (s);
 
-  s->server_tx_fifo = ps->server_rx_fifo;
-  s->server_rx_fifo = ps->server_tx_fifo;
+  s->tx_fifo = ps->rx_fifo;
+  s->rx_fifo = ps->tx_fifo;
 
   /*
    * Reset the active-open tx-fifo master indices so the active-open session
    * will receive data, etc.
    */
-  s->server_tx_fifo->master_session_index = s->session_index;
-  s->server_tx_fifo->master_thread_index = s->thread_index;
+  s->tx_fifo->master_session_index = s->session_index;
+  s->tx_fifo->master_thread_index = s->thread_index;
 
   /*
    * Account for the active-open session's use of the fifos
    * so they won't disappear until the last session which uses
    * them disappears
    */
-  s->server_tx_fifo->refcnt++;
-  s->server_rx_fifo->refcnt++;
+  s->tx_fifo->refcnt++;
+  s->rx_fifo->refcnt++;
 
   hash_set (pm->proxy_session_by_active_open_handle,
 	    ps->vpp_active_open_handle, opaque);
@@ -285,9 +285,9 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   /*
    * Send event for active open tx fifo
    */
-  if (svm_fifo_set_event (s->server_tx_fifo))
+  if (svm_fifo_set_event (s->tx_fifo))
     {
-      evt.fifo = s->server_tx_fifo;
+      evt.fifo = s->tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
       if (svm_queue_add
 	  (pm->active_open_event_queue[thread_index], (u8 *) & evt,
@@ -321,17 +321,17 @@ active_open_rx_callback (stream_session_t * s)
 {
   proxy_main_t *pm = &proxy_main;
   session_fifo_event_t evt;
-  svm_fifo_t *server_rx_fifo;
+  svm_fifo_t *rx_fifo;
   u32 thread_index = vlib_get_thread_index ();
 
-  server_rx_fifo = s->server_rx_fifo;
+  rx_fifo = s->rx_fifo;
 
   /*
-   * Send event for server tx fifo
+   * Send event for tx fifo
    */
-  if (svm_fifo_set_event (server_rx_fifo))
+  if (svm_fifo_set_event (rx_fifo))
     {
-      evt.fifo = server_rx_fifo;
+      evt.fifo = rx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
       if (svm_queue_add
 	  (pm->server_event_queue[thread_index], (u8 *) & evt,

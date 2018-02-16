@@ -58,8 +58,8 @@ typedef enum
 
 typedef struct
 {
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 } session_t;
 
 typedef struct
@@ -301,8 +301,8 @@ cut_through_thread_fn (void *arg)
 
   s = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
 
-  rx_fifo = s->server_rx_fifo;
-  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
 
   vec_validate (my_copy_buffer, 64 * 1024 - 1);
 
@@ -372,8 +372,8 @@ client_send_cut_through (uri_udp_test_main_t * utm, session_t * session)
   for (i = 0; i < vec_len (test_data); i++)
     test_data[i] = i & 0xff;
 
-  rx_fifo = session->server_rx_fifo;
-  tx_fifo = session->server_tx_fifo;
+  rx_fifo = session->rx_fifo;
+  tx_fifo = session->tx_fifo;
 
   before = clib_time_now (&utm->clib_time);
 
@@ -503,7 +503,7 @@ recv_test_chunk (uri_udp_test_main_t * utm, session_t * session)
   svm_fifo_t *rx_fifo;
   int buffer_offset, bytes_to_read = 0, rv;
 
-  rx_fifo = session->server_rx_fifo;
+  rx_fifo = session->rx_fifo;
   bytes_to_read = svm_fifo_max_dequeue (rx_fifo);
   bytes_to_read =
     vec_len (utm->rx_buf) > bytes_to_read ?
@@ -538,7 +538,7 @@ client_send_data (uri_udp_test_main_t * utm)
 
   test_data = utm->connect_test_data;
   session = pool_elt_at_index (utm->sessions, utm->connected_session);
-  tx_fifo = session->server_tx_fifo;
+  tx_fifo = session->tx_fifo;
 
   ASSERT (vec_len (test_data) > 0);
 
@@ -692,16 +692,16 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 
   pool_get (utm->sessions, session);
 
-  session->server_rx_fifo = svm_fifo_segment_alloc_fifo
+  session->rx_fifo = svm_fifo_segment_alloc_fifo
     (utm->seg, 128 * 1024, FIFO_SEGMENT_RX_FREELIST);
-  ASSERT (session->server_rx_fifo);
+  ASSERT (session->rx_fifo);
 
-  session->server_tx_fifo = svm_fifo_segment_alloc_fifo
+  session->tx_fifo = svm_fifo_segment_alloc_fifo
     (utm->seg, 128 * 1024, FIFO_SEGMENT_TX_FREELIST);
-  ASSERT (session->server_tx_fifo);
+  ASSERT (session->tx_fifo);
 
-  session->server_rx_fifo->master_session_index = session - utm->sessions;
-  session->server_tx_fifo->master_session_index = session - utm->sessions;
+  session->rx_fifo->master_session_index = session - utm->sessions;
+  session->tx_fifo->master_session_index = session - utm->sessions;
   utm->cut_through_session_index = session - utm->sessions;
 
   rv = pthread_create (&utm->cut_through_thread_handle,
@@ -722,8 +722,8 @@ send_reply:
   rmp->segment_name_length = vec_len (a->segment_name);
   if (session)
     {
-      rmp->server_rx_fifo = pointer_to_uword (session->server_rx_fifo);
-      rmp->server_tx_fifo = pointer_to_uword (session->server_tx_fifo);
+      rmp->rx_fifo = pointer_to_uword (session->rx_fifo);
+      rmp->tx_fifo = pointer_to_uword (session->tx_fifo);
     }
 
   memcpy (rmp->segment_name, a->segment_name, vec_len (a->segment_name));
@@ -762,8 +762,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   utm->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
 
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
+  rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
+  tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
 
   pool_get (utm->sessions, session);
   memset (session, 0, sizeof (*session));
@@ -778,8 +778,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
       rx_fifo->master_session_index = session_index;
       tx_fifo->master_session_index = session_index;
       utm->cut_through_session_index = session_index;
-      session->server_rx_fifo = rx_fifo;
-      session->server_tx_fifo = tx_fifo;
+      session->rx_fifo = rx_fifo;
+      session->tx_fifo = tx_fifo;
 
       rv = pthread_create (&utm->cut_through_thread_handle,
 			   NULL /*attr */ , cut_through_thread_fn, 0);
@@ -793,8 +793,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     {
       rx_fifo->client_session_index = session_index;
       tx_fifo->client_session_index = session_index;
-      session->server_rx_fifo = rx_fifo;
-      session->server_tx_fifo = tx_fifo;
+      session->rx_fifo = rx_fifo;
+      session->tx_fifo = tx_fifo;
     }
 
   hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -865,12 +865,10 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
     }
 
   pool_get (utm->sessions, session);
-  session->server_rx_fifo = uword_to_pointer (mp->server_rx_fifo,
-					      svm_fifo_t *);
-  ASSERT (session->server_rx_fifo);
-  session->server_tx_fifo = uword_to_pointer (mp->server_tx_fifo,
-					      svm_fifo_t *);
-  ASSERT (session->server_tx_fifo);
+  session->rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
+  ASSERT (session->rx_fifo);
+  session->tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
+  ASSERT (session->tx_fifo);
 
   /* Cut-through case */
   if (mp->client_event_queue_address)
@@ -962,7 +960,7 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
   int rv;
 
   rx_fifo = e->fifo;
-  tx_fifo = utm->sessions[rx_fifo->client_session_index].server_tx_fifo;
+  tx_fifo = utm->sessions[rx_fifo->client_session_index].tx_fifo;
   svm_fifo_unset_event (rx_fifo);
 
   do

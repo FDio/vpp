@@ -164,10 +164,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (s0->server_tx_fifo);
+  svm_fifo_unset_event (s0->tx_fifo);
 
   /* Check how much we can pull. */
-  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo);
+  max_dequeue0 = svm_fifo_max_dequeue (s0->tx_fifo);
 
   if (peek_data)
     {
@@ -272,7 +272,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 	  if (peek_data)
 	    {
-	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, tx_offset,
+	      n_bytes_read = svm_fifo_peek (s0->tx_fifo, tx_offset,
 					    len_to_deq0, data0);
 	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
@@ -282,7 +282,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
+	      n_bytes_read = svm_fifo_dequeue_nowait (s0->tx_fifo,
 						      len_to_deq0, data0);
 	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
@@ -300,7 +300,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      left_for_seg = clib_min (snd_mss0 - n_bytes_read, left_to_snd0);
 	      session_tx_fifo_chain_tail (smm, vm, thread_index,
-					  s0->server_tx_fifo, b0, bi0,
+					  s0->tx_fifo, b0, bi0,
 					  n_bufs_per_seg, left_for_seg,
 					  &left_to_snd0, &n_bufs, &tx_offset,
 					  deq_per_buf, peek_data);
@@ -343,7 +343,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (max_len_to_snd0 < max_dequeue0)
     {
       /* If we don't already have new event */
-      if (svm_fifo_set_event (s0->server_tx_fifo))
+      if (svm_fifo_set_event (s0->tx_fifo))
 	{
 	  vec_add1 (smm->pending_event_vector[thread_index], *e0);
 	}
@@ -357,7 +357,7 @@ dequeue_fail:
    */
   clib_warning ("dequeue fail");
 
-  if (svm_fifo_set_event (s0->server_tx_fifo))
+  if (svm_fifo_set_event (s0->tx_fifo))
     {
       vec_add1 (smm->pending_event_vector[thread_index], *e0);
     }
@@ -473,7 +473,7 @@ session_node_cmp_event (session_fifo_event_t * e, svm_fifo_t * f)
 	  clib_warning ("session has event but doesn't exist!");
 	  break;
 	}
-      if (s->server_rx_fifo == f || s->server_tx_fifo == f)
+      if (s->rx_fifo == f || s->tx_fifo == f)
 	return 1;
       break;
     default:
@@ -655,7 +655,7 @@ skip_dequeue:
 	  s0 = session_event_get_session (e0, my_thread_index);
 	  if (PREDICT_FALSE (!s0))
 	    continue;
-	  svm_fifo_unset_event (s0->server_rx_fifo);
+	  svm_fifo_unset_event (s0->rx_fifo);
 	  app = application_get (s0->app_index);
 	  app->cb_fns.builtin_server_rx_callback (s0);
 	  break;

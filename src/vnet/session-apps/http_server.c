@@ -147,7 +147,7 @@ send_data (stream_session_t * s, u8 * data)
       int actual_transfer;
 
       actual_transfer = svm_fifo_enqueue_nowait
-	(s->server_tx_fifo, bytes_to_send, data + offset);
+	(s->tx_fifo, bytes_to_send, data + offset);
 
       /* Made any progress? */
       if (actual_transfer <= 0)
@@ -169,10 +169,10 @@ send_data (stream_session_t * s, u8 * data)
 	  offset += actual_transfer;
 	  bytes_to_send -= actual_transfer;
 
-	  if (svm_fifo_set_event (s->server_tx_fifo))
+	  if (svm_fifo_set_event (s->tx_fifo))
 	    {
 	      /* Fabricate TX event, send to vpp */
-	      evt.fifo = s->server_tx_fifo;
+	      evt.fifo = s->tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
 	      svm_queue_add (hsm->vpp_queue[s->thread_index],
@@ -337,7 +337,7 @@ session_rx_request (stream_session_t * s)
   u32 max_dequeue;
   int actual_transfer;
 
-  rx_fifo = s->server_rx_fifo;
+  rx_fifo = s->rx_fifo;
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
   svm_fifo_unset_event (rx_fifo);
   if (PREDICT_FALSE (max_dequeue == 0))
