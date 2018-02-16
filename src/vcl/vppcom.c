@@ -190,6 +190,7 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
+  u8 *vpp_api_filename;
 } vppcom_cfg_t;
 
 typedef struct vppcom_main_t_
@@ -199,7 +200,7 @@ typedef struct vppcom_main_t_
   u32 *client_session_index_fifo;
   int main_cpu;
 
-  /* vpe input queue */
+  /* vpp input queue */
   svm_queue_t *vl_input_queue;
 
   /* API client handle */
@@ -423,13 +424,17 @@ static int
 vppcom_connect_to_vpp (char *app_name)
 {
   api_main_t *am = &api_main;
+  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
   int rv = VPPCOM_OK;
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: app (%s) connecting to VPP api...",
-		  getpid (), app_name);
+  if (!vcl_cfg->vpp_api_filename)
+    vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
 
-  if (vl_client_connect_to_vlib ("/vpe-api", app_name,
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("VCL<%d>: app (%s) connecting to VPP api (%s)...",
+		  getpid (), app_name, vcl_cfg->vpp_api_filename);
+
+  if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename, app_name,
 				 vcm->cfg.vpp_api_q_length) < 0)
     {
       clib_warning ("VCL<%d>: app (%s) connect failed!", getpid (), app_name);
@@ -1736,12 +1741,20 @@ vppcom_cfg_heapsize (char *conf_fname)
   if (fp == NULL)
     {
       if (VPPCOM_DEBUG > 0)
-	fprintf (stderr, "open configuration file '%s' failed\n", conf_fname);
+	clib_warning ("VCL<%d>: using default heapsize %lld (0x%llx)",
+		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
       goto defaulted;
     }
+
   argv = calloc (1, sizeof (char *));
   if (argv == NULL)
-    goto defaulted;
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("VCL<%d>: calloc failed, using default "
+		      "heapsize %lld (0x%llx)",
+		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      goto defaulted;
+    }
 
   while (1)
     {
@@ -1755,11 +1768,25 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  argc++;
 	  char **tmp = realloc (argv, argc * sizeof (char *));
 	  if (tmp == NULL)
-	    goto defaulted;
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("VCL<%d>: realloc failed, "
+			      "using default heapsize %lld (0x%llx)",
+			      getpid (), vcl_cfg->heapsize,
+			      vcl_cfg->heapsize);
+	      goto defaulted;
+	    }
 	  argv = tmp;
 	  arg = strndup (p, 1024);
 	  if (arg == NULL)
-	    goto defaulted;
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("VCL<%d>: strndup failed, "
+			      "using default heapsize %lld (0x%llx)",
+			      getpid (), vcl_cfg->heapsize,
+			      vcl_cfg->heapsize);
+	      goto defaulted;
+	    }
 	  argv[argc - 1] = arg;
 	  p = strtok (NULL, " \t\n");
 	}
@@ -1770,7 +1797,13 @@ vppcom_cfg_heapsize (char *conf_fname)
 
   char **tmp = realloc (argv, (argc + 1) * sizeof (char *));
   if (tmp == NULL)
-    goto defaulted;
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("VCL<%d>: realloc failed, "
+		      "using default heapsize %lld (0x%llx)",
+		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      goto defaulted;
+    }
   argv = tmp;
   argv[argc] = NULL;
 
@@ -1832,18 +1865,21 @@ defaulted:
 		       "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
 		       "-1, 0) failed!",
 		       getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      ASSERT (vcl_mem != MAP_FAILED);
       return;
     }
   heap = clib_mem_init (vcl_mem, vcl_cfg->heapsize);
   if (!heap)
     {
       clib_warning ("VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());
+      ASSERT (heap);
       return;
     }
   vcl_mem = clib_mem_alloc (sizeof (_vppcom_main));
   if (!vcl_mem)
     {
       clib_warning ("VCL<%d>: ERROR: clib_mem_alloc() failed!", getpid ());
+      ASSERT (vcl_mem);
       return;
     }
 
@@ -1871,7 +1907,7 @@ vppcom_cfg_read (char *conf_fname)
   if (fd < 0)
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: open configuration file '%s' failed!",
+	clib_warning ("VCL<%d>: using default configuration.",
 		      getpid (), conf_fname);
       goto file_done;
     }
@@ -1879,15 +1915,16 @@ vppcom_cfg_read (char *conf_fname)
   if (fstat (fd, &s) < 0)
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: failed to stat `%s'", getpid (), conf_fname);
+	clib_warning ("VCL<%d>: failed to stat `%s', "
+		      "using default configuration", getpid (), conf_fname);
       goto file_done;
     }
 
   if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: not a regular file `%s'",
-		      getpid (), conf_fname);
+	clib_warning ("VCL<%d>: not a regular file `%s', "
+		      "using default configuration", getpid (), conf_fname);
       goto file_done;
     }
 
@@ -1919,10 +1956,16 @@ vppcom_cfg_read (char *conf_fname)
 	  else if (unformat (line_input, "api-prefix %s", &chroot_path))
 	    {
 	      vec_terminate_c_string (chroot_path);
+	      if (vcl_cfg->vpp_api_filename)
+		vec_free (vcl_cfg->vpp_api_filename);
+	      vcl_cfg->vpp_api_filename = format (0, "/%s-vpe-api%c",
+						  chroot_path, 0);
 	      vl_set_memory_root_path ((char *) chroot_path);
+
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured api-prefix %s",
-			      getpid (), chroot_path);
+		clib_warning ("VCL<%d>: configured api-prefix (%s) and "
+			      "api filename (%s)", getpid (), chroot_path,
+			      vcl_cfg->vpp_api_filename);
 	      chroot_path = 0;	/* Don't vec_free() it! */
 	    }
 	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
@@ -2215,16 +2258,46 @@ vppcom_app_create (char *app_name)
 	}
       conf_fname = getenv (VPPCOM_ENV_CONF);
       if (!conf_fname)
-	{
-	  conf_fname = VPPCOM_CONF_DEFAULT;
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: getenv '%s' failed!", getpid (),
-			  VPPCOM_ENV_CONF);
-	}
+	conf_fname = VPPCOM_CONF_DEFAULT;
       vppcom_cfg_heapsize (conf_fname);
+      vcl_cfg = &vcm->cfg;
       clib_fifo_validate (vcm->client_session_index_fifo,
 			  vcm->cfg.listen_queue_size);
       vppcom_cfg_read (conf_fname);
+
+      env_var_str = getenv (VPPCOM_ENV_API_PREFIX);
+      if (env_var_str)
+	{
+	  if (vcl_cfg->vpp_api_filename)
+	    vec_free (vcl_cfg->vpp_api_filename);
+	  vcl_cfg->vpp_api_filename = format (0, "/%s-vpe-api%c",
+					      env_var_str, 0);
+	  vl_set_memory_root_path ((char *) env_var_str);
+
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("VCL<%d>: configured api prefix (%s) and "
+			  "filename (%s) from " VPPCOM_ENV_API_PREFIX "!",
+			  getpid (), env_var_str, vcl_cfg->vpp_api_filename);
+	}
+
+      env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
+      if (env_var_str)
+	{
+	  u64 tmp;
+	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
+	    clib_warning ("VCL<%d>: Invalid namespace secret specified in "
+			  "the environment variable "
+			  VPPCOM_ENV_APP_NAMESPACE_SECRET
+			  " (%s)!\n", getpid (), env_var_str);
+	  else
+	    {
+	      vcm->cfg.namespace_secret = tmp;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("VCL<%d>: configured namespace secret "
+			      "(%lu) from " VPPCOM_ENV_APP_NAMESPACE_ID "!",
+			      getpid (), vcm->cfg.namespace_secret);
+	    }
+	}
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
       if (env_var_str)
 	{
