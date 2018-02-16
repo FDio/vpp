@@ -182,6 +182,8 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = sz - 1;
   u32 *buffers = vlib_frame_args (frame);
 
+  clib_spinlock_lock_if_init (&vif->lockp);
+
   /* free consumed buffers */
   virtio_free_used_desc (vm, vring);
 
@@ -220,6 +222,8 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			n_left);
       vlib_buffer_free (vm, buffers, n_left);
     }
+
+  clib_spinlock_unlock_if_init (&vif->lockp);
 
   return frame->n_vectors - n_left;
 }
