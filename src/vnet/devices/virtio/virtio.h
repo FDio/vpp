@@ -91,6 +91,8 @@ typedef struct
 typedef struct
 {
   u32 flags;
+  clib_spinlock_t lockp;
+
   u32 id;
   u32 dev_instance;
   u32 hw_if_index;
