@@ -941,18 +941,17 @@ application_local_session_connect (u32 table_index, application_t * client,
   ls->client_evt_q = pointer_to_uword (cq);
   rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
 					props->tx_fifo_size,
-					&ls->server_rx_fifo,
-					&ls->server_tx_fifo);
+					&ls->rx_fifo, &ls->tx_fifo);
   if (rv)
     {
       clib_warning ("failed to add fifos in cut-through segment");
       segment_manager_segment_reader_unlock (sm);
       goto failed;
     }
-  ls->server_rx_fifo->master_session_index = ls->session_index;
-  ls->server_tx_fifo->master_session_index = ls->session_index;
-  ls->server_rx_fifo->master_thread_index = ~0;
-  ls->server_tx_fifo->master_thread_index = ~0;
+  ls->rx_fifo->master_session_index = ls->session_index;
+  ls->tx_fifo->master_session_index = ls->session_index;
+  ls->rx_fifo->master_thread_index = ~0;
+  ls->tx_fifo->master_thread_index = ~0;
   ls->svm_segment_index = seg_index;
   ls->listener_index = ll->session_index;
   ls->client_index = client->index;

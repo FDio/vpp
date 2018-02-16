@@ -40,8 +40,8 @@ typedef enum
 typedef struct app_session_
 {
   /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   /** Type */
   session_type_t session_type;
@@ -59,8 +59,8 @@ typedef struct app_session_
 typedef struct _stream_session_t
 {
   /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   /** Type */
   session_type_t session_type;
@@ -94,8 +94,8 @@ typedef struct _stream_session_t
 typedef struct local_session_
 {
   /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   /** Type */
   session_type_t session_type;
