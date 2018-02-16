@@ -167,8 +167,8 @@ send_session_accept_callback (stream_session_t * s)
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server->index;
-  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->rx_fifo = pointer_to_uword (s->rx_fifo);
+  mp->tx_fifo = pointer_to_uword (s->tx_fifo);
 
   if (session_has_transport (s))
     {
@@ -333,8 +333,8 @@ send_session_connected_callback (u32 app_index, u32 api_context,
       clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
       mp->is_ip4 = tc->is_ip4;
       mp->lcl_port = tc->lcl_port;
-      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+      mp->rx_fifo = pointer_to_uword (s->rx_fifo);
+      mp->tx_fifo = pointer_to_uword (s->tx_fifo);
     }
   else
     {
@@ -343,8 +343,8 @@ send_session_connected_callback (u32 app_index, u32 api_context,
       mp->lcl_port = ls->port;
       mp->vpp_event_queue_address = ls->server_evt_q;
       mp->client_event_queue_address = ls->client_evt_q;
-      mp->server_rx_fifo = pointer_to_uword (s->server_tx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_rx_fifo);
+      mp->rx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->tx_fifo = pointer_to_uword (s->rx_fifo);
     }
 
 done:

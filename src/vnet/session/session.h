@@ -224,10 +224,10 @@ stream_session_is_valid (u32 si, u8 thread_index)
   stream_session_t *s;
   s = pool_elt_at_index (session_manager_main.sessions[thread_index], si);
   if (s->thread_index != thread_index || s->session_index != si
-      /* || s->server_rx_fifo->master_session_index != si
-         || s->server_tx_fifo->master_session_index != si
-         || s->server_rx_fifo->master_thread_index != thread_index
-         || s->server_tx_fifo->master_thread_index != thread_index */ )
+      /* || s->rx_fifo->master_session_index != si
+         || s->tx_fifo->master_session_index != si
+         || s->rx_fifo->master_thread_index != thread_index
+         || s->tx_fifo->master_thread_index != thread_index */ )
     return 0;
   return 1;
 }
@@ -412,14 +412,14 @@ always_inline u32
 stream_session_max_rx_enqueue (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_enqueue (s->server_rx_fifo);
+  return svm_fifo_max_enqueue (s->rx_fifo);
 }
 
 always_inline u32
 stream_session_rx_fifo_size (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return s->server_rx_fifo->nitems;
+  return s->rx_fifo->nitems;
 }
 
 always_inline u32

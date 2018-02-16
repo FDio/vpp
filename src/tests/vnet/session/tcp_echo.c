@@ -40,8 +40,8 @@
 
 typedef struct
 {
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   u64 vpp_session_handle;
   u64 bytes_received;
@@ -650,13 +650,13 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   pool_get (em->sessions, session);
   session_index = session - em->sessions;
 
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
+  rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
+  tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
-  session->server_rx_fifo = rx_fifo;
-  session->server_tx_fifo = tx_fifo;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
   session->vpp_session_handle = mp->handle;
   session->start = clib_time_now (&em->clib_time);
 
@@ -729,7 +729,7 @@ client_send_data (echo_main_t * em)
   int i;
 
   session = pool_elt_at_index (em->sessions, em->connected_session_index);
-  tx_fifo = session->server_tx_fifo;
+  tx_fifo = session->tx_fifo;
 
   ASSERT (vec_len (test_data) > 0);
 
@@ -980,13 +980,13 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   pool_get (em->sessions, session);
   session_index = session - em->sessions;
 
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
+  rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
+  tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
-  session->server_rx_fifo = rx_fifo;
-  session->server_tx_fifo = tx_fifo;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
 
   /* Add it to lookup table */
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
@@ -1030,7 +1030,7 @@ server_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
   rx_buf_len = vec_len (em->rx_buf);
   rx_fifo = e->fifo;
   session = &em->sessions[rx_fifo->client_session_index];
-  tx_fifo = session->server_tx_fifo;
+  tx_fifo = session->tx_fifo;
 
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
   /* Allow enqueuing of a new event */
