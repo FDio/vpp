@@ -224,7 +224,12 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   vec_free (args.secret);
 
 reply:
-  REPLY_MACRO (VL_API_MEMIF_CREATE_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_MEMIF_CREATE_REPLY,
+    ({
+      rmp->sw_if_index = htonl (args.sw_if_index);
+    }));
+  /* *INDENT-ON* */
 }
 
 /**
