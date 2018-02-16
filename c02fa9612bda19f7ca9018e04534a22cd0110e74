@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c3bc326_22fc844e",
+        "filename": "src/plugins/sixrd/sixrd.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-16T15:08:09Z",
+      "side": 1,
+      "message": "you are not registering as a sibling on the fib-entry. this means you won\u0027t get updates to changes to that entry and thus will forward/stack on stale info.",
+      "revId": "c02fa9612bda19f7ca9018e04534a22cd0110e74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a75ac90_1f6a1c72",
+        "filename": "src/plugins/sixrd/sixrd.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-16T15:08:09Z",
+      "side": 1,
+      "message": "SOURCE_PLUGIN_HI or LOW depending on whether you want an API/CLI route to take preference or not.",
+      "revId": "c02fa9612bda19f7ca9018e04534a22cd0110e74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c6f8c6e_72993d9f",
+        "filename": "src/vnet/adj/adj_delegate.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-16T15:08:09Z",
+      "side": 1,
+      "message": "add sibling index here.",
+      "revId": "c02fa9612bda19f7ca9018e04534a22cd0110e74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "299c1deb_4c346820",
+        "filename": "src/vnet/fib/fib_node.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-16T15:08:09Z",
+      "side": 1,
+      "message": "use this type when registering as a sibling on the fib-entry",
+      "revId": "c02fa9612bda19f7ca9018e04534a22cd0110e74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
