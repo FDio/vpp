@@ -23,6 +23,7 @@ import struct
 import json
 import threading
 import fnmatch
+import weakref
 import atexit
 from cffi import FFI
 import cffi
@@ -55,11 +56,12 @@ void vac_set_error_handler(vac_error_callback_t);
 # Barfs on failure, no need to check success.
 vpp_api = ffi.dlopen('libvppapiclient.so')
 
-def vpp_atexit(self):
+def vpp_atexit(vpp_weakref):
     """Clean up VPP connection on shutdown."""
-    if self.connected:
-        self.logger.debug('Cleaning up VPP on exit')
-        self.disconnect()
+    vpp_instance = vpp_weakref()
+    if vpp_instance.connected:
+        vpp_instance.logger.debug('Cleaning up VPP on exit')
+        vpp_instance.disconnect()
 
 vpp_object = None
 
@@ -136,11 +138,7 @@ class VPP():
         self.message_queue = queue.Queue()
         self.read_timeout = read_timeout
         self.vpp_api = vpp_api
-        if async_thread:
-            self.event_thread = threading.Thread(
-                target=self.thread_msg_handler)
-            self.event_thread.daemon = True
-            self.event_thread.start()
+        self.async_thread = async_thread
 
         if not apifiles:
             # Pick up API definitions from default directory
@@ -168,7 +166,7 @@ class VPP():
             raise ValueError(1, 'Missing JSON message definitions')
 
         # Make sure we allow VPP to clean up the message rings.
-        atexit.register(vpp_atexit, self)
+        atexit.register(vpp_atexit, weakref.ref(self))
 
         # Register error handler
         vpp_api.vac_set_error_handler(vac_error_handler)
@@ -613,13 +611,6 @@ class VPP():
                 multipart = True if name.find('_dump') > 0 else False
                 f = self.make_function(name, i, msgdef, multipart, async)
                 setattr(self._api, name, FuncWrapper(f))
-
-                # old API stuff starts here - will be removed in 17.07
-                if hasattr(self, name):
-                    raise NameError(
-                        3, "Conflicting name in JSON definition: `%s'" % name)
-                setattr(self, name, f)
-                # old API stuff ends here
             else:
                 self.logger.debug(
                     'No such message type or failed CRC checksum: %s', n)
@@ -664,6 +655,11 @@ class VPP():
         self.control_ping_index = vpp_api.vac_get_msg_index(
             ('control_ping' + '_' + crc[2:]).encode())
         self.control_ping_msgdef = self.messages['control_ping']
+        if self.async_thread:
+            self.event_thread = threading.Thread(
+                target=self.thread_msg_handler)
+            self.event_thread.daemon = True
+            self.event_thread.start()
         return rv
 
     def connect(self, name, chroot_prefix=None, async=False, rx_qlen=32):
@@ -695,6 +691,7 @@ class VPP():
         """Detach from VPP."""
         rv = vpp_api.vac_disconnect()
         self.connected = False
+        self.message_queue.put("terminate event thread")
         return rv
 
     def msg_handler_sync(self, msg):
@@ -711,8 +708,6 @@ class VPP():
         context = 0
         if hasattr(r, 'context') and r.context > 0:
             context = r.context
-
-        msgname = type(r).__name__
 
         if context == 0:
             # No context -> async notification that we feed to the callback
@@ -863,6 +858,8 @@ class VPP():
         """
         while True:
             r = self.message_queue.get()
+            if r == "terminate event thread":
+                break
             msgname = type(r).__name__
             if self.event_callback:
                 self.event_callback(msgname, r)
