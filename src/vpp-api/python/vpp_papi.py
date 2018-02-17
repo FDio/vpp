@@ -611,13 +611,6 @@ class VPP():
                 multipart = True if name.find('_dump') > 0 else False
                 f = self.make_function(name, i, msgdef, multipart, async)
                 setattr(self._api, name, FuncWrapper(f))
-
-                # old API stuff starts here - will be removed in 17.07
-                if hasattr(self, name):
-                    raise NameError(
-                        3, "Conflicting name in JSON definition: `%s'" % name)
-                setattr(self, name, f)
-                # old API stuff ends here
             else:
                 self.logger.debug(
                     'No such message type or failed CRC checksum: %s', n)
