@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c6ab4eba_338a1c37",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2822,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Code will never be executed. The VCL_LOCK_AND_GET_SESSION macro already does the equivalent check and will bypass this code if the session pointer is set.",
+      "range": {
+        "startLine": 2816,
+        "startChar": 0,
+        "endLine": 2822,
+        "endChar": 5
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0db603de_fc5b383d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2872,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Please restore the deleted line here.",
+      "range": {
+        "startLine": 2871,
+        "startChar": 0,
+        "endLine": 2872,
+        "endChar": 46
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0792b0e3_d1c62c1b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2893,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Don\u0027t access session state outside of spinlock, the pointer should be considered invalid outside of the spinlock.",
+      "range": {
+        "startLine": 2893,
+        "startChar": 15,
+        "endLine": 2893,
+        "endChar": 24
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be4f3ec8_7b0b2f11",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2921,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Restore:\nvpp_handle \u003d session-\u003evpp_handle;",
+      "range": {
+        "startLine": 2920,
+        "startChar": 0,
+        "endLine": 2921,
+        "endChar": 25
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "087ba00b_5ca15610",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2930,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Don\u0027t access session state outside of spinlock, the pointer should be considered invalid outside of the spinlock.",
+      "range": {
+        "startLine": 2930,
+        "startChar": 19,
+        "endLine": 2930,
+        "endChar": 28
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5127b433_6985730e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2946,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Don\u0027t access session state outside of spinlock, the pointer should be considered invalid outside of the spinlock.\n\nRestore previous caching of rx_fifo address and read session-\u003eattr into a local var inside the spinlock",
+      "range": {
+        "startLine": 2935,
+        "startChar": 0,
+        "endLine": 2946,
+        "endChar": 20
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f41bc0e6_62378b09",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2991,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Don\u0027t access session state outside of spinlock, the pointer should be considered invalid outside of the spinlock.",
+      "range": {
+        "startLine": 2987,
+        "startChar": 0,
+        "endLine": 2991,
+        "endChar": 60
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "af6c2181_7f6c9175",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3106,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Assert will never fail.  Equivalent logic in VCL_LOCK_AND_GET_SESSION will bypass this code.",
+      "range": {
+        "startLine": 3105,
+        "startChar": 0,
+        "endLine": 3106,
+        "endChar": 19
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "010b0531_5431f8da",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3140,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-17T02:17:58Z",
+      "side": 1,
+      "message": "Yes.  See previous comments.  The session pointer should never be accessed outside of the spinlock.  Read session data into local variables in the spinlock to be used outside of the spinlock.  This will reduce the amount of time the spinlock is active.\n\nI\u0027m not going to mark the rest of the file where this needs to be cleaned up.",
+      "range": {
+        "startLine": 3136,
+        "startChar": 0,
+        "endLine": 3140,
+        "endChar": 43
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
