@@ -46,8 +46,15 @@ ifneq ($(EXTERN_TESTS),)
 UNITTEST_EXTRA_OPTS=$(UNITTEST_FAILFAST_OPTS) -d $(EXTERN_TESTS)
 endif
 
+ifeq ($(TEST_DEBUG),1)
+VPP_PYTHON_PREFIX:=$(VPP_PYTHON_PREFIX)/debug
+PYTHON_EXTRA_DEPENDS=objgraph pympler
+else
+PYTHON_EXTRA_DEPENDS=
+endif
+
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=faulthandler six scapy==2.3.3 pexpect pycrypto subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
+PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) faulthandler six scapy==2.3.3 pexpect pycrypto subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 
@@ -242,6 +249,8 @@ help:
 	@echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
 	@echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
 	@echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
+	@echo ""
+	@echo " TEST_DEBUG=1         - turn on debugging of the test framework itself (expert)"
 	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"

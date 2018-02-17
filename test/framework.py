@@ -32,6 +32,12 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
     import subprocess
 
+debug_framework = False
+if os.getenv('TEST_DEBUG', "0") == "1":
+    debug_framework = True
+    import debug_internal
+
+
 """
   Test framework module.
 
@@ -453,6 +459,9 @@ class VppTestCase(unittest.TestCase):
         """ Perform final cleanup after running all tests in this test-case """
         cls.quit()
         cls.file_handler.close()
+        cls.reset_packet_infos()
+        if debug_framework:
+            debug_internal.on_tear_down_class(cls)
 
     def tearDown(self):
         """ Show various debug prints after each test """
