@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "280e83f6_6b7a2d5e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2822,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Ah! Yes, I see the \"goto done\" now, and also missed the use of the done: label higher up in some functions that then check session value for null... sorry mate, will fix.",
+      "parentUuid": "c6ab4eba_338a1c37",
+      "range": {
+        "startLine": 2816,
+        "startChar": 0,
+        "endLine": 2822,
+        "endChar": 5
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0db603de_fc5b383d",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 9
@@ -36,6 +60,30 @@
       "writtenOn": "2018-02-17T02:17:58Z",
       "side": 1,
       "message": "Please restore the deleted line here.",
+      "range": {
+        "startLine": 2871,
+        "startChar": 0,
+        "endLine": 2872,
+        "endChar": 46
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff5d2589_47888839",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2872,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "yeah, makes sense now, it would have skipped this deleted line if it failed, and still my if session thing was wrong below... apologies.",
+      "parentUuid": "0db603de_fc5b383d",
       "range": {
         "startLine": 2871,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "2309b334_1b765480",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2893,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "0792b0e3_d1c62c1b",
+      "range": {
+        "startLine": 2893,
+        "startChar": 15,
+        "endLine": 2893,
+        "endChar": 24
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be4f3ec8_7b0b2f11",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 9
@@ -82,6 +154,30 @@
       "writtenOn": "2018-02-17T02:17:58Z",
       "side": 1,
       "message": "Restore:\nvpp_handle \u003d session-\u003evpp_handle;",
+      "range": {
+        "startLine": 2920,
+        "startChar": 0,
+        "endLine": 2921,
+        "endChar": 25
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "57171476_80abdf6b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2921,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be4f3ec8_7b0b2f11",
       "range": {
         "startLine": 2920,
         "startChar": 0,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "b4816143_b142bee1",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2930,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "087ba00b_5ca15610",
+      "range": {
+        "startLine": 2930,
+        "startChar": 19,
+        "endLine": 2930,
+        "endChar": 28
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5127b433_6985730e",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 9
@@ -128,6 +248,30 @@
       "writtenOn": "2018-02-17T02:17:58Z",
       "side": 1,
       "message": "Don\u0027t access session state outside of spinlock, the pointer should be considered invalid outside of the spinlock.\n\nRestore previous caching of rx_fifo address and read session-\u003eattr into a local var inside the spinlock",
+      "range": {
+        "startLine": 2935,
+        "startChar": 0,
+        "endLine": 2946,
+        "endChar": 20
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ca8f821b_5f03d921",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2946,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5127b433_6985730e",
       "range": {
         "startLine": 2935,
         "startChar": 0,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "b160e6e4_8cd86ffa",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2991,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f41bc0e6_62378b09",
+      "range": {
+        "startLine": 2987,
+        "startChar": 0,
+        "endLine": 2991,
+        "endChar": 60
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "af6c2181_7f6c9175",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 9
@@ -174,6 +342,30 @@
       "writtenOn": "2018-02-17T02:17:58Z",
       "side": 1,
       "message": "Assert will never fail.  Equivalent logic in VCL_LOCK_AND_GET_SESSION will bypass this code.",
+      "range": {
+        "startLine": 3105,
+        "startChar": 0,
+        "endLine": 3106,
+        "endChar": 19
+      },
+      "revId": "07d09384dffb454c46f3d4d478718287b7a3b069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "093b1a0e_432fa4a9",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3106,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-17T12:59:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "af6c2181_7f6c9175",
       "range": {
         "startLine": 3105,
         "startChar": 0,
