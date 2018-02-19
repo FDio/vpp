@@ -56,24 +56,24 @@ typedef enum fib_node_type_t_ {
 
 #define FIB_NODE_TYPE_MAX (FIB_NODE_TYPE_LAST + 1)
 
-#define FIB_NODE_TYPES {                          \
-    [FIB_NODE_TYPE_ENTRY]     = "entry",          \
-    [FIB_NODE_TYPE_MFIB_ENTRY] = "mfib-entry",    \
-    [FIB_NODE_TYPE_WALK]      = "walk",           \
-    [FIB_NODE_TYPE_PATH_LIST] = "path-list",      \
-    [FIB_NODE_TYPE_PATH]      = "path",           \
-    [FIB_NODE_TYPE_MPLS_ENTRY] = "mpls-entry",    \
-    [FIB_NODE_TYPE_MPLS_TUNNEL] = "mpls-tunnel",  \
-    [FIB_NODE_TYPE_ADJ] = "adj",                  \
-    [FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY] = "lisp-gpe-fwd-entry", \
-    [FIB_NODE_TYPE_LISP_ADJ] = "lisp-adj", \
-    [FIB_NODE_TYPE_GRE_TUNNEL] = "gre-tunnel", \
-    [FIB_NODE_TYPE_VXLAN_TUNNEL] = "vxlan-tunnel", \
-    [FIB_NODE_TYPE_MAP_E] = "map-e", \
-    [FIB_NODE_TYPE_VXLAN_GPE_TUNNEL] = "vxlan-gpe-tunnel", \
-    [FIB_NODE_TYPE_UDP_ENCAP] = "udp-encap", \
-    [FIB_NODE_TYPE_BIER_FMASK] = "bier-fmask",	\
-    [FIB_NODE_TYPE_BIER_ENTRY] = "bier-entry",	\
+#define FIB_NODE_TYPES {					\
+    [FIB_NODE_TYPE_ENTRY]     = "entry",			\
+    [FIB_NODE_TYPE_MFIB_ENTRY] = "mfib-entry",			\
+    [FIB_NODE_TYPE_WALK]      = "walk",				\
+    [FIB_NODE_TYPE_PATH_LIST] = "path-list",			\
+    [FIB_NODE_TYPE_PATH]      = "path",				\
+    [FIB_NODE_TYPE_MPLS_ENTRY] = "mpls-entry",			\
+    [FIB_NODE_TYPE_MPLS_TUNNEL] = "mpls-tunnel",		\
+    [FIB_NODE_TYPE_ADJ] = "adj",				\
+    [FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY] = "lisp-gpe-fwd-entry",	\
+    [FIB_NODE_TYPE_LISP_ADJ] = "lisp-adj",			\
+    [FIB_NODE_TYPE_GRE_TUNNEL] = "gre-tunnel",			\
+    [FIB_NODE_TYPE_VXLAN_TUNNEL] = "vxlan-tunnel",		\
+    [FIB_NODE_TYPE_MAP_E] = "map-e",				\
+    [FIB_NODE_TYPE_VXLAN_GPE_TUNNEL] = "vxlan-gpe-tunnel",	\
+    [FIB_NODE_TYPE_UDP_ENCAP] = "udp-encap",			\
+    [FIB_NODE_TYPE_BIER_FMASK] = "bier-fmask",			\
+    [FIB_NODE_TYPE_BIER_ENTRY] = "bier-entry",			\
 }
 
 /**
@@ -293,12 +293,6 @@ typedef struct fib_node_t_ {
      * Some pad space the concrete/derived type is free to use
      */
     u16 fn_pad;
-    /**
-     * The node's VFT.
-     * we could store the type here instead, and lookup the VFT using that. But
-     * I like this better,
-     */
-//    const fib_node_vft_t *fn_vft;
 
     /**
      * Vector of nodes that depend upon/use/share this node

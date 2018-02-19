@@ -19,6 +19,66 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/fib/fib_walk.h>
 
+/**
+ * Distillation of the BFD session states into a go/no-go for using
+ * the associated tracked adjacency
+ */
+typedef enum adj_bfd_state_t_
+{
+    ADJ_BFD_STATE_DOWN,
+    ADJ_BFD_STATE_UP,
+} adj_bfd_state_t;
+
+/**
+ * BFD delegate daa
+ */
+typedef struct adj_bfd_delegate_t_
+{
+    /**
+     * Base class,linkage to the adjacency
+     */
+    adj_delegate_t abd_link;
+
+    /**
+     * BFD session state
+     */
+    adj_bfd_state_t abd_state;
+
+    /**
+     * BFD session index
+     */
+    u32 abd_index;
+} adj_bfd_delegate_t;
+
+/**
+ * Pool of delegates
+*/
+static adj_bfd_delegate_t *abd_pool;
+
+static inline adj_bfd_delegate_t*
+adj_bfd_from_base (adj_delegate_t *ad)
+{
+    if (NULL == ad)
+    {
+        return (NULL);
+    }
+    return ((adj_bfd_delegate_t*)((char*)ad -
+                                  STRUCT_OFFSET_OF(adj_bfd_delegate_t,
+                                                   abd_link)));
+}
+
+static inline const adj_bfd_delegate_t*
+adj_bfd_from_const_base (const adj_delegate_t *ad)
+{
+    if (NULL == ad)
+    {
+        return (NULL);
+    }
+    return ((adj_bfd_delegate_t*)((char*)ad -
+                                  STRUCT_OFFSET_OF(adj_bfd_delegate_t,
+                                                   abd_link)));
+}
+
 static adj_bfd_state_t
 adj_bfd_bfd_state_to_fib (bfd_state_e bstate)
 {
@@ -57,6 +117,7 @@ adj_bfd_notify (bfd_listen_event_e event,
                 const bfd_session_t *session)
 {
     const bfd_udp_key_t *key;
+    adj_bfd_delegate_t *abd;
     fib_protocol_t fproto;
     adj_delegate_t *aed;
     adj_index_t ai;
@@ -107,7 +168,10 @@ adj_bfd_notify (bfd_listen_event_e event,
              */
             adj_lock(ai);
 
-            aed = adj_delegate_find_or_add(adj_get(ai), ADJ_DELEGATE_BFD);
+            /*
+             * allocate and init a new delegate struct
+             */
+            pool_get(abd_pool, abd);
 
             /*
              * pretend the session is up and skip the walk.
@@ -116,8 +180,10 @@ adj_bfd_notify (bfd_listen_event_e event,
              * for the first BFD UP/DOWN before we let the session's state
              * influence forwarding.
              */
-            aed->ad_bfd_state = ADJ_BFD_STATE_UP;
-            aed->ad_bfd_index = session->bs_idx;
+            abd->abd_state = ADJ_BFD_STATE_UP;
+            abd->abd_index = session->bs_idx;
+
+            adj_delegate_add(adj_get(ai), ADJ_DELEGATE_BFD, &abd->abd_link);
         }
         break;
 
@@ -125,11 +191,11 @@ adj_bfd_notify (bfd_listen_event_e event,
         /*
          * state change up/dowm and
          */
-        aed = adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD);
+        abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
 
-        if (NULL != aed)
+        if (NULL != abd)
         {
-            aed->ad_bfd_state = adj_bfd_bfd_state_to_fib(session->local_state);
+            abd->abd_state = adj_bfd_bfd_state_to_fib(session->local_state);
             adj_bfd_update_walk(ai);
         }
         /*
@@ -142,15 +208,17 @@ adj_bfd_notify (bfd_listen_event_e event,
         /*
          * session has been removed.
          */
+        abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
 
-        if (adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD))
+        if (NULL != abd)
         {
             /*
              * has an associated BFD tracking delegate
              * remove the BFD tracking deletgate, update children, then
              * unlock the adj
              */
-            adj_delegate_remove(adj_get(ai), ADJ_DELEGATE_BFD);
+            adj_delegate_remove(ai, ADJ_DELEGATE_BFD);
+            pool_put(abd_pool, abd);
 
             adj_bfd_update_walk(ai);
             adj_unlock(ai);
@@ -168,15 +236,40 @@ adj_bfd_notify (bfd_listen_event_e event,
     adj_unlock(ai);
 }
 
+int
+adj_bfd_is_up (adj_index_t ai)
+{
+    const adj_bfd_delegate_t *abd;
+
+    abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
+
+    if (NULL == abd)
+    {
+        /*
+         * no BFD tracking - resolved
+         */
+        return (!0);
+    }
+    else
+    {
+        /*
+         * defer to the state of the BFD tracking
+         */
+        return (ADJ_BFD_STATE_UP == abd->abd_state);
+    }
+}
+
 /**
  * Print a delegate that represents BFD tracking
  */
 static u8 *
 adj_delegate_fmt_bfd (const adj_delegate_t *aed, u8 *s)
 {
+    const adj_bfd_delegate_t *abd = adj_bfd_from_const_base(aed);
+
     s = format(s, "BFD:[state:%d index:%d]",
-               aed->ad_bfd_state,
-               aed->ad_bfd_index);
+               abd->abd_state,
+               abd->abd_index);
 
     return (s);
 }
