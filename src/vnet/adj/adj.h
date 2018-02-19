@@ -273,7 +273,7 @@ typedef struct ip_adjacency_t_
   /**
    * A sorted vector of delegates
    */
-  struct adj_delegate_t_ *ia_delegates;
+  struct adj_delegate_t_ **ia_delegates;
 
 } ip_adjacency_t;
 

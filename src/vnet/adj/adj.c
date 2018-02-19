@@ -129,18 +129,13 @@ format_ip_adjacency (u8 * s, va_list * args)
 
     if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
     {
-        adj_delegate_type_t adt;
-        adj_delegate_t *aed;
         vlib_counter_t counts;
 
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
         s = format (s, "\n counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
 	s = format(s, "\n delegates:\n  ");
-        FOR_EACH_ADJ_DELEGATE(adj, adt, aed,
-        {
-            s = format(s, "  %U\n", format_adj_delegate, aed);
-        });
+        adj_delegate_format(s, adj);
 
 	s = format(s, "\n children:\n  ");
 	s = fib_node_children_format(adj->ia_node.fn_children, s);
@@ -162,7 +157,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     ASSERT(0 == fib_node_list_get_size(adj->ia_node.fn_children));
     ADJ_DBG(adj, "last-lock-gone");
 
-    adj_delegate_vft_lock_gone(adj);
+    adj_delegate_adj_deleted(adj);
 
     vlib_worker_thread_barrier_sync (vm);
 
@@ -430,24 +425,7 @@ adj_get_sw_if_index (adj_index_t ai)
 int
 adj_is_up (adj_index_t ai)
 {
-    const adj_delegate_t *aed;
-
-    aed = adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD);
-
-    if (NULL == aed)
-    {
-        /*
-         * no BFD tracking - resolved
-         */
-        return (!0);
-    }
-    else
-    {
-        /*
-         * defer to the state of the BFD tracking
-         */
-        return (ADJ_BFD_STATE_UP == aed->ad_bfd_state);
-    }
+    return (adj_bfd_is_up(ai));
 }
 
 /**

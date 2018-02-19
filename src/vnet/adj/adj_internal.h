@@ -126,6 +126,16 @@ extern void adj_mcast_remove(fib_protocol_t proto,
 			     u32 sw_if_index);
 
 extern u32 adj_dpo_get_urpf(const dpo_id_t *dpo);
-extern void adj_delegate_vft_lock_gone(ip_adjacency_t *adj);
+
+/*
+ * Adj BFD
+ */
+extern int adj_bfd_is_up (adj_index_t ai);
+
+/*
+ * Adj delegates
+ */ 
+extern void adj_delegate_adj_deleted(ip_adjacency_t *adj);
+extern u8* adj_delegate_format(u8* s, ip_adjacency_t *adj);
 
 #endif
