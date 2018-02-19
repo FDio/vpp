@@ -463,7 +463,7 @@ sctp_prepare_init_chunk (sctp_connection_t * sctp_conn, u8 idx,
   vnet_sctp_set_chunk_length (&init_chunk->chunk_hdr, chunk_len);
   vnet_sctp_common_hdr_params_host_to_net (&init_chunk->chunk_hdr);
 
-  init_chunk->a_rwnd = clib_host_to_net_u32 (DEFAULT_A_RWND);
+  init_chunk->a_rwnd = clib_host_to_net_u32 (sctp_conn->sub_conn[idx].cwnd);
   init_chunk->initiate_tag = clib_host_to_net_u32 (random_u32 (&random_seed));
   init_chunk->inboud_streams_count =
     clib_host_to_net_u16 (INBOUND_STREAMS_COUNT);
@@ -717,7 +717,8 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
   init_ack_chunk->initiate_tag =
     clib_host_to_net_u32 (random_u32 (&random_seed));
 
-  init_ack_chunk->a_rwnd = clib_host_to_net_u32 (DEFAULT_A_RWND);
+  init_ack_chunk->a_rwnd =
+    clib_host_to_net_u32 (sctp_conn->sub_conn[idx].cwnd);
   init_ack_chunk->inboud_streams_count =
     clib_host_to_net_u16 (INBOUND_STREAMS_COUNT);
   init_ack_chunk->outbound_streams_count =
@@ -1113,7 +1114,21 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, u8 idx, vlib_buffer_t * b,
   SCTP_ADV_DBG_OUTPUT ("POINTER_WITH_DATA = %p, DATA_OFFSET = %u",
 		       b->data, b->current_data);
 
+  sctp_conn->last_unacked_tsn = sctp_conn->next_tsn;
   sctp_conn->next_tsn += data_len;
+
+  u32 inflight = sctp_conn->next_tsn - sctp_conn->last_unacked_tsn;
+  /* Section 7.2.2; point (3) */
+  if (sctp_conn->sub_conn[idx].partially_acked_bytes >=
+      sctp_conn->sub_conn[idx].cwnd
+      && inflight >= sctp_conn->sub_conn[idx].cwnd)
+    {
+      sctp_conn->sub_conn[idx].cwnd += sctp_conn->sub_conn[idx].PMTU;
+      sctp_conn->sub_conn[idx].partially_acked_bytes -=
+	sctp_conn->sub_conn[idx].cwnd;
+    }
+
+  sctp_conn->sub_conn[idx].last_data_ts = sctp_time_now ();
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
@@ -1127,9 +1142,8 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
   sctp_connection_t *sctp_conn =
     sctp_get_connection_from_transport (trans_conn);
 
-  u8 idx = sctp_data_subconn_select (sctp_conn);
-
-  sctp_push_hdr_i (sctp_conn, idx, b, SCTP_STATE_ESTABLISHED);
+  sctp_push_hdr_i (sctp_conn, sctp_conn->tmp_subconn_used, b,
+		   SCTP_STATE_ESTABLISHED);
 
   sctp_trajectory_add_start (b0, 3);
 

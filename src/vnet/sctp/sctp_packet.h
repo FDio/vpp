@@ -513,7 +513,6 @@ vnet_sctp_calculate_padding (u16 base_length)
   return (4 - base_length % 4);
 }
 
-#define DEFAULT_A_RWND 1480
 #define INBOUND_STREAMS_COUNT 1
 #define OUTBOUND_STREAMS_COUNT 1
 
