@@ -70,22 +70,20 @@ ethernet_mac_address_is_zero (u8 * mac)
 static_always_inline int
 ethernet_frame_is_tagged (u16 type)
 {
-#if __SSE4_2__
-  const __m128i ethertype_mask = _mm_set_epi16 ((u16) ETHERNET_TYPE_VLAN,
-						(u16) ETHERNET_TYPE_DOT1AD,
-						(u16) ETHERNET_TYPE_VLAN_9100,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						/* duplicate last one to
-						   fill register */
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16)
-						ETHERNET_TYPE_VLAN_9200);
+#ifdef CLIB_HAVE_VEC128
+  const u16x8 ethertype_mask = {
+    (u16) ETHERNET_TYPE_VLAN,
+    (u16) ETHERNET_TYPE_DOT1AD,
+    (u16) ETHERNET_TYPE_VLAN_9100,
+    (u16) ETHERNET_TYPE_VLAN_9200,
+    /* duplicate last one to fill register */
+    (u16) ETHERNET_TYPE_VLAN_9200,
+    (u16) ETHERNET_TYPE_VLAN_9200,
+    (u16) ETHERNET_TYPE_VLAN_9200,
+    (u16) ETHERNET_TYPE_VLAN_9200
+  };
 
-  __m128i r = _mm_set1_epi16 (type);
-  r = _mm_cmpeq_epi16 (ethertype_mask, r);
-  return !_mm_test_all_zeros (r, r);
+  return !u16x8_is_all_zero (ethernet_mask == u16x8_splat (type));
 #else
   if ((type == ETHERNET_TYPE_VLAN) ||
       (type == ETHERNET_TYPE_DOT1AD) ||
