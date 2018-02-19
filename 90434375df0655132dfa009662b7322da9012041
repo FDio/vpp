@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3eb4d6ff_cd050145",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-19T17:45:31Z",
+      "side": 1,
+      "message": "This is to remove a warning when assigning to state which is a volatile. ie Assigning non-volatile struct to a volatile one.\n\nI guess if Coverity doesn\u0027t care we shouldn\u0027t either, so I can remove it if you feel strongly about it.",
+      "parentUuid": "87b974ba_46418f7e",
+      "range": {
+        "startLine": 60,
+        "startChar": 8,
+        "endLine": 60,
+        "endChar": 16
+      },
+      "revId": "90434375df0655132dfa009662b7322da9012041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fef931e6_7d6212c4",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 14
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "5299eb4d_bdf646dd",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-19T17:45:31Z",
+      "side": 1,
+      "message": "Same response.",
+      "parentUuid": "fef931e6_7d6212c4",
+      "range": {
+        "startLine": 68,
+        "startChar": 8,
+        "endLine": 68,
+        "endChar": 16
+      },
+      "revId": "90434375df0655132dfa009662b7322da9012041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "56d417b4_f0d6fb88",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 14
@@ -59,6 +107,30 @@
       "writtenOn": "2018-02-19T16:35:38Z",
       "side": 1,
       "message": "A nit but, C style comments all throughout ...",
+      "range": {
+        "startLine": 856,
+        "startChar": 0,
+        "endLine": 856,
+        "endChar": 2
+      },
+      "revId": "90434375df0655132dfa009662b7322da9012041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0ea8648_1c4175d6",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 856,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-02-19T17:45:31Z",
+      "side": 1,
+      "message": "Good catch. Will address.",
+      "parentUuid": "56d417b4_f0d6fb88",
       "range": {
         "startLine": 856,
         "startChar": 0,
