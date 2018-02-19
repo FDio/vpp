@@ -67,25 +67,23 @@ ethernet_mac_address_is_zero (u8 * mac)
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
 
+static const u16x8 tagged_ethertypes = {
+  (u16) ETHERNET_TYPE_VLAN,
+  (u16) ETHERNET_TYPE_DOT1AD,
+  (u16) ETHERNET_TYPE_VLAN_9100,
+  (u16) ETHERNET_TYPE_VLAN_9200,
+  /* duplicate last one to fill register */
+  (u16) ETHERNET_TYPE_VLAN_9200,
+  (u16) ETHERNET_TYPE_VLAN_9200,
+  (u16) ETHERNET_TYPE_VLAN_9200,
+  (u16) ETHERNET_TYPE_VLAN_9200
+};
+
 static_always_inline int
 ethernet_frame_is_tagged (u16 type)
 {
-#if __SSE4_2__
-  const __m128i ethertype_mask = _mm_set_epi16 ((u16) ETHERNET_TYPE_VLAN,
-						(u16) ETHERNET_TYPE_DOT1AD,
-						(u16) ETHERNET_TYPE_VLAN_9100,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						/* duplicate last one to
-						   fill register */
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16)
-						ETHERNET_TYPE_VLAN_9200);
-
-  __m128i r = _mm_set1_epi16 (type);
-  r = _mm_cmpeq_epi16 (ethertype_mask, r);
-  return !_mm_test_all_zeros (r, r);
+#ifdef CLIB_HAVE_VEC128
+  return !u16x8_is_all_zero (tagged_ethertypes == u16x8_splat (type));
 #else
   if ((type == ETHERNET_TYPE_VLAN) ||
       (type == ETHERNET_TYPE_DOT1AD) ||
@@ -93,6 +91,33 @@ ethernet_frame_is_tagged (u16 type)
     return 1;
 #endif
   return 0;
+}
+
+static_always_inline int
+ethernet_frame_is_any_tagged_x2 (u16 type0, u16 type1)
+{
+#ifdef CLIB_HAVE_VEC128
+  u16x8 r0 = (tagged_ethertypes == u16x8_splat (type0));
+  u16x8 r1 = (tagged_ethertypes == u16x8_splat (type1));
+  return !u16x8_is_all_zero (r0 | r1);
+#else
+  return ethernet_frame_is_tagged (type0) || ethernet_frame_is_tagged (type1);
+#endif
+}
+
+static_always_inline int
+ethernet_frame_is_any_tagged_x4 (u16 type0, u16 type1, u16 type2, u16 type3)
+{
+#ifdef CLIB_HAVE_VEC128
+  u16x8 r0 = (tagged_ethertypes == u16x8_splat (type0));
+  u16x8 r1 = (tagged_ethertypes == u16x8_splat (type1));
+  u16x8 r2 = (tagged_ethertypes == u16x8_splat (type2));
+  u16x8 r3 = (tagged_ethertypes == u16x8_splat (type3));
+  return !u16x8_is_all_zero (r0 | r1 | r2 | r3);
+#else
+  return ethernet_frame_is_tagged (type0) || ethernet_frame_is_tagged (type1)
+    || ethernet_frame_is_tagged (type2) || ethernet_frame_is_tagged (type3);
+#endif
 }
 
 /* Max. sized ethernet/vlan header for parsing. */
