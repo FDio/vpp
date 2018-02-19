@@ -42,6 +42,8 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   ip_copy (&listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.lcl_ip,
 	   &tep->ip, tep->is_ip4);
 
+  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU =
+    vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index, VLIB_TX);
   listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.is_ip4 = tep->is_ip4;
   listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto =
     TRANSPORT_PROTO_SCTP;
@@ -178,25 +180,44 @@ format_sctp_state (u8 * s, va_list * args)
 u8 *
 format_sctp_connection_id (u8 * s, va_list * args)
 {
-  /*
-     sctp_connection_t *sctp_conn = va_arg (*args, sctp_connection_t *);
-     if (!sctp_conn)
-     return s;
-     if (sctp_conn->c_is_ip4)
-     {
-     s = format (s, "[#%d][%s] %U:%d->%U:%d", sctp_conn->c_thread_index, "T",
-     format_ip4_address, &sctp_conn->c_lcl_ip4,
-     clib_net_to_host_u16 (sctp_conn->c_lcl_port), format_ip4_address,
-     &sctp_conn->c_rmt_ip4, clib_net_to_host_u16 (sctp_conn->c_rmt_port));
-     }
-     else
-     {
-     s = format (s, "[#%d][%s] %U:%d->%U:%d", sctp_conn->c_thread_index, "T",
-     format_ip6_address, &sctp_conn->c_lcl_ip6,
-     clib_net_to_host_u16 (sctp_conn->c_lcl_port), format_ip6_address,
-     &sctp_conn->c_rmt_ip6, clib_net_to_host_u16 (sctp_conn->c_rmt_port));
-     }
-   */
+  sctp_connection_t *sctp_conn = va_arg (*args, sctp_connection_t *);
+  if (!sctp_conn)
+    return s;
+
+  u8 i;
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      if (sctp_conn->sub_conn[i].connection.is_ip4)
+	{
+	  s = format (s, "%U[#%d][%s] %U:%d->%U:%d",
+		      s,
+		      sctp_conn->sub_conn[i].connection.thread_index,
+		      "T",
+		      format_ip4_address,
+		      &sctp_conn->sub_conn[i].connection.lcl_ip.ip4,
+		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
+					    connection.lcl_port),
+		      format_ip4_address,
+		      &sctp_conn->sub_conn[i].connection.rmt_ip.ip4,
+		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
+					    connection.rmt_port));
+	}
+      else
+	{
+	  s = format (s, "%U[#%d][%s] %U:%d->%U:%d",
+		      s,
+		      sctp_conn->sub_conn[i].connection.thread_index,
+		      "T",
+		      format_ip6_address,
+		      &sctp_conn->sub_conn[i].connection.lcl_ip.ip6,
+		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
+					    connection.lcl_port),
+		      format_ip6_address,
+		      &sctp_conn->sub_conn[i].connection.rmt_ip.ip6,
+		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
+					    connection.rmt_port));
+	}
+    }
   return s;
 }
 
@@ -235,48 +256,11 @@ sctp_init_snd_vars (sctp_connection_t * sctp_conn)
   time_now = sctp_time_now ();
 
   sctp_conn->local_initial_tsn = random_u32 (&time_now);
+  sctp_conn->last_unacked_tsn = sctp_conn->local_initial_tsn;
+  sctp_conn->next_tsn = sctp_conn->local_initial_tsn + 1;
+
   sctp_conn->remote_initial_tsn = 0x0;
   sctp_conn->last_rcvd_tsn = sctp_conn->remote_initial_tsn;
-  sctp_conn->next_tsn = sctp_conn->local_initial_tsn + 1;
-}
-
-/**
- * Update max segment size we're able to process.
- *
- * The value is constrained by our interface's MTU and IP options. It is
- * also what we advertise to our peer.
- */
-void
-sctp_update_rcv_mss (sctp_connection_t * sctp_conn)
-{
-  sctp_conn->smallest_PMTU = DEFAULT_A_RWND;	/* TODO find our iface MTU */
-  sctp_conn->a_rwnd = DEFAULT_A_RWND - sizeof (sctp_full_hdr_t);
-  sctp_conn->rcv_opts.a_rwnd = sctp_conn->a_rwnd;
-  sctp_conn->rcv_a_rwnd = sctp_conn->a_rwnd;	/* This will be updated by our congestion algos */
-}
-
-void
-sctp_init_mss (sctp_connection_t * sctp_conn)
-{
-  SCTP_DBG ("CONN_INDEX = %u",
-	    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
-
-  u16 default_a_rwnd = 536;
-  sctp_update_rcv_mss (sctp_conn);
-
-  /* TODO cache mss and consider PMTU discovery */
-  sctp_conn->snd_a_rwnd =
-    clib_min (sctp_conn->rcv_opts.a_rwnd, sctp_conn->a_rwnd);
-
-  if (sctp_conn->snd_a_rwnd < sizeof (sctp_full_hdr_t))
-    {
-      SCTP_ADV_DBG ("sctp_conn->snd_a_rwnd < sizeof(sctp_full_hdr_t)");
-      /* Assume that at least the min default mss works */
-      sctp_conn->snd_a_rwnd = default_a_rwnd;
-      sctp_conn->rcv_opts.a_rwnd = default_a_rwnd;
-    }
-
-  ASSERT (sctp_conn->snd_a_rwnd > sizeof (sctp_full_hdr_t));
 }
 
 always_inline sctp_connection_t *
@@ -384,6 +368,8 @@ sctp_connection_open (transport_endpoint_t * rmt)
 
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   sctp_conn = sctp_half_open_connection_new (thread_id);
+  sctp_conn->sub_conn[idx].PMTU =
+    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->sw_if_index, VLIB_TX);
 
   transport_connection_t *trans_conn = &sctp_conn->sub_conn[idx].connection;
   ip_copy (&trans_conn->rmt_ip, &rmt->ip, rmt->is_ip4);
@@ -506,80 +492,47 @@ sctp_session_cleanup (u32 conn_index, u32 thread_index)
 }
 
 /**
- * Update snd_mss to reflect the effective segment size that we can send
+ * Compute maximum segment size for session layer.
+ *
+ * Since the result needs to be the actual data length, it first computes
+ * the tcp options to be used in the next burst and subtracts their
+ * length from the connection's snd_mss.
  */
-void
-sctp_update_snd_mss (sctp_connection_t * sctp_conn)
-{
-  /* The overhead for the sctp_header_t and sctp_chunks_common_hdr_t
-   * (the sum equals to sctp_full_hdr_t) is already taken into account
-   * for the sctp_conn->a_rwnd computation.
-   * So let's not account it again here.
-   */
-  sctp_conn->snd_hdr_length =
-    sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_full_hdr_t);
-  sctp_conn->snd_a_rwnd =
-    clib_min (sctp_conn->a_rwnd,
-	      sctp_conn->rcv_opts.a_rwnd) - sctp_conn->snd_hdr_length;
-
-  SCTP_DBG ("sctp_conn->snd_a_rwnd = %u, sctp_conn->snd_hdr_length = %u ",
-	    sctp_conn->snd_a_rwnd, sctp_conn->snd_hdr_length);
-
-  ASSERT (sctp_conn->snd_a_rwnd > 0);
-}
-
 u16
 sctp_session_send_mss (transport_connection_t * trans_conn)
 {
-  SCTP_DBG ("CONN_INDEX: %u", trans_conn->c_index);
-
   sctp_connection_t *sctp_conn =
     sctp_get_connection_from_transport (trans_conn);
-
-  if (trans_conn == NULL)
-    {
-      SCTP_DBG ("trans_conn == NULL");
-      return 0;
-    }
 
   if (sctp_conn == NULL)
     {
       SCTP_DBG ("sctp_conn == NULL");
       return 0;
     }
-  /* Ensure snd_mss does accurately reflect the amount of data we can push
-   * in a segment. This also makes sure that options are updated according to
-   * the current state of the connection. */
-  sctp_update_snd_mss (sctp_conn);
 
-  return sctp_conn->snd_a_rwnd;
+  u8 idx = sctp_data_subconn_select (sctp_conn);
+  sctp_conn->tmp_subconn_used = idx;
+  update_cwnd (sctp_conn, idx);
+  update_smalles_pmtu_idx (sctp_conn);
+  return sctp_conn->sub_conn[idx].cwnd;
 }
 
 u16
 sctp_snd_space (sctp_connection_t * sctp_conn)
 {
-  /* TODO: This requires a real implementation */
-  if (sctp_conn == NULL)
-    {
-      SCTP_DBG ("sctp_conn == NULL");
-      return 0;
-    }
-
-  if (sctp_conn->state != SCTP_STATE_ESTABLISHED)
-    {
-      SCTP_DBG_STATE_MACHINE
-	("Trying to send DATA while not in SCTP_STATE_ESTABLISHED");
-      return 0;
-    }
-
-  return sctp_conn->snd_a_rwnd;
+  return sctp_conn->sub_conn[sctp_conn->tmp_subconn_used].cwnd;
 }
 
+/**
+ * Compute TX window session is allowed to fill.
+ *
+ * Takes into account available send space, snd_mss and the congestion
+ * state of the connection. If possible, the value returned is a multiple
+ * of snd_mss.
+ */
 u32
 sctp_session_send_space (transport_connection_t * trans_conn)
 {
-  SCTP_DBG ("CONN_INDEX: %u", trans_conn->c_index);
-
   sctp_connection_t *sctp_conn =
     sctp_get_connection_from_transport (trans_conn);
 
@@ -610,13 +563,25 @@ sctp_session_get_listener (u32 listener_index)
 u8 *
 format_sctp_session (u8 * s, va_list * args)
 {
-  return NULL;
+  u32 tci = va_arg (*args, u32);
+  u32 thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  sctp_connection_t *tc;
+
+  tc = sctp_connection_get (tci, thread_index);
+  if (tc)
+    s = format (s, "%U", format_sctp_connection, tc, verbose);
+  else
+    s = format (s, "empty\n");
+  return s;
 }
 
 u8 *
 format_sctp_listener_session (u8 * s, va_list * args)
 {
-  return NULL;
+  u32 tci = va_arg (*args, u32);
+  sctp_connection_t *tc = sctp_listener_get (tci);
+  return format (s, "%U", format_sctp_connection_id, tc);
 }
 
 void
@@ -849,7 +814,6 @@ const static transport_proto_vft_t sctp_proto = {
   .push_header = sctp_push_header,
   .send_mss = sctp_session_send_mss,
   .send_space = sctp_session_send_space,
-  .tx_fifo_offset = NULL,	//sctp_session_tx_fifo_offset,
   .update_time = sctp_update_time,
   .get_connection = sctp_session_get_transport,
   .get_listener = sctp_session_get_listener,

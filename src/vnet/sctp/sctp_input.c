@@ -936,6 +936,8 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    new_sctp_conn - tm->connections[my_thread_index];
 		  new_sctp_conn->sub_conn[idx].c_thread_index =
 		    my_thread_index;
+		  new_sctp_conn->sub_conn[idx].PMTU =
+		    sctp_conn->sub_conn[idx].PMTU;
 		  new_sctp_conn->sub_conn[idx].parent = new_sctp_conn;
 
 		  if (sctp_half_open_connection_cleanup (sctp_conn))
@@ -951,7 +953,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  new_sctp_conn, idx, b0,
 					  sctp_implied_length);
 
-		  sctp_init_mss (new_sctp_conn);
+		  sctp_init_cwnd (new_sctp_conn);
 
 		  if (session_stream_connect_notify
 		      (&new_sctp_conn->sub_conn[idx].connection, 0))
@@ -1422,6 +1424,17 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
 
   sctp_conn->sub_conn[idx].last_seen = sctp_time_now ();
 
+  /* Section 7.2.2; point (2) */
+  if (sctp_conn->sub_conn[idx].cwnd > sctp_conn->sub_conn[idx].ssthresh)
+    sctp_conn->sub_conn[idx].partially_acked_bytes =
+      sctp_conn->next_tsn - sack_chunk->cumulative_tsn_ack;
+
+  /* Section 7.2.2; point (5) */
+  if (sctp_conn->next_tsn - sack_chunk->cumulative_tsn_ack == 0)
+    sctp_conn->sub_conn[idx].partially_acked_bytes = 0;
+
+  sctp_conn->last_unacked_tsn = sack_chunk->cumulative_tsn_ack;
+
   sctp_calculate_rto (sctp_conn, idx);
 
   sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
@@ -1560,6 +1573,8 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_is_ip4 = is_ip4;
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto =
 	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto;
+	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU =
+	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU;
 	  child_conn->state = SCTP_STATE_CLOSED;
 
 	  if (is_ip4)
@@ -1609,7 +1624,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		sctp_handle_init (sctp_hdr, sctp_chunk_hdr, child_conn, b0,
 				  sctp_implied_length);
 
-	      sctp_init_mss (child_conn);
+	      sctp_init_cwnd (child_conn);
 
 	      if (error0 == SCTP_ERROR_NONE)
 		{
@@ -2058,9 +2073,6 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
-#if SCTP_DEBUG_STATE_MACHINE
-	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
-#endif
 	  vnet_buffer (b0)->sctp.hdr_offset =
 	    (u8 *) sctp_hdr - (u8 *) vlib_buffer_get_current (b0);
 
@@ -2075,12 +2087,9 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = tm->dispatch_table[sctp_conn->state][chunk_type].next;
 	      error0 = tm->dispatch_table[sctp_conn->state][chunk_type].error;
 
-	      SCTP_DBG_STATE_MACHINE ("CONNECTION_INDEX = %u: "
-				      "CURRENT_CONNECTION_STATE = %s,"
+	      SCTP_DBG_STATE_MACHINE ("CURRENT_CONNECTION_STATE = %s,"
 				      "CHUNK_TYPE_RECEIVED = %s "
 				      "NEXT_PHASE = %s",
-				      sctp_conn->sub_conn
-				      [idx].connection.c_index,
 				      sctp_state_to_string (sctp_conn->state),
 				      sctp_chunk_to_string (chunk_type),
 				      phase_to_string (next0));
