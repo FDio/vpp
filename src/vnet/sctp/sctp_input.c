@@ -537,6 +537,8 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   sctp_timer_set (sctp_conn, idx,
 		  SCTP_TIMER_T1_COOKIE, sctp_conn->sub_conn[idx].RTO);
 
+  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
+
   return SCTP_ERROR_NONE;
 }
 
@@ -804,8 +806,6 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
 
-  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
-
   return SCTP_ERROR_NONE;
 
 }
@@ -833,8 +833,6 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
-
-  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
 
   return SCTP_ERROR_NONE;
 
@@ -870,7 +868,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip6_hdr = 0;
 	  sctp_connection_t *sctp_conn, *new_sctp_conn;
 	  u16 sctp_implied_length = 0;
-	  u16 error0 = SCTP_ERROR_NONE, next0 = SCTP_RCV_PHASE_N_NEXT;
+	  u16 error0 = SCTP_ERROR_NONE, next0 = sctp_next_drop (is_ip4);
 	  u8 idx;
 
 	  bi0 = from[0];
@@ -936,6 +934,8 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    new_sctp_conn - tm->connections[my_thread_index];
 		  new_sctp_conn->sub_conn[idx].c_thread_index =
 		    my_thread_index;
+		  new_sctp_conn->sub_conn[idx].PMTU =
+		    sctp_conn->sub_conn[idx].PMTU;
 		  new_sctp_conn->sub_conn[idx].parent = new_sctp_conn;
 
 		  if (sctp_half_open_connection_cleanup (sctp_conn))
@@ -951,7 +951,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  new_sctp_conn, idx, b0,
 					  sctp_implied_length);
 
-		  sctp_init_mss (new_sctp_conn);
+		  sctp_init_cwnd (new_sctp_conn);
 
 		  if (session_stream_connect_notify
 		      (&new_sctp_conn->sub_conn[idx].connection, 0))
@@ -962,8 +962,8 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      sctp_connection_cleanup (new_sctp_conn);
 		      goto drop;
 		    }
+		  next0 = sctp_next_output (is_ip4);
 		}
-	      next0 = sctp_next_output (is_ip4);
 	      break;
 
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
@@ -1177,13 +1177,11 @@ sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
   if (sctp_is_bundling (sctp_implied_length, &shutdown_complete->chunk_hdr))
     return SCTP_ERROR_BUNDLING_VIOLATION;
 
-  sctp_timer_reset (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
-		    SCTP_TIMER_T2_SHUTDOWN);
+  sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN);
+
+  stream_session_disconnect_notify (&sctp_conn->sub_conn[idx].connection);
 
   sctp_conn->state = SCTP_STATE_CLOSED;
-
-  stream_session_disconnect_notify (&sctp_conn->sub_conn
-				    [MAIN_SCTP_SUB_CONN_IDX].connection);
 
   *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
@@ -1422,6 +1420,17 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
 
   sctp_conn->sub_conn[idx].last_seen = sctp_time_now ();
 
+  /* Section 7.2.2; point (2) */
+  if (sctp_conn->sub_conn[idx].cwnd > sctp_conn->sub_conn[idx].ssthresh)
+    sctp_conn->sub_conn[idx].partially_acked_bytes =
+      sctp_conn->next_tsn - sack_chunk->cumulative_tsn_ack;
+
+  /* Section 7.2.2; point (5) */
+  if (sctp_conn->next_tsn - sack_chunk->cumulative_tsn_ack == 0)
+    sctp_conn->sub_conn[idx].partially_acked_bytes = 0;
+
+  sctp_conn->last_unacked_tsn = sack_chunk->cumulative_tsn_ack;
+
   sctp_calculate_rto (sctp_conn, idx);
 
   sctp_timer_update (sctp_conn, idx, SCTP_TIMER_T3_RXTX,
@@ -1510,7 +1519,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	  ip6_header_t *ip6_hdr;
 	  sctp_connection_t *child_conn;
 	  sctp_connection_t *sctp_listener;
-	  u16 next0 = SCTP_LISTEN_PHASE_N_NEXT, error0 = SCTP_ERROR_ENQUEUED;
+	  u16 next0 = sctp_next_drop (is_ip4), error0 = SCTP_ERROR_ENQUEUED;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1560,6 +1569,8 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_is_ip4 = is_ip4;
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto =
 	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto;
+	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU =
+	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU;
 	  child_conn->state = SCTP_STATE_CLOSED;
 
 	  if (is_ip4)
@@ -1609,7 +1620,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		sctp_handle_init (sctp_hdr, sctp_chunk_hdr, child_conn, b0,
 				  sctp_implied_length);
 
-	      sctp_init_mss (child_conn);
+	      sctp_init_cwnd (child_conn);
 
 	      if (error0 == SCTP_ERROR_NONE)
 		{
@@ -1624,8 +1635,8 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		      error0 = SCTP_ERROR_CREATE_SESSION_FAIL;
 		      goto drop;
 		    }
+		  next0 = sctp_next_output (is_ip4);
 		}
-	      next0 = sctp_next_output (is_ip4);
 	      break;
 
 	      /* Reception of a DATA chunk whilst in the CLOSED state is called
@@ -2058,9 +2069,6 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
-#if SCTP_DEBUG_STATE_MACHINE
-	  u8 idx = sctp_pick_conn_idx_on_state (sctp_conn->state);
-#endif
 	  vnet_buffer (b0)->sctp.hdr_offset =
 	    (u8 *) sctp_hdr - (u8 *) vlib_buffer_get_current (b0);
 
@@ -2075,15 +2083,12 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = tm->dispatch_table[sctp_conn->state][chunk_type].next;
 	      error0 = tm->dispatch_table[sctp_conn->state][chunk_type].error;
 
-	      SCTP_DBG_STATE_MACHINE ("CONNECTION_INDEX = %u: "
-				      "CURRENT_CONNECTION_STATE = %s,"
-				      "CHUNK_TYPE_RECEIVED = %s "
-				      "NEXT_PHASE = %s",
-				      sctp_conn->sub_conn
-				      [idx].connection.c_index,
-				      sctp_state_to_string (sctp_conn->state),
-				      sctp_chunk_to_string (chunk_type),
-				      phase_to_string (next0));
+	      SCTP_DBG_STATE_MACHINE
+		("SESSION_INDEX = %u, CURRENT_CONNECTION_STATE = %s,"
+		 "CHUNK_TYPE_RECEIVED = %s " "NEXT_PHASE = %s",
+		 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 connection.s_index, sctp_state_to_string (sctp_conn->state),
+		 sctp_chunk_to_string (chunk_type), phase_to_string (next0));
 
 	      if (chunk_type == DATA)
 		SCTP_ADV_DBG ("n_advance_bytes0 = %u, n_data_bytes0 = %u",
@@ -2223,7 +2228,7 @@ do {                                                       	\
    * _(SHUTDOWN_RECEIVED, "SHUTDOWN_RECEIVED")   \
    * _(SHUTDOWN_ACK_SENT, "SHUTDOWN_ACK_SENT")
    */
-  _(CLOSED, DATA, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED DATA chunk which requires special handling */
+  //_(CLOSED, DATA, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);     /* UNEXPECTED DATA chunk which requires special handling */
   _(CLOSED, INIT, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);
   _(CLOSED, INIT_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED INIT_ACK chunk */
   _(CLOSED, SACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SACK_CHUNK_VIOLATION);	/* UNEXPECTED SACK chunk */

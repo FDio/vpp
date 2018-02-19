@@ -77,7 +77,7 @@ typedef enum _sctp_error
 #define IS_B_BIT_SET(var) ((var) & (1<<1))
 #define IS_U_BIT_SET(var) ((var) & (1<<2))
 
-#define MAX_SCTP_CONNECTIONS 32
+#define MAX_SCTP_CONNECTIONS 8
 #define MAIN_SCTP_SUB_CONN_IDX 0
 
 #if (VLIB_BUFFER_TRACE_TRAJECTORY)
@@ -96,6 +96,7 @@ enum _sctp_subconn_state
   SCTP_SUBCONN_STATE_ALLOW_HB
 };
 
+#define SCTP_INITIAL_SSHTRESH 65535
 typedef struct _sctp_sub_connection
 {
   transport_connection_t connection;	      /**< Common transport data. First! */
@@ -104,8 +105,10 @@ typedef struct _sctp_sub_connection
   u32 error_count; /**< The current error count for this destination. */
   u32 error_threshold; /**< Current error threshold for this destination,
 				i.e. what value marks the destination down if error count reaches this value. */
-  u32 cwnd; /**< The current congestion window. */
-  u32 ssthresh;	/**< The current ssthresh value. */
+  u32 cwnd; /**< Congestion control window (cwnd, in bytes), which is adjusted by
+      the sender based on observed network conditions. */
+  u32 ssthresh;	/**< Slow-start threshold (in bytes), which is used by the
+      sender to distinguish slow-start and congestion avoidance phases. */
 
   u32 rtt_ts;	/**< USED to hold the timestamp of when the packet has been sent */
 
@@ -132,12 +135,14 @@ typedef struct _sctp_sub_connection
   u32 last_seen; /**< The time to which this destination was last sent a packet to.
   	  	  	  	  This can be used to determine if a HEARTBEAT is needed. */
 
+  u32 last_data_ts; /**< Used to hold the timestamp value of last time we sent a DATA chunk */
+
   u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
   	  	  	  	  If more than SCTP_PATH_MAX_RETRANS then connection is considered unreachable. */
 
   u8 is_retransmitting;	/**< A flag (0 = no, 1 = yes) indicating whether the connection is retransmitting a previous packet */
 
-  u8 enqueue_state;
+  u8 enqueue_state; /**< if set to 1 indicates that DATA is still being handled hence cannot shutdown this connection yet */
 
 } sctp_sub_connection_t;
 
@@ -203,6 +208,7 @@ typedef struct _sctp_connection
                  TSN (normally just prior to transmit or during
                  fragmentation). */
 
+  u32 last_unacked_tsn;	/** < Last TSN number still unacked */
   u32 next_tsn_expected; /**< The next TSN number expected to be received. */
 
   u32 last_rcvd_tsn; /**< This is the last TSN received in sequence. This value
@@ -221,25 +227,14 @@ typedef struct _sctp_connection
   	  	  	  	Note: This is used only when no DATA chunks are received out-of-order.
   	  	  	  	When DATA chunks are out-of-order, SACKs are not delayed (see Section 6). */
 
-  u32 a_rwnd; /** This value represents the dedicated buffer space, in number of bytes,
-				the sender of the INIT has reserved in association with this window.
-				During the life of the association, this buffer space SHOULD NOT be lessened
-				(i.e., dedicated buffers taken away from this association);
-				however, an endpoint MAY change the value of a_rwnd it sends in SACK chunks. */
-
-  u32 smallest_PMTU; /** The smallest PMTU discovered for all of the peer's transport addresses. */
-
-  u32 rcv_a_rwnd;		/**< LOCAL max seg size that includes options. To be updated by congestion algos, etc. */
-  u32 snd_a_rwnd;		/**< REMOTE max seg size that includes options. To be updated if peer pushes back on window, etc.*/
+  u8 smallest_PMTU_idx;	/** The index of the sub-connection with the smallest PMTU discovered across all peer's transport addresses. */
 
   u8 overall_sending_status; /**< 0 indicates first fragment of a user message
   	  	  	  	  	  	  	  	  1 indicates normal stream
   	  	  	  	  	  	  	  	  2 indicates last fragment of a user message */
 
-  sctp_options_t rcv_opts;
   sctp_options_t snd_opts;
 
-  u32 snd_hdr_length;	/**< BASE HEADER LENGTH for the DATA chunk when sending */
   u8 next_avail_sub_conn; /**< Represent the index of the next free slot in sub_conn */
 
 } sctp_connection_t;
@@ -413,7 +408,7 @@ sctp_optparam_type_to_string (u8 type)
 #define SCTP_RTO_INIT 3 * SHZ	/* 3 seconds */
 #define SCTP_RTO_MIN 1 * SHZ	/* 1 second */
 #define SCTP_RTO_MAX 60 * SHZ	/* 60 seconds */
-#define SCTP_RTO_BURST	4
+#define SCTP_RTO_BURST 4
 #define SCTP_RTO_ALPHA 1/8
 #define SCTP_RTO_BETA 1/4
 #define SCTP_VALID_COOKIE_LIFE 60 * SHZ	/* 60 seconds */
@@ -422,6 +417,8 @@ sctp_optparam_type_to_string (u8 type)
 #define SCTP_MAX_INIT_RETRANS 8	// number of attempts
 #define SCTP_HB_INTERVAL 30 * SHZ
 #define SCTP_HB_MAX_BURST 1
+
+#define SCTP_DATA_IDLE_INTERVAL 15 * SHZ	/* 15 seconds; the time-interval after which the connetion is considered IDLE */
 
 #define SCTP_TO_TIMER_TICK       SCTP_TICK*10	/* Period for converting from SCTP_TICK */
 
@@ -715,17 +712,18 @@ sctp_connection_get (u32 conn_index, u32 thread_index)
 always_inline u8
 sctp_data_subconn_select (sctp_connection_t * sctp_conn)
 {
-  u8 i = 0;
-  u8 state = SCTP_SUBCONN_STATE_DOWN;
   u32 sub = MAIN_SCTP_SUB_CONN_IDX;
-  u32 data_subconn_seed = random_default_seed ();
-
-  while (state == SCTP_SUBCONN_STATE_DOWN && i < SELECT_MAX_RETRIES)
+  u8 i, cwnd = sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].cwnd;
+  for (i = 1; i < MAX_SCTP_CONNECTIONS; i++)
     {
-      u32 sub = random_u32 (&data_subconn_seed) % MAX_SCTP_CONNECTIONS;
-      if (sctp_conn->sub_conn[sub].state == SCTP_SUBCONN_STATE_UP)
-	break;
-      i++;
+      if (sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
+	continue;
+
+      if (sctp_conn->sub_conn[i].cwnd > cwnd)
+	{
+	  sub = i;
+	  cwnd = sctp_conn->sub_conn[i].cwnd;
+	}
     }
   return sub;
 }
@@ -811,6 +809,97 @@ vlib_buffer_push_sctp (vlib_buffer_t * b, u16 sp_net, u16 dp_net,
 {
   return vlib_buffer_push_sctp_net_order (b, sp_net, dp_net,
 					  sctp_hdr_opts_len);
+}
+
+always_inline void
+update_smallest_pmtu_idx (sctp_connection_t * sctp_conn)
+{
+  u8 i;
+  u8 smallest_pmtu_index = MAIN_SCTP_SUB_CONN_IDX;
+
+  for (i = 1; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      if (sctp_conn->sub_conn[i].state != SCTP_SUBCONN_STATE_DOWN)
+	{
+	  if (sctp_conn->sub_conn[i].PMTU <
+	      sctp_conn->sub_conn[smallest_pmtu_index].PMTU)
+	    smallest_pmtu_index = i;
+	}
+    }
+
+  sctp_conn->smallest_PMTU_idx = smallest_pmtu_index;
+}
+
+/* As per RFC4960; section 7.2.1: Slow-Start */
+always_inline void
+sctp_init_cwnd (sctp_connection_t * sctp_conn)
+{
+  u8 i;
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      /* Section 7.2.1; point (1) */
+      sctp_conn->sub_conn[i].cwnd =
+	clib_min (4 * sctp_conn->sub_conn[i].PMTU,
+		  clib_max (2 * sctp_conn->sub_conn[i].PMTU, 4380));
+
+      /* Section 7.2.1; point (3) */
+      sctp_conn->sub_conn[i].ssthresh = SCTP_INITIAL_SSHTRESH;
+
+      /* Section 7.2.2; point (1) */
+      sctp_conn->sub_conn[i].partially_acked_bytes = 0;
+    }
+}
+
+always_inline u8
+sctp_in_cong_recovery (sctp_connection_t * sctp_conn, u8 idx)
+{
+  return 0;
+}
+
+always_inline u8
+cwnd_fully_utilized (sctp_connection_t * sctp_conn, u8 idx)
+{
+  return 0;
+}
+
+/* As per RFC4960; section 7.2.1: Slow-Start */
+always_inline void
+update_cwnd (sctp_connection_t * sctp_conn)
+{
+  u8 i;
+
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      /* Section 7.2.1; point (2) */
+      if (sctp_conn->sub_conn[i].is_retransmitting)
+	{
+	  sctp_conn->sub_conn[i].cwnd = 1 * sctp_conn->sub_conn[i].PMTU;
+	  continue;
+	}
+
+      /* Section 7.2.2; point (4) */
+      if (sctp_conn->sub_conn[i].last_data_ts >
+	  sctp_time_now () + SCTP_DATA_IDLE_INTERVAL)
+	{
+	  sctp_conn->sub_conn[i].cwnd =
+	    clib_max (sctp_conn->sub_conn[i].cwnd / 2,
+		      4 * sctp_conn->sub_conn[i].PMTU);
+	  continue;
+	}
+
+      /* Section 7.2.1; point (5) */
+      if (sctp_conn->sub_conn[i].cwnd <= sctp_conn->sub_conn[i].ssthresh)
+	{
+	  if (!cwnd_fully_utilized (sctp_conn, i))
+	    continue;
+
+	  if (sctp_in_cong_recovery (sctp_conn, i))
+	    continue;
+
+	  sctp_conn->sub_conn[i].cwnd =
+	    clib_min (sctp_conn->sub_conn[i].PMTU, 1);
+	}
+    }
 }
 
 /*
