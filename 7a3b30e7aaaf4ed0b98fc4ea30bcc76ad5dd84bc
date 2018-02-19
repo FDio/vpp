@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14a5a45f_8ad335bb",
+        "filename": "src/plugins/avf/cli.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-19T13:04:02Z",
+      "side": 1,
+      "message": "create / delete need binary APIs at some point",
+      "revId": "7a3b30e7aaaf4ed0b98fc4ea30bcc76ad5dd84bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a7f6c24_880b18c1",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-19T13:04:02Z",
+      "side": 1,
+      "message": "Unroll, expect n_alloc to be a multiple of 8",
+      "revId": "7a3b30e7aaaf4ed0b98fc4ea30bcc76ad5dd84bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15d0bc32_5b7aabeb",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-19T13:04:02Z",
+      "side": 1,
+      "message": "Does this produce better code than the obvious [VLIB_RX]\u003dnnn, [VLIB_TX] \u003d ~0? Should we union those two fields with an \"as_u64\"?",
+      "revId": "7a3b30e7aaaf4ed0b98fc4ea30bcc76ad5dd84bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7fe4e62e_7b492eeb",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-19T13:04:02Z",
+      "side": 1,
+      "message": "As described, needs tuning",
+      "revId": "7a3b30e7aaaf4ed0b98fc4ea30bcc76ad5dd84bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92022d2e_c1e77617",
+        "filename": "src/vlib/linux/physmem.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-19T13:04:02Z",
+      "side": 1,
+      "message": "Eventually, lose these clib warnings / convert to your log format or some such",
+      "revId": "7a3b30e7aaaf4ed0b98fc4ea30bcc76ad5dd84bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
