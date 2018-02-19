@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "57a0e62f_2155de11",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-19T21:24:32Z",
+      "side": 1,
+      "message": "This is an enum. I\u0027ve never seen complains about volatile enums in Coverity. You can make the state field in the struct volatile, and then assign this type to it. If Coverity complains, we can patch it later I guess ..",
+      "parentUuid": "3eb4d6ff_cd050145",
+      "range": {
+        "startLine": 60,
+        "startChar": 8,
+        "endLine": 60,
+        "endChar": 16
+      },
+      "revId": "90434375df0655132dfa009662b7322da9012041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fef931e6_7d6212c4",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 14
