@@ -171,64 +171,6 @@ i32x2_pack (i32x2 lo, i32x2 hi)
   return (i16x4) _m_packssdw ((__m64) lo, (__m64) hi);
 }
 
-/* Splats: replicate scalar value into vector. */
-always_inline u64x2
-u64x2_splat (u64 a)
-{
-  u64x2 x = { a, a };
-  return x;
-}
-
-always_inline u32x4
-u32x4_splat (u32 a)
-{
-  u32x4 x = { a, a, a, a };
-  return x;
-}
-
-always_inline u16x8
-u16x8_splat (u16 a)
-{
-  u16x8 x = { a, a, a, a, a, a, a, a };
-  return x;
-}
-
-always_inline u8x16
-u8x16_splat (u8 a)
-{
-  u8x16 x = { a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a };
-  return x;
-}
-
-always_inline u32x2
-u32x2_splat (u32 a)
-{
-  u32x2 x = { a, a };
-  return x;
-}
-
-always_inline u16x4
-u16x4_splat (u16 a)
-{
-  u16x4 x = { a, a, a, a };
-  return x;
-}
-
-always_inline u8x8
-u8x8_splat (u8 a)
-{
-  u8x8 x = { a, a, a, a, a, a, a, a };
-  return x;
-}
-
-#define i64x2_splat u64x2_splat
-#define i32x4_splat u32x4_splat
-#define i16x8_splat u16x8_splat
-#define i8x16_splat u8x16_splat
-#define i32x2_splat u32x2_splat
-#define i16x4_splat u16x4_splat
-#define i8x8_splat u8x8_splat
-
 #ifndef __ICC
 always_inline u64x2
 u64x2_read_lo (u64x2 x, u64 * a)
@@ -275,14 +217,6 @@ _(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)
   always_inline i##n##x##m                                             \
   i##n##x##m##_##f (i##n##x##m x, i##n##x##m y)                        \
   { return (i##n##x##m) _mm_##g##n ((__m128i) x, (__m128i) y); }
-/* Addition/subtraction. */
-  _signed_binop (8, 16, add, add_epi)
-_signed_binop (16, 8, add, add_epi)
-_signed_binop (32, 4, add, add_epi)
-_signed_binop (64, 2, add, add_epi)
-_signed_binop (8, 16, sub, sub_epi)
-_signed_binop (16, 8, sub, sub_epi)
-_signed_binop (32, 4, sub, sub_epi) _signed_binop (64, 2, sub, sub_epi)
 /* Addition/subtraction with saturation. */
   _signed_binop (8, 16, add_saturate, adds_epu)
 _signed_binop (16, 8, add_saturate, adds_epu)
@@ -468,83 +402,6 @@ _(u64, 2, right, left);
 
 #undef _
 #endif
-
-/* Compare operations. */
-always_inline u8x16
-u8x16_is_equal (u8x16 x, u8x16 y)
-{
-  return (u8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y);
-}
-
-always_inline i8x16
-i8x16_is_equal (i8x16 x, i8x16 y)
-{
-  return (i8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u16x8
-u16x8_is_equal (u16x8 x, u16x8 y)
-{
-  return (u16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y);
-}
-
-always_inline i16x8
-i16x8_is_equal (i16x8 x, i16x8 y)
-{
-  return (i16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u32x4
-u32x4_is_equal (u32x4 x, u32x4 y)
-{
-  return (u32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y);
-}
-
-always_inline i32x4
-i32x4_is_equal (i32x4 x, i32x4 y)
-{
-  return (i32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u8x16
-i8x16_is_greater (i8x16 x, i8x16 y)
-{
-  return (u8x16) _mm_cmpgt_epi8 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u16x8
-i16x8_is_greater (i16x8 x, i16x8 y)
-{
-  return (u16x8) _mm_cmpgt_epi16 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u32x4
-i32x4_is_greater (i32x4 x, i32x4 y)
-{
-  return (u32x4) _mm_cmpgt_epi32 ((__m128i) x, (__m128i) y);
-}
-
-always_inline u8x16
-u8x16_is_zero (u8x16 x)
-{
-  u8x16 zero = { 0 };
-  return u8x16_is_equal (x, zero);
-}
-
-always_inline u16x8
-u16x8_is_zero (u16x8 x)
-{
-  u16x8 zero = { 0 };
-  return u16x8_is_equal (x, zero);
-}
-
-always_inline u32x4
-u32x4_is_zero (u32x4 x)
-{
-  u32x4 zero = { 0 };
-  return u32x4_is_equal (x, zero);
-}
-
 
 always_inline int
 u8x16_is_all_zero (u8x16 x)

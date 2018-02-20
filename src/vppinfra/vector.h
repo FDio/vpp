@@ -73,63 +73,50 @@
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 
-/* Signed 64 bit. */
-typedef char i8x8 _vector_size (8);
-typedef short i16x4 _vector_size (8);
-typedef int i32x2 _vector_size (8);
+#define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
+#define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
+#define foreach_vec64f  _(f,32,2)
+#define foreach_vec128i _(i,8,16) _(i,16,8)  _(i,32,4)  _(i,64,2)
+#define foreach_vec128u _(u,8,16) _(u,16,8)  _(u,32,4)  _(u,64,2)
+#define foreach_vec128f _(f,32,4) _(f,64,2)
+#define foreach_vec256i _(i,8,32) _(i,16,16) _(i,32,8)  _(i,64,4)
+#define foreach_vec256u _(u,8,32) _(u,16,16) _(u,32,8)  _(u,64,4)
+#define foreach_vec256f _(f,32,8) _(f,64,4)
+#define foreach_vec512i _(i,8,64) _(i,16,32) _(i,32,16) _(i,64,8)
+#define foreach_vec512u _(u,8,64) _(u,16,32) _(u,32,16) _(u,64,8)
+#define foreach_vec512f _(f,32,16) _(f,64,8)
 
-/* Unsigned 64 bit. */
-typedef unsigned char u8x8 _vector_size (8);
-typedef unsigned short u16x4 _vector_size (8);
-typedef unsigned int u32x2 _vector_size (8);
+#if defined (CLIB_HAVE_VEC512)
+#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i foreach_vec512i
+#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u foreach_vec512u
+#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f foreach_vec512f
+#elif defined (CLIB_HAVE_VEC256)
+#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i
+#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u
+#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f
+#else
+#define foreach_int_vec foreach_vec64i foreach_vec128i
+#define foreach_uint_vec foreach_vec64u foreach_vec128u
+#define foreach_float_vec foreach_vec64f foreach_vec128f
+#endif
 
-/* Floating point 64 bit. */
-typedef float f32x2 _vector_size (8);
+#define foreach_vec foreach_int_vec foreach_uint_vec foreach_float_vec
 
-/* Signed 128 bit. */
-typedef i8 i8x16 _vector_size (16);
-typedef i16 i16x8 _vector_size (16);
-typedef i32 i32x4 _vector_size (16);
-typedef long long i64x2 _vector_size (16);
+/* *INDENT-OFF* */
 
-/* Unsigned 128 bit. */
-typedef u8 u8x16 _vector_size (16);
-typedef u16 u16x8 _vector_size (16);
-typedef u32 u32x4 _vector_size (16);
-typedef u64 u64x2 _vector_size (16);
+/* Type Definitions */
+#define _(t,s,c) \
+typedef t##s t##s##x##c _vector_size (s/8*c);	\
+typedef union {	  \
+  t##s##x##c as_##t##s##x##c;	\
+  t##s as_##t##s[c];	  \
+} t##s##x##c##_union_t;
 
-typedef f32 f32x4 _vector_size (16);
-typedef f64 f64x2 _vector_size (16);
-
-/* Signed 256 bit. */
-typedef i8 i8x32 _vector_size (32);
-typedef i16 i16x16 _vector_size (32);
-typedef i32 i32x8 _vector_size (32);
-typedef long long i64x4 _vector_size (32);
-
-/* Unsigned 256 bit. */
-typedef u8 u8x32 _vector_size (32);
-typedef u16 u16x16 _vector_size (32);
-typedef u32 u32x8 _vector_size (32);
-typedef u64 u64x4 _vector_size (32);
-
-typedef f32 f32x8 _vector_size (32);
-typedef f64 f64x4 _vector_size (32);
-
-/* Signed 512 bit. */
-typedef i8 i8x64 _vector_size (64);
-typedef i16 i16x32 _vector_size (64);
-typedef i32 i32x16 _vector_size (64);
-typedef long long i64x8 _vector_size (64);
-
-/* Unsigned 512 bit. */
-typedef u8 u8x64 _vector_size (64);
-typedef u16 u16x32 _vector_size (64);
-typedef u32 u32x16 _vector_size (64);
-typedef u64 u64x8 _vector_size (64);
-
-typedef f32 f32x16 _vector_size (64);
-typedef f64 f64x8 _vector_size (64);
+  foreach_vec64i foreach_vec64u foreach_vec64f
+  foreach_vec128i foreach_vec128u foreach_vec128f
+  foreach_vec256i foreach_vec256u foreach_vec256f
+  foreach_vec512i foreach_vec512u foreach_vec512f
+#undef _
 
 /* Vector word sized types. */
 #ifndef CLIB_VECTOR_WORD_BITS
@@ -167,90 +154,46 @@ typedef u64 u64x _vector_size (8);
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
 
-/* Union types. */
-#if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
-
-#define _(t)					\
-  typedef union {				\
-    t##x as_##t##x;				\
-    t as_##t[VECTOR_WORD_TYPE_LEN (t)];	\
-  } t##x##_union_t;
-
-_(u8);
-_(u16);
-_(u32);
-_(u64);
-_(i8);
-_(i16);
-_(i32);
-_(i64);
-
+/* this series of macros generate _is_equal, _is_greater, _is_zero, _add
+   and _sub inline funcitons for each vector type */
+#define _(t, s, c) \
+  static_always_inline t##s##x##c			\
+t##s##x##c##_is_equal (t##s##x##c v1, t##s##x##c v2)	\
+{ return (v1 == v2); }					\
+							\
+static_always_inline t##s##x##c				\
+t##s##x##c##_is_greater (t##s##x##c v1, t##s##x##c v2)	\
+{ return (v1 > v2); }					\
+							\
+static_always_inline t##s##x##c				\
+t##s##x##c##_is_zero (t##s##x##c v1)			\
+{ t##s##x##c z = {0}; return (v1 == z); }		\
+							\
+static_always_inline t##s##x##c				\
+t##s##x##c##_add (t##s##x##c v1, t##s##x##c v2)		\
+{ return (v1 + v2); }					\
+							\
+static_always_inline t##s##x##c				\
+t##s##x##c##_sub (t##s##x##c v1, t##s##x##c v2)		\
+{ return (v1 - v2); }
+  foreach_vec
 #undef _
 
-#endif
-
-#ifdef CLIB_HAVE_VEC64
-
-#define _(t,n)					\
-  typedef union {				\
-    t##x##n as_##t##x##n;			\
-    t as_##t[n];				\
-  } t##x##n##_union_t;				\
-
-_(u8, 8);
-_(u16, 4);
-_(u32, 2);
-_(i8, 8);
-_(i16, 4);
-_(i32, 2);
-
+/* this macro generate _splat inline funcitons for each scalar vector type */
+#define _(t, s, c) \
+  static_always_inline t##s##x##c			\
+t##s##x##c##_splat (t##s x)				\
+{							\
+    t##s##x##c r;					\
+    int i;						\
+							\
+    for (i = 0; i < c; i++)				\
+      r[i] = x;						\
+							\
+    return r;						\
+}
+  foreach_int_vec foreach_uint_vec
 #undef _
-
-#endif
-
-#ifdef CLIB_HAVE_VEC128
-
-#define _(t,n)					\
-  typedef union {				\
-    t##x##n as_##t##x##n;			\
-    t as_##t[n];				\
-  } t##x##n##_union_t;				\
-
-_(u8, 16);
-_(u16, 8);
-_(u32, 4);
-_(u64, 2);
-_(i8, 16);
-_(i16, 8);
-_(i32, 4);
-_(i64, 2);
-_(f32, 4);
-_(f64, 2);
-
-#undef _
-
-#endif
-
-/* When we don't have vector types, still define e.g. u32x4_union_t but as an array. */
-#if !defined(CLIB_HAVE_VEC128) && !defined(CLIB_HAVE_VEC64)
-
-#define _(t,n)					\
-  typedef union {				\
-    t as_##t[n];				\
-  } t##x##n##_union_t;				\
-
-_(u8, 16);
-_(u16, 8);
-_(u32, 4);
-_(u64, 2);
-_(i8, 16);
-_(i16, 8);
-_(i32, 4);
-_(i64, 2);
-
-#undef _
-
-#endif
 
 #if defined (__SSE4_2__) && __GNUC__ >= 4
 #include <vppinfra/vector_sse42.h>
@@ -272,8 +215,9 @@ _(i64, 2);
 #include <vppinfra/vector_funcs.h>
 #endif
 
-#endif /* included_clib_vector_h */
+/* *INDENT-ON* */
 
+#endif /* included_clib_vector_h */
 /*
  * fd.io coding-style-patch-verification: ON
  *

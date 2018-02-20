@@ -77,33 +77,6 @@ u32x2_interleave_lo (u32x2 a, u32x2 b)
   return __builtin_arm_wunpckilw (a, b);
 }
 
-always_inline u32x2
-u32x2_splat (u32 a)
-{
-  u32x2 x = { a };
-  x = u32x2_interleave_lo (x, x);
-  return x;
-}
-
-always_inline u16x4
-u16x4_splat (u16 a)
-{
-  u32 t = (u32) a | ((u32) a << 16);
-  return u32x2_splat (t);
-}
-
-always_inline u8x8
-u8x8_splat (u8 a)
-{
-  u32 t = (u32) a | ((u32) a << 8);
-  t |= t << 16;
-  return u32x2_splat (t);
-}
-
-#define i32x2_splat u32x2_splat
-#define i16x4_splat u16x4_splat
-#define i8x8_splat u8x8_splat
-
 /* 64 bit shifts. */
 
 /* As of July 2008 the __builtin_arm shifts cause gcc-4.3.1 to crash
