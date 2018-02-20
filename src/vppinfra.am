@@ -270,7 +270,7 @@ nobase_include_HEADERS = \
   vppinfra/vector_funcs.h \
   vppinfra/vector_iwmmxt.h \
   vppinfra/vector_neon.h \
-  vppinfra/vector_sse2.h \
+  vppinfra/vector_sse42.h \
   vppinfra/valgrind.h \
   vppinfra/xxhash.h \
   vppinfra/xy.h \

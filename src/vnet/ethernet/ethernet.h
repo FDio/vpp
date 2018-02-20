@@ -67,6 +67,7 @@ ethernet_mac_address_is_zero (u8 * mac)
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
 
+#ifdef CLIB_HAVE_VEC128
 static const u16x8 tagged_ethertypes = {
   (u16) ETHERNET_TYPE_VLAN,
   (u16) ETHERNET_TYPE_DOT1AD,
@@ -78,6 +79,7 @@ static const u16x8 tagged_ethertypes = {
   (u16) ETHERNET_TYPE_VLAN_9200,
   (u16) ETHERNET_TYPE_VLAN_9200
 };
+#endif
 
 static_always_inline int
 ethernet_frame_is_tagged (u16 type)

@@ -41,7 +41,7 @@ extern vlib_node_registration_t ip6_classify_node;
 
 #define CLASSIFY_TRACE 0
 
-#if !defined( __aarch64__) && !defined(__arm__)
+#ifdef CLIB_HAVE_VEC128
 #define CLASSIFY_USE_SSE	//Allow usage of SSE operations
 #endif
 

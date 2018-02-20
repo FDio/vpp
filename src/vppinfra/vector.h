@@ -50,7 +50,7 @@
 #define CLIB_HAVE_VEC128
 #endif
 
-#if defined (__SSE2__) && __GNUC__ >= 4
+#if defined (__SSE4_2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
 
@@ -73,7 +73,6 @@
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 
-#ifdef CLIB_HAVE_VEC64
 /* Signed 64 bit. */
 typedef char i8x8 _vector_size (8);
 typedef short i16x4 _vector_size (8);
@@ -86,9 +85,7 @@ typedef unsigned int u32x2 _vector_size (8);
 
 /* Floating point 64 bit. */
 typedef float f32x2 _vector_size (8);
-#endif /* CLIB_HAVE_VEC64 */
 
-#ifdef CLIB_HAVE_VEC128
 /* Signed 128 bit. */
 typedef i8 i8x16 _vector_size (16);
 typedef i16 i16x8 _vector_size (16);
@@ -118,9 +115,7 @@ typedef u64 u64x4 _vector_size (32);
 
 typedef f32 f32x8 _vector_size (32);
 typedef f64 f64x4 _vector_size (32);
-#endif /* CLIB_HAVE_VEC128 */
 
-#ifdef CLIB_HAVE_VEC512
 /* Signed 512 bit. */
 typedef i8 i8x64 _vector_size (64);
 typedef i16 i16x32 _vector_size (64);
@@ -135,7 +130,6 @@ typedef u64 u64x8 _vector_size (64);
 
 typedef f32 f32x16 _vector_size (64);
 typedef f64 f64x8 _vector_size (64);
-#endif /* CLIB_HAVE_VEC512 */
 
 /* Vector word sized types. */
 #ifndef CLIB_VECTOR_WORD_BITS
@@ -258,8 +252,8 @@ _(i64, 2);
 
 #endif
 
-#if defined (__SSE2__) && __GNUC__ >= 4
-#include <vppinfra/vector_sse2.h>
+#if defined (__SSE4_2__) && __GNUC__ >= 4
+#include <vppinfra/vector_sse42.h>
 #endif
 
 #if defined (__ALTIVEC__)
