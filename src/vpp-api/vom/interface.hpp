@@ -91,6 +91,11 @@ public:
     const static type_t TAP;
 
     /**
+     * vhost-user interface type
+     */
+    const static type_t VHOST;
+
+    /**
      * Convert VPP's name of the interface to a type
      */
     static type_t from_string(const std::string& str);
@@ -157,7 +162,10 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  interface(const std::string& name, type_t type, admin_state_t state);
+  interface(const std::string& name,
+            type_t type,
+            admin_state_t state,
+            const std::string& tag = "");
   /**
    * Construct a new object matching the desried state mapped
    * to a specific route_domain
@@ -165,7 +173,8 @@ public:
   interface(const std::string& name,
             type_t type,
             admin_state_t state,
-            const route_domain& rd);
+            const route_domain& rd,
+            const std::string& tag = "");
   /**
    * Destructor
    */
@@ -215,6 +224,11 @@ public:
   const l2_address_t& l2_address() const;
 
   /**
+   * Set the admin state of the interface
+   */
+  void set(const admin_state_t& state);
+
+  /**
    * Set the L2 Address
    */
   void set(const l2_address_t& addr);
@@ -223,6 +237,11 @@ public:
    * Set the operational state of the interface, as reported by VPP
    */
   void set(const oper_state_t& state);
+
+  /**
+   * Set the tag to the interface
+   */
+  void set(const std::string& tag);
 
   /**
    * Comparison operator - only used for UT
@@ -579,6 +598,11 @@ private:
    * Operational state of the interface
    */
   oper_state_t m_oper;
+
+  /**
+   * tag of the interface
+   */
+  std::string m_tag;
 
   /**
    * A map of all interfaces keyed against VPP's handle

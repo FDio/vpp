@@ -21,6 +21,7 @@
 #include "vom/interface.hpp"
 
 #include <vapi/interface.api.vapi.hpp>
+#include <vapi/vhost_user.api.vapi.hpp>
 
 namespace VOM {
 
@@ -32,6 +33,9 @@ public:
    */
   static std::shared_ptr<interface> new_interface(
     const vapi_payload_sw_interface_details& vd);
+
+  static std::shared_ptr<interface> new_vhost_user_interface(
+    const vapi_payload_sw_interface_vhost_user_details& vd);
 };
 };
 

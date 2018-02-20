@@ -38,7 +38,8 @@ interface::event_handler interface::m_evh;
  */
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
-                     interface::admin_state_t itf_state)
+                     interface::admin_state_t itf_state,
+                     const std::string& tag)
   : m_hdl(handle_t::INVALID)
   , m_name(name)
   , m_type(itf_type)
@@ -46,13 +47,15 @@ interface::interface(const std::string& name,
   , m_table_id(route::DEFAULT_TABLE)
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
   , m_oper(oper_state_t::DOWN)
+  , m_tag(tag)
 {
 }
 
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
                      interface::admin_state_t itf_state,
-                     const route_domain& rd)
+                     const route_domain& rd,
+                     const std::string& tag)
   : m_hdl(handle_t::INVALID)
   , m_name(name)
   , m_type(itf_type)
@@ -61,6 +64,7 @@ interface::interface(const std::string& name,
   , m_table_id(m_rd->table_id())
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
   , m_oper(oper_state_t::DOWN)
+  , m_tag(tag)
 {
 }
 
@@ -73,6 +77,7 @@ interface::interface(const interface& o)
   , m_table_id(o.m_table_id)
   , m_l2_address(o.m_l2_address)
   , m_oper(o.m_oper)
+  , m_tag(o.m_tag)
 {
 }
 
@@ -221,7 +226,13 @@ interface::to_string() const
   }
 
   s << " admin-state:" << m_state.to_string()
-    << " oper-state:" << m_oper.to_string() << "]";
+    << " oper-state:" << m_oper.to_string();
+
+  if (!m_tag.empty()) {
+    s << " tag:[" << m_tag << "]";
+  }
+
+  s << "]";
 
   return (s.str());
 }
@@ -246,10 +257,20 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
   } else if (type_t::BVI == m_type) {
     q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
     q.push(new interface_cmds::set_tag(m_hdl, m_name));
+    /*
+     * set the m_tag for pretty-print
+     */
+    m_tag = m_name;
   } else if (type_t::AFPACKET == m_type) {
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
+    if (!m_tag.empty())
+      q.push(new interface_cmds::set_tag(m_hdl, m_tag));
   } else if (type_t::TAP == m_type) {
     q.push(new interface_cmds::tap_create_cmd(m_hdl, m_name));
+    if (!m_tag.empty())
+      q.push(new interface_cmds::set_tag(m_hdl, m_tag));
+  } else if (type_t::VHOST == m_type) {
+    q.push(new interface_cmds::vhost_create_cmd(m_hdl, m_name, m_tag));
   } else {
     m_hdl.set(rc_t::OK);
   }
@@ -266,6 +287,8 @@ interface::mk_delete_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
   } else if (type_t::TAP == m_type) {
     q.push(new interface_cmds::tap_delete_cmd(m_hdl));
+  } else if (type_t::VHOST == m_type) {
+    q.push(new interface_cmds::vhost_delete_cmd(m_hdl, m_name));
   }
 
   return (q);
@@ -345,6 +368,12 @@ interface::update(const interface& desired)
 }
 
 void
+interface::set(const admin_state_t& state)
+{
+  m_state = state;
+}
+
+void
 interface::set(const l2_address_t& addr)
 {
   assert(rc_t::UNSET == m_l2_address.rc());
@@ -362,6 +391,12 @@ void
 interface::set(const oper_state_t& state)
 {
   m_oper = state;
+}
+
+void
+interface::set(const std::string& tag)
+{
+  m_tag = tag;
 }
 
 void
@@ -429,6 +464,20 @@ interface::dump(std::ostream& os)
 void
 interface::event_handler::handle_populate(const client_db::key_t& key)
 {
+  std::shared_ptr<interface_cmds::vhost_dump_cmd> vcmd =
+    std::make_shared<interface_cmds::vhost_dump_cmd>();
+
+  HW::enqueue(vcmd);
+  HW::write();
+
+  for (auto& vhost_itf_record : *vcmd) {
+    std::shared_ptr<interface> vitf =
+      interface_factory::new_vhost_user_interface(
+        vhost_itf_record.get_payload());
+    VOM_LOG(log_level_t::DEBUG) << "dump: " << vitf->to_string();
+    OM::commit(key, *vitf);
+  }
+
   /*
    * dump VPP current states
    */

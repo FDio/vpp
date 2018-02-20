@@ -34,6 +34,7 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
     interface::admin_state_t::from_int(vd.link_up_down);
   handle_t hdl(vd.sw_if_index);
   l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
+  std::string tag = "";
 
   if (interface::type_t::AFPACKET == type) {
     /*
@@ -46,7 +47,11 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
    * the interface type more specific
    */
   if (vd.tag[0] != 0) {
-    name = std::string(reinterpret_cast<const char*>(vd.tag));
+    tag = std::string(reinterpret_cast<const char*>(vd.tag));
+  }
+
+  if (!tag.empty() && interface::type_t::LOOPBACK == type) {
+    name = tag;
     type = interface::type_t::from_string(name);
   }
 
@@ -58,6 +63,8 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      * TAP interface
      */
     sp = tap_interface(name, state, route::prefix_t()).singular();
+    if (sp && !tag.empty())
+      sp->set(tag);
   } else if ((name.find(".") != std::string::npos) && (0 != vd.sub_id)) {
     /*
      * Sub-interface
@@ -66,15 +73,28 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
     std::vector<std::string> parts;
     boost::split(parts, name, boost::is_any_of("."));
 
-    interface parent(parts[0], type, state);
+    interface parent(parts[0], type, state, tag);
     sp = sub_interface(parent, state, vd.sub_id).singular();
   } else if (interface::type_t::VXLAN == type) {
     /*
      * there's not enough information in a SW interface record to
-     * construct a VXLAN tunnel. so skip it.
+     * construct a VXLAN tunnel. so skip it. They have
+     * their own dump routines
      */
+  } else if (interface::type_t::VHOST == type) {
+    /*
+     * vhost interfaces already exist in db, look for it using
+     * sw_if_index
+     */
+    sp = interface::find(hdl);
+    if (sp) {
+      sp->set(state);
+      sp->set(l2_address);
+      if (!tag.empty())
+        sp->set(tag);
+    }
   } else {
-    sp = interface(name, type, state).singular();
+    sp = interface(name, type, state, tag).singular();
     sp->set(l2_address);
   }
 
@@ -82,8 +102,23 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
    * set the handle on the intterface - N.B. this is the sigluar instance
    * not a stack local.
    */
-  sp->set(hdl);
+  if (sp)
+    sp->set(hdl);
 
+  return (sp);
+}
+
+std::shared_ptr<interface>
+interface_factory::new_vhost_user_interface(
+  const vapi_payload_sw_interface_vhost_user_details& vd)
+{
+  std::shared_ptr<interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.sock_filename);
+  interface::type_t type = interface::type_t::from_string(name);
+  handle_t hdl(vd.sw_if_index);
+
+  sp = interface(name, type, interface::admin_state_t::DOWN).singular();
+  sp->set(hdl);
   return (sp);
 }
 }; // namespace VOM

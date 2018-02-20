@@ -174,6 +174,10 @@ public:
                     {
                         rc = handle_derived<interface_cmds::loopback_create_cmd>(f_exp, f_act);
                     }
+                    else if (typeid(*f_exp) == typeid(interface_cmds::vhost_create_cmd))
+                    {
+                        rc = handle_derived<interface_cmds::vhost_create_cmd>(f_exp, f_act);
+                    }
                     else if (typeid(*f_exp) == typeid(interface_cmds::loopback_delete_cmd))
                     {
                         rc = handle_derived<interface_cmds::loopback_delete_cmd>(f_exp, f_act);
@@ -181,6 +185,10 @@ public:
                     else if (typeid(*f_exp) == typeid(interface_cmds::af_packet_delete_cmd))
                     {
                         rc = handle_derived<interface_cmds::af_packet_delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(interface_cmds::vhost_delete_cmd))
+                    {
+                       rc = handle_derived<interface_cmds::vhost_delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(interface_cmds::state_change_cmd))
                     {
@@ -605,12 +613,15 @@ BOOST_AUTO_TEST_CASE(test_interface) {
     TRY_CHECK(OM::mark(go));
 
     std::string itf2_name = "afpacket2";
+    std::string itf2_tag = "uuid-of-afpacket2-interface";
     interface itf2(itf2_name,
                    interface::type_t::AFPACKET,
-                   interface::admin_state_t::UP);
+                   interface::admin_state_t::UP,
+                   itf2_tag);
     HW::item<handle_t> hw_ifh2(3, rc_t::OK);
 
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::set_tag(hw_ifh2, itf2_tag));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     TRY_CHECK_RC(OM::write(go, itf2));
 
@@ -623,6 +634,23 @@ BOOST_AUTO_TEST_CASE(test_interface) {
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     TRY_CHECK(OM::sweep(go));
+
+
+    std::string itf3_name = "/PATH/TO/vhost_user1.sock";
+    std::string itf3_tag = "uuid-of-vhost_user1-interface";
+    interface itf3(itf3_name,
+                   interface::type_t::VHOST,
+                   interface::admin_state_t::UP,
+                   itf3_tag);
+    HW::item<handle_t> hw_ifh3(4, rc_t::OK);
+
+    ADD_EXPECT(interface_cmds::vhost_create_cmd(hw_ifh3, itf3_name, itf3_tag));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh3));
+    TRY_CHECK_RC(OM::write(go, itf3));
+
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh3));
+    ADD_EXPECT(interface_cmds::vhost_delete_cmd(hw_ifh3, itf3_name));
+    TRY_CHECK(OM::remove(go));
 }
 
 BOOST_AUTO_TEST_CASE(test_bvi) {

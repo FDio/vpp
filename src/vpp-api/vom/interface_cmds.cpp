@@ -20,6 +20,7 @@ DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
 DEFINE_VAPI_MSG_IDS_AF_PACKET_API_JSON;
 DEFINE_VAPI_MSG_IDS_TAP_API_JSON;
+DEFINE_VAPI_MSG_IDS_VHOST_USER_API_JSON;
 DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
 
 namespace VOM {
@@ -129,6 +130,50 @@ tap_create_cmd::to_string() const
   return (s.str());
 }
 
+vhost_create_cmd::vhost_create_cmd(HW::item<handle_t>& item,
+                                   const std::string& name,
+                                   const std::string& tag)
+  : create_cmd(item, name)
+  , m_tag(tag)
+{
+}
+
+rc_t
+vhost_create_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  memset(payload.sock_filename, 0, sizeof(payload.sock_filename));
+  memcpy(payload.sock_filename, m_name.c_str(),
+         std::min(m_name.length(), sizeof(payload.sock_filename)));
+  memset(payload.tag, 0, sizeof(payload.tag));
+
+  if (!m_tag.empty())
+    memcpy(payload.tag, m_tag.c_str(),
+           std::min(m_tag.length(), sizeof(payload.tag)));
+
+  payload.is_server = 1;
+  payload.use_custom_mac = 0;
+  payload.renumber = 0;
+
+  VAPI_CALL(req.execute());
+
+  m_hw_item = wait();
+
+  return rc_t::OK;
+}
+
+std::string
+vhost_create_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "vhost-intf-create: " << m_hw_item.to_string() << " name:" << m_name
+    << " tag:" << m_tag;
+
+  return (s.str());
+}
+
 loopback_delete_cmd::loopback_delete_cmd(HW::item<handle_t>& item)
   : delete_cmd(item)
 {
@@ -211,6 +256,35 @@ tap_delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "tap-itf-delete: " << m_hw_item.to_string();
+
+  return (s.str());
+}
+
+vhost_delete_cmd::vhost_delete_cmd(HW::item<handle_t>& item,
+                                   const std::string& name)
+  : delete_cmd(item, name)
+{
+}
+
+rc_t
+vhost_delete_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.sw_if_index = m_hw_item.data().value();
+
+  VAPI_CALL(req.execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+std::string
+vhost_delete_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "vhost-itf-delete: " << m_hw_item.to_string() << " name:" << m_name;
 
   return (s.str());
 }
@@ -475,10 +549,6 @@ stats_enable_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
-
 stats_disable_cmd::stats_disable_cmd(const handle_t& handle)
   : rpc_cmd(m_res)
   , m_swifindex(handle)
@@ -521,6 +591,10 @@ stats_disable_cmd::to_string() const
   return (s.str());
 }
 
+dump_cmd::dump_cmd()
+{
+}
+
 bool
 dump_cmd::operator==(const dump_cmd& other) const
 {
@@ -546,6 +620,34 @@ std::string
 dump_cmd::to_string() const
 {
   return ("itf-dump");
+}
+
+vhost_dump_cmd::vhost_dump_cmd()
+{
+}
+
+bool
+vhost_dump_cmd::operator==(const vhost_dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+vhost_dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+vhost_dump_cmd::to_string() const
+{
+  return ("vhost-itf-dump");
 }
 
 set_tag::set_tag(HW::item<handle_t>& item, const std::string& name)
