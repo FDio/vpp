@@ -125,6 +125,8 @@ libvom_la_SOURCES = 			\
 	sub_interface.cpp		\
 	tap_interface.cpp		\
 	tap_interface_cmds.cpp		\
+	vhost_interface.cpp		\
+	vhost_interface_cmds.cpp	\
 	vxlan_tunnel_cmds.cpp 		\
 	vxlan_tunnel.cpp		\
 	$(ACL_SOURCES) 			\

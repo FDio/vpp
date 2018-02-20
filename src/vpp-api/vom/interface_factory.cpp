@@ -68,10 +68,12 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
 
     interface parent(parts[0], type, state);
     sp = sub_interface(parent, state, vd.sub_id).singular();
-  } else if (interface::type_t::VXLAN == type) {
+  } else if ((interface::type_t::VXLAN == type) ||
+             (interface::type_t::VHOST == type)) {
     /*
      * there's not enough information in a SW interface record to
-     * construct a VXLAN tunnel. so skip it.
+     * construct a VXLAN tunnel or VHOST. so skip it. They have
+     * their own dump routines
      */
   } else {
     sp = interface(name, type, state).singular();

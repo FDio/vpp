@@ -27,6 +27,7 @@ const interface::type_t interface::type_t::AFPACKET(4, "AFPACKET");
 const interface::type_t interface::type_t::LOOPBACK(5, "LOOPBACK");
 const interface::type_t interface::type_t::LOCAL(6, "LOCAL");
 const interface::type_t interface::type_t::TAP(7, "TAP");
+const interface::type_t interface::type_t::VHOST(7, "VHOST");
 
 const interface::oper_state_t interface::oper_state_t::DOWN(0, "down");
 const interface::oper_state_t interface::oper_state_t::UP(1, "up");
@@ -51,6 +52,8 @@ interface::type_t::from_string(const std::string& str)
     return interface::type_t::TAP;
   } else if (str.find("bvi") != std::string::npos) {
     return interface::type_t::BVI;
+  } else if (str.find("/tmp") != std::string::npos) {
+    return interface::type_t::VHOST;
   }
 
   return interface::type_t::UNKNOWN;

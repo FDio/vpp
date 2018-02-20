@@ -91,6 +91,11 @@ public:
     const static type_t TAP;
 
     /**
+     * vhost-user interface type
+     */
+    const static type_t VHOST;
+
+    /**
      * Convert VPP's name of the interface to a type
      */
     static type_t from_string(const std::string& str);
