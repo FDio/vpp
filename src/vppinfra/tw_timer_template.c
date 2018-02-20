@@ -738,7 +738,10 @@ static inline
 	{
 	  /* The callback is optional. We return the u32 * handle vector */
 	  if (tw->expired_timer_callback)
-	    tw->expired_timer_callback (callback_vector);
+	    {
+	      tw->expired_timer_callback (callback_vector);
+	      vec_reset_length (callback_vector);
+	    }
 	  tw->expired_timer_handles = callback_vector;
 	}
 
