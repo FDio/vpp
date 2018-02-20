@@ -27,6 +27,7 @@ const interface::type_t interface::type_t::AFPACKET(4, "AFPACKET");
 const interface::type_t interface::type_t::LOOPBACK(5, "LOOPBACK");
 const interface::type_t interface::type_t::LOCAL(6, "LOCAL");
 const interface::type_t interface::type_t::TAP(7, "TAP");
+const interface::type_t interface::type_t::VHOST(8, "VHOST");
 
 const interface::oper_state_t interface::oper_state_t::DOWN(0, "down");
 const interface::oper_state_t interface::oper_state_t::UP(1, "up");
@@ -37,7 +38,10 @@ const interface::admin_state_t interface::admin_state_t::UP(1, "up");
 interface::type_t
 interface::type_t::from_string(const std::string& str)
 {
-  if (str.find("Ethernet") != std::string::npos) {
+  if ((str.find("Virtual") != std::string::npos) ||
+      (str.find("vhost") != std::string::npos)) {
+    return interface::type_t::VHOST;
+  } else if (str.find("Ethernet") != std::string::npos) {
     return interface::type_t::ETHERNET;
   } else if (str.find("vxlan") != std::string::npos) {
     return interface::type_t::VXLAN;

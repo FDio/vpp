@@ -27,6 +27,7 @@
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/stats.api.vapi.hpp>
 #include <vapi/tap.api.vapi.hpp>
+#include <vapi/vhost_user.api.vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
@@ -110,6 +111,30 @@ public:
 };
 
 /**
+ * A functor class that creates an interface
+ */
+class vhost_create_cmd
+  : public interface::create_cmd<vapi::Create_vhost_user_if>
+{
+public:
+  vhost_create_cmd(HW::item<handle_t>& item,
+                   const std::string& name,
+                   const std::string& tag);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+private:
+  const std::string m_tag;
+};
+
+/**
  * A command class to delete loopback interfaces in VPP
  */
 class loopback_delete_cmd : public interface::delete_cmd<vapi::Delete_loopback>
@@ -163,6 +188,25 @@ public:
    * Constructor taking the HW::item to update
    */
   tap_delete_cmd(HW::item<handle_t>& item);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+};
+
+/**
+ * A functor class that deletes a Vhost interface
+ */
+class vhost_delete_cmd
+  : public interface::delete_cmd<vapi::Delete_vhost_user_if>
+{
+public:
+  vhost_delete_cmd(HW::item<handle_t>& item, const std::string& name);
 
   /**
    * Issue the command to VPP/HW
@@ -478,6 +522,32 @@ public:
    * Comparison operator - only used for UT
    */
   bool operator==(const dump_cmd& i) const;
+};
+
+/**
+ * A cmd class that Dumps all the Vpp Interfaces
+ */
+class vhost_dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_vhost_user_dump>
+{
+public:
+  /**
+   * Default Constructor
+   */
+  vhost_dump_cmd();
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const vhost_dump_cmd& i) const;
 };
 };
 };
