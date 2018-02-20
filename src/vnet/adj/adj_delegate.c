@@ -32,18 +32,18 @@ adj_delegate_find_i (const ip_adjacency_t *adj,
                      adj_delegate_type_t type,
                      u32 *index)
 {
-    adj_delegate_t **delegate;
+    adj_delegate_t *delegate;
     int ii;
 
     ii = 0;
     vec_foreach(delegate, adj->ia_delegates)
     {
-	if ((*delegate)->ad_type == type)
+	if (delegate->ad_type == type)
 	{
             if (NULL != index)
                 *index = ii;
 
-	    return (*delegate);
+	    return (delegate);
 	}
 	else
 	{
@@ -81,19 +81,22 @@ static int
 adj_delegate_cmp_for_sort (void * v1,
                            void * v2)
 {
-    adj_delegate_t **delegate1 = v1, **delegate2 = v2;
+    adj_delegate_t *aed1 = v1, *aed2 = v2;
 
-    return ((*delegate1)->ad_type - (*delegate2)->ad_type);
+    return (aed1->ad_type - aed2->ad_type);
 }
 
 static void
 adj_delegate_init (ip_adjacency_t *adj,
                    adj_delegate_type_t adt,
-                   adj_delegate_t *aed)
+                   index_t adi)
 
 {
-    aed->ad_adj_index = adj_get_index(adj);
-    aed->ad_type = adt;
+    adj_delegate_t aed = {
+        .ad_adj_index = adj_get_index(adj),
+        .ad_type = adt,
+        .ad_index = adi,
+    };
 
     vec_add1(adj->ia_delegates, aed);
     vec_sort_with_function(adj->ia_delegates,
@@ -103,7 +106,7 @@ adj_delegate_init (ip_adjacency_t *adj,
 int
 adj_delegate_add (ip_adjacency_t *adj,
                   adj_delegate_type_t adt,
-                  adj_delegate_t *ad)
+                  index_t adi)
 {
     adj_delegate_t *delegate;
 
@@ -111,7 +114,7 @@ adj_delegate_add (ip_adjacency_t *adj,
 
     if (NULL == delegate)
     {
-	adj_delegate_init(adj, adt, ad);
+	adj_delegate_init(adj, adt, adi);
     }
     else
     {
@@ -124,13 +127,13 @@ adj_delegate_add (ip_adjacency_t *adj,
 void
 adj_delegate_adj_deleted (ip_adjacency_t *adj)
 {
-    adj_delegate_t **delegate;
+    adj_delegate_t *aed;
 
-    vec_foreach(delegate, adj->ia_delegates)
+    vec_foreach(aed, adj->ia_delegates)
     {
-        if (ad_vfts[(*delegate)->ad_type].adv_adj_deleted)
+        if (ad_vfts[aed->ad_type].adv_adj_deleted)
         {
-            ad_vfts[(*delegate)->ad_type].adv_adj_deleted(*delegate);
+            ad_vfts[aed->ad_type].adv_adj_deleted(aed);
         }
     }
 
@@ -140,14 +143,14 @@ adj_delegate_adj_deleted (ip_adjacency_t *adj)
 u8*
 adj_delegate_format (u8* s, ip_adjacency_t *adj)
 {
-    adj_delegate_t **aed;
+    adj_delegate_t *aed;
 
     vec_foreach(aed, adj->ia_delegates)
     {
-        if (ad_vfts[(*aed)->ad_type].adv_format)
+        if (ad_vfts[aed->ad_type].adv_format)
         {
             s = format(s, "{");
-            s = ad_vfts[(*aed)->ad_type].adv_format(*aed, s);
+            s = ad_vfts[aed->ad_type].adv_format(aed, s);
             s = format(s, "}");
         }
         else

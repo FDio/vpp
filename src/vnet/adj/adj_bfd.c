@@ -35,11 +35,6 @@ typedef enum adj_bfd_state_t_
 typedef struct adj_bfd_delegate_t_
 {
     /**
-     * Base class,linkage to the adjacency
-     */
-    adj_delegate_t abd_link;
-
-    /**
      * BFD session state
      */
     adj_bfd_state_t abd_state;
@@ -58,25 +53,21 @@ static adj_bfd_delegate_t *abd_pool;
 static inline adj_bfd_delegate_t*
 adj_bfd_from_base (adj_delegate_t *ad)
 {
-    if (NULL == ad)
+    if (NULL != ad)
     {
-        return (NULL);
+        return (pool_elt_at_index(abd_pool, ad->ad_index));
     }
-    return ((adj_bfd_delegate_t*)((char*)ad -
-                                  STRUCT_OFFSET_OF(adj_bfd_delegate_t,
-                                                   abd_link)));
+    return (NULL);
 }
 
 static inline const adj_bfd_delegate_t*
 adj_bfd_from_const_base (const adj_delegate_t *ad)
 {
-    if (NULL == ad)
+    if (NULL != ad)
     {
-        return (NULL);
+        return (pool_elt_at_index(abd_pool, ad->ad_index));
     }
-    return ((adj_bfd_delegate_t*)((char*)ad -
-                                  STRUCT_OFFSET_OF(adj_bfd_delegate_t,
-                                                   abd_link)));
+    return (NULL);
 }
 
 static adj_bfd_state_t
@@ -183,7 +174,7 @@ adj_bfd_notify (bfd_listen_event_e event,
             abd->abd_state = ADJ_BFD_STATE_UP;
             abd->abd_index = session->bs_idx;
 
-            adj_delegate_add(adj_get(ai), ADJ_DELEGATE_BFD, &abd->abd_link);
+            adj_delegate_add(adj_get(ai), ADJ_DELEGATE_BFD, abd - abd_pool);
         }
         break;
 
