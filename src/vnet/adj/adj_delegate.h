@@ -39,11 +39,7 @@ typedef enum adj_delegate_type_t_ {
 } adj_delegate_type_t;
 
 /**
- * Adj delegate. This object should be contained within all type specific
- * delegates.  i.e. this is the base class to all type specific derived classes.
- * With this model the delegate provider is free to manage the memory of the
- * delegate in the way it chooses. Specifically it can assign them from its own
- * pools and thus, for example, add the delegates to the FIB node graph.
+ * Adj delegate. This object is attached to the adjacency.
  */
 typedef struct adj_delegate_t_
 {
@@ -56,6 +52,12 @@ typedef struct adj_delegate_t_
      * The delagate type
      */
     adj_delegate_type_t ad_type;
+
+    /**
+     * The index passed by the provider to identify its delegate instance.
+     * As with all things VPP this is a pool index.
+     */
+    index_t ad_index;
 } adj_delegate_t;
 
 /**
@@ -91,13 +93,11 @@ extern void adj_delegate_remove(adj_index_t ai,
  *
  * @param ai The adjacency to add the delegate to
  * @param type The type of delegate being added
- * @param ad The delegate. The provider should allocate memory for this object
- *                         Typically this is a 'derived' class with the
- *                         adj_delegate_t struct embedded within.
+ * @param adi The provider's [pool] index of its attached objet
  */
 extern int adj_delegate_add(ip_adjacency_t *adj,
                             adj_delegate_type_t fdt,
-                            adj_delegate_t *ad);
+                            index_t adi);
 
 
 /**
