@@ -17,52 +17,9 @@
 #define included_vector_neon_h
 #include <arm_neon.h>
 
-/* Splats. */
-
-#define u8x16_splat(i) vdupq_n_u8(i)
-#define u16x8_splat(i) vdupq_n_u16(i)
-#define i16x8_splat(i) vdupq_n_s16(i)
-#define u32x4_splat(i) vdupq_n_u32(i)
-#define i32x4_splat(i) vdupq_n_s32(i)
-
 /* Arithmetic */
-#define u16x8_add(a,b) vaddq_u16(a,b)
-#define i16x8_add(a,b) vaddq_s16(a,b)
 #define u16x8_sub_saturate(a,b) vsubq_u16(a,b)
 #define i16x8_sub_saturate(a,b) vsubq_s16(a,b)
-
-
-/* Compare operations. */
-#define u8x16_is_equal(a,b) vceqq_u8(a,b)
-#define i8x16_is_equal(a,b) vceqq_s8(a,b)
-#define u16x8_is_equal(a,b) vceqq_u16(a,b)
-#define i16x8_is_equal(a,b) vceqq_i16(a,b)
-#define u32x4_is_equal(a,b) vceqq_u32(a,b)
-#define i32x4_is_equal(a,b) vceqq_s32(a,b)
-#define i8x16_is_greater(a,b) vcgtq_s8(a,b)
-#define i16x8_is_greater(a,b) vcgtq_u8(a,b)
-#define i32x4_is_greater(a,b) vcgtq_s32(a,b)
-
-always_inline u8x16
-u8x16_is_zero (u8x16 x)
-{
-  u8x16 zero = { 0 };
-  return u8x16_is_equal (x, zero);
-}
-
-always_inline u16x8
-u16x8_is_zero (u16x8 x)
-{
-  u16x8 zero = { 0 };
-  return u16x8_is_equal (x, zero);
-}
-
-always_inline u32x4
-u32x4_is_zero (u32x4 x)
-{
-  u32x4 zero = { 0 };
-  return u32x4_is_equal (x, zero);
-}
 
 /* Converts all ones/zeros compare mask to bitmap. */
 always_inline u32

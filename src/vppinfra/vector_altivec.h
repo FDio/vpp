@@ -38,26 +38,6 @@
 #ifndef included_vector_altivec_h
 #define included_vector_altivec_h
 
-/* Splats. */
-#define _(t,n,ti,fi,tr,fr)						\
-  always_inline t##x##n t##x##n##_splat (t v)				\
-  { return (t##x##n) __builtin_altivec_##fi ((ti) v); }			\
-									\
-  always_inline t##x##n t##x##n##_splat_word (t##x##n x, int word_index) \
-  { return (t##x##n) __builtin_altivec_##fr ((tr) x, word_index); }
-
-#define u16x8_splat(i) ((u16x8) __builtin_altivec_vspltish (i))
-#define i16x8_splat(i) ((i16x8) __builtin_altivec_vspltish (i))
-#define u32x4_splat(i) ((u32x4) __builtin_altivec_vspltisw (i))
-#define i32x4_splat(i) ((i32x4) __builtin_altivec_vspltisw (i))
-
-#define u16x8_splat_word(x,i) ((u16x8) __builtin_altivec_vsplth ((i16x8) (x), (i)))
-#define i16x8_splat_word(x,i) ((i16x8) __builtin_altivec_vsplth ((i16x8) (x), (i)))
-#define u32x4_splat_word(x,i) ((u32x4) __builtin_altivec_vspltw ((i32x4) (x), (i)))
-#define i32x4_splat_word(x,i) ((i32x4) __builtin_altivec_vspltw ((i32x4) (x), (i)))
-
-#undef _
-
 /* 128 bit shifts. */
 #define _(t,ti,lr,f)						\
   always_inline t t##_##lr (t x, t y)				\
@@ -147,13 +127,6 @@ _signed_binop (32, 4, is_equal, vcmpequw)
 {
   u16x8 zero = { 0 };
   return u16x8_is_equal (x, zero);
-}
-
-always_inline u32x4
-u32x4_is_zero (u32x4 x)
-{
-  u32x4 zero = { 0 };
-  return u32x4_is_equal (x, zero);
 }
 
 always_inline u32
