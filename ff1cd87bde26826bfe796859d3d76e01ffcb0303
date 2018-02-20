@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "315da6c6_1611a779",
+        "filename": "src/vppinfra/vector.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-02-20T13:26:25Z",
+      "side": 1,
+      "message": "INDENT-ON\nThere is one too many \u0027N\u0027",
+      "range": {
+        "startLine": 218,
+        "startChar": 4,
+        "endLine": 218,
+        "endChar": 15
+      },
+      "revId": "ff1cd87bde26826bfe796859d3d76e01ffcb0303",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
