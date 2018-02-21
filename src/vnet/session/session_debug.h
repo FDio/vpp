@@ -33,7 +33,7 @@ typedef enum _session_evt_dbg
 
 #define SESSION_DEBUG (0 && TRANSPORT_DEBUG)
 #define SESSION_DEQ_NODE_EVTS (0)
-#define SESSION_EVT_POLL_DBG (1)
+#define SESSION_EVT_POLL_DBG (0)
 
 #if SESSION_DEBUG
 
