@@ -114,6 +114,7 @@ typedef int
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
+extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e);
 
@@ -233,6 +234,8 @@ stream_session_is_valid (u32 si, u8 thread_index)
 }
 
 stream_session_t *session_alloc (u32 thread_index);
+int session_alloc_fifos (segment_manager_t * sm, stream_session_t * s);
+void session_free (stream_session_t * s);
 
 always_inline stream_session_t *
 session_get (u32 si, u32 thread_index)
@@ -453,7 +456,6 @@ transport_connection_t *session_get_transport (stream_session_t * s);
 
 u32 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc);
 
-stream_session_t *session_alloc (u32 thread_index);
 int
 session_enqueue_stream_connection (transport_connection_t * tc,
 				   vlib_buffer_t * b, u32 offset,
@@ -531,6 +533,13 @@ listen_session_get_from_handle (session_handle_t handle)
   return s;
 }
 
+always_inline void
+listen_session_parse_handle (session_handle_t handle, u32 * type, u32 * index)
+{
+  *type = handle >> 32;
+  *index = handle & 0xFFFFFFFF;
+}
+
 always_inline stream_session_t *
 listen_session_new (session_type_t type)
 {
@@ -571,18 +580,6 @@ session_manager_get_listener (u8 session_type, u32 index)
   return
     pool_elt_at_index (session_manager_main.listen_sessions[session_type],
 		       index);
-}
-
-/**
- * Set peek or dequeue function for given session type
- *
- * Reliable transport protocols will probably want to use a peek function
- */
-always_inline void
-session_manager_set_transport_rx_fn (session_type_t type, u8 is_peek)
-{
-  session_manager_main.session_tx_fns[type] = (is_peek) ?
-    session_tx_fifo_peek_and_snd : session_tx_fifo_dequeue_and_snd;
 }
 
 always_inline u8

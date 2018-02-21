@@ -51,6 +51,34 @@ define application_attach_reply {
     u8 segment_name[128];
 };
 
+/** \brief Application add TLS certificate
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param cert_len - certificate length
+    @param cert - certificate as a string
+*/
+autoreply define application_tls_cert_add {
+    u32 client_index;
+    u32 context;
+    u32 app_index;
+    u16 cert_len;
+    u8 cert[cert_len];
+};
+
+/** \brief Application add TLS key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param key_len - certificate length
+    @param key - PEM encoded key as a string
+*/
+autoreply define application_tls_key_add {
+    u32 client_index;
+    u32 context;
+    u32 app_index;
+    u16 key_len;
+    u8 key[key_len];
+};
+
  /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

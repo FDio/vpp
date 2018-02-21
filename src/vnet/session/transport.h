@@ -25,20 +25,34 @@
  */
 typedef struct _transport_connection
 {
-  ip46_address_t rmt_ip;	/**< Remote IP */
-  ip46_address_t lcl_ip;	/**< Local IP */
-  u16 lcl_port;			/**< Local port */
-  u16 rmt_port;			/**< Remote port */
-  u8 proto;			/**< Protocol id */
-  u8 is_ip4;			/**< Flag if IP4 connection */
-  u32 fib_index;			/**< Network namespace */
+  /** Connection ID */
+  union
+  {
+    /*
+     * Network connection ID tuple
+     */
+    struct
+    {
+      ip46_address_t rmt_ip;	/**< Remote IP */
+      ip46_address_t lcl_ip;	/**< Local IP */
+      u16 lcl_port;		/**< Local port */
+      u16 rmt_port;		/**< Remote port */
+      u8 proto;			/**< Protocol id */
+      u8 is_ip4;		/**< Flag if IP4 connection */
+      u32 fib_index;		/**< Network namespace */
+    };
+    /*
+     * Opaque connection ID
+     */
+    u8 opaque_conn_id[42];
+  };
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
   u32 thread_index;		/**< Worker-thread index */
 
-  fib_node_index_t rmt_fei;	/**< FIB entry index for rmt */
-  dpo_id_t rmt_dpo;		/**< Forwarding DPO for rmt */
+  /*fib_node_index_t rmt_fei;
+     dpo_id_t rmt_dpo; */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
@@ -64,6 +78,7 @@ typedef struct _transport_connection
 #define c_cc_stat_tstamp connection.cc_stat_tstamp
 #define c_rmt_fei connection.rmt_fei
 #define c_rmt_dpo connection.rmt_dpo
+#define c_opaque_id connection.opaque_conn_id
 } transport_connection_t;
 
 typedef enum _transport_proto
@@ -72,6 +87,7 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP,
   TRANSPORT_PROTO_SCTP,
   TRANSPORT_PROTO_NONE,
+  TRANSPORT_PROTO_TLS,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
