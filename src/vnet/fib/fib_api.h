@@ -61,4 +61,16 @@ struct _vl_api_fib_path;
 extern void fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
                                  struct _vl_api_fib_path *out);
 
+void
+fib_prefix_to_api (const fib_prefix_t *pfx,
+                   u8 address[16],
+                   u8 *length,
+                   u8 *is_ip6);
+
+
+struct _vl_api_fib_path;
+
+extern int fib_path_api_parse(const struct _vl_api_fib_path *in,
+                              fib_route_path_t *out);
+
 #endif /* __FIB_API_H__ */

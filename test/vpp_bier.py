@@ -134,7 +134,8 @@ class VppBierRoute(VppObject):
                 lstack.append({})
             br_paths.append({'next_hop': p.nh_addr,
                              'weight': 1,
-                             'afi': 0,
+                             'afi': p.proto,
+                             'sw_if_index': 0xffffffff,
                              'preference': 0,
                              'table_id': p.nh_table_id,
                              'next_hop_id': p.next_hop_id,

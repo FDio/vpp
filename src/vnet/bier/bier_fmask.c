@@ -356,13 +356,13 @@ format_bier_fmask (u8 *s, va_list *ap)
     {
         s = format(s, "  output-label:%U",
                    format_mpls_unicast_label,
-                   vnet_mpls_uc_get_label(bfm->bfm_label));
+                   vnet_mpls_uc_get_label(clib_net_to_host_u32(bfm->bfm_label)));
     }
     else
     {
         s = format(s, "  output-bfit:[%U]",
                    format_bier_bift_id,
-                   vnet_mpls_uc_get_label(bfm->bfm_label));
+                   vnet_mpls_uc_get_label(clib_net_to_host_u32(bfm->bfm_label)));
     }
     s = format(s, "\n %U%U",
                format_white_space, indent,
