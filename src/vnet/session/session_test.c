@@ -69,12 +69,6 @@ dummy_del_segment_callback (u32 client_index, const ssvm_private_t * fs)
   return 0;
 }
 
-int
-dummy_redirect_connect_callback (u32 client_index, void *mp)
-{
-  return VNET_API_ERROR_SESSION_REDIRECT;
-}
-
 void
 dummy_session_disconnect_callback (stream_session_t * s)
 {
@@ -104,7 +98,7 @@ static session_cb_vft_t dummy_session_cbs = {
   .session_connected_callback = dummy_session_connected_callback,
   .session_accept_callback = dummy_session_accept_callback,
   .session_disconnect_callback = dummy_session_disconnect_callback,
-  .builtin_server_rx_callback = dummy_server_rx_callback,
+  .builtin_app_rx_callback = dummy_server_rx_callback,
   .add_segment_callback = dummy_add_segment_callback,
   .del_segment_callback = dummy_del_segment_callback,
 };
@@ -1316,8 +1310,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 432*2* in local table should return deny");
 
+
   connect_args.app_index = server_index;
   connect_args.sep = sep;
+
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
   rv = clib_error_get_code (error);
