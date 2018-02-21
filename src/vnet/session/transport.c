@@ -96,6 +96,10 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_SCTP;
   else if (unformat (input, "SCTP"))
     *proto = TRANSPORT_PROTO_SCTP;
+  else if (unformat (input, "tls"))
+    *proto = TRANSPORT_PROTO_TLS;
+  else if (unformat (input, "TLS"))
+    *proto = TRANSPORT_PROTO_TLS;
   else
     return 0;
   return 1;

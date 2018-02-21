@@ -19,9 +19,26 @@
 #include <vnet/vnet.h>
 #include <vnet/session/transport.h>
 
+typedef enum transport_dequeue_type_
+{
+  TRANSPORT_TX_PEEK,		/**< reliable transport protos */
+  TRANSPORT_TX_DEQUEUE,		/**< unreliable transport protos */
+  TRANSPORT_TX_INTERNAL,		/**< apps acting as transports */
+  TRANSPORT_TX_N_FNS
+} transport_tx_fn_type_t;
+
+typedef enum transport_service_type_
+{
+  TRANSPORT_SERVICE_VC,		/**< virtual circuit service */
+  TRANSPORT_SERVICE_CL,		/**< connectionless service */
+  TRANSPORT_SERVICE_APP,		/**< app transport service */
+  TRANSPORT_N_SERVICES
+} transport_service_type_t;
+
 /*
  * Transport protocol virtual function table
  */
+/* *INDENT-OFF* */
 typedef struct _transport_proto_vft
 {
   /*
@@ -37,10 +54,11 @@ typedef struct _transport_proto_vft
   /*
    * Transmission
    */
-    u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
-    u16 (*send_mss) (transport_connection_t * tc);
-    u32 (*send_space) (transport_connection_t * tc);
-    u32 (*tx_fifo_offset) (transport_connection_t * tc);
+
+  u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
+  u16 (*send_mss) (transport_connection_t * tc);
+  u32 (*send_space) (transport_connection_t * tc);
+  u32 (*tx_fifo_offset) (transport_connection_t * tc);
   void (*update_time) (f64 time_now, u8 thread_index);
 
   /*
@@ -56,11 +74,18 @@ typedef struct _transport_proto_vft
   u8 *(*format_connection) (u8 * s, va_list * args);
   u8 *(*format_listener) (u8 * s, va_list * args);
   u8 *(*format_half_open) (u8 * s, va_list * args);
+
+  /*
+   * Properties
+   */
+  transport_tx_fn_type_t tx_type;
+  transport_service_type_t service_type;
 } transport_proto_vft_t;
+/* *INDENT-ON* */
 
 extern transport_proto_vft_t *tp_vfts;
 
-#define transport_proto_foreach(VAR, BODY)				\
+#define transport_proto_foreach(VAR, BODY)			\
 do {								\
     for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)		\
       if (tp_vfts[VAR].push_header != 0)				\
