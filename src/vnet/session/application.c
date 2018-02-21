@@ -473,10 +473,22 @@ int
 application_open_session (application_t * app, session_endpoint_t * sep,
 			  u32 api_context)
 {
-  segment_manager_t *sm;
   int rv;
 
   /* Make sure we have a segment manager for connects */
+  application_alloc_connects_segment_manager (app);
+
+  if ((rv = session_open (app->index, sep, api_context)))
+    return rv;
+
+  return 0;
+}
+
+int
+application_alloc_connects_segment_manager (application_t *app)
+{
+  segment_manager_t *sm;
+
   if (app->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
     {
       sm = application_alloc_segment_manager (app);
@@ -484,10 +496,6 @@ application_open_session (application_t * app, session_endpoint_t * sep,
 	return -1;
       app->connects_seg_manager = segment_manager_index (sm);
     }
-
-  if ((rv = session_open (app->index, sep, api_context)))
-    return rv;
-
   return 0;
 }
 
