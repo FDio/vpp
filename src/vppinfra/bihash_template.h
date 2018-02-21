@@ -210,7 +210,7 @@ static inline int BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
 
   cache_lru_bit = 1 << 15;
 
-  rv = __sync_fetch_and_or (&b->cache_lru, cache_lru_bit);
+  rv = clib_atomic_fetch_or (&b->cache_lru, cache_lru_bit);
   /* Was already locked? */
   if (rv & (1 << 15))
     return 0;

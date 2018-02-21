@@ -46,7 +46,7 @@ static inline void
 elog_lock (elog_main_t * em)
 {
   if (PREDICT_FALSE (em->lock != 0))
-    while (__sync_lock_test_and_set (em->lock, 1))
+    while (clib_atomic_test_and_set (em->lock))
       ;
 }
 
