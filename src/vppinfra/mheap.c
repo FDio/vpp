@@ -63,7 +63,7 @@ mheap_maybe_lock (void *v)
 	  return;
 	}
 
-      while (__sync_lock_test_and_set (&h->lock, 1))
+      while (clib_atomic_test_and_set (&h->lock))
 	;
 
       h->owner_cpu = my_cpu;
