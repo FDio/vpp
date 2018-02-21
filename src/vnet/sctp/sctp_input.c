@@ -537,8 +537,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   sctp_timer_set (sctp_conn, idx,
 		  SCTP_TIMER_T1_COOKIE, sctp_conn->sub_conn[idx].RTO);
 
-  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
-
   return SCTP_ERROR_NONE;
 }
 
@@ -806,6 +804,8 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
 
+  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
+
   return SCTP_ERROR_NONE;
 
 }
@@ -833,6 +833,8 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
 
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T4_HEARTBEAT,
 		  sctp_conn->sub_conn[idx].RTO);
+
+  stream_session_accept_notify (&sctp_conn->sub_conn[idx].connection);
 
   return SCTP_ERROR_NONE;
 
@@ -2084,10 +2086,13 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      error0 = tm->dispatch_table[sctp_conn->state][chunk_type].error;
 
 	      SCTP_DBG_STATE_MACHINE
-		("SESSION_INDEX = %u, CURRENT_CONNECTION_STATE = %s,"
+		("S_INDEX = %u, C_INDEX = %u, TRANS_CONN = %p, SCTP_CONN = %p, CURRENT_CONNECTION_STATE = %s,"
 		 "CHUNK_TYPE_RECEIVED = %s " "NEXT_PHASE = %s",
 		 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
-		 connection.s_index, sctp_state_to_string (sctp_conn->state),
+		 connection.s_index,
+		 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 connection.c_index, trans_conn, sctp_conn,
+		 sctp_state_to_string (sctp_conn->state),
 		 sctp_chunk_to_string (chunk_type), phase_to_string (next0));
 
 	      if (chunk_type == DATA)

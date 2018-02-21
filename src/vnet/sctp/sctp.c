@@ -305,14 +305,14 @@ sctp_sub_connection_add_ip6 (u8 thread_index,
 sctp_connection_t *
 sctp_connection_new (u8 thread_index)
 {
-  sctp_main_t *tm = vnet_get_sctp_main ();
+  sctp_main_t *sctp_main = vnet_get_sctp_main ();
   sctp_connection_t *sctp_conn;
 
-  pool_get (tm->connections[thread_index], sctp_conn);
+  pool_get (sctp_main->connections[thread_index], sctp_conn);
   memset (sctp_conn, 0, sizeof (*sctp_conn));
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = sctp_conn;
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
-    sctp_conn - tm->connections[thread_index];
+    sctp_conn - sctp_main->connections[thread_index];
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
   sctp_conn->local_tag = 0;
   sctp_conn->next_avail_sub_conn = 1;
@@ -473,8 +473,8 @@ sctp_session_close (u32 conn_index, u32 thread_index)
 {
   ASSERT (thread_index == 0);
 
-  sctp_connection_t *sctp_conn;
-  sctp_conn = sctp_connection_get (conn_index, thread_index);
+  sctp_connection_t *sctp_conn =
+    sctp_connection_get (conn_index, thread_index);
   if (sctp_conn != NULL)
     sctp_connection_close (sctp_conn);
 }
@@ -482,8 +482,8 @@ sctp_session_close (u32 conn_index, u32 thread_index)
 void
 sctp_session_cleanup (u32 conn_index, u32 thread_index)
 {
-  sctp_connection_t *sctp_conn;
-  sctp_conn = sctp_connection_get (conn_index, thread_index);
+  sctp_connection_t *sctp_conn =
+    sctp_connection_get (conn_index, thread_index);
 
   if (sctp_conn != NULL)
     {
