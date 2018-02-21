@@ -37,8 +37,8 @@ typedef struct _transport_connection
   u32 c_index;			/**< Connection index in transport pool */
   u32 thread_index;		/**< Worker-thread index */
 
-  fib_node_index_t rmt_fei;	/**< FIB entry index for rmt */
-  dpo_id_t rmt_dpo;		/**< Forwarding DPO for rmt */
+  /*fib_node_index_t rmt_fei;*/	/**< FIB entry index for rmt */
+  /*dpo_id_t rmt_dpo;*/		/**< Forwarding DPO for rmt */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
@@ -72,6 +72,7 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP,
   TRANSPORT_PROTO_SCTP,
   TRANSPORT_PROTO_NONE,
+  TRANSPORT_PROTO_TLS,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
