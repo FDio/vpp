@@ -268,7 +268,6 @@ nobase_include_HEADERS = \
   vppinfra/vector.h \
   vppinfra/vector_altivec.h \
   vppinfra/vector_funcs.h \
-  vppinfra/vector_iwmmxt.h \
   vppinfra/vector_neon.h \
   vppinfra/vector_sse42.h \
   vppinfra/valgrind.h \

@@ -203,10 +203,6 @@ t##s##x##c##_splat (t##s x)				\
 #include <vppinfra/vector_altivec.h>
 #endif
 
-#if defined (__IWMMXT__)
-#include <vppinfra/vector_iwmmxt.h>
-#endif
-
 #if defined (__aarch64__)
 #include <vppinfra/vector_neon.h>
 #endif
