@@ -43,11 +43,11 @@ typedef struct {
 extern jvpp_main_t jvpp_main __attribute__((aligned (64)));
 
 static_always_inline u32 vppjni_get_context_id(jvpp_main_t * jm) {
-    return __sync_add_and_fetch(&jm->context_id, 1);
+    return clib_atomic_add_fetch(&jm->context_id, 1);
 }
 
 static_always_inline void vppjni_lock(jvpp_main_t * jm, u32 tag) {
-    while (__sync_lock_test_and_set(&jm->lock, 1))
+    while (clib_atomic_test_and_set(&jm->lock))
         ;
     jm->tag = tag;
 }

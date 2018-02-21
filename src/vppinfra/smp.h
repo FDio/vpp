@@ -41,10 +41,6 @@
 #include <vppinfra/cache.h>
 #include <vppinfra/os.h>	/* for os_panic */
 
-#define clib_smp_compare_and_swap(addr,new,old) __sync_val_compare_and_swap(addr,old,new)
-#define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)
-#define clib_smp_atomic_add(addr,increment) __sync_fetch_and_add(addr,increment)
-
 #if defined (i386) || defined (__x86_64__)
 #define clib_smp_pause() do { asm volatile ("pause"); } while (0)
 #elif defined (__aarch64__) || defined (__arm__)

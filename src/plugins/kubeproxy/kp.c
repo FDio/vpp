@@ -27,7 +27,7 @@
 
 kp_main_t kp_main;
 
-#define kp_get_writer_lock() do {} while(__sync_lock_test_and_set (kp_main.writer_lock, 1))
+#define kp_get_writer_lock() do {} while(clib_atomic_test_and_set (kp_main.writer_lock))
 #define kp_put_writer_lock() kp_main.writer_lock[0] = 0
 
 static void kp_pod_stack (kp_pod_t *pod);
