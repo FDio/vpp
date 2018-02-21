@@ -56,6 +56,8 @@ _(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
 _(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
 _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
+_(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
+_(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 
 static int
 session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
@@ -1100,6 +1102,64 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
       }
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
+					   mp)
+{
+  vl_api_app_namespace_add_del_reply_t *rmp;
+  vnet_app_add_tls_cert_args_t _a, *a = &_a;
+  clib_error_t *error;
+  u32 cert_len;
+  int rv = 0;
+  if (!session_manager_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  memset (a, 0, sizeof (*a));
+  a->app_index = clib_net_to_host_u32 (mp->app_index);
+  cert_len = clib_net_to_host_u16 (mp->cert_len);
+  vec_validate (a->cert, cert_len);
+  clib_memcpy (a->cert, mp->cert, cert_len);
+  if ((error = vnet_app_add_tls_cert (a)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  vec_free (a->cert);
+done:
+  REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
+}
+
+static void
+vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
+					  mp)
+{
+  vl_api_app_namespace_add_del_reply_t *rmp;
+  vnet_app_add_tls_key_args_t _a, *a = &_a;
+  clib_error_t *error;
+  u32 key_len;
+  int rv = 0;
+  if (!session_manager_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  memset (a, 0, sizeof (*a));
+  a->app_index = clib_net_to_host_u32 (mp->app_index);
+  key_len = clib_net_to_host_u16 (mp->key_len);
+  vec_validate (a->key, key_len);
+  clib_memcpy (a->key, mp->key, key_len);
+  if ((error = vnet_app_add_tls_key (a)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  vec_free (a->key);
+done:
+  REPLY_MACRO (VL_API_APPLICATION_TLS_KEY_ADD_REPLY);
 }
 
 static clib_error_t *
