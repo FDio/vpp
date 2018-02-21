@@ -476,7 +476,7 @@ static session_cb_vft_t http_server_session_cb_vft = {
   .session_disconnect_callback = http_server_session_disconnect_callback,
   .session_connected_callback = http_server_session_connected_callback,
   .add_segment_callback = http_server_add_segment_callback,
-  .builtin_server_rx_callback = http_server_rx_callback,
+  .builtin_app_rx_callback = http_server_rx_callback,
   .session_reset_callback = http_server_session_reset_callback
 };
 
@@ -610,7 +610,7 @@ http_server_create_command_fn (vlib_main_t * vm,
 
   if (is_static)
     {
-      http_server_session_cb_vft.builtin_server_rx_callback =
+      http_server_session_cb_vft.builtin_app_rx_callback =
 	http_server_rx_callback_static;
       html = format (0, html_header_static);
       static_http = format (0, http_response, vec_len (html), html);
