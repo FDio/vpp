@@ -54,7 +54,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   pg_interface_t *pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
 
   if (PREDICT_FALSE (pif->lockp != 0))
-    while (__sync_lock_test_and_set (pif->lockp, 1))
+    while (clib_atomic_test_and_set (pif->lockp))
       ;
 
   while (n_left > 0)

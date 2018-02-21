@@ -52,7 +52,7 @@ typedef struct {
 static_always_inline
 void vlib_refcount_lock (volatile u32 *counter_lock)
 {
-  while (__sync_lock_test_and_set (counter_lock, 1))
+  while (clib_atomic_test_and_set (counter_lock))
     ;
 }
 
