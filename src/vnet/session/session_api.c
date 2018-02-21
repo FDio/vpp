@@ -838,12 +838,12 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
       mp->client_queue_address = pointer_to_uword (client_q);
-      a->sep.is_ip4 = mp->is_ip4;
-      a->sep.ip = *ip46;
-      a->sep.port = mp->port;
-      a->sep.transport_proto = mp->proto;
-      a->sep.fib_index = mp->vrf;
-      a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->aep.is_ip4 = mp->is_ip4;
+      a->aep.ip = *ip46;
+      a->aep.port = mp->port;
+      a->aep.transport_proto = mp->proto;
+      a->aep.fib_index = mp->vrf;
+      a->aep.sw_if_index = ENDPOINT_INVALID_INDEX;
       a->api_context = mp->context;
       a->app_index = app->index;
       a->mp = mp;

@@ -37,6 +37,7 @@ typedef enum
   FIFO_EVENT_TIMEOUT,
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
+  FIFO_EVENT_BUILTIN_TX,
   FIFO_EVENT_RPC,
 } fifo_event_type_t;
 
@@ -233,6 +234,7 @@ stream_session_is_valid (u32 si, u8 thread_index)
 }
 
 stream_session_t *session_alloc (u32 thread_index);
+int session_alloc_fifos (segment_manager_t * sm, stream_session_t * s);
 
 always_inline stream_session_t *
 session_get (u32 si, u32 thread_index)
@@ -453,7 +455,6 @@ transport_connection_t *session_get_transport (stream_session_t * s);
 
 u32 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc);
 
-stream_session_t *session_alloc (u32 thread_index);
 int
 session_enqueue_stream_connection (transport_connection_t * tc,
 				   vlib_buffer_t * b, u32 offset,
