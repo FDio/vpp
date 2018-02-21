@@ -964,11 +964,13 @@ libvnet_la_SOURCES +=				\
   vnet/session-apps/echo_client.c		\
   vnet/session-apps/echo_server.c		\
   vnet/session-apps/http_server.c		\
-  vnet/session-apps/proxy.c
+  vnet/session-apps/proxy.c			\
+  vnet/session-apps/tls.c
 
 nobase_include_HEADERS +=			\
   vnet/session-apps/echo_client.h		\
-  vnet/session-apps/proxy.h
+  vnet/session-apps/proxy.h			\
+  vnet/session-apps/tls.h
 
 ########################################
 # Linux packet interface
