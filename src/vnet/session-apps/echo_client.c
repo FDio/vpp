@@ -426,7 +426,7 @@ static session_cb_vft_t echo_clients = {
   .session_connected_callback = echo_clients_session_connected_callback,
   .session_accept_callback = echo_clients_session_create_callback,
   .session_disconnect_callback = echo_clients_session_disconnect_callback,
-  .builtin_server_rx_callback = echo_clients_rx_callback,
+  .builtin_app_rx_callback = echo_clients_rx_callback,
   .add_segment_callback = echo_client_add_segment_callback
 };
 /* *INDENT-ON* */
