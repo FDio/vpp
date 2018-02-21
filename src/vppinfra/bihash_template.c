@@ -419,7 +419,7 @@ static inline int BV (clib_bihash_add_del_inline)
   b = &h->buckets[bucket_index];
 
   hash >>= h->log2_nbuckets;
-
+  
   BV (clib_bihash_lock_bucket) (b);
 
   /* First elt in the bucket? */

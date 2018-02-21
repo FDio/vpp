@@ -923,7 +923,7 @@ vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
     tail->total_length_not_including_first_buffer;
 
 next_segment:
-  __sync_add_and_fetch (&tail->n_add_refs, 1);
+  clib_atomic_add_fetch (&tail->n_add_refs, 1);
 
   if (tail->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
@@ -1153,7 +1153,7 @@ vlib_validate_buffer_in_use (vlib_buffer_t * b, u32 expected)
 
   oldheap = clib_mem_set_heap (vlib_buffer_state_heap);
 
-  while (__sync_lock_test_and_set (vlib_buffer_state_validation_lock, 1))
+  while (clib_atomic_test_and_set (vlib_buffer_state_validation_lock))
     ;
 
   p = hash_get (vlib_buffer_state_validation_hash, b);
@@ -1196,7 +1196,7 @@ vlib_validate_buffer_set_in_use (vlib_buffer_t * b, u32 expected)
 
   oldheap = clib_mem_set_heap (vlib_buffer_state_heap);
 
-  while (__sync_lock_test_and_set (vlib_buffer_state_validation_lock, 1))
+  while (clib_atomic_test_and_set (vlib_buffer_state_validation_lock))
     ;
 
   hash_set (vlib_buffer_state_validation_hash, b, expected);

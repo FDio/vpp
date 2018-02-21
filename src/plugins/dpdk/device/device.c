@@ -162,7 +162,7 @@ static_always_inline
       if (PREDICT_FALSE (xd->lockp != 0))
 	{
 	  queue_id = queue_id % xd->tx_q_used;
-	  while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
+	  while (clib_atomic_test_and_set (xd->lockp[queue_id]))
 	    /* zzzz */
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}

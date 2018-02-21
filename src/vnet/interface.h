@@ -872,7 +872,7 @@ static inline void
 vnet_interface_counter_lock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
-    while (__sync_lock_test_and_set (im->sw_if_counter_lock, 1))
+    while (clib_atomic_test_and_set (im->sw_if_counter_lock))
       /* zzzz */ ;
 }
 

@@ -46,6 +46,7 @@
 #endif
 
 #include <vppinfra/types.h>
+#include <vppinfra/atomics.h>
 
 /* Global DEBUG flag.  Setting this to 1 or 0 turns off
    ASSERT (see vppinfra/error.h) & other debugging code. */
