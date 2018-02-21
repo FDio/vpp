@@ -104,14 +104,14 @@ fib_entry_src_lisp_set_data (fib_entry_src_t *src,
                              const fib_entry_t *entry,
                              const void *data)
 {
-    src->lisp.fesl_fib_index = *(u32*)data;
+    src->u.lisp.fesl_fib_index = *(u32*)data;
 }
 
 static const void*
 fib_entry_src_lisp_get_data (fib_entry_src_t *src,
                              const fib_entry_t *entry)
 {
-    return (&(src->lisp.fesl_fib_index));
+    return (&(src->u.lisp.fesl_fib_index));
 }
 
 const static fib_entry_src_vft_t api_src_vft = {

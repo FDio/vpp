@@ -29,11 +29,39 @@
  */
 static fib_entry_src_vft_t fib_entry_src_vft[FIB_SOURCE_MAX];
 
+/**
+ * Get the VFT for a given source. This is a combination of the source
+ * enum and the interposer flags
+ */
+const fib_entry_src_vft_t*
+fib_entry_src_get_vft (const fib_entry_src_t *esrc)
+{
+    if (esrc->fes_entry_flags & FIB_ENTRY_FLAG_INTERPOSE)
+    {
+        return (&fib_entry_src_vft[FIB_SOURCE_INTERPOSE]);
+    }
+
+    return (&fib_entry_src_vft[esrc->fes_src]);
+}
+
+static void
+fib_entry_src_copy_default (const fib_entry_src_t *orig_src,
+                            const fib_entry_t *fib_entry,
+                            fib_entry_src_t *copy_src)
+{
+    clib_memcpy(&copy_src->u, &orig_src->u, sizeof(copy_src->u));
+}
+
 void
 fib_entry_src_register (fib_source_t source,
 			const fib_entry_src_vft_t *vft)
 {
     fib_entry_src_vft[source] = *vft;
+
+    if (NULL == fib_entry_src_vft[source].fesv_copy)
+    {
+        fib_entry_src_vft[source].fesv_copy = fib_entry_src_copy_default;
+    }
 }
 
 static int
@@ -45,21 +73,19 @@ fib_entry_src_cmp_for_sort (void * v1,
     return (esrc1->fes_src - esrc2->fes_src);
 }
 
-void
+static void
 fib_entry_src_action_init (fib_entry_t *fib_entry,
-			   fib_source_t source)
-
+			   fib_source_t source,
+                           fib_entry_flag_t flags)
 {
     fib_entry_src_t esrc = {
 	.fes_pl = FIB_NODE_INDEX_INVALID,
 	.fes_flags = FIB_ENTRY_SRC_FLAG_NONE,
 	.fes_src = source,
+        .fes_entry_flags = flags,
     };
 
-    if (NULL != fib_entry_src_vft[source].fesv_init)
-    {
-	fib_entry_src_vft[source].fesv_init(&esrc);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(&esrc, fesv_init, (&esrc));
 
     vec_add1(fib_entry->fe_srcs, esrc);
     vec_sort_with_function(fib_entry->fe_srcs,
@@ -67,9 +93,9 @@ fib_entry_src_action_init (fib_entry_t *fib_entry,
 }
 
 static fib_entry_src_t *
-fib_entry_src_find (const fib_entry_t *fib_entry,
-		    fib_source_t source,
-		    u32 *index)
+fib_entry_src_find_i (const fib_entry_t *fib_entry,
+                      fib_source_t source,
+                      u32 *index)
 
 {
     fib_entry_src_t *esrc;
@@ -95,6 +121,14 @@ fib_entry_src_find (const fib_entry_t *fib_entry,
     return (NULL);
 }
 
+static fib_entry_src_t *
+fib_entry_src_find (const fib_entry_t *fib_entry,
+		    fib_source_t source)
+
+{
+    return (fib_entry_src_find_i(fib_entry, source, NULL));
+}
+
 int
 fib_entry_is_sourced (fib_node_index_t fib_entry_index,
                       fib_source_t source)
@@ -103,26 +137,27 @@ fib_entry_is_sourced (fib_node_index_t fib_entry_index,
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    return (NULL != fib_entry_src_find(fib_entry, source, NULL));
+    return (NULL != fib_entry_src_find(fib_entry, source));
 }
 
 static fib_entry_src_t *
 fib_entry_src_find_or_create (fib_entry_t *fib_entry,
-			      fib_source_t source)
+			      fib_source_t source,
+                              fib_entry_flag_t flags)
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL == esrc)
     {
-	fib_entry_src_action_init(fib_entry, source);
+	fib_entry_src_action_init(fib_entry, source, flags);
     }
 
-    return (fib_entry_src_find(fib_entry, source, NULL));
+    return (fib_entry_src_find(fib_entry, source));
 }
 
-void
+static void
 fib_entry_src_action_deinit (fib_entry_t *fib_entry,
 			     fib_source_t source)
 
@@ -130,14 +165,11 @@ fib_entry_src_action_deinit (fib_entry_t *fib_entry,
     fib_entry_src_t *esrc;
     u32 index = ~0;
 
-    esrc = fib_entry_src_find(fib_entry, source, &index);
+    esrc = fib_entry_src_find_i(fib_entry, source, &index);
 
     ASSERT(NULL != esrc);
 
-    if (NULL != fib_entry_src_vft[source].fesv_deinit)
-    {
-	fib_entry_src_vft[source].fesv_deinit(esrc);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_deinit, (esrc));
 
     fib_path_ext_list_flush(&esrc->fes_path_exts);
     vec_del1(fib_entry->fe_srcs, index);
@@ -145,14 +177,10 @@ fib_entry_src_action_deinit (fib_entry_t *fib_entry,
 
 fib_entry_src_cover_res_t
 fib_entry_src_action_cover_change (fib_entry_t *fib_entry,
-				   fib_source_t source)
+                                   fib_entry_src_t *esrc)
 {
-    if (NULL != fib_entry_src_vft[source].fesv_cover_change)
-    {
-	return (fib_entry_src_vft[source].fesv_cover_change(
-		    fib_entry_src_find(fib_entry, source, NULL),
-		    fib_entry));
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, fesv_cover_change,
+                                        (esrc, fib_entry));
 
     fib_entry_src_cover_res_t res = {
 	.install = !0,
@@ -163,14 +191,10 @@ fib_entry_src_action_cover_change (fib_entry_t *fib_entry,
 
 fib_entry_src_cover_res_t
 fib_entry_src_action_cover_update (fib_entry_t *fib_entry,
-				   fib_source_t source)
+                                   fib_entry_src_t *esrc)
 {
-    if (NULL != fib_entry_src_vft[source].fesv_cover_update)
-    {
-	return (fib_entry_src_vft[source].fesv_cover_update(
-		    fib_entry_src_find(fib_entry, source, NULL),
-		    fib_entry));
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, fesv_cover_update,
+                                        (esrc, fib_entry));
 
     fib_entry_src_cover_res_t res = {
 	.install = !0,
@@ -348,8 +372,10 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 {
     fib_entry_src_collect_forwarding_ctx_t *ctx;
     fib_path_ext_t *path_ext;
+    u32 n_nhs;
 
     ctx = arg;
+    n_nhs = vec_len(ctx->next_hops);
 
     /*
      * if the path is not resolved, don't include it.
@@ -426,6 +452,41 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     else
     {
         fib_entry_src_get_path_forwarding(path_index, ctx);
+    }
+
+    /*
+     * a this point 'ctx' has the DPO the path contributed, plus
+     * any labels from path extensions.
+     * check if there are any interpose sources that want to contribute
+     */
+    if (n_nhs < vec_len(ctx->next_hops))
+    {
+        /*
+         * the path contributed a new choice.
+         */
+        const fib_entry_src_vft_t *vft;
+
+        vft = fib_entry_src_get_vft(ctx->esrc);
+
+        if (NULL != vft->fesv_contribute_interpose)
+        {
+            const dpo_id_t *interposer;
+
+            interposer = vft->fesv_contribute_interpose(ctx->esrc,
+                                                        ctx->fib_entry);
+
+            if (NULL != interposer)
+            {
+                dpo_id_t clone = DPO_INVALID;
+
+                dpo_mk_interpose(interposer,
+                                 &ctx->next_hops[n_nhs].path_dpo,
+                                 &clone);
+
+                dpo_copy(&ctx->next_hops[n_nhs].path_dpo, &clone);
+                dpo_reset(&clone);
+            }
+        }
     }
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
@@ -583,7 +644,7 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
     int insert;
 
     fct = fib_entry_get_default_chain_type(fib_entry);
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     /*
      * Every entry has its own load-balance object. All changes to the entry's
@@ -658,18 +719,34 @@ fib_entry_recursive_loop_detect_i (fib_node_index_t path_list_index)
  *
  * copy a source data from another entry to this one
  */
-fib_entry_t *
+static fib_entry_t *
 fib_entry_src_action_copy (fib_entry_t *fib_entry,
                            const fib_entry_src_t *orig_src)
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, orig_src->fes_src);
+    esrc = fib_entry_src_find_or_create(fib_entry,
+                                        orig_src->fes_src,
+                                        orig_src->fes_entry_flags);
 
-    *esrc = *orig_src;
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_copy,
+                             (orig_src, fib_entry, esrc));
+
+    fib_path_list_unlock(esrc->fes_pl);
+
+    /*
+     * copy over all the data ...
+     */
+    esrc->fes_flags = orig_src->fes_flags;
+    esrc->fes_pl = orig_src->fes_pl;
+
+    /*
+     *  ... then update
+     */
     esrc->fes_ref_count = 1;
     esrc->fes_flags |= FIB_ENTRY_SRC_FLAG_INHERITED;
-    esrc->fes_flags &= ~FIB_ENTRY_SRC_FLAG_ACTIVE;
+    esrc->fes_flags &= ~(FIB_ENTRY_SRC_FLAG_ACTIVE |
+                         FIB_ENTRY_SRC_FLAG_CONTRIBUTING);
     esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_COVERED_INHERIT;
 
     /*
@@ -692,7 +769,9 @@ fib_entry_src_action_update_from_cover (fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, orig_src->fes_src);
+    esrc = fib_entry_src_find_or_create(fib_entry,
+                                        orig_src->fes_src,
+                                        orig_src->fes_entry_flags);
 
     /*
      * the source owns a lock on the entry
@@ -710,7 +789,7 @@ fib_entry_src_covered_inherit_add_i (fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, cover_src->fes_src, NULL);
+    esrc = fib_entry_src_find(fib_entry, cover_src->fes_src);
 
     if (cover_src == esrc)
     {
@@ -785,7 +864,7 @@ fib_entry_src_covered_inherit_walk_remove (fib_node_index_t fei,
     fib_entry = fib_entry_get(fei);
 
     cover_src = ctx;
-    esrc = fib_entry_src_find(fib_entry, cover_src->fes_src, NULL);
+    esrc = fib_entry_src_find(fib_entry, cover_src->fes_src);
 
     if (cover_src == esrc)
     {
@@ -864,7 +943,7 @@ fib_entry_src_covered_inherit_add (fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE);
 
@@ -902,19 +981,21 @@ fib_entry_src_action_activate (fib_entry_t *fib_entry,
 
 {
     int houston_we_are_go_for_install;
+    const fib_entry_src_vft_t *vft;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     ASSERT(!(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE));
     ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED);
 
-    esrc->fes_flags |= FIB_ENTRY_SRC_FLAG_ACTIVE;
+    esrc->fes_flags |= (FIB_ENTRY_SRC_FLAG_ACTIVE |
+                        FIB_ENTRY_SRC_FLAG_CONTRIBUTING);
+    vft = fib_entry_src_get_vft(esrc);
 
-    if (NULL != fib_entry_src_vft[source].fesv_activate)
+    if (NULL != vft->fesv_activate)
     {
-	houston_we_are_go_for_install =
-	    fib_entry_src_vft[source].fesv_activate(esrc, fib_entry);
+	houston_we_are_go_for_install = vft->fesv_activate(esrc, fib_entry);
     }
     else
     {
@@ -963,16 +1044,15 @@ fib_entry_src_action_deactivate (fib_entry_t *fib_entry,
     fib_node_index_t path_list_index;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE);
 
-    if (NULL != fib_entry_src_vft[source].fesv_deactivate)
-    {
-	fib_entry_src_vft[source].fesv_deactivate(esrc, fib_entry);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_deactivate,
+                             (esrc, fib_entry));
 
-    esrc->fes_flags &= ~FIB_ENTRY_SRC_FLAG_ACTIVE;
+    esrc->fes_flags &= ~(FIB_ENTRY_SRC_FLAG_ACTIVE |
+                         FIB_ENTRY_SRC_FLAG_CONTRIBUTING);
 
     FIB_ENTRY_DBG(fib_entry, "deactivate: %d", fib_entry->fe_parent);
 
@@ -1007,12 +1087,8 @@ fib_entry_src_action_fwd_update (const fib_entry_t *fib_entry,
 
     vec_foreach(esrc, fib_entry->fe_srcs)
     {
-	if (NULL != fib_entry_src_vft[esrc->fes_src].fesv_fwd_update)
-	{
-	    fib_entry_src_vft[esrc->fes_src].fesv_fwd_update(esrc,
-							     fib_entry,
-							     source);
-	}
+	FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_fwd_update,
+                                 (esrc, fib_entry, source));
     }
 }
 
@@ -1021,9 +1097,11 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 				 fib_source_t source)
 {
     fib_node_index_t path_list_index;
+    const fib_entry_src_vft_t *vft;
     fib_entry_src_t *esrc;
+    int remain_installed;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE);
 
@@ -1031,10 +1109,22 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 		  fib_entry->fe_parent,
 		  esrc->fes_pl);
 
+    /*
+     * call the source to reactive and get the go/no-go to remain installed
+     */
+    vft = fib_entry_src_get_vft(esrc);
+
+    if (NULL != vft->fesv_reactivate)
+    {
+        remain_installed = vft->fesv_reactivate(esrc, fib_entry);
+    }
+    else
+    {
+        remain_installed = 1;
+    }
+
     if (fib_entry->fe_parent != esrc->fes_pl)
     {
-        int remain_installed;
-
 	/*
 	 * un-link from an old path-list. Check for any loops this will clear
 	 */
@@ -1070,30 +1160,19 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 	fib_path_list_unlock(path_list_index);
 
         /*
-         * call the source to reactive and get the go/no-go to remain installed
-         */
-        if (NULL != fib_entry_src_vft[source].fesv_reactivate)
-        {
-            remain_installed =
-                fib_entry_src_vft[source].fesv_reactivate(esrc, fib_entry);
-        }
-        else
-        {
-            remain_installed = 1;
-        }
-
-        /*
          * If this source should push its state to covered prefixs, do that now.
          */
         fib_entry_src_covered_inherit_add(fib_entry, source);
-
-        if (!remain_installed)
-        {
-            fib_entry_src_action_uninstall(fib_entry);
-            return;
-        }
     }
-    fib_entry_src_action_install(fib_entry, source);
+
+    if (!remain_installed)
+    {
+        fib_entry_src_action_uninstall(fib_entry);
+    }
+    else
+    {
+        fib_entry_src_action_install(fib_entry, source);
+    }
     fib_entry_src_action_fwd_update(fib_entry, source);
 }
 
@@ -1103,13 +1182,10 @@ fib_entry_src_action_installed (const fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
-    if (NULL != fib_entry_src_vft[source].fesv_installed)
-    {
-	fib_entry_src_vft[source].fesv_installed(esrc,
-						 fib_entry);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_installed,
+                             (esrc, fib_entry));
 
     fib_entry_src_action_fwd_update(fib_entry, source);
 }
@@ -1131,9 +1207,17 @@ fib_entry_src_action_add (fib_entry_t *fib_entry,
     fib_node_index_t fib_entry_index;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, source);
+    esrc = fib_entry_src_find_or_create(fib_entry, source, flags);
 
+    ASSERT(esrc->fes_ref_count < 255);
     esrc->fes_ref_count++;
+
+    if (flags != esrc->fes_entry_flags)
+    {
+        FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_flags_change,
+                                 (esrc, fib_entry, flags));
+    }
+    esrc->fes_entry_flags = flags;
 
     if (1 != esrc->fes_ref_count)
     {
@@ -1143,21 +1227,17 @@ fib_entry_src_action_add (fib_entry_t *fib_entry,
         return (fib_entry);
     }
 
-    esrc->fes_entry_flags = flags;
-
     /*
      * save variable so we can recover from a fib_entry realloc.
      */
     fib_entry_index = fib_entry_get_index(fib_entry);
 
-    if (NULL != fib_entry_src_vft[source].fesv_add)
-    {
-	fib_entry_src_vft[source].fesv_add(esrc,
-					   fib_entry,
-					   flags,
-                                           fib_entry_get_dpo_proto(fib_entry),
-					   dpo);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_add,
+                             (esrc,
+                              fib_entry,
+                              flags,
+                              fib_entry_get_dpo_proto(fib_entry),
+                              dpo));
 
     fib_entry = fib_entry_get(fib_entry_index);
 
@@ -1190,7 +1270,7 @@ fib_entry_src_action_update (fib_entry_t *fib_entry,
     fib_node_index_t fib_entry_index, old_path_list_index;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, source);
+    esrc = fib_entry_src_find_or_create(fib_entry, source, flags);
 
     if (NULL == esrc)
     {
@@ -1205,14 +1285,12 @@ fib_entry_src_action_update (fib_entry_t *fib_entry,
      */
     fib_entry_index = fib_entry_get_index(fib_entry);
 
-    if (NULL != fib_entry_src_vft[source].fesv_add)
-    {
-	fib_entry_src_vft[source].fesv_add(esrc,
-					   fib_entry,
-					   flags,
-					   fib_entry_get_dpo_proto(fib_entry),
-					   dpo);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_add,
+                             (esrc,
+                              fib_entry,
+                              flags,
+                              fib_entry_get_dpo_proto(fib_entry),
+                              dpo));
 
     fib_entry = fib_entry_get(fib_entry_index);
 
@@ -1230,7 +1308,7 @@ fib_entry_src_action_remove_or_update_inherit (fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL == esrc)
         return (FIB_ENTRY_SRC_FLAG_ACTIVE);
@@ -1259,7 +1337,7 @@ fib_entry_src_action_remove_or_update_inherit (fib_entry_t *fib_entry,
         ASSERT(coveri != fib_entry_get_index(fib_entry));
 
         cover = fib_entry_get(coveri);
-        cover_src = fib_entry_src_find(cover, source, NULL);
+        cover_src = fib_entry_src_find(cover, source);
 
         ASSERT(NULL != cover_src);
 
@@ -1288,7 +1366,7 @@ fib_entry_src_action_remove (fib_entry_t *fib_entry,
     fib_entry_src_flag_t sflags;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL == esrc)
 	return (FIB_ENTRY_SRC_FLAG_ACTIVE);
@@ -1308,13 +1386,16 @@ fib_entry_src_action_remove (fib_entry_t *fib_entry,
     {
         fib_entry_src_action_deactivate(fib_entry, source);
     }
+    else if (esrc->fes_flags & FIB_ENTRY_SRC_FLAG_CONTRIBUTING)
+    {
+        FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_deactivate,
+                                 (esrc, fib_entry));
+        esrc->fes_flags &= ~FIB_ENTRY_SRC_FLAG_CONTRIBUTING;
+    }
 
     old_path_list = esrc->fes_pl;
 
-    if (NULL != fib_entry_src_vft[source].fesv_remove)
-    {
-	fib_entry_src_vft[source].fesv_remove(esrc);
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_remove, (esrc));
 
     fib_path_list_unlock(old_path_list);
     fib_entry_unlock(fib_entry_get_index(fib_entry));
@@ -1452,7 +1533,7 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
      */
     fib_entry_index = fib_entry_get_index(fib_entry);
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
     if (NULL == esrc)
     {
 	fib_entry =
@@ -1461,7 +1542,7 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
                                      flags,
                                      drop_dpo_get(
                                          fib_entry_get_dpo_proto(fib_entry)));
-	esrc = fib_entry_src_find(fib_entry, source, NULL);
+	esrc = fib_entry_src_find(fib_entry, source);
     }
 
     /*
@@ -1472,12 +1553,13 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
      */
     old_path_list = esrc->fes_pl;
 
-    ASSERT(NULL != fib_entry_src_vft[source].fesv_path_add);
+    ASSERT(FIB_ENTRY_SRC_VFT_EXISTS(esrc, fesv_path_add));
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(fib_entry_get_flags_i(fib_entry));
     fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
 
-    fib_entry_src_vft[source].fesv_path_add(esrc, fib_entry, pl_flags, rpath);
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_add,
+                             (esrc, fib_entry, pl_flags, rpath));
     fib_entry = fib_entry_get(fib_entry_index);
 
     fib_path_list_lock(esrc->fes_pl);
@@ -1498,7 +1580,7 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
 fib_entry_t*
 fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 				fib_source_t source,
-				fib_entry_flag_t flags,				
+				fib_entry_flag_t flags,
 				const fib_route_path_t *rpaths)
 {
     fib_node_index_t old_path_list, fib_entry_index;
@@ -1506,7 +1588,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
     const fib_route_path_t *rpath;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     /*
      * save variable so we can recover from a fib_entry realloc.
@@ -1515,15 +1597,20 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 
     if (NULL == esrc)
     {
-	fib_entry = fib_entry_src_action_add(fib_entry,
+        fib_entry = fib_entry_src_action_add(fib_entry,
 					     source,
 					     flags,
                                              drop_dpo_get(
                                                  fib_entry_get_dpo_proto(fib_entry)));
-	esrc = fib_entry_src_find(fib_entry, source, NULL);
+	esrc = fib_entry_src_find(fib_entry, source);
     }
     else
     {
+        if (flags != esrc->fes_entry_flags)
+        {
+            FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_flags_change,
+                                     (esrc, fib_entry, flags));
+        }
         esrc->fes_entry_flags = flags;
     }
 
@@ -1534,7 +1621,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
      */
     old_path_list = esrc->fes_pl;
 
-    ASSERT(NULL != fib_entry_src_vft[source].fesv_path_swap);
+    ASSERT(FIB_ENTRY_SRC_VFT_EXISTS(esrc, fesv_path_swap));
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(flags);
 
@@ -1543,10 +1630,9 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 	fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
     }
 
-    fib_entry_src_vft[source].fesv_path_swap(esrc,
-					     fib_entry,
-					     pl_flags,
-					     rpaths);
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_swap,
+                             (esrc, fib_entry,
+                              pl_flags, rpaths));
 
     fib_entry = fib_entry_get(fib_entry_index);
 
@@ -1565,7 +1651,7 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
     fib_node_index_t old_path_list;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     ASSERT(NULL != esrc);
     ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED);
@@ -1578,12 +1664,13 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
      */
     old_path_list = esrc->fes_pl;
 
-    ASSERT(NULL != fib_entry_src_vft[source].fesv_path_remove);
+    ASSERT(FIB_ENTRY_SRC_VFT_EXISTS(esrc, fesv_path_remove));
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(fib_entry_get_flags_i(fib_entry));
     fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
 
-    fib_entry_src_vft[source].fesv_path_remove(esrc, pl_flags, rpath);
+    FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_remove,
+                             (esrc, pl_flags, rpath));
 
     /*
      * lock the new path-list, unlock the old if it had one
@@ -1611,12 +1698,10 @@ fib_entry_src_format (fib_entry_t *fib_entry,
 {
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
-    if (NULL != fib_entry_src_vft[source].fesv_format)
-    {
-	return (fib_entry_src_vft[source].fesv_format(esrc, s));
-    }
+    FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, fesv_format, (esrc, s));
+
     return (s);
 }
 
@@ -1631,7 +1716,7 @@ fib_entry_get_adj_for_source (fib_node_index_t fib_entry_index,
 	return (ADJ_INDEX_INVALID);
 
     fib_entry = fib_entry_get(fib_entry_index);
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL != esrc)
     {
@@ -1657,7 +1742,7 @@ fib_entry_get_dpo_for_source (fib_node_index_t fib_entry_index,
 	return (0);
 
     fib_entry = fib_entry_get(fib_entry_index);
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL != esrc)
     {
@@ -1684,7 +1769,7 @@ fib_entry_get_resolving_interface_for_source (fib_node_index_t entry_index,
 
     fib_entry = fib_entry_get(entry_index);
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL != esrc)
     {
@@ -1705,7 +1790,7 @@ fib_entry_get_flags_for_source (fib_node_index_t entry_index,
 
     fib_entry = fib_entry_get(entry_index);
 
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
     if (NULL != esrc)
     {
@@ -1747,12 +1832,12 @@ fib_entry_set_source_data (fib_node_index_t fib_entry_index,
     fib_entry_src_t *esrc;
 
     fib_entry = fib_entry_get(fib_entry_index);
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
-    if (NULL != esrc &&
-        NULL != fib_entry_src_vft[source].fesv_set_data)
+    if (NULL != esrc)
     {
-	fib_entry_src_vft[source].fesv_set_data(esrc, fib_entry, data);
+        FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_set_data,
+                                 (esrc, fib_entry, data));
     }
 }
 
@@ -1764,12 +1849,12 @@ fib_entry_get_source_data (fib_node_index_t fib_entry_index,
     fib_entry_src_t *esrc;
 
     fib_entry = fib_entry_get(fib_entry_index);
-    esrc = fib_entry_src_find(fib_entry, source, NULL);
+    esrc = fib_entry_src_find(fib_entry, source);
 
-    if (NULL != esrc &&
-        NULL != fib_entry_src_vft[source].fesv_get_data)
+    if (NULL != esrc)
     {
-	return (fib_entry_src_vft[source].fesv_get_data(esrc, fib_entry));
+        FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, fesv_get_data,
+                                            (esrc, fib_entry));
     }
     return (NULL);
 }
@@ -1779,6 +1864,7 @@ fib_entry_src_module_init (void)
 {
     fib_entry_src_rr_register();
     fib_entry_src_interface_register();
+    fib_entry_src_interpose_register();
     fib_entry_src_default_route_register();
     fib_entry_src_special_register();
     fib_entry_src_api_register();
