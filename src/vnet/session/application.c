@@ -209,6 +209,9 @@ application_del (application_t * app)
    */
   application_local_sessions_del (app);
 
+  vec_free (app->tls_cert);
+  vec_free (app->tls_key);
+
   application_table_del (app);
   pool_put (app_pool, app);
 }
@@ -473,10 +476,22 @@ int
 application_open_session (application_t * app, session_endpoint_t * sep,
 			  u32 api_context)
 {
-  segment_manager_t *sm;
   int rv;
 
   /* Make sure we have a segment manager for connects */
+  application_alloc_connects_segment_manager (app);
+
+  if ((rv = session_open (app->index, sep, api_context)))
+    return rv;
+
+  return 0;
+}
+
+int
+application_alloc_connects_segment_manager (application_t * app)
+{
+  segment_manager_t *sm;
+
   if (app->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
     {
       sm = application_alloc_segment_manager (app);
@@ -484,10 +499,6 @@ application_open_session (application_t * app, session_endpoint_t * sep,
 	return -1;
       app->connects_seg_manager = segment_manager_index (sm);
     }
-
-  if ((rv = session_open (app->index, sep, api_context)))
-    return rv;
-
   return 0;
 }
 
@@ -1154,6 +1165,30 @@ application_local_sessions_del (application_t * app)
   sm = segment_manager_get (app->local_segment_manager);
   sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
   segment_manager_del (sm);
+}
+
+clib_error_t *
+vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
+{
+  application_t *app;
+  app = application_get (a->app_index);
+  if (!app)
+    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
+				   0, "app %u doesn't exist", a->app_index);
+  app->tls_cert = vec_dup (a->cert);
+  return 0;
+}
+
+clib_error_t *
+vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
+{
+  application_t *app;
+  app = application_get (a->app_index);
+  if (!app)
+    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
+				   0, "app %u doesn't exist", a->app_index);
+  app->tls_key = vec_dup (a->key);
+  return 0;
 }
 
 u8 *

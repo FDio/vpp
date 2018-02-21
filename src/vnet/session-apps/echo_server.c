@@ -245,7 +245,7 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
-  .builtin_server_rx_callback = echo_server_rx_callback,
+  .builtin_app_rx_callback = echo_server_rx_callback,
   .session_reset_callback = echo_server_session_reset_callback
 };
 
@@ -267,19 +267,21 @@ create_api_loopback (vlib_main_t * vm)
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
+  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
+  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
   echo_server_main_t *esm = &echo_server_main;
-  u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
+  u64 options[APP_OPTIONS_N_OPTIONS];
   u32 segment_size = 512 << 20;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
   if (esm->no_echo)
-    echo_server_session_cb_vft.builtin_server_rx_callback =
+    echo_server_session_cb_vft.builtin_app_rx_callback =
       echo_server_builtin_server_rx_callback_no_echo;
   else
-    echo_server_session_cb_vft.builtin_server_rx_callback =
+    echo_server_session_cb_vft.builtin_app_rx_callback =
       echo_server_rx_callback;
 
   if (esm->private_segment_size)
@@ -310,6 +312,18 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
       return -1;
     }
   esm->app_index = a->app_index;
+
+  memset (a_cert, 0, sizeof (*a_cert));
+  a_cert->app_index = a->app_index;
+  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
+  clib_memcpy (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vnet_app_add_tls_cert (a_cert);
+
+  memset (a_key, 0, sizeof (*a_key));
+  a_key->app_index = a->app_index;
+  vec_validate (a_key->key, test_srv_key_rsa_len);
+  clib_memcpy (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_app_add_tls_key (a_key);
   return 0;
 }
 

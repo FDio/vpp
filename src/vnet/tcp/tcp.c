@@ -1037,6 +1037,8 @@ const static transport_proto_vft_t tcp_proto = {
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,
+  .tx_type = TRANSPORT_TX_PEEK,
+  .service_type = TRANSPORT_SERVICE_VC,
 };
 /* *INDENT-ON* */
 

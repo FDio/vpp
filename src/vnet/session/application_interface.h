@@ -30,7 +30,7 @@ typedef struct _vnet_app_attach_args_t
   /** Application and segment manager options */
   u64 *options;
 
-  /* Namespace id */
+  /** ID of the namespace the app has access to */
   u8 *namespace_id;
 
   /** Session to application callback functions */
@@ -80,8 +80,11 @@ typedef struct _vnet_unbind_args_t
 
 typedef struct _vnet_connect_args
 {
-  char *uri;
-  session_endpoint_t sep;
+  union
+  {
+    char *uri;
+    session_endpoint_t sep;
+  };
   u32 app_index;
   u32 api_context;
 
@@ -95,6 +98,18 @@ typedef struct _vnet_disconnect_args_t
   session_handle_t handle;
   u32 app_index;
 } vnet_disconnect_args_t;
+
+typedef struct _vnet_application_add_tls_cert_args_t
+{
+  u32 app_index;
+  u8 *cert;
+} vnet_app_add_tls_cert_args_t;
+
+typedef struct _vnet_application_add_tls_key_args_t
+{
+  u32 app_index;
+  u8 *key;
+} vnet_app_add_tls_key_args_t;
 
 /* Application attach options */
 typedef enum
@@ -136,24 +151,24 @@ typedef enum _app_options_flags
 #undef _
 } app_options_flags_t;
 
-clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
-int vnet_application_detach (vnet_app_detach_args_t * a);
-
 int vnet_bind_uri (vnet_bind_args_t *);
 int vnet_unbind_uri (vnet_unbind_args_t * a);
 clib_error_t *vnet_connect_uri (vnet_connect_args_t * a);
-int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
+clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
 clib_error_t *vnet_bind (vnet_bind_args_t * a);
 clib_error_t *vnet_connect (vnet_connect_args_t * a);
 clib_error_t *vnet_unbind (vnet_unbind_args_t * a);
+int vnet_application_detach (vnet_app_detach_args_t * a);
+int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
-int
-api_parse_session_handle (u64 handle, u32 * session_index,
-			  u32 * thread_index);
+clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
+clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
 
-void send_local_session_disconnect_callback (u32 app_index,
-					     local_session_t * ls);
+extern const char test_srv_crt_rsa[];
+extern const u32 test_srv_crt_rsa_len;
+extern const char test_srv_key_rsa[];
+extern const u32 test_srv_key_rsa_len;
 
 #endif /* __included_uri_h__ */
 

@@ -448,7 +448,8 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
 }
 
 static int
-svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
+svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes,
+			   const u8 * copy_from_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -520,7 +521,7 @@ svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
 
 static int
 svm_fifo_enqueue_nowait_ma (svm_fifo_t * f, u32 max_bytes,
-			    u8 * copy_from_here)
+			    const u8 * copy_from_here)
 {
   return svm_fifo_enqueue_internal (f, max_bytes, copy_from_here);
 }
@@ -530,12 +531,13 @@ foreach_march_variant (SVM_ENQUEUE_CLONE_TEMPLATE,
 CLIB_MULTIARCH_SELECT_FN (svm_fifo_enqueue_nowait_ma);
 
 int
-svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
+svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
+			 const u8 * copy_from_here)
 {
 #if CLIB_DEBUG > 0
   return svm_fifo_enqueue_nowait_ma (f, max_bytes, copy_from_here);
 #else
-  static int (*fp) (svm_fifo_t *, u32, u8 *);
+  static int (*fp) (svm_fifo_t *, u32, const u8 *);
 
   if (PREDICT_FALSE (fp == 0))
     fp = (void *) svm_fifo_enqueue_nowait_ma_multiarch_select ();
