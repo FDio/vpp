@@ -290,7 +290,7 @@ build-ipsec-mb:
 	mkdir -p $(I)/lib/
 	# Do not build GCM stuff if we are building ISA_L
 	make -C $(AESNIMB_LIB_SOURCE) -j \
-	  DEBUG=$(DPDK_DEBUG) EXTRA_CFLAGS=-fPIC NASM=$(NASM_SOURCE)/nasm
+	  EXTRA_CFLAGS=-fPIC NASM=$(NASM_SOURCE)/nasm
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
 
 .PHONY: build-dpdk
