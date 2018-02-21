@@ -1,0 +1,327 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "285be5b2_bbe3e4d9",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Is this a performance critical piece of code?\nSeems better to use atomic_compare_exchange() (CAS) instead of TAS which unconditionally writes to the location.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b933c0a_710957d1",
+        "filename": "src/plugins/ioam/analyse/ioam_analyse.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Use a real lock instead of invoking these atomic primitives directly. There doesn\u0027t seem to be any release order/barrier when releasing this lock below at the end of the function.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "917bf2c1_47c9ded8",
+        "filename": "src/plugins/kubeproxy/kp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Need release ordering when releasing the lock.\n#define kp_put_writer_lock() __atomic_store_n(\u0026kp_main.writer_lock[0], 0, __ATOMIC_RELEASE)",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d9a7b8b8_c1183791",
+        "filename": "src/plugins/nat/nat_det.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Not updating this usage of __sync_bool_compare_and_swap()?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "833afeac_d021aeeb",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Acquire order?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6f857e18_d65f13df",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 660,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "In general, thread barrier wait has acquire and release order.\nWill a thread after the barrier access memory that was written by some other thread before the barrier?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a889cf9_ca1d791f",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Do we need e.g. acquire order here?\nWe will access memory based on the value returned from clib_atomic_add().",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "afa77d58_22892465",
+        "filename": "src/vlib/unix/cj.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Acquire ordering? new_tail is used to reference memory.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4620bf01_09659f7e",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Does this need e.g. acquire+release ordering?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab681c84_bea9e0c8",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "This probably needs release ordering, we are swapping in \u0027new_leaf\u0027 which I assume was just initialised by us.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dfb95312_dfbeab89",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "ditto release order.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "349978d3_66ae8fb2",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "ditto release order",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffde4163_6d84eb1b",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "ditto release order",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15cb7475_71a045e7",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "ditto release order",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fde577f1_f3211d26",
+        "filename": "src/vnet/mfib/mfib_signal.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Are releasing updates here? So need release order?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f3279e76_98836dec",
+        "filename": "src/vnet/session-apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Looks like a potential case of acquire ordering. The return value of fetch_and_add() is ignored but the variable is read after the update.\nPossibly we are releasing our own updates as well (if we are not the final thread to update ready_connections).",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "64d3414c_d62bd25c",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "store-release or release barrier.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcfbaecf_3a928dd7",
+        "filename": "src/vppinfra/atomics.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "OK I assumed earlier that all clib_atomic_xxx() operations used relaxed order. That\u0027s why I believed acquire and release order would be needed in some cases. Have to re-review all changes again.",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "66451ce3_de1619dc",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-02-21T21:05:32Z",
+      "side": 1,
+      "message": "Relaxed memory order?",
+      "revId": "d942157d7d9876986c3382e0498a300dbcfa4517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
