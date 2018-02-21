@@ -35,6 +35,7 @@ typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_BIER_TABLE,
     FT_LB_BIER_FMASK,
     FT_LB_DROP,
+    FT_LB_PUNT,
     FT_LB_ADJ,
 } fib_test_lb_bucket_type_t;
 

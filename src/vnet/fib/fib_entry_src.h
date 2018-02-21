@@ -173,6 +173,26 @@ typedef const void* (*fib_entry_src_get_data_t)(fib_entry_src_t *src,
                                                 const fib_entry_t *fib_entry);
 
 /**
+ * Contribute forwarding to interpose inthe chain
+ */
+typedef const dpo_id_t* (*fib_entry_src_contribute_interpose_t)(const fib_entry_src_t *src,
+                                                         const fib_entry_t *fib_entry);
+
+/**
+ * The fib entry flags for this source are changing
+ */
+typedef void (*fib_entry_src_flag_change_t)(fib_entry_src_t *src,
+                                            const fib_entry_t *fib_entry,
+                                            fib_entry_flag_t new_flags);
+
+/**
+ * The fib entry flags for this source are changing
+ */
+typedef void (*fib_entry_src_copy_t)(const fib_entry_src_t *orig_src,
+                                     const fib_entry_t *fib_entry,
+                                     fib_entry_src_t *copy_src);
+
+/**
  * Virtual function table each FIB entry source will register
  */
 typedef struct fib_entry_src_vft_t_ {
@@ -193,20 +213,47 @@ typedef struct fib_entry_src_vft_t_ {
     fib_entry_src_fwd_update_t fesv_fwd_update;
     fib_entry_src_get_data_t fesv_get_data;
     fib_entry_src_set_data_t fesv_set_data;
+    fib_entry_src_contribute_interpose_t fesv_contribute_interpose;
+    fib_entry_src_flag_change_t fesv_flags_change;
+    fib_entry_src_copy_t fesv_copy;
 } fib_entry_src_vft_t;
 
 #define FOR_EACH_SRC_ADDED(_entry, _src, _source, action)	\
 {								\
-    vec_foreach(_src, _entry->fe_srcs)				\
+    vec_foreach(_src, (_entry)->fe_srcs)                        \
     {								\
 	if (_src->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED) {	\
-	    _source = _src->fes_src;				\
-	    do {						\
-		action;						\
-	    } while(0);						\
+	    _source = (_src)->fes_src;				\
+            action;						\
 	}							\
     }								\
 }
+
+#define FIB_ENTRY_SRC_VFT_INVOKE(esrc, func, args)  \
+{                                                   \
+    const fib_entry_src_vft_t *_vft;                \
+    _vft = fib_entry_src_get_vft(esrc);             \
+    if (_vft->func)                                 \
+        _vft->func args;                            \
+}
+
+#define FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, func, args)  \
+{                                                   \
+    const fib_entry_src_vft_t *_vft;                \
+    _vft = fib_entry_src_get_vft(esrc);             \
+    if (_vft->func)                                 \
+        return (_vft->func args);                   \
+}
+
+#define FIB_ENTRY_SRC_VFT_EXISTS(esrc, func)        \
+{                                                   \
+    const fib_entry_src_vft_t *_vft;                \
+    _vft = fib_entry_src_get_vft(esrc);             \
+    (_vft->func);                                   \
+}
+
+extern const fib_entry_src_vft_t*fib_entry_src_get_vft(
+    const fib_entry_src_t *esrc);
 
 extern u8* fib_entry_src_format(fib_entry_t *entry,
 				fib_source_t source,
@@ -215,19 +262,13 @@ extern u8* fib_entry_src_format(fib_entry_t *entry,
 extern void fib_entry_src_register(fib_source_t source,
 				   const fib_entry_src_vft_t *vft);
 
-extern void fib_entry_src_action_init(fib_entry_t *entry,
-				      fib_source_t source);
-
-extern void fib_entry_src_action_deinit(fib_entry_t *fib_entry,
-					fib_source_t source);
-
 extern fib_entry_src_cover_res_t fib_entry_src_action_cover_change(
     fib_entry_t *entry,
-    fib_source_t source);
+    fib_entry_src_t *esrc);
 
 extern fib_entry_src_cover_res_t fib_entry_src_action_cover_update(
     fib_entry_t *fib_entry,
-    fib_source_t source);
+    fib_entry_src_t *esrc);
 
 extern void fib_entry_src_action_activate(fib_entry_t *fib_entry,
 					  fib_source_t source);
@@ -304,6 +345,7 @@ extern void fib_entry_source_change(fib_entry_t *fib_entry,
 extern void fib_entry_src_default_register(void);
 extern void fib_entry_src_rr_register(void);
 extern void fib_entry_src_interface_register(void);
+extern void fib_entry_src_interpose_register(void);
 extern void fib_entry_src_default_route_register(void);
 extern void fib_entry_src_special_register(void);
 extern void fib_entry_src_api_register(void);

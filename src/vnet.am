@@ -1059,6 +1059,7 @@ libvnet_la_SOURCES +=				\
   vnet/fib/fib_entry_src.c                      \
   vnet/fib/fib_entry_src_rr.c                   \
   vnet/fib/fib_entry_src_interface.c            \
+  vnet/fib/fib_entry_src_interpose.c            \
   vnet/fib/fib_entry_src_default_route.c        \
   vnet/fib/fib_entry_src_special.c              \
   vnet/fib/fib_entry_src_api.c                  \
@@ -1072,7 +1073,8 @@ libvnet_la_SOURCES +=				\
   vnet/fib/fib_path_ext.c			\
   vnet/fib/fib_urpf_list.c			\
   vnet/fib/fib_attached_export.c		\
-  vnet/fib/fib_bfd.c
+  vnet/fib/fib_bfd.c				\
+  vnet/fib/fib_api.c
 
 nobase_include_HEADERS +=			\
   vnet/fib/fib.h				\
