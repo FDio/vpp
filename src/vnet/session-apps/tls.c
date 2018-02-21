@@ -1,0 +1,324 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vnet/session-apps/tls.h>
+#include <vnet/session/application_interface.h>
+
+typedef struct tls_ctx_
+{
+  u32 parent_app_index;
+  u32 parent_app_api_context;
+  session_handle_t app_session_handle;
+  session_handle_t tls_session_handle;
+} tls_ctx_t;
+
+typedef struct tls_main_
+{
+  uword *tls_mappings;
+  u32 app_index;
+  tls_ctx_t *ctx_pool;
+} tls_main_t;
+
+static tls_main_t tls_main;
+
+u32
+tls_ctx_alloc (void)
+{
+  tls_main_t *tm = &tls_main;
+  tls_ctx_t *ctx;
+
+  pool_get (tm->ctx_pool, ctx);
+  memset (ctx, 0, sizeof (*ctx));
+  return ctx - tm->ctx_pool;
+}
+
+tls_ctx_t *
+tls_ctx_get (u32 ctx_index)
+{
+  return pool_elt_at_index (tls_main.ctx_pool, ctx_index);
+}
+
+void
+tls_session_reset_callback (stream_session_t * s)
+{
+  clib_warning ("called...");
+}
+
+int
+tls_add_segment_callback (u32 client_index, const ssvm_private_t * fs)
+{
+  /* No-op for builtin */
+  return 0;
+}
+
+int
+tls_del_segment_callback (u32 client_index, const ssvm_private_t * fs)
+{
+  return 0;
+}
+
+void
+tls_session_disconnect_callback (stream_session_t * s)
+{
+  clib_warning ("called...");
+}
+
+int
+tls_session_accept_callback (stream_session_t * s)
+{
+  return 0;
+}
+
+static inline int
+tls_add_vpp_queue_event (svm_fifo_t *f, u8 evt_type)
+{
+  session_fifo_event_t evt;
+  svm_queue_t *q;
+
+  if (svm_fifo_set_event (f))
+    {
+      evt.fifo = f;
+      evt.event_type = evt_type;
+
+      q = session_manager_get_vpp_event_queue (f->master_thread_index);
+      if (PREDICT_FALSE (q->cursize == q->maxsize))
+	{
+	  clib_warning ("out of event queue space");
+	  return -1;
+	}
+      else if (svm_queue_add (q, (u8 *) &evt, 0))
+	{
+	  clib_warning ("failed to enqueue self-tap");
+	  return -1;
+	}
+    }
+  return 0;
+}
+
+static inline int
+tls_add_app_queue_event (application_t *app, svm_fifo_t *f, u8 evt_type)
+{
+  session_fifo_event_t evt;
+  svm_queue_t *q;
+
+  if (svm_fifo_set_event (f))
+    {
+      evt.fifo = f;
+      evt.event_type = FIFO_EVENT_APP_RX;
+      q = app->event_queue;
+
+      if (PREDICT_TRUE (q->cursize < q->maxsize))
+	{
+	  svm_queue_add (q, (u8 *) &evt, 0 /* do wait for mutex */);
+	}
+      else
+	{
+	  clib_warning ("app evt q full");
+	  return -1;
+	}
+    }
+  return 0;
+}
+
+int
+tls_app_tx_callback (stream_session_t * app_session)
+{
+  stream_session_t *tls_session;
+  tls_ctx_t *ctx;
+  static u8 *tmp_buf;
+  u32 enq_max, deq_max, enq_now;
+  int wrote;
+
+  ctx = tls_ctx_get (app_session->connection_index);
+  tls_session = session_get_from_handle(ctx->tls_session_handle);
+
+  enq_max = svm_fifo_max_enqueue (tls_session->server_tx_fifo);
+  deq_max = svm_fifo_max_dequeue (app_session->server_tx_fifo);
+  enq_now = clib_min (deq_max, enq_max);
+
+  if (PREDICT_FALSE (enq_now == 0))
+    {
+      tls_add_vpp_queue_event (app_session->server_tx_fifo,
+                               FIFO_EVENT_BUILTIN_TX);
+      return 0;
+    }
+
+  vec_validate (tmp_buf, enq_now);
+  svm_fifo_dequeue_nowait (app_session->server_tx_fifo, enq_now, tmp_buf);
+  wrote = svm_fifo_enqueue_nowait (tls_session->server_tx_fifo, enq_now,
+                                   tmp_buf);
+  vec_reset_length (tmp_buf);
+
+  ASSERT (wrote == enq_now);
+  if (enq_now < deq_max)
+    tls_add_vpp_queue_event (app_session->server_tx_fifo,
+                             FIFO_EVENT_BUILTIN_TX);
+
+  tls_add_vpp_queue_event (tls_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+
+  return 0;
+}
+
+int
+tls_app_rx_callback (stream_session_t * tls_session)
+{
+  stream_session_t *app_session;
+  u32 deq_max, enq_max, enq_now;
+  application_t *app;
+  static u8 *tmp_buf;
+  tls_ctx_t *ctx;
+  int wrote;
+
+  ctx = tls_ctx_get (tls_session->opaque);
+  app_session = session_get_from_handle (ctx->app_session_handle);
+
+  enq_max = svm_fifo_max_enqueue (app_session->server_rx_fifo);
+  deq_max = svm_fifo_max_dequeue (tls_session->server_rx_fifo);
+  enq_now = clib_min (enq_max, deq_max);
+
+  if (PREDICT_FALSE (enq_now == 0))
+    {
+      tls_add_vpp_queue_event (tls_session->server_rx_fifo,
+                               FIFO_EVENT_BUILTIN_RX);
+      return 0;
+    }
+
+  vec_validate (tmp_buf, enq_now);
+  svm_fifo_dequeue_nowait (tls_session->server_rx_fifo, enq_now, tmp_buf);
+  wrote = svm_fifo_enqueue_nowait (app_session->server_rx_fifo, enq_now,
+                                   tmp_buf);
+  vec_reset_length (tmp_buf);
+
+  ASSERT (wrote == enq_now);
+  if (enq_now < enq_max)
+    tls_add_vpp_queue_event (tls_session->server_rx_fifo,
+                             FIFO_EVENT_BUILTIN_RX);
+
+  app = application_get_if_valid (app_session->app_index);
+  tls_add_app_queue_event (app, app_session->server_tx_fifo,
+                           FIFO_EVENT_APP_RX);
+
+  return 0;
+}
+
+int
+tls_session_connected_callback (u32 app_index, u32 ctx_index,
+                                stream_session_t * tls_session,
+                                u8 is_fail)
+{
+  int (*cb_fn) (u32, u32, stream_session_t *, u8);
+  application_t *parent_app;
+  segment_manager_t *sm;
+  stream_session_t *app_session;
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get (ctx_index);
+  parent_app = application_get (ctx->parent_app_index);
+  cb_fn = parent_app->cb_fns.session_connected_callback;
+
+  if (is_fail)
+    goto failed;
+
+  sm = application_get_connect_segment_manager (parent_app);
+  app_session = session_alloc (tls_session->thread_index);
+  app_session->app_index = ctx->parent_app_index;
+  app_session->connection_index = ctx_index;
+  if (session_alloc_fifos (sm, app_session))
+    goto failed;
+
+  ctx->app_session_handle = session_handle (app_session);
+  ctx->tls_session_handle = session_handle (tls_session);
+  tls_session->opaque = ctx_index;
+
+  clib_warning ("TLS connected; HANDSHAKE TBD");
+
+  return cb_fn (ctx->parent_app_index, ctx->parent_app_api_context,
+	        app_session, 0 /* not failed */);
+
+failed:
+  return cb_fn (ctx->parent_app_index, ctx->parent_app_api_context, 0,
+                1/* failed */);
+}
+
+static session_cb_vft_t tls_app_cb_vft = {
+  .session_accept_callback = tls_session_accept_callback,
+  .session_disconnect_callback = tls_session_disconnect_callback,
+  .session_connected_callback = tls_session_connected_callback,
+  .session_reset_callback = tls_session_reset_callback,
+  .add_segment_callback = tls_add_segment_callback,
+  .del_segment_callback = tls_del_segment_callback,
+  .builtin_app_rx_callback = tls_app_rx_callback,
+  .builtin_app_tx_callback = tls_app_tx_callback,
+};
+
+int
+tls_connect (u32 app_index, u32 api_context, session_endpoint_t *sep)
+{
+  tls_main_t *tm = &tls_main;
+  tls_ctx_t *ctx;
+  u32 ctx_index;
+  int rv;
+
+  ctx_index = tls_ctx_alloc ();
+  ctx = tls_ctx_get (ctx_index);
+  ctx->parent_app_index = app_index;
+  ctx->parent_app_api_context = api_context;
+
+  if ((rv = application_connect (tm->app_index, ctx_index, sep)))
+    return rv;
+
+  return 0;
+}
+
+clib_error_t *
+tls_init (vlib_main_t * vm)
+{
+  vnet_app_attach_args_t _a, *a = &_a;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  u32 segment_size = 512 << 20;
+  tls_main_t *tm = &tls_main;
+  u32 fifo_size = 64 << 10;
+
+  memset (a, 0, sizeof (*a));
+  memset (options, 0, sizeof (options));
+
+  a->session_cb_vft = &tls_app_cb_vft;
+  a->api_client_index = ~0;
+  a->options = options;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+
+  if (vnet_application_attach (a))
+    {
+      clib_warning ("failed to attach tls app");
+      return clib_error_return(0, "failed to attach tls app");
+    }
+
+  tm->app_index = a->app_index;
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (tls_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

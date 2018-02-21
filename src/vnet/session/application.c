@@ -1156,6 +1156,17 @@ application_local_sessions_del (application_t * app)
   segment_manager_del (sm);
 }
 
+uword
+unformat_application_proto (unformat_input_t * input, va_list * args)
+{
+  u32 *proto = va_arg (*args, u32 *);
+  if (unformat (input, "tls"))
+    *proto = APP_PROTO_TLS;
+  else
+    return 0;
+  return 1;
+}
+
 u8 *
 format_application_listener (u8 * s, va_list * args)
 {

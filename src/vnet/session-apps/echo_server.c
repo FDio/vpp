@@ -245,7 +245,7 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
-  .builtin_server_rx_callback = echo_server_rx_callback,
+  .builtin_app_rx_callback = echo_server_rx_callback,
   .session_reset_callback = echo_server_session_reset_callback
 };
 
@@ -276,10 +276,10 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   memset (options, 0, sizeof (options));
 
   if (esm->no_echo)
-    echo_server_session_cb_vft.builtin_server_rx_callback =
+    echo_server_session_cb_vft.builtin_app_rx_callback =
       echo_server_builtin_server_rx_callback_no_echo;
   else
-    echo_server_session_cb_vft.builtin_server_rx_callback =
+    echo_server_session_cb_vft.builtin_app_rx_callback =
       echo_server_rx_callback;
 
   if (esm->private_segment_size)

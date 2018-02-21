@@ -111,7 +111,7 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
-static int
+int
 session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
 {
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
@@ -463,9 +463,9 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Built-in server? Hand event to the callback... */
-  if (app->cb_fns.builtin_server_rx_callback)
-    return app->cb_fns.builtin_server_rx_callback (s);
+  /* Built-in app? Hand event to the callback... */
+  if (app->cb_fns.builtin_app_rx_callback)
+    return app->cb_fns.builtin_app_rx_callback (s);
 
   /* If no event, send one */
   if (svm_fifo_set_event (s->server_rx_fifo))
