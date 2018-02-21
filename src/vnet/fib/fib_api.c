@@ -266,3 +266,4 @@ fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
         out->next_hop_id = api_rpath->rpath.frp_udp_encap_id;
     }
 }
+
