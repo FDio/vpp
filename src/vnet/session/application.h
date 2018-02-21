@@ -20,12 +20,6 @@
 #include <vnet/session/session.h>
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/application_namespace.h>
-typedef enum
-{
-  APP_SERVER,
-  APP_CLIENT,
-  APP_N_TYPES
-} application_type_t;
 
 typedef struct _stream_session_cb_vft
 {
@@ -49,8 +43,11 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session was reset */
   void (*session_reset_callback) (stream_session_t * s);
 
-  /** Direct RX callback, for built-in servers */
-  int (*builtin_server_rx_callback) (stream_session_t * session);
+  /** Direct RX callback for built-in application */
+  int (*builtin_app_rx_callback) (stream_session_t * session);
+
+  /** Direct TX callback for built-in application */
+  int (*builtin_app_tx_callback) (stream_session_t * session);
 
 } session_cb_vft_t;
 
@@ -152,6 +149,8 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 							   ls);
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
+int application_alloc_connects_segment_manager (application_t *app);
+
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
@@ -245,6 +244,13 @@ application_local_session_listener_has_transport (local_session_t * ls)
   return (tp != TRANSPORT_PROTO_NONE);
 }
 
+void send_local_session_disconnect_callback (u32 app_index,
+					     local_session_t * ls);
+
+int application_connect (u32 client_index, u32 api_context,
+                         session_endpoint_t * sep);
+
+uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
