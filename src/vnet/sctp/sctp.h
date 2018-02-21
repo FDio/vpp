@@ -524,13 +524,13 @@ sctp_half_open_connection_get (u32 conn_index)
 always_inline void
 sctp_half_open_connection_del (sctp_connection_t * tc)
 {
-  sctp_main_t *tm = vnet_get_sctp_main ();
-  clib_spinlock_lock_if_init (&tm->half_open_lock);
-  pool_put_index (tm->half_open_connections,
+  sctp_main_t *sctp_main = vnet_get_sctp_main ();
+  clib_spinlock_lock_if_init (&sctp_main->half_open_lock);
+  pool_put_index (sctp_main->half_open_connections,
 		  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index);
   if (CLIB_DEBUG)
     memset (tc, 0xFA, sizeof (*tc));
-  clib_spinlock_unlock_if_init (&tm->half_open_lock);
+  clib_spinlock_unlock_if_init (&sctp_main->half_open_lock);
 }
 
 always_inline u32

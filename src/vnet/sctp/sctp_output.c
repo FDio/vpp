@@ -261,7 +261,7 @@ sctp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   b->current_length = 0;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->sctp.flags = 0;
-  vnet_buffer (b)->sctp.conn_idx = MAX_SCTP_CONNECTIONS;
+  vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
 
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
@@ -275,7 +275,7 @@ sctp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->sctp.flags = 0;
-  vnet_buffer (b)->sctp.conn_idx = MAX_SCTP_CONNECTIONS;
+  vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
@@ -478,7 +478,7 @@ sctp_prepare_init_chunk (sctp_connection_t * sctp_conn, u8 idx,
   sctp_conn->local_tag = init_chunk->initiate_tag;
 
   vnet_buffer (b)->sctp.connection_index = sub_conn->c_c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 
   SCTP_DBG_STATE_MACHINE ("CONN_INDEX = %u, CURR_CONN_STATE = %u (%s), "
 			  "CHUNK_TYPE = %s, "
@@ -551,7 +551,7 @@ sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 void
@@ -585,7 +585,7 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /**
@@ -728,7 +728,7 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /**
@@ -764,7 +764,7 @@ sctp_prepare_shutdown_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /*
@@ -822,7 +822,7 @@ sctp_prepare_shutdown_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /*
@@ -877,7 +877,7 @@ sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /**
@@ -916,7 +916,7 @@ sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 /**
@@ -951,7 +951,7 @@ sctp_prepare_heartbeat_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 void
@@ -1016,7 +1016,7 @@ sctp_prepare_shutdown_complete_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 void
@@ -1093,7 +1093,12 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
     vlib_buffer_push_uninit (b, bytes_to_add);
 
   u8 idx = sctp_data_subconn_select (sctp_conn);
-
+  SCTP_DBG_OUTPUT
+    ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, LCL_PORT = %u, RMT_PORT = %u",
+     sctp_conn, idx, sctp_conn->sub_conn[idx].connection.s_index,
+     sctp_conn->sub_conn[idx].connection.c_index,
+     sctp_conn->sub_conn[idx].connection.lcl_port,
+     sctp_conn->sub_conn[idx].connection.rmt_port);
   data_chunk->sctp_hdr.checksum = 0;
   data_chunk->sctp_hdr.src_port =
     sctp_conn->sub_conn[idx].connection.lcl_port;
@@ -1133,7 +1138,7 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
 
-  vnet_buffer (b)->sctp.conn_idx = idx;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
 }
 
 u32
@@ -1141,6 +1146,15 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
 {
   sctp_connection_t *sctp_conn =
     sctp_get_connection_from_transport (trans_conn);
+
+  SCTP_DBG_OUTPUT ("TRANS_CONN = %p, SCTP_CONN = %p, "
+		   "S_INDEX = %u, C_INDEX = %u,"
+		   "LCL_PORT = %u, RMT_PORT = %u",
+		   trans_conn,
+		   sctp_conn,
+		   trans_conn->s_index,
+		   trans_conn->c_index,
+		   trans_conn->lcl_port, trans_conn->rmt_port);
 
   sctp_push_hdr_i (sctp_conn, b, SCTP_STATE_ESTABLISHED);
 
@@ -1244,7 +1258,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	      goto done;
 	    }
 
-	  u8 idx = vnet_buffer (b0)->sctp.conn_idx;
+	  u8 idx = vnet_buffer (b0)->sctp.subconn_idx;
 
 	  th0 = vlib_buffer_get_current (b0);
 
