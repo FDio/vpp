@@ -187,7 +187,7 @@ dns_cache_lock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
-      while (__sync_lock_test_and_set (dm->cache_lock, 1))
+      while (clib_atomic_test_and_set (dm->cache_lock))
 	;
     }
 }

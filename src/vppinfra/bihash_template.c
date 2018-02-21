@@ -283,7 +283,7 @@ int BV (clib_bihash_add_del)
 
   tmp_b.linear_search = 0;
 
-  while (__sync_lock_test_and_set (h->writer_lock, 1))
+  while (clib_atomic_test_and_set (h->writer_lock))
     ;
 
   /* First elt in the bucket? */
