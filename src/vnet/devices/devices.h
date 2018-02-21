@@ -156,8 +156,7 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
 #define foreach_device_and_queue(var,vec)                       \
   for (var = (vec); var < vec_end (vec); var++)                 \
     if ((var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)        \
-        || clib_smp_swap (&((var)->interrupt_pending), 0))
-
+        || clib_atomic_swap (&((var)->interrupt_pending), 0))
 
 #endif /* included_vnet_vnet_device_h */
 

@@ -509,7 +509,7 @@ svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes,
 
   /* Atomically increase the queue length */
   ASSERT (cursize + total_copy_bytes <= nitems);
-  __sync_fetch_and_add (&f->cursize, total_copy_bytes);
+  clib_atomic_fetch_add (&f->cursize, total_copy_bytes);
 
   return (total_copy_bytes);
 }
@@ -681,7 +681,7 @@ svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
 
   ASSERT (f->head <= nitems);
   ASSERT (cursize >= total_copy_bytes);
-  __sync_fetch_and_sub (&f->cursize, total_copy_bytes);
+  clib_atomic_fetch_sub (&f->cursize, total_copy_bytes);
 
   return (total_copy_bytes);
 }
@@ -822,7 +822,7 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
 
   ASSERT (f->head <= nitems);
   ASSERT (cursize >= total_drop_bytes);
-  __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
+  clib_atomic_fetch_sub (&f->cursize, total_drop_bytes);
 
   return total_drop_bytes;
 }

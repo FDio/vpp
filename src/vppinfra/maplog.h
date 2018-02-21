@@ -137,7 +137,7 @@ clib_maplog_get_entry (clib_maplog_main_t * mm)
 
   ASSERT (mm->flags & CLIB_MAPLOG_FLAG_INIT);
 
-  my_record_index = __sync_fetch_and_add (&mm->next_record_index, 1);
+  my_record_index = clib_atomic_fetch_add (&mm->next_record_index, 1);
 
   /* Time to unmap and create a new logfile? */
   if (PREDICT_FALSE ((my_record_index & (mm->file_size_in_records - 1)) == 0))

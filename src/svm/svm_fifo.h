@@ -128,7 +128,7 @@ always_inline u8
 svm_fifo_set_event (svm_fifo_t * f)
 {
   /* Probably doesn't need to be atomic. Still, better avoid surprises */
-  return __sync_lock_test_and_set (&f->has_event, 1) == 0;
+  return clib_atomic_test_and_set (&f->has_event) == 0;
 }
 
 /**

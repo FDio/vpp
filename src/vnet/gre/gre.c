@@ -406,7 +406,7 @@ gre_interface_tx (vlib_main_t * vm,
 	      /* Encap GRE seq# and ERSPAN type II header */
 	      vlib_buffer_advance (b0, -sizeof (erspan_t2_t));
 	      erspan_t2_t *h0 = vlib_buffer_get_current (b0);
-	      u32 seq_num = clib_smp_atomic_add (&gt0->gre_sn->seq_num, 1);
+	      u32 seq_num = clib_atomic_fetch_add (&gt0->gre_sn->seq_num, 1);
 	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
 	      h0->seq_num = clib_host_to_net_u32 (seq_num);
 	      h0->t2_u64 = hdr;
@@ -418,7 +418,7 @@ gre_interface_tx (vlib_main_t * vm,
 	      /* Encap GRE seq# and ERSPAN type II header */
 	      vlib_buffer_advance (b1, -sizeof (erspan_t2_t));
 	      erspan_t2_t *h1 = vlib_buffer_get_current (b1);
-	      u32 seq_num = clib_smp_atomic_add (&gt1->gre_sn->seq_num, 1);
+	      u32 seq_num = clib_atomic_fetch_add (&gt1->gre_sn->seq_num, 1);
 	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
 	      h1->seq_num = clib_host_to_net_u32 (seq_num);
 	      h1->t2_u64 = hdr;
@@ -473,7 +473,7 @@ gre_interface_tx (vlib_main_t * vm,
 	      /* Encap GRE seq# and ERSPAN type II header */
 	      vlib_buffer_advance (b0, -sizeof (erspan_t2_t));
 	      erspan_t2_t *h0 = vlib_buffer_get_current (b0);
-	      u32 seq_num = clib_smp_atomic_add (&gt0->gre_sn->seq_num, 1);
+	      u32 seq_num = clib_atomic_fetch_add (&gt0->gre_sn->seq_num, 1);
 	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
 	      h0->seq_num = clib_host_to_net_u32 (seq_num);
 	      h0->t2_u64 = hdr;
