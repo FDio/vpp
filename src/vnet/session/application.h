@@ -20,12 +20,13 @@
 #include <vnet/session/session.h>
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/application_namespace.h>
+
 typedef enum
 {
-  APP_SERVER,
-  APP_CLIENT,
+  APP_PROTO_NONE,
+  APP_PROTO_TLS,
   APP_N_TYPES
-} application_type_t;
+} application_protocols_t;
 
 typedef struct _stream_session_cb_vft
 {
@@ -49,8 +50,11 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session was reset */
   void (*session_reset_callback) (stream_session_t * s);
 
-  /** Direct RX callback, for built-in servers */
-  int (*builtin_server_rx_callback) (stream_session_t * session);
+  /** Direct RX callback for built-in application */
+  int (*builtin_app_rx_callback) (stream_session_t * session);
+
+  /** Direct TX callback for built-in application */
+  int (*builtin_app_tx_callback) (stream_session_t * session);
 
 } session_cb_vft_t;
 
@@ -120,6 +124,31 @@ typedef struct _application
   uword *local_connects;
 } application_t;
 
+#define foreach_app_endpoint_fields				\
+    foreach_session_endpoint_fields				\
+    _(u8, app_proto)						\
+
+typedef struct _application_endpoint
+{
+#define _(type, name) type name;
+  foreach_app_endpoint_fields
+#undef _
+} application_endpoint_t;
+
+#define APP_ENDPOINT_NULL 		\
+{					\
+  .sw_if_index = ENDPOINT_INVALID_INDEX,	\
+  .ip = SESSION_IP46_ZERO,		\
+  .fib_index = ENDPOINT_INVALID_INDEX,	\
+  .is_ip4 = 0,				\
+  .port = 0,				\
+  .transport_proto = 0,			\
+  .app_proto = 0,			\
+}
+
+
+#define application_endpoint_to_session(_aep) ((session_endpoint_t *)_aep)
+
 #define APP_INVALID_INDEX ((u32)~0)
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
@@ -152,6 +181,8 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 							   ls);
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
+int application_alloc_connects_segment_manager (application_t *app);
+
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
@@ -245,6 +276,13 @@ application_local_session_listener_has_transport (local_session_t * ls)
   return (tp != TRANSPORT_PROTO_NONE);
 }
 
+void send_local_session_disconnect_callback (u32 app_index,
+					     local_session_t * ls);
+
+int application_connect (u32 client_index, u32 api_context,
+                         session_endpoint_t * sep);
+
+uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

@@ -30,7 +30,7 @@ typedef struct _vnet_app_attach_args_t
   /** Application and segment manager options */
   u64 *options;
 
-  /* Namespace id */
+  /** ID of the namespace the app has access to */
   u8 *namespace_id;
 
   /** Session to application callback functions */
@@ -80,8 +80,11 @@ typedef struct _vnet_unbind_args_t
 
 typedef struct _vnet_connect_args
 {
-  char *uri;
-  session_endpoint_t sep;
+  union
+  {
+    char *uri;
+    application_endpoint_t aep;
+  };
   u32 app_index;
   u32 api_context;
 
@@ -136,24 +139,16 @@ typedef enum _app_options_flags
 #undef _
 } app_options_flags_t;
 
-clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
-int vnet_application_detach (vnet_app_detach_args_t * a);
-
 int vnet_bind_uri (vnet_bind_args_t *);
 int vnet_unbind_uri (vnet_unbind_args_t * a);
 clib_error_t *vnet_connect_uri (vnet_connect_args_t * a);
-int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
+clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
 clib_error_t *vnet_bind (vnet_bind_args_t * a);
 clib_error_t *vnet_connect (vnet_connect_args_t * a);
 clib_error_t *vnet_unbind (vnet_unbind_args_t * a);
-
-int
-api_parse_session_handle (u64 handle, u32 * session_index,
-			  u32 * thread_index);
-
-void send_local_session_disconnect_callback (u32 app_index,
-					     local_session_t * ls);
+int vnet_application_detach (vnet_app_detach_args_t * a);
+int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 #endif /* __included_uri_h__ */
 

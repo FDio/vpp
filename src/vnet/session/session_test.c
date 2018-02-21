@@ -69,12 +69,6 @@ dummy_del_segment_callback (u32 client_index, const ssvm_private_t * fs)
   return 0;
 }
 
-int
-dummy_redirect_connect_callback (u32 client_index, void *mp)
-{
-  return VNET_API_ERROR_SESSION_REDIRECT;
-}
-
 void
 dummy_session_disconnect_callback (stream_session_t * s)
 {
@@ -104,7 +98,7 @@ static session_cb_vft_t dummy_session_cbs = {
   .session_connected_callback = dummy_session_connected_callback,
   .session_accept_callback = dummy_session_accept_callback,
   .session_disconnect_callback = dummy_session_disconnect_callback,
-  .builtin_server_rx_callback = dummy_server_rx_callback,
+  .builtin_app_rx_callback = dummy_server_rx_callback,
   .add_segment_callback = dummy_add_segment_callback,
   .del_segment_callback = dummy_del_segment_callback,
 };
@@ -220,7 +214,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   u32 dummy_api_context = 4321, dummy_client_api_index = 1234;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
-  session_endpoint_t client_sep = SESSION_ENDPOINT_NULL;
+  application_endpoint_t client_aep = APP_ENDPOINT_NULL;
   session_endpoint_t intf_sep = SESSION_ENDPOINT_NULL;
   clib_error_t *error = 0;
   u8 *ns_id = format (0, "appns1");
@@ -232,8 +226,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_port;
-  client_sep.is_ip4 = 1;
-  client_sep.port = dummy_port;
+  client_aep.is_ip4 = 1;
+  client_aep.port = dummy_port;
   memset (options, 0, sizeof (options));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -250,7 +244,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   };
 
   vnet_connect_args_t connect_args = {
-    .sep = client_sep,
+    .aep = client_aep,
     .app_index = 0,
     .api_context = 0,
   };
@@ -393,7 +387,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"error code should be invalid value (zero ip)");
   SESSION_TEST ((dummy_segment_count == 0),
 		"shouldn't have received request to map new segment");
-  connect_args.sep.ip.ip4.as_u8[0] = 127;
+  connect_args.aep.ip.ip4.as_u8[0] = 127;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error == 0), "client connect should not return error code");
   code = clib_error_get_code (error);
@@ -1037,8 +1031,12 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234"
 		" 5.6.7.9/32 4321 in local table should return deny");
 
+  /** XXX TEST HACK **/
+  application_endpoint_t aep = APP_ENDPOINT_NULL;
+  aep = *((application_endpoint_t *) &sep);
+  aep.app_proto = 0;
   vnet_connect_args_t connect_args = {
-    .sep = sep,
+    .aep = aep,
     .app_index = attach_args.app_index,
     .api_context = 0,
   };
@@ -1316,8 +1314,12 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 432*2* in local table should return deny");
 
+
   connect_args.app_index = server_index;
-  connect_args.sep = sep;
+  /** XXX TEST HACK **/
+  connect_args.aep = *((application_endpoint_t *) &sep);
+  connect_args.aep.app_proto = 0;
+
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
   rv = clib_error_get_code (error);

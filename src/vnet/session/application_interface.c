@@ -17,10 +17,21 @@
 #include <vnet/session/session.h>
 #include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/session-apps/tls.h>
 
 /** @file
     VPP's application/session API bind/unbind/connect/disconnect calls
 */
+
+
+typedef int (*connect_fn) (u32 client_index, u32 api_context,
+			   session_endpoint_t * sep);
+
+static connect_fn app_connects[APP_N_TYPES] = {
+    application_connect,
+    tls_connect,
+};
+
 
 static u8
 session_endpoint_is_local (session_endpoint_t * sep)
@@ -179,8 +190,8 @@ vnet_unbind_i (u32 app_index, session_handle_t handle)
 }
 
 int
-vnet_connect_i (u32 client_index, u32 api_context, session_endpoint_t * sep,
-		void *mp)
+application_connect (u32 client_index, u32 api_context,
+                     session_endpoint_t * sep)
 {
   application_t *server, *client;
   u32 table_index, server_index, li;
@@ -276,40 +287,46 @@ global_scope:
 uword
 unformat_vnet_uri (unformat_input_t * input, va_list * args)
 {
-  session_endpoint_t *sep = va_arg (*args, session_endpoint_t *);
-  u32 transport_proto = 0;
-  if (unformat (input, "%U://%U/%d", unformat_transport_proto,
-		&transport_proto, unformat_ip4_address, &sep->ip.ip4,
-		&sep->port))
+  application_endpoint_t *aep = va_arg (*args, application_endpoint_t *);
+  u32 transport_proto = 0, port;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 1;
-      return 1;
-    }
-  if (unformat (input, "%U://%U/%d", unformat_transport_proto,
-		&transport_proto, unformat_ip6_address, &sep->ip.ip6,
-		&sep->port))
-    {
-      sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (sep->port);
-      sep->is_ip4 = 0;
-      return 1;
+      if (unformat (input, "%U+", unformat_application_proto, &aep->app_proto))
+	;
+      else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+	                 &transport_proto, unformat_ip4_address, &aep->ip.ip4,
+	                 &port))
+	{
+	  aep->transport_proto = transport_proto;
+	  aep->port = clib_host_to_net_u16 (port);
+	  aep->is_ip4 = 1;
+	  return 1;
+	}
+      else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+	                 &transport_proto, unformat_ip6_address, &aep->ip.ip6,
+	                 &port))
+	{
+	  aep->transport_proto = transport_proto;
+	  aep->port = clib_host_to_net_u16 (port);
+	  aep->is_ip4 = 0;
+	  return 1;
+	}
     }
   return 0;
 }
 
 static u8 *cache_uri;
-static session_endpoint_t *cache_sep;
+static application_endpoint_t *cache_aep;
 
 int
-parse_uri (char *uri, session_endpoint_t * sep)
+parse_uri (char *uri, application_endpoint_t * aep)
 {
   unformat_input_t _input, *input = &_input;
 
   if (cache_uri && !strncmp (uri, (char *) cache_uri, vec_len (cache_uri)))
     {
-      *sep = *cache_sep;
+      *aep = *cache_aep;
       return 0;
     }
 
@@ -318,7 +335,7 @@ parse_uri (char *uri, session_endpoint_t * sep)
 
   /* Parse uri */
   unformat_init_string (input, uri, strlen (uri));
-  if (!unformat (input, "%U", unformat_vnet_uri, sep))
+  if (!unformat (input, "%U", unformat_vnet_uri, aep))
     {
       unformat_free (input);
       return VNET_API_ERROR_INVALID_VALUE;
@@ -327,10 +344,10 @@ parse_uri (char *uri, session_endpoint_t * sep)
 
   vec_free (cache_uri);
   cache_uri = (u8 *) uri;
-  if (cache_sep)
-    clib_mem_free (cache_sep);
-  cache_sep = clib_mem_alloc (sizeof (*sep));
-  *cache_sep = *sep;
+  if (cache_aep)
+    clib_mem_free (cache_aep);
+  cache_aep = clib_mem_alloc (sizeof (*aep));
+  *cache_aep = *aep;
 
   return 0;
 }
@@ -427,29 +444,34 @@ vnet_application_detach (vnet_app_detach_args_t * a)
 int
 vnet_bind_uri (vnet_bind_args_t * a)
 {
-  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  application_endpoint_t aep = APP_ENDPOINT_NULL;
+  session_endpoint_t *sep;
   int rv;
 
-  rv = parse_uri (a->uri, &sep);
+  rv = parse_uri (a->uri, &aep);
   if (rv)
     return rv;
 
-  return vnet_bind_i (a->app_index, &sep, &a->handle);
+  sep = application_endpoint_to_session (&aep);
+  return vnet_bind_i (a->app_index, sep, &a->handle);
 }
 
 int
 vnet_unbind_uri (vnet_unbind_args_t * a)
 {
+  application_endpoint_t aep = APP_ENDPOINT_NULL;
   stream_session_t *listener;
-  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  session_endpoint_t *sep;
   int rv;
 
-  rv = parse_uri (a->uri, &sep);
+  rv = parse_uri (a->uri, &aep);
   if (rv)
     return rv;
 
+  sep = application_endpoint_to_session (&aep);
+
   /* NOTE: only default table supported for uri */
-  listener = session_lookup_listener (0, &sep);
+  listener = session_lookup_listener (0, sep);
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
@@ -459,15 +481,17 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 clib_error_t *
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  session_endpoint_t sep_null = SESSION_ENDPOINT_NULL;
+  application_endpoint_t aep = APP_ENDPOINT_NULL;
+  session_endpoint_t *sep;
   int rv;
 
   /* Parse uri */
-  a->sep = sep_null;
-  rv = parse_uri (a->uri, &a->sep);
+  rv = parse_uri (a->uri, &aep);
   if (rv)
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
-  if ((rv = vnet_connect_i (a->app_index, a->api_context, &a->sep, a->mp)))
+
+  sep = application_endpoint_to_session (&aep);
+  if ((rv = app_connects[aep.app_proto] (a->app_index, a->api_context, sep)))
     return clib_error_return_code (0, rv, 0, "connect failed");
   return 0;
 }
@@ -523,9 +547,12 @@ vnet_unbind (vnet_unbind_args_t * a)
 clib_error_t *
 vnet_connect (vnet_connect_args_t * a)
 {
+  session_endpoint_t *sep = application_endpoint_to_session (&a->aep);
+  u8 app_proto = a->aep.app_proto;
   int rv;
-  if ((rv = vnet_connect_i (a->app_index, a->api_context, &a->sep, a->mp)))
-    return clib_error_return_code (0, rv, 0, "connect failed");
+
+  if ((rv = app_connects[app_proto] (a->app_index, a->api_context, sep)))
+    return clib_error_return_code(0, rv, 0, "connect failed");
   return 0;
 }
 

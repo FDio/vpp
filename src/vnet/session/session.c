@@ -111,7 +111,7 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
-static int
+int
 session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
 {
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
@@ -463,9 +463,9 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Built-in server? Hand event to the callback... */
-  if (app->cb_fns.builtin_server_rx_callback)
-    return app->cb_fns.builtin_server_rx_callback (s);
+  /* Built-in app? Hand event to the callback... */
+  if (app->cb_fns.builtin_app_rx_callback)
+    return app->cb_fns.builtin_app_rx_callback (s);
 
   /* If no event, send one */
   if (svm_fifo_set_event (s->server_rx_fifo))
@@ -1118,8 +1118,8 @@ session_manager_main_enable (vlib_main_t * vm)
   segment_manager_main_init_args_t _sm_args = { 0 }, *sm_args = &_sm_args;
   session_manager_main_t *smm = &session_manager_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads;
-  u32 preallocated_sessions_per_worker;
+  u32 num_threads, preallocated_sessions_per_worker;
+  u8 st_app_transport;
   int i, j;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -1188,6 +1188,11 @@ session_manager_main_enable (vlib_main_t * vm)
 	    }
 	}
     }
+
+
+  st_app_transport = session_type_from_proto_and_ip (TRANSPORT_PROTO_APP, 0);
+  vec_validate (smm->session_tx_fns, st_app_transport);
+  smm->session_tx_fns[st_app_transport] = session_tx_fifo_dequeue_internal;
 
   session_lookup_init ();
   app_namespaces_init ();
