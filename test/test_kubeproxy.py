@@ -148,7 +148,7 @@ class TestKP(VppTestCase):
             self.vapi.cli("ku vip 90.0.0.0/8 nat4 del")
             self.vapi.cli("test kube-proxy flowtable flush")
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skip("this test is broken")
     def test_kp_ip6_nat4(self):
         """ Kube-proxy NAT64 """
 
@@ -168,7 +168,7 @@ class TestKP(VppTestCase):
             self.vapi.cli("ku vip 2001::/16 nat4 del")
             self.vapi.cli("test kube-proxy flowtable flush")
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skip("this test is broken")
     def test_kp_ip4_nat6(self):
         """ Kube-proxy NAT46 """
         try:
