@@ -138,6 +138,19 @@ class VppRoutePath(object):
         self.next_hop_id = next_hop_id
         self.is_dvr = is_dvr
 
+    def encode(self):
+        return {'next_hop': self.nh_addr,
+                'weight': 1,
+                'afi': 0,
+                'preference': 0,
+                'table_id': self.nh_table_id,
+                'next_hop_id': self.next_hop_id,
+                'sw_if_index': self.nh_itf,
+                'afi': self.proto,
+                'is_udp_encap': self.is_udp_encap,
+                'n_labels': len(self.nh_labels),
+                'label_stack': self.nh_labels}
+
 
 class VppMRoutePath(VppRoutePath):
 
