@@ -191,7 +191,7 @@ ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
   ioam_path_map_t *path;
   u8 k, i;
 
-  while (__sync_lock_test_and_set (data->writer_lock, 1))
+  while (clib_atomic_test_and_set (data->writer_lock))
     ;
 
   trace_data = &data->trace_data;
@@ -225,7 +225,7 @@ ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
   u16 size_of_traceopt_per_node;
   u16 size_of_all_traceopts;
 
-  while (__sync_lock_test_and_set (data->writer_lock, 1))
+  while (clib_atomic_test_and_set (data->writer_lock))
     ;
 
   trace_data = &data->trace_data;
@@ -295,7 +295,7 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
   ioam_path_map_t *path = NULL;
   ioam_analyse_trace_record *trace_record;
 
-  while (__sync_lock_test_and_set (data->writer_lock, 1))
+  while (clib_atomic_test_and_set (data->writer_lock))
     ;
 
   trace_data = &data->trace_data;
@@ -417,7 +417,7 @@ always_inline int
 ip6_ioam_analyse_hbh_e2e (ioam_analyser_data_t * data,
 			  ioam_e2e_packet_t * e2e, u16 len)
 {
-  while (__sync_lock_test_and_set (data->writer_lock, 1))
+  while (clib_atomic_test_and_set (data->writer_lock))
     ;
 
   ioam_analyze_seqno (&data->seqno_data,

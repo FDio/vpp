@@ -300,7 +300,7 @@ mfib_forward_itf_signal (vlib_main_t *vm,
 {
     mfib_itf_flags_t old_flags;
 
-    old_flags = __sync_fetch_and_or(&mfi->mfi_flags,
+    old_flags = clib_atomic_fetch_or(&mfi->mfi_flags,
                                     MFIB_ITF_FLAG_SIGNAL_PRESENT);
 
     if (!(old_flags & MFIB_ITF_FLAG_SIGNAL_PRESENT))

@@ -158,6 +158,7 @@ set(VPPINFRA_HEADERS
   tw_timer_template.c
   tw_timer_template.h
   types.h
+  atomics.h
   unix.h
   valgrind.h
   valloc.h

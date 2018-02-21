@@ -474,7 +474,7 @@ map_ip4_reass_get(u32 src, u32 dst, u16 fragment_id,
 void
 map_ip4_reass_free(map_ip4_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip4_reass_lock() while (__sync_lock_test_and_set(map_main.ip4_reass_lock, 1)) {}
+#define map_ip4_reass_lock() while (clib_atomic_test_and_set(map_main.ip4_reass_lock)) {}
 #define map_ip4_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip4_reass_lock = 0;} while(0)
 
 static_always_inline void
@@ -499,7 +499,7 @@ map_ip6_reass_get(ip6_address_t *src, ip6_address_t *dst, u32 fragment_id,
 void
 map_ip6_reass_free(map_ip6_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip6_reass_lock() while (__sync_lock_test_and_set(map_main.ip6_reass_lock, 1)) {}
+#define map_ip6_reass_lock() while (clib_atomic_test_and_set(map_main.ip6_reass_lock)) {}
 #define map_ip6_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip6_reass_lock = 0;} while(0)
 
 int
@@ -555,7 +555,7 @@ static inline void
 map_domain_counter_lock (map_main_t *mm)
 {
   if (mm->counter_lock)
-    while (__sync_lock_test_and_set(mm->counter_lock, 1))
+    while (clib_atomic_test_and_set(mm->counter_lock))
       /* zzzz */ ;
 }
 static inline void

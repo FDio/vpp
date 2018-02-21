@@ -221,7 +221,7 @@ dslock (stats_main_t * sm, int release_hint, int tag)
   if (release_hint)
     l->release_hint++;
 
-  while (__sync_lock_test_and_set (&l->lock, 1))
+  while (clib_atomic_test_and_set (&l->lock))
     /* zzzz */ ;
   l->tag = tag;
   l->thread_index = thread_index;
