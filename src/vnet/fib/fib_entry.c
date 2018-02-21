@@ -127,7 +127,6 @@ format_fib_entry (u8 * s, va_list * args)
 	FOR_EACH_SRC_ADDED(fib_entry, src, source,
         ({
 	    s = format (s, "\n  %U", format_fib_source, source);
-	    s = fib_entry_src_format(fib_entry, source, s);
 	    s = format (s, " refs:%d", src->fes_ref_count);
 	    if (FIB_ENTRY_FLAG_NONE != src->fes_entry_flags) {
 		s = format(s, " entry-flags:");
@@ -145,6 +144,7 @@ format_fib_entry (u8 * s, va_list * args)
 		    }
 		}
 	    }
+            s = fib_entry_src_format(fib_entry, source, s);
 	    s = format (s, "\n");
 	    if (FIB_NODE_INDEX_INVALID != src->fes_pl)
 	    {
@@ -214,6 +214,8 @@ fib_entry_last_lock_gone (fib_node_t *node)
 
     fib_entry = fib_entry_from_fib_node(node);
 
+    ASSERT(!dpo_id_is_valid(&fib_entry->fe_lb));
+
     FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
     {
 	dpo_reset(&fed->fd_dpo);
@@ -223,7 +225,6 @@ fib_entry_last_lock_gone (fib_node_t *node)
     FIB_ENTRY_DBG(fib_entry, "last-lock");
 
     fib_node_deinit(&fib_entry->fe_node);
-    // FIXME -RR Backwalk
 
     ASSERT(0 == vec_len(fib_entry->fe_delegates));
     vec_free(fib_entry->fe_delegates);
@@ -477,7 +478,12 @@ fib_entry_contribute_ip_forwarding (fib_node_index_t fib_entry_index)
     ASSERT((fct == FIB_FORW_CHAIN_TYPE_UNICAST_IP4 ||
             fct == FIB_FORW_CHAIN_TYPE_UNICAST_IP6));
 
-    return (&fib_entry->fe_lb);
+    if (dpo_id_is_valid(&fib_entry->fe_lb))
+    {
+        return (&fib_entry->fe_lb);
+    }
+
+    return (drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
 }
 
 adj_index_t
@@ -757,15 +763,26 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
 }
 
 void
-fib_entry_source_change (fib_entry_t *fib_entry,
-                         fib_source_t old_source,
-			 fib_source_t new_source)
+fib_entry_recalculate_forwarding (fib_node_index_t fib_entry_index)
 {
-    fib_entry_flag_t old_flags;
+    fib_source_t best_source;
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
 
-    old_flags = fib_entry_get_flags_for_source(
-        fib_entry_get_index(fib_entry), old_source);
+    fib_entry = fib_entry_get(fib_entry_index);
 
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+    best_source = fib_entry_src_get_source(bsrc);
+
+    fib_entry_src_action_reactivate(fib_entry, best_source);
+}
+
+static void
+fib_entry_source_change_w_flags (fib_entry_t *fib_entry,
+                                 fib_source_t old_source,
+                                 fib_entry_flag_t old_flags,
+                                 fib_source_t new_source)
+{
     if (new_source < old_source)
     {
 	/*
@@ -776,11 +793,13 @@ fib_entry_source_change (fib_entry_t *fib_entry,
     }
     else if (new_source > old_source)
     {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
+        /*
+         * the new source loses. Re-activate the winning sources
+         * in case it is an interposer and hence relied on the losing
+         * source's path-list.
+         */
+        fib_entry_src_action_reactivate(fib_entry, old_source);
+        return;
     }
     else
     {
@@ -793,6 +812,20 @@ fib_entry_source_change (fib_entry_t *fib_entry,
     }
 
     fib_entry_post_update_actions(fib_entry, new_source, old_flags);
+}
+
+void
+fib_entry_source_change (fib_entry_t *fib_entry,
+                         fib_source_t old_source,
+			 fib_source_t new_source)
+{
+    fib_entry_flag_t old_flags;
+
+    old_flags = fib_entry_get_flags_for_source(
+        fib_entry_get_index(fib_entry), old_source);
+
+    return (fib_entry_source_change_w_flags(fib_entry, old_source,
+                                            old_flags, new_source));
 }
 
 void
@@ -835,7 +868,6 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
 		    const fib_route_path_t *rpath)
 {
     fib_source_t best_source;
-    fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
 
@@ -846,42 +878,10 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
 
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
-    bflags = fib_entry_src_get_flags(bsrc);
     
     fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpath);
 
-    /*
-     * if the path list for the source passed is invalid,
-     * then we need to create a new one. else we are updating
-     * an existing.
-     */
-    if (source < best_source)
-    {
-	/*
-	 * we have a new winning source.
-	 */
-	fib_entry_src_action_deactivate(fib_entry, best_source);
-	fib_entry_src_action_activate(fib_entry, source);
-    }
-    else if (source > best_source)
-    {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
-    }
-    else
-    {
-	/*
-	 * the new source is one this entry already has.
-	 * But the path-list was updated, which will contribute new forwarding,
-	 * so install it.
-	 */
-	fib_entry_src_action_reactivate(fib_entry, source);
-    }
-
-    fib_entry_post_update_actions(fib_entry, source, bflags);
+    fib_entry_source_change(fib_entry, best_source, source);
 }
 
 static fib_entry_src_flag_t
@@ -928,7 +928,8 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
 
-    if (FIB_SOURCE_MAX == best_source) {
+    if (FIB_SOURCE_MAX == best_source)
+    {
         /*
          * no more sources left. this entry is toast.
          */
@@ -1107,6 +1108,12 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
                 fib_entry_src_action_uninstall(fib_entry);
                 return (FIB_ENTRY_SRC_FLAG_NONE);
             }
+
+            /*
+             * reactivate the best source so the interposer gets restacked
+             */
+            fib_entry_src_action_reactivate(fib_entry, best_source);
+
             return (FIB_ENTRY_SRC_FLAG_ADDED);
         }
     }
@@ -1183,48 +1190,14 @@ fib_entry_update (fib_node_index_t fib_entry_index,
 
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
-    bflags = fib_entry_src_get_flags(bsrc);
+    bflags = fib_entry_get_flags_i(fib_entry);
 
-    fib_entry_src_action_path_swap(fib_entry,
-				   source,
-				   flags,
-				   paths);
-    /*
-     * handle possible realloc's by refetching the pointer
-     */
-    fib_entry = fib_entry_get(fib_entry_index);
+    fib_entry = fib_entry_src_action_path_swap(fib_entry,
+                                               source,
+                                               flags,
+                                               paths);
 
-    /*
-     * if the path list for the source passed is invalid,
-     * then we need to create a new one. else we are updating
-     * an existing.
-     */
-    if (source < best_source)
-    {
-	/*
-	 * we have a new winning source.
-	 */
-	fib_entry_src_action_deactivate(fib_entry, best_source);
-	fib_entry_src_action_activate(fib_entry, source);
-    }
-    else if (source > best_source) {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
-    }
-    else
-    {
-	/*
-	 * the new source is one this entry already has.
-	 * But the path-list was updated, which will contribute new forwarding,
-	 * so install it.
-	 */
-	fib_entry_src_action_reactivate(fib_entry, source);
-    }
-
-    fib_entry_post_update_actions(fib_entry, source, bflags);
+    fib_entry_source_change_w_flags(fib_entry, best_source, bflags, source);
 }
 
 
@@ -1240,7 +1213,8 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 	.install = !0,
 	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
     };
-    fib_source_t source, best_source;
+    CLIB_UNUSED(fib_source_t source);
+    fib_source_t best_source;
     fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *esrc;
@@ -1263,13 +1237,13 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 	    /*
 	     * only the best source gets to set the back walk flags
 	     */
-	    res = fib_entry_src_action_cover_change(fib_entry, source);
+	    res = fib_entry_src_action_cover_change(fib_entry, esrc);
             bflags = fib_entry_src_get_flags(esrc);
             best_source = fib_entry_src_get_source(esrc);
 	}
 	else
 	{
-	    fib_entry_src_action_cover_change(fib_entry, source);
+	    fib_entry_src_action_cover_change(fib_entry, esrc);
 	}
 	index++;
     }));
@@ -1312,7 +1286,8 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 	.install = !0,
 	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
     };
-    fib_source_t source, best_source;
+    CLIB_UNUSED(fib_source_t source);
+    fib_source_t best_source;
     fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *esrc;
@@ -1335,13 +1310,13 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 	    /*
 	     * only the best source gets to set the back walk flags
 	     */
-	    res = fib_entry_src_action_cover_update(fib_entry, source);
+	    res = fib_entry_src_action_cover_update(fib_entry, esrc);
             bflags = fib_entry_src_get_flags(esrc);
             best_source = fib_entry_src_get_source(esrc);
 	}
 	else
 	{
-	    fib_entry_src_action_cover_update(fib_entry, source);
+	    fib_entry_src_action_cover_update(fib_entry, esrc);
 	}
 	index++;
     }));
