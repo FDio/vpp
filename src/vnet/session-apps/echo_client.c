@@ -263,8 +263,8 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  stream_session_t *s;
 
-	  __sync_fetch_and_add (&ecm->tx_total, sp->bytes_sent);
-	  __sync_fetch_and_add (&ecm->rx_total, sp->bytes_received);
+	  clib_atomic_fetch_add (&ecm->tx_total, sp->bytes_sent);
+	  clib_atomic_fetch_add (&ecm->rx_total, sp->bytes_received);
 	  s = session_get_from_handle_if_valid (sp->vpp_session_handle);
 
 	  if (s)
@@ -276,7 +276,7 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      vec_delete (connections_this_batch, 1, i);
 	      i--;
-	      __sync_fetch_and_add (&ecm->ready_connections, -1);
+	      clib_atomic_fetch_add (&ecm->ready_connections, -1);
 	    }
 	  else
 	    {
@@ -404,7 +404,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
     }
 
   vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
-  __sync_fetch_and_add (&ecm->ready_connections, 1);
+  clib_atomic_fetch_add (&ecm->ready_connections, 1);
   if (ecm->ready_connections == ecm->expected_connections)
     {
       ecm->run_test = 1;

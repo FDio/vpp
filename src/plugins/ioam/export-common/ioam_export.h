@@ -436,7 +436,7 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
 	   */
 	  for (i = 0; i < vec_len (thread_index); i++)
 	    {
-	      while (__sync_lock_test_and_set (em->lockp[thread_index[i]], 1))
+	      while (clib_atomic_test_and_set (em->lockp[thread_index[i]]))
 		;
 	      em->buffer_per_thread[thread_index[i]] =
 		vec_pop (vec_buffer_indices);
@@ -479,7 +479,7 @@ do {                                                                           \
   from = vlib_frame_vector_args (F);                                           \
   n_left_from = (F)->n_vectors;                                                \
   next_index = (N)->cached_next_index;                                         \
-  while (__sync_lock_test_and_set ((EM)->lockp[(VM)->thread_index], 1));       \
+  while (clib_atomic_test_and_set ((EM)->lockp[(VM)->thread_index]));          \
   my_buf = ioam_export_get_my_buffer (EM, (VM)->thread_index);                 \
   my_buf->touched_at = vlib_time_now (VM);                                     \
   while (n_left_from > 0)                                                      \

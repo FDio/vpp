@@ -27,7 +27,7 @@
 
 lb_main_t lb_main;
 
-#define lb_get_writer_lock() do {} while(__sync_lock_test_and_set (lb_main.writer_lock, 1))
+#define lb_get_writer_lock() do {} while(clib_atomic_test_and_set (lb_main.writer_lock))
 #define lb_put_writer_lock() lb_main.writer_lock[0] = 0
 
 static void lb_as_stack (lb_as_t *as);

@@ -444,7 +444,7 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
   hash >>= t->log2_nbuckets;
 
-  while (__sync_lock_test_and_set (t->writer_lock, 1))
+  while (clib_atomic_test_and_set (t->writer_lock))
     ;
 
   /* First elt in the bucket? */

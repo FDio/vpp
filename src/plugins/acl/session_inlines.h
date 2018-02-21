@@ -410,7 +410,7 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
     }
 
   sess->deleted = 1;
-  clib_smp_atomic_add (&am->fa_session_total_deactivations, 1);
+  clib_atomic_fetch_add (&am->fa_session_total_deactivations, 1);
   clib_mem_set_heap (oldheap);
 }
 
@@ -432,7 +432,7 @@ acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
   pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
-  clib_smp_atomic_add (&am->fa_session_total_dels, 1);
+  clib_atomic_fetch_add (&am->fa_session_total_dels, 1);
 }
 
 always_inline int
@@ -571,7 +571,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
   pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
-  clib_smp_atomic_add (&am->fa_session_total_adds, 1);
+  clib_atomic_fetch_add (&am->fa_session_total_adds, 1);
   return sess;
 }
 
