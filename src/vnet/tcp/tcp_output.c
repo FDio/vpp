@@ -389,7 +389,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     case TCP_STATE_SYN_SENT:
       return tcp_make_syn_options (opts, tc->rcv_wscale);
     default:
-      clib_warning ("Not handled!");
+      clib_warning ("State not handled! %d", state);
       return 0;
     }
 }

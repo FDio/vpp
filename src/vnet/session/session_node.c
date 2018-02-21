@@ -389,6 +389,20 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 					 n_tx_pkts, 0);
 }
 
+int
+session_tx_fifo_dequeue_internal (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  session_manager_main_t * smm,
+				  session_fifo_event_t * e0,
+				  stream_session_t * s0, u32 thread_index,
+				  int *n_tx_pkts)
+{
+  application_t *app;
+  app = application_get (s0->opaque);
+  svm_fifo_unset_event (s0->server_tx_fifo);
+  return app->cb_fns.builtin_app_tx_callback (s0);
+}
+
 always_inline stream_session_t *
 session_event_get_session (session_fifo_event_t * e, u8 thread_index)
 {
@@ -505,7 +519,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e)
       clib_memcpy (e, headp, q->elsize);
       found = session_node_cmp_event (e, f);
       if (found)
-	break;
+	return 1;
       if (++index == q->maxsize)
 	index = 0;
     }
@@ -657,7 +671,7 @@ skip_dequeue:
 	    continue;
 	  svm_fifo_unset_event (s0->server_rx_fifo);
 	  app = application_get (s0->app_index);
-	  app->cb_fns.builtin_server_rx_callback (s0);
+	  app->cb_fns.builtin_app_rx_callback (s0);
 	  break;
 	case FIFO_EVENT_RPC:
 	  fp = e0->rpc_args.fp;
