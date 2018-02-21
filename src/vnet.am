@@ -27,6 +27,8 @@ if WITH_LIBSSL
 libvnet_la_LIBADD += -lcrypto
 endif
 
+libvnet_la_LIBADD += -lmbedtls -lmbedx509 -lmbedcrypto
+
 ########################################
 # Generic stuff
 ########################################
@@ -964,7 +966,8 @@ libvnet_la_SOURCES +=				\
   vnet/session-apps/echo_client.c		\
   vnet/session-apps/echo_server.c		\
   vnet/session-apps/http_server.c		\
-  vnet/session-apps/proxy.c
+  vnet/session-apps/proxy.c			\
+  vnet/session-apps/tls.c
 
 nobase_include_HEADERS +=			\
   vnet/session-apps/echo_client.h		\

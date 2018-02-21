@@ -103,7 +103,7 @@ session_alloc (u32 thread_index)
   return s;
 }
 
-static void
+void
 session_free (stream_session_t * s)
 {
   pool_put (session_manager_main.sessions[s->thread_index], s);
@@ -111,7 +111,7 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
-static int
+int
 session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
 {
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
@@ -463,9 +463,9 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Built-in server? Hand event to the callback... */
-  if (app->cb_fns.builtin_server_rx_callback)
-    return app->cb_fns.builtin_server_rx_callback (s);
+  /* Built-in app? Hand event to the callback... */
+  if (app->cb_fns.builtin_app_rx_callback)
+    return app->cb_fns.builtin_app_rx_callback (s);
 
   /* If no event, send one */
   if (svm_fifo_set_event (s->server_rx_fifo))
@@ -548,13 +548,13 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 int
 session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
-  application_t *app;
+  u32 opaque = 0, new_ti, new_si;
   stream_session_t *new_s = 0;
-  u64 handle;
-  u32 opaque = 0;
-  int error = 0;
   segment_manager_t *sm;
+  application_t *app;
   u8 alloc_fifos;
+  int error = 0;
+  u64 handle;
 
   /*
    * Find connection handle and cleanup half-open table
@@ -588,7 +588,11 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 	  error = -1;
 	}
       else
-	new_s->app_index = app->index;
+	{
+	  new_s->app_index = app->index;
+	  new_si = new_s->session_index;
+	  new_ti = new_s->thread_index;
+	}
     }
 
   /*
@@ -599,12 +603,18 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
     {
       SESSION_DBG ("failed to notify app");
       if (!is_fail)
-	stream_session_disconnect_transport (new_s);
+	{
+	  new_s = session_get (new_si, new_ti);
+	  stream_session_disconnect_transport (new_s);
+	}
     }
   else
     {
       if (!is_fail)
-	new_s->session_state = SESSION_STATE_READY;
+	{
+	  new_s = session_get (new_si, new_ti);
+	  new_s->session_state = SESSION_STATE_READY;
+	}
     }
 
   return error;
@@ -790,6 +800,102 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   return 0;
 }
 
+int
+session_open_cl (u32 app_index, session_endpoint_t * rmt, u32 opaque)
+{
+  transport_connection_t *tc;
+  transport_endpoint_t *tep;
+  segment_manager_t *sm;
+  stream_session_t *s;
+  application_t *app;
+  int rv;
+
+  tep = session_endpoint_to_transport (rmt);
+  rv = tp_vfts[rmt->transport_proto].open (tep);
+  if (rv < 0)
+    {
+      SESSION_DBG ("Transport failed to open connection.");
+      return VNET_API_ERROR_SESSION_CONNECT;
+    }
+
+  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
+
+  /* For dgram type of service, allocate session and fifos now.
+   */
+  app = application_get (app_index);
+  sm = application_get_connect_segment_manager (app);
+
+  if (session_alloc_and_init (sm, tc, 1, &s))
+    return -1;
+  s->app_index = app->index;
+  s->session_state = SESSION_STATE_CONNECTING_READY;
+
+  /* Tell the app about the new event fifo for this session */
+  app->cb_fns.session_connected_callback (app->index, opaque, s, 0);
+
+  return 0;
+}
+
+int
+session_open_vc (u32 app_index, session_endpoint_t * rmt, u32 opaque)
+{
+  transport_connection_t *tc;
+  transport_endpoint_t *tep;
+  u64 handle;
+  int rv;
+
+  /* TODO until udp is fixed */
+  if (rmt->transport_proto == TRANSPORT_PROTO_UDP)
+    return session_open_cl (app_index, rmt, opaque);
+
+  tep = session_endpoint_to_transport (rmt);
+  rv = tp_vfts[rmt->transport_proto].open (tep);
+  if (rv < 0)
+    {
+      SESSION_DBG ("Transport failed to open connection.");
+      return VNET_API_ERROR_SESSION_CONNECT;
+    }
+
+  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
+
+  /* If transport offers a stream service, only allocate session once the
+   * connection has been established.
+   * Add connection to half-open table and save app and tc index. The
+   * latter is needed to help establish the connection while the former
+   * is needed when the connect notify comes and we have to notify the
+   * external app
+   */
+  handle = (((u64) app_index) << 32) | (u64) tc->c_index;
+  session_lookup_add_half_open (tc, handle);
+
+  /* Store api_context (opaque) for when the reply comes. Not the nicest
+   * thing but better than allocating a separate half-open pool.
+   */
+  tc->s_index = opaque;
+  return 0;
+}
+
+int
+session_open_app (u32 app_index, session_endpoint_t * rmt, u32 opaque)
+{
+  session_endpoint_extended_t sep;
+  clib_memcpy (&sep, rmt, sizeof (*rmt));
+  sep.app_index = app_index;
+  sep.opaque = opaque;
+
+  return tp_vfts[rmt->transport_proto].open ((transport_endpoint_t *) & sep);
+}
+
+typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
+
+/* *INDENT-OFF* */
+static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
+  session_open_vc,
+  session_open_cl,
+  session_open_app,
+};
+/* *INDENT-ON* */
+
 /**
  * Ask transport to open connection to remote transport endpoint.
  *
@@ -806,58 +912,8 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 int
 session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 {
-  transport_connection_t *tc;
-  transport_endpoint_t *tep;
-  segment_manager_t *sm;
-  stream_session_t *s;
-  application_t *app;
-  int rv;
-  u64 handle;
-
-  tep = session_endpoint_to_transport (rmt);
-  rv = tp_vfts[rmt->transport_proto].open (tep);
-  if (rv < 0)
-    {
-      SESSION_DBG ("Transport failed to open connection.");
-      return VNET_API_ERROR_SESSION_CONNECT;
-    }
-
-  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
-
-  /* If transport offers a stream service, only allocate session once the
-   * connection has been established.
-   */
-  if (transport_is_stream (rmt->transport_proto))
-    {
-      /* Add connection to half-open table and save app and tc index. The
-       * latter is needed to help establish the connection while the former
-       * is needed when the connect notify comes and we have to notify the
-       * external app
-       */
-      handle = (((u64) app_index) << 32) | (u64) tc->c_index;
-      session_lookup_add_half_open (tc, handle);
-
-      /* Store api_context (opaque) for when the reply comes. Not the nicest
-       * thing but better than allocating a separate half-open pool.
-       */
-      tc->s_index = opaque;
-    }
-  /* For dgram type of service, allocate session and fifos now.
-   */
-  else
-    {
-      app = application_get (app_index);
-      sm = application_get_connect_segment_manager (app);
-
-      if (session_alloc_and_init (sm, tc, 1, &s))
-	return -1;
-      s->app_index = app->index;
-      s->session_state = SESSION_STATE_CONNECTING_READY;
-
-      /* Tell the app about the new event fifo for this session */
-      app->cb_fns.session_connected_callback (app->index, opaque, s, 0);
-    }
-  return 0;
+  transport_service_type_t tst = tp_vfts[rmt->transport_proto].service_type;
+  return session_open_srv_fns[tst] (app_index, rmt, opaque);
 }
 
 /**
@@ -869,7 +925,7 @@ session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
  * @param tep Local endpoint to be listened on.
  */
 int
-stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
+session_listen_vc (stream_session_t * s, session_endpoint_t * sep)
 {
   transport_connection_t *tc;
   u32 tci;
@@ -893,6 +949,36 @@ stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
   /* Add to the main lookup table */
   session_lookup_add_connection (tc, s->session_index);
   return 0;
+}
+
+int
+session_listen_app (stream_session_t * s, session_endpoint_t * sep)
+{
+  session_endpoint_extended_t esep;
+  clib_memcpy (&esep, sep, sizeof (*sep));
+  esep.app_index = s->app_index;
+
+  return tp_vfts[sep->transport_proto].bind (s->session_index,
+					     (transport_endpoint_t *) & esep);
+}
+
+typedef int (*session_listen_service_fn) (stream_session_t *,
+					  session_endpoint_t *);
+
+/* *INDENT-OFF* */
+static session_listen_service_fn
+session_listen_srv_fns[TRANSPORT_N_SERVICES] = {
+  session_listen_vc,
+  session_listen_vc,
+  session_listen_app,
+};
+/* *INDENT-ON* */
+
+int
+stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
+{
+  transport_service_type_t tst = tp_vfts[sep->transport_proto].service_type;
+  return session_listen_srv_fns[tst] (s, sep);
 }
 
 /**
@@ -1039,6 +1125,14 @@ session_manager_get_evt_q_segment (void)
   return 0;
 }
 
+/* *INDENT-OFF* */
+static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
+    session_tx_fifo_peek_and_snd,
+    session_tx_fifo_dequeue_and_snd,
+    session_tx_fifo_dequeue_internal
+};
+/* *INDENT-ON* */
+
 /**
  * Initialize session layer for given transport proto and ip version
  *
@@ -1061,15 +1155,18 @@ session_register_transport (transport_proto_t transport_proto,
   vec_validate (smm->session_tx_fns, session_type);
 
   /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    next_index = vlib_node_add_next (this_vlib_main, session_queue_node.index,
-                                     output_node);
-  }));
+  if (output_node != ~0)
+    {
+      foreach_vlib_main (({
+          next_index = vlib_node_add_next (this_vlib_main,
+                                           session_queue_node.index,
+                                           output_node);
+      }));
+    }
   /* *INDENT-ON* */
 
   smm->session_type_to_next[session_type] = next_index;
-  session_manager_set_transport_rx_fn (session_type,
-				       vft->tx_fifo_offset != 0);
+  smm->session_tx_fns[session_type] = session_tx_fns[vft->tx_type];
 }
 
 transport_connection_t *
@@ -1118,8 +1215,7 @@ session_manager_main_enable (vlib_main_t * vm)
   segment_manager_main_init_args_t _sm_args = { 0 }, *sm_args = &_sm_args;
   session_manager_main_t *smm = &session_manager_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads;
-  u32 preallocated_sessions_per_worker;
+  u32 num_threads, preallocated_sessions_per_worker;
   int i, j;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
