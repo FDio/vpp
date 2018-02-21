@@ -85,8 +85,13 @@ typedef struct _stream_session_t
   /** Transport specific */
   u32 connection_index;
 
-  /** Parent listener session if the result of an accept */
-  u32 listener_index;
+  union
+  {
+    /** Parent listener session if the result of an accept */
+    u32 listener_index;
+    /** Opaque, for general use */
+    u32 opaque;
+  };
 
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } stream_session_t;
@@ -133,19 +138,26 @@ typedef struct local_session_
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } local_session_t;
 
+#define foreach_session_endpoint_fields				\
+    foreach_transport_connection_fields				\
+    _(u8, transport_proto)					\
+    _(u8, app_proto)						\
+
 typedef struct _session_endpoint
 {
-  /*
-   * Network specific
-   */
 #define _(type, name) type name;
-  foreach_transport_connection_fields
+  foreach_session_endpoint_fields
 #undef _
-    /*
-     * Session specific
-     */
-  u8 transport_proto;	/**< transport protocol for session */
 } session_endpoint_t;
+
+typedef struct _session_endpoint_extended
+{
+#define _(type, name) type name;
+  foreach_session_endpoint_fields
+#undef _
+  u32 app_index;
+  u32 opaque;
+} session_endpoint_extended_t;
 
 #define SESSION_IP46_ZERO		\
 {					\
@@ -161,6 +173,7 @@ typedef struct _session_endpoint
   .is_ip4 = 0,				\
   .port = 0,				\
   .transport_proto = 0,			\
+  .app_proto = 0,			\
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)

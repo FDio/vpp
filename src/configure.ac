@@ -137,6 +137,7 @@ DISABLE_ARG(vom,	[Disable VPP object model bindings])
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
 WITHOUT_ARG(apicli,	[Disable binary api CLI])
+WITHOUT_ARG(mbedtls,	[Disable mbedtls])
 
 AC_ARG_WITH(unix,
             AC_HELP_STRING([--with-unix],[Compile unix version of clib]),
@@ -196,6 +197,7 @@ AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
+AC_DEFINE_UNQUOTED(WITH_MBEDTLS,	[${n_with_mbedtls}])
 
 
 # Silence following noise:
@@ -305,6 +307,15 @@ AM_COND_IF([ENABLE_MARVELL_PLUGIN],
       enable_marvell_plugin=no
       AM_CONDITIONAL(ENABLE_MARVELL_PLUGIN, false)
     ])
+])
+
+AM_COND_IF([WITH_MBEDTLS],
+[
+  AC_CHECK_HEADERS([mbedtls/ssl.h], [],
+    [
+      AC_MSG_WARN([mbedtls headers not found. TLS app disabled])
+      AM_CONDITIONAL(WITH_MBEDTLS, false)
+    ], [])
 ])
 
 AC_PATH_PROG([VPPAPIGEN], [vppapigen], [no])
