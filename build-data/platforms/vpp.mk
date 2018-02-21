@@ -42,6 +42,10 @@ ifeq ($(MACHINE),i686)
 vpp_configure_args_vpp += --disable-lb-plugin
 endif
 
+ifeq ($(OS_ID),opensuse)
+vpp_configure_args_vpp += --without-mbedtls
+endif
+
 # To disable the VPP object model build - and save about half the build time -
 # uncomment the following...
 # vpp_configure_args_vpp += --disable-vom
