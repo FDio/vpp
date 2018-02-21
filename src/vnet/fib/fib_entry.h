@@ -128,9 +128,16 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_DEFAULT_ROUTE,
     /**
+     * The interpose source.
+     * This is not a real source, so don't use it to source a prefix.
+     * It exists here to provide a value against which to register to the
+     * VFT for providing the interpose actions to a real source.
+     */
+    FIB_SOURCE_INTERPOSE,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_SOURCE_LAST = FIB_SOURCE_DEFAULT_ROUTE,
+    FIB_SOURCE_LAST = FIB_SOURCE_INTERPOSE,
 } __attribute__ ((packed)) fib_source_t;
 
 STATIC_ASSERT (sizeof(fib_source_t) == 1,
@@ -146,6 +153,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \
     [FIB_SOURCE_BIER] = "BIER",			        \
+    [FIB_SOURCE_IP6_ND_PROXY] = "proxy",                \
     [FIB_SOURCE_API] = "API",			        \
     [FIB_SOURCE_CLI] = "CLI",			        \
     [FIB_SOURCE_ADJ] = "adjacency",			\
@@ -161,6 +169,8 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_MPLS] = "mpls",           	        \
     [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
+    [FIB_SOURCE_PLUGIN_HI] = "plugin-hi",               \
+    [FIB_SOURCE_INTERPOSE] = "interpose",               \
 }
 
 #define FOR_EACH_FIB_SOURCE(_item) \
@@ -218,9 +228,15 @@ typedef enum fib_entry_attribute_t_ {
      */
     FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
     /**
+     * The interpose attribute.
+     * place the forwarding provided by the source infront of the forwarding
+     * provided by the best source, or failing that, by the cover.
+     */
+    FIB_ENTRY_ATTRIBUTE_INTERPOSE,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_INTERPOSE,
 } fib_entry_attribute_t;
 
 #define FIB_ENTRY_ATTRIBUTES {		       		\
@@ -233,6 +249,7 @@ typedef enum fib_entry_attribute_t_ {
     [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
     [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
     [FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT] = "covered-inherit",  \
+    [FIB_ENTRY_ATTRIBUTE_INTERPOSE] = "interpose",  \
 }
 
 #define FOR_EACH_FIB_ATTRIBUTE(_item)			\
@@ -251,6 +268,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
     FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
     FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),
+    FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
 } __attribute__((packed)) fib_entry_flag_t;
 
 /**
@@ -265,6 +283,10 @@ typedef enum fib_entry_src_attribute_t_ {
      * the source has been added to the entry
      */
     FIB_ENTRY_SRC_ATTRIBUTE_ADDED = FIB_ENTRY_SRC_ATTRIBUTE_FIRST,
+    /**
+     * the source is contributing forwarding
+     */
+    FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING,
     /**
      * the source is active/best
      */
@@ -283,6 +305,7 @@ typedef enum fib_entry_src_attribute_t_ {
 
 #define FIB_ENTRY_SRC_ATTRIBUTES {		 \
     [FIB_ENTRY_SRC_ATTRIBUTE_ADDED]  = "added",	 \
+    [FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING] = "contributing", \
     [FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE] = "active", \
     [FIB_ENTRY_SRC_ATTRIBUTE_INHERITED] = "inherited", \
 }
@@ -295,6 +318,7 @@ typedef enum fib_entry_src_attribute_t_ {
 typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_NONE   = 0,
     FIB_ENTRY_SRC_FLAG_ADDED  = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ADDED),
+    FIB_ENTRY_SRC_FLAG_CONTRIBUTING = (1 << FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING),
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
     FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
 } __attribute__ ((packed)) fib_entry_src_flag_t;
@@ -319,10 +343,17 @@ typedef struct fib_entry_src_t_ {
      * The path-list created by the source
      */
     fib_node_index_t fes_pl;
+
+    /**
+     * Flags the source contributes to the entry
+     */
+    fib_entry_flag_t fes_entry_flags;
+
     /**
      * Which source this info block is for
      */
     fib_source_t fes_src;
+
     /**
      * Flags on the source
      */
@@ -334,11 +365,6 @@ typedef struct fib_entry_src_t_ {
      * of times a given source has been added. Which is even fewer
      */
     u8 fes_ref_count;
-
-    /**
-     * Flags the source contributes to the entry
-     */
-    fib_entry_flag_t fes_entry_flags;
     
     /**
      * Source specific info
@@ -354,6 +380,21 @@ typedef struct fib_entry_src_t_ {
 	     */
 	    u32 fesr_sibling;
 	} rr;
+	struct {
+	    /**
+	     * the index of the FIB entry that is the covering entry
+	     */
+	    fib_node_index_t fesi_cover;
+	    /**
+	     * This source's index in the cover's list
+	     */
+	    u32 fesi_sibling;
+            /**
+             * DPO type to interpose. The dpo type needs to have registered
+             * it's 'contribute interpose' callback function.
+             */
+            dpo_id_t fesi_dpo;
+	} interpose;
 	struct {
 	    /**
 	     * the index of the FIB entry that is the covering entry
@@ -391,7 +432,7 @@ typedef struct fib_entry_src_t_ {
 	     */
             fib_node_index_t fesl_fib_index;
 	} lisp;
-    };
+    } u;
 } fib_entry_src_t;
 
 /**
@@ -502,6 +543,8 @@ extern void fib_entry_inherit(fib_node_index_t cover,
 extern fib_entry_src_flag_t fib_entry_delete(fib_node_index_t fib_entry_index,
 					     fib_source_t source);
 
+extern void fib_entry_recalculate_forwarding(
+    fib_node_index_t fib_entry_index);
 extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
 				      index_t urpf);
 extern void fib_entry_contribute_forwarding(

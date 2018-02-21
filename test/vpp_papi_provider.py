@@ -2875,25 +2875,14 @@ class VppPapiProvider(object):
                            paths,
                            is_add=1):
         """ BIER Route add/del """
-        br_paths = []
-        for p in paths:
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': 0,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': len(p.nh_labels),
-                             'label_stack': p.nh_labels})
         return self.api(
             self.papi.bier_route_add_del,
             {'br_tbl_id': {"bt_set": bti.set_id,
                            "bt_sub_domain": bti.sub_domain_id,
                            "bt_hdr_len_id": bti.hdr_len_id},
              'br_bp': bp,
-             'br_n_paths': len(br_paths),
-             'br_paths': br_paths,
+             'br_n_paths': len(paths),
+             'br_paths': paths,
              'br_is_add': is_add})
 
     def bier_route_dump(self, bti):
