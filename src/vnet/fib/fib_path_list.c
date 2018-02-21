@@ -1011,13 +1011,11 @@ fib_path_list_path_remove (fib_node_index_t path_list_index,
 fib_node_index_t
 fib_path_list_copy_and_path_remove (fib_node_index_t orig_path_list_index,
 				    fib_path_list_flags_t flags,
-				    const fib_route_path_t *rpaths)
+				    const fib_route_path_t *rpath)
 {
     fib_node_index_t path_index, *orig_path_index, path_list_index, tmp_path_index;
     fib_path_list_t *path_list,  *orig_path_list;
     fib_node_index_t pi;
-
-    ASSERT(1 == vec_len(rpaths));
 
     path_list = fib_path_list_alloc(&path_list_index);
 
@@ -1041,8 +1039,7 @@ fib_path_list_copy_and_path_remove (fib_node_index_t orig_path_list_index,
      * create a representation of the path to be removed, so it
      * can be used as a comparison object during the copy.
      */
-    tmp_path_index = fib_path_create(path_list_index,
-				     rpaths);
+    tmp_path_index = fib_path_create(path_list_index, rpath);
 
     vec_foreach (orig_path_index, orig_path_list->fpl_paths)
     {

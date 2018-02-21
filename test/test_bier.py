@@ -315,10 +315,12 @@ class TestBier(VppTestCase):
         #
         # BIER route in table that's for-us
         #
-        bier_route_1 = VppBierRoute(self, bti, 1,
-                                    [VppRoutePath("0.0.0.0",
-                                                  0xffffffff,
-                                                  nh_table_id=8)])
+        bier_route_1 = VppBierRoute(
+            self, bti, 1,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          proto=DpoProto.DPO_PROTO_BIER,
+                          nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
         #
@@ -446,10 +448,12 @@ class TestBier(VppTestCase):
         # BIER routes in table that are for-us, resolving through
         # disp table 8.
         #
-        bier_route_1 = VppBierRoute(self, bti, 1,
-                                    [VppRoutePath("0.0.0.0",
-                                                  0xffffffff,
-                                                  nh_table_id=8)])
+        bier_route_1 = VppBierRoute(
+            self, bti, 1,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          proto=DpoProto.DPO_PROTO_BIER,
+                          nh_table_id=8)])
         bier_route_1.add_vpp_config()
         bier_route_max = VppBierRoute(self, bti, max_bp,
                                       [VppRoutePath("0.0.0.0",
@@ -573,11 +577,12 @@ class TestBier(VppTestCase):
                                 330, 8138)
         udp_encap.add_vpp_config()
 
-        bier_route = VppBierRoute(self, bti, 1,
-                                  [VppRoutePath("0.0.0.0",
-                                                0xFFFFFFFF,
-                                                is_udp_encap=1,
-                                                next_hop_id=4)])
+        bier_route = VppBierRoute(
+            self, bti, 1,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          is_udp_encap=1,
+                          next_hop_id=4)])
         bier_route.add_vpp_config()
 
         #
@@ -652,10 +657,12 @@ class TestBier(VppTestCase):
         #
         # BIER route in table that's for-us
         #
-        bier_route_1 = VppBierRoute(self, bti, 1,
-                                    [VppRoutePath("0.0.0.0",
-                                                  0xffffffff,
-                                                  nh_table_id=8)])
+        bier_route_1 = VppBierRoute(
+            self, bti, 1,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          proto=DpoProto.DPO_PROTO_BIER,
+                          nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
         #
