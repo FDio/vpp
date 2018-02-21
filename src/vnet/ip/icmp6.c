@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/pg/pg.h>
 
 static u8 *
@@ -356,6 +357,13 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
 		vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
+
+	      vnet_set_ip6_ethernet_neighbor (vm,
+					      vnet_buffer (p0)->sw_if_index
+					      [VLIB_RX], &ip0->dst_address,
+					      eth0->dst_address,
+					      sizeof (eth0->dst_address), 0,
+					      1);
 	    }
 	  else
 	    {
@@ -380,6 +388,13 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
 		vnet_buffer (p1)->sw_if_index[VLIB_RX];
 	      next1 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
+
+	      vnet_set_ip6_ethernet_neighbor (vm,
+					      vnet_buffer (p1)->sw_if_index
+					      [VLIB_RX], &ip1->dst_address,
+					      eth1->dst_address,
+					      sizeof (eth1->dst_address), 0,
+					      1);
 	    }
 	  else
 	    {
@@ -456,6 +471,13 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
 		vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
+
+	      vnet_set_ip6_ethernet_neighbor (vm,
+					      vnet_buffer (p0)->sw_if_index
+					      [VLIB_RX], &ip0->dst_address,
+					      eth0->dst_address,
+					      sizeof (eth0->dst_address), 0,
+					      1);
 	    }
 	  else
 	    {
