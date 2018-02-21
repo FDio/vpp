@@ -69,14 +69,14 @@ ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += openjdk-8-jdk-headless
-	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += libssl-dev libmbedtls-dev
 	APT_ARGS = -t jessie-backports
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += default-jdk-headless
-	DEB_DEPENDS += libssl1.0-dev
+	DEB_DEPENDS += libssl1.0-dev libmbedtls-dev
 else 
 	DEB_DEPENDS += default-jdk-headless
-	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += libssl-dev libmbedtls-dev
 endif
 
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
@@ -88,7 +88,7 @@ RPM_DEPENDS += subunit subunit-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
 
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
-	RPM_DEPENDS += openssl-devel
+	RPM_DEPENDS += openssl-devel mbedtls-devel
 	RPM_DEPENDS += python-devel python2-ply
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
@@ -98,7 +98,7 @@ else ifeq ($(shell if [ "$(OS_ID)" = "fedora" ]; then test $(OS_VERSION_ID) -gt 
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
-	RPM_DEPENDS += openssl-devel
+	RPM_DEPENDS += openssl-devel mbedtls-devel
 	RPM_DEPENDS += python-devel python-ply
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -113,7 +113,7 @@ RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
 RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make python-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
-RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
@@ -282,7 +282,7 @@ endif
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
-	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
+	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
