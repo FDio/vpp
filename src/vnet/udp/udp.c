@@ -321,7 +321,9 @@ const static transport_proto_vft_t udp_proto = {
   .send_space = udp_send_space,
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
-  .format_listener = format_udp_listener_session
+  .format_listener = format_udp_listener_session,
+  .tx_type = TRANSPORT_TX_DEQUEUE,
+  .service_type = TRANSPORT_SERVICE_VC,
 };
 /* *INDENT-ON* */
 

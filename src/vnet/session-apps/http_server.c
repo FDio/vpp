@@ -53,6 +53,7 @@ typedef struct
   u32 prealloc_fifos;
   u32 private_segment_size;
   u32 fifo_size;
+  u8 *uri;
   vlib_main_t *vlib_main;
 } http_server_main_t;
 
@@ -476,7 +477,7 @@ static session_cb_vft_t http_server_session_cb_vft = {
   .session_disconnect_callback = http_server_session_disconnect_callback,
   .session_connected_callback = http_server_session_connected_callback,
   .add_segment_callback = http_server_add_segment_callback,
-  .builtin_server_rx_callback = http_server_rx_callback,
+  .builtin_app_rx_callback = http_server_rx_callback,
   .session_reset_callback = http_server_session_reset_callback
 };
 
@@ -537,6 +538,8 @@ http_server_listen ()
   memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
   a->uri = "tcp://0.0.0.0/80";
+  if (hsm->uri)
+    a->uri = (char *)hsm->uri;
   return vnet_bind_uri (a);
 }
 
@@ -599,6 +602,8 @@ http_server_create_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "fifo-size %d", &hsm->fifo_size))
 	hsm->fifo_size <<= 10;
+      else if (unformat (input, "uri %s", &hsm->uri))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -610,7 +615,7 @@ http_server_create_command_fn (vlib_main_t * vm,
 
   if (is_static)
     {
-      http_server_session_cb_vft.builtin_server_rx_callback =
+      http_server_session_cb_vft.builtin_app_rx_callback =
 	http_server_rx_callback_static;
       html = format (0, html_header_static);
       static_http = format (0, http_response, vec_len (html), html);
