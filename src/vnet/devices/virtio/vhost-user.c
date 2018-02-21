@@ -599,7 +599,7 @@ vhost_user_kickfd_read_ready (clib_file_t * uf)
 static inline int
 vhost_user_vring_try_lock (vhost_user_intf_t * vui, u32 qid)
 {
-  return __sync_lock_test_and_set (vui->vring_locks[qid], 1);
+  return clib_atomic_test_and_set (vui->vring_locks[qid]);
 }
 
 /**
@@ -1939,7 +1939,7 @@ vhost_user_input (vlib_main_t * vm,
 
   vec_foreach (dq, rt->devices_and_queues)
   {
-    if (clib_smp_swap (&dq->interrupt_pending, 0) ||
+    if (clib_atomic_swap (&dq->interrupt_pending, 0) ||
 	(node->state == VLIB_NODE_STATE_POLLING))
       {
 	vui =

@@ -254,7 +254,7 @@ set_ply_with_more_specific_leaf (ip4_fib_mtrie_t * m,
       else if (new_leaf_dst_address_bits >=
 	       ply->dst_address_bits_of_leaves[i])
 	{
-	  __sync_val_compare_and_swap (&ply->leaves[i], old_leaf, new_leaf);
+	  clib_atomic_cmp_and_swap (&ply->leaves[i], old_leaf, new_leaf);
 	  ASSERT (ply->leaves[i] == new_leaf);
 	  ply->dst_address_bits_of_leaves[i] = new_leaf_dst_address_bits;
 	  ply->n_non_empty_leafs += ip4_fib_mtrie_leaf_is_non_empty (ply, i);
@@ -319,8 +319,8 @@ set_leaf (ip4_fib_mtrie_t * m,
 
 		  old_ply->dst_address_bits_of_leaves[i] =
 		    a->dst_address_length;
-		  __sync_val_compare_and_swap (&old_ply->leaves[i], old_leaf,
-					       new_leaf);
+		  clib_atomic_cmp_and_swap (&old_ply->leaves[i], old_leaf,
+					    new_leaf);
 		  ASSERT (old_ply->leaves[i] == new_leaf);
 
 		  old_ply->n_non_empty_leafs +=
@@ -378,8 +378,8 @@ set_leaf (ip4_fib_mtrie_t * m,
 	  /* Refetch since ply_create may move pool. */
 	  old_ply = pool_elt_at_index (ip4_ply_pool, old_ply_index);
 
-	  __sync_val_compare_and_swap (&old_ply->leaves[dst_byte], old_leaf,
-				       new_leaf);
+	  clib_atomic_cmp_and_swap (&old_ply->leaves[dst_byte], old_leaf,
+				    new_leaf);
 	  ASSERT (old_ply->leaves[dst_byte] == new_leaf);
 	  old_ply->dst_address_bits_of_leaves[dst_byte] = ply_base_len;
 
@@ -451,8 +451,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 		   * the new one */
 		  old_ply->dst_address_bits_of_leaves[slot] =
 		    a->dst_address_length;
-		  __sync_val_compare_and_swap (&old_ply->leaves[slot],
-					       old_leaf, new_leaf);
+		  clib_atomic_cmp_and_swap (&old_ply->leaves[slot], old_leaf,
+					    new_leaf);
 		  ASSERT (old_ply->leaves[slot] == new_leaf);
 		}
 	      else
@@ -498,8 +498,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 				 ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
-	  __sync_val_compare_and_swap (&old_ply->leaves[dst_byte], old_leaf,
-				       new_leaf);
+	  clib_atomic_cmp_and_swap (&old_ply->leaves[dst_byte], old_leaf,
+				    new_leaf);
 	  ASSERT (old_ply->leaves[dst_byte] == new_leaf);
 	  old_ply->dst_address_bits_of_leaves[dst_byte] = ply_base_len;
 	}

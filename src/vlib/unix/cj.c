@@ -44,7 +44,7 @@ cj_log (u32 type, void *data0, void *data1)
   if (cjm->enable == 0)
     return;
 
-  new_tail = __sync_add_and_fetch (&cjm->tail, 1);
+  new_tail = clib_atomic_add_fetch (&cjm->tail, 1);
 
   r = (cj_record_t *) & (cjm->records[new_tail & (cjm->num_records - 1)]);
   r->time = vlib_time_now (cjm->vlib_main);
