@@ -144,9 +144,10 @@ ldp_init (void)
 	      else
 		{
 		  ldp->debug = tmp;
-		  clib_warning ("LDP<%d>: configured LDP debug level (%u) "
-				"from the env var " LDP_ENV_DEBUG "!",
-				getpid (), ldp->debug);
+		  if (LDP_DEBUG > 0)
+		    clib_warning ("LDP<%d>: configured LDP debug level (%u) "
+				  "from the env var " LDP_ENV_DEBUG "!",
+				  getpid (), ldp->debug);
 		}
 	    }
 
@@ -154,9 +155,10 @@ ldp_init (void)
 	  if (env_var_str)
 	    {
 	      ldp_set_app_name (env_var_str);
-	      clib_warning ("LDP<%d>: configured LDP app name (%s) "
-			    "from the env var " LDP_ENV_APP_NAME "!",
-			    getpid (), ldp->app_name);
+	      if (LDP_DEBUG > 0)
+		clib_warning ("LDP<%d>: configured LDP app name (%s) "
+			      "from the env var " LDP_ENV_APP_NAME "!",
+			      getpid (), ldp->app_name);
 	    }
 
 	  env_var_str = getenv (LDP_ENV_SID_BIT);
@@ -203,15 +205,17 @@ ldp_init (void)
 		  ldp->sid_bit_val = (1 << sb);
 		  ldp->sid_bit_mask = ldp->sid_bit_val - 1;
 
-		  clib_warning ("LDP<%d>: configured LDP sid bit (%u) "
-				"from " LDP_ENV_SID_BIT
-				"!  sid bit value %d (0x%x)", getpid (),
-				sb, ldp->sid_bit_val, ldp->sid_bit_val);
+		  if (LDP_DEBUG > 0)
+		    clib_warning ("LDP<%d>: configured LDP sid bit (%u) "
+				  "from " LDP_ENV_SID_BIT
+				  "!  sid bit value %d (0x%x)", getpid (),
+				  sb, ldp->sid_bit_val, ldp->sid_bit_val);
 		}
 	    }
 
 	  clib_time_init (&ldp->clib_time);
-	  clib_warning ("LDP<%d>: LDP initialization: done!", getpid ());
+	  if (LDP_DEBUG > 0)
+	    clib_warning ("LDP<%d>: LDP initialization: done!", getpid ());
 	}
       else
 	{
@@ -3413,7 +3417,7 @@ ldp_constructor (void)
   if (ldp_init () != 0)
     fprintf (stderr, "\nLDP<%d>: ERROR: ldp_constructor: failed!\n",
 	     getpid ());
-  else
+  else if (LDP_DEBUG > 0)
     clib_warning ("LDP<%d>: LDP constructor: done!\n", getpid ());
 }
 
@@ -3433,8 +3437,9 @@ ldp_destructor (void)
   /* Don't use clib_warning() here because that calls writev()
    * which will call ldp_init().
    */
-  printf ("%s:%d: LDP<%d>: LDP destructor: done!\n",
-	  __func__, __LINE__, getpid ());
+  if (LDP_DEBUG > 0)
+    printf ("%s:%d: LDP<%d>: LDP destructor: done!\n",
+	    __func__, __LINE__, getpid ());
 }
 
 
