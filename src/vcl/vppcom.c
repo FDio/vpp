@@ -856,7 +856,8 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
  * XXX Need segment_name to session_id hash,
  * XXX - have sessionID by handle hash currently
  */
-  clib_warning ("Unmapped segment '%s'", mp->segment_name);
+  if (VPPCOM_DEBUG > 1)
+    clib_warning ("Unmapped segment '%s'", mp->segment_name);
 }
 
 static void
@@ -2172,15 +2173,15 @@ vppcom_app_create (char *app_name)
 	{
 	  u32 tmp;
 	  if (sscanf (env_var_str, "%u", &tmp) != 1)
-	    clib_warning ("VCL<%d>: Invalid debug level specified in "
-			  "the environment variable "
-			  VPPCOM_ENV_DEBUG
+	    clib_warning ("VCL<%d>: WARNING: Invalid debug level specified "
+			  "in the environment variable " VPPCOM_ENV_DEBUG
 			  " (%s)!\n", getpid (), env_var_str);
 	  else
 	    {
 	      vcm->debug = tmp;
-	      clib_warning ("VCL<%d>: configured VCL debug level (%u) from "
-			    VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("VCL<%d>: configured VCL debug level (%u) from "
+			      VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
 	    }
 	}
       conf_fname = getenv (VPPCOM_ENV_CONF);
@@ -2212,8 +2213,8 @@ vppcom_app_create (char *app_name)
 	{
 	  u64 tmp;
 	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
-	    clib_warning ("VCL<%d>: Invalid namespace secret specified in "
-			  "the environment variable "
+	    clib_warning ("VCL<%d>: WARNING: Invalid namespace secret "
+			  "specified in the environment variable "
 			  VPPCOM_ENV_APP_NAMESPACE_SECRET
 			  " (%s)!\n", getpid (), env_var_str);
 	  else
@@ -2244,8 +2245,8 @@ vppcom_app_create (char *app_name)
 	{
 	  u64 tmp;
 	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
-	    clib_warning ("VCL<%d>: Invalid namespace secret specified in "
-			  "the environment variable "
+	    clib_warning ("VCL<%d>: WARNING: Invalid namespace secret "
+			  "specified in the environment variable "
 			  VPPCOM_ENV_APP_NAMESPACE_SECRET
 			  " (%s)!\n", getpid (), env_var_str);
 	  else
@@ -3950,10 +3951,10 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
     }
   if (PREDICT_FALSE (vep_next_sid == ~0))
     {
-      if (VPPCOM_DEBUG > 0)
+      if (VPPCOM_DEBUG > 1)
 	clib_warning ("VCL<%d>: WARNING: vep_idx (%u) is empty!",
 		      getpid (), vep_idx);
-      if (VPPCOM_DEBUG > 0)
+      if (VPPCOM_DEBUG > 1)
 	{
           /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
