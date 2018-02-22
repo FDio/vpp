@@ -209,6 +209,12 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_FLOW_CLASSIFY,n)
 	$(call set,RTE_KNI_KMOD,n)
 	$(call set,RTE_EAL_IGB_UIO,n)
+	@# currently broken in 18.02
+	$(call set,RTE_LIBRTE_DPAA_BUS,n)
+	$(call set,RTE_LIBRTE_DPAA_MEMPOOL,n)
+	$(call set,RTE_LIBRTE_DPAA_PMD,n)
+	$(call set,RTE_LIBRTE_PMD_DPAA_SEC,n)
+	$(call set,RTE_LIBRTE_PMD_DPAA_EVENTDEV,n)
 	@rm -f .config.ok
 
 $(CURDIR)/$(DPDK_TARBALL):
