@@ -22,6 +22,30 @@
       "revId": "7c3f38a10a034ab2863ce9220f42f12501265ad7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a846cdcd_05acab7c",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-02-22T16:12:50Z",
+      "side": 1,
+      "message": "Ack. I may push a one-line patch sometime, etc.",
+      "parentUuid": "2fbc41ac_8504abd9",
+      "range": {
+        "startLine": 94,
+        "startChar": 44,
+        "endLine": 94,
+        "endChar": 52
+      },
+      "revId": "7c3f38a10a034ab2863ce9220f42f12501265ad7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
