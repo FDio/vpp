@@ -4,11 +4,8 @@
 import unittest
 import os
 import signal
-import subprocess
-from threading import Thread
-from log import single_line_delim
 from framework import VppTestCase, running_extended_tests, \
-    running_on_centos, VppTestRunner, Worker
+    VppTestRunner, Worker
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")

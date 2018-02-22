@@ -4,9 +4,6 @@
 import unittest
 import os
 import signal
-import subprocess
-from threading import Thread
-from log import single_line_delim
 from framework import VppTestCase, running_extended_tests, \
     running_on_centos, VppTestRunner, Worker
 
@@ -37,7 +34,8 @@ class VAPITestCase(VppTestCase):
                 os.killpg(os.getpgid(worker.process.pid), signal.SIGTERM)
                 worker.join()
             except:
-                raise Exception("Couldn't kill worker-spawned process")
+                self.logger.debug("Couldn't kill worker-spawned process")
+                raise
         if error:
             raise Exception(
                 "Timeout! Worker did not finish in %ss" % timeout)
