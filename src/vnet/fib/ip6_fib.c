@@ -600,12 +600,20 @@ ip6_fib_table_show_one (ip6_fib_t *fib,
 u8 *
 format_ip6_fib_table_memory (u8 * s, va_list * args)
 {
+    uword bytes_inuse;
+
+    bytes_inuse = 
+        ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.alloc_arena_next
+        - ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.alloc_arena;
+
+    bytes_inuse += 
+        ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.alloc_arena_next
+        - ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.alloc_arena;
+
     s = format(s, "%=30s %=6d %=8ld\n",
                "IPv6 unicast",
                pool_elts(ip6_main.fibs),
-               mheap_bytes(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.mheap) +
-               mheap_bytes(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.mheap));
-
+               bytes_inuse);
     return (s);
 }
 
