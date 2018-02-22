@@ -2682,6 +2682,9 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
   u64 listen_vpp_handle;
   int rv, retval;
 
+  if (q_len == 0 || q_len == ~0)
+    q_len = vcm->cfg.listen_queue_size;
+
   VCL_LOCK_AND_GET_SESSION (listen_session_index, &listen_session);
 
   if (listen_session->is_vep)
