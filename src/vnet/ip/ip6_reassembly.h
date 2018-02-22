@@ -38,6 +38,9 @@ vnet_api_error_t ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
 vnet_api_error_t ip6_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
 				u32 * expire_walk_interval_ms);
 
+vnet_api_error_t ip6_reass_enable_disable (u32 sw_if_index,
+					   u8 enable_disable);
+
 #endif /* __included_ip6_reassembly_h */
 
 /*
