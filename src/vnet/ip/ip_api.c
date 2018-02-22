@@ -103,7 +103,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
-_(IP_REASSEMBLY_GET, ip_reassembly_get)
+_(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
+_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
@@ -2902,6 +2903,23 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
   rmp->expire_walk_interval_ms =
     clib_host_to_net_u32 (rmp->expire_walk_interval_ms);
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+void
+  vl_api_ip_reassembly_enable_disable_t_handler
+  (vl_api_ip_reassembly_enable_disable_t * mp)
+{
+  vl_api_ip_reassembly_enable_disable_reply_t *rmp;
+  int rv = 0;
+  rv = ip4_reass_enable_disable (clib_net_to_host_u32 (mp->sw_if_index),
+				 mp->enable_ip4);
+  if (0 == rv)
+    {
+      rv = ip6_reass_enable_disable (clib_net_to_host_u32 (mp->sw_if_index),
+				     mp->enable_ip6);
+    }
+
+  REPLY_MACRO (VL_API_IP_REASSEMBLY_SET_REPLY);
 }
 
 #define vl_msg_name_crc_list
