@@ -380,6 +380,10 @@ class VppTestCase(unittest.TestCase):
             try:
                 cls.vapi.connect()
             except:
+                try:
+                    cls.vapi.disconnect()
+                except:
+                    pass
                 if cls.debug_gdbserver:
                     print(colorize("You're running VPP inside gdbserver but "
                                    "VPP-API connection failed, did you forget "

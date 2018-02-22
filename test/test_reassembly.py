@@ -8,13 +8,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP
 from util import ppp, fragment_rfc791, fragment_rfc8200
-from vpp_punt_socket import VppUDSPuntSocket
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 
-test_packet_count = 257
+test_packet_count = 10
 
 
 @VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
@@ -25,17 +24,15 @@ class TestIPv4Reassembly(VppTestCase):
     def setUpClass(cls):
         super(TestIPv4Reassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces([0])
-        cls.pg_if = cls.pg0
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
 
         # setup all interfaces
         for i in cls.pg_interfaces:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
-
-        cls.punt_port = 9999
-        cls.punt_socket = VppUDSPuntSocket(cls, cls.punt_port)
 
         # packet sizes
         cls.packet_sizes = [64, 512, 1518, 9018]
@@ -46,6 +43,8 @@ class TestIPv4Reassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4Reassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     expire_walk_interval_ms=10)
         self.sleep(.25)
@@ -63,12 +62,12 @@ class TestIPv4Reassembly(VppTestCase):
         :param list packet_sizes: Required packet sizes.
         """
         for i in range(0, packet_count):
-            info = cls.create_packet_info(cls.pg_if, cls.pg_if)
+            info = cls.create_packet_info(cls.src_if, cls.src_if)
             payload = cls.info_to_payload(info)
-            p = (Ether(dst=cls.pg_if.local_mac, src=cls.pg_if.remote_mac) /
-                 IP(id=info.index, src=cls.pg_if.remote_ip4,
-                    dst=cls.pg_if.local_ip4) /
-                 UDP(sport=1234, dport=cls.punt_port) /
+            p = (Ether(dst=cls.src_if.local_mac, src=cls.src_if.remote_mac) /
+                 IP(id=info.index, src=cls.src_if.remote_ip4,
+                    dst=cls.dst_if.remote_ip4) /
+                 UDP(sport=1234, dport=5678) /
                  Raw(payload))
             size = packet_sizes[(i // 2) % len(packet_sizes)]
             cls.extend_packet(p, size, cls.padding)
@@ -80,7 +79,7 @@ class TestIPv4Reassembly(VppTestCase):
         cls.pkt_infos = []
         for index, info in infos.iteritems():
             p = info.data
-            # self.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
             fragments_400 = fragment_rfc791(p, 400)
             fragments_300 = fragment_rfc791(p, 300)
             fragments_200 = [
@@ -107,11 +106,7 @@ class TestIPv4Reassembly(VppTestCase):
         seen = set()
         for packet in capture:
             try:
-                sw_if_index = packet['sw_if_index']
-                punt_action = packet['punt_action']
-                packet = Ether(packet['packet'])
-                self.logger.debug(ppp("Got packet from %s, action %s" %
-                                      (sw_if_index, punt_action), packet))
+                self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[IP]
                 udp = packet[UDP]
                 payload_info = self.payload_to_info(str(packet[Raw]))
@@ -122,7 +117,7 @@ class TestIPv4Reassembly(VppTestCase):
                 if packet_index in seen:
                     raise Exception(ppp("Duplicate packet received", packet))
                 seen.add(packet_index)
-                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                self.assertEqual(payload_info.dst, self.src_if.sw_if_index)
                 info = self._packet_infos[packet_index]
                 self.assertTrue(info is not None)
                 self.assertEqual(packet_index, info.index)
@@ -141,21 +136,21 @@ class TestIPv4Reassembly(VppTestCase):
         """ basic reassembly """
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_200)
+        self.src_if.add_stream(self.fragments_200)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_200)
+        self.src_if.add_stream(self.fragments_200)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_reversed(self):
         """ reverse order reassembly """
@@ -164,21 +159,21 @@ class TestIPv4Reassembly(VppTestCase):
         fragments.reverse()
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_random(self):
         """ random order reassembly """
@@ -187,21 +182,21 @@ class TestIPv4Reassembly(VppTestCase):
         shuffle(fragments)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_duplicates(self):
         """ duplicate fragments """
@@ -213,12 +208,12 @@ class TestIPv4Reassembly(VppTestCase):
         ]
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_overlap1(self):
         """ overlapping fragments case #1 """
@@ -233,21 +228,21 @@ class TestIPv4Reassembly(VppTestCase):
                     fragments.extend(j)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_overlap2(self):
         """ overlapping fragments case #2 """
@@ -268,21 +263,21 @@ class TestIPv4Reassembly(VppTestCase):
                 fragments.append(zipped[-1][0])
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_timeout_inline(self):
         """ timeout (inline) """
@@ -295,13 +290,13 @@ class TestIPv4Reassembly(VppTestCase):
                                     expire_walk_interval_ms=10000)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_timeout_cleanup(self):
         """ timeout (cleanup) """
@@ -325,19 +320,18 @@ class TestIPv4Reassembly(VppTestCase):
                                     expire_walk_interval_ms=50)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
         self.sleep(.25, "wait before sending rest of fragments")
 
-        self.pg_if.add_stream(fragments2)
+        self.src_if.add_stream(fragments2)
         self.pg_start()
-        self.sleep(.25, "wait for vpp to process packets")
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_disabled(self):
         """ reassembly disabled """
@@ -350,13 +344,13 @@ class TestIPv4Reassembly(VppTestCase):
                                     expire_walk_interval_ms=10000)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
 
 @VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
@@ -367,17 +361,15 @@ class TestIPv6Reassembly(VppTestCase):
     def setUpClass(cls):
         super(TestIPv6Reassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces([0])
-        cls.pg_if = cls.pg0
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
 
         # setup all interfaces
         for i in cls.pg_interfaces:
             i.admin_up()
             i.config_ip6()
             i.resolve_ndp()
-
-        cls.punt_port = 9999
-        cls.punt_socket = VppUDSPuntSocket(cls, cls.punt_port, is_ip4=0)
 
         # packet sizes
         cls.packet_sizes = [64, 512, 1518, 9018]
@@ -388,11 +380,14 @@ class TestIPv6Reassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6Reassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip6=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
+        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
 
     def tearDown(self):
         super(TestIPv6Reassembly, self).tearDown()
@@ -405,12 +400,12 @@ class TestIPv6Reassembly(VppTestCase):
         :param list packet_sizes: Required packet sizes.
         """
         for i in range(0, packet_count):
-            info = cls.create_packet_info(cls.pg_if, cls.pg_if)
+            info = cls.create_packet_info(cls.src_if, cls.src_if)
             payload = cls.info_to_payload(info)
-            p = (Ether(dst=cls.pg_if.local_mac, src=cls.pg_if.remote_mac) /
-                 IPv6(src=cls.pg_if.remote_ip6,
-                      dst=cls.pg_if.local_ip6) /
-                 UDP(sport=1234, dport=cls.punt_port) /
+            p = (Ether(dst=cls.src_if.local_mac, src=cls.src_if.remote_mac) /
+                 IPv6(src=cls.src_if.remote_ip6,
+                      dst=cls.dst_if.remote_ip6) /
+                 UDP(sport=1234, dport=5678) /
                  Raw(payload))
             size = packet_sizes[(i // 2) % len(packet_sizes)]
             cls.extend_packet(p, size, cls.padding)
@@ -422,7 +417,7 @@ class TestIPv6Reassembly(VppTestCase):
         cls.pkt_infos = []
         for index, info in infos.iteritems():
             p = info.data
-            # self.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
             fragments_400 = fragment_rfc8200(p, info.index, 400)
             fragments_300 = fragment_rfc8200(p, info.index, 300)
             cls.pkt_infos.append((index, fragments_400, fragments_300))
@@ -444,11 +439,7 @@ class TestIPv6Reassembly(VppTestCase):
         seen = set()
         for packet in capture:
             try:
-                sw_if_index = packet['sw_if_index']
-                punt_action = packet['punt_action']
-                packet = Ether(packet['packet'])
-                self.logger.debug(ppp("Got packet from %s, action %s" %
-                                      (sw_if_index, punt_action), packet))
+                self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[IPv6]
                 udp = packet[UDP]
                 payload_info = self.payload_to_info(str(packet[Raw]))
@@ -459,7 +450,7 @@ class TestIPv6Reassembly(VppTestCase):
                 if packet_index in seen:
                     raise Exception(ppp("Duplicate packet received", packet))
                 seen.add(packet_index)
-                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                self.assertEqual(payload_info.dst, self.src_if.sw_if_index)
                 info = self._packet_infos[packet_index]
                 self.assertTrue(info is not None)
                 self.assertEqual(packet_index, info.index)
@@ -478,21 +469,21 @@ class TestIPv6Reassembly(VppTestCase):
         """ basic reassembly """
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_reversed(self):
         """ reverse order reassembly """
@@ -501,21 +492,21 @@ class TestIPv6Reassembly(VppTestCase):
         fragments.reverse()
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_random(self):
         """ random order reassembly """
@@ -524,21 +515,21 @@ class TestIPv6Reassembly(VppTestCase):
         shuffle(fragments)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_duplicates(self):
         """ duplicate fragments """
@@ -550,12 +541,12 @@ class TestIPv6Reassembly(VppTestCase):
         ]
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_overlap1(self):
         """ overlapping fragments case #1 """
@@ -574,20 +565,19 @@ class TestIPv6Reassembly(VppTestCase):
         )
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        self.sleep(.1, "wait for vpp to process packets")
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_overlap2(self):
         """ overlapping fragments case #2 """
 
         fragments = []
-        for _, frags_400, frags_30 in self.pkt_infos:
+        for _, frags_400, frags_300 in self.pkt_infos:
             if len(frags_400) == 1:
                 fragments.extend(frags_400)
             else:
@@ -595,7 +585,7 @@ class TestIPv6Reassembly(VppTestCase):
                 # received by vpp after reassembly is finished, otherwise
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
-                zipped = zip(frags_400, frags_30)
+                zipped = zip(frags_400, frags_300)
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
@@ -606,14 +596,13 @@ class TestIPv6Reassembly(VppTestCase):
         )
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
-        self.sleep(.1, "wait for vpp to process packets")
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_timeout_inline(self):
         """ timeout (inline) """
@@ -626,13 +615,13 @@ class TestIPv6Reassembly(VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        pkts = self.pg_if.get_capture(
+        pkts = self.src_if.get_capture(
             expected_count=len(dropped_packet_indexes))
         for icmp in pkts:
             self.assertIn(ICMPv6TimeExceeded, icmp)
@@ -665,19 +654,18 @@ class TestIPv6Reassembly(VppTestCase):
                                     expire_walk_interval_ms=50, is_ip6=1)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(fragments)
+        self.src_if.add_stream(fragments)
         self.pg_start()
 
         self.sleep(.25, "wait before sending rest of fragments")
 
-        self.pg_if.add_stream(fragments2)
+        self.src_if.add_stream(fragments2)
         self.pg_start()
-        self.sleep(.25, "wait for vpp to process packets")
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        pkts = self.pg_if.get_capture(
+        pkts = self.src_if.get_capture(
             expected_count=len(dropped_packet_indexes))
         for icmp in pkts:
             self.assertIn(ICMPv6TimeExceeded, icmp)
@@ -696,20 +684,20 @@ class TestIPv6Reassembly(VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
         self.pg_enable_capture()
-        self.pg_if.add_stream(self.fragments_400)
+        self.src_if.add_stream(self.fragments_400)
         self.pg_start()
 
-        packets = self.punt_socket.wait_for_packets(
+        packets = self.dst_if.get_capture(
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
-        self.pg_if.assert_nothing_captured()
+        self.src_if.assert_nothing_captured()
 
     def test_missing_upper(self):
         """ missing upper layer """
-        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
-             IPv6(src=self.pg_if.remote_ip6,
-                  dst=self.pg_if.local_ip6) /
-             UDP(sport=1234, dport=self.punt_port) /
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.src_if.local_ip6) /
+             UDP(sport=1234, dport=5678) /
              Raw())
         self.extend_packet(p, 1000, self.padding)
         fragments = fragment_rfc8200(p, 1, 500)
@@ -717,52 +705,53 @@ class TestIPv6Reassembly(VppTestCase):
         bad_fragment[IPv6ExtHdrFragment].nh = 59
         bad_fragment[IPv6ExtHdrFragment].offset = 0
         self.pg_enable_capture()
-        self.pg_if.add_stream([bad_fragment])
+        self.src_if.add_stream([bad_fragment])
         self.pg_start()
-        pkts = self.pg_if.get_capture(expected_count=1)
+        pkts = self.src_if.get_capture(expected_count=1)
         icmp = pkts[0]
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
 
     def test_invalid_frag_size(self):
         """ fragment size not a multiple of 8 """
-        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
-             IPv6(src=self.pg_if.remote_ip6,
-                  dst=self.pg_if.local_ip6) /
-             UDP(sport=1234, dport=self.punt_port) /
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.src_if.local_ip6) /
+             UDP(sport=1234, dport=5678) /
              Raw())
         self.extend_packet(p, 1000, self.padding)
         fragments = fragment_rfc8200(p, 1, 500)
         bad_fragment = fragments[0]
         self.extend_packet(bad_fragment, len(bad_fragment) + 5)
         self.pg_enable_capture()
-        self.pg_if.add_stream([bad_fragment])
+        self.src_if.add_stream([bad_fragment])
         self.pg_start()
-        pkts = self.pg_if.get_capture(expected_count=1)
+        pkts = self.src_if.get_capture(expected_count=1)
         icmp = pkts[0]
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
 
     def test_invalid_packet_size(self):
         """ total packet size > 65535 """
-        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
-             IPv6(src=self.pg_if.remote_ip6,
-                  dst=self.pg_if.local_ip6) /
-             UDP(sport=1234, dport=self.punt_port) /
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.src_if.local_ip6) /
+             UDP(sport=1234, dport=5678) /
              Raw())
         self.extend_packet(p, 1000, self.padding)
         fragments = fragment_rfc8200(p, 1, 500)
         bad_fragment = fragments[1]
         bad_fragment[IPv6ExtHdrFragment].offset = 65500
         self.pg_enable_capture()
-        self.pg_if.add_stream([bad_fragment])
+        self.src_if.add_stream([bad_fragment])
         self.pg_start()
-        pkts = self.pg_if.get_capture(expected_count=1)
+        pkts = self.src_if.get_capture(expected_count=1)
         icmp = pkts[0]
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestFIFReassembly(VppTestCase):
     """ Fragments in fragments reassembly """
 
@@ -770,23 +759,25 @@ class TestFIFReassembly(VppTestCase):
     def setUpClass(cls):
         super(TestFIFReassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces([0])
-        cls.pg_if = cls.pg0
-        cls.pg_if.admin_up()
-        cls.pg_if.config_ip4()
-        cls.pg_if.resolve_arp()
-        cls.pg_if.config_ip6()
-        cls.pg_if.resolve_ndp()
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.config_ip6()
+            i.resolve_ndp()
 
-        cls.punt_port = 9999
-        cls.punt4_socket = VppUDSPuntSocket(cls, cls.punt_port)
-        cls.punt6_socket = VppUDSPuntSocket(cls, cls.punt_port, is_ip4=0)
         cls.packet_sizes = [64, 512, 1518, 9018]
         cls.padding = " abcdefghijklmn"
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestFIFReassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
+            enable_ip6=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     expire_walk_interval_ms=10)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
@@ -811,11 +802,7 @@ class TestFIFReassembly(VppTestCase):
         seen = set()
         for packet in capture:
             try:
-                sw_if_index = packet['sw_if_index']
-                punt_action = packet['punt_action']
-                packet = Ether(packet['packet'])
-                self.logger.debug(ppp("Got packet from %s, action %s" %
-                                      (sw_if_index, punt_action), packet))
+                self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[ip_class]
                 udp = packet[UDP]
                 payload_info = self.payload_to_info(str(packet[Raw]))
@@ -826,7 +813,7 @@ class TestFIFReassembly(VppTestCase):
                 if packet_index in seen:
                     raise Exception(ppp("Duplicate packet received", packet))
                 seen.add(packet_index)
-                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                self.assertEqual(payload_info.dst, self.src_if.sw_if_index)
                 info = self._packet_infos[packet_index]
                 self.assertTrue(info is not None)
                 self.assertEqual(packet_index, info.index)
@@ -865,7 +852,7 @@ class TestFIFReassembly(VppTestCase):
             info = self.create_packet_info(self.pg0, self.pg0)
             payload = self.info_to_payload(info)
             p = (IP(id=i, src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-                 UDP(sport=1234, dport=self.punt_port) /
+                 UDP(sport=1234, dport=5678) /
                  Raw(payload))
             size = self.packet_sizes[(i // 2) % len(self.packet_sizes)]
             self.extend_packet(p, size, self.padding)
@@ -891,7 +878,7 @@ class TestFIFReassembly(VppTestCase):
         self.pg_start()
 
         self.pg0.assert_nothing_captured()
-        packets = self.punt4_socket.wait_for_packets(len(self._packet_infos))
+        packets = self.dst_if.get_capture(len(self._packet_infos))
         self.verify_capture(packets, IP)
 
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
@@ -923,7 +910,7 @@ class TestFIFReassembly(VppTestCase):
             info = self.create_packet_info(self.pg0, self.pg0)
             payload = self.info_to_payload(info)
             p = (IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
-                 UDP(sport=1234, dport=self.punt_port) /
+                 UDP(sport=1234, dport=5678) /
                  Raw(payload))
             size = self.packet_sizes[(i // 2) % len(self.packet_sizes)]
             self.extend_packet(p, size, self.padding)
@@ -956,7 +943,7 @@ class TestFIFReassembly(VppTestCase):
         self.pg_start()
 
         self.pg0.assert_nothing_captured()
-        packets = self.punt6_socket.wait_for_packets(len(self._packet_infos))
+        packets = self.dst_if.get_capture(len(self._packet_infos))
         self.verify_capture(packets, IPv6)
 
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
