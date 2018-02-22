@@ -1152,6 +1152,6 @@ class Worker(Thread):
         self.logger.info(single_line_delim)
         self.logger.info("Executable `%s' wrote to stderr:" % executable)
         self.logger.info(single_line_delim)
-        self.logger.error(err)
+        self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
