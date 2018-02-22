@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e6fea0f_51b8b371",
+        "filename": "src/vnet/ip/icmp6.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-02-22T17:48:53Z",
+      "side": 1,
+      "message": "when called from a worker thread this sends an RPC call to the main thread to install the adj/route that will forward the echo response. what guarantees this is installed before the echo response needs to be forwarded?",
+      "revId": "3dbdf8d35512c6094e3e2a93b7326b77b843d5fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
