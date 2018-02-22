@@ -38,6 +38,8 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_reassembly.h>
+#include <vnet/ip/ip6_reassembly.h>
 
 /**
  * @file
@@ -215,6 +217,87 @@ VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
   .function = add_del_ip_address,
   .short_help = "set interface ip address [del] <interface> <ip-addr>/<mask> | [all]",
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+set_reassembly_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  u8 ip4_on = 0;
+  u8 ip6_on = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      return NULL;
+    }
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      return clib_error_return (0, "Invalid interface name");
+    }
+
+  if (unformat (input, "on"))
+    {
+      ip4_on = 1;
+      ip6_on = 1;
+    }
+  else if (unformat (input, "off"))
+    {
+      ip4_on = 0;
+      ip6_on = 0;
+    }
+  else if (unformat (input, "ip4"))
+    {
+      ip4_on = 1;
+      ip6_on = 0;
+    }
+  else if (unformat (input, "ip6"))
+    {
+      ip4_on = 0;
+      ip6_on = 1;
+    }
+  else
+    {
+      return clib_error_return (0, "Unknown input `%U'",
+				format_unformat_error, line_input);
+    }
+
+
+  vnet_api_error_t rv4 = ip4_reass_enable_disable (sw_if_index, ip4_on);
+  vnet_api_error_t rv6 = ip6_reass_enable_disable (sw_if_index, ip6_on);
+  if (rv4 && rv6)
+    {
+      return clib_error_return (0,
+				"`ip4_reass_enable_disable' API call failed, rv=%d:%U, "
+				"`ip6_reass_enable_disable' API call failed, rv=%d:%U",
+				(int) rv4, format_vnet_api_errno, rv4,
+				(int) rv6, format_vnet_api_errno, rv6);
+    }
+  else if (rv4)
+    {
+      return clib_error_return (0,
+				"`ip4_reass_enable_disable' API call failed, rv=%d:%U",
+				(int) rv4, format_vnet_api_errno, rv4);
+    }
+  else if (rv6)
+    {
+      return clib_error_return (0,
+				"`ip6_reass_enable_disable' API call failed, rv=%d:%U",
+				(int) rv6, format_vnet_api_errno, rv6);
+    }
+  return NULL;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_reassembly_command, static) = {
+    .path = "set interface reassembly",
+    .short_help = "set interface reassembly <interface-name> [on|off|ip4|ip6]",
+    .function = set_reassembly_command_fn,
 };
 /* *INDENT-ON* */
 
