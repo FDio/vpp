@@ -1352,7 +1352,6 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
     [IP_LOCAL_NEXT_PUNT] = "ip6-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
-    [IP_LOCAL_NEXT_REASSEMBLY] = "ip6-reassembly",
   },
 };
 /* *INDENT-ON* */

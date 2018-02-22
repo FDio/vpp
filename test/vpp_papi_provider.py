@@ -3203,6 +3203,15 @@ class VppPapiProvider(object):
         """ Get IP reassembly parameters """
         return self.api(self.papi.ip_reassembly_get, {'is_ip6': is_ip6})
 
+    def ip_reassembly_enable_disable(self, sw_if_index, enable_ip4=False,
+                                     enable_ip6=False):
+        """ Enable/disable IP reassembly """
+        return self.api(self.papi.ip_reassembly_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'enable_ip4': 1 if enable_ip4 else 0,
+                         'enable_ip6': 1 if enable_ip6 else 0,
+                         })
+
     def gbp_endpoint_add_del(self, is_add, sw_if_index, addr, is_ip6, epg):
         """ GBP endpoint Add/Del """
         return self.api(self.papi.gbp_endpoint_add_del,

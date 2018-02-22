@@ -910,6 +910,22 @@ define ip_reassembly_get_reply
   u8 is_ip6;
 };
 
+/** \brief Enable/disable reassembly feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to enable/disable feature on
+    @param enable_ip4 - enable ip4 reassembly if non-zero, disable if 0
+    @param enable_ip6 - enable ip6 reassembly if non-zero, disable if 0
+*/
+autoreply define ip_reassembly_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable_ip4;
+  u8 enable_ip6;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

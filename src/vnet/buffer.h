@@ -161,15 +161,24 @@ typedef struct
 	} icmp;
 
 	/* reassembly */
-	struct
+	union
 	{
-	  u16 fragment_first;
-	  u16 fragment_last;
-	  u16 range_first;
-	  u16 range_last;
-	  u32 next_range_bi;
-	  u16 ip6_frag_hdr_offset;
-	  u16 estimated_mtu;
+	  /* in/out variables */
+	  struct
+	  {
+	    u32 next_index;	/* index of next node - ignored if "feature" node */
+	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	  };
+	  /* internal variables used during reassembly */
+	  struct
+	  {
+	    u16 fragment_first;
+	    u16 fragment_last;
+	    u16 range_first;
+	    u16 range_last;
+	    u32 next_range_bi;
+	    u16 ip6_frag_hdr_offset;
+	  };
 	} reass;
       };
 
