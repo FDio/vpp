@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2fbc41ac_8504abd9",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-02-22T15:19:02Z",
+      "side": 1,
+      "message": "Nit pick: mananges",
+      "range": {
+        "startLine": 94,
+        "startChar": 44,
+        "endLine": 94,
+        "endChar": 52
+      },
+      "revId": "7c3f38a10a034ab2863ce9220f42f12501265ad7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
