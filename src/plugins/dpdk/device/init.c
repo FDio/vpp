@@ -408,6 +408,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      xd->port_conf.rxmode.enable_scatter = 0;
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
