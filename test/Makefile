@@ -172,7 +172,7 @@ doc: verify-python-path $(PIP_PATCH_DONE)
 wipe-doc:
 	@make -C doc wipe BR=$(BR)
 
-cov: wipe-cov reset verify-python-path $(PAPI_INSTALL_DONE)
+cov: wipe-cov reset ext verify-python-path $(PAPI_INSTALL_DONE)
 	@lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
 	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 	$(call retest-func)
