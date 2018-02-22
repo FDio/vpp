@@ -89,7 +89,14 @@ typedef struct
   u64 cache_misses;
 
     BVT (clib_bihash_value) ** freelists;
-  void *mheap;
+
+  /*
+   * Backing store allocation. Since bihash mananges its own
+   * freelists, we simple dole out memory at alloc_arena_next.
+   */
+  uword alloc_arena;
+  uword alloc_arena_next;
+  uword alloc_arena_size;
 
   /**
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump
@@ -224,7 +231,7 @@ static inline void BV (clib_bihash_unlock_bucket)
 static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
 						uword offset)
 {
-  u8 *hp = h->mheap;
+  u8 *hp = (u8 *) h->alloc_arena;
   u8 *vp = hp + offset;
 
   return (void *) vp;
@@ -235,10 +242,9 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 {
   u8 *hp, *vp;
 
-  hp = (u8 *) h->mheap;
+  hp = (u8 *) h->alloc_arena;
   vp = (u8 *) v;
 
-  ASSERT ((vp - hp) < 0x100000000ULL);
   return vp - hp;
 }
 

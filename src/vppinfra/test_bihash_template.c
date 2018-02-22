@@ -36,6 +36,7 @@ typedef struct
   int non_random_keys;
   uword *key_hash;
   u64 *keys;
+  uword hash_memory_size;
     BVT (clib_bihash) hash;
   clib_time_t clib_time;
 
@@ -101,8 +102,7 @@ test_bihash (test_main_t * tm)
 
   h = &tm->hash;
 
-  BV (clib_bihash_init) (h, "test", tm->nbuckets, 3ULL << 30);
-
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 
   for (acycle = 0; acycle < tm->ncycles; acycle++)
     {
@@ -269,10 +269,11 @@ test_bihash (test_main_t * tm)
 	}
 
       /* Clean up side-bet hash table and random key vector */
-      for (i = 0; i < tm->nitems; i++)
-	hash_unset (tm->key_hash, tm->keys[i]);
-
+      hash_free (tm->key_hash);
       vec_reset_length (tm->keys);
+      /* Recreate hash table if we're going to need it again */
+      if (acycle != (tm->ncycles - 1))
+	tm->key_hash = hash_create (tm->nitems, sizeof (uword));
     }
 
   fformat (stdout, "End of run, should be empty...\n");
@@ -322,6 +323,7 @@ test_bihash_main (test_main_t * tm)
   int which = 0;
 
   tm->report_every_n = 1;
+  tm->hash_memory_size = 4095ULL << 20;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -344,6 +346,9 @@ test_bihash_main (test_main_t * tm)
 	;
       else if (unformat (i, "report-every %d", &tm->report_every_n))
 	;
+      else if (unformat (i, "memory-size %U",
+			 unformat_memory_size, &tm->hash_memory_size))
+	;
       else if (unformat (i, "vec64"))
 	which = 1;
       else if (unformat (i, "cache"))
@@ -355,6 +360,12 @@ test_bihash_main (test_main_t * tm)
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, i);
     }
+
+  /* Preallocate hash table, key vector */
+  tm->key_hash = hash_create (tm->nitems, sizeof (uword));
+  vec_validate (tm->keys, tm->nitems - 1);
+  _vec_len (tm->keys) = 0;
+
 
   switch (which)
     {
@@ -385,7 +396,7 @@ main (int argc, char *argv[])
   clib_error_t *error;
   test_main_t *tm = &test_main;
 
-  clib_mem_init (0, 3ULL << 30);
+  clib_mem_init (0, 4095ULL << 20);
 
   tm->input = &i;
   tm->seed = 0xdeaddabe;
@@ -396,7 +407,6 @@ main (int argc, char *argv[])
   tm->verbose = 1;
   tm->search_iter = 1;
   tm->careful_delete_tests = 0;
-  tm->key_hash = hash_create (0, sizeof (uword));
   clib_time_init (&tm->clib_time);
 
   unformat_init_command_line (&i, argv);
