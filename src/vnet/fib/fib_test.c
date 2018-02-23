@@ -301,7 +301,8 @@ fib_test_validate_rep_v (const replicate_t *rep,
 	    {
 		const mpls_label_dpo_t *mld;
                 mpls_label_t hdr;
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+		FIB_TEST_LB((mpls_label_dpo_get_type(MPLS_LABEL_DPO_FLAG_NONE)
+                             == dpo->dpoi_type),
                             "bucket %d stacks on %U",
                             bucket,
                             format_dpo_type, dpo->dpoi_type);
@@ -375,14 +376,19 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	case FT_LB_LABEL_STACK_O_ADJ:
 	    {
 		const mpls_label_dpo_t *mld;
+                mpls_label_dpo_flags_t mf;
                 mpls_label_t hdr;
 		u32 ii;
 
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+                mf = ((exp->label_stack_o_adj.mode ==
+                       FIB_MPLS_LSP_MODE_UNIFORM) ?
+                      MPLS_LABEL_DPO_FLAG_UNIFORM_MODE :
+                      MPLS_LABEL_DPO_FLAG_NONE);
+		FIB_TEST_LB((mpls_label_dpo_get_type(mf) == dpo->dpoi_type),
 			   "bucket %d stacks on %U",
 			   bucket,
 			   format_dpo_type, dpo->dpoi_type);
-	    
+
 		mld = mpls_label_dpo_get(dpo->dpoi_index);
 
 		FIB_TEST_LB(exp->label_stack_o_adj.label_stack_size == mld->mld_n_labels,
@@ -433,7 +439,8 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	    {
 		const mpls_label_dpo_t *mld;
                 mpls_label_t hdr;
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+		FIB_TEST_LB((mpls_label_dpo_get_type(MPLS_LABEL_DPO_FLAG_NONE)
+                             == dpo->dpoi_type),
 			   "bucket %d stacks on %U",
 			   bucket,
 			   format_dpo_type, dpo->dpoi_type);
@@ -468,13 +475,18 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	case FT_LB_LABEL_O_LB:
 	    {
 		const mpls_label_dpo_t *mld;
+                mpls_label_dpo_flags_t mf;
                 mpls_label_t hdr;
 
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+                mf = ((exp->label_o_lb.mode ==
+                       FIB_MPLS_LSP_MODE_UNIFORM) ?
+                      MPLS_LABEL_DPO_FLAG_UNIFORM_MODE :
+                      MPLS_LABEL_DPO_FLAG_NONE);
+		FIB_TEST_LB((mpls_label_dpo_get_type(mf) == dpo->dpoi_type),
 			   "bucket %d stacks on %U",
 			   bucket,
 			   format_dpo_type, dpo->dpoi_type);
-	    
+
 		mld = mpls_label_dpo_get(dpo->dpoi_index);
                 hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
 
@@ -515,15 +527,15 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			bucket,
 			exp->adj.adj);
 	    break;
-	case FT_LB_MPLS_DISP_O_ADJ:
+	case FT_LB_MPLS_DISP_PIPE_O_ADJ:
         {
             const mpls_disp_dpo_t *mdd;
 
-            FIB_TEST_I((DPO_MPLS_DISPOSITION == dpo->dpoi_type),
+            FIB_TEST_I((DPO_MPLS_DISPOSITION_PIPE == dpo->dpoi_type),
 		       "bucket %d stacks on %U",
 		       bucket,
 		       format_dpo_type, dpo->dpoi_type);
-	    
+
             mdd = mpls_disp_dpo_get(dpo->dpoi_index);
 
             dpo = &mdd->mdd_dpo;
@@ -6332,8 +6344,10 @@ fib_test_label (void)
 	    .eos = MPLS_NON_EOS,
 	},
     };
-    mpls_label_t *l99 = NULL;
-    vec_add1(l99, 99);
+    fib_mpls_label_t *l99 = NULL, fml99 = {
+        .fml_value = 99,
+    };
+    vec_add1(l99, fml99);
 
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_1_1_1_1_s_32,
@@ -6371,8 +6385,10 @@ fib_test_label (void)
 	    .adj = ai_mpls_10_10_11_1,
 	},
     };
-    mpls_label_t *l_imp_null = NULL;
-    vec_add1(l_imp_null, MPLS_IETF_IMPLICIT_NULL_LABEL);
+    fib_mpls_label_t *l_imp_null = NULL, fml_imp_null = {
+        .fml_value =  MPLS_IETF_IMPLICIT_NULL_LABEL,
+    };
+    vec_add1(l_imp_null, fml_imp_null);
 
     fei = fib_table_entry_path_add(fib_index,
 				   &pfx_1_1_1_1_s_32,
@@ -6413,7 +6429,7 @@ fib_test_label (void)
 	.fp_eos = MPLS_NON_EOS,
     };
     fib_test_lb_bucket_t disp_o_10_10_11_1 = {
-	.type = FT_LB_MPLS_DISP_O_ADJ,
+	.type = FT_LB_MPLS_DISP_PIPE_O_ADJ,
 	.adj = {
 	    .adj = ai_v4_10_10_11_1,
 	},
@@ -6458,7 +6474,7 @@ fib_test_label (void)
 	},
     };
     fib_test_lb_bucket_t disp_o_10_10_11_2 = {
-	.type = FT_LB_MPLS_DISP_O_ADJ,
+	.type = FT_LB_MPLS_DISP_PIPE_O_ADJ,
 	.adj = {
 	    .adj = ai_v4_10_10_11_2,
 	},
@@ -6540,24 +6556,27 @@ fib_test_label (void)
 	    .lb = non_eos_1_1_1_1.dpoi_index,
 	    .label = 1600,
 	    .eos = MPLS_EOS,
+            .mode = FIB_MPLS_LSP_MODE_UNIFORM,
 	},
     };
-    mpls_label_t *l1600 = NULL;
-    vec_add1(l1600, 1600);
+    fib_mpls_label_t *l1600 = NULL, fml1600 = {
+        .fml_value = 1600,
+        .fml_mode = FIB_MPLS_LSP_MODE_UNIFORM,
+    };
+    vec_add1(l1600, fml1600);
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_2_2_2_2_s_32,
-				    FIB_SOURCE_API,
-				    FIB_ENTRY_FLAG_NONE,
-				    DPO_PROTO_IP4,
-				    &pfx_1_1_1_1_s_32.fp_addr,
-				    ~0,
-				    fib_index,
-				    1,
-				    l1600,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_update_one_path(fib_index,
+                                          &pfx_2_2_2_2_s_32,
+                                          FIB_SOURCE_API,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          DPO_PROTO_IP4,
+                                          &pfx_1_1_1_1_s_32.fp_addr,
+                                          ~0,
+                                          fib_index,
+                                          1,
+                                          l1600,
+                                          FIB_ROUTE_PATH_FLAG_NONE);
 
-    fei = fib_table_lookup(fib_index, &pfx_2_2_2_2_s_32);
     FIB_TEST(fib_test_validate_entry(fei, 
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     1,
@@ -6811,7 +6830,7 @@ fib_test_label (void)
      * add back the path with the valid label
      */
     l99 = NULL;
-    vec_add1(l99, 99);
+    vec_add1(l99, fml99);
 
     fib_table_entry_path_add(fib_index,
 			     &pfx_1_1_1_1_s_32,
@@ -6941,8 +6960,10 @@ fib_test_label (void)
 	    .eos = MPLS_EOS,
 	},
     };
-    mpls_label_t *l101 = NULL;
-    vec_add1(l101, 101);
+    fib_mpls_label_t *l101 = NULL, fml101 = {
+        .fml_value = 101,
+    };
+    vec_add1(l101, fml101);
 
     fei = fib_table_entry_update_one_path(fib_index,
 					  &pfx_1_1_1_2_s_32,
@@ -6981,8 +7002,10 @@ fib_test_label (void)
     	    .eos = MPLS_EOS,
     	},
     };
-    mpls_label_t *l1601 = NULL;
-    vec_add1(l1601, 1601);
+    fib_mpls_label_t *l1601 = NULL, fml1601 = {
+        .fml_value = 1601,
+    };
+    vec_add1(l1601, fml1601);
 
     l1600_eos_o_1_1_1_1.label_o_lb.lb = non_eos_1_1_1_1.dpoi_index;
 
@@ -7012,7 +7035,7 @@ fib_test_label (void)
      * the LB for the recursive can use an imp-null
      */
     l_imp_null = NULL;
-    vec_add1(l_imp_null, MPLS_IETF_IMPLICIT_NULL_LABEL);
+    vec_add1(l_imp_null, fml_imp_null);
 
     fei = fib_table_entry_update_one_path(fib_index,
 					  &pfx_1_1_1_2_s_32,
@@ -7176,11 +7199,11 @@ fib_test_label (void)
 	    .eos = MPLS_EOS,
 	},
     };
-    mpls_label_t *label_stack = NULL;
+    fib_mpls_label_t *label_stack = NULL;
     vec_validate(label_stack, 7);
     for (ii = 0; ii < 8; ii++)
     {
-	label_stack[ii] = ii + 200;
+	label_stack[ii].fml_value = ii + 200;
     }
 
     fei = fib_table_entry_update_one_path(fib_index,
@@ -8255,12 +8278,13 @@ static int
 lfib_test (void)
 {
     const mpls_label_t deag_label = 50;
+    dpo_id_t dpo = DPO_INVALID;
+    const mpls_disp_dpo_t *mdd;
     const u32 lfib_index = 0;
     const u32 fib_index = 0;
-    dpo_id_t dpo = DPO_INVALID;
+    const lookup_dpo_t *lkd;
     const dpo_id_t *dpo1;
     fib_node_index_t lfe;
-    lookup_dpo_t *lkd;
     test_main_t *tm;
     int lb_count;
     adj_index_t ai_mpls_10_10_10_1;
@@ -8327,7 +8351,6 @@ lfib_test (void)
              format_mpls_eos_bit, MPLS_EOS,
              format_dpo_proto, lkd->lkd_proto);
 
-
     /*
      * A route deag route for EOS
      */
@@ -8358,7 +8381,14 @@ lfib_test (void)
 				    FIB_FORW_CHAIN_TYPE_MPLS_EOS,
 				    &dpo);
     dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
-    lkd = lookup_dpo_get(dpo1->dpoi_index);
+    mdd = mpls_disp_dpo_get(dpo1->dpoi_index);
+
+    FIB_TEST((FIB_MPLS_LSP_MODE_PIPE == mdd->mdd_mode),
+             "%U/%U disp is pipe mode",
+             format_mpls_unicast_label, deag_label,
+             format_mpls_eos_bit, MPLS_EOS);
+
+    lkd = lookup_dpo_get(mdd->mdd_dpo.dpoi_index);
 
     FIB_TEST((fib_index == lkd->lkd_fib_index),
               "%U/%U is deag in %d %U",
@@ -8383,6 +8413,70 @@ lfib_test (void)
               "%U/%U not present",
               format_mpls_unicast_label, deag_label,
               format_mpls_eos_bit, MPLS_EOS);
+    dpo_reset(&dpo);
+
+    /*
+     * A route deag route for EOS with LSP mode uniform
+     */
+    fib_mpls_label_t *l_pops = NULL, l_pop = {
+        .fml_value = MPLS_LABEL_POP,
+        .fml_mode = FIB_MPLS_LSP_MODE_UNIFORM,
+    };
+    vec_add1(l_pops, l_pop);
+    lfe = fib_table_entry_path_add(lfib_index,
+        			   &pfx,
+        			   FIB_SOURCE_CLI,
+        			   FIB_ENTRY_FLAG_NONE,
+        			   DPO_PROTO_IP4,
+        			   &zero_addr,
+        			   ~0,
+        			   fib_index,
+        			   1,
+        			   l_pops,
+        			   FIB_ROUTE_PATH_FLAG_NONE);
+
+    FIB_TEST((lfe == fib_table_lookup(lfib_index, &pfx)),
+              "%U/%U present",
+              format_mpls_unicast_label, deag_label,
+              format_mpls_eos_bit, MPLS_EOS);
+
+    fib_entry_contribute_forwarding(lfe,
+        			    FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+        			    &dpo);
+    dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
+    mdd = mpls_disp_dpo_get(dpo1->dpoi_index);
+
+    FIB_TEST((FIB_MPLS_LSP_MODE_UNIFORM == mdd->mdd_mode),
+             "%U/%U disp is uniform mode",
+             format_mpls_unicast_label, deag_label,
+             format_mpls_eos_bit, MPLS_EOS);
+
+    lkd = lookup_dpo_get(mdd->mdd_dpo.dpoi_index);
+
+    FIB_TEST((fib_index == lkd->lkd_fib_index),
+              "%U/%U is deag in %d %U",
+             format_mpls_unicast_label, deag_label,
+             format_mpls_eos_bit, MPLS_EOS,
+             lkd->lkd_fib_index,
+             format_dpo_id, &dpo, 0);
+    FIB_TEST((LOOKUP_INPUT_DST_ADDR == lkd->lkd_input),
+             "%U/%U is dst deag",
+             format_mpls_unicast_label, deag_label,
+             format_mpls_eos_bit, MPLS_EOS);
+    FIB_TEST((DPO_PROTO_IP4 == lkd->lkd_proto),
+             "%U/%U is %U dst deag",
+             format_mpls_unicast_label, deag_label,
+             format_mpls_eos_bit, MPLS_EOS,
+             format_dpo_proto, lkd->lkd_proto);
+
+    fib_table_entry_delete_index(lfe, FIB_SOURCE_CLI);
+
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fib_table_lookup(lfib_index,
+        						 &pfx)),
+              "%U/%U not present",
+              format_mpls_unicast_label, deag_label,
+              format_mpls_eos_bit, MPLS_EOS);
+    dpo_reset(&dpo);
 
     /*
      * A route deag route for non-EOS
@@ -8460,11 +8554,15 @@ lfib_test (void)
     };
     dpo_id_t neos_1200 = DPO_INVALID;
     dpo_id_t ip_1200 = DPO_INVALID;
-    mpls_label_t *l200 = NULL;
-    vec_add1(l200, 200);
-    vec_add1(l200, 300);
-    vec_add1(l200, 400);
-    vec_add1(l200, 500);
+    fib_mpls_label_t *l200 = NULL;
+    u32 ii;
+    for (ii = 0; ii < 4; ii++)
+    {
+        fib_mpls_label_t fml = {
+            .fml_value = 200 + (ii * 100),
+        };
+        vec_add1(l200, fml);
+    };
 
     lfe = fib_table_entry_update_one_path(fib_index,
 					  &pfx_1200,
@@ -8523,8 +8621,10 @@ lfib_test (void)
     	    .ip4.as_u32 = clib_host_to_net_u32(0x02020204),
     	},
     };
-    mpls_label_t *l999 = NULL;
-    vec_add1(l999, 999);
+    fib_mpls_label_t *l999 = NULL, fml_999 = {
+        .fml_value = 999,
+    };
+    vec_add1(l999, fml_999);
     rpaths[0].frp_label_stack = l999,
 
     fib_table_entry_path_add2(fib_index,
@@ -8690,8 +8790,10 @@ lfib_test (void)
             .adj = idpo.dpoi_index,
         },
     };
-    mpls_label_t *l3300 = NULL;
-    vec_add1(l3300, 3300);
+    fib_mpls_label_t *l3300 = NULL, fml_3300 = {
+        .fml_value = 3300,
+    };
+    vec_add1(l3300, fml_3300);
 
     lfe = fib_table_entry_update_one_path(lfib_index,
 					  &pfx_3500,
@@ -8772,6 +8874,9 @@ lfib_test (void)
                                      0, 1);
     mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
 
+    FIB_TEST(0 == pool_elts(mpls_disp_dpo_pool),
+	     "mpls_disp_dpo resources freed %d of %d",
+             0, pool_elts(mpls_disp_dpo_pool));
     FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
              lb_count, pool_elts(load_balance_pool));

@@ -111,8 +111,8 @@ typedef enum dpo_type_t_ {
     DPO_LOOKUP,
     DPO_LISP_CP,
     DPO_CLASSIFY,
-    DPO_MPLS_LABEL,
-    DPO_MPLS_DISPOSITION,
+    DPO_MPLS_DISPOSITION_PIPE,
+    DPO_MPLS_DISPOSITION_UNIFORM,
     DPO_MFIB_ENTRY,
     DPO_INTERFACE_RX,
     DPO_INTERFACE_TX,
@@ -146,8 +146,8 @@ typedef enum dpo_type_t_ {
     [DPO_REPLICATE] = "dpo-replicate",	\
     [DPO_LISP_CP] = "dpo-lisp-cp",	\
     [DPO_CLASSIFY] = "dpo-classify",	\
-    [DPO_MPLS_LABEL] = "dpo-mpls-label", \
-    [DPO_MPLS_DISPOSITION] = "dpo-mpls-diposition", \
+    [DPO_MPLS_DISPOSITION_PIPE] = "dpo-mpls-diposition-pipe", \
+    [DPO_MPLS_DISPOSITION_UNIFORM] = "dpo-mpls-diposition-uniform", \
     [DPO_MFIB_ENTRY] = "dpo-mfib-entry", \
     [DPO_INTERFACE_RX] = "dpo-interface-rx",	\
     [DPO_INTERFACE_TX] = "dpo-interface-tx",	\

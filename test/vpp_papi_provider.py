@@ -1119,7 +1119,6 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-
         return self.api(
             self.papi.mpls_route_add_del,
             {'mr_label': label,
@@ -2875,25 +2874,14 @@ class VppPapiProvider(object):
                            paths,
                            is_add=1):
         """ BIER Route add/del """
-        br_paths = []
-        for p in paths:
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': 0,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': len(p.nh_labels),
-                             'label_stack': p.nh_labels})
         return self.api(
             self.papi.bier_route_add_del,
             {'br_tbl_id': {"bt_set": bti.set_id,
                            "bt_sub_domain": bti.sub_domain_id,
                            "bt_hdr_len_id": bti.hdr_len_id},
              'br_bp': bp,
-             'br_n_paths': len(br_paths),
-             'br_paths': br_paths,
+             'br_n_paths': len(paths),
+             'br_paths': paths,
              'br_is_add': is_add})
 
     def bier_route_dump(self, bti):
@@ -2950,6 +2938,9 @@ class VppPapiProvider(object):
                                 next_hop_is_ip4=1,
                                 is_add=1):
         """ BIER Route add/del """
+        lstack = []
+        while (len(lstack) < 16):
+            lstack.append({})
         return self.api(
             self.papi.bier_disp_entry_add_del,
             {'bde_tbl_id': bdti,
@@ -2961,7 +2952,7 @@ class VppPapiProvider(object):
                             'afi': next_hop_afi,
                             'rpf_id': next_hop_rpf_id,
                             'n_labels': 0,
-                            'label_stack': [0]}],
+                            'label_stack': lstack}],
              'bde_is_add': is_add})
 
     def bier_disp_entry_dump(self, bdti):

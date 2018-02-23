@@ -28,7 +28,6 @@ option version = "1.1.0";
     @param decap_next_index - Name of decap next graph node
     @param vni - The VXLAN Network Identifier, uint24
 */
-
 define vxlan_add_del_tunnel
 {
   u32 client_index;
