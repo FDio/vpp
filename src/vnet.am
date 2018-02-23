@@ -1236,6 +1236,13 @@ pcap2pg_SOURCES = 				\
 pcap2pg_LDFLAGS = -static
 pcap2pg_LDADD = libvnet.la libvppinfra.la -lpthread libvlibmemory.la -lm -ldl
 
-noinst_PROGRAMS += pcap2pg
+pcap2cinit_SOURCES = 				\
+  vnet/unix/pcap2cinit.c			\
+  vnet/unix/pcap.h
+
+pcap2cinit_LDFLAGS = -static
+pcap2cinit_LDADD = libvnet.la libvppinfra.la -lpthread libvlibmemory.la -lm -ldl
+
+noinst_PROGRAMS += pcap2pg pcap2cinit
 
 # vi:syntax=automake

@@ -164,7 +164,7 @@ main (int argc, char **argv)
 
   if (output_file)
     {
-      ofp = fopen ((char *) output_file, "rw");
+      ofp = fopen ((char *) output_file, "w+");
       if (ofp == NULL)
 	clib_unix_warning ("Couldn't create '%s'", output_file);
       exit (1);
