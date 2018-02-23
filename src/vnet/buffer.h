@@ -181,6 +181,8 @@ typedef struct
      */
     struct
     {
+      /* do not overlay w/ ip.adj_index[0,1] nor flow hash */
+      u32 pad[VLIB_N_RX_TX + 1];
       u8 ttl;
       u8 exp;
       u8 first;
