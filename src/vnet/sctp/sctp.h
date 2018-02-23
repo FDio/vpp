@@ -100,8 +100,8 @@ enum _sctp_subconn_state
 typedef struct _sctp_sub_connection
 {
   transport_connection_t connection;	      /**< Common transport data. First! */
-  void *parent;								/**< Link to the parent-super connection */
 
+  u8 subconn_idx; /**< This indicates the position of this sub-connection in the super-set container of connections pool */
   u32 error_count; /**< The current error count for this destination. */
   u32 error_threshold; /**< Current error threshold for this destination,
 				i.e. what value marks the destination down if error count reaches this value. */
@@ -512,7 +512,7 @@ sctp_half_open_connection_get (u32 conn_index)
   clib_spinlock_lock_if_init (&sctp_main.half_open_lock);
   if (!pool_is_free_index (sctp_main.half_open_connections, conn_index))
     tc = pool_elt_at_index (sctp_main.half_open_connections, conn_index);
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = tc;
+  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx = MAIN_SCTP_SUB_CONN_IDX;
   clib_spinlock_unlock_if_init (&sctp_main.half_open_lock);
   return tc;
 }
@@ -609,7 +609,11 @@ sctp_get_connection_from_transport (transport_connection_t * tconn)
   if (sub->parent == NULL)
     SCTP_ADV_DBG ("sub->parent == NULL");
 #endif
-  return (sctp_connection_t *) sub->parent;
+  if (sub->subconn_idx > 0)
+    return (sctp_connection_t *) sub -
+      (sizeof (sctp_sub_connection_t) * (sub->subconn_idx - 1));
+
+  return (sctp_connection_t *) sub;
 }
 
 always_inline u32
