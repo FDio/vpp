@@ -22,6 +22,30 @@
       "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7dce9814_10bb887d",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 1248
+      },
+      "writtenOn": "2018-02-23T15:54:15Z",
+      "side": 0,
+      "message": "u32x4_zero_byte_mask() can only be tested if this is active...\n\ncan you please explain/propose in more detail?",
+      "parentUuid": "1190ee6b_f3d60057",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 6
+      },
+      "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
