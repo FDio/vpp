@@ -325,8 +325,8 @@ fi
 
 %post selinux-policy
 %_format MODULES %{_datadir}/selinux/packages/$x.pp
-%{_sbindir}/semodule -n -X 400 -s %{selinuxtype} -i $MODULES
 if %{_sbindir}/selinuxenabled ; then
+    %{_sbindir}/semodule -n -X 400 -s %{selinuxtype} -i $MODULES
     %{_sbindir}/load_policy
     %relabel_files
 fi
