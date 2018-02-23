@@ -86,6 +86,26 @@ u16x8_zero_byte_mask (u16x8 input)
   return (u32) (vgetq_lane_u64 (merge3, 1) << 8) + vgetq_lane_u64 (merge3, 0);
 }
 
+always_inline u32
+u8x16_zero_byte_mask (u8x16 input)
+{
+  return u16x8_zero_byte_mask ((u16x8) input);
+}
+
+always_inline u32
+u32x4_zero_byte_mask (u32x4 input)
+{
+  return u16x8_zero_byte_mask ((u16x8) input);
+}
+
+always_inline u32
+u64x2_zero_byte_mask (u64x2 input)
+{
+  return u16x8_zero_byte_mask ((u16x8) input);
+}
+
+
+
 #endif /* included_vector_neon_h */
 
 /*
