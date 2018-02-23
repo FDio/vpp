@@ -8872,7 +8872,7 @@ api_bier_route_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M2 (BIER_ROUTE_ADD_DEL, mp, sizeof (vl_api_fib_path3_t));
+  M2 (BIER_ROUTE_ADD_DEL, mp, sizeof (vl_api_fib_path_t));
 
   mp->br_is_add = is_add;
   mp->br_tbl_id.bt_set = set;
@@ -8881,7 +8881,7 @@ api_bier_route_add_del (vat_main_t * vam)
   mp->br_bp = ntohs (bp);
   mp->br_n_paths = 1;
   mp->br_paths[0].n_labels = 1;
-  mp->br_paths[0].label_stack[0] = ntohl (next_hop_out_label);
+  mp->br_paths[0].label_stack[0].label = ntohl (next_hop_out_label);
   mp->br_paths[0].afi = (next_hop_proto_is_ip4 ? 0 : 1);
 
   if (next_hop_proto_is_ip4)
@@ -19634,7 +19634,7 @@ api_netmap_delete (vat_main_t * vam)
 }
 
 static void
-vl_api_mpls_fib_path_print (vat_main_t * vam, vl_api_fib_path2_t * fp)
+vl_api_mpls_fib_path_print (vat_main_t * vam, vl_api_fib_path_t * fp)
 {
   if (fp->afi == IP46_TYPE_IP6)
     print (vam->ofp,
@@ -19654,7 +19654,7 @@ vl_api_mpls_fib_path_print (vat_main_t * vam, vl_api_fib_path2_t * fp)
 
 static void
 vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
-				 vl_api_fib_path2_t * fp)
+				 vl_api_fib_path_t * fp)
 {
   struct in_addr ip4;
   struct in6_addr ip6;
@@ -19683,7 +19683,7 @@ vl_api_mpls_tunnel_details_t_handler (vl_api_mpls_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   int count = ntohl (mp->mt_count);
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   i32 i;
 
   print (vam->ofp, "[%d]: sw_if_index %d via:",
@@ -19707,7 +19707,7 @@ vl_api_mpls_tunnel_details_t_handler_json (vl_api_mpls_tunnel_details_t * mp)
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
   int count = ntohl (mp->mt_count);
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   i32 i;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
@@ -19773,7 +19773,7 @@ vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   int count = ntohl (mp->count);
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   int i;
 
   print (vam->ofp,
@@ -19793,7 +19793,7 @@ static void vl_api_mpls_fib_details_t_handler_json
   vat_main_t *vam = &vat_main;
   int count = ntohl (mp->count);
   vat_json_node_t *node = NULL;
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   int i;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)

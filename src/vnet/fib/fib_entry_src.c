@@ -212,6 +212,7 @@ static int
 fib_entry_src_valid_out_label (mpls_label_t label)
 {
     return ((MPLS_LABEL_IS_REAL(label) ||
+             MPLS_LABEL_POP == label ||
              MPLS_IETF_IPV4_EXPLICIT_NULL_LABEL == label ||
              MPLS_IETF_IPV6_EXPLICIT_NULL_LABEL == label ||
              MPLS_IETF_IMPLICIT_NULL_LABEL == label));
@@ -330,6 +331,7 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
                                            &nh->path_dpo);
             fib_path_stack_mpls_disp(path_index,
                                      fib_prefix_get_payload_proto(&ctx->fib_entry->fe_prefix),
+                                     FIB_MPLS_LSP_MODE_PIPE,
                                      &nh->path_dpo);
 
             break;
@@ -391,7 +393,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
         switch (path_ext->fpe_type)
         {
         case FIB_PATH_EXT_MPLS:
-            if (fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
+            if (fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0].fml_value))
             {
                 /*
                  * found a matching extension. stack it to obtain the forwarding

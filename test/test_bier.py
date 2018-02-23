@@ -6,7 +6,8 @@ import socket
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto
+    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto, \
+    VppMplsLabel
 from vpp_bier import *
 from vpp_udp_encap import *
 
@@ -99,15 +100,17 @@ class TestBier(VppTestCase):
         bier_routes = []
         for i in range(1, max_bp+1):
             nh = "10.0.%d.%d" % (i / 255, i % 255)
-            nh_routes.append(VppIpRoute(self, nh, 32,
-                                        [VppRoutePath(self.pg1.remote_ip4,
-                                                      self.pg1.sw_if_index,
-                                                      labels=[2000+i])]))
+            nh_routes.append(
+                VppIpRoute(self, nh, 32,
+                           [VppRoutePath(self.pg1.remote_ip4,
+                                         self.pg1.sw_if_index,
+                                         labels=[VppMplsLabel(2000+i)])]))
             nh_routes[-1].add_vpp_config()
 
-            bier_routes.append(VppBierRoute(self, bti, i,
-                                            [VppRoutePath(nh, 0xffffffff,
-                                                          labels=[100+i])]))
+            bier_routes.append(
+                VppBierRoute(self, bti, i,
+                             [VppRoutePath(nh, 0xffffffff,
+                                           labels=[VppMplsLabel(100+i)])]))
             bier_routes[-1].add_vpp_config()
 
         #
@@ -216,20 +219,20 @@ class TestBier(VppTestCase):
         ip_route_1 = VppIpRoute(self, nh1, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
-                                              labels=[2001])])
+                                              labels=[VppMplsLabel(2001)])])
         ip_route_2 = VppIpRoute(self, nh2, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
-                                              labels=[2002])])
+                                              labels=[VppMplsLabel(2002)])])
         ip_route_1.add_vpp_config()
         ip_route_2.add_vpp_config()
 
         bier_route_1 = VppBierRoute(self, bti, 1,
                                     [VppRoutePath(nh1, 0xffffffff,
-                                                  labels=[101])])
+                                                  labels=[VppMplsLabel(101)])])
         bier_route_2 = VppBierRoute(self, bti, 2,
                                     [VppRoutePath(nh2, 0xffffffff,
-                                                  labels=[102])])
+                                                  labels=[VppMplsLabel(102)])])
         bier_route_1.add_vpp_config()
         bier_route_2.add_vpp_config()
 
@@ -561,7 +564,7 @@ class TestBier(VppTestCase):
         ip_route = VppIpRoute(self, nh1, 32,
                               [VppRoutePath(self.pg1.remote_ip4,
                                             self.pg1.sw_if_index,
-                                            labels=[2001])])
+                                            labels=[VppMplsLabel(2001)])])
         ip_route.add_vpp_config()
 
         udp_encap = VppUdpEncap(self, 4,

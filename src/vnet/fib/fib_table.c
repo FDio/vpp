@@ -520,7 +520,7 @@ fib_table_entry_path_add (u32 fib_index,
 			  u32 next_hop_sw_if_index,
 			  u32 next_hop_fib_index,
 			  u32 next_hop_weight,
-			  mpls_label_t *next_hop_labels,
+			  fib_mpls_label_t *next_hop_labels,
 			  fib_route_path_flags_t path_flags)
 {
     fib_route_path_t path = {
@@ -770,7 +770,7 @@ fib_table_entry_update_one_path (u32 fib_index,
 				 u32 next_hop_sw_if_index,
 				 u32 next_hop_fib_index,
 				 u32 next_hop_weight,
-				 mpls_label_t *next_hop_labels,
+				 fib_mpls_label_t *next_hop_labels,
 				 fib_route_path_flags_t path_flags)
 {
     fib_node_index_t fib_entry_index;

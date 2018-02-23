@@ -29,7 +29,7 @@ typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_LABEL_STACK_O_ADJ,
     FT_LB_LABEL_O_LB,
     FT_LB_O_LB,
-    FT_LB_MPLS_DISP_O_ADJ,
+    FT_LB_MPLS_DISP_PIPE_O_ADJ,
     FT_LB_INTF,
     FT_LB_L2,
     FT_LB_BIER_TABLE,
@@ -47,6 +47,7 @@ typedef struct fib_test_lb_bucket_t_ {
 	{
 	    mpls_eos_bit_t eos;
 	    mpls_label_t label;
+            fib_mpls_lsp_mode_t mode;
 	    u8 ttl;
 	    adj_index_t adj;
 	} label_o_adj;
@@ -54,6 +55,7 @@ typedef struct fib_test_lb_bucket_t_ {
 	{
 	    mpls_eos_bit_t eos;
 	    mpls_label_t label_stack[8];
+            fib_mpls_lsp_mode_t mode;
 	    u8 label_stack_size;
 	    u8 ttl;
 	    adj_index_t adj;
@@ -62,6 +64,7 @@ typedef struct fib_test_lb_bucket_t_ {
 	{
 	    mpls_eos_bit_t eos;
 	    mpls_label_t label;
+            fib_mpls_lsp_mode_t mode;
 	    u8 ttl;
 	    index_t lb;
 	} label_o_lb;

@@ -51,10 +51,11 @@ format_mpls_input_trace (u8 * s, va_list * args)
   foreach_mpls_input_next;
 #undef _
   
-  s = format (s, "MPLS: next %s[%d]  label %d ttl %d", 
+  s = format (s, "MPLS: next %s[%d]  label %d ttl %d exp %d", 
               next_name, t->next_index,
 	      vnet_mpls_uc_get_label(label),
-	      vnet_mpls_uc_get_ttl(label));
+	      vnet_mpls_uc_get_ttl(label),
+	      vnet_mpls_uc_get_exp(label));
 
   return s;
 }
@@ -74,21 +75,13 @@ mpls_input_inline (vlib_main_t * vm,
                    vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  mpls_input_runtime_t * rt;
-  mpls_main_t * mm;
+  mpls_main_t * mm = &mpls_main;
   u32 thread_index = vlib_get_thread_index();
   vlib_simple_counter_main_t * cm;
   vnet_main_t * vnm = vnet_get_main();
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
-  mm = rt->mpls_main;
-  /* 
-   * Force an initial lookup every time, in case the control-plane
-   * changed the label->FIB mapping.
-   */
-  rt->last_label = ~0;
 
   next_index = node->cached_next_index;
 
@@ -279,17 +272,10 @@ VLIB_NODE_FUNCTION_MULTIARCH (mpls_input_node, mpls_input)
 static void
 mpls_setup_nodes (vlib_main_t * vm)
 {
-  mpls_input_runtime_t * rt;
   pg_node_t * pn;
 
   pn = pg_get_node (mpls_input_node.index);
   pn->unformat_edit = unformat_pg_mpls_header;
-
-  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
-  rt->last_label = (u32) ~0;
-  rt->last_inner_fib_index = 0;
-  rt->last_outer_fib_index = 0;
-  rt->mpls_main = &mpls_main;
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_MPLS,
                                 mpls_input_node.index);
@@ -309,16 +295,3 @@ static clib_error_t * mpls_input_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (mpls_input_init);
-
-static clib_error_t * mpls_input_worker_init (vlib_main_t * vm)
-{
-  mpls_input_runtime_t * rt;
-  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
-  rt->last_label = (u32) ~0;
-  rt->last_inner_fib_index = 0;
-  rt->last_outer_fib_index = 0;
-  rt->mpls_main = &mpls_main;
-  return 0;
-}
-
-VLIB_WORKER_INIT_FUNCTION (mpls_input_worker_init);
