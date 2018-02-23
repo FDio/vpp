@@ -301,7 +301,10 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
 
   if (steer_pl->vpn_label != (u32) ~ 0)
     {
-      vec_add1 (path.frp_label_stack, steer_pl->vpn_label);
+      fib_mpls_label_t fml = {
+	.fml_value = steer_pl->vpn_label,
+      };
+      vec_add1 (path.frp_label_stack, fml);
       path.frp_eos = MPLS_NON_EOS;
     }
 
@@ -480,7 +483,12 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
       fib_route_path_t *paths = NULL;
 
       if (steer_pl->vpn_label != (u32) ~ 0)
-	vec_add1 (path.frp_label_stack, steer_pl->vpn_label);
+	{
+	  fib_mpls_label_t fml = {
+	    .fml_value = steer_pl->vpn_label,
+	  };
+	  vec_add1 (path.frp_label_stack, fml);
+	}
 
       /* FIB API calls - Recursive route through the BindingSID */
       if (traffic_type == SR_STEER_IPV6)

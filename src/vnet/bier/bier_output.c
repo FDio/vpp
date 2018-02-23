@@ -140,8 +140,8 @@ bier_output (vlib_main_t * vm,
                 h0 = vlib_buffer_get_current(b0);
                 
                 h0[0] = bfm0->bfm_label;
-                vnet_mpls_uc_set_ttl(h0, vnet_buffer(b0)->mpls.ttl - 1);
-                h0[0] = clib_host_to_net_u32(h0[0]);
+
+                ((char*)h0)[3]= vnet_buffer(b0)->mpls.ttl - 1;
             }
 
             /*

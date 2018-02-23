@@ -91,6 +91,11 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 	    rw_len0 = adj0[0].rewrite_header.data_bytes;
 	    vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
             vnet_buffer(p0)->sw_if_index[VLIB_TX] = adj0->rewrite_header.sw_if_index;
+            /* since we are coming out of the L2 world, where the vlib_buffer
+             * union is used for other things, make sure it is clean for
+             * MPLS from now on.
+             */
+            vnet_buffer(p0)->mpls.first = 0;
 
 	    vlib_increment_combined_counter(&adjacency_counters,
                                             thread_index,

@@ -18,7 +18,7 @@
     This file defines vpp BIER control-plane API messages which are generally
     called through a shared memory interface.
 */
-option version = "1.0.0";
+option version = "1.1.0";
 import "vnet/fib/fib_types.api";
 
 /** \brief BIER Table Indentifier
@@ -84,7 +84,7 @@ autoreply define bier_route_add_del
   u8 br_is_replace;
   vl_api_bier_table_id_t br_tbl_id;
   u8 br_n_paths;
-  vl_api_fib_path3_t br_paths[br_n_paths];
+  vl_api_fib_path_t br_paths[br_n_paths];
 };
 
 define bier_route_dump
@@ -101,7 +101,7 @@ define bier_route_details
   u16 br_bp;
   vl_api_bier_table_id_t br_tbl_id;
   u32 br_n_paths;
-  vl_api_fib_path3_t br_paths[br_n_paths];
+  vl_api_fib_path_t br_paths[br_n_paths];
 };
 
 /** \brief BIER Imposition Add
@@ -211,7 +211,7 @@ autoreply define bier_disp_entry_add_del
   u8 bde_is_add;
   u8 bde_payload_proto;
   u8 bde_n_paths;
-  vl_api_fib_path3_t bde_paths[bde_n_paths];
+  vl_api_fib_path_t bde_paths[bde_n_paths];
 };
 
 define bier_disp_entry_dump
@@ -229,7 +229,7 @@ define bier_disp_entry_details
   u8 bde_is_add;
   u8 bde_payload_proto;
   u8 bde_n_paths;
-  vl_api_fib_path3_t bde_paths[bde_n_paths];
+  vl_api_fib_path_t bde_paths[bde_n_paths];
 };
 
 /*

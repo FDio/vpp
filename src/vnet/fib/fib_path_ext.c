@@ -25,6 +25,7 @@
 #include <vnet/fib/fib_internal.h>
 
 const char *fib_path_ext_adj_flags_names[] = FIB_PATH_EXT_ADJ_ATTR_NAMES;
+const char *fib_path_ext_mpls_flags_names[] = FIB_PATH_EXT_MPLS_ATTR_NAMES;
 
 u8 *
 format_fib_path_ext (u8 * s, va_list * args)
@@ -38,30 +39,46 @@ format_fib_path_ext (u8 * s, va_list * args)
 
     switch (path_ext->fpe_type)
     {
-    case FIB_PATH_EXT_MPLS:
-        s = format(s, "labels:",
+    case FIB_PATH_EXT_MPLS: {
+        fib_path_ext_mpls_attr_t attr;
+
+        if (path_ext->fpe_mpls_flags)
+        {
+            s = format(s, "mpls-flags:[");
+
+            FOR_EACH_PATH_EXT_MPLS_ATTR(attr)
+            {
+                if ((1<<attr) & path_ext->fpe_mpls_flags) {
+                    s = format(s, "%s", fib_path_ext_mpls_flags_names[attr]);
+                }
+            }
+            s = format(s, "]");
+        }
+        s = format(s, " labels:[",
                    path_ext->fpe_path_index);
         for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
         {
-            s = format(s, "%U ",
-                       format_mpls_unicast_label,
-                       path_ext->fpe_path.frp_label_stack[ii]);
+            s = format(s, "[%U]",
+                       format_fib_mpls_label,
+                       &path_ext->fpe_path.frp_label_stack[ii]);
         }
+        s = format(s, "]");
         break;
+    }
     case FIB_PATH_EXT_ADJ: {
         fib_path_ext_adj_attr_t attr;
 
-        s = format(s, "adj-flags:");
         if (path_ext->fpe_adj_flags)
         {
+            s = format(s, "adj-flags:[");
             FOR_EACH_PATH_EXT_ADJ_ATTR(attr)
             {
-                s = format(s, "%s", fib_path_ext_adj_flags_names[attr]);
+                if ((1<<attr) & path_ext->fpe_adj_flags)
+                {
+                    s = format(s, "%s", fib_path_ext_adj_flags_names[attr]);
+                }
             }
-        }
-        else
-        {
-            s = format(s, "None");
+            s = format(s, "]");
         }
         break;
     }
@@ -121,12 +138,28 @@ fib_path_ext_init (fib_path_ext_t *path_ext,
 
 /**
  * @brief Return true if the label stack is implicit null
+ * imp-null and pop equate to the same this as this level -
+ * the label is coming off.
  */
 static int
 fib_path_ext_is_imp_null (fib_path_ext_t *path_ext)
 {
     return ((1 == vec_len(path_ext->fpe_label_stack)) &&
-	    (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label_stack[0]));
+	    ((MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label_stack[0].fml_value) ||
+             (MPLS_LABEL_POP == path_ext->fpe_label_stack[0].fml_value)));
+}
+
+mpls_label_dpo_flags_t
+fib_path_ext_mpls_flags_to_mpls_label (fib_path_ext_mpls_flags_t fpe_flags)
+{
+    mpls_label_dpo_flags_t ml_flags = MPLS_LABEL_DPO_FLAG_NONE;
+
+    if (fpe_flags &FIB_PATH_EXT_MPLS_FLAG_NO_IP_TTL_DECR)
+    {
+        ml_flags |= MPLS_LABEL_DPO_FLAG_NO_IP_TTL_DECR;
+    }
+
+    return (ml_flags);
 }
 
 load_balance_path_t *
@@ -236,24 +269,25 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
              * we pickup the correct MPLS imposition nodes to do
              * ip[46] processing.
              */
+            dpo_id_t parent = DPO_INVALID;
             dpo_proto_t chain_proto;
             mpls_eos_bit_t eos;
-            index_t mldi;
 
             eos = (child_fct == FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS ?
                    MPLS_NON_EOS :
                    MPLS_EOS);
             chain_proto = fib_forw_chain_type_to_dpo_proto(child_fct);
 
-            mldi = mpls_label_dpo_create(path_ext->fpe_label_stack,
-                                         eos, 255, 0,
-                                         chain_proto,
-                                         &nh->path_dpo);
+            dpo_copy(&parent, &nh->path_dpo);
+            mpls_label_dpo_create(path_ext->fpe_label_stack,
+                                  eos,
+                                  chain_proto,
+                                  fib_path_ext_mpls_flags_to_mpls_label(
+                                      path_ext->fpe_mpls_flags),
+                                  &parent,
+                                  &nh->path_dpo);
 
-	    dpo_set(&nh->path_dpo,
-		    DPO_MPLS_LABEL,
-                    chain_proto,
-                    mldi);
+	    dpo_reset(&parent);
 	}
         else if (child_fct == FIB_FORW_CHAIN_TYPE_MPLS_EOS)
         {
@@ -262,6 +296,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
              */
             fib_path_stack_mpls_disp(nh->path_index,
                                      fib_forw_chain_type_to_dpo_proto(parent_fct),
+                                     path_ext->fpe_label_stack[0].fml_mode,
                                      &nh->path_dpo);
         }
     }
