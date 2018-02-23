@@ -46,6 +46,30 @@
       "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "54f2773d_880c3d59",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-02-23T15:56:54Z",
+      "side": 0,
+      "message": "CLIB_HAVE_VEC128 is enabled if you have neon instructions.\nThe CLASSIFY_USE_SSE is only an alias.",
+      "parentUuid": "7dce9814_10bb887d",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 6
+      },
+      "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
