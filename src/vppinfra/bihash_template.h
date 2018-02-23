@@ -26,6 +26,7 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
+#include <vppinfra/cache.h>
 
 #ifndef BIHASH_TYPE
 #error BIHASH_TYPE not defined
@@ -91,7 +92,7 @@ typedef struct
     BVT (clib_bihash_value) ** freelists;
 
   /*
-   * Backing store allocation. Since bihash mananges its own
+   * Backing store allocation. Since bihash manages its own
    * freelists, we simple dole out memory at alloc_arena_next.
    */
   uword alloc_arena;
@@ -269,10 +270,9 @@ format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
 format_function_t BV (format_bihash_lru);
 
-static inline int BV (clib_bihash_search_inline)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * key_result)
+static inline int BV (clib_bihash_search_inline_with_hash)
+  (BVT (clib_bihash) * h, u64 hash, BVT (clib_bihash_kv) * key_result)
 {
-  u64 hash;
   u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
@@ -280,8 +280,6 @@ static inline int BV (clib_bihash_search_inline)
   BVT (clib_bihash_kv) * kvp;
 #endif
   int i, limit;
-
-  hash = BV (clib_bihash_hash) (key_result);
 
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
@@ -341,6 +339,49 @@ static inline int BV (clib_bihash_search_inline)
 	}
     }
   return -1;
+}
+
+static inline int BV (clib_bihash_search_inline)
+  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * key_result)
+{
+  u64 hash;
+
+  hash = BV (clib_bihash_hash) (key_result);
+
+  return BV (clib_bihash_search_inline_with_hash) (h, hash, key_result);
+}
+
+static inline void BV (clib_bihash_prefetch_bucket)
+  (BVT (clib_bihash) * h, u64 hash)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_bucket) * b;
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, READ);
+}
+
+static inline void BV (clib_bihash_prefetch_data)
+  (BVT (clib_bihash) * h, u64 hash)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_value) * v;
+  BVT (clib_bihash_bucket) * b;
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  if (PREDICT_FALSE (b->offset == 0))
+    return;
+
+  hash >>= h->log2_nbuckets;
+  v = BV (clib_bihash_get_value) (h, b->offset);
+
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+
+  CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, READ);
 }
 
 static inline int BV (clib_bihash_search_inline_2)

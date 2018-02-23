@@ -78,7 +78,9 @@ typedef struct
   u8 *name;			     /**< hash table name */
     BVT (clib_bihash_value) ** freelists;
 				      /**< power of two freelist vector */
-  void *mheap;	/**< clib memory heap */
+  uword alloc_arena;		      /**< memory allocation arena  */
+  uword alloc_arena_next;	      /**< first available mem chunk */
+  uword alloc_arena_size;	      /**< size of the arena */
 } clib_bihash_t;
 
 /** Get pointer to value page given its clib mheap offset */
@@ -117,16 +119,51 @@ void clib_bihash_free (clib_bihash * h);
 int clib_bihash_add_del (clib_bihash * h, clib_bihash_kv * add_v, int is_add);
 
 
+/** Search a bi-hash table, use supplied hash code
+
+    @param h - the bi-hash table to search
+    @param hash - the hash code
+    @param in_out_kv - (key,value) pair containing the search key
+    @returns 0 on success (with in_out_kv set), < 0 on error
+*/
+int clib_bihash_search_inline_with_hash
+  (clib_bihash * h, u64 hash, clib_bihash_kv * in_out_kv);
+
 /** Search a bi-hash table
 
     @param h - the bi-hash table to search
-    @param search_v - (key,value) pair containing the search key
-    @param return_v - (key,value) pair which matches search_v.key
-    @returns 0 on success (with return_v set), < 0 on error
+    @param in_out_kv - (key,value) pair containing the search key
+    @returns 0 on success (with in_out_kv set), < 0 on error
 */
-int clib_bihash_search (clib_bihash * h,
-			clib_bihash_kv * search_v, clib_bihash_kv * return_v);
+int clib_bihash_search_inline (clib_bihash * h, clib_bihash_kv * in_out_kv);
 
+/** Prefetch a bi-hash bucket given a hash code
+
+    @param h - the bi-hash table to search
+    @param hash - the hash code
+    @note see also clib_bihash_hash to compute the code
+*/
+void clib_bihash_prefetch_bucket (clib_bihash * h, u64 hash);
+
+/** Prefetch bi-hash (key,value) data given a hash code
+
+    @param h - the bi-hash table to search
+    @param hash - the hash code
+    @note assumes that the bucket has been prefetched, see
+     clib_bihash_prefetch_bucket
+*/
+void clib_bihash_prefetch_data (clib_bihash * h, u64 hash);
+
+/** Search a bi-hash table
+
+    @param h - the bi-hash table to search
+    @param search_key - (key,value) pair containing the search key
+    @param valuep - (key,value) set to search result
+    @returns 0 on success (with valuep set), < 0 on error
+    @note used in situations where key modification is not desired
+*/
+int clib_bihash_search_inline_2
+  (clib_bihash * h, clib_bihash_kv * search_key, clib_bihash_kv * valuep);
 
 /** Visit active (key,value) pairs in a bi-hash table
 
