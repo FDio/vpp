@@ -909,7 +909,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      idx = sctp_sub_conn_id_via_ip6h (sctp_conn, ip6_hdr);
 	    }
 
-	  sctp_conn->sub_conn[idx].parent = sctp_conn;
+	  sctp_conn->sub_conn[idx].subconn_idx = idx;
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
 
 	  sctp_chunk_hdr =
@@ -938,7 +938,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    my_thread_index;
 		  new_sctp_conn->sub_conn[idx].PMTU =
 		    sctp_conn->sub_conn[idx].PMTU;
-		  new_sctp_conn->sub_conn[idx].parent = new_sctp_conn;
+		  new_sctp_conn->sub_conn[idx].subconn_idx = idx;
 
 		  if (sctp_half_open_connection_cleanup (sctp_conn))
 		    {
@@ -1563,7 +1563,8 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 
 	  /* Create child session and send SYN-ACK */
 	  child_conn = sctp_connection_new (my_thread_index);
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = child_conn;
+	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
+	    MAIN_SCTP_SUB_CONN_IDX;
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_lcl_port =
 	    sctp_hdr->dst_port;
 	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_rmt_port =
@@ -1748,7 +1749,7 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      idx = sctp_sub_conn_id_via_ip6h (sctp_conn, ip6_hdr);
 	    }
 
-	  sctp_conn->sub_conn[idx].parent = sctp_conn;
+	  sctp_conn->sub_conn[idx].subconn_idx = idx;
 
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
 	  sctp_chunk_hdr =

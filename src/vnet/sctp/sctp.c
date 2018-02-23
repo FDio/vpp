@@ -27,7 +27,8 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   pool_get (tm->listener_pool, listener);
   memset (listener, 0, sizeof (*listener));
 
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = listener;
+  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
+    MAIN_SCTP_SUB_CONN_IDX;
   listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
     listener - tm->listener_pool;
   listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.lcl_port = tep->port;
@@ -273,7 +274,8 @@ sctp_sub_connection_add (u8 thread_index)
     sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
   sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].
     connection.thread_index = thread_index;
-  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].parent = sctp_conn;
+  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].subconn_idx =
+    sctp_conn->next_avail_sub_conn;
 
   sctp_conn->next_avail_sub_conn += 1;
 
@@ -310,7 +312,8 @@ sctp_connection_new (u8 thread_index)
 
   pool_get (sctp_main->connections[thread_index], sctp_conn);
   memset (sctp_conn, 0, sizeof (*sctp_conn));
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = sctp_conn;
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
+    MAIN_SCTP_SUB_CONN_IDX;
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
     sctp_conn - sctp_main->connections[thread_index];
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
@@ -330,7 +333,8 @@ sctp_half_open_connection_new (u8 thread_index)
   memset (sctp_conn, 0, sizeof (*sctp_conn));
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
     sctp_conn - tm->half_open_connections;
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].parent = sctp_conn;
+  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
+    MAIN_SCTP_SUB_CONN_IDX;
   return sctp_conn;
 }
 
@@ -374,7 +378,7 @@ sctp_connection_open (transport_endpoint_t * rmt)
   transport_connection_t *trans_conn = &sctp_conn->sub_conn[idx].connection;
   ip_copy (&trans_conn->rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&trans_conn->lcl_ip, &lcl_addr, rmt->is_ip4);
-  sctp_conn->sub_conn[idx].parent = sctp_conn;
+  sctp_conn->sub_conn[idx].subconn_idx = idx;
   trans_conn->rmt_port = rmt->port;
   trans_conn->lcl_port = clib_host_to_net_u16 (lcl_port);
   trans_conn->is_ip4 = rmt->is_ip4;

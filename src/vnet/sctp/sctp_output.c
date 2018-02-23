@@ -1094,7 +1094,7 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 
   u8 idx = sctp_data_subconn_select (sctp_conn);
   SCTP_DBG_OUTPUT
-    ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, LCL_PORT = %u, RMT_PORT = %u",
+    ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, sctp_conn->[...].LCL_PORT = %u, sctp_conn->[...].RMT_PORT = %u",
      sctp_conn, idx, sctp_conn->sub_conn[idx].connection.s_index,
      sctp_conn->sub_conn[idx].connection.c_index,
      sctp_conn->sub_conn[idx].connection.lcl_port,
@@ -1149,7 +1149,7 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
 
   SCTP_DBG_OUTPUT ("TRANS_CONN = %p, SCTP_CONN = %p, "
 		   "S_INDEX = %u, C_INDEX = %u,"
-		   "LCL_PORT = %u, RMT_PORT = %u",
+		   "trans_conn->LCL_PORT = %u, trans_conn->RMT_PORT = %u",
 		   trans_conn,
 		   sctp_conn,
 		   trans_conn->s_index,
