@@ -23,11 +23,17 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <vcl/sock_test.h>
+#ifndef VCL_TEST
+#include <sys/un.h>
+#endif
 
 typedef struct
 {
 #ifdef VCL_TEST
   vppcom_endpt_t server_endpt;
+#else
+  int af_unix_echo_tx;
+  int af_unix_echo_rx;
 #endif
   struct sockaddr_in server_addr;
   sock_test_socket_t ctrl_socket;
@@ -200,6 +206,94 @@ echo_test_client ()
 	}
     }
   clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
+
+#ifndef VCL_TEST
+  {
+    int fd, errno_val;
+    struct sockaddr_un serveraddr;
+    uint8_t buffer[256];
+    size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
+    struct timeval timeout;
+
+    /* Open AF_UNIX socket and send an echo to test mixed epoll on server.
+     */
+    fd = socket (AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+      {
+	errno_val = errno;
+	perror ("ERROR in echo_test_client(): socket(AF_UNIX) failed");
+	fprintf (stderr,
+		 "CLIENT: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
+		 "(errno = %d)!\n", errno_val);
+	goto out;
+      }
+    memset (&serveraddr, 0, sizeof (serveraddr));
+    serveraddr.sun_family = AF_UNIX;
+    strcpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME);
+    rv = connect (fd, (struct sockaddr *) &serveraddr, SUN_LEN (&serveraddr));
+    if (rv < 0)
+      {
+	errno_val = errno;
+	perror ("ERROR in echo_test_client(): connect() failed");
+	fprintf (stderr, "CLIENT: ERROR: connect(fd %d, \"%s\", %lu) "
+		 "failed (errno = %d)!\n", fd, SOCK_TEST_AF_UNIX_FILENAME,
+		 SUN_LEN (&serveraddr), errno_val);
+	goto done;
+      }
+
+    scm->af_unix_echo_tx++;
+    strcpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 250000;
+    select (0, NULL, NULL, NULL, &timeout);	/* delay .25 secs */
+    rv = write (fd, buffer, nbytes);
+    if (rv < 0)
+      {
+	errno_val = errno;
+	perror ("ERROR in echo_test_client(): write() failed");
+	fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
+		 "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
+	goto done;
+      }
+    else if (rv < nbytes)
+      {
+	fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
+		 "returned %d!\n", fd, buffer, nbytes, rv);
+	goto done;
+      }
+
+    printf ("CLIENT (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
+    memset (buffer, 0, sizeof (buffer));
+    rv = read (fd, buffer, nbytes);
+    if (rv < 0)
+      {
+	errno_val = errno;
+	perror ("ERROR in echo_test_client(): read() failed");
+	fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
+		 "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
+	goto done;
+      }
+    else if (rv < nbytes)
+      {
+	fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
+		 "returned %d!\n", fd, buffer, nbytes, rv);
+	goto done;
+      }
+
+    if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
+      {
+	printf ("CLIENT (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
+	scm->af_unix_echo_rx++;
+      }
+    else
+      printf ("CLIENT (AF_UNIX): ERROR: RX (%d bytes) - '%s'\n", rv, buffer);
+
+  done:
+    close (fd);
+  out:
+    ;
+  }
+#endif
 
   for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
     {
@@ -427,6 +521,10 @@ exit_client (void)
   sock_test_socket_t *tsock;
   int i;
 
+#ifndef VCL_TEST
+  printf ("CLIENT: af_unix_echo_tx %d, af_unix_echo_rx %d\n",
+	  scm->af_unix_echo_tx, scm->af_unix_echo_rx);
+#endif
   for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
     {
       tsock = &scm->test_socket[i];
@@ -1085,10 +1183,11 @@ main (int argc, char **argv)
 #ifdef VCL_TEST
   vppcom_session_close (ctrl->fd);
   vppcom_app_destroy ();
+  return 0;
 #else
   close (ctrl->fd);
+  return (scm->af_unix_echo_tx == scm->af_unix_echo_rx) ? 0 : -1;
 #endif
-  return 0;
 }
 
 /*

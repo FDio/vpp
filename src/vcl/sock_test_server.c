@@ -30,6 +30,9 @@
 
 #if SOCK_SERVER_USE_EPOLL
 #include <sys/epoll.h>
+#if !defined(VCL_TEST)
+#include <sys/un.h>
+#endif
 #endif
 
 #ifdef VCL_TEST
@@ -64,6 +67,13 @@ typedef struct
   int epfd;
   struct epoll_event listen_ev;
   struct epoll_event wait_events[SOCK_SERVER_MAX_EPOLL_EVENTS];
+#if !defined (VCL_TEST)
+  int af_unix_listen_fd;
+  int af_unix_fd;
+  struct epoll_event af_unix_listen_ev;
+  struct sockaddr_un serveraddr;
+  uint32_t af_unix_xacts;
+#endif
 #endif
   size_t num_conn;
   size_t conn_pool_size;
@@ -282,6 +292,75 @@ stream_test_server (sock_server_conn_t * conn, int rx_bytes)
     }
 }
 
+#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+static inline void
+af_unix_echo (void)
+{
+  sock_server_main_t *ssm = &sock_server_main;
+  int af_unix_client_fd;
+  int rv;
+  int errno_val;
+  uint8_t buffer[256];
+  size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
+
+#if HAVE_ACCEPT4
+  af_unix_client_fd = accept4 (ssm->af_unix_listen_fd,
+			       (struct sockaddr *) NULL, NULL, NULL);
+#else
+  af_unix_client_fd = accept (ssm->af_unix_listen_fd,
+			      (struct sockaddr *) NULL, NULL);
+#endif
+  if (af_unix_client_fd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in af_unix_accept()");
+      fprintf (stderr, "SERVER: ERROR: accept failed "
+	       "(errno = %d)!\n", errno_val);
+      return;
+    }
+
+  printf ("SERVER: Got an AF_UNIX connection -- fd = %d (0x%08x)!\n",
+	  af_unix_client_fd, af_unix_client_fd);
+
+  memset (buffer, 0, sizeof (buffer));
+
+  rv = read (af_unix_client_fd, buffer, nbytes);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in af_unix_echo(): read() failed");
+      fprintf (stderr, "SERVER: ERROR: read(af_unix_client_fd %d (0x%x), "
+	       "\"%s\", nbytes %lu) failed (errno = %d)!\n",
+	       af_unix_client_fd, af_unix_client_fd, buffer, nbytes,
+	       errno_val);
+      goto done;
+    }
+
+  printf ("SERVER (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
+
+  if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
+    {
+      rv = write (af_unix_client_fd, buffer, nbytes);
+      if (rv < 0)
+	{
+	  errno_val = errno;
+	  perror ("ERROR in af_unix_echo(): write() failed");
+	  fprintf (stderr,
+		   "SERVER: ERROR: write(af_unix_client_fd %d (0x%x), "
+		   "\"%s\", nbytes %ld) failed (errno = %d)!\n",
+		   af_unix_client_fd, af_unix_client_fd, buffer, nbytes,
+		   errno_val);
+	  goto done;
+	}
+      printf ("SERVER (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
+      ssm->af_unix_xacts++;
+    }
+done:
+  close (af_unix_client_fd);
+}
+
+#endif
+
 static inline void
 new_client (void)
 {
@@ -398,6 +477,50 @@ main (int argc, char **argv)
     }
 #else
   ssm->listen_fd = socket (AF_INET, SOCK_STREAM, 0);
+#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+  unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+  ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (ssm->af_unix_listen_fd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): socket(AF_UNIX) failed");
+      fprintf (stderr,
+	       "SERVER: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
+	       "(errno = %d)!\n", errno_val);
+      return ssm->af_unix_listen_fd;
+    }
+
+  memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
+  ssm->serveraddr.sun_family = AF_UNIX;
+  strcpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME);
+
+  rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
+	     SUN_LEN (&ssm->serveraddr));
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): bind(SOCK_TEST_AF_UNIX_FILENAME) failed");
+      fprintf (stderr, "SERVER: ERROR: bind() fd %d, \"%s\": "
+	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
+	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+
+  rv = listen (ssm->af_unix_listen_fd, 10);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): listen(AF_UNIX) failed");
+      fprintf (stderr, "SERVER: ERROR: listen() fd %d, \"%s\": "
+	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
+	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+#endif /* SOCK_SERVER_USE_EPOLL */
 #endif
   if (ssm->listen_fd < 0)
     {
@@ -457,8 +580,6 @@ main (int argc, char **argv)
       return rv;
     }
 
-  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
-
 #if ! SOCK_SERVER_USE_EPOLL
 
   FD_ZERO (&ssm->wr_fdset);
@@ -492,6 +613,23 @@ main (int argc, char **argv)
   if (rv < 0)
     errno = -rv;
 #else
+  ssm->af_unix_listen_ev.events = EPOLLIN;
+  ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
+  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
+		  &ssm->af_unix_listen_ev);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): mixed epoll_ctl(EPOLL_CTL_ADD)");
+      fprintf (stderr, "SERVER: ERROR: mixed epoll_ctl(epfd %d (0x%x), "
+	       "EPOLL_CTL_ADD, af_unix_listen_fd %d (0x%x), EPOLLIN) failed "
+	       "(errno = %d)!\n", ssm->epfd, ssm->epfd,
+	       ssm->af_unix_listen_fd, ssm->af_unix_listen_fd, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
 #endif
   if (rv < 0)
@@ -503,6 +641,8 @@ main (int argc, char **argv)
       return rv;
     }
 #endif
+
+  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
 
   while (1)
     {
@@ -569,6 +709,14 @@ main (int argc, char **argv)
 	      new_client ();
 	      continue;
 	    }
+#if !defined (VCL_TEST)
+	  else if (ssm->wait_events[i].data.u32 ==
+		   SOCK_TEST_AF_UNIX_ACCEPT_DATA)
+	    {
+	      af_unix_echo ();
+	      continue;
+	    }
+#endif
 	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
 #endif
 	  client_fd = conn->fd;
@@ -732,6 +880,12 @@ done:
   vppcom_app_destroy ();
 #else
   close (ssm->listen_fd);
+
+#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+  close (ssm->af_unix_listen_fd);
+  unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+#endif /* SOCK_SERVER_USE_EPOLL */
+
 #endif
   if (ssm->conn_pool)
     free (ssm->conn_pool);
