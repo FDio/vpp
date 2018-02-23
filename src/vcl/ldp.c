@@ -796,6 +796,34 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       return -1;
     }
 
+  if (timeout)
+    {
+      time_out = (timeout->tv_sec == 0 && timeout->tv_nsec == 0) ?
+	(f64) 0 : (f64) timeout->tv_sec +
+	(f64) timeout->tv_nsec / (f64) 1000000000;
+
+      /* select as fine grained sleep */
+      if (!nfds)
+	{
+	  if (LDP_DEBUG > 3)
+	    clib_warning ("LDP<%d>: sleeping for %.02f seconds",
+			  getpid (), time_out);
+
+	  time_out += clib_time_now (&ldp->clib_time);
+	  while (clib_time_now (&ldp->clib_time) < time_out)
+	    ;
+	  return 0;
+	}
+    }
+  else if (!nfds)
+    {
+      errno = EINVAL;
+      return -1;
+    }
+  else
+    time_out = -1;
+
+
   if (nfds <= ldp->sid_bit_val)
     {
       func_str = "libc_pselect";
@@ -820,34 +848,6 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       errno = EOVERFLOW;
       return -1;
     }
-
-  if (timeout)
-    {
-      time_out = (timeout->tv_sec == 0 && timeout->tv_nsec == 0) ?
-	(f64) 0 : (f64) timeout->tv_sec +
-	(f64) timeout->tv_nsec / (f64) 1000000000 +
-	(f64) (timeout->tv_nsec % 1000000000) / (f64) 1000000000;
-
-      /* select as fine grained sleep */
-      if (!nfds)
-	{
-	  if (LDP_DEBUG > 3)
-	    clib_warning ("LDP<%d>: sleeping for %f seconds",
-			  getpid (), time_out);
-
-	  time_out += clib_time_now (&ldp->clib_time);
-	  while (clib_time_now (&ldp->clib_time) < time_out)
-	    ;
-	  return 0;
-	}
-    }
-  else if (!nfds)
-    {
-      errno = EINVAL;
-      return -1;
-    }
-  else
-    time_out = -1;
 
   sid_bits = libc_bits = 0;
   if (readfds)
@@ -3014,13 +3014,18 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (vep_idx != INVALID_SESSION_ID)
+  if (PREDICT_TRUE (vep_idx != INVALID_SESSION_ID))
     {
       u32 sid = ldp_sid_from_fd (fd);
 
+      if (LDP_DEBUG > 1)
+	clib_warning ("LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x), "
+		      "sid %d (0x%x)", getpid (), epfd, epfd,
+		      vep_idx, vep_idx, sid, sid);
+
       if (sid != INVALID_SESSION_ID)
 	{
-	  func_str = "vppcom_epoll_create";
+	  func_str = "vppcom_epoll_ctl";
 
 	  if (LDP_DEBUG > 1)
 	    clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
@@ -3037,30 +3042,45 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 	}
       else
 	{
-	  int epfd;
+	  int libc_epfd;
 	  u32 size = sizeof (epfd);
 
 	  func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
-	  epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD,
-				      0, 0);
-	  if (!epfd)
+	  libc_epfd = vppcom_session_attr (vep_idx,
+					   VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+	  if (LDP_DEBUG > 1)
+	    clib_warning ("LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x): "
+			  "%s() returned libc_epfd %d (0x%x)",
+			  getpid (), epfd, epfd, vep_idx, vep_idx,
+			  func_str, libc_epfd, libc_epfd);
+
+	  if (!libc_epfd)
 	    {
 	      func_str = "libc_epoll_create1";
 
 	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: calling %s(): EPOLL_CLOEXEC",
-			      getpid (), func_str);
+		clib_warning ("LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x): "
+			      "calling %s(): EPOLL_CLOEXEC",
+			      getpid (), epfd, epfd, vep_idx, vep_idx,
+			      func_str);
 
-	      epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
-	      if (epfd < 0)
+	      libc_epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
+	      if (libc_epfd < 0)
 		{
-		  rv = epfd;
+		  rv = libc_epfd;
 		  goto done;
 		}
 
 	      func_str = "vppcom_session_attr[SET_LIBC_EPFD]";
+	      if (LDP_DEBUG > 1)
+		clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+			      "vep_idx %d (0x%x), VPPCOM_ATTR_SET_LIBC_EPFD, "
+			      "libc_epfd %d (0x%x), size %d",
+			      getpid (), epfd, epfd, func_str,
+			      vep_idx, vep_idx, libc_epfd, libc_epfd, size);
+
 	      rv = vppcom_session_attr (vep_idx, VPPCOM_ATTR_SET_LIBC_EPFD,
-					&epfd, &size);
+					&libc_epfd, &size);
 	      if (rv < 0)
 		{
 		  errno = -rv;
@@ -3068,18 +3088,32 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 		  goto done;
 		}
 	    }
-	  else if (PREDICT_FALSE (epfd < 0))
+	  else if (PREDICT_FALSE (libc_epfd < 0))
 	    {
 	      errno = -epfd;
 	      rv = -1;
 	      goto done;
 	    }
 
-	  rv = libc_epoll_ctl (epfd, op, fd, event);
+	  func_str = "libc_epoll_ctl";
+
+	  if (LDP_DEBUG > 1)
+	    clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+			  "libc_epfd %d (0x%x), op %d, "
+			  "fd %d (0x%x), event %p",
+			  getpid (), epfd, epfd, func_str,
+			  libc_epfd, libc_epfd, op, fd, fd, event);
+
+	  rv = libc_epoll_ctl (libc_epfd, op, fd, event);
 	}
     }
   else
     {
+      /* The LDP epoll_create1 always creates VCL epfd's.
+       * The app should never have a kernel base epoll fd unless it
+       * was acquired outside of the LD_PRELOAD process context.
+       * In any case, if we get one, punt it to libc_epoll_ctl.
+       */
       func_str = "libc_epoll_ctl";
 
       if (LDP_DEBUG > 1)
@@ -3152,9 +3186,10 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events,
   if (LDP_DEBUG > 2)
     clib_warning ("LDP<%d>: epfd %d (0x%x): vep_idx %d (0x%x), "
 		  "libc_epfd %d (0x%x), events %p, maxevents %d, "
-		  "timeout %d, sigmask %p", getpid (), epfd, epfd,
-		  vep_idx, vep_idx, libc_epfd, libc_epfd, events,
-		  maxevents, timeout, sigmask);
+		  "timeout %d, sigmask %p: time_to_wait %.02f",
+		  getpid (), epfd, epfd, vep_idx, vep_idx,
+		  libc_epfd, libc_epfd, events, maxevents, timeout,
+		  sigmask, time_to_wait, time_out);
   do
     {
       if (!ldp->epoll_wait_vcl)
