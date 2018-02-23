@@ -48,6 +48,11 @@
 #define SOCK_TEST_CFG_BUF_SIZE_MIN    128
 #define SOCK_TEST_CFG_MAX_TEST_SCKTS  5
 
+#define SOCK_TEST_AF_UNIX_FILENAME    "/tmp/ldp_server_af_unix_socket"
+#define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
+#define SOCK_TEST_AF_UNIX_ACCEPT_DATA 0xaf0000af
+#define SOCK_TEST_AF_UNIX_FD_MASK     0x00af0000
+
 typedef enum
 {
   SOCK_TEST_TYPE_NONE,
@@ -302,6 +307,13 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
             stats->stop.tv_sec, stats->stop.tv_nsec);
             
   printf (SOCK_TEST_SEPARATOR_STRING);
+  
+#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+  printf ("  af_unix xacts:  %lu (0x%08lx)\n",
+          sock_server_main.af_unix_xacts);
+          
+  printf (SOCK_TEST_SEPARATOR_STRING);
+#endif
 }
 
 static inline int

@@ -526,8 +526,8 @@ write_script_header() {
     if [ -n "$VCL_DEBUG" ] ; then
         echo "export VCL_DEBUG=$VCL_DEBUG" >> $1
     fi
-    if [ -n "$VCOM_DEBUG" ] ; then
-        echo "export VCOM_DEBUG=$VCOM_DEBUG" >> $1
+    if [ -n "$LDP_DEBUG" ] ; then
+        echo "export LDP_DEBUG=$LDP_DEBUG" >> $1
     fi
     if [ -n "$VCOM_APP_NAME" ] ; then
         echo "export VCOM_APP_NAME=$VCOM_APP_NAME" >> $1
