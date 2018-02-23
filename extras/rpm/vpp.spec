@@ -47,7 +47,7 @@ Summary: Vector Packet Processing
 License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
+Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 BuildRequires: subunit, subunit-devel
@@ -83,7 +83,6 @@ vpp_json_test - vector packet engine JSON test tool
 %package lib
 Summary: VPP libraries
 Group: System Environment/Libraries
-Requires: vpp-selinux-policy = %{_version}-%{_release}
 
 %description lib
 This package contains the VPP shared libraries, including:
