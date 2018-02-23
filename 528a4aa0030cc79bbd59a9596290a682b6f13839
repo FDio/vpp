@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fcb38787_70b53b52",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-02-23T18:52:04Z",
+      "side": 1,
+      "message": "Which platform uses 32B cache line?",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 5
+      },
+      "revId": "528a4aa0030cc79bbd59a9596290a682b6f13839",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
