@@ -556,7 +556,7 @@ int vnet_vxlan_add_del_tunnel
         }
 
       vnet_delete_hw_interface (vnm, t->hw_if_index);
-      hash_unset (vxm->instance_used, instance);
+      hash_unset (vxm->instance_used, t->user_instance);
 
       fib_node_deinit(&t->node);
       vec_free (t->rewrite);
