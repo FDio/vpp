@@ -1348,7 +1348,8 @@ fib_path_create (fib_node_index_t pl_index,
 	    {
 		path->fp_type = FIB_PATH_TYPE_DEAG;
 		path->deag.fp_tbl_id = rpath->frp_fib_index;
-	    }		
+                path->deag.fp_rpf_id = ~0;
+	    }
 	}
 	else
 	{
@@ -2237,6 +2238,7 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
 void
 fib_path_stack_mpls_disp (fib_node_index_t path_index,
                           dpo_proto_t payload_proto,
+                          fib_mpls_lsp_mode_t mode,
                           dpo_id_t *dpo)
 {
     fib_path_t *path;
@@ -2252,10 +2254,8 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
         dpo_id_t tmp = DPO_INVALID;
 
         dpo_copy(&tmp, dpo);
-        dpo_set(dpo,
-                DPO_MPLS_DISPOSITION,
-                payload_proto,
-                mpls_disp_dpo_create(payload_proto, ~0, &tmp));
+
+        mpls_disp_dpo_create(payload_proto, ~0, mode, &tmp, dpo);
         dpo_reset(&tmp);
         break;
     }                
@@ -2264,12 +2264,10 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
         dpo_id_t tmp = DPO_INVALID;
 
         dpo_copy(&tmp, dpo);
-        dpo_set(dpo,
-                DPO_MPLS_DISPOSITION,
-                payload_proto,
-                mpls_disp_dpo_create(payload_proto,
-                                     path->deag.fp_rpf_id,
-                                     &tmp));
+
+        mpls_disp_dpo_create(payload_proto,
+                             path->deag.fp_rpf_id,
+                             mode, &tmp, dpo);
         dpo_reset(&tmp);
         break;
     }

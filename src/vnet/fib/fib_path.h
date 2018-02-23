@@ -159,6 +159,7 @@ extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(
     load_balance_path_t *hash_key);
 extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
                                      dpo_proto_t payload_proto,
+                                     fib_mpls_lsp_mode_t mode,
                                      dpo_id_t *dpo);
 extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
