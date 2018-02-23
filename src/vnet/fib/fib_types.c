@@ -25,6 +25,7 @@
 static const char* fib_protocol_names[] = FIB_PROTOCOLS;
 static const char* vnet_link_names[] = VNET_LINKS;
 static const char* fib_forw_chain_names[] = FIB_FORW_CHAINS;
+static const char* fib_mpls_lsp_mode_names[] = FIB_MPLS_LSP_MODES;
 
 u8 *
 format_fib_protocol (u8 * s, va_list * ap)
@@ -48,6 +49,30 @@ format_fib_forw_chain_type (u8 * s, va_list * args)
     fib_forward_chain_type_t fct = va_arg(*args, int);
 
     return (format (s, "%s", fib_forw_chain_names[fct]));
+}
+
+u8 *
+format_fib_mpls_lsp_mode(u8 *s, va_list *ap)
+{
+    fib_mpls_lsp_mode_t mode = va_arg(*ap, int);
+
+    return (format (s, "%s", fib_mpls_lsp_mode_names[mode])); 
+}
+
+u8 *
+format_fib_mpls_label (u8 *s, va_list *ap)
+{
+    fib_mpls_label_t *label = va_arg(*ap, fib_mpls_label_t *);
+
+    s = format(s, "%U %U ttl:%d exp:%d",
+               format_mpls_unicast_label,
+               label->fml_value,
+               format_fib_mpls_lsp_mode,
+               label->fml_mode,
+               label->fml_ttl,
+               label->fml_exp);
+
+    return (s);
 }
 
 void
@@ -307,6 +332,29 @@ fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
     return (VNET_LINK_IP4);
 }
 
+fib_forward_chain_type_t
+fib_forw_chain_type_from_link_type (vnet_link_t link_type)
+{
+    switch (link_type)
+    {
+    case VNET_LINK_IP4:
+        return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+    case VNET_LINK_IP6:
+        return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
+    case VNET_LINK_MPLS:
+        return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
+    case VNET_LINK_ETHERNET:
+        return (FIB_FORW_CHAIN_TYPE_ETHERNET);
+    case VNET_LINK_NSH:
+        return (FIB_FORW_CHAIN_TYPE_NSH);
+    case VNET_LINK_ARP:
+        break;
+    }
+
+    ASSERT(0);
+    return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+}
+
 dpo_proto_t
 fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
 {
@@ -475,7 +523,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             while (unformat (input, "%U",
                              unformat_mpls_unicast_label, &out_label))
             {
-                vec_add1(rpath->frp_label_stack, out_label);
+                fib_mpls_label_t fml = {
+                    .fml_value = out_label,
+                };
+                vec_add1(rpath->frp_label_stack, fml);
             }
         }
         else if (unformat (input, "%U",

@@ -2,7 +2,7 @@
 
 from framework import VppTestCase, VppTestRunner
 from vpp_udp_encap import *
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -67,12 +67,12 @@ class TestUdpEncap(VppTestCase):
         self.assertEqual(rx[UDP].dport, encap_obj.dst_port)
 
     def validate_inner4(self, rx, tx, ttl=None):
-        self.assertEqual(rx.src, tx[IP].src)
-        self.assertEqual(rx.dst, tx[IP].dst)
+        self.assertEqual(rx[IP].src, tx[IP].src)
+        self.assertEqual(rx[IP].dst, tx[IP].dst)
         if ttl:
-            self.assertEqual(rx.ttl, ttl)
+            self.assertEqual(rx[IP].ttl, ttl)
         else:
-            self.assertEqual(rx.ttl, tx[IP].ttl)
+            self.assertEqual(rx[IP].ttl, tx[IP].ttl)
 
     def validate_inner6(self, rx, tx):
         self.assertEqual(rx.src, tx[IPv6].src)
@@ -208,7 +208,7 @@ class TestUdpEncap(VppTestCase):
                                                   0xFFFFFFFF,
                                                   is_udp_encap=1,
                                                   next_hop_id=1,
-                                                  labels=[66])])
+                                                  labels=[VppMplsLabel(66)])])
         route_4oMPLSo4.add_vpp_config()
 
         p_4omo4 = (Ether(src=self.pg0.remote_mac,

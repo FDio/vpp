@@ -6,7 +6,8 @@ import socket
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto
+    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto, \
+    VppMplsLabel
 from vpp_bier import *
 from vpp_udp_encap import *
 
@@ -216,11 +217,11 @@ class TestBier(VppTestCase):
         ip_route_1 = VppIpRoute(self, nh1, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
-                                              labels=[2001])])
+                                              labels=[VppMplsLabel(2001)])])
         ip_route_2 = VppIpRoute(self, nh2, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
-                                              labels=[2002])])
+                                              labels=[VppMplsLabel(2002)])])
         ip_route_1.add_vpp_config()
         ip_route_2.add_vpp_config()
 

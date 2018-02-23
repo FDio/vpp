@@ -170,8 +170,8 @@ static int
 mpls_route_add_del_t_handler (vnet_main_t * vnm,
 			      vl_api_mpls_route_add_del_t * mp)
 {
+  fib_mpls_label_t *label_stack = NULL;
   u32 fib_index, next_hop_fib_index;
-  mpls_label_t *label_stack = NULL;
   int rv, ii, n_labels;;
 
   fib_prefix_t pfx = {
@@ -211,13 +211,19 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   n_labels = mp->mr_next_hop_n_out_labels;
   if (n_labels == 0)
     ;
-  else if (1 == n_labels)
-    vec_add1 (label_stack, ntohl (mp->mr_next_hop_out_label_stack[0]));
   else
     {
       vec_validate (label_stack, n_labels - 1);
       for (ii = 0; ii < n_labels; ii++)
-	label_stack[ii] = ntohl (mp->mr_next_hop_out_label_stack[ii]);
+	{
+	  label_stack[ii].fml_value =
+	    ntohl (mp->mr_next_hop_out_label_stack[ii].label);
+	  label_stack[ii].fml_ttl = mp->mr_next_hop_out_label_stack[ii].ttl;
+	  label_stack[ii].fml_exp = mp->mr_next_hop_out_label_stack[ii].exp;
+	  label_stack[ii].fml_mode =
+	    (mp->mr_next_hop_out_label_stack[ii].is_uniform ?
+	     FIB_MPLS_LSP_MODE_UNIFORM : FIB_MPLS_LSP_MODE_PIPE);
+	}
     }
 
   /* *INDENT-OFF* */
@@ -323,8 +329,16 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   if (mp->mt_is_add)
     {
       for (ii = 0; ii < mp->mt_next_hop_n_out_labels; ii++)
-	vec_add1 (rpath.frp_label_stack,
-		  ntohl (mp->mt_next_hop_out_label_stack[ii]));
+	{
+	  fib_mpls_label_t fml = {
+	    .fml_value = ntohl (mp->mt_next_hop_out_label_stack[ii].label),
+	    .fml_ttl = mp->mt_next_hop_out_label_stack[ii].ttl,
+	    .fml_exp = mp->mt_next_hop_out_label_stack[ii].exp,
+	    .fml_mode = (mp->mt_next_hop_out_label_stack[ii].is_uniform ?
+			 FIB_MPLS_LSP_MODE_UNIFORM : FIB_MPLS_LSP_MODE_PIPE),
+	  };
+	  vec_add1 (rpath.frp_label_stack, fml);
+	}
     }
 
   vec_add1 (rpaths, rpath);
@@ -388,7 +402,7 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   mpls_tunnel_send_walk_ctx_t *ctx;
   vl_api_mpls_tunnel_details_t *mp;
   const mpls_tunnel_t *mt;
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   u32 n;
 
   ctx = arg;
@@ -399,8 +413,8 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   mt = mpls_tunnel_get (mti);
   n = fib_path_list_get_n_paths (mt->mt_path_list);
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + n * sizeof (vl_api_fib_path2_t));
-  memset (mp, 0, sizeof (*mp) + n * sizeof (vl_api_fib_path2_t));
+  mp = vl_msg_api_alloc (sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
+  memset (mp, 0, sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
 
   mp->_vl_msg_id = ntohs (VL_API_MPLS_TUNNEL_DETAILS);
   mp->context = ctx->context;
@@ -456,7 +470,7 @@ send_mpls_fib_details (vpe_api_main_t * am,
 {
   vl_api_mpls_fib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
-  vl_api_fib_path2_t *fp;
+  vl_api_fib_path_t *fp;
   int path_count;
 
   path_count = vec_len (api_rpaths);
