@@ -21,6 +21,7 @@
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/session/application_interface.h>
 #include <vcl/vppcom.h>
+#include <vcl/vcl_event.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/vec_bootstrap.h>
 #include <vppinfra/elog.h>
@@ -43,7 +44,7 @@
 
 #if (CLIB_DEBUG > 0)
 /* Set VPPCOM_DEBUG_INIT 2 for connection debug,
- *                       3 for read/write debug output
+ *			 3 for read/write debug output
  * or
  *    export VCL_DEBUG=<#> to set dynamically.
  */
@@ -87,6 +88,7 @@ typedef struct
   u32 prev_sid;
   u32 vep_idx;
   vppcom_epoll_event_t ev;
+  vce_event_thread_t vce_ev; /* Not creating a thread, but is right struct */
 #define VEP_DEFAULT_ET_MASK  (EPOLLIN|EPOLLOUT)
 #define VEP_UNSUPPORTED_EVENTS (EPOLLONESHOT|EPOLLEXCLUSIVE)
   u32 et_mask;
@@ -117,17 +119,18 @@ enum
   VCL_SESS_ATTR_MAX
 } vppcom_session_attr_t;
 
-#define VCL_SESS_ATTR_SET(ATTR, VAL)            \
-do {                                            \
-  (ATTR) |= 1 << (VAL);                         \
+
+#define VCL_SESS_ATTR_SET(ATTR, VAL)		\
+do {						\
+  (ATTR) |= 1 << (VAL);				\
  } while (0)
 
-#define VCL_SESS_ATTR_CLR(ATTR, VAL)            \
-do {                                            \
-  (ATTR) &= ~(1 << (VAL));                      \
+#define VCL_SESS_ATTR_CLR(ATTR, VAL)		\
+do {						\
+  (ATTR) &= ~(1 << (VAL));			\
  } while (0)
 
-#define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
+#define VCL_SESS_ATTR_TEST(ATTR, VAL)		\
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
 typedef struct
@@ -188,6 +191,20 @@ typedef struct vppcom_cfg_t_
   u8 *vpp_api_filename;
 } vppcom_cfg_t;
 
+/* VPPCOM Event typedefs */
+typedef enum vcl_event_id_
+{
+  VCL_EVENT_CONNECT_REQ_ACCEPTED,
+  VCL_EVENT_N_EVENTS
+} vcl_event_id_t;
+
+typedef struct vce_event_connect_request_
+{
+  u8 size;
+  u8 handled;
+  u32 accepted_session_index;
+} vce_event_connect_request_t;
+
 typedef struct vppcom_main_t_
 {
   u8 init;
@@ -227,7 +244,10 @@ typedef struct vppcom_main_t_
 
   vppcom_cfg_t cfg;
 
-  /* Event logging */
+  /* Event thread */
+  vce_event_thread_t event_thread;
+
+  /* VPP Event-logger */
   elog_main_t elog_main;
   elog_track_t elog_track;
 
@@ -236,8 +256,8 @@ typedef struct vppcom_main_t_
 } vppcom_main_t;
 
 /* NOTE: _vppcom_main is only used until the heap is allocated.
- *       Do not access it directly -- use vcm which will point to
- *       the heap allocated copy after init.
+ *	 Do not access it directly -- use vcm which will point to
+ *	 the heap allocated copy after init.
  */
 static vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
@@ -246,17 +266,17 @@ static vppcom_main_t _vppcom_main = {
 
 static vppcom_main_t *vcm = &_vppcom_main;
 
-#define VCL_LOCK_AND_GET_SESSION(I, S)                          \
-do {                                                            \
-  clib_spinlock_lock (&vcm->sessions_lockp);                    \
-  rv = vppcom_session_at_index (I, S);                          \
-  if (PREDICT_FALSE (rv))                                       \
-    {                                                           \
-      clib_spinlock_unlock (&vcm->sessions_lockp);              \
-      clib_warning ("VCL<%d>: ERROR: Invalid ##I (%u)!",        \
-                    getpid (), I);                              \
-      goto done;                                                \
-    }                                                           \
+#define VCL_LOCK_AND_GET_SESSION(I, S)				\
+do {								\
+  clib_spinlock_lock (&vcm->sessions_lockp);			\
+  rv = vppcom_session_at_index (I, S);				\
+  if (PREDICT_FALSE (rv))					\
+    {								\
+      clib_spinlock_unlock (&vcm->sessions_lockp);		\
+      clib_warning ("VCL<%d>: ERROR: Invalid ##I (%u)!",	\
+		    getpid (), I);				\
+      goto done;						\
+    }								\
 } while (0)
 
 static const char *
@@ -332,6 +352,7 @@ vppcom_session_state_str (session_state_t state)
 
   return st;
 }
+
 
 /*
  * VPPCOM Utility Functions
@@ -415,6 +436,61 @@ write_elog (void)
 
 }
 
+/*
+ * VPPCOM Event Functions
+ */
+
+void
+vce_connect_request_handler_fn (void *arg)
+{
+  vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *)arg;
+
+  vce_event_connect_request_t *ecr;
+
+  ecr = (vce_event_connect_request_t *) reg->ev->data;
+
+  pthread_mutex_lock (&reg->handler_lock);
+  ecr->handled = 1;
+  pthread_cond_signal (&reg->handler_cond);
+  pthread_mutex_unlock (&reg->handler_lock);
+}
+
+void
+vce_epoll_wait_connect_request_handler_fn (void *arg)
+{
+  vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *)arg;
+  vce_event_connect_request_t *ecr;
+  session_t *listen_session, *vep_session;
+  vce_event_thread_t *vce_evt;
+  vce_event_t *event;
+  int rv;
+  u32 ev_idx;
+
+  ecr = (vce_event_connect_request_t *) reg->ev->data;
+
+  /* Generate an event for epoll_wait */
+  //VCL_LOCK_AND_GET_SESSION (reg->ev->evk.session_index, &listen_session);
+  rv = vppcom_session_at_index (reg->ev->evk.session_index, &listen_session);
+  rv = vppcom_session_at_index (listen_session->vep.vep_idx, &vep_session);
+
+  vce_evt = &vep_session->vep.vce_ev;
+  clib_spinlock_lock (&(vce_evt->events_lockp));
+  pool_get (vce_evt->vce_event, event);
+  event->data = clib_mem_alloc (sizeof (vce_event_connect_request_t));
+  ev_idx = (u32) (event - vce_evt->vce_event);
+  clib_spinlock_unlock (&(vce_evt->events_lockp));
+
+  clib_memcpy (event, reg->ev, sizeof (vce_event_t));
+  clib_memcpy (event->data, ecr, sizeof (vce_event_connect_request_t));
+
+  rv = vce_generate_event (ev_idx, vce_evt);
+  (void) rv;
+  return;
+  //done:
+  /* If we get here from VCL_LOCK_AND_GET_SESSION we should abort */
+  ASSERT(1);
+}
+
 static int
 vppcom_connect_to_vpp (char *app_name)
 {
@@ -438,7 +514,7 @@ vppcom_connect_to_vpp (char *app_name)
   else
     {
       vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-      vcm->my_client_index = am->my_client_index;
+      vcm->my_client_index = (u32) am->my_client_index;
       vcm->app_state = STATE_APP_CONN_VPP;
 
       if (VPPCOM_DEBUG > 0)
@@ -471,7 +547,7 @@ vppcom_connect_to_vpp (char *app_name)
 	u32 data;
       } *ed;
       ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
-      ed->data = rv;
+      ed->data = (u32) rv;
       /* *INDENT-ON* */
     }
   return rv;
@@ -522,10 +598,10 @@ vppcom_wait_for_app_state_change (app_state_t app_state)
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
-	{
-	  .format = "ERR: timeout state:%d",
-	  .format_args = "i4",
-	};
+      {
+	.format = "ERR: timeout state:%d",
+	.format_args = "i4",
+      };
       struct
       {
 	u32 data;
@@ -581,10 +657,10 @@ vppcom_wait_for_session_state_change (u32 session_index,
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
-	{
-	  .format = "ERR: timeout state:%d",
-	  .format_args = "i4",
-	};
+      {
+	.format = "ERR: timeout state:%d",
+	.format_args = "i4",
+      };
       struct
       {
 	u32 data;
@@ -622,10 +698,10 @@ vppcom_wait_for_client_session_index (f64 wait_for_time)
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
-	{
-	  .format = "ERR: timeout waiting for session index :%d",
-	  .format_args = "i4",
-	};
+      {
+	.format = "ERR: timeout waiting for session index :%d",
+	.format_args = "i4",
+      };
       struct
       {
 	u32 data;
@@ -633,7 +709,7 @@ vppcom_wait_for_client_session_index (f64 wait_for_time)
 
       ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
 
-      ed->data = getpid();
+      ed->data = getpid ();
       /* *INDENT-ON* */
     }
 
@@ -744,6 +820,7 @@ vppcom_app_attach (void)
 		      getpid (), rv, vppcom_retval_str (rv));
       return rv;
     }
+
   return VPPCOM_OK;
 }
 
@@ -1235,6 +1312,11 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   svm_fifo_t *rx_fifo, *tx_fifo;
   session_t *session, *listen_session;
   u32 session_index;
+  vce_event_connect_request_t *ecr;
+  vce_event_t *ev;
+  int rv;
+  u32 ev_idx;
+
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
@@ -1252,9 +1334,14 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
       clib_warning ("VCL<%d>: ERROR: couldn't find listen session: "
 		    "unknown vpp listener handle %llx",
 		    getpid (), mp->listener_handle);
+      vppcom_send_accept_session_reply (mp->handle, mp->context,
+					VNET_API_ERROR_INVALID_ARGUMENT);
       clib_spinlock_unlock (&vcm->sessions_lockp);
       return;
     }
+
+  /* TODO check listener depth and update */
+  /* TODO on "child" fd close, update listener depth */
 
   /* Allocate local session and set it up */
   pool_get (vcm->sessions, session);
@@ -1283,8 +1370,22 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->lcl_port = listen_session->lcl_port;
   session->lcl_addr = listen_session->lcl_addr;
 
-  /* TBD: move client_session_index_fifo into listener session */
-  clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+  /* Generate an event for handlers */
+  clib_spinlock_lock (&vcm->event_thread.events_lockp);
+  pool_get (vcm->event_thread.vce_event, ev);
+  ev->data = clib_mem_alloc (sizeof (vce_event_connect_request_t));
+  ev_idx = ev - vcm->event_thread.vce_event;
+  clib_spinlock_unlock (&vcm->event_thread.events_lockp);
+
+  ecr = ev->data;
+  ev->evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
+  listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
+  ev->evk.session_index = listen_session - vcm->sessions;
+  ecr->handled = 0;
+  ecr->accepted_session_index = session_index;
+  ecr->size = sizeof (*ecr);
+  rv = vce_generate_event (ev_idx, &vcm->event_thread);
+  ASSERT(rv == 0);
 
   if (VPPCOM_DEBUG > 1)
     clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: client accept "
@@ -1302,19 +1403,18 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
       if (session->peer_addr.is_ip4)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	  {
-	    .format =
-	    "client_accept:handle:%x addr:%d.%d.%d.%d:%d",
+	    .format = "client_accept:handle:%x addr:%d.%d.%d.%d:%d",
 	    .format_args = "i8i1i1i1i1i2",
 	  };
 
 	  CLIB_PACKED (struct {
-	    u64 handle;	//8
-	    u8 addr[4];	//4
-	    u16 port;	//2
-	  }) * ed;
+	    u64 handle;	   //8
+	    u8 addr[4];	   //4
+	    u16 port;	 //2
+	  }) *ed;
 
 	  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
 
@@ -1385,6 +1485,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   u32 session_index;
   session_t *session = 0;
 
+  ASSERT(1); // We don't expect this function to be called. For debugging.
+
   clib_spinlock_lock (&vcm->sessions_lockp);
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
     {
@@ -1416,9 +1518,9 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
    */
   session->peer_addr.is_ip4 = mp->is_ip4;
   ASSERT (session->lcl_addr.is_ip4 == session->peer_addr.is_ip4);
-
   session->state = STATE_ACCEPT;
   clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+
   if (VPPCOM_DEBUG > 1)
     clib_warning ("VCL<%d>: sid %u: Got a cut-thru connect request! "
 		  "clib_fifo_elts %u!\n", getpid (), session_index,
@@ -1598,31 +1700,31 @@ done:
   return rv;
 }
 
-#define foreach_sock_msg                                        \
-_(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   \
-_(BIND_SOCK_REPLY, bind_sock_reply)                             \
-_(UNBIND_SOCK_REPLY, unbind_sock_reply)                         \
-_(ACCEPT_SESSION, accept_session)                               \
-_(CONNECT_SOCK, connect_sock)                                   \
-_(CONNECT_SESSION_REPLY, connect_session_reply)                 \
-_(DISCONNECT_SESSION, disconnect_session)                       \
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)           \
-_(RESET_SESSION, reset_session)                                 \
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)           \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)           \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                     \
+#define foreach_sock_msg					\
+_(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)	\
+_(BIND_SOCK_REPLY, bind_sock_reply)				\
+_(UNBIND_SOCK_REPLY, unbind_sock_reply)				\
+_(ACCEPT_SESSION, accept_session)				\
+_(CONNECT_SOCK, connect_sock)					\
+_(CONNECT_SESSION_REPLY, connect_session_reply)			\
+_(DISCONNECT_SESSION, disconnect_session)			\
+_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)		\
+_(RESET_SESSION, reset_session)					\
+_(APPLICATION_ATTACH_REPLY, application_attach_reply)		\
+_(APPLICATION_DETACH_REPLY, application_detach_reply)		\
+_(MAP_ANOTHER_SEGMENT, map_another_segment)			\
 _(UNMAP_SEGMENT, unmap_segment)
 
 static void
 vppcom_api_hookup (void)
 {
-#define _(N, n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)							 \
+    vl_msg_api_set_handlers(VL_API_##N, #n,			\
+			   vl_api_##n##_t_handler,		\
+			   vl_noop_handler,			\
+			   vl_api_##n##_t_endian,		\
+			   vl_api_##n##_t_print,		\
+			   sizeof(vl_api_##n##_t), 1);
   foreach_sock_msg;
 #undef _
 }
@@ -2312,6 +2414,8 @@ vppcom_app_create (char *app_name)
 
   if (vcm->my_client_index == ~0)
     {
+
+      /* API hookup and connect to VPP */
       vppcom_api_hookup ();
       vcm->app_state = STATE_APP_START;
       rv = vppcom_connect_to_vpp (app_name);
@@ -2321,6 +2425,11 @@ vppcom_app_create (char *app_name)
 			getpid ());
 	  return rv;
 	}
+
+      /* State event handling thread */
+
+      rv = vce_start_event_thread (&(vcm->event_thread), 20);
+
 
       if (VPPCOM_DEBUG > 0)
 	clib_warning ("VCL<%d>: sending session enable", getpid ());
@@ -2378,6 +2487,7 @@ vppcom_app_destroy (void)
       {
 	u32 data;
       } *ed;
+
       ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
       ed->data = vcm->my_client_index;
       /* *INDENT-ON* */
@@ -2645,7 +2755,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
     {
       if (session->lcl_addr.is_ip4)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	  {
 	    .format = "bind local:%s:%d.%d.%d.%d:%d ",
@@ -2658,7 +2768,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
 	    u8 proto;
 	    u8 addr[4];
 	    u16 port;
-	  }) * ed;
+	  }) *ed;
 
 	  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
 	  ed->proto = session->proto;
@@ -2740,6 +2850,31 @@ done:
 }
 
 int
+validate_args_session_accept_ (session_t *listen_session)
+{
+  u32 listen_session_index = listen_session - vcm->sessions;
+
+  /* Input validation - expects spinlock on sessions_lockp */
+  if (listen_session->is_vep)
+    {
+      clib_warning ("VCL<%d>: ERROR: sid %u: cannot accept on an "
+		      "epoll session!", getpid (), listen_session_index);
+      return VPPCOM_EBADFD;
+    }
+
+  if (listen_session->state != STATE_LISTEN)
+    {
+      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
+		      "not in listen state! state 0x%x (%s)", getpid (),
+		    listen_session->vpp_handle, listen_session_index,
+		    listen_session->state,
+		    vppcom_session_state_str (listen_session->state));
+      return VPPCOM_EBADFD;
+    }
+  return VPPCOM_OK;
+}
+
+int
 vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 		       uint32_t flags)
 {
@@ -2747,57 +2882,45 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   session_t *client_session = 0;
   u32 client_session_index = ~0;
   int rv;
-  f64 wait_for;
   u64 listen_vpp_handle;
+  vce_event_handler_reg_t *reg;
+  vce_event_t *ev;
+  vce_event_connect_request_t *result;
 
   VCL_LOCK_AND_GET_SESSION (listen_session_index, &listen_session);
+  listen_vpp_handle = listen_session->vpp_handle; // For debugging
 
-  if (listen_session->is_vep)
-    {
-      clib_spinlock_unlock (&vcm->sessions_lockp);
-      clib_warning ("VCL<%d>: ERROR: sid %u: cannot accept on an "
-		    "epoll session!", getpid (), listen_session_index);
-      rv = VPPCOM_EBADFD;
-      goto done;
-    }
-
-  listen_vpp_handle = listen_session->vpp_handle;
-  if (listen_session->state != STATE_LISTEN)
-    {
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-		    "not in listen state! state 0x%x (%s)", getpid (),
-		    listen_vpp_handle, listen_session_index,
-		    listen_session->state,
-		    vppcom_session_state_str (listen_session->state));
-      clib_spinlock_unlock (&vcm->sessions_lockp);
-      rv = VPPCOM_EBADFD;
-      goto done;
-    }
-  wait_for = (VCL_SESS_ATTR_TEST (listen_session->attr,
-				  VCL_SESS_ATTR_NONBLOCK))
-    ? 0 : vcm->cfg.accept_timeout;
-
+  rv = validate_args_session_accept_ (listen_session);
   clib_spinlock_unlock (&vcm->sessions_lockp);
-
-  while (1)
+  if (rv)
     {
-      rv = vppcom_wait_for_client_session_index (wait_for);
-      if (rv)
-	{
-	  if ((VPPCOM_DEBUG > 0))
-	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			  "accept failed! returning %d (%s)", getpid (),
-			  listen_vpp_handle, listen_session_index,
-			  rv, vppcom_retval_str (rv));
-	  if (wait_for == 0)
-	    goto done;
-	}
-      else
-	break;
+      goto done;
     }
 
-  clib_spinlock_lock (&vcm->sessions_lockp);
-  clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
+  /* Register handler for connect_request event on listen_session_index */
+  ev = clib_mem_alloc (sizeof (vce_event_t));
+  result = clib_mem_alloc (sizeof (vce_event_connect_request_t));
+  ev->data = result;
+  ev->evk.session_index = listen_session_index;
+  ev->evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
+  reg = vce_register_handler (&vcm->event_thread, ev,
+			      vce_connect_request_handler_fn);
+  result = (vce_event_connect_request_t *)reg->ev->data;
+  printf ("\n*****************	 vppcom_session_accept: event_ready lock\n");
+  pthread_mutex_lock (&reg->handler_lock);
+  while (!result->handled)
+    {
+      printf
+	("\n*****************	vppcom_session_accept: waiting on handler_cond\n");
+      pthread_cond_wait (&reg->handler_cond, &reg->handler_lock);
+    }
+  client_session_index = result->accepted_session_index;
+  rv = vce_unregister_handler (&vcm->event_thread, ev,
+			       vce_connect_request_handler_fn);
+  pthread_mutex_unlock (&reg->handler_lock);
+  printf
+    ("\n*****************   vppcom_session_accept: event_ready unlock\n");
+
   rv = vppcom_session_at_index (client_session_index, &client_session);
   if (PREDICT_FALSE (rv))
     {
@@ -2876,7 +2999,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
       if (client_session->lcl_addr.is_ip4)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e2) =
 	  {
 	    .format = "accept: S:%d %d.%d.%d.%d:%d ",
@@ -2887,10 +3010,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	    u32 session;
 	    u8 addr[4];
 	    u16 port;
-	  }) * ed2;
+	  }) *ed2;
 
 	  ed2 =
-	    ELOG_TRACK_DATA (&vcm->elog_main, e2, client_session->elog_track);
+	      ELOG_TRACK_DATA (&vcm->elog_main, e2, client_session->elog_track);
 	  ed2->session = client_session_index;
 	  ed2->addr[0] = client_session->lcl_addr.ip46.ip4.as_u8[0];
 	  ed2->addr[1] = client_session->lcl_addr.ip46.ip4.as_u8[1];
@@ -3443,95 +3566,95 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
     {
       /* *INDENT-OFF* */
       if (n_bits)
-        {
-          if (read_map)
-            {
-              clib_bitmap_foreach (session_index, vcm->rd_bitmap,
-                ({
-                  clib_spinlock_lock (&vcm->sessions_lockp);
-                  rv = vppcom_session_at_index (session_index, &session);
-                  if (rv < 0)
-                    {
-                      clib_spinlock_unlock (&vcm->sessions_lockp);
-                      if (VPPCOM_DEBUG > 1)
-                        clib_warning ("VCL<%d>: session %d specified in "
-                                      "read_map is closed.", getpid (),
-                                      session_index);
-                      bits_set = VPPCOM_EBADFD;
-                      goto select_done;
-                    }
+	{
+	  if (read_map)
+	    {
+	      clib_bitmap_foreach (session_index, vcm->rd_bitmap,
+		({
+		  clib_spinlock_lock (&vcm->sessions_lockp);
+		  rv = vppcom_session_at_index (session_index, &session);
+		  if (rv < 0)
+		    {
+		      clib_spinlock_unlock (&vcm->sessions_lockp);
+		      if (VPPCOM_DEBUG > 1)
+			clib_warning ("VCL<%d>: session %d specified in "
+				      "read_map is closed.", getpid (),
+				      session_index);
+		      bits_set = VPPCOM_EBADFD;
+		      goto select_done;
+		    }
 
-                  rv = vppcom_session_read_ready (session, session_index);
-                  clib_spinlock_unlock (&vcm->sessions_lockp);
-                  if (except_map && vcm->ex_bitmap &&
-                      clib_bitmap_get (vcm->ex_bitmap, session_index) &&
-                      (rv < 0))
-                    {
-                      clib_bitmap_set_no_check (except_map, session_index, 1);
-                      bits_set++;
-                    }
-                  else if (rv > 0)
-                    {
-                      clib_bitmap_set_no_check (read_map, session_index, 1);
-                      bits_set++;
-                    }
-                }));
-            }
+		  rv = vppcom_session_read_ready (session, session_index);
+		  clib_spinlock_unlock (&vcm->sessions_lockp);
+		  if (except_map && vcm->ex_bitmap &&
+		      clib_bitmap_get (vcm->ex_bitmap, session_index) &&
+		      (rv < 0))
+		    {
+		      clib_bitmap_set_no_check (except_map, session_index, 1);
+		      bits_set++;
+		    }
+		  else if (rv > 0)
+		    {
+		      clib_bitmap_set_no_check (read_map, session_index, 1);
+		      bits_set++;
+		    }
+		}));
+	    }
 
-          if (write_map)
-            {
-              clib_bitmap_foreach (session_index, vcm->wr_bitmap,
-                ({
-                  clib_spinlock_lock (&vcm->sessions_lockp);
-                  rv = vppcom_session_at_index (session_index, &session);
-                  if (rv < 0)
-                    {
-                      clib_spinlock_unlock (&vcm->sessions_lockp);
-                      if (VPPCOM_DEBUG > 0)
-                        clib_warning ("VCL<%d>: session %d specified in "
-                                      "write_map is closed.", getpid (),
-                                      session_index);
-                      bits_set = VPPCOM_EBADFD;
-                      goto select_done;
-                    }
+	  if (write_map)
+	    {
+	      clib_bitmap_foreach (session_index, vcm->wr_bitmap,
+		({
+		  clib_spinlock_lock (&vcm->sessions_lockp);
+		  rv = vppcom_session_at_index (session_index, &session);
+		  if (rv < 0)
+		    {
+		      clib_spinlock_unlock (&vcm->sessions_lockp);
+		      if (VPPCOM_DEBUG > 0)
+			clib_warning ("VCL<%d>: session %d specified in "
+				      "write_map is closed.", getpid (),
+				      session_index);
+		      bits_set = VPPCOM_EBADFD;
+		      goto select_done;
+		    }
 
-                  rv = vppcom_session_write_ready (session, session_index);
-                  clib_spinlock_unlock (&vcm->sessions_lockp);
-                  if (write_map && (rv > 0))
-                    {
-                      clib_bitmap_set_no_check (write_map, session_index, 1);
-                      bits_set++;
-                    }
-                }));
-            }
+		  rv = vppcom_session_write_ready (session, session_index);
+		  clib_spinlock_unlock (&vcm->sessions_lockp);
+		  if (write_map && (rv > 0))
+		    {
+		      clib_bitmap_set_no_check (write_map, session_index, 1);
+		      bits_set++;
+		    }
+		}));
+	    }
 
-          if (except_map)
-            {
-              clib_bitmap_foreach (session_index, vcm->ex_bitmap,
-                ({
-                  clib_spinlock_lock (&vcm->sessions_lockp);
-                  rv = vppcom_session_at_index (session_index, &session);
-                  if (rv < 0)
-                    {
-                      clib_spinlock_unlock (&vcm->sessions_lockp);
-                      if (VPPCOM_DEBUG > 1)
-                        clib_warning ("VCL<%d>: session %d specified in "
-                                      "except_map is closed.", getpid (),
-                                      session_index);
-                      bits_set = VPPCOM_EBADFD;
-                      goto select_done;
-                    }
+	  if (except_map)
+	    {
+	      clib_bitmap_foreach (session_index, vcm->ex_bitmap,
+		({
+		  clib_spinlock_lock (&vcm->sessions_lockp);
+		  rv = vppcom_session_at_index (session_index, &session);
+		  if (rv < 0)
+		    {
+		      clib_spinlock_unlock (&vcm->sessions_lockp);
+		      if (VPPCOM_DEBUG > 1)
+			clib_warning ("VCL<%d>: session %d specified in "
+				      "except_map is closed.", getpid (),
+				      session_index);
+		      bits_set = VPPCOM_EBADFD;
+		      goto select_done;
+		    }
 
-                  rv = vppcom_session_read_ready (session, session_index);
-                  clib_spinlock_unlock (&vcm->sessions_lockp);
-                  if (rv < 0)
-                    {
-                      clib_bitmap_set_no_check (except_map, session_index, 1);
-                      bits_set++;
-                    }
-                }));
-            }
-        }
+		  rv = vppcom_session_read_ready (session, session_index);
+		  clib_spinlock_unlock (&vcm->sessions_lockp);
+		  if (rv < 0)
+		    {
+		      clib_bitmap_set_no_check (except_map, session_index, 1);
+		      bits_set++;
+		    }
+		}));
+	    }
+	}
       /* *INDENT-ON* */
     }
   while ((time_to_wait == -1) || (clib_time_now (&vcm->clib_time) < timeout));
@@ -3568,9 +3691,9 @@ vep_verify_epoll_chain (u32 vep_idx)
   vep = &session->vep;
   clib_warning ("VCL<%d>: vep_idx (%u): Dumping epoll chain\n"
 		"{\n"
-		"   is_vep         = %u\n"
+		"   is_vep	   = %u\n"
 		"   is_vep_session = %u\n"
-		"   next_sid       = 0x%x (%u)\n"
+		"   next_sid	   = 0x%x (%u)\n"
 		"   wait_cont_idx  = 0x%x (%u)\n"
 		"}\n", getpid (), vep_idx,
 		session->is_vep, session->is_vep_session,
@@ -3603,12 +3726,12 @@ vep_verify_epoll_chain (u32 vep_idx)
 	{
 	  clib_warning ("vep_idx[%u]: sid 0x%x (%u)\n"
 			"{\n"
-			"   next_sid       = 0x%x (%u)\n"
-			"   prev_sid       = 0x%x (%u)\n"
-			"   vep_idx        = 0x%x (%u)\n"
-			"   ev.events      = 0x%x\n"
-			"   ev.data.u64    = 0x%llx\n"
-			"   et_mask        = 0x%x\n"
+			"   next_sid	   = 0x%x (%u)\n"
+			"   prev_sid	   = 0x%x (%u)\n"
+			"   vep_idx	   = 0x%x (%u)\n"
+			"   ev.events	   = 0x%x\n"
+			"   ev.data.u64	   = 0x%llx\n"
+			"   et_mask	   = 0x%x\n"
 			"}\n",
 			vep_idx, sid, sid,
 			vep->next_sid, vep->next_sid,
@@ -3627,6 +3750,7 @@ int
 vppcom_epoll_create (void)
 {
   session_t *vep_session;
+  vce_event_thread_t *vep_ev;
   u32 vep_idx;
   elog_track_t vep_elog_track;
 
@@ -3641,6 +3765,17 @@ vppcom_epoll_create (void)
   vep_session->vep.prev_sid = ~0;
   vep_session->wait_cont_idx = ~0;
   vep_session->vpp_handle = ~0;
+
+  vep_ev = &vep_session->vep.vce_ev;
+  // TODO DO NOT MERGE : max_events ??
+  clib_fifo_validate (vep_ev->event_index_fifo, 20 );
+  vep_ev->handlers_index_by_event_key = hash_create (0, sizeof (uword));
+
+  pthread_cond_init (&(vep_ev->generator_cond), NULL);
+  pthread_mutex_init (&(vep_ev->generator_lock), NULL);
+
+  clib_spinlock_init (&(vep_ev->events_lockp));
+  clib_spinlock_init (&(vep_ev->handlers_lockp));
 
   if (VPPCOM_DEBUG > 0)
     {
@@ -3761,6 +3896,24 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       session->is_vep = 0;
       session->is_vep_session = 1;
       vep_session->vep.next_sid = session_index;
+
+      /* VCL Event Register handler */
+      if (session->state & STATE_LISTEN)
+	{
+	  vce_event_handler_reg_t *reg;
+	  vce_event_t *ev;
+	  vce_event_connect_request_t *result;
+
+	  /* Register handler for connect_request event on listen_session_index */
+	  ev = clib_mem_alloc (sizeof (vce_event_t));
+	  result = clib_mem_alloc (sizeof (vce_event_connect_request_t));
+	  ev->data = result;
+	  ev->evk.session_index = session_index;
+	  ev->evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
+	  reg = vce_register_handler (&vcm->event_thread, ev,
+				      vce_epoll_wait_connect_request_handler_fn);
+	  result = (vce_event_connect_request_t *)reg->ev->data;
+	}
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
 		      "sid %u, events 0x%x, data 0x%llx!",
@@ -3768,12 +3921,13 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 		      event->events, event->data.u64);
       if (VPPCOM_DEBUG > 0)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "epoll_ctladd: events:%x data:%x",
-	      .format_args = "i4i4i8",
-	    };
+	  {
+	    .format = "epoll_ctladd: events:%x data:%x",
+	    .format_args = "i4i4i8",
+	  };
+
 	  struct
 	  {
 	    u32 events;
@@ -3884,12 +4038,13 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 		      getpid (), vep_idx, session_index);
       if (VPPCOM_DEBUG > 0)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "epoll_ctldel: vep:%d",
-	      .format_args = "i4",
-	    };
+	  {
+	    .format = "epoll_ctldel: vep:%d",
+	    .format_args = "i4",
+	  };
+
 	  struct
 	  {
 	    u32 data;
@@ -3911,6 +4066,140 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 
 done:
   clib_spinlock_unlock (&vcm->sessions_lockp);
+  return rv;
+}
+
+/**
+ * @brief vppcom_epoll_wait_listener
+ *
+ * Handler for events placed on the "epoll event queue" distinct from the
+ * "main event thread".
+ *
+ * The "main event thread" has an event queue which is serviced out of
+ * vce_event_thread_fn().
+ *
+ * Epoll has been asked to listen for "event foo" on "session bar", then
+ * report back. The sequence is:
+ *
+ * 1. vppcom_epoll_create() creates "session epoll"
+ *    - this has its own event queue ("epoll event queue")
+ *
+ * 2. vppcom_epoll_ctl() registers a handler with the "main event thread"
+ *    for when "event foo" occurs on "session bar".
+ *
+ * 3. vppcom_epoll_wait() calls vppcom_epoll_wait_listener() to listen
+ *    for any of the events it has registered with the "main event thread" and
+ *    wait.
+ *
+ * 4. When the "main event thread" sees "event foo" on "session bar" it
+ *    dispatches the handler registered via vppcom_epoll_ctl()
+ *
+ * 5. That handler copies the event from the "main event queue" and generates
+ *    an event on the "epoll event queue".
+ *
+ * 6. vppcom_epoll_wait() can then return that an event has occurred and then
+ *    put the event back on the "main event thread" for the real handler.
+ *
+ *    If we are being honest, and there's no reason not to be, it's all a
+ *    little silly, but this is for backwards compatibility for things using
+ *    ldp (LD_PRELOAD).
+ *
+ *    e.g.
+ *
+ *    fd = sock (...)
+ *    bind (fd, ...)
+ *    listen (fd, ...)
+ *    epfd = epoll_create1()
+ *    //make an event for EPOLLIN on fd (i.e. a connect() )
+ *    epoll_ctl (epfd, _ADD, fd, event)
+ *    n_events = epoll_wait(epfd, ...)
+ *
+ *    // loop over events,
+ *    // find our EPOLLIN,
+ *    // do an acccept()
+ *    // put the new accepted fd back into epoll for read/write.
+ *    // wonder why
+ *
+ *    It's all unnecessary complexity and fragility which in the future may
+ *    suggest handling some of this logic in LD_PRELOAD via events that are
+ *    serviced out of the "main event loop" since anyone writing TO vppcom_
+ *    directly would be strongly discouraged not to use vppcom_epoll_xxxx()
+ *    and use the the "main event thread".
+ *
+*/
+
+int
+vppcom_epoll_wait_listener (session_t *listen_session, double wait_for_time)
+{
+  /* TODO just performing this on STATE_LISTEN for now */
+  vce_event_t *ev, *new_ev;
+  vce_event_thread_t *vce_evt;
+  session_t *epoll_session;
+  u32 vce_ev_idx;
+
+  u8 recycle_event = 0;
+
+  struct timespec ts;
+  struct timeval tv;
+  int rv;
+
+  /* TODO DO NOT MERGE - TESTING */
+  if (wait_for_time == -1)
+    {
+      wait_for_time = 5;
+    }
+  gettimeofday(&tv, NULL);
+  ts.tv_sec = tv.tv_sec + wait_for_time;
+  ts.tv_nsec = 0;
+
+  vppcom_session_at_index (listen_session->vep.vep_idx, &epoll_session);
+  vce_evt = &epoll_session->vep.vce_ev;
+  pthread_mutex_lock (&(vce_evt->generator_lock));
+  while ((clib_fifo_elts (vce_evt->event_index_fifo) == 0) ||
+         recycle_event)
+    {
+      printf ("\n*****************   in epoll_wait vce loop\n");
+      recycle_event = 0;
+      rv = pthread_cond_timedwait (&(vce_evt->generator_cond),
+                         &(vce_evt->generator_lock), &ts);
+      if (rv == ETIMEDOUT)
+	{
+	  printf ("\n*****************   timed out\n");
+	  return rv;
+	}
+    }
+
+  printf ("\n*****************   Got an epoll vce event\n");
+  /* Remove event */
+  clib_fifo_sub1 (vce_evt->event_index_fifo, vce_ev_idx);
+  ev = pool_elt_at_index (vce_evt->vce_event, vce_ev_idx);
+  ASSERT(ev);
+
+  /* Unregister the epoll_wait handler from main event thread */
+  vce_unregister_handler (&vcm->event_thread, ev,
+			  vce_epoll_wait_connect_request_handler_fn);
+
+  /* Generate an event on main event thread for listener */
+  clib_spinlock_lock (&vcm->event_thread.events_lockp);
+  pool_get (vcm->event_thread.vce_event, new_ev);
+  new_ev->data = clib_mem_alloc (sizeof (vce_event_connect_request_t));
+  vce_ev_idx = new_ev - vcm->event_thread.vce_event;
+  clib_spinlock_unlock (&vcm->event_thread.events_lockp);
+
+  ev->evk.session_index = listen_session - vcm->sessions;
+
+  clib_memcpy (new_ev->data, ev->data, sizeof (vce_event_connect_request_t));
+  rv = vce_generate_event (vce_ev_idx, &vcm->event_thread);
+  if (rv == 0)
+    rv = 1;
+  else
+    rv = 0;
+  //pool_put (vce_ev->vce_event, vce_ev_idx);
+  //TODO DO NOT MERGE - where did I
+  // remove the event struct from the
+  // pool ?
+
+  pthread_mutex_unlock (&(vce_evt->generator_lock));
   return rv;
 }
 
@@ -3956,12 +4245,13 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		      getpid (), vep_idx);
       if (VPPCOM_DEBUG > 1)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "WRN: vep_idx:%d empty",
-	      .format_args = "i4",
-	    };
+	  {
+	    .format = "WRN: vep_idx:%d empty",
+	    .format_args = "i4",
+	  };
+
 	  struct
 	  {
 	    u32 data;
@@ -3974,6 +4264,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 	}
       goto done;
     }
+
 
   do
     {
@@ -4013,12 +4304,13 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      getpid (), vep_idx);
 	      if (VPPCOM_DEBUG > 0)
 		{
-                  /* *INDENT-OFF* */
+		  /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
-		    {
-		      .format = "ERR:vep_idx:%d is vep",
-		      .format_args = "i4",
-		    };
+		  {
+		    .format = "ERR:vep_idx:%d is vep",
+		    .format_args = "i4",
+		  };
+
 		  struct
 		  {
 		    u32 data;
@@ -4040,12 +4332,13 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      "a vep session!", getpid (), sid);
 	      if (VPPCOM_DEBUG > 0)
 		{
-                  /* *INDENT-OFF* */
+		  /* *INDENT-OFF* */
 		  ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "ERR:SID:%d not vep",
 		      .format_args = "i4",
 		    };
+
 		  struct
 		  {
 		    u32 data;
@@ -4074,8 +4367,18 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 	  if (EPOLLIN & session_events)
 	    {
 	      VCL_LOCK_AND_GET_SESSION (sid, &session);
-	      ready = vppcom_session_read_ready (session, sid);
-	      clib_spinlock_unlock (&vcm->sessions_lockp);
+
+              /* TODO - extend for all epoll_events, not just listener */
+              if (session->state & STATE_LISTEN)
+                {
+		  clib_spinlock_unlock (&vcm->sessions_lockp);
+		  ready = vppcom_epoll_wait_listener (session, wait_for_time);
+                }
+	      else
+		{
+		  ready = vppcom_session_read_ready (session, sid);
+		  clib_spinlock_unlock (&vcm->sessions_lockp);
+		}
 	      if ((ready > 0) && (EPOLLIN & et_mask))
 		{
 		  add_event = 1;
@@ -4192,12 +4495,13 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "VPPCOM_ATTR_GET_NREAD: nread=%d",
-	      .format_args = "i4",
-	    };
+	  {
+	    .format = "VPPCOM_ATTR_GET_NREAD: nread=%d",
+	    .format_args = "i4",
+	  };
+
 	  struct
 	  {
 	    u32 data;
@@ -4218,12 +4522,13 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), session_index, rv);
       if (VPPCOM_DEBUG > 0)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "VPPCOM_ATTR_GET_NWRITE: nwrite=%d",
-	      .format_args = "i4",
-	    };
+	  {
+	    .format = "VPPCOM_ATTR_GET_NWRITE: nwrite=%d",
+	    .format_args = "i4",
+	  };
+
 	  struct
 	  {
 	    u32 data;
@@ -4250,12 +4555,13 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 					      VCL_SESS_ATTR_NONBLOCK));
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
+	      /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
-		{
-		  .format = "VPPCOM_ATTR_GET_FLAGS: flags=%x is_nonblk=%d",
-		  .format_args = "i4i4",
-		};
+	      {
+		.format = "VPPCOM_ATTR_GET_FLAGS: flags=%x is_nonblk=%d",
+		.format_args = "i4i4",
+	      };
+
 	      struct
 	      {
 		u32 flags;
@@ -4290,23 +4596,24 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 					      VCL_SESS_ATTR_NONBLOCK));
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_FLAGS: flags=%x is_nonblk=%d",
 		  .format_args = "i4i4",
 		};
-	      struct
-	      {
-		u32 flags;
-		u32 is_nonblk;
-	      } *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		struct
+		{
+		  u32 flags;
+		  u32 is_nonblk;
+		} *ed;
 
-	      ed->flags = *flags;
-	      ed->is_nonblk = VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK);
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		ed->flags = *flags;
+		ed->is_nonblk = VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK);
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4336,42 +4643,44 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    {
 	      if (ep->is_ip4)
 		{
-                    /* *INDENT-OFF* */
-		  ELOG_TYPE_DECLARE (e) =
+		    /* *INDENT-OFF* */
+		    ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_PEER_ADDR: addr:%d.%d.%d.%d:%d",
 		      .format_args = "i1i1i1i1i2",
 		    };
-		  CLIB_PACKED (struct {
-		    u8 addr[4];	//4
-		    u16 port;	//2
-		  }) * ed;
 
-		  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		    CLIB_PACKED (struct {
+		      u8 addr[4];    //4
+		      u16 port;	   //2
+		    }) *ed;
 
-		  ed->addr[0] = session->peer_addr.ip46.ip4.as_u8[0];
-		  ed->addr[1] = session->peer_addr.ip46.ip4.as_u8[1];
-		  ed->addr[2] = session->peer_addr.ip46.ip4.as_u8[2];
-		  ed->addr[3] = session->peer_addr.ip46.ip4.as_u8[3];
-		  ed->port = clib_net_to_host_u16 (session->peer_port);
-		  /* *INDENT-ON* */
+		    ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		    ed->addr[0] = session->peer_addr.ip46.ip4.as_u8[0];
+		    ed->addr[1] = session->peer_addr.ip46.ip4.as_u8[1];
+		    ed->addr[2] = session->peer_addr.ip46.ip4.as_u8[2];
+		    ed->addr[3] = session->peer_addr.ip46.ip4.as_u8[3];
+		    ed->port = clib_net_to_host_u16 (session->peer_port);
+		    /* *INDENT-ON* */
 		}
 	      else
 		{
-                    /* *INDENT-OFF* */
-		  ELOG_TYPE_DECLARE (e) =
+		    /* *INDENT-OFF* */
+		    ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_PEER_ADDR: addr:IP6:%d",
 		      .format_args = "i2",
 		    };
-		  CLIB_PACKED (struct {
-		    u16 port;	//2
-		  }) * ed;
 
-		  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		    CLIB_PACKED (struct {
+		      u16 port;	   //2
+		    }) *ed;
 
-		  ed->port = clib_net_to_host_u16 (session->peer_port);
-		  /* *INDENT-ON* */
+		    ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		    ed->port = clib_net_to_host_u16 (session->peer_port);
+		    /* *INDENT-ON* */
 		}
 	    }
 	}
@@ -4402,42 +4711,44 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    {
 	      if (ep->is_ip4)
 		{
-                    /* *INDENT-OFF* */
-		  ELOG_TYPE_DECLARE (e) =
+		    /* *INDENT-OFF* */
+		    ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_LCL_ADDR: addr:%d.%d.%d.%d:%d",
 		      .format_args = "i1i1i1i1i2",
 		    };
-		  CLIB_PACKED (struct {
-		    u8 addr[4];	//4
-		    u16 port;	//2
-		  }) * ed;
 
-		  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		    CLIB_PACKED (struct {
+		      u8 addr[4];    //4
+		      u16 port;	   //2
+		    }) *ed;
 
-		  ed->addr[0] = session->lcl_addr.ip46.ip4.as_u8[0];
-		  ed->addr[1] = session->lcl_addr.ip46.ip4.as_u8[1];
-		  ed->addr[2] = session->lcl_addr.ip46.ip4.as_u8[2];
-		  ed->addr[3] = session->lcl_addr.ip46.ip4.as_u8[3];
-		  ed->port = clib_net_to_host_u16 (session->peer_port);
-		  /* *INDENT-ON* */
+		    ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		    ed->addr[0] = session->lcl_addr.ip46.ip4.as_u8[0];
+		    ed->addr[1] = session->lcl_addr.ip46.ip4.as_u8[1];
+		    ed->addr[2] = session->lcl_addr.ip46.ip4.as_u8[2];
+		    ed->addr[3] = session->lcl_addr.ip46.ip4.as_u8[3];
+		    ed->port = clib_net_to_host_u16 (session->peer_port);
+		    /* *INDENT-ON* */
 		}
 	      else
 		{
-                    /* *INDENT-OFF* */
-		  ELOG_TYPE_DECLARE (e) =
+		    /* *INDENT-OFF* */
+		    ELOG_TYPE_DECLARE (e) =
 		    {
 		      .format = "VPPCOM_ATTR_GET_LCL_ADDR: addr:IP6:%d",
 		      .format_args = "i2",
 		    };
-		  CLIB_PACKED (struct {
-		    u16 port;	//2
-		  }) * ed;
 
-		  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		    CLIB_PACKED (struct {
+		      u16 port;	   //2
+		    }) *ed;
 
-		  ed->port = clib_net_to_host_u16 (session->peer_port);
-		  /* *INDENT-ON* */
+		    ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		    ed->port = clib_net_to_host_u16 (session->peer_port);
+		    /* *INDENT-ON* */
 		}
 	    }
 	}
@@ -4452,15 +4763,16 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
-	    {
-	      .format = "VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd=%d",
-	      .format_args = "i4",
-	    };
+	  {
+	    .format = "VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd=%d",
+	    .format_args = "i4",
+	  };
+
 	  CLIB_PACKED (struct {
 	    i32 data;
-	  }) * ed;
+	  }) *ed;
 
 	  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
 	  ed->data = session->libc_epfd;
@@ -4482,25 +4794,26 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_LIBC_EPFD: libc_epfd=%s%d buflen=%d",
 		  .format_args = "t1i4i4",
 		  .n_enum_strings = 2,
 		  .enum_strings = {"", "-",},
 		};
-	      CLIB_PACKED (struct {
-		u8 sign;
-		u32 data[2];
-	      }) * ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		CLIB_PACKED (struct {
+		  u8 sign;
+		  u32 data[2];
+		}) *ed;
 
-	      ed->sign = (session->libc_epfd < 0);
-	      ed->data[0] = abs(session->libc_epfd);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+
+		ed->sign = (session->libc_epfd < 0);
+		ed->data[0] = abs (session->libc_epfd);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4519,8 +4832,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(int *) buffer ? "UDP" : "TCP", *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_PROTOCOL: %s buflen=%d",
 		  .format_args = "t1i4",
@@ -4528,15 +4841,15 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 		  .enum_strings = {"TCP", "UDP",},
 		};
 
-	      CLIB_PACKED (struct {
-		u8 proto;
-		u32 buflen;
-	      }) * ed;
+		CLIB_PACKED (struct {
+		  u8 proto;
+		  u32 buflen;
+		}) *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->proto = session->proto;
-	      ed->buflen = *(int *) buffer;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->proto = session->proto;
+		ed->buflen = *(int *) buffer;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4555,21 +4868,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  "buflen %d", getpid (), *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_LISTEN: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4588,21 +4902,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_ERROR: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4625,21 +4940,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TX_FIFO_LEN: 0x%x buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(size_t *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(size_t *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4658,21 +4974,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TX_FIFO_LEN: 0x%x buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = session->sndbuf_size;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = session->sndbuf_size;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4695,21 +5012,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_RX_FIFO_LEN: 0x%x buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(size_t *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(size_t *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4728,21 +5046,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_RX_FIFO_LEN: 0x%x buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = session->sndbuf_size;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = session->sndbuf_size;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4763,21 +5082,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_REUSEADDR: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4802,22 +5122,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_REUSEADDR: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_REUSEADDR);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_REUSEADDR);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4838,21 +5159,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_REUSEPORT: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4877,22 +5199,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_REUSEPORT: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_REUSEPORT);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_REUSEPORT);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4913,21 +5236,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_BROADCAST: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4951,22 +5275,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_BROADCAST: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_BROADCAST);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_BROADCAST);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -4987,21 +5312,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_V6ONLY: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5024,22 +5350,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 					      VCL_SESS_ATTR_V6ONLY), *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_V6ONLY: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_V6ONLY);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_V6ONLY);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5060,21 +5387,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_KEEPALIVE: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5098,22 +5426,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_KEEPALIVE: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_KEEPALIVE);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_KEEPALIVE);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5134,21 +5463,21 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_NODELAY: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct {
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5172,22 +5501,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
-		{
-		  .format = "VPPCOM_ATTR_SET_TCP_NODELAY: %d buflen=%d",
-		  .format_args = "i4i4",
-		};
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
+		    {
+			.format = "VPPCOM_ATTR_SET_TCP_NODELAY: %d buflen=%d",
+			.format_args = "i4i4",
+		    };
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct {
+		    u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_TCP_NODELAY);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_TCP_NODELAY);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5208,21 +5537,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5246,22 +5576,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_KEEPIDLE: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_TCP_KEEPIDLE);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_TCP_KEEPIDLE);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5282,21 +5613,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5320,22 +5652,23 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_KEEPINTVL: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
-						VCL_SESS_ATTR_TCP_KEEPINTVL);
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = VCL_SESS_ATTR_TEST (session->attr,
+						  VCL_SESS_ATTR_TCP_KEEPINTVL);
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5355,21 +5688,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_GET_TCP_USER_MSS: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = *(int *) buffer;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = *(int *) buffer;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5388,21 +5722,22 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			  session->user_mss, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-                /* *INDENT-OFF* */
-	      ELOG_TYPE_DECLARE (e) =
+		/* *INDENT-OFF* */
+		ELOG_TYPE_DECLARE (e) =
 		{
 		  .format = "VPPCOM_ATTR_SET_TCP_USER_MSS: %d buflen=%d",
 		  .format_args = "i4i4",
 		};
 
-	      struct {
-		u32 data[2];
-	      } * ed;
+		struct
+		{
+		  u32 data[2];
+		} *ed;
 
-	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-	      ed->data[0] = session->user_mss;
-	      ed->data[1] = *buflen;
-	      /* *INDENT-ON* */
+		ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
+		ed->data[0] = session->user_mss;
+		ed->data[1] = *buflen;
+		/* *INDENT-ON* */
 	    }
 	}
       else
@@ -5439,16 +5774,17 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 			  getpid (), session_index);
 	  if (VPPCOM_DEBUG > 0)
 	    {
-              /* *INDENT-OFF* */
+	      /* *INDENT-OFF* */
 	      ELOG_TYPE_DECLARE (e) =
-		{
-		  .format = "invalid session: %d closed",
-		  .format_args = "i4",
-		};
+	      {
+		.format = "invalid session: %d closed",
+		.format_args = "i4",
+	      };
 
-	      struct {
+	      struct
+	      {
 		u32 data;
-	      } * ed;
+	      } *ed;
 
 	      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
 	      ed->data = session_index;
