@@ -60,6 +60,32 @@ typedef enum fib_path_ext_adj_flags_t_
          _item++)
 
 /**
+ * Flags present on an MPLS label sourced path-extension
+ */
+typedef enum fib_path_ext_mpls_attr_t_
+{
+    /**
+     * Do not decrement the TTL of IP packet during imposition
+     */
+    FIB_PATH_EXT_MPLS_ATTR_NO_IP_TTL_DECR,
+} fib_path_ext_mpls_attr_t;
+
+typedef enum fib_path_ext_mpls_flags_t_
+{
+    FIB_PATH_EXT_MPLS_FLAG_NONE = 0,
+    FIB_PATH_EXT_MPLS_FLAG_NO_IP_TTL_DECR = (1 << FIB_PATH_EXT_MPLS_ATTR_NO_IP_TTL_DECR),
+} fib_path_ext_mpls_flags_t;
+
+#define FIB_PATH_EXT_MPLS_ATTR_NAMES {                               \
+    [FIB_PATH_EXT_MPLS_ATTR_NO_IP_TTL_DECR] = "no-ip-tll-decr",      \
+}
+
+#define FOR_EACH_PATH_EXT_MPLS_ATTR(_item)                \
+    for (_item = FIB_PATH_EXT_MPLS_ATTR_NO_IP_TTL_DECR;   \
+         _item <= FIB_PATH_EXT_MPLS_ATTR_NO_IP_TTL_DECR;  \
+         _item++)
+
+/**
  * A path extension is a per-entry addition to the forwarding information
  * when packets are sent for that entry over that path.
  *
@@ -86,6 +112,12 @@ typedef struct fib_path_ext_t_
          * Flags describing the adj state
          */
         fib_path_ext_adj_flags_t fpe_adj_flags;
+        /**
+         * For an MPLS type extension
+         *
+         * Flags describing the mpls state
+         */
+        fib_path_ext_mpls_flags_t fpe_mpls_flags;
     };
 
     /**
@@ -98,7 +130,7 @@ typedef struct fib_path_ext_t_
      * position in the path-list.
      */
     fib_node_index_t fpe_path_index;
-} __attribute__ ((packed))  fib_path_ext_t;
+} __attribute__ ((packed)) fib_path_ext_t;
 
 extern u8 * format_fib_path_ext(u8 * s, va_list * args);
 

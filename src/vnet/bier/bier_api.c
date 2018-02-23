@@ -202,8 +202,16 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
                      mp->br_paths[ii].n_labels - 1);
         for (jj = 0; jj < mp->br_paths[ii].n_labels; jj++)
         {
-            brpath->frp_label_stack[jj] =
-                ntohl(mp->br_paths[ii].label_stack[jj]);
+            brpath->frp_label_stack[jj].fml_value =
+                ntohl(mp->br_paths[ii].label_stack[jj].label);
+            brpath->frp_label_stack[jj].fml_ttl =
+                mp->br_paths[ii].label_stack[jj].ttl;
+            brpath->frp_label_stack[jj].fml_exp =
+                mp->br_paths[ii].label_stack[jj].exp;
+            brpath->frp_label_stack[jj].fml_mode =
+                (mp->br_paths[ii].label_stack[jj].is_uniform ?
+                 FIB_MPLS_LSP_MODE_UNIFORM :
+                 FIB_MPLS_LSP_MODE_PIPE);
         }
 
         if (mp->br_paths[ii].is_udp_encap)
@@ -275,11 +283,11 @@ send_bier_route_details (const bier_table_t *bt,
     fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
     bier_route_details_walk_t *ctx = args;
     vl_api_bier_route_details_t *mp;
-    vl_api_fib_path3_t *fp;
+    vl_api_fib_path_t *fp;
     u32 n_paths, m_size;
 
     n_paths = fib_path_list_get_n_paths(be->be_path_list);
-    m_size = sizeof(*mp) + (n_paths * sizeof(vl_api_fib_path3_t));
+    m_size = sizeof(*mp) + (n_paths * sizeof(vl_api_fib_path_t));
     mp = vl_msg_api_alloc(m_size);
     if (!mp)
         return;
@@ -636,7 +644,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
     bier_disp_entry_details_walk_t *ctx = args;
     vl_api_bier_disp_entry_details_t *mp;
     bier_hdr_proto_id_t pproto;
-    vl_api_fib_path3_t *fp;
+    vl_api_fib_path_t *fp;
     u32 n_paths, m_size;
 
     FOR_EACH_BIER_HDR_PROTO(pproto)
@@ -645,7 +653,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
         if (INDEX_INVALID != pl)
         {
             n_paths = fib_path_list_get_n_paths(pl);
-            m_size = sizeof(*mp) + (n_paths * sizeof(vl_api_fib_path3_t));
+            m_size = sizeof(*mp) + (n_paths * sizeof(vl_api_fib_path_t));
             mp = vl_msg_api_alloc(m_size);
             if (!mp)
                 return;

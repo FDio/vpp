@@ -123,6 +123,12 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
     path_ext = fib_path_ext_list_find_by_path_index(&ctx->mt->mt_path_exts,
                                                     path_index);
 
+    /*
+     * we don't want IP TTL decrements for packets hitting the MPLS labels
+     * we stack on, since the IP TTL decrement is done by the adj
+     */
+    path_ext->fpe_mpls_flags |= FIB_PATH_EXT_MPLS_FLAG_NO_IP_TTL_DECR;
+
     if (NULL != path_ext)
     {
         /*
@@ -273,9 +279,8 @@ mpls_tunnel_stack (adj_index_t ai)
 
         mpls_tunnel_mk_lb(mt,
                           adj->ia_link,
-                          (VNET_LINK_MPLS == adj_get_link_type(ai) ?
-                           FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
-                           FIB_FORW_CHAIN_TYPE_MPLS_EOS),
+                          fib_forw_chain_type_from_link_type(
+                              adj_get_link_type(ai)),
                           &dpo);
 
         adj_nbr_midchain_stack(ai, &dpo);
@@ -521,6 +526,11 @@ mpls_tunnel_tx (vlib_main_t * vm,
           b0 = vlib_get_buffer(vm, bi0);
 
           vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_lb.dpoi_index;
+          /* since we are coming out of the L2 world, where the vlib_buffer
+           * union is used for other things, make sure it is clean for
+           * MPLS from now on.
+           */
+          vnet_buffer(b0)->mpls.first = 0;
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

@@ -47,6 +47,9 @@ u8 * format_mpls_unicast_label (u8 * s, va_list * args)
   case MPLS_IETF_GAL_LABEL:
       s = format (s, "%s", MPLS_IETF_GAL_STRING);
       break;
+  case MPLS_LABEL_POP:
+      s = format (s, "pop");
+      break;
   default:
       s = format (s, "%d", label);
       break;

@@ -163,9 +163,14 @@ typedef enum fib_forward_chain_type_t_ {
 	 _item++)
 
 /**
- * @brief Convert from a chain type to the adjacencies link type
+ * @brief Convert from a chain type to the adjacency's link type
  */
 extern vnet_link_t fib_forw_chain_type_to_link_type(fib_forward_chain_type_t fct);
+
+/**
+ * @brief Convert from a adjacency's link type to chain type
+ */
+extern fib_forward_chain_type_t fib_forw_chain_type_from_link_type(vnet_link_t lt);
 
 /**
  * @brief Convert from a payload-protocol to a chain type.
@@ -373,6 +378,64 @@ typedef u32 fib_rpf_id_t;
 #define MFIB_RPF_ID_NONE (0)
 
 /**
+ * MPLS LSP mode - only valid at the head and tail
+ */
+typedef enum fib_mpls_lsp_mode_t_
+{
+    /**
+     * Pipe Mode - the default.
+     *  TTL and DSCP markings are not carried between the layers
+     */
+    FIB_MPLS_LSP_MODE_PIPE,
+    /**
+     * Uniform mode.
+     *  TTL and DSCP are copied between the layers
+     */
+    FIB_MPLS_LSP_MODE_UNIFORM,
+} __attribute__((packed)) fib_mpls_lsp_mode_t;
+
+#define FIB_MPLS_LSP_MODES {			\
+    [FIB_MPLS_LSP_MODE_PIPE]     = "pipe",     	\
+    [FIB_MPLS_LSP_MODE_UNIFORM]  = "uniform",   \
+}
+
+/**
+ * Format an LSP mode type
+ */
+extern u8 * format_fib_mpls_lsp_mode(u8 *s, va_list *ap);
+
+/**
+ * Configuration for each label value in the output-stack
+ */
+typedef struct fib_mpls_label_t_
+{
+    /**
+     * The label value
+     */
+    mpls_label_t fml_value;
+
+    /**
+     * The LSP mode
+     */
+    fib_mpls_lsp_mode_t fml_mode;
+
+    /**
+     * TTL. valid only at imposition.
+     */
+    u8 fml_ttl;
+
+    /**
+     * EXP bits; valid only at imposition.
+     */
+    u8 fml_exp;
+} fib_mpls_label_t;
+
+/**
+ * Format an MPLS label
+ */
+extern u8 * format_fib_mpls_label(u8 *s, va_list *ap);
+
+/**
  * @brief 
  * A representation of a path as described by a route producer.
  * These paramenters will determine the path 'type', of which there are:
@@ -444,7 +507,7 @@ typedef struct fib_route_path_t_ {
             /**
              * The outgoing MPLS label Stack. NULL implies no label.
              */
-            mpls_label_t *frp_label_stack;
+            fib_mpls_label_t *frp_label_stack;
         };
         /**
          * A path that resolves via a BIER Table.

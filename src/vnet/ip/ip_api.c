@@ -867,7 +867,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 u16 next_hop_weight,
 			 u16 next_hop_preference,
 			 mpls_label_t next_hop_via_label,
-			 mpls_label_t * next_hop_out_label_stack)
+			 fib_mpls_label_t * next_hop_out_label_stack)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
   fib_route_path_flags_t path_flags = FIB_ROUTE_PATH_FLAG_NONE;
@@ -1071,7 +1071,7 @@ static int
 ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 {
   u32 fib_index, next_hop_fib_index;
-  mpls_label_t *label_stack = NULL;
+  fib_mpls_label_t *label_stack = NULL;
   int rv, ii, n_labels;;
 
   rv = add_del_route_check (FIB_PROTOCOL_IP4,
@@ -1097,13 +1097,19 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   n_labels = mp->next_hop_n_out_labels;
   if (n_labels == 0)
     ;
-  else if (1 == n_labels)
-    vec_add1 (label_stack, ntohl (mp->next_hop_out_label_stack[0]));
   else
     {
       vec_validate (label_stack, n_labels - 1);
       for (ii = 0; ii < n_labels; ii++)
-	label_stack[ii] = ntohl (mp->next_hop_out_label_stack[ii]);
+	{
+	  label_stack[ii].fml_value =
+	    ntohl (mp->next_hop_out_label_stack[ii].label);
+	  label_stack[ii].fml_ttl = mp->next_hop_out_label_stack[ii].ttl;
+	  label_stack[ii].fml_exp = mp->next_hop_out_label_stack[ii].exp;
+	  label_stack[ii].fml_mode =
+	    (mp->next_hop_out_label_stack[ii].is_uniform ?
+	     FIB_MPLS_LSP_MODE_UNIFORM : FIB_MPLS_LSP_MODE_PIPE);
+	}
     }
 
   return (add_del_route_t_handler (mp->is_multipath,
@@ -1133,8 +1139,8 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 static int
 ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 {
+  fib_mpls_label_t *label_stack = NULL;
   u32 fib_index, next_hop_fib_index;
-  mpls_label_t *label_stack = NULL;
   int rv, ii, n_labels;;
 
   rv = add_del_route_check (FIB_PROTOCOL_IP6,
@@ -1160,13 +1166,19 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   n_labels = mp->next_hop_n_out_labels;
   if (n_labels == 0)
     ;
-  else if (1 == n_labels)
-    vec_add1 (label_stack, ntohl (mp->next_hop_out_label_stack[0]));
   else
     {
       vec_validate (label_stack, n_labels - 1);
       for (ii = 0; ii < n_labels; ii++)
-	label_stack[ii] = ntohl (mp->next_hop_out_label_stack[ii]);
+	{
+	  label_stack[ii].fml_value =
+	    ntohl (mp->next_hop_out_label_stack[ii].label);
+	  label_stack[ii].fml_ttl = mp->next_hop_out_label_stack[ii].ttl;
+	  label_stack[ii].fml_exp = mp->next_hop_out_label_stack[ii].exp;
+	  label_stack[ii].fml_mode =
+	    (mp->next_hop_out_label_stack[ii].is_uniform ?
+	     FIB_MPLS_LSP_MODE_UNIFORM : FIB_MPLS_LSP_MODE_PIPE);
+	}
     }
 
   return (add_del_route_t_handler (mp->is_multipath,

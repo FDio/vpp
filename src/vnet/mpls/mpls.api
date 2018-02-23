@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
+option version = "1.1.0";
+import "vnet/fib/fib_types.api";
 
 /** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
            a per-prefix label entry.
@@ -40,21 +41,6 @@ autoreply define mpls_ip_bind_unbind
   u8 mb_address[16];
 };
 
-/** \brief MPLS tunnel Add / del route
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mt_is_add - Is this a route add or delete
-    @param mt_sw_if_index - The SW interface index of the tunnel to delete
-    @param mt_is_multicast - Is the tunnel's underlying LSP multicast
-    @param mt_next_hop_proto_is_ip4 - The next-hop is IPV4
-    @param mt_next_hop_weight - The weight, for UCMP
-    @param mt_next_hop_preference - The preference
-    @param mt_next_hop[16] - the nextop address
-    @param mt_next_hop_sw_if_index - the next-hop SW interface
-    @param mt_next_hop_table_id - the next-hop table-id (if appropriate)
-    @param mt_next_hop_n_out_labels - the number of next-hop output labels
-    @param mt_next_hop_out_label_stack - the next-hop output label stack,  outer most first
-*/
 define mpls_tunnel_add_del
 {
   u32 client_index;
@@ -70,7 +56,7 @@ define mpls_tunnel_add_del
   u8 mt_next_hop_n_out_labels;
   u32 mt_next_hop_sw_if_index;
   u32 mt_next_hop_table_id;
-  u32 mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
+  vl_api_fib_mpls_label_t mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
 };
 
 /** \brief Reply for MPLS tunnel add / del request
@@ -96,34 +82,6 @@ define mpls_tunnel_dump
   i32 tunnel_index;
 };
 
-/** \brief FIB path
-    @param sw_if_index - index of the interface
-    @param weight - The weight, for UCMP
-    @param is_local - local if non-zero, else remote
-    @param is_drop - Drop the packet
-    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
-    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
-    @param afi - the afi of the next hop, IP46_TYPE_IP4=1, IP46_TYPE_IP6=2
-    @param next_hop[16] - the next hop address
-
-    WARNING: this type is replicated, pending cleanup completion
-
-*/
-typeonly manual_print manual_endian define fib_path2
-{
-  u32 sw_if_index;
-  u32 table_id;
-  u8 weight;
-  u8 preference;
-  u8 is_local;
-  u8 is_drop;
-  u8 is_unreach;
-  u8 is_prohibit;
-  u8 afi;
-  u8 next_hop[16];
-  u32 labels[16];
-};
-
 /** \brief mpls tunnel details
 */
 manual_endian manual_print define mpls_tunnel_details
@@ -134,7 +92,7 @@ manual_endian manual_print define mpls_tunnel_details
   u8 mt_l2_only;
   u8 mt_is_multicast;
   u32 mt_count;
-  vl_api_fib_path2_t mt_paths[mt_count];
+  vl_api_fib_path_t mt_paths[mt_count];
 };
 
 /** \brief MPLS Route Add / del route
@@ -207,7 +165,7 @@ autoreply define mpls_route_add_del
   u32 mr_next_hop_sw_if_index;
   u32 mr_next_hop_table_id;
   u32 mr_next_hop_via_label;
-  u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+  vl_api_fib_mpls_label_t mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
 };
 
 /** \brief Dump MPLS fib table
@@ -234,7 +192,7 @@ manual_endian manual_print define mpls_fib_details
   u8  eos_bit;
   u32 label;
   u32 count;
-  vl_api_fib_path2_t path[count];
+  vl_api_fib_path_t path[count];
 };
 
 /** \brief Enable or Disable MPLS on and interface
