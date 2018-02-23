@@ -22,6 +22,7 @@ libvppcom_la_DEPENDENCIES = 	\
 libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
 
 libvppcom_la_SOURCES +=				\
+  vcl/vcl_event.c               \
   vcl/vppcom.c					\
   $(libvppinfra_la_SOURCES)			\
   $(libvlib_la_SOURCES)				\
@@ -29,6 +30,7 @@ libvppcom_la_SOURCES +=				\
   $(libvlibmemoryclient_la_SOURCES)
 
 nobase_include_HEADERS +=			\
+  vcl/vcl_event.h 					\
   vcl/vppcom.h
 
 libvcl_ldpreload_la_LIBADD =  $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
