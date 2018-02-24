@@ -1135,7 +1135,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      &h0->target_address,
 					      o0->ethernet_address,
 					      sizeof (o0->ethernet_address),
-					      0, ip6_sadd_link_local);
+					      0,
+					      (is_solicitation ?
+					       ip6_sadd_link_local :
+					       ip6_address_is_link_local_unicast
+					       (&h0->target_address)));
 	    }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
