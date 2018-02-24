@@ -1352,10 +1352,7 @@ fib_route_attached_cross_table (const fib_entry_t *fib_entry,
 }
 
 /*
- * fib_route_attached_cross_table
- *
- * Return true the the route is attached via an interface that
- * is not in the same table as the route
+ * Return true if the path is attached
  */
 static inline int
 fib_path_is_attached (const fib_route_path_t *rpath)
@@ -1419,7 +1416,8 @@ fib_entry_flags_update (const fib_entry_t *fib_entry,
 	    esrc->fes_entry_flags |= FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
 	}
     }
-    if (fib_route_attached_cross_table(fib_entry, rpath))
+    if (fib_route_attached_cross_table(fib_entry, rpath) &&
+        !(esrc->fes_entry_flags & FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT))
     {
 	esrc->fes_entry_flags |= FIB_ENTRY_FLAG_IMPORT;
     }

@@ -89,6 +89,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_IP6_ND_PROXY,
     /**
+     * IPv6 ND (seen in the link-local tables)
+     */
+    FIB_SOURCE_IP6_ND,
+    /**
      * Adjacency source.
      * routes created as a result of ARP/ND entries. This is lower priority
      * then the API/CLI. This is on purpose. trust me.
@@ -151,6 +155,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_CLASSIFY] = "classify",			\
     [FIB_SOURCE_DHCP] = "DHCP",   			\
     [FIB_SOURCE_IP6_ND_PROXY] = "IPv6-proxy-nd",        \
+    [FIB_SOURCE_IP6_ND] = "IPv6-nd",                    \
     [FIB_SOURCE_RR] = "recursive-resolution",	        \
     [FIB_SOURCE_AE] = "attached_export",	        \
     [FIB_SOURCE_MPLS] = "mpls",           	        \
@@ -208,6 +213,10 @@ typedef enum fib_entry_attribute_t_ {
      */
     FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
     /**
+     * The prefix/address exempted from attached export
+     */
+    FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT,
+    /**
      * This FIB entry imposes its source information on all prefixes
      * that is covers
      */
@@ -227,6 +236,7 @@ typedef enum fib_entry_attribute_t_ {
     [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
     [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
     [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
+    [FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT] = "no-attached-export",	\
     [FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT] = "covered-inherit",  \
 }
 
@@ -243,6 +253,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_EXCLUSIVE = (1 << FIB_ENTRY_ATTRIBUTE_EXCLUSIVE),
     FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
     FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
+    FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT = (1 << FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT),
     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
     FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
     FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),

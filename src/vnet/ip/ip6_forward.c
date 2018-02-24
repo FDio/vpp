@@ -1548,9 +1548,10 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	     * Choose source address based on destination lookup
 	     * adjacency.
 	     */
-	    if (ip6_src_address_for_packet (lm,
-					    sw_if_index0,
-					    &h0->ip.src_address))
+	    if (!ip6_src_address_for_packet (lm,
+					     sw_if_index0,
+					     &ip0->dst_address,
+					     &h0->ip.src_address))
 	      {
 		/* There is no address on the interface */
 		p0->error =

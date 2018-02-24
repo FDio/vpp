@@ -25,6 +25,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
+#include <vnet/ip/ip6_ll_table.h>
 
 /**
  * @file
@@ -273,7 +274,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
   u8 *flags = 0;
 
   if (!n)
-    return format (s, "%=12s%=20s%=6s%=20s%=40s", "Time", "Address", "Flags",
+    return format (s, "%=12s%=25s%=6s%=20s%=40s", "Time", "Address", "Flags",
 		   "Link layer", "Interface");
 
   if (n->flags & IP6_NEIGHBOR_FLAG_DYNAMIC)
@@ -286,7 +287,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
     flags = format (flags, "N");
 
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
-  s = format (s, "%=12U%=20U%=6s%=20U%=40U",
+  s = format (s, "%=12U%=25U%=6s%=20U%=40U",
 	      format_vlib_cpu_time, vm, n->cpu_time_last_updated,
 	      format_ip6_address, &n->key.ip6_address,
 	      flags ? (char *) flags : "",
@@ -302,18 +303,29 @@ ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, u32 fib_index)
 {
   if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
     {
-      fib_prefix_t pfx = {
-	.fp_len = 128,
-	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr.ip6 = n->key.ip6_address,
-      };
-      fib_table_entry_path_remove (fib_index,
-				   &pfx,
-				   FIB_SOURCE_ADJ,
-				   DPO_PROTO_IP6,
-				   &pfx.fp_addr,
-				   n->key.sw_if_index, ~0,
-				   1, FIB_ROUTE_PATH_FLAG_NONE);
+      if (ip6_address_is_link_local_unicast (&n->key.ip6_address))
+	{
+	  ip6_ll_prefix_t pfx = {
+	    .ilp_addr = n->key.ip6_address,
+	    .ilp_sw_if_index = n->key.sw_if_index,
+	  };
+	  ip6_ll_table_entry_delete (&pfx);
+	}
+      else
+	{
+	  fib_prefix_t pfx = {
+	    .fp_len = 128,
+	    .fp_proto = FIB_PROTOCOL_IP6,
+	    .fp_addr.ip6 = n->key.ip6_address,
+	  };
+	  fib_table_entry_path_remove (fib_index,
+				       &pfx,
+				       FIB_SOURCE_ADJ,
+				       DPO_PROTO_IP6,
+				       &pfx.fp_addr,
+				       n->key.sw_if_index, ~0,
+				       1, FIB_ROUTE_PATH_FLAG_NONE);
+	}
     }
 }
 
@@ -640,18 +652,30 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 static void
 ip6_neighbor_adj_fib_add (ip6_neighbor_t * n, u32 fib_index)
 {
-  fib_prefix_t pfx = {
-    .fp_len = 128,
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_addr.ip6 = n->key.ip6_address,
-  };
+  if (ip6_address_is_link_local_unicast (&n->key.ip6_address))
+    {
+      ip6_ll_prefix_t pfx = {
+	.ilp_addr = n->key.ip6_address,
+	.ilp_sw_if_index = n->key.sw_if_index,
+      };
+      n->fib_entry_index =
+	ip6_ll_table_entry_update (&pfx, FIB_ROUTE_PATH_FLAG_NONE);
+    }
+  else
+    {
+      fib_prefix_t pfx = {
+	.fp_len = 128,
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_addr.ip6 = n->key.ip6_address,
+      };
 
-  n->fib_entry_index =
-    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
-			      FIB_ENTRY_FLAG_ATTACHED,
-			      DPO_PROTO_IP6, &pfx.fp_addr,
-			      n->key.sw_if_index, ~0, 1, NULL,
-			      FIB_ROUTE_PATH_FLAG_NONE);
+      n->fib_entry_index =
+	fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
+				  FIB_ENTRY_FLAG_ATTACHED,
+				  DPO_PROTO_IP6, &pfx.fp_addr,
+				  n->key.sw_if_index, ~0, 1, NULL,
+				  FIB_ROUTE_PATH_FLAG_NONE);
+    }
 }
 
 int
@@ -708,9 +732,8 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
        */
       if (!is_no_fib_entry)
 	{
-	  ip6_neighbor_adj_fib_add (n,
-				    ip6_fib_table_get_index_for_sw_if_index
-				    (n->key.sw_if_index));
+	  ip6_neighbor_adj_fib_add
+	    (n, ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index));
 	}
       else
 	{
@@ -1135,7 +1158,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      &h0->target_address,
 					      o0->ethernet_address,
 					      sizeof (o0->ethernet_address),
-					      0, ip6_sadd_link_local);
+					      0, 0);
 	    }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
@@ -1153,9 +1176,18 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		}
 	      else
 		{
-		  fei = ip6_fib_table_lookup_exact_match (fib_index,
-							  &h0->target_address,
-							  128);
+		  if (ip6_address_is_link_local_unicast (&h0->target_address))
+		    {
+		      fei = ip6_fib_table_lookup_exact_match
+			(ip6_ll_fib_get (sw_if_index0),
+			 &h0->target_address, 128);
+		    }
+		  else
+		    {
+		      fei = ip6_fib_table_lookup_exact_match (fib_index,
+							      &h0->target_address,
+							      128);
+		    }
 
 		  if (FIB_NODE_INDEX_INVALID == fei)
 		    {
@@ -1174,7 +1206,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 			}
 		      else
 			if (fib_entry_is_sourced
-			    (fei, FIB_SOURCE_IP6_ND_PROXY))
+			    (fei, FIB_SOURCE_IP6_ND_PROXY) ||
+			    fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND))
 			{
 			  /* The address was added by IPv6 Proxy ND config.
 			   * We should only respond to these if the NS arrived on
@@ -3273,6 +3306,10 @@ show_ip6_interface_cmd (vlib_main_t * vm,
 	      vec_free (unknown_scope);
 	    }
 
+	  vlib_cli_output (vm, "\tLink-local address(es):\n");
+	  vlib_cli_output (vm, "\t\t%U\n", format_ip6_address,
+			   &radv_info->link_local_address);
+
 	  vlib_cli_output (vm, "\tJoined group address(es):\n");
 	  ip6_mldp_group_t *m;
 	  /* *INDENT-OFF* */
@@ -3395,7 +3432,6 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
   /* if not created - do nothing */
   if (ri != ~0)
     {
-      vnet_main_t *vnm = vnet_get_main ();
       ip6_radv_t *radv_info;
 
       radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
@@ -3405,14 +3441,15 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
       if (radv_info->ref_count == 0)
 	{
 	  /* essentially "disables" ipv6 on this interface */
-	  error = ip6_add_del_interface_address (vm, sw_if_index,
-						 &radv_info->
-						 link_local_address, 128,
-						 1 /* is_del */ );
-
-	  ip6_neighbor_sw_interface_add_del (vnm, sw_if_index,
-					     0 /* is_add */ );
+	  ip6_ll_prefix_t ilp = {
+	    .ilp_addr = radv_info->link_local_address,
+	    .ilp_sw_if_index = sw_if_index,
+	  };
+	  ip6_ll_table_entry_delete (&ilp);
+	  ip6_sw_interface_enable_disable (sw_if_index, 0);
 	  ip6_mfib_interface_enable_disable (sw_if_index, 0);
+	  ip6_neighbor_sw_interface_add_del (vnet_get_main (), sw_if_index,
+					     0);
 	}
     }
   return error;
@@ -3499,20 +3536,20 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		      /* clear u bit */
 		      link_local_address.as_u8[8] &= 0xfd;
 		    }
+		  {
+		    ip6_ll_prefix_t ilp = {
+		      .ilp_addr = link_local_address,
+		      .ilp_sw_if_index = sw_if_index,
+		    };
 
-		  ip6_mfib_interface_enable_disable (sw_if_index, 1);
+		    ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
+		  }
 
 		  /* essentially "enables" ipv6 on this interface */
-		  error = ip6_add_del_interface_address (vm, sw_if_index,
-							 &link_local_address,
-							 128
-							 /* address width */ ,
-							 0 /* is_del */ );
+		  ip6_mfib_interface_enable_disable (sw_if_index, 1);
+		  ip6_sw_interface_enable_disable (sw_if_index, 1);
 
-		  if (error)
-		    ip6_neighbor_sw_interface_add_del (vnm, sw_if_index,
-						       !is_add);
-		  else
+		  if (!error)
 		    {
 		      radv_info->link_local_address = link_local_address;
 		    }
@@ -3521,6 +3558,27 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 	}
     }
   return error;
+}
+
+int
+ip6_get_ll_address (u32 sw_if_index, ip6_address_t * addr)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  ip6_radv_t *radv_info;
+  u32 ri;
+
+  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) < sw_if_index)
+    return 0;
+
+  ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
+
+  if (ri == ~0)
+    return 0;
+
+  radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+  *addr = radv_info->link_local_address;
+
+  return (!0);
 }
 
 static clib_error_t *

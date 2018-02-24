@@ -15,6 +15,7 @@
 
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/dpo/ip6_ll_dpo.h>
 
 static void
 vnet_ip6_fib_init (u32 fib_index)
@@ -38,20 +39,23 @@ vnet_ip6_fib_init (u32 fib_index)
 				FIB_ENTRY_FLAG_DROP);
 
     /*
-     * all link local for us
+     * all link local via the link local lookup DPO
      */
     pfx.fp_addr.ip6.as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
     pfx.fp_addr.ip6.as_u64[1] = 0;
     pfx.fp_len = 10;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL);
+    fib_table_entry_special_dpo_add(fib_index,
+                                    &pfx,
+                                    FIB_SOURCE_SPECIAL,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    ip6_ll_dpo_get());
 }
 
 static u32
 create_fib_with_table_id (u32 table_id,
-                          fib_source_t src)
+                          fib_source_t src,
+                          fib_table_flags_t flags,
+                          u8 *desc)
 {
     fib_table_t *fib_table;
     ip6_fib_t *v6_fib;
@@ -76,6 +80,8 @@ create_fib_with_table_id (u32 table_id,
 	v6_fib->table_id =
 	    table_id;
     fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
+    fib_table->ft_flags = flags;
+    fib_table->ft_desc = desc;
 
     vnet_ip6_fib_init(fib_table->ft_index);
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6, src);
@@ -91,95 +97,57 @@ ip6_fib_table_find_or_create_and_lock (u32 table_id,
 
     p = hash_get (ip6_main.fib_index_by_table_id, table_id);
     if (NULL == p)
-	return create_fib_with_table_id(table_id, src);
-    
+	return create_fib_with_table_id(table_id, src,
+                                        FIB_TABLE_FLAG_NONE,
+                                        NULL);
+
     fib_table_lock(p[0], FIB_PROTOCOL_IP6, src);
 
     return (p[0]);
 }
 
 u32
-ip6_fib_table_create_and_lock (fib_source_t src)
+ip6_fib_table_create_and_lock (fib_source_t src,
+                               fib_table_flags_t flags,
+                               u8 *desc)
 {
-    return (create_fib_with_table_id(~0, src));
+    return (create_fib_with_table_id(~0, src, flags, desc));
 }
 
 void
 ip6_fib_table_destroy (u32 fib_index)
 {
+    /*
+     * all link local first ...
+     */
     fib_prefix_t pfx = {
 	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_len = 0,
+	.fp_len = 10,
 	.fp_addr = {
 	    .ip6 = {
-		{ 0, 0, },
+                .as_u8 = {
+                    [0] = 0xFE,
+                    [1] = 0x80,
+                },
 	    },
 	}
     };
+    fib_table_entry_delete(fib_index,
+                           &pfx,
+                           FIB_SOURCE_SPECIAL);
 
     /*
-     * the default route.
+     * ... then the default route.
      */
+    pfx.fp_addr.ip6.as_u64[0] = 0;
+    pfx.fp_len = 00;
     fib_table_entry_special_remove(fib_index,
 				   &pfx,
 				   FIB_SOURCE_DEFAULT_ROUTE);
 
-
-    /*
-     * ff02::1:ff00:0/104
-     */
-    ip6_set_solicited_node_multicast_address(&pfx.fp_addr.ip6, 0);
-    pfx.fp_len = 104;
-    fib_table_entry_special_remove(fib_index,
-				   &pfx,
-				   FIB_SOURCE_SPECIAL);
-
-    /*
-     * all-routers multicast address
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_remove(fib_index,
-				   &pfx,
-				   FIB_SOURCE_SPECIAL);
-
-    /*
-     * all-nodes multicast address
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_hosts);
-    pfx.fp_len = 128;
-    fib_table_entry_special_remove(fib_index,
-				   &pfx,
-				   FIB_SOURCE_SPECIAL);
-
-    /*
-     * all-mldv2 multicast address
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_mldv2_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_remove(fib_index,
-				   &pfx,
-				   FIB_SOURCE_SPECIAL);
-
-    /*
-     * all link local 
-     */
-    pfx.fp_addr.ip6.as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
-    pfx.fp_addr.ip6.as_u64[1] = 0;
-    pfx.fp_len = 10;
-    fib_table_entry_special_remove(fib_index,
-				   &pfx,
-				   FIB_SOURCE_SPECIAL);
-
     fib_table_t *fib_table = fib_table_get(fib_index, FIB_PROTOCOL_IP6);
     fib_source_t source;
-    
+
      /*
      * validate no more routes.
      */
@@ -691,6 +659,8 @@ ip6_show_fib (vlib_main_t * vm,
 	    continue;
 	if (fib_index != ~0 && fib_index != (int)fib->index)
 	    continue;
+        if (fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL)
+            continue;
 
 	s = format(s, "%U, fib_index:%d, flow hash:[%U] locks:[",
                    format_fib_table_name, fib->index,

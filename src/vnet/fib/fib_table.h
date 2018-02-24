@@ -29,6 +29,40 @@
 #define FIB_TABLE_TOTAL_LOCKS FIB_SOURCE_MAX
 
 /**
+ * Flags for the source data
+ */
+typedef enum fib_table_attribute_t_ {
+    /**
+     * Marker. Add new values after this one.
+     */
+    FIB_TABLE_ATTRIBUTE_FIRST,
+    /**
+     * the table is for IP6 link local addresses
+     */
+    FIB_TABLE_ATTRIBUTE_IP6_LL = FIB_TABLE_ATTRIBUTE_FIRST,
+    /**
+     * Marker. add new entries before this one.
+     */
+    FIB_TABLE_ATTRIBUTE_LAST = FIB_TABLE_ATTRIBUTE_IP6_LL,
+} fib_table_attribute_t;
+
+#define FIB_TABLE_ATTRIBUTE_MAX (FIB_TABLE_ATTRIBUTE_LAST+1)
+
+#define FIB_TABLE_ATTRIBUTES {		         \
+    [FIB_TABLE_ATTRIBUTE_IP6_LL]  = "ip6-ll",	 \
+}
+
+#define FOR_EACH_FIB_TABLE_ATTRIBUTE(_item)      	\
+    for (_item = FIB_TABLE_ATTRIBUTE_FIRST;		\
+	 _item < FIB_TABLE_ATTRIBUTE_MAX;		\
+	 _item++)
+
+typedef enum fib_table_flags_t_ {
+    FIB_TABLE_FLAG_NONE   = 0,
+    FIB_TABLE_FLAG_IP6_LL  = (1 << FIB_TABLE_ATTRIBUTE_IP6_LL),
+} __attribute__ ((packed)) fib_table_flags_t;
+
+/**
  * @brief 
  *   A protocol Independent FIB table
  */
@@ -38,6 +72,11 @@ typedef struct fib_table_t_
      * Which protocol this table serves. Used to switch on the union above.
      */
     fib_protocol_t ft_proto;
+
+    /**
+     * Table flags
+     */
+    fib_table_flags_t ft_flags;
 
     /**
      * per-source number of locks on the table

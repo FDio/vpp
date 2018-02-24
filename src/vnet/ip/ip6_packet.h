@@ -293,7 +293,7 @@ ip6_address_is_loopback (ip6_address_t * a)
 
 /* Check for link local unicast fe80::/10. */
 always_inline uword
-ip6_address_is_link_local_unicast (ip6_address_t * a)
+ip6_address_is_link_local_unicast (const ip6_address_t * a)
 {
   return a->as_u8[0] == 0xfe && (a->as_u8[1] & 0xc0) == 0x80;
 }

@@ -349,6 +349,8 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip4_reassembly.c                       \
  vnet/ip/ip6_format.c				\
  vnet/ip/ip6_forward.c				\
+ vnet/ip/ip6_ll_table.c				\
+ vnet/ip/ip6_ll_types.c				\
  vnet/ip/ip6_punt_drop.c			\
  vnet/ip/ip6_hop_by_hop.c			\
  vnet/ip/ip6_input.c				\
@@ -1130,6 +1132,7 @@ libvnet_la_SOURCES +=				\
   vnet/dpo/dpo.c				\
   vnet/dpo/drop_dpo.c				\
   vnet/dpo/ip_null_dpo.c			\
+  vnet/dpo/ip6_ll_dpo.c				\
   vnet/dpo/punt_dpo.c				\
   vnet/dpo/receive_dpo.c			\
   vnet/dpo/load_balance.c			\
