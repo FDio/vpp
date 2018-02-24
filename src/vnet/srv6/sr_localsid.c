@@ -162,7 +162,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       clib_memcpy (&ls->next_hop.ip6, &nh_addr->ip6, sizeof (ip6_address_t));
       break;
     case SR_BEHAVIOR_T:
-      ls->vrf_index = sw_if_index;
+      ls->vrf_index = fib_table_find (FIB_PROTOCOL_IP6, sw_if_index);
       break;
     case SR_BEHAVIOR_DX4:
       ls->sw_if_index = sw_if_index;
@@ -173,10 +173,10 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       clib_memcpy (&ls->next_hop.ip6, &nh_addr->ip6, sizeof (ip6_address_t));
       break;
     case SR_BEHAVIOR_DT6:
-      ls->vrf_index = sw_if_index;
+      ls->vrf_index = fib_table_find (FIB_PROTOCOL_IP6, sw_if_index);
       break;
     case SR_BEHAVIOR_DT4:
-      ls->vrf_index = sw_if_index;
+      ls->vrf_index = fib_table_find (FIB_PROTOCOL_IP4, sw_if_index);
       break;
     case SR_BEHAVIOR_DX2:
       ls->sw_if_index = sw_if_index;
