@@ -276,25 +276,36 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
   return 1;
 }
 
+extern int ip6_get_ll_address (u32 sw_if_index, ip6_address_t * addr);
+
 always_inline int
 ip6_src_address_for_packet (ip_lookup_main_t * lm,
-			    u32 sw_if_index, ip6_address_t * src)
+			    u32 sw_if_index,
+			    const ip6_address_t * dst, ip6_address_t * src)
 {
-  u32 if_add_index = lm->if_address_pool_index_by_sw_if_index[sw_if_index];
-  if (PREDICT_TRUE (if_add_index != ~0))
+  if (ip6_address_is_link_local_unicast (dst))
     {
-      ip_interface_address_t *if_add =
-	pool_elt_at_index (lm->if_address_pool, if_add_index);
-      ip6_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
-      *src = *if_ip;
-      return (0);
+      return ip6_get_ll_address (sw_if_index, src);
     }
   else
     {
-      src->as_u64[0] = 0;
-      src->as_u64[1] = 0;
+      u32 if_add_index =
+	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
+      if (PREDICT_TRUE (if_add_index != ~0))
+	{
+	  ip_interface_address_t *if_add =
+	    pool_elt_at_index (lm->if_address_pool, if_add_index);
+	  ip6_address_t *if_ip =
+	    ip_interface_address_get_address (lm, if_add);
+	  *src = *if_ip;
+	  return (!0);
+	}
     }
-  return (!0);
+
+  src->as_u64[0] = 0;
+  src->as_u64[1] = 0;
+
+  return (0);
 }
 
 /* Find interface address which matches destination. */

@@ -314,13 +314,14 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
   h0->ip6.src_address = *pa6;
 
   /* Fill in the correct source now */
-  ip6_address_t *a = ip6_interface_first_address (im, sw_if_index);
-  if (!a)
+  if (!ip6_src_address_for_packet (&im->lookup_main,
+				   sw_if_index,
+				   &h0->ip6.dst_address,
+				   &h0->ip6.src_address))
     {
       vlib_buffer_free (vm, &bi0, 1);
       return SEND_PING_NO_SRC_ADDRESS;
     }
-  h0->ip6.src_address = a[0];
 
   /* Fill in icmp fields */
   h0->icmp.type = ICMP6_echo_request;

@@ -167,5 +167,6 @@ fib_entry_src_api_register (void)
     fib_entry_src_register(FIB_SOURCE_CLI, &api_src_vft);
     fib_entry_src_register(FIB_SOURCE_DHCP, &api_src_vft);
     fib_entry_src_register(FIB_SOURCE_IP6_ND_PROXY, &api_src_vft);
+    fib_entry_src_register(FIB_SOURCE_IP6_ND, &api_src_vft);
     fib_entry_src_register(FIB_SOURCE_SR, &api_src_vft);
 }
