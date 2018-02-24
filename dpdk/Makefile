@@ -17,6 +17,7 @@ SHELL := /bin/bash
 DPDK_BUILD_DIR        ?= $(CURDIR)/_build
 DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
 DPDK_PKTMBUF_HEADROOM ?= 128
+DPDK_CACHE_LINE_SIZE  ?= 64
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_DEBUG            ?= n
 DPDK_MLX4_PMD         ?= n
@@ -177,6 +178,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	@# modify options
 	$(call set,RTE_MAX_LCORE,256)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
+	$(call set,RTE_CACHE_LINE_SIZE,$(DPDK_CACHE_LINE_SIZE))
 	$(call set,RTE_LIBEAL_USE_HPET,y)
 	$(call set,RTE_BUILD_COMBINE_LIBS,y)
 	$(call set,RTE_PCI_CONFIG,y)
