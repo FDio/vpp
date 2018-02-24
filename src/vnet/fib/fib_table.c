@@ -1129,7 +1129,7 @@ fib_table_create_and_lock (fib_protocol_t proto,
 	fi = ip4_fib_table_create_and_lock(src);
         break;
     case FIB_PROTOCOL_IP6:
-	fi = ip6_fib_table_create_and_lock(src);
+	fi = ip6_fib_table_create_and_lock(src, FIB_TABLE_FLAG_NONE, NULL);
         break;
      case FIB_PROTOCOL_MPLS:
 	fi = mpls_fib_table_create_and_lock(src);

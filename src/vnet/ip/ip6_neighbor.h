@@ -89,6 +89,7 @@ extern int ip6_neighbor_proxy_add_del (u32 sw_if_index,
 
 u32 ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index,
 				       u32 is_add);
+
 typedef struct
 {
   u32 sw_if_index;

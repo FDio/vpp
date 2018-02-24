@@ -341,58 +341,14 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	  ip0->hop_limit = im->host_config.ttl;
 	  ip1->hop_limit = im->host_config.ttl;
 
-	  if (ip6_address_is_link_local_unicast (&ip0->dst_address))
-	    {
-	      ethernet_header_t *eth0;
-	      u8 tmp_mac[6];
-	      /* For link local, reuse current MAC header by sawpping
-	       *  SMAC to DMAC instead of IP6 lookup since link local
-	       *  is not in the IP6 FIB */
-	      vlib_buffer_reset (p0);
-	      eth0 = vlib_buffer_get_current (p0);
-	      clib_memcpy (tmp_mac, eth0->dst_address, 6);
-	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
-	      clib_memcpy (eth0->src_address, tmp_mac, 6);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
-		vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
-	    }
-	  else
-	    {
-	      /* Determine the correct lookup fib indices... */
-	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-	    }
-
-	  if (ip6_address_is_link_local_unicast (&ip1->dst_address))
-	    {
-	      ethernet_header_t *eth1;
-	      u8 tmp_mac[6];
-	      /* For link local, reuse current MAC header by sawpping
-	       *  SMAC to DMAC instead of IP6 lookup since link local
-	       *  is not in the IP6 FIB */
-	      vlib_buffer_reset (p1);
-	      eth1 = vlib_buffer_get_current (p1);
-	      clib_memcpy (tmp_mac, eth1->dst_address, 6);
-	      clib_memcpy (eth1->dst_address, eth1->src_address, 6);
-	      clib_memcpy (eth1->src_address, tmp_mac, 6);
-	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
-		vnet_buffer (p1)->sw_if_index[VLIB_RX];
-	      next1 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
-	    }
-	  else
-	    {
-	      /* Determine the correct lookup fib indices... */
-	      fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
-	    }
-
-	  vnet_buffer (p0)->sw_if_index[VLIB_RX]
-	    = vnet_main.local_interface_sw_if_index;
-	  vnet_buffer (p1)->sw_if_index[VLIB_RX]
-	    = vnet_main.local_interface_sw_if_index;
+	  /* Determine the correct lookup fib indices... */
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
+				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	  /* Determine the correct lookup fib indices... */
+	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
+				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -441,30 +397,11 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 
 	  ip0->hop_limit = im->host_config.ttl;
 
-	  if (ip6_address_is_link_local_unicast (&ip0->dst_address))
-	    {
-	      ethernet_header_t *eth0;
-	      u8 tmp_mac[6];
-	      /* For link local, reuse current MAC header by sawpping
-	       *  SMAC to DMAC instead of IP6 lookup since link local
-	       *  is not in the IP6 FIB */
-	      vlib_buffer_reset (p0);
-	      eth0 = vlib_buffer_get_current (p0);
-	      clib_memcpy (tmp_mac, eth0->dst_address, 6);
-	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
-	      clib_memcpy (eth0->src_address, tmp_mac, 6);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
-		vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
-	    }
-	  else
-	    {
-	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-	    }
-	  vnet_buffer (p0)->sw_if_index[VLIB_RX]
-	    = vnet_main.local_interface_sw_if_index;
+	  /* if the packet is link local, we'll bounce through the link-local
+	   * table with the RX interface correctly set */
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
+				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
