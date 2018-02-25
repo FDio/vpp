@@ -27,7 +27,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
         return (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                 IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
                 UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GTP_U_Header(TEID=vni, gtp_type=self.gtp_type, length=150) /
+                GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
                 pkt)
 
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
@@ -38,7 +38,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
         return (Ether(src=src_mac, dst=self.mcast_mac) /
                 IP(src=src_ip, dst=self.mcast_ip4) /
                 UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GTP_U_Header(TEID=vni, gtp_type=self.gtp_type, length=150) /
+                GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
                 pkt)
 
     def decapsulate(self, pkt):
@@ -68,8 +68,8 @@ class TestGtpu(BridgeDomain, VppTestCase):
         # Verify UDP destination port is GTPU 2152, source UDP port could be
         #  arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
-        # Verify TEID
-        self.assertEqual(pkt[GTP_U_Header].TEID, vni)
+        # Verify teid
+        self.assertEqual(pkt[GTP_U_Header].teid, vni)
 
     def test_encap(self):
         """ Encapsulation test
