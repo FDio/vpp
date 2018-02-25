@@ -4,7 +4,7 @@ import socket
 import sys
 from abc import abstractmethod, ABCMeta
 from cStringIO import StringIO
-from scapy.layers.inet6 import in6_mactoifaceid
+from scapy.utils6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
