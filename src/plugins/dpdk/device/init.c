@@ -1390,8 +1390,14 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	case ETH_SPEED_NUM_10G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
 	  break;
+	case ETH_SPEED_NUM_25G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_25G;
+	  break;
 	case ETH_SPEED_NUM_40G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
+	  break;
+	case ETH_SPEED_NUM_100G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100G;
 	  break;
 	case 0:
 	  break;
