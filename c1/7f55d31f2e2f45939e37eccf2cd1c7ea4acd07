@@ -1,0 +1,7 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+2: Marco Varlese <marco.varlese@suse.de>
+Submitted-by: Marco Varlese <marco.varlese@suse.de>
+Submitted-at: Sun, 25 Feb 2018 11:56:25 +0000
+Reviewed-on: https://gerrit.fd.io/r/10797
+Project: vpp
+Branch: refs/heads/stable/1801
