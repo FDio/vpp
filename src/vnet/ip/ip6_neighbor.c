@@ -2079,7 +2079,7 @@ ip6_neighbor_add_mld_prefix (ip6_radv_t * radv_info, ip6_address_t * addr)
   uword *p;
 
   /* lookup  mldp info for this interface */
-  p = mhash_get (&radv_info->address_to_mldp_index, &addr);
+  p = mhash_get (&radv_info->address_to_mldp_index, addr);
   mcast_group_info =
     p ? pool_elt_at_index (radv_info->mldp_group_pool, p[0]) : 0;
 
@@ -2091,13 +2091,13 @@ ip6_neighbor_add_mld_prefix (ip6_radv_t * radv_info, ip6_address_t * addr)
       pool_get (radv_info->mldp_group_pool, mcast_group_info);
 
       mi = mcast_group_info - radv_info->mldp_group_pool;
-      mhash_set (&radv_info->address_to_mldp_index, &addr, mi,	/* old_value */
+      mhash_set (&radv_info->address_to_mldp_index, addr, mi,	/* old_value */
 		 0);
 
       mcast_group_info->type = 4;
       mcast_group_info->mcast_source_address_pool = 0;
       mcast_group_info->num_sources = 0;
-      clib_memcpy (&mcast_group_info->mcast_address, &addr,
+      clib_memcpy (&mcast_group_info->mcast_address, addr,
 		   sizeof (ip6_address_t));
     }
 }
