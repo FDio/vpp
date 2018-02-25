@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..e173cdb
 --- /dev/null
 +++ b/scapy/contrib/bier.py
-@@ -0,0 +1,58 @@
+@@ -0,0 +1,56 @@
 +# http://trac.secdev.org/scapy/ticket/31
 +
 +# scapy.contrib.description = BIER
@@ -38,9 +38,6 @@ index 0000000..e173cdb
 +                   BitField("s", 1, 1),
 +                   ByteField("ttl", 0)]
 +
-+    def guess_payload_class(self, payload):
-+        return BIER
-+
 +
 +class BIER(Packet):
 +    name = "BIER"
@@ -62,3 +59,4 @@ index 0000000..e173cdb
 +bind_layers(BIER, IP,   Proto=4)
 +bind_layers(BIER, IPv6, Proto=5)
 +bind_layers(UDP, BIFT, dport=8138)
++bind_layers(BIFT, BIER)
