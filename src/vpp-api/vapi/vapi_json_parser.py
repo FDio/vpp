@@ -195,15 +195,27 @@ class StructType (Type, Struct):
             if len(field) == 1 and 'crc' in field:
                 self.crc = field['crc']
                 continue
-            elif len(field) == 2:
+            field_type = field[0]
+            if field_type in typedict:
+                field_type = typedict[field_type]
+            else:
+                mundane_field_type = remove_magic(field_type)
+                if mundane_field_type in typedict:
+                    field_type = typedict[mundane_field_type]
+                else:
+                    raise ParseError(
+                        "While parsing message `%s': could not find "
+                        "type by magic name `%s' nor by mundane name "
+                        "`%s'" % (name, field_type, mundane_field_type))
+            if len(field) == 2:
                 p = field_class(field_name=field[1],
-                                field_type=typedict[field[0]])
+                                field_type=field_type)
             elif len(field) == 3:
                 if field[2] == 0:
                     raise ParseError("While parsing type `%s': array `%s' has "
                                      "variable length" % (name, field[1]))
                 p = field_class(field_name=field[1],
-                                field_type=typedict[field[0]],
+                                field_type=field_type,
                                 array_len=field[2])
             else:
                 raise ParseError(
