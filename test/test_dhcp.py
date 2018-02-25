@@ -11,7 +11,8 @@ from util import mk_ll_addr
 
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, in6_getnsmac, in6_mactoifaceid
+from scapy.layers.inet6 import IPv6, in6_getnsmac
+from scapy.utils6 import in6_mactoifaceid
 from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
 from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
     DHCP6_RelayReply, DHCP6_Advertise, DHCP6OptRelayMsg, DHCP6OptIfaceId, \
