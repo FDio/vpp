@@ -467,6 +467,8 @@ dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
 
   if (s < vec_end (v))
     vec_delete (v, s - v, 0);
+  else
+    vec_reset_length (v);
 
   return 0;
 }
