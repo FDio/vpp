@@ -303,9 +303,8 @@ class TestIpsecAh(VppTestCase):
                 self.pg1, send_pkts, self.pg0, count=count)
             # ESP TUN VPP encryption verification
             for recv_pkt in recv_pkts:
-                recv_pkt[IP] = recv_pkt[IP] / IP(recv_pkt[AH].icv[12:])
-                recv_pkt[AH].icv = recv_pkt[AH].icv[:12]
                 decrypt_pkt = self.local_tun_sa.decrypt(recv_pkt[IP])
+                decrypt_pkt = IP(decrypt_pkt[Raw].load)
                 self.assert_equal(decrypt_pkt.src, self.remote_pg1_lb_addr)
                 self.assert_equal(decrypt_pkt.dst, self.remote_pg0_lb_addr)
         finally:
