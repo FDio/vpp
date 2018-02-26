@@ -40,6 +40,17 @@ l3_bind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l3_bind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l3-acl-bind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l3_unbind_cmd::issue(connection& con)
 {
@@ -59,6 +70,17 @@ l3_unbind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l3_unbind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l3-acl-unbind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l3_dump_cmd::issue(connection& con)
 {
@@ -75,6 +97,13 @@ l3_dump_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l3_dump_cmd::to_string() const
+{
+  return ("l3-acl-bind-dump");
+}
+
+template <>
 rc_t
 l2_bind_cmd::issue(connection& con)
 {
@@ -83,7 +112,6 @@ l2_bind_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
   payload.is_add = 1;
-  // payload.is_input = (m_direction == direction_t::INPUT ? 1 : 0);
   payload.acl_index = m_acl.value();
 
   VAPI_CALL(req.execute());
@@ -91,6 +119,17 @@ l2_bind_cmd::issue(connection& con)
   m_hw_item.set(wait());
 
   return rc_t::OK;
+}
+
+template <>
+std::string
+l2_bind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l2-acl-bind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
 }
 
 template <>
@@ -102,7 +141,6 @@ l2_unbind_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
   payload.is_add = 0;
-  // payload.is_input = (m_direction == direction_t::INPUT ? 1 : 0);
   payload.acl_index = m_acl.value();
 
   VAPI_CALL(req.execute());
@@ -110,6 +148,17 @@ l2_unbind_cmd::issue(connection& con)
   m_hw_item.set(wait());
 
   return rc_t::OK;
+}
+
+template <>
+std::string
+l2_unbind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l2-acl-unbind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
 }
 
 template <>
@@ -126,6 +175,13 @@ l2_dump_cmd::issue(connection& con)
   wait();
 
   return rc_t::OK;
+}
+
+template <>
+std::string
+l2_dump_cmd::to_string() const
+{
+  return ("l2-acl-bind-dump");
 }
 
 }; // namespace binding_cmds

@@ -53,7 +53,8 @@ public:
    * Construct a new object matching the desried state
    */
   list(const key_t& key)
-    : m_key(key)
+    : m_hdl(handle_t::INVALID)
+    , m_key(key)
   {
   }
 
@@ -64,10 +65,10 @@ public:
   }
 
   list(const key_t& key, const rules_t& rules)
-    : m_key(key)
+    : m_hdl(handle_t::INVALID)
+    , m_key(key)
     , m_rules(rules)
   {
-    m_evh.order();
   }
 
   /**
@@ -129,7 +130,7 @@ public:
   /**
    * Return the VPP assign handle
    */
-  const handle_t& handle() const { return m_hdl.data(); }
+  const handle_t& handle() const { return (singular()->handle_i()); }
 
   static std::shared_ptr<list> find(const handle_t& handle)
   {
@@ -141,12 +142,19 @@ public:
     return (m_db.find(key));
   }
 
-  static void add(const handle_t& handle, std::shared_ptr<list> sp)
+  static void add(const key_t& key, const HW::item<handle_t>& item)
   {
-    m_hdl_db[handle] = sp;
+    std::shared_ptr<list> sp = find(key);
+
+    if (sp && item) {
+      m_hdl_db[item.data()] = sp;
+    }
   }
 
-  static void remove(const handle_t& handle) { m_hdl_db.erase(handle); }
+  static void remove(const HW::item<handle_t>& item)
+  {
+    m_hdl_db.erase(item.data());
+  }
 
   const key_t& key() const { return m_key; }
 
@@ -167,11 +175,8 @@ private:
   class event_handler : public OM::listener, public inspect::command_handler
   {
   public:
-    event_handler()
-    {
-      OM::register_listener(this);
-      inspect::register_handler({ "acl" }, "ACL lists", this);
-    }
+    event_handler();
+
     virtual ~event_handler() = default;
 
     /**
@@ -215,8 +220,13 @@ private:
    */
   static std::shared_ptr<list> find_or_add(const list& temp)
   {
-    return (m_db.find_or_add(temp.m_key, temp));
+    return (m_db.find_or_add(temp.key(), temp));
   }
+
+  /**
+   * return the acl-list's handle in the singular instance
+   */
+  const handle_t& handle_i() const { return (m_hdl.data()); }
 
   /*
    * It's the VOM::OM class that updates call update
@@ -246,7 +256,7 @@ private:
   /**
    * A map of all ACLs keyed against VPP's handle
    */
-  static std::map<const handle_t, std::weak_ptr<list>> m_hdl_db;
+  static std::map<handle_t, std::weak_ptr<list>> m_hdl_db;
 
   /**
    * The Key is a user defined identifer for this ACL
@@ -279,7 +289,7 @@ singular_db<typename ACL::list<RULE>::key_t, ACL::list<RULE>> list<RULE>::m_db;
  * Definition of the static per-handle DB for ACL Lists
  */
 template <typename RULE>
-std::map<const handle_t, std::weak_ptr<ACL::list<RULE>>> list<RULE>::m_hdl_db;
+std::map<handle_t, std::weak_ptr<ACL::list<RULE>>> list<RULE>::m_hdl_db;
 
 template <typename RULE>
 typename ACL::list<RULE>::event_handler list<RULE>::m_evh;

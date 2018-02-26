@@ -109,7 +109,8 @@ arp_proxy_binding::singular() const
 arp_proxy_binding::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "arp-proxy" }, "ARP proxy bindings", this);
+  inspect::register_handler({ "arp-proxy-binding" }, "ARP proxy bindings",
+                            this);
 }
 
 void

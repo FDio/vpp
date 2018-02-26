@@ -19,6 +19,13 @@
 namespace VOM {
 namespace ACL {
 template <>
+l2_binding::event_handler::event_handler()
+{
+  OM::register_listener(this);
+  inspect::register_handler({ "l2-acl-binding" }, "L2 ACL bindings", this);
+}
+
+template <>
 void
 l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
@@ -44,6 +51,13 @@ l2_binding::event_handler::handle_populate(const client_db::key_t& key)
       OM::commit(key, binding);
     }
   }
+}
+
+template <>
+l3_binding::event_handler::event_handler()
+{
+  OM::register_listener(this);
+  inspect::register_handler({ "l3-acl-binding" }, "L3 ACL bindings", this);
 }
 
 template <>
