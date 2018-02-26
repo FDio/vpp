@@ -237,6 +237,9 @@ typedef struct _sctp_connection
 
   u8 next_avail_sub_conn; /**< Represent the index of the next free slot in sub_conn */
 
+  u8 forming_association_changed; /**< This is a flag indicating whether the original association has been modified during
+  	  	  	  	  the life-span of the association itself. For instance, a new sub-connection might have been added. */
+
 } sctp_connection_t;
 
 typedef void (sctp_timer_expiration_handler) (u32 conn_index, u32 timer_id);
@@ -280,6 +283,16 @@ void sctp_init_mss (sctp_connection_t * sctp_conn);
 void sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				 vlib_buffer_t * b, ip4_address_t * ip4_addr,
 				 ip6_address_t * ip6_addr);
+void
+sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
+					  u8 idx, vlib_buffer_t * b,
+					  ip4_address_t * ip4_addr,
+					  ip6_address_t * ip6_addr);
+void sctp_prepare_abort_for_collision (sctp_connection_t * sctp_conn, u8 idx,
+				       vlib_buffer_t * b,
+				       ip4_address_t * ip4_addr,
+				       ip6_address_t * ip6_addr);
+
 void sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				     vlib_buffer_t * b,
 				     sctp_state_cookie_param_t * sc);

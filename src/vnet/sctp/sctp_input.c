@@ -304,12 +304,24 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
     {				/* UNEXPECTED scenario */
       switch (sctp_conn->state)
 	{
-	case SCTP_STATE_COOKIE_WAIT:	/* TODO */
+	case SCTP_STATE_COOKIE_WAIT:
 	  SCTP_ADV_DBG ("Received INIT chunk while in COOKIE_WAIT state");
-	  break;
-	case SCTP_STATE_COOKIE_ECHOED:	/* TODO */
+	  sctp_prepare_initack_chunk_for_collision (sctp_conn,
+						    MAIN_SCTP_SUB_CONN_IDX,
+						    b0, ip4_addr, ip6_addr);
+	  return SCTP_ERROR_NONE;
+	case SCTP_STATE_COOKIE_ECHOED:
+	case SCTP_STATE_SHUTDOWN_ACK_SENT:
 	  SCTP_ADV_DBG ("Received INIT chunk while in COOKIE_ECHOED state");
-	  break;
+	  if (sctp_conn->forming_association_changed == 0)
+	    sctp_prepare_initack_chunk_for_collision (sctp_conn,
+						      MAIN_SCTP_SUB_CONN_IDX,
+						      b0, ip4_addr, ip6_addr);
+	  else
+	    sctp_prepare_abort_for_collision (sctp_conn,
+					      MAIN_SCTP_SUB_CONN_IDX, b0,
+					      ip4_addr, ip6_addr);
+	  return SCTP_ERROR_NONE;
 	}
     }
 
@@ -2353,7 +2365,7 @@ do {                                                       	\
   _(SHUTDOWN_RECEIVED, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
 
   _(SHUTDOWN_ACK_SENT, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_DATA_CHUNK_VIOLATION);	/* UNEXPECTED DATA chunk */
-  _(SHUTDOWN_ACK_SENT, INIT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_INIT_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
+  _(SHUTDOWN_ACK_SENT, INIT, SCTP_INPUT_NEXT_RCV_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED INIT chunk */
   _(SHUTDOWN_ACK_SENT, INIT_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED INIT_ACK chunk */
   _(SHUTDOWN_ACK_SENT, SACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SACK_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
   _(SHUTDOWN_ACK_SENT, HEARTBEAT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_HEARTBEAT_CHUNK_VIOLATION);	/* UNEXPECTED HEARTBEAT chunk */

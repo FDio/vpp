@@ -589,6 +589,187 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 }
 
 /**
+ * Convert buffer to ABORT
+ */
+void
+sctp_prepare_abort_for_collision (sctp_connection_t * sctp_conn, u8 idx,
+				  vlib_buffer_t * b, ip4_address_t * ip4_addr,
+				  ip6_address_t * ip6_addr)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  sctp_reuse_buffer (vm, b);
+
+  /* The minimum size of the message is given by the sctp_abort_chunk_t */
+  u16 alloc_bytes = sizeof (sctp_abort_chunk_t);
+
+  /* As per RFC 4960 the chunk_length value does NOT contemplate
+   * the size of the first header (see sctp_header_t) and any padding
+   */
+  u16 chunk_len = alloc_bytes - sizeof (sctp_header_t);
+
+  alloc_bytes += vnet_sctp_calculate_padding (alloc_bytes);
+
+  sctp_abort_chunk_t *abort_chunk = vlib_buffer_push_uninit (b, alloc_bytes);
+
+  /* src_port & dst_port are already in network byte-order */
+  abort_chunk->sctp_hdr.checksum = 0;
+  abort_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  abort_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  /* As per RFC4960 Section 5.2.2: copy the INITIATE_TAG into the VERIFICATION_TAG of the ABORT chunk */
+  abort_chunk->sctp_hdr.verification_tag = sctp_conn->local_tag;
+
+  vnet_sctp_set_chunk_type (&abort_chunk->chunk_hdr, ABORT);
+  vnet_sctp_set_chunk_length (&abort_chunk->chunk_hdr, chunk_len);
+
+  vnet_buffer (b)->sctp.connection_index =
+    sctp_conn->sub_conn[idx].connection.c_index;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
+}
+
+/**
+ * Convert buffer to INIT-ACK
+ */
+void
+sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
+					  u8 idx, vlib_buffer_t * b,
+					  ip4_address_t * ip4_addr,
+					  ip6_address_t * ip6_addr)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  sctp_ipv4_addr_param_t *ip4_param = 0;
+  sctp_ipv6_addr_param_t *ip6_param = 0;
+
+  sctp_reuse_buffer (vm, b);
+
+  /* The minimum size of the message is given by the sctp_init_ack_chunk_t */
+  u16 alloc_bytes =
+    sizeof (sctp_init_ack_chunk_t) + sizeof (sctp_state_cookie_param_t);
+
+  if (PREDICT_TRUE (ip4_addr != NULL))
+    {
+      /* Create room for variable-length fields in the INIT_ACK chunk */
+      alloc_bytes += SCTP_IPV4_ADDRESS_TYPE_LENGTH;
+    }
+  if (PREDICT_TRUE (ip6_addr != NULL))
+    {
+      /* Create room for variable-length fields in the INIT_ACK chunk */
+      alloc_bytes += SCTP_IPV6_ADDRESS_TYPE_LENGTH;
+    }
+
+  if (sctp_conn->sub_conn[idx].connection.is_ip4)
+    alloc_bytes += sizeof (sctp_ipv4_addr_param_t);
+  else
+    alloc_bytes += sizeof (sctp_ipv6_addr_param_t);
+
+  /* As per RFC 4960 the chunk_length value does NOT contemplate
+   * the size of the first header (see sctp_header_t) and any padding
+   */
+  u16 chunk_len = alloc_bytes - sizeof (sctp_header_t);
+
+  alloc_bytes += vnet_sctp_calculate_padding (alloc_bytes);
+
+  sctp_init_ack_chunk_t *init_ack_chunk =
+    vlib_buffer_push_uninit (b, alloc_bytes);
+
+  u16 pointer_offset = sizeof (sctp_init_ack_chunk_t);
+
+  /* Create State Cookie parameter */
+  sctp_state_cookie_param_t *state_cookie_param =
+    (sctp_state_cookie_param_t *) ((char *) init_ack_chunk + pointer_offset);
+
+  state_cookie_param->param_hdr.type =
+    clib_host_to_net_u16 (SCTP_STATE_COOKIE_TYPE);
+  state_cookie_param->param_hdr.length =
+    clib_host_to_net_u16 (sizeof (sctp_state_cookie_param_t));
+  state_cookie_param->creation_time = clib_host_to_net_u32 (sctp_time_now ());
+  state_cookie_param->cookie_lifespan =
+    clib_host_to_net_u32 (SCTP_VALID_COOKIE_LIFE);
+
+  sctp_compute_mac (sctp_conn, state_cookie_param);
+
+  pointer_offset += sizeof (sctp_state_cookie_param_t);
+
+  if (PREDICT_TRUE (ip4_addr != NULL))
+    {
+      sctp_ipv4_addr_param_t *ipv4_addr =
+	(sctp_ipv4_addr_param_t *) init_ack_chunk + pointer_offset;
+
+      ipv4_addr->param_hdr.type =
+	clib_host_to_net_u16 (SCTP_IPV4_ADDRESS_TYPE);
+      ipv4_addr->param_hdr.length =
+	clib_host_to_net_u16 (SCTP_IPV4_ADDRESS_TYPE_LENGTH);
+      ipv4_addr->address.as_u32 = ip4_addr->as_u32;
+
+      pointer_offset += SCTP_IPV4_ADDRESS_TYPE_LENGTH;
+    }
+  if (PREDICT_TRUE (ip6_addr != NULL))
+    {
+      sctp_ipv6_addr_param_t *ipv6_addr =
+	(sctp_ipv6_addr_param_t *) init_ack_chunk + pointer_offset;
+
+      ipv6_addr->param_hdr.type =
+	clib_host_to_net_u16 (SCTP_IPV6_ADDRESS_TYPE);
+      ipv6_addr->param_hdr.length =
+	clib_host_to_net_u16 (SCTP_IPV6_ADDRESS_TYPE_LENGTH);
+      ipv6_addr->address.as_u64[0] = ip6_addr->as_u64[0];
+      ipv6_addr->address.as_u64[1] = ip6_addr->as_u64[1];
+
+      pointer_offset += SCTP_IPV6_ADDRESS_TYPE_LENGTH;
+    }
+
+  if (sctp_conn->sub_conn[idx].connection.is_ip4)
+    {
+      ip4_param = (sctp_ipv4_addr_param_t *) init_ack_chunk + pointer_offset;
+      ip4_param->address.as_u32 =
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip4.as_u32;
+
+      pointer_offset += sizeof (sctp_ipv4_addr_param_t);
+    }
+  else
+    {
+      ip6_param = (sctp_ipv6_addr_param_t *) init_ack_chunk + pointer_offset;
+      ip6_param->address.as_u64[0] =
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip6.as_u64[0];
+      ip6_param->address.as_u64[1] =
+	sctp_conn->sub_conn[idx].connection.lcl_ip.ip6.as_u64[1];
+
+      pointer_offset += sizeof (sctp_ipv6_addr_param_t);
+    }
+
+  /* src_port & dst_port are already in network byte-order */
+  init_ack_chunk->sctp_hdr.checksum = 0;
+  init_ack_chunk->sctp_hdr.src_port =
+    sctp_conn->sub_conn[idx].connection.lcl_port;
+  init_ack_chunk->sctp_hdr.dst_port =
+    sctp_conn->sub_conn[idx].connection.rmt_port;
+  /* the sctp_conn->verification_tag is already in network byte-order (being a copy of the init_tag coming with the INIT chunk) */
+  init_ack_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
+  init_ack_chunk->initial_tsn =
+    clib_host_to_net_u32 (sctp_conn->local_initial_tsn);
+  SCTP_CONN_TRACKING_DBG ("init_ack_chunk->initial_tsn = %u",
+			  init_ack_chunk->initial_tsn);
+
+  vnet_sctp_set_chunk_type (&init_ack_chunk->chunk_hdr, INIT_ACK);
+  vnet_sctp_set_chunk_length (&init_ack_chunk->chunk_hdr, chunk_len);
+
+  init_ack_chunk->initiate_tag = sctp_conn->local_tag;
+
+  init_ack_chunk->a_rwnd =
+    clib_host_to_net_u32 (sctp_conn->sub_conn[idx].cwnd);
+  init_ack_chunk->inboud_streams_count =
+    clib_host_to_net_u16 (INBOUND_STREAMS_COUNT);
+  init_ack_chunk->outbound_streams_count =
+    clib_host_to_net_u16 (OUTBOUND_STREAMS_COUNT);
+
+  vnet_buffer (b)->sctp.connection_index =
+    sctp_conn->sub_conn[idx].connection.c_index;
+  vnet_buffer (b)->sctp.subconn_idx = idx;
+}
+
+/**
  * Convert buffer to INIT-ACK
  */
 void
