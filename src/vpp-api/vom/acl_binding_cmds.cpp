@@ -40,6 +40,17 @@ l3_bind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l3_bind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l3-acl-bind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l3_unbind_cmd::issue(connection& con)
 {
@@ -59,6 +70,17 @@ l3_unbind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l3_unbind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l3-acl-unbind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l3_dump_cmd::issue(connection& con)
 {
@@ -72,6 +94,13 @@ l3_dump_cmd::issue(connection& con)
   wait();
 
   return rc_t::OK;
+}
+
+template <>
+std::string
+l3_dump_cmd::to_string() const
+{
+  return ("l3-acl-bind-dump");
 }
 
 template <>
@@ -94,6 +123,17 @@ l2_bind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l2_bind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l2-acl-bind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l2_unbind_cmd::issue(connection& con)
 {
@@ -113,6 +153,17 @@ l2_unbind_cmd::issue(connection& con)
 }
 
 template <>
+std::string
+l2_unbind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "l2-acl-unbind:[" << m_direction.to_string()
+    << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
+
+  return (s.str());
+}
+
+template <>
 rc_t
 l2_dump_cmd::issue(connection& con)
 {
@@ -126,6 +177,13 @@ l2_dump_cmd::issue(connection& con)
   wait();
 
   return rc_t::OK;
+}
+
+template <>
+std::string
+l2_dump_cmd::to_string() const
+{
+  return ("l2-acl-bind-dump");
 }
 
 }; // namespace binding_cmds

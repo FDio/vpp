@@ -101,7 +101,8 @@ arp_proxy_config::singular() const
 arp_proxy_config::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "arp-proxy" }, "ARP Proxy configurations", this);
+  inspect::register_handler({ "arp-proxy-config" }, "ARP Proxy configurations",
+                            this);
 }
 
 void
