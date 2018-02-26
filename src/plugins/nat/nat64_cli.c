@@ -181,22 +181,22 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
 	      error =
 		clib_error_return (0, "%U NAT64 feature not enabled.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_VALUE_EXIST:
 	      error =
 		clib_error_return (0, "%U NAT64 feature already enabled.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   vnm, sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
 	      error =
 		clib_error_return (0,
 				   "%U NAT64 feature enable/disable failed.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   sw_if_index);
 	      goto done;
 	    default:
 	      break;
@@ -216,22 +216,22 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
 	      error =
 		clib_error_return (0, "%U NAT64 feature not enabled.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_VALUE_EXIST:
 	      error =
 		clib_error_return (0, "%U NAT64 feature already enabled.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
 	      error =
 		clib_error_return (0,
 				   "%U NAT64 feature enable/disable failed.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+				   format_vnet_sw_if_index_name, vnm,
+				   sw_if_index);
 	      goto done;
 	    default:
 	      break;
@@ -254,8 +254,8 @@ nat64_cli_interface_walk (snat_interface_t * i, void *ctx)
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
 
-  vlib_cli_output (vm, " %U %s", format_vnet_sw_interface_name, vnm,
-		   vnet_get_sw_interface (vnm, i->sw_if_index),
+  vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
+		   i->sw_if_index,
 		   (nat_interface_is_inside (i)
 		    && nat_interface_is_outside (i)) ? "in out" :
 		   nat_interface_is_inside (i) ? "in" : "out");
