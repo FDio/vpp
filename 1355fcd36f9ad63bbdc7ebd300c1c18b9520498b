@@ -70,6 +70,30 @@
       "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7422d99a_26d099b8",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 1248
+      },
+      "writtenOn": "2018-02-26T08:10:15Z",
+      "side": 0,
+      "message": "Since it\u0027s just an alias, I would like to replace it with CLIB_HAVE_VEC128 if you dont\u0027 mind...\n\nHaving this code here conflicts with https://gerrit.fd.io/r/c/10476 ?\n\nPlease give a \"remove it\" or \"okay\" so we can quickly submit _zero_byte_mask(x) changes and fix the ARM builds.",
+      "parentUuid": "54f2773d_880c3d59",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 6
+      },
+      "revId": "1355fcd36f9ad63bbdc7ebd300c1c18b9520498b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
