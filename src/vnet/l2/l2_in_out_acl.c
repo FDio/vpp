@@ -197,7 +197,7 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
       if (t0->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
 	h0 = (void *) vlib_buffer_get_current (b0) + t0->current_data_offset;
       else
-	h0 = b0->data;
+	h0 = (void *) vlib_buffer_get_current (b0);
 
       vnet_buffer (b0)->l2_classify.hash =
 	vnet_classify_hash_packet (t0, (u8 *) h0);
@@ -207,7 +207,7 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
       if (t1->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
 	h1 = (void *) vlib_buffer_get_current (b1) + t1->current_data_offset;
       else
-	h1 = b1->data;
+	h1 = (void *) vlib_buffer_get_current (b1);
 
       vnet_buffer (b1)->l2_classify.hash =
 	vnet_classify_hash_packet (t1, (u8 *) h1);
@@ -244,7 +244,7 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
       if (t0->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
 	h0 = (void *) vlib_buffer_get_current (b0) + t0->current_data_offset;
       else
-	h0 = b0->data;
+	h0 = (void *) vlib_buffer_get_current (b0);
 
       vnet_buffer (b0)->l2_classify.hash =
 	vnet_classify_hash_packet (t0, (u8 *) h0);
@@ -329,7 +329,7 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
 		  (void *) vlib_buffer_get_current (b0) +
 		  t0->current_data_offset;
 	      else
-		h0 = b0->data;
+		h0 = (void *) vlib_buffer_get_current (b0);
 
 	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 	      if (e0)
@@ -384,7 +384,7 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
 			  (void *) vlib_buffer_get_current (b0) +
 			  t0->current_data_offset;
 		      else
-			h0 = b0->data;
+			h0 = (void *) vlib_buffer_get_current (b0);
 
 		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
 		      e0 = vnet_classify_find_entry
