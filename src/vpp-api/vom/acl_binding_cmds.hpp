@@ -75,17 +75,17 @@ private:
   /**
    * The direction of the binding
    */
-  const direction_t m_direction;
+  const direction_t& m_direction;
 
   /**
    * The interface to bind to
    */
-  const handle_t m_itf;
+  const handle_t& m_itf;
 
   /**
    * The ACL to bind
    */
-  const handle_t m_acl;
+  const handle_t& m_acl;
 };
 
 /**
@@ -138,17 +138,17 @@ private:
   /**
    * The direction of the binding
    */
-  const direction_t m_direction;
+  const direction_t& m_direction;
 
   /**
    * The interface to bind to
    */
-  const handle_t m_itf;
+  const handle_t& m_itf;
 
   /**
    * The ACL to bind
    */
-  const handle_t m_acl;
+  const handle_t& m_acl;
 };
 
 /**

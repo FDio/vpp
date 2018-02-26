@@ -19,6 +19,14 @@
 
 namespace VOM {
 namespace ACL {
+
+template <>
+l2_list::event_handler::event_handler()
+{
+  OM::register_listener(this);
+  inspect::register_handler({ "l2-acl-list" }, "L2 ACL lists", this);
+}
+
 template <>
 void
 l2_list::event_handler::handle_populate(const client_db::key_t& key)
@@ -59,6 +67,13 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
      */
     OM::commit(key, acl);
   }
+}
+
+template <>
+l3_list::event_handler::event_handler()
+{
+  OM::register_listener(this);
+  inspect::register_handler({ "l3-acl-list" }, "L3 ACL lists", this);
 }
 
 template <>
@@ -120,7 +135,7 @@ l3_list::update(const l3_list& obj)
   /*
    * always update the instance with the latest rule set
    */
-  if (!m_hdl || obj.m_rules != m_rules) {
+  if (rc_t::OK != m_hdl.rc() || obj.m_rules != m_rules) {
     HW::enqueue(new list_cmds::l3_update_cmd(m_hdl, m_key, m_rules));
   }
   /*
@@ -137,7 +152,7 @@ l2_list::update(const l2_list& obj)
   /*
    * always update the instance with the latest rule set
    */
-  if (!m_hdl || obj.m_rules != m_rules) {
+  if (rc_t::OK != m_hdl.rc() || obj.m_rules != m_rules) {
     HW::enqueue(new list_cmds::l2_update_cmd(m_hdl, m_key, m_rules));
   }
   /*
