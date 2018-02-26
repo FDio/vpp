@@ -54,14 +54,7 @@ public:
   /**
    * convert to string format for debug purposes
    */
-  std::string to_string() const
-  {
-    std::ostringstream s;
-    s << "acl-bind:[" << m_direction.to_string() << " itf:" << m_itf.to_string()
-      << " acl:" << m_acl.to_string() << "]";
-
-    return (s.str());
-  }
+  std::string to_string() const;
 
   /**
    * Comparison operator - only used for UT
@@ -117,14 +110,7 @@ public:
   /**
    * convert to string format for debug purposes
    */
-  std::string to_string() const
-  {
-    std::ostringstream s;
-    s << "acl-unbind:[" << m_direction.to_string()
-      << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
-
-    return (s.str());
-  }
+  std::string to_string() const;
 
   /**
    * Comparison operator - only used for UT
@@ -171,7 +157,7 @@ public:
   /**
    * convert to string format for debug purposes
    */
-  std::string to_string() const { return ("acl-bind-dump"); }
+  std::string to_string() const;
 
 private:
   /**

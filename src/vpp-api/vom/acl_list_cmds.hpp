@@ -76,18 +76,10 @@ public:
     return ((m_key == other.m_key) && (m_rules == other.m_rules));
   }
 
-  void complete()
-  {
-    std::shared_ptr<list<RULE>> sp = list<RULE>::find(m_key);
-    if (sp && this->item()) {
-      list<RULE>::add(this->item().data(), sp);
-    }
-  }
-
   void succeeded()
   {
     rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>::succeeded();
-    complete();
+    list<RULE>::add(m_key, this->item());
   }
 
   /**
@@ -98,9 +90,13 @@ public:
     int acl_index = reply.get_response().get_payload().acl_index;
     int retval = reply.get_response().get_payload().retval;
 
-    VOM_LOG(log_level_t::DEBUG) << this->to_string() << " " << retval;
+    VOM_LOG(log_level_t::DEBUG) << this->to_string() << " retval:" << retval
+                                << " acl_index:" << acl_index;
 
-    HW::item<handle_t> res(acl_index, rc_t::from_vpp_retval(retval));
+    rc_t rc = rc_t::from_vpp_retval(retval);
+    handle_t handle(acl_index);
+
+    HW::item<handle_t> res(handle, rc);
 
     this->fulfill(res);
 
@@ -108,6 +104,11 @@ public:
   }
 
 private:
+  /**
+   * add the created acl to the DB
+   */
+  void insert_acl() { list<RULE>::add(m_key, this->item()); }
+
   /**
    * The key.
    */
@@ -122,7 +123,7 @@ private:
 /**
  * A cmd class that Deletes an ACL
  */
-template <typename DELETE>
+template <typename RULE, typename DELETE>
 class delete_cmd : public rpc_cmd<HW::item<handle_t>, rc_t, DELETE>
 {
 public:
@@ -157,6 +158,12 @@ public:
   {
     return (this->item().data() == other.item().data());
   }
+
+private:
+  /**
+   * remove the acl from the DB
+   */
+  void remove_acl() { list<RULE>::remove(this->item()); }
 };
 
 /**
@@ -170,37 +177,35 @@ public:
    * Constructor
    */
   dump_cmd() = default;
-  dump_cmd(const dump_cmd& d) = default;
 
   /**
    * Issue the command to VPP/HW
    */
-  rc_t issue(connection& con) { return rc_t::INVALID; }
+  rc_t issue(connection& con);
 
   /**
    * convert to string format for debug purposes
    */
   std::string to_string() const { return ("acl-list-dump"); }
 
-private:
   /**
-   * HW reutrn code
+   * Comparison operator - only used for UT
    */
-  HW::item<bool> item;
+  bool operator==(const dump_cmd& i) const { return true; }
 };
 
 /**
  * Typedef the L3 ACL commands
  */
 typedef update_cmd<l3_rule, vapi::Acl_add_replace> l3_update_cmd;
-typedef delete_cmd<vapi::Acl_del> l3_delete_cmd;
+typedef delete_cmd<l3_rule, vapi::Acl_del> l3_delete_cmd;
 typedef dump_cmd<vapi::Acl_dump> l3_dump_cmd;
 
 /**
  * Typedef the L2 ACL commands
  */
 typedef update_cmd<l2_rule, vapi::Macip_acl_add> l2_update_cmd;
-typedef delete_cmd<vapi::Macip_acl_del> l2_delete_cmd;
+typedef delete_cmd<l2_rule, vapi::Macip_acl_del> l2_delete_cmd;
 typedef dump_cmd<vapi::Macip_acl_dump> l2_dump_cmd;
 
 }; // namespace list_cmds

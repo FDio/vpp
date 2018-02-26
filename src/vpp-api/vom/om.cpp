@@ -87,9 +87,8 @@ OM::replay()
    */
   for (listener* l : *m_listeners) {
     l->handle_replay();
+    HW::write();
   }
-
-  HW::write();
 }
 
 void
