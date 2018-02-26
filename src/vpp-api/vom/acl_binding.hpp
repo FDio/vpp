@@ -49,7 +49,7 @@ public:
     : m_direction(direction)
     , m_itf(itf.singular())
     , m_acl(acl.singular())
-    , m_binding(0)
+    , m_binding(false)
   {
     m_evh.order();
   }
@@ -61,7 +61,7 @@ public:
     : m_direction(o.m_direction)
     , m_itf(o.m_itf)
     , m_acl(o.m_acl)
-    , m_binding(0)
+    , m_binding(o.m_binding)
   {
   }
 
@@ -96,6 +96,8 @@ public:
    * Dump all bindings into the stream provided
    */
   static void dump(std::ostream& os) { m_db.dump(os); }
+
+  static dependency_t order() { return m_evh.order(); }
 
 private:
   /**
@@ -222,6 +224,11 @@ singular_db<typename ACL::binding<LIST>::key_t, ACL::binding<LIST>>
 
 template <typename LIST>
 typename ACL::binding<LIST>::event_handler binding<LIST>::m_evh;
+
+namespace {
+const static dependency_t __attribute__((unused)) l2o = l2_binding::order();
+const static dependency_t __attribute__((unused)) l3o = l3_binding::order();
+};
 };
 
 std::ostream& operator<<(std::ostream& os,

@@ -120,7 +120,7 @@ l3_list::update(const l3_list& obj)
   /*
    * always update the instance with the latest rule set
    */
-  if (!m_hdl || obj.m_rules != m_rules) {
+  if (rc_t::OK != m_hdl.rc() || obj.m_rules != m_rules) {
     HW::enqueue(new list_cmds::l3_update_cmd(m_hdl, m_key, m_rules));
   }
   /*
@@ -137,7 +137,7 @@ l2_list::update(const l2_list& obj)
   /*
    * always update the instance with the latest rule set
    */
-  if (!m_hdl || obj.m_rules != m_rules) {
+  if (rc_t::OK != m_hdl.rc() || obj.m_rules != m_rules) {
     HW::enqueue(new list_cmds::l2_update_cmd(m_hdl, m_key, m_rules));
   }
   /*

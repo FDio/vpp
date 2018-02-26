@@ -75,7 +75,8 @@ l3_update_cmd::issue(connection& con)
   VAPI_CALL(req.execute());
 
   m_hw_item = wait();
-  complete();
+  if (m_hw_item.rc() == rc_t::OK)
+    insert_acl();
 
   return rc_t::OK;
 }
@@ -93,6 +94,8 @@ l3_delete_cmd::issue(connection& con)
 
   wait();
   m_hw_item.set(rc_t::NOOP);
+
+  remove_acl();
 
   return rc_t::OK;
 }
@@ -138,6 +141,8 @@ l2_update_cmd::issue(connection& con)
   VAPI_CALL(req.execute());
 
   m_hw_item = wait();
+  if (m_hw_item.rc() == rc_t::OK)
+    insert_acl();
 
   return rc_t::OK;
 }
@@ -155,6 +160,8 @@ l2_delete_cmd::issue(connection& con)
 
   wait();
   m_hw_item.set(rc_t::NOOP);
+
+  remove_acl();
 
   return rc_t::OK;
 }
