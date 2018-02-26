@@ -1315,6 +1315,32 @@ typedef struct
 
 } sctp_err_cause_param_t;
 
+
+/*
+ * An end-point sends this chunk to its peer end-point to notify it of
+ * certain error conditions.  It contains one or more error causes.
+ * An Operation Error is not considered fatal in and of itself, but may be
+ * used with an ABORT chunk to report a fatal condition.  It has the
+ * following parameters:
+ *
+ * 0                   1                   2                   3
+ * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   Type = 9    | Chunk  Flags  |           Length              |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * \                                                               \
+ * /                    one or more Error Causes                   /
+ * \                                                               \
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+typedef struct
+{
+  sctp_header_t sctp_hdr;
+  sctp_chunks_common_hdr_t chunk_hdr;
+  sctp_err_cause_param_t err_causes[];
+
+} sctp_operation_error_t;
+
 /*
  * Abort Association (ABORT)
  *

@@ -417,24 +417,16 @@ sctp_connection_cleanup (sctp_connection_t * sctp_conn)
 				&sctp_conn->sub_conn[i].connection.lcl_ip,
 				sctp_conn->sub_conn[i].connection.lcl_port);
 
-  /* Check if connection is not yet fully established */
-  if (sctp_conn->state == SCTP_STATE_COOKIE_WAIT)
-    {
+  int thread_index =
+    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.thread_index;
 
-    }
-  else
-    {
-      int thread_index =
-	sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.thread_index;
+  /* Make sure all timers are cleared */
+  sctp_connection_timers_reset (sctp_conn);
 
-      /* Make sure all timers are cleared */
-      sctp_connection_timers_reset (sctp_conn);
-
-      /* Poison the entry */
-      if (CLIB_DEBUG > 0)
-	memset (sctp_conn, 0xFA, sizeof (*sctp_conn));
-      pool_put (tm->connections[thread_index], sctp_conn);
-    }
+  /* Poison the entry */
+  if (CLIB_DEBUG > 0)
+    memset (sctp_conn, 0xFA, sizeof (*sctp_conn));
+  pool_put (tm->connections[thread_index], sctp_conn);
 }
 
 int

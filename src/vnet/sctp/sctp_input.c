@@ -283,6 +283,35 @@ sctp_is_bundling (u16 sctp_implied_length,
 }
 
 always_inline u16
+sctp_handle_operation_err (sctp_header_t * sctp_hdr,
+			   sctp_connection_t * sctp_conn, u8 idx,
+			   vlib_buffer_t * b, u16 * next0)
+{
+  sctp_operation_error_t *op_err = (sctp_operation_error_t *) sctp_hdr;
+
+  /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
+  if (sctp_conn->local_tag != sctp_hdr->verification_tag)
+    {
+      return SCTP_ERROR_INVALID_TAG;
+    }
+
+  if (op_err->err_causes[0].cause_info == STALE_COOKIE_ERROR)
+    {
+      if (sctp_conn->state != SCTP_STATE_COOKIE_ECHOED)
+	*next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
+      else
+	{
+	  sctp_connection_cleanup (sctp_conn);
+
+	  stream_session_disconnect_notify (&sctp_conn->
+					    sub_conn[idx].connection);
+	}
+    }
+
+  return SCTP_ERROR_NONE;
+}
+
+always_inline u16
 sctp_handle_init (sctp_header_t * sctp_hdr,
 		  sctp_chunks_common_hdr_t * sctp_chunk_hdr,
 		  sctp_connection_t * sctp_conn, vlib_buffer_t * b0,
@@ -980,6 +1009,12 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      break;
 
+	    case OPERATION_ERROR:
+	      error0 =
+		sctp_handle_operation_err (sctp_hdr, sctp_conn, idx, b0,
+					   &next0);
+	      break;
+
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
 	       * are handled by the input-dispatcher function using the table-lookup
 	       * hence we should never get to the "default" case below.
@@ -1307,6 +1342,12 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	      error0 =
 		sctp_handle_data ((sctp_payload_data_chunk_t *) sctp_hdr,
 				  sctp_conn, idx, b0, &next0);
+	      break;
+
+	    case OPERATION_ERROR:
+	      error0 =
+		sctp_handle_operation_err (sctp_hdr, sctp_conn, idx, b0,
+					   &next0);
 	      break;
 
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
@@ -1660,6 +1701,13 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	       */
 	    case DATA:
 	      break;
+
+	    case OPERATION_ERROR:
+	      error0 =
+		sctp_handle_operation_err (sctp_hdr, child_conn,
+					   MAIN_SCTP_SUB_CONN_IDX, b0,
+					   &next0);
+	      break;
 	    }
 
 	drop:
@@ -1805,6 +1853,12 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      error0 =
 		sctp_handle_data ((sctp_payload_data_chunk_t *) sctp_hdr,
 				  sctp_conn, idx, b0, &next0);
+	      break;
+
+	    case OPERATION_ERROR:
+	      error0 =
+		sctp_handle_operation_err (sctp_hdr, sctp_conn, idx, b0,
+					   &next0);
 	      break;
 
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
@@ -2261,8 +2315,9 @@ do {                                                       	\
   _(CLOSED, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(CLOSED, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(CLOSED, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(CLOSED, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE, SCTP_ERROR_NONE);
 
-  _(COOKIE_WAIT, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_NONE);
+  _(COOKIE_WAIT, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_NONE);	/* UNEXPECTED DATA chunk which requires special handling */
   _(COOKIE_WAIT, INIT, SCTP_INPUT_NEXT_RCV_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED INIT chunk which requires special handling */
   _(COOKIE_WAIT, INIT_ACK, SCTP_INPUT_NEXT_RCV_PHASE, SCTP_ERROR_NONE);
   _(COOKIE_WAIT, SACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SACK_CHUNK_VIOLATION);	/* UNEXPECTED SACK chunk */
@@ -2277,6 +2332,8 @@ do {                                                       	\
   _(COOKIE_WAIT, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(COOKIE_WAIT, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(COOKIE_WAIT, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(COOKIE_WAIT, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(COOKIE_ECHOED, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_NONE);
   _(COOKIE_ECHOED, INIT, SCTP_INPUT_NEXT_RCV_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED INIT chunk which requires special handling */
@@ -2294,6 +2351,8 @@ do {                                                       	\
   _(COOKIE_ECHOED, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(COOKIE_ECHOED, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(COOKIE_ECHOED, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(COOKIE_ECHOED, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(ESTABLISHED, DATA, SCTP_INPUT_NEXT_ESTABLISHED_PHASE, SCTP_ERROR_NONE);
   _(ESTABLISHED, INIT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_INIT_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
@@ -2312,6 +2371,8 @@ do {                                                       	\
   _(ESTABLISHED, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(ESTABLISHED, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(ESTABLISHED, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(ESTABLISHED, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(SHUTDOWN_PENDING, DATA, SCTP_INPUT_NEXT_SHUTDOWN_PHASE, SCTP_ERROR_NONE);
   _(SHUTDOWN_PENDING, INIT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_INIT_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
@@ -2331,6 +2392,8 @@ do {                                                       	\
   _(SHUTDOWN_PENDING, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_PENDING, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(SHUTDOWN_PENDING, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(SHUTDOWN_PENDING, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(SHUTDOWN_SENT, DATA, SCTP_INPUT_NEXT_SHUTDOWN_PHASE, SCTP_ERROR_NONE);
   _(SHUTDOWN_SENT, INIT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_INIT_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
@@ -2347,6 +2410,8 @@ do {                                                       	\
   _(SHUTDOWN_SENT, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_SENT, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(SHUTDOWN_SENT, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(SHUTDOWN_SENT, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(SHUTDOWN_RECEIVED, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_DATA_CHUNK_VIOLATION);	/* UNEXPECTED DATA chunk */
   _(SHUTDOWN_RECEIVED, INIT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_INIT_CHUNK_VIOLATION);	/* UNEXPECTED INIT chunk */
@@ -2363,6 +2428,8 @@ do {                                                       	\
   _(SHUTDOWN_RECEIVED, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_RECEIVED, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(SHUTDOWN_RECEIVED, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_COMPLETE_VIOLATION);	/* UNEXPECTED SHUTDOWN_COMPLETE chunk */
+  _(SHUTDOWN_RECEIVED, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
+    SCTP_ERROR_NONE);
 
   _(SHUTDOWN_ACK_SENT, DATA, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_DATA_CHUNK_VIOLATION);	/* UNEXPECTED DATA chunk */
   _(SHUTDOWN_ACK_SENT, INIT, SCTP_INPUT_NEXT_RCV_PHASE, SCTP_ERROR_NONE);	/* UNEXPECTED INIT chunk */
@@ -2378,6 +2445,8 @@ do {                                                       	\
   _(SHUTDOWN_ACK_SENT, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_ACK_SENT, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
   _(SHUTDOWN_ACK_SENT, SHUTDOWN_COMPLETE, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
+    SCTP_ERROR_NONE);
+  _(SHUTDOWN_ACK_SENT, OPERATION_ERROR, SCTP_INPUT_NEXT_LISTEN_PHASE,
     SCTP_ERROR_NONE);
 
   /* TODO: Handle COOKIE ECHO when a TCB Exists */
