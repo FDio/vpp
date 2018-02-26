@@ -291,6 +291,8 @@ sctp_sub_connection_add_ip4 (u8 thread_index,
   clib_memcpy (&sctp_conn->
 	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip4,
 	       &ipv4_addr->address, sizeof (ipv4_addr->address));
+
+  sctp_conn->forming_association_changed = 1;
 }
 
 void
@@ -302,6 +304,8 @@ sctp_sub_connection_add_ip6 (u8 thread_index,
   clib_memcpy (&sctp_conn->
 	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip6,
 	       &ipv6_addr->address, sizeof (ipv6_addr->address));
+
+  sctp_conn->forming_association_changed = 1;
 }
 
 sctp_connection_t *
