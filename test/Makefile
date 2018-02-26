@@ -197,11 +197,11 @@ checkstyle: verify-python-path
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
-		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
+		 echo \"* Test framework pycodestyle compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
 	@echo "*******************************************************************"
-	@echo "* Test framework PEP8 compliance check passed"
+	@echo "* Test framework pycodestyle compliance check passed"
 	@echo "*******************************************************************"
 
 help:

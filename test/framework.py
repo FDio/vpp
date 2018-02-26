@@ -1126,11 +1126,12 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger):
+    def __init__(self, args, logger, env={}):
         self.logger = logger
         self.args = args
         self.result = None
         self.env = {}
+        self.env.update(env)
         super(Worker, self).__init__()
 
     def run(self):
