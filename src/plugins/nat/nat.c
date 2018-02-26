@@ -2142,9 +2142,8 @@ snat_feature_command_fn (vlib_main_t * vm,
                 {
                   error = clib_error_return (0, "%s %U failed",
                                              is_del ? "del" : "add",
-                                             format_vnet_sw_interface_name, vnm,
-                                             vnet_get_sw_interface (vnm,
-                                                                    sw_if_index));
+                                             format_vnet_sw_if_index_name, vnm,
+                                             sw_if_index);
                   goto done;
                 }
             }
@@ -2154,9 +2153,8 @@ snat_feature_command_fn (vlib_main_t * vm,
                 {
                   error = clib_error_return (0, "%s %U failed",
                                              is_del ? "del" : "add",
-                                             format_vnet_sw_interface_name, vnm,
-                                             vnet_get_sw_interface (vnm,
-                                                                    sw_if_index));
+                                             format_vnet_sw_if_index_name, vnm,
+                                             sw_if_index);
                   goto done;
                 }
             }
@@ -2174,9 +2172,8 @@ snat_feature_command_fn (vlib_main_t * vm,
                 {
                   error = clib_error_return (0, "%s %U failed",
                                              is_del ? "del" : "add",
-                                             format_vnet_sw_interface_name, vnm,
-                                             vnet_get_sw_interface (vnm,
-                                                                    sw_if_index));
+                                             format_vnet_sw_if_index_name, vnm,
+                                             sw_if_index);
                   goto done;
                 }
             }
@@ -2186,9 +2183,8 @@ snat_feature_command_fn (vlib_main_t * vm,
                 {
                   error = clib_error_return (0, "%s %U failed",
                                              is_del ? "del" : "add",
-                                             format_vnet_sw_interface_name, vnm,
-                                             vnet_get_sw_interface (vnm,
-                                                                    sw_if_index));
+                                             format_vnet_sw_if_index_name, vnm,
+                                             sw_if_index);
                   goto done;
                 }
             }
@@ -3155,16 +3151,14 @@ u8 * format_snat_static_map_to_resolve (u8 * s, va_list * args)
   if (m->addr_only)
       s = format (s, "local %U external %U vrf %d",
                   format_ip4_address, &m->l_addr,
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, m->sw_if_index),
+                  format_vnet_sw_if_index_name, vnm, m->sw_if_index,
                   m->vrf_id);
   else
       s = format (s, "%U local %U:%d external %U:%d vrf %d",
                   format_snat_protocol, m->proto,
                   format_ip4_address, &m->l_addr, m->l_port,
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, m->sw_if_index), m->e_port,
-                  m->vrf_id);
+                  format_vnet_sw_if_index_name, vnm, m->sw_if_index,
+                  m->e_port, m->vrf_id);
 
   return s;
 }
@@ -3243,8 +3237,8 @@ show_snat_command_fn (vlib_main_t * vm,
     {
       pool_foreach (i, sm->interfaces,
       ({
-        vlib_cli_output (vm, "%U %s", format_vnet_sw_interface_name, vnm,
-                         vnet_get_sw_interface (vnm, i->sw_if_index),
+        vlib_cli_output (vm, "%U %s", format_vnet_sw_if_index_name, vnm,
+                         i->sw_if_index,
                          (nat_interface_is_inside(i) &&
                           nat_interface_is_outside(i)) ? "in out" :
                          (nat_interface_is_inside(i) ? "in" : "out"));
@@ -3253,8 +3247,7 @@ show_snat_command_fn (vlib_main_t * vm,
       pool_foreach (i, sm->output_feature_interfaces,
       ({
         vlib_cli_output (vm, "%U output-feature %s",
-                         format_vnet_sw_interface_name, vnm,
-                         vnet_get_sw_interface (vnm, i->sw_if_index),
+                         format_vnet_sw_if_index_name, vnm, i->sw_if_index,
                          (nat_interface_is_inside(i) &&
                           nat_interface_is_outside(i)) ? "in out" :
                          (nat_interface_is_inside(i) ? "in" : "out"));
@@ -3265,8 +3258,8 @@ show_snat_command_fn (vlib_main_t * vm,
           vlib_cli_output (vm, "NAT44 pool addresses interfaces:");
           vec_foreach (sw_if_index, sm->auto_add_sw_if_indices)
             {
-              vlib_cli_output (vm, "%U", format_vnet_sw_interface_name, vnm,
-                               vnet_get_sw_interface (vnm, *sw_if_index));
+              vlib_cli_output (vm, "%U", format_vnet_sw_if_index_name, vnm,
+                               *sw_if_index);
             }
         }
 
@@ -3275,8 +3268,8 @@ show_snat_command_fn (vlib_main_t * vm,
           vlib_cli_output (vm, "NAT44 twice-nat pool addresses interfaces:");
           vec_foreach (sw_if_index, sm->auto_add_sw_if_indices_twice_nat)
             {
-              vlib_cli_output (vm, "%U", format_vnet_sw_interface_name, vnm,
-                               vnet_get_sw_interface (vnm, *sw_if_index));
+              vlib_cli_output (vm, "%U", format_vnet_sw_if_index_name, vnm,
+                               *sw_if_index);
             }
         }
 
