@@ -11,6 +11,7 @@ import time
 import resource
 import faulthandler
 import random
+import copy
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
@@ -1126,11 +1127,11 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger):
+    def __init__(self, args, logger, env={}):
         self.logger = logger
         self.args = args
         self.result = None
-        self.env = {}
+        self.env = copy.deepcopy(env)
         super(Worker, self).__init__()
 
     def run(self):
