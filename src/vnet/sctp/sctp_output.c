@@ -1381,7 +1381,7 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
 
   sctp_push_hdr_i (sctp_conn, b, SCTP_STATE_ESTABLISHED);
 
-  sctp_trajectory_add_start (b0, 3);
+  sctp_trajectory_add_start (b, 3);
 
   return 0;
 }
