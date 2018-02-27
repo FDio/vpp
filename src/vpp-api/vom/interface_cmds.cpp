@@ -161,6 +161,10 @@ vhost_create_cmd::issue(connection& con)
 
   m_hw_item = wait();
 
+  if (m_hw_item.rc() == rc_t::OK) {
+    insert_interface();
+  }
+
   return rc_t::OK;
 }
 

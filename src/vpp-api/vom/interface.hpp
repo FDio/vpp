@@ -354,7 +354,7 @@ public:
     void succeeded() {}
 
     /**
-     * add the created interface to the DB
+     * remove the deleted interface from the DB
      */
     void remove_interface() { interface::remove(this->item()); }
 
