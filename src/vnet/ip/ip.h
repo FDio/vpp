@@ -65,6 +65,9 @@
 #include <vnet/ip/icmp6.h>
 #include <vnet/classify/vnet_classify.h>
 
+#define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
+#define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
+
 /* Per protocol info. */
 typedef struct
 {

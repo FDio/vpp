@@ -75,9 +75,6 @@ int nat66_static_mapping_add_del (ip6_address_t * l_addr,
 				  ip6_address_t * e_addr, u32 vrf_id,
 				  u8 is_add);
 
-#define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
-#define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
-
 #endif /* __included_nat66_h__ */
 
 /*
