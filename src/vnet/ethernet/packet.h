@@ -91,6 +91,15 @@ typedef struct
   u16 type;
 } ethernet_vlan_header_t;
 
+always_inline void
+ethernet_vlan_header_set_priority_net_order (ethernet_vlan_header_t * h,
+					     u8 prio)
+{
+  u8 *bytes = (u8 *) (&h->priority_cfi_and_id);
+
+  bytes[0] &= 0x1f;
+  bytes[0] |= (prio & 0x7) << 5;
+}
 
 /* VLAN with ethertype first and vlan id second */
 typedef struct
