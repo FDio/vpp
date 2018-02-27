@@ -43,9 +43,9 @@ files_tmp_file(vpp_tmp_t)
 # vpp local policy
 #
 
-allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin }; # too benefolent
+allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin net_admin }; # too benevolent
 dontaudit vpp_t self:capability2 block_suspend;
-allow vpp_t self:process { execmem execstack setsched signal }; # too benefolent
+allow vpp_t self:process { execmem execstack setsched signal }; # too benevolent
 allow vpp_t self:packet_socket { bind create setopt ioctl };
 allow vpp_t self:tun_socket { create relabelto relabelfrom };
 allow vpp_t self:udp_socket { create ioctl };
