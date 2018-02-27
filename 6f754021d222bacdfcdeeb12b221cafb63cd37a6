@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "6489edfc_8938d0b0",
+        "filename": "test/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Ehh, not according to line 198 :)\n\nMarcos recently submitted https://gerrit.fd.io/r/#/c/10800/ which changes PEP8 -\u003e pycodestyle, but didn\u0027t update the messages.\n\nThis should probably be a separate patch, so I\u0027ll remove it from this change set.",
+      "parentUuid": "d286e95a_58266202",
+      "range": {
+        "startLine": 200,
+        "startChar": 27,
+        "endLine": 200,
+        "endChar": 38
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5c06b34c_d9d33046",
         "filename": "test/framework.py",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-02-27T09:19:43Z",
       "side": 1,
       "message": "this could be changed to one-liner:\n\nself.env \u003d copy.deepcopy(env)",
+      "range": {
+        "startLine": 1133,
+        "startChar": 0,
+        "endLine": 1134,
+        "endChar": 28
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7cb6c472_9bf9d0cf",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1134,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5c06b34c_d9d33046",
       "range": {
         "startLine": 1133,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "c650fc60_41513f5f",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Good catch.  Copy/pasta with extra sauce ;)",
+      "parentUuid": "205eeb14_41c6cf76",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 44
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "51015e00_505c7f8a",
         "filename": "test/test_vcl.py",
         "patchSetId": 2
@@ -82,6 +154,30 @@
       "writtenOn": "2018-02-27T09:19:43Z",
       "side": 1,
       "message": "what if this is None?",
+      "range": {
+        "startLine": 21,
+        "startChar": 39,
+        "endLine": 21,
+        "endChar": 48
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85caa1da_e0e8608d",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "51015e00_505c7f8a",
       "range": {
         "startLine": 21,
         "startChar": 39,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "7160e68d_68875e3f",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d4151150_0e82d07b",
+      "range": {
+        "startLine": 30,
+        "startChar": 24,
+        "endLine": 30,
+        "endChar": 34
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2819b46c_2474e576",
         "filename": "test/test_vcl.py",
         "patchSetId": 2
@@ -128,6 +248,30 @@
       "writtenOn": "2018-02-27T09:19:43Z",
       "side": 1,
       "message": "this is undefined",
+      "range": {
+        "startLine": 37,
+        "startChar": 69,
+        "endLine": 37,
+        "endChar": 76
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "49e7261b_dbdb871e",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2819b46c_2474e576",
       "range": {
         "startLine": 37,
         "startChar": 69,
@@ -157,6 +301,24 @@
     },
     {
       "key": {
+        "uuid": "a26b6160_d03d3902",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "62b8286c_d4956a73",
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6382f35d_189c3799",
         "filename": "test/test_vcl.py",
         "patchSetId": 2
@@ -168,6 +330,30 @@
       "writtenOn": "2018-02-27T09:19:43Z",
       "side": 1,
       "message": "undefined",
+      "range": {
+        "startLine": 47,
+        "startChar": 65,
+        "endLine": 47,
+        "endChar": 72
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e27dfb63_9e6f8aeb",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6382f35d_189c3799",
       "range": {
         "startLine": 47,
         "startChar": 65,
@@ -214,6 +400,30 @@
       "writtenOn": "2018-02-27T09:19:43Z",
       "side": 1,
       "message": "this is automatically inherited if removed",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 50
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b94edbf_dac5195d",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-02-27T15:27:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eae6d230_33dd3c6c",
       "range": {
         "startLine": 98,
         "startChar": 0,
