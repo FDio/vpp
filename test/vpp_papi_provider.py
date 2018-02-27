@@ -36,6 +36,13 @@ class L2_VTR_OP:
     L2_TRANSLATE_2_2 = 8
 
 
+class QOS_MARK_SOURCE:
+    EXT = 0
+    VLAN = 1
+    MPLS = 2
+    IP = 3
+
+
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
     pass
@@ -3229,3 +3236,31 @@ class VppPapiProvider(object):
         """ 6RD tunnel Delete """
         return self.api(self.papi.sixrd_del_tunnel,
                         {'sw_if_index': sw_if_index})
+
+    def qos_egress_map_update(self, id, outputs):
+        """ QOS egress map update """
+        return self.api(self.papi.qos_egress_map_update,
+                        {'map_id': id,
+                         'rows': outputs})
+
+    def qos_egress_map_delete(self, id):
+        """ QOS egress map delete """
+        return self.api(self.papi.qos_egress_map_delete,
+                        {'map_id': id})
+
+    def qos_egress_map_interface_bind_unbind(self, sw_if_index,
+                                             output_source,
+                                             map_id,
+                                             is_bind):
+        """ QOS egress map interface bind/unbind """
+        return self.api(self.papi.qos_egress_map_interface_bind_unbind,
+                        {'map_id': map_id,
+                         'sw_if_index': sw_if_index,
+                         'output_source': output_source,
+                         'is_bind': is_bind})
+
+    def ip_qos_record_enable_disable(self, sw_if_index, enable):
+        """ IP QoS recording Enble/Disable """
+        return self.api(self.papi.ip_qos_record_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})

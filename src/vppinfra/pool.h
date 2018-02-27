@@ -270,31 +270,31 @@ do {                                                                    \
 /** Free an object E in pool P. */
 #define pool_put(P,E)							\
 do {									\
-  pool_header_t * _pool_var (p) = pool_header (P);			\
+  pool_header_t * _pool_var (V) = pool_header (P);			\
   uword _pool_var (l) = (E) - (P);					\
   ASSERT (vec_is_member (P, E));					\
   ASSERT (! pool_is_free (P, E));					\
 									\
   /* Add element to free bitmap and to free list. */			\
-  _pool_var (p)->free_bitmap =						\
-    clib_bitmap_ori (_pool_var (p)->free_bitmap, _pool_var (l));	\
+  _pool_var (V)->free_bitmap =						\
+    clib_bitmap_ori (_pool_var (V)->free_bitmap, _pool_var (l));	\
   /* Preallocated pool? */                                              \
-  if (_pool_var (p)->max_elts)                                          \
+  if (_pool_var (V)->max_elts)                                          \
     {                                                                   \
-      ASSERT(_pool_var(l) < _pool_var (p)->max_elts);                   \
-      _pool_var(p)->free_indices[_vec_len(_pool_var(p)->free_indices)] = \
+      ASSERT(_pool_var(l) < _pool_var (V)->max_elts);                   \
+      _pool_var(V)->free_indices[_vec_len(_pool_var(V)->free_indices)] = \
                                  _pool_var(l);                          \
-      _vec_len(_pool_var(p)->free_indices) += 1;                        \
+      _vec_len(_pool_var(V)->free_indices) += 1;                        \
     }                                                                   \
   else                                                                  \
-    vec_add1 (_pool_var (p)->free_indices, _pool_var (l));		\
+    vec_add1 (_pool_var (V)->free_indices, _pool_var (l));		\
 } while (0)
 
 /** Free pool element with given index. */
-#define pool_put_index(p,i)			\
+#define pool_put_index(P,I)			\
 do {						\
-  typeof (p) _e = (p) + (i);			\
-  pool_put (p, _e);				\
+  typeof (P) _E = (P) + (I);			\
+  pool_put (P, _E);				\
 } while (0)
 
 /** Allocate N more free elements to pool (general version). */

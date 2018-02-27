@@ -377,9 +377,6 @@ u32 nat64_get_worker_in2out (ip6_address_t * addr);
  */
 u32 nat64_get_worker_out2in (ip4_header_t * ip);
 
-#define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
-#define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
-
 #endif /* __included_nat64_h__ */
 
 /*
