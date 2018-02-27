@@ -581,10 +581,17 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
        * Zero out the ip. Logic is that connect to local ips, say
        * 127.0.0.1:port, can match 0.0.0.0:port
        */
-      kv4.key[0] = 0;
-      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
-      if (rv == 0)
-	return kv4.value;
+      if (ip4_is_local_host (&sep->ip.ip4))
+	{
+	  kv4.key[0] = 0;
+	  rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+	  if (rv == 0)
+	    return kv4.value;
+	}
+      else
+	{
+	  kv4.key[0] = 0;
+	}
 
       /*
        * Zero out the port and check if we have proxy
@@ -615,10 +622,18 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       /*
        * Zero out the ip. Same logic as above.
        */
-      kv6.key[0] = kv6.key[1] = 0;
-      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
-      if (rv == 0)
-	return kv6.value;
+
+      if (ip6_is_local_host (&sep->ip.ip6))
+	{
+	  kv6.key[0] = kv6.key[1] = 0;
+	  rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+	  if (rv == 0)
+	    return kv6.value;
+	}
+      else
+	{
+	  kv6.key[0] = kv6.key[1] = 0;
+	}
 
       /*
        * Zero out the port. Same logic as above.

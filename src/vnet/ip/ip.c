@@ -34,6 +34,18 @@ ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4)
     return (ip46_address->as_u64[0] == 0 && ip46_address->as_u64[1] == 1);
 }
 
+u8
+ip4_is_local_host (ip4_address_t * ip4_address)
+{
+  return (ip4_address->as_u8[0] == 127);
+}
+
+u8
+ip6_is_local_host (ip6_address_t * ip6_address)
+{
+  return (ip6_address->as_u64[0] == 0 && ip6_address->as_u64[1] == 1);
+}
+
 /**
  * Checks that an ip is local to the requested fib
  */
