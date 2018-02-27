@@ -1,0 +1,228 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d286e95a_58266202",
+        "filename": "test/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "please don\u0027t change this.\n\nwe are verifying compliance with PEP8, which is a code style recommendation for Python. We do not aim to be compliant with pycodestyle, which is one of the tools which check some of PEP8 recommendations...",
+      "range": {
+        "startLine": 200,
+        "startChar": 27,
+        "endLine": 200,
+        "endChar": 38
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5c06b34c_d9d33046",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1134,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "this could be changed to one-liner:\n\nself.env \u003d copy.deepcopy(env)",
+      "range": {
+        "startLine": 1133,
+        "startChar": 0,
+        "endLine": 1134,
+        "endChar": 28
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "205eeb14_41c6cf76",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "most of these are unused",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 44
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51015e00_505c7f8a",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "what if this is None?",
+      "range": {
+        "startLine": 21,
+        "startChar": 39,
+        "endLine": 21,
+        "endChar": 48
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4151150_0e82d07b",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": ";-)\n\nso in python: a.x() is a syntactic sugar for \u003cclass\u003e.x(a)\n\nyou are calling this function as\n\nself.validateResults(self, ...) every time, with instance as both cls and self (because of above logic)\n\nI would suggest that this is converted to non-class method and unused \u0027cls\u0027 dropped from parameter list",
+      "range": {
+        "startLine": 30,
+        "startChar": 24,
+        "endLine": 30,
+        "endChar": 34
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2819b46c_2474e576",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "this is undefined",
+      "range": {
+        "startLine": 37,
+        "startChar": 69,
+        "endLine": 37,
+        "endChar": 76
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62b8286c_d4956a73",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "I would suggest to change this to resemble the (new) logic in test_vapi.py:\n\n   36             except:\n   37                 self.logger.debug(\"Couldn\u0027t kill worker-spawned process\")\n   38                 raise\n\nso that the original exception is propagated",
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6382f35d_189c3799",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "undefined",
+      "range": {
+        "startLine": 47,
+        "startChar": 65,
+        "endLine": 47,
+        "endChar": 72
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a706ee9_64bae860",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "this can be removed, let inheritance provide setUpClass()...",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 51
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eae6d230_33dd3c6c",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-02-27T09:19:43Z",
+      "side": 1,
+      "message": "this is automatically inherited if removed",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 50
+      },
+      "revId": "6f754021d222bacdfcdeeb12b221cafb63cd37a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
