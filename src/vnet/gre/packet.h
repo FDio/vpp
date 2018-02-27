@@ -160,6 +160,9 @@ typedef CLIB_PACKED (struct {
 
 /* *INDENT-ON* */
 
+/* u64 template for ERSPAN type 2 header with both EN bits set */
+#define ERSPAN_HDR2 0x1000180000000000ul
+
 #endif /* included_vnet_gre_packet_h */
 
 /*

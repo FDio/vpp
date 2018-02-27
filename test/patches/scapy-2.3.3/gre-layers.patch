@@ -14,12 +14,40 @@ diff --git a/scapy/layers/l2.py b/scapy/layers/l2.py
 index 4f491d2..661a5da 100644
 --- a/scapy/layers/l2.py
 +++ b/scapy/layers/l2.py
-@@ -628,7 +628,7 @@ bind_layers( CookedLinux,   EAPOL,         proto=34958)
+@@ -570,6 +570,20 @@
+     return getmacbyip(l3.pdst)
+ conf.neighbor.register_l3(Ether, ARP, l2_register_l3_arp)
+ 
++
++class ERSPAN(Packet):
++    name = "ERSPAN"
++    fields_desc = [ BitField("ver",0,4),
++                    BitField("vlan",0,12),
++                    BitField("cos",0,3),
++                    BitField("en",0,2),
++                    BitField("t",0,1),
++                    BitField("session_id",0,10),
++                    BitField("reserved",0,12),
++                    BitField("index",0,20),
++                    ]
++
++
+ class GRErouting(Packet):
+     name = "GRE routing informations"
+     fields_desc = [ ShortField("address_family",0),
+@@ -628,12 +642,14 @@ bind_layers( CookedLinux,   EAPOL,         proto=34958)
  bind_layers( GRE,           LLC,           proto=122)
  bind_layers( GRE,           Dot1Q,         proto=33024)
  bind_layers( GRE,           Dot1AD,        type=0x88a8)
 -bind_layers( GRE,           Ether,         proto=1)
 +bind_layers( GRE,           Ether,         proto=0x6558)
++bind_layers( GRE,           ERSPAN,        proto=0x88be, seqnum_present=1)
  bind_layers( GRE,           ARP,           proto=2054)
  bind_layers( GRE,           EAPOL,         proto=34958)
  bind_layers( GRE,           GRErouting,    { "routing_present" : 1 } )
+ bind_layers( GRErouting,    conf.raw_layer,{ "address_family" : 0, "SRE_len" : 0 })
+ bind_layers( GRErouting,    GRErouting,    { } )
++bind_layers( ERSPAN,        Ether)
+ bind_layers( EAPOL,         EAP,           type=0)
+ bind_layers(EAP,           EAP_TLS,       type=13)
+ bind_layers(EAP,           EAP_FAST,      type=43)
