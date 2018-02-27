@@ -295,7 +295,8 @@ sctp_handle_operation_err (sctp_header_t * sctp_hdr,
       return SCTP_ERROR_INVALID_TAG;
     }
 
-  if (op_err->err_causes[0].cause_info == STALE_COOKIE_ERROR)
+  if (clib_net_to_host_u16 (op_err->err_causes[0].param_hdr.type) ==
+      STALE_COOKIE_ERROR)
     {
       if (sctp_conn->state != SCTP_STATE_COOKIE_ECHOED)
 	*next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
@@ -1350,6 +1351,12 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 					   &next0);
 	      break;
 
+	    case COOKIE_ECHO:	/* Cookie Received While Shutting Down */
+	      sctp_prepare_operation_error (sctp_conn, idx, b0,
+					    COOKIE_RECEIVED_WHILE_SHUTTING_DOWN);
+	      error0 = SCTP_ERROR_NONE;
+	      next0 = sctp_next_output (is_ip4);
+	      break;
 	      /* All UNEXPECTED scenarios (wrong chunk received per state-machine)
 	       * are handled by the input-dispatcher function using the table-lookup
 	       * hence we should never get to the "default" case below.
@@ -2132,9 +2139,13 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (chunk_type >= UNKNOWN)
 	    {
 	      clib_warning
-		("Received an unrecognized chunk... something is really bad.");
+		("Received an unrecognized chunk; sending back OPERATION_ERROR chunk");
+
+	      sctp_prepare_operation_error (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
+					    b0, UNRECOGNIZED_CHUNK_TYPE);
+
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
-	      next0 = SCTP_INPUT_NEXT_DROP;
+	      next0 = sctp_next_output (is_ip4);
 	      goto done;
 	    }
 
@@ -2387,7 +2398,8 @@ do {                                                       	\
     SCTP_ERROR_NONE);
   _(SHUTDOWN_PENDING, SHUTDOWN_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_ACK_CHUNK_VIOLATION);	/* UNEXPECTED SHUTDOWN_ACK chunk */
   _(SHUTDOWN_PENDING, OPERATION_ERROR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_OPERATION_ERROR_VIOLATION);	/* UNEXPECTED OPERATION_ERROR chunk */
-  _(SHUTDOWN_PENDING, COOKIE_ECHO, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_COOKIE_ECHO_VIOLATION);	/* UNEXPECTED COOKIE_ECHO chunk */
+  _(SHUTDOWN_PENDING, COOKIE_ECHO, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
+    SCTP_ERROR_NONE);
   _(SHUTDOWN_PENDING, COOKIE_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED COOKIE_ACK chunk */
   _(SHUTDOWN_PENDING, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_PENDING, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
@@ -2405,7 +2417,8 @@ do {                                                       	\
   _(SHUTDOWN_SENT, SHUTDOWN, SCTP_INPUT_NEXT_SHUTDOWN_PHASE, SCTP_ERROR_NONE);
   _(SHUTDOWN_SENT, SHUTDOWN_ACK, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
     SCTP_ERROR_NONE);
-  _(SHUTDOWN_SENT, COOKIE_ECHO, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_COOKIE_ECHO_VIOLATION);	/* UNEXPECTED COOKIE_ECHO chunk */
+  _(SHUTDOWN_SENT, COOKIE_ECHO, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
+    SCTP_ERROR_NONE);
   _(SHUTDOWN_SENT, COOKIE_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED COOKIE_ACK chunk */
   _(SHUTDOWN_SENT, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_SENT, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
@@ -2423,7 +2436,8 @@ do {                                                       	\
   _(SHUTDOWN_RECEIVED, SHUTDOWN, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_CHUNK_VIOLATION);	/* UNEXPECTED SHUTDOWN chunk */
   _(SHUTDOWN_RECEIVED, SHUTDOWN_ACK, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
     SCTP_ERROR_NONE);
-  _(SHUTDOWN_RECEIVED, COOKIE_ECHO, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_COOKIE_ECHO_VIOLATION);	/* UNEXPECTED COOKIE_ECHO chunk */
+  _(SHUTDOWN_RECEIVED, COOKIE_ECHO, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
+    SCTP_ERROR_NONE);
   _(SHUTDOWN_RECEIVED, COOKIE_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED COOKIE_ACK chunk */
   _(SHUTDOWN_RECEIVED, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_RECEIVED, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */
@@ -2440,7 +2454,8 @@ do {                                                       	\
   _(SHUTDOWN_ACK_SENT, ABORT, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ABORT_CHUNK_VIOLATION);	/* UNEXPECTED ABORT chunk */
   _(SHUTDOWN_ACK_SENT, SHUTDOWN, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_CHUNK_VIOLATION);	/* UNEXPECTED SHUTDOWN chunk */
   _(SHUTDOWN_ACK_SENT, SHUTDOWN_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_SHUTDOWN_ACK_CHUNK_VIOLATION);	/* UNEXPECTED SHUTDOWN_ACK chunk */
-  _(SHUTDOWN_ACK_SENT, COOKIE_ECHO, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_COOKIE_ECHO_VIOLATION);	/* UNEXPECTED COOKIE_ECHO chunk */
+  _(SHUTDOWN_ACK_SENT, COOKIE_ECHO, SCTP_INPUT_NEXT_SHUTDOWN_PHASE,
+    SCTP_ERROR_NONE);
   _(SHUTDOWN_ACK_SENT, COOKIE_ACK, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ACK_DUP);	/* UNEXPECTED COOKIE_ACK chunk */
   _(SHUTDOWN_ACK_SENT, ECNE, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_ECNE_VIOLATION);	/* UNEXPECTED ECNE chunk */
   _(SHUTDOWN_ACK_SENT, CWR, SCTP_INPUT_NEXT_DROP, SCTP_ERROR_CWR_VIOLATION);	/* UNEXPECTED CWR chunk */

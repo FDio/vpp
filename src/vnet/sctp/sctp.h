@@ -292,7 +292,9 @@ void sctp_prepare_abort_for_collision (sctp_connection_t * sctp_conn, u8 idx,
 				       vlib_buffer_t * b,
 				       ip4_address_t * ip4_addr,
 				       ip6_address_t * ip6_addr);
-
+void
+sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
+			      vlib_buffer_t * b, u8 err_cause);
 void sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				     vlib_buffer_t * b,
 				     sctp_state_cookie_param_t * sc);

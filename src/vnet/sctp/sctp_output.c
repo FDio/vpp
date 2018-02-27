@@ -589,24 +589,23 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 }
 
 /**
- * Convert buffer to ABORT
+ * Convert buffer to ERROR
  */
-/*
 void
 sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
-			      vlib_buffer_t * b, ip4_address_t * ip4_addr,
-			      ip6_address_t * ip6_addr)
+			      vlib_buffer_t * b, u8 err_cause)
 {
   vlib_main_t *vm = vlib_get_main ();
 
   sctp_reuse_buffer (vm, b);
 
-  // The minimum size of the message is given by the sctp_operation_error_t
-  u16 alloc_bytes = sizeof (sctp_operation_error_t);
+  /* The minimum size of the message is given by the sctp_operation_error_t */
+  u16 alloc_bytes =
+    sizeof (sctp_operation_error_t) + sizeof (sctp_err_cause_param_t);
 
-  // As per RFC 4960 the chunk_length value does NOT contemplate
-  // the size of the first header (see sctp_header_t) and any padding
-  //
+  /* As per RFC 4960 the chunk_length value does NOT contemplate
+   * the size of the first header (see sctp_header_t) and any padding
+   */
   u16 chunk_len = alloc_bytes - sizeof (sctp_header_t);
 
   alloc_bytes += vnet_sctp_calculate_padding (alloc_bytes);
@@ -614,12 +613,17 @@ sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
   sctp_operation_error_t *err_chunk =
     vlib_buffer_push_uninit (b, alloc_bytes);
 
-  // src_port & dst_port are already in network byte-order
+  /* src_port & dst_port are already in network byte-order */
   err_chunk->sctp_hdr.checksum = 0;
   err_chunk->sctp_hdr.src_port = sctp_conn->sub_conn[idx].connection.lcl_port;
   err_chunk->sctp_hdr.dst_port = sctp_conn->sub_conn[idx].connection.rmt_port;
-  // As per RFC4960 Section 5.2.2: copy the INITIATE_TAG into the VERIFICATION_TAG of the ABORT chunk
+  /* As per RFC4960 Section 5.2.2: copy the INITIATE_TAG into the VERIFICATION_TAG of the ABORT chunk */
   err_chunk->sctp_hdr.verification_tag = sctp_conn->local_tag;
+
+  err_chunk->err_causes[0].param_hdr.length =
+    clib_host_to_net_u16 (sizeof (err_chunk->err_causes[0].param_hdr.type) +
+			  sizeof (err_chunk->err_causes[0].param_hdr.length));
+  err_chunk->err_causes[0].param_hdr.type = clib_host_to_net_u16 (err_cause);
 
   vnet_sctp_set_chunk_type (&err_chunk->chunk_hdr, OPERATION_ERROR);
   vnet_sctp_set_chunk_length (&err_chunk->chunk_hdr, chunk_len);
@@ -628,7 +632,6 @@ sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
     sctp_conn->sub_conn[idx].connection.c_index;
   vnet_buffer (b)->sctp.subconn_idx = idx;
 }
-*/
 
 /**
  * Convert buffer to ABORT
