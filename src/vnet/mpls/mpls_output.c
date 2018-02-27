@@ -125,6 +125,8 @@ mpls_output_inline (vlib_main_t * vm,
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
           rw_len1 = adj1[0].rewrite_header.data_bytes;
+	  vnet_buffer (p0)->mpls.save_rewrite_length = rw_len0;
+	  vnet_buffer (p1)->mpls.save_rewrite_length = rw_len1;
 
           /* Bump the adj counters for packet and bytes */
           vlib_increment_combined_counter
@@ -238,7 +240,8 @@ mpls_output_inline (vlib_main_t * vm,
           
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
-          
+          vnet_buffer (p0)->mpls.save_rewrite_length = rw_len0;
+
           vlib_increment_combined_counter
               (&adjacency_counters,
                thread_index,

@@ -322,7 +322,7 @@ const ip46_address_t zero_addr = {
 	     0, 0},
 };
 
-clib_error_t *
+static clib_error_t *
 vnet_ip_route_cmd (vlib_main_t * vm,
 		   unformat_input_t * main_input, vlib_cli_command_t * cmd)
 {
