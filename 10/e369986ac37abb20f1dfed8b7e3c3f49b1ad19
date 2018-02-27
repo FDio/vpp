@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Pablo Camarillo <pcamaril@cisco.com>
+Code-Review+2: Marco Varlese <marco.varlese@suse.de>
+Submitted-by: Marco Varlese <marco.varlese@suse.de>
+Submitted-at: Tue, 27 Feb 2018 12:45:36 +0000
+Reviewed-on: https://gerrit.fd.io/r/10807
+Project: vpp
+Branch: refs/heads/master
