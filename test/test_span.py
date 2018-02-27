@@ -3,7 +3,7 @@
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, GRE
+from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
@@ -101,6 +101,27 @@ class TestSpan(VppTestCase):
         self.assertEqual(pkt[IP].dst, self.pg2.remote_ip4)
 
         return pkt[GRE].payload
+
+    def decap_erspan(self, pkt, session):
+        """
+        Decapsulate the original payload frame by removing ERSPAN header
+        """
+        self.assertEqual(pkt[Ether].src, self.pg2.local_mac)
+        self.assertEqual(pkt[Ether].dst, self.pg2.remote_mac)
+
+        self.assertEqual(pkt[IP].src, self.pg2.local_ip4)
+        self.assertEqual(pkt[IP].dst, self.pg2.remote_ip4)
+
+        self.assertEqual(pkt[ERSPAN].ver, 1)
+        self.assertEqual(pkt[ERSPAN].vlan, 0)
+        self.assertEqual(pkt[ERSPAN].cos, 0)
+        self.assertEqual(pkt[ERSPAN].en, 3)
+        self.assertEqual(pkt[ERSPAN].t, 0)
+        self.assertEqual(pkt[ERSPAN].session_id, session)
+        self.assertEqual(pkt[ERSPAN].reserved, 0)
+        self.assertEqual(pkt[ERSPAN].index, 0)
+
+        return pkt[ERSPAN].payload
 
     def decap_vxlan(self, pkt):
         """
@@ -245,6 +266,54 @@ class TestSpan(VppTestCase):
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
         self.verify_capture(pg1_pkts, pg2_pkts)
 
+    def test_span_l2_rx_dst_gre_erspan(self):
+        """ SPAN l2 rx mirror into gre-erspan """
+
+        self.sub_if.admin_up()
+
+        gre_if = VppGreInterface(self, self.pg2.local_ip4,
+                                 self.pg2.remote_ip4,
+                                 type=2,
+                                 session=543)
+
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+
+        self.bridge(gre_if.sw_if_index)
+        # Create bi-directional cross-connects between pg0 and pg1
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=1)
+
+        # Create incoming packet streams for packet-generator interfaces
+        pkts = self.create_stream(
+            self.pg0, self.pg_if_packet_sizes, do_dot1=True)
+        self.pg0.add_stream(pkts)
+
+        # Enable SPAN on pg0 sub if (mirrored to gre-erspan)
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if.sw_if_index, is_l2=1)
+
+        # Enable packet capturing and start packet sending
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify packets outgoing packet streams on mirrored interface (pg2)
+        n_pkts = len(pkts)
+        pg1_pkts = self.pg1.get_capture(n_pkts)
+        pg2_pkts = self.pg2.get_capture(n_pkts)
+
+        def decap(p): return self.decap_erspan(p, session=543)
+        pg2_decaped = [decap(p) for p in pg2_pkts]
+
+        self.bridge(gre_if.sw_if_index, is_add=0)
+
+        # Disable SPAN on pg0 sub if
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if.sw_if_index, state=0, is_l2=1)
+        gre_if.remove_vpp_config()
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_decaped)
+
     def test_span_l2_rx_dst_gre_subif_vtr(self):
         """ SPAN l2 rx mirror into gre-subif+vtr """
 
@@ -270,6 +339,7 @@ class TestSpan(VppTestCase):
             self.pg0, self.pg_if_packet_sizes, do_dot1=True)
         self.pg0.add_stream(pkts)
 
+        # Enable SPAN on pg0 sub if (mirrored to gre sub if)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, gre_sub_if.sw_if_index, is_l2=1)
 
