@@ -523,10 +523,6 @@ int map_ip6_reass_conf_lifetime(u16 lifetime_ms);
 int map_ip6_reass_conf_buffers(u32 buffers);
 #define MAP_IP6_REASS_CONF_BUFFERS_MAX (0xffffffff)
 
-
-#define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
-#define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
-
 static_always_inline void
 ip4_map_t_embedded_address (map_domain_t *d,
                                 ip6_address_t *ip6, const ip4_address_t *ip4)

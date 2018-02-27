@@ -348,7 +348,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_frag.c				\
  vnet/ip/ip.c					\
  vnet/ip/ip_init.c				\
- vnet/ip/ip_in_out_acl.c				\
+ vnet/ip/ip_in_out_acl.c			\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
  vnet/ip/punt_api.c				\
@@ -1196,6 +1196,19 @@ libvnet_la_SOURCES +=                    \
   vnet/util/radix.c			     \
   vnet/util/refcount.c			 \
   vnet/util/trajectory.c
+
+########################################
+# QoS
+########################################
+
+libvnet_la_SOURCES +=      	                \
+  vnet/qos/qos_types.c				\
+  vnet/qos/qos_api.c				\
+  vnet/qos/qos_egress_map.c			\
+  vnet/qos/qos_record.c				\
+  vnet/qos/qos_mark.c
+
+API_FILES += vnet/qos/qos.api
 
 ########################################
 # BIER

@@ -360,6 +360,7 @@ ip6_set_traffic_class_network_order (ip6_header_t * ip6, u8 dscp)
 {
   u32 tmp =
     clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
+  tmp &= 0xf00fffff;
   tmp |= (dscp << 20);
   ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
 }
