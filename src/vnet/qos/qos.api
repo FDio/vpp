@@ -1,0 +1,100 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines QoS record and mark API messages which are generally
+    called through a shared memory interface.
+*/
+
+option version = "1.0.0";
+
+/** \brief Enable/Disable QoS recording
+    The QoS bits from the packet at the specified input layer are copied
+    into the packet. Recording should be used in conjunction with marking
+    @param sw_if_index - The interface on which recording is enabled.
+    @param enable - enable=1 or disable the feautre
+    @param input_source - The input source/layer at which the QoS bits
+                          are copied from the packet. See qos_source_t.
+*/
+autoreply define qos_record_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 input_source;
+  u8 enable;
+};
+
+/** \brief A row within a QoS map
+    Each value translates from an input value to an output.
+*/
+typeonly define qos_egress_map_row
+{
+  u8  outputs[256];
+};
+
+/** \brief Update a QoS Map
+    A QoS map, translates from the QoS value in the packet set by the 'record'
+    feature, to the value used for output in the 'mark' feature.
+    There is one row in the map for each input/record source.
+    The MAP is then applied to the egress interface at for a given output source
+    @param map_id - client provided identifier for the map
+    @param rows - one row (per-input source) of output values
+*/
+autoreply define qos_egress_map_update
+{
+  u32 client_index;
+  u32 context;
+  u32 map_id;
+  vl_api_qos_egress_map_row_t rows[4];
+};
+
+/** \brief Delete a Qos Map
+    @param map_id - ID of the map to delete
+*/
+autoreply define qos_egress_map_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 map_id;
+};
+
+/** \brief Enable/Disable QoS marking
+    The QoS bits from the packet are mapped (using the desired egress map)
+    into the header of the 'output-source'. Marking should be used in
+    conjunction with recording
+    @param sw_if_index - The interface on which recording is enabled.
+    @param enable - enable=1 or disable the feautre
+    @param output_source - The output source/layer at which the QoS bits
+                           are written into the packet. See qos_source_t.
+    @param map_id - The ID of the MAP in which the translation from input
+                    to output is performed.
+*/
+autoreply define qos_mark_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 map_id;
+  u32 sw_if_index;
+  u8 output_source;
+  u8 enable;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

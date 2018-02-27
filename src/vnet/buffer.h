@@ -63,7 +63,8 @@
   _(15, L3_HDR_OFFSET_VALID, 0)				\
   _(16, L4_HDR_OFFSET_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
-  _(18, IS_DVR, "dvr")
+  _(18, IS_DVR, "dvr")                                  \
+  _(19, QOS_DATA_VALID, 0)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -186,6 +187,8 @@ typedef struct
       u8 ttl;
       u8 exp;
       u8 first;
+      /* Rewrite length */
+      u32 save_rewrite_length;
       /*
        * BIER - the nubmer of bytes in the header.
        *  the len field inthe header is not authoritative. It's the
@@ -362,16 +365,29 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 /* Full cache line (64 bytes) of additional space */
 typedef struct
 {
+  /**
+   * QoS marking data that needs to persist from the recording nodes
+   * (nominally in the ingress path) to the marking node (in the
+   * egress path)
+   */
+  struct
+  {
+    u8 bits;
+    u8 source;
+  } qos;
+
+  u8 __unused[2];
+
   union
   {
-#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-    /* buffer trajectory tracing */
     struct
     {
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+      /* buffer trajectory tracing */
       u16 *trajectory_trace;
-    };
 #endif
-    u32 unused[12];
+    };
+    u32 unused[11];
   };
 } vnet_buffer_opaque2_t;
 
