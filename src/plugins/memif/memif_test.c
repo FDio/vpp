@@ -164,11 +164,10 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 
   M (MEMIF_SOCKET_FILENAME_ADD_DEL, mp);
 
-  memset (mp, 0, sizeof (*mp));
   mp->is_add = is_add;
   mp->socket_id = htonl (socket_id);
-  memcpy (mp->socket_filename,
-	  socket_filename, sizeof (mp->socket_filename) - 1);
+  strncpy ((char *) mp->socket_filename,
+	   (char *) socket_filename, sizeof (mp->socket_filename) - 1);
 
   vec_free (socket_filename);
 
