@@ -443,6 +443,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
+  vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, 0);
 
   ethernet_delete_interface (vnm, vif->hw_if_index);
   vif->hw_if_index = ~0;
