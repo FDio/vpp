@@ -29,7 +29,8 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
-#define foreach_af_packet_input_error
+#define foreach_af_packet_input_error \
+  _(PARTIAL_PKT, "partial packet")
 
 typedef enum
 {
@@ -292,6 +293,21 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  to_next += 1;
 	  n_left_to_next--;
 
+	  /* drop partial packets */
+	  if (PREDICT_FALSE (tph->tp_len != tph->tp_snaplen))
+	    {
+	      next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+	      first_b0->error =
+		node->errors[AF_PACKET_INPUT_ERROR_PARTIAL_PKT];
+	    }
+	  else
+	    {
+	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+	      /* redirect if feature path enabled */
+	      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0,
+						  first_b0);
+	    }
+
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
 	  if (PREDICT_FALSE (n_trace > 0))
@@ -305,9 +321,6 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->hw_if_index = apif->hw_if_index;
 	      clib_memcpy (&tr->tph, tph, sizeof (struct tpacket2_hdr));
 	    }
-
-	  /* redirect if feature path enabled */
-	  vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0, b0);
 
 	  /* enque and take next packet */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
