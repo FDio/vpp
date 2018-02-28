@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e4ca2c04_7895a1c9",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 23
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-02-28T21:46:14Z",
+      "side": 1,
+      "message": "If there is incompatibility, it should be autodetected by autoconf.",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 5
+      },
+      "revId": "4b22dbcd0ac20dba18c1bb6e093c9d3f0b01b725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
