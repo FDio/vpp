@@ -22,6 +22,30 @@
       "revId": "4b22dbcd0ac20dba18c1bb6e093c9d3f0b01b725",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e7e8e7c_d55d1959",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 23
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-28T22:13:41Z",
+      "side": 1,
+      "message": "Unfortunately mbedtls in opensuse 42.3 is old, really old. So old that the project had a different name and different folder structure. This is the simplest solution to avoid compiling tls for it. \n\nThis is pretty much like lb above so ... :-)\n\nStill, it seems it didn\u0027t work.",
+      "parentUuid": "e4ca2c04_7895a1c9",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 5
+      },
+      "revId": "4b22dbcd0ac20dba18c1bb6e093c9d3f0b01b725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
