@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e5fedb80_2a06e6ac",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-02-28T23:06:51Z",
+      "side": 1,
+      "message": "Any particular reason for the caps? :)",
+      "range": {
+        "startLine": 157,
+        "startChar": 6,
+        "endLine": 157,
+        "endChar": 24
+      },
+      "revId": "6cf6ea2cde8cb3ed474520891845d366fd670924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
