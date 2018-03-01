@@ -629,14 +629,14 @@ class AutoConfig(object):
             tcp = tcp + "  v4-halfopen-table-buckets " + \
                   "{:d}".format((aos + pos) / 4) + "\n"
             tcp = tcp + "  v4-halfopen-table-memory 3g\n"
+            tcp = tcp + "  local-endpoints-table-buckets " + "{:d}".format((aos + pos) / 4) + "\n"
+            tcp = tcp + "  local-endpoints-table-memory 3g\n"
         tcp = tcp + "}\n\n"
 
         tcp = tcp + "tcp {\n"
         tcp = tcp + "  preallocated-connections " + "{:d}".format(aos + pos) + "\n"
         if aos > 0:
             tcp = tcp + "  preallocated-half-open-connections " + "{:d}".format(aos) + "\n"
-            tcp = tcp + "  local-endpoints-table-buckets " + "{:d}".format((aos + pos) / 4) + "\n"
-            tcp = tcp + "  local-endpoints-table-memory 3g\n"
         tcp = tcp + "}\n\n"
 
         return tcp.rstrip('\n')
