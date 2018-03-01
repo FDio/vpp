@@ -270,42 +270,62 @@ sctp_sub_connection_add (u8 thread_index)
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_connection_t *sctp_conn = tm->connections[thread_index];
 
-  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].connection.c_index =
-    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
-  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].
-    connection.thread_index = thread_index;
-  sctp_conn->sub_conn[sctp_conn->next_avail_sub_conn].subconn_idx =
-    sctp_conn->next_avail_sub_conn;
+  u8 subconn_idx = sctp_next_avail_subconn (sctp_conn);
 
-  sctp_conn->next_avail_sub_conn += 1;
+  ASSERT (subconn_idx < MAX_SCTP_CONNECTIONS);
+
+  sctp_conn->sub_conn[subconn_idx].connection.c_index =
+    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
+  sctp_conn->sub_conn[subconn_idx].connection.thread_index = thread_index;
+  sctp_conn->sub_conn[subconn_idx].subconn_idx = subconn_idx;
 
   return sctp_conn;
 }
 
-void
-sctp_sub_connection_add_ip4 (u8 thread_index,
-			     sctp_ipv4_addr_param_t * ipv4_addr)
+u8
+sctp_sub_connection_add_ip4 (vlib_main_t * vm,
+			     ip4_address_t * lcl_addr,
+			     ip4_address_t * rmt_addr)
 {
-  sctp_connection_t *sctp_conn = sctp_sub_connection_add (thread_index);
+  sctp_connection_t *sctp_conn = sctp_sub_connection_add (vm->thread_index);
 
-  clib_memcpy (&sctp_conn->
-	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip4,
-	       &ipv4_addr->address, sizeof (ipv4_addr->address));
+  u8 subconn_idx = sctp_next_avail_subconn (sctp_conn);
+
+  if (subconn_idx == MAX_SCTP_CONNECTIONS)
+    return SCTP_ERROR_MAX_CONNECTIONS;
+
+  clib_memcpy (&sctp_conn->sub_conn[subconn_idx].connection.lcl_ip,
+	       &lcl_addr, sizeof (lcl_addr));
+
+  clib_memcpy (&sctp_conn->sub_conn[subconn_idx].connection.rmt_ip,
+	       &rmt_addr, sizeof (rmt_addr));
 
   sctp_conn->forming_association_changed = 1;
+
+  return SCTP_ERROR_NONE;
 }
 
-void
-sctp_sub_connection_add_ip6 (u8 thread_index,
-			     sctp_ipv6_addr_param_t * ipv6_addr)
+u8
+sctp_sub_connection_add_ip6 (vlib_main_t * vm,
+			     ip6_address_t * lcl_addr,
+			     ip6_address_t * rmt_addr)
 {
-  sctp_connection_t *sctp_conn = sctp_sub_connection_add (thread_index);
+  sctp_connection_t *sctp_conn = sctp_sub_connection_add (vm->thread_index);
 
-  clib_memcpy (&sctp_conn->
-	       sub_conn[sctp_conn->next_avail_sub_conn].connection.lcl_ip.ip6,
-	       &ipv6_addr->address, sizeof (ipv6_addr->address));
+  u8 subconn_idx = sctp_next_avail_subconn (sctp_conn);
+
+  if (subconn_idx == MAX_SCTP_CONNECTIONS)
+    return SCTP_ERROR_MAX_CONNECTIONS;
+
+  clib_memcpy (&sctp_conn->sub_conn[subconn_idx].connection.lcl_ip,
+	       &lcl_addr, sizeof (lcl_addr));
+
+  clib_memcpy (&sctp_conn->sub_conn[subconn_idx].connection.rmt_ip,
+	       &rmt_addr, sizeof (rmt_addr));
 
   sctp_conn->forming_association_changed = 1;
+
+  return SCTP_ERROR_NONE;
 }
 
 sctp_connection_t *
@@ -322,7 +342,6 @@ sctp_connection_new (u8 thread_index)
     sctp_conn - sctp_main->connections[thread_index];
   sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
   sctp_conn->local_tag = 0;
-  sctp_conn->next_avail_sub_conn = 1;
 
   return sctp_conn;
 }
@@ -841,6 +860,8 @@ sctp_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP4, sctp4_output_node.index);
   transport_register_protocol (TRANSPORT_PROTO_SCTP, &sctp_proto,
 			       FIB_PROTOCOL_IP6, sctp6_output_node.index);
+
+  sctp_api_reference ();
 
   return 0;
 }
