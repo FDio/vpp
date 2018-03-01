@@ -182,6 +182,11 @@ define l2_macs_event
   vl_api_mac_entry_t mac[n_macs];
 };
 
+service {
+  rpc want_l2_macs_events returns want_l2_macs_events_reply
+    events l2_macs_event;
+};
+
 /** \brief Set interface L2 flags (such as L2_LEARN, L2_FWD, 
     L2_FLOOD, L2_UU_FLOOD, or L2_ARP_TERM bits). This can be used
     to disable one or more of the features represented by the

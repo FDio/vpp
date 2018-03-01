@@ -109,6 +109,10 @@ define dhcp_compl_event
   u8 host_mac[6];
 };
 
+service {
+  rpc dhcp_client_config returns dhcp_client_config_reply events dhcp_compl_event;
+};
+
 /** \brief Dump DHCP proxy table
     @param client_index - opaque cookie to identify the sender
     @param True for IPv6 proxy table
