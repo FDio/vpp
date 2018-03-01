@@ -67,7 +67,7 @@ stn_test_main_t stn_test_main;
  * we just generated
  */
 #define foreach_stn_api_reply_msg                       \
-_(STN_RULE_DETAILS, stn_rule_details)
+_(STN_RULES_DETAILS, stn_rules_details)
 
 static int
 api_stn_rules_dump (vat_main_t * vam)
@@ -102,7 +102,7 @@ api_stn_rules_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_stn_rule_details_t_handler (vl_api_stn_rule_details_t * mp)
+vl_api_stn_rules_details_t_handler (vl_api_stn_rules_details_t * mp)
 {
   vat_main_t *vam = stn_test_main.vat_main;
   fformat (vam->ofp, "addr: %U sw_if_index: %u\n",
