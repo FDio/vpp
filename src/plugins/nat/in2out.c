@@ -470,6 +470,47 @@ icmp_get_ed_key(ip4_header_t *ip0, nat_ed_ses_key_t *p_key0)
   return 0;
 }
 
+static inline int
+nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip)
+{
+  nat_ed_ses_key_t key;
+  clib_bihash_kv_16_8_t kv, value;
+  udp_header_t *udp;
+
+  if (!sm->forwarding_enabled)
+    return 0;
+
+  if (ip->protocol == IP_PROTOCOL_ICMP)
+    {
+      if (icmp_get_ed_key (ip, &key))
+        return 0;
+    }
+  else if (ip->protocol == IP_PROTOCOL_UDP || ip->protocol == IP_PROTOCOL_TCP)
+    {
+      udp = ip4_next_header(ip);
+      key.l_addr = ip->src_address;
+      key.r_addr = ip->dst_address;
+      key.proto = ip->protocol;
+      key.r_port = udp->dst_port;
+      key.l_port = udp->src_port;
+    }
+  else
+    {
+      key.l_addr = ip->src_address;
+      key.r_addr = ip->dst_address;
+      key.proto = ip->protocol;
+      key.l_port = key.r_port = 0;
+    }
+  key.fib_index = 0;
+  kv.key[0] = key.as_u64[0];
+  kv.key[1] = key.as_u64[1];
+
+  if (!clib_bihash_search_16_8 (&sm->in2out_ed, &kv, &value))
+    return value.value == ~0ULL;
+
+  return 0;
+}
+
 /**
  * Get address and port values to be used for ICMP packet translation
  * and create session if needed
@@ -1290,6 +1331,8 @@ snat_in2out_lb (snat_main_t *sm,
 
   if (!clib_bihash_search_16_8 (&sm->in2out_ed, &s_kv, &s_value))
     {
+      if (s_value.value == ~0ULL)
+        return 0;
       s = pool_elt_at_index (tsm->sessions, s_value.value);
     }
   else
@@ -1500,6 +1543,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               goto trace00;
             }
 
+          if (is_output_feature && !is_slow_path)
+            {
+              if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0)))
+                goto trace00;
+            }
+
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           /* Next configured feature, probably ip4-lookup */
@@ -1684,6 +1733,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                                            0);
               next1 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
               goto trace01;
+            }
+
+          if (is_output_feature && !is_slow_path)
+            {
+              if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip1)))
+                goto trace01;
             }
 
           proto1 = ip_proto_to_snat_proto (ip1->protocol);
@@ -1906,6 +1961,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                                            0);
               next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
               goto trace0;
+            }
+
+          if (is_output_feature && !is_slow_path)
+            {
+              if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0)))
+                goto trace0;
             }
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
