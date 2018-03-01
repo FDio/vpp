@@ -130,8 +130,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->tap_fd = -1;
   vif->id = args->id;
 
-  hash_set (tm->dev_instance_by_interface_id, vif->id, vif->dev_instance);
-
   if ((vif->fd = open ("/dev/vhost-net", O_RDWR | O_NONBLOCK)) < 0)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
@@ -382,6 +380,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
       goto error;
     }
+
+  hash_set (tm->dev_instance_by_interface_id, vif->id, vif->dev_instance);
 
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;

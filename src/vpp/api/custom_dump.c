@@ -558,7 +558,7 @@ static void *vl_api_tap_create_v2_t_print
   memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: tap_create_v2 ");
-  s = format (s, "id %s ", mp->id);
+  s = format (s, "id %u ", mp->id);
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac-address %U ",
 		format_ethernet_address, mp->mac_address);

@@ -59,7 +59,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   memset (ap, 0, sizeof (*ap));
 
-  ap->id = mp->id;
+  ap->id = ntohl (mp->id);
   if (!mp->use_random_mac)
     {
       clib_memcpy (ap->mac_addr, mp->mac_address, 6);

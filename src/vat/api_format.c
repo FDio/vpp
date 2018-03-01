@@ -7782,7 +7782,7 @@ api_tap_create_v2 (vat_main_t * vam)
   u8 host_ip6_gw_set = 0;
   u32 host_ip6_prefix_len = 0;
   int ret;
-  int rx_ring_sz = 0, tx_ring_sz = 0;
+  u32 rx_ring_sz = 0, tx_ring_sz = 0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -7793,7 +7793,7 @@ api_tap_create_v2 (vat_main_t * vam)
 	{
 	  random_mac = 0;
 	}
-      else if (unformat (i, "id %s", &id))
+      else if (unformat (i, "id %u", &id))
 	;
       else if (unformat (i, "host-if-name %s", &host_if_name))
 	;
@@ -7875,15 +7875,15 @@ api_tap_create_v2 (vat_main_t * vam)
 
   mp->use_random_mac = random_mac;
 
-  mp->id = id;
+  mp->id = ntohl (id);
   mp->host_namespace_set = host_ns != 0;
   mp->host_bridge_set = host_bridge != 0;
   mp->host_ip4_addr_set = host_ip4_prefix_len != 0;
   mp->host_ip6_addr_set = host_ip6_prefix_len != 0;
-  mp->rx_ring_sz = rx_ring_sz;
-  mp->tx_ring_sz = tx_ring_sz;
+  mp->rx_ring_sz = ntohs (rx_ring_sz);
+  mp->tx_ring_sz = ntohs (tx_ring_sz);
 
-  if (random_mac)
+  if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);
   if (host_mac_addr_set)
     clib_memcpy (mp->host_mac_addr, host_mac_addr, 6);
@@ -22776,7 +22776,7 @@ _(tap_delete,                                                           \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_dump, "")                                            \
 _(tap_create_v2,                                                        \
-  "name <name> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>]") \
+  "id <num> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
