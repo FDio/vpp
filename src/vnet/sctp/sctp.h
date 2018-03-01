@@ -235,8 +235,6 @@ typedef struct _sctp_connection
 
   sctp_options_t snd_opts;
 
-  u8 next_avail_sub_conn; /**< Represent the index of the next free slot in sub_conn */
-
   u8 forming_association_changed; /**< This is a flag indicating whether the original association has been modified during
   	  	  	  	  the life-span of the association itself. For instance, a new sub-connection might have been added. */
 
@@ -245,10 +243,17 @@ typedef struct _sctp_connection
 typedef void (sctp_timer_expiration_handler) (u32 conn_index, u32 timer_id);
 
 sctp_connection_t *sctp_connection_new (u8 thread_index);
-void sctp_sub_connection_add_ip4 (u8 thread_index,
-				  sctp_ipv4_addr_param_t * ipv4_addr);
-void sctp_sub_connection_add_ip6 (u8 thread_index,
-				  sctp_ipv6_addr_param_t * ipv6_addr);
+
+u8
+sctp_sub_connection_add_ip4 (vlib_main_t * vm,
+			     ip4_address_t * lcl_addr,
+			     ip4_address_t * rmt_addr);
+
+u8
+sctp_sub_connection_add_ip6 (vlib_main_t * vm,
+			     ip6_address_t * lcl_addr,
+			     ip6_address_t * rmt_addr);
+
 void sctp_connection_close (sctp_connection_t * sctp_conn);
 void sctp_connection_cleanup (sctp_connection_t * sctp_conn);
 void sctp_connection_del (sctp_connection_t * sctp_conn);
@@ -306,6 +311,8 @@ void sctp_prepare_heartbeat_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				       vlib_buffer_t * b);
 
 u16 sctp_check_outstanding_data_chunks (sctp_connection_t * sctp_conn);
+
+void sctp_api_reference (void);
 
 #define IP_PROTOCOL_SCTP	132
 
@@ -828,6 +835,19 @@ vlib_buffer_push_sctp (vlib_buffer_t * b, u16 sp_net, u16 dp_net,
 {
   return vlib_buffer_push_sctp_net_order (b, sp_net, dp_net,
 					  sctp_hdr_opts_len);
+}
+
+always_inline u8
+sctp_next_avail_subconn (sctp_connection_t * sctp_conn)
+{
+  u8 i;
+
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      if (sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
+	return i;
+    }
+  return MAX_SCTP_CONNECTIONS;
 }
 
 always_inline void

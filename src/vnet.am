@@ -542,6 +542,7 @@ API_FILES += vnet/udp/udp.api
 # Layer 4 protocol: sctp
 ########################################
 libvnet_la_SOURCES +=				\
+  vnet/sctp/sctp_api.c				\
   vnet/sctp/sctp.c				\
   vnet/sctp/sctp_pg.c				\
   vnet/sctp/sctp_input.c			\
@@ -552,7 +553,10 @@ nobase_include_HEADERS +=			\
   vnet/sctp/sctp_error.def                    	\
   vnet/sctp/sctp_packet.h			\
   vnet/sctp/sctp_timer.h			\
-  vnet/sctp/sctp.h
+  vnet/sctp/sctp.h				\
+  vnet/sctp/sctp.api.h
+
+API_FILES += vnet/sctp/sctp.api
 
 ########################################
 # Tunnel protocol: gre

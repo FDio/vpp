@@ -399,7 +399,10 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 		clib_memcpy (ip4_addr, &ipv4->address,
 			     sizeof (ip4_address_t));
 
-		sctp_sub_connection_add_ip4 (vlib_get_thread_index (), ipv4);
+		sctp_sub_connection_add_ip4 (vlib_get_main (),
+					     &sctp_conn->sub_conn
+					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     lcl_ip.ip4, &ipv4->address);
 
 		break;
 	      }
@@ -410,7 +413,10 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 		clib_memcpy (ip6_addr, &ipv6->address,
 			     sizeof (ip6_address_t));
 
-		sctp_sub_connection_add_ip6 (vlib_get_thread_index (), ipv6);
+		sctp_sub_connection_add_ip6 (vlib_get_main (),
+					     &sctp_conn->sub_conn
+					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     lcl_ip.ip6, &ipv6->address);
 
 		break;
 	      }
@@ -528,7 +534,10 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 		sctp_ipv4_addr_param_t *ipv4 =
 		  (sctp_ipv4_addr_param_t *) opt_params_hdr;
 
-		sctp_sub_connection_add_ip4 (vlib_get_thread_index (), ipv4);
+		sctp_sub_connection_add_ip4 (vlib_get_main (),
+					     &sctp_conn->sub_conn
+					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     lcl_ip.ip4, &ipv4->address);
 
 		break;
 	      }
@@ -537,7 +546,10 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 		sctp_ipv6_addr_param_t *ipv6 =
 		  (sctp_ipv6_addr_param_t *) opt_params_hdr;
 
-		sctp_sub_connection_add_ip6 (vlib_get_thread_index (), ipv6);
+		sctp_sub_connection_add_ip6 (vlib_get_main (),
+					     &sctp_conn->sub_conn
+					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     lcl_ip.ip6, &ipv6->address);
 
 		break;
 	      }
@@ -1541,16 +1553,16 @@ sctp_handle_heartbeat_ack (sctp_hb_ack_chunk_t * sctp_hb_ack_chunk,
 }
 
 always_inline void
-sctp_node_inc_counter (vlib_main_t * vm, u32 tcp4_node, u32 tcp6_node,
+sctp_node_inc_counter (vlib_main_t * vm, u32 sctp4_node, u32 sctp6_node,
 		       u8 is_ip4, u8 evt, u8 val)
 {
   if (PREDICT_TRUE (!val))
     return;
 
   if (is_ip4)
-    vlib_node_increment_counter (vm, tcp4_node, evt, val);
+    vlib_node_increment_counter (vm, sctp4_node, evt, val);
   else
-    vlib_node_increment_counter (vm, tcp6_node, evt, val);
+    vlib_node_increment_counter (vm, sctp6_node, evt, val);
 }
 
 always_inline uword
@@ -2073,7 +2085,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  vnet_buffer (b0)->tcp.flags = 0;
+	  vnet_buffer (b0)->sctp.flags = 0;
 	  fib_index0 = vnet_buffer (b0)->ip.fib_index;
 
 	  /* Checksum computed by ipx_local no need to compute again */
