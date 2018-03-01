@@ -34,3 +34,11 @@ autoreply define sctp_add_src_dst_connection {
     u8 dst_address[16];
  };
  
+autoreply define sctp_del_src_dst_connection {
+    u32 client_index;
+    u32 context;
+    u8 is_ipv6;
+    u32 vrf_id;
+    u8 src_address[16];
+    u8 dst_address[16];
+ };

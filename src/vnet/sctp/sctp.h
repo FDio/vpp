@@ -254,6 +254,14 @@ sctp_sub_connection_add_ip6 (vlib_main_t * vm,
 			     ip6_address_t * lcl_addr,
 			     ip6_address_t * rmt_addr);
 
+u8
+sctp_sub_connection_del_ip4 (ip4_address_t * lcl_addr,
+			     ip4_address_t * rmt_addr);
+
+u8
+sctp_sub_connection_del_ip6 (ip6_address_t * lcl_addr,
+			     ip6_address_t * rmt_addr);
+
 void sctp_connection_close (sctp_connection_t * sctp_conn);
 void sctp_connection_cleanup (sctp_connection_t * sctp_conn);
 void sctp_connection_del (sctp_connection_t * sctp_conn);

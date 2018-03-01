@@ -306,6 +306,40 @@ sctp_sub_connection_add_ip4 (vlib_main_t * vm,
 }
 
 u8
+sctp_sub_connection_del_ip4 (ip4_address_t * lcl_addr,
+			     ip4_address_t * rmt_addr)
+{
+  sctp_main_t *sctp_main = vnet_get_sctp_main ();
+
+  u32 thread_idx = vlib_get_thread_index ();
+  u8 i;
+
+  ASSERT (thread_idx == 0);
+
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      sctp_connection_t *sctp_conn = sctp_main->connections[thread_idx];
+      sctp_sub_connection_t *sub_conn =
+	&sctp_main->connections[thread_idx]->sub_conn[i];
+      ip46_address_t *lcl_ip =
+	&sctp_main->connections[thread_idx]->sub_conn[i].connection.lcl_ip;
+      ip46_address_t *rmt_ip =
+	&sctp_main->connections[thread_idx]->sub_conn[i].connection.rmt_ip;
+
+      if (!sub_conn->connection.is_ip4)
+	continue;
+      if (lcl_ip->ip4.as_u32 == lcl_addr->as_u32 &&
+	  rmt_ip->ip4.as_u32 == rmt_addr->as_u32)
+	{
+	  sub_conn->state = SCTP_SUBCONN_STATE_DOWN;
+	  sctp_conn->forming_association_changed = 1;
+	  break;
+	}
+    }
+  return SCTP_ERROR_NONE;
+}
+
+u8
 sctp_sub_connection_add_ip6 (vlib_main_t * vm,
 			     ip6_address_t * lcl_addr,
 			     ip6_address_t * rmt_addr)
@@ -325,6 +359,42 @@ sctp_sub_connection_add_ip6 (vlib_main_t * vm,
 
   sctp_conn->forming_association_changed = 1;
 
+  return SCTP_ERROR_NONE;
+}
+
+u8
+sctp_sub_connection_del_ip6 (ip6_address_t * lcl_addr,
+			     ip6_address_t * rmt_addr)
+{
+  sctp_main_t *sctp_main = vnet_get_sctp_main ();
+
+  u32 thread_idx = vlib_get_thread_index ();
+  u8 i;
+
+  ASSERT (thread_idx == 0);
+
+  for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
+    {
+      sctp_connection_t *sctp_conn = sctp_main->connections[thread_idx];
+      sctp_sub_connection_t *sub_conn =
+	&sctp_main->connections[thread_idx]->sub_conn[i];
+      ip46_address_t *lcl_ip =
+	&sctp_main->connections[thread_idx]->sub_conn[i].connection.lcl_ip;
+      ip46_address_t *rmt_ip =
+	&sctp_main->connections[thread_idx]->sub_conn[i].connection.rmt_ip;
+
+      if (!sub_conn->connection.is_ip4)
+	continue;
+      if ((lcl_ip->ip6.as_u64[0] == lcl_addr->as_u64[0]
+	   && lcl_ip->ip6.as_u64[1] == lcl_addr->as_u64[1])
+	  && (rmt_ip->ip6.as_u64[0] == rmt_addr->as_u64[0]
+	      && rmt_ip->ip6.as_u64[1] == rmt_addr->as_u64[1]))
+	{
+	  sub_conn->state = SCTP_SUBCONN_STATE_DOWN;
+	  sctp_conn->forming_association_changed = 1;
+	  break;
+	}
+    }
   return SCTP_ERROR_NONE;
 }
 

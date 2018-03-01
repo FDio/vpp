@@ -40,8 +40,9 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_sctp_api_msg                                     \
-_(SCTP_ADD_SRC_DST_CONNECTION, sctp_add_src_dst_connection)
+#define foreach_sctp_api_msg                                    \
+_(SCTP_ADD_SRC_DST_CONNECTION, sctp_add_src_dst_connection)		\
+_(SCTP_DEL_SRC_DST_CONNECTION, sctp_del_src_dst_connection)
 
 static void
   vl_api_sctp_add_src_dst_connection_t_handler
@@ -59,6 +60,23 @@ static void
     rv = sctp_sub_connection_add_ip4
       (vm,
        (ip4_address_t *) mp->src_address, (ip4_address_t *) mp->dst_address);
+
+  REPLY_MACRO (VL_API_SCTP_ADD_SRC_DST_CONNECTION_REPLY);
+}
+
+static void
+  vl_api_sctp_del_src_dst_connection_t_handler
+  (vl_api_sctp_del_src_dst_connection_t * mp)
+{
+  vl_api_sctp_del_src_dst_connection_reply_t *rmp;
+  int rv;
+
+  if (mp->is_ipv6)
+    rv = sctp_sub_connection_del_ip6
+      ((ip6_address_t *) mp->src_address, (ip6_address_t *) mp->dst_address);
+  else
+    rv = sctp_sub_connection_del_ip4
+      ((ip4_address_t *) mp->src_address, (ip4_address_t *) mp->dst_address);
 
   REPLY_MACRO (VL_API_SCTP_ADD_SRC_DST_CONNECTION_REPLY);
 }
