@@ -41,6 +41,7 @@ class VPPAPILexer(object):
         'service': 'SERVICE',
         'rpc': 'RPC',
         'returns': 'RETURNS',
+        'null': 'NULL',
         'stream': 'STREAM',
         'events': 'EVENTS',
         'define': 'DEFINE',
@@ -346,7 +347,8 @@ class VPPAPIParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_service_statement(self, p):
-        '''service_statement : RPC ID RETURNS ID ';'
+        '''service_statement : RPC ID RETURNS NULL ';'
+                             | RPC ID RETURNS ID ';'
                              | RPC ID RETURNS STREAM ID ';'
                              | RPC ID RETURNS ID EVENTS event_list ';' '''
         if len(p) == 8:
@@ -579,7 +581,7 @@ class VPPAPI(object):
             if service not in msgs:
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition: {}'.format(service))
-            if svcs[service].reply not in msgs:
+            if svcs[service].reply != 'null' and svcs[service].reply not in msgs:
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition in reply: {}'
                                  .format(svcs[service].reply))
@@ -593,6 +595,8 @@ class VPPAPI(object):
             if msgs[d].singular is True:
                 continue
             if d.endswith('_counters'):
+                continue
+            if d.endswith('_event'):
                 continue
             if d.endswith('_reply'):
                 if d[:-6] in svcs:

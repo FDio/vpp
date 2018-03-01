@@ -62,6 +62,12 @@ autoreply define want_interface_events
   u32 pid;
 };
 
+service {
+  rpc want_interface_events returns want_interface_events_reply
+    events sw_interface_event;
+};
+
+
 /** \brief Interface details structure (fix this) 
     @param sw_if_index - index of the interface
     @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index  
