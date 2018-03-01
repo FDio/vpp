@@ -70,6 +70,30 @@
       "revId": "6cf6ea2cde8cb3ed474520891845d366fd670924",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cb5353c1_f7557ce7",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-03-01T02:49:19Z",
+      "side": 1,
+      "message": "Well, you got me there. Nonetheless, I still think it looks like it is screaming at me :)",
+      "parentUuid": "6444fda3_a4b374df",
+      "range": {
+        "startLine": 157,
+        "startChar": 6,
+        "endLine": 157,
+        "endChar": 24
+      },
+      "revId": "6cf6ea2cde8cb3ed474520891845d366fd670924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
