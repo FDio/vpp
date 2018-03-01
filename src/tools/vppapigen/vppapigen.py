@@ -720,11 +720,21 @@ def main():
     import imp
 
     # Default path
+    pluginpath = ''
     if not args.pluginpath:
-        pluginpath = os.path.dirname(os.path.realpath(__file__)) + \
-                                     '/../share/vpp/'
+        cand = []
+        cand.append(os.path.dirname(os.path.realpath(__file__)))
+        cand.append(os.path.dirname(os.path.realpath(__file__)) + \
+                    '/../share/vpp/')
+        for c in cand:
+            c += '/'
+            if os.path.isfile(c + args.output_module + '.py'):
+                pluginpath = c
+                break
     else:
         pluginpath = args.pluginpath + '/'
+    if pluginpath == '':
+        raise Exception('Output plugin not found')
     module_path = pluginpath + args.output_module + '.py'
 
     try:
