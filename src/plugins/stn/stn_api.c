@@ -101,15 +101,15 @@ vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
 }
 
 static void
-send_stn_rule_details (stn_rule_t * r, vl_api_registration_t * reg,
-		       u32 context)
+send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
+			u32 context)
 {
-  vl_api_stn_rule_details_t *rmp;
+  vl_api_stn_rules_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
-    clib_host_to_net_u16 (VL_API_STN_RULE_DETAILS + stn_main.msg_id_base);
+    clib_host_to_net_u16 (VL_API_STN_RULES_DETAILS + stn_main.msg_id_base);
 
   if (ip46_address_is_ip4 (&r->address))
     {
@@ -140,7 +140,7 @@ vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t * mp)
 
   /* *INDENT-OFF* */
   pool_foreach (r, stn->rules,({
-    send_stn_rule_details (r, reg, mp->context);
+    send_stn_rules_details (r, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
