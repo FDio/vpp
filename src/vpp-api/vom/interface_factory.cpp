@@ -15,6 +15,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "vom/bond_interface.hpp"
+#include "vom/bond_member.hpp"
 #include "vom/interface_factory.hpp"
 #include "vom/sub_interface.hpp"
 #include "vom/tap_interface.hpp"
@@ -83,7 +85,7 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      */
   } else if (interface::type_t::VHOST == type) {
     /*
-     * vhost interfaces already exist in db, look for it using
+     * vhost interface already exist in db, look for it using
      * sw_if_index
      */
     sp = interface::find(hdl);
@@ -93,6 +95,10 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
       if (!tag.empty())
         sp->set(tag);
     }
+  } else if (interface::type_t::BOND == type) {
+    sp = bond_interface(name, state, l2_address,
+                        bond_interface::mode_t::UNSPECIFIED)
+           .singular();
   } else {
     sp = interface(name, type, state, tag).singular();
     sp->set(l2_address);
@@ -120,6 +126,40 @@ interface_factory::new_vhost_user_interface(
   sp = interface(name, type, interface::admin_state_t::DOWN).singular();
   sp->set(hdl);
   return (sp);
+}
+
+std::shared_ptr<bond_interface>
+interface_factory::new_bond_interface(
+  const vapi_payload_sw_interface_bond_details& vd)
+{
+  std::shared_ptr<bond_interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  handle_t hdl(vd.sw_if_index);
+  bond_interface::mode_t mode =
+    bond_interface::mode_t::from_numeric_val(vd.mode);
+  bond_interface::lb_t lb = bond_interface::lb_t::from_numeric_val(vd.lb);
+  sp = bond_interface::find(hdl);
+  if (sp) {
+    sp->set(mode);
+    sp->set(lb);
+  }
+  return (sp);
+}
+
+bond_member
+interface_factory::new_bond_member_interface(
+  const vapi_payload_sw_interface_slave_details& vd)
+{
+  std::shared_ptr<bond_member> sp;
+  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  handle_t hdl(vd.sw_if_index);
+  bond_member::mode_t mode =
+    bond_member::mode_t::from_numeric_val(vd.is_passive);
+  bond_member::rate_t rate =
+    bond_member::rate_t::from_numeric_val(vd.is_long_timeout);
+  std::shared_ptr<interface> itf = interface::find(hdl);
+  bond_member bm(*itf, mode, rate);
+  return (bm);
 }
 }; // namespace VOM
 
