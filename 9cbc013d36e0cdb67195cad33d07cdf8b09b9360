@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "4e614f53_d3984b97",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1497,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-03-02T19:35:50Z",
+      "side": 1,
+      "message": "ok, I knew you had run make test against this patch, so I need to go back and see what Florin has changed.  If it is not being called, then I\u0027m all for just deleting it entirely.",
+      "parentUuid": "2939da51_2bc5bcd7",
+      "range": {
+        "startLine": 1497,
+        "startChar": 0,
+        "endLine": 1497,
+        "endChar": 74
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "378d8574_0d876fed",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 26
@@ -131,6 +155,30 @@
       "side": 1,
       "message": "If the listener is set for non-blocking, we still get the connect request via the vl_api, which doesn\u0027t use the fifo.\n\nWould you entertain me changing 2922 to be pthread_cond_timedwait() with a ridiculously small time-out. On ETIMEDOUT I can then return VPPCOM_EAGAIN...",
       "parentUuid": "378d8574_0d876fed",
+      "range": {
+        "startLine": 2909,
+        "startChar": 0,
+        "endLine": 2924,
+        "endChar": 56
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "76328e00_ee30031f",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2924,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-03-02T19:35:50Z",
+      "side": 1,
+      "message": "Yep, that works for me.",
+      "parentUuid": "c1ad0276_f19abbac",
       "range": {
         "startLine": 2909,
         "startChar": 0,
