@@ -96,6 +96,11 @@ public:
     const static type_t VHOST;
 
     /**
+     * bond interface type
+     */
+    const static type_t BOND;
+
+    /**
      * Convert VPP's name of the interface to a type
      */
     static type_t from_string(const std::string& str);

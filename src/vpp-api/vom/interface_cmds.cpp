@@ -281,6 +281,7 @@ vhost_delete_cmd::issue(connection& con)
   VAPI_CALL(req.execute());
 
   wait();
+  remove_interface();
 
   return rc_t::OK;
 }

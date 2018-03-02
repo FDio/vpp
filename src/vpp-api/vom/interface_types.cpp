@@ -14,7 +14,8 @@
  */
 
 #include "vom/interface.hpp"
-
+#include "vom/bond_interface.hpp"
+#include "vom/bond_member_interface.hpp"
 namespace VOM {
 /*
  * constants and enums
@@ -28,6 +29,7 @@ const interface::type_t interface::type_t::LOOPBACK(5, "LOOPBACK");
 const interface::type_t interface::type_t::LOCAL(6, "LOCAL");
 const interface::type_t interface::type_t::TAP(7, "TAP");
 const interface::type_t interface::type_t::VHOST(8, "VHOST");
+const interface::type_t interface::type_t::BOND(9, "Bond");
 
 const interface::oper_state_t interface::oper_state_t::DOWN(0, "down");
 const interface::oper_state_t interface::oper_state_t::UP(1, "up");
@@ -41,6 +43,8 @@ interface::type_t::from_string(const std::string& str)
   if ((str.find("Virtual") != std::string::npos) ||
       (str.find("vhost") != std::string::npos)) {
     return interface::type_t::VHOST;
+  } else if (str.find("Bond") != std::string::npos) {
+    return interface::type_t::BOND;
   } else if (str.find("Ethernet") != std::string::npos) {
     return interface::type_t::ETHERNET;
   } else if (str.find("vxlan") != std::string::npos) {
@@ -91,6 +95,110 @@ interface::oper_state_t::from_int(uint8_t v)
     return (interface::oper_state_t::DOWN);
   }
   return (interface::oper_state_t::UP);
+}
+
+const bond_interface::mode_t bond_interface::mode_t::ROUND_ROBIN(1,
+                                                                 "round-robin");
+const bond_interface::mode_t bond_interface::mode_t::ACTIVE_BACKUP(
+  2,
+  "active-backup");
+const bond_interface::mode_t bond_interface::mode_t::XOR(3, "xor");
+const bond_interface::mode_t bond_interface::mode_t::BROADCAST(4, "broadcast");
+const bond_interface::mode_t bond_interface::mode_t::LACP(5, "lacp");
+const bond_interface::mode_t bond_interface::mode_t::UNSPECIFIED(0,
+                                                                 "unspecified");
+
+const bond_interface::mode_t
+bond_interface::mode_t::from_numeric_val(uint8_t numeric)
+{
+  if (1 == numeric) {
+    return (bond_interface::mode_t::ROUND_ROBIN);
+  }
+  if (2 == numeric) {
+    return (bond_interface::mode_t::ACTIVE_BACKUP);
+  }
+  if (3 == numeric) {
+    return (bond_interface::mode_t::XOR);
+  }
+  if (4 == numeric) {
+    return (bond_interface::mode_t::BROADCAST);
+  }
+  if (5 == numeric) {
+    return (bond_interface::mode_t::LACP);
+  }
+
+  return (bond_interface::mode_t::UNSPECIFIED);
+}
+
+bond_interface::mode_t::mode_t(int v, const std::string& s)
+  : enum_base<bond_interface::mode_t>(v, s)
+{
+}
+
+const bond_interface::lb_t bond_interface::lb_t::L2(0, "l2");
+const bond_interface::lb_t bond_interface::lb_t::L23(1, "l23");
+const bond_interface::lb_t bond_interface::lb_t::L34(2, "l34");
+const bond_interface::lb_t bond_interface::lb_t::UNSPECIFIED(~0, "unspecified");
+
+const bond_interface::lb_t
+bond_interface::lb_t::from_numeric_val(uint8_t numeric)
+{
+  if (0 == numeric) {
+    return (bond_interface::lb_t::L2);
+  }
+  if (1 == numeric) {
+    return (bond_interface::lb_t::L23);
+  }
+  if (2 == numeric) {
+    return (bond_interface::lb_t::L34);
+  }
+
+  return (bond_interface::lb_t::UNSPECIFIED);
+}
+
+bond_interface::lb_t::lb_t(int v, const std::string& s)
+  : enum_base<bond_interface::lb_t>(v, s)
+{
+}
+
+const bond_member_interface::mode_t bond_member_interface::mode_t::ACTIVE(
+  0,
+  "active");
+const bond_member_interface::mode_t bond_member_interface::mode_t::PASSIVE(
+  1,
+  "passive");
+
+const bond_member_interface::mode_t
+bond_member_interface::mode_t::from_numeric_val(uint8_t numeric)
+{
+  if (0 == numeric)
+    return (bond_member_interface::mode_t::ACTIVE);
+
+  return (bond_member_interface::mode_t::PASSIVE);
+}
+
+bond_member_interface::mode_t::mode_t(int v, const std::string& s)
+  : enum_base<bond_member_interface::mode_t>(v, s)
+{
+}
+
+const bond_member_interface::rate_t bond_member_interface::rate_t::FAST(0,
+                                                                        "fast");
+const bond_member_interface::rate_t bond_member_interface::rate_t::SLOW(1,
+                                                                        "slow");
+
+const bond_member_interface::rate_t
+bond_member_interface::rate_t::from_numeric_val(uint8_t numeric)
+{
+  if (0 == numeric)
+    return (bond_member_interface::rate_t::FAST);
+
+  return (bond_member_interface::rate_t::SLOW);
+}
+
+bond_member_interface::rate_t::rate_t(int v, const std::string& s)
+  : enum_base<bond_member_interface::rate_t>(v, s)
+{
 }
 }
 
