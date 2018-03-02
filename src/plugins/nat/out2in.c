@@ -1103,8 +1103,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               s0 = snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
                                              thread_index, now, vm, node);
-              if (!s0)
-                next0 = SNAT_OUT2IN_NEXT_DROP;
+	      if (!sm->forwarding_enabled)
+		if (!s0)
+		  next0 = SNAT_OUT2IN_NEXT_DROP;
               goto trace0;
             }
 
@@ -1273,8 +1274,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               s1 = snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1,
                                              thread_index, now, vm, node);
-              if (!s1)
-                next1 = SNAT_OUT2IN_NEXT_DROP;
+	      if (!sm->forwarding_enabled)
+		if (!s1)
+		  next1 = SNAT_OUT2IN_NEXT_DROP;
               goto trace1;
             }
 
@@ -1469,8 +1471,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               s0 = snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
                                              thread_index, now, vm, node);
-              if (!s0)
-                next0 = SNAT_OUT2IN_NEXT_DROP;
+	      if (!sm->forwarding_enabled)
+		if (!s0)
+		  next0 = SNAT_OUT2IN_NEXT_DROP;
               goto trace00;
             }
 
