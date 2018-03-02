@@ -232,6 +232,7 @@ help:
 	@echo "                        same as above"
 	@echo " STEP=[yes|no]        - ease debugging by stepping through a testcase "
 	@echo " SANITY=[yes|no]      - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)"
+	@echo " EXTENDED_TESTS=[1|y] - run extended tests"
 	@echo " TEST=<filter>        - filter the set of tests:"
 	@echo "    by file-name      - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
 	@echo "    by file-suffix    - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
