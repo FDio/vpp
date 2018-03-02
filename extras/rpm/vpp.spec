@@ -70,6 +70,7 @@ BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
 BuildRequires: boost boost-devel
 BuildRequires: selinux-policy selinux-policy-devel
+BuildRequires: mbedtls-devel
 
 Source: %{name}-%{_version}-%{_release}.tar.xz
 # Source: vpp-latest.tar.xz
