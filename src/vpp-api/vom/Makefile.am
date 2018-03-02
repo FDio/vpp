@@ -78,6 +78,11 @@ libvom_la_SOURCES = 			\
 	arp_proxy_binding.cpp		\
 	arp_proxy_config_cmds.cpp	\
 	arp_proxy_config.cpp		\
+	bond_group_binding_cmds.cpp	\
+	bond_group_binding.cpp		\
+	bond_interface_cmds.cpp		\
+	bond_interface.cpp		\
+	bond_member.cpp			\
 	bridge_domain_cmds.cpp		\
 	bridge_domain.cpp		\
 	bridge_domain_arp_entry.cpp	\
@@ -169,6 +174,9 @@ endif
 vominclude_HEADERS =			\
 	arp_proxy_binding.hpp		\
 	arp_proxy_config.hpp		\
+	bond_group_binding.hpp		\
+	bond_interface.hpp		\
+	bond_member.hpp			\
 	bridge_domain.hpp		\
 	bridge_domain_arp_entry.hpp	\
 	bridge_domain_entry.hpp		\

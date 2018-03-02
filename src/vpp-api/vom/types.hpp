@@ -53,6 +53,11 @@ enum class dependency_t
   INTERFACE,
 
   /**
+   * bond interfaces are after the interfaces
+   */
+  BOND_INTERFACE,
+
+  /**
    * Tunnel or virtual interfaces next
    */
   TUNNEL,
