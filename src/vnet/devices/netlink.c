@@ -76,7 +76,7 @@ vnet_netlink_msg_send (vnet_netlink_msg_t * m)
     return clib_error_return_unix (0, "socket(AF_NETLINK)");
 
   ra.nl_family = AF_NETLINK;
-  ra.nl_pid = getpid ();
+  ra.nl_pid = 0;
 
   if ((bind (sock, (struct sockaddr *) &ra, sizeof (ra))) == -1)
     {
