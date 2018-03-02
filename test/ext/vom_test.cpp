@@ -20,6 +20,9 @@
 #include "vom/om.hpp"
 #include "vom/interface.hpp"
 #include "vom/interface_cmds.hpp"
+#include "vom/bond_interface_cmds.hpp"
+#include "vom/bond_group_binding.hpp"
+#include "vom/bond_group_binding_cmds.hpp"
 #include "vom/l2_binding.hpp"
 #include "vom/l2_binding_cmds.hpp"
 #include "vom/l3_binding.hpp"
@@ -178,6 +181,10 @@ public:
                     {
                         rc = handle_derived<interface_cmds::vhost_create_cmd>(f_exp, f_act);
                     }
+                    else if (typeid(*f_exp) == typeid(bond_interface_cmds::create_cmd))
+                    {
+                       rc = handle_derived<bond_interface_cmds::create_cmd>(f_exp, f_act);
+                    }
                     else if (typeid(*f_exp) == typeid(interface_cmds::loopback_delete_cmd))
                     {
                         rc = handle_derived<interface_cmds::loopback_delete_cmd>(f_exp, f_act);
@@ -189,6 +196,10 @@ public:
                     else if (typeid(*f_exp) == typeid(interface_cmds::vhost_delete_cmd))
                     {
                        rc = handle_derived<interface_cmds::vhost_delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(bond_interface_cmds::delete_cmd))
+                    {
+                       rc = handle_derived<bond_interface_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(interface_cmds::state_change_cmd))
                     {
@@ -205,6 +216,14 @@ public:
                     else if (typeid(*f_exp) == typeid(interface_cmds::set_tag))
                     {
                         rc = handle_derived<interface_cmds::set_tag>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(bond_group_binding_cmds::bind_cmd))
+                    {
+                       rc = handle_derived<bond_group_binding_cmds::bind_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(bond_group_binding_cmds::unbind_cmd))
+                    {
+                       rc = handle_derived<bond_group_binding_cmds::unbind_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(route_domain_cmds::create_cmd))
                     {
@@ -768,6 +787,80 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd4_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd6_delete, l3_proto_t::IPV6, 1));
     TRY_CHECK(OM::remove(graham));
+}
+
+BOOST_AUTO_TEST_CASE(test_bond) {
+    VppInit vi;
+    const std::string cb = "CarolBerg";
+    rc_t rc = rc_t::OK;
+
+    /*
+     * creates the interfaces
+     */
+    std::string itf1_name = "afpacket1";
+    interface itf1(itf1_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+
+    HW::item<handle_t> hw_ifh(2, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
+
+    TRY_CHECK_RC(OM::write(cb, itf1));
+
+    std::string itf2_name = "afpacket2";
+    interface itf2(itf2_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+
+
+    HW::item<handle_t> hw_ifh2(4, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
+
+    TRY_CHECK_RC(OM::write(cb, itf2));
+
+    std::string bond_name = "bond";
+    bond_interface bond_itf(bond_name, interface::admin_state_t::UP,
+                                 bond_interface::mode_t::LACP);
+
+    HW::item<handle_t> hw_ifh3(6, rc_t::OK);
+    ADD_EXPECT(bond_interface_cmds::create_cmd(hw_ifh3, bond_name,
+      bond_interface::mode_t::LACP, bond_interface::lb_t::L2, l2_address_t::ZERO));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh3));
+
+    TRY_CHECK_RC(OM::write(cb, bond_itf));
+
+    bond_member *bm1 = new bond_member(itf1, bond_member::mode_t::ACTIVE,
+                                         bond_member::rate_t::SLOW);
+    bond_member *bm2 = new bond_member(itf2, bond_member::mode_t::ACTIVE,
+                                         bond_member::rate_t::SLOW);
+    bond_group_binding *bgb = new bond_group_binding(bond_itf, {*bm1, *bm2});
+
+    HW::item<bool> bond_hw_bind(true, rc_t::OK);
+    ADD_EXPECT(bond_group_binding_cmds::bind_cmd(bond_hw_bind, hw_ifh3.data(), *bm1));
+    ADD_EXPECT(bond_group_binding_cmds::bind_cmd(bond_hw_bind, hw_ifh3.data(), *bm2));
+
+    TRY_CHECK_RC(OM::write(cb, *bgb));
+
+    delete bgb;
+    delete bm2;
+    delete bm1;
+
+    STRICT_ORDER_OFF();
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
+    ADD_EXPECT(bond_group_binding_cmds::unbind_cmd(bond_hw_bind, hw_ifh.data()));
+    ADD_EXPECT(bond_group_binding_cmds::unbind_cmd(bond_hw_bind, hw_ifh2.data()));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh3));
+    ADD_EXPECT(bond_interface_cmds::delete_cmd(hw_ifh3));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
+
+    TRY_CHECK(OM::remove(cb));
 }
 
 BOOST_AUTO_TEST_CASE(test_bridge) {
