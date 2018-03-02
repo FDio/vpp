@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce01bdf0_9e704a74",
+        "filename": "src/vcl/vcl_event.h",
+        "patchSetId": 26
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-03-02T19:19:06Z",
+      "side": 1,
+      "message": "Minor nit, but since this is a pool, I\u0027d make this plural: vce_events",
+      "range": {
+        "startLine": 65,
+        "startChar": 15,
+        "endLine": 65,
+        "endChar": 24
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c4bc3170_185619a9",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1497,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-03-02T19:19:06Z",
+      "side": 1,
+      "message": "I expect this to be called for cut-thru tests...\n\nAm I missing something that changed in VPP for the cut-thru case?",
+      "range": {
+        "startLine": 1497,
+        "startChar": 0,
+        "endLine": 1497,
+        "endChar": 74
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "378d8574_0d876fed",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2924,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-03-02T19:19:06Z",
+      "side": 1,
+      "message": "If the listen_session is set to non-blocking, then the client_session_index_fifo should be checked first.  If it is empty, then return VPPCOM_EAGAIN",
+      "range": {
+        "startLine": 2909,
+        "startChar": 0,
+        "endLine": 2924,
+        "endChar": 56
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
