@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "vom/bond_interface_binding.hpp"
+#include "vom/bond_interface_cmds.hpp"
+#include "vom/bond_interface_binding_cmds.hpp"
 #include "vom/interface.hpp"
 #include "vom/interface_cmds.hpp"
 #include "vom/interface_factory.hpp"
@@ -464,6 +467,65 @@ interface::dump(std::ostream& os)
 void
 interface::event_handler::handle_populate(const client_db::key_t& key)
 {
+  /*
+   * dump VPP current states
+   */
+  std::shared_ptr<bond_interface_cmds::dump_cmd> bcmd =
+    std::make_shared<bond_interface_cmds::dump_cmd>();
+
+  HW::enqueue(bcmd);
+  HW::write();
+
+  for (auto& bond_itf_record : *bcmd) {
+    std::shared_ptr<bond_interface> bond_itf =
+      interface_factory::new_bond_interface(
+        bond_itf_record.get_payload());
+
+    VOM_LOG(log_level_t::DEBUG) << " bond-dump:" << bond_itf->to_string();
+
+    /*
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, *bond_itf);
+
+    std::shared_ptr<bond_interface_binding_cmds::dump_cmd> scmd =
+      std::make_shared<bond_interface_binding_cmds::dump_cmd>(
+        bond_interface_binding_cmds::dump_cmd(bond_itf->handle()));
+
+    HW::enqueue(scmd);
+    HW::write();
+
+    bond_interface_binding::enslaved_itf_t enslaved_itfs;
+
+    for (auto& slave_itf_record : *scmd) {
+      std::shared_ptr<bond_member_interface> slave_itf =
+        interface_factory::new_bond_member_interface(
+          slave_itf_record.get_payload());
+
+       VOM_LOG(log_level_t::DEBUG) << " slave-dump:" << slave_itf->to_string();
+
+      /*
+       * Write each of the discovered interfaces into the OM,
+       * but disable the HW Command q whilst we do, so that no
+       * commands are sent to VPP
+       */
+      OM::commit(slave_itf->key(), *slave_itf);
+      enslaved_itfs.insert(*slave_itf);
+    }
+
+    if (!enslaved_itfs.empty()) {
+      bond_interface_binding bid(*bond_itf, enslaved_itfs);
+      /*
+       * Write each of the discovered interfaces into the OM,
+       * but disable the HW Command q whilst we do, so that no
+       * commands are sent to VPP
+       */
+      OM::commit(bid.key(), bid);
+    }
+  }
+
   std::shared_ptr<interface_cmds::vhost_dump_cmd> vcmd =
     std::make_shared<interface_cmds::vhost_dump_cmd>();
 
@@ -474,7 +536,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> vitf =
       interface_factory::new_vhost_user_interface(
         vhost_itf_record.get_payload());
-    VOM_LOG(log_level_t::DEBUG) << "dump: " << vitf->to_string();
+    VOM_LOG(log_level_t::DEBUG) << " vhost-dump: " << vitf->to_string();
     OM::commit(key, *vitf);
   }
 

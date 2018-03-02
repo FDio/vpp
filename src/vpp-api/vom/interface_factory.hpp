@@ -22,6 +22,7 @@
 
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
+#include <vapi/bond.api.vapi.hpp>
 
 namespace VOM {
 
@@ -36,6 +37,12 @@ public:
 
   static std::shared_ptr<interface> new_vhost_user_interface(
     const vapi_payload_sw_interface_vhost_user_details& vd);
+
+  static std::shared_ptr<bond_interface> new_bond_interface(
+    const vapi_payload_sw_interface_bond_details& vd);
+
+  static std::shared_ptr<bond_member_interface> new_bond_member_interface(
+    const vapi_payload_sw_interface_slave_details& vd);
 };
 };
 

@@ -15,6 +15,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "vom/bond_interface.hpp"
+#include "vom/bond_member_interface.hpp"
 #include "vom/interface_factory.hpp"
 #include "vom/sub_interface.hpp"
 #include "vom/tap_interface.hpp"
@@ -81,9 +83,10 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      * construct a VXLAN tunnel. so skip it. They have
      * their own dump routines
      */
-  } else if (interface::type_t::VHOST == type) {
+  } else if (interface::type_t::VHOST == type ||
+             interface::type_t::BOND == type) {
     /*
-     * vhost interfaces already exist in db, look for it using
+     * vhost or bond interfaces already exist in db, look for it using
      * sw_if_index
      */
     sp = interface::find(hdl);
@@ -94,7 +97,11 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
         sp->set(tag);
     }
   } else {
-    sp = interface(name, type, state, tag).singular();
+
+    if ((sp = interface::find(hdl)) != NULL)
+      sp->set(state);
+    else
+      sp = interface(name, type, state, tag).singular();
     sp->set(l2_address);
   }
 
@@ -118,6 +125,38 @@ interface_factory::new_vhost_user_interface(
   handle_t hdl(vd.sw_if_index);
 
   sp = interface(name, type, interface::admin_state_t::DOWN).singular();
+  sp->set(hdl);
+  return (sp);
+}
+
+std::shared_ptr<bond_interface>
+interface_factory::new_bond_interface(
+  const vapi_payload_sw_interface_bond_details& vd)
+{
+  std::shared_ptr<bond_interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  handle_t hdl(vd.sw_if_index);
+  bond_interface::mode_t mode =
+    bond_interface::mode_t::from_numeric_val(vd.mode);
+  bond_interface::lb_t lb =
+    bond_interface::lb_t::from_numeric_val(vd.lb);
+  sp = bond_interface(name, interface::admin_state_t::DOWN, mode, lb).singular();
+  sp->set(hdl);
+  return (sp);
+}
+
+std::shared_ptr<bond_member_interface>
+interface_factory::new_bond_member_interface(
+  const vapi_payload_sw_interface_slave_details& vd)
+{
+  std::shared_ptr<bond_member_interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  handle_t hdl(vd.sw_if_index);
+  bond_member_interface::mode_t mode =
+    bond_member_interface::mode_t::from_numeric_val(vd.is_passive);
+  bond_member_interface::rate_t rate =
+    bond_member_interface::rate_t::from_numeric_val(vd.is_long_timeout);
+  sp = bond_member_interface(name, interface::admin_state_t::DOWN, mode, rate).singular();
   sp->set(hdl);
   return (sp);
 }
