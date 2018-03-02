@@ -79,7 +79,7 @@ typedef struct tls_ctx_
 #define tls_session_handle c_tls_ctx_id.tls_session_handle
 #define listener_ctx_index c_tls_ctx_id.listener_ctx_index
 #define tcp_is_ip4 c_tls_ctx_id.tcp_is_ip4
-
+#define tls_ctx_idx c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
 #define parent_app_api_context c_s_index
@@ -94,7 +94,7 @@ typedef struct tls_ctx_
 typedef struct tls_main_
 {
   u32 app_index;
-  tls_ctx_t **ctx_pool;
+  tls_ctx_t ***ctx_pool;
   mbedtls_ctr_drbg_context *ctr_drbgs;
   mbedtls_entropy_context *entropy_pools;
   tls_ctx_t *listener_ctx_pool;
@@ -174,37 +174,39 @@ tls_ctx_alloc (void)
 {
   u8 thread_index = vlib_get_thread_index ();
   tls_main_t *tm = &tls_main;
-  tls_ctx_t *ctx;
+  tls_ctx_t **ctx;
 
   pool_get (tm->ctx_pool[thread_index], ctx);
-  memset (ctx, 0, sizeof (*ctx));
-  ctx->c_thread_index = thread_index;
+  if (!(*ctx))
+    *ctx = clib_mem_alloc (sizeof (tls_ctx_t));
+
+  memset (*ctx, 0, sizeof (tls_ctx_t));
+  (*ctx)->c_thread_index = thread_index;
   return ctx - tm->ctx_pool[thread_index];
 }
 
 void
 tls_ctx_free (tls_ctx_t * ctx)
 {
-  pool_put (tls_main.ctx_pool[vlib_get_thread_index ()], ctx);
+  pool_put_index (tls_main.ctx_pool[vlib_get_thread_index ()],
+		  ctx->tls_ctx_idx);
 }
 
 tls_ctx_t *
 tls_ctx_get (u32 ctx_index)
 {
-  return pool_elt_at_index (tls_main.ctx_pool[vlib_get_thread_index ()],
-			    ctx_index);
+  tls_ctx_t **ctx;
+  ctx = pool_elt_at_index (tls_main.ctx_pool[vlib_get_thread_index ()],
+			   ctx_index);
+  return (*ctx);
 }
 
 tls_ctx_t *
 tls_ctx_get_w_thread (u32 ctx_index, u8 thread_index)
 {
-  return pool_elt_at_index (tls_main.ctx_pool[thread_index], ctx_index);
-}
-
-u32
-tls_ctx_index (tls_ctx_t * ctx)
-{
-  return (ctx - tls_main.ctx_pool[vlib_get_thread_index ()]);
+  tls_ctx_t **ctx;
+  ctx = pool_elt_at_index (tls_main.ctx_pool[thread_index], ctx_index);
+  return (*ctx);
 }
 
 u32
@@ -420,7 +422,7 @@ tls_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
-  ctx_ptr = uword_to_pointer (tls_ctx_index (ctx), void *);
+  ctx_ptr = uword_to_pointer (ctx->tls_ctx_idx, void *);
   mbedtls_ssl_set_bio (&ctx->ssl, ctx_ptr, tls_net_send, tls_net_recv, NULL);
 
   mbedtls_debug_set_threshold (TLS_DEBUG_LEVEL_CLIENT);
@@ -528,7 +530,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   mbedtls_ssl_session_reset (&ctx->ssl);
-  ctx_ptr = uword_to_pointer (tls_ctx_index (ctx), void *);
+  ctx_ptr = uword_to_pointer (ctx->tls_ctx_idx, void *);
   mbedtls_ssl_set_bio (&ctx->ssl, ctx_ptr, tls_net_send, tls_net_recv, NULL);
 
   mbedtls_debug_set_threshold (TLS_DEBUG_LEVEL_SERVER);
@@ -569,7 +571,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
 
   app_session = session_alloc (vlib_get_thread_index ());
   app_session->app_index = ctx->parent_app_index;
-  app_session->connection_index = tls_ctx_index (ctx);
+  app_session->connection_index = ctx->tls_ctx_idx;
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
   if ((rv = session_alloc_fifos (sm, app_session)))
@@ -578,7 +580,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       return rv;
     }
   ctx->c_s_index = app_session->session_index;
-  ctx->c_c_index = tls_ctx_index (ctx);
   ctx->app_session_handle = session_handle (app_session);
   return app->cb_fns.session_accept_callback (app_session);
 }
@@ -597,7 +598,7 @@ tls_notify_app_connected (tls_ctx_t * ctx)
   sm = application_get_connect_segment_manager (app);
   app_session = session_alloc (vlib_get_thread_index ());
   app_session->app_index = ctx->parent_app_index;
-  app_session->connection_index = tls_ctx_index (ctx);
+  app_session->connection_index = ctx->tls_ctx_idx;
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
   if (session_alloc_fifos (sm, app_session))
@@ -605,13 +606,12 @@ tls_notify_app_connected (tls_ctx_t * ctx)
 
   ctx->app_session_handle = session_handle (app_session);
   ctx->c_s_index = app_session->session_index;
-  ctx->c_c_index = tls_ctx_index (ctx);
   app_session->session_state = SESSION_STATE_READY;
   if (cb_fn (ctx->parent_app_index, ctx->parent_app_api_context,
 	     app_session, 0 /* not failed */ ))
     {
       TLS_DBG (1, "failed to notify app");
-      tls_disconnect (tls_ctx_index (ctx), vlib_get_thread_index ());
+      tls_disconnect (ctx->tls_ctx_idx, vlib_get_thread_index ());
     }
 
   return 0;
@@ -721,6 +721,7 @@ tls_session_accept_callback (stream_session_t * tls_session)
   ctx = tls_ctx_get (ctx_index);
   memcpy (ctx, lctx, sizeof (*lctx));
   ctx->c_thread_index = vlib_get_thread_index ();
+  ctx->tls_ctx_idx = ctx_index;
   tls_session->session_state = SESSION_STATE_READY;
   tls_session->opaque = ctx_index;
   ctx->tls_session_handle = session_handle (tls_session);
@@ -840,14 +841,21 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   cb_fn = app->cb_fns.session_connected_callback;
 
   if (is_fail)
-    goto failed;
+    {
+      tls_ctx_half_open_reader_unlock ();
+      tls_ctx_half_open_free (ho_ctx_index);
+      return cb_fn (ho_ctx->parent_app_index, ho_ctx->c_s_index, 0,
+		    1 /* failed */ );
+    }
 
   ctx_index = tls_ctx_alloc ();
   ctx = tls_ctx_get (ctx_index);
   clib_memcpy (ctx, ho_ctx, sizeof (*ctx));
-  ctx->c_thread_index = vlib_get_thread_index ();
   tls_ctx_half_open_reader_unlock ();
   tls_ctx_half_open_free (ho_ctx_index);
+
+  ctx->c_thread_index = vlib_get_thread_index ();
+  ctx->tls_ctx_idx = ctx_index;
 
   TLS_DBG (1, "TCP connect for %u returned %u. New connection [%u]%u",
 	   ho_ctx_index, is_fail, vlib_get_thread_index (),
@@ -858,12 +866,6 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   tls_session->session_state = SESSION_STATE_READY;
 
   return tls_ctx_init_client (ctx);
-
-failed:
-  tls_ctx_half_open_reader_unlock ();
-  tls_ctx_half_open_free (ho_ctx_index);
-  return cb_fn (ho_ctx->parent_app_index, ho_ctx->c_s_index, 0,
-		1 /* failed */ );
 }
 
 /* *INDENT-OFF* */
