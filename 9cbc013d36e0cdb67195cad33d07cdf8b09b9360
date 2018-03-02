@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7eac90c7_f88c339a",
+        "filename": "src/vcl/vcl_event.h",
+        "patchSetId": 26
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-03-02T19:28:07Z",
+      "side": 1,
+      "message": "Yep, totally fair. Will change.",
+      "parentUuid": "ce01bdf0_9e704a74",
+      "range": {
+        "startLine": 65,
+        "startChar": 15,
+        "endLine": 65,
+        "endChar": 24
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c4bc3170_185619a9",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 26
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "2939da51_2bc5bcd7",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1497,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-03-02T19:28:07Z",
+      "side": 1,
+      "message": "I ran make test against this patch... its not called. Pretty sure Florin made it so its not called.",
+      "parentUuid": "c4bc3170_185619a9",
+      "range": {
+        "startLine": 1497,
+        "startChar": 0,
+        "endLine": 1497,
+        "endChar": 74
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "378d8574_0d876fed",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 26
@@ -59,6 +107,30 @@
       "writtenOn": "2018-03-02T19:19:06Z",
       "side": 1,
       "message": "If the listen_session is set to non-blocking, then the client_session_index_fifo should be checked first.  If it is empty, then return VPPCOM_EAGAIN",
+      "range": {
+        "startLine": 2909,
+        "startChar": 0,
+        "endLine": 2924,
+        "endChar": 56
+      },
+      "revId": "9cbc013d36e0cdb67195cad33d07cdf8b09b9360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1ad0276_f19abbac",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2924,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2018-03-02T19:28:07Z",
+      "side": 1,
+      "message": "If the listener is set for non-blocking, we still get the connect request via the vl_api, which doesn\u0027t use the fifo.\n\nWould you entertain me changing 2922 to be pthread_cond_timedwait() with a ridiculously small time-out. On ETIMEDOUT I can then return VPPCOM_EAGAIN...",
+      "parentUuid": "378d8574_0d876fed",
       "range": {
         "startLine": 2909,
         "startChar": 0,
