@@ -42,6 +42,7 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
+#include <vlib/linux/vfio.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -115,28 +116,11 @@ typedef struct
 
 } linux_pci_device_t;
 
-typedef struct
-{
-  int group;
-  int fd;
-  int refcnt;
-} linux_pci_vfio_iommu_group_t;
-
 /* Pool of PCI devices. */
 typedef struct
 {
   vlib_main_t *vlib_main;
   linux_pci_device_t *linux_pci_devices;
-
-  /* VFIO */
-  int vfio_container_fd;
-  int vfio_iommu_mode;
-
-  /* pool of IOMMU groups */
-  linux_pci_vfio_iommu_group_t *iommu_groups;
-
-  /* iommu group pool index by group id  hash */
-  uword *iommu_pool_index_by_group;
 
 } linux_pci_main_t;
 
@@ -180,7 +164,7 @@ linux_pci_main_t linux_pci_main;
 vlib_pci_device_info_t *
 vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
 {
-  linux_pci_main_t *lpm = &linux_pci_main;
+  linux_vfio_main_t *lvm = &vfio_main;
   clib_error_t *err;
   vlib_pci_device_info_t *di;
   u8 *f = 0;
@@ -271,7 +255,7 @@ vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
   di->driver_name = clib_sysfs_link_to_name ((char *) f);
 
   di->iommu_group = -1;
-  if (lpm->vfio_container_fd != -1)
+  if (lvm->container_fd != -1)
     {
       u8 *tmpstr;
       vec_reset_length (f);
@@ -862,91 +846,11 @@ vlib_pci_disable_msix_irq (vlib_pci_dev_handle_t h, u16 start, u16 count)
 			VFIO_IRQ_SET_ACTION_TRIGGER, fds);
 }
 
-static linux_pci_vfio_iommu_group_t *
-get_vfio_iommu_group (int group)
-{
-  linux_pci_main_t *lpm = &linux_pci_main;
-  uword *p;
-
-  p = hash_get (lpm->iommu_pool_index_by_group, group);
-
-  return p ? pool_elt_at_index (lpm->iommu_groups, p[0]) : 0;
-}
-
-static clib_error_t *
-open_vfio_iommu_group (int group)
-{
-  linux_pci_main_t *lpm = &linux_pci_main;
-  linux_pci_vfio_iommu_group_t *g;
-  clib_error_t *err = 0;
-  struct vfio_group_status group_status;
-  u8 *s = 0;
-  int fd;
-
-  g = get_vfio_iommu_group (group);
-  if (g)
-    {
-      g->refcnt++;
-      return 0;
-    }
-  s = format (s, "/dev/vfio/%u%c", group, 0);
-  fd = open ((char *) s, O_RDWR);
-  if (fd < 0)
-    return clib_error_return_unix (0, "open '%s'", s);
-
-  group_status.argsz = sizeof (group_status);
-  if (ioctl (fd, VFIO_GROUP_GET_STATUS, &group_status) < 0)
-    {
-      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_GET_STATUS) '%s'",
-				    s);
-      goto error;
-    }
-
-  if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE))
-    {
-      err = clib_error_return (0, "iommu group %d is not viable (not all "
-			       "devices in this group bound to vfio-pci)",
-			       group);
-      goto error;
-    }
-
-  if (ioctl (fd, VFIO_GROUP_SET_CONTAINER, &lpm->vfio_container_fd) < 0)
-    {
-      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_SET_CONTAINER) '%s'",
-				    s);
-      goto error;
-    }
-
-  if (lpm->vfio_iommu_mode == 0)
-    {
-      if (ioctl (lpm->vfio_container_fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU) <
-	  0)
-	{
-	  err = clib_error_return_unix (0, "ioctl(VFIO_SET_IOMMU) "
-					"'/dev/vfio/vfio'");
-	  goto error;
-	}
-      lpm->vfio_iommu_mode = VFIO_TYPE1_IOMMU;
-    }
-
-
-  pool_get (lpm->iommu_groups, g);
-  g->fd = fd;
-  g->refcnt = 1;
-  hash_set (lpm->iommu_pool_index_by_group, group, g - lpm->iommu_groups);
-  vec_free (s);
-  return 0;
-error:
-  close (fd);
-  return err;
-}
-
 static clib_error_t *
 add_device_vfio (linux_pci_device_t * p, vlib_pci_device_info_t * di,
 		 pci_device_registration_t * r)
 {
   linux_pci_main_t *lpm = &linux_pci_main;
-  linux_pci_vfio_iommu_group_t *g;
   struct vfio_device_info device_info = { 0 };
   clib_error_t *err = 0;
   u8 *s = 0;
@@ -960,19 +864,8 @@ add_device_vfio (linux_pci_device_t * p, vlib_pci_device_info_t * di,
 			      "vfio-pci", format_vlib_pci_addr, &di->addr,
 			      di->iommu_group);
 
-  if ((err = open_vfio_iommu_group (di->iommu_group)))
+  if ((err = linux_vfio_group_get_device_fd (&p->addr, &p->fd)))
     return err;
-
-  g = get_vfio_iommu_group (di->iommu_group);
-
-  s = format (s, "%U%c", format_vlib_pci_addr, &di->addr, 0);
-  if ((p->fd = ioctl (g->fd, VFIO_GROUP_GET_DEVICE_FD, (char *) s)) < 0)
-    {
-      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_GET_DEVICE_FD) '%U'",
-				    format_vlib_pci_addr, &di->addr);
-      goto error;
-    }
-  vec_reset_length (s);
 
   device_info.argsz = sizeof (device_info);
   if (ioctl (p->fd, VFIO_DEVICE_GET_INFO, &device_info) < 0)
@@ -1235,10 +1128,8 @@ clib_error_t *
 linux_pci_init (vlib_main_t * vm)
 {
   vlib_pci_main_t *pm = &pci_main;
-  linux_pci_main_t *lpm = &linux_pci_main;
   vlib_pci_addr_t *addr = 0, *addrs;
   clib_error_t *error;
-  int fd;
 
   pm->vlib_main = vm;
 
@@ -1246,23 +1137,6 @@ linux_pci_init (vlib_main_t * vm)
     return error;
 
   ASSERT (sizeof (vlib_pci_addr_t) == sizeof (u32));
-
-  fd = open ("/dev/vfio/vfio", O_RDWR);
-
-  if ((fd != -1) && (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION))
-    {
-      close (fd);
-      fd = -1;
-    }
-
-  if ((fd != -1) && (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 0))
-    {
-      close (fd);
-      fd = -1;
-    }
-
-  lpm->vfio_container_fd = fd;
-  lpm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
 
   addrs = vlib_pci_get_all_dev_addrs ();
   /* *INDENT-OFF* */
