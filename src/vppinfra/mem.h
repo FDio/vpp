@@ -328,6 +328,7 @@ typedef struct
 #define CLIB_MEM_VM_F_NUMA_PREFER (1 << 2)
 #define CLIB_MEM_VM_F_NUMA_FORCE (1 << 3)
 #define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 4)
+#define CLIB_MEM_VM_F_LOCKED (1 << 5)
   u32 flags; /**< vm allocation flags:
                 <br> CLIB_MEM_VM_F_SHARED: request shared memory, file
 		descriptor will be provided on successful allocation.
@@ -337,6 +338,7 @@ typedef struct
 		<br> CLIB_MEM_VM_F_NUMA_FORCE: fail if setting numa policy fails.
 		<br> CLIB_MEM_VM_F_HUGETLB_PREALLOC: pre-allocate hugepages if
 		number of available pages is not sufficient.
+		<br> CLIB_MEM_VM_F_LOCKED: request locked memory.
              */
   char *name; /**< Name for memory allocation, set by caller. */
   uword size; /**< Allocation size, set by caller. */
