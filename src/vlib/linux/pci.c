@@ -182,10 +182,8 @@ vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
 
   /* You can only read more that 64 bytes of config space as root; so we try to
      read the full space but fall back to just the first 64 bytes. */
-  if (read (fd, &di->config_data, sizeof (di->config_data)) !=
-      sizeof (di->config_data)
-      && read (fd, &di->config0,
-	       sizeof (di->config0)) != sizeof (di->config0))
+  if (read (fd, &di->config_data, sizeof (di->config_data)) <
+      sizeof (di->config0))
     {
       err = clib_error_return_unix (0, "read `%s'", f);
       close (fd);
