@@ -432,6 +432,7 @@ typedef struct
   uword start;
   uword size;
   vlib_physmem_region_index_t physmem_region;
+  int alloc_chunk_size;
 } vlib_buffer_pool_t;
 
 typedef struct

@@ -43,7 +43,6 @@
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <linux/vfio.h>
 #include <unistd.h>
 
 #include <vppinfra/linux/syscall.h>
@@ -51,8 +50,8 @@
 #include <vlib/vlib.h>
 #include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
-
-static int vfio_container_fd = -1;
+#include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
 
 static void *
 unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
@@ -77,9 +76,6 @@ unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
 
       /* Allocation failed? */
       if (lo_offset == ~0)
-	break;
-
-      if (pr->flags & VLIB_PHYSMEM_F_FAKE)
 	break;
 
       /* Make sure allocation does not span DMA physical chunk boundary. */
@@ -114,56 +110,6 @@ unix_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx, void *x)
 }
 
 static clib_error_t *
-scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
-{
-  const char fn[] = "/dev/vfio/vfio";
-  char buff[sizeof (fn)] = { 0 };
-
-  if (readlink ((char *) path_name, buff, sizeof (fn)) + 1 != sizeof (fn))
-    return 0;
-
-  if (strncmp (fn, buff, sizeof (fn)))
-    return 0;
-
-  vfio_container_fd = atoi ((char *) file_name);
-  return 0;
-}
-
-static clib_error_t *
-unix_physmem_region_iommu_register (vlib_physmem_region_t * pr)
-{
-  struct vfio_iommu_type1_dma_map dma_map = { 0 };
-  int i, fd;
-
-  if (vfio_container_fd == -1)
-    foreach_directory_file ("/proc/self/fd", scan_vfio_fd, 0, 0);
-
-  fd = vfio_container_fd;
-
-  if (fd < 0)
-    return 0;
-
-  if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
-    return 0;
-
-  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 0)
-    return 0;
-
-  dma_map.argsz = sizeof (struct vfio_iommu_type1_dma_map);
-  dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-
-  vec_foreach_index (i, pr->page_table)
-  {
-    dma_map.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
-    dma_map.size = 1 << pr->log2_page_size;
-    dma_map.iova = pr->page_table[i];
-    if (ioctl (fd, VFIO_IOMMU_MAP_DMA, &dma_map) != 0)
-      return clib_error_return_unix (0, "ioctl (VFIO_IOMMU_MAP_DMA)");
-  }
-  return 0;
-}
-
-static clib_error_t *
 unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 			   u8 numa_node, u32 flags,
 			   vlib_physmem_region_index_t * idx)
@@ -172,10 +118,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   vlib_physmem_region_t *pr;
   clib_error_t *error = 0;
   clib_mem_vm_alloc_t alloc = { 0 };
-
-
-  if (geteuid () != 0 && (flags & VLIB_PHYSMEM_F_FAKE) == 0)
-    return clib_error_return (0, "not allowed");
+  int i;
 
   pool_get (vpm->regions, pr);
 
@@ -188,9 +131,11 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   alloc.name = name;
   alloc.size = size;
   alloc.numa_node = numa_node;
-  alloc.flags = CLIB_MEM_VM_F_SHARED;
 
-  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+  alloc.flags = (flags & VLIB_PHYSMEM_F_SHARED) ?
+    CLIB_MEM_VM_F_SHARED : CLIB_MEM_VM_F_LOCKED;
+
+  if ((flags & VLIB_PHYSMEM_F_HUGETLB))
     {
       alloc.flags |= CLIB_MEM_VM_F_HUGETLB;
       alloc.flags |= CLIB_MEM_VM_F_HUGETLB_PREALLOC;
@@ -216,28 +161,29 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   pr->numa_node = numa_node;
   pr->name = format (0, "%s", name);
 
-  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+  for (i = 0; i < pr->n_pages; i++)
     {
-      int i;
-      for (i = 0; i < pr->n_pages; i++)
+      void *ptr = pr->mem + (i << pr->log2_page_size);
+      int node;
+      if ((move_pages (0, 1, &ptr, 0, &node, 0) == 0) && (numa_node != node))
 	{
-	  void *ptr = pr->mem + (i << pr->log2_page_size);
-	  int node;
-	  if ((move_pages (0, 1, &ptr, 0, &node, 0) == 0) &&
-	      (numa_node != node))
-	    {
-	      clib_warning ("physmem page for region \'%s\' allocated on the"
-			    " wrong numa node (requested %u actual %u)",
-			    pr->name, pr->numa_node, node, i);
-	      break;
-	    }
+	  clib_warning ("physmem page for region \'%s\' allocated on the"
+			" wrong numa node (requested %u actual %u)",
+			pr->name, pr->numa_node, node, i);
+	  break;
 	}
-      pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
-					      pr->n_pages);
-      error = unix_physmem_region_iommu_register (pr);
-      if (error)
-	clib_error_report (error);
     }
+
+  if ((vpm->flags & VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU) ||
+      (vpm->flags & VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP) == 0)
+    for (i = 0; i < pr->n_pages; i++)
+      vec_add1 (pr->page_table, pointer_to_uword (pr->mem) +
+		i * (1 << pr->log2_page_size));
+  else
+    pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
+					    pr->n_pages);
+
+  linux_vfio_dma_map_regions (vm);
 
   if (flags & VLIB_PHYSMEM_F_INIT_MHEAP)
     {
@@ -275,11 +221,26 @@ unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
 clib_error_t *
 unix_physmem_init (vlib_main_t * vm)
 {
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  linux_vfio_main_t *lvm = &vfio_main;
   clib_error_t *error = 0;
+  u64 *pt = 0;
 
   /* Avoid multiple calls. */
   if (vm->os_physmem_alloc_aligned)
     return error;
+
+  /* check if pagemap is accessible */
+  pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
+  if (pt[0])
+    vpm->flags |= VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP;
+  vec_free (pt);
+
+  if ((error = linux_vfio_init (vm)))
+    return error;
+
+  if (lvm->flags & LINUX_VFIO_F_HAVE_IOMMU)
+    vpm->flags |= VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU;
 
   vm->os_physmem_alloc_aligned = unix_physmem_alloc_aligned;
   vm->os_physmem_free = unix_physmem_free;
