@@ -221,7 +221,7 @@ tls_listener_ctx_alloc (void)
 }
 
 void
-tls_ctx_listener_free (tls_ctx_t * ctx)
+tls_listener_ctx_free (tls_ctx_t * ctx)
 {
   pool_put (tls_main.half_open_ctx_pool, ctx);
 }
@@ -936,6 +936,13 @@ tls_disconnect (u32 ctx_index, u32 thread_index)
 				     app_session->server_tx_fifo);
       session_free (app_session);
     }
+  if (ctx->ssl.conf->endpoint == MBEDTLS_SSL_IS_SERVER)
+    {
+      mbedtls_x509_crt_free (&ctx->srvcert);
+      mbedtls_pk_free (&ctx->pkey);
+    }
+  mbedtls_ssl_free (&ctx->ssl);
+  mbedtls_ssl_config_free (&ctx->conf);
   tls_ctx_free (ctx);
 }
 
@@ -974,9 +981,15 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 }
 
 u32
-tls_stop_listen (u32 listener_index)
+tls_stop_listen (u32 lctx_index)
 {
-  clib_warning ("TBD");
+  tls_main_t *tm = &tls_main;
+  application_t *tls_app;
+  tls_ctx_t *lctx;
+  lctx = tls_listener_ctx_get (lctx_index);
+  tls_app = application_get (tm->app_index);
+  application_stop_listen (tls_app, lctx->tls_session_handle);
+  tls_listener_ctx_free (lctx);
   return 0;
 }
 
@@ -999,9 +1012,8 @@ format_tls_ctx (u8 * s, va_list * args)
   if (thread_index != child_ti)
     clib_warning ("app and tls sessions are on different threads!");
 
-  s =
-    format (s, "[#%d][TLS] app %u child %u", child_ti, ctx->parent_app_index,
-	    child_si);
+  s = format (s, "[#%d][TLS] app %u child %u", child_ti,
+              ctx->parent_app_index, child_si);
   return s;
 }
 
