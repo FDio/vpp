@@ -83,7 +83,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
   clib_error_t *err = 0;
   void *addr = 0;
   u8 *filename = 0;
-  int mmap_flags = MAP_SHARED;
+  int mmap_flags = 0;
   int log2_page_size;
   int n_pages;
   int old_mpol = -1;
@@ -108,9 +108,13 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 	}
     }
 
+  if (a->flags & CLIB_MEM_VM_F_LOCKED)
+    mmap_flags |= MAP_LOCKED;
+
   /* if we are creating shared segment, we need file descriptor */
   if (a->flags & CLIB_MEM_VM_F_SHARED)
     {
+      mmap_flags |= MAP_SHARED;
       /* if hugepages are needed we need to create mount point */
       if (a->flags & CLIB_MEM_VM_F_HUGETLB)
 	{
@@ -169,14 +173,14 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
     }
   else				/* not CLIB_MEM_VM_F_SHARED */
     {
+      mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
       if (a->flags & CLIB_MEM_VM_F_HUGETLB)
 	{
-	  mmap_flags |= MAP_HUGETLB | MAP_PRIVATE | MAP_ANONYMOUS;
+	  mmap_flags |= MAP_HUGETLB;
 	  log2_page_size = 21;
 	}
       else
 	{
-	  mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
 	  log2_page_size = min_log2 (sysconf (_SC_PAGESIZE));
 	}
     }
