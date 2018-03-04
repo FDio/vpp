@@ -245,12 +245,12 @@ vlib_pci_bus_master_enable (vlib_pci_dev_handle_t h)
   return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
-clib_error_t *vlib_pci_map_resource (vlib_pci_dev_handle_t h, u32 resource,
-				     void **result);
+clib_error_t *vlib_pci_map_region (vlib_pci_dev_handle_t h, u32 resource,
+				   void **result);
 
-clib_error_t *vlib_pci_map_resource_fixed (vlib_pci_dev_handle_t h,
-					   u32 resource, u8 * addr,
-					   void **result);
+clib_error_t *vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h,
+					 u32 resource, u8 * addr,
+					 void **result);
 
 unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
