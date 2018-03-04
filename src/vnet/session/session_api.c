@@ -1111,6 +1111,7 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
   vl_api_app_namespace_add_del_reply_t *rmp;
   vnet_app_add_tls_cert_args_t _a, *a = &_a;
   clib_error_t *error;
+  application_t *app;
   u32 cert_len;
   int rv = 0;
   if (!session_manager_is_enabled ())
@@ -1118,8 +1119,13 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
+  if (!(app = application_lookup (mp->client_index)))
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
+    }
   memset (a, 0, sizeof (*a));
-  a->app_index = clib_net_to_host_u32 (mp->app_index);
+  a->app_index = app->index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   vec_validate (a->cert, cert_len);
   clib_memcpy (a->cert, mp->cert, cert_len);
@@ -1140,6 +1146,7 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
   vl_api_app_namespace_add_del_reply_t *rmp;
   vnet_app_add_tls_key_args_t _a, *a = &_a;
   clib_error_t *error;
+  application_t *app;
   u32 key_len;
   int rv = 0;
   if (!session_manager_is_enabled ())
@@ -1147,8 +1154,13 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
+  if (!(app = application_lookup (mp->client_index)))
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
+    }
   memset (a, 0, sizeof (*a));
-  a->app_index = clib_net_to_host_u32 (mp->app_index);
+  a->app_index = app->index;
   key_len = clib_net_to_host_u16 (mp->key_len);
   vec_validate (a->key, key_len);
   clib_memcpy (a->key, mp->key, key_len);
