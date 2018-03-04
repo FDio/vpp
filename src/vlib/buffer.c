@@ -564,15 +564,14 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
   n_alloc = 0;
   while (n_remaining > 0)
     {
-      n_this_chunk = clib_min (n_remaining, 16);
+      vlib_buffer_pool_t *bp = &vm->buffer_main->buffer_pools[0];
+      n_this_chunk = clib_min (n_remaining, bp->alloc_chunk_size);
 
       n_bytes = n_this_chunk * (sizeof (b[0]) + fl->n_data_bytes);
 
       /* drb: removed power-of-2 ASSERT */
       buffers =
-	vm->os_physmem_alloc_aligned (vm,
-				      vm->buffer_main->
-				      buffer_pools[0].physmem_region, n_bytes,
+	vm->os_physmem_alloc_aligned (vm, bp->physmem_region, n_bytes,
 				      sizeof (vlib_buffer_t));
       if (!buffers)
 	return n_alloc;
@@ -960,6 +959,7 @@ vlib_buffer_add_physmem_region (vlib_main_t * vm,
   p->start = start;
   p->size = size;
   p->physmem_region = pri;
+  p->alloc_chunk_size = (pr->log2_page_size > 18) ? 16 : 1;
   return p - bm->buffer_pools;
 }
 
@@ -1056,6 +1056,8 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   /* allocate default region */
   error = vlib_physmem_region_alloc (vm, "buffers",
 				     vlib_buffer_physmem_sz, 0,
+				     VLIB_PHYSMEM_F_SHARED |
+				     VLIB_PHYSMEM_F_HUGETLB |
 				     VLIB_PHYSMEM_F_INIT_MHEAP, &pri);
 
   if (error == 0)
@@ -1063,13 +1065,13 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
   clib_error_free (error);
 
-  /* we my be running unpriviledged, so try to allocate fake physmem */
-  error = vlib_physmem_region_alloc (vm, "buffers (fake)",
+  error = vlib_physmem_region_alloc (vm, "buffers",
 				     vlib_buffer_physmem_sz, 0,
-				     VLIB_PHYSMEM_F_FAKE |
+				     VLIB_PHYSMEM_F_SHARED |
 				     VLIB_PHYSMEM_F_INIT_MHEAP, &pri);
 done:
-  vlib_buffer_add_physmem_region (vm, pri);
+  if (error == 0)
+    vlib_buffer_add_physmem_region (vm, pri);
   return error;
 }
 

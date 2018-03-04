@@ -121,7 +121,8 @@ always_inline void
 vlib_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx,
 		   void *mem)
 {
-  return vm->os_physmem_free (vm, idx, mem);
+  if (mem)
+    vm->os_physmem_free (vm, idx, mem);
 }
 
 always_inline u64
