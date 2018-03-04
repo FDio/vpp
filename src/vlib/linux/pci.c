@@ -61,11 +61,27 @@ static char *sysfs_mod_vfio_noiommu =
 
 typedef struct
 {
+  int fd;
+  void *addr;
+  size_t size;
+} linux_pci_region_t;
+
+
+typedef enum
+{
+  LINUX_PCI_DEVICE_TYPE_UNKNOWN,
+  LINUX_PCI_DEVICE_TYPE_UIO,
+  LINUX_PCI_DEVICE_TYPE_VFIO,
+} linux_pci_device_type_t;
+
+typedef struct
+{
+  linux_pci_device_type_t type;
   vlib_pci_dev_handle_t handle;
   vlib_pci_addr_t addr;
 
   /* Resource file descriptors. */
-  int *resource_fds;
+  linux_pci_region_t *regions;
 
   /* File descriptor for config space read/write. */
   int config_fd;
@@ -596,6 +612,7 @@ add_device_uio (vlib_main_t * vm, linux_pci_device_t * p,
 
   p->addr.as_u32 = di->addr.as_u32;
   p->fd = -1;
+  p->type = LINUX_PCI_DEVICE_TYPE_UIO;
 
   s = format (s, "%s/%U/config%c", sysfs_pci_dev_path,
 	      format_vlib_pci_addr, &di->addr, 0);
@@ -736,6 +753,7 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
   u8 *s = 0;
 
   p->addr.as_u32 = di->addr.as_u32;
+  p->type = LINUX_PCI_DEVICE_TYPE_VFIO;
 
   if (di->driver_name == 0 ||
       (strcmp ("vfio-pci", (char *) di->driver_name) != 0))
@@ -864,71 +882,95 @@ vlib_pci_read_write_config (vlib_pci_dev_handle_t h,
 }
 
 static clib_error_t *
-vlib_pci_map_resource_int (vlib_pci_dev_handle_t h,
-			   u32 resource, u8 * addr, void **result)
+vlib_pci_map_region_int (vlib_pci_dev_handle_t h,
+			 u32 bar, u8 * addr, void **result)
 {
   linux_pci_device_t *p = linux_pci_get_device (h);
-  struct stat stat_buf;
-  u8 *file_name;
-  int fd;
+  int fd = -1;
   clib_error_t *error;
   int flags = MAP_SHARED;
+  u64 size = 0, offset = 0;
+
+  ASSERT (bar <= 5);
 
   error = 0;
 
-  file_name = format (0, "%s/%U/resource%d%c", sysfs_pci_dev_path,
-		      format_vlib_pci_addr, &p->addr, resource, 0);
-
-  fd = open ((char *) file_name, O_RDWR);
-  if (fd < 0)
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
     {
-      error = clib_error_return_unix (0, "open `%s'", file_name);
-      goto done;
-    }
+      u8 *file_name;
+      struct stat stat_buf;
+      file_name = format (0, "%s/%U/resource%d%c", sysfs_pci_dev_path,
+			  format_vlib_pci_addr, &p->addr, bar, 0);
 
-  if (fstat (fd, &stat_buf) < 0)
+      fd = open ((char *) file_name, O_RDWR);
+      if (fd < 0)
+	{
+	  error = clib_error_return_unix (0, "open `%s'", file_name);
+	  vec_free (file_name);
+	  return error;
+	}
+
+      if (fstat (fd, &stat_buf) < 0)
+	{
+	  error = clib_error_return_unix (0, "fstat `%s'", file_name);
+	  vec_free (file_name);
+	  close (fd);
+	  return error;
+	}
+
+      vec_free (file_name);
+      if (addr != 0)
+	flags |= MAP_FIXED;
+      size = stat_buf.st_size;
+      offset = 0;
+    }
+  else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
     {
-      error = clib_error_return_unix (0, "fstat `%s'", file_name);
-      goto done;
+      struct vfio_region_info reg = { 0 };
+      reg.argsz = sizeof (struct vfio_region_info);
+      reg.index = bar;
+      if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, &reg) < 0)
+	return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) "
+				       "'%U'", format_vlib_pci_addr,
+				       &p->addr);
+      fd = p->fd;
+      size = reg.size;
+      offset = reg.offset;
     }
+  else
+    ASSERT (0);
 
-  vec_validate (p->resource_fds, resource);
-  p->resource_fds[resource] = fd;
-  if (addr != 0)
-    flags |= MAP_FIXED;
-
-  *result = mmap (addr,
-		  /* size */ stat_buf.st_size,
-		  PROT_READ | PROT_WRITE, flags,
-		  /* file */ fd,
-		  /* offset */ 0);
+  *result = mmap (addr, size, PROT_READ | PROT_WRITE, flags, fd, offset);
   if (*result == (void *) -1)
     {
-      error = clib_error_return_unix (0, "mmap `%s'", file_name);
-      goto done;
-    }
-
-done:
-  if (error)
-    {
-      if (fd >= 0)
+      error = clib_error_return_unix (0, "mmap `BAR%u'", bar);
+      if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
 	close (fd);
+      return error;
     }
-  vec_free (file_name);
-  return error;
+
+  /* *INDENT-OFF* */
+  vec_validate_init_empty (p->regions, bar,
+			   (linux_pci_region_t) { .fd = -1});
+  /* *INDENT-ON* */
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    p->regions[bar].fd = fd;
+  p->regions[bar].addr = *result;
+  p->regions[bar].size = size;
+  return 0;
 }
 
 clib_error_t *
-vlib_pci_map_resource (vlib_pci_dev_handle_t h, u32 resource, void **result)
+vlib_pci_map_region (vlib_pci_dev_handle_t h, u32 resource, void **result)
 {
-  return (vlib_pci_map_resource_int (h, resource, 0 /* addr */ , result));
+  return (vlib_pci_map_region_int (h, resource, 0 /* addr */ , result));
 }
 
 clib_error_t *
-vlib_pci_map_resource_fixed (vlib_pci_dev_handle_t h,
-			     u32 resource, u8 * addr, void **result)
+vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h, u32 resource, u8 * addr,
+			   void **result)
 {
-  return (vlib_pci_map_resource_int (h, resource, addr, result));
+  return (vlib_pci_map_region_int (h, resource, addr, result));
 }
 
 void
