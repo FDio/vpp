@@ -388,9 +388,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->sw_if_index = vif->sw_if_index;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
-				    virtio_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
+  vnet_hw_interface_assign_any_rx_thread (vnm, vif->hw_if_index, 0,
+					  virtio_input_node.index);
   vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
 				 VNET_HW_INTERFACE_RX_MODE_DEFAULT);
   vif->per_interface_next_index = ~0;

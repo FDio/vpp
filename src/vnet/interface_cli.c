@@ -1528,6 +1528,7 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_hw_interface_rx_mode mode;
+  u32 node_index;
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;
   u32 thread_index = (u32) ~ 0;
@@ -1566,17 +1567,21 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 			      "please specify valid worker thread or main");
 
   rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
+  if (rv)
+    return clib_error_return (0, "not found");
 
+  rv =
+    vnet_hw_interface_get_input_node (vnm, hw_if_index, queue_id,
+				      &node_index);
   if (rv)
     return clib_error_return (0, "not found");
 
   rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
-
   if (rv)
     return clib_error_return (0, "not found");
 
   vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
-				      thread_index);
+				      node_index, thread_index);
   vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
 
   return 0;

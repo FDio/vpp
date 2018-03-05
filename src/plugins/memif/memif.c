@@ -226,7 +226,8 @@ memif_connect (memif_if_t * mif)
 				       mif->dev_instance, i);
 	memif_file_add (&mq->int_clib_file_index, &template);
       }
-    vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
+    vnet_hw_interface_assign_any_rx_thread (vnm, mif->hw_if_index, i,
+					    memif_input_node.index);
     rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
 					VNET_HW_INTERFACE_RX_MODE_DEFAULT);
     if (rv)
@@ -827,8 +828,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
   hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, mif->hw_if_index,
-				    memif_input_node.index);
 
   mhash_set (&msf->dev_instance_by_id, &mif->id, mif->dev_instance, 0);
 
