@@ -605,7 +605,7 @@ sctp_send_cookie_echo (sctp_connection_t * sctp_conn)
       clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
 
       session_stream_connect_notify (&sctp_conn->sub_conn
-				     [MAIN_SCTP_SUB_CONN_IDX].connection, 1);
+				     [SCTP_PRIMARY_PATH_IDX].connection, 1);
 
       sctp_connection_timers_reset (sctp_conn);
 
@@ -616,7 +616,7 @@ sctp_send_cookie_echo (sctp_connection_t * sctp_conn)
     return;
 
   b = vlib_get_buffer (vm, bi);
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+  u8 idx = SCTP_PRIMARY_PATH_IDX;
 
   sctp_init_buffer (vm, b);
   sctp_prepare_cookie_echo_chunk (sctp_conn, idx, b, 0);
@@ -1056,7 +1056,7 @@ sctp_send_shutdown (sctp_connection_t * sctp_conn)
   if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
     return;
 
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+  u8 idx = SCTP_PRIMARY_PATH_IDX;
 
   b = vlib_get_buffer (vm, bi);
   sctp_init_buffer (vm, b);
@@ -1321,7 +1321,7 @@ sctp_send_init (sctp_connection_t * sctp_conn)
       clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
 
       session_stream_connect_notify (&sctp_conn->sub_conn
-				     [MAIN_SCTP_SUB_CONN_IDX].connection, 1);
+				     [SCTP_PRIMARY_PATH_IDX].connection, 1);
 
       sctp_connection_timers_reset (sctp_conn);
 
@@ -1334,7 +1334,7 @@ sctp_send_init (sctp_connection_t * sctp_conn)
     return;
 
   b = vlib_get_buffer (vm, bi);
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+  u8 idx = SCTP_PRIMARY_PATH_IDX;
 
   sctp_init_buffer (vm, b);
   sctp_prepare_init_chunk (sctp_conn, idx, b);

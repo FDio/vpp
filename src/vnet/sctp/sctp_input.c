@@ -337,7 +337,7 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	case SCTP_STATE_COOKIE_WAIT:
 	  SCTP_ADV_DBG ("Received INIT chunk while in COOKIE_WAIT state");
 	  sctp_prepare_initack_chunk_for_collision (sctp_conn,
-						    MAIN_SCTP_SUB_CONN_IDX,
+						    SCTP_PRIMARY_PATH_IDX,
 						    b0, ip4_addr, ip6_addr);
 	  return SCTP_ERROR_NONE;
 	case SCTP_STATE_COOKIE_ECHOED:
@@ -345,11 +345,11 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	  SCTP_ADV_DBG ("Received INIT chunk while in COOKIE_ECHOED state");
 	  if (sctp_conn->forming_association_changed == 0)
 	    sctp_prepare_initack_chunk_for_collision (sctp_conn,
-						      MAIN_SCTP_SUB_CONN_IDX,
+						      SCTP_PRIMARY_PATH_IDX,
 						      b0, ip4_addr, ip6_addr);
 	  else
 	    sctp_prepare_abort_for_collision (sctp_conn,
-					      MAIN_SCTP_SUB_CONN_IDX, b0,
+					      SCTP_PRIMARY_PATH_IDX, b0,
 					      ip4_addr, ip6_addr);
 	  return SCTP_ERROR_NONE;
 	}
@@ -401,7 +401,7 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 
 		sctp_sub_connection_add_ip4 (vlib_get_main (),
 					     &sctp_conn->sub_conn
-					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     [SCTP_PRIMARY_PATH_IDX].connection.
 					     lcl_ip.ip4, &ipv4->address);
 
 		break;
@@ -415,7 +415,7 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 
 		sctp_sub_connection_add_ip6 (vlib_get_main (),
 					     &sctp_conn->sub_conn
-					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     [SCTP_PRIMARY_PATH_IDX].connection.
 					     lcl_ip.ip6, &ipv6->address);
 
 		break;
@@ -447,7 +447,7 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
     }
 
   /* Reuse buffer to make init-ack and send */
-  sctp_prepare_initack_chunk (sctp_conn, MAIN_SCTP_SUB_CONN_IDX, b0, ip4_addr,
+  sctp_prepare_initack_chunk (sctp_conn, SCTP_PRIMARY_PATH_IDX, b0, ip4_addr,
 			      ip6_addr);
   return SCTP_ERROR_NONE;
 }
@@ -539,7 +539,7 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 
 		sctp_sub_connection_add_ip4 (vlib_get_main (),
 					     &sctp_conn->sub_conn
-					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     [SCTP_PRIMARY_PATH_IDX].connection.
 					     lcl_ip.ip4, &ipv4->address);
 
 		break;
@@ -551,7 +551,7 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 
 		sctp_sub_connection_add_ip6 (vlib_get_main (),
 					     &sctp_conn->sub_conn
-					     [MAIN_SCTP_SUB_CONN_IDX].connection.
+					     [SCTP_PRIMARY_PATH_IDX].connection.
 					     lcl_ip.ip6, &ipv6->address);
 
 		break;
@@ -711,6 +711,12 @@ sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 always_inline u8
 sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
 {
+  if (sctp_conn->conn_config.never_delay_sack)
+    {
+      SCTP_CONN_TRACKING_DBG ("sctp_conn->conn_config.never_delay_sack = ON");
+      return 0;
+    }
+
   /* Section 4.4 of the RFC4960 */
   if (sctp_conn->state == SCTP_STATE_SHUTDOWN_SENT)
     {
@@ -748,7 +754,7 @@ sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
     {
       SCTP_CONN_TRACKING_DBG
 	("GAPPING: CONN_INDEX = %u, sctp_conn->next_tsn_expected = %u, tsn = %u, diff = %u",
-	 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index,
+	 sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.c_index,
 	 sctp_conn->next_tsn_expected, tsn,
 	 sctp_conn->next_tsn_expected - tsn);
 
@@ -1221,8 +1227,7 @@ sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
    * - STOP T2_SHUTDOWN timer
    * - SEND SHUTDOWN_COMPLETE chunk
    */
-  sctp_timer_reset (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
-		    SCTP_TIMER_T2_SHUTDOWN);
+  sctp_timer_reset (sctp_conn, SCTP_PRIMARY_PATH_IDX, SCTP_TIMER_T2_SHUTDOWN);
 
   sctp_send_shutdown_complete (sctp_conn, idx, b0);
 
@@ -1633,14 +1638,14 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 
 	  child_conn =
 	    sctp_lookup_connection (sctp_listener->sub_conn
-				    [MAIN_SCTP_SUB_CONN_IDX].c_fib_index, b0,
+				    [SCTP_PRIMARY_PATH_IDX].c_fib_index, b0,
 				    my_thread_index, is_ip4);
 
 	  if (PREDICT_FALSE (child_conn->state != SCTP_STATE_CLOSED))
 	    {
 	      SCTP_DBG
 		("conn_index = %u: child_conn->state != SCTP_STATE_CLOSED.... STATE=%s",
-		 child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].
 		 connection.c_index,
 		 sctp_state_to_string (child_conn->state));
 	      error0 = SCTP_ERROR_CREATE_EXISTS;
@@ -1649,33 +1654,33 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 
 	  /* Create child session and send SYN-ACK */
 	  child_conn = sctp_connection_new (my_thread_index);
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
-	    MAIN_SCTP_SUB_CONN_IDX;
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_lcl_port =
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].subconn_idx =
+	    SCTP_PRIMARY_PATH_IDX;
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_lcl_port =
 	    sctp_hdr->dst_port;
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_rmt_port =
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_rmt_port =
 	    sctp_hdr->src_port;
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_is_ip4 = is_ip4;
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto =
-	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto;
-	  child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU =
-	    sctp_listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU;
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_is_ip4 = is_ip4;
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.proto =
+	    sctp_listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.proto;
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU =
+	    sctp_listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU;
 	  child_conn->state = SCTP_STATE_CLOSED;
 
 	  if (is_ip4)
 	    {
-	      child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_lcl_ip4.as_u32 =
+	      child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_lcl_ip4.as_u32 =
 		ip4_hdr->dst_address.as_u32;
-	      child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_rmt_ip4.as_u32 =
+	      child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_rmt_ip4.as_u32 =
 		ip4_hdr->src_address.as_u32;
 	    }
 	  else
 	    {
 	      clib_memcpy (&child_conn->
-			   sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_lcl_ip6,
+			   sub_conn[SCTP_PRIMARY_PATH_IDX].c_lcl_ip6,
 			   &ip6_hdr->dst_address, sizeof (ip6_address_t));
 	      clib_memcpy (&child_conn->
-			   sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_rmt_ip6,
+			   sub_conn[SCTP_PRIMARY_PATH_IDX].c_rmt_ip6,
 			   &ip6_hdr->src_address, sizeof (ip6_address_t));
 	    }
 
@@ -1687,7 +1692,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	    {
 	      SCTP_DBG
 		("conn_index = %u: chunk_type != INIT... chunk_type=%s",
-		 child_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].
 		 connection.c_index, sctp_chunk_to_string (chunk_type));
 
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
@@ -1715,9 +1720,9 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		{
 		  if (stream_session_accept
 		      (&child_conn->
-		       sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection,
+		       sub_conn[SCTP_PRIMARY_PATH_IDX].connection,
 		       sctp_listener->
-		       sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_s_index, 0))
+		       sub_conn[SCTP_PRIMARY_PATH_IDX].c_s_index, 0))
 		    {
 		      clib_warning ("session accept fail");
 		      sctp_connection_cleanup (child_conn);
@@ -1738,8 +1743,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	    case OPERATION_ERROR:
 	      error0 =
 		sctp_handle_operation_err (sctp_hdr, child_conn,
-					   MAIN_SCTP_SUB_CONN_IDX, b0,
-					   &next0);
+					   SCTP_PRIMARY_PATH_IDX, b0, &next0);
 	      break;
 	    }
 
@@ -2167,7 +2171,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_warning
 		("Received an unrecognized chunk; sending back OPERATION_ERROR chunk");
 
-	      sctp_prepare_operation_error (sctp_conn, MAIN_SCTP_SUB_CONN_IDX,
+	      sctp_prepare_operation_error (sctp_conn, SCTP_PRIMARY_PATH_IDX,
 					    b0, UNRECOGNIZED_CHUNK_TYPE);
 
 	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
@@ -2192,9 +2196,9 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      SCTP_DBG_STATE_MACHINE
 		("S_INDEX = %u, C_INDEX = %u, TRANS_CONN = %p, SCTP_CONN = %p, CURRENT_CONNECTION_STATE = %s,"
 		 "CHUNK_TYPE_RECEIVED = %s " "NEXT_PHASE = %s",
-		 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].
 		 connection.s_index,
-		 sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].
+		 sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].
 		 connection.c_index, trans_conn, sctp_conn,
 		 sctp_state_to_string (sctp_conn->state),
 		 sctp_chunk_to_string (chunk_type), phase_to_string (next0));
