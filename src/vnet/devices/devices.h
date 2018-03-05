@@ -55,6 +55,17 @@ typedef struct
   uword next_worker_thread_index;
 } vnet_device_main_t;
 
+static inline uword
+vnet_dev_next_worker_thread_index (vnet_device_main_t * vdm)
+{
+  if (vdm->first_worker_thread_index == 0)
+    return 0;
+  uword thread_index = vdm->next_worker_thread_index++;
+  if (vdm->next_worker_thread_index > vdm->last_worker_thread_index)
+    vdm->next_worker_thread_index = vdm->first_worker_thread_index;
+  return thread_index;
+}
+
 typedef struct
 {
   u32 hw_if_index;
@@ -82,17 +93,6 @@ vnet_hw_interface_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vec_validate_init_empty (hw->input_node_index_by_queue, queue_id, 0);
   hw->input_node_index_by_queue[queue_id] = node_index;
-}
-
-static inline uword
-vnet_dev_next_worker_thread_index (vnet_device_main_t * vdm)
-{
-  if (vdm->first_worker_thread_index == 0)
-    return 0;
-  uword thread_index = vdm->next_worker_thread_index++;
-  if (vdm->next_worker_thread_index > vdm->last_worker_thread_index)
-    vdm->next_worker_thread_index = vdm->first_worker_thread_index;
-  return thread_index;
 }
 
 void vnet_queue_assign_rx_thread (vnet_main_t * vnm, u32 node_index,
