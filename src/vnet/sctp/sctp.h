@@ -200,6 +200,8 @@ typedef struct _sctp_connection
   u32 overall_err_treshold; /**< The threshold for this association that if the Overall Error Count
   	  	  	  	  reaches will cause this association to be torn down. */
 
+  u8 init_retransmit_err; /**< Error counter for the INIT transmission phase */
+
   u32 peer_rwnd; /**< Current calculated value of the peer's rwnd. */
 
   u32 next_tsn;	/**< The next TSN number to be assigned to a new DATA chunk.
@@ -233,10 +235,11 @@ typedef struct _sctp_connection
   	  	  	  	  	  	  	  	  1 indicates normal stream
   	  	  	  	  	  	  	  	  2 indicates last fragment of a user message */
 
-  sctp_options_t snd_opts;
-
   u8 forming_association_changed; /**< This is a flag indicating whether the original association has been modified during
   	  	  	  	  the life-span of the association itself. For instance, a new sub-connection might have been added. */
+
+  sctp_state_cookie_param_t cookie_param; /**< Temporary location to save cookie information; it can be used to
+  	  	  	  	  when timeout expires and sending again a COOKIE is require. */
 
 } sctp_connection_t;
 
@@ -268,12 +271,14 @@ void sctp_connection_del (sctp_connection_t * sctp_conn);
 
 u32 sctp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
 void sctp_send_init (sctp_connection_t * sctp_conn);
+void sctp_send_cookie_echo (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown (sctp_connection_t * sctp_conn);
 void sctp_send_shutdown_ack (sctp_connection_t * sctp_conn, u8 idx,
 			     vlib_buffer_t * b);
 void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn, u8 idx,
 				  vlib_buffer_t * b0);
 void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
+void sctp_data_retransmit (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
 				 u8 is_ip4);
 void sctp_flush_frames_to_output (u8 thread_index);
@@ -309,8 +314,7 @@ void
 sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
 			      vlib_buffer_t * b, u8 err_cause);
 void sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
-				     vlib_buffer_t * b,
-				     sctp_state_cookie_param_t * sc);
+				     vlib_buffer_t * b, u8 reuse_buffer);
 void sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				    vlib_buffer_t * b);
 void sctp_prepare_sack_chunk (sctp_connection_t * sctp_conn, u8 idx,

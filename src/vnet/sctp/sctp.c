@@ -680,19 +680,6 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 
   SCTP_DBG ("%s expired", sctp_timer_to_string (timer_id));
 
-  switch (timer_id)
-    {
-    case SCTP_TIMER_T1_INIT:
-    case SCTP_TIMER_T1_COOKIE:
-    case SCTP_TIMER_T2_SHUTDOWN:
-    case SCTP_TIMER_T3_RXTX:
-      sctp_timer_reset (sctp_conn, conn_index, timer_id);
-      break;
-    case SCTP_TIMER_T4_HEARTBEAT:
-      sctp_timer_reset (sctp_conn, conn_index, timer_id);
-      goto heartbeat;
-    }
-
   if (sctp_conn->sub_conn[conn_index].unacknowledged_hb >
       SCTP_PATH_MAX_RETRANS)
     {
@@ -722,6 +709,27 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 
 	  sctp_connection_cleanup (sctp_conn);
 	}
+      return;
+    }
+
+  switch (timer_id)
+    {
+    case SCTP_TIMER_T1_INIT:
+      sctp_send_init (sctp_conn);
+      break;
+    case SCTP_TIMER_T1_COOKIE:
+      sctp_send_cookie_echo (sctp_conn);
+      break;
+    case SCTP_TIMER_T2_SHUTDOWN:
+      sctp_send_shutdown (sctp_conn);
+      break;
+    case SCTP_TIMER_T3_RXTX:
+      sctp_timer_reset (sctp_conn, conn_index, timer_id);
+      sctp_data_retransmit (sctp_conn);
+      break;
+    case SCTP_TIMER_T4_HEARTBEAT:
+      sctp_timer_reset (sctp_conn, conn_index, timer_id);
+      goto heartbeat;
     }
   return;
 
