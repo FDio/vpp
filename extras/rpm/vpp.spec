@@ -50,13 +50,14 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
-BuildRequires: subunit, subunit-devel
 %if 0%{?fedora} >= 26
+BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv
 BuildRequires: mbedtls-devel
 %else
 %if 0%{?fedora} == 25
+BuildRequires: subunit, subunit-devel
 BuildRequires: openssl-devel
 BuildRequires: python-devel, python2-virtualenv
 BuildRequires: mbedtls-devel
