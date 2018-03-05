@@ -57,7 +57,7 @@ linux_vfio_main_t vfio_main;
 static int
 map_regions (vlib_main_t * vm, int fd)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   vlib_physmem_region_t *pr;
   struct vfio_iommu_type1_dma_map dm = { 0 };
   int i;

@@ -73,6 +73,8 @@ typedef struct
   vlib_physmem_region_t *regions;
 } vlib_physmem_main_t;
 
+extern vlib_physmem_main_t physmem_main;
+
 #endif /* included_vlib_physmem_h */
 
 /*

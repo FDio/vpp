@@ -43,7 +43,7 @@
 always_inline vlib_physmem_region_t *
 vlib_physmem_get_region (vlib_main_t * vm, u8 index)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   return pool_elt_at_index (vpm->regions, index);
 }
 
@@ -129,7 +129,7 @@ always_inline u64
 vlib_physmem_virtual_to_physical (vlib_main_t * vm,
 				  vlib_physmem_region_index_t idx, void *mem)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   vlib_physmem_region_t *pr = pool_elt_at_index (vpm->regions, idx);
   uword o = mem - pr->mem;
   return vlib_physmem_offset_to_physical (vm, idx, o);
