@@ -256,6 +256,9 @@ clib_error_t *vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h,
 					 u32 resource, u8 * addr,
 					 void **result);
 
+clib_error_t *vlib_pci_register_intx_handler (vlib_pci_dev_handle_t h,
+					      pci_intx_handler_function_t *
+					      intx_handler);
 clib_error_t *vlib_pci_register_msix_handler (vlib_pci_dev_handle_t h,
 					      u32 start, u32 count,
 					      pci_msix_handler_function_t *
