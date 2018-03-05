@@ -306,12 +306,17 @@ lb_node_fn (vlib_main_t * vm,
       } else if (encap_type == LB_ENCAP_TYPE_L3DSR) /* encap L3DSR*/
 	{
 	  ip4_header_t *ip40;
+	  tcp_header_t *th0;
 
 	  ip40 = vlib_buffer_get_current(p0);
 	  ip40->dst_address = lbm->ass[asindex0].address.ip4;
 	  /* Get and rewrite DSCP bit */
           ip40->tos = (u8)((vip0->dscp & 0x3F)<<2);
 	  ip40->checksum = ip4_header_checksum (ip40);
+	  /* Recomputing L4 checksum after dst-IP modifying */
+	  th0 = ip4_next_header(ip40);
+	  th0->checksum = 0;
+	  th0->checksum = ip4_tcp_udp_compute_checksum(vm, p0, ip40);
 	}
 
       if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
