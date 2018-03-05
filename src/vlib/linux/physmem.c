@@ -114,7 +114,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 			   u8 numa_node, u32 flags,
 			   vlib_physmem_region_index_t * idx)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   vlib_physmem_region_t *pr;
   clib_error_t *error = 0;
   clib_mem_vm_alloc_t alloc = { 0 };
@@ -208,7 +208,7 @@ done:
 static void
 unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
 
   if (pr->fd > 0)
@@ -221,7 +221,7 @@ unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
 clib_error_t *
 unix_physmem_init (vlib_main_t * vm)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
   clib_error_t *error = 0;
   u64 *pt = 0;
@@ -254,7 +254,7 @@ static clib_error_t *
 show_physmem (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_main_t *vpm = &physmem_main;
   vlib_physmem_region_t *pr;
 
   /* *INDENT-OFF* */
