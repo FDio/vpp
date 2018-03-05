@@ -41,7 +41,6 @@ class VPPAPILexer(object):
         'service': 'SERVICE',
         'rpc': 'RPC',
         'returns': 'RETURNS',
-        'null': 'NULL',
         'stream': 'STREAM',
         'events': 'EVENTS',
         'define': 'DEFINE',
@@ -115,6 +114,12 @@ class VPPAPILexer(object):
 
     # A string containing ignored characters (spaces and tabs)
     t_ignore = ' \t'
+
+
+class Iterator(type):
+    def __iter__(self):
+        return self.iter()
+
 
 class Service():
     def __init__(self, caller, reply, events=[], stream=False):
@@ -341,8 +346,7 @@ class VPPAPIParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_service_statement(self, p):
-        '''service_statement : RPC ID RETURNS NULL ';'
-                             | RPC ID RETURNS ID ';'
+        '''service_statement : RPC ID RETURNS ID ';'
                              | RPC ID RETURNS STREAM ID ';'
                              | RPC ID RETURNS ID EVENTS event_list ';' '''
         if len(p) == 8:
@@ -567,16 +571,15 @@ class VPPAPI(object):
                     if isinstance(o2, Service):
                         s['services'].append(o2)
 
-
+        # Create services implicitly
         msgs = {d.name: d for d in s['defines']}
         svcs = {s.caller: s for s in s['services']}
-        seen_services = {}
 
         for service in svcs:
             if service not in msgs:
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition: {}'.format(service))
-            if svcs[service].reply != 'null' and svcs[service].reply not in msgs:
+            if svcs[service].reply not in msgs:
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition in reply: {}'
                                  .format(svcs[service].reply))
@@ -585,18 +588,12 @@ class VPPAPI(object):
                     raise ValueError('Service definition refers to unknown '
                                      'event: {} in message: {}'
                                      .format(event, service))
-                seen_services[event] = True
 
-        # Create services implicitly
         for d in msgs:
-            if d in seen_services:
-                continue
             if msgs[d].singular is True:
                 continue
-            #if d.endswith('_counters'):
-            #    continue
-            #if d.endswith('_event'):
-            #    continue
+            if d.endswith('_counters'):
+                continue
             if d.endswith('_reply'):
                 if d[:-6] in svcs:
                     continue
@@ -632,16 +629,10 @@ class VPPAPI(object):
 
         return s
 
-    def process_imports(self, objs, in_import):
-        imported_objs = []
+    def process_imports(self, objs):
         for o in objs:
             if isinstance(o, Import):
-                return objs + self.process_imports(o.result, True)
-            if in_import:
-                if isinstance(o, Define) and o.typeonly:
-                    imported_objs.append(o)
-        if in_import:
-            return imported_objs
+                return objs + self.process_imports(o.result)
         return objs
 
 
@@ -673,6 +664,9 @@ def dirlist_get():
 # Main
 #
 def main():
+    logging.basicConfig()
+    log = logging.getLogger('vppapigen')
+
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
@@ -698,18 +692,11 @@ def main():
     else:
         filename = ''
 
-    if args.debug:
-        logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
-    else:
-        logging.basicConfig()
-    log = logging.getLogger('vppapigen')
-
-
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
     result = parser.parse_file(args.input, log)
 
     # Build a list of objects. Hash of lists.
-    result = parser.process_imports(result, False)
+    result = parser.process_imports(result)
     s = parser.process(result)
 
     # Add msg_id field

@@ -686,11 +686,6 @@ define ip4_arp_event
   u8 mac_ip;
 };
 
-service {
-  rpc want_ip4_arp_events returns want_ip4_arp_events_reply
-    events ip4_arp_event;
-};
-
 /** \brief Register for ip6 nd resolution events
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -723,11 +718,6 @@ define ip6_nd_event
   u8 address[16];
   u8 new_mac[6];
   u8 mac_ip;
-};
-
-service {
-  rpc want_ip6_nd_events returns want_ip6_nd_events_reply
-    events ip6_nd_event;
 };
 
 /** \brief Proxy ARP add / del request

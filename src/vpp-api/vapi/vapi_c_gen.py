@@ -70,13 +70,6 @@ class CStruct(Struct):
     def __init__(self, name, fields):
         super(CStruct, self).__init__(name, fields)
 
-    def duplicate_barrier(func):
-        def func_wrapper(self):
-            name = self.get_c_name()
-            return "#ifndef defined_{}\n#define defined_{}\n{}\n#endif".format(name, name, func(self))
-        return func_wrapper
-
-    @duplicate_barrier
     def get_c_def(self):
         return "\n".join([
             "typedef struct __attribute__((__packed__)) {",
@@ -278,13 +271,6 @@ class CMessage (Message):
             "}",
         ])
 
-    def duplicate_barrier(func):
-        def func_wrapper(self):
-            name = self.get_payload_struct_name()
-            return "#ifndef defined_{}\n#define defined_{}\n{}\n#endif".format(name, name, func(self))
-        return func_wrapper
-
-    @duplicate_barrier
     def get_c_def(self):
         if self.has_payload():
             return "\n".join([
@@ -599,12 +585,9 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("")
     function_attrs = "static inline "
     for t in parser.types_by_json[j].values():
-        print("#ifndef defined_inline_%s" % t.get_c_name())
-        print("#define defined_inline_%s" % t.get_c_name())
         print("%s%s" % (function_attrs, t.get_swap_to_be_func_def()))
         print("")
         print("%s%s" % (function_attrs, t.get_swap_to_host_func_def()))
-        print("#endif")
         print("")
     for m in parser.messages_by_json[j].values():
         if m.has_payload():
