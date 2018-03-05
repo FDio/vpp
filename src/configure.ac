@@ -212,6 +212,7 @@ AC_SUBST(AR_FLAGS)
 # Please keep alphabetical order
 PLUGIN_ENABLED(acl)
 PLUGIN_ENABLED(dpdk)
+PLUGIN_ENABLED(dpdk_offload)
 PLUGIN_ENABLED(flowprobe)
 PLUGIN_ENABLED(gbp)
 PLUGIN_ENABLED(gtpu)

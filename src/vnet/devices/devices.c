@@ -174,8 +174,6 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   ASSERT (vec_len (hw->input_node_index_by_queue) > queue_id);
 
   u32 input_node_index = hw->input_node_index_by_queue[queue_id];
-
-
   ASSERT (input_node_index > 0);
 
   vnet_device_main_t *vdm = &vnet_device_main;
