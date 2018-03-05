@@ -556,12 +556,12 @@ sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 
 void
 sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
-				vlib_buffer_t * b,
-				sctp_state_cookie_param_t * sc)
+				vlib_buffer_t * b, u8 reuse_buffer)
 {
   vlib_main_t *vm = vlib_get_main ();
 
-  sctp_reuse_buffer (vm, b);
+  if (reuse_buffer)
+    sctp_reuse_buffer (vm, b);
 
   /* The minimum size of the message is given by the sctp_init_ack_chunk_t */
   u16 alloc_bytes = sizeof (sctp_cookie_echo_chunk_t);
@@ -580,13 +580,59 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
   cookie_echo_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&cookie_echo_chunk->chunk_hdr, COOKIE_ECHO);
   vnet_sctp_set_chunk_length (&cookie_echo_chunk->chunk_hdr, chunk_len);
-  clib_memcpy (&(cookie_echo_chunk->cookie), sc,
+  clib_memcpy (&(cookie_echo_chunk->cookie), &sctp_conn->cookie_param,
 	       sizeof (sctp_state_cookie_param_t));
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
   vnet_buffer (b)->sctp.subconn_idx = idx;
 }
+
+
+/*
+ *  Send COOKIE_ECHO
+ */
+void
+sctp_send_cookie_echo (sctp_connection_t * sctp_conn)
+{
+  vlib_buffer_t *b;
+  u32 bi;
+  sctp_main_t *tm = vnet_get_sctp_main ();
+  vlib_main_t *vm = vlib_get_main ();
+
+  if (PREDICT_FALSE (sctp_conn->init_retransmit_err > SCTP_MAX_INIT_RETRANS))
+    {
+      clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
+
+      session_stream_connect_notify (&sctp_conn->sub_conn
+				     [MAIN_SCTP_SUB_CONN_IDX].connection, 1);
+
+      sctp_connection_timers_reset (sctp_conn);
+
+      sctp_connection_cleanup (sctp_conn);
+    }
+
+  if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
+    return;
+
+  b = vlib_get_buffer (vm, bi);
+  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+
+  sctp_init_buffer (vm, b);
+  sctp_prepare_cookie_echo_chunk (sctp_conn, idx, b, 0);
+  sctp_enqueue_to_output_now (vm, b, bi, sctp_conn->sub_conn[idx].c_is_ip4);
+
+  /* Start the T1_INIT timer */
+  sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T1_INIT,
+		  sctp_conn->sub_conn[idx].RTO);
+
+  /* Change state to COOKIE_WAIT */
+  sctp_conn->state = SCTP_STATE_COOKIE_WAIT;
+
+  /* Measure RTT with this */
+  sctp_conn->sub_conn[idx].rtt_ts = sctp_time_now ();
+}
+
 
 /**
  * Convert buffer to ERROR
@@ -1270,6 +1316,20 @@ sctp_send_init (sctp_connection_t * sctp_conn)
   sctp_main_t *tm = vnet_get_sctp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+  if (PREDICT_FALSE (sctp_conn->init_retransmit_err > SCTP_MAX_INIT_RETRANS))
+    {
+      clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
+
+      session_stream_connect_notify (&sctp_conn->sub_conn
+				     [MAIN_SCTP_SUB_CONN_IDX].connection, 1);
+
+      sctp_connection_timers_reset (sctp_conn);
+
+      sctp_connection_cleanup (sctp_conn);
+
+      return;
+    }
+
   if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
     return;
 
@@ -1387,6 +1447,20 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
   sctp_trajectory_add_start (b, 3);
 
   return 0;
+}
+
+void
+sctp_data_retransmit (sctp_connection_t * sctp_conn)
+{
+  /* TODO: requires use of PEEK/SEND */
+  SCTP_DBG_OUTPUT
+    ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, sctp_conn->[...].LCL_PORT = %u, sctp_conn->[...].RMT_PORT = %u",
+     sctp_conn, idx, sctp_conn->sub_conn[idx].connection.s_index,
+     sctp_conn->sub_conn[idx].connection.c_index,
+     sctp_conn->sub_conn[idx].connection.lcl_port,
+     sctp_conn->sub_conn[idx].connection.rmt_port);
+
+  return;
 }
 
 #if SCTP_DEBUG_STATE_MACHINE

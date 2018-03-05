@@ -374,7 +374,7 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
   SCTP_CONN_TRACKING_DBG ("sctp_conn->remote_initial_tsn = %u",
 			  sctp_conn->remote_initial_tsn);
 
-  sctp_conn->snd_opts.a_rwnd = clib_net_to_host_u32 (init_chunk->a_rwnd);
+  sctp_conn->peer_rwnd = clib_net_to_host_u32 (init_chunk->a_rwnd);
 
   /*
    * If the length specified in the INIT message is bigger than the size in bytes of our structure it means that
@@ -500,6 +500,9 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   if (sctp_is_bundling (sctp_implied_length, &init_ack_chunk->chunk_hdr))
     return SCTP_ERROR_BUNDLING_VIOLATION;
 
+  /* Stop the T1_INIT timer */
+  sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T1_INIT);
+
   sctp_calculate_rto (sctp_conn, idx);
 
   /* remote_tag to be placed in the VERIFICATION_TAG field of the COOKIE_ECHO chunk */
@@ -510,7 +513,7 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
   sctp_conn->next_tsn_expected = sctp_conn->remote_initial_tsn + 1;
   SCTP_CONN_TRACKING_DBG ("sctp_conn->remote_initial_tsn = %u",
 			  sctp_conn->remote_initial_tsn);
-  sctp_conn->snd_opts.a_rwnd = clib_net_to_host_u32 (init_ack_chunk->a_rwnd);
+  sctp_conn->peer_rwnd = clib_net_to_host_u32 (init_ack_chunk->a_rwnd);
 
   u16 length = vnet_sctp_get_chunk_length (sctp_chunk_hdr);
 
@@ -585,7 +588,10 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 	}
     }
 
-  sctp_prepare_cookie_echo_chunk (sctp_conn, idx, b0, &state_cookie);
+  clib_memcpy (&(sctp_conn->cookie_param), &state_cookie,
+	       sizeof (sctp_state_cookie_param_t));
+
+  sctp_prepare_cookie_echo_chunk (sctp_conn, idx, b0, 1);
 
   /* Start the T1_COOKIE timer */
   sctp_timer_set (sctp_conn, idx,
@@ -705,6 +711,14 @@ sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 always_inline u8
 sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
 {
+  /* Section 4.4 of the RFC4960 */
+  if (sctp_conn->state == SCTP_STATE_SHUTDOWN_SENT)
+    {
+      SCTP_CONN_TRACKING_DBG ("sctp_conn->state = %s; SACK not delayable",
+			      sctp_state_to_string (sctp_conn->state));
+      return 0;
+    }
+
   if (is_gapping != 0)
     {
       SCTP_CONN_TRACKING_DBG
