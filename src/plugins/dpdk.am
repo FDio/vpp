@@ -25,9 +25,6 @@ endif
 if WITH_ISA_L_CRYPTO_LIB
 dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
 endif
-if WITH_IBVERBS_LIB
-dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
-endif
 dpdk_plugin_la_CFLAGS = $(AM_CFLAGS)
 dpdk_plugin_la_LDFLAGS += -Wl,-lnuma
 
