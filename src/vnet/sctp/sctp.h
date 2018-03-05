@@ -78,7 +78,7 @@ typedef enum _sctp_error
 #define IS_U_BIT_SET(var) ((var) & (1<<2))
 
 #define MAX_SCTP_CONNECTIONS 8
-#define MAIN_SCTP_SUB_CONN_IDX 0
+#define SCTP_PRIMARY_PATH_IDX 0
 
 #if (VLIB_BUFFER_TRACE_TRAJECTORY)
 #define sctp_trajectory_add_start(b, start)			\
@@ -181,9 +181,17 @@ _bytes_swap (void *pv, size_t n)
  */
 #define SUGGESTED_COOKIE_LIFE_SPAN_INCREMENT 1000
 
+typedef struct _sctp_user_configuration
+{
+  u8 never_delay_sack;
+  u8 never_bundle;
+
+} sctp_user_configuration_t;
+
 typedef struct _sctp_connection
 {
   sctp_sub_connection_t sub_conn[MAX_SCTP_CONNECTIONS];	/**< Common transport data. First! */
+  sctp_user_configuration_t conn_config; /**< Allows tuning of some SCTP behaviors */
 
   u8 state;			/**< SCTP state as per sctp_state_t */
   u16 flags;		/**< Chunk flag (see sctp_chunks_common_hdr_t) */
@@ -264,6 +272,8 @@ sctp_sub_connection_del_ip4 (ip4_address_t * lcl_addr,
 u8
 sctp_sub_connection_del_ip6 (ip6_address_t * lcl_addr,
 			     ip6_address_t * rmt_addr);
+
+u8 sctp_configure (sctp_user_configuration_t config);
 
 void sctp_connection_close (sctp_connection_t * sctp_conn);
 void sctp_connection_cleanup (sctp_connection_t * sctp_conn);
@@ -546,7 +556,7 @@ sctp_half_open_connection_get (u32 conn_index)
   clib_spinlock_lock_if_init (&sctp_main.half_open_lock);
   if (!pool_is_free_index (sctp_main.half_open_connections, conn_index))
     tc = pool_elt_at_index (sctp_main.half_open_connections, conn_index);
-  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx = MAIN_SCTP_SUB_CONN_IDX;
+  tc->sub_conn[SCTP_PRIMARY_PATH_IDX].subconn_idx = SCTP_PRIMARY_PATH_IDX;
   clib_spinlock_unlock_if_init (&sctp_main.half_open_lock);
   return tc;
 }
@@ -561,7 +571,7 @@ sctp_half_open_connection_del (sctp_connection_t * tc)
   sctp_main_t *sctp_main = vnet_get_sctp_main ();
   clib_spinlock_lock_if_init (&sctp_main->half_open_lock);
   pool_put_index (sctp_main->half_open_connections,
-		  tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index);
+		  tc->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index);
   if (CLIB_DEBUG)
     memset (tc, 0xFA, sizeof (*tc));
   clib_spinlock_unlock_if_init (&sctp_main->half_open_lock);
@@ -617,10 +627,10 @@ always_inline int
 sctp_half_open_connection_cleanup (sctp_connection_t * tc)
 {
   /* Make sure this is the owning thread */
-  if (tc->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index !=
+  if (tc->sub_conn[SCTP_PRIMARY_PATH_IDX].c_thread_index !=
       vlib_get_thread_index ())
     return 1;
-  sctp_timer_reset (tc, MAIN_SCTP_SUB_CONN_IDX, SCTP_TIMER_T1_INIT);
+  sctp_timer_reset (tc, SCTP_PRIMARY_PATH_IDX, SCTP_TIMER_T1_INIT);
   sctp_half_open_connection_del (tc);
   return 0;
 }
@@ -750,8 +760,8 @@ sctp_connection_get (u32 conn_index, u32 thread_index)
 always_inline u8
 sctp_data_subconn_select (sctp_connection_t * sctp_conn)
 {
-  u32 sub = MAIN_SCTP_SUB_CONN_IDX;
-  u8 i, cwnd = sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].cwnd;
+  u32 sub = SCTP_PRIMARY_PATH_IDX;
+  u8 i, cwnd = sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].cwnd;
   for (i = 1; i < MAX_SCTP_CONNECTIONS; i++)
     {
       if (sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
@@ -784,8 +794,8 @@ sctp_sub_conn_id_via_ip6h (sctp_connection_t * sctp_conn, ip6_header_t * ip6h)
 	return i;
     }
   clib_warning ("Did not find a sub-connection; defaulting to %u",
-		MAIN_SCTP_SUB_CONN_IDX);
-  return MAIN_SCTP_SUB_CONN_IDX;
+		SCTP_PRIMARY_PATH_IDX);
+  return SCTP_PRIMARY_PATH_IDX;
 }
 
 always_inline u8
@@ -802,8 +812,8 @@ sctp_sub_conn_id_via_ip4h (sctp_connection_t * sctp_conn, ip4_header_t * ip4h)
 	return i;
     }
   clib_warning ("Did not find a sub-connection; defaulting to %u",
-		MAIN_SCTP_SUB_CONN_IDX);
-  return MAIN_SCTP_SUB_CONN_IDX;
+		SCTP_PRIMARY_PATH_IDX);
+  return SCTP_PRIMARY_PATH_IDX;
 }
 
 /**
@@ -866,7 +876,7 @@ always_inline void
 update_smallest_pmtu_idx (sctp_connection_t * sctp_conn)
 {
   u8 i;
-  u8 smallest_pmtu_index = MAIN_SCTP_SUB_CONN_IDX;
+  u8 smallest_pmtu_index = SCTP_PRIMARY_PATH_IDX;
 
   for (i = 1; i < MAX_SCTP_CONNECTIONS; i++)
     {

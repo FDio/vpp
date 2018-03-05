@@ -27,11 +27,11 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   pool_get (tm->listener_pool, listener);
   memset (listener, 0, sizeof (*listener));
 
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
-    MAIN_SCTP_SUB_CONN_IDX;
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].subconn_idx =
+    SCTP_PRIMARY_PATH_IDX;
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index =
     listener - tm->listener_pool;
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.lcl_port = tep->port;
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.lcl_port = tep->port;
 
   /* If we are provided a sw_if_index, bind using one of its IPs */
   if (ip_is_zero (&tep->ip, 1) && tep->sw_if_index != ENDPOINT_INVALID_INDEX)
@@ -40,22 +40,22 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
 						 tep->is_ip4)))
 	ip_set (&tep->ip, iface_ip, tep->is_ip4);
     }
-  ip_copy (&listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.lcl_ip,
+  ip_copy (&listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.lcl_ip,
 	   &tep->ip, tep->is_ip4);
 
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].PMTU =
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU =
     vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index, VLIB_TX);
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.is_ip4 = tep->is_ip4;
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.proto =
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.is_ip4 = tep->is_ip4;
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.proto =
     TRANSPORT_PROTO_SCTP;
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_s_index = session_index;
-  listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.fib_index =
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].c_s_index = session_index;
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.fib_index =
     tep->fib_index;
   listener->state = SCTP_STATE_CLOSED;
 
   sctp_connection_timers_init (listener);
 
-  return listener->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index;
+  return listener->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index;
 }
 
 u32
@@ -275,7 +275,7 @@ sctp_sub_connection_add (u8 thread_index)
   ASSERT (subconn_idx < MAX_SCTP_CONNECTIONS);
 
   sctp_conn->sub_conn[subconn_idx].connection.c_index =
-    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index;
+    sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.c_index;
   sctp_conn->sub_conn[subconn_idx].connection.thread_index = thread_index;
   sctp_conn->sub_conn[subconn_idx].subconn_idx = subconn_idx;
 
@@ -398,6 +398,21 @@ sctp_sub_connection_del_ip6 (ip6_address_t * lcl_addr,
   return SCTP_ERROR_NONE;
 }
 
+u8
+sctp_configure (sctp_user_configuration_t config)
+{
+  sctp_main_t *sctp_main = vnet_get_sctp_main ();
+
+  u32 thread_idx = vlib_get_thread_index ();
+
+  sctp_main->connections[thread_idx]->conn_config.never_delay_sack =
+    config.never_delay_sack;
+  sctp_main->connections[thread_idx]->conn_config.never_bundle =
+    config.never_bundle;
+
+  return 0;
+}
+
 sctp_connection_t *
 sctp_connection_new (u8 thread_index)
 {
@@ -406,11 +421,11 @@ sctp_connection_new (u8 thread_index)
 
   pool_get (sctp_main->connections[thread_index], sctp_conn);
   memset (sctp_conn, 0, sizeof (*sctp_conn));
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
-    MAIN_SCTP_SUB_CONN_IDX;
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
+  sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].subconn_idx =
+    SCTP_PRIMARY_PATH_IDX;
+  sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index =
     sctp_conn - sctp_main->connections[thread_index];
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_thread_index = thread_index;
+  sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_thread_index = thread_index;
   sctp_conn->local_tag = 0;
 
   return sctp_conn;
@@ -424,10 +439,10 @@ sctp_half_open_connection_new (u8 thread_index)
   ASSERT (vlib_get_thread_index () == 0);
   pool_get (tm->half_open_connections, sctp_conn);
   memset (sctp_conn, 0, sizeof (*sctp_conn));
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].c_c_index =
+  sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index =
     sctp_conn - tm->half_open_connections;
-  sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].subconn_idx =
-    MAIN_SCTP_SUB_CONN_IDX;
+  sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].subconn_idx =
+    SCTP_PRIMARY_PATH_IDX;
   return sctp_conn;
 }
 
@@ -441,7 +456,7 @@ sctp_connection_open (transport_endpoint_t * rmt)
   uword thread_id;
   int rv;
 
-  u8 idx = MAIN_SCTP_SUB_CONN_IDX;
+  u8 idx = SCTP_PRIMARY_PATH_IDX;
 
   /*
    * Allocate local endpoint
@@ -507,7 +522,7 @@ sctp_connection_cleanup (sctp_connection_t * sctp_conn)
 				sctp_conn->sub_conn[i].connection.lcl_port);
 
   int thread_index =
-    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.thread_index;
+    sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.thread_index;
 
   /* Make sure all timers are cleared */
   sctp_connection_timers_reset (sctp_conn);
@@ -550,7 +565,7 @@ void
 sctp_connection_close (sctp_connection_t * sctp_conn)
 {
   SCTP_DBG ("Closing connection %u...",
-	    sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection.c_index);
+	    sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.c_index);
 
   sctp_conn->state = SCTP_STATE_SHUTDOWN_PENDING;
 
@@ -630,7 +645,7 @@ sctp_session_get_transport (u32 conn_index, u32 thread_index)
     sctp_connection_get (conn_index, thread_index);
 
   if (PREDICT_TRUE (sctp_conn != NULL))
-    return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+    return &sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection;
 
   return NULL;
 }
@@ -641,7 +656,7 @@ sctp_session_get_listener (u32 listener_index)
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_connection_t *sctp_conn;
   sctp_conn = pool_elt_at_index (tm->listener_pool, listener_index);
-  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+  return &sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection;
 }
 
 u8 *
@@ -703,7 +718,7 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 	  /* Start cleanup. App wasn't notified yet so use delete notify as
 	   * opposed to delete to cleanup session layer state. */
 	  stream_session_delete_notify (&sctp_conn->sub_conn
-					[MAIN_SCTP_SUB_CONN_IDX].connection);
+					[SCTP_PRIMARY_PATH_IDX].connection);
 
 	  sctp_connection_timers_reset (sctp_conn);
 
@@ -875,7 +890,7 @@ transport_connection_t *
 sctp_half_open_session_get_transport (u32 conn_index)
 {
   sctp_connection_t *sctp_conn = sctp_half_open_connection_get (conn_index);
-  return &sctp_conn->sub_conn[MAIN_SCTP_SUB_CONN_IDX].connection;
+  return &sctp_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection;
 }
 
 u8 *

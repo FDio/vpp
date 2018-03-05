@@ -42,3 +42,10 @@ autoreply define sctp_del_src_dst_connection {
     u8 src_address[16];
     u8 dst_address[16];
  };
+ 
+autoreply define sctp_config {
+    u32 client_index;
+    u32 context;
+    u8 never_delay_sack;
+    u8 never_bundle;
+ };

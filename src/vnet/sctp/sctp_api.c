@@ -42,7 +42,8 @@
 
 #define foreach_sctp_api_msg                                    \
 _(SCTP_ADD_SRC_DST_CONNECTION, sctp_add_src_dst_connection)		\
-_(SCTP_DEL_SRC_DST_CONNECTION, sctp_del_src_dst_connection)
+_(SCTP_DEL_SRC_DST_CONNECTION, sctp_del_src_dst_connection)		\
+_(SCTP_CONFIG, sctp_config)
 
 static void
   vl_api_sctp_add_src_dst_connection_t_handler
@@ -79,6 +80,20 @@ static void
       ((ip4_address_t *) mp->src_address, (ip4_address_t *) mp->dst_address);
 
   REPLY_MACRO (VL_API_SCTP_ADD_SRC_DST_CONNECTION_REPLY);
+}
+
+static void
+vl_api_sctp_config_t_handler (vl_api_sctp_config_t * mp)
+{
+  sctp_user_configuration_t config;
+  vl_api_sctp_config_reply_t *rmp;
+  int rv;
+
+  config.never_delay_sack = mp->never_delay_sack;
+  config.never_bundle = mp->never_bundle;
+  rv = sctp_configure (config);
+
+  REPLY_MACRO (VL_API_SCTP_CONFIG_REPLY);
 }
 
 #define vl_msg_name_crc_list
