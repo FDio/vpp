@@ -492,12 +492,10 @@ vhost_user_rx_thread_placement ()
   // Assign new mappings for all interfaces/queues
   /* *INDENT-OFF* */
   pool_foreach (vui, vum->vhost_user_interfaces, {
-      vnet_hw_interface_set_input_node (vnm, vui->hw_if_index,
-					vhost_user_input_node.index);
       vec_foreach (queue, vui->rx_queues)
 	{
-	  vnet_hw_interface_assign_rx_thread (vnm, vui->hw_if_index, *queue,
-					      ~0);
+	  vnet_hw_interface_assign_any_rx_thread (vnm, vui->hw_if_index, *queue,
+					      vhost_user_input_node.index);
 	  txvq = &vui->vrings[VHOST_VRING_IDX_TX (*queue)];
 	  rv = vnet_hw_interface_set_rx_mode (vnm, vui->hw_if_index, *queue,
 					      txvq->mode);

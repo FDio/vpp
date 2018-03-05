@@ -370,6 +370,13 @@ static void __vnet_add_hw_interface_class_registration_##x (void)       \
 }                                                                       \
 __VA_ARGS__ vnet_hw_interface_class_t x
 
+typedef struct
+{
+  u32 node_index;
+  u32 thread_index;
+  u8 rx_mode;
+} vnet_hw_if_rx_queue_t;
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -485,14 +492,8 @@ typedef struct vnet_hw_interface_t
 #define VNET_HW_INTERFACE_BOND_INFO_NONE ((uword *) 0)
 #define VNET_HW_INTERFACE_BOND_INFO_SLAVE ((uword *) ~0)
 
-  /* Input node */
-  u32 input_node_index;
+  vnet_hw_if_rx_queue_t *rx_queues;
 
-  /* input node cpu index by queue */
-  u32 *input_node_thread_index_by_queue;
-
-  /* vnet_hw_interface_rx_mode by queue */
-  u8 *rx_mode_by_queue;
   vnet_hw_interface_rx_mode default_rx_mode;
 
   /* device input device_and_queue runtime index */
