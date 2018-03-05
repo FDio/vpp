@@ -104,9 +104,6 @@ typedef struct
   /* Minor device for uio device. */
   u32 uio_minor;
 
-  /* Index given by clib_file_add. */
-  u32 clib_file_index;
-
   /* Interrupt handlers */
   linux_pci_irq_t intx_irq;
   linux_pci_irq_t *msix_irqs;
@@ -852,6 +849,7 @@ add_device_vfio (linux_pci_device_t * p, vlib_pci_device_info_t * di,
 {
   linux_pci_main_t *lpm = &linux_pci_main;
   struct vfio_device_info device_info = { 0 };
+  struct vfio_region_info reg = { 0 };
   clib_error_t *err = 0;
   u8 *s = 0;
 
@@ -874,6 +872,17 @@ add_device_vfio (linux_pci_device_t * p, vlib_pci_device_info_t * di,
 				    format_vlib_pci_addr, &di->addr);
       goto error;
     }
+
+  reg.argsz = sizeof (struct vfio_region_info);
+  reg.index = VFIO_PCI_CONFIG_REGION_INDEX;
+  if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, &reg) < 0)
+    {
+      err = clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) '%U'",
+				    format_vlib_pci_addr, &di->addr);
+      goto error;
+    }
+  p->config_offset = reg.offset;
+  p->config_fd = p->fd;
 
   /* reset if device supports it */
   if (device_info.flags & VFIO_DEVICE_FLAGS_RESET)
@@ -1017,6 +1026,115 @@ vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h, u32 resource, u8 * addr,
 			   void **result)
 {
   return (vlib_pci_map_region_int (h, resource, addr, result));
+}
+
+clib_error_t *
+vlib_pci_device_open (vlib_pci_addr_t * addr,
+		      pci_device_id_t ids[], vlib_pci_dev_handle_t * handle)
+{
+  linux_pci_main_t *lpm = &linux_pci_main;
+  vlib_pci_device_info_t *di;
+  linux_pci_device_t *p;
+  clib_error_t *err = 0;
+  pci_device_id_t *i;
+
+  di = vlib_pci_get_device_info (addr, &err);
+
+  if (err)
+    return err;
+  for (i = ids; i->vendor_id != 0; i++)
+    if (i->vendor_id == di->vendor_id && i->device_id == di->device_id)
+      break;
+
+  if (i->vendor_id == 0)
+    return clib_error_return (0, "Wrong vendor or device id");
+
+  pool_get (lpm->linux_pci_devices, p);
+  p->handle = p - lpm->linux_pci_devices;
+  p->intx_irq.fd = -1;
+
+  if (di->iommu_group != -1)
+    err = add_device_vfio (p, di, 0);
+  else
+    err = add_device_uio (p, di, 0);
+  if (err)
+    goto error;
+
+  *handle = p->handle;
+
+error:
+  vlib_pci_free_device_info (di);
+  if (err)
+    {
+      memset (p, 0, sizeof (linux_pci_device_t));
+      pool_put (lpm->linux_pci_devices, p);
+    }
+
+  return err;
+}
+
+void
+vlib_pci_device_close (vlib_pci_dev_handle_t h)
+{
+  linux_pci_main_t *lpm = &linux_pci_main;
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  linux_pci_irq_t *irq;
+  linux_pci_region_t *res;
+  clib_error_t *err = 0;
+
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    {
+      irq = &p->intx_irq;
+      clib_file_del_by_index (&file_main, irq->clib_file_index);
+      close (p->config_fd);
+    }
+  else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
+    {
+      irq = &p->intx_irq;
+      /* close INTx irqs */
+      if (irq->fd != -1)
+	{
+	  err = vfio_set_irqs (p, VFIO_PCI_INTX_IRQ_INDEX, 0, 0,
+			       VFIO_IRQ_SET_ACTION_TRIGGER, 0);
+	  clib_error_free (err);
+	  clib_file_del_by_index (&file_main, irq->clib_file_index);
+	  close (irq->fd);
+	}
+
+      /* close MSI-X irqs */
+      if (vec_len (p->msix_irqs))
+	{
+	  err = vfio_set_irqs (p, VFIO_PCI_MSIX_IRQ_INDEX, 0, 0,
+			       VFIO_IRQ_SET_ACTION_TRIGGER, 0);
+	  clib_error_free (err);
+          /* *INDENT-OFF* */
+	  vec_foreach (irq, p->msix_irqs)
+	    {
+	      if (irq->fd == -1)
+		continue;
+	      clib_file_del_by_index (&file_main, irq->clib_file_index);
+	      close (irq->fd);
+	    }
+          /* *INDENT-ON* */
+	  vec_free (p->msix_irqs);
+	}
+    }
+
+  /* *INDENT-OFF* */
+  vec_foreach (res, p->regions)
+    {
+      if (res->size == 0)
+	continue;
+      munmap (res->addr, res->size);
+      if (res->fd != -1)
+        close (res->fd);
+    }
+  /* *INDENT-ON* */
+  vec_free (p->regions);
+
+  close (p->fd);
+  memset (p, 0, sizeof (linux_pci_device_t));
+  pool_put (lpm->linux_pci_devices, p);
 }
 
 void
