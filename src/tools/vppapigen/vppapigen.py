@@ -345,6 +345,10 @@ class VPPAPIParser(object):
                              | RPC ID RETURNS ID ';'
                              | RPC ID RETURNS STREAM ID ';'
                              | RPC ID RETURNS ID EVENTS event_list ';' '''
+        if p[2] == p[4]:
+            # Verify that caller and reply differ
+            self._parse_error('Reply ID ({}) should not be equal to Caller ID'.format(p[2]),
+                              self._token_coord(p, 1))
         if len(p) == 8:
             p[0] = Service(p[2], p[4], p[6])
         elif len(p) == 7:
