@@ -304,7 +304,8 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
   if (PREDICT_FALSE (len < n_buffers))
     {
       bm->cb.vlib_buffer_fill_free_list_cb (vm, fl, n_buffers);
-      len = vec_len (fl->buffers);
+      if (PREDICT_FALSE ((len = vec_len (fl->buffers)) == 0))
+	return 0;
 
       /* even if fill free list didn't manage to refill free list
          we should give what we have */
