@@ -96,7 +96,7 @@ vce_get_event_handler (vce_event_thread_t *evt, vce_event_key_t *evk)
 
 vce_event_handler_reg_t *
 vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
-		      vce_event_callback_t cb)
+		      vce_event_callback_t cb, void *cb_args)
 {
   vce_event_handler_reg_t *handler;
   vce_event_handler_reg_t *old_handler = 0;
@@ -135,6 +135,7 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
   handler->replaced_handler_idx = (p) ? p[0] : ~0;
   handler->ev_idx = ~0; //This will be set by the event thread if event happens
   handler->evk = evk->as_u64;
+  handler->handler_fn_args = cb_args;
 
   hash_set (evt->handlers_index_by_event_key, evk->as_u64, handler_index);
 
