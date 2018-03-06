@@ -133,6 +133,12 @@ do {                                            \
 
 typedef struct
 {
+  i64 bytes;
+  f64 clib_timestamp;
+} session_stat_t;
+
+typedef struct
+{
   volatile session_state_t state;
 
   svm_fifo_t *rx_fifo;
@@ -162,6 +168,8 @@ typedef struct
   u64 options[16];
   elog_track_t elog_track;
   vce_event_handler_reg_t *poll_reg;
+  u32 listener_parent_index;
+  session_stat_t *stats;
 } session_t;
 
 typedef struct vppcom_cfg_t_
@@ -356,6 +364,30 @@ vppcom_session_state_str (session_state_t state)
 /*
  * VPPCOM Utility Functions
  */
+
+void
+stats_zero (session_stat_t *stats)
+{
+  vec_reset_length (stats);
+}
+
+/**
+ * @brief stats_add
+ *
+ * @param stats
+ * @param bytes
+ * @param clib_time
+ */
+void
+stats_add (session_stat_t *stats, i64 bytes, f64 clib_time)
+{
+  session_stat_t stat;
+  stat.bytes += bytes;
+  stat.clib_timestamp = clib_time;
+  vec_add1 (stats, stat);
+}
+
+
 static inline int
 vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
 {
@@ -1276,12 +1308,11 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   session_t *session, *listen_session;
-  u32 session_index;
+  u32 session_index, listen_session_index;
   vce_event_connect_request_t *ecr;
   vce_event_t *ev;
   int rv;
   u32 ev_idx;
-
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
@@ -1312,6 +1343,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   pool_get (vcm->sessions, session);
   memset (session, 0, sizeof (*session));
   session_index = session - vcm->sessions;
+  listen_session_index = listen_session - vcm->sessions;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -1320,6 +1352,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
   session->vpp_handle = mp->handle;
   session->client_context = mp->context;
+  session->listener_parent_index = listen_session_index;
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
   session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
