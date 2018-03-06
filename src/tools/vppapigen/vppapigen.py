@@ -574,6 +574,7 @@ class VPPAPI(object):
 
         msgs = {d.name: d for d in s['defines']}
         svcs = {s.caller: s for s in s['services']}
+        replies = {s.reply: s for s in s['services']}
         seen_services = {}
 
         for service in svcs:
@@ -584,6 +585,9 @@ class VPPAPI(object):
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition in reply: {}'
                                  .format(svcs[service].reply))
+            if service in replies:
+                raise ValueError('Service definition refers to message'
+                                 ' marked as reply: {}'.format(service))
             for event in svcs[service].events:
                 if event not in msgs:
                     raise ValueError('Service definition refers to unknown '
