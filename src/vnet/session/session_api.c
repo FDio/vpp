@@ -561,7 +561,6 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
       a->app_index = app->index;
-      a->mp = mp;
       if ((error = vnet_connect_uri (a)))
 	{
 	  rv = clib_error_get_code (error);
@@ -848,7 +847,6 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
       a->api_context = mp->context;
       a->app_index = app->index;
-      a->mp = mp;
       if ((error = vnet_connect (a)))
 	{
 	  rv = clib_error_get_code (error);
