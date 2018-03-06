@@ -39,11 +39,13 @@ move_pages (int pid, unsigned long count, void **pages, const int *nodes,
   return syscall (__NR_move_pages, pid, count, pages, nodes, status, flags);
 }
 
+#ifndef HAVE_MEMFD_CREATE
 static inline int
 memfd_create (const char *name, unsigned int flags)
 {
   return syscall (__NR_memfd_create, name, flags);
 }
+#endif
 
 #endif /* included_linux_syscall_h */
 

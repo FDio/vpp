@@ -234,6 +234,7 @@ PLUGIN_ENABLED(stn)
 ###############################################################################
 # Dependency checks
 ###############################################################################
+AC_CHECK_FUNC([memfd_create], [AC_DEFINE([HAVE_MEMFD_CREATE], [1], [Define if memfd exists])])
 
 AM_COND_IF([ENABLE_DPDK_SHARED],
 [
