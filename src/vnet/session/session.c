@@ -878,12 +878,11 @@ session_open_vc (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 int
 session_open_app (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 {
-  session_endpoint_extended_t sep;
-  clib_memcpy (&sep, rmt, sizeof (*rmt));
-  sep.app_index = app_index;
-  sep.opaque = opaque;
+  session_endpoint_extended_t *sep = (session_endpoint_extended_t *) rmt;
+  sep->app_index = app_index;
+  sep->opaque = opaque;
 
-  return tp_vfts[rmt->transport_proto].open ((transport_endpoint_t *) & sep);
+  return tp_vfts[rmt->transport_proto].open ((transport_endpoint_t *) sep);
 }
 
 typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
