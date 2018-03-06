@@ -1372,6 +1372,7 @@ snat_in2out_lb (snat_main_t *sm,
       s->outside_address_index = ~0;
       s->in2out = l_key;
       s->out2in = e_key;
+      s->out2in.protocol = l_key.protocol;
       u->nstaticsessions++;
 
       /* Add to lookup tables */
