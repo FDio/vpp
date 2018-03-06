@@ -210,6 +210,46 @@ vppcom_retval_str (int retval)
   return st;
 }
 
+/**
+ * User registered callback for when connection arrives on listener created
+ * with vppcom_session_register_listener()
+ * @param uint32_t - newly accepted session_index
+ * @param vppcom_endpt_t* - ip/port information of remote
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_listener_cb) (uint32_t, vppcom_endpt_t *,
+					    void *);
+
+/**
+ * User registered ERROR callback for any errors associated with
+ * handling vppcom_session_register_listener() and connections
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_listener_errcb) (void *);
+
+/**
+ * @brief vppcom_session_register_listener accepts a bound session_index, and
+ * listens for connections.
+ *
+ * On successful connection, calls registered callback (cb) with new
+ * session_index.
+ *
+ * On error, calls registered error callback (errcb).
+ *
+ * @param session_index - bound session_index to create listener on
+ * @param cb  - on new accepted session callback
+ * @param errcb  - on failure callback
+ * @param flags - placeholder for future use. Must be ZERO
+ * @param q_len - max listener connection backlog
+ * @param ptr - user data
+ * @return
+ */
+extern int vppcom_session_register_listener (uint32_t session_index,
+					     vppcom_session_listener_cb cb,
+					     vppcom_session_listener_errcb
+					     errcb, uint8_t flags, int q_len,
+					     void *ptr);
+
 /* TBD: make these constructor/destructor function */
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
@@ -219,6 +259,7 @@ extern int vppcom_session_close (uint32_t session_index);
 
 extern int vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_index, uint32_t q_len);
+
 extern int vppcom_session_accept (uint32_t session_index,
 				  vppcom_endpt_t * client_ep, uint32_t flags);
 
