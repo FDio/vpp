@@ -49,10 +49,20 @@ noinst_PROGRAMS +=				\
 	vcl_test_server				\
 	vcl_test_client				\
 	sock_test_server			\
-	sock_test_client
+	sock_test_client            \
+	test_vcl_listener_server    \
+	test_vcl_listener_client
+
+
+test_vcl_listener_server_SOURCES = vcl/test_vcl_listener_server.c
+test_vcl_listener_server_LDADD = libvppcom.la
+
+test_vcl_listener_client_SOURCES = vcl/test_vcl_listener_client.c
+test_vcl_listener_client_LDADD = libvppcom.la
 
 vcl_test_server_SOURCES = vcl/vcl_test_server.c
 vcl_test_server_LDADD = libvppcom.la
+
 
 vcl_test_client_SOURCES = vcl/vcl_test_client.c
 
