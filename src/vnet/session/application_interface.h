@@ -83,13 +83,11 @@ typedef struct _vnet_connect_args
   union
   {
     char *uri;
-    session_endpoint_t sep;
+    session_endpoint_extended_t sep;
   };
   u32 app_index;
   u32 api_context;
 
-  /* Used for redirects */
-  void *mp;
   session_handle_t session_handle;
 } vnet_connect_args_t;
 

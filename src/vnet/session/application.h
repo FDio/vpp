@@ -261,6 +261,7 @@ int application_connect (u32 client_index, u32 api_context,
 			 session_endpoint_t * sep);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
+int vnet_parse_uri (char *uri, session_endpoint_t * sep);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
