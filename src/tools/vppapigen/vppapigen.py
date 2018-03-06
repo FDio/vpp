@@ -601,10 +601,6 @@ class VPPAPI(object):
                 continue
             if msgs[d].singular is True:
                 continue
-            #if d.endswith('_counters'):
-            #    continue
-            #if d.endswith('_event'):
-            #    continue
             if d.endswith('_reply'):
                 if d[:-6] in svcs:
                     continue
@@ -634,9 +630,8 @@ class VPPAPI(object):
             if d+'_reply' in msgs:
                 s['services'].append(Service(d, d+'_reply'))
             else:
-                self.logger.warning('{} missing reply message ({})'
-                                    .format(d, d+'_reply'))
-                s['services'].append(Service(d, None))
+                raise ValueError('{} missing reply message ({}) or service definition'
+                                 .format(d, d+'_reply'))
 
         return s
 
