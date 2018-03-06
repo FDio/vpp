@@ -276,7 +276,7 @@ class JsonParser(object):
     def parse_json_file(self, path):
         self.logger.info("Parsing json api file: `%s'" % path)
         self.json_files.append(path)
-        self.types_by_json[path] = {}
+        self.types_by_json[path] = []
         self.messages_by_json[path] = {}
         with open(path) as f:
             j = json.load(f)
@@ -290,7 +290,7 @@ class JsonParser(object):
                     self.exceptions.append(e)
                     continue
                 self.types[type_.name] = type_
-                self.types_by_json[path][type_.name] = type_
+                self.types_by_json[path].append(type_)
                 self.logger.debug("Parsed type: %s" % type_)
             for m in j['messages']:
                 try:
