@@ -53,6 +53,7 @@ typedef struct vce_event_handler_reg_
   u32 ev_idx;
   u64 evk; //Event key
   u32 replaced_handler_idx;
+  void *handler_fn_args;
 } vce_event_handler_reg_t;
 
 typedef struct vce_event_thread_
@@ -121,12 +122,14 @@ vce_event_handler_reg_t * vce_get_event_handler (vce_event_thread_t *evt,
  * @param evk - vce_event_key_t current an eventID from enum in consumer and
  * 		sessionID
  * @param cb  - vce_event_callback_t function to handle event
+ * @param cb_args - args that the callback needs passed back to it.
  * @return vce_handler_reg_t - the function that needs event notification
  *   needs to block on a condvar mutex to reduce spin. That is in here.
  */
 vce_event_handler_reg_t * vce_register_handler (vce_event_thread_t *evt,
 						vce_event_key_t *evk,
-						vce_event_callback_t cb);
+						vce_event_callback_t cb,
+						void *cb_args);
 
 /**
  * @brief vce_unregister_handler
