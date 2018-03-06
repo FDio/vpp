@@ -81,7 +81,7 @@ vce_get_event_from_index(vce_event_thread_t *evt, u32 ev_idx)
 
 vce_event_handler_reg_t *
 vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
-		      vce_event_callback_t cb)
+		      vce_event_callback_t cb, void *cb_args)
 {
   vce_event_handler_reg_t *handler;
   vce_event_handler_reg_t *old_handler = 0;
@@ -121,6 +121,7 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
 
   handler->handler_fn = cb;
   handler->replaced_handler_idx = (p) ? p[0] : ~0;
+  handler->handler_fn_args = cb_args;
 
   hash_set (evt->handlers_index_by_event_key, adj_key, handler_index);
 
