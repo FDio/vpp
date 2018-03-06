@@ -204,6 +204,13 @@ typedef struct vce_event_connect_request_
   u32 accepted_session_index;
 } vce_event_connect_request_t;
 
+typedef struct vppcom_session_listener
+{
+  vppcom_session_listener_cb user_cb;
+  vppcom_session_listener_errcb user_errcb;
+  void *user_cb_data;
+} vppcom_session_listener_t;
+
 typedef struct vppcom_main_t_
 {
   u8 init;
@@ -438,6 +445,43 @@ write_elog (void)
 /*
  * VPPCOM Event Functions
  */
+
+void
+vce_registered_listener_connect_handler_fn (void *arg)
+{
+  vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *) arg;
+  vce_event_connect_request_t *ecr;
+  vce_event_t *ev;
+  vppcom_endpt_t ep;
+
+  session_t *new_session;
+  int rv;
+
+  vppcom_session_listener_t *session_listener =
+    (vppcom_session_listener_t *) reg->handler_fn_args;
+
+  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
+
+  ecr = (vce_event_connect_request_t *) ev->data;
+  VCL_LOCK_AND_GET_SESSION (ecr->accepted_session_index, &new_session);
+
+  ep.is_ip4 = new_session->peer_addr.is_ip4;
+  clib_memcpy (&ep.ip, &new_session->peer_addr.ip46,
+	       sizeof (new_session->peer_addr.ip46));
+
+  ep.port = new_session->peer_port;
+
+  (session_listener->user_cb)(ecr->accepted_session_index, &ep,
+			      session_listener->user_cb_data);
+
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+  //TODO DO NOT MERGE - put unregister check in close for this listener
+
+  return;
+
+  done:
+  ASSERT(0); // If we can't get a lock or accepted session fails, lets blow up.
+}
 
 /**
  *  * @brief vce_connect_request_handler_fn
@@ -2698,6 +2742,45 @@ done:
 }
 
 int
+vppcom_session_register_listener (uint32_t session_index,
+					     vppcom_session_listener_cb cb,
+					     vppcom_session_listener_errcb
+					     errcb, uint8_t flags, int q_len,
+					     void *ptr)
+{
+  int rv = VPPCOM_OK;
+  session_t *session;
+  vce_event_key_t evk;
+  vppcom_session_listener_t *listener_args;
+
+  /* Start listening */
+  VCL_LOCK_AND_GET_SESSION (session_index, &session);
+
+  rv = vppcom_session_listen (session_index, q_len);
+  if (rv)
+    {
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      goto done;
+    }
+
+
+  /* Register handler for connect_request event on listen_session_index */
+  listener_args = clib_mem_alloc (sizeof (vppcom_session_listener_t));
+  listener_args->user_cb = cb;
+  listener_args->user_cb_data = ptr;
+  listener_args->user_errcb = errcb;
+
+  evk.session_index = session_index;
+  evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
+  (void) vce_register_handler (&vcm->event_thread, &evk,
+			       vce_registered_listener_connect_handler_fn,
+			       listener_args);
+
+done:
+  return rv;
+}
+
+int
 validate_args_session_accept_ (session_t * listen_session)
 {
   u32 listen_session_index = listen_session - vcm->sessions;
@@ -2768,7 +2851,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   evk.session_index = listen_session_index;
   evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
   reg = vce_register_handler (&vcm->event_thread, &evk,
-			      vce_connect_request_handler_fn);
+			      vce_connect_request_handler_fn, 0);
   ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
 
   result = (vce_event_connect_request_t *) ev->data;
@@ -3782,7 +3865,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
 	  vep_session->poll_reg =
 	    vce_register_handler (&vcm->event_thread, &evk,
-				  vce_epoll_wait_connect_request_handler_fn);
+				  vce_epoll_wait_connect_request_handler_fn, 0);
 	}
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
