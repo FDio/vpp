@@ -22,11 +22,13 @@
 #include <mbedtls/timing.h>
 #include <mbedtls/debug.h>
 
-#define TLS_DEBUG (0)
-#define TLS_DEBUG_LEVEL_CLIENT (0)
-#define TLS_DEBUG_LEVEL_SERVER (0)
-#define TLS_CHUNK_SIZE (1 << 14)
-#define TLS_USE_OUR_MEM_FUNCS (0)
+#define TLS_DEBUG 		0
+#define TLS_DEBUG_LEVEL_CLIENT 	0
+#define TLS_DEBUG_LEVEL_SERVER 	0
+
+#define TLS_CHUNK_SIZE 		(1 << 14)
+#define TLS_USE_OUR_MEM_FUNCS	0
+#define TLS_CA_CERT_PATH	"/etc/ssl/certs/ca-certificates.crt"
 
 #if TLS_DEBUG
 #define TLS_DBG(_lvl, _fmt, _args...) 			\
@@ -67,6 +69,8 @@ typedef CLIB_PACKED (struct tls_cxt_id_
 }) tls_ctx_id_t;
 /* *INDENT-ON* */
 
+STATIC_ASSERT (sizeof (tls_ctx_id_t) <= 42, "ctx id must be less than 42");
+
 typedef struct tls_ctx_
 {
   union
@@ -85,6 +89,7 @@ typedef struct tls_ctx_
 #define parent_app_api_context c_s_index
 
   u8 is_passive_close;
+  u8 *srv_hostname;
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
   mbedtls_x509_crt srvcert;
@@ -101,6 +106,12 @@ typedef struct tls_main_
   tls_ctx_t *half_open_ctx_pool;
   clib_rwlock_t half_open_rwlock;
   mbedtls_x509_crt cacert;
+
+  /*
+   * Config
+   */
+  u8 use_test_cert_in_ca;
+  char *ca_cert_path;
 } tls_main_t;
 
 static tls_main_t tls_main;
@@ -188,6 +199,7 @@ tls_ctx_alloc (void)
 void
 tls_ctx_free (tls_ctx_t * ctx)
 {
+  vec_free (ctx->srv_hostname);
   pool_put_index (tls_main.ctx_pool[vlib_get_thread_index ()],
 		  ctx->tls_ctx_idx);
 }
@@ -416,7 +428,8 @@ tls_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
-  if ((rv = mbedtls_ssl_set_hostname (&ctx->ssl, "SERVER NAME")) != 0)
+  if ((rv = mbedtls_ssl_set_hostname (&ctx->ssl,
+				      (const char *) ctx->srv_hostname)) != 0)
     {
       TLS_DBG (1, "failed\n  ! mbedtls_ssl_set_hostname returned %d\n", rv);
       return -1;
@@ -424,14 +437,13 @@ tls_ctx_init_client (tls_ctx_t * ctx)
 
   ctx_ptr = uword_to_pointer (ctx->tls_ctx_idx, void *);
   mbedtls_ssl_set_bio (&ctx->ssl, ctx_ptr, tls_net_send, tls_net_recv, NULL);
-
   mbedtls_debug_set_threshold (TLS_DEBUG_LEVEL_CLIENT);
 
   /*
    * 2. Do the first 2 steps in the handshake.
    */
   TLS_DBG (1, "Initiating handshake for [%u]%u", ctx->c_thread_index,
-	   tls_ctx_index (ctx));
+	   ctx->tls_ctx_idx);
   while (ctx->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     {
       rv = mbedtls_ssl_handshake_step (&ctx->ssl);
@@ -439,13 +451,14 @@ tls_ctx_init_client (tls_ctx_t * ctx)
 	break;
     }
   TLS_DBG (2, "tls state for [%u]%u is %u", ctx->c_thread_index,
-	   tls_ctx_index (ctx), ctx->ssl.state);
+	   ctx->tls_ctx_idx, ctx->ssl.state);
   return 0;
 }
 
 static int
 tls_ctx_init_server (tls_ctx_t * ctx)
 {
+  tls_main_t *tm = &tls_main;
   application_t *app;
   void *ctx_ptr;
   int rv;
@@ -468,17 +481,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
 
   rv = mbedtls_x509_crt_parse (&ctx->srvcert,
 			       (const unsigned char *) app->tls_cert,
-			       mbedtls_test_srv_crt_len);
-  if (rv != 0)
-    {
-      TLS_DBG (1, " failed\n  !  mbedtls_x509_crt_parse returned %d", rv);
-      goto exit;
-    }
-
-  /* TODO clone CA */
-  rv = mbedtls_x509_crt_parse (&ctx->srvcert,
-			       (const unsigned char *) mbedtls_test_cas_pem,
-			       mbedtls_test_cas_pem_len);
+			       vec_len (app->tls_cert));
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_x509_crt_parse returned %d", rv);
@@ -487,7 +490,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
 
   rv = mbedtls_pk_parse_key (&ctx->pkey,
 			     (const unsigned char *) app->tls_key,
-			     mbedtls_test_srv_key_len, NULL, 0);
+			     vec_len (app->tls_key), NULL, 0);
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_pk_parse_key returned %d", rv);
@@ -515,7 +518,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
      mbedtls_ssl_cache_set );
    */
 
-  mbedtls_ssl_conf_ca_chain (&ctx->conf, ctx->srvcert.next, NULL);
+  mbedtls_ssl_conf_ca_chain (&ctx->conf, &tm->cacert, NULL);
   if ((rv = mbedtls_ssl_conf_own_cert (&ctx->conf, &ctx->srvcert, &ctx->pkey))
       != 0)
     {
@@ -539,7 +542,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
    * 3. Start handshake state machine
    */
   TLS_DBG (1, "Initiating handshake for [%u]%u", ctx->c_thread_index,
-	   tls_ctx_index (ctx));
+	   ctx->tls_ctx_idx);
   while (ctx->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     {
       rv = mbedtls_ssl_handshake_step (&ctx->ssl);
@@ -548,7 +551,7 @@ tls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   TLS_DBG (2, "tls state for [%u]%u is %u", ctx->c_thread_index,
-	   tls_ctx_index (ctx), ctx->ssl.state);
+	   ctx->tls_ctx_idx, ctx->ssl.state);
   return 0;
 
 exit:
@@ -585,7 +588,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
 }
 
 static int
-tls_notify_app_connected (tls_ctx_t * ctx)
+tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
 {
   int (*cb_fn) (u32, u32, stream_session_t *, u8);
   stream_session_t *app_session;
@@ -594,6 +597,9 @@ tls_notify_app_connected (tls_ctx_t * ctx)
 
   app = application_get (ctx->parent_app_index);
   cb_fn = app->cb_fns.session_connected_callback;
+
+  if (is_failed)
+    goto failed;
 
   sm = application_get_connect_segment_manager (app);
   app_session = session_alloc (vlib_get_thread_index ());
@@ -632,7 +638,7 @@ tls_handshake_rx (tls_ctx_t * ctx)
       if (rv != 0)
 	break;
     }
-  TLS_DBG (2, "tls state for %u is %u", tls_ctx_index (ctx), ctx->ssl.state);
+  TLS_DBG (2, "tls state for %u is %u", ctx->tls_ctx_idx, ctx->ssl.state);
 
   if (ctx->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     return 0;
@@ -652,12 +658,17 @@ tls_handshake_rx (tls_ctx_t * ctx)
 	  mbedtls_x509_crt_verify_info (buf, sizeof (buf), "  ! ", flags);
 	  TLS_DBG (1, "%s\n", buf);
 
-	  /* For testing purposes not enforcing this */
-	  /* tls_disconnect (tls_ctx_index (ctx), vlib_get_thread_index ());
-	     return -1;
+	  /*
+	   * Presence of hostname enforces strict certificate verification
 	   */
+	  if (ctx->srv_hostname)
+	    {
+	      tls_disconnect (ctx->tls_ctx_idx, vlib_get_thread_index ());
+	      tls_notify_app_connected (ctx, /* is failed */ 1);
+	      return -1;
+	    }
 	}
-      tls_notify_app_connected (ctx);
+      tls_notify_app_connected (ctx, /* is failed */ 0);
     }
   else
     {
@@ -665,7 +676,7 @@ tls_handshake_rx (tls_ctx_t * ctx)
     }
 
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %x",
-	   tls_ctx_index (ctx), ctx->ssl.session->ciphersuite);
+	   ctx->tls_ctx_idx, ctx->ssl.session->ciphersuite);
   return 0;
 }
 
@@ -899,6 +910,11 @@ tls_connect (transport_endpoint_t * tep)
   ctx->parent_app_index = sep->app_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
+  if (sep->hostname)
+    {
+      ctx->srv_hostname = format (0, "%v", sep->hostname);
+      vec_terminate_c_string (ctx->srv_hostname);
+    }
   tls_ctx_half_open_reader_unlock ();
 
   app = application_get (sep->app_index);
@@ -1101,17 +1117,33 @@ tls_init_ca_chain (void)
   tls_main_t *tm = &tls_main;
   int rv;
 
-  /* TODO config */
-  mbedtls_x509_crt_init (&tm->cacert);
-  rv = mbedtls_x509_crt_parse (&tm->cacert,
-			       (const unsigned char *) mbedtls_test_cas_pem,
-			       mbedtls_test_cas_pem_len);
-  if (rv < 0)
+  if (!tm->ca_cert_path)
+    tm->ca_cert_path = TLS_CA_CERT_PATH;
+
+  if (access (tm->ca_cert_path, F_OK | R_OK) == -1)
     {
-      clib_warning ("mbedtls_x509_crt_parse returned -0x%x", -rv);
+      clib_warning ("Could not initialize TLS CA certificates");
       return -1;
     }
-  return 0;
+
+  mbedtls_x509_crt_init (&tm->cacert);
+  rv = mbedtls_x509_crt_parse_file (&tm->cacert, tm->ca_cert_path);
+  if (rv < 0)
+    {
+      clib_warning ("Couldn't parse system CA certificates: -0x%x", -rv);
+    }
+  if (tm->use_test_cert_in_ca)
+    {
+      rv = mbedtls_x509_crt_parse (&tm->cacert,
+				   (const unsigned char *) test_srv_crt_rsa,
+				   test_srv_crt_rsa_len);
+      if (rv < 0)
+	{
+	  clib_warning ("Couldn't parse test certificate: -0x%x", -rv);
+	  return -1;
+	}
+    }
+  return (rv < 0 ? -1 : 0);
 }
 
 clib_error_t *
@@ -1175,6 +1207,24 @@ tls_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (tls_init);
 
+static clib_error_t *
+tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  tls_main_t *tm = &tls_main;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "use-test-cert-in-ca"))
+	tm->use_test_cert_in_ca = 1;
+      else if (unformat (input, "ca-cert-path %s", &tm->ca_cert_path))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (tls_config_fn, "tls");
 /*
  * fd.io coding-style-patch-verification: ON
  *
