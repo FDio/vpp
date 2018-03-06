@@ -220,7 +220,6 @@ proxy_rx_callback (stream_session_t * s)
       a->uri = (char *) pm->client_uri;
       a->api_context = proxy_index;
       a->app_index = pm->active_open_app_index;
-      a->mp = 0;
       vnet_connect_uri (a);
     }
 

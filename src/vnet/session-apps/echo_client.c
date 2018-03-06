@@ -520,16 +520,16 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   vnet_connect_args_t _a, *a = &_a;
   clib_error_t *error = 0;
   int i;
+
+  memset (a, 0, sizeof (*a));
+  vnet_parse_uri ((char *) ecm->connect_uri, (session_endpoint_t *) & a->sep);
+  a->sep.hostname = format (0, "%s", "testtls.fd.io");
   for (i = 0; i < n_clients; i++)
     {
-      memset (a, 0, sizeof (*a));
-
-      a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
       a->app_index = ecm->app_index;
-      a->mp = 0;
 
-      if ((error = vnet_connect_uri (a)))
+      if ((error = vnet_connect (a)))
 	return error;
 
       /* Crude pacing for call setups  */
@@ -541,6 +541,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 	  vlib_process_suspend (vm, 100e-6);
 	}
     }
+  vec_free (a->sep.hostname);
   return 0;
 }
 

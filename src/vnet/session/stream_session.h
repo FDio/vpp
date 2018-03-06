@@ -157,6 +157,7 @@ typedef struct _session_endpoint_extended
 #undef _
   u32 app_index;
   u32 opaque;
+  u8 *hostname;
 } session_endpoint_extended_t;
 
 #define SESSION_IP46_ZERO		\
