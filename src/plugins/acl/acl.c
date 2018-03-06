@@ -76,7 +76,8 @@ _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
 _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
 _(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump) \
-_(ACL_INTERFACE_SET_ETYPE_WHITELIST, acl_interface_set_etype_whitelist)
+_(ACL_INTERFACE_SET_ETYPE_WHITELIST, acl_interface_set_etype_whitelist) \
+_(ACL_INTERFACE_ETYPE_WHITELIST_DUMP, acl_interface_etype_whitelist_dump)
 
 
 /* *INDENT-OFF* */
@@ -2695,6 +2696,98 @@ static void
   clib_mem_set_heap (oldheap);
   REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ETYPE_WHITELIST_REPLY);
 }
+
+static void
+send_acl_interface_etype_whitelist_details (acl_main_t * am,
+					    vl_api_registration_t * reg,
+					    u32 sw_if_index, u32 context)
+{
+  vl_api_acl_interface_etype_whitelist_details_t *mp;
+  int msg_size;
+  int n_input = 0;
+  int n_output = 0;
+  int count = 0;
+  int i = 0;
+
+  u16 *whitelist_in = 0;
+  u16 *whitelist_out = 0;
+
+  if (intf_has_etype_whitelist (am, sw_if_index, 0))
+    whitelist_out =
+      vec_elt (am->output_etype_whitelist_by_sw_if_index, sw_if_index);
+
+  if (intf_has_etype_whitelist (am, sw_if_index, 1))
+    whitelist_in =
+      vec_elt (am->input_etype_whitelist_by_sw_if_index, sw_if_index);
+
+  if ((0 == whitelist_in) && (0 == whitelist_out))
+    return;			/* nothing to do */
+
+  void *oldheap = acl_set_heap (am);
+
+  n_input = vec_len (whitelist_in);
+  n_output = vec_len (whitelist_out);
+  count = n_input + n_output;
+
+  msg_size = sizeof (*mp);
+  msg_size += sizeof (mp->whitelist[0]) * count;
+
+  mp = vl_msg_api_alloc (msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id =
+    ntohs (VL_API_ACL_INTERFACE_ETYPE_WHITELIST_DETAILS + am->msg_id_base);
+
+  /* fill in the message */
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->count = count;
+  mp->n_input = n_input;
+  for (i = 0; i < n_input; i++)
+    {
+      mp->whitelist[i] = whitelist_in[i];
+    }
+  for (i = 0; i < n_output; i++)
+    {
+      mp->whitelist[n_input + i] = whitelist_out[i];
+    }
+  clib_mem_set_heap (oldheap);
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+
+static void
+  vl_api_acl_interface_etype_whitelist_dump_t_handler
+  (vl_api_acl_interface_list_dump_t * mp)
+{
+  acl_main_t *am = &acl_main;
+  vnet_sw_interface_t *swif;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+
+  u32 sw_if_index;
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (mp->sw_if_index == ~0)
+    {
+    /* *INDENT-OFF* */
+    pool_foreach (swif, im->sw_interfaces,
+    ({
+      send_acl_interface_etype_whitelist_details(am, reg, swif->sw_if_index, mp->context);
+    }));
+    /* *INDENT-ON* */
+    }
+  else
+    {
+      sw_if_index = ntohl (mp->sw_if_index);
+      if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
+	send_acl_interface_etype_whitelist_details (am, reg, sw_if_index,
+						    mp->context);
+    }
+}
+
 
 
 /* Set up the API message handling tables */
