@@ -520,14 +520,13 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   vnet_connect_args_t _a, *a = &_a;
   clib_error_t *error = 0;
   int i;
+
+  memset (a, 0, sizeof (*a));
   for (i = 0; i < n_clients; i++)
     {
-      memset (a, 0, sizeof (*a));
-
       a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
       a->app_index = ecm->app_index;
-      a->mp = 0;
 
       if ((error = vnet_connect_uri (a)))
 	return error;

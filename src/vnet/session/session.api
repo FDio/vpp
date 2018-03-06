@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
+option version = "1.0.2";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -292,6 +292,9 @@ autoreply define unbind_sock {
     @param ip - ip address
     @param port - port 
     @param proto - protocol 0 - TCP 1 - UDP
+    @param hostname-len - length of hostname
+    @param hostname - destination's hostname. If present, used by protocols
+					  like tls.
 */
 autoreply define connect_sock {
   u32 client_index;
@@ -303,6 +306,8 @@ autoreply define connect_sock {
   u8 ip[16];
   u16 port;
   u8 proto;
+  u8 hostname_len;
+  u8 hostname[hostname_len];
 };
 
 /** \brief Bind reply

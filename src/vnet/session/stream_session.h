@@ -141,7 +141,6 @@ typedef struct local_session_
 #define foreach_session_endpoint_fields				\
     foreach_transport_connection_fields				\
     _(u8, transport_proto)					\
-    _(u8, app_proto)						\
 
 typedef struct _session_endpoint
 {
@@ -157,6 +156,7 @@ typedef struct _session_endpoint_extended
 #undef _
   u32 app_index;
   u32 opaque;
+  u8 *hostname;
 } session_endpoint_extended_t;
 
 #define SESSION_IP46_ZERO		\
@@ -173,7 +173,18 @@ typedef struct _session_endpoint_extended
   .is_ip4 = 0,				\
   .port = 0,				\
   .transport_proto = 0,			\
-  .app_proto = 0,			\
+}
+#define SESSION_ENDPOINT_EXT_NULL 	\
+{					\
+  .sw_if_index = ENDPOINT_INVALID_INDEX,	\
+  .ip = SESSION_IP46_ZERO,		\
+  .fib_index = ENDPOINT_INVALID_INDEX,	\
+  .is_ip4 = 0,				\
+  .port = 0,				\
+  .transport_proto = 0,			\
+  .app_index = ENDPOINT_INVALID_INDEX,	\
+  .opaque = ENDPOINT_INVALID_INDEX,	\
+  .hostname = 0,				\
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)

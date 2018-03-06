@@ -561,12 +561,10 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
       a->app_index = app->index;
-      a->mp = mp;
       if ((error = vnet_connect_uri (a)))
 	{
 	  rv = clib_error_get_code (error);
-	  if (rv != VNET_API_ERROR_SESSION_REDIRECT)
-	    clib_error_report (error);
+	  clib_error_report (error);
 	}
     }
   else
@@ -579,7 +577,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
    * the connection is established. In case of the redirects, the reply
    * will come from the server app.
    */
-  if (rv == 0 || rv == VNET_API_ERROR_SESSION_REDIRECT)
+  if (rv == 0)
     return;
 
 done:
@@ -821,7 +819,7 @@ static void
 vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 {
   vl_api_connect_session_reply_t *rmp;
-  vnet_connect_args_t _a, *a = &_a;
+  vnet_connect_args_t _a = { 0 }, *a = &_a;
   application_t *app;
   clib_error_t *error = 0;
   int rv = 0;
@@ -846,14 +844,17 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.transport_proto = mp->proto;
       a->sep.fib_index = mp->vrf;
       a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+      if (mp->hostname_len)
+	{
+	  vec_validate (a->sep.hostname, mp->hostname_len - 1);
+	  clib_memcpy (a->sep.hostname, mp->hostname, mp->hostname_len);
+	}
       a->api_context = mp->context;
       a->app_index = app->index;
-      a->mp = mp;
       if ((error = vnet_connect (a)))
 	{
 	  rv = clib_error_get_code (error);
-	  if (rv != VNET_API_ERROR_SESSION_REDIRECT)
-	    clib_error_report (error);
+	  clib_error_report (error);
 	}
     }
   else
@@ -861,7 +862,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  if (rv == 0 || rv == VNET_API_ERROR_SESSION_REDIRECT)
+  vec_free (a->sep.hostname);
+  if (rv == 0)
     return;
 
   /* Got some error, relay it */
