@@ -161,6 +161,7 @@ typedef struct
   u64 client_queue_address;
   u64 options[16];
   elog_track_t elog_track;
+  vce_event_handler_reg_t *poll_reg;
 } session_t;
 
 typedef struct vppcom_cfg_t_
@@ -3649,6 +3650,7 @@ vppcom_epoll_create (void)
   vep_session->vep.prev_sid = ~0;
   vep_session->wait_cont_idx = ~0;
   vep_session->vpp_handle = ~0;
+  vep_session->poll_reg = 0;
 
   if (VPPCOM_DEBUG > 0)
     {
@@ -3694,7 +3696,6 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 {
   session_t *vep_session;
   session_t *session;
-  vce_event_handler_reg_t *reg = 0;
   vce_event_t *ev = 0;
   int rv;
 
@@ -3779,8 +3780,9 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  vce_event_key_t evk;
 	  evk.session_index = session_index;
 	  evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
-	  reg = vce_register_handler (&vcm->event_thread, &evk,
-				      vce_epoll_wait_connect_request_handler_fn);
+	  vep_session->poll_reg =
+	    vce_register_handler (&vcm->event_thread, &evk,
+				  vce_epoll_wait_connect_request_handler_fn);
 	}
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
@@ -3861,10 +3863,11 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	}
 
       /* VCL Event Un-register handler */
-      if ((session->state & STATE_LISTEN) && reg)
+      if ((session->state & STATE_LISTEN) && vep_session->poll_reg)
 	{
-	  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
-	  vce_unregister_handler (&vcm->event_thread, ev);
+	  ev = vce_get_event_from_index (&vcm->event_thread,
+					 vep_session->poll_reg->ev_idx);
+	  (void) vce_unregister_handler (&vcm->event_thread, ev);
 	}
 
       vep_session->wait_cont_idx =
