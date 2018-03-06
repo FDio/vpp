@@ -608,8 +608,8 @@ class VPPAPI(object):
                 if d[:-6] in svcs:
                     continue
                 if d[:-6] not in msgs:
-                    self.logger.warning('{} missing calling message'
-                                        .format(d))
+                    raise ValueError('{} missing calling message'
+                                     .format(d))
                 continue
             if d.endswith('_dump'):
                 if d in svcs:
@@ -618,14 +618,14 @@ class VPPAPI(object):
                     s['services'].append(Service(d, d[:-5]+'_details',
                                                  stream=True))
                 else:
-                    self.logger.error('{} missing details message'
-                                      .format(d))
+                    raise ValueError('{} missing details message'
+                                     .format(d))
                 continue
 
             if d.endswith('_details'):
                 if d[:-8]+'_dump' not in msgs:
-                    self.logger.error('{} missing dump message'
-                                      .format(d))
+                    raise ValueError('{} missing dump message'
+                                     .format(d))
                 continue
 
             if d in svcs:
