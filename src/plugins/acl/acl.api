@@ -496,3 +496,33 @@ autoreply manual_print define acl_interface_set_etype_whitelist
   u16 whitelist[count];
 };
 
+/** \brief Dump the list(s) of Ethertype whitelists applied to specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the ethertype whitelist for
+*/
+
+define acl_interface_etype_whitelist_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index; /* ~0 for all interfaces */
+};
+
+/** \brief Details about ethertype whitelist on a single interface
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of MACIP ACLs is applied
+    @param count - total number of whitelisted ethertypes in the vector
+    @param n_input - this many first elements correspond to input whitelisted ethertypes, the rest - output
+    @param whitelist - vector of whitelisted ethertypes
+*/
+
+define acl_interface_etype_whitelist_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 count;
+  u8 n_input; /* first n_input ethertypes are input, the rest - output */
+  u16 whitelist[count];
+};
+
