@@ -244,10 +244,10 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   };
 
   vnet_connect_args_t connect_args = {
-    .sep = client_sep,
     .app_index = 0,
     .api_context = 0,
   };
+  clib_memcpy (&connect_args.sep, &client_sep, sizeof (client_sep));
 
   vnet_unbind_args_t unbind_args = {
     .handle = bind_args.handle,
@@ -1032,10 +1032,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		" 5.6.7.9/32 4321 in local table should return deny");
 
   vnet_connect_args_t connect_args = {
-    .sep = sep,
     .app_index = attach_args.app_index,
     .api_context = 0,
   };
+  clib_memcpy (&connect_args.sep, &sep, sizeof (sep));
 
   /* Try connecting */
   error = vnet_connect (&connect_args);
@@ -1312,7 +1312,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
 
   connect_args.app_index = server_index;
-  connect_args.sep = sep;
+  clib_memcpy (&connect_args.sep, &sep, sizeof (sep));
 
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
