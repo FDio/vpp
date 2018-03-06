@@ -45,6 +45,11 @@ autoreply define want_oam_events
   u32 pid;
 };
 
+service {
+  rpc want_oam_events returns want_oam_events_reply
+    events oam_event;
+};
+
 /** \brief OAM add / del target request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

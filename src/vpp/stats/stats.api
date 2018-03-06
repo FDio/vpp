@@ -20,6 +20,43 @@
 
 option version = "1.0.0";
 
+import "vnet/interface.api";
+
+service {
+  rpc want_stats
+    returns want_stats_reply;
+  rpc want_interface_simple_stats
+    returns want_interface_simple_stats_reply
+    events vnet_interface_simple_counters;
+  rpc want_per_interface_simple_stats
+    returns want_per_interface_simple_stats_reply
+    events vnet_per_interface_simple_counters;
+  rpc want_interface_combined_stats
+    returns want_interface_combined_stats_reply
+    events vnet_interface_combined_counters;
+  rpc want_per_interface_combined_stats
+    returns want_per_interface_combined_stats_reply
+    events vnet_per_interface_combined_counters;
+  rpc want_ip4_fib_stats
+    returns want_ip4_fib_stats_reply
+    events vnet_ip4_fib_counters;
+  rpc want_ip6_fib_stats
+    returns want_ip6_fib_stats_reply
+    events vnet_ip6_fib_counters;
+  rpc want_ip4_mfib_stats
+    returns want_ip4_mfib_stats_reply
+    events vnet_ip4_mfib_counters;
+  rpc want_ip6_mfib_stats
+    returns want_ip6_mfib_stats_reply
+    events vnet_ip6_mfib_counters;
+  rpc want_ip4_nbr_stats
+    returns want_ip4_nbr_stats_reply
+    events vnet_ip4_nbr_counters;
+  rpc want_ip6_nbr_stats
+    returns want_ip6_nbr_stats_reply
+    events vnet_ip6_nbr_counters;
+};
+
 /** \brief Want Stats, enable/disable ALL stats updates
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -292,6 +329,64 @@ manual_print manual_endian define vnet_ip6_nbr_counters
   vl_api_ip6_nbr_counter_t c[count];
 };
 
+/** \brief Simple stats counters structure
+    @param vnet_counter_type- such as ip4, ip6, punts, etc
+    @param first_sw_if_index - first sw index in block of index, counts
+    @param count - number of counters, equal to the number of interfaces in
+      this stats block
+    @param data - contiguous block of u64 counters
+
+    vnet_counter_type defined in enums - plural - in vnet/interface.h
+*/
+manual_print manual_endian define vnet_interface_simple_counters
+{
+  u8 vnet_counter_type;
+  u32 first_sw_if_index;
+  u32 count;
+  u64 data[count];
+};
+
+/** \brief Combined stats counters structure
+    @param vnet_counter_type- such as ip4, ip6, punts, etc
+    @param first_sw_if_index - first sw index in block of index, counts
+    @param count - number of counters, equal to the number of interfaces in
+      this stats block
+    @param data - contiguous block of vlib_counter_t structures
+
+    vnet_counter_type defined in enums - plural - in vnet/interface.h
+*/
+manual_print manual_endian define vnet_interface_combined_counters
+{
+  u8 vnet_counter_type;
+  u32 first_sw_if_index;
+  u32 count;
+  vl_api_vlib_counter_t data[count];
+};
+
+/** \brief Simple per interface stats counters structure
+    @param count - number of elements in message
+    @param timestamp - u32 vlib timestamp for control plane
+    @param data[count] - vl_api_vnet_simple_counter_t 
+
+*/
+manual_print manual_endian define vnet_per_interface_simple_counters
+{
+  u32 count;
+  u32 timestamp;
+  vl_api_vnet_simple_counter_t data[count];
+};
+
+/** \brief Combined stats counters structure per interface
+    @param count - number of elements in message
+    @param timestamp - u32 vlib timestamp for control plane
+    @param data[count] - vl_api_vnet_combined_counter_t
+*/
+manual_print manual_endian define vnet_per_interface_combined_counters
+{
+  u32 count;
+  u32 timestamp;
+  vl_api_vnet_combined_counter_t data[count];
+};
 
 /** \brief Request for a single block of summary stats
     @param client_index - opaque cookie to identify the sender

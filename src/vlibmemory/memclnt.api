@@ -17,6 +17,16 @@
 option version = "1.0.0";
 
 /*
+ * Define services not following the normal convetions here
+ */
+service {
+  rpc memclnt_rx_thread_suspend returns null;
+  rpc memclnt_read_timeout returns null;
+  rpc rx_thread_exit returns null;
+  rpc trace_plugin_msg_ids returns null;
+};
+
+/*
  * Create a client registration 
  */
 manual_print 
