@@ -586,7 +586,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
     ]))
     print("")
     print("")
-    for t in parser.types_by_json[j].values():
+    for t in parser.types_by_json[j]:
         try:
             print("%s" % t.get_c_def())
             print("")
@@ -598,7 +598,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
 
     print("")
     function_attrs = "static inline "
-    for t in parser.types_by_json[j].values():
+    for t in parser.types_by_json[j]:
         print("#ifndef defined_inline_%s" % t.get_c_name())
         print("#define defined_inline_%s" % t.get_c_name())
         print("%s%s" % (function_attrs, t.get_swap_to_be_func_def()))
