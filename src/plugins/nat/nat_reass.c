@@ -306,6 +306,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
   reass->sess_index = (u32) ~ 0;
   reass->thread_index = (u32) ~ 0;
   reass->last_heard = now;
+  reass->frag_n = 0;
 
   if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 1))
     {
