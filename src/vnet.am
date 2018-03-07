@@ -976,13 +976,22 @@ libvnet_la_SOURCES +=				\
   vnet/session-apps/http_server.c		\
   vnet/session-apps/proxy.c
 
-if WITH_MBEDTLS
-libvnet_la_SOURCES += vnet/session-apps/tls.c
-endif
-
 nobase_include_HEADERS +=			\
   vnet/session-apps/echo_client.h		\
   vnet/session-apps/proxy.h
+
+########################################
+# TLS protocol
+########################################
+
+libvnet_la_SOURCES += vnet/tls/tls.c
+
+if WITH_MBEDTLS
+libvnet_la_SOURCES += vnet/tls/tls_mbedtls.c
+endif
+
+nobase_include_HEADERS +=			\
+  vnet/tls/tls.h				\
 
 ########################################
 # Linux packet interface
