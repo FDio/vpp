@@ -207,6 +207,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session
         pppoe_if = VppPppoeInterface(self,
+                                     self.pg0.sw_if_index,
                                      self.pg0.remote_ip4,
                                      self.pg0.remote_mac,
                                      self.session_id)
@@ -270,6 +271,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session
         pppoe_if = VppPppoeInterface(self,
+                                     self.pg0.sw_if_index,
                                      self.pg0.remote_ip4,
                                      self.pg0.remote_mac,
                                      self.session_id)
@@ -333,6 +335,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session
         pppoe_if = VppPppoeInterface(self,
+                                     self.pg0.sw_if_index,
                                      self.pg0.remote_ip4,
                                      self.pg0.remote_mac,
                                      self.session_id)
@@ -387,6 +390,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session
         pppoe_if = VppPppoeInterface(self,
+                                     self.pg0.sw_if_index,
                                      self.pg0.remote_ip4,
                                      self.pg0.remote_mac,
                                      self.session_id)
@@ -441,6 +445,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session 1
         pppoe_if1 = VppPppoeInterface(self,
+                                      self.pg0.sw_if_index,
                                       self.pg0.remote_ip4,
                                       self.pg0.remote_mac,
                                       self.session_id)
@@ -461,6 +466,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session 2
         pppoe_if2 = VppPppoeInterface(self,
+                                      self.pg2.sw_if_index,
                                       self.pg2.remote_ip4,
                                       self.pg2.remote_mac,
                                       self.session_id + 1)
@@ -537,6 +543,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session 1
         pppoe_if1 = VppPppoeInterface(self,
+                                      self.pg0.sw_if_index,
                                       self.pg0.remote_ip4,
                                       self.pg0.remote_mac,
                                       self.session_id)
@@ -557,6 +564,7 @@ class TestPPPoE(VppTestCase):
 
         # Create PPPoE session 2
         pppoe_if2 = VppPppoeInterface(self,
+                                      self.pg2.sw_if_index,
                                       self.pg2.remote_ip4,
                                       self.pg2.remote_mac,
                                       self.session_id + 1)
