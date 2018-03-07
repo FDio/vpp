@@ -80,6 +80,82 @@ bind_cmd::to_string() const
   return (s.str());
 }
 
+unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
+  : rpc_cmd(item)
+  , m_itf(itf)
+{
+}
+
+bool
+unbind_cmd::operator==(const unbind_cmd& other) const
+{
+  return (m_itf == other.m_itf);
+}
+
+rc_t
+unbind_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), 0, std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.sw_if_index = m_itf.value();
+  payload.count = 0;
+
+  payload.n_input = 0;
+
+  VAPI_CALL(req.execute());
+
+  wait();
+  m_hw_item.set(rc_t::NOOP);
+
+  return rc_t::OK;
+}
+
+std::string
+unbind_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "ACL-Ethertype-Unbind: " << m_hw_item.to_string()
+    << " itf:" << m_itf.to_string();
+  return (s.str());
+}
+
+dump_cmd::dump_cmd(const handle_t& hdl)
+  : m_itf(hdl)
+{
+}
+
+dump_cmd::dump_cmd(const dump_cmd& d)
+  : m_itf(d.m_itf)
+{
+}
+
+bool
+dump_cmd::operator==(const dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  auto& payload = m_dump->get_request().get_payload();
+  payload.sw_if_index = m_itf.value();
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+dump_cmd::to_string() const
+{
+  return ("acl-ethertype-dump");
+}
 }; // namespace acl_ethertype_cmds
 }; // namespace ACL
 }; // namespace VOM
