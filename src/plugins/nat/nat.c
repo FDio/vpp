@@ -1351,6 +1351,12 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   snat_static_mapping_t * m;
   snat_det_map_t * dm;
 
+  pool_foreach (i, sm->output_feature_interfaces,
+  ({
+    if (i->sw_if_index == sw_if_index)
+      return VNET_API_ERROR_VALUE_EXIST;
+  }));
+
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     feature_name = is_inside ?  "nat44-in2out-fast" : "nat44-out2in-fast";
   else
@@ -1490,6 +1496,12 @@ int snat_interface_add_del_output_feature (u32 sw_if_index,
   if (sm->deterministic ||
       (sm->static_mapping_only && !(sm->static_mapping_connection_tracking)))
     return VNET_API_ERROR_UNSUPPORTED;
+
+  pool_foreach (i, sm->interfaces,
+  ({
+    if (i->sw_if_index == sw_if_index)
+      return VNET_API_ERROR_VALUE_EXIST;
+  }));
 
   if (is_inside)
     {
