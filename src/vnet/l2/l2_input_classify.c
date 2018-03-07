@@ -182,15 +182,16 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 
       /* prefetch next iteration */
       {
-	vlib_buffer_t *p1, *p2;
+	vlib_buffer_t *p2, *p3;
 
-	p1 = vlib_get_buffer (vm, from[1]);
 	p2 = vlib_get_buffer (vm, from[2]);
+	/* Prefetch the curr+3 only if it is there - else avoid branching by prefetching curr+2 twice */
+	p3 = vlib_get_buffer (vm, from[2 + (n_left_from > 3)]);
 
-	vlib_prefetch_buffer_header (p1, STORE);
-	CLIB_PREFETCH (p1->data, CLIB_CACHE_LINE_BYTES, STORE);
 	vlib_prefetch_buffer_header (p2, STORE);
 	CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+	vlib_prefetch_buffer_header (p3, STORE);
+	CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
       }
 
       bi0 = from[0];
