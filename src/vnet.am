@@ -27,10 +27,6 @@ if WITH_LIBSSL
 libvnet_la_LIBADD += -lcrypto
 endif
 
-if WITH_MBEDTLS
-libvnet_la_LIBADD += -lmbedtls -lmbedx509 -lmbedcrypto
-endif
-
 ########################################
 # Generic stuff
 ########################################
@@ -976,13 +972,18 @@ libvnet_la_SOURCES +=				\
   vnet/session-apps/http_server.c		\
   vnet/session-apps/proxy.c
 
-if WITH_MBEDTLS
-libvnet_la_SOURCES += vnet/session-apps/tls.c
-endif
-
 nobase_include_HEADERS +=			\
   vnet/session-apps/echo_client.h		\
   vnet/session-apps/proxy.h
+
+########################################
+# TLS protocol
+########################################
+
+libvnet_la_SOURCES += vnet/tls/tls.c
+
+nobase_include_HEADERS +=			\
+  vnet/tls/tls.h
 
 ########################################
 # Linux packet interface
