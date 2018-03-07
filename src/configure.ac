@@ -230,6 +230,7 @@ PLUGIN_ENABLED(srv6ad)
 PLUGIN_ENABLED(srv6am)
 PLUGIN_ENABLED(srv6as)
 PLUGIN_ENABLED(stn)
+PLUGIN_ENABLED(tlsmbedtls)
 
 ###############################################################################
 # Dependency checks
@@ -288,14 +289,23 @@ AM_COND_IF([ENABLE_MARVELL_PLUGIN],
     ])
 ])
 
-AM_COND_IF([WITH_MBEDTLS],
+AM_COND_IF([WITH_MBEDTLS], [],
+[
+  AC_MSG_WARN([mbedtls not enabled. Disabling tlsmbedtls plugin])
+  enable_tlsmbedtls_plugin=no
+  AM_CONDITIONAL(ENABLE_TLSMBEDTLS_PLUGIN, false)
+])
+
+AM_COND_IF([ENABLE_TLSMBEDTLS_PLUGIN],
 [
   AC_CHECK_HEADERS([mbedtls/ssl.h], [],
     [
-      AC_MSG_WARN([mbedtls headers not found. TLS app disabled])
-      AM_CONDITIONAL(WITH_MBEDTLS, false)
+      AC_MSG_WARN([mbedtls headers not found. TLS engine implementation disabled])
+      enable_tlsmbedtls_plugin=no
+      AM_CONDITIONAL(ENABLE_TLSMBEDTLS_PLUGIN, false)
     ], [])
 ])
+
 
 ###############################################################################
 # JAVA
