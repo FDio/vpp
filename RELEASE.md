@@ -1,4 +1,4 @@
-# Release Notes    {#release_notes}
+# Release Notes  {#release_notes}
 
 * @subpage release_notes_1801
 * @subpage release_notes_1710
