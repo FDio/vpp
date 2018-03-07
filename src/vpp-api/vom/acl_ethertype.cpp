@@ -187,7 +187,41 @@ acl_ethertype::event_handler::handle_replay()
 void
 acl_ethertype::event_handler::handle_populate(const client_db::key_t& key)
 {
-  // FIXME
+  /*
+   * dump VPP acl ethertypes
+   */
+  std::shared_ptr<acl_ethertype_cmds::dump_cmd> cmd =
+    std::make_shared<acl_ethertype_cmds::dump_cmd>(~0);
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& record : *cmd) {
+    auto& payload = record.get_payload();
+    handle_t hdl(payload.sw_if_index);
+    std::shared_ptr<interface> itf = interface::find(hdl);
+    uint8_t n_input = payload.n_input;
+    uint8_t count = payload.count;
+    ethertype_rules_t ler;
+    if (itf) {
+      for (int i = 0; i < count; i++) {
+        ethertype_t e = ethertype_t::from_numeric_val(payload.whitelist[i]);
+        if (n_input) {
+          ethertype_rule_t er(e, direction_t::INPUT);
+          ler.insert(er);
+          n_input--;
+        } else {
+          ethertype_rule_t er(e, direction_t::OUTPUT);
+          ler.insert(er);
+        }
+      }
+      if (!ler.empty()) {
+        acl_ethertype a_e(*itf, ler);
+        VOM_LOG(log_level_t::DEBUG) << "ethertype dump: " << a_e.to_string();
+        OM::commit(key, a_e);
+      }
+    }
+  }
 }
 
 dependency_t
