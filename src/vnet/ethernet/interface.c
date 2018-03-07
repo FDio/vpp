@@ -739,12 +739,13 @@ int
 vnet_delete_sub_interface (u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  vnet_sw_interface_t *si;
   int rv = 0;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  si = vnet_get_sw_interface (vnm, sw_if_index);
   if (si->type == VNET_SW_INTERFACE_TYPE_SUB ||
       si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
