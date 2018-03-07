@@ -3327,47 +3327,26 @@ class TestNAT44(MethodHolder):
             raise
 
         # from local network host to external network
-        ext_port = 0
-        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-             TCP(sport=23456, dport=34567))
-        self.pg0.add_stream(p)
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(1)
-        p = capture[0]
-        try:
-            ip = p[IP]
-            tcp = p[TCP]
-            self.assertEqual(ip.src, self.nat_addr)
-            self.assertNotEqual(tcp.sport, 23456)
-            ext_port = tcp.sport
-            self.check_tcp_checksum(p)
-            self.check_ip_checksum(p)
-        except:
-            self.logger.error(ppp("Unexpected or invalid packet:", p))
-            raise
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
 
         # from external network back to local network host
-        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
-             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
-             TCP(sport=34567, dport=ext_port))
-        self.pg1.add_stream(p)
+        pkts = self.create_stream_out(self.pg1)
+        self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture(1)
-        p = capture[0]
-        server = None
-        try:
-            ip = p[IP]
-            tcp = p[TCP]
-            self.assertEqual(ip.dst, self.pg0.remote_ip4)
-            self.assertEqual(tcp.dport, 23456)
-            self.check_tcp_checksum(p)
-            self.check_ip_checksum(p)
-        except:
-            self.logger.error(ppp("Unexpected or invalid packet:", p))
-            raise
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg0)
 
     def test_output_feature_and_service2(self):
         """ NAT44 interface output feature and service host direct access """

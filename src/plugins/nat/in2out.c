@@ -254,14 +254,13 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
 
 static inline int
 nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
-                                  u32 proto0, u32 thread_index)
+                                  u32 proto0, u16 src_port, u32 thread_index)
 {
-  udp_header_t * udp0 = ip4_next_header (ip0);
   snat_session_key_t key0;
   clib_bihash_kv_8_8_t kv0, value0;
 
   key0.addr = ip0->src_address;
-  key0.port = udp0->src_port;
+  key0.port = src_port;
   key0.protocol = proto0;
   key0.fib_index = sm->outside_fib_index;
   kv0.key = key0.as_u64;
@@ -562,7 +561,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
       if (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)
         {
           if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-              ip0, IP_PROTOCOL_ICMP, thread_index)))
+              ip0, SNAT_PROTOCOL_ICMP, key0.port, thread_index)))
             {
               dont_translate = 1;
               goto out;
@@ -571,7 +570,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
       else
         {
           if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
-              ip0, IP_PROTOCOL_ICMP, rx_fib_index0, thread_index)))
+              ip0, SNAT_PROTOCOL_ICMP, rx_fib_index0, thread_index)))
             {
               dont_translate = 1;
               goto out;
@@ -1602,7 +1601,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip0, proto0, thread_index)))
+                          ip0, proto0, udp0->src_port, thread_index)))
                         goto trace00;
                     }
                   else
@@ -1794,7 +1793,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip1, proto1, thread_index)))
+                          ip1, proto1, udp1->src_port, thread_index)))
                         goto trace00;
                     }
                   else
@@ -2022,7 +2021,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip0, proto0, thread_index)))
+                          ip0, proto0, udp0->src_port, thread_index)))
                         goto trace0;
                     }
                   else
