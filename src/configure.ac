@@ -230,6 +230,7 @@ PLUGIN_ENABLED(srv6ad)
 PLUGIN_ENABLED(srv6am)
 PLUGIN_ENABLED(srv6as)
 PLUGIN_ENABLED(stn)
+PLUGIN_ENABLED(tlsmbedtls)
 
 ###############################################################################
 # Dependency checks
@@ -286,6 +287,16 @@ AM_COND_IF([ENABLE_MARVELL_PLUGIN],
       enable_marvell_plugin=no
       AM_CONDITIONAL(ENABLE_MARVELL_PLUGIN, false)
     ])
+])
+
+AM_COND_IF([ENABLE_TLSMBEDTLS_PLUGIN],
+[
+  AC_CHECK_HEADERS([mbedtls/ssl.h], [],
+    [
+      AC_MSG_WARN([mbedtls headers not found. tls engine implementation disabled])
+      enable_tlsmbedtls_plugin=no
+      AM_CONDITIONAL(ENABLE_TLSMBEDTLS_PLUGIN, false)
+    ], [])
 ])
 
 AM_COND_IF([WITH_MBEDTLS],

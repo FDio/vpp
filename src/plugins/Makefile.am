@@ -111,6 +111,10 @@ if ENABLE_GBP_PLUGIN
 include gbp.am
 endif
 
+if ENABLE_TLSMBEDTLS_PLUGIN
+include tlsmbedtls.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
