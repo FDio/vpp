@@ -438,27 +438,14 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     pg_buffer_index_t *bi;
     int n;
 
-    if (vm->buffer_main->callbacks_registered)
-      s->buffer_bytes = VLIB_BUFFER_DATA_SIZE;
-
-    if (!s->buffer_bytes)
-      s->buffer_bytes = s->max_packet_bytes;
-
-    s->buffer_bytes = vlib_buffer_round_size (s->buffer_bytes);
-
+    s->buffer_bytes = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
     n = s->max_packet_bytes / s->buffer_bytes;
     n += (s->max_packet_bytes % s->buffer_bytes) != 0;
 
     vec_resize (s->buffer_indices, n);
 
     vec_foreach (bi, s->buffer_indices)
-    {
-      bi->free_list_index =
-	vlib_buffer_create_free_list (vm, s->buffer_bytes,
-				      "pg stream %d buffer #%d",
-				      s - pg->streams,
-				      1 + (bi - s->buffer_indices));
-    }
+      bi->free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
   }
 
   /* Find an interface to use. */
@@ -483,7 +470,6 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
 void
 pg_stream_del (pg_main_t * pg, uword index)
 {
-  vlib_main_t *vm = vlib_get_main ();
   pg_stream_t *s;
   pg_buffer_index_t *bi;
 
@@ -494,7 +480,6 @@ pg_stream_del (pg_main_t * pg, uword index)
 
   vec_foreach (bi, s->buffer_indices)
   {
-    vlib_buffer_delete_free_list (vm, bi->free_list_index);
     clib_fifo_free (bi->buffer_fifo);
   }
 

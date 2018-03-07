@@ -1178,25 +1178,6 @@ init_buffers_inline (vlib_main_t * vm,
     }
 }
 
-static void
-pg_buffer_init (vlib_main_t * vm,
-		vlib_buffer_free_list_t * fl, u32 * buffers, u32 n_buffers)
-{
-  pg_main_t *pg = &pg_main;
-  pg_stream_t *s;
-  uword bi, si;
-
-  si = fl->buffer_init_function_opaque & pow2_mask (24);
-  bi = fl->buffer_init_function_opaque >> 24;
-
-  s = pool_elt_at_index (pg->streams, si);
-
-  init_buffers_inline (vm, s, buffers, n_buffers,
-		       /* data_offset */ bi * s->buffer_bytes,
-		       /* n_data */ s->buffer_bytes,
-		       /* set_data */ 1);
-}
-
 static u32
 pg_stream_fill_helper (pg_main_t * pg,
 		       pg_stream_t * s,
@@ -1204,25 +1185,8 @@ pg_stream_fill_helper (pg_main_t * pg,
 		       u32 * buffers, u32 * next_buffers, u32 n_alloc)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_free_list_t *f;
   uword is_start_of_packet = bi == s->buffer_indices;
   u32 n_allocated;
-
-  f = vlib_buffer_get_free_list (vm, bi->free_list_index);
-
-  /*
-   * Historically, the pg maintained its own free lists and
-   * device drivers tx paths would return pkts.
-   */
-  if (vm->buffer_main->callbacks_registered == 0 &&
-      !(s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
-    f->buffer_init_function = pg_buffer_init;
-  f->buffer_init_function_opaque =
-    (s - pg->streams) | ((bi - s->buffer_indices) << 24);
-
-  if (is_start_of_packet)
-    vnet_buffer (&f->buffer_init_template)->sw_if_index[VLIB_RX]
-      = vnet_main.local_interface_sw_if_index;
 
   n_allocated = vlib_buffer_alloc_from_free_list (vm,
 						  buffers,
@@ -1238,16 +1202,12 @@ pg_stream_fill_helper (pg_main_t * pg,
   n_alloc = n_allocated;
 
   /* Reinitialize buffers */
-  if (vm->buffer_main->callbacks_registered == 0 || CLIB_DEBUG > 0
-      || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
-    init_buffers_inline
-      (vm, s,
-       buffers,
-       n_alloc, (bi - s->buffer_indices) * s->buffer_bytes /* data offset */ ,
-       s->buffer_bytes,
-       /* set_data */
-       vm->buffer_main->callbacks_registered != 0
-       || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
+  init_buffers_inline
+    (vm, s,
+     buffers,
+     n_alloc, (bi - s->buffer_indices) * s->buffer_bytes /* data offset */ ,
+     s->buffer_bytes,
+     /* set_data */ 1);
 
   if (next_buffers)
     pg_set_next_buffer_pointers (pg, s, buffers, next_buffers, n_alloc);
