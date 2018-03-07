@@ -110,7 +110,6 @@ endif
 
 sanity: verify-no-running-vpp
 	@sys_req/dev_shm_size.sh
-	@sys_req/set_system_parameters.sh sys_req/system_parameters
 	@bash -c "$(SANITY_IMPORT_VPP_PAPI_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot import vpp_papi\" &&\
