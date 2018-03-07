@@ -297,11 +297,6 @@ AM_COND_IF([WITH_MBEDTLS],
     ], [])
 ])
 
-AC_PATH_PROG([VPPAPIGEN], [vppapigen], [no])
-if test "$VPPAPIGEN" = "no"; then
-   VPPAPIGEN=\$\(top_srcdir\)/tools/vppapigen/vppapigen
-fi
-
 ###############################################################################
 # JAVA
 ###############################################################################
