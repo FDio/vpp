@@ -1381,10 +1381,36 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        # multiple clients
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_static_lb_multi_clients(self):
+        """ NAT44 local service load balancing - multiple clients"""
+
+        external_addr_n = socket.inet_pton(socket.AF_INET, self.nat_addr)
+        external_port = 80
+        local_port = 8080
+        server1 = self.pg0.remote_hosts[0]
+        server2 = self.pg0.remote_hosts[1]
+
+        locals = [{'addr': server1.ip4n,
+                   'port': local_port,
+                   'probability': 90},
+                  {'addr': server2.ip4n,
+                   'port': local_port,
+                   'probability': 10}]
+
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
+                                                  external_port,
+                                                  IP_PROTOS.tcp,
+                                                  local_num=len(locals),
+                                                  locals=locals)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
         server1_n = 0
         server2_n = 0
-        clients = ip4_range(self.pg1.remote_ip4, 10, 20)
+        clients = ip4_range(self.pg1.remote_ip4, 10, 50)
         pkts = []
         for client in clients:
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
