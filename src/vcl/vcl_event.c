@@ -69,14 +69,14 @@ vce_clear_event (vce_event_thread_t *evt, vce_event_t *ev)
 vce_event_t *
 vce_get_event_from_index(vce_event_thread_t *evt, u32 ev_idx)
 {
-  vce_event_t *ev;
+  vce_event_t *ev = 0;
 
   clib_spinlock_lock (&(evt->events_lockp));
-  ev = pool_elt_at_index (evt->vce_events, ev_idx);
+  if ( ! pool_is_free_index (evt->vce_events, ev_idx))
+    ev = pool_elt_at_index (evt->vce_events, ev_idx);
   clib_spinlock_unlock (&(evt->events_lockp));
 
   return ev;
-
 }
 
 vce_event_handler_reg_t *
@@ -87,16 +87,13 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
   vce_event_handler_reg_t *old_handler = 0;
   uword *p;
   u32 handler_index;
-  u64 adj_key;
 
   /* TODO - multiple handler support. For now we can replace
    * and re-instate, which is useful for event recycling */
 
-  adj_key = evk->as_u64 | (1LL << 63); //evk can be 0, which won't hash
-
   clib_spinlock_lock (&evt->handlers_lockp);
 
-  p = hash_get (evt->handlers_index_by_event_key, adj_key);
+  p = hash_get (evt->handlers_index_by_event_key, evk->as_u64);
   if (p)
     {
       old_handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
@@ -121,8 +118,10 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
 
   handler->handler_fn = cb;
   handler->replaced_handler_idx = (p) ? p[0] : ~0;
+  handler->ev_idx = ~0; //This will be set by the event thread if event happens
+  handler->evk = evk->as_u64;
 
-  hash_set (evt->handlers_index_by_event_key, adj_key, handler_index);
+  hash_set (evt->handlers_index_by_event_key, evk->as_u64, handler_index);
 
   pthread_cond_init (&(handler->handler_cond), NULL);
   pthread_mutex_init (&(handler->handler_lock), NULL);
@@ -139,20 +138,19 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
 }
 
 int
-vce_unregister_handler (vce_event_thread_t *evt, vce_event_t *ev)
+vce_unregister_handler (vce_event_thread_t *evt,
+			vce_event_handler_reg_t *handler)
 {
-  vce_event_handler_reg_t *handler;
   uword *p;
-  u64 adj_key = ev->evk.as_u64 | (1LL << 63);
+  u64 evk = handler->evk;
   u8 generate_signal = 0;
 
   clib_spinlock_lock (&evt->handlers_lockp);
 
-  p = hash_get (evt->handlers_index_by_event_key, adj_key);
+  p = hash_get (evt->handlers_index_by_event_key, evk);
   if (!p)
     {
       clib_spinlock_unlock (&evt->handlers_lockp);
-
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
@@ -161,13 +159,13 @@ vce_unregister_handler (vce_event_thread_t *evt, vce_event_t *ev)
   /* If this handler replaced another handler, re-instate it */
   if (handler->replaced_handler_idx != ~0)
     {
-      hash_set (evt->handlers_index_by_event_key, adj_key,
+      hash_set (evt->handlers_index_by_event_key, evk,
 		handler->replaced_handler_idx);
       generate_signal = 1;
     }
   else
     {
-      hash_unset (evt->handlers_index_by_event_key, adj_key);
+      hash_unset (evt->handlers_index_by_event_key, evk);
     }
 
   pthread_mutex_destroy (&(handler->handler_lock));
@@ -196,7 +194,6 @@ vce_event_thread_fn (void *arg)
   u32 ev_idx;
   vce_event_handler_reg_t *handler;
   uword *p;
-  u64 adj_key;
 
   evt->recycle_event = 1; // Used for recycling events with no handlers
 
@@ -221,11 +218,10 @@ vce_event_thread_fn (void *arg)
       clib_spinlock_unlock (&(evt->events_lockp));
 
       ASSERT(ev);
-      adj_key = ev->evk.as_u64 | (1LL << 63);
 
       clib_spinlock_lock (&evt->handlers_lockp);
 
-      p = hash_get (evt->handlers_index_by_event_key, adj_key);
+      p = hash_get (evt->handlers_index_by_event_key, ev->evk.as_u64);
       if (!p)
 	{
 	  /* If an event falls in the woods, and there is no handler to hear it,
