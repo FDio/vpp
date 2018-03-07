@@ -16,6 +16,23 @@
       "revId": "32928e19c642c99ac8339c79c814ee3dadce2538",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6e9511e6_6ca0c929",
+        "filename": "src/vnet/l2/l2_output_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-03-07T17:58:54Z",
+      "side": 1,
+      "message": "Different function, same bug...",
+      "revId": "32928e19c642c99ac8339c79c814ee3dadce2538",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
