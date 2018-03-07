@@ -726,7 +726,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (gbp_4_node, gbp_4);
 VNET_FEATURE_INIT (gbp_4_node, static) = {
     .arc_name = "ip4-unicast",
     .node_name = "gbp4",
-    .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+    .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 
 VLIB_REGISTER_NODE (gbp_6_node) = {
@@ -751,7 +751,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (gbp_6_node, gbp_6);
 VNET_FEATURE_INIT (gbp_6_node, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "gbp6",
-    .runs_after = VNET_FEATURES ("acl-plugin-out-ip6-fa"),
+    .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
 /* *INDENT-ON* */
 
