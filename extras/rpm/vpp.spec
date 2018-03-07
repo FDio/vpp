@@ -48,6 +48,7 @@ License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
+Requires: mbedtls
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 BuildRequires: subunit, subunit-devel
