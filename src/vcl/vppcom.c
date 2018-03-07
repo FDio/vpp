@@ -193,14 +193,13 @@ typedef struct vppcom_cfg_t_
 /* VPPCOM Event typedefs */
 typedef enum vcl_event_id_
 {
+  VCL_EVENT_INVALID_EVENT,
   VCL_EVENT_CONNECT_REQ_ACCEPTED,
   VCL_EVENT_N_EVENTS
 } vcl_event_id_t;
 
 typedef struct vce_event_connect_request_
 {
-  u8 size;
-  u8 handled;
   u32 accepted_session_index;
 } vce_event_connect_request_t;
 
@@ -208,15 +207,17 @@ typedef struct vppcom_main_t_
 {
   u8 init;
   u32 debug;
-  u32 *client_session_index_fifo;
   int main_cpu;
+
+  /* FIFO for accepted connections - used in epoll/select */
+  clib_spinlock_t session_fifo_lockp;
+  u32 *client_session_index_fifo;
 
   /* vpp input queue */
   svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
-
   /* Session pool */
   clib_spinlock_t sessions_lockp;
   session_t *sessions;
@@ -453,15 +454,7 @@ vce_connect_request_handler_fn (void *arg)
 {
   vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *) arg;
 
-  vce_event_connect_request_t *ecr;
-  vce_event_t *ev;
-
-  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
-
-  ecr = (vce_event_connect_request_t *) ev->data;
-
   pthread_mutex_lock (&reg->handler_lock);
-  ecr->handled = 1;
   pthread_cond_signal (&reg->handler_cond);
   pthread_mutex_unlock (&reg->handler_lock);
 }
@@ -485,10 +478,10 @@ vce_epoll_wait_connect_request_handler_fn (void *arg)
   vce_event_connect_request_t *ecr = (vce_event_connect_request_t *) ev->data;
 
   /* Add the accepted_session_index to the FIFO */
-  clib_spinlock_lock (&vcm->sessions_lockp);
+  clib_spinlock_lock (&vcm->session_fifo_lockp);
   clib_fifo_add1 (vcm->client_session_index_fifo,
 		  ecr->accepted_session_index);
-  clib_spinlock_unlock (&vcm->sessions_lockp);
+  clib_spinlock_unlock (&vcm->session_fifo_lockp);
 
   /* Recycling the event. */
   clib_spinlock_lock (&(vcm->event_thread.events_lockp));
@@ -1281,10 +1274,15 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   vce_event_t *ev;
   int rv;
   u32 ev_idx;
-
+  uword elts = 0;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
-  if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
+
+  clib_spinlock_lock (&vcm->session_fifo_lockp);
+  elts = clib_fifo_free_elts (vcm->client_session_index_fifo);
+  clib_spinlock_unlock (&vcm->session_fifo_lockp);
+
+  if (!elts)
     {
       clib_warning ("VCL<%d>: client session queue is full!", getpid ());
       vppcom_send_accept_session_reply (mp->handle, mp->context,
@@ -1347,7 +1345,6 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   ev->evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
   listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
   ev->evk.session_index = (u32) (listen_session - vcm->sessions);
-  ecr->handled = 0;
   ecr->accepted_session_index = session_index;
 
   clib_spinlock_unlock (&vcm->event_thread.events_lockp);
@@ -1401,6 +1398,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 	  clib_warning ("ip6");
 	}
     }
+
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
 }
@@ -2140,6 +2138,7 @@ vppcom_app_create (char *app_name)
 	conf_fname = VPPCOM_CONF_DEFAULT;
       vppcom_cfg_heapsize (conf_fname);
       vcl_cfg = &vcm->cfg;
+      clib_spinlock_init (&vcm->session_fifo_lockp);
       clib_fifo_validate (vcm->client_session_index_fifo,
 			  vcm->cfg.listen_queue_size);
       vppcom_cfg_read (conf_fname);
@@ -2672,8 +2671,12 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
       goto done;
     }
 
+  clib_spinlock_lock (&vcm->session_fifo_lockp);
   clib_fifo_validate (vcm->client_session_index_fifo, q_len);
+  clib_spinlock_unlock (&vcm->session_fifo_lockp);
+
   clib_spinlock_unlock (&vcm->sessions_lockp);
+
 done:
   return rv;
 }
@@ -2750,11 +2753,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
   reg = vce_register_handler (&vcm->event_thread, &evk,
 			      vce_connect_request_handler_fn);
-  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
 
-  result = (vce_event_connect_request_t *) ev->data;
+  ev = 0;
   pthread_mutex_lock (&reg->handler_lock);
-  while (!result->handled)
+  while (!ev)
     {
       rv =
 	pthread_cond_timedwait (&reg->handler_cond, &reg->handler_lock, &ts);
@@ -2763,23 +2765,28 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	  rv = VPPCOM_EAGAIN;
 	  goto cleanup;
 	}
+      ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
     }
+  result = (vce_event_connect_request_t *) ev->data;
   client_session_index = result->accepted_session_index;
 
 
 
   /* Remove from the FIFO used to service epoll */
-  clib_spinlock_lock (&vcm->sessions_lockp);
+  clib_spinlock_lock (&vcm->session_fifo_lockp);
   if (clib_fifo_elts (vcm->client_session_index_fifo))
     {
       u32 tmp_client_session_index;
       clib_fifo_sub1 (vcm->client_session_index_fifo,
 		      tmp_client_session_index);
+      /* It wasn't ours... put it back ... */
       if (tmp_client_session_index != client_session_index)
 	clib_fifo_add1 (vcm->client_session_index_fifo,
 			tmp_client_session_index);
     }
-  clib_spinlock_unlock (&vcm->sessions_lockp);
+  clib_spinlock_unlock (&vcm->session_fifo_lockp);
+
+  clib_spinlock_lock (&vcm->sessions_lockp);
 
   rv = vppcom_session_at_index (client_session_index, &client_session);
   if (PREDICT_FALSE (rv))
@@ -2885,12 +2892,14 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
     }
 
   clib_spinlock_unlock (&vcm->sessions_lockp);
-  rv = (int) client_session_index;
 
+  rv = (int) client_session_index;
   vce_clear_event (&vcm->event_thread, ev);
+
 cleanup:
-  vce_unregister_handler (&vcm->event_thread, ev);
+  vce_unregister_handler (&vcm->event_thread, reg);
   pthread_mutex_unlock (&reg->handler_lock);
+
 done:
   return rv;
 }
@@ -3118,7 +3127,9 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
 
   if (session->state & STATE_LISTEN)
     {
+      clib_spinlock_lock (&vcm->session_fifo_lockp);
       ready = clib_fifo_elts (vcm->client_session_index_fifo);
+      clib_spinlock_unlock (&vcm->session_fifo_lockp);
     }
   else
     {
@@ -3677,7 +3688,6 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 {
   session_t *vep_session;
   session_t *session;
-  vce_event_t *ev = 0;
   int rv;
 
   if (vep_idx == session_index)
@@ -3846,9 +3856,8 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       /* VCL Event Un-register handler */
       if ((session->state & STATE_LISTEN) && vep_session->poll_reg)
 	{
-	  ev = vce_get_event_from_index (&vcm->event_thread,
-					 vep_session->poll_reg->ev_idx);
-	  (void) vce_unregister_handler (&vcm->event_thread, ev);
+	  (void) vce_unregister_handler (&vcm->event_thread,
+					 vep_session->poll_reg);
 	}
 
       vep_session->wait_cont_idx =
