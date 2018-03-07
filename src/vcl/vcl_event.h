@@ -51,6 +51,7 @@ typedef struct vce_event_handler_reg_
   pthread_mutex_t handler_lock;
   pthread_cond_t handler_cond;
   u32 ev_idx;
+  u64 evk; //Event key
   u32 replaced_handler_idx;
 } vce_event_handler_reg_t;
 
@@ -124,10 +125,11 @@ vce_event_handler_reg_t * vce_register_handler (vce_event_thread_t *evt,
  * - if this handler replaced an existing one, re-instate it.
  *
  * @param evt - vce_event_thread_t - event system state
- * @param ev  - vce_event_t - event to remove
+ * @param handler - handler to be unregistered
  * @return success/failure rv
  */
-int vce_unregister_handler (vce_event_thread_t *evt, vce_event_t *ev);
+int vce_unregister_handler (vce_event_thread_t *evt,
+			    vce_event_handler_reg_t *handler);
 
 /**
  * @brief vce_event_thread_fn
