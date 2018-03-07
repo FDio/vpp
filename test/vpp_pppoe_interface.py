@@ -1,7 +1,7 @@
 
 from vpp_interface import VppInterface
 import socket
-from util import ppp, ppc, mactobinary
+from util import mactobinary
 
 
 class VppPppoeInterface(VppInterface):
@@ -12,8 +12,6 @@ class VppPppoeInterface(VppInterface):
     def __init__(self, test, client_ip, client_mac,
                  session_id, decap_vrf_id=0):
         """ Create VPP PPPoE4 interface """
-        self._sw_if_index = 0
-        super(VppPppoeInterface, self).__init__(test)
         self._test = test
         self.client_ip = client_ip
         self.client_mac = client_mac
@@ -28,6 +26,7 @@ class VppPppoeInterface(VppInterface):
                 session_id=self.session_id,
                 decap_vrf_id=self.decap_vrf_id)
         self._sw_if_index = r.sw_if_index
+        super(VppPppoeInterface, self).__init__(self._test)
         self.generate_remote_hosts()
 
     def remove_vpp_config(self):
@@ -46,9 +45,10 @@ class VppPppoe6Interface(VppInterface):
     VPP Pppoe IPv6 interface
     """
 
-    def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, is_teb=0):
+    def __init__(self, test, client_ip, client_mac,
+                 session_id, decap_vrf_id=0):
         """ Create VPP PPPoE6 interface """
-        self._sw_if_index = 0
+        self._sw_if_index = 2
         super(VppPppoe6Interface, self).__init__(test)
         self._test = test
         self.client_ip = client_ip
