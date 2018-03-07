@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea961738_f97c3637",
+        "filename": "src/vpp-api/vom/bond_interface.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-07T17:03:24Z",
+      "side": 1,
+      "message": "can we call this a bond-group?",
+      "revId": "1d2529a06f14a97d08882d1aa3cc335539d2a788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a24b46fe_a481dd71",
+        "filename": "src/vpp-api/vom/bond_interface.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-07T17:03:24Z",
+      "side": 1,
+      "message": "do you need this?",
+      "revId": "1d2529a06f14a97d08882d1aa3cc335539d2a788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5658688f_fa4febbe",
+        "filename": "src/vpp-api/vom/bond_interface_binding.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-07T17:03:24Z",
+      "side": 1,
+      "message": "is this typedef public?",
+      "revId": "1d2529a06f14a97d08882d1aa3cc335539d2a788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a771b343_554634da",
+        "filename": "src/vpp-api/vom/bond_member_interface.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-07T17:03:24Z",
+      "side": 1,
+      "message": "just bond_member?",
+      "revId": "1d2529a06f14a97d08882d1aa3cc335539d2a788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
