@@ -202,7 +202,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
        */
       if (p == 0)
 	{
-	  clib_warning ("feature node '%s' not found", a_name);
+	  clib_warning ("feature node '%s' not found (before '%s', arc '%s')",
+			a_name, b_name, first_reg->arc_name);
 	  continue;
 	}
       a_index = p[0];
@@ -210,7 +211,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
       p = hash_get_mem (index_by_name, b_name);
       if (p == 0)
 	{
-	  clib_warning ("feature node '%s' not found", b_name);
+	  clib_warning ("feature node '%s' not found (after '%s', arc '%s')",
+			b_name, a_name, first_reg->arc_name);
 	  continue;
 	}
       b_index = p[0];
