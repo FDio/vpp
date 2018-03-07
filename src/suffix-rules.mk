@@ -14,12 +14,13 @@
 # Shared suffix rules
 # Please do not set "SUFFIXES = .api.h .api" here
 
-%.api.h: %.api @VPPAPIGEN@
+VPPAPIGEN = $(top_srcdir)/tools/vppapigen/vppapigen
+%.api.h: %.api
 	@echo "  APIGEN  " $@ ;				                     \
 	mkdir -p `dirname $@` ;						     \
-	@VPPAPIGEN@ --includedir $(top_srcdir) --input $< --output $@
+	$(VPPAPIGEN) --includedir $(top_srcdir) --input $< --output $@
 
 %.api.json: %.api
 	@echo "  JSON API" $@ ;						     \
 	mkdir -p `dirname $@` ;						     \
-	@VPPAPIGEN@ --includedir $(top_srcdir) --input $< JSON --output $@
+	$(VPPAPIGEN) --includedir $(top_srcdir) --input $< JSON --output $@

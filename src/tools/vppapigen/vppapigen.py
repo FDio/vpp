@@ -9,6 +9,9 @@ import logging
 import binascii
 import os
 
+# Ensure we don't leave temporary files around
+sys.dont_write_bytecode = True
+
 #
 # VPP API language
 #
@@ -527,7 +530,7 @@ class VPPAPI(object):
     def __init__(self, debug=False, filename='', logger=None):
         self.lexer = lex.lex(module=VPPAPILexer(filename), debug=debug)
         self.parser = yacc.yacc(module=VPPAPIParser(filename, logger),
-                                tabmodule='vppapigentab', debug=debug)
+                                write_tables=False, debug=debug)
         self.logger = logger
 
     def parse_string(self, code, debug=0, lineno=1):
