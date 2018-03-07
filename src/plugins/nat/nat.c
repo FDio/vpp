@@ -1063,6 +1063,9 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                               (clib_net_to_host_u16 (s->out2in.port) != e_port))
                             continue;
                         }
+                      
+                      if (s->flags & SNAT_SESSION_FLAG_LOAD_BALANCING)
+                          continue;
 
                       nat_free_session_data (sm, s, tsm - sm->per_thread_data);
                       clib_dlist_remove (tsm->list_pool, s->per_user_index);
@@ -1073,7 +1076,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (!addr_only)
                         break;
                     }
-                  if (addr_only)
+                  if (addr_only && (u->nstaticsessions == 0))
                     {
                       pool_put (tsm->users, u);
                       clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
