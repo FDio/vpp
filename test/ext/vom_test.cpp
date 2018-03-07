@@ -294,6 +294,10 @@ public:
                     {
                         rc = handle_derived<ACL::acl_ethertype_cmds::bind_cmd>(f_exp, f_act);
                     }
+                    else if (typeid(*f_exp) == typeid(ACL::acl_ethertype_cmds::unbind_cmd))
+                    {
+                        rc = handle_derived<ACL::acl_ethertype_cmds::unbind_cmd>(f_exp, f_act);
+                    }
                     else if (typeid(*f_exp) == typeid(ACL::list_cmds::l3_update_cmd))
                     {
                         rc = handle_derived<ACL::list_cmds::l3_update_cmd>(f_exp, f_act);
@@ -1095,6 +1099,7 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     ADD_EXPECT(ACL::binding_cmds::l3_unbind_cmd(hw_binding, direction_t::INPUT,
                                          hw_ifh.data(), hw_acl.data()));
     ADD_EXPECT(ACL::list_cmds::l3_delete_cmd(hw_acl));
+    ADD_EXPECT(ACL::acl_ethertype_cmds::unbind_cmd(ae_binding, hw_ifh.data()));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 

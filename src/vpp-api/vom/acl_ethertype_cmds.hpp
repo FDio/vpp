@@ -65,6 +65,73 @@ private:
    */
   const acl_ethertype::ethertype_rules_t& m_le;
 };
+
+/**
+ * A command class that unbinds the ethertype list to the interface
+ */
+class unbind_cmd : public rpc_cmd<HW::item<bool>,
+                                  rc_t,
+                                  vapi::Acl_interface_set_etype_whitelist>
+{
+public:
+  /**
+   * Constructor
+   */
+  unbind_cmd(HW::item<bool>& item, const handle_t& itf);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const unbind_cmd& i) const;
+
+private:
+  /**
+   * Reference to the HW::item of the interface to bind
+   */
+  const handle_t m_itf;
+};
+
+/**
+ * A cmd class that Dumps all the acl ethertypes on given interface
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Acl_interface_etype_whitelist_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd(const handle_t& itf);
+  dump_cmd(const dump_cmd& d);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * The interface to get the addresses for
+   */
+  const handle_t m_itf;
+};
 };
 };
 };
