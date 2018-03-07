@@ -174,12 +174,14 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	}
     }
 
+#if 0
   if ((vpm->flags & VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU) ||
       (vpm->flags & VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP) == 0)
     for (i = 0; i < pr->n_pages; i++)
       vec_add1 (pr->page_table, pointer_to_uword (pr->mem) +
 		i * (1 << pr->log2_page_size));
   else
+#endif
     pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
 					    pr->n_pages);
 
