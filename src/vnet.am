@@ -568,6 +568,21 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/gre/gre.api
 
 ########################################
+# Tunnel protocol: ipip
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/ipip/ipip.c				\
+ vnet/ipip/node.c				\
+ vnet/ipip/sixrd.c				\
+ vnet/ipip/ipip_api.c				\
+ vnet/ipip/ipip_cli.c
+
+nobase_include_HEADERS +=			\
+ vnet/ipip/ipip.h
+
+API_FILES += vnet/ipip/ipip.api
+
+########################################
 # Tunnel protocol: l2tpv3
 ########################################
 libvnet_la_SOURCES +=				\
