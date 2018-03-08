@@ -57,9 +57,11 @@ class Test6RD(VppTestCase):
             i.admin_down()
         if type(self.tunnel_index) is list:
             for sw_if_index in self.tunnel_index:
-                self.vapi.sixrd_del_tunnel(sw_if_index)
+                rv = self.vapi.ipip_6rd_del_tunnel(sw_if_index)
+                self.assertEqual(rv.retval, 0)
         else:
-            self.vapi.sixrd_del_tunnel(self.tunnel_index)
+            rv = self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+            self.assertEqual(rv.retval, 0)
         self.vapi.cli("show error")
 
     def validate_6in4(self, rx, expected):
@@ -92,13 +94,14 @@ class Test6RD(VppTestCase):
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip6 = IPv6(src="1::1", dst="2002:AC10:0202::1", nh='UDP')
 
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed), 16,
             str(ip_address('0.0.0.0').packed), 0,
-            str(ip_address(self.pg0.local_ip4).packed), 0, True)
+            str(ip_address(self.pg0.local_ip4).packed), True)
 
         self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
+
         self.vapi.cli("show ip6 fib")
         p_payload = UDP(sport=1234, dport=1234)
         p = (p_ether / p_ip6 / p_payload)
@@ -124,13 +127,21 @@ class Test6RD(VppTestCase):
     def test_6rd_ip4_to_ip6(self):
         """ ip4 -> ip6 (decap) 6rd test """
 
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
-            0, str(ip_address(self.pg0.local_ip4).packed), 0, True)
+            0, str(ip_address(self.pg0.local_ip4).packed), True)
         self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
-        self.vapi.cli("show ip6 fib")
+        rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
+        self.assertEqual(rv.retval, 0)
+        rv = self.vapi.ipip_6rd_add_tunnel(
+            0, str(ip_address('2002::').packed),
+            16, str(ip_address('0.0.0.0').packed),
+            0, str(ip_address(self.pg0.local_ip4).packed), True)
+        self.tunnel_index = rv.sw_if_index
+        self.assertEqual(rv.retval, 0)
+
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
                  UDP(sport=1234, dport=1234))
 
@@ -149,18 +160,18 @@ class Test6RD(VppTestCase):
         """ ip4 -> ip6 (decap) 6rd test """
 
         self.tunnel_index = []
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
-            0, str(ip_address(self.pg0.local_ip4).packed), 0, True)
+            0, str(ip_address(self.pg0.local_ip4).packed), True)
         self.assertEqual(rv.retval, 0)
         self.tunnel_index.append(rv.sw_if_index)
-        rv = self.vapi.sixrd_add_tunnel(
+
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2003::').packed),
             16, str(ip_address('0.0.0.0').packed),
-            0, str(ip_address(self.pg1.local_ip4).packed), 0, True)
+            0, str(ip_address(self.pg1.local_ip4).packed), True)
         self.assertEqual(rv.retval, 0)
-
         self.tunnel_index.append(rv.sw_if_index)
 
         self.vapi.cli("show ip6 fib")
@@ -184,10 +195,10 @@ class Test6RD(VppTestCase):
     def test_6rd_ip4_to_ip6_suffix(self):
         """ ip4 -> ip6 (decap) 6rd test """
 
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed), 16,
             str(ip_address('172.0.0.0').packed), 8,
-            str(ip_address(self.pg0.local_ip4).packed), 0, True)
+            str(ip_address(self.pg0.local_ip4).packed), True)
         self.assertEqual(rv.retval, 0)
 
         self.tunnel_index = rv.sw_if_index
@@ -206,12 +217,13 @@ class Test6RD(VppTestCase):
     def test_6rd_ip4_to_ip6_sec_check(self):
         """ ip4 -> ip6 (decap) security check 6rd test """
 
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
-            0, str(ip_address(self.pg0.local_ip4).packed), 0, True)
+            0, str(ip_address(self.pg0.local_ip4).packed), True)
         self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
+
         self.vapi.cli("show ip6 fib")
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
                  UDP(sport=1234, dport=1234))
@@ -238,10 +250,10 @@ class Test6RD(VppTestCase):
     def test_6rd_bgp_tunnel(self):
         """ 6rd BGP tunnel """
 
-        rv = self.vapi.sixrd_add_tunnel(
+        rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
-            0, str(ip_address(self.pg0.local_ip4).packed), 0, False)
+            0, str(ip_address(self.pg0.local_ip4).packed), False)
         self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
 

@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Create or delete an IPIP tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - Use 0 for IPv4, 1 for IPv6
+    @param instance - optional unique custom device instance, else ~0.
+    @param src_address - Source IP address
+    @param dst_address - Destination IP address, can be multicast
+    @param fib_index - Encap FIB table ID
+*/
+define ipip_add_tunnel
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+  u32 instance;		/* If non-~0, specifies a custom dev instance */
+  u8 src_address[16];
+  u8 dst_address[16];
+  u32 fib_index;
+};
+
+define ipip_add_tunnel_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+autoreply define ipip_del_tunnel
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+define ipip_6rd_add_tunnel
+{
+  u32 client_index;
+  u32 context;
+  u32 fib_index;
+  u8 ip6_prefix[16];
+  u8 ip4_prefix[4];
+  u8 ip4_src[4];
+  u8 ip6_prefix_len;
+  u8 ip4_prefix_len;
+  u8 security_check;
+};
+
+define ipip_6rd_add_tunnel_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+autoreply define ipip_6rd_del_tunnel
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+define ipip_tunnel_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+define ipip_tunnel_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 instance;
+  u8 is_ipv6;
+  u8 src_address[16];
+  u8 dst_address[16];
+  u32 fib_index;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
