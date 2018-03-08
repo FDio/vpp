@@ -22,6 +22,30 @@
       "revId": "283e58a7a29615f3dcdc587fcfa095204d015483",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "264fbd53_d97dc932",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2773,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-03-08T15:47:02Z",
+      "side": 1,
+      "message": "why convert ~0 into ~0 ?",
+      "parentUuid": "3cecf231_530507aa",
+      "range": {
+        "startLine": 2773,
+        "startChar": 6,
+        "endLine": 2773,
+        "endChar": 21
+      },
+      "revId": "283e58a7a29615f3dcdc587fcfa095204d015483",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
