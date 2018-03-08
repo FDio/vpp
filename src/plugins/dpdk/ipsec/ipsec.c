@@ -683,7 +683,7 @@ crypto_scan_devs (u32 n_mains)
 
       dev->id = i;
       dev->name = cryptodev->data->name;
-      dev->numa = rte_cryptodev_socket_id (i);
+      dev->numa = info.pci_dev->device.numa_node;
       dev->features = info.feature_flags;
       dev->max_qp = info.max_nb_queue_pairs;
       drv_id = info.driver_id;
