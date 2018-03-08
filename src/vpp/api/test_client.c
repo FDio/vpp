@@ -133,11 +133,29 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
     case VNET_HW_INTERFACE_FLAG_SPEED_1G:
       speed = "1Gbps";
       break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_2_5G:
+      speed = "2.5Gbps";
+      break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_5G:
+      speed = "5Gbps";
+      break;
     case VNET_HW_INTERFACE_FLAG_SPEED_10G:
       speed = "10Gbps";
       break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_20G:
+      speed = "20Gbps";
+      break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_25G:
+      speed = "25Gbps";
+      break;
     case VNET_HW_INTERFACE_FLAG_SPEED_40G:
       speed = "40Gbps";
+      break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_50G:
+      speed = "50Gbps";
+      break;
+    case VNET_HW_INTERFACE_FLAG_SPEED_56G:
+      speed = "56Gbps";
       break;
     case VNET_HW_INTERFACE_FLAG_SPEED_100G:
       speed = "100Gbps";
