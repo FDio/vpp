@@ -167,7 +167,7 @@ static void vl_api_acl_interface_etype_whitelist_details_t_handler
 	for(i=0; i<mp->count; i++) {
           if (i == mp->n_input)
             out = format(out, "\n  output ");
-	  out = format(out, "%04x ", mp->whitelist[i]);
+	  out = format(out, "%04x ", ntohs(mp->whitelist[i]));
 	}
         out = format(out, "\n");
         clib_warning("%s", out);
