@@ -228,7 +228,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
   dlist_elt_t *oldest_elt, *elt;
   dlist_elt_t *per_reass_list_head_elt;
   u32 oldest_index, elt_index;
-  clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_16_8_t kv, value;
 
   k.src.as_u32 = src.as_u32;
   k.dst.as_u32 = dst.as_u32;
@@ -273,12 +273,18 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
       clib_dlist_addtail (srm->ip4_reass_lru_list_pool,
 			  srm->ip4_reass_head_index, oldest_index);
 
-      kv.key[0] = k.as_u64[0];
-      kv.key[1] = k.as_u64[1];
-      if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 0))
+      kv.key[0] = reass->key.as_u64[0];
+      kv.key[1] = reass->key.as_u64[1];
+      if (!clib_bihash_search_16_8 (&srm->ip4_reass_hash, &kv, &value))
 	{
-	  reass = 0;
-	  goto unlock;
+	  if (value.value == (reass - srm->ip4_reass_pool))
+	    {
+	      if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 0))
+		{
+		  reass = 0;
+		  goto unlock;
+		}
+	    }
 	}
 
       nat_ip4_reass_get_frags_inline (reass, bi_to_drop);
