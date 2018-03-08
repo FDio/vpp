@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3cecf231_530507aa",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2773,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-03-08T15:13:16Z",
+      "side": 1,
+      "message": "Please use ntohl",
+      "range": {
+        "startLine": 2773,
+        "startChar": 6,
+        "endLine": 2773,
+        "endChar": 21
+      },
+      "revId": "283e58a7a29615f3dcdc587fcfa095204d015483",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
