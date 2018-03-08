@@ -460,7 +460,7 @@ vce_connect_request_handler_fn (void *arg)
 }
 
 /**
- * @brief vce_epoll_wait_connect_request_handler_fn
+ * @brief vce_poll_wait_connect_request_handler_fn
  * - used by vppcom_epoll_xxxx() for listener sessions
  * - when a vl_api_accept_session_t_handler() generates an event
  *   this callback is alerted and sets the fields that vppcom_epoll_wait()
@@ -469,7 +469,7 @@ vce_connect_request_handler_fn (void *arg)
  * @param arg - void* to be cast to vce_event_handler_reg_t*
  */
 void
-vce_epoll_wait_connect_request_handler_fn (void *arg)
+vce_poll_wait_connect_request_handler_fn (void *arg)
 {
   vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *) arg;
   vce_event_t *ev;
@@ -3462,8 +3462,30 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
                       bits_set = VPPCOM_EBADFD;
                       goto select_done;
                     }
+                  if (session->state & STATE_LISTEN)
+                    {
+                      vce_event_handler_reg_t *reg = 0;
+                      vce_event_key_t evk;
 
-                  rv = vppcom_session_read_ready (session, session_index);
+                      /* Check if handler already registered for this
+                       * event.
+                       * If not, register handler for connect_request event
+                       * on listen_session_index
+                       */
+                      evk.session_index = session_index;
+                      evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
+                      reg = vce_get_event_handler (&vcm->event_thread, &evk);
+                      if (!reg)
+                        reg = vce_register_handler (&vcm->event_thread, &evk,
+                                    vce_poll_wait_connect_request_handler_fn);
+                      rv = vppcom_session_read_ready (session, session_index);
+                      if (rv > 0)
+                        {
+                          vce_unregister_handler (&vcm->event_thread, reg);
+                        }
+                    }
+                  else
+                    rv = vppcom_session_read_ready (session, session_index);
                   clib_spinlock_unlock (&vcm->sessions_lockp);
                   if (except_map && vcm->ex_bitmap &&
                       clib_bitmap_get (vcm->ex_bitmap, session_index) &&
@@ -3774,7 +3796,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
 	  vep_session->poll_reg =
 	    vce_register_handler (&vcm->event_thread, &evk,
-				  vce_epoll_wait_connect_request_handler_fn);
+				  vce_poll_wait_connect_request_handler_fn);
 	}
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
