@@ -2744,11 +2744,11 @@ send_acl_interface_etype_whitelist_details (acl_main_t * am,
   mp->n_input = n_input;
   for (i = 0; i < n_input; i++)
     {
-      mp->whitelist[i] = whitelist_in[i];
+      mp->whitelist[i] = htons (whitelist_in[i]);
     }
   for (i = 0; i < n_output; i++)
     {
-      mp->whitelist[n_input + i] = whitelist_out[i];
+      mp->whitelist[n_input + i] = htons (whitelist_out[i]);
     }
   clib_mem_set_heap (oldheap);
   vl_api_send_msg (reg, (u8 *) mp);
