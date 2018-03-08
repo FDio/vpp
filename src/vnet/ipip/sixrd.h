@@ -16,40 +16,11 @@
 #include <stdbool.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 
 #define SIXRD_DEFAULT_MTU 1480	/* 1500 - IPv4 header */
-
-typedef struct
-{
-  u32 fib_index;
-  u32 hw_if_index;
-  u32 sw_if_index;
-  u32 tunnel_index;
-  ip6_address_t ip6_prefix;
-  ip4_address_t ip4_prefix;
-  ip4_address_t ip4_src;
-  u8 ip6_prefix_len;
-  u8 ip4_prefix_len;
-
-  /* helpers */
-  u8 shift;
-
-  u16 mtu;
-  bool security_check;
-} sixrd_tunnel_t;
-
-typedef struct
-{
-  u16 msg_id_base;
-
-  /* pool of SIXRD domains */
-  sixrd_tunnel_t *tunnels;
-  u32 *tunnel_index_by_sw_if_index;
-  uword *tunnel_by_ip;
-
-} sixrd_main_t;
 
 #define foreach_sixrd_error                                                    \
   /* Must be first. */                                                         \
@@ -68,28 +39,6 @@ typedef enum
 } sixrd_error_t;
 
 extern sixrd_main_t sixrd_main;
-
-/*
- * sixrd_get_addr
- */
-static_always_inline u32
-sixrd_get_addr_net (const sixrd_tunnel_t * t, u64 dal)
-{
-  /* 1:1 mode */
-  if (t->ip4_prefix_len == 32)
-    return (t->ip4_prefix.as_u32);
-
-  dal = clib_net_to_host_u64 (dal);
-
-  /* Grab 32 - ip4_prefix_len bits out of IPv6 address from offset
-   * ip6_prefix_len */
-  u32 mask = ~(~0ULL << (32 - t->ip4_prefix_len));
-  u32 ip4 =
-    clib_net_to_host_u32 (t->
-			  ip4_prefix.as_u32) | ((u32) (dal >> t->
-						       shift) & mask);
-  return clib_host_to_net_u32 (ip4);
-}
 
 static_always_inline sixrd_tunnel_t *
 find_tunnel_by_ip4_address (ip4_address_t * ip)
