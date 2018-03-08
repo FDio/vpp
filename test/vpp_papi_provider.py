@@ -3229,3 +3229,14 @@ class VppPapiProvider(object):
         """ 6RD tunnel Delete """
         return self.api(self.papi.sixrd_del_tunnel,
                         {'sw_if_index': sw_if_index})
+
+    def ipip_add_del_tunnel(self, is_add, is_ipv6, instance, src_address, dst_address, outer_fib_id):
+        """ IPIP tunnel Add/Del """
+        return self.api(self.papi.ipip_add_del_tunnel,
+                        {'is_add': is_add,
+                         'is_ipv6': is_ipv6,
+                         'instance': instance,
+                         'src_address': src_address,
+                         'dst_address': dst_address,
+                         'outer_fib_id': outer_fib_id,
+                        })
