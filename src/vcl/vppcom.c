@@ -2158,25 +2158,6 @@ vppcom_app_create (char *app_name)
 			  "filename (%s) from " VPPCOM_ENV_API_PREFIX "!",
 			  getpid (), env_var_str, vcl_cfg->vpp_api_filename);
 	}
-
-      env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
-      if (env_var_str)
-	{
-	  u64 tmp;
-	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
-	    clib_warning ("VCL<%d>: WARNING: Invalid namespace secret "
-			  "specified in the environment variable "
-			  VPPCOM_ENV_APP_NAMESPACE_SECRET
-			  " (%s)!\n", getpid (), env_var_str);
-	  else
-	    {
-	      vcm->cfg.namespace_secret = tmp;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured namespace secret "
-			      "(%lu) from " VPPCOM_ENV_APP_NAMESPACE_ID "!",
-			      getpid (), vcm->cfg.namespace_secret);
-	    }
-	}
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
       if (env_var_str)
 	{
@@ -2206,7 +2187,7 @@ vppcom_app_create (char *app_name)
 	      if (VPPCOM_DEBUG > 0)
 		clib_warning ("VCL<%d>: configured namespace secret "
 			      "(%lu) from "
-			      VPPCOM_ENV_APP_NAMESPACE_ID
+			      VPPCOM_ENV_APP_NAMESPACE_SECRET
 			      "!", getpid (), vcm->cfg.namespace_secret);
 	    }
 	}
