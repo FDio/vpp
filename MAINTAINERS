@@ -139,15 +139,14 @@ M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
 F:	src/plugins/acl.am
 
+VNET IPIP
+M:	Ole Troan <otroan@employees.org>
+F:	src/vnet/ipip/
+
 Plugin - flowprobe
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
 F:	src/plugins/flowprobe.am
-
-Plugin - SIXRD
-M:	Ole Troan <ot@cisco.com>
-F:	src/plugins/sixrd/
-F:	src/plugins/sixrd.am
 
 Plugin - GTPU
 M:	Hongjun Ni <hongjun.ni@intel.com>
