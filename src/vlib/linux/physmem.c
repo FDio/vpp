@@ -163,7 +163,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 
   for (i = 0; i < pr->n_pages; i++)
     {
-      void *ptr = pr->mem + (i << pr->log2_page_size);
+      void *ptr = pr->mem + ((u64) i << pr->log2_page_size);
       int node;
       if ((move_pages (0, 1, &ptr, 0, &node, 0) == 0) && (numa_node != node))
 	{
