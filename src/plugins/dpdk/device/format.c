@@ -176,8 +176,20 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "GigabitEthernet";
       break;
 
+    case VNET_DPDK_PORT_TYPE_ETH_2_5G:
+      device_name = "Two_FiveGigabitEthernet";
+      break;
+
+    case VNET_DPDK_PORT_TYPE_ETH_5G:
+      device_name = "FiveGigabitEthernet";
+      break;
+
     case VNET_DPDK_PORT_TYPE_ETH_10G:
       device_name = "TenGigabitEthernet";
+      break;
+
+    case VNET_DPDK_PORT_TYPE_ETH_20G:
+      device_name = "TwentyGigabitEthernet";
       break;
 
     case VNET_DPDK_PORT_TYPE_ETH_25G:
@@ -190,6 +202,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
 
     case VNET_DPDK_PORT_TYPE_ETH_50G:
       device_name = "FiftyGigabitEthernet";
+      break;
+
+    case VNET_DPDK_PORT_TYPE_ETH_56G:
+      device_name = "FiftySixGigabitEthernet";
       break;
 
     case VNET_DPDK_PORT_TYPE_ETH_100G:

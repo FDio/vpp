@@ -62,14 +62,22 @@ port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
 
   if (dev_info->speed_capa & ETH_LINK_SPEED_100G)
     return VNET_DPDK_PORT_TYPE_ETH_100G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_56G)
+    return VNET_DPDK_PORT_TYPE_ETH_56G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_50G)
     return VNET_DPDK_PORT_TYPE_ETH_50G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_40G)
     return VNET_DPDK_PORT_TYPE_ETH_40G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_25G)
     return VNET_DPDK_PORT_TYPE_ETH_25G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_20G)
+    return VNET_DPDK_PORT_TYPE_ETH_20G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_10G)
     return VNET_DPDK_PORT_TYPE_ETH_10G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_5G)
+    return VNET_DPDK_PORT_TYPE_ETH_5G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_2_5G)
+    return VNET_DPDK_PORT_TYPE_ETH_2_5G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_1G)
     return VNET_DPDK_PORT_TYPE_ETH_1G;
 
@@ -1387,14 +1395,29 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	case ETH_SPEED_NUM_1G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_1G;
 	  break;
+	case ETH_SPEED_NUM_2_5G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_2_5G;
+	  break;
+	case ETH_SPEED_NUM_5G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_5G;
+	  break;
 	case ETH_SPEED_NUM_10G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
+	  break;
+	case ETH_SPEED_NUM_20G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_20G;
 	  break;
 	case ETH_SPEED_NUM_25G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_25G;
 	  break;
 	case ETH_SPEED_NUM_40G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
+	  break;
+	case ETH_SPEED_NUM_50G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_50G;
+	  break;
+	case ETH_SPEED_NUM_56G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_56G;
 	  break;
 	case ETH_SPEED_NUM_100G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100G;
