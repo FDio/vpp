@@ -167,6 +167,49 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 }
 
+/**
+ * Max contiguous chunk of data that can be read
+ */
+always_inline u32
+svm_fifo_max_read_chunk (svm_fifo_t * f)
+{
+  return ((f->tail > f->head) ? (f->tail - f->head) : (f->nitems - f->head));
+}
+
+/**
+ * Max contiguous chunk of data that can be written
+ */
+always_inline u32
+svm_fifo_max_write_chunk (svm_fifo_t * f)
+{
+  return ((f->tail >= f->head) ? (f->nitems - f->tail) : (f->head - f->tail));
+}
+
+/**
+ * Advance tail pointer
+ *
+ * Useful for moving tail pointer after external enqueue.
+ */
+always_inline void
+svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 bytes)
+{
+  ASSERT (bytes <= svm_fifo_max_enqueue (f));
+  f->tail = (f->tail + bytes) % f->nitems;
+  f->cursize += bytes;
+}
+
+always_inline u8 *
+svm_fifo_head (svm_fifo_t * f)
+{
+  return (f->data + f->head);
+}
+
+always_inline u8 *
+svm_fifo_tail (svm_fifo_t * f)
+{
+  return (f->data + f->tail);
+}
+
 always_inline u32
 ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos)
 {
