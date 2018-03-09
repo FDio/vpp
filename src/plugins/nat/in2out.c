@@ -1136,7 +1136,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   key.fib_index = rx_fib_index;
   key.proto = ip->protocol;
   key.l_port = 0;
-  key.l_port = 0;
+  key.r_port = 0;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
 
@@ -1795,7 +1795,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
                           ip1, proto1, thread_index)))
-                        goto trace00;
+                        goto trace01;
                     }
                   else
                     {
