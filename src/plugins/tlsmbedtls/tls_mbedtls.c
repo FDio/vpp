@@ -40,6 +40,8 @@ typedef struct mbedtls_main_
   mbedtls_ctr_drbg_context *ctr_drbgs;
   mbedtls_entropy_context *entropy_pools;
   mbedtls_x509_crt cacert;
+  u8 **rx_bufs;
+  u8 **tx_bufs;
 } mbedtls_main_t;
 
 static mbedtls_main_t mbedtls_main;
@@ -357,7 +359,7 @@ exit:
 }
 
 static int
-mbedtls_handshake_rx (tls_ctx_t * ctx)
+mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   u32 flags;
@@ -392,32 +394,116 @@ mbedtls_handshake_rx (tls_ctx_t * ctx)
 	   * Presence of hostname enforces strict certificate verification
 	   */
 	  if (ctx->srv_hostname)
-	    return CLIENT_HANDSHAKE_FAIL;
+	    {
+	      tls_notify_app_connected (ctx, /* is failed */ 0);
+	      return -1;
+	    }
 	}
-      rv = CLIENT_HANDSHAKE_OK;
+      tls_notify_app_connected (ctx, /* is failed */ 0);
     }
   else
     {
-      rv = SERVER_HANDSHAKE_OK;
+      tls_notify_app_accept (ctx);
     }
 
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %x",
 	   ctx->tls_ctx_idx, mc->ssl.session->ciphersuite);
-  return rv;
+  return 0;
 }
 
 static int
-mbedtls_write (tls_ctx_t * ctx, u8 * buf, u32 len)
+mbedtls_ctx_write (tls_ctx_t * ctx, svm_fifo_t *app_tx_fifo,
+                   svm_fifo_t *tls_tx_fifo)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
-  return mbedtls_ssl_write (&mc->ssl, buf, len);
+  u8 thread_index = ctx->c_thread_index;
+  mbedtls_main_t *mm = &mbedtls_main;
+  u32 enq_max, deq_max, deq_now;
+  int wrote;
+
+  if (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    tls_add_vpp_q_evt (app_tx_fifo, FIFO_EVENT_APP_TX);
+
+  deq_max = svm_fifo_max_dequeue (app_tx_fifo);
+  if (!deq_max)
+    return 0;
+
+  enq_max = svm_fifo_max_enqueue (tls_tx_fifo);
+  deq_now = clib_min (deq_max, TLS_CHUNK_SIZE);
+
+  if (PREDICT_FALSE (enq_max == 0))
+    {
+      tls_add_vpp_q_evt (app_tx_fifo, FIFO_EVENT_APP_TX);
+      return 0;
+    }
+
+  vec_validate (mm->tx_bufs[thread_index], deq_now);
+  svm_fifo_peek (app_tx_fifo, 0, deq_now,
+                 mm->tx_bufs[thread_index]);
+
+  wrote = mbedtls_ssl_write (&mc->ssl, mm->tx_bufs[thread_index], deq_now);
+  if (wrote <= 0)
+    {
+      tls_add_vpp_q_evt (app_tx_fifo, FIFO_EVENT_APP_TX);
+      return 0;
+    }
+
+  svm_fifo_dequeue_drop (app_tx_fifo, wrote);
+  vec_reset_length (mm->tx_bufs[thread_index]);
+  tls_add_vpp_q_evt (tls_tx_fifo, FIFO_EVENT_APP_TX);
+
+  if (deq_now < deq_max)
+    tls_add_vpp_q_evt (app_tx_fifo, FIFO_EVENT_APP_TX);
+
+  return 0;
 }
 
 static int
-mbedtls_read (tls_ctx_t * ctx, u8 * buf, u32 len)
+mbedtls_ctx_read (tls_ctx_t * ctx, svm_fifo_t *tls_rx_fifo,
+                  svm_fifo_t *app_rx_fifo)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
-  return mbedtls_ssl_read (&mc->ssl, buf, len);
+  mbedtls_main_t *mm = &mbedtls_main;
+  u8 thread_index = ctx->c_thread_index;
+  u32 deq_max, enq_max, enq_now;
+  int read, enq;
+
+  if (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    {
+      mbedtls_ctx_handshake_rx (ctx);
+      return 0;
+    }
+
+  deq_max = svm_fifo_max_dequeue (tls_rx_fifo);
+  if (!deq_max)
+    return 0;
+
+  enq_max = svm_fifo_max_enqueue (app_rx_fifo);
+  enq_now = clib_min (enq_max, TLS_CHUNK_SIZE);
+
+  if (PREDICT_FALSE (enq_now == 0))
+    {
+      tls_add_vpp_q_evt (tls_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      return 0;
+    }
+
+  vec_validate (mm->rx_bufs[thread_index], enq_now);
+  read = mbedtls_ssl_read (&mc->ssl, mm->rx_bufs[thread_index], enq_now);
+  if (read <= 0)
+    {
+      tls_add_vpp_q_evt (tls_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      return 0;
+    }
+
+  enq = svm_fifo_enqueue_nowait (app_rx_fifo, read,
+                                 mm->rx_bufs[thread_index]);
+  ASSERT (enq == read);
+  vec_reset_length (mm->rx_bufs[thread_index]);
+
+  if (svm_fifo_max_dequeue (tls_rx_fifo))
+    tls_add_vpp_q_evt (tls_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+
+  return enq;
 }
 
 static u8
@@ -434,9 +520,8 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_get_w_thread = mbedtls_ctx_get_w_thread,
   .ctx_init_server = mbedtls_ctx_init_server,
   .ctx_init_client = mbedtls_ctx_init_client,
-  .ctx_handshake_rx = mbedtls_handshake_rx,
-  .ctx_write = mbedtls_write,
-  .ctx_read = mbedtls_read,
+  .ctx_write = mbedtls_ctx_write,
+  .ctx_read = mbedtls_ctx_read,
   .ctx_handshake_is_over = mbedtls_handshake_is_over,
 };
 
