@@ -169,7 +169,7 @@ tls_ctx_half_open_index (tls_ctx_t * ctx)
   return (ctx - tls_main.half_open_ctx_pool);
 }
 
-static int
+int
 tls_notify_app_accept (tls_ctx_t * ctx)
 {
   stream_session_t *app_listener, *app_session;
@@ -198,7 +198,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   return app->cb_fns.session_accept_callback (app_session);
 }
 
-static int
+int
 tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
 {
   int (*cb_fn) (u32, u32, stream_session_t *, u8);
@@ -276,9 +276,10 @@ tls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static inline int
-tls_ctx_write (tls_ctx_t * ctx, u8 * buf, u32 len)
+tls_ctx_write (tls_ctx_t * ctx, svm_fifo_t *app_tx_fifo,
+               svm_fifo_t *tls_tx_fifo)
 {
-  return tls_vfts[DEFAULT_ENGINE].ctx_write (ctx, buf, len);
+  return tls_vfts[DEFAULT_ENGINE].ctx_write (ctx, app_tx_fifo, tls_tx_fifo);
 }
 
 static inline int
@@ -386,93 +387,36 @@ tls_app_tx_callback (stream_session_t * app_session)
 {
   stream_session_t *tls_session;
   tls_ctx_t *ctx;
-  static u8 *tmp_buf;
-  u32 enq_max, deq_max, deq_now;
-  int wrote;
 
   ctx = tls_ctx_get (app_session->connection_index);
-  if (!tls_ctx_handshake_is_over (ctx))
-    tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
-
-  deq_max = svm_fifo_max_dequeue (app_session->server_tx_fifo);
-  if (!deq_max)
-    return 0;
-
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  enq_max = svm_fifo_max_enqueue (tls_session->server_tx_fifo);
-  deq_now = clib_min (deq_max, TLS_CHUNK_SIZE);
-
-  if (PREDICT_FALSE (enq_max == 0))
-    {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
-      return 0;
-    }
-
-  vec_validate (tmp_buf, deq_now);
-  svm_fifo_peek (app_session->server_tx_fifo, 0, deq_now, tmp_buf);
-  wrote = tls_ctx_write (ctx, tmp_buf, deq_now);
-  if (wrote <= 0)
-    {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
-      return 0;
-    }
-
-  svm_fifo_dequeue_drop (app_session->server_tx_fifo, wrote);
-  vec_reset_length (tmp_buf);
-
-  tls_add_vpp_q_evt (tls_session->server_tx_fifo, FIFO_EVENT_APP_TX);
-
-  if (deq_now < deq_max)
-    tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
-
+  tls_ctx_write (ctx, app_session->server_tx_fifo,
+                 tls_session->server_tx_fifo);
   return 0;
 }
 
 int
 tls_app_rx_callback (stream_session_t * tls_session)
 {
+  u8 thread_index = tls_session->thread_index;
   stream_session_t *app_session;
   u32 deq_max, enq_max, enq_now;
+  tls_main_t *tm = &tls_main;
   application_t *app;
-  static u8 *tmp_buf;
   tls_ctx_t *ctx;
   int read, enq;
 
   ctx = tls_ctx_get (tls_session->opaque);
-  if (!tls_ctx_handshake_is_over (ctx))
-    return tls_handshake_rx (ctx);
-
-  deq_max = svm_fifo_max_dequeue (tls_session->server_rx_fifo);
-  if (!deq_max)
-    return 0;
-
   app_session = session_get_from_handle (ctx->app_session_handle);
-  enq_max = svm_fifo_max_enqueue (app_session->server_rx_fifo);
-  enq_now = clib_min (enq_max, TLS_CHUNK_SIZE);
-
-  if (PREDICT_FALSE (enq_now == 0))
+  read = tls_ctx_read (ctx, tls_session->server_rx_fifo,
+	               app_session->server_tx_fifo);
+  if (read)
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
-      return 0;
+      app = application_get_if_valid (app_session->app_index);
+      return tls_add_app_q_evt (app, app_session);
     }
 
-  vec_validate (tmp_buf, enq_now);
-  read = tls_ctx_read (ctx, tmp_buf, enq_now);
-  if (read <= 0)
-    {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
-      return 0;
-    }
-
-  enq = svm_fifo_enqueue_nowait (app_session->server_rx_fifo, read, tmp_buf);
-  ASSERT (enq == read);
-  vec_reset_length (tmp_buf);
-
-  if (svm_fifo_max_dequeue (tls_session->server_rx_fifo))
-    tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
-
-  app = application_get_if_valid (app_session->app_index);
-  return tls_add_app_q_evt (app, app_session);
+  return 0;
 }
 
 int
@@ -739,11 +683,15 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
 clib_error_t *
 tls_init (vlib_main_t * vm)
 {
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   u32 segment_size = 512 << 20;
   tls_main_t *tm = &tls_main;
   u32 fifo_size = 64 << 10;
+  u32 num_threads;
+
+  num_threads = 1 /* main thread */  + vtm->n_threads;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
@@ -768,6 +716,9 @@ tls_init (vlib_main_t * vm)
 
   tm->app_index = a->app_index;
   clib_rwlock_init (&tm->half_open_rwlock);
+
+  vec_validate (tm->rx_bufs, num_threads - 1);
+  vec_validate (tm->tx_bufs, num_threads - 1);
 
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP4, ~0);
