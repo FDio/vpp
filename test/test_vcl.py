@@ -58,7 +58,10 @@ class VclTestCase(VppTestCase):
                                      self.logger, self.env)
         worker_client.start()
         worker_client.join(self.timeout)
-        self.validateResults(worker_client, worker_server, self.timeout)
+        try:
+            self.validateResults(worker_client, worker_server, self.timeout)
+        except Exception, error:
+            self.fail("Failed with %s" % error)
 
     def thru_host_stack_setup(self):
         self.vapi.session_enable_disable(is_enabled=1)
@@ -122,7 +125,10 @@ class VclTestCase(VppTestCase):
         worker_client.start()
         worker_client.join(self.timeout)
 
-        self.validateResults(worker_client, worker_server, self.timeout)
+        try:
+            self.validateResults(worker_client, worker_server, self.timeout)
+        except Exception, error:
+            self.fail("Failed with %s" % error)
 
     def validateResults(self, worker_client, worker_server, timeout):
         if os.path.isdir('/proc/{}'.format(worker_server.process.pid)):
