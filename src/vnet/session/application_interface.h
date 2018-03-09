@@ -21,6 +21,7 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
+#include <vnet/tls/tls.h>
 
 typedef struct _vnet_app_attach_args_t
 {
@@ -124,6 +125,7 @@ typedef enum
   APP_OPTIONS_NAMESPACE_SECRET,
   APP_OPTIONS_PROXY_TRANSPORT,
   APP_OPTIONS_ACCEPT_COOKIE,
+  APP_OPTIONS_TLS_ENGINE,
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 

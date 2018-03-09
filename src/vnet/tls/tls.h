@@ -43,6 +43,7 @@ typedef CLIB_PACKED (struct tls_cxt_id_
   session_handle_t tls_session_handle;
   u32 listener_ctx_index;
   u8 tcp_is_ip4;
+  u8 tls_engine_id;
 }) tls_ctx_id_t;
 /* *INDENT-ON* */
 
@@ -60,7 +61,8 @@ typedef struct tls_ctx_
 #define tls_session_handle c_tls_ctx_id.tls_session_handle
 #define listener_ctx_index c_tls_ctx_id.listener_ctx_index
 #define tcp_is_ip4 c_tls_ctx_id.tcp_is_ip4
-#define tls_ctx_idx c_c_index
+#define tls_ctx_engine c_tls_ctx_id.tls_engine_id
+#define tls_ctx_handle c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
 #define parent_app_api_context c_s_index
@@ -75,6 +77,8 @@ typedef struct tls_main_
   tls_ctx_t *listener_ctx_pool;
   tls_ctx_t *half_open_ctx_pool;
   clib_rwlock_t half_open_rwlock;
+  u8 **rx_bufs;
+  u8 **tx_bufs;
 
   /*
    * Config
@@ -91,22 +95,14 @@ typedef struct tls_engine_vft_
   tls_ctx_t *(*ctx_get_w_thread) (u32 ctx_index, u8 thread_index);
   int (*ctx_init_client) (tls_ctx_t * ctx);
   int (*ctx_init_server) (tls_ctx_t * ctx);
-  int (*ctx_read) (tls_ctx_t * ctx, u8 * buf, u32 len);
-  int (*ctx_write) (tls_ctx_t * ctx, u8 * buf, u32 len);
-  int (*ctx_handshake_rx) (tls_ctx_t * ctx);
+  int (*ctx_read) (tls_ctx_t * ctx, stream_session_t * tls_session);
+  int (*ctx_write) (tls_ctx_t * ctx, stream_session_t * app_session);
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
 } tls_engine_vft_t;
 
-enum tls_handshake_results_
-{
-  HANDSHAKE_NOT_OVER,
-  CLIENT_HANDSHAKE_OK,
-  CLIENT_HANDSHAKE_FAIL,
-  SERVER_HANDSHAKE_OK
-};
-
 typedef enum tls_engine_type_
 {
+  TLS_ENGINE_NONE,
   TLS_ENGINE_MBEDTLS,
   TLS_ENGINE_OPENSSL,
   TLS_N_ENGINES
@@ -116,7 +112,9 @@ tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
 			  tls_engine_type_t type);
 int tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type);
-
+int tls_notify_app_accept (tls_ctx_t * ctx);
+int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
+void tls_notify_app_enqueue (tls_ctx_t * ctx, stream_session_t * app_session);
 #endif /* SRC_VNET_TLS_TLS_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
