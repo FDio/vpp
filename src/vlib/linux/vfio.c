@@ -73,36 +73,12 @@ map_regions (vlib_main_t * vm, int fd)
 	  int rv;
 	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
 	  dm.size = 1 << pr->log2_page_size;
-	  dm.iova = pr->page_table[i];
+	  dm.iova = dm.vaddr;
 	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)))
 	    return rv;
         }
     });
   /* *INDENT-ON* */
-  return 0;
-}
-
-static clib_error_t *
-scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
-{
-  linux_vfio_main_t *lvm = &vfio_main;
-  const char fn[] = "/dev/vfio/vfio";
-  char buff[sizeof (fn)] = { 0 };
-  int fd;
-  u8 *path = format (0, "%v%c", path_name, 0);
-
-  if (readlink ((char *) path, buff, sizeof (fn)) + 1 != sizeof (fn))
-    goto done;
-
-  if (strncmp (fn, buff, sizeof (fn)))
-    goto done;
-
-  fd = atoi ((char *) file_name);
-  if (fd != lvm->container_fd)
-    lvm->ext_container_fd = atoi ((char *) file_name);
-
-done:
-  vec_free (path);
   return 0;
 }
 
@@ -113,12 +89,6 @@ linux_vfio_dma_map_regions (vlib_main_t * vm)
 
   if (lvm->container_fd != -1)
     map_regions (vm, lvm->container_fd);
-
-  if (lvm->ext_container_fd == -1)
-    foreach_directory_file ("/proc/self/fd", scan_vfio_fd, 0, 0);
-
-  if (lvm->ext_container_fd != -1)
-    map_regions (vm, lvm->ext_container_fd);
 }
 
 static linux_pci_vfio_iommu_group_t *
@@ -251,8 +221,6 @@ linux_vfio_init (vlib_main_t * vm)
 {
   linux_vfio_main_t *lvm = &vfio_main;
   int fd;
-
-  lvm->ext_container_fd = -1;
 
   fd = open ("/dev/vfio/vfio", O_RDWR);
 
