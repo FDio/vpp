@@ -125,6 +125,9 @@ typedef struct _application
 
   /** PEM encoded key */
   u8 *tls_key;
+
+  /** Preferred tls engine */
+  u8 tls_engine;
 } application_t;
 
 #define APP_INVALID_INDEX ((u32)~0)
