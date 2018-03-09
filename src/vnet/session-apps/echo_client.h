@@ -64,7 +64,7 @@ typedef struct
   u32 connections_per_batch;		/**< Connections to rx/tx at once */
   u32 private_segment_count;		/**< Number of private fifo segs */
   u32 private_segment_size;		/**< size of private fifo segs */
-
+  u32 tls_engine;			/**< TLS engine mbedtls/openssl */
   /*
    * Test state variables
    */
