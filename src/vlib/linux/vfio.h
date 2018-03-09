@@ -28,7 +28,6 @@ typedef struct
   u32 flags;
 #define LINUX_VFIO_F_HAVE_IOMMU		(1 << 0)
   int container_fd;
-  int ext_container_fd;		/* container fd used by external library, i.e DPDK */
 
   /* VFIO */
   int iommu_mode;

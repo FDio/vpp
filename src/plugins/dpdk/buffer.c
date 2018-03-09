@@ -43,6 +43,10 @@
  * Allocate/free network buffers.
  */
 
+#include <unistd.h>
+#include <linux/vfio.h>
+#include <sys/ioctl.h>
+
 #include <rte_config.h>
 
 #include <rte_common.h>
@@ -71,10 +75,12 @@
 #include <rte_version.h>
 
 #include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
+#include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
 #include <vnet/vnet.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
-
 
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
@@ -91,6 +97,7 @@ typedef struct
 
 typedef struct
 {
+  int vfio_container_fd;
   dpdk_buffer_per_thread_data *ptd;
 } dpdk_buffer_main_t;
 
@@ -459,11 +466,38 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 }
 
+static clib_error_t *
+scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
+{
+  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
+  linux_vfio_main_t *lvm = &vfio_main;
+  const char fn[] = "/dev/vfio/vfio";
+  char buff[sizeof (fn)] = { 0 };
+  int fd;
+  u8 *path = format (0, "%v%c", path_name, 0);
+
+  if (readlink ((char *) path, buff, sizeof (fn)) + 1 != sizeof (fn))
+    goto done;
+
+  if (strncmp (fn, buff, sizeof (fn)))
+    goto done;
+
+  fd = atoi ((char *) file_name);
+  if (fd != lvm->container_fd)
+    dbm->vfio_container_fd = fd;
+
+done:
+  vec_free (path);
+  return 0;
+}
+
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
-		  struct rte_mempool **_mp, vlib_physmem_region_index_t * pri)
+		  struct rte_mempool ** _mp,
+		  vlib_physmem_region_index_t * pri)
 {
+  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   struct rte_mempool *mp;
   vlib_physmem_region_t *pr;
   clib_error_t *error = 0;
@@ -500,6 +534,33 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
     }
 
   _mp[0] = mp;
+
+  /* DPDK currently doesn't provide API to map DMA memory for empty mempool
+     so we are using this hack, will be nice to have at least API to get
+     VFIO container FD */
+  if (dbm->vfio_container_fd == -1)
+    foreach_directory_file ("/proc/self/fd", scan_vfio_fd, 0, 0);
+
+  if (dbm->vfio_container_fd != -1)
+    {
+      struct vfio_iommu_type1_dma_map dm = { 0 };
+      int i, rv = 0;
+      dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
+      dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+
+      /* *INDENT-OFF* */
+      vec_foreach_index (i, pr->page_table)
+	{
+	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
+	  dm.size = 1 << pr->log2_page_size;
+	  dm.iova = pr->page_table[i];
+	  if ((rv = ioctl (dbm->vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dm)))
+	    break;
+	}
+      /* *INDENT-ON* */
+      if (rv != 0 && rv != EINVAL)
+	clib_unix_warning ("ioctl(VFIO_IOMMU_MAP_DMA) pool '%s'", pool_name);
+    }
 
   return 0;
 }
@@ -665,8 +726,12 @@ dpdk_buffer_init (vlib_main_t * vm)
 {
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+
   vec_validate_aligned (dbm->ptd, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  dbm->vfio_container_fd = -1;
+
   return 0;
 }
 
