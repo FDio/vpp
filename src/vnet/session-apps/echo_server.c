@@ -40,7 +40,7 @@ typedef struct
   u32 private_segment_count;	/**< Number of private segments  */
   u32 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
-
+  u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
   /*
    * Test state
    */
@@ -295,6 +295,7 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = esm->private_segment_count;
+  a->options[APP_OPTIONS_TLS_ENGINE] = esm->tls_engine;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     esm->prealloc_fifos ? esm->prealloc_fifos : 1;
 
@@ -408,6 +409,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->prealloc_fifos = 0;
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
+  esm->tls_engine = TLS_ENGINE_OPENSSL;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -446,6 +448,8 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (input, "stop"))
 	is_stop = 1;
+      else if (unformat (input, "tls-engine %d", &esm->tls_engine))
+	;
       else
 	return clib_error_return (0, "failed: unknown input `%U'",
 				  format_unformat_error, input);

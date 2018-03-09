@@ -458,8 +458,8 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
-
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
   if (appns_id)
     {
       options[APP_OPTIONS_FLAGS] |= appns_flags;
@@ -575,6 +575,8 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_bytes = 0;
   ecm->test_failed = 0;
   ecm->vlib_main = vm;
+  ecm->tls_engine = TLS_ENGINE_OPENSSL;
+
   if (thread_main->n_vlib_mains > 1)
     clib_spinlock_init (&ecm->sessions_lock);
   vec_free (ecm->connect_uri);
@@ -632,6 +634,8 @@ echo_clients_command_fn (vlib_main_t * vm,
 	ecm->no_output = 1;
       else if (unformat (input, "test-bytes"))
 	ecm->test_bytes = 1;
+      else if (unformat (input, "tls-engine %d", &ecm->tls_engine))
+	;
       else
 	return clib_error_return (0, "failed: unknown input `%U'",
 				  format_unformat_error, input);
