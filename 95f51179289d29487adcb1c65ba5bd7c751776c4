@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b9c673a_50de85e5",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-09T12:56:24Z",
+      "side": 1,
+      "message": "This API doesn\u0027t have sense at all if we need to specify input node for each queue.Can you remove it and simply add input node argument to vnet_hw_interface_assign_rx_thread.",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 35
+      },
+      "revId": "95f51179289d29487adcb1c65ba5bd7c751776c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b5f095e8_58f4f415",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-09T12:56:24Z",
+      "side": 1,
+      "message": "Why is this one needed?",
+      "range": {
+        "startLine": 98,
+        "startChar": 5,
+        "endLine": 98,
+        "endChar": 32
+      },
+      "revId": "95f51179289d29487adcb1c65ba5bd7c751776c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e65688d2_56e8f74a",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 485,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-09T12:56:24Z",
+      "side": 1,
+      "message": "Can you put those 3 things into new struct vnet_hw_if_rx_queue_t.",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 485,
+        "endChar": 23
+      },
+      "revId": "95f51179289d29487adcb1c65ba5bd7c751776c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
