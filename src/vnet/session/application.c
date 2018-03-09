@@ -305,6 +305,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
     props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   if (options[APP_OPTIONS_EVT_QUEUE_SIZE])
     props->evt_q_size = options[APP_OPTIONS_EVT_QUEUE_SIZE];
+  if (options[APP_OPTIONS_TLS_ENGINE])
+    app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
   props->segment_type = seg_type;
 
   first_seg_size = options[APP_OPTIONS_SEGMENT_SIZE];
