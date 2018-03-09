@@ -80,6 +80,21 @@ vce_get_event_from_index(vce_event_thread_t *evt, u32 ev_idx)
 }
 
 vce_event_handler_reg_t *
+vce_get_event_handler (vce_event_thread_t *evt, vce_event_key_t *evk)
+{
+  vce_event_handler_reg_t *handler = 0;
+  uword *p;
+
+  clib_spinlock_lock (&evt->handlers_lockp);
+  p = hash_get (evt->handlers_index_by_event_key, evk->as_u64);
+  if (p)
+    handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
+  clib_spinlock_unlock (&evt->handlers_lockp);
+
+  return handler;
+}
+
+vce_event_handler_reg_t *
 vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
 		      vce_event_callback_t cb)
 {

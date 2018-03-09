@@ -101,6 +101,16 @@ void vce_clear_event (vce_event_thread_t *evt, vce_event_t *ev);
 vce_event_t * vce_get_event_from_index(vce_event_thread_t *evt, u32 ev_idx);
 
 /**
+ * @brief vce_get_event_handler()
+ * - returns handler if exists or 0
+ * @param evt - vce_event_thread_t - event system state
+ * @param evk - event key
+ * @return vce_event_handler_reg_t *
+ */
+vce_event_handler_reg_t * vce_get_event_handler (vce_event_thread_t *evt,
+						 vce_event_key_t *evk);
+
+/**
  * @brief vce_register_handler
  * - used by functions who need to be notified that an event has occurred
  *   on a vce_event_key_t (i.e. event type (enum) and sessionID)

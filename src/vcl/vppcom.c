@@ -2754,7 +2754,8 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   reg = vce_register_handler (&vcm->event_thread, &evk,
 			      vce_connect_request_handler_fn);
 
-  ev = 0;
+  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
+
   pthread_mutex_lock (&reg->handler_lock);
   while (!ev)
     {
