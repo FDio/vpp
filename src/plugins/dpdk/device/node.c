@@ -69,11 +69,12 @@ dpdk_rx_error_from_mb (struct rte_mbuf *mb, u32 * next, u8 * error)
 }
 
 static_always_inline void
-dpdk_add_trace (vlib_main_t * vm,
-		vlib_node_runtime_t * node,
-		dpdk_device_t * xd,
-		u16 queue_id, vlib_buffer_t * b, struct rte_mbuf *mb)
+dpdk_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node, u32 next,
+		dpdk_device_t * xd, u16 queue_id,
+		vlib_buffer_t * b, struct rte_mbuf *mb)
 {
+  vlib_trace_buffer (vm, node, next, b, /* follow_chain */ 0);
+
   dpdk_rx_dma_trace_t *t0 = vlib_add_trace (vm, node, b, sizeof t0[0]);
   t0->queue_index = queue_id;
   t0->device_index = xd->device_index;
@@ -377,34 +378,33 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 					      &next0, &next1, &next2, &next3,
 					      b0, b1, b2, b3);
 
-	  switch (n_trace)
-	    {
-	    default:
-	      vlib_trace_buffer (vm, node, next3, b3, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b3, mb3);
-	      n_trace--;
-	    case 3:
-	      vlib_trace_buffer (vm, node, next2, b2, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b2, mb2);
-	      n_trace--;
-	    case 2:
-	      vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b1, mb1);
-	      n_trace--;
-	    case 1:
-	      vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b0, mb0);
-	      n_trace--;
-	    case 0:
-	      break;
-	    }
-
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	  n_buffers -= 4;
 	  mb_index += 4;
+
+	  if (n_trace)
+	    {
+	      dpdk_add_trace (vm, node, next0, xd, queue_id, b0, mb0);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      dpdk_add_trace (vm, node, next1, xd, queue_id, b1, mb1);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      dpdk_add_trace (vm, node, next2, xd, queue_id, b2, mb2);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      dpdk_add_trace (vm, node, next3, xd, queue_id, b3, mb3);
+	      n_trace--;
+	    }
 	}
       while (n_buffers > 0 && n_left_to_next > 0)
 	{
@@ -464,18 +464,17 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_feature_start_device_input_x1 (xd->vlib_sw_if_index, &next0,
 					      b0);
 
-	  if (n_trace != 0)
-	    {
-	      vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b0, mb0);
-	      n_trace--;
-	    }
-
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
 	  n_buffers--;
 	  mb_index++;
+
+	  if (n_trace)
+	    {
+	      dpdk_add_trace (vm, node, next0, xd, queue_id, b0, mb0);
+	      n_trace--;
+	    }
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -584,13 +583,15 @@ CLIB_MULTIARCH_FN (dpdk_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	continue; 	/* Do not poll slave to a bonded interface */
       u32 n_trace = vlib_get_trace_count (vm, node);
       if (PREDICT_TRUE(n_trace == 0))
-        n_rx_packets += dpdk_device_input_mseg (dm, xd, node, thread_index, dq->queue_id, 0);
+        n_rx_packets += dpdk_device_input_mseg (dm, xd, node, thread_index,
+						dq->queue_id, 0);
       else
         {
           u32 n_tr_packets = dpdk_device_input_mseg (dm, xd, node, thread_index,
-              dq->queue_id, n_trace);
+						     dq->queue_id, n_trace);
           n_rx_packets += n_tr_packets;
-          vlib_set_trace_count (vm, node, n_trace - clib_min(n_trace, n_tr_packets));
+          vlib_set_trace_count (vm, node,
+				n_trace - clib_min(n_trace, n_tr_packets));
         }
     }
   /* *INDENT-ON* */
