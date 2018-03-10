@@ -273,17 +273,6 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/geneve/geneve.api
 
 ########################################
-# Layer 2 / CDP
-########################################
-libvnet_la_SOURCES +=				\
-  vnet/cdp/cdp_input.c				\
-  vnet/cdp/cdp_node.c				\
-  vnet/cdp/cdp_periodic.c
-
-nobase_include_HEADERS +=			\
-  vnet/cdp/cdp_protocol.h
-
-########################################
 # Layer 2 / LLDP
 ########################################
 libvnet_la_SOURCES +=				\

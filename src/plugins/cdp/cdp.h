@@ -1,5 +1,8 @@
+
 /*
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * cdp.h - cdp protocol plug-in
+ *
+ * Copyright (c) 2011-2018 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_cdp_node_h__
-#define __included_cdp_node_h__
+#ifndef __included_cdp_h__
+#define __included_cdp_h__
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -25,7 +28,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/hash.h>
 
-#include <vnet/cdp/cdp_protocol.h>
+#include "cdp_protocol.h"
 
 typedef enum
 {
@@ -78,6 +81,9 @@ typedef struct
   /* pool of cdp neighbors */
   cdp_neighbor_t *neighbors;
 
+  /* plugin message id base */
+  u16 msg_id_base;
+
   /* tx pcap debug enable */
   u8 tx_pcap_debug;
 
@@ -86,6 +92,9 @@ typedef struct
 
   /* Background process node index */
   u32 cdp_process_node_index;
+
+  /* top-level state */
+  int enabled;
 
   /* Packet templates for different encap types */
   vlib_packet_template_t packet_templates[CDP_N_PACKET_TEMPLATES];
@@ -96,6 +105,7 @@ typedef struct
 } cdp_main_t;
 
 extern cdp_main_t cdp_main;
+extern vlib_node_registration_t cdp_process_node;
 
 /* Packet counters */
 #define foreach_cdp_error                                       \
@@ -123,10 +133,9 @@ typedef struct
 
 typedef enum
 {
-  CDP_EVENT_SEND_NEIGHBOR,
-  CDP_EVENT_SEND_KEEPALIVE,
+  CDP_EVENT_ENABLE,
+  CDP_EVENT_DISABLE,
 } cdp_process_event_t;
-
 
 cdp_error_t cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
 void cdp_periodic (vlib_main_t * vm);
@@ -134,9 +143,7 @@ void cdp_keepalive (cdp_main_t * cm, cdp_neighbor_t * n);
 u16 cdp_checksum (void *p, int count);
 u8 *cdp_input_format_trace (u8 * s, va_list * args);
 
-serialize_function_t serialize_cdp_main, unserialize_cdp_main;
-
-#endif /* __included_cdp_node_h__ */
+#endif /* __included_cdp_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

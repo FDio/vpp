@@ -12,15 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cdp/cdp_node.h>
+#include <cdp/cdp.h>
 
 cdp_main_t cdp_main;
 
 #define DEBUG_TLV_DUMP 0	/* 1=> dump TLV's to stdout while processing them */
-
-/* Reliable multicast messages we use to keep peers updated */
-mc_serialize_msg_t serialize_cdp_neighbor_msg;
-mc_serialize_msg_t serialize_cdp_keepalive_msg;
 
 /*
  * ported from an unspecified Cisco cdp implementation.
@@ -384,7 +380,7 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
  * setup neighbor hash table
  */
 static clib_error_t *
-cdp_init (vlib_main_t * vm)
+cdp_input_init (vlib_main_t * vm)
 {
   clib_error_t *error;
   cdp_main_t *cm = &cdp_main;
@@ -402,7 +398,7 @@ cdp_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (cdp_init);
+VLIB_INIT_FUNCTION (cdp_input_init);
 
 
 static u8 *
@@ -432,14 +428,16 @@ format_cdp_neighbors (u8 * s, va_list * va)
   return s;
 }
 
-
 static clib_error_t *
 show_cdp (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   cdp_main_t *cm = &cdp_main;
 
-  vlib_cli_output (vm, "%U\n", format_cdp_neighbors, vm, cm);
+  if (cm->enabled == 0)
+    vlib_cli_output (vm, "CDP is not enabled...");
+  else
+    vlib_cli_output (vm, "%U\n", format_cdp_neighbors, vm, cm);
 
   return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,10 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cdp/cdp_node.h>
+#include <cdp/cdp.h>
 #include <vnet/ethernet/packet.h>
-
-static vlib_node_registration_t cdp_process_node;
 
 /** \file
 
@@ -152,7 +150,9 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
 				cdp_input_node.index);
 
-  poll_time_remaining = 10.0 /* seconds */ ;
+  /* Start w/ cdp effectively disabled */
+  poll_time_remaining = 86400.0;
+
   while (1)
     {
       /* sleep until next poll time, or msg serialize event occurs */
@@ -165,12 +165,19 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case ~0:		/* no events => timeout */
 	  break;
 
+	case CDP_EVENT_ENABLE:
+	  poll_time_remaining = 10.0;
+	  break;
+
+	case CDP_EVENT_DISABLE:
+	  poll_time_remaining = 86400.0;
+	  break;
+
 	default:
 	  clib_warning ("BUG: event type 0x%wx", event_type);
 	  break;
 	}
-      if (event_data)
-	_vec_len (event_data) = 0;
+      vec_reset_length (event_data);
 
       /* peer timeout scan, send announcements */
       if (vlib_process_suspend_time_is_zero (poll_time_remaining))
@@ -187,7 +194,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
  * cdp periodic node declaration
  */
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (cdp_process_node, static) = {
+VLIB_REGISTER_NODE (cdp_process_node) = {
   .function = cdp_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "cdp-process",

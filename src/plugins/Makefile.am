@@ -34,6 +34,10 @@ if ENABLE_ACL_PLUGIN
 include acl.am
 endif
 
+if ENABLE_CDP_PLUGIN
+include cdp.am
+endif
+
 if ENABLE_DPDK_PLUGIN
 include dpdk.am
 endif
