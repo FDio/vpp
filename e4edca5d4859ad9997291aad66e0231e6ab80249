@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "826462c7_c9123393",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-03-10T22:33:16Z",
+      "side": 1,
+      "message": "clib_smp_swap was defined to __sync_lock_test_and_set() which has an implicit acquire memory ordering.\n\nclib_atomic_swap is defined to __atomic_exchange(,,RELAXED)\n\nIs it OK to reduce the stricter acquire ordering to relaxed ordering here? I.e. can Core A ever touch some memory and then set interrupt_pending, while Core B executes foreach_device_and_queue() and then reads the memory Core A touched?",
+      "range": {
+        "startLine": 158,
+        "startChar": 8,
+        "endLine": 158,
+        "endChar": 24
+      },
+      "revId": "e4edca5d4859ad9997291aad66e0231e6ab80249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
