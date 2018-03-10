@@ -377,34 +377,37 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 					      &next0, &next1, &next2, &next3,
 					      b0, b1, b2, b3);
 
-	  switch (n_trace)
-	    {
-	    default:
-	      vlib_trace_buffer (vm, node, next3, b3, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b3, mb3);
-	      n_trace--;
-	    case 3:
-	      vlib_trace_buffer (vm, node, next2, b2, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b2, mb2);
-	      n_trace--;
-	    case 2:
-	      vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b1, mb1);
-	      n_trace--;
-	    case 1:
-	      vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-	      dpdk_add_trace (vm, node, xd, queue_id, b0, mb0);
-	      n_trace--;
-	    case 0:
-	      break;
-	    }
-
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	  n_buffers -= 4;
 	  mb_index += 4;
+
+	  if (n_trace)
+	    {
+	      vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
+	      dpdk_add_trace (vm, node, xd, queue_id, b0, mb0);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
+	      dpdk_add_trace (vm, node, xd, queue_id, b1, mb1);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      vlib_trace_buffer (vm, node, next2, b2, /* follow_chain */ 0);
+	      dpdk_add_trace (vm, node, xd, queue_id, b2, mb2);
+	      n_trace--;
+	    }
+	  if (n_trace)
+	    {
+	      vlib_trace_buffer (vm, node, next3, b3, /* follow_chain */ 0);
+	      dpdk_add_trace (vm, node, xd, queue_id, b3, mb3);
+	      n_trace--;
+	    }
 	}
       while (n_buffers > 0 && n_left_to_next > 0)
 	{
@@ -464,18 +467,18 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_feature_start_device_input_x1 (xd->vlib_sw_if_index, &next0,
 					      b0);
 
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	  n_buffers--;
+	  mb_index++;
+
 	  if (n_trace != 0)
 	    {
 	      vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
 	      dpdk_add_trace (vm, node, xd, queue_id, b0, mb0);
 	      n_trace--;
 	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	  n_buffers--;
-	  mb_index++;
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
