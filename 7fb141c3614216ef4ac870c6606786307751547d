@@ -46,6 +46,30 @@
       "revId": "7fb141c3614216ef4ac870c6606786307751547d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7444474c_38204353",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-11T01:13:16Z",
+      "side": 1,
+      "message": "I will submit a patch to fold calling of vlib_trace_buffer() into dpdk_add_trace() inline function as you suggested.",
+      "parentUuid": "241783a1_8c964f11",
+      "range": {
+        "startLine": 387,
+        "startChar": 0,
+        "endLine": 410,
+        "endChar": 6
+      },
+      "revId": "7fb141c3614216ef4ac870c6606786307751547d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
