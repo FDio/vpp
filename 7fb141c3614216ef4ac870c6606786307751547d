@@ -22,6 +22,30 @@
       "revId": "7fb141c3614216ef4ac870c6606786307751547d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "241783a1_8c964f11",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-11T00:29:59Z",
+      "side": 1,
+      "message": "This function dpdk_device_input() is an inline function called by inline function dpdk_device_input_mseg() which is called by dpdk_input().  If n_trace is 0, dpdk_input() at line 589 would call the inlined functions with input n_trace set to constant 0:\n\n      if (PREDICT_TRUE(n_trace \u003d\u003d 0))\n        n_rx_packets +\u003d dpdk_device_input_mseg (dm, xd, node, thread_index, dq-\u003equeue_id, 0);\n      else\n        {\n          u32 n_tr_packets \u003d dpdk_device_input_mseg (dm, xd, node, thread_index,\n              dq-\u003equeue_id, n_trace);\n...\n\nI would expect the compiler to not generate any code for the \"if (n_trace)\" dead path for the inlined funtcion when input parameter n_trace is constant 0. Thus, I would think the code as it is should be fine. Would you agree? Or, do you still prefer to have the 2nd to 4th \"if (n_trace)\" within the first one?",
+      "parentUuid": "7ee8daa6_a913b631",
+      "range": {
+        "startLine": 387,
+        "startChar": 0,
+        "endLine": 410,
+        "endChar": 6
+      },
+      "revId": "7fb141c3614216ef4ac870c6606786307751547d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
