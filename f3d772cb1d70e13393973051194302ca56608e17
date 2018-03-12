@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d323195_15399505",
+        "filename": "src/plugins/igmp/cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-12T14:57:05Z",
+      "side": 1,
+      "message": "can we have the \u0027else if\u0027 on the same line please. maybe consider using the existing style checkers by adding the fd.io footer,",
+      "revId": "f3d772cb1d70e13393973051194302ca56608e17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81681052_dbd40e6c",
+        "filename": "src/plugins/igmp/igmp.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-12T14:57:05Z",
+      "side": 1,
+      "message": "Doxygen style comments on types and members throughout please.",
+      "revId": "f3d772cb1d70e13393973051194302ca56608e17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
