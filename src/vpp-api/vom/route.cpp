@@ -427,8 +427,14 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
         boost::asio::ip::address address = from_bytes(0, p.next_hop);
         std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
         if (itf) {
-          path path_v4(address, *itf, p.weight, p.preference);
-          ip_r.add(path_v4);
+          if (p.is_dvr) {
+            path path_v4(*itf, nh_proto_t::IPV4, route::path::flags_t::DVR,
+                         p.weight, p.preference);
+            ip_r.add(path_v4);
+          } else {
+            path path_v4(address, *itf, p.weight, p.preference);
+            ip_r.add(path_v4);
+          }
         } else {
           path path_v4(rd_temp, address, p.weight, p.preference);
           ip_r.add(path_v4);
@@ -474,8 +480,14 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
         std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
         boost::asio::ip::address address = from_bytes(1, p.next_hop);
         if (itf) {
-          path path_v6(address, *itf, p.weight, p.preference);
-          ip_r.add(path_v6);
+          if (p.is_dvr) {
+            path path_v6(*itf, nh_proto_t::IPV6, route::path::flags_t::DVR,
+                         p.weight, p.preference);
+            ip_r.add(path_v6);
+          } else {
+            path path_v6(address, *itf, p.weight, p.preference);
+            ip_r.add(path_v6);
+          }
         } else {
           path path_v6(rd_temp, address, p.weight, p.preference);
           ip_r.add(path_v6);
