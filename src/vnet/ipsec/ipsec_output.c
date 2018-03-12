@@ -88,16 +88,16 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
     if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
       continue;
 
-    if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
-      continue;
-
-    if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
-      continue;
-
     if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
       continue;
 
     if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
+      continue;
+
+    if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
+      continue;
+
+    if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
       continue;
 
     if (PREDICT_FALSE
@@ -274,11 +274,9 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (p0->policy == IPSEC_POLICY_ACTION_PROTECT)
 	    {
-	      u32 sa_index = 0;
 	      ipsec_sa_t *sa = 0;
 	      nc_protect++;
-	      sa_index = ipsec_get_sa_index_by_sa_id (p0->sa_id);
-	      sa = pool_elt_at_index (im->sad, sa_index);
+	      sa = pool_elt_at_index (im->sad, p0->sa_index);
 	      if (sa->protocol == IPSEC_PROTOCOL_ESP)
 		next_node_index = im->esp_encrypt_node_index;
 	      else
