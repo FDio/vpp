@@ -463,6 +463,8 @@ sctp_prepare_init_chunk (sctp_connection_t * sctp_conn, u8 idx,
   vnet_sctp_set_chunk_length (&init_chunk->chunk_hdr, chunk_len);
   vnet_sctp_common_hdr_params_host_to_net (&init_chunk->chunk_hdr);
 
+  sctp_init_cwnd (sctp_conn);
+
   init_chunk->a_rwnd = clib_host_to_net_u32 (sctp_conn->sub_conn[idx].cwnd);
   init_chunk->initiate_tag = clib_host_to_net_u32 (random_u32 (&random_seed));
   init_chunk->inboud_streams_count =
@@ -1405,7 +1407,12 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
   SCTP_ADV_DBG_OUTPUT ("POINTER_WITH_DATA = %p, DATA_OFFSET = %u",
 		       b->data, b->current_data);
 
-  sctp_conn->last_unacked_tsn = sctp_conn->next_tsn;
+  if (sctp_conn->sub_conn[idx].state != SCTP_SUBCONN_AWAITING_SACK)
+    {
+      sctp_conn->sub_conn[idx].state = SCTP_SUBCONN_AWAITING_SACK;
+      sctp_conn->last_unacked_tsn = sctp_conn->next_tsn;
+    }
+
   sctp_conn->next_tsn += data_len;
 
   u32 inflight = sctp_conn->next_tsn - sctp_conn->last_unacked_tsn;
