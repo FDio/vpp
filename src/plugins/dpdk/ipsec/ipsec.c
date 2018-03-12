@@ -395,7 +395,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 				res->drv_id);
     }
 
-  hash_set (data->session_by_drv_id_and_sa_index, key.val, session[0]);
+  add_session_by_drv_and_sa_idx(session[0], data, key);
 
   return 0;
 }
@@ -519,12 +519,12 @@ add_del_sa_session (u32 sa_index, u8 is_add)
       vec_foreach_index (drv_id, dcm->drv)
 	{
 	  key.drv_id = drv_id;
-	  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+	  val = (uword*) get_session_by_drv_and_sa_idx (data, key);
 
 	  if (!val)
 	    continue;
 
-	  hash_unset (data->session_by_drv_id_and_sa_index, key.val);
+	  add_session_by_drv_and_sa_idx(NULL, data, key);
 	}
 
       hash_unset (data->session_by_sa_index, sa_index);
@@ -977,12 +977,12 @@ crypto_disable (void)
 	rte_mempool_free (data->session_drv[i]);
 
       vec_free (data->session_drv);
+      vec_free(data->session_by_drv_id_and_sa_index);
     }
   /* *INDENT-ON* */
 
   vec_free (dcm->data);
   vec_free (dcm->workers_main);
-  vec_free (dcm->sa_session);
   vec_free (dcm->dev);
   vec_free (dcm->resource);
   vec_free (dcm->cipher_algs);
