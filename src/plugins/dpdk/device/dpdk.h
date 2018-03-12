@@ -154,6 +154,12 @@ typedef struct
 
 typedef struct
 {
+  u16 first;
+  u16 count;
+} dpdk_queue_range_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 **lockp;
 
@@ -395,6 +401,8 @@ typedef struct
 
 extern dpdk_main_t dpdk_main;
 
+dpdk_main_t *dpdk_get_main ();
+
 typedef struct
 {
   u32 buffer_index;
@@ -468,6 +476,9 @@ clib_error_t *dpdk_pool_create (vlib_main_t * vm, u8 * pool_name,
 clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 				       unsigned socket_id);
 
+clib_error_t *dpdk_setup_workers (dpdk_device_t * xd, u32 node_idx,
+				  int n_rx_queues, clib_bitmap_t * workers,
+				  dpdk_queue_range_t * q_range);
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
 void dpdk_buffer_poison_trajectory_all (void);
