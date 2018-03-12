@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2fd0f1c_151cd6d1",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-12T16:38:29Z",
+      "side": 1,
+      "message": "hmm, scratch scratch. What is the idea here? struct \u003eunion -\u003e struct -\u003e struct :)\nIf you want your data to survive opaque, it should be outside of opaque, no?",
+      "range": {
+        "startLine": 372,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 6
+      },
+      "revId": "a6ac12950a875d34ca7cfa1f8d21336e2eb6ac7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
