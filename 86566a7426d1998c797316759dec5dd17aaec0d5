@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d80b1a68_4d9ea973",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1259
+      },
+      "writtenOn": "2018-03-12T02:14:33Z",
+      "side": 1,
+      "message": "could we integrate it in the \u0027Requires\u0027 L50",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 8
+      },
+      "revId": "86566a7426d1998c797316759dec5dd17aaec0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
