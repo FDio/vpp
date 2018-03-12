@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f7123f4_20bd3cf4",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-03-12T16:49:31Z",
+      "side": 1,
+      "message": "Two comments. I don\u0027t think mbedtls should here instead of BuildRequires.",
+      "revId": "abe14dd081e8de966cb49be4462e40467d240eb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f61783d_c96ca7b3",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2018-03-12T16:49:31Z",
+      "side": 1,
+      "message": "mbedtls should be here and not under \"Requires\". mAlso, bedtls is not available as yet in Centos but is in Fedora and accessible via epel.",
+      "revId": "abe14dd081e8de966cb49be4462e40467d240eb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
