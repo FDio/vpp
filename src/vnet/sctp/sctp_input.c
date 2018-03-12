@@ -375,7 +375,6 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 			  sctp_conn->remote_initial_tsn);
 
   sctp_conn->peer_rwnd = clib_net_to_host_u32 (init_chunk->a_rwnd);
-
   /*
    * If the length specified in the INIT message is bigger than the size in bytes of our structure it means that
    * optional parameters have been sent with the INIT chunk and we need to parse them.
@@ -725,7 +724,7 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
       return 0;
     }
 
-  if (is_gapping != 0)
+  if (is_gapping)
     {
       SCTP_CONN_TRACKING_DBG
 	("gapping != 0: CONN_INDEX = %u, sctp_conn->ack_state = %u",
@@ -733,6 +732,7 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
       return 0;
     }
 
+  sctp_conn->ack_state += 1;
   if (sctp_conn->ack_state >= MAX_ENQUEABLE_SACKS)
     {
       SCTP_CONN_TRACKING_DBG
@@ -740,8 +740,6 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
 	 sctp_conn->sub_conn[idx].connection.c_index, sctp_conn->ack_state);
       return 0;
     }
-
-  sctp_conn->ack_state += 1;
 
   return 1;
 }
@@ -826,12 +824,15 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
     }
   sctp_conn->last_rcvd_tsn = tsn;
 
-  *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
-
   SCTP_ADV_DBG ("POINTER_WITH_DATA = %p", b->data);
 
   if (!sctp_is_sack_delayable (sctp_conn, idx, is_gapping))
-    sctp_prepare_sack_chunk (sctp_conn, idx, b);
+    {
+      *next0 = sctp_next_output (sctp_conn->sub_conn[idx].c_is_ip4);
+      sctp_prepare_sack_chunk (sctp_conn, idx, b);
+    }
+  else
+    *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
 
   sctp_conn->sub_conn[idx].enqueue_state = error;
 
@@ -1022,12 +1023,12 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  sctp_connection_timers_init (new_sctp_conn);
 
+		  sctp_init_cwnd (new_sctp_conn);
+
 		  error0 =
 		    sctp_handle_init_ack (sctp_hdr, sctp_chunk_hdr,
 					  new_sctp_conn, idx, b0,
 					  sctp_implied_length);
-
-		  sctp_init_cwnd (new_sctp_conn);
 
 		  if (session_stream_connect_notify
 		      (&new_sctp_conn->sub_conn[idx].connection, 0))
@@ -1505,11 +1506,14 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
 		  sctp_connection_t * sctp_conn, u8 idx, vlib_buffer_t * b0,
 		  u16 * next0)
 {
+
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag)
     {
       return SCTP_ERROR_INVALID_TAG;
     }
+
+  sctp_conn->sub_conn[idx].state = SCTP_SUBCONN_SACK_RECEIVED;
 
   sctp_conn->sub_conn[idx].last_seen = sctp_time_now ();
 
@@ -1710,11 +1714,11 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 
 	      sctp_init_snd_vars (child_conn);
 
+	      sctp_init_cwnd (child_conn);
+
 	      error0 =
 		sctp_handle_init (sctp_hdr, sctp_chunk_hdr, child_conn, b0,
 				  sctp_implied_length);
-
-	      sctp_init_cwnd (child_conn);
 
 	      if (error0 == SCTP_ERROR_NONE)
 		{

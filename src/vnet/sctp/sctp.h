@@ -93,7 +93,9 @@ enum _sctp_subconn_state
 {
   SCTP_SUBCONN_STATE_DOWN = 0,
   SCTP_SUBCONN_STATE_UP,
-  SCTP_SUBCONN_STATE_ALLOW_HB
+  SCTP_SUBCONN_STATE_ALLOW_HB,
+  SCTP_SUBCONN_AWAITING_SACK,
+  SCTP_SUBCONN_SACK_RECEIVED
 };
 
 #define SCTP_INITIAL_SSHTRESH 65535
@@ -920,6 +922,8 @@ sctp_in_cong_recovery (sctp_connection_t * sctp_conn, u8 idx)
 always_inline u8
 cwnd_fully_utilized (sctp_connection_t * sctp_conn, u8 idx)
 {
+  if (sctp_conn->sub_conn[idx].cwnd == 0)
+    return 1;
   return 0;
 }
 
@@ -928,6 +932,7 @@ always_inline void
 update_cwnd (sctp_connection_t * sctp_conn)
 {
   u8 i;
+  u32 inflight = sctp_conn->next_tsn - sctp_conn->last_unacked_tsn;
 
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
@@ -960,6 +965,12 @@ update_cwnd (sctp_connection_t * sctp_conn)
 	  sctp_conn->sub_conn[i].cwnd =
 	    clib_min (sctp_conn->sub_conn[i].PMTU, 1);
 	}
+
+      /* Section 6.1; point (D) */
+      if ((inflight + SCTP_RTO_BURST * sctp_conn->sub_conn[i].PMTU) <
+	  sctp_conn->sub_conn[i].cwnd)
+	sctp_conn->sub_conn[i].cwnd =
+	  inflight + SCTP_RTO_BURST * sctp_conn->sub_conn[i].PMTU;
     }
 }
 

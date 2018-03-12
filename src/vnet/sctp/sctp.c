@@ -615,14 +615,21 @@ sctp_session_send_mss (transport_connection_t * trans_conn)
   update_cwnd (sctp_conn);
   update_smallest_pmtu_idx (sctp_conn);
 
-  return sctp_conn->sub_conn[sctp_conn->smallest_PMTU_idx].cwnd;
+  u8 idx = sctp_data_subconn_select (sctp_conn);
+
+  return sctp_conn->sub_conn[idx].cwnd;
 }
 
 u16
 sctp_snd_space (sctp_connection_t * sctp_conn)
 {
+  /* RFC 4096 Section 6.1; point (A) */
+  if (sctp_conn->peer_rwnd == 0)
+    return 0;
+
+  u8 idx = sctp_data_subconn_select (sctp_conn);
   /* Finally, let's subtract the DATA chunk headers overhead */
-  return sctp_conn->sub_conn[sctp_conn->smallest_PMTU_idx].cwnd -
+  return sctp_conn->sub_conn[idx].cwnd -
     sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_full_hdr_t);
 }
 
