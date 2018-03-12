@@ -127,6 +127,12 @@ typedef struct
 
 typedef struct
 {
+  struct rte_cryptodev_sym_session *session;
+  u64 dev_mask;
+} crypto_session_by_drv_t;
+
+typedef struct
+{
   /* Required for vec_validate_aligned */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct rte_mempool *crypto_op;
@@ -134,17 +140,16 @@ typedef struct
   struct rte_mempool **session_drv;
   crypto_session_disposal_t *session_disposal;
   uword *session_by_sa_index;
-  uword *session_by_drv_id_and_sa_index;
   u64 crypto_op_get_failed;
   u64 session_h_failed;
   u64 *session_drv_failed;
+  crypto_session_by_drv_t *session_by_drv_id_and_sa_index;
   clib_spinlock_t lockp;
 } crypto_data_t;
 
 typedef struct
 {
   crypto_worker_main_t *workers_main;
-  struct rte_cryptodev_sym_session **sa_session;
   crypto_dev_t *dev;
   crypto_resource_t *resource;
   crypto_alg_t *cipher_algs;
@@ -194,38 +199,47 @@ crypto_op_get_priv (struct rte_crypto_op * op)
   return (dpdk_op_priv_t *) (((u8 *) op) + crypto_op_get_priv_offset ());
 }
 
-/* XXX this requires 64 bit builds so hash_xxx macros use u64 key */
-typedef union
+
+static_always_inline void
+add_session_by_drv_and_sa_idx (struct rte_cryptodev_sym_session *session,
+			       crypto_data_t * data, u32 drv_id, u32 sa_idx)
 {
-  u64 val;
-  struct
-  {
-    u32 drv_id;
-    u32 sa_idx;
-  };
-} crypto_session_key_t;
+  crypto_session_by_drv_t *sbd;
+  vec_validate_aligned (data->session_by_drv_id_and_sa_index, sa_idx,
+			CLIB_CACHE_LINE_BYTES);
+  sbd = vec_elt_at_index (data->session_by_drv_id_and_sa_index, sa_idx);
+  sbd->dev_mask |= 1L << drv_id;
+  sbd->session = session;
+}
+
+static_always_inline struct rte_cryptodev_sym_session *
+get_session_by_drv_and_sa_idx (crypto_data_t * data, u32 drv_id, u32 sa_idx)
+{
+  crypto_session_by_drv_t *sess_by_sa;
+  if (_vec_len (data->session_by_drv_id_and_sa_index) <= sa_idx)
+    return NULL;
+  sess_by_sa =
+    vec_elt_at_index (data->session_by_drv_id_and_sa_index, sa_idx);
+  return (sess_by_sa->dev_mask & (1L << drv_id)) ? sess_by_sa->session : NULL;
+}
 
 static_always_inline clib_error_t *
-crypto_get_session (struct rte_cryptodev_sym_session **session,
+crypto_get_session (struct rte_cryptodev_sym_session ** session,
 		    u32 sa_idx,
 		    crypto_resource_t * res,
 		    crypto_worker_main_t * cwm, u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
-  uword *val;
-  crypto_session_key_t key = { 0 };
-
-  key.drv_id = res->drv_id;
-  key.sa_idx = sa_idx;
+  struct rte_cryptodev_sym_session *sess;
 
   data = vec_elt_at_index (dcm->data, res->numa);
-  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+  sess = get_session_by_drv_and_sa_idx (data, res->drv_id, sa_idx);
 
-  if (PREDICT_FALSE (!val))
+  if (PREDICT_FALSE (!sess))
     return create_sym_session (session, sa_idx, res, cwm, is_outbound);
 
-  session[0] = (struct rte_cryptodev_sym_session *) val[0];
+  session[0] = sess;
 
   return NULL;
 }
@@ -239,8 +253,8 @@ get_resource (crypto_worker_main_t * cwm, ipsec_sa_t * sa)
 
   /* Not allowed to setup SA with no-aead-cipher/NULL or NULL/NULL */
 
-  is_aead = ((sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) |
-	     (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) |
+  is_aead = ((sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||
+	     (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||
 	     (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256));
 
   if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE)
