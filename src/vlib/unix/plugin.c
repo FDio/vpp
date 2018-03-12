@@ -141,7 +141,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
     {
       clib_warning ("%s", dlerror ());
       clib_warning ("Failed to load plugin '%s'", pi->name);
-      os_exit (1);
+      goto error;
     }
 
   pi->handle = handle;
