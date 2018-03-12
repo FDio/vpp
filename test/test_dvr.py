@@ -215,6 +215,23 @@ class TestDVR(VppTestCase):
                                              1, bvi=1, enable=0)
 
         #
+        # Do a FIB dump to make sure the paths are correctly reported as DVR
+        #
+        routes = self.vapi.ip_fib_dump()
+
+        for r in routes:
+            if (inet_pton(AF_INET, ip_tag_bridged) == r.address):
+                print r
+                self.assertEqual(r.path[0].sw_if_index,
+                                 sub_if_on_pg3.sw_if_index)
+                self.assertEqual(r.path[0].is_dvr, 1)
+            if (inet_pton(AF_INET, ip_non_tag_bridged) == r.address):
+                print r
+                self.assertEqual(r.path[0].sw_if_index,
+                                 self.pg1.sw_if_index)
+                self.assertEqual(r.path[0].is_dvr, 1)
+
+        #
         # the explicit route delete is require so it happens before
         # the sbu-interface delete. subinterface delete is required
         # because that object type does not use the object registry

@@ -16,6 +16,7 @@
 #ifndef __FIB_API_H__
 #define __FIB_API_H__
 
+#include <vnet/fib/fib_types.h>
 
 int
 add_del_route_check (fib_protocol_t table_proto,
@@ -55,8 +56,9 @@ add_del_route_t_handler (u8 is_multipath,
 			 mpls_label_t next_hop_via_label,
 			 fib_mpls_label_t * next_hop_out_label_stack);
 
-void
-copy_fib_next_hop (fib_route_path_encode_t * api_rpath,
-		   void * fp_arg);
+struct _vl_api_fib_path;
+
+extern void fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
+                                 struct _vl_api_fib_path *out);
 
 #endif /* __FIB_API_H__ */

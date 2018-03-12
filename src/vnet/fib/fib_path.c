@@ -80,7 +80,7 @@ typedef enum fib_path_type_t_ {
      */
     FIB_PATH_TYPE_INTF_RX,
     /**
-     * interface receive.
+     * Path resolves via a UDP encap object.
      */
     FIB_PATH_TYPE_UDP_ENCAP,
     /**
@@ -2619,6 +2619,14 @@ fib_path_encode (fib_node_index_t path_list_index,
       case FIB_PATH_TYPE_RECURSIVE:
         api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;
         break;
+      case FIB_PATH_TYPE_DVR:
+          api_rpath->rpath.frp_sw_if_index = path->dvr.fp_interface;
+          api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_DVR;
+          break;
+      case FIB_PATH_TYPE_UDP_ENCAP:
+          api_rpath->rpath.frp_udp_encap_id = path->udp_encap.fp_udp_encap_id;
+          api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
+          break;
       default:
         break;
       }
