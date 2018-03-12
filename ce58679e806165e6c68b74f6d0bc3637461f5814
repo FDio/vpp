@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9b1efab_bf7db5a7",
+        "filename": "src/plugins/dpdk_offload/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2018-03-12T21:35:54Z",
+      "side": 1,
+      "message": "Is there a corresponding API to do this operation?",
+      "range": {
+        "startLine": 47,
+        "startChar": 9,
+        "endLine": 47,
+        "endChar": 39
+      },
+      "revId": "ce58679e806165e6c68b74f6d0bc3637461f5814",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
