@@ -161,6 +161,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_MPLS] = "mpls",           	        \
     [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
+    [FIB_SOURCE_PLUGIN_HI] = "plugin-hi",               \
 }
 
 #define FOR_EACH_FIB_SOURCE(_item) \

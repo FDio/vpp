@@ -177,33 +177,6 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
     }
 }
 
-
-void
-copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
-{
-  int is_ip4;
-  vl_api_fib_path_t *fp = (vl_api_fib_path_t *) fp_arg;
-
-  if (api_rpath->rpath.frp_proto == DPO_PROTO_IP4)
-    fp->afi = IP46_TYPE_IP4;
-  else if (api_rpath->rpath.frp_proto == DPO_PROTO_IP6)
-    fp->afi = IP46_TYPE_IP6;
-  else
-    {
-      is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
-      if (is_ip4)
-	fp->afi = IP46_TYPE_IP4;
-      else
-	fp->afi = IP46_TYPE_IP6;
-    }
-  if (fp->afi == IP46_TYPE_IP4)
-    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip4,
-	    sizeof (api_rpath->rpath.frp_addr.ip4));
-  else
-    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip6,
-	    sizeof (api_rpath->rpath.frp_addr.ip6));
-}
-
 static void
 send_ip_fib_details (vpe_api_main_t * am,
 		     vl_api_registration_t * reg,
@@ -234,38 +207,7 @@ send_ip_fib_details (vpe_api_main_t * am,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    memset (fp, 0, sizeof (*fp));
-    switch (api_rpath->dpo.dpoi_type)
-      {
-      case DPO_RECEIVE:
-	fp->is_local = true;
-	break;
-      case DPO_DROP:
-	fp->is_drop = true;
-	break;
-      case DPO_IP_NULL:
-	switch (api_rpath->dpo.dpoi_index)
-	  {
-	  case IP_NULL_ACTION_NONE:
-	    fp->is_drop = true;
-	    break;
-	  case IP_NULL_ACTION_SEND_ICMP_UNREACH:
-	    fp->is_unreach = true;
-	    break;
-	  case IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
-	    fp->is_prohibit = true;
-	    break;
-	  default:
-	    break;
-	  }
-	break;
-      default:
-	break;
-      }
-    fp->weight = api_rpath->rpath.frp_weight;
-    fp->preference = api_rpath->rpath.frp_preference;
-    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fib_api_path_encode (api_rpath, fp);
     fp++;
   }
 
@@ -362,38 +304,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    memset (fp, 0, sizeof (*fp));
-    switch (api_rpath->dpo.dpoi_type)
-      {
-      case DPO_RECEIVE:
-	fp->is_local = true;
-	break;
-      case DPO_DROP:
-	fp->is_drop = true;
-	break;
-      case DPO_IP_NULL:
-	switch (api_rpath->dpo.dpoi_index)
-	  {
-	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_NONE:
-	    fp->is_drop = true;
-	    break;
-	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_UNREACH:
-	    fp->is_unreach = true;
-	    break;
-	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
-	    fp->is_prohibit = true;
-	    break;
-	  default:
-	    break;
-	  }
-	break;
-      default:
-	break;
-      }
-    fp->weight = api_rpath->rpath.frp_weight;
-    fp->preference = api_rpath->rpath.frp_preference;
-    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fib_api_path_encode (api_rpath, fp);
     fp++;
   }
 
@@ -464,6 +375,10 @@ vl_api_ip6_fib_dump_t_handler (vl_api_ip6_fib_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs,
   ({
+    /* don't send link locals */
+    if (fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL)
+      continue;
+
     api_ip6_fib_table_get_all(reg, mp, fib_table);
   }));
   /* *INDENT-ON* */
@@ -505,11 +420,7 @@ send_ip_mfib_details (vl_api_registration_t * reg,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    memset (fp, 0, sizeof (*fp));
-
-    fp->weight = 0;
-    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fib_api_path_encode (api_rpath, fp);
     fp++;
   }
   vec_free (api_rpaths);
@@ -601,11 +512,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    memset (fp, 0, sizeof (*fp));
-
-    fp->weight = 0;
-    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fib_api_path_encode (api_rpath, fp);
     fp++;
   }
 
