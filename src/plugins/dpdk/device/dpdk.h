@@ -395,6 +395,8 @@ typedef struct
 
 extern dpdk_main_t dpdk_main;
 
+dpdk_main_t *dpdk_get_main ();
+
 typedef struct
 {
   u32 buffer_index;

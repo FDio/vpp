@@ -87,7 +87,7 @@ dpdk_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node, u32 next,
 }
 
 static inline u32
-dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+dpdk_rx_burst_inline (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 {
   u32 n_buffers;
   u32 n_left;
@@ -118,6 +118,14 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
   return n_buffers;
 }
+
+#ifndef CLIB_MULTIARCH_VARIANT
+u32
+dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+{
+  return dpdk_rx_burst_inline (dm, xd, queue_id);
+}
+#endif
 
 static_always_inline void
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -201,7 +209,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
 
-  n_buffers = dpdk_rx_burst (dm, xd, queue_id);
+  n_buffers = dpdk_rx_burst_inline (dm, xd, queue_id);
 
   if (n_buffers == 0)
     {
