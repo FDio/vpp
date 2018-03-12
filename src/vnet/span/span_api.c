@@ -97,6 +97,7 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
           rmp->sw_if_index_to = htonl (i);
           rmp->state = (u8) (clib_bitmap_get (rxm->mirror_ports, i) +
                              clib_bitmap_get (txm->mirror_ports, i) * 2);
+	  rmp->is_l2 = mp->is_l2;
 
           vl_api_send_msg (reg, (u8 *) rmp);
         }));

@@ -20522,8 +20522,9 @@ vl_api_sw_interface_span_details_t_handler (vl_api_sw_interface_span_details_t
       }
   }));
   /* *INDENT-ON* */
-  print (vam->ofp, "%20s => %20s (%s)",
-	 sw_if_from_name, sw_if_to_name, states[mp->state]);
+  print (vam->ofp, "%20s => %20s (%s) %s",
+	 sw_if_from_name, sw_if_to_name, states[mp->state],
+	 mp->is_l2 ? "l2" : "device");
 }
 
 static void
@@ -20572,6 +20573,7 @@ static void
       vat_json_object_add_string_copy (node, "dst-if-name", sw_if_to_name);
     }
   vat_json_object_add_uint (node, "state", mp->state);
+  vat_json_object_add_uint (node, "is-l2", mp->is_l2);
 }
 
 static int
