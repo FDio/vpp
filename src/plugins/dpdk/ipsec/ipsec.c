@@ -329,10 +329,6 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;
   struct rte_cryptodev_sym_session **s;
-  crypto_session_key_t key = { 0 };
-
-  key.drv_id = res->drv_id;
-  key.sa_idx = sa_idx;
 
   data = vec_elt_at_index (dcm->data, res->numa);
 
@@ -395,7 +391,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 				res->drv_id);
     }
 
-  hash_set (data->session_by_drv_id_and_sa_index, key.val, session[0]);
+  add_session_by_drv_and_sa_idx (session[0], data, res->drv_id, sa_idx);
 
   return 0;
 }
@@ -480,7 +476,6 @@ add_del_sa_session (u32 sa_index, u8 is_add)
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
   struct rte_cryptodev_sym_session *s;
-  crypto_session_key_t key = { 0 };
   uword *val;
   u32 drv_id;
 
@@ -504,8 +499,6 @@ add_del_sa_session (u32 sa_index, u8 is_add)
       return 0;
     }
 
-  key.sa_idx = sa_index;
-
   /* *INDENT-OFF* */
   vec_foreach (data, dcm->data)
     {
@@ -518,13 +511,12 @@ add_del_sa_session (u32 sa_index, u8 is_add)
 
       vec_foreach_index (drv_id, dcm->drv)
 	{
-	  key.drv_id = drv_id;
-	  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+	  val = (uword*) get_session_by_drv_and_sa_idx (data, drv_id, sa_index);
 
 	  if (!val)
 	    continue;
 
-	  hash_unset (data->session_by_drv_id_and_sa_index, key.val);
+	  add_session_by_drv_and_sa_idx(NULL, data, drv_id, sa_index);
 	}
 
       hash_unset (data->session_by_sa_index, sa_index);
@@ -908,6 +900,8 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
 
   vec_validate (data->session_drv, dev->drv_id);
   vec_validate (data->session_drv_failed, dev->drv_id);
+  vec_validate_aligned (data->session_by_drv_id_and_sa_index, 32,
+			CLIB_CACHE_LINE_BYTES);
 
   if (data->session_drv[dev->drv_id])
     return NULL;
@@ -977,12 +971,12 @@ crypto_disable (void)
 	rte_mempool_free (data->session_drv[i]);
 
       vec_free (data->session_drv);
+      vec_free(data->session_by_drv_id_and_sa_index);
     }
   /* *INDENT-ON* */
 
   vec_free (dcm->data);
   vec_free (dcm->workers_main);
-  vec_free (dcm->sa_session);
   vec_free (dcm->dev);
   vec_free (dcm->resource);
   vec_free (dcm->cipher_algs);
