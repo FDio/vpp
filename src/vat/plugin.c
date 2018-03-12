@@ -40,14 +40,19 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
   if (handle == 0)
     {
       clib_warning ("%s", dlerror ());
-      return -1;
+      return 0;
     }
 
   pi->handle = handle;
 
   register_handle = dlsym (pi->handle, "vat_plugin_register");
   if (register_handle == 0)
-    return 0;
+    {
+      clib_warning ("%s: symbol vat_plugin_register not found", pi->name);
+      dlclose (handle);
+      return 0;
+    }
+
 
   fp = register_handle;
 
