@@ -385,25 +385,25 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  n_buffers -= 4;
 	  mb_index += 4;
 
-	  if (n_trace)
+	  if (PREDICT_FALSE (n_trace))
 	    {
 	      dpdk_add_trace (vm, node, next0, xd, queue_id, b0, mb0);
 	      n_trace--;
-	    }
-	  if (n_trace)
-	    {
-	      dpdk_add_trace (vm, node, next1, xd, queue_id, b1, mb1);
-	      n_trace--;
-	    }
-	  if (n_trace)
-	    {
-	      dpdk_add_trace (vm, node, next2, xd, queue_id, b2, mb2);
-	      n_trace--;
-	    }
-	  if (n_trace)
-	    {
-	      dpdk_add_trace (vm, node, next3, xd, queue_id, b3, mb3);
-	      n_trace--;
+	      if (n_trace)
+		{
+		  dpdk_add_trace (vm, node, next1, xd, queue_id, b1, mb1);
+		  n_trace--;
+		}
+	      if (n_trace)
+		{
+		  dpdk_add_trace (vm, node, next2, xd, queue_id, b2, mb2);
+		  n_trace--;
+		}
+	      if (n_trace)
+		{
+		  dpdk_add_trace (vm, node, next3, xd, queue_id, b3, mb3);
+		  n_trace--;
+		}
 	    }
 	}
       while (n_buffers > 0 && n_left_to_next > 0)
