@@ -19,7 +19,6 @@
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/mhash.h>
-#include <vppinfra/md5.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_table.h>
@@ -3518,18 +3517,8 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		      sw_if0->type == VNET_SW_INTERFACE_TYPE_P2P)
 		    {
 		      /* make up  an interface id */
-		      md5_context_t m;
-		      u8 digest[16];
-
-		      link_local_address.as_u64[0] = radv_info->randomizer;
-
-		      md5_init (&m);
-		      md5_add (&m, &link_local_address, 16);
-		      md5_finish (&m, digest);
-
-		      clib_memcpy (&link_local_address, digest, 16);
-
-		      radv_info->randomizer = link_local_address.as_u64[0];
+		      link_local_address.as_u64[1] =
+			random_u64 (&radv_info->randomizer);
 
 		      link_local_address.as_u64[0] =
 			clib_host_to_net_u64 (0xFE80000000000000ULL);

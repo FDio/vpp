@@ -32,7 +32,6 @@ TESTS  +=  test_bihash_template \
 	   test_longjmp \
 	   test_macros \
 	   test_maplog \
-	   test_md5 \
 	   test_mheap \
 	   test_pool_iterate \
 	   test_ptclosure \
@@ -68,7 +67,6 @@ test_heap_SOURCES = vppinfra/test_heap.c
 test_longjmp_SOURCES = vppinfra/test_longjmp.c
 test_macros_SOURCES = vppinfra/test_macros.c
 test_maplog_SOURCES = vppinfra/test_maplog.c
-test_md5_SOURCES = vppinfra/test_md5.c
 test_mheap_SOURCES = vppinfra/test_mheap.c
 test_pool_iterate_SOURCES = vppinfra/test_pool_iterate.c
 test_ptclosure_SOURCES = vppinfra/test_ptclosure.c
@@ -102,7 +100,6 @@ test_heap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_macros_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_maplog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
-test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_ptclosure_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -134,7 +131,6 @@ test_heap_LDADD =	libvppinfra.la
 test_longjmp_LDADD =	libvppinfra.la
 test_macros_LDADD =	libvppinfra.la
 test_maplog_LDADD =	libvppinfra.la
-test_md5_LDADD =	libvppinfra.la
 test_mheap_LDADD =	libvppinfra.la
 test_pool_iterate_LDADD =	libvppinfra.la
 test_ptclosure_LDADD =	libvppinfra.la
@@ -166,7 +162,6 @@ test_heap_LDFLAGS = -static
 test_longjmp_LDFLAGS = -static
 test_macros_LDFLAGS = -static
 test_maplog_LDFLAGS = -static
-test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
 test_pool_iterate_LDFLAGS = -static
 test_ptclosure_LDFLAGS = -static
@@ -229,7 +224,6 @@ nobase_include_HEADERS = \
   vppinfra/macros.h \
   vppinfra/maplog.h \
   vppinfra/math.h \
-  vppinfra/md5.h \
   vppinfra/mem.h \
   vppinfra/memcpy_sse3.h \
   vppinfra/memcpy_avx2.h \
@@ -300,7 +294,6 @@ CLIB_CORE = \
   vppinfra/macros.c \
   vppinfra/mhash.c \
   vppinfra/mheap.c \
-  vppinfra/md5.c \
   vppinfra/mem_mheap.c \
   vppinfra/ptclosure.c \
   vppinfra/random.c \
