@@ -103,7 +103,11 @@ typedef struct vlib_main_t
   void *heap_base;
   uword heap_size;
 
-  vlib_buffer_main_t *buffer_main;
+  /* Pool of buffer free lists. */
+  vlib_buffer_free_list_t *buffer_free_list_pool;
+
+  /* List of free-lists needing Blue Light Special announcements */
+  vlib_buffer_free_list_t **buffer_announce_list;
 
   /* Allocate/free buffer memory for DMA transfers, descriptor rings, etc.
      buffer memory is guaranteed to be cache-aligned. */
