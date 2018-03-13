@@ -99,7 +99,10 @@ def run_forked(suite):
             link_path = '%s%s-FAILED' % (failed_dir, lttd)
             global_logger.error("Creating a link to the failed " +
                                 "test: %s -> %s" % (link_path, lttd))
-            os.symlink(last_test_temp_dir, link_path)
+            try:
+                os.symlink(last_test_temp_dir, link_path)
+            except:
+                pass
             api_post_mortem_path = "/tmp/api_post_mortem.%d" % vpp_pid
             if os.path.isfile(api_post_mortem_path):
                 global_logger.error("Copying api_post_mortem.%d to %s" %
