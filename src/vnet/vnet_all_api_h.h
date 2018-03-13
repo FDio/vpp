@@ -60,6 +60,7 @@
 #include <vnet/classify/classify.api.h>
 #include <vnet/flow/flow.api.h>
 #include <vnet/dhcp/dhcp.api.h>
+#include <vnet/dhcp/dhcp6_pd_client_cp.api.h>
 #include <vnet/cop/cop.api.h>
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
