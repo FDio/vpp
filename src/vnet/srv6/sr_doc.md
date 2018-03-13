@@ -53,3 +53,10 @@ However, the trully way to enable network programmability is allowing any develo
 The principle is that the developer only codes the behavior -the graph node-. However all the FIB handling, SR LocalSID instantiation and so on are done by the VPP SRv6 code.
 
 For more information please refer to: @subpage srv6_plugin_doc
+
+Available SRv6 plugins include:
+
+- @subpage srv6_as_plugin_doc
+- @subpage srv6_ad_plugin_doc
+- @subpage srv6_am_plugin_doc
+
