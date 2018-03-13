@@ -1344,6 +1344,7 @@ fib_route_attached_cross_table (const fib_entry_t *fib_entry,
      */
     if (ip46_address_is_zero(&rpath->frp_addr) &&
 	(~0 != rpath->frp_sw_if_index) &&
+        !(rpath->frp_flags & FIB_ROUTE_PATH_DVR) &&
 	(fib_entry->fe_fib_index != 
 	 fib_table_get_index_for_sw_if_index(fib_entry_get_proto(fib_entry),
 					     rpath->frp_sw_if_index)))
@@ -1359,6 +1360,15 @@ fib_route_attached_cross_table (const fib_entry_t *fib_entry,
 static inline int
 fib_path_is_attached (const fib_route_path_t *rpath)
 {
+    /*
+     * DVR paths are not attached, since we are not playing the
+     * L3 game with these
+     */
+    if (rpath->frp_flags & FIB_ROUTE_PATH_DVR)
+    {
+        return (0);
+    }
+
     /*
      * - All zeros next-hop
      * - a valid interface
