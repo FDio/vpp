@@ -262,8 +262,9 @@ else
 	@mkdir -p $(BR)/tools/ccache-bin
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/gcc
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/g++
+	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang
+	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang++
 endif
-	@make -C $(BR) V=$(V) is_build_tool=yes tools-install
 	@touch $@
 
 bootstrap: $(BR)/.bootstrap.ok
@@ -327,7 +328,6 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
