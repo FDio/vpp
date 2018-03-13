@@ -628,8 +628,17 @@ sctp_snd_space (sctp_connection_t * sctp_conn)
     return 0;
 
   u8 idx = sctp_data_subconn_select (sctp_conn);
+
+  u32 available_wnd =
+    clib_min (sctp_conn->peer_rwnd, sctp_conn->sub_conn[idx].cwnd);
+  int flight_size = (int) (sctp_conn->next_tsn - sctp_conn->last_unacked_tsn);
+
+  if (available_wnd <= flight_size)
+    return 0;
+
   /* Finally, let's subtract the DATA chunk headers overhead */
-  return sctp_conn->sub_conn[idx].cwnd -
+  return available_wnd -
+    flight_size -
     sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_full_hdr_t);
 }
 
@@ -747,6 +756,7 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
       break;
     case SCTP_TIMER_T3_RXTX:
       sctp_timer_reset (sctp_conn, conn_index, timer_id);
+      sctp_conn->flags |= SCTP_CONN_RECOVERY;
       sctp_data_retransmit (sctp_conn);
       break;
     case SCTP_TIMER_T4_HEARTBEAT:
