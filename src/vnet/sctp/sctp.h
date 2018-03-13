@@ -463,10 +463,11 @@ sctp_optparam_type_to_string (u8 type)
 #define SCTP_MAX_INIT_RETRANS 8	// number of attempts
 #define SCTP_HB_INTERVAL 30 * SHZ
 #define SCTP_HB_MAX_BURST 1
-
 #define SCTP_DATA_IDLE_INTERVAL 15 * SHZ	/* 15 seconds; the time-interval after which the connetion is considered IDLE */
-
 #define SCTP_TO_TIMER_TICK       SCTP_TICK*10	/* Period for converting from SCTP_TICK */
+
+#define SCTP_CONN_RECOVERY 1 << 1
+#define SCTP_FAST_RECOVERY 1 << 2
 
 typedef struct _sctp_lookup_dispatch
 {

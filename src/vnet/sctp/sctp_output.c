@@ -1456,16 +1456,89 @@ sctp_push_header (transport_connection_t * trans_conn, vlib_buffer_t * b)
   return 0;
 }
 
+u32
+sctp_prepare_data_retransmit (sctp_connection_t * sctp_conn,
+			      u8 idx,
+			      u32 offset,
+			      u32 max_deq_bytes, vlib_buffer_t ** b)
+{
+  sctp_main_t *tm = vnet_get_sctp_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  int n_bytes = 0;
+  u32 bi, available_bytes, seg_size;
+  u8 *data;
+
+  ASSERT (sctp_conn->state >= SCTP_STATE_ESTABLISHED);
+  ASSERT (max_deq_bytes != 0);
+
+  /*
+   * Make sure we can retransmit something
+   */
+  available_bytes =
+    stream_session_tx_fifo_max_dequeue (&sctp_conn->sub_conn[idx].connection);
+  ASSERT (available_bytes >= offset);
+  available_bytes -= offset;
+  if (!available_bytes)
+    return 0;
+  max_deq_bytes = clib_min (sctp_conn->sub_conn[idx].cwnd, max_deq_bytes);
+  max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
+
+  seg_size = max_deq_bytes;
+
+  /*
+   * Allocate and fill in buffer(s)
+   */
+
+  if (PREDICT_FALSE (sctp_get_free_buffer_index (tm, &bi)))
+    return 0;
+  *b = vlib_get_buffer (vm, bi);
+  data = sctp_init_buffer (vm, *b);
+
+  /* Easy case, buffer size greater than mss */
+  if (PREDICT_TRUE (seg_size <= tm->bytes_per_buffer))
+    {
+      n_bytes =
+	stream_session_peek_bytes (&sctp_conn->sub_conn[idx].connection, data,
+				   offset, max_deq_bytes);
+      ASSERT (n_bytes == max_deq_bytes);
+      b[0]->current_length = n_bytes;
+      sctp_push_hdr_i (sctp_conn, *b, sctp_conn->state);
+    }
+
+  return n_bytes;
+}
+
 void
 sctp_data_retransmit (sctp_connection_t * sctp_conn)
 {
-  /* TODO: requires use of PEEK/SEND */
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_t *b = 0;
+  u32 bi, n_bytes = 0;
+
   SCTP_DBG_OUTPUT
     ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, sctp_conn->[...].LCL_PORT = %u, sctp_conn->[...].RMT_PORT = %u",
      sctp_conn, idx, sctp_conn->sub_conn[idx].connection.s_index,
      sctp_conn->sub_conn[idx].connection.c_index,
      sctp_conn->sub_conn[idx].connection.lcl_port,
      sctp_conn->sub_conn[idx].connection.rmt_port);
+
+  if (sctp_conn->state >= SCTP_STATE_ESTABLISHED)
+    {
+      return;
+    }
+
+  u8 idx = sctp_data_subconn_select (sctp_conn);
+
+  n_bytes =
+    sctp_prepare_data_retransmit (sctp_conn, idx, 0,
+				  sctp_conn->sub_conn[idx].cwnd, &b);
+  if (n_bytes > 0)
+    SCTP_DBG_OUTPUT ("We have data (%u bytes) to retransmit", n_bytes);
+
+  bi = vlib_get_buffer_index (vm, b);
+
+  sctp_enqueue_to_output_now (vm, b, bi,
+			      sctp_conn->sub_conn[idx].connection.is_ip4);
 
   return;
 }
