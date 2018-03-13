@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "674014cd_18744209",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-13T12:46:24Z",
+      "side": 1,
+      "message": "What I\u0027m suggesting here is that you keep your fields out of union, same like sw_if_index is done in 1st opaque. unused is not needed here, but STATIC_ASSERT_SIZEOF will be more than welcome...",
+      "parentUuid": "b115f4a2_70d1589b",
+      "range": {
+        "startLine": 372,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 6
+      },
+      "revId": "a6ac12950a875d34ca7cfa1f8d21336e2eb6ac7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f7a03454_b26ac1e5",
         "filename": "src/vppinfra/pool.h",
         "patchSetId": 4
