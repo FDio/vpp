@@ -169,7 +169,7 @@ typedef struct
 
   memif_interface_id_t interface_id;
   uint8_t interface_name[32];
-  uint8_t instance_name[32];
+  uint8_t instance_name[32];	/*!< deprecated, will be removed in 2.0 */
   memif_interface_mode_t mode:8;
 } memif_conn_args_t;
 
@@ -308,7 +308,7 @@ int memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 
 /** \brief Memif initialization
     @param on_control_fd_update - if control fd updates inform user to watch new fd
-    @param app_name - application name
+    @param app_name - application name (will be truncated to 32 chars)
 
     if param on_control_fd_update is set to NULL,
     libmemif will handle file descriptor event polling

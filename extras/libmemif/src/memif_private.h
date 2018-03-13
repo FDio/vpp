@@ -26,8 +26,13 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <sys/timerfd.h>
+#include <string.h>
 
 #include <libmemif.h>
+
+#define MEMIF_NAME_LEN 32
+_Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
+		"MEMIF_DEFAULT_APP_NAME max length is 32");
 
 #define MEMIF_DEFAULT_SOCKET_DIR "/run/vpp"
 #define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
@@ -142,8 +147,8 @@ typedef struct memif_connection
   /* connection message queue */
   memif_msg_queue_elt_t *msg_queue;
 
-  uint8_t remote_if_name[32];
-  uint8_t remote_name[32];
+  uint8_t remote_if_name[MEMIF_NAME_LEN];
+  uint8_t remote_name[MEMIF_NAME_LEN];
   uint8_t remote_disconnect_string[96];
 
   memif_region_t *regions;
@@ -186,7 +191,7 @@ typedef struct
   int timerfd;
   struct itimerspec arm, disarm;
   uint16_t disconn_slaves;
-  uint8_t *app_name;
+  uint8_t app_name[MEMIF_NAME_LEN];
 
   /* master implementation... */
   memif_socket_t ms;
@@ -237,11 +242,13 @@ int free_list_elt (memif_list_elt_t * list, uint16_t len, int key);
 #endif
 #endif
 
+#ifndef HAVE_MEMFD_CREATE
 static inline int
 memfd_create (const char *name, unsigned int flags)
 {
   return syscall (__NR_memfd_create, name, flags);
 }
+#endif
 
 static inline void *
 memif_get_buffer (memif_connection_t * conn, memif_ring_t * ring,
@@ -254,7 +261,12 @@ memif_get_buffer (memif_connection_t * conn, memif_ring_t * ring,
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE 1024
 #endif
+
+#ifndef MFD_ALLOW_SEALING
 #define MFD_ALLOW_SEALING       0x0002U
+#endif
+
+#ifndef F_ADD_SEALS
 #define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
 #define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
 
@@ -262,5 +274,6 @@ memif_get_buffer (memif_connection_t * conn, memif_ring_t * ring,
 #define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
 #define F_SEAL_GROW     0x0004	/* prevent file from growing */
 #define F_SEAL_WRITE    0x0008	/* prevent writes */
+#endif
 
 #endif /* _MEMIF_PRIVATE_H_ */

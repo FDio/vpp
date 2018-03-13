@@ -406,17 +406,16 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name)
 {
   int err = MEMIF_ERR_SUCCESS;	/* 0 */
   libmemif_main_t *lm = &libmemif_main;
+  memset (lm, 0, sizeof (libmemif_main_t));
 
   if (app_name)
     {
-      lm->app_name = malloc (strlen (app_name) + sizeof (char));
-      memset (lm->app_name, 0, strlen (app_name) + sizeof (char));
+      uint8_t len = (strlen (app_name) < MEMIF_NAME_LEN)
+	? MEMIF_NAME_LEN : strlen (app_name);
       strncpy ((char *) lm->app_name, app_name, strlen (app_name));
     }
   else
     {
-      lm->app_name = malloc (strlen (MEMIF_DEFAULT_APP_NAME) + sizeof (char));
-      memset (lm->app_name, 0, strlen (app_name) + sizeof (char));
       strncpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
 	       strlen (MEMIF_DEFAULT_APP_NAME));
     }
@@ -437,8 +436,6 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name)
       lm->control_fd_update (poll_cancel_fd, MEMIF_FD_EVENT_READ);
       DBG ("libmemif event polling initialized");
     }
-
-  memset (&lm->ms, 0, sizeof (memif_socket_t));
 
   lm->control_list_len = 2;
   lm->interrupt_list_len = 2;
@@ -490,7 +487,6 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name)
   lm->arm.it_value.tv_nsec = 0;
   lm->arm.it_interval.tv_sec = 2;
   lm->arm.it_interval.tv_nsec = 0;
-  memset (&lm->disarm, 0, sizeof (lm->disarm));
 
   if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ) < 0)
     {
@@ -2096,9 +2092,6 @@ int
 memif_cleanup ()
 {
   libmemif_main_t *lm = &libmemif_main;
-  if (lm->app_name)
-    free (lm->app_name);
-  lm->app_name = NULL;
   if (lm->control_list)
     free (lm->control_list);
   lm->control_list = NULL;
