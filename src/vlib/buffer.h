@@ -190,12 +190,6 @@ typedef struct
 
 #define vlib_prefetch_buffer_header(b,type) CLIB_PREFETCH (b, 64, type)
 
-always_inline vlib_buffer_t *
-vlib_buffer_next_contiguous (vlib_buffer_t * b, u32 buffer_bytes)
-{
-  return (void *) (b + 1) + buffer_bytes;
-}
-
 always_inline void
 vlib_buffer_struct_is_sane (vlib_buffer_t * b)
 {
@@ -362,9 +356,8 @@ typedef struct vlib_buffer_free_list_t
   /* Number of data bytes for buffers in this free list. */
   u32 n_data_bytes;
 
-  /* Number of buffers to allocate when we need to allocate new buffers
-     from physmem heap. */
-  u32 min_n_buffers_each_physmem_alloc;
+  /* Number of buffers to allocate when we need to allocate new buffers */
+  u32 min_n_buffers_each_alloc;
 
   /* Total number of buffers allocated from this free list. */
   u32 n_alloc;
@@ -372,16 +365,8 @@ typedef struct vlib_buffer_free_list_t
   /* Vector of free buffers.  Each element is a byte offset into I/O heap. */
   u32 *buffers;
 
-  /* global vector of free buffers, used only on main thread.
-     Bufers are returned to global buffers only in case when number of
-     buffers on free buffers list grows about threshold */
-  u32 *global_buffers;
-  clib_spinlock_t global_buffers_lock;
-
-  /* Memory chunks allocated for this free list
-     recorded here so they can be freed when free list
-     is deleted. */
-  void **buffer_memory_allocated;
+  /* index of buffer pool used to get / put buffers */
+  u8 buffer_pool_index;
 
   /* Free list name. */
   u8 *name;
@@ -431,8 +416,18 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   uword start;
   uword size;
+  uword log2_page_size;
   vlib_physmem_region_index_t physmem_region;
-  int alloc_chunk_size;
+
+  u32 *buffers;
+
+  u16 buffer_size;
+  uword buffers_per_page;
+  uword n_elts;
+  uword n_used;
+  uword next_clear;
+  uword *bitmap;
+  clib_spinlock_t lock;
 } vlib_buffer_pool_t;
 
 typedef struct
@@ -448,11 +443,6 @@ typedef struct
     u32 (*buffer_free_callback) (struct vlib_main_t * vm,
 				 u32 * buffers,
 				 u32 n_buffers, u32 follow_buffer_next);
-  /* Pool of buffer free lists.
-     Multiple free lists exist for packet generator which uses
-     separate free lists for each packet stream --- so as to avoid
-     initializing static data for each packet generated. */
-  vlib_buffer_free_list_t *buffer_free_list_pool;
 #define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
 #define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES VLIB_BUFFER_DATA_SIZE
 
@@ -467,16 +457,23 @@ typedef struct
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
 
-  /* List of free-lists needing Blue Light Special announcements */
-  vlib_buffer_free_list_t **announce_list;
-
   /* Callbacks */
   vlib_buffer_callbacks_t cb;
   int callbacks_registered;
 } vlib_buffer_main_t;
 
-u8 vlib_buffer_add_physmem_region (struct vlib_main_t *vm,
-				   vlib_physmem_region_index_t region);
+extern vlib_buffer_main_t buffer_main;
+
+static_always_inline vlib_buffer_pool_t *
+vlib_buffer_pool_get (u8 buffer_pool_index)
+{
+  vlib_buffer_main_t *bm = &buffer_main;
+  return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
+}
+
+u8 vlib_buffer_pool_create (struct vlib_main_t * vm,
+			    vlib_physmem_region_index_t region,
+			    u16 buffer_size);
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 

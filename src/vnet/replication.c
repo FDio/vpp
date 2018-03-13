@@ -219,7 +219,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
 	  b0->flags |= VLIB_BUFFER_IS_RECYCLED;
 
 #if (CLIB_DEBUG > 0)
-	  if (vm->buffer_main->callbacks_registered == 0)
+	  if (buffer_main.callbacks_registered == 0)
 	    vlib_buffer_set_known_state (bi0, VLIB_BUFFER_KNOWN_ALLOCATED);
 #endif
 
@@ -251,7 +251,6 @@ clib_error_t *
 replication_init (vlib_main_t * vm)
 {
   replication_main_t *rm = &replication_main;
-  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *fl;
   __attribute__ ((unused)) replication_context_t *ctx;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -262,7 +261,7 @@ replication_init (vlib_main_t * vm)
     vlib_buffer_create_free_list (vm, 1024 /* fictional */ ,
 				  "replication-recycle");
 
-  fl = pool_elt_at_index (bm->buffer_free_list_pool, rm->recycle_list_index);
+  fl = pool_elt_at_index (vm->buffer_free_list_pool, rm->recycle_list_index);
 
   fl->buffers_added_to_freelist_function = replication_recycle_callback;
 

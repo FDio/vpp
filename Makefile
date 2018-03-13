@@ -18,6 +18,7 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+DISABLED_PLUGINS=dpdk
 
 ,:=,
 define disable_plugins

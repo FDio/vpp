@@ -162,6 +162,8 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 
   vec_free (f->name);
   vec_free (f->buffers);
+  /* Poison it. */
+  memset (f, 0xab, sizeof (f[0]));
 }
 
 /* Add buffer free list. */
@@ -169,37 +171,23 @@ static void
 dpdk_buffer_delete_free_list (vlib_main_t * vm,
 			      vlib_buffer_free_list_index_t free_list_index)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
-  vlib_buffer_free_list_index_t merge_index;
   int i;
 
   ASSERT (vlib_get_thread_index () == 0);
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 
-  merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
-  if (merge_index != (vlib_buffer_free_list_index_t) ~ 0 &&
-      merge_index != free_list_index)
-    {
-      vlib_buffer_merge_free_lists (pool_elt_at_index
-				    (bm->buffer_free_list_pool, merge_index),
-				    f);
-    }
-
   del_free_list (vm, f);
 
-  /* Poison it. */
-  memset (f, 0xab, sizeof (f[0]));
-
-  pool_put (bm->buffer_free_list_pool, f);
+  pool_put (vm->buffer_free_list_pool, f);
 
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
-      bm = vlib_mains[i]->buffer_main;
-      f = vlib_buffer_get_free_list (vlib_mains[i], free_list_index);;
-      memset (f, 0xab, sizeof (f[0]));
-      pool_put (bm->buffer_free_list_pool, f);
+      vlib_main_t *wvm = vlib_mains[i];
+      f = vlib_buffer_get_free_list (vlib_mains[i], free_list_index);
+      del_free_list (wvm, f);
+      pool_put (wvm->buffer_free_list_pool, f);
     }
 }
 #endif
@@ -233,7 +221,7 @@ CLIB_MULTIARCH_FN (dpdk_buffer_fill_free_list) (vlib_main_t * vm,
   n = round_pow2 (n, CLIB_CACHE_LINE_BYTES / sizeof (u32));
 
   /* Always allocate new buffers in reasonably large sized chunks. */
-  n = clib_max (n, fl->min_n_buffers_each_physmem_alloc);
+  n = clib_max (n, fl->min_n_buffers_each_alloc);
 
   vec_validate_aligned (vm->mbuf_alloc_list, n - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -341,12 +329,12 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
       vlib_buffer_add_to_free_list (vm, fl, bi,
 				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
 
-      for (j = 0; j < vec_len (bm->announce_list); j++)
+      for (j = 0; j < vec_len (vm->buffer_announce_list); j++)
 	{
-	  if (fl == bm->announce_list[j])
+	  if (fl == vm->buffer_announce_list[j])
 	    goto already_announced;
 	}
-      vec_add1 (bm->announce_list, fl);
+      vec_add1 (vm->buffer_announce_list, fl);
     already_announced:
       ;
     }
@@ -361,7 +349,7 @@ static_always_inline void
 vlib_buffer_free_inline (vlib_main_t * vm,
 			 u32 * buffers, u32 n_buffers, u32 follow_buffer_next)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_main_t *bm = &buffer_main;
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 thread_index = vlib_get_thread_index ();
@@ -409,15 +397,15 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       recycle_or_free (vm, bm, buffers[i], b0);
       i++;
     }
-  if (vec_len (bm->announce_list))
+  if (vec_len (vm->buffer_announce_list))
     {
       vlib_buffer_free_list_t *fl;
-      for (i = 0; i < vec_len (bm->announce_list); i++)
+      for (i = 0; i < vec_len (vm->buffer_announce_list); i++)
 	{
-	  fl = bm->announce_list[i];
+	  fl = vm->buffer_announce_list[i];
 	  fl->buffers_added_to_freelist_function (vm, fl);
 	}
-      _vec_len (bm->announce_list) = 0;
+      _vec_len (vm->buffer_announce_list) = 0;
     }
 
   vec_foreach_index (i, d->mbuf_pending_free_list)
@@ -454,7 +442,7 @@ dpdk_packet_template_init (vlib_main_t * vm,
 			   void *vt,
 			   void *packet_data,
 			   uword n_packet_data_bytes,
-			   uword min_n_buffers_each_physmem_alloc, u8 * name)
+			   uword min_n_buffers_each_alloc, u8 * name)
 {
   vlib_packet_template_t *t = (vlib_packet_template_t *) vt;
 
@@ -609,7 +597,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
       rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
 
       dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
-      privp->buffer_pool_index = vlib_buffer_add_physmem_region (vm, pri);
+      privp->buffer_pool_index = vlib_buffer_pool_create (vm, pri, 0);
 
       dm->pktmbuf_pools[socket_id] = rmp;
 
