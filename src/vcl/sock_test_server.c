@@ -704,6 +704,16 @@ main (int argc, char **argv)
 	}
       for (i = 0; i < num_ev; i++)
 	{
+	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
+	  if (ssm->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
+	    {
+#ifdef VCL_TEST
+	      vppcom_session_close (conn->fd);
+#else
+	      close (conn->fd);
+#endif
+	      continue;
+	    }
 	  if (ssm->wait_events[i].data.u32 == ~0)
 	    {
 	      new_client ();
@@ -717,7 +727,6 @@ main (int argc, char **argv)
 	      continue;
 	    }
 #endif
-	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
 #endif
 	  client_fd = conn->fd;
 
