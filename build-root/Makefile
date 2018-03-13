@@ -929,11 +929,7 @@ install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	      basic_system							\
 	      $(ROOT_PACKAGES))	|| exit 1;					\
 	$(call build_msg_fn, Relocating ELF executables to run in $${d}) ;	\
-	find $${d} -type f							\
-	    -exec elftool quiet in '{}' out '{}'				\
-		set-interpreter							\
-		    $${d}/$(arch_lib_dir)/$(DYNAMIC_LINKER)			\
-		set-rpath $${d}/$(arch_lib_dir):$${d}/lib ';' ;			\
+	scripts/set-rpath $${d} $${d}/$(arch_lib_dir) ;				\
 	: strip symbols from files ;						\
 	if [ $${strip_symbols:-no} = 'yes' ] ; then				\
 	    $(call build_msg_fn, Stripping symbols from files) ;		\
@@ -968,11 +964,7 @@ $(PLATFORM_IMAGE_DIR)/ro.img ro-image: $(patsubst %,%-find-source,$(ROOT_PACKAGE
 	  : make dev directory ;					\
 	  $(linuxrc_makedev) ;						\
 	  echo @@@@ Relocating ELF executables to run in / @@@@ ;	\
-	  find $${d} -type f						\
-	      -exec elftool quiet in '{}' out '{}'			\
-		set-interpreter						\
-		    /$(arch_lib_dir)/$(DYNAMIC_LINKER)			\
-	        set-rpath /$(arch_lib_dir):/lib ';' ;			\
+	  scripts/set-rpath /$(arch_lib_dir):/lib ;			\
 	  : strip symbols from files ;					\
 	  if [ '$${strip_symbols:-yes}' = 'yes' ] ; then		\
 	      echo @@@@ Stripping symbols from files @@@@ ;		\
