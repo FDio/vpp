@@ -31,12 +31,13 @@ vpppluginsdir = ${libdir}/vpp_plugins
 include sample.am
 
 %.api.h: %.api
-	mkdir -p `dirname $@` ; \
+	@echo "  APIGEN  " $@ ;			\
+	mkdir -p `dirname $@` ;			\
 	vppapigen --input $^ --output $@
 
 %.api.json: %.api
-	@echo "  JSON APIGEN  " $@ ;				\
-	mkdir -p `dirname $@` ;					\
+	@echo "  JSON APIGEN  " $@ ;		\
+	mkdir -p `dirname $@` ;			\
 	vppapigen --input $^ JSON --output $@
 
 apidir = $(prefix)/api/plugins

@@ -262,8 +262,13 @@ else
 	@mkdir -p $(BR)/tools/ccache-bin
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/gcc
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/g++
+	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang
+	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang++
+	@mkdir -p $(BR)/tools/bin
+	@rm -f $(BR)/tools/bin/vppapigen
+	@ln -s $(WS_ROOT)/src/tools/vppapigen/vppapigen \
+	       $(BR)/tools/bin/vppapigen
 endif
-	@make -C $(BR) V=$(V) is_build_tool=yes tools-install
 	@touch $@
 
 bootstrap: $(BR)/.bootstrap.ok
@@ -327,7 +332,7 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
+	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
