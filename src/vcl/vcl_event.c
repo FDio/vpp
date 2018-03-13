@@ -211,16 +211,19 @@ vce_event_thread_fn (void *arg)
   vce_event_handler_reg_t *handler;
   uword *p;
 
+  pthread_mutex_lock (&(evt->generator_lock));
+  clib_spinlock_lock (&(evt->events_lockp));
   evt->recycle_event = 1; // Used for recycling events with no handlers
-
+  clib_spinlock_unlock (&(evt->events_lockp));
 
   do
     {
-      pthread_mutex_lock (&(evt->generator_lock));
       while ( (clib_fifo_elts (evt->event_index_fifo) == 0) ||
 	      evt->recycle_event)
 	{
+          clib_spinlock_lock (&(evt->events_lockp));
 	  evt->recycle_event = 0;
+          clib_spinlock_unlock (&(evt->events_lockp));
 	  pthread_cond_wait (&(evt->generator_cond),
 			     &(evt->generator_lock));
 	}
@@ -230,8 +233,6 @@ vce_event_thread_fn (void *arg)
 
       clib_fifo_sub1 (evt->event_index_fifo, ev_idx);
       ev = pool_elt_at_index (evt->vce_events, ev_idx);
-
-      clib_spinlock_unlock (&(evt->events_lockp));
 
       ASSERT(ev);
 
@@ -245,18 +246,23 @@ vce_event_thread_fn (void *arg)
 	   * I don't know either, so lets try recycling the event */
 	  clib_fifo_add1 (evt->event_index_fifo, ev_idx);
 	  evt->recycle_event = 1;
+          clib_spinlock_unlock (&(evt->events_lockp));
 	  clib_spinlock_unlock (&evt->handlers_lockp);
-	  goto unlock;
+          pthread_mutex_unlock (&(evt->generator_lock));
 	}
-      handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
-      handler->ev_idx = ev_idx;
+      else
+        {
+          handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
+          handler->ev_idx = ev_idx;
 
-      clib_spinlock_unlock (&evt->handlers_lockp);
+          clib_spinlock_unlock (&(evt->events_lockp));
+          clib_spinlock_unlock (&evt->handlers_lockp);
+          pthread_mutex_unlock (&(evt->generator_lock));
 
-      (handler->handler_fn)(handler);
+          (handler->handler_fn)(handler);
+        }
 
-    unlock:
-      pthread_mutex_unlock (&(evt->generator_lock));
+      pthread_mutex_lock (&(evt->generator_lock));
     }
   while (1);
   return NULL;
