@@ -144,6 +144,18 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
+  /* bind before rx ring is cfged so we don't receive packets from other interfaces */
+  memset (&sll, 0, sizeof (sll));
+  sll.sll_family = PF_PACKET;
+  sll.sll_protocol = htons (ETH_P_ALL);
+  sll.sll_ifindex = host_if_index;
+  if ((err = bind (*fd, (struct sockaddr *) &sll, sizeof (sll))) < 0)
+    {
+      DBG_SOCK ("Failed to bind rx packet socket (error %d)", err);
+      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto error;
+    }
+
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver))) < 0)
     {
@@ -183,18 +195,6 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   if (*ring == MAP_FAILED)
     {
       DBG_SOCK ("mmap failure");
-      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-      goto error;
-    }
-
-  memset (&sll, 0, sizeof (sll));
-  sll.sll_family = PF_PACKET;
-  sll.sll_protocol = htons (ETH_P_ALL);
-  sll.sll_ifindex = host_if_index;
-
-  if ((err = bind (*fd, (struct sockaddr *) &sll, sizeof (sll))) < 0)
-    {
-      DBG_SOCK ("Failed to bind rx packet socket (error %d)", err);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
