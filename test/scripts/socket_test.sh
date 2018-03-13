@@ -184,9 +184,6 @@ while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
                echo "ERROR: Option -g unknown argument \'$OPTARG\'" >&2
                usage
            fi
-           title_dbg="-DEBUG"
-           vpp_dir=$vpp_debug_dir
-           lib64_dir=$lib64_debug_dir
            ;;
         p) if [ $OPTARG = "a" ] || [ $OPTARG = "all" ] ; then
                perf_client=1
