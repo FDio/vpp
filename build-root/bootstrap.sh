@@ -38,28 +38,22 @@ EOF
 
 # regenerate tools/ccache-bin
 rm -rf tools/ccache-bin
-mkdir -p tools/ccache-bin
+mkdir -p tools/ccache-bin tools/bin
 
 if [ ! -f /usr/bin/ccache ] ; then
-    echo Please install ccache AYEC and re-run this script
+    echo CCACHE is required. Please install it!
+    exit 1
 fi
 
 cd tools/ccache-bin
-for c in gcc g++
-    do
-    if [ -f /usr/bin/ccache ] ; then
-        ln -s /usr/bin/ccache $c
-    else
-        ln -s /usr/bin/gcc
-    fi
+for c in gcc g++ clang clang++
+do
+    ln -s /usr/bin/ccache $c
 done
-
-cd $wsroot
+cd ../
+ln -s $wsroot/src/tools/vppapigen/vppapigen  \
+      $build_root/tools/bin/vppapigen
 
 cd $build_root
-echo Compile native tools
-for tool in tools
-do
-    make V=0 is_build_tool=yes $tool-install
-done
 
+exit 0

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright (c) 2015 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +13,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [ -z $1 ]; then
+	echo "Please specify path"
+	exit 1
+fi
 
-# nothing
+which chrpath &> /dev/null
 
+if [ $? -ne 0 ] ; then
+	echo "Please install chrpath tool"
+	exit 1
+fi
 
+cd $1
+
+libs=$(find * -type f -name \*.so\*)
+execs=$(find * -type f -path bin/\* )
+
+echo "Setting RPATH to $2 ..."
+
+for i in $libs $execs; do
+	# in case non-ELF file is found
+	chrpath $i 2> /dev/null > /dev/null
+	if [ $? -eq 0 ] ; then
+		echo $i
+		chrpath -r $2
+	fi
+done
 
