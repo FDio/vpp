@@ -13,6 +13,12 @@ from debug import spawn_gdb
 from log import global_logger
 from discover_tests import discover_tests
 
+# timeout which controls how long the child has to finish after seeing
+# a core dump in test temporary directory. If this is exceeded, parent assumes
+# that child process is stuck (e.g. waiting for shm mutex, which will never
+# get unlocked) and kill the child
+core_timeout = 3
+
 
 def test_runner_wrapper(suite, keep_alive_pipe, result_pipe, failed_pipe):
     result = not VppTestRunner(
@@ -62,6 +68,7 @@ def run_forked(suite):
     result = None
     failed = set()
     last_heard = time.time()
+    core_detected_at = None
     while True:
         readable = select.select([keep_alive_parent_end.fileno(),
                                   result_parent_end.fileno(),
@@ -93,6 +100,17 @@ def run_forked(suite):
             global_logger.critical("Child process unexpectedly died (last "
                                    "test running was `%s' in `%s')!" %
                                    (last_test, last_test_temp_dir))
+        elif last_test_temp_dir and last_test_vpp_binary:
+            core_path = "%s/core" % last_test_temp_dir
+            if os.path.isfile(core_path):
+                if core_detected_at is None:
+                    core_detected_at = time.time()
+                elif core_detected_at + core_timeout < time.time():
+                    global_logger.critical(
+                        "Child unresponsive and core-file exists in test "
+                        "temporary directory!")
+                    fail = True
+
         if fail:
             failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
             lttd = last_test_temp_dir.split("/")[-1]
@@ -113,7 +131,7 @@ def run_forked(suite):
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
-                    if d and d.lower() == "core":
+                    if os.getenv("DEBUG", "").lower() == "core":
                         spawn_gdb(last_test_vpp_binary, core_path,
                                   global_logger)
             child.terminate()
