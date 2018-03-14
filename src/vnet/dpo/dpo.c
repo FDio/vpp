@@ -433,6 +433,21 @@ dpo_get_next_node (dpo_type_t child_type,
 }
 
 /**
+ * @brief return already stacked up next node index for a given
+ * child_type/child_proto and parent_type/patent_proto.
+ * The VLIB graph arc used is taken from the parent and child types
+ * passed.
+ */
+u32
+dpo_get_next_node_by_type_and_proto (dpo_type_t   child_type,
+                                     dpo_proto_t  child_proto,
+                                     dpo_type_t   parent_type,
+                                     dpo_proto_t  parent_proto)
+{
+   return (dpo_edges[child_type][child_proto][parent_type][parent_proto]);
+}
+
+/**
  * @brief Stack one DPO object on another, and thus establish a child parent
  * relationship. The VLIB graph arc used is taken from the parent and child types
  * passed.
