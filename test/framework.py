@@ -8,7 +8,6 @@ import select
 import unittest
 import tempfile
 import time
-import resource
 import faulthandler
 import random
 import copy
@@ -23,9 +22,9 @@ from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
-from log import *
+from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
+    getLogger, colorize
 from vpp_object import VppObjectRegistry
-from vpp_punt_socket import vpp_uds_socket_name
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
     # @ https://docs.python.org/2/library/subprocess.html
@@ -263,8 +262,7 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
-                           "disable", "}", "}",
-                           "punt", "{", "socket", cls.punt_socket_path, "}"]
+                           "disable", "}", "}", ]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
@@ -337,7 +335,6 @@ class VppTestCase(unittest.TestCase):
         cls.file_handler.setLevel(DEBUG)
         cls.logger.addHandler(cls.file_handler)
         cls.shm_prefix = cls.tempdir.split("/")[-1]
-        cls.punt_socket_path = '%s/%s' % (cls.tempdir, vpp_uds_socket_name)
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
                         cls.tempdir, cls.shm_prefix)
@@ -391,7 +388,7 @@ class VppTestCase(unittest.TestCase):
                 cls.quit()
             except:
                 pass
-            raise t, v, tb
+            raise (t, v, tb)
 
     @classmethod
     def quit(cls):
@@ -1086,7 +1083,7 @@ class VppTestRunner(unittest.TextTestRunner):
         for t in tests:
             if isinstance(t, unittest.suite.TestSuite):
                 # this is a bunch of tests, recursively filter...
-                x = filter_tests(t, filter_cb)
+                x = VppTestRunner.filter_tests(t, filter_cb)
                 if x.countTestCases() > 0:
                     result.addTest(x)
             elif isinstance(t, unittest.TestCase):

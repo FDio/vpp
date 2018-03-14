@@ -62,6 +62,8 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         if self.testcase.debug_core:
+            # notify parent process that we're handling a core file
+            open('%s/_core_handled' % self.testcase.tempdir, 'a').close()
             spawn_gdb(self.testcase.vpp_bin, core_path, self.logger)
         else:
             self.logger.critical("Core file present, debug with: gdb %s %s" %
