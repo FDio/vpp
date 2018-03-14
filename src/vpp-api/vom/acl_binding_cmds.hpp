@@ -169,8 +169,8 @@ private:
 /**
  * Typedef the L3 ACL binding commands
  */
-typedef bind_cmd<vapi::Acl_interface_add_del> l3_bind_cmd;
-typedef unbind_cmd<vapi::Acl_interface_add_del> l3_unbind_cmd;
+typedef bind_cmd<vapi::Acl_interface_set_acl_list> l3_bind_cmd;
+typedef unbind_cmd<vapi::Acl_interface_set_acl_list> l3_unbind_cmd;
 typedef dump_cmd<vapi::Acl_interface_list_dump> l3_dump_cmd;
 
 /**

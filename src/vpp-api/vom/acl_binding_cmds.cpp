@@ -24,13 +24,16 @@ template <>
 rc_t
 l3_bind_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), std::ref(*this));
+  msg_t req(con.ctx(), 1, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.is_add = 1;
-  payload.is_input = (m_direction == direction_t::INPUT ? 1 : 0);
-  payload.acl_index = m_acl.value();
+  payload.count = 1;
+  if (m_direction == direction_t::INPUT)
+    payload.n_input = 1;
+  else
+    payload.n_input = 0;
+  payload.acls[0] = m_acl.value();
 
   VAPI_CALL(req.execute());
 
@@ -54,13 +57,12 @@ template <>
 rc_t
 l3_unbind_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), std::ref(*this));
+  msg_t req(con.ctx(), 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.is_add = 0;
-  payload.is_input = (m_direction == direction_t::INPUT ? 1 : 0);
-  payload.acl_index = m_acl.value();
+  payload.count = 0;
+  payload.n_input = 0;
 
   VAPI_CALL(req.execute());
 
