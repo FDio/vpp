@@ -317,7 +317,8 @@ endif
 
 BUILD_ENV =										\
     export CCACHE_DIR=$(CCACHE_DIR) ;					\
-    export PATH=$(TOOL_INSTALL_DIR)/ccache-bin:$(TOOL_INSTALL_DIR)/bin:$${PATH} ;	\
+    export PATH=$(wildcard /usr/lib*/ccache):$(TOOL_INSTALL_DIR)/bin:$${PATH} ;		\
+    $(if $(call configure_var_fn,PATH), export PATH=$${PATH}:$(call configure_var_fn,PATH);,)	\
     export PATH="`echo $${PATH} | sed -e s/[.]://`" ;					\
     $(if $(not_native),export CONFIG_SITE=$(MU_BUILD_ROOT_DIR)/config.site ;,)	\
     set -eu$(BUILD_DEBUG) ;							        \

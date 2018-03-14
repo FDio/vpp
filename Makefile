@@ -249,26 +249,6 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	fi ; \
 	exit 0
 endif
-	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
-	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
-	@echo 'export PATH=$(BR)/tools/ccache-bin:$$PATH' >> $(BR)/path_setup
-	@echo 'export PATH=$(BR)/tools/bin:$$PATH'        >> $(BR)/path_setup
-	@echo 'export CCACHE_DIR=$(CCACHE_DIR)'           >> $(BR)/path_setup
-
-ifeq ("$(wildcard /usr/bin/ccache )","")
-	@echo "WARNING: Please install ccache AYEC and re-run this script"
-else
-	@rm -rf $(BR)/tools/ccache-bin
-	@mkdir -p $(BR)/tools/ccache-bin
-	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/gcc
-	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/g++
-	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang
-	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/clang++
-	@mkdir -p $(BR)/tools/bin
-	@rm -f $(BR)/tools/bin/vppapigen
-	@ln -s $(WS_ROOT)/src/tools/vppapigen/vppapigen \
-	       $(BR)/tools/bin/vppapigen
-endif
 	@touch $@
 
 bootstrap: $(BR)/.bootstrap.ok

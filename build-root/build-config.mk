@@ -1,0 +1,1 @@
+SOURCE_PATH = $(CURDIR)/..
