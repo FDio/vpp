@@ -1348,9 +1348,9 @@ vl_api_l2_macs_event_t_handler (vl_api_l2_macs_event_t * mp)
   for (i = 0; i < n_macs; i++)
     {
       vl_api_mac_entry_t *mac = &mp->mac[i];
-      errmsg (" [%d] sw_if_index %d  mac_addr %U  is_del %d \n",
+      errmsg (" [%d] sw_if_index %d  mac_addr %U  action %d \n",
 	      i + 1, ntohl (mac->sw_if_index),
-	      format_ethernet_address, mac->mac_addr, mac->is_del);
+	      format_ethernet_address, mac->mac_addr, mac->action);
       if (i == 1000)
 	break;
     }
