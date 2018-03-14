@@ -118,7 +118,8 @@ typedef struct
       u8 bvi:1;			/* mac is for a bridged virtual interface */
       u8 filter:1;		/* drop packets to/from this mac */
       u8 lrn_evt:1;		/* MAC learned to be sent in L2 MAC event */
-      u8 unused:3;
+      u8 lrn_mov:1;		/* MAC learned is a MAC move */
+      u8 unused:2;
 
       u8 timestamp;		/* timestamp for aging */
       l2fib_seq_num_t sn;	/* bd/int seq num */
@@ -128,6 +129,14 @@ typedef struct
 } l2fib_entry_result_t;
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_result_t, 8);
+
+/* L2 MAC event entry action enums (see mac_entry definition in l2.api) */
+typedef enum
+{
+  MAC_EVENT_ACTION_ADD = 0,
+  MAC_EVENT_ACTION_DELETE = 1,
+  MAC_EVENT_ACTION_MOVE = 2,
+} l2_mac_event_action_t;
 
 /**
  * Compute the hash for the given key and return

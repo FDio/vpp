@@ -70,6 +70,11 @@ from scapy.layers.inet import IP, UDP
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
+# from src/vnet/l2/l2_fib.h
+MAC_EVENT_ACTION_ADD = 0
+MAC_EVENT_ACTION_DELETE = 1
+MAC_EVENT_ACTION_MOVE = 2
+
 
 class TestL2fib(VppTestCase):
     """ L2 FIB Test Case """
@@ -483,7 +488,7 @@ class TestL2fib(VppTestCase):
         evs = self.vapi.collect_events()
         learned_macs = {
             e.mac[i].mac_addr for e in evs for i in range(e.n_macs)
-            if not e.mac[i].is_del}
+            if e.mac[i].action == MAC_EVENT_ACTION_ADD}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
         self.vapi.want_macs_learn_events(enable_disable=0)
@@ -507,7 +512,7 @@ class TestL2fib(VppTestCase):
         self.assertGreater(len(evs), 0)
         learned_macs = {
             e.mac[i].mac_addr for e in evs for i in range(e.n_macs)
-            if not e.mac[i].is_del}
+            if e.mac[i].action == MAC_EVENT_ACTION_ADD}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
 

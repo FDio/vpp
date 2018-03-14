@@ -1037,11 +1037,13 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		      /* copy mac entry to event msg */
 		      clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac,
 				   6);
-		      mp->mac[evt_idx].is_del = 0;
+		      mp->mac[evt_idx].action = result.fields.lrn_mov ?
+			MAC_EVENT_ACTION_MOVE : MAC_EVENT_ACTION_ADD;
 		      mp->mac[evt_idx].sw_if_index =
 			htonl (result.fields.sw_if_index);
-		      /* clear event bit and update mac entry */
+		      /* clear event bits and update mac entry */
 		      result.fields.lrn_evt = 0;
+		      result.fields.lrn_mov = 0;
 		      BVT (clib_bihash_kv) kv;
 		      kv.key = key.raw;
 		      kv.value = result.raw;
@@ -1078,7 +1080,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		{
 		  /* copy mac entry to event msg */
 		  clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac, 6);
-		  mp->mac[evt_idx].is_del = 1;
+		  mp->mac[evt_idx].action = MAC_EVENT_ACTION_DELETE;
 		  mp->mac[evt_idx].sw_if_index =
 		    htonl (result.fields.sw_if_index);
 		  evt_idx++;
