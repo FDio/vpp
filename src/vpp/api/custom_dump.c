@@ -1200,7 +1200,7 @@ static void *vl_api_sr_localsid_add_del_t_print
     {
     case SR_BEHAVIOR_END:
       s = format (s, "Address: %U\nBehavior: End",
-		  format_ip6_address, (ip6_address_t *) mp->localsid_addr);
+		  format_ip6_address, (ip6_address_t *) mp->localsid.addr);
       s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
       break;
     case SR_BEHAVIOR_X:
@@ -1208,9 +1208,9 @@ static void *vl_api_sr_localsid_add_del_t_print
 	format (s,
 		"Address: %U\nBehavior: X (Endpoint with Layer-3 cross-connect)"
 		"\nIface: %U\nNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr,
+		(ip6_address_t *) mp->localsid.addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+		format_ip6_address, (ip6_address_t *) mp->nh_addr6);
       s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
       break;
     case SR_BEHAVIOR_DX4:
@@ -1218,25 +1218,25 @@ static void *vl_api_sr_localsid_add_del_t_print
 	format (s,
 		"Address: %U\nBehavior: DX4 (Endpoint with decapsulation with IPv4 cross-connect)"
 		"\nIface: %U\nNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr,
+		(ip6_address_t *) mp->localsid.addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip4_address, (ip4_address_t *) mp->nh_addr);
+		format_ip4_address, (ip4_address_t *) mp->nh_addr4);
       break;
     case SR_BEHAVIOR_DX6:
       s =
 	format (s,
 		"Address: %U\nBehavior: DX6 (Endpoint with decapsulation with IPv6 cross-connect)"
 		"\nIface: %UNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr,
+		(ip6_address_t *) mp->localsid.addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+		format_ip6_address, (ip6_address_t *) mp->nh_addr6);
       break;
     case SR_BEHAVIOR_DX2:
       s =
 	format (s,
 		"Address: %U\nBehavior: DX2 (Endpoint with decapulation and Layer-2 cross-connect)"
 		"\nIface: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr,
+		(ip6_address_t *) mp->localsid.addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index));
       break;
     case SR_BEHAVIOR_DT6:
@@ -1244,20 +1244,20 @@ static void *vl_api_sr_localsid_add_del_t_print
 	format (s,
 		"Address: %U\nBehavior: DT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
 		"\nTable: %u", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr, ntohl (mp->fib_table));
+		(ip6_address_t *) mp->localsid.addr, ntohl (mp->fib_table));
       break;
     case SR_BEHAVIOR_DT4:
       s =
 	format (s,
 		"Address: %U\nBehavior: DT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
 		"\nTable: %u", format_ip6_address,
-		(ip6_address_t *) mp->localsid_addr, ntohl (mp->fib_table));
+		(ip6_address_t *) mp->localsid.addr, ntohl (mp->fib_table));
       break;
     default:
       if (mp->behavior >= SR_BEHAVIOR_LAST)
 	{
 	  s = format (s, "Address: %U\n Behavior: %u",
-		      format_ip6_address, (ip6_address_t *) mp->localsid_addr,
+		      format_ip6_address, (ip6_address_t *) mp->localsid.addr,
 		      mp->behavior);
 	}
       else
@@ -1310,10 +1310,10 @@ static void *vl_api_sr_policy_add_t_print
   u8 *s;
 
   ip6_address_t *segments = 0, *seg;
-  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+  ip6_address_t *this_address = (ip6_address_t *) mp->sids.sids;
 
   int i;
-  for (i = 0; i < mp->n_segments; i++)
+  for (i = 0; i < mp->sids.num_sids; i++)
     {
       vec_add2 (segments, seg, 1);
       clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
@@ -1352,10 +1352,10 @@ static void *vl_api_sr_policy_mod_t_print
   u8 *s;
 
   ip6_address_t *segments = 0, *seg;
-  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+  ip6_address_t *this_address = (ip6_address_t *) mp->sids.sids;
 
   int i;
-  for (i = 0; i < mp->n_segments; i++)
+  for (i = 0; i < mp->sids.num_sids; i++)
     {
       vec_add2 (segments, seg, 1);
       clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
