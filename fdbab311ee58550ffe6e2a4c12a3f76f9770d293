@@ -22,6 +22,30 @@
       "revId": "fdbab311ee58550ffe6e2a4c12a3f76f9770d293",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d44639f_49a511f0",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-14T15:14:28Z",
+      "side": 1,
+      "message": "oops",
+      "parentUuid": "492cf73d_0251cc8d",
+      "range": {
+        "startLine": 67,
+        "startChar": 24,
+        "endLine": 67,
+        "endChar": 27
+      },
+      "revId": "fdbab311ee58550ffe6e2a4c12a3f76f9770d293",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
