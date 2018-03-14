@@ -1,17 +1,14 @@
-#
-# 6RD RFC5969 functional tests
-#
+#!/usr/bin/env python
+""" 6RD RFC5969 functional tests """
 
 import unittest
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
-from framework import VppTestCase
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
-from util import ppp
-from ipaddress import *
+from ipaddress import ip_address
 
 """ Test6rd is a subclass of  VPPTestCase classes.
 
@@ -26,43 +23,31 @@ class Test6RD(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(Test6RD, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(2))
-            cls.interfaces = list(cls.pg_interfaces)
-        except Exception:
-            super(Test6RD, cls).tearDownClass()
-            raise
+        cls.create_pg_interfaces(range(2))
+        cls.interfaces = list(cls.pg_interfaces)
 
     def setUp(cls):
         super(Test6RD, cls).setUp()
-        try:
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.config_ip6()
-                i.disable_ipv6_ra()
-                i.resolve_arp()
-                i.resolve_ndp()
-        except Exception:
-            super(Test6RD, cls).tearDown()
-            raise
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.disable_ipv6_ra()
+            i.resolve_arp()
+            i.resolve_ndp()
 
     def tearDown(self):
         super(Test6RD, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.cli("show hardware")
-        for i in self.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        if type(self.tunnel_index) is list:
-            for sw_if_index in self.tunnel_index:
-                rv = self.vapi.ipip_6rd_del_tunnel(sw_if_index)
-                self.assertEqual(rv.retval, 0)
-        else:
-            rv = self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
-            self.assertEqual(rv.retval, 0)
-        self.vapi.cli("show error")
+            for i in self.pg_interfaces:
+                i.unconfig_ip4()
+                i.unconfig_ip6()
+                i.admin_down()
+            if type(self.tunnel_index) is list:
+                for sw_if_index in self.tunnel_index:
+                    self.vapi.ipip_6rd_del_tunnel(sw_if_index)
+            else:
+                self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def validate_6in4(self, rx, expected):
         if IP not in rx:
@@ -98,8 +83,6 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed), 16,
             str(ip_address('0.0.0.0').packed), 0,
             str(ip_address(self.pg0.local_ip4).packed), True)
-
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
 
         self.vapi.cli("show ip6 fib")
@@ -131,16 +114,13 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg0.local_ip4).packed), True)
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
         rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
-        self.assertEqual(rv.retval, 0)
         rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg0.local_ip4).packed), True)
         self.tunnel_index = rv.sw_if_index
-        self.assertEqual(rv.retval, 0)
 
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
                  UDP(sport=1234, dport=1234))
@@ -164,14 +144,12 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg0.local_ip4).packed), True)
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index.append(rv.sw_if_index)
 
         rv = self.vapi.ipip_6rd_add_tunnel(
             0, str(ip_address('2003::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg1.local_ip4).packed), True)
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index.append(rv.sw_if_index)
 
         self.vapi.cli("show ip6 fib")
@@ -199,7 +177,6 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed), 16,
             str(ip_address('172.0.0.0').packed), 8,
             str(ip_address(self.pg0.local_ip4).packed), True)
-        self.assertEqual(rv.retval, 0)
 
         self.tunnel_index = rv.sw_if_index
 
@@ -221,7 +198,6 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg0.local_ip4).packed), True)
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
 
         self.vapi.cli("show ip6 fib")
@@ -254,7 +230,6 @@ class Test6RD(VppTestCase):
             0, str(ip_address('2002::').packed),
             16, str(ip_address('0.0.0.0').packed),
             0, str(ip_address(self.pg0.local_ip4).packed), False)
-        self.assertEqual(rv.retval, 0)
         self.tunnel_index = rv.sw_if_index
 
         default_route = VppIpRoute(
