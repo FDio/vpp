@@ -23,10 +23,7 @@ if [[ ! $CCACHE_DIR ]];then
 fi
 ADD_TO_PATH="$build_root/tools/ccache-bin:$build_root/tools/bin"
 
-# Construct build-config.mk
 cd $build_root
-echo SOURCE_PATH = $wsroot > build-config.mk
-echo 
 echo Saving PATH settings in `pwd`/path_setup
 echo Source this file later, as needed
 cat >path_setup <<EOF
@@ -37,22 +34,12 @@ export CCACHE_DIR=$CCACHE_DIR
 EOF
 
 # regenerate tools/ccache-bin
-rm -rf tools/ccache-bin
-mkdir -p tools/ccache-bin tools/bin
+mkdir -p tools/bin
 
 if [ ! -f /usr/bin/ccache ] ; then
     echo CCACHE is required. Please install it!
     exit 1
 fi
-
-cd tools/ccache-bin
-for c in gcc g++ clang clang++
-do
-    ln -s /usr/bin/ccache $c
-done
-cd ../
-ln -s $wsroot/src/tools/vppapigen/vppapigen  \
-      $build_root/tools/bin/vppapigen
 
 cd $build_root
 
