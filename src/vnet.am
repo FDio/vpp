@@ -578,6 +578,7 @@ libvnet_la_SOURCES +=				\
  vnet/ipip/ipip_cli.c
 
 nobase_include_HEADERS +=			\
+ vnet/ipip/ipip.api.h				\
  vnet/ipip/ipip.h
 
 API_FILES += vnet/ipip/ipip.api
