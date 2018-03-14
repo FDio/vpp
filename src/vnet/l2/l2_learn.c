@@ -207,6 +207,7 @@ l2learn_process (vlib_node_runtime_t * node,
 	  result0->fields.age_not = 0;
 	}
       result0->fields.lrn_evt = (msm->client_pid != 0);
+      result0->fields.lrn_mov = (msm->client_pid != 0);
       counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
     }
 
