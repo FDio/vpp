@@ -446,4 +446,29 @@ extern void dpo_register(dpo_type_t type,
 extern dpo_type_t dpo_register_new_type(const dpo_vft_t *vft,
 					const char * const * const * nodes);
 
+/**
+ * @brief Return already stacked up next node index for a given
+ *        child_type/child_proto and parent_type/patent_proto.
+ *        The VLIB graph arc used is taken from the parent and child types
+ *        passed.
+ *
+ * @param child_type
+ *  Child DPO type.
+ *
+ * @param child_proto
+ *  Child DPO proto
+ *
+ * @param parent_type
+ *  Parent DPO type.
+ *
+ * @param parent_proto
+ *  Parent DPO proto
+ *
+ * @return The VLIB Graph node index
+ */
+extern u32
+dpo_get_next_node_by_type_and_proto (dpo_type_t   child_type,
+                                     dpo_proto_t  child_proto,
+                                     dpo_type_t   parent_type,
+                                     dpo_proto_t  parent_proto);
 #endif
