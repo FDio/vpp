@@ -1,17 +1,11 @@
-#
-# IP{4,6} over IP{v,6} tunnel functional tests
-#
+#!/usr/bin/env python
+"""IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
-from scapy.packet import Raw
-
-from framework import VppTestCase
+from scapy.layers.inet6 import IPv6, Ether, IP, UDP
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
-from util import ppp
-from ipaddress import *
+from socket import AF_INET, AF_INET6, inet_pton
 
 """ Testipip is a subclass of  VPPTestCase classes.
 
@@ -26,48 +20,29 @@ class TestIPIP(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(TestIPIP, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(2))
-            cls.interfaces = list(cls.pg_interfaces)
-        except Exception:
-            super(TestIPIP, cls).tearDownClass()
-            raise
+        cls.create_pg_interfaces(range(2))
+        cls.interfaces = list(cls.pg_interfaces)
 
     def setUp(cls):
         super(TestIPIP, cls).setUp()
-        try:
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.config_ip6()
-                i.disable_ipv6_ra()
-                i.resolve_arp()
-                i.resolve_ndp()
-        except Exception:
-            super(TestIPIP, cls).tearDown()
-            raise
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.disable_ipv6_ra()
+            i.resolve_arp()
+            i.resolve_ndp()
 
     def tearDown(self):
         super(TestIPIP, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.cli("show hardware")
-        for i in self.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        self.vapi.cli("show error")
+            for i in self.pg_interfaces:
+                i.unconfig_ip4()
+                i.unconfig_ip6()
+                i.admin_down()
 
     def validate(self, rx, expected):
-        expected = expected.__class__(str(expected))
-        if rx != expected:
-            print('RX packet:')
-            print(rx.show())
-            print('EXPECTED packet:')
-            print(expected.show())
-            self.assertDictEqual(rx, expected)
-
-    def payload(self, len):
-        return 'x' * len
+        self.assertEqual(rx, expected.__class__(str(expected)))
 
     def test_ipip4(self):
         """ ip{v4,v6} over ip4 test """
@@ -78,19 +53,16 @@ class TestIPIP(VppTestCase):
 
         # IPv4 transport
         rv = self.vapi.ipip_add_tunnel(
-            src_address=str(ip_address(self.pg0.local_ip4).packed),
-            dst_address=str(ip_address(self.pg1.remote_ip4).packed),
+            src_address=self.pg0.local_ip4n,
+            dst_address=self.pg1.remote_ip4n,
             is_ipv6=0)
-        self.assertEqual(rv.retval, 0)
         sw_if_index = rv.sw_if_index
 
         # Set interface up and enable IP on it
-        rv = self.vapi.sw_interface_set_flags(sw_if_index, 1)
-        self.assertEqual(rv.retval, 0)
-        rv = self.vapi.sw_interface_set_unnumbered(
+        self.vapi.sw_interface_set_flags(sw_if_index, 1)
+        self.vapi.sw_interface_set_unnumbered(
             ip_sw_if_index=self.pg0.sw_if_index,
             sw_if_index=sw_if_index)
-        self.assertEqual(rv.retval, 0)
 
         # Add IPv4 and IPv6 routes via tunnel interface
         ip4_via_tunnel = VppIpRoute(
@@ -162,17 +134,14 @@ class TestIPIP(VppTestCase):
 
         # IPv6 transport
         rv = self.vapi.ipip_add_tunnel(
-            src_address=str(ip_address(self.pg0.local_ip6).packed),
-            dst_address=str(ip_address(self.pg1.remote_ip6).packed))
-        self.assertEqual(rv.retval, 0)
+            src_address=self.pg0.local_ip6n,
+            dst_address=self.pg1.remote_ip6n)
 
         sw_if_index = rv.sw_if_index
 
-        rv = self.vapi.sw_interface_set_flags(sw_if_index, 1)
-        self.assertEqual(rv.retval, 0)
-        rv = self.vapi.sw_interface_set_unnumbered(
+        self.vapi.sw_interface_set_flags(sw_if_index, 1)
+        self.vapi.sw_interface_set_unnumbered(
             ip_sw_if_index=self.pg0.sw_if_index, sw_if_index=sw_if_index)
-        self.assertEqual(rv.retval, 0)
 
         # Add IPv4 and IPv6 routes via tunnel interface
         ip4_via_tunnel = VppIpRoute(
@@ -236,12 +205,10 @@ class TestIPIP(VppTestCase):
     def test_ipip_create(self):
         """ ipip create / delete interface test """
         rv = self.vapi.ipip_add_tunnel(
-            src_address=str(ip_address('1.2.3.4').packed),
-            dst_address=str(ip_address('2.3.4.5').packed), is_ipv6=0)
-        self.assertEqual(rv.retval, 0)
+            src_address=inet_pton(AF_INET, '1.2.3.4'),
+            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0)
         sw_if_index = rv.sw_if_index
-        rv = self.vapi.ipip_del_tunnel(sw_if_index)
-        self.assertEqual(rv.retval, 0)
+        self.vapi.ipip_del_tunnel(sw_if_index)
 
 
 if __name__ == '__main__':
