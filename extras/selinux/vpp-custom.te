@@ -51,6 +51,7 @@ allow vpp_t self:tun_socket { create relabelto relabelfrom };
 allow vpp_t self:udp_socket { create ioctl };
 allow vpp_t self:unix_dgram_socket { connect create ioctl };
 allow vpp_t self:unix_stream_socket { create_stream_socket_perms connectto };
+allow vpp_t self:netlink_route_socket { bind create nlmsg_write read write };
 
 manage_dirs_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
 manage_files_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
@@ -92,6 +93,7 @@ dev_rw_userio_dev(vpp_t)
 dev_rw_sysfs(vpp_t)
 dev_read_cpuid(vpp_t)
 dev_rw_vfio_dev(vpp_t)
+dev_rw_vhost( vpp_t )
 
 domain_obj_id_change_exemption(vpp_t)
 
