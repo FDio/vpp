@@ -473,8 +473,7 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
 			   "\n\tTable:  \t%u",
-			   format_ip6_address, &ls->localsid,
-			   format_vnet_sw_if_index_name, vnm, ls->vrf_index);
+			   format_ip6_address, &ls->localsid, ls->vrf_index);
 	  break;
 	case SR_BEHAVIOR_DX4:
 	  vlib_cli_output (vm,
