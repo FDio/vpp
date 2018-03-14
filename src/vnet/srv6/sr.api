@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
+option version = "1.1.0";
 
 /** \brief IPv6 SR LocalSID add/del request
     @param client_index - opaque cookie to identify the sender
@@ -40,7 +40,8 @@ autoreply define sr_localsid_add_del
   u32 sw_if_index;
   u32 vlan_index;
   u32 fib_table;
-  u8 nh_addr[16];
+  u8 nh_addr6[16];
+  u8 nh_addr4[4];
 };
 
 /** \brief IPv6 SR policy add
@@ -162,6 +163,7 @@ define sr_localsids_details
   u8 end_psp;
   u16 behavior;
   u32 fib_table;
+  u32 vlan_index;
   u8 xconnect_next_hop[16];
   u32 xconnect_iface_or_vrf_table;
 };

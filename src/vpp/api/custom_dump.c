@@ -1128,7 +1128,7 @@ static void *vl_api_sr_localsid_add_del_t_print
 		"\nIface: %U\nNext hop: %U", format_ip6_address,
 		(ip6_address_t *) mp->localsid_addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+		format_ip6_address, (ip6_address_t *) mp->nh_addr6);
       s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
       break;
     case SR_BEHAVIOR_DX4:
@@ -1138,7 +1138,7 @@ static void *vl_api_sr_localsid_add_del_t_print
 		"\nIface: %U\nNext hop: %U", format_ip6_address,
 		(ip6_address_t *) mp->localsid_addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip4_address, (ip4_address_t *) mp->nh_addr);
+		format_ip4_address, (ip4_address_t *) mp->nh_addr4);
       break;
     case SR_BEHAVIOR_DX6:
       s =
@@ -1147,7 +1147,7 @@ static void *vl_api_sr_localsid_add_del_t_print
 		"\nIface: %UNext hop: %U", format_ip6_address,
 		(ip6_address_t *) mp->localsid_addr,
 		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+		format_ip6_address, (ip6_address_t *) mp->nh_addr6);
       break;
     case SR_BEHAVIOR_DX2:
       s =
