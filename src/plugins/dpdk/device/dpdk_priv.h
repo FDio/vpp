@@ -62,6 +62,8 @@ typedef struct
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
 {
+  if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
+    return;
   int len;
   if ((len = rte_eth_xstats_get (xd->device_index, NULL, 0)) > 0)
     {
