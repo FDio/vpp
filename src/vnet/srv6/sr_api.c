@@ -64,6 +64,14 @@ static void vl_api_sr_localsid_add_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
+  ip46_address_t prefix;
+
+  memset (&prefix, 0, sizeof (ip46_address_t));
+  if(mp->nh_addr4[0] != mp->nh_addr4[0] != mp->nh_addr4[0] != mp->nh_addr4[0])
+    memcpy (&prefix.ip4, mp->nh_addr4, sizeof (prefix.ip4));
+  else
+    memcpy (&prefix.ip6, mp->nh_addr6, sizeof (prefix.ip6));
+
   rv = sr_cli_localsid (mp->is_del,
 			(ip6_address_t *) & mp->localsid_addr,
 			mp->end_psp,
@@ -71,7 +79,7 @@ static void vl_api_sr_localsid_add_del_t_handler
 			ntohl (mp->sw_if_index),
 			ntohl (mp->vlan_index),
 			ntohl (mp->fib_table),
-			(ip46_address_t *) & mp->nh_addr, NULL);
+			&prefix, NULL);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -202,6 +210,7 @@ static void send_sr_localsid_details
   rmp->end_psp = t->end_psp;
   rmp->behavior = htons (t->behavior);
   rmp->fib_table = htonl (t->fib_table);
+  rmp->vlan_index = htonl (t->vlan_index);
   memcpy (rmp->xconnect_next_hop, &t->next_hop, sizeof (ip6_address_t));
   rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
   rmp->context = context;
