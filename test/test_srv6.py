@@ -516,7 +516,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='A3::0',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr='::',
+                        nh_addr4='::',
+                        nh_addr6='::',
                         end_psp=0,
                         sw_if_index=0,
                         vlan_index=0,
@@ -587,7 +588,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='A3::0',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr='::',
+                        nh_addr4='::',
+                        nh_addr6='::',
                         end_psp=1,
                         sw_if_index=0,
                         vlan_index=0,
@@ -662,7 +664,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr=self.pg1.remote_ip6,
+                        nh_addr4='::',
+                        nh_addr6='self.pg1.remote_ip6',
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -739,7 +742,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr=self.pg1.remote_ip6,
+                        nh_addr4='::',
+                        nh_addr6='self.pg1.remote_ip6',
                         end_psp=1,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -804,7 +808,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='a3::c4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX6,
-                        nh_addr=self.pg1.remote_ip6,
+                        nh_addr4='::',
+                        nh_addr6='self.pg1.remote_ip6',
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -892,7 +897,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='a3::c4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT6,
-                        nh_addr='::',
+                        nh_addr4='::',
+                        nh_addr6='::',
                         end_psp=0,
                         sw_if_index=vrf_1,
                         vlan_index=0,
@@ -957,7 +963,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='a3::c4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX4,
-                        nh_addr=self.pg1.remote_ip4,
+                        nh_addr4=self.pg1.remote_ip4,
+                        nh_addr6='::',
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -1045,7 +1052,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='a3::c4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT4,
-                        nh_addr='::',
+                        nh_addr4='::',
+                        nh_addr6='::',
                         end_psp=0,
                         sw_if_index=vrf_1,
                         vlan_index=0,
@@ -1109,7 +1117,8 @@ class TestSRv6(VppTestCase):
         localsid = VppSRv6LocalSID(
                         self, localsid_addr='a3::c4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX2,
-                        nh_addr='::',
+                        nh_addr4='::',
+                        nh_addr6='::',
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
