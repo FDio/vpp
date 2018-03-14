@@ -1,8 +1,6 @@
 import signal
-import os
 import traceback
 from log import RED, single_line_delim, double_line_delim
-from debug import spawn_gdb
 
 
 class Hook(object):
@@ -60,13 +58,6 @@ class PollHook(Hook):
         self.testcase = testcase
         self.logger = testcase.logger
 
-    def on_crash(self, core_path):
-        if self.testcase.debug_core:
-            spawn_gdb(self.testcase.vpp_bin, core_path, self.logger)
-        else:
-            self.logger.critical("Core file present, debug with: gdb %s %s" %
-                                 (self.testcase.vpp_bin, core_path))
-
     def poll_vpp(self):
         """
         Poll the vpp status and throw an exception if it's not running
@@ -89,9 +80,6 @@ class PollHook(Hook):
             msg = "VPP subprocess died unexpectedly with returncode %d [%s]" %\
                 (self.testcase.vpp.returncode, s)
             self.logger.critical(msg)
-            core_path = self.testcase.tempdir + '/core'
-            if os.path.isfile(core_path):
-                self.on_crash(core_path)
             self.testcase.vpp_dead = True
             raise VppDiedError(msg)
 
