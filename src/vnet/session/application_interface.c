@@ -97,8 +97,8 @@ session_endpoint_is_zero (session_endpoint_t * sep)
 u8
 session_endpoint_in_ns (session_endpoint_t * sep)
 {
-  u8 is_zero = ip_is_zero (&sep->ip, sep->is_ip4);
-  if (!is_zero && sep->sw_if_index != ENDPOINT_INVALID_INDEX
+  u8 is_lep = session_endpoint_is_local (sep);
+  if (!is_lep && sep->sw_if_index != ENDPOINT_INVALID_INDEX
       && !ip_interface_has_address (sep->sw_if_index, &sep->ip, sep->is_ip4))
     {
       clib_warning ("sw_if_index %u not configured with ip %U",
@@ -106,7 +106,7 @@ session_endpoint_in_ns (session_endpoint_t * sep)
 		    sep->is_ip4);
       return 0;
     }
-  return (is_zero || ip_is_local (sep->fib_index, &sep->ip, sep->is_ip4));
+  return (is_lep || ip_is_local (sep->fib_index, &sep->ip, sep->is_ip4));
 }
 
 int
@@ -176,7 +176,7 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
    * Add session endpoint to local session table. Only binds to "inaddr_any"
    * (i.e., zero address) are added to local scope table.
    */
-  if (application_has_local_scope (app) && session_endpoint_is_zero (sep))
+  if (application_has_local_scope (app) && session_endpoint_is_local (sep))
     {
       if ((rv = application_start_local_listen (app, sep, handle)))
 	return rv;
