@@ -37,7 +37,6 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
-#include <vppinfra/linux/syscall.h>
 
 #ifndef MMAP_PAGESIZE
 #define MMAP_PAGESIZE (clib_mem_get_page_size())
