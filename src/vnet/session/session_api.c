@@ -772,6 +772,7 @@ done:
       {
 	rmp->handle = a->handle;
         rmp->lcl_port = mp->port;
+	rmp->lcl_is_ip4 = mp->is_ip4;
 	if (app && application_has_global_scope (app))
 	  {
 	    s = listen_session_get_from_handle (a->handle);
