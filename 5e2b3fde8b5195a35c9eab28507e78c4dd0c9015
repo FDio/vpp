@@ -22,6 +22,30 @@
       "revId": "5e2b3fde8b5195a35c9eab28507e78c4dd0c9015",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a83b8b80_369503a0",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-03-15T08:39:47Z",
+      "side": 1,
+      "message": "i think it\u0027s clearer than ~0 /* any */",
+      "parentUuid": "5b02b889_0e873089",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 26
+      },
+      "revId": "5e2b3fde8b5195a35c9eab28507e78c4dd0c9015",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
