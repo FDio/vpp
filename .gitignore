@@ -55,7 +55,7 @@ ylwrap
 test-driver
 
 *.iml
-.bootstrap.ok
+.deps.ok
 .settings
 .autotools
 # stop autotools ignore

@@ -148,7 +148,7 @@ ifneq ($(SAMPLE_PLUGIN),no)
 TARGETS += sample-plugin
 endif
 
-.PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
+.PHONY: help wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope
 .PHONY: test test-debug retest retest-debug test-doc test-wipe-doc test-help test-wipe
@@ -156,7 +156,6 @@ endif
 
 help:
 	@echo "Make Targets:"
-	@echo " bootstrap           - prepare tree for build"
 	@echo " install-dep         - install software dependencies"
 	@echo " wipe                - wipe all products of debug build "
 	@echo " wipe-release        - wipe all products of release build "
@@ -225,7 +224,7 @@ help:
 	@echo " SAMPLE_PLUGIN     = $(SAMPLE_PLUGIN)"
 	@echo " DISABLED_PLUGINS  = $(DISABLED_PLUGINS)"
 
-$(BR)/.bootstrap.ok:
+$(BR)/.deps.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
 	make install-dep
 endif
@@ -251,7 +250,8 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 endif
 	@touch $@
 
-bootstrap: $(BR)/.bootstrap.ok
+bootstrap:
+	@echo "'make bootstrap' is not needed anymore"
 
 install-dep:
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
@@ -311,21 +311,21 @@ dist:
 	@$(RM) $(BR)/vpp-latest.tar.xz
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
-build: $(BR)/.bootstrap.ok
+build: $(BR)/.deps.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
 
-wipe: wipedist test-wipe $(BR)/.bootstrap.ok
+wipe: wipedist test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
 
 rebuild: wipe build
 
-build-release: $(BR)/.bootstrap.ok
+build-release: $(BR)/.deps.ok
 	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
-wipe-release: test-wipe $(BR)/.bootstrap.ok
+wipe-release: test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
 
 rebuild-release: wipe-release build-release
@@ -351,17 +351,17 @@ define test
 	  $(3)
 endef
 
-test: bootstrap
+test:
 	$(call test,vpp,vpp,test)
 
-test-debug: bootstrap
+test-debug:
 	$(call test,vpp,vpp_debug,test)
 
-test-all: bootstrap
+test-all:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp,test)
 
-test-all-debug: bootstrap
+test-all-debug:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
 
@@ -371,10 +371,10 @@ test-help:
 test-wipe:
 	@make -C test wipe
 
-test-shell: bootstrap
+test-shell:
 	$(call test,vpp,vpp,shell)
 
-test-shell-debug: bootstrap
+test-shell-debug:
 	$(call test,vpp,vpp_debug,shell)
 
 test-doc:
@@ -383,7 +383,7 @@ test-doc:
 test-wipe-doc:
 	@make -C test wipe-doc
 
-test-cov: bootstrap
+test-cov:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
@@ -501,7 +501,7 @@ define banner
 	@echo " "
 endef
 
-verify: install-dep $(BR)/.bootstrap.ok dpdk-install-dev
+verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
