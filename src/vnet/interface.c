@@ -1414,6 +1414,51 @@ vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
     (vnm, hw_if_index, mac_address);
 }
 
+/* update the unnumbered state of an interface*/
+void
+vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
+				     u32 ip_sw_if_index, u8 enable)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *si;
+  u32 was_unnum;
+
+  si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
+  was_unnum = (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED);
+
+  if (enable)
+    {
+      si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
+      si->unnumbered_sw_if_index = ip_sw_if_index;
+
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip4_main.
+	lookup_main.if_address_pool_index_by_sw_if_index[ip_sw_if_index];
+      ip6_main.
+	lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip6_main.
+	lookup_main.if_address_pool_index_by_sw_if_index[ip_sw_if_index];
+    }
+  else
+    {
+      si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
+      si->unnumbered_sw_if_index = (u32) ~ 0;
+
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
+      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
+    }
+
+  if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+    {
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
+    }
+}
+
 vnet_l3_packet_type_t
 vnet_link_to_l3_proto (vnet_link_t link)
 {

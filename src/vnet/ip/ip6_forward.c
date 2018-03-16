@@ -432,8 +432,9 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       vlib_main_t *vm = vlib_get_main ();
 
       ip6_neighbor_sw_interface_add_del (vnm, sw_if_index, 0 /* is_add */ );
+      vnet_sw_interface_update_unnumbered (sw_if_index, ~0, 0);
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* honor unnumbered */,
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
       ({
         address = ip_interface_address_get_address (lm6, ia);
         ip6_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);

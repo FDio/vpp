@@ -793,8 +793,9 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       ip4_address_t *address;
       vlib_main_t *vm = vlib_get_main ();
 
+      vnet_sw_interface_update_unnumbered (sw_if_index, ~0, 0);
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* honor unnumbered */,
+      foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
       ({
         address = ip_interface_address_get_address (lm4, ia);
         ip4_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
