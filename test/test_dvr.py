@@ -221,12 +221,10 @@ class TestDVR(VppTestCase):
 
         for r in routes:
             if (inet_pton(AF_INET, ip_tag_bridged) == r.address):
-                print r
                 self.assertEqual(r.path[0].sw_if_index,
                                  sub_if_on_pg3.sw_if_index)
                 self.assertEqual(r.path[0].is_dvr, 1)
             if (inet_pton(AF_INET, ip_non_tag_bridged) == r.address):
-                print r
                 self.assertEqual(r.path[0].sw_if_index,
                                  self.pg1.sw_if_index)
                 self.assertEqual(r.path[0].is_dvr, 1)
