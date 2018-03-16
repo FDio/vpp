@@ -46,6 +46,14 @@ vnet_get_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   return pool_elt_at_index (vnm->interface_main.hw_interfaces, hw_if_index);
 }
 
+always_inline vnet_hw_interface_t *
+vnet_get_hw_interface_safe (vnet_main_t * vnm, u32 hw_if_index)
+{
+  if (!pool_is_free_index (vnm->interface_main.hw_interfaces, hw_if_index))
+    return pool_elt_at_index (vnm->interface_main.hw_interfaces, hw_if_index);
+  return (NULL);
+}
+
 always_inline vnet_sw_interface_t *
 vnet_get_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
@@ -185,6 +193,19 @@ vnet_sw_interface_get_flags (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 always_inline uword
+vnet_sw_interface_is_valid (vnet_main_t * vnm, u32 sw_if_index)
+{
+  return !pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index);
+}
+
+always_inline uword
+vnet_hw_interface_is_valid (vnet_main_t * vnm, u32 hw_if_index)
+{
+  return !pool_is_free_index (vnm->interface_main.hw_interfaces, hw_if_index);
+}
+
+
+always_inline uword
 vnet_sw_interface_is_admin_up (vnet_main_t * vnm, u32 sw_if_index)
 {
   return (vnet_sw_interface_get_flags (vnm, sw_if_index) &
@@ -305,6 +326,7 @@ int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;
+format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
 format_function_t format_vnet_sw_interface_name_override;

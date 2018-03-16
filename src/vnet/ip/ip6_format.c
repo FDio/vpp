@@ -117,6 +117,23 @@ format_ip6_address_and_length (u8 * s, va_list * args)
   return format (s, "%U/%d", format_ip6_address, a, l);
 }
 
+u8 *
+format_ip6_address_and_mask (u8 * s, va_list * args)
+{
+  ip6_address_and_mask_t *am = va_arg (*args, ip6_address_and_mask_t *);
+
+  if (am->addr.as_u64[0] == 0 && am->addr.as_u64[1] == 0 &&
+      am->mask.as_u64[0] == 0 && am->mask.as_u64[1] == 0)
+    return format (s, "any");
+
+  if (am->mask.as_u64[0] == ~0 && am->mask.as_u64[1] == ~0)
+    return format (s, "%U", format_ip4_address, &am->addr);
+
+  return format (s, "%U/%U", format_ip6_address, &am->addr,
+		 format_ip4_address, &am->mask);
+}
+
+
 /* Parse an IP6 address. */
 uword
 unformat_ip6_address (unformat_input_t * input, va_list * args)
@@ -210,6 +227,32 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
 
     return 1;
   }
+}
+
+uword
+unformat_ip6_address_and_mask (unformat_input_t * input, va_list * args)
+{
+  ip6_address_and_mask_t *am = va_arg (*args, ip6_address_and_mask_t *);
+  ip6_address_t addr, mask;
+
+  memset (&addr, 0, sizeof (ip6_address_t));
+  memset (&mask, 0, sizeof (ip6_address_t));
+
+  if (unformat (input, "any"))
+    ;
+  else if (unformat (input, "%U/%U", unformat_ip6_address, &addr,
+		     unformat_ip6_address, &mask))
+    ;
+  else if (unformat (input, "%U", unformat_ip6_address, &addr))
+    mask.as_u64[0] = mask.as_u64[1] = ~0;
+  else
+    return 0;
+
+  am->addr.as_u64[0] = addr.as_u64[0];
+  am->addr.as_u64[1] = addr.as_u64[1];
+  am->mask.as_u64[0] = mask.as_u64[0];
+  am->mask.as_u64[1] = mask.as_u64[1];
+  return 1;
 }
 
 /* Format an IP6 header. */
