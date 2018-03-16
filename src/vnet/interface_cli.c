@@ -1526,7 +1526,7 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vnet_hw_interface_rx_mode mode;
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;

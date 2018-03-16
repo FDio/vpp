@@ -34,6 +34,7 @@ libvnet_la_SOURCES +=				\
   vnet/buffer.c					\
   vnet/config.c					\
   vnet/devices/devices.c			\
+  vnet/devices/flow.c				\
   vnet/devices/netlink.c			\
   vnet/handoff.c				\
   vnet/interface.c				\
