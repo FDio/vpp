@@ -401,6 +401,10 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		      else
 			h0 = b0->data;
 
+		      /* advance the match pointer so the matching happens on IP header */
+		      if (is_output)
+			h0 += vnet_buffer (b0)->l2_classify.pad.l2_len;
+
 		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
 		      e0 = vnet_classify_find_entry
 			(t0, (u8 *) h0, hash0, now);
@@ -424,11 +428,19 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 			       IP6_ERROR_INACL_SESSION_DENY) : IP6_ERROR_NONE;
 			  b0->error = error_node->errors[error0];
 
-			  if (e0->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX
-			      || e0->action ==
-			      CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
-			    vnet_buffer (b0)->sw_if_index[VLIB_TX] =
-			      e0->metadata;
+			  if (!is_output)
+			    {
+			      if (e0->action ==
+				  CLASSIFY_ACTION_SET_IP4_FIB_INDEX
+				  || e0->action ==
+				  CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
+				vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+				  e0->metadata;
+			      else if (e0->action ==
+				       CLASSIFY_ACTION_SET_METADATA)
+				vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+				  e0->metadata;
+			    }
 			  break;
 			}
 		    }
