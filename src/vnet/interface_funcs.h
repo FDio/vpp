@@ -306,6 +306,7 @@ int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;
+format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
 format_function_t format_vnet_sw_interface_name_override;
