@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "36b91d2c_4b677ece",
+        "filename": "test/vpp_pppoe_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-03-16T08:35:16Z",
+      "side": 1,
+      "message": "the problem is that right after setting this to wrong value, you call super(VppPppoeInterface, self).__init__(test), which utilizes that value and this results in wrong behavior.",
+      "parentUuid": "7c54b15f_411fc50f",
+      "revId": "af40cfeb5dcc76f0f2458ee9e1df314b402cbb67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "828c4939_bf45a687",
         "filename": "test/vpp_pppoe_interface.py",
         "patchSetId": 2
