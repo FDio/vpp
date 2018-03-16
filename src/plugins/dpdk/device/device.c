@@ -715,6 +715,8 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .subif_add_del_function = dpdk_subif_add_del_function,
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .mac_addr_change_function = dpdk_set_mac_address,
+  .format_flow = format_dpdk_flow,
+  .flow_ops_function = dpdk_flow_ops_fn,
 };
 /* *INDENT-ON* */
 

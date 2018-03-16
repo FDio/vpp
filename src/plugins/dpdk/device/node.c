@@ -474,6 +474,40 @@ dpdk_set_next_from_etype (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
+static_always_inline void
+dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
+			   uword n_rx_packets)
+{
+  uword n;
+  dpdk_flow_lookup_entry_t *fle;
+  vlib_buffer_t *b0;
+
+  /* TODO prefetch and quad-loop */
+  for (n = 0; n < n_rx_packets; n++)
+    {
+      if ((ptd->flags[n] & (1 << DPDK_RX_F_FDIR)) == 0)
+	continue;
+
+      fle = vec_elt_at_index (xd->flow_lookup_entries,
+			      ptd->mbufs[n]->hash.fdir.hi);
+
+      if (fle->next_index != (u16) ~ 0)
+	ptd->next[n] = fle->next_index;
+
+      if (fle->flow_id != ~0)
+	{
+	  b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+	  b0->flow_id = fle->flow_id;
+	}
+
+      if (fle->buffer_advance != ~0)
+	{
+	  b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+	  vlib_buffer_advance (b0, fle->buffer_advance);
+	}
+    }
+}
+
 static_always_inline u32
 dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
@@ -548,6 +582,12 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
     }
   else
     dpdk_set_next_from_etype (vm, node, ptd, n_rx_packets);
+
+  /* flow offload - process if rx flow offlaod enabled and at least one packet
+     is marked */
+  if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
+		     (or_flags & (1 << DPDK_RX_F_FDIR))))
+    dpdk_process_flow_offload (xd, ptd, n_rx_packets);
 
   /* is at least one packet marked as ip4 checksum bad? */
   if (PREDICT_FALSE (or_flags & (1 << DPDK_RX_F_CKSUM_BAD)))

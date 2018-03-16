@@ -74,10 +74,13 @@ unformat_function_t unformat_ip46_address;
 
 /* Parse an IP4 address %d.%d.%d.%d. */
 unformat_function_t unformat_ip4_address;
+/* Parse an IP4 address and mask %d.%d.%d.%d/%d.%d.%d.%d */
+unformat_function_t unformat_ip4_address_and_mask;
 
 /* Format an IP4 address. */
 format_function_t format_ip4_address;
 format_function_t format_ip4_address_and_length;
+format_function_t format_ip4_address_and_mask;
 
 /* Parse an IP4 header. */
 unformat_function_t unformat_ip4_header;
@@ -92,8 +95,10 @@ unformat_function_t unformat_pg_ip4_header;
 
 /* IP6 */
 unformat_function_t unformat_ip6_address;
+unformat_function_t unformat_ip6_address_and_mask;
 format_function_t format_ip6_address;
 format_function_t format_ip6_address_and_length;
+format_function_t format_ip6_address_and_mask;
 unformat_function_t unformat_ip6_header;
 format_function_t format_ip6_header;
 unformat_function_t unformat_pg_ip6_header;
