@@ -934,60 +934,32 @@ set_unnumbered (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 unnumbered_sw_if_index;
-  u32 inherit_from_sw_if_index;
-  vnet_sw_interface_t *si;
-  int is_set = 0;
-  int is_del = 0;
-  u32 was_unnum;
+  u32 unnumbered_sw_if_index = ~0;
+  u32 inherit_from_sw_if_index = ~0;
+  int enable = 1;
 
   if (unformat (input, "%U use %U",
 		unformat_vnet_sw_interface, vnm, &unnumbered_sw_if_index,
 		unformat_vnet_sw_interface, vnm, &inherit_from_sw_if_index))
-    is_set = 1;
+    enable = 1;
   else if (unformat (input, "del %U",
 		     unformat_vnet_sw_interface, vnm,
 		     &unnumbered_sw_if_index))
-    is_del = 1;
+    enable = 0;
   else
     return clib_error_return (0, "parse error '%U'",
 			      format_unformat_error, input);
 
-  si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
-  was_unnum = (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED);
+  if (~0 == unnumbered_sw_if_index)
+    return clib_error_return (0, "Specify the unnumbered interface");
+  if (enable && ~0 == inherit_from_sw_if_index)
+    return clib_error_return (0, "When enabling unnumberered specify the"
+			      " IP enabled interface that it uses");
 
-  if (is_del)
-    {
-      si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
-      si->unnumbered_sw_if_index = (u32) ~ 0;
+  vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
+				       inherit_from_sw_if_index, enable);
 
-      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] = ~0;
-      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] = ~0;
-    }
-  else if (is_set)
-    {
-      si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
-      si->unnumbered_sw_if_index = inherit_from_sw_if_index;
-
-      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] =
-	ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[inherit_from_sw_if_index];
-      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] =
-	ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[inherit_from_sw_if_index];
-    }
-
-  if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
-    {
-      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, !is_del);
-      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, !is_del);
-    }
-
-  return 0;
+  return (NULL);
 }
 
 /* *INDENT-OFF* */
