@@ -2958,6 +2958,14 @@ VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
 };
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
+  .path = "q",
+  .short_help = "Exit CLI",
+  .function = unix_cli_quit,
+};
+/* *INDENT-ON* */
+
 /** CLI command to execute a VPP command script. */
 static clib_error_t *
 unix_cli_exec (vlib_main_t * vm,
