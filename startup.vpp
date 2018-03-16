@@ -1,0 +1,2 @@
+test device flow add src-ip 1.2.3.4 dst-ip 4.3.2.1 src-port 11 dst-port 12 proto UDP
+
