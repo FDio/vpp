@@ -1771,6 +1771,14 @@ tcp46_output_inline (vlib_main_t * vm,
 	  tcp_header_t *th0 = 0;
 	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
 
+	  if (n_left_from > 1)
+	    {
+	      vlib_buffer_t *pb;
+	      pb = vlib_get_buffer (vm, from[1]);
+	      vlib_prefetch_buffer_header (pb, STORE);
+	      CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+	    }
+
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;

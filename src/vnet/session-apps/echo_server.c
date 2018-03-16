@@ -375,6 +375,7 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   vec_validate (esm->rx_buf, num_threads - 1);
   vec_validate (esm->rx_retries, num_threads - 1);
 
+  esm->rcv_buffer_size = clib_max (esm->rcv_buffer_size, esm->fifo_size);
   for (i = 0; i < num_threads; i++)
     vec_validate (esm->rx_buf[i], esm->rcv_buffer_size);
 
