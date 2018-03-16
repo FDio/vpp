@@ -366,13 +366,13 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                       if (vec_elt(spd->ipv4_inbound_policy_discard_and_bypass_indices, j) == i) {
                         vec_del1 (spd->ipv4_inbound_policy_discard_and_bypass_indices, j);
                         break;
+                      }
                     }
                   }
               }
           }
           pool_put (spd->policies, vp);
           break;
-        }
       }));
       /* *INDENT-ON* */
     }
