@@ -232,7 +232,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_buffers >= 12 && n_left_to_next >= 4)
+      while (0 && n_buffers >= 12 && n_left_to_next >= 4)
 	{
 	  struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
 
@@ -428,6 +428,11 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  clib_memcpy (b0, bt, CLIB_CACHE_LINE_BYTES);
 
 	  bi0 = vlib_get_buffer_index (vm, b0);
+
+	  if (mb0->ol_flags & PKT_RX_FDIR)
+	    clib_warning ("fdir.hi %x\n%U\n%U", mb0->hash.fdir.hi,
+			  format_dpdk_rte_mbuf, mb0, b0->data,
+			  format_hexdump, b0->data, 64);
 
 	  to_next[0] = bi0;
 	  to_next++;
