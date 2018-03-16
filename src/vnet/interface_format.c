@@ -177,6 +177,21 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
 }
 
 u8 *
+format_vnet_hw_if_index_name (u8 * s, va_list * args)
+{
+  vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
+  u32 hw_if_index = va_arg (*args, u32);
+  vnet_hw_interface_t *hi;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hi == 0)
+    return format (s, "DELETED");
+
+  return format (s, "%v", hi->name);
+}
+
+u8 *
 format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 				vnet_sw_interface_t * si)
 {

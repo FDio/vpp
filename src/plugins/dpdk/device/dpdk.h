@@ -40,6 +40,7 @@
 #include <rte_sched.h>
 #include <rte_net.h>
 #include <rte_bus_pci.h>
+#include <rte_flow.h>
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/devices.h>
@@ -51,6 +52,7 @@
 #endif
 
 #include <vlib/pci/pci.h>
+#include <vnet/flow/flow.h>
 
 #define NB_MBUF   (16<<10)
 
@@ -154,6 +156,20 @@ typedef struct
 
 typedef struct
 {
+  u32 flow_id;
+  u32 mark;
+  struct rte_flow *handle;
+} dpdk_flow_entry_t;
+
+typedef struct
+{
+  u32 flow_id;
+  u8 next_index;
+} dpdk_flow_lookup_entry_t;
+
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 **lockp;
 
@@ -202,6 +218,12 @@ typedef struct
   u8 *buffer_pool_for_queue;
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
+
+  /* flow related */
+  dpdk_flow_entry_t *flow_entries;	/* pool */
+  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* vector */
+  uword *flow_mark_by_flow_id;
+  struct rte_flow_error last_flow_error;
 
   /* HQoS related */
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
@@ -450,7 +472,11 @@ format_function_t format_dpdk_tx_dma_trace;
 format_function_t format_dpdk_rx_dma_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
+format_function_t format_dpdk_flow;
 unformat_function_t unformat_dpdk_log_level;
+
+extern vnet_flow_interface_cb_t dpdk_flow_cb;
+
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
