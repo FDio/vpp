@@ -22,6 +22,29 @@
       "revId": "54b2c4c72823368b78962b3ee815f201d8b6fcad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f1039ee9_31a4ef98",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-03-16T10:57:33Z",
+      "side": 1,
+      "message": "need to handle ipv4 correctly. In this case it will be copied as ipv6.\n\n  if(ip46_address_is_ip4(\u0026t-\u003enext_hop))\n      memcpy (rmp-\u003exconnect_next_hop, \u0026t-\u003enext_hop.ip4, sizeof (ip4_address_t));\n    else\n      memcpy (rmp-\u003exconnect_next_hop, \u0026t-\u003enext_hop.ip6, sizeof (ip6_address_t));",
+      "range": {
+        "startLine": 214,
+        "startChar": 0,
+        "endLine": 214,
+        "endChar": 72
+      },
+      "revId": "54b2c4c72823368b78962b3ee815f201d8b6fcad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
