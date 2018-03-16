@@ -18,6 +18,7 @@
 
 #include <vnet/unix/pcap.h>
 #include <vnet/l3_types.h>
+#include <vnet/devices/flow.h>
 
 typedef enum
 {
@@ -53,7 +54,22 @@ typedef struct
   uword first_worker_thread_index;
   uword last_worker_thread_index;
   uword next_worker_thread_index;
+
+  /* pool of device flow entries */
+  vnet_device_flow_t *global_flow_pool;
+
+  /* hash */
+  uword *global_flow_pool_index_by_flow_id;
+
+  /* per hw_if_index data */
+  vnet_device_flow_hw_if_t *interfaces;
+
+  /* flow ids allocated */
+  u32 flows_used;
+
 } vnet_device_main_t;
+
+extern vnet_device_main_t device_main;
 
 typedef struct
 {
@@ -97,7 +113,7 @@ int vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 static inline u64
 vnet_get_aggregate_rx_packets (void)
 {
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   u64 sum = 0;
   vnet_device_per_worker_data_t *pwd;
 
@@ -109,7 +125,7 @@ vnet_get_aggregate_rx_packets (void)
 static inline void
 vnet_device_increment_rx_packets (u32 thread_index, u64 count)
 {
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vnet_device_per_worker_data_t *pwd;
 
   pwd = vec_elt_at_index (vdm->workers, thread_index);
