@@ -1,0 +1,583 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72045ffc_fdb5d6de",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Should use vec_foreach",
+      "range": {
+        "startLine": 371,
+        "startChar": 0,
+        "endLine": 375,
+        "endChar": 48
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f72062e4_a0f4f024",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Implement nat6 too",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c963df64_72fe4a17",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Seems to me that it would be better to have the output on a single line, since existing VIPs do so.",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "80cf7b1d_ac2def6b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why allocate memory if it is not a nat4 or nat6 VIP ?",
+      "range": {
+        "startLine": 618,
+        "startChar": 4,
+        "endLine": 618,
+        "endChar": 37
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "849e74bb_68deace8",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Be consistent with tabs and spaces.\nI would prefer you only use spaces everywhere.",
+      "range": {
+        "startLine": 626,
+        "startChar": 0,
+        "endLine": 626,
+        "endChar": 1
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07d5cf4c_5c58b105",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "This means the call will fail if called more than once for the same address.\nBut with NAT4 and NAT6, the VIP also includes the port. My guess is that the same clusterIP could be very well used for multiple services with different ports, no ? So I think we need to change something no ?",
+      "range": {
+        "startLine": 815,
+        "startChar": 2,
+        "endLine": 818,
+        "endChar": 3
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c91b99f7_e8133272",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 859,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "There is something strange. It looks to me that your load balancer can only support a single target_port. hence a single server.\nNormally, the way a lb works is that you define first a VIP, and then you add or remove  servers for that VIP. But here you only have both at the same time.",
+      "range": {
+        "startLine": 858,
+        "startChar": 0,
+        "endLine": 859,
+        "endChar": 60
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7badabf7_c978a655",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 891,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why doing this when only ClusterIP is used ?\nNodePort could very well be 0 here (i.e. disabled).\nbtw, you don\u0027t perform any sanity checks on the provided ports to make sure they are correctly set.",
+      "range": {
+        "startLine": 891,
+        "startChar": 6,
+        "endLine": 891,
+        "endChar": 62
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "512633a9_163b68f8",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 894,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "The error will occur when the same port is used for different VIPs. But we could have that.",
+      "range": {
+        "startLine": 894,
+        "startChar": 8,
+        "endLine": 894,
+        "endChar": 42
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a20fd2c_b3903365",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 901,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Only in NodeIP mode",
+      "range": {
+        "startLine": 900,
+        "startChar": 6,
+        "endLine": 901,
+        "endChar": 72
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "700f5965_9569d53b",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Nothing for ipv6 ?",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6c4084b_e3e5de47",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "There is no kube-proxy plugin anymore",
+      "range": {
+        "startLine": 36,
+        "startChar": 11,
+        "endLine": 36,
+        "endChar": 28
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "964ff1da_8900f9c6",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "There is no src ip4 address with GRE6, nor NAT6",
+      "range": {
+        "startLine": 75,
+        "startChar": 37,
+        "endLine": 75,
+        "endChar": 41
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cfc805bf_b332a9f0",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "There is no src ip6 address with GRE4",
+      "range": {
+        "startLine": 78,
+        "startChar": 32,
+        "endLine": 78,
+        "endChar": 36
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89edb096_9d1c64b7",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Could you provide an IPv6 example ?",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f3d569c2_6482c915",
+        "filename": "src/plugins/lb/lb_plugin_doc.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "nat4 is applicable in NAT6 case ?!",
+      "range": {
+        "startLine": 126,
+        "startChar": 20,
+        "endLine": 126,
+        "endChar": 24
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "12b6bb24_b1e5773f",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Could be just (is_input_v4)",
+      "range": {
+        "startLine": 525,
+        "startChar": 21,
+        "endLine": 525,
+        "endChar": 24
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b5227a31_274bdaf5",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Would make sense to trace the port too.",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ece31f48_77720e1e",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why don\u0027t you use \u0027match\u0027 ?\nThis adds unnecessary copies",
+      "range": {
+        "startLine": 584,
+        "startChar": 2,
+        "endLine": 589,
+        "endChar": 26
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "427fd384_4d99fb3f",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "This looks quite inefficient in the data-path.\nThere is no reason in the data-path to make a difference between the two cases.",
+      "range": {
+        "startLine": 651,
+        "startChar": 2,
+        "endLine": 666,
+        "endChar": 5
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "68b38e82_2d6ab85d",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 712,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Be consistent with tabs.\nI would prefer you only use spaces, since the whole lb plugin is written with spaces only.",
+      "range": {
+        "startLine": 712,
+        "startChar": 0,
+        "endLine": 712,
+        "endChar": 2
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e181ae0_d0798267",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why don\u0027t you use the ip proto directly rather than using this intermediary variable ?",
+      "range": {
+        "startLine": 733,
+        "startChar": 14,
+        "endLine": 733,
+        "endChar": 20
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a4b7fd6_3898319d",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 780,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why a disjunction here ?",
+      "range": {
+        "startLine": 757,
+        "startChar": 7,
+        "endLine": 780,
+        "endChar": 3
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f8aa46ed_1698e7bc",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "What if not UDP or TCP ?",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fad477ea_f2fb9d26",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1084,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Remove nat46 and nat64 cases (as agreed upon)",
+      "range": {
+        "startLine": 1052,
+        "startChar": 0,
+        "endLine": 1084,
+        "endChar": 2
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c7f2020_a32c3888",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1156,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Why would ip6-nodeport have all these next nodes ?\nlb6-nodeport only get ipv6 traffic right ?\nSame comment for lb4-nodeport",
+      "range": {
+        "startLine": 1153,
+        "startChar": 0,
+        "endLine": 1156,
+        "endChar": 47
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9dc5a57_168cb54f",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1210,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 1,
+      "message": "Remove all instances of nat46 and nat64 stuff.",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

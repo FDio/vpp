@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c01fdb17_9f0ac6ac",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-16T07:39:53Z",
+      "side": 0,
+      "message": "Why do you remove this ?",
+      "range": {
+        "startLine": 332,
+        "startChar": 0,
+        "endLine": 332,
+        "endChar": 41
+      },
+      "revId": "7139e757b13212f3fd8e3f3f401018375fed0c61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
