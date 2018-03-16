@@ -194,7 +194,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hi;
   dpdk_device_t *xd;
@@ -559,6 +559,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	 &xd->hw_if_index, dpdk_flag_change);
       if (error)
 	return error;
+
+      vnet_device_flow_register_cb (xd->hw_if_index, dpdk_device_flow_cb);
 
       /*
        * Ensure default mtu is not > the mtu read from the hardware.
