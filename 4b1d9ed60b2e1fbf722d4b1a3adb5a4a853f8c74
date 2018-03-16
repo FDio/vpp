@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3c5b73b_05d5addd",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-03-16T14:01:17Z",
+      "side": 1,
+      "message": "extern?",
+      "revId": "4b1d9ed60b2e1fbf722d4b1a3adb5a4a853f8c74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35a666de_2b0c7469",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-03-16T14:01:17Z",
+      "side": 1,
+      "message": "extern?",
+      "revId": "4b1d9ed60b2e1fbf722d4b1a3adb5a4a853f8c74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
