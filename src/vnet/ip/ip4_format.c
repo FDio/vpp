@@ -56,6 +56,21 @@ format_ip4_address_and_length (u8 * s, va_list * args)
   return format (s, "%U/%d", format_ip4_address, a, l);
 }
 
+u8 *
+format_ip4_address_and_mask (u8 * s, va_list * args)
+{
+  ip4_address_and_mask_t *am = va_arg (*args, ip4_address_and_mask_t *);
+
+  if (am->addr.as_u32 == 0 && am->mask.as_u32 == 0)
+    return format (s, "any");
+
+  if (am->mask.as_u32 == ~0)
+    return format (s, "%U", format_ip4_address, &am->addr);
+
+  return format (s, "%U/%U", format_ip4_address, &am->addr,
+		 format_ip4_address, &am->mask);
+}
+
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
 unformat_ip4_address (unformat_input_t * input, va_list * args)
@@ -74,6 +89,27 @@ unformat_ip4_address (unformat_input_t * input, va_list * args)
   result[2] = a[2];
   result[3] = a[3];
 
+  return 1;
+}
+
+uword
+unformat_ip4_address_and_mask (unformat_input_t * input, va_list * args)
+{
+  ip4_address_and_mask_t *am = va_arg (*args, ip4_address_and_mask_t *);
+  u32 addr = 0, mask = 0;
+
+  if (unformat (input, "any"))
+    ;
+  else if (unformat (input, "%U/%U", unformat_ip4_address, &addr,
+		     unformat_ip4_address, &mask))
+    ;
+  else if (unformat (input, "%U", unformat_ip4_address, &addr))
+    mask = ~0;
+  else
+    return 0;
+
+  am->addr.as_u32 = addr;
+  am->mask.as_u32 = mask;
   return 1;
 }
 
