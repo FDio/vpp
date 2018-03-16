@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1144208_c7cc9537",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 10368,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-03-16T09:24:52Z",
+      "side": 1,
+      "message": "this should be ip4_address_t",
+      "range": {
+        "startLine": 10368,
+        "startChar": 30,
+        "endLine": 10368,
+        "endChar": 43
+      },
+      "revId": "54b2c4c72823368b78962b3ee815f201d8b6fcad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
