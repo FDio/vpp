@@ -144,7 +144,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 *data0;
   int i, n_bytes_read;
   u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
-  u32 buffers_allocated, buffers_allocated_this_call;
+  u32 bufs_alloc, bufs_this_call;
 
   next_index = next0 = smm->session_type_to_next[s0->session_type];
 
@@ -211,6 +211,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   n_bufs = vec_len (smm->tx_buffers[thread_index]);
   left_to_snd0 = max_len_to_snd0;
+  n_frames_per_evt = 1;
   for (i = 0; i < n_frames_per_evt; i++)
     {
       /* Make sure we have at least one full frame of buffers ready */
@@ -218,23 +219,18 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vec_validate (smm->tx_buffers[thread_index],
 			n_bufs + n_bufs_per_frame - 1);
-	  buffers_allocated = 0;
+	  bufs_alloc = 0;
 	  do
 	    {
-	      buffers_allocated_this_call = vlib_buffer_alloc (vm,
-							       &smm->tx_buffers
-							       [thread_index]
-							       [n_bufs +
-								buffers_allocated],
-							       n_bufs_per_frame
-							       -
-							       buffers_allocated);
-	      buffers_allocated += buffers_allocated_this_call;
+	      bufs_this_call = vlib_buffer_alloc (
+		  vm, &smm->tx_buffers[thread_index][n_bufs + bufs_alloc],
+		  n_bufs_per_frame - bufs_alloc);
+	      bufs_alloc += bufs_this_call;
 	    }
-	  while (buffers_allocated_this_call > 0
-		 && ((buffers_allocated + n_bufs < n_bufs_per_frame)));
+	  while (bufs_this_call > 0
+		 && ((bufs_alloc + n_bufs < n_bufs_per_frame)));
 
-	  n_bufs += buffers_allocated;
+	  n_bufs += bufs_alloc;
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
 	  if (PREDICT_FALSE (n_bufs < n_bufs_per_frame))
@@ -264,11 +260,21 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->error = 0;
-	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	  b0->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
 
 	  len_to_deq0 = clib_min (left_to_snd0, deq_per_first_buf);
+
+	  if (left_to_snd0 > len_to_deq0)
+	    {
+	      vlib_buffer_t *pb;
+	      pb = vlib_get_buffer (vm,
+	                            smm->tx_buffers[thread_index][n_bufs - 1]);
+	      vlib_prefetch_buffer_header (pb, LOAD);
+	      CLIB_PREFETCH (pb->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
+
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 	  if (peek_data)
 	    {
