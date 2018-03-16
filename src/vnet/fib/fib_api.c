@@ -217,7 +217,7 @@ fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
         out->is_drop = true;
         break;
     case DPO_IP_NULL:
-        switch (api_rpath->dpo.dpoi_index)
+        switch (ip_null_dpo_get_action(api_rpath->dpo.dpoi_index))
         {
         case IP_NULL_ACTION_NONE:
             out->is_drop = true;
