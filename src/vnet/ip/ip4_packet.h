@@ -77,6 +77,11 @@ typedef struct
   ip4_address_t src, dst;
 } ip4_address_pair_t;
 
+typedef struct
+{
+  ip4_address_t addr, mask;
+} ip4_address_and_mask_t;
+
 /* If address is a valid netmask, return length of mask. */
 always_inline uword
 ip4_address_netmask_length (ip4_address_t * a)
