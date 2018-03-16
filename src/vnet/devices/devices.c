@@ -19,7 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-vnet_device_main_t vnet_device_main;
+vnet_device_main_t device_main;
 
 static uword
 device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -138,7 +138,7 @@ void
 vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 				    u16 queue_id, uword thread_index)
 {
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vlib_main_t *vm, *vm0;
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
@@ -345,7 +345,7 @@ vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 static clib_error_t *
 vnet_device_init (vlib_main_t * vm)
 {
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_thread_registration_t *tr;
   uword *p;

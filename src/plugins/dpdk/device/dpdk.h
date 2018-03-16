@@ -42,7 +42,6 @@
 #include <rte_bus_pci.h>
 
 #include <vnet/unix/pcap.h>
-#include <vnet/devices/devices.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
@@ -50,6 +49,7 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#include <vnet/devices/devices.h>
 #include <vlib/pci/pci.h>
 
 #define NB_MBUF   (16<<10)
@@ -451,6 +451,9 @@ format_function_t format_dpdk_rx_dma_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 unformat_function_t unformat_dpdk_log_level;
+
+extern vnet_device_flow_cb_t dpdk_device_flow_cb;
+
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
