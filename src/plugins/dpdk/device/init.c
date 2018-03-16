@@ -194,7 +194,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_main_t *vdm = &device_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hi;
   dpdk_device_t *xd;
@@ -1658,6 +1658,11 @@ dpdk_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
     return error;
 
+  vnet_device_flow_register_cb (VNET_DEVICE_FLOW_TYPE_IP4_VXLAN,
+				dpdk_device_flow_vxlan4_cb);
+
+  vnet_device_flow_register_cb (VNET_DEVICE_FLOW_TYPE_IP6_VXLAN,
+				dpdk_device_flow_vxlan4_cb);
   return error;
 }
 
