@@ -96,6 +96,12 @@ ip_null_dpo_get (index_t indi)
     return (&ip_null_dpos[indi]);
 }
 
+ip_null_dpo_action_t
+ip_null_dpo_get_action (index_t indi)
+{
+    return (ip_null_dpos[indi].ind_action);
+}
+
 static void
 ip_null_dpo_lock (dpo_id_t *dpo)
 {

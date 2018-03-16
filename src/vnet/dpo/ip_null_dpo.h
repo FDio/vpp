@@ -53,4 +53,6 @@ extern void ip_null_dpo_add_and_lock (dpo_proto_t proto,
 
 extern void ip_null_dpo_module_init(void);
 
+extern ip_null_dpo_action_t ip_null_dpo_get_action(index_t indi);
+
 #endif
