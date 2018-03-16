@@ -1713,6 +1713,14 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_connection_t *tc0;
 	  u32 next0 = tcp_next_drop (is_ip4), error0 = TCP_ERROR_ENQUEUED;
 
+	  if (n_left_from > 1)
+	    {
+	      vlib_buffer_t *pb;
+	      pb = vlib_get_buffer (vm, from[1]);
+	      vlib_prefetch_buffer_header (pb, LOAD);
+	      CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
+
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
