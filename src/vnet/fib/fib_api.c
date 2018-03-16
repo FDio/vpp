@@ -220,12 +220,15 @@ fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
         switch (api_rpath->dpo.dpoi_index)
         {
         case IP_NULL_ACTION_NONE:
+        case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_NONE:
             out->is_drop = true;
             break;
         case IP_NULL_ACTION_SEND_ICMP_UNREACH:
+        case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_UNREACH:
             out->is_unreach = true;
             break;
         case IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
+        case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
             out->is_prohibit = true;
             break;
         default:
