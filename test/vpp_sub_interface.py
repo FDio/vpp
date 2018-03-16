@@ -196,6 +196,8 @@ class VppP2PSubint(VppSubInterface):
         r = test.vapi.create_p2pethernet_subif(parent.sw_if_index,
                                                remote_mac, sub_id)
         self._sw_if_index = r.sw_if_index
+        self.parent_sw_if_index = parent.sw_if_index
+        self.p2p_remote_mac = remote_mac
         super(VppP2PSubint, self).__init__(test, parent, sub_id)
 
     def add_dot1_layer(self, packet):

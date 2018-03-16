@@ -126,15 +126,19 @@ class P2PEthernetIPV6(VppTestCase):
         super(P2PEthernetIPV6, self).setUp()
         for p in self.packets:
             self.packets.remove(p)
-        self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
-        self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
-        self.p2p_sub_ifs[0].config_ip6()
-        self.p2p_sub_ifs[1].config_ip6()
+        self.p2p_sub_ifs.append(
+            self.create_p2p_ethernet(self.pg0, 1,
+                                     self.pg0._remote_hosts[0].mac))
+        self.p2p_sub_ifs.append(
+            self.create_p2p_ethernet(self.pg0, 2,
+                                     self.pg0._remote_hosts[1].mac))
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
-        self.delete_p2p_ethernet(self.pg0, self.pg0._remote_hosts[0].mac)
-        self.delete_p2p_ethernet(self.pg0, self.pg0._remote_hosts[1].mac)
+        while len(self.p2p_sub_ifs):
+            p2p = self.p2p_sub_ifs.pop()
+            self.delete_p2p_ethernet(p2p)
+
         super(P2PEthernetIPV6, self).tearDown()
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
@@ -142,11 +146,13 @@ class P2PEthernetIPV6(VppTestCase):
         p2p.admin_up()
         p2p.config_ip6()
         p2p.disable_ipv6_ra()
-        self.p2p_sub_ifs.append(p2p)
+        return p2p
 
-    def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.delete_p2pethernet_subif(parent_if.sw_if_index,
-                                           mactobinary(remote_mac))
+    def delete_p2p_ethernet(self, p2p):
+        p2p.unconfig_ip6()
+        p2p.admin_down()
+        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
+                                           p2p.p2p_remote_mac)
 
     def create_stream(self, src_mac=None, dst_mac=None,
                       src_ip=None, dst_ip=None, size=None):
@@ -355,15 +361,18 @@ class P2PEthernetIPV4(VppTestCase):
         super(P2PEthernetIPV4, self).setUp()
         for p in self.packets:
             self.packets.remove(p)
-        self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
-        self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
-        self.p2p_sub_ifs[0].config_ip4()
-        self.p2p_sub_ifs[1].config_ip4()
+        self.p2p_sub_ifs.append(
+            self.create_p2p_ethernet(self.pg0, 1,
+                                     self.pg0._remote_hosts[0].mac))
+        self.p2p_sub_ifs.append(
+            self.create_p2p_ethernet(self.pg0, 2,
+                                     self.pg0._remote_hosts[1].mac))
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
-        self.delete_p2p_ethernet(self.pg0, self.pg0._remote_hosts[0].mac)
-        self.delete_p2p_ethernet(self.pg0, self.pg0._remote_hosts[1].mac)
+        while len(self.p2p_sub_ifs):
+            p2p = self.p2p_sub_ifs.pop()
+            self.delete_p2p_ethernet(p2p)
         super(P2PEthernetIPV4, self).tearDown()
 
     def create_stream(self, src_mac=None, dst_mac=None,
@@ -401,11 +410,13 @@ class P2PEthernetIPV4(VppTestCase):
         p2p = VppP2PSubint(self, parent_if, sub_id, mactobinary(remote_mac))
         p2p.admin_up()
         p2p.config_ip4()
-        self.p2p_sub_ifs.append(p2p)
+        return p2p
 
-    def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.delete_p2pethernet_subif(parent_if.sw_if_index,
-                                           mactobinary(remote_mac))
+    def delete_p2p_ethernet(self, p2p):
+        p2p.unconfig_ip4()
+        p2p.admin_down()
+        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
+                                           p2p.p2p_remote_mac)
 
     def test_ip4_rx_p2p_subif(self):
         """receive ipv4 packet via p2p subinterface"""
