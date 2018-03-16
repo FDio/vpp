@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "533adfaa_50c4c00c",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-03-16T12:35:23Z",
+      "side": 1,
+      "message": "this is ok for DX functions, but for DT functions sw_if_index represents lookup fib table, therefore it fails. It needs to be behavior aware and needs to be verified differently for EndT functions.",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 28
+      },
+      "revId": "54b2c4c72823368b78962b3ee815f201d8b6fcad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f1039ee9_31a4ef98",
         "filename": "src/vnet/srv6/sr_api.c",
         "patchSetId": 3
