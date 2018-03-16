@@ -817,7 +817,7 @@ vlib_buffer_add_data (vlib_main_t * vm,
   void *d;
 
   bi = buffer_index;
-  if (bi == 0
+  if (bi == ~0
       && 1 != vlib_buffer_alloc_from_free_list (vm, &bi, 1, free_list_index))
     goto out_of_buffers;
 
