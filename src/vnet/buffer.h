@@ -113,10 +113,16 @@ _(tcp)
 typedef struct
 {
   u32 sw_if_index[VLIB_N_RX_TX];
+
+  /* flow id is shared resource between different features. It is typicaly
+     set by NIC hardware flow offload but it can also be set by other graph
+     node. Applications must request range of flow ids by calling
+     vnet_flow_get_range(...) before they start using them. Datapath code
+     should never overwrite existing flow_id set by another feature */
+  u32 flow_id;
   i16 l2_hdr_offset;
-  i16 l3_hdr_offset;
-  i16 l4_hdr_offset;
-  u16 dont_waste_me;
+  i8 l3_hdr_offset;		/* TODO convert to u8 l2_hdr_sz */
+  i8 l4_hdr_offset;		/* TODO convert to u8 l3_hdr_sz */
 
   union
   {

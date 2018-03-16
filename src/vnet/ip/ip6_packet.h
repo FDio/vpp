@@ -53,6 +53,11 @@ typedef union
 }
 ip6_address_t;
 
+typedef struct
+{
+  ip6_address_t addr, mask;
+} ip6_address_and_mask_t;
+
 /* Packed so that the mhash key doesn't include uninitialized pad bytes */
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {

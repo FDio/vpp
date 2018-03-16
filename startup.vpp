@@ -1,0 +1,14 @@
+test flow add src-ip 172.16.0.2 dst-ip 172.16.1.2 src-port 1025 dst-port 12 proto UDP
+test flow add src-ip 172.16.2.2 dst-ip 172.16.2.1 dst-port 5555 proto UDP next-node error-drop buffer-advance 14
+set int ip address TwentyFiveGigabitEthernet3b/0/0 172.16.0.1/24
+set int ip address TwentyFiveGigabitEthernet3b/0/1 172.16.1.1/24
+set int ip address TenGigabitEthernet86/0/0 172.16.2.1/24
+set int ip address TenGigabitEthernet60/0/1 192.168.123.222/24
+set interface state TwentyFiveGigabitEthernet3b/0/0 up
+set interface state TwentyFiveGigabitEthernet3b/0/1 up
+set interface state TenGigabitEthernet86/0/0 up
+set interface state TenGigabitEthernet60/0/1 up
+test flow enable id 1 TwentyFiveGigabitEthernet3b/0/0
+test flow enable id 2 TenGigabitEthernet86/0/0
+trace add dpdk-input 10
+
