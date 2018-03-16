@@ -81,6 +81,20 @@ typedef clib_error_t *(vnet_interface_set_l2_mode_function_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    i32 l2_if_adjust);
 
+typedef enum
+{
+  VNET_FLOW_DEV_OP_ADD_FLOW,
+  VNET_FLOW_DEV_OP_DEL_FLOW,
+  VNET_FLOW_DEV_OP_GET_COUNTER,
+  VNET_FLOW_DEV_OP_RESET_COUNTER,
+} vnet_flow_dev_op_t;
+
+/* Interface flow opeations callback. */
+typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t * vnm,
+					    vnet_flow_dev_op_t op,
+					    u32 hw_if_index, u32 index,
+					    uword * private_data);
+
 typedef enum vnet_interface_function_priority_t_
 {
   VNET_ITF_FUNC_PRIORITY_LOW,
@@ -189,6 +203,9 @@ typedef struct _vnet_device_class
   int (*name_renumber) (struct vnet_hw_interface_t * hi,
 			u32 new_dev_instance);
 
+  /* Interface flow offload operations */
+  vnet_flow_dev_ops_function_t *flow_ops_function;
+
   /* Format device instance as name. */
   format_function_t *format_device_name;
 
@@ -200,6 +217,9 @@ typedef struct _vnet_device_class
 
   /* Trace buffer format for TX function. */
   format_function_t *format_tx_trace;
+
+  /* Format flow offload entry */
+  format_function_t *format_flow;
 
   /* Function to clear hardware counters for device. */
   void (*clear_counters) (u32 dev_class_instance);
