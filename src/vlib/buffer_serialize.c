@@ -216,7 +216,7 @@ serialize_close_vlib_buffer (serialize_main_t * m)
     {
       sm->last_buffer
 	= vlib_buffer_add_data (sm->vlib_main, sm->tx.free_list_index,
-				sm->last_buffer == ~0 ? 0 : sm->last_buffer,
+				sm->last_buffer,
 				s->overflow_buffer,
 				vec_len (s->overflow_buffer));
       _vec_len (s->overflow_buffer) = 0;
