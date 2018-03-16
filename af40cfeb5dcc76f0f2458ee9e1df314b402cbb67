@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7c54b15f_411fc50f",
+        "filename": "test/vpp_pppoe_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-03-16T05:14:29Z",
+      "side": 1,
+      "message": "Hi, this is a initial value, and the real value is set after creating pppoe session in add_vpp_config. So I think this value here should be 0 or 0xFFFFFFFF?",
+      "parentUuid": "e98ed191_3774242d",
+      "revId": "af40cfeb5dcc76f0f2458ee9e1df314b402cbb67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "828c4939_bf45a687",
         "filename": "test/vpp_pppoe_interface.py",
         "patchSetId": 2
