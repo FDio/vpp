@@ -385,6 +385,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
 		  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
@@ -559,6 +560,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	 &xd->hw_if_index, dpdk_flag_change);
       if (error)
 	return error;
+
+      vnet_flow_register_cb (xd->hw_if_index, dpdk_flow_cb);
 
       /*
        * Ensure default mtu is not > the mtu read from the hardware.
