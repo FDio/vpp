@@ -139,6 +139,10 @@ if ENABLE_TLSOPENSSL_PLUGIN
 include tlsopenssl.am
 endif
 
+if ENABLE_VMXNET3_PLUGIN
+include vmxnet3.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
