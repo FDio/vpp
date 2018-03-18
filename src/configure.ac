@@ -322,6 +322,7 @@ PLUGIN_ENABLED(srv6as)
 PLUGIN_ENABLED(stn)
 PLUGIN_ENABLED(tlsmbedtls)
 PLUGIN_ENABLED(tlsopenssl)
+PLUGIN_ENABLED(vmxnet3)
 
 ###############################################################################
 # Dependency checks
