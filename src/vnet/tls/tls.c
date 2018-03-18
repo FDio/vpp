@@ -189,7 +189,8 @@ tls_notify_app_enqueue (tls_ctx_t * ctx, stream_session_t * app_session)
 {
   application_t *app;
   app = application_get_if_valid (app_session->app_index);
-  tls_add_app_q_evt (app, app_session);
+  if (PREDICT_TRUE (app != 0))
+    tls_add_app_q_evt (app, app_session);
 }
 
 int
