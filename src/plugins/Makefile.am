@@ -143,6 +143,10 @@ if ENABLE_UNITTEST_PLUGIN
 include unittest.am
 endif
 
+if ENABLE_VMXNET3_PLUGIN
+include vmxnet3.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
