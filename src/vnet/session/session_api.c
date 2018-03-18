@@ -1131,6 +1131,11 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
   memset (a, 0, sizeof (*a));
   a->app_index = app->index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
+  if (cert_len > 10000)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
   vec_validate (a->cert, cert_len);
   clib_memcpy (a->cert, mp->cert, cert_len);
   if ((error = vnet_app_add_tls_cert (a)))
@@ -1166,6 +1171,11 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
   memset (a, 0, sizeof (*a));
   a->app_index = app->index;
   key_len = clib_net_to_host_u16 (mp->key_len);
+  if (key_len > 10000)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
   vec_validate (a->key, key_len);
   clib_memcpy (a->key, mp->key, key_len);
   if ((error = vnet_app_add_tls_key (a)))
