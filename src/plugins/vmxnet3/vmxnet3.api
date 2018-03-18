@@ -1,0 +1,125 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+option version = "1.0.0";
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pci_addr - pci address as unsigned 32bit integer:
+		      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function 
+		      ddddddddddddddddbbbbbbbbsssssfff
+    @param enable_elog - turn on elog (optional - default is off)
+    @param rxq_size - receive queue size (optional - default is 1024)
+    @param txq_size - transmit queue size (optional - default is 1024)
+*/
+
+define vmxnet3_create
+{
+  u32 client_index;
+  u32 context;
+
+  u32 pci_addr;
+  i32 enable_elog;
+  u16 rxq_size;
+  u16 txq_size;
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new vmxnet3 interface
+*/
+
+define vmxnet3_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+*/
+
+autoreply define vmxnet3_delete
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+};
+
+/** \brief Memory interface details structure
+    @param context - sender context, to match reply w/ request (memif_dump)
+    @param sw_if_index - index of the interface
+    @param if_name - name of the interface
+    @param hw_addr - interface MAC address
+    @param id - id associated with the interface
+    @param role - role of the interface in the connection (master/slave)
+    @param mode - interface mode
+    @param socket_id - id of the socket filename used by this interface
+           to establish new connections
+    @param ring_size - the number of entries of RX/TX rings
+    @param buffer_size - size of the buffer allocated for each ring entry
+    @param admin_up_down - interface administrative status
+    @param link_up_down - interface link status
+
+*/
+define vmxnet3_details
+{
+  u32 context;
+
+  u32 sw_if_index;
+  u8 if_name[64];
+  u8 hw_addr[6];
+  u32 pci_addr;
+  u8 version;
+
+  u16 rx_qid;
+  u16 rx_qsize;
+  u16 rx_fill[2];
+  u16 rx_next;
+  u16 rx_produce[2];
+  u16 rx_consume[2];
+
+  u16 tx_qid;
+  u16 tx_qsize;
+  u16 tx_next;
+  u16 tx_produce;
+  u16 tx_consume;
+
+  u8 admin_up_down;
+};
+
+/** \brief Dump all vmxnet3 interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vmxnet3_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
