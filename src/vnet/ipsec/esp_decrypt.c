@@ -268,9 +268,10 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE (!sa0->is_tunnel && !sa0->is_tunnel_ip6))
 		{
 		  tunnel_mode = 0;
+
 		  ih4 =
-		    (ip4_header_t *) (i_b0->data +
-				      sizeof (ethernet_header_t));
+		    (ip4_header_t *) ((u8 *) i_b0->data +
+				      vnet_buffer (i_b0)->l3_hdr_offset);
 		  if (PREDICT_TRUE
 		      ((ih4->ip_version_and_header_length & 0xF0) != 0x40))
 		    {
@@ -280,9 +281,7 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 			{
 			  transport_ip6 = 1;
 			  ip_hdr_size = sizeof (ip6_header_t);
-			  ih6 =
-			    (ip6_header_t *) (i_b0->data +
-					      sizeof (ethernet_header_t));
+			  ih6 = (ip6_header_t *) ih4;
 			  oh6 = vlib_buffer_get_current (o_b0);
 			}
 		      else
