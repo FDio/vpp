@@ -1552,13 +1552,13 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 int collect_detailed_interface_stats_flag = 0;
 
 void
-collect_detailed_interface_stats_flag_set ()
+collect_detailed_interface_stats_flag_set (void)
 {
   collect_detailed_interface_stats_flag = 1;
 }
 
 void
-collect_detailed_interface_stats_flag_clear ()
+collect_detailed_interface_stats_flag_clear (void)
 {
   collect_detailed_interface_stats_flag = 0;
 }

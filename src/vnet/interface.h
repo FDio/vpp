@@ -662,13 +662,13 @@ typedef enum
 extern int collect_detailed_interface_stats_flag;
 
 static inline int
-collect_detailed_interface_stats ()
+collect_detailed_interface_stats (void)
 {
   return collect_detailed_interface_stats_flag;
 }
 
-void collect_detailed_interface_stats_flag_set ();
-void collect_detailed_interface_stats_flag_clear ();
+void collect_detailed_interface_stats_flag_set (void);
+void collect_detailed_interface_stats_flag_clear (void);
 
 
 typedef struct
