@@ -1348,11 +1348,15 @@ typedef struct
   u32 arp_table_index;
   u32 dot1q_table_index;
   u32 dot1ad_table_index;
+  u32 arp_dot1q_table_index;
+  u32 arp_dot1ad_table_index;
   /* egress tables */
   u32 out_table_index;
   u32 out_arp_table_index;
   u32 out_dot1q_table_index;
   u32 out_dot1ad_table_index;
+  u32 out_arp_dot1q_table_index;
+  u32 out_arp_dot1ad_table_index;
 } macip_match_type_t;
 
 static u32
@@ -1473,10 +1477,14 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  mvec[match_type_index].arp_table_index = ~0;
 	  mvec[match_type_index].dot1q_table_index = ~0;
 	  mvec[match_type_index].dot1ad_table_index = ~0;
+	  mvec[match_type_index].arp_dot1q_table_index = ~0;
+	  mvec[match_type_index].arp_dot1ad_table_index = ~0;
 	  mvec[match_type_index].out_table_index = ~0;
 	  mvec[match_type_index].out_arp_table_index = ~0;
 	  mvec[match_type_index].out_dot1q_table_index = ~0;
 	  mvec[match_type_index].out_dot1ad_table_index = ~0;
+	  mvec[match_type_index].out_arp_dot1q_table_index = ~0;
+	  mvec[match_type_index].out_arp_dot1ad_table_index = ~0;
 	}
       mvec[match_type_index].count++;
       mvec[match_type_index].has_egress |=
@@ -1492,6 +1500,10 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   {
     int mask_len;
     int is6 = mt->is_ipv6;
+    int tags;
+    u32 *last_tag_table;
+    u32 *out_last_tag_table;
+    u32 l3_offset;
 
     if (!is6)
       {
@@ -1522,41 +1534,91 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	   |                               |
 	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	memset (mask, 0, sizeof (mask));
-	/* source MAC address */
-	memcpy (&mask[6], mt->mac_mask, 6);
-	memset (&mask[12], 0xff, 2);	/* ethernet protocol */
-	/* sender hardware address within ARP */
-	memcpy (&mask[14 + 8], mt->mac_mask, 6);
-	/* sender protocol address within ARP */
-	for (i = 0; i < (mt->prefix_len / 8); i++)
-	  mask[14 + 14 + i] = 0xff;
-	if (mt->prefix_len % 8)
-	  mask[14 + 14 + (mt->prefix_len / 8)] =
-	    0xff - ((1 << (8 - mt->prefix_len % 8)) - 1);
-
-	mask_len = ((14 + 14 + ((mt->prefix_len + 7) / 8) +
-		     (sizeof (u32x4) - 1)) / sizeof (u32x4)) * sizeof (u32x4);
-	acl_classify_add_del_table_small (cm, mask, mask_len, last_table,
-					  (~0 == last_table) ? 0 : ~0,
-					  &mt->arp_table_index, 1);
-	last_table = mt->arp_table_index;
-	if (mt->has_egress)
+	for (tags = 2; tags >= 0; tags--)
 	  {
-	    /* egress ARP table */
 	    memset (mask, 0, sizeof (mask));
-	    // memcpy (&mask[0], mt->mac_mask, 6);
-	    memset (&mask[12], 0xff, 2);	/* ethernet protocol */
-	    /* AYXX: FIXME here - can we tighten the ARP-related table more ? */
-	    /* mask captures just the destination and the ethertype */
-	    mask_len = ((14 +
+	    /* source MAC address */
+	    memcpy (&mask[6], mt->mac_mask, 6);
+
+	    switch (tags)
+	      {
+	      case 0:
+	      default:
+		memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 14;
+		last_tag_table = &mt->arp_table_index;
+		break;
+	      case 1:
+		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 18;
+		last_tag_table = &mt->arp_dot1q_table_index;
+		break;
+	      case 2:
+		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+		memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 22;
+		last_tag_table = &mt->arp_dot1ad_table_index;
+		break;
+	      }
+
+	    /* sender hardware address within ARP */
+	    memcpy (&mask[l3_offset + 8], mt->mac_mask, 6);
+	    /* sender protocol address within ARP */
+	    for (i = 0; i < (mt->prefix_len / 8); i++)
+	      mask[l3_offset + 14 + i] = 0xff;
+	    if (mt->prefix_len % 8)
+	      mask[l3_offset + 14 + (mt->prefix_len / 8)] =
+		0xff - ((1 << (8 - mt->prefix_len % 8)) - 1);
+
+	    mask_len = ((l3_offset + 14 + ((mt->prefix_len + 7) / 8) +
 			 (sizeof (u32x4) -
 			  1)) / sizeof (u32x4)) * sizeof (u32x4);
-	    acl_classify_add_del_table_small (cm, mask, mask_len,
-					      out_last_table,
-					      (~0 == out_last_table) ? 0 : ~0,
-					      &mt->out_arp_table_index, 1);
-	    out_last_table = mt->out_arp_table_index;
+	    acl_classify_add_del_table_small (cm, mask, mask_len, last_table,
+					      (~0 == last_table) ? 0 : ~0,
+					      last_tag_table, 1);
+	    last_table = *last_tag_table;
+	    if (mt->has_egress)
+	      {
+		/* egress ARP table */
+		memset (mask, 0, sizeof (mask));
+
+		switch (tags)
+		  {
+		  case 0:
+		  default:
+		    memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		    l3_offset = 14;
+		    out_last_tag_table = &mt->out_arp_table_index;
+		    break;
+		  case 1:
+		    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		    memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		    l3_offset = 18;
+		    out_last_tag_table = &mt->out_arp_dot1q_table_index;
+		    break;
+		  case 2:
+		    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		    memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+		    memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		    l3_offset = 22;
+		    out_last_tag_table = &mt->out_arp_dot1ad_table_index;
+		    break;
+		  }
+
+		/* AYXX: FIXME here - can we tighten the ARP-related table more ? */
+		/* mask captures just the destination and the ethertype */
+		mask_len = ((l3_offset +
+			     (sizeof (u32x4) -
+			      1)) / sizeof (u32x4)) * sizeof (u32x4);
+		acl_classify_add_del_table_small (cm, mask, mask_len,
+						  out_last_table,
+						  (~0 ==
+						   out_last_table) ? 0 : ~0,
+						  out_last_tag_table, 1);
+		out_last_table = *out_last_tag_table;
+	      }
 	  }
       }
   }
@@ -1746,15 +1808,45 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	{
 	  memset (mask, 0, sizeof (mask));
 	  memcpy (&mask[6], a->rules[i].src_mac, 6);
-	  mask[12] = 0x08;
-	  mask[13] = 0x06;
-	  memcpy (&mask[14 + 8], a->rules[i].src_mac, 6);
-	  memcpy (&mask[14 + 14], &a->rules[i].src_ip_addr.ip4, 4);
-	  vnet_classify_add_del_session (cm,
-					 mvec
-					 [match_type_index].arp_table_index,
-					 mask, a->rules[i].is_permit ? ~0 : 0,
-					 i, 0, action, metadata, 1);
+
+	  for (tags = 2; tags >= 0; tags--)
+	    {
+	      switch (tags)
+		{
+		case 0:
+		default:
+		  tag_table = mvec[match_type_index].arp_table_index;
+		  mask[12] = 0x08;
+		  mask[13] = 0x06;
+		  l3_src_offs = 14;
+		  break;
+		case 1:
+		  tag_table = mvec[match_type_index].arp_dot1q_table_index;
+		  mask[12] = 0x81;
+		  mask[13] = 0x00;
+		  mask[16] = 0x08;
+		  mask[17] = 0x06;
+		  l3_src_offs = 18;
+		  break;
+		case 2:
+		  tag_table = mvec[match_type_index].arp_dot1ad_table_index;
+		  mask[12] = 0x88;
+		  mask[13] = 0xa8;
+		  mask[16] = 0x81;
+		  mask[17] = 0x00;
+		  mask[20] = 0x08;
+		  mask[21] = 0x06;
+		  l3_src_offs = 22;
+		  break;
+		}
+
+	      memcpy (&mask[l3_src_offs + 8], a->rules[i].src_mac, 6);
+	      memcpy (&mask[l3_src_offs + 14], &a->rules[i].src_ip_addr.ip4,
+		      4);
+	      vnet_classify_add_del_session (cm, tag_table, mask,
+					     a->rules[i].is_permit ? ~0 : 0,
+					     i, 0, action, metadata, 1);
+	    }
 	}
       if (macip_permit_also_egress (a->rules[i].is_permit))
 	{
@@ -1813,16 +1905,43 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  /* add ARP table entry too */
 	  if (!is6 && (mvec[match_type_index].out_arp_table_index != ~0))
 	    {
-	      memset (mask, 0, sizeof (mask));
-	      memcpy (&mask[0], a->rules[i].src_mac, 6);
-	      mask[12] = 0x08;
-	      mask[13] = 0x06;
-	      vnet_classify_add_del_session (cm,
-					     mvec
-					     [match_type_index].out_arp_table_index,
-					     mask,
-					     a->rules[i].is_permit ? ~0 : 0,
-					     i, 0, action, metadata, 1);
+	      for (tags = 2; tags >= 0; tags--)
+		{
+		  memset (mask, 0, sizeof (mask));
+		  switch (tags)
+		    {
+		    case 0:
+		    default:
+		      tag_table = mvec[match_type_index].out_arp_table_index;
+		      mask[12] = 0x08;
+		      mask[13] = 0x06;
+		      break;
+		    case 1:
+		      tag_table =
+			mvec[match_type_index].out_arp_dot1q_table_index;
+		      mask[12] = 0x81;
+		      mask[13] = 0x00;
+		      mask[16] = 0x08;
+		      mask[17] = 0x06;
+		      break;
+		    case 2:
+		      tag_table =
+			mvec[match_type_index].out_arp_dot1ad_table_index;
+		      mask[12] = 0x88;
+		      mask[13] = 0xa8;
+		      mask[16] = 0x81;
+		      mask[17] = 0x00;
+		      mask[20] = 0x08;
+		      mask[21] = 0x06;
+		      break;
+		    }
+
+		  vnet_classify_add_del_session (cm, tag_table,
+						 mask,
+						 a->
+						 rules[i].is_permit ? ~0 : 0,
+						 i, 0, action, metadata, 1);
+		}
 	    }
 	}
     }
