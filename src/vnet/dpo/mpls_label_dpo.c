@@ -639,7 +639,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                     ASSERT(0 != vnet_buffer (b3)->mpls.ttl);
 
                     ttl3 = vnet_buffer(b3)->mpls.ttl - 1;
-                    exp3 = vnet_buffer(b0)->mpls.exp;
+                    exp3 = vnet_buffer(b3)->mpls.exp;
                     hdr3 = mpls_label_paint_w_ttl_exp(b3, mld3, ttl3, exp3);
                 }
                 else
