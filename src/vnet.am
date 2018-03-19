@@ -1210,6 +1210,9 @@ libvnet_la_SOURCES +=      	                \
 
 API_FILES += vnet/qos/qos.api
 
+nobase_include_HEADERS +=                       \
+ vnet/qos/qos.api.h
+
 ########################################
 # BIER
 ########################################
