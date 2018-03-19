@@ -55,7 +55,7 @@ vl_api_qos_record_enable_disable_t_handler (vl_api_qos_record_enable_disable_t
   vl_api_qos_record_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  if (mp->input_source > QOS_N_SOURCES)
+  if (mp->input_source >= QOS_N_SOURCES)
     rv = VNET_API_ERROR_INVALID_VALUE;
   else
     {
@@ -101,7 +101,7 @@ void
   vl_api_qos_mark_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  if (mp->output_source > QOS_N_SOURCES)
+  if (mp->output_source >= QOS_N_SOURCES)
     rv = VNET_API_ERROR_INVALID_VALUE;
   else
     {
