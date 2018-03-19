@@ -129,23 +129,14 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
      */
     path_ext->fpe_mpls_flags |= FIB_PATH_EXT_MPLS_FLAG_NO_IP_TTL_DECR;
 
-    if (NULL != path_ext)
-    {
-        /*
-         * found a matching extension. stack it to obtain the forwarding
-         * info for this path.
-         */
-        ctx->next_hops = fib_path_ext_stack(path_ext,
-                                            ctx->fct,
-                                            ctx->fct,
-                                            ctx->next_hops);
-    }
-    else
-        ASSERT(0);
     /*
-     * else
-     *   There should be a path-extenios associated with each path
+     * found a matching extension. stack it to obtain the forwarding
+     * info for this path.
      */
+    ctx->next_hops = fib_path_ext_stack(path_ext,
+                                        ctx->fct,
+                                        ctx->fct,
+                                        ctx->next_hops);
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }

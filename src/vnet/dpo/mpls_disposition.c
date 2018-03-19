@@ -162,7 +162,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
     {
         if (FIB_MPLS_LSP_MODE_PIPE == mode)
             error_node =
-                vlib_node_get_runtime(vm, ip6_mpls_label_disposition_uniform_node.index);
+                vlib_node_get_runtime(vm, ip6_mpls_label_disposition_pipe_node.index);
         else
             error_node =
                 vlib_node_get_runtime(vm, ip6_mpls_label_disposition_uniform_node.index);
