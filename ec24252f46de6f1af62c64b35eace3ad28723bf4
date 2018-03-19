@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d2e81e9_c5298ee0",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-03-19T15:53:17Z",
+      "side": 1,
+      "message": "I know there\u0027s no collision with the function of the same name in vnet/ip/ip4_forward.c (it\u0027s static, there), it feels messy to use the same name. Would this be better named as igmp_ip4_lookup, or similar?",
+      "range": {
+        "startLine": 199,
+        "startChar": 0,
+        "endLine": 200,
+        "endChar": 10
+      },
+      "revId": "ec24252f46de6f1af62c64b35eace3ad28723bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
