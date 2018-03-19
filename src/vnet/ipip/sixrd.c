@@ -195,6 +195,9 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ip_adjacency_t *adj = adj_get (ai);
   ipip_tunnel_t *t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
 
+  /* Not our tunnel */
+  if (!t)
+    return;
   if (!memcmp (&sixrd_special_nh, &adj->sub_type.nbr.next_hop,
 	       sizeof (sixrd_special_nh)))
     {
