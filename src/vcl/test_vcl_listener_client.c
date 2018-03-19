@@ -52,7 +52,7 @@ int main(){
   printf("Data received: %s",buffer);
 
   printf("Press ENTER key to Continue\n");
-  getchar();
+  (void) getchar();
 
   return 0;
 }
