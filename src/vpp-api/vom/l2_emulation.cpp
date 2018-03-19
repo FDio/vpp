@@ -62,7 +62,7 @@ l2_emulation::sweep()
 {
   if (m_emulation && handle_t::INVALID != m_itf->handle()) {
     HW::enqueue(
-      new l2_emulation_cmds::enable_cmd(m_emulation, m_itf->handle()));
+      new l2_emulation_cmds::disable_cmd(m_emulation, m_itf->handle()));
   }
 
   // no need to undo the VTR operation.
