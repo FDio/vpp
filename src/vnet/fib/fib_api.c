@@ -245,7 +245,7 @@ fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
         !ip46_address_is_zero(&api_rpath->rpath.frp_addr))
     {
         if ((DPO_PROTO_IP6 == api_rpath->rpath.frp_proto) ||
-            (DPO_PROTO_IP6 == api_rpath->rpath.frp_proto))
+            (DPO_PROTO_IP4 == api_rpath->rpath.frp_proto))
         {
             fib_table_t *fib;
 
