@@ -2880,7 +2880,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 		    "lookup failed! returning %d (%s)", getpid (),
 		    listen_vpp_handle, listen_session_index,
 		    client_session_index, rv, vppcom_retval_str (rv));
-      goto done;
+      goto cleanup;
     }
 
   if (flags & O_NONBLOCK)
