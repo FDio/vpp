@@ -544,12 +544,12 @@ BOOST_AUTO_TEST_CASE(test_interface) {
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
 
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
+                                                  rc_t::OK);
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
 
     TRY_CHECK_RC(OM::write(go, itf1));
 
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(go));
@@ -583,7 +583,6 @@ BOOST_AUTO_TEST_CASE(test_interface) {
 
     TRY_CHECK(OM::mark(go));
 
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::sweep(go));
 
@@ -602,7 +601,6 @@ BOOST_AUTO_TEST_CASE(test_interface) {
 
     TRY_CHECK(OM::sweep(go));
 
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(go));
 
@@ -629,13 +627,11 @@ BOOST_AUTO_TEST_CASE(test_interface) {
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     TRY_CHECK_RC(OM::write(go, itf2));
 
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::sweep(go));
 
     TRY_CHECK(OM::mark(go));
 
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     TRY_CHECK(OM::sweep(go));
 
@@ -652,7 +648,6 @@ BOOST_AUTO_TEST_CASE(test_interface) {
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh3));
     TRY_CHECK_RC(OM::write(go, itf3));
 
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh3));
     ADD_EXPECT(interface_cmds::vhost_delete_cmd(hw_ifh3, itf3_name));
     TRY_CHECK(OM::remove(go));
 }
@@ -854,10 +849,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
 
     // flush Franz's state
     delete l2itf;
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
-                                                  rc_t::OK);
     ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh.data(), hw_bd.data(), false));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(franz));
 
@@ -872,7 +864,6 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh2.data(), hw_bd.data(), false));
 
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     TRY_CHECK(OM::remove(dante));
 
@@ -905,6 +896,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     ADD_EXPECT(bridge_domain_entry_cmds::create_cmd(hw_be2, mac2, bd2.id(), hw_ifh3.data(), true));
     TRY_CHECK_RC(OM::write(jkr, *be2));
 
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     delete l2itf3;
     delete be2;
     STRICT_ORDER_OFF();
@@ -993,11 +985,8 @@ BOOST_AUTO_TEST_CASE(test_vlan) {
     TRY_CHECK_RC(OM::write(noam, *vl33));
 
     delete vl33;
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     HW::item<handle_t> hw_vl33_down(3, rc_t::NOOP);
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_vl33));
     ADD_EXPECT(sub_interface_cmds::delete_cmd(hw_vl33_down));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(noam));
@@ -1093,14 +1082,11 @@ BOOST_AUTO_TEST_CASE(test_acl) {
 
     delete l3b;
     delete a_e;
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
-                                                  rc_t::OK);
     STRICT_ORDER_OFF();
     ADD_EXPECT(ACL::binding_cmds::l3_unbind_cmd(hw_binding, direction_t::INPUT,
                                          hw_ifh.data(), hw_acl.data()));
     ADD_EXPECT(ACL::list_cmds::l3_delete_cmd(hw_acl));
     ADD_EXPECT(ACL::acl_ethertype_cmds::unbind_cmd(ae_binding, hw_ifh.data()));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(fyodor));
@@ -1136,11 +1122,8 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
 
     delete apb;
 
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
-                                                  rc_t::OK);
     STRICT_ORDER_OFF();
     ADD_EXPECT(arp_proxy_binding_cmds::unbind_cmd(hw_binding, hw_ifh.data()));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf3_name));
     ADD_EXPECT(arp_proxy_config_cmds::unconfig_cmd(hw_ap_cfg, low, high));
 
@@ -1194,13 +1177,10 @@ BOOST_AUTO_TEST_CASE(test_ip_unnumbered) {
     delete l3;
     delete ipun;
 
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     STRICT_ORDER_OFF();
     ADD_EXPECT(ip_unnumbered_cmds::unconfig_cmd(hw_ip_uncfg, hw_ifh2.data(), hw_ifh.data()));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(eric));
@@ -1255,12 +1235,9 @@ BOOST_AUTO_TEST_CASE(test_ip6nd) {
     delete ip6ra;
     delete l3;
 
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-
     STRICT_ORDER_OFF();
     ADD_EXPECT(ip6nd_ra_config::unconfig_cmd(hw_ip6nd_ra_config_unconfig, hw_ifh.data(), ra));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_name));
 
     TRY_CHECK(OM::remove(paulo));
@@ -1305,15 +1282,10 @@ BOOST_AUTO_TEST_CASE(test_interface_span) {
     ADD_EXPECT(interface_span_cmds::config_cmd(hw_is_cfg, hw_ifh.data(), hw_ifh2.data(), interface_span::state_t::TX_RX_ENABLED));
     TRY_CHECK_RC(OM::write(elif, *itf_span));
 
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down2(interface::admin_state_t::DOWN, rc_t::OK);
-
     delete itf_span;
     STRICT_ORDER_OFF();
     ADD_EXPECT(interface_span_cmds::unconfig_cmd(hw_is_uncfg, hw_ifh.data(), hw_ifh2.data()));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
 
     TRY_CHECK(OM::remove(elif));
@@ -1349,7 +1321,6 @@ BOOST_AUTO_TEST_CASE(test_routing) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(ian, itf1));
@@ -1362,7 +1333,6 @@ BOOST_AUTO_TEST_CASE(test_routing) {
 
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up2(interface::admin_state_t::UP, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down2(interface::admin_state_t::DOWN, rc_t::OK);
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up2, hw_ifh2));
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
@@ -1447,11 +1417,9 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_10_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_11_unbind, hw_ifh2.data(), pfx_11));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV6, hw_ifh2));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd4_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd6_delete, l3_proto_t::IPV6, 1));
@@ -1473,7 +1441,6 @@ BOOST_AUTO_TEST_CASE(test_nat) {
                      interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf_in_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(gs, itf_in));
@@ -1488,7 +1455,6 @@ BOOST_AUTO_TEST_CASE(test_nat) {
 
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up2(interface::admin_state_t::UP, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down2(interface::admin_state_t::DOWN, rc_t::OK);
 
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf_out_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up2, hw_ifh2));
@@ -1542,9 +1508,7 @@ BOOST_AUTO_TEST_CASE(test_nat) {
                                                      hw_ifh2.data().value(),
                                                      nat_binding::zone_t::OUTSIDE));
     ADD_EXPECT(nat_static_cmds::delete_44_cmd(hw_ns, 0, in_addr.to_v4(), out_addr));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_in_name));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf_out_name));
 
     TRY_CHECK(OM::remove(gs));
@@ -1577,7 +1541,6 @@ BOOST_AUTO_TEST_CASE(test_interface_route_domain_change) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh1(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh1, itf1_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh1));
     TRY_CHECK_RC(OM::write(rene, itf1));
@@ -1642,7 +1605,6 @@ BOOST_AUTO_TEST_CASE(test_interface_route_domain_change) {
     STRICT_ORDER_OFF();
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind1, hw_ifh1.data(), pfx_10));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind2, hw_ifh1.data(), pfx_11));
-    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh1));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh1, itf1_name));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd_delete, l3_proto_t::IPV6, 1));

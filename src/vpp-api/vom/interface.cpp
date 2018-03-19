@@ -168,7 +168,9 @@ interface::sweep()
   }
 
   // If the interface is up, bring it down
-  if (m_state && interface::admin_state_t::UP == m_state.data()) {
+  if (m_state && interface::admin_state_t::UP == m_state.data() &&
+      (m_type != interface::type_t::AFPACKET &&
+       m_type != interface::type_t::VHOST)) {
     m_state.data() = interface::admin_state_t::DOWN;
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
