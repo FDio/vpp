@@ -55,6 +55,9 @@ service {
   rpc want_ip6_nbr_stats
     returns want_ip6_nbr_stats_reply
     events vnet_ip6_nbr_counters;
+  rpc want_udp_encap_stats
+    returns want_udp_encap_stats_reply
+    events vnet_udp_encap_counters;
 };
 
 /** \brief Want Stats, enable/disable ALL stats updates
@@ -434,6 +437,39 @@ define stats_get_poller_delay_reply
   u32 context;
   i32 retval;
   u32 delay;
+};
+
+/** \brief Want UDP encap Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_udp_encap_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable;
+  u32 pid;
+};
+
+/** \brief Stat for one UDP encap object
+    @param id - The ID of the object, same as passed for the create
+    @param packets - number of packets sent
+    @param bytes - number of bytes sent
+*/
+typeonly manual_print manual_endian define udp_encap_counter
+{
+  u32 id;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_udp_encap_counters
+{
+  u32 timestamp;
+  u32 count;
+  vl_api_udp_encap_counter_t c[count];
 };
 
 /*

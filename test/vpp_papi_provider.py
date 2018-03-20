@@ -1083,6 +1083,11 @@ class VppPapiProvider(object):
     def udp_encap_dump(self):
         return self.api(self.papi.udp_encap_dump, {})
 
+    def want_udp_encap_stats(self, enable=1):
+        return self.api(self.papi.want_udp_encap_stats,
+                        {'enable': enable,
+                         'pid': os.getpid()})
+
     def mpls_fib_dump(self):
         return self.api(self.papi.mpls_fib_dump, {})
 
