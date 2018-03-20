@@ -69,7 +69,6 @@ OPTIONS:
   -c                  Set VCL_CONFIG to use the vcl_test.conf file.
   -i                  Run iperf3 for client/server app in native tests.
   -n                  Name of ethernet for VPP to use in multi-host cfg.
-  -6                  Use ipv6 addressing.
   -f                  Full thru host stack vpp configuration. 
   -m c[lient]         Run client in multi-host cfg (server on remote host)
      s[erver]         Run server in multi-host cfg (client on remote host)
@@ -84,6 +83,8 @@ OPTIONS:
   -t                  Use tabs in one xterm if available (e.g. xfce4-terminal).
 
 OPTIONS passed to client/server:
+  -6                  Use IPv6.
+  -D                  Use UDP as the transport.
   -S <ip address>     Server IP address.
   -P <server port>    Server Port number.
   -E <data>           Run Echo test.
@@ -118,8 +119,9 @@ declare -i leave_tmp_files=0
 declare -i bash_after_exit=0
 declare -i iperf3=0
 declare -i use_ipv6=0
+declare -i transport_udp=0
 
-while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
+while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVXD" opt; do
     case $opt in
         h) usage ;;
         l) leave_tmp_files=1
@@ -129,6 +131,9 @@ while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
         i) iperf3=1
            ;;
         6) use_ipv6=1
+           sock_srvr_addr="::1"
+           sock_clnt_options="$sock_clnt_options -$opt"
+           sock_srvr_options="$sock_srvr_options -$opt"
            ;;
         f) full_thru_host_stack_vpp_cfg=1
            ;;
@@ -204,6 +209,9 @@ while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
         S) sock_srvr_addr="$OPTARG"
            ;;
         P) sock_srvr_port="$OPTARG"
+           ;;
+        D) sock_clnt_options="$sock_clnt_options -$opt"
+           sock_srvr_options="$sock_srvr_options -$opt"
            ;;
 E|I|N|R|T) sock_clnt_options="$sock_clnt_options -$opt \"$OPTARG\""
            ;;
@@ -371,7 +379,7 @@ if [ $iperf3 -eq 1 ] ; then
     fi
 else
     app_dir="$vpp_dir"
-    srvr_app="$sock_srvr_app $sock_srvr_port"
+    srvr_app="$sock_srvr_app${sock_srvr_options} $sock_srvr_port"
     clnt_app="$sock_clnt_app${sock_clnt_options} \$srvr_addr $sock_srvr_port"
 fi
 
@@ -404,8 +412,11 @@ verify_no_vpp() {
         sudo mkdir $vpp_run_dir
         sudo chown root:$USER $vpp_run_dir
     fi
-    if [ -n "$full_thru_host_stack_vpp_cfg" ] ; then
+    if [ $use_ipv6 -eq 0 ] && [ -n "$full_thru_host_stack_vpp_cfg" ] ; then
+        sock_srvr_table=0
         sock_srvr_addr=172.16.1.1
+        sock_client_table=1
+        sock_client_addr=172.16.2.1
         client_namespace_id="1"
         client_namespace_secret="5678"
         server_namespace_id="0"
@@ -415,17 +426,40 @@ session enable
 create loop inter
 create loop inter
 set inter state loop0 up 
-set inter ip table loop0 0
-set inter ip address loop0 172.16.1.1/24
+set inter ip table loop0 $sock_srvr_table
+set inter ip address loop0 $sock_srvr_addr/24
 set inter state loop1 up
-set inter ip table loop1 1
-set inter ip address loop1 172.16.2.1/24
+set inter ip table loop1 $sock_client_table
+set inter ip address loop1 $sock_client_addr/24
 app ns add id 0 secret 1234 sw_if_index 1
 app ns add id 1 secret 5678 sw_if_index 2
-ip route add 172.16.1.1/32 table 1 via lookup in table 0
-ip route add 172.16.2.1/32 table 0 via lookup in table 1
+ip route add $sock_srvr_addr/32 table $sock_client_table via lookup in table $sock_srvr_table
+ip route add $sock_client_addr/32 table $sock_srvr_table via lookup in table $sock_client_table
 EOF
-
+    elif [ $use_ipv6 -eq 1 ] && [ -n "$full_thru_host_stack_vpp_cfg" ] ; then
+        sock_srvr_table=1
+        sock_srvr_addr=fd01:1::1
+        sock_client_table=2
+        sock_client_addr=fd01:2::1
+        client_namespace_id="1"
+        client_namespace_secret="5678"
+        server_namespace_id="0"
+        server_namespace_secret="1234"
+        cat <<EOF >> $tmp_vpp_exec_file
+session enable
+create loop inter
+create loop inter
+set inter state loop0 up 
+set inter ip6 table loop0 $sock_srvr_table
+set inter ip address loop0 $sock_srvr_addr/64
+set inter state loop1 up
+set inter ip6 table loop1 $sock_client_table
+set inter ip address loop1 $sock_client_addr/64
+app ns add id 0 secret 1234 sw_if_index 1
+app ns add id 1 secret 5678 sw_if_index 2
+ip route add $sock_srvr_addr/128 table $sock_client_table via lookup in table $sock_srvr_table
+ip route add $sock_client_addr/128 table $sock_srvr_table via lookup in table $sock_client_table
+EOF
     elif [ -n "$multi_host" ] ; then
         vpp_eth_pci_id="$(ls -ld /sys/class/net/$vpp_eth_name/device | awk '{print $11}' | cut -d/ -f4)"
         if [ -z "$vpp_eth_pci_id" ] ; then
@@ -689,7 +723,7 @@ native_preload() {
             namespace_id="$server_namespace_id"
             namespace_secret="$server_namespace_secret"
         fi
-        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 3"
         echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd2_file
         echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
         write_script_footer $cmd2_file $perf_server
