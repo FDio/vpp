@@ -58,11 +58,19 @@ typedef struct
 #endif
 } sock_server_conn_t;
 
+typedef struct
+{
+  uint32_t port;
+  uint32_t address_ip6;
+  uint32_t transport_udp;
+} sock_server_cfg_t;
+
 #define SOCK_SERVER_MAX_TEST_CONN  10
 #define SOCK_SERVER_MAX_EPOLL_EVENTS 10
 typedef struct
 {
   int listen_fd;
+  sock_server_cfg_t cfg;
 #if SOCK_SERVER_USE_EPOLL
   int epfd;
   struct epoll_event listen_ev;
@@ -433,6 +441,18 @@ new_client (void)
 #endif
 }
 
+void
+print_usage_and_exit (void)
+{
+  fprintf (stderr,
+	   "sock_test_server [OPTIONS] <port>\n"
+	   "  OPTIONS\n"
+	   "  -h               Print this message and exit.\n"
+	   "  -6               Use IPv6\n"
+	   "  -u               Use UDP transport layer\n");
+  exit (1);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -443,9 +463,9 @@ main (int argc, char **argv)
   sock_test_cfg_t *rx_cfg;
   uint32_t xtra = 0;
   uint64_t xtra_bytes = 0;
-  struct sockaddr_in servaddr;
+  struct sockaddr_storage servaddr;
   int errno_val;
-  int v, i;
+  int c, v, i;
   uint16_t port = SOCK_TEST_SERVER_PORT;
 #if ! SOCK_SERVER_USE_EPOLL
   fd_set _rfdset, *rfdset = &_rfdset;
@@ -453,13 +473,54 @@ main (int argc, char **argv)
 #ifdef VCL_TEST
   vppcom_endpt_t endpt;
 #else
+  uint32_t servaddr_size;
 #if ! SOCK_SERVER_USE_EPOLL
   fd_set _wfdset, *wfdset = &_wfdset;
 #endif
 #endif
 
-  if ((argc == 2) && (sscanf (argv[1], "%d", &v) == 1))
+  opterr = 0;
+  while ((c = getopt (argc, argv, "6D")) != -1)
+    switch (c)
+      {
+      case '6':
+	ssm->cfg.address_ip6 = 1;
+	break;
+
+      case 'D':
+	ssm->cfg.transport_udp = 1;
+	break;
+
+      case '?':
+	switch (optopt)
+	  {
+	  default:
+	    if (isprint (optopt))
+	      fprintf (stderr, "SERVER: ERROR: Unknown "
+		       "option `-%c'.\n", optopt);
+	    else
+	      fprintf (stderr, "SERVER: ERROR: Unknown "
+		       "option character `\\x%x'.\n", optopt);
+	  }
+	/* fall thru */
+      case 'h':
+      default:
+	print_usage_and_exit ();
+      }
+
+  if (argc < (optind + 1))
+    {
+      fprintf (stderr, "SERVER: ERROR: Insufficient number of arguments!\n");
+      print_usage_and_exit ();
+    }
+
+  if (sscanf (argv[optind], "%d", &v) == 1)
     port = (uint16_t) v;
+  else
+    {
+      fprintf (stderr, "SERVER: ERROR: Invalid port (%s)!\n", argv[optind]);
+      print_usage_and_exit ();
+    }
 
   conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
 
@@ -472,11 +533,15 @@ main (int argc, char **argv)
     }
   else
     {
-      ssm->listen_fd =
-	vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */ );
+      ssm->listen_fd = vppcom_session_create (ssm->cfg.transport_udp ?
+					      VPPCOM_PROTO_UDP :
+					      VPPCOM_PROTO_TCP,
+					      0 /* is_nonblocking */ );
     }
 #else
-  ssm->listen_fd = socket (AF_INET, SOCK_STREAM, 0);
+  ssm->listen_fd = socket (ssm->cfg.address_ip6 ? AF_INET6 : AF_INET,
+			   ssm->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM,
+			   0);
 #if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
   unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
   ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
@@ -533,14 +598,42 @@ main (int argc, char **argv)
 
   memset (&servaddr, 0, sizeof (servaddr));
 
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl (INADDR_ANY);
-  servaddr.sin_port = htons (port);
+  if (ssm->cfg.address_ip6)
+    {
+      struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
+#ifndef VCL_TEST
+      servaddr_size = sizeof (*server_addr);
+#endif
+      server_addr->sin6_family = AF_INET6;
+      server_addr->sin6_addr = in6addr_any;
+      server_addr->sin6_port = htons (port);
+    }
+  else
+    {
+      struct sockaddr_in *server_addr = (struct sockaddr_in *) &servaddr;
+#ifndef VCL_TEST
+      servaddr_size = sizeof (*server_addr);
+#endif
+      server_addr->sin_family = AF_INET;
+      server_addr->sin_addr.s_addr = htonl (INADDR_ANY);
+      server_addr->sin_port = htons (port);
+    }
 
 #ifdef VCL_TEST
-  endpt.is_ip4 = (servaddr.sin_family == AF_INET);
-  endpt.ip = (uint8_t *) & servaddr.sin_addr;
-  endpt.port = (uint16_t) servaddr.sin_port;
+  if (ssm->cfg.address_ip6)
+    {
+      struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
+      endpt.is_ip4 = 0;
+      endpt.ip = (uint8_t *) & server_addr->sin6_addr;
+      endpt.port = (uint16_t) server_addr->sin6_port;
+    }
+  else
+    {
+      struct sockaddr_in *server_addr = (struct sockaddr_in *) &servaddr;
+      endpt.is_ip4 = 1;
+      endpt.ip = (uint8_t *) & server_addr->sin_addr;
+      endpt.port = (uint16_t) server_addr->sin_port;
+    }
 
   rv = vppcom_session_bind (ssm->listen_fd, &endpt);
   if (rv)
@@ -549,8 +642,7 @@ main (int argc, char **argv)
       rv = -1;
     }
 #else
-  rv =
-    bind (ssm->listen_fd, (struct sockaddr *) &servaddr, sizeof (servaddr));
+  rv = bind (ssm->listen_fd, (struct sockaddr *) &servaddr, servaddr_size);
 #endif
   if (rv < 0)
     {
