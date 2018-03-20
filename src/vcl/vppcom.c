@@ -1207,8 +1207,7 @@ done:
 
   session->vpp_handle = mp->handle;
   session->lcl_addr.is_ip4 = mp->lcl_is_ip4;
-  clib_memcpy (&session->lcl_addr.ip46, mp->lcl_ip,
-	       sizeof (session->peer_addr.ip46));
+  session->lcl_addr.ip46 = to_ip46 (!mp->lcl_is_ip4, mp->lcl_ip);
   session->lcl_port = mp->lcl_port;
   vppcom_session_table_add_listener (mp->handle, session_index);
   session->state = STATE_LISTEN;
@@ -1377,8 +1376,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->state = STATE_ACCEPT;
   session->peer_port = mp->port;
   session->peer_addr.is_ip4 = mp->is_ip4;
-  clib_memcpy (&session->peer_addr.ip46, mp->ip,
-	       sizeof (session->peer_addr.ip46));
+  session->peer_addr.ip46 = to_ip46 (!mp->is_ip4, mp->ip);
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -1409,7 +1407,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: client accept "
 		  "request from %s address %U port %d queue %p!", getpid (),
 		  mp->handle, session_index, mp->is_ip4 ? "IPv4" : "IPv6",
-		  format_ip46_address, &mp->ip, mp->is_ip4,
+		  format_ip46_address, &mp->ip,
+		  mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		  clib_net_to_host_u16 (mp->port), session->vpp_event_queue);
 
   if (VPPCOM_DEBUG > 0)
@@ -2347,6 +2346,7 @@ void
 vppcom_app_destroy (void)
 {
   int rv;
+  f64 orig_app_timeout;
 
   if (vcm->my_client_index == ~0)
     return;
@@ -2374,7 +2374,10 @@ vppcom_app_destroy (void)
     }
 
   vppcom_app_detach ();
+  orig_app_timeout = vcm->cfg.app_timeout;
+  vcm->cfg.app_timeout = 2.0;
   rv = vppcom_wait_for_app_state_change (STATE_APP_ENABLED);
+  vcm->cfg.app_timeout = orig_app_timeout;
   if (PREDICT_FALSE (rv))
     {
       if (VPPCOM_DEBUG > 0)
@@ -2627,7 +2630,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
 		  "port %u, proto %s", getpid (), session_index,
 		  session->lcl_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address, &session->lcl_addr.ip46,
-		  session->lcl_addr.is_ip4,
+		  session->lcl_addr.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		  clib_net_to_host_u16 (session->lcl_port),
 		  session->proto ? "UDP" : "TCP");
 
@@ -2920,7 +2923,8 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 		  client_session_index,
 		  client_session->lcl_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address, &client_session->lcl_addr.ip46,
-		  client_session->lcl_addr.is_ip4,
+		  client_session->lcl_addr.is_ip4 ?
+		  IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		  clib_net_to_host_u16 (client_session->lcl_port));
 
   if (VPPCOM_DEBUG > 0)
@@ -3014,7 +3018,8 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 		      getpid (), session->vpp_handle, session_index,
 		      session->peer_addr.is_ip4 ? "IPv4" : "IPv6",
 		      format_ip46_address,
-		      &session->peer_addr.ip46, session->peer_addr.is_ip4,
+		      &session->peer_addr.ip46, session->peer_addr.is_ip4 ?
+		      IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		      clib_net_to_host_u16 (session->peer_port),
 		      session->proto ? "UDP" : "TCP", session->state,
 		      vppcom_session_state_str (session->state));
@@ -3033,7 +3038,8 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 		  getpid (), session->vpp_handle, session_index,
 		  session->peer_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address,
-		  &session->peer_addr.ip46, session->peer_addr.is_ip4,
+		  &session->peer_addr.ip46, session->peer_addr.is_ip4 ?
+		  IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		  clib_net_to_host_u16 (session->peer_port),
 		  session->proto ? "UDP" : "TCP");
 
@@ -4459,7 +4465,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_PEER_ADDR: sid %u, "
 			  "is_ip4 = %u, addr = %U, port %u", getpid (),
 			  session_index, ep->is_ip4, format_ip46_address,
-			  &session->peer_addr.ip46, ep->is_ip4,
+			  &session->peer_addr.ip46,
+			  ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 			  clib_net_to_host_u16 (ep->port));
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4525,7 +4532,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_LCL_ADDR: sid %u, "
 			  "is_ip4 = %u, addr = %U port %d", getpid (),
 			  session_index, ep->is_ip4, format_ip46_address,
-			  &session->lcl_addr.ip46, ep->is_ip4,
+			  &session->lcl_addr.ip46,
+			  ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 			  clib_net_to_host_u16 (ep->port));
 	  if (VPPCOM_DEBUG > 0)
 	    {
