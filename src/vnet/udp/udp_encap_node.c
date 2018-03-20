@@ -27,6 +27,8 @@ typedef struct udp6_encap_trace_t_
   ip6_header_t ip;
 } udp6_encap_trace_t;
 
+extern vlib_combined_counter_main_t udp_encap_counters;
+
 static u8 *
 format_udp4_encap_trace (u8 * s, va_list * args)
 {
@@ -62,8 +64,10 @@ udp_encap_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, int is_encap_v6)
 {
+  vlib_combined_counter_main_t *cm = &udp_encap_counters;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, next_index;
+  u32 thread_index = vlib_get_thread_index ();
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -103,6 +107,13 @@ udp_encap_inline (vlib_main_t * vm,
 
 	  uei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	  uei1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+
+	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b0));
+	  vlib_increment_combined_counter (cm, thread_index, uei1, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b1));
 
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
@@ -184,6 +195,10 @@ udp_encap_inline (vlib_main_t * vm,
 
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
+
+	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b0));
 
 	  /* Paint */
 	  if (is_encap_v6)

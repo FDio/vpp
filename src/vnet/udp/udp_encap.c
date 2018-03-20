@@ -33,6 +33,11 @@ uword *udp_encap_db;
  */
 udp_encap_t *udp_encap_pool;
 
+/**
+ * Stats for each UDP encap object
+ */
+vlib_combined_counter_main_t udp_encap_counters;
+
 static udp_encap_t *
 udp_encap_get_w_id (u32 id)
 {
@@ -78,6 +83,9 @@ udp_encap_add_and_lock (u32 id,
 
       pool_get (udp_encap_pool, ue);
       uei = ue - udp_encap_pool;
+
+      vlib_validate_combined_counter (&(udp_encap_counters), uei);
+      vlib_zero_combined_counter (&(udp_encap_counters), uei);
 
       hash_set (udp_encap_db, id, uei);
 
@@ -258,6 +266,7 @@ format_udp_encap_i (u8 * s, va_list * args)
   index_t uei = va_arg (*args, index_t);
   u32 indent = va_arg (*args, u32);
   u32 details = va_arg (*args, u32);
+  vlib_counter_t to;
   udp_encap_t *ue;
 
   ue = udp_encap_get (uei);
@@ -285,6 +294,9 @@ format_udp_encap_i (u8 * s, va_list * args)
 		  clib_net_to_host_u16 (ue->ue_hdrs.ip6.ue_udp.src_port),
 		  clib_net_to_host_u16 (ue->ue_hdrs.ip6.ue_udp.dst_port));
     }
+  vlib_get_combined_counter (&(udp_encap_counters), uei, &to);
+  s = format (s, " to:[%Ld:%Ld]]", to.packets, to.bytes);
+
   if (details)
     {
       s = format (s, " locks:%d", ue->ue_fib_node.fn_locks);
@@ -294,6 +306,17 @@ format_udp_encap_i (u8 * s, va_list * args)
 		  format_dpo_id, &ue->ue_dpo, indent + 3);
     }
   return (s);
+}
+
+void
+udp_encap_get_stats (index_t uei, u64 * packets, u64 * bytes)
+{
+  vlib_counter_t to;
+
+  vlib_get_combined_counter (&(udp_encap_counters), uei, &to);
+
+  *packets = to.packets;
+  *bytes = to.bytes;
 }
 
 static u8 *
@@ -566,6 +589,20 @@ udp_encap_cli (vlib_main_t * vm,
 done:
   unformat_free (line_input);
   return error;
+}
+
+void
+udp_encap_walk (udp_encap_walk_cb_t cb, void *ctx)
+{
+  index_t uei;
+
+  /* *INDENT-OFF* */
+  pool_foreach_index(uei, udp_encap_pool,
+  ({
+    if (!cb(uei, ctx))
+      break;
+  }));
+  /* *INDENT-ON* */
 }
 
 clib_error_t *
