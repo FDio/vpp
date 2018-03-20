@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8da17422_556501c6",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 996
+      },
+      "writtenOn": "2018-03-20T11:00:38Z",
+      "side": 1,
+      "message": "is the check `rv !\u003d EINVAL` correct here?\nOn my system (some Ubuntu), I have\n\"On error, -1 is returned, and errno is set appropriately.\"\nin the man pages of ioctl. Shouldn\u0027t it be\n`errno !\u003d EINVAL` ?",
+      "range": {
+        "startLine": 561,
+        "startChar": 33,
+        "endLine": 561,
+        "endChar": 34
+      },
+      "revId": "51c52c0adc9bf79ca6508ee1327d3b972e80b5c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
