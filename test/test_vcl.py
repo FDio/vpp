@@ -41,6 +41,8 @@ class VCLTestCase(VppTestCase):
         self.server_addr = "127.0.0.1"
         self.server_port = "22000"
         self.server_args = [self.server_port]
+        self.server_ipv6_addr = "::1"
+        self.server_ipv6_args = ["-6", self.server_port]
         self.timeout = 3
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
 
@@ -170,19 +172,19 @@ class VCLCutThruTestCase(VCLTestCase):
         super(VCLCutThruTestCase, self).setUp()
 
         self.cut_thru_setup()
-        self.client_echo_test_args = [self.server_addr, self.server_port,
-                                      "-E", self.echo_phrase, "-X"]
+        self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
+                                      self.server_addr, self.server_port]
         self.client_iperf3_timeout = 20
         self.client_iperf3_args = ["-V4d", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
         self.client_uni_dir_nsock_timeout = 60
-        self.client_uni_dir_nsock_test_args = [self.server_addr,
-                                               self.server_port,
-                                               "-I", "5", "-U", "-X"]
+        self.client_uni_dir_nsock_test_args = ["-I", "5", "-U", "-X",
+                                               self.server_addr,
+                                               self.server_port]
         self.client_bi_dir_nsock_timeout = 120
-        self.client_bi_dir_nsock_test_args = [self.server_addr,
-                                              self.server_port,
-                                              "-I", "2", "-B", "-X"]
+        self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+                                              self.server_addr,
+                                              self.server_port]
 
     def tearDown(self):
         self.cut_thru_tear_down()
@@ -301,11 +303,14 @@ class VCLThruHostStackExtendedATestCase(VCLTestCase):
         self.thru_host_stack_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_test_args = ["-B", "-X",
+                                                  self.loop0.local_ip4,
+                                                  self.server_port]
         else:
-            self.client_bi_dir_nsock_timeout = 60
-        self.client_bi_dir_nsock_test_args = [self.loop0.local_ip4,
-                                              self.server_port,
-                                              "-I", "2", "-B", "-X"]
+            self.client_bi_dir_nsock_timeout = 90
+            self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+                                                  self.loop0.local_ip4,
+                                                  self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -331,11 +336,14 @@ class VCLThruHostStackExtendedBTestCase(VCLTestCase):
         self.thru_host_stack_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_test_args = ["-B", "-X",
+                                                  self.loop0.local_ip4,
+                                                  self.server_port]
         else:
             self.client_bi_dir_nsock_timeout = 60
-        self.client_bi_dir_nsock_test_args = [self.loop0.local_ip4,
-                                              self.server_port,
-                                              "-I", "2", "-B", "-X"]
+            self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+                                                  self.loop0.local_ip4,
+                                                  self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -366,10 +374,10 @@ class VCLThruHostStackExtendedCTestCase(VCLTestCase):
             self.client_uni_dir_nsock_timeout = 120
             self.numSockets = "5"
 
-        self.client_uni_dir_nsock_test_args = [self.loop0.local_ip4,
-                                               self.server_port,
-                                               "-I", self.numSockets,
-                                               "-U", "-X"]
+        self.client_uni_dir_nsock_test_args = ["-I", self.numSockets,
+                                               "-U", "-X",
+                                               self.loop0.local_ip4,
+                                               self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -400,10 +408,10 @@ class VCLThruHostStackExtendedDTestCase(VCLTestCase):
             self.client_uni_dir_nsock_timeout = 120
             self.numSockets = "5"
 
-        self.client_uni_dir_nsock_test_args = [self.loop0.local_ip4,
-                                               self.server_port,
-                                               "-I", self.numSockets,
-                                               "-U", "-X"]
+        self.client_uni_dir_nsock_test_args = ["-I", self.numSockets,
+                                               "-U", "-X",
+                                               self.loop0.local_ip4,
+                                               self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -450,6 +458,103 @@ class VCLThruHostStackIperfTestCase(VCLTestCase):
         self.timeout = self.client_iperf3_timeout
         self.thru_host_stack_test("iperf3", self.server_iperf3_args,
                                   "iperf3", self.client_iperf3_args)
+
+
+class VCLIpv6CutThruTestCase(VCLTestCase):
+    """ VCL IPv6 Cut Thru Tests """
+
+    def setUp(self):
+        super(VCLIpv6CutThruTestCase, self).setUp()
+
+        self.cut_thru_setup()
+        self.client_iperf3_timeout = 20
+        self.client_uni_dir_nsock_timeout = 60
+        self.client_bi_dir_nsock_timeout = 120
+        self.client_ipv6_echo_test_args = ["-6", "-E", self.echo_phrase, "-X",
+                                           self.server_ipv6_addr,
+                                           self.server_port]
+        self.client_ipv6_iperf3_args = ["-V6d", "-c", self.server_ipv6_addr]
+        self.server_ipv6_iperf3_args = ["-V6d", "-s"]
+        self.client_ipv6_uni_dir_nsock_test_args = ["-I", "5", "-6",
+                                                    "-U", "-X",
+                                                    self.server_ipv6_addr,
+                                                    self.server_port]
+        self.client_ipv6_bi_dir_nsock_test_args = ["-I", "2", "-6",
+                                                   "-B", "-X",
+                                                   self.server_ipv6_addr,
+                                                   self.server_port]
+
+    def tearDown(self):
+        self.cut_thru_tear_down()
+
+        super(VCLIpv6CutThruTestCase, self).tearDown()
+
+    def test_ldp_ipv6_cut_thru_echo(self):
+        """ run LDP IPv6 cut thru echo test """
+
+        self.cut_thru_test("sock_test_server",
+                           self.server_ipv6_args,
+                           "sock_test_client",
+                           self.client_ipv6_echo_test_args)
+
+    def test_ldp_ipv6_cut_thru_iperf3(self):
+        """ run LDP IPv6 cut thru iperf3 test """
+
+        try:
+            subprocess.check_output(['iperf3', '-v'])
+        except:
+            self.logger.error("WARNING: 'iperf3' is not installed,")
+            self.logger.error(
+                "         'test_ldp_ipv6_cut_thru_iperf3' not run!")
+            return
+
+        self.timeout = self.client_iperf3_timeout
+        self.cut_thru_test("iperf3", self.server_ipv6_iperf3_args,
+                           "iperf3", self.client_ipv6_iperf3_args)
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_ldp_ipv6_cut_thru_uni_dir_nsock(self):
+        """ run LDP IPv6 cut thru uni-directional (multiple sockets) test """
+
+        self.timeout = self.client_uni_dir_nsock_timeout
+        self.cut_thru_test("sock_test_server", self.server_ipv6_args,
+                           "sock_test_client",
+                           self.client_ipv6_uni_dir_nsock_test_args)
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_ldp_ipv6_cut_thru_bi_dir_nsock(self):
+        """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
+
+        self.timeout = self.client_bi_dir_nsock_timeout
+        self.cut_thru_test("sock_test_server", self.server_ipv6_args,
+                           "sock_test_client",
+                           self.client_ipv6_bi_dir_nsock_test_args)
+
+    def test_vcl_ipv6_cut_thru_echo(self):
+        """ run VCL IPv6 cut thru echo test """
+
+        self.cut_thru_test("vcl_test_server",
+                           self.server_ipv6_args,
+                           "vcl_test_client",
+                           self.client_ipv6_echo_test_args)
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_vcl_ipv6_cut_thru_uni_dir_nsock(self):
+        """ run VCL IPv6 cut thru uni-directional (multiple sockets) test """
+
+        self.timeout = self.client_uni_dir_nsock_timeout
+        self.cut_thru_test("vcl_test_server", self.server_ipv6_args,
+                           "vcl_test_client",
+                           self.client_ipv6_uni_dir_nsock_test_args)
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_vcl_ipv6_cut_thru_bi_dir_nsock(self):
+        """ run VCL IPv6 cut thru bi-directional (multiple sockets) test """
+
+        self.timeout = self.client_bi_dir_nsock_timeout
+        self.cut_thru_test("vcl_test_server", self.server_ipv6_args,
+                           "vcl_test_client",
+                           self.client_ipv6_bi_dir_nsock_test_args)
 
 
 if __name__ == '__main__':
