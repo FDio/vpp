@@ -35,7 +35,8 @@ typedef struct
   int af_unix_echo_tx;
   int af_unix_echo_rx;
 #endif
-  struct sockaddr_in server_addr;
+  struct sockaddr_storage server_addr;
+  uint32_t server_addr_size;
   sock_test_socket_t ctrl_socket;
   sock_test_socket_t *test_socket;
   uint32_t num_test_sockets;
@@ -605,15 +606,19 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	{
 	  tsock = &scm->test_socket[i];
 #ifdef VCL_TEST
-	  tsock->fd =
-	    vppcom_session_create (VPPCOM_PROTO_TCP, 1 /* is_nonblocking */ );
+	  tsock->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
+					     VPPCOM_PROTO_UDP :
+					     VPPCOM_PROTO_TCP,
+					     1 /* is_nonblocking */ );
 	  if (tsock->fd < 0)
 	    {
 	      errno = -tsock->fd;
 	      tsock->fd = -1;
 	    }
 #else
-	  tsock->fd = socket (AF_INET, SOCK_STREAM, 0);
+	  tsock->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
+			      ctrl->cfg.transport_udp ?
+			      SOCK_DGRAM : SOCK_STREAM, 0);
 #endif
 	  if (tsock->fd < 0)
 	    {
@@ -634,7 +639,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 #else
 	  rv =
 	    connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
-		     sizeof (scm->server_addr));
+		     scm->server_addr_size);
 #endif
 	  if (rv < 0)
 	    {
@@ -838,6 +843,8 @@ print_usage_and_exit (void)
 	   "sock_test_client [OPTIONS] <ipaddr> <port>\n"
 	   "  OPTIONS\n"
 	   "  -h               Print this message and exit.\n"
+	   "  -6               Use IPv6\n"
+	   "  -u               Use UDP transport layer\n"
 	   "  -c               Print test config before test.\n"
 	   "  -w <dir>         Write test results to <dir>.\n"
 	   "  -X               Exit after running test.\n"
@@ -863,7 +870,7 @@ main (int argc, char **argv)
   sock_test_socket_buf_alloc (ctrl);
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV")) != -1)
+  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6D")) != -1)
     switch (c)
       {
       case 'c':
@@ -1000,6 +1007,14 @@ main (int argc, char **argv)
 	ctrl->cfg.verbose = 1;
 	break;
 
+      case '6':
+	ctrl->cfg.address_ip6 = 1;
+	break;
+
+      case 'D':
+	ctrl->cfg.transport_udp = 1;
+	break;
+
       case '?':
 	switch (optopt)
 	  {
@@ -1042,7 +1057,9 @@ main (int argc, char **argv)
     }
   else
     {
-      ctrl->fd = vppcom_session_create (VPPCOM_PROTO_TCP,
+      ctrl->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
+					VPPCOM_PROTO_UDP :
+					VPPCOM_PROTO_TCP,
 					0 /* is_nonblocking */ );
       if (ctrl->fd < 0)
 	{
@@ -1051,7 +1068,8 @@ main (int argc, char **argv)
 	}
     }
 #else
-  ctrl->fd = socket (AF_INET, SOCK_STREAM, 0);
+  ctrl->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
+		     ctrl->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM, 0);
 #endif
 
   if (ctrl->fd < 0)
@@ -1064,15 +1082,42 @@ main (int argc, char **argv)
     }
 
   memset (&scm->server_addr, 0, sizeof (scm->server_addr));
-
-  scm->server_addr.sin_family = AF_INET;
-  inet_pton (AF_INET, argv[optind++], &(scm->server_addr.sin_addr));
-  scm->server_addr.sin_port = htons (atoi (argv[optind]));
+  if (ctrl->cfg.address_ip6)
+    {
+      struct sockaddr_in6 *server_addr =
+	(struct sockaddr_in6 *) &scm->server_addr;
+      scm->server_addr_size = sizeof (*server_addr);
+      server_addr->sin6_family = AF_INET6;
+      inet_pton (AF_INET6, argv[optind++], &(server_addr->sin6_addr));
+      server_addr->sin6_port = htons (atoi (argv[optind]));
+    }
+  else
+    {
+      struct sockaddr_in *server_addr =
+	(struct sockaddr_in *) &scm->server_addr;
+      scm->server_addr_size = sizeof (*server_addr);
+      server_addr->sin_family = AF_INET;
+      inet_pton (AF_INET, argv[optind++], &(server_addr->sin_addr));
+      server_addr->sin_port = htons (atoi (argv[optind]));
+    }
 
 #ifdef VCL_TEST
-  scm->server_endpt.is_ip4 = (scm->server_addr.sin_family == AF_INET);
-  scm->server_endpt.ip = (uint8_t *) & scm->server_addr.sin_addr;
-  scm->server_endpt.port = (uint16_t) scm->server_addr.sin_port;
+  if (ctrl->cfg.address_ip6)
+    {
+      struct sockaddr_in6 *server_addr =
+	(struct sockaddr_in6 *) &scm->server_addr;
+      scm->server_endpt.is_ip4 = 0;
+      scm->server_endpt.ip = (uint8_t *) & server_addr->sin6_addr;
+      scm->server_endpt.port = (uint16_t) server_addr->sin6_port;
+    }
+  else
+    {
+      struct sockaddr_in *server_addr =
+	(struct sockaddr_in *) &scm->server_addr;
+      scm->server_endpt.is_ip4 = 1;
+      scm->server_endpt.ip = (uint8_t *) & server_addr->sin_addr;
+      scm->server_endpt.port = (uint16_t) server_addr->sin_port;
+    }
 #endif
 
   do
@@ -1089,7 +1134,7 @@ main (int argc, char **argv)
 #else
       rv =
 	connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
-		 sizeof (scm->server_addr));
+		 scm->server_addr_size);
 #endif
       if (rv < 0)
 	{
