@@ -59,6 +59,121 @@
     },
     {
       "key": {
+        "uuid": "b70dd230_223677aa",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "VIP can either be in NodeIP mode or PodIP mode. Please make sure to only display the corresponding information (and let the user know which mode is enabled).",
+      "range": {
+        "startLine": 148,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 37
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b8a5a94_5a300044",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Same as below",
+      "range": {
+        "startLine": 182,
+        "startChar": 25,
+        "endLine": 184,
+        "endChar": 28
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "99a05ef3_4a5b0569",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "This information is specific to the VIP. Shouldn\u0027t be displayed as part of the AS (same for all AS in the VIP)",
+      "range": {
+        "startLine": 189,
+        "startChar": 0,
+        "endLine": 193,
+        "endChar": 37
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b1c1eb64_81c0c99e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Declaring those variable in the scope where they are used would help keep the code a bit cleaner.",
+      "range": {
+        "startLine": 261,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 27
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "71607112_931e9552",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "How could this happen ?\nMaybe an assert is more appropriate.",
+      "range": {
+        "startLine": 291,
+        "startChar": 7,
+        "endLine": 292,
+        "endChar": 9
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "80cf7b1d_ac2def6b",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 9
@@ -105,6 +220,23 @@
     },
     {
       "key": {
+        "uuid": "ef9e2364_83c91b31",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "If there is a 1-1 mapping between the AS and snat_mapping, why use a separate struct and pool ? Couldn\u0027t this information be part of the AS, or VIP struct ?",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "07d5cf4c_5c58b105",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 9
@@ -128,6 +260,30 @@
     },
     {
       "key": {
+        "uuid": "b267f027_6152901c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07d5cf4c_5c58b105",
+      "range": {
+        "startLine": 815,
+        "startChar": 2,
+        "endLine": 818,
+        "endChar": 3
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c91b99f7_e8133272",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 9
@@ -139,6 +295,30 @@
       "writtenOn": "2018-03-16T07:39:53Z",
       "side": 1,
       "message": "There is something strange. It looks to me that your load balancer can only support a single target_port. hence a single server.\nNormally, the way a lb works is that you define first a VIP, and then you add or remove  servers for that VIP. But here you only have both at the same time.",
+      "range": {
+        "startLine": 858,
+        "startChar": 0,
+        "endLine": 859,
+        "endChar": 60
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24095a7c_65bb35e9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 859,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c91b99f7_e8133272",
       "range": {
         "startLine": 858,
         "startChar": 0,
@@ -185,6 +365,30 @@
       "writtenOn": "2018-03-16T07:39:53Z",
       "side": 1,
       "message": "The error will occur when the same port is used for different VIPs. But we could have that.",
+      "range": {
+        "startLine": 894,
+        "startChar": 8,
+        "endLine": 894,
+        "endChar": 42
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0591b26c_f0a0ef7c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 894,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "512633a9_163b68f8",
       "range": {
         "startLine": 894,
         "startChar": 8,
@@ -339,6 +543,69 @@
         "startChar": 20,
         "endLine": 126,
         "endChar": 24
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50d83afa_1ab2bc65",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "No need to check that",
+      "range": {
+        "startLine": 378,
+        "startChar": 7,
+        "endLine": 378,
+        "endChar": 26
+      },
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2335969a_8094d8b2",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "Looks to me like you are rewriting the dst port of all packets which destination falls inside the VIP. Shouldn\u0027t you check for the destination port to match the VIP port ?",
+      "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8369902d_6587baf4",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-03-20T08:20:27Z",
+      "side": 1,
+      "message": "No need to check that",
+      "range": {
+        "startLine": 406,
+        "startChar": 12,
+        "endLine": 406,
+        "endChar": 28
       },
       "revId": "c256c7210cfaa2dede6876c6bd943fdaecce2196",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
