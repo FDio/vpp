@@ -22,34 +22,27 @@
 #include <vppinfra/byte_order.h>
 
 /* define message IDs */
-#define vl_msg_id(n,h) n,
-typedef enum
-{
-#include <stn/stn.api.h>
-  /* We'll want to know how many messages IDs we need... */
-  VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
+#include <stn/stn_msg_enum.h>
 
 /* define message structures */
 #define vl_typedefs
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <nat/nat_all_api_h.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_api_version
 
 #define REPLY_MSG_ID_BASE stn_main.msg_id_base
