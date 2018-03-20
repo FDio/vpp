@@ -1033,6 +1033,33 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   return 0;
 }
 
+static int lb_local_exists (nat44_lb_addr_port_t * local,
+                            ip4_address_t * e_addr, u16 e_port)
+{
+  snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m;
+  nat44_lb_addr_port_t *ap;
+
+  /* *INDENT-OFF* */
+  pool_foreach (m, sm->static_mappings,
+  ({
+      if (vec_len(m->locals))
+        {
+          if (m->external_port == e_port && m->external_addr.as_u32 == e_addr->as_u32)
+            continue;
+
+          vec_foreach (ap, m->locals)
+          {
+            if (ap->port == local->port && ap->addr.as_u32 == local->addr.as_u32)
+              return 1;
+          }
+        }
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
@@ -1253,12 +1280,15 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                 }
             }
 
-          m_key.port = clib_host_to_net_u16 (local->port);
-          kv.key = m_key.as_u64;
-          if (clib_bihash_add_del_8_8(&tsm->in2out, &kv, 0))
+          if (!lb_local_exists(local, &e_addr, e_port))
             {
-              clib_warning ("in2out key del failed");
-              return VNET_API_ERROR_UNSPECIFIED;
+              m_key.port = clib_host_to_net_u16 (local->port);
+              kv.key = m_key.as_u64;
+              if (clib_bihash_add_del_8_8(&tsm->in2out, &kv, 0))
+                {
+                  clib_warning ("in2out key del failed");
+                  return VNET_API_ERROR_UNSPECIFIED;
+                }
             }
           /* Delete sessions */
           u_key.addr = local->addr;
