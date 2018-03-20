@@ -105,7 +105,11 @@ public:
    * Called by the HW Command Q when it is disabled to indicate the
    * command can be considered successful without issuing it to HW
    */
-  virtual void succeeded() { m_hw_item.set(rc_t::OK); }
+  virtual void succeeded()
+  {
+    m_hw_item.set(rc_t::OK);
+    VOM_LOG(log_level_t::DEBUG) << to_string();
+  }
 
   /**
    * call operator used as a callback by VAPI when the reply is available

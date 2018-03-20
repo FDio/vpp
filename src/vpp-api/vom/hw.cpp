@@ -74,16 +74,14 @@ HW::cmd_q::enqueue(std::queue<cmd*>& cmds)
 bool
 HW::cmd_q::connect()
 {
-  int rv;
-
   if (m_connected)
     return m_connected;
 
-  rv = m_conn.connect();
-
-  m_connected = true;
-  m_rx_thread.reset(new std::thread(&HW::cmd_q::rx_run, this));
-  return (rv == 0);
+  if (0 == m_conn.connect()) {
+    m_connected = true;
+    m_rx_thread.reset(new std::thread(&HW::cmd_q::rx_run, this));
+  }
+  return (m_connected);
 }
 
 void

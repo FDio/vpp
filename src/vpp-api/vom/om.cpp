@@ -15,6 +15,7 @@
 
 #include <algorithm>
 
+#include "vom/logger.hpp"
 #include "vom/om.hpp"
 
 namespace VOM {
@@ -82,6 +83,7 @@ OM::remove(const client_db::key_t& key)
 void
 OM::replay()
 {
+  VOM_LOG(log_level_t::INFO) << "replay";
   /*
    * the listeners are sorted in dependency order
    */
@@ -106,6 +108,8 @@ OM::dump(std::ostream& os)
 void
 OM::populate(const client_db::key_t& key)
 {
+  VOM_LOG(log_level_t::INFO) << "populate";
+
   /*
    * the listeners are sorted in dependency order
    */
