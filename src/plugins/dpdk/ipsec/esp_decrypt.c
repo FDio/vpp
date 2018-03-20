@@ -476,8 +476,7 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 		esp_replay_advance(sa0, seq);
 	    }
 
-	  /* FIXME ip header */
-	  ih4 = (ip4_header_t *) (b0->data + sizeof(ethernet_header_t));
+          ih4 = (ip4_header_t *) (b0->data + vnet_buffer(b0)->l3_hdr_offset);
 	  vlib_buffer_advance (b0, sizeof (esp_header_t) + iv_size);
 
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
