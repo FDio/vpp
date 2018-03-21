@@ -123,7 +123,7 @@ def run_forked(suite):
                                 "test: %s -> %s" % (link_path, lttd))
             try:
                 os.symlink(last_test_temp_dir, link_path)
-            except:
+            except Exception:
                 pass
             api_post_mortem_path = "/tmp/api_post_mortem.%d" % vpp_pid
             if os.path.isfile(api_post_mortem_path):
@@ -151,19 +151,22 @@ if __name__ == '__main__':
 
     try:
         verbose = int(os.getenv("V", 0))
-    except:
+    except ValueError:
         verbose = 0
 
     default_test_timeout = 600  # 10 minutes
     try:
         test_timeout = int(os.getenv("TIMEOUT", default_test_timeout))
-    except:
+    except ValueError:
         test_timeout = default_test_timeout
 
     try:
         debug = os.getenv("DEBUG")
-    except:
+    except ValueError:
         debug = None
+
+    s = os.getenv("STEP", "n")
+    step = True if s.lower() in ("y", "yes", "1") else False
 
     parser = argparse.ArgumentParser(description="VPP unit tests")
     parser.add_argument("-f", "--failfast", action='count',
@@ -181,15 +184,19 @@ if __name__ == '__main__':
         discover_tests(d, cb)
 
     try:
-        retries = int(os.getenv("RETRIES"))
-    except:
+        retries = int(os.getenv("RETRIES", 0))
+    except ValueError:
         retries = 0
     if retries is None:
         retries = 0
     attempts = retries + 1
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
-    if debug is None or debug.lower() not in ["gdb", "gdbserver"]:
+    if (debug is not None and debug.lower() in ["gdb", "gdbserver"]) or step:
+        # don't fork if requiring interactive terminal..
+        sys.exit(not VppTestRunner(
+            verbosity=verbose, failfast=failfast).run(suite).wasSuccessful())
+    else:
         while True:
             result, failed = run_forked(suite)
             attempts = attempts - 1
@@ -199,7 +206,3 @@ if __name__ == '__main__':
                 suite = suite_from_failed(suite, failed)
                 continue
             sys.exit(result)
-
-    # don't fork if debugging..
-    sys.exit(not VppTestRunner(verbosity=verbose,
-                               failfast=failfast).run(suite).wasSuccessful())
