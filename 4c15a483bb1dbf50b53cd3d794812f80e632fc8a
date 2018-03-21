@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d77c4ce4_e680e685",
+        "filename": "src/vnet/devices/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:26:35Z",
+      "side": 1,
+      "message": "should be fidp - hwif-\u003eflows",
+      "range": {
+        "startLine": 108,
+        "startChar": 29,
+        "endLine": 108,
+        "endChar": 33
+      },
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3398ee7a_d27d5c54",
+        "filename": "src/vnet/devices/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:26:35Z",
+      "side": 1,
+      "message": "src_port match is not needed. We need match on ip protocol as udp",
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8be289af_0f58f7a2",
+        "filename": "src/vnet/devices/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:26:35Z",
+      "side": 1,
+      "message": "same comment on src_port match as ip4 vxlan above",
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "48d859f8_7e22b75a",
+        "filename": "src/vnet/devices/flow.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:26:35Z",
+      "side": 1,
+      "message": "no src_port match but need protocol match to be udp",
+      "range": {
+        "startLine": 48,
+        "startChar": 11,
+        "endLine": 48,
+        "endChar": 19
+      },
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "519076d4_56e5028c",
+        "filename": "src/vnet/devices/flow.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:26:35Z",
+      "side": 1,
+      "message": "same as above for ip4_vxlan",
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
