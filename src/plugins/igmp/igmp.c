@@ -738,10 +738,13 @@ VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (igmp_hw_interface_link_up_down);
 static clib_error_t *
 igmp_init (vlib_main_t * vm)
 {
+  clib_error_t *error;
   igmp_main_t *im = &igmp_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
+  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
+    return error;
 
   im->igmp_config_by_sw_if_index =
     hash_create_mem (0, sizeof (u32), sizeof (uword));
@@ -828,7 +831,7 @@ do {						\
   mfib_table_entry_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE, 0,
 			   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
 
-  return 0;
+  return (error);
 }
 
 VLIB_INIT_FUNCTION (igmp_init);
