@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c83f5828_a235dda6",
+        "filename": "src/vpp-api/vom/bond_interface.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-21T23:13:03Z",
+      "side": 1,
+      "message": "can you do the bond dump here? since it happens after non-bond interfaces",
+      "revId": "192f4e241fe3832fcbcb57a67038836ce732a323",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26ad1c7d_ccdfdd00",
+        "filename": "src/vpp-api/vom/bond_interface.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-21T23:13:03Z",
+      "side": 1,
+      "message": "BOND_INTERFACE",
+      "revId": "192f4e241fe3832fcbcb57a67038836ce732a323",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1a6548e_cd5e80bd",
+        "filename": "src/vpp-api/vom/interface_cmds.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-21T23:13:03Z",
+      "side": 1,
+      "message": "is this change required for bond interfaces?",
+      "revId": "192f4e241fe3832fcbcb57a67038836ce732a323",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bfd325fa_c0294e70",
+        "filename": "src/vpp-api/vom/interface_types.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-21T23:13:03Z",
+      "side": 1,
+      "message": "don\u0027t these belong in bond_interface.cpp?",
+      "revId": "192f4e241fe3832fcbcb57a67038836ce732a323",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
