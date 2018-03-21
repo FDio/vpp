@@ -54,7 +54,7 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) faulthandler six scapy==2.4.0rc5 pexpect cryptography subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
+PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) faulthandler six scapy==2.4.0rc5 pexpect cryptography subprocess32 cffi git+https://github.com/vpp-dev/py-lispnetworking
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 
