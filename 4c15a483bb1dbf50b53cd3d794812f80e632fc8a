@@ -96,6 +96,29 @@
       "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35389e82_6cb4e3a7",
+        "filename": "src/vnet/devices/flow.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-21T04:45:45Z",
+      "side": 1,
+      "message": "We may need to add another field:\n\n  u32 node_index;\n\nwhich would be the next node device-input node should send packets to for matching this flow.  This can be 0 to tell device-input node to just send packet to the normal next node.  Alternatively, next node index can be passed as a parameter to calling flow_enable() function.",
+      "range": {
+        "startLine": 90,
+        "startChar": 6,
+        "endLine": 90,
+        "endChar": 8
+      },
+      "revId": "4c15a483bb1dbf50b53cd3d794812f80e632fc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
