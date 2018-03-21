@@ -206,7 +206,7 @@ ip4_lookup (ip4_address_t * a, igmp_membership_report_v3_t * igmp, u16 n,
 
   for (i = 0; i < n; i++)
     {
-      if ((!ip4_address_compare (a, &group_ptr (igmp, l)->dst_address)) &&
+      if ((!ip4_address_compare (a, &(group_ptr (igmp, l)->dst_address))) &&
 	  (type == group_ptr (igmp, l)->type))
 	{
 	  rv = 1;
@@ -549,12 +549,11 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   igmp_main_t *im = &igmp_main;
   uword *event_data = 0, event_type;
   f64 time_start;
-  u8 enabled = 0;
   igmp_timer_t *timer = NULL;
 
   while (1)
     {
-      if (enabled)
+      if (NULL != timer)
 	vlib_process_wait_for_event_or_clock (vm,
 					      timer->exp_time - time_start);
       else
@@ -571,14 +570,11 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       DBG ("time: %f", vlib_time_now (vm));
 
       /* timer expired */
-      timer->func (vm, rt, im, timer);
+      if (NULL != timer)
+	timer->func (vm, rt, im, timer);
 
     next_timer:
       timer = igmp_get_next_timer (im);
-      if (timer == NULL)
-	enabled = 0;
-      else
-	enabled = 1;
     }
   return 0;
 }
