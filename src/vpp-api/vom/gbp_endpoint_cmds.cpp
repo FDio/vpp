@@ -103,7 +103,7 @@ std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-create: " << m_hw_item.to_string() << " itf:" << m_itf
+  s << "gbp-endpoint-delete: " << m_hw_item.to_string() << " itf:" << m_itf
     << " ip:" << m_ip_addr.to_string();
 
   return (s.str());
