@@ -17,7 +17,7 @@ from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from scapy.packet import Raw
-from hook import StepHook, PollHook
+from hook import StepHook, PollHook, VppDiedError
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
@@ -120,21 +120,13 @@ def pump_output(testclass):
 
 
 def running_extended_tests():
-    try:
-        s = os.getenv("EXTENDED_TESTS")
-        return True if s.lower() in ("y", "yes", "1") else False
-    except:
-        return False
-    return False
+    s = os.getenv("EXTENDED_TESTS", "n")
+    return True if s.lower() in ("y", "yes", "1") else False
 
 
 def running_on_centos():
-    try:
-        os_id = os.getenv("OS_ID")
-        return True if "centos" in os_id.lower() else False
-    except:
-        return False
-    return False
+    os_id = os.getenv("OS_ID", "")
+    return True if "centos" in os_id.lower() else False
 
 
 class KeepAliveReporter(object):
@@ -217,21 +209,11 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
-        try:
-            s = os.getenv("STEP")
-            cls.step = True if s.lower() in ("y", "yes", "1") else False
-        except:
-            cls.step = False
-        try:
-            d = os.getenv("DEBUG")
-        except:
-            d = None
-        try:
-            c = os.getenv("CACHE_OUTPUT", "1")
-            cls.cache_vpp_output = \
-                False if c.lower() in ("n", "no", "0") else True
-        except:
-            cls.cache_vpp_output = True
+        s = os.getenv("STEP", "n")
+        cls.step = True if s.lower() in ("y", "yes", "1") else False
+        d = os.getenv("DEBUG", None)
+        c = os.getenv("CACHE_OUTPUT", "1")
+        cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
@@ -249,12 +231,9 @@ class VppTestCase(unittest.TestCase):
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
             debug_cli = "cli-listen localhost:5002"
         coredump_size = None
-        try:
-            size = os.getenv("COREDUMP_SIZE")
-            if size is not None:
-                coredump_size = "coredump-size %s" % size
-        except:
-            pass
+        size = os.getenv("COREDUMP_SIZE")
+        if size is not None:
+            coredump_size = "coredump-size %s" % size
         if coredump_size is None:
             coredump_size = "coredump-size unlimited"
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
@@ -290,7 +269,7 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        raw_input("Press ENTER to continue running the testcase...")
+        sys.stdin.readline("Press ENTER to continue running the testcase...")
 
     @classmethod
     def run_vpp(cls):
@@ -368,7 +347,7 @@ class VppTestCase(unittest.TestCase):
             cls.sleep(0.1, "after vpp startup, before initial poll")
             try:
                 hook.poll_vpp()
-            except:
+            except VppDiedError:
                 cls.vpp_startup_failed = True
                 cls.logger.critical(
                     "VPP died shortly after startup, check the"
@@ -376,23 +355,22 @@ class VppTestCase(unittest.TestCase):
                 raise
             try:
                 cls.vapi.connect()
-            except:
+            except Exception:
                 try:
                     cls.vapi.disconnect()
-                except:
+                except Exception:
                     pass
                 if cls.debug_gdbserver:
                     print(colorize("You're running VPP inside gdbserver but "
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except:
-            t, v, tb = sys.exc_info()
+        except Exception:
             try:
                 cls.quit()
-            except:
+            except Exception:
                 pass
-            raise (t, v, tb)
+            raise
 
     @classmethod
     def quit(cls):
@@ -405,8 +383,9 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                raw_input("When done debugging, press ENTER to kill the "
-                          "process and finish running the testcase...")
+                sys.stdin.readline(
+                    "When done debugging, press ENTER to kill the process and "
+                    "finish running the testcase...")
 
         os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
         cls.pump_thread_stop_flag.set()
@@ -732,7 +711,7 @@ class VppTestCase(unittest.TestCase):
             msg = msg % (getdoc(name_or_class).strip(),
                          real_value, str(name_or_class(real_value)),
                          expected_value, str(name_or_class(expected_value)))
-        except:
+        except Exception:
             msg = "Invalid %s: %s does not match expected value %s" % (
                 name_or_class, real_value, expected_value)
 
@@ -1051,10 +1030,7 @@ class VppTestRunner(unittest.TextTestRunner):
     test_option = "TEST"
 
     def parse_test_option(self):
-        try:
-            f = os.getenv(self.test_option)
-        except:
-            f = None
+        f = os.getenv(self.test_option, None)
         filter_file_name = None
         filter_class_name = None
         filter_func_name = None
