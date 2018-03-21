@@ -114,8 +114,10 @@ typedef enum
   VPPCOM_ATTR_GET_ERROR,
   VPPCOM_ATTR_GET_TX_FIFO_LEN,
   VPPCOM_ATTR_SET_TX_FIFO_LEN,
+  VPPCOM_ATTR_GET_TX_FIFO,
   VPPCOM_ATTR_GET_RX_FIFO_LEN,
   VPPCOM_ATTR_SET_RX_FIFO_LEN,
+  VPPCOM_ATTR_GET_RX_FIFO,
   VPPCOM_ATTR_GET_REUSEADDR,
   VPPCOM_ATTR_SET_REUSEADDR,
   VPPCOM_ATTR_GET_REUSEPORT,
@@ -242,13 +244,26 @@ typedef void (*vppcom_session_listener_errcb) (void *);
  * @param flags - placeholder for future use. Must be ZERO
  * @param q_len - max listener connection backlog
  * @param ptr - user data
- * @return
+ * @return vppcom_error_t
  */
 extern int vppcom_session_register_listener (uint32_t session_index,
 					     vppcom_session_listener_cb cb,
 					     vppcom_session_listener_errcb
 					     errcb, uint8_t flags, int q_len,
 					     void *ptr);
+
+/**
+ * @brief Takes a pointer to FIFO, returns VPP session_index
+ *
+ * @param fifo - will be cast to internal data structure which has back
+ * reference to session_index. session_index will be validated, but if
+ * garbage pointer sent in that by happenstance at the memory location of the
+ * session_index back reference is a valid session_index "bad things" (tm)
+ * will happen.
+ *
+ * @return session_index - ~0 is "invalid"
+ */
+extern uint32_t vppcom_session_from_fifo (void* fifo);
 
 /* TBD: make these constructor/destructor function */
 extern int vppcom_app_create (char *app_name);
@@ -279,7 +294,18 @@ extern int vppcom_epoll_ctl (uint32_t vep_idx, int op,
 			     struct epoll_event *event);
 extern int vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      int maxevents, double wait_for_time);
-extern int vppcom_session_attr (uint32_t session_index, uint32_t op,
+
+/**
+ * @brief vppcom_session_attr allows for a general purpose query API to
+ * return or set information about a session via session_index
+ *
+ * @param session_index
+ * @param op - operation flag of type vppcom_attr_op_t
+ * @param buffer - buffer for setting or getting result
+ * @param buflen
+ * @return vppcom_error_t
+ */
+extern int vppcom_session_attr (uint32_t session_index, vppcom_attr_op_t op,
 				void *buffer, uint32_t * buflen);
 extern int vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 				    uint32_t buflen, int flags,
@@ -289,6 +315,8 @@ extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
 				  vppcom_endpt_t * ep);
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
+
+extern uint32_t vppcom_util_sizeof_fifo_t();
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

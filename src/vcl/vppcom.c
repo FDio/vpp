@@ -364,6 +364,13 @@ vppcom_session_state_str (session_state_t state)
 /*
  * VPPCOM Utility Functions
  */
+
+uint32_t
+vppcom_util_sizeof_fifo_t ()
+{
+  return sizeof (svm_fifo_t);
+}
+
 static inline int
 vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
 {
@@ -4300,7 +4307,7 @@ done:
 }
 
 int
-vppcom_session_attr (uint32_t session_index, uint32_t op,
+vppcom_session_attr (uint32_t session_index, vppcom_attr_op_t op,
 		     void *buffer, uint32_t * buflen)
 {
   session_t *session;
@@ -4736,6 +4743,10 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	}
       else
 	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_TX_FIFO:
+      rv = VPPCOM_OK;
       break;
 
     case VPPCOM_ATTR_GET_TX_FIFO_LEN:
