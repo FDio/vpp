@@ -29,6 +29,7 @@
 
 #include "fa_node.h"
 #include "hash_lookup_types.h"
+#include "lookup_context.h"
 
 #define  ACL_PLUGIN_VERSION_MAJOR 1
 #define  ACL_PLUGIN_VERSION_MINOR 3
@@ -140,6 +141,11 @@ typedef struct {
   /* API message ID base */
   u16 msg_id_base;
 
+  /* The pool of users of ACL lookup contexts */
+  acl_lookup_context_user_t *acl_users;
+  /* The pool of ACL lookup contexts */
+  acl_lookup_context_t *acl_lookup_contexts;
+
   acl_list_t *acls;	/* Pool of ACLs */
   hash_acl_info_t *hash_acl_infos; /* corresponding hash matching housekeeping info */
   clib_bihash_48_8_t acl_lookup_hash; /* ACL lookup hash table. */
@@ -150,10 +156,20 @@ typedef struct {
   void *hash_lookup_mheap;
   u32 hash_lookup_mheap_size;
   int acl_lookup_hash_initialized;
+/*
   applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
   applied_hash_ace_entry_t **output_hash_entry_vec_by_sw_if_index;
   applied_hash_acl_info_t *input_applied_hash_acl_info_by_sw_if_index;
   applied_hash_acl_info_t *output_applied_hash_acl_info_by_sw_if_index;
+*/
+  applied_hash_ace_entry_t **hash_entry_vec_by_lc_index;
+  applied_hash_acl_info_t *applied_hash_acl_info_by_lc_index;
+
+  /* Corresponding lookup context indices for in/out lookups per sw_if_index */
+  u32 *input_lc_index_by_sw_if_index;
+  u32 *output_lc_index_by_sw_if_index;
+  /* context user id for interface ACLs */
+  u32 interface_acl_user_id;
 
   macip_acl_list_t *macip_acls;	/* Pool of MAC-IP ACLs */
 
@@ -164,6 +180,13 @@ typedef struct {
   /* interfaces on which given ACLs are applied */
   u32 **input_sw_if_index_vec_by_acl;
   u32 **output_sw_if_index_vec_by_acl;
+
+  /* bitmaps 1=sw_if_index has in/out ACL processing enabled */
+  uword *in_acl_on_sw_if_index;
+  uword *out_acl_on_sw_if_index;
+
+  /* lookup contexts where a given ACL is used */
+  u32 **lc_index_vec_by_acl;
 
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
@@ -239,6 +262,7 @@ typedef struct {
   u64 fa_conn_table_max_entries;
 
   int trace_sessions;
+  int trace_acl;
 
   /*
    * If the cleaner has to delete more than this number
