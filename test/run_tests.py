@@ -165,6 +165,9 @@ if __name__ == '__main__':
     except:
         debug = None
 
+    s = os.getenv("STEP", "n")
+    step = True if s.lower() in ("y", "yes", "1") else False
+
     parser = argparse.ArgumentParser(description="VPP unit tests")
     parser.add_argument("-f", "--failfast", action='count',
                         help="fast failure flag")
@@ -189,7 +192,11 @@ if __name__ == '__main__':
     attempts = retries + 1
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
-    if debug is None or debug.lower() not in ["gdb", "gdbserver"]:
+    if (debug is not None and debug.lower() in ["gdb", "gdbserver"]) or step:
+        # don't fork if requiring interactive terminal..
+        sys.exit(not VppTestRunner(
+            verbosity=verbose, failfast=failfast).run(suite).wasSuccessful())
+    else:
         while True:
             result, failed = run_forked(suite)
             attempts = attempts - 1
@@ -199,7 +206,3 @@ if __name__ == '__main__':
                 suite = suite_from_failed(suite, failed)
                 continue
             sys.exit(result)
-
-    # don't fork if debugging..
-    sys.exit(not VppTestRunner(verbosity=verbose,
-                               failfast=failfast).run(suite).wasSuccessful())
