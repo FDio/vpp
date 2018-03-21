@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d805d27_c28f084a",
+        "filename": "src/vnet/dhcp/dhcp6_pd_client_cp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-03-21T10:10:27Z",
+      "side": 1,
+      "message": "I don\u0027t think you should have a PD specific API to add addresses. The PD CP receives notifications about prefix events. (And note there can be more than one prefix).\nWhen the PD CP receives a prefix, it should call the existing APIs to add addresses, install routes, add prefix to ACLs etc.\nI.e. it\u0027s hard to make a higher level API for that...",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 2
+      },
+      "revId": "39f65bfe5472430712c82c7ec8d73a5d7c45c86f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
