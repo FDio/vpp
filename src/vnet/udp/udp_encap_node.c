@@ -120,14 +120,14 @@ udp_encap_inline (vlib_main_t * vm,
 		  udp6_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 		  tr->udp = ue0->ue_hdrs.ip6.ue_udp;
-		  tr->ip = ue0->ue_hdrs.ip6.ue_ip6;
+		  memcpy (&tr->ip, &ue0->ue_hdrs.ip6.ue_ip6, sizeof (tr->ip));
 		}
 	      if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  udp6_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
 		  tr->udp = ue1->ue_hdrs.ip6.ue_udp;
-		  tr->ip = ue1->ue_hdrs.ip6.ue_ip6;
+		  memcpy (&tr->ip, &ue0->ue_hdrs.ip6.ue_ip6, sizeof (tr->ip));
 		}
 	    }
 	  else
@@ -144,14 +144,23 @@ udp_encap_inline (vlib_main_t * vm,
 		  udp4_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 		  tr->udp = ue0->ue_hdrs.ip4.ue_udp;
-		  tr->ip = ue0->ue_hdrs.ip4.ue_ip4;
+		  /*
+		   * Note: gcc-7 generates a spurious aligned
+		   * vector instruction when compiling
+		   * tr->ip.as_u8 = ue0->ue_hdrs.ip4.ue_ip4.as_u8;
+		   * So use (builtin!) memcpy to generate an unaligned
+		   * vector op;
+		   */
+		  memcpy (tr->ip.as_u8, ue0->ue_hdrs.ip4.ue_ip4.as_u8,
+			  sizeof (tr->ip.as_u8));
 		}
 	      if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  udp4_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
 		  tr->udp = ue1->ue_hdrs.ip4.ue_udp;
-		  tr->ip = ue1->ue_hdrs.ip4.ue_ip4;
+		  memcpy (tr->ip.as_u8, ue0->ue_hdrs.ip4.ue_ip4.as_u8,
+			  sizeof (tr->ip.as_u8));
 		}
 	    }
 
@@ -198,7 +207,7 @@ udp_encap_inline (vlib_main_t * vm,
 		  udp6_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 		  tr->udp = ue0->ue_hdrs.ip6.ue_udp;
-		  tr->ip = ue0->ue_hdrs.ip6.ue_ip6;
+		  memcpy (&tr->ip, &ue0->ue_hdrs.ip6.ue_ip6, sizeof (tr->ip));
 		}
 	    }
 	  else
@@ -214,7 +223,8 @@ udp_encap_inline (vlib_main_t * vm,
 		  udp4_encap_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 		  tr->udp = ue0->ue_hdrs.ip4.ue_udp;
-		  tr->ip = ue0->ue_hdrs.ip4.ue_ip4;
+		  memcpy (tr->ip.as_u8, ue0->ue_hdrs.ip4.ue_ip4.as_u8,
+			  sizeof (tr->ip.as_u8));
 		}
 	    }
 

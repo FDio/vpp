@@ -182,6 +182,13 @@ typedef union
     u32 checksum_data_32[5];
   });
   /* *INDENT-ON* */
+
+  /*
+   * gcc-7 manages to generate a spurious aligned vector instruction when
+   * copying an entire ip4 header via an assignment. This union element
+   * allows a sane workaround: memcpy (&dst.as_u8, &src.as_u8, sizeof(dst));
+   */
+  u8 as_u8[20];
 } ip4_header_t;
 
 /* Value of ip_version_and_header_length for packets w/o options. */
