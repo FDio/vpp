@@ -13,17 +13,6 @@ from scapy.contrib.igmpv3 import *
 from scapy.contrib.igmp import *
 
 
-def checkIGMPv3():
-    try:
-        tmp = IGMPv3()
-        tmp = IGMPv3mr()
-        tmp = IGMPv3gr()
-        tmp = IGMPv3mq()
-    except NameError:
-        return False
-    return True
-
-
 class TestIgmp(VppTestCase):
     """ IGMP Test Case """
 
@@ -52,7 +41,6 @@ class TestIgmp(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-    @unittest.skipUnless(checkIGMPv3(), "missing scapy igmpv3 implementation")
     def test_igmp_parse_report(self):
         """ IGMP parse Membership Report """
 
@@ -148,7 +136,6 @@ class TestIgmp(VppTestCase):
         self.assertEqual(igmp.type, 0x11)
         self.assertEqual(igmp.gaddr, "0.0.0.0")
 
-    @unittest.skipUnless(checkIGMPv3(), "missing scapy igmpv3 implementation")
     def test_igmp_send_query(self):
         """ IGMP send General Query """
 
@@ -178,7 +165,7 @@ class TestIgmp(VppTestCase):
         self.sleep(10)
         self.assertFalse(self.vapi.igmp_dump())
 
-    @unittest.skipUnless(checkIGMPv3(), "missing scapy igmpv3 implementation")
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_igmp_src_exp(self):
         """ IGMP per source timer """
 
@@ -238,7 +225,6 @@ class TestIgmp(VppTestCase):
         self.logger.error(self.vapi.cli("sh igmp config"))
         self.assertFalse(self.vapi.igmp_dump())
 
-    @unittest.skipUnless(checkIGMPv3(), "missing scapy igmpv3 implementation")
     def test_igmp_query_resp(self):
         """ IGMP General Query response """
 
@@ -281,7 +267,6 @@ class TestIgmp(VppTestCase):
         self.assertEqual(len(capture[0][IGMPv3gr].srcaddrs), 1)
         self.assertEqual(capture[0][IGMPv3gr].srcaddrs[0], "10.1.1.1")
 
-    @unittest.skipUnless(checkIGMPv3(), "missing scapy igmpv3 implementation")
     def test_igmp_listen(self):
         """ IGMP listen (S,G)s """
 
