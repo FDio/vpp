@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "35e95702_9eff192e",
+        "filename": "test/test_pppoe.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-03-21T08:17:50Z",
+      "side": 1,
+      "message": "this is not the proper value as this will cause the pppoe interface to think that it is pg0 interface\n\nI would suggest that you call super(VppPppoeInterface, self).__init__(test) only once you have the real sw_if_index - in add_vpp_config.",
+      "range": {
+        "startLine": 210,
+        "startChar": 37,
+        "endLine": 210,
+        "endChar": 57
+      },
+      "revId": "ec891fe785e762a436e2bc99475bd740f6a8f346",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
