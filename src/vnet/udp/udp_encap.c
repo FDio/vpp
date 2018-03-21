@@ -81,7 +81,7 @@ udp_encap_add_and_lock (u32 id,
     {
       u8 pfx_len = 0;
 
-      pool_get (udp_encap_pool, ue);
+      pool_get_aligned (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
       uei = ue - udp_encap_pool;
 
       vlib_validate_combined_counter (&(udp_encap_counters), uei);
