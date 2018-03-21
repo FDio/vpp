@@ -271,7 +271,33 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 
     case DHCP_BOUND:
     case DHCP_REQUEST:
-      if (dhcp_message_type != DHCP_PACKET_ACK)
+      if (dhcp_message_type == DHCP_PACKET_NAK)
+	{
+	  /* Probably never happens in bound state, but anyhow... */
+	  if (c->state == DHCP_BOUND)
+	    {
+	      ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
+					     (void *) &c->leased_address,
+					     c->subnet_mask_width,
+					     1 /*is_del */ );
+	      vnet_feature_enable_disable ("ip4-unicast",
+					   "ip4-dhcp-client-detect",
+					   c->sw_if_index, 1, 0, 0);
+	    }
+	  /* Wipe out any memory of the address we had... */
+	  c->state = DHCP_DISCOVER;
+	  c->next_transmit = now;
+	  c->retry_count = 0;
+	  c->leased_address.as_u32 = 0;
+	  c->subnet_mask_width = 0;
+	  c->router_address.as_u32 = 0;
+	  c->lease_renewal_interval = 0;
+	  c->dhcp_server.as_u32 = 0;
+	  break;
+	}
+
+      if (dhcp_message_type != DHCP_PACKET_ACK &&
+	  dhcp_message_type != DHCP_PACKET_OFFER)
 	{
 	  clib_warning ("sw_if_index %d state %U message type %d",
 			c->sw_if_index, format_dhcp_client_state,

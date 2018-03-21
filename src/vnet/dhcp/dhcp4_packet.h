@@ -57,6 +57,7 @@ typedef enum
   DHCP_PACKET_OFFER,
   DHCP_PACKET_REQUEST,
   DHCP_PACKET_ACK = 5,
+  DHCP_PACKET_NAK,
 } dhcp_packet_type_t;
 
 typedef enum dhcp_packet_option_t_
