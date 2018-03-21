@@ -36,7 +36,7 @@
 #define DBG(...)
 #endif /* IGMP_DBG */
 
-#define group_ptr(p, l) ((igmp_membership_group_v3_t *)((void*)p + l))
+#define group_ptr(p, l) ((igmp_membership_group_v3_t *)((char*)p + l))
 
 enum
 {
