@@ -1,5 +1,6 @@
 import signal
 import os
+import sys
 import traceback
 from log import RED, single_line_delim, double_line_delim
 from debug import spawn_gdb
@@ -167,14 +168,15 @@ class StepHook(PollHook):
         print("Calls in/below that stack frame will be not be stepped anymore")
         print(single_line_delim)
         while True:
-            choice = raw_input("Enter your choice, if any, and press ENTER to "
-                               "continue running the testcase...")
+            choice = sys.stdin.readline(
+                "Enter your choice, if any, and press ENTER to continue "
+                "running the testcase...")
             if choice == "":
                 choice = None
             try:
                 if choice is not None:
                     num = int(choice)
-            except:
+            except TypeError:
                 print("Invalid input")
                 continue
             if choice is not None and (num < 0 or num >= len(stack)):
