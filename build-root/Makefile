@@ -648,8 +648,12 @@ configure_check_timestamp =						\
 # we assume there's 1 processor; we use 2*ncpu for the -j option.
 # NB: GNU Make 4.2 will let us use '$(file </proc/cpuinfo)' to both test
 # for file presence and content; for now this will have to do.
+ifndef MAKE_PARALLEL_JOBS
 MAKE_PARALLEL_JOBS = -j $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo), \
 	$(shell grep -c ^processor /proc/cpuinfo), 2)
+else
+MAKE_PARALLEL_JOBS := -j $(MAKE_PARALLEL_JOBS)
+endif
 MAKE_PARALLEL_FLAGS ?= $(if $($(PACKAGE)_make_parallel_fails),,$(MAKE_PARALLEL_JOBS))
 
 # Make command shorthand for packages & tools.
