@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "40c97758_e71d07d0",
+        "filename": "src/vnet/devices/flow.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-22T14:54:45Z",
+      "side": 1,
+      "message": "Other than making this a pool of struct\u0027s to include both flow_id and next_index, perhaps we can name this pool \"flow_marks\" and use variable like \"mark_index\" or \"flow_mark_index\" to access it to avoid confusion with global flow_index? I am hoping the rename will make others better understand how to use flow infra. What do you think?",
+      "range": {
+        "startLine": 114,
+        "startChar": 7,
+        "endLine": 114,
+        "endChar": 12
+      },
+      "revId": "df9b0aa82c10532588a0f09ca34849ebc48bf487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
