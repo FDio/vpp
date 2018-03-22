@@ -696,8 +696,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    clib_warning ("VLAN strip cannot be supported by interface\n");
 	}
 
-      hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
-	xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
+      if (hi)
+	hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
+	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
+      else
+	clib_warning ("hi NULL");
 
       rte_eth_dev_set_mtu (xd->device_index, mtu);
     }
