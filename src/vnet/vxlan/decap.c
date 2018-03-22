@@ -1177,3 +1177,213 @@ clib_error_t * ip6_vxlan_bypass_init (vlib_main_t * vm)
 { return 0; }
 
 VLIB_INIT_FUNCTION (ip6_vxlan_bypass_init);
+
+#define foreach_vxlan_flow_input_next        \
+_(DROP, "error-drop")                           \
+_(L2_INPUT, "l2-input")
+
+typedef enum
+{
+#define _(s,n) VXLAN_FLOW_NEXT_##s,
+  foreach_vxlan_flow_input_next
+#undef _
+  VXLAN_FLOW_N_NEXT,
+} vxlan_flow_input_next_t;
+
+#define foreach_vxlan_flow_error					\
+  _(NONE, "no error")							\
+  _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
+  _(IP_HEADER_ERROR, "Rx ip header errors")				\
+  _(UDP_CHECKSUM_ERROR, "Rx udp checksum errors")				\
+  _(UDP_LENGTH_ERROR, "Rx udp length errors")
+
+typedef enum
+{
+#define _(f,s) VXLAN_FLOW_ERROR_##f,
+  foreach_vxlan_flow_error
+#undef _
+    VXLAN_FLOW_N_ERROR,
+} vxlan_flow_error_t;
+
+static char *vxlan_flow_error_strings[] = {
+#define _(n,s) s,
+  foreach_vxlan_flow_error
+#undef _
+};
+
+
+static_always_inline u8
+vxlan_validate_udp_csum (vlib_main_t * vm, vlib_buffer_t *b)
+{
+  u32 flags = b->flags;
+  enum { offset = sizeof(ip4_header_t) + sizeof(udp_header_t) + sizeof(vxlan_header_t), };
+
+  /* Verify UDP checksum */
+  if ((flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
+  {
+    vlib_buffer_advance (b, -offset);
+    flags = ip4_tcp_udp_validate_checksum (vm, b);
+    vlib_buffer_advance (b, offset);
+  }
+
+  return (flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+}
+
+static_always_inline u8
+vxlan_check_udp_csum (vlib_main_t * vm, vlib_buffer_t *b)
+{
+  ip4_vxlan_header_t * hdr = vlib_buffer_get_current(b) - sizeof *hdr;
+  udp_header_t * udp = &hdr->udp;
+  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+  u8 good_csum = (b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0 ||
+    udp->checksum == 0;
+
+  return !good_csum;
+}
+
+static_always_inline u8
+vxlan_check_ip (vlib_buffer_t *b)
+{
+  ip4_vxlan_header_t * hdr = vlib_buffer_get_current(b) - sizeof *hdr;
+  u16 ip_len = clib_net_to_host_u16 (hdr->ip4.length);
+  u16 expected = b->current_length + sizeof hdr->ip4 + sizeof hdr->udp + sizeof hdr->vxlan;
+  return ip_len > expected || hdr->ip4.ttl == 0 || hdr->ip4.ip_version_and_header_length != 0x45;
+}
+
+static_always_inline u8
+vxlan_check_ip_udp_len (vlib_buffer_t *b)
+{
+  ip4_vxlan_header_t * hdr = vlib_buffer_get_current(b) - sizeof *hdr;
+  u16 ip_len = clib_net_to_host_u16 (hdr->ip4.length);
+  u16 udp_len = clib_net_to_host_u16 (hdr->udp.length);
+  return udp_len > ip_len;
+}
+
+uword
+CLIB_MULTIARCH_FN (vxlan_flow_input) (vlib_main_t * vm,
+					      vlib_node_runtime_t * node,
+					      vlib_frame_t * f)
+{
+  enum {
+    vxlan_payload_offset =
+      sizeof(ethernet_header_t) + sizeof(ip4_header_t) + sizeof(udp_header_t) + sizeof(vxlan_header_t)
+  };
+
+  vxlan_main_t * vxm = &vxlan_main;
+  vnet_interface_main_t * im = &vnet_main.interface_main;
+  vlib_combined_counter_main_t * rx_counter[VXLAN_FLOW_N_NEXT] = {
+    [VXLAN_FLOW_NEXT_DROP] = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP,
+    [VXLAN_FLOW_NEXT_L2_INPUT] = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+  };
+  u32 thread_index = vlib_get_thread_index();
+
+  u32 next_index = VXLAN_FLOW_NEXT_L2_INPUT;
+
+  u32 * from = vlib_frame_vector_args (f);
+  u32 n_left_from = f->n_vectors;
+
+  while (n_left_from > 0)
+  {
+    u32 n_left_to_next, *to_next;
+
+    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+    while (n_left_from > 0 && n_left_to_next > 0)
+    {
+      u32 bi0 = from[0];
+      from++;
+      n_left_from--;
+
+      to_next[0] = bi0;
+      to_next++;
+      n_left_to_next--;
+
+      vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+      ASSERT (b0->flags & VNET_BUFFER_F_FLOW_ID_PRESENT);
+      vlib_buffer_advance (b0, vxlan_payload_offset);
+
+      u32 len0 = vlib_buffer_length_in_chain (vm, b0);
+      u32 next0 = next_index;
+      u8 error0 = VXLAN_FLOW_ERROR_NONE;
+
+      u8 ip_err0 = vxlan_check_ip (b0);
+      u8 udp_err0 = vxlan_check_ip_udp_len (b0);
+      u8 csum_err0 = vxlan_check_udp_csum (vm, b0);
+
+      if (csum_err0)
+	csum_err0 = !vxlan_validate_udp_csum (vm, b0);
+      if (ip_err0 || udp_err0 || csum_err0)
+      {
+	next0 = VXLAN_FLOW_NEXT_DROP;
+
+	if (ip_err0)
+	  error0 = VXLAN_FLOW_ERROR_IP_HEADER_ERROR;
+	if (udp_err0)
+	  error0 = VXLAN_FLOW_ERROR_UDP_LENGTH_ERROR;
+	if (csum_err0)
+	  error0 = VXLAN_FLOW_ERROR_UDP_CHECKSUM_ERROR;
+	b0->error = node->errors[error0];
+      }
+
+      vnet_update_l2_len (b0);
+
+      b0->flags &= ~VNET_BUFFER_F_FLOW_ID_PRESENT;
+      u32 t_index0 = vnet_buffer2 (b0)->flow_id - vxm->flow_id_start;
+      vxlan_tunnel_t * t0 = &vxm->tunnels[t_index0];
+
+      u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
+      vlib_increment_combined_counter (rx_counter[next0], thread_index, sw_if_index0, 1, len0);
+
+      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+	{
+	  vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof *tr);
+	  *tr = (vxlan_rx_trace_t) {
+            .next_index = next0, .error = error0, .tunnel_index = t_index0, .vni = t0->vni };
+	}
+      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+          to_next, n_left_to_next,
+          bi0, next0);
+    }
+
+    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+  }
+
+  return f->n_vectors;
+}
+
+/* *INDENT-OFF* */
+#ifndef CLIB_MULTIARCH_VARIANT
+VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
+  .name = "vxlan-flow-input",
+  .function = vxlan_flow_input,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_vxlan_rx_trace,
+
+  .n_errors = VXLAN_FLOW_N_ERROR,
+  .error_strings = vxlan_flow_error_strings,
+
+  .n_next_nodes = VXLAN_FLOW_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [VXLAN_FLOW_NEXT_##s] = n,
+    foreach_vxlan_flow_input_next
+#undef _
+  },
+};
+#endif
+/* *INDENT-ON* */
+
+vlib_node_function_t __clib_weak vxlan_flow_input_avx512;
+vlib_node_function_t __clib_weak vxlan_flow_input_avx2;
+
+#if __x86_64__
+static void __clib_constructor
+vxlan_flow_input_multiarch_select (void)
+{
+  if (vxlan_flow_input_avx512 && clib_cpu_supports_avx512f ())
+    vxlan4_flow_input_node.function = vxlan_flow_input_avx512;
+  else if (vxlan_flow_input_avx2 && clib_cpu_supports_avx2 ())
+    vxlan4_flow_input_node.function = vxlan_flow_input_avx2;
+}
+#endif
