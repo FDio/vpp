@@ -153,7 +153,7 @@ vhost_create_cmd::issue(connection& con)
     memcpy(payload.tag, m_tag.c_str(),
            std::min(m_tag.length(), sizeof(payload.tag)));
 
-  payload.is_server = 1;
+  payload.is_server = 0;
   payload.use_custom_mac = 0;
   payload.renumber = 0;
 
@@ -281,6 +281,7 @@ vhost_delete_cmd::issue(connection& con)
   VAPI_CALL(req.execute());
 
   wait();
+  remove_interface();
 
   return rc_t::OK;
 }
