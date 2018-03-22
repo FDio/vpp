@@ -45,12 +45,12 @@ typedef struct
   u8 maplog_major_version;	/**< library major version number */
   u8 maplog_minor_version;	/**< library minor version number */
   u8 maplog_patch_version;	/**< library patch version number */
-  u8 pad;
+  u8 maplog_flag_wrapped;	/**< log has wrapped */
   u32 application_id;		/**< application identifier */
   u8 application_major_version;	/**< application major version number */
   u8 application_minor_version;	/**< application minor version number */
   u8 application_patch_version;	/**< application patch version number */
-  u8 pad2;
+  u8 maplog_flag_circular;	/**< log is circular */
   u32 record_size_in_cachelines; /**< record size in cache lines */
   u32 cacheline_size;		 /**< cache line size  */
   u64 file_size_in_records;	 /**< file size in records */
@@ -60,7 +60,7 @@ typedef struct
 } clib_maplog_header_t;
 
 #define MAPLOG_MAJOR_VERSION 1
-#define MAPLOG_MINOR_VERSION 0
+#define MAPLOG_MINOR_VERSION 1
 #define MAPLOG_PATCH_VERSION 0
 
 /** Process-private main data structure */
@@ -90,6 +90,8 @@ typedef struct
 
 /* flag bits */
 #define CLIB_MAPLOG_FLAG_INIT 	(1<<0)
+#define CLIB_MAPLOG_FLAG_CIRCULAR (1<<1)
+#define CLIB_MAPLOG_FLAG_WRAPPED (1<<2)
 
 /** log initialization structure */
 typedef struct
@@ -102,6 +104,7 @@ typedef struct
   u8 application_major_version;	/**< applcation major version number */
   u8 application_minor_version;	/**< applcation minor version number */
   u8 application_patch_version;	/**< applcation patch version number */
+  u8 maplog_is_circular;	/**< single, circular log */
 } clib_maplog_init_args_t;
 
 /* function prototypes */
@@ -139,9 +142,15 @@ clib_maplog_get_entry (clib_maplog_main_t * mm)
   /* Time to unmap and create a new logfile? */
   if (PREDICT_FALSE ((my_record_index & (mm->file_size_in_records - 1)) == 0))
     {
-      /* Yes, but not the very first time... (;-)... */
-      if (my_record_index)
-	return _clib_maplog_get_entry_slowpath (mm, my_record_index);
+      /* Regular log? Switch file... */
+      if (!(mm->flags & CLIB_MAPLOG_FLAG_CIRCULAR))
+	{
+	  /* Yes, but not the very first time... (;-)... */
+	  if (my_record_index)
+	    return _clib_maplog_get_entry_slowpath (mm, my_record_index);
+	}
+      else			/* Circular log: set the wrap bit and move along */
+	mm->flags |= CLIB_MAPLOG_FLAG_WRAPPED;
       /* FALLTHROUGH */
     }
 
