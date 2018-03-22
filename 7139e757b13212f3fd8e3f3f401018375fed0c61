@@ -22,6 +22,30 @@
       "revId": "7139e757b13212f3fd8e3f3f401018375fed0c61",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0f3ed13b_8729936a",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-03-22T05:18:12Z",
+      "side": 0,
+      "message": "Not removed. Just move it below.",
+      "parentUuid": "c01fdb17_9f0ac6ac",
+      "range": {
+        "startLine": 332,
+        "startChar": 0,
+        "endLine": 332,
+        "endChar": 41
+      },
+      "revId": "7139e757b13212f3fd8e3f3f401018375fed0c61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
