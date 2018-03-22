@@ -51,6 +51,7 @@ nobase_include_HEADERS +=			\
   vnet/buffer.h					\
   vnet/config.h					\
   vnet/devices/devices.h			\
+  vnet/devices/flow.h   			\
   vnet/devices/netlink.h			\
   vnet/global_funcs.h				\
   vnet/handoff.h				\
