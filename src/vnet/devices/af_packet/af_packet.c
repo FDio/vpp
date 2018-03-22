@@ -231,7 +231,9 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
   if (p)
     {
-      return VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
+      apif = vec_elt_at_index (apm->interfaces, p[0]);
+      *sw_if_index = apif->sw_if_index;
+      return VNET_API_ERROR_IF_ALREADY_EXISTS;
     }
 
   vec_validate (rx_req, 0);
