@@ -9,7 +9,7 @@ VAPI_CPPBIN=
 endif
 
 VAPI_LIBS = -L$(VPP_TEST_BUILD_DIR)/vpp/.libs/ -L$(VPP_TEST_BUILD_DIR)/vpp/vpp-api/vapi/.libs/ -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lcheck -lrt -lm -lvapiclient
-ifneq ($(filter opensuse,$(OS_ID)),$(OS_ID))
+ifneq ($(filter centos opensuse,$(OS_ID)),$(OS_ID))
 VAPI_LIBS += -lsubunit
 endif
 CFLAGS = -std=gnu99 -g -Wall -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
