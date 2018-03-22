@@ -394,8 +394,8 @@ typedef struct
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
       /* buffer trajectory tracing */
       u16 *trajectory_trace;
-#endif
     };
+    u32 flow_id;
     u32 unused[11];
   };
 } vnet_buffer_opaque2_t;

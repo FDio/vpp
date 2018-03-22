@@ -71,7 +71,8 @@ typedef u8 vlib_buffer_free_list_index_t;
   _( 4, TOTAL_LENGTH_VALID, 0)				\
   _( 5, REPL_FAIL, "repl-fail")				\
   _( 6, RECYCLE, "recycle")				\
-  _( 7, EXT_HDR_VALID, "ext-hdr-valid")
+  _( 7, EXT_HDR_VALID, "ext-hdr-valid")                 \
+  _( 8, FLOW_MARK, "flow_mark")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */

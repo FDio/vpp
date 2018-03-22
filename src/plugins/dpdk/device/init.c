@@ -560,6 +560,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (error)
 	return error;
 
+      //todo add config option
+      xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+
       vnet_device_flow_register_cb (xd->hw_if_index, dpdk_device_flow_cb);
 
       /*
