@@ -631,6 +631,11 @@ gbp_inline (vlib_main_t * vm,
 			  /*
 			   * TODO tests against the ACL
 			   */
+			  /*
+			   * ACL tables are not available outside of ACL plugin
+			   * until then bypass the ACL to next node
+			   */
+			  vnet_feature_next (sw_if_index0, &next0, b0);
 			}
 		    }
 		  else
