@@ -27,7 +27,7 @@
 int
 clib_maplog_init (clib_maplog_init_args_t * a)
 {
-  int i, fd;
+  int i, fd, limit;
   int rv = 0;
   u8 zero = 0;
   u32 record_size_in_cache_lines;
@@ -54,7 +54,6 @@ clib_maplog_init (clib_maplog_init_args_t * a)
   /* Round up file size in records to a power of 2, for speed... */
   mm->log2_file_size_in_records = max_log2 (file_size_in_records);
   file_size_in_records = 1ULL << (mm->log2_file_size_in_records);
-
   a->file_size_in_bytes = file_size_in_records * record_size_in_cache_lines
     * CLIB_CACHE_LINE_BYTES;
 
@@ -68,9 +67,19 @@ clib_maplog_init (clib_maplog_init_args_t * a)
   mm->file_size_in_records = file_size_in_records;
   mm->flags |= CLIB_MAPLOG_FLAG_INIT;
   mm->record_size_in_cachelines = record_size_in_cache_lines;
+  limit = 2;
+  if (a->maplog_is_circular)
+    {
+      mm->log2_file_size_in_records = 63;
+      mm->flags |= CLIB_MAPLOG_FLAG_CIRCULAR;
+      limit = 1;
+    }
 
-  /* Map two files */
-  for (i = 0; i < 2; i++)
+  /*
+   * Map the one and only file for a circular log,
+   * two files for a normal log.
+   */
+  for (i = 0; i < limit; i++)
     {
       mm->filenames[i] = format (0, "%v_%d", mm->file_basename,
 				 mm->current_file_index++);
@@ -117,6 +126,7 @@ clib_maplog_init (clib_maplog_init_args_t * a)
   h->file_size_in_records = file_size_in_records;
   h->number_of_records = ~0ULL;
   h->number_of_files = ~0ULL;
+  h->maplog_flag_circular = a->maplog_is_circular;
   memcpy (h->file_basename, mm->file_basename, vec_len (mm->file_basename));
 
   mm->header_filename = format (0, "%v_header", mm->file_basename);
@@ -143,7 +153,7 @@ fail:
   if (fd >= 0)
     (void) close (fd);
 
-  for (i = 0; i < 2; i++)
+  for (i = 0; i < limit; i++)
     {
       if (mm->file_baseva[i])
 	(void) munmap ((u8 *) mm->file_baseva[i], a->file_size_in_bytes);
@@ -170,6 +180,9 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
   u32 unmap_index = (mm->current_file_index) & 1;
   u64 file_size_in_bytes = mm->file_size_in_records
     * mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
+
+  /* This should never happen */
+  ASSERT ((mm->flags & CLIB_MAPLOG_FLAG_CIRCULAR) == 0);
 
   /*
    * Kill some time by calling format before we make the previous log
@@ -256,6 +269,7 @@ clib_maplog_update_header (clib_maplog_main_t * mm)
   /* Fix the header... */
   h->number_of_records = mm->next_record_index;
   h->number_of_files = mm->current_file_index;
+  h->maplog_flag_wrapped = (mm->flags & CLIB_MAPLOG_FLAG_WRAPPED) ? 1 : 0;
 
   /* Back to the beginning of the log header... */
   if (lseek (fd, 0, SEEK_SET) < 0)
@@ -284,7 +298,7 @@ out:
 void
 clib_maplog_close (clib_maplog_main_t * mm)
 {
-  int i;
+  int i, limit;
   u64 file_size_in_bytes;
 
   if (!(mm->flags & CLIB_MAPLOG_FLAG_INIT))
@@ -296,8 +310,10 @@ clib_maplog_close (clib_maplog_main_t * mm)
     mm->file_size_in_records * mm->record_size_in_cachelines *
     CLIB_CACHE_LINE_BYTES;
 
+  limit = (mm->flags & CLIB_MAPLOG_FLAG_CIRCULAR) ? 1 : 2;
+
   /* unmap current + next segments */
-  for (i = 0; i < 2; i++)
+  for (i = 0; i < limit; i++)
     {
       (void) munmap ((u8 *) mm->file_baseva[i], file_size_in_bytes);
       vec_free (mm->filenames[i]);
@@ -324,13 +340,15 @@ format_maplog_header (u8 * s, va_list * args)
   if (!verbose)
     goto brief;
   s = format (s, "basename %s ", h->file_basename);
-  s = format (s, "log ver %d.%d.%d app id %u ver %d.%d.%d\n",
+  s = format (s, "log ver %d.%d.%d app id %u ver %d.%d.%d %s %s\n",
 	      h->maplog_major_version,
 	      h->maplog_minor_version,
 	      h->maplog_patch_version,
 	      h->application_id,
 	      h->application_major_version,
-	      h->application_minor_version, h->application_patch_version);
+	      h->application_minor_version, h->application_patch_version,
+	      h->maplog_flag_circular ? "circular" : "linear",
+	      h->maplog_flag_wrapped ? "wrapped" : "not wrapped");
   s = format (s, "  records are %d %d-byte cachelines\n",
 	      h->record_size_in_cachelines, h->cacheline_size);
   s = format (s, "  files are %lld records long, %lld files\n",
@@ -427,7 +445,27 @@ clib_maplog_process (char *file_basename, void *fp_arg)
       records_this_file = (records_left > h->file_size_in_records) ?
 	h->file_size_in_records : records_left;
 
-      (*fp) (h, file_baseva, records_this_file);
+      /*
+       * Normal log, or a circular non-wrapped log, or a circular
+       * wrapped log which happens to be exactly linear
+       */
+      if (h->maplog_flag_circular == 0 || h->maplog_flag_wrapped == 0 ||
+	  ((h->number_of_records % h->file_size_in_records) == 0))
+	(*fp) (h, file_baseva, records_this_file);
+      else
+	{
+	  /* "Normal" wrapped circular log */
+	  u64 first_chunk_record_index = h->number_of_records &
+	    (h->file_size_in_records - 1);
+	  u64 first_chunk_number_of_records = records_this_file -
+	    first_chunk_record_index;
+	  u8 *chunk_baseva = file_baseva +
+	    first_chunk_record_index * h->record_size_in_cachelines *
+	    h->cacheline_size;
+	  (*fp) (h, chunk_baseva, first_chunk_number_of_records);
+	  (*fp) (h, file_baseva,
+		 records_this_file - first_chunk_number_of_records);
+	}
 
       if (munmap (file_baseva, file_size_in_bytes) < 0)
 	{
