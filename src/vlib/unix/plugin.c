@@ -94,6 +94,9 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       goto error;
     }
 
+  if (pm->plugins_default_disable)
+    reg->default_disabled = 1;
+
   p = hash_get_mem (pm->config_index_by_name, pi->name);
   if (p)
     {
@@ -441,7 +444,25 @@ config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "enable"))
-	is_enable = 1;
+	{
+	  is_enable = 1;
+	  if (pm->plugins_default_disable)
+	    {
+	      u8 *tmp = format (0, "%s", name);
+	      u8 tok[] = "_";
+	      i8 *token = strtok ((char *) tmp, (char *) &tok);
+	      if (pm->vat_plugin_name_filter)
+		{
+		  u8 *ptr = pm->vat_plugin_name_filter;
+		  pm->vat_plugin_name_filter =
+		    format (0, "%s %s", ptr, token);
+		  vec_free (ptr);
+		}
+	      else
+		pm->vat_plugin_name_filter = format (0, "%s", token);
+	      vec_free (tmp);
+	    }
+	}
       else if (unformat (input, "disable"))
 	is_disable = 1;
       else if (unformat (input, "skip-version-check"))
@@ -517,6 +538,15 @@ done:
 	pm->vat_plugin_path = s;
       else if (unformat (input, "vat-name-filter %s", &s))
 	pm->vat_plugin_name_filter = s;
+      else
+	if (unformat
+	    (input, "plugin default %U", unformat_vlib_cli_sub_input,
+	     &sub_input))
+	{
+	  pm->plugins_default_disable =
+	    unformat (&sub_input, "disable") ? 1 : 0;
+	  unformat_free (&sub_input);
+	}
       else if (unformat (input, "plugin %s %U", &s,
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
