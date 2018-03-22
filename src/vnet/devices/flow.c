@@ -79,10 +79,11 @@ vnet_device_flow_del (u32 flow_id)
   vnet_device_flow_t *f = vnet_device_get_flow (flow_id);
   uword hw_if_index;
 
-  clib_bitmap_foreach(hw_if_index, f->hw_if_bmp,
-    ({
-     vnet_device_flow_disable (flow_id, hw_if_index);
-    }));
+  clib_bitmap_foreach (hw_if_index, f->hw_if_bmp, (
+						    {
+						    vnet_device_flow_disable
+						    (flow_id, hw_if_index);
+						    }));
 
   clib_bitmap_free (f->hw_if_bmp);
   memset (f, 0, sizeof (*f));
@@ -90,12 +91,13 @@ vnet_device_flow_del (u32 flow_id)
 }
 
 void
-vnet_device_flow_enable (u32 flow_id, u32 hw_if_index)
+vnet_device_flow_enable (u32 flow_id, u32 hw_if_index, u32 node_index)
 {
   vnet_device_main_t *dm = &device_main;
   vnet_device_flow_t *f = vnet_device_get_flow (flow_id);
   vnet_device_flow_hw_if_t *hwif;
-  u32 flow_index, *fidp;
+  u32 flow_index;
+  vnet_device_flow_info_t *fidp;
 
   vec_validate (dm->interfaces, hw_if_index);
   hwif = vec_elt_at_index (dm->interfaces, hw_if_index);
@@ -105,8 +107,13 @@ vnet_device_flow_enable (u32 flow_id, u32 hw_if_index)
     pool_get (hwif->flows, fidp);
 
   pool_get (hwif->flows, fidp);
-  flow_index = hwif->flows - fidp;
-  *fidp = flow_id;
+  flow_index = fidp - hwif->flows;
+  fidp->flow_id = flow_id;
+
+  vnet_hw_interface_t *hw =
+    vnet_get_hw_interface (vnet_get_main (), hw_if_index);
+  fidp->next_index =
+    vlib_node_add_next (vlib_get_main (), hw->input_node_index, node_index);
 
   hash_set (hwif->flow_index_by_flow_id, flow_id, flow_index);
 
@@ -131,7 +138,7 @@ vnet_device_flow_disable (u32 flow_id, u32 hw_if_index)
   hwif = vec_elt_at_index (dm->interfaces, hw_if_index);
 
   /* don't disable if not enabled */
-  ASSERT (clib_bitmap_get (f->hw_if_bmp, hw_if_index) == 0);
+  ASSERT (clib_bitmap_get (f->hw_if_bmp, hw_if_index) == 1);
 
   f->hw_if_bmp = clib_bitmap_set (f->hw_if_bmp, hw_if_index, 0);
 
@@ -152,18 +159,19 @@ show_device_flow (vlib_main_t * vm, unformat_input_t * input,
   vnet_device_main_t *dm = &device_main;
   vnet_device_flow_t *f;
 
-  const char * flow_type_strings[] = { 0,
+  const char *flow_type_strings[] = { 0,
 #define _(a,b,c) c,
-      foreach_device_flow_type
+    foreach_device_flow_type
 #undef _
   };
 
   vlib_cli_output (vm, "%5s  %-15s  %s", "ID", "Type", "Description");
   pool_foreach (f, dm->global_flow_pool,
-    {
-      vlib_cli_output (vm, "%5u  %-15s  %U", f->id, flow_type_strings[f->type],
-		       format_device_flow, f);
-    });
+		{
+		vlib_cli_output (vm, "%5u  %-15s  %U", f->id,
+				 flow_type_strings[f->type],
+				 format_device_flow, f);
+		});
 
   return 0;
 }
@@ -191,12 +199,11 @@ test_device_flow (vlib_main_t * vm, unformat_input_t * input,
   flow.type = VNET_DEVICE_FLOW_TYPE_IP4_VXLAN;
   flow.ip4_vxlan.src_addr.as_u32 = 0x0a000001;
   flow.ip4_vxlan.dst_addr.as_u32 = 0x0a000101;
-  flow.ip4_vxlan.src_port = 1111;
   flow.ip4_vxlan.dst_port = 2222;
   flow.ip4_vxlan.vni = 1234;
   flow.id = start++;
   vnet_device_flow_add (&flow);
-  vnet_device_flow_enable (flow.id, 0);
+  //vnet_device_flow_enable (flow.id, 0);
 
   flow.type = VNET_DEVICE_FLOW_TYPE_IP6_VXLAN;
   flow.ip6_vxlan.src_addr.as_u64[0] =
@@ -205,12 +212,11 @@ test_device_flow (vlib_main_t * vm, unformat_input_t * input,
   flow.ip6_vxlan.dst_addr.as_u64[0] =
     clib_host_to_net_u64 (0x20010002UL << 32);
   flow.ip6_vxlan.dst_addr.as_u64[1] = clib_host_to_net_u64 (1);
-  flow.ip6_vxlan.src_port = 3333;
   flow.ip6_vxlan.dst_port = 4444;
   flow.ip6_vxlan.vni = 2345;
   flow.id = start++;
   vnet_device_flow_add (&flow);
-  vnet_device_flow_enable (flow.id, 0);
+  //vnet_device_flow_enable (flow.id, 0);
 
   return 0;
 }
