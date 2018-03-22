@@ -2165,17 +2165,13 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
   int rv;
   u32 macip_acl_index;
   macip_acl_list_t *a;
-
+  void *oldheap = acl_set_heap (am);
+  vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  clib_mem_set_heap (oldheap);
   macip_acl_index = am->macip_acl_by_sw_if_index[sw_if_index];
   /* No point in deleting MACIP ACL which is not applied */
   if (~0 == macip_acl_index)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-  void *oldheap = acl_set_heap (am);
-  vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
-  vec_validate_init_empty (am->sw_if_index_vec_by_macip_acl, macip_acl_index,
-			   ~0);
-  clib_mem_set_heap (oldheap);
   a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   /* remove the classifier tables off the interface L2 ACL */
   rv =
@@ -2187,7 +2183,6 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
 			       a->out_l2_table_index, 0);
   /* Unset the MACIP ACL index */
   am->macip_acl_by_sw_if_index[sw_if_index] = ~0;
-  am->sw_if_index_vec_by_macip_acl[macip_acl_index] = ~0;
   return rv;
 }
 
@@ -2206,14 +2201,11 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
   void *oldheap = acl_set_heap (am);
   a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
-  vec_validate_init_empty (am->sw_if_index_vec_by_macip_acl, macip_acl_index,
-			   ~0);
   clib_mem_set_heap (oldheap);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
     macip_acl_interface_del_acl (am, sw_if_index);
   am->macip_acl_by_sw_if_index[sw_if_index] = macip_acl_index;
-  am->sw_if_index_vec_by_macip_acl[macip_acl_index] = sw_if_index;
 
   /* Apply the classifier tables for L2 ACLs */
   rv =
@@ -3353,6 +3345,10 @@ macip_acl_print (acl_main_t * am, u32 macip_acl_index)
   vlib_main_t *vm = am->vlib_main;
   int i;
 
+  /* Don't attempt to show the ACLs that do not exist */
+  if (pool_is_free_index (am->macip_acls, macip_acl_index))
+    return;
+
   /* Don't try to print someone else's memory */
   if (macip_acl_index > vec_len (am->macip_acls))
     return;
@@ -3386,29 +3382,8 @@ acl_show_aclplugin_macip_acl_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   acl_main_t *am = &acl_main;
   int i;
-  u32 acl_index = ~0;
-
-  (void) unformat (input, "index %u", &acl_index);
-
   for (i = 0; i < vec_len (am->macip_acls); i++)
-    {
-      /* Don't attempt to show the ACLs that do not exist */
-      if (pool_is_free_index (am->macip_acls, i))
-	continue;
-
-      if ((acl_index != ~0) && (acl_index != i))
-	{
-	  continue;
-	}
-
-      macip_acl_print (am, i);
-      if (i < vec_len (am->sw_if_index_vec_by_macip_acl))
-	{
-	  vlib_cli_output (vm, "  applied on sw_if_index: %d\n",
-			   vec_elt (am->sw_if_index_vec_by_macip_acl, i));
-	}
-    }
-
+    macip_acl_print (am, i);
   return error;
 }
 
@@ -3933,7 +3908,7 @@ VLIB_CLI_COMMAND (aclplugin_show_tables_command, static) = {
 
 VLIB_CLI_COMMAND (aclplugin_show_macip_acl_command, static) = {
     .path = "show acl-plugin macip acl",
-    .short_help = "show acl-plugin macip acl [index N]",
+    .short_help = "show acl-plugin macip acl",
     .function = acl_show_aclplugin_macip_acl_fn,
 };
 
