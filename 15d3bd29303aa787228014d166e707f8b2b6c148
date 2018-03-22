@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aa9f3b8_84a47e59",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-03-22T12:26:53Z",
+      "side": 1,
+      "message": "Hmmm. In the first-table hit case, the code checks is_output",
+      "revId": "15d3bd29303aa787228014d166e707f8b2b6c148",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a6cba759_a789b57e",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 427,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-03-22T12:26:53Z",
+      "side": 1,
+      "message": "I would have expected the same check here",
+      "revId": "15d3bd29303aa787228014d166e707f8b2b6c148",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
