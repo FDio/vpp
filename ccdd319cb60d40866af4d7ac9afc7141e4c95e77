@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed25dc1b_c43c0afc",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-22T17:31:37Z",
+      "side": 1,
+      "message": "We should add another bit to the vlib_buffer flags field to indicate presence of flow_id in vnet_buffer. Also, if next_index is 0, the caller next_index should be the \"normal\" one. So check in dpdk-input node should accommodate this condition.",
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d34c56e1_1273a2e0",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-22T17:31:37Z",
+      "side": 1,
+      "message": "We should request 1M flows to allow more VXLAN tunnel scaling.",
+      "range": {
+        "startLine": 1120,
+        "startChar": 53,
+        "endLine": 1120,
+        "endChar": 54
+      },
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
