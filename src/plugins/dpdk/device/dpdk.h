@@ -185,6 +185,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_BOND_SLAVE_UP      (1 << 8)
 #define DPDK_DEVICE_FLAG_TX_OFFLOAD         (1 << 9)
 #define DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM   (1 << 10)
+#define DPDK_DEVICE_FLAG_FLOW               (1 << 11)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -295,6 +296,7 @@ typedef struct
 {
   vlib_pci_addr_t pci_addr;
   u8 is_blacklisted;
+  u8 fdir_mode_perfect;
   u8 vlan_strip_offload;
 #define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0
 #define DPDK_DEVICE_VLAN_STRIP_OFF 1
