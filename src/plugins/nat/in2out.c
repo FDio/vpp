@@ -254,11 +254,14 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
 
 static inline int
 nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
-                                  u32 proto0, u16 src_port, u32 thread_index)
+                                  u32 proto0, u16 src_port, u16 dst_port,
+                                  u32 thread_index, u32 sw_if_index)
 {
   snat_session_key_t key0;
   clib_bihash_kv_8_8_t kv0, value0;
+  snat_interface_t *i;
 
+  /* src NAT check */
   key0.addr = ip0->src_address;
   key0.port = src_port;
   key0.protocol = proto0;
@@ -266,8 +269,26 @@ nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
   kv0.key = key0.as_u64;
 
   if (!clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
-                              &value0))
+                               &value0))
     return 1;
+
+  /* dst NAT check */
+  key0.addr = ip0->dst_address;
+  key0.port = dst_port;
+  key0.protocol = proto0;
+  key0.fib_index = sm->inside_fib_index;
+  kv0.key = key0.as_u64;
+  if (!clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
+                               &value0))
+  {
+    /* hairpinning */
+    pool_foreach (i, sm->output_feature_interfaces,
+    ({
+      if ((nat_interface_is_inside(i)) && (sw_if_index == i->sw_if_index))
+        return 0;
+    }));
+    return 1;
+  }
 
   return 0;
 }
@@ -561,7 +582,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
       if (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)
         {
           if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-              ip0, SNAT_PROTOCOL_ICMP, key0.port, thread_index)))
+              ip0, SNAT_PROTOCOL_ICMP, key0.port, key0.port, thread_index, sw_if_index0)))
             {
               dont_translate = 1;
               goto out;
@@ -1601,7 +1622,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip0, proto0, udp0->src_port, thread_index)))
+                          ip0, proto0, udp0->src_port, udp0->dst_port, thread_index, sw_if_index0)))
                         goto trace00;
                     }
                   else
@@ -1793,7 +1814,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip1, proto1, udp1->src_port, thread_index)))
+                          ip1, proto1, udp1->src_port, udp1->dst_port, thread_index, sw_if_index1)))
                         goto trace01;
                     }
                   else
@@ -2021,7 +2042,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   if (is_output_feature)
                     {
                       if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
-                          ip0, proto0, udp0->src_port, thread_index)))
+                          ip0, proto0, udp0->src_port, udp0->dst_port, thread_index, sw_if_index0)))
                         goto trace0;
                     }
                   else

@@ -133,6 +133,7 @@ typedef enum {
   SNAT_OUT2IN_NEXT_LOOKUP,
   SNAT_OUT2IN_NEXT_ICMP_ERROR,
   SNAT_OUT2IN_NEXT_REASS,
+  SNAT_OUT2IN_NEXT_IN2OUT,
   SNAT_OUT2IN_N_NEXT,
 } snat_out2in_next_t;
 
@@ -311,6 +312,26 @@ icmp_get_ed_key(ip4_header_t *ip0, nat_ed_ses_key_t *p_key0)
   return 0;
 }
 
+static int
+next_src_nat (snat_main_t * sm, ip4_header_t * ip, u32 proto, u16 src_port,
+              u32 thread_index)
+{
+  snat_session_key_t key;
+  clib_bihash_kv_8_8_t kv, value;
+
+  key.addr = ip->src_address;
+  key.port = src_port;
+  key.protocol = proto;
+  key.fib_index = sm->inside_fib_index;
+  kv.key = key.as_u64;
+
+  if (!clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv,
+                               &value))
+    return 1;
+
+  return 0;
+}
+
 static void
 create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip)
 {
@@ -419,8 +440,13 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
             }
           else
             {
-              create_bypass_for_fwd(sm, ip0);
               dont_translate = 1;
+              if (next_src_nat(sm, ip0, key0.protocol, key0.port, thread_index))
+                {
+                  next0 = SNAT_OUT2IN_NEXT_IN2OUT;
+                  goto out;
+                }
+              create_bypass_for_fwd(sm, ip0);
               goto out;
             }
         }
@@ -1156,6 +1182,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     }
                   else
                     {
+                      if (next_src_nat(sm, ip0, proto0, udp0->src_port, thread_index))
+                        {
+                          next0 = SNAT_OUT2IN_NEXT_IN2OUT;
+                          goto trace0;
+                        }
                       create_bypass_for_fwd(sm, ip0);
                       goto trace0;
                     }
@@ -1327,6 +1358,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     }
                   else
                     {
+                      if (next_src_nat(sm, ip1, proto1, udp1->src_port, thread_index))
+                        {
+                          next1 = SNAT_OUT2IN_NEXT_IN2OUT;
+                          goto trace1;
+                        }
                       create_bypass_for_fwd(sm, ip1);
                       goto trace1;
                     }
@@ -1534,6 +1570,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     }
                   else
                     {
+                      if (next_src_nat(sm, ip0, proto0, udp0->src_port, thread_index))
+                        {
+                          next0 = SNAT_OUT2IN_NEXT_IN2OUT;
+                          goto trace00;
+                        }
                       create_bypass_for_fwd(sm, ip0);
                       goto trace00;
                     }
@@ -1661,6 +1702,7 @@ VLIB_REGISTER_NODE (snat_out2in_node) = {
     [SNAT_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [SNAT_OUT2IN_NEXT_REASS] = "nat44-out2in-reass",
+    [SNAT_OUT2IN_NEXT_IN2OUT] = "nat44-in2out",
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_node, snat_out2in_node_fn);
@@ -1781,6 +1823,11 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                         }
                       else
                         {
+                          if (next_src_nat(sm, ip0, proto0, udp0->src_port, thread_index))
+                            {
+                              next0 = SNAT_OUT2IN_NEXT_IN2OUT;
+                              goto trace0;
+                            }
                           create_bypass_for_fwd(sm, ip0);
                           goto trace0;
                         }
@@ -1952,6 +1999,7 @@ VLIB_REGISTER_NODE (nat44_out2in_reass_node) = {
     [SNAT_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [SNAT_OUT2IN_NEXT_REASS] = "nat44-out2in-reass",
+    [SNAT_OUT2IN_NEXT_IN2OUT] = "nat44-in2out",
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (nat44_out2in_reass_node,
@@ -2441,6 +2489,7 @@ VLIB_REGISTER_NODE (snat_det_out2in_node) = {
     [SNAT_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [SNAT_OUT2IN_NEXT_REASS] = "nat44-out2in-reass",
+    [SNAT_OUT2IN_NEXT_IN2OUT] = "nat44-in2out",
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (snat_det_out2in_node, snat_det_out2in_node_fn);
@@ -2934,6 +2983,7 @@ VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
     [SNAT_OUT2IN_NEXT_DROP] = "error-drop",
     [SNAT_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [SNAT_OUT2IN_NEXT_REASS] = "nat44-out2in-reass",
+    [SNAT_OUT2IN_NEXT_IN2OUT] = "nat44-in2out",
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_fast_node, snat_out2in_fast_node_fn);
