@@ -23,6 +23,12 @@ typedef struct
   u64 junk[7];
 } test_entry_t;
 
+typedef enum
+{
+  TEST_NORMAL,
+  TEST_CIRCULAR,
+} test_type_t;
+
 static void
 process_maplog_records (clib_maplog_header_t * h,
 			test_entry_t * e, u64 records_this_file)
@@ -49,7 +55,7 @@ process_maplog_records (clib_maplog_header_t * h,
 	}
       e++;
     }
-  fformat (stdout, "--------------\n");
+  fformat (stdout, "\n--------------\n");
 }
 
 int
@@ -58,12 +64,20 @@ test_maplog_main (unformat_input_t * input)
   clib_maplog_main_t *mm = &maplog_main;
   clib_maplog_init_args_t _a, *a = &_a;
   int rv;
-  int i;
+  int i, limit;
   test_entry_t *t;
   int noclose = 0;
+  test_type_t which = TEST_NORMAL;
 
-  if (unformat (input, "noclose"))
-    noclose = 1;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "noclose"))
+	noclose = 1;
+      else if (unformat (input, "circular"))
+	which = TEST_CIRCULAR;
+      else
+	clib_warning ("unknown input '%U'", format_unformat_error, input);
+    }
 
   memset (a, 0, sizeof (*a));
   a->mm = mm;
@@ -74,6 +88,7 @@ test_maplog_main (unformat_input_t * input)
   a->application_major_version = 1;
   a->application_minor_version = 0;
   a->application_patch_version = 0;
+  a->maplog_is_circular = (which == TEST_CIRCULAR) ? 1 : 0;
 
   rv = clib_maplog_init (a);
 
@@ -83,7 +98,9 @@ test_maplog_main (unformat_input_t * input)
       exit (1);
     }
 
-  for (i = 0; i < 64 * 5; i++)
+  limit = (which == TEST_CIRCULAR) ? (64 + 2) : 64 * 5;
+
+  for (i = 0; i < limit; i++)
     {
       t = clib_maplog_get_entry (mm);
       t->serial_number = i + 1;
