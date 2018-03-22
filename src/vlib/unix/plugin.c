@@ -87,6 +87,9 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   data = elf_get_section_contents (&em, section->index, 1);
   reg = (vlib_plugin_registration_t *) data;
 
+  if (pm->plugins_default_disable)
+    reg->default_disabled = 1;
+
   if (vec_len (data) != sizeof (*reg))
     {
       clib_warning ("vlib_plugin_registration size mismatch in plugin %s\n",
@@ -520,6 +523,13 @@ done:
       else if (unformat (input, "plugin %s %U", &s,
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
+	  if (!strncmp ((char *) s, "default", 7)
+	      && unformat (&sub_input, "disable"))
+	    {
+	      pm->plugins_default_disable = 1;
+	      unformat_free (&sub_input);
+	      continue;
+	    }
 	  error = config_one_plugin (vm, (char *) s, &sub_input);
 	  unformat_free (&sub_input);
 	  if (error)
