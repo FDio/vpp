@@ -94,6 +94,9 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       goto error;
     }
 
+  if (pm->plugins_default_disable)
+    reg->default_disabled = 1;
+
   p = hash_get_mem (pm->config_index_by_name, pi->name);
   if (p)
     {
@@ -517,6 +520,13 @@ done:
 	pm->vat_plugin_path = s;
       else if (unformat (input, "vat-name-filter %s", &s))
 	pm->vat_plugin_name_filter = s;
+      else if (unformat (input, "plugin default %U",
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  pm->plugins_default_disable =
+	    unformat (&sub_input, "disable") ? 1 : 0;
+	  unformat_free (&sub_input);
+	}
       else if (unformat (input, "plugin %s %U", &s,
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
