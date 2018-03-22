@@ -97,6 +97,7 @@ typedef struct
   u8 *plugin_name_filter;
   u8 *vat_plugin_path;
   u8 *vat_plugin_name_filter;
+  u8 plugins_default_disable;
 
   /* plugin configs and hash by name */
   plugin_config_t *configs;

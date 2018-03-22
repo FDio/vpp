@@ -122,10 +122,12 @@ vat_load_new_plugins (plugin_main_t * pm)
 
 	  if (pm->plugin_name_filter)
 	    {
-	      int j;
-	      for (j = 0; j < vec_len (pm->plugin_name_filter); j++)
-		if (entry->d_name[j] != pm->plugin_name_filter[j])
-		  goto next;
+	      u8 *tmp = format (0, "%s", entry->d_name);
+	      u8 tok[] = "_";
+	      u8 *token = strtok ((char *) tmp, (char *) &tok);
+	      vec_free (tmp);
+	      if (strstr (pm->plugin_name_filter, token) == NULL)
+		goto next;
 	    }
 
 	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
