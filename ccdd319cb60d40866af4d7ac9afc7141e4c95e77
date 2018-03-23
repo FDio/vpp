@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f782c47a_f564dd7e",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-23T19:28:06Z",
+      "side": 1,
+      "message": "The \"flow_present\" bit in vlib_buffer needs to be set by the device-input node and cleared here after it is consumed so other feature won\u0027t waste time checking it.",
+      "parentUuid": "ed25dc1b_c43c0afc",
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d34c56e1_1273a2e0",
         "filename": "src/vnet/vxlan/vxlan.c",
         "patchSetId": 1
