@@ -305,7 +305,7 @@ ipsec_proto_init ()
 			CLIB_CACHE_LINE_BYTES);
   int thread_id;
 
-  for (thread_id = 0; thread_id < tm->n_vlib_mains - 1; thread_id++)
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
     {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
       em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
