@@ -351,9 +351,9 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword n_trace = vlib_get_trace_count (vm, node);
   u16 thread_index = vlib_get_thread_index ();
   vnet_main_t *vnm = vnet_get_main ();
-  u32 *to_next, *to_next1, *to_next2, *to_next3;
+  u32 *to_next;
   u32 sif_if_index, sif_if_index1, sif_if_index2, sif_if_index3;
-  vlib_frame_t *f, *f1, *f2, *f3;
+  vlib_frame_t *f;
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
@@ -367,6 +367,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       return frame->n_vectors;
     }
 
+  clib_spinlock_lock_if_init (&bif->lockp);
   if (PREDICT_FALSE (vec_len (bif->active_slaves) == 0))
     {
       bi0 = from[0];
@@ -383,206 +384,245 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     frame->n_vectors);
       vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_SLAVE,
 			frame->n_vectors);
+      clib_spinlock_unlock_if_init (&bif->lockp);
       return frame->n_vectors;
     }
+
+  vec_validate_aligned (bif->per_thread_info[thread_index].frame,
+			vec_len (bif->active_slaves), CLIB_CACHE_LINE_BYTES);
 
   /* Number of buffers / pkts */
   n_left_from = frame->n_vectors;
 
-  while (n_left_from >= 8)
+  while (n_left_from > 0)
     {
-      // Prefetch next iteration
-      {
-	vlib_buffer_t *p4, *p5, *p6, *p7;
-
-	p4 = vlib_get_buffer (vm, from[4]);
-	p5 = vlib_get_buffer (vm, from[5]);
-	p6 = vlib_get_buffer (vm, from[6]);
-	p7 = vlib_get_buffer (vm, from[7]);
-
-	vlib_prefetch_buffer_header (p4, STORE);
-	vlib_prefetch_buffer_header (p5, STORE);
-	vlib_prefetch_buffer_header (p6, STORE);
-	vlib_prefetch_buffer_header (p7, STORE);
-
-	CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, LOAD);
-      }
-
-      bi0 = from[0];
-      bi1 = from[1];
-      bi2 = from[2];
-      bi3 = from[3];
-
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-      b2 = vlib_get_buffer (vm, bi2);
-      b3 = vlib_get_buffer (vm, bi3);
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b2);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b3);
-
-      sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-      sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
-      sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
-
-      port =
-	(bond_load_balance_table[bif->lb]).load_balance (vm, node, bif, b0);
-      port1 =
-	(bond_load_balance_table[bif->lb]).load_balance (vm, node, bif, b1);
-      port2 =
-	(bond_load_balance_table[bif->lb]).load_balance (vm, node, bif, b2);
-      port3 =
-	(bond_load_balance_table[bif->lb]).load_balance (vm, node, bif, b3);
-
-      sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
-      sif_if_index1 = *vec_elt_at_index (bif->active_slaves, port1);
-      sif_if_index2 = *vec_elt_at_index (bif->active_slaves, port2);
-      sif_if_index3 = *vec_elt_at_index (bif->active_slaves, port3);
-
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
-      vnet_buffer (b1)->sw_if_index[VLIB_TX] = sif_if_index1;
-      vnet_buffer (b2)->sw_if_index[VLIB_TX] = sif_if_index2;
-      vnet_buffer (b3)->sw_if_index[VLIB_TX] = sif_if_index3;
-
-      f = vnet_get_frame_to_sw_interface (vnm, sif_if_index);
-      f1 = vnet_get_frame_to_sw_interface (vnm, sif_if_index1);
-      f2 = vnet_get_frame_to_sw_interface (vnm, sif_if_index2);
-      f3 = vnet_get_frame_to_sw_interface (vnm, sif_if_index3);
-
-      to_next = vlib_frame_vector_args (f);
-      to_next1 = vlib_frame_vector_args (f1);
-      to_next2 = vlib_frame_vector_args (f2);
-      to_next3 = vlib_frame_vector_args (f3);
-
-      to_next += f->n_vectors;
-      to_next1 += f1->n_vectors;
-      to_next2 += f2->n_vectors;
-      to_next3 += f3->n_vectors;
-
-      to_next[0] = vlib_get_buffer_index (vm, b0);
-      to_next1[0] = vlib_get_buffer_index (vm, b1);
-      to_next2[0] = vlib_get_buffer_index (vm, b2);
-      to_next3[0] = vlib_get_buffer_index (vm, b3);
-
-      f->n_vectors++;
-      f1->n_vectors++;
-      f2->n_vectors++;
-      f3->n_vectors++;
-
-      vnet_put_frame_to_sw_interface (vnm, sif_if_index, f);
-      vnet_put_frame_to_sw_interface (vnm, sif_if_index1, f1);
-      vnet_put_frame_to_sw_interface (vnm, sif_if_index2, f2);
-      vnet_put_frame_to_sw_interface (vnm, sif_if_index3, f3);
-
-      if (PREDICT_FALSE (n_trace > 0))
+      while (n_left_from >= 4)
 	{
-	  vlib_trace_buffer (vm, node, next0, b0, 0 /* follow_chain */ );
-	  vlib_set_trace_count (vm, node, --n_trace);
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
-	  t0->ethernet = *eth;
-	  t0->sw_if_index = sw_if_index;
-	  t0->bond_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-	  if (PREDICT_TRUE (n_trace > 0))
+	  // Prefetch next iteration
+	  if (n_left_from >= 8)
 	    {
-	      vlib_trace_buffer (vm, node, next1, b1, 0 /* follow_chain */ );
+	      vlib_buffer_t *p4, *p5, *p6, *p7;
+
+	      p4 = vlib_get_buffer (vm, from[4]);
+	      p5 = vlib_get_buffer (vm, from[5]);
+	      p6 = vlib_get_buffer (vm, from[6]);
+	      p7 = vlib_get_buffer (vm, from[7]);
+
+	      vlib_prefetch_buffer_header (p4, STORE);
+	      vlib_prefetch_buffer_header (p5, STORE);
+	      vlib_prefetch_buffer_header (p6, STORE);
+	      vlib_prefetch_buffer_header (p7, STORE);
+
+	      CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
+
+	  bi0 = from[0];
+	  bi1 = from[1];
+	  bi2 = from[2];
+	  bi3 = from[3];
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
+
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b2);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b3);
+
+	  sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
+	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
+
+	  port =
+	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
+							     b0);
+	  port1 =
+	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
+							     b1);
+	  port2 =
+	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
+							     b2);
+	  port3 =
+	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
+							     b3);
+
+	  sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
+	  sif_if_index1 = *vec_elt_at_index (bif->active_slaves, port1);
+	  sif_if_index2 = *vec_elt_at_index (bif->active_slaves, port2);
+	  sif_if_index3 = *vec_elt_at_index (bif->active_slaves, port3);
+
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = sif_if_index1;
+	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = sif_if_index2;
+	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = sif_if_index3;
+
+	  if (bif->per_thread_info[thread_index].frame[port] == 0)
+	    bif->per_thread_info[thread_index].frame[port] =
+	      vnet_get_frame_to_sw_interface (vnm, sif_if_index);
+
+	  if (bif->per_thread_info[thread_index].frame[port1] == 0)
+	    bif->per_thread_info[thread_index].frame[port1] =
+	      vnet_get_frame_to_sw_interface (vnm, sif_if_index1);
+
+	  if (bif->per_thread_info[thread_index].frame[port2] == 0)
+	    bif->per_thread_info[thread_index].frame[port2] =
+	      vnet_get_frame_to_sw_interface (vnm, sif_if_index2);
+
+	  if (bif->per_thread_info[thread_index].frame[port3] == 0)
+	    bif->per_thread_info[thread_index].frame[port3] =
+	      vnet_get_frame_to_sw_interface (vnm, sif_if_index3);
+
+	  f = bif->per_thread_info[thread_index].frame[port];
+	  to_next = vlib_frame_vector_args (f);
+	  to_next += f->n_vectors;
+	  to_next[0] = vlib_get_buffer_index (vm, b0);
+	  f->n_vectors++;
+
+	  f = bif->per_thread_info[thread_index].frame[port1];
+	  to_next = vlib_frame_vector_args (f);
+	  to_next += f->n_vectors;
+	  to_next[0] = vlib_get_buffer_index (vm, b1);
+	  f->n_vectors++;
+
+	  f = bif->per_thread_info[thread_index].frame[port2];
+	  to_next = vlib_frame_vector_args (f);
+	  to_next += f->n_vectors;
+	  to_next[0] = vlib_get_buffer_index (vm, b2);
+	  f->n_vectors++;
+
+	  f = bif->per_thread_info[thread_index].frame[port3];
+	  to_next = vlib_frame_vector_args (f);
+	  to_next += f->n_vectors;
+	  to_next[0] = vlib_get_buffer_index (vm, b3);
+	  f->n_vectors++;
+
+	  if (PREDICT_FALSE (n_trace > 0))
+	    {
+	      vlib_trace_buffer (vm, node, next0, b0, 0 /* follow_chain */ );
 	      vlib_set_trace_count (vm, node, --n_trace);
-	      t0 = vlib_add_trace (vm, node, b1, sizeof (*t0));
-	      eth = (ethernet_header_t *) vlib_buffer_get_current (b1);
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
 	      t0->ethernet = *eth;
-	      t0->sw_if_index = sw_if_index1;
-	      t0->bond_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	      t0->sw_if_index = sw_if_index;
+	      t0->bond_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	      if (PREDICT_TRUE (n_trace > 0))
 		{
-		  vlib_trace_buffer (vm, node, next2, b2,
+		  vlib_trace_buffer (vm, node, next1, b1,
 				     0 /* follow_chain */ );
 		  vlib_set_trace_count (vm, node, --n_trace);
-		  t0 = vlib_add_trace (vm, node, b2, sizeof (*t0));
-		  eth = (ethernet_header_t *) vlib_buffer_get_current (b2);
+		  t0 = vlib_add_trace (vm, node, b1, sizeof (*t0));
+		  eth = (ethernet_header_t *) vlib_buffer_get_current (b1);
 		  t0->ethernet = *eth;
-		  t0->sw_if_index = sw_if_index2;
+		  t0->sw_if_index = sw_if_index1;
 		  t0->bond_sw_if_index =
-		    vnet_buffer (b2)->sw_if_index[VLIB_TX];
+		    vnet_buffer (b1)->sw_if_index[VLIB_TX];
 
 		  if (PREDICT_TRUE (n_trace > 0))
 		    {
-		      vlib_trace_buffer (vm, node, next3, b3,
+		      vlib_trace_buffer (vm, node, next2, b2,
 					 0 /* follow_chain */ );
 		      vlib_set_trace_count (vm, node, --n_trace);
-		      t0 = vlib_add_trace (vm, node, b3, sizeof (*t0));
+		      t0 = vlib_add_trace (vm, node, b2, sizeof (*t0));
 		      eth =
-			(ethernet_header_t *) vlib_buffer_get_current (b3);
+			(ethernet_header_t *) vlib_buffer_get_current (b2);
 		      t0->ethernet = *eth;
-		      t0->sw_if_index = sw_if_index3;
+		      t0->sw_if_index = sw_if_index2;
 		      t0->bond_sw_if_index =
-			vnet_buffer (b3)->sw_if_index[VLIB_TX];
+			vnet_buffer (b2)->sw_if_index[VLIB_TX];
+
+		      if (PREDICT_TRUE (n_trace > 0))
+			{
+			  vlib_trace_buffer (vm, node, next3, b3,
+					     0 /* follow_chain */ );
+			  vlib_set_trace_count (vm, node, --n_trace);
+			  t0 = vlib_add_trace (vm, node, b3, sizeof (*t0));
+			  eth =
+			    (ethernet_header_t *)
+			    vlib_buffer_get_current (b3);
+			  t0->ethernet = *eth;
+			  t0->sw_if_index = sw_if_index3;
+			  t0->bond_sw_if_index =
+			    vnet_buffer (b3)->sw_if_index[VLIB_TX];
+			}
 		    }
 		}
 	    }
+	  from += 4;
+	  n_left_from -= 4;
 	}
 
-      from += 4;
-      n_left_from -= 4;
+      while (n_left_from > 0)
+	{
+	  // Prefetch next iteration
+	  if (n_left_from > 1)
+	    {
+	      vlib_buffer_t *p2;
+
+	      p2 = vlib_get_buffer (vm, from[1]);
+	      vlib_prefetch_buffer_header (p2, STORE);
+	      CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
+
+	  bi0 = from[0];
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+
+	  sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+	  port =
+	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
+							     b0);
+	  sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
+	  if (bif->per_thread_info[thread_index].frame[port] == 0)
+	    bif->per_thread_info[thread_index].frame[port] =
+	      vnet_get_frame_to_sw_interface (vnm, sif_if_index);
+	  f = bif->per_thread_info[thread_index].frame[port];
+	  to_next = vlib_frame_vector_args (f);
+	  to_next += f->n_vectors;
+	  to_next[0] = vlib_get_buffer_index (vm, b0);
+	  f->n_vectors++;
+
+	  if (PREDICT_FALSE (n_trace > 0))
+	    {
+	      vlib_trace_buffer (vm, node, next0, b0, 0 /* follow_chain */ );
+	      vlib_set_trace_count (vm, node, --n_trace);
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
+	      t0->ethernet = *eth;
+	      t0->sw_if_index = sw_if_index;
+	      t0->bond_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	    }
+
+	  from += 1;
+	  n_left_from -= 1;
+	}
     }
 
-  while (n_left_from > 0)
+  for (port = 0; port < vec_len (bif->active_slaves); port++)
     {
-      // Prefetch next iteration
-      if (n_left_from > 1)
-	{
-	  vlib_buffer_t *p2;
+      f = bif->per_thread_info[thread_index].frame[port];
+      if (f == 0)
+	continue;
 
-	  p2 = vlib_get_buffer (vm, from[1]);
-	  vlib_prefetch_buffer_header (p2, STORE);
-	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	}
-
-      bi0 = from[0];
-      b0 = vlib_get_buffer (vm, bi0);
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-
-      sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-      port =
-	(bond_load_balance_table[bif->lb]).load_balance (vm, node, bif, b0);
-      sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
-      f = vnet_get_frame_to_sw_interface (vnm, sif_if_index);
-      to_next = vlib_frame_vector_args (f);
-      to_next += f->n_vectors;
-
-      to_next[0] = vlib_get_buffer_index (vm, b0);
-      f->n_vectors++;
-      vnet_put_frame_to_sw_interface (vnm, sif_if_index, f);
-
-      if (PREDICT_FALSE (n_trace > 0))
-	{
-	  vlib_trace_buffer (vm, node, next0, b0, 0 /* follow_chain */ );
-	  vlib_set_trace_count (vm, node, --n_trace);
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
-	  t0->ethernet = *eth;
-	  t0->sw_if_index = sw_if_index;
-	  t0->bond_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	}
-
-      from += 1;
-      n_left_from -= 1;
+      sw_if_index = *vec_elt_at_index (bif->active_slaves, port);
+      vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
+      bif->per_thread_info[thread_index].frame[port] = 0;
     }
 
   vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters
 				 + VNET_INTERFACE_COUNTER_TX, thread_index,
 				 bif->sw_if_index, frame->n_vectors);
 
+  clib_spinlock_unlock_if_init (&bif->lockp);
   return frame->n_vectors;
 }
 

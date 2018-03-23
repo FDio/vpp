@@ -29,6 +29,7 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   uword p;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+  clib_spinlock_lock_if_init (&bif->lockp);
   vec_foreach_index (i, bif->active_slaves)
   {
     p = *vec_elt_at_index (bif->active_slaves, i);
@@ -39,6 +40,7 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	break;
       }
   }
+  clib_spinlock_unlock_if_init (&bif->lockp);
 }
 
 void
@@ -47,12 +49,14 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   bond_if_t *bif;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+  clib_spinlock_lock_if_init (&bif->lockp);
   if (!hash_get (bif->active_slave_by_sw_if_index, sif->sw_if_index))
     {
       hash_set (bif->active_slave_by_sw_if_index, sif->sw_if_index,
 		sif->sw_if_index);
       vec_add1 (bif->active_slaves, sif->sw_if_index);
     }
+  clib_spinlock_unlock_if_init (&bif->lockp);
 }
 
 int
@@ -171,6 +175,7 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
   slave_if_t *sif;
   vnet_hw_interface_t *hw;
   u32 *sif_sw_if_index;
+  u32 thread_index;
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || bond_dev_class.index != hw->dev_class_index)
@@ -193,6 +198,12 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   clib_bitmap_free (bif->port_number_bitmap);
   hash_unset (bm->bond_by_sw_if_index, bif->sw_if_index);
+  for (thread_index = 0; thread_index < vlib_get_thread_main ()->n_vlib_mains;
+       thread_index++)
+    {
+      vec_free (bif->per_thread_info[thread_index].frame);
+    }
+  vec_free (bif->per_thread_info);
   memset (bif, 0, sizeof (*bif));
   pool_put (bm->interfaces, bif);
 
@@ -265,6 +276,11 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
   bif->sw_if_index = sw->sw_if_index;
   bif->group = bif->sw_if_index;
+  vec_validate_aligned (bif->per_thread_info,
+			vlib_get_thread_main ()->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  if (vlib_get_thread_main ()->n_vlib_mains > 1)
+    clib_spinlock_init (&bif->lockp);
 
   vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);

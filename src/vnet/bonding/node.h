@@ -131,6 +131,12 @@ typedef CLIB_PACKED (struct
 
 typedef struct
 {
+  vlib_frame_t **frame;
+
+} bond_if_per_thread_t;
+
+typedef struct
+{
   u8 admin_up;
   u8 mode;
   u8 lb;
@@ -159,6 +165,9 @@ typedef struct
   uword *port_number_bitmap;
   u8 use_custom_mac;
   u8 hw_address[6];
+
+  clib_spinlock_t lockp;
+  bond_if_per_thread_t *per_thread_info;
 } bond_if_t;
 
 typedef struct
