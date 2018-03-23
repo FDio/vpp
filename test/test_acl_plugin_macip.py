@@ -287,13 +287,10 @@ class MethodHolder(VppTestCase):
         reply = self.vapi.macip_acl_dump()
         self.assertEqual(len(reply), 0)
 
-        intf_acls = self.vapi.ppcli("sh acl-plugin interface").split(
-            "\nsw_if_index")
+        intf_acls = self.vapi.acl_interface_list_dump()
         for i_a in intf_acls:
-            ia = i_a.split(":")
-            if len(ia) == 3:
-                sw_if_index = int(ia[0])
-                acl_index = int(ia[2])
+            sw_if_index = i_a.sw_if_index
+            for acl_index in i_a.acls:
                 self.vapi.acl_interface_add_del(sw_if_index, acl_index, 0)
                 self.vapi.acl_del(acl_index)
 
