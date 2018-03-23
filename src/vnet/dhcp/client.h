@@ -74,6 +74,9 @@ typedef struct
 
   /* Set the broadcast Flag in the Discover/Request messages */
   u8 set_broadcast_flag;
+  /* Interface MAC address, so we can do an rx-packet-for-us check */
+  u8 client_hardware_address[6];
+  u8 pad1;
 
   void *event_callback;
 } dhcp_client_t;

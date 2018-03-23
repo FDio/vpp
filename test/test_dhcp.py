@@ -1195,6 +1195,7 @@ class TestDHCP(VppTestCase):
         self.pg4.unconfig_ip6()
         self.pg5.unconfig_ip6()
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_dhcp_client(self):
         """ DHCP Client"""
 
