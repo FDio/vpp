@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ef712961_84656d17",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-03-23T01:20:11Z",
+      "side": 1,
+      "message": "Please use unformat. You can do:\n\nelse if (unformat (input, \"plugin default %U\", ...\n{\n}\nelse if (unformat (input, \"plugin %s %U\",\n{\n}",
+      "range": {
+        "startLine": 526,
+        "startChar": 8,
+        "endLine": 526,
+        "endChar": 15
+      },
+      "revId": "f47316a4180261d75d1eaa7e6849a18ee23276a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
