@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9cbb107_b3e9ec59",
+        "filename": "test/vpp_pppoe_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-03-23T08:36:09Z",
+      "side": 1,
+      "message": "this looks better\n\ncould you make a similar change in the IPv6 version? Or even better, remove it completely, since it\u0027s unused (and therefore untested)",
+      "revId": "8c32c688fc9b07f47aedbcb47a3c6d78bf9904f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
