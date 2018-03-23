@@ -283,3 +283,4 @@ vce_start_event_thread (vce_event_thread_t *evt, u8 max_events)
   return pthread_create (&(evt->thread), NULL /* attr */ ,
 			 vce_event_thread_fn, evt);
 }
+

@@ -195,6 +195,8 @@ typedef enum vcl_event_id_
 {
   VCL_EVENT_INVALID_EVENT,
   VCL_EVENT_CONNECT_REQ_ACCEPTED,
+  VCL_EVENT_IOEVENT_APP_TX,
+  VCL_EVENT_IOEVENT_APP_RX,
   VCL_EVENT_N_EVENTS
 } vcl_event_id_t;
 
@@ -209,6 +211,22 @@ typedef struct vppcom_session_listener
   vppcom_session_listener_errcb user_errcb;
   void *user_cb_data;
 } vppcom_session_listener_t;
+
+typedef struct vppcom_session_ioevent_
+{
+  vppcom_session_ioevent_cb user_cb;
+  void *user_cb_data;
+} vppcom_session_ioevent_t;
+
+typedef struct vppcom_session_io_thread_
+{
+  pthread_t thread;
+  pthread_mutex_t vce_io_lock;
+  pthread_cond_t vce_io_cond;
+  u32 *active_session_indexes;	//pool
+  uword *active_sessions_by_index;	//hash
+  clib_spinlock_t sessions_lockp;
+} vppcom_session_io_thread_t;
 
 typedef struct vppcom_main_t_
 {
@@ -253,6 +271,9 @@ typedef struct vppcom_main_t_
 
   /* Event thread */
   vce_event_thread_t event_thread;
+
+  /* IO thread */
+  vppcom_session_io_thread_t session_io_thread;
 
   /* VPP Event-logger */
   elog_main_t elog_main;
@@ -364,6 +385,9 @@ vppcom_session_state_str (session_state_t state)
 /*
  * VPPCOM Utility Functions
  */
+
+
+
 static inline int
 vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
 {
@@ -378,6 +402,88 @@ vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
   *sess = pool_elt_at_index (vcm->sessions, session_index);
   return VPPCOM_OK;
 }
+
+void *
+vppcom_session_io_thread_fn (void *arg)
+{
+  vppcom_session_io_thread_t *evt = (vppcom_session_io_thread_t *) arg;
+  uword *p;
+  u32 *session_indexes = 0, *session_index;
+  int i, rv;
+  u32 bytes = 0;
+  session_t *session;
+
+
+  (void) p;
+
+
+  do
+    {
+      vec_reset_length (session_indexes);
+      clib_spinlock_lock (&evt->sessions_lockp);
+      pool_foreach (session_index, evt->active_session_indexes, (
+								  {
+								  vec_add1
+								  (session_indexes,
+								   *session_index);
+								  }
+		    ));
+      clib_spinlock_unlock (&evt->sessions_lockp);
+      if (session_indexes)
+	{
+	  for (i = 0; i < vec_len (session_indexes); ++i)
+	    {
+	      VCL_LOCK_AND_GET_SESSION (session_indexes[i], &session);
+	      bytes = svm_fifo_max_dequeue (session->rx_fifo);
+	      clib_spinlock_unlock (&vcm->sessions_lockp);
+
+	      if (bytes)
+		{
+		  vppcom_ioevent_t *eio;
+		  vce_event_t *ev;
+		  u32 ev_idx;
+
+		  clib_spinlock_lock (&vcm->event_thread.events_lockp);
+
+		  pool_get (vcm->event_thread.vce_events, ev);
+		  ev->data = clib_mem_alloc (sizeof (vppcom_ioevent_t));
+		  ev->refcnt = 0;
+		  ev_idx = (u32) (ev - vcm->event_thread.vce_events);
+		  eio = ev->data;
+		  ev->evk.eid = VCL_EVENT_IOEVENT_APP_TX;
+		  ev->evk.session_index = session_indexes[i];
+		  eio->bytes = bytes;
+		  eio->session_index = session_indexes[i];
+
+		  clib_spinlock_unlock (&vcm->event_thread.events_lockp);
+
+		  rv = vce_generate_event (&vcm->event_thread, ev_idx);
+		}
+	    }
+	}
+      sleep (0.5);
+    }
+  while (1);
+done:
+  return NULL;
+}
+
+int
+vppcom_start_io_event_thread (vppcom_session_io_thread_t * evt,
+			      u8 max_sessions)
+{
+  evt->active_session_indexes = 0;
+  evt->active_sessions_by_index = hash_create (0, sizeof (uword));
+
+  pthread_cond_init (&(evt->vce_io_cond), NULL);
+  pthread_mutex_init (&(evt->vce_io_lock), NULL);
+
+  clib_spinlock_init (&(evt->sessions_lockp));
+
+  return pthread_create (&(evt->thread), NULL /* attr */ ,
+			 vppcom_session_io_thread_fn, evt);
+}
+
 
 static inline void
 vppcom_session_table_add_listener (u64 listener_handle, u32 value)
@@ -460,6 +566,27 @@ vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
 /*
  * VPPCOM Event Functions
  */
+
+void
+vce_registered_ioevent_handler_fn (void *arg)
+{
+  vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *) arg;
+  vppcom_ioevent_t *eio;
+  vce_event_t *ev;
+
+
+  vppcom_session_ioevent_t *ioevent =
+    (vppcom_session_ioevent_t *) reg->handler_fn_args;
+
+  ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
+
+  eio = (vppcom_ioevent_t *) ev->data;
+
+  (ioevent->user_cb) (eio, ioevent->user_cb_data);
+
+  /*TODO - Unregister check in close for this listener */
+
+}
 
 void
 vce_registered_listener_connect_handler_fn (void *arg)
@@ -1403,6 +1530,15 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
   rv = vce_generate_event (&vcm->event_thread, ev_idx);
 
+  /* Throw this new accepted session index into the rx poll thread pool */
+  clib_spinlock_lock (&vcm->session_io_thread.sessions_lockp);
+  u32 *active_session_index;
+  pool_get (vcm->session_io_thread.active_session_indexes,
+	    active_session_index);
+  *active_session_index = session_index;
+  clib_spinlock_unlock (&vcm->session_io_thread.sessions_lockp);
+  u32 elts_ = pool_elts (vcm->session_io_thread.active_session_indexes);
+  (void) elts_;
   ASSERT (rv == 0);
 
   if (VPPCOM_DEBUG > 1)
@@ -1455,6 +1591,9 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
 }
 
+/* VPP combines bind and listen as one operation. VCL manages the separation
+ * of bind and listen locally via vppcom_session_bind() and
+ * vppcom_session_listen() */
 static void
 vppcom_send_bind_sock (session_t * session, u32 session_index)
 {
@@ -2291,6 +2430,7 @@ vppcom_app_create (char *app_name)
       svm_fifo_segment_main_init (vcl_cfg->segment_baseva,
 				  20 /* timeout in secs */ );
       clib_spinlock_init (&vcm->sessions_lockp);
+      clib_spinlock_init (&vcm->session_io_thread.sessions_lockp);
     }
 
   if (vcm->my_client_index == ~0)
@@ -2311,6 +2451,7 @@ vppcom_app_create (char *app_name)
 
       rv = vce_start_event_thread (&(vcm->event_thread), 20);
 
+      rv = vppcom_start_io_event_thread (&vcm->session_io_thread, 100);
 
       if (VPPCOM_DEBUG > 0)
 	clib_warning ("VCL<%d>: sending session enable", getpid ());
@@ -2701,7 +2842,7 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
 
   if (VPPCOM_DEBUG > 0)
     clib_warning ("VCL<%d>: vpp handle 0x%llx, "
-		  "sid %u: sending bind request...",
+		  "sid %u: sending VPP bind+listen request...",
 		  getpid (), listen_vpp_handle, listen_session_index);
 
   vppcom_send_bind_sock (listen_session, listen_session_index);
@@ -2714,10 +2855,10 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
   if (PREDICT_FALSE (retval))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: bind failed! "
-		      "returning %d (%s)", getpid (),
-		      listen_session->vpp_handle, listen_session_index,
-		      retval, vppcom_retval_str (retval));
+	clib_warning
+	  ("VCL<%d>: vpp handle 0x%llx, sid %u: bind+listen failed! "
+	   "returning %d (%s)", getpid (), listen_session->vpp_handle,
+	   listen_session_index, retval, vppcom_retval_str (retval));
       clib_spinlock_unlock (&vcm->sessions_lockp);
       rv = retval;
       goto done;
@@ -3279,6 +3420,29 @@ done:
 }
 
 int
+vppcom_session_register_ioevent_cb (uint32_t session_index,
+				    vppcom_session_ioevent_cb cb,
+				    uint8_t rx, void *ptr)
+{
+  int rv = VPPCOM_OK;
+  vce_event_key_t evk;
+  vppcom_session_ioevent_t *ioevent;
+
+  /* Register handler for ioevent on session_index */
+  ioevent = clib_mem_alloc (sizeof (vppcom_session_ioevent_t));
+  ioevent->user_cb = cb;
+  ioevent->user_cb_data = ptr;
+
+  evk.session_index = session_index;
+
+  evk.eid = (rx ? VCL_EVENT_IOEVENT_APP_RX : VCL_EVENT_IOEVENT_APP_TX);
+  (void) vce_register_handler (&vcm->event_thread, &evk,
+			       vce_registered_ioevent_handler_fn, ioevent);
+
+  return rv;
+}
+
+int
 vppcom_session_write (uint32_t session_index, void *buf, size_t n)
 {
   session_t *session = 0;
@@ -3333,7 +3497,12 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
     }
   while (!is_nonblocking && (n_write <= 0));
 
-  /* If event wasn't set, add one */
+  /* If event wasn't set, add one
+   *
+   * To reduce context switching, can check if an
+   * event is already there for this event_key, but for now
+   * this will suffice. */
+
   if ((n_write > 0) && svm_fifo_set_event (tx_fifo))
     {
       /* Fabricate TX event, send to vpp */
