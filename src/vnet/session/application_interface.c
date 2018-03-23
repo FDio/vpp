@@ -453,10 +453,17 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   u64 secret;
   int rv;
 
-  app = application_lookup (a->api_client_index);
+  if (a->api_client_index != APP_INVALID_INDEX)
+    app = application_lookup (a->api_client_index);
+  else if (a->name)
+    app = application_lookup_name (a->name);
+  else
+    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
+				   "api index or name must be provided");
+
   if (app)
-    return clib_error_return_code (0, VNET_API_ERROR_APP_ALREADY_ATTACHED,
-				   0, "app already attached");
+    return clib_error_return_code (0, VNET_API_ERROR_APP_ALREADY_ATTACHED, 0,
+				   "app already attached");
 
   secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
   if ((rv = session_validate_namespace (a->namespace_id, secret,
@@ -464,7 +471,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
     return clib_error_return_code (0, rv, 0, "namespace validation: %d", rv);
   a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
   app = application_new ();
-  if ((rv = application_init (app, a->api_client_index, a->options,
+  if ((rv = application_init (app, a->api_client_index, a->name, a->options,
 			      a->session_cb_vft)))
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 

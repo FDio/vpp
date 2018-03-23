@@ -59,6 +59,9 @@ typedef struct _application
   /** Flags */
   u32 flags;
 
+  /** Name registered by builtin apps */
+  u8 *name;
+
   /*
    * Binary API interface to external app
    */
@@ -136,11 +139,12 @@ typedef struct _application
 
 application_t *application_new ();
 int application_init (application_t * app, u32 api_client_index,
-		      u64 * options, session_cb_vft_t * cb_fns);
+		      u8 * name, u64 * options, session_cb_vft_t * cb_fns);
 void application_del (application_t * app);
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
+application_t *application_lookup_name (const u8 * name);
 u32 application_get_index (application_t * app);
 
 int application_start_listen (application_t * app,
