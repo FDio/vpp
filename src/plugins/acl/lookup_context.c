@@ -67,7 +67,9 @@ static int acl_lc_index_valid(acl_main_t *am, u32 lc_index)
 u32 acl_plugin_register_user_module (char *user_module_name, char *val1_label, char *val2_label)
 {
   acl_main_t *am = &acl_main;
+  void *oldheap = acl_plugin_set_heap();
   u32 user_id = get_acl_user_id(am, user_module_name, val1_label, val2_label);
+  clib_mem_set_heap (oldheap);
   return user_id;
 }
 
@@ -87,6 +89,9 @@ int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2)
   if (!acl_user_id_valid(am, acl_user_id))
     return VNET_API_ERROR_INVALID_REGISTRATION;
 
+  void *oldheap = acl_plugin_set_heap ();
+
+
   pool_get(am->acl_lookup_contexts, acontext);
   acontext->acl_indices = 0;
   acontext->context_user_id = acl_user_id;
@@ -95,6 +100,8 @@ int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2)
 
   u32 new_context_id = acontext - am->acl_lookup_contexts;
   vec_add1(am->acl_users[acl_user_id].lookup_contexts, new_context_id);
+
+  clib_mem_set_heap (oldheap);
   return new_context_id;
 }
 
@@ -167,11 +174,14 @@ unapply_acl_vec(u32 lc_index, u32 *acls)
 void acl_plugin_put_lookup_context_index (u32 lc_index)
 {
   acl_main_t *am = &acl_main;
+
   elog_acl_cond_trace_X1(am, (am->trace_acl), "LOOKUP-CONTEXT: put-context lc_index %d", "i4", lc_index);
   if (!acl_lc_index_valid(am, lc_index)) {
     clib_warning("BUG: lc_index %d is not valid", lc_index);
     return;
   }
+
+  void *oldheap = acl_plugin_set_heap ();
   acl_lookup_context_t *acontext = pool_elt_at_index(am->acl_lookup_contexts, lc_index);
 
   u32 index = vec_search(am->acl_users[acontext->context_user_id].lookup_contexts, lc_index);
@@ -182,6 +192,7 @@ void acl_plugin_put_lookup_context_index (u32 lc_index)
   unlock_acl_vec(lc_index, acontext->acl_indices);
   vec_free(acontext->acl_indices);
   pool_put(am->acl_lookup_contexts, acontext);
+  clib_mem_set_heap (oldheap);
 }
 
 /*
@@ -203,6 +214,8 @@ int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
     clib_warning("BUG: lc_index %d is not valid", lc_index);
     return -1;
   }
+  void *oldheap = acl_plugin_set_heap ();
+
   acontext = pool_elt_at_index(am->acl_lookup_contexts, lc_index);
   u32 *old_acl_vector = acontext->acl_indices;
   acontext->acl_indices = vec_dup(acl_list);
@@ -213,6 +226,7 @@ int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
   apply_acl_vec(lc_index, acontext->acl_indices);
 
   vec_free(old_acl_vector);
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 

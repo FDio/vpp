@@ -129,6 +129,13 @@ acl_set_heap (acl_main_t * am)
   return oldheap;
 }
 
+void *
+acl_plugin_set_heap ()
+{
+  acl_main_t *am = &acl_main;
+  return acl_set_heap (am);
+}
+
 void
 acl_plugin_acl_set_validate_heap (acl_main_t * am, int on)
 {
