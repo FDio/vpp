@@ -192,7 +192,7 @@ create_session_for_static_mapping (snat_main_t *sm,
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
   s->ext_host_addr.as_u32 = ip0->src_address.as_u32;
   s->ext_host_port = udp0->src_port;
-  u->nstaticsessions++;
+  user_session_increment (sm, u, 1 /* static */);
   s->in2out = in2out;
   s->out2in = out2in;
   s->in2out.protocol = out2in.protocol;
@@ -833,7 +833,7 @@ snat_out2in_unknown_proto (snat_main_t *sm,
       s->in2out.addr.as_u32 = new_addr;
       s->in2out.fib_index = m->fib_index;
       s->in2out.port = s->out2in.port = ip->protocol;
-      u->nstaticsessions++;
+      user_session_increment (sm, u, 1 /* static */);
 
       /* Add to lookup tables */
       s_kv.value = s - tsm->sessions;
@@ -945,7 +945,7 @@ snat_out2in_lb (snat_main_t *sm,
       s->outside_address_index = ~0;
       s->out2in = e_key;
       s->in2out = l_key;
-      u->nstaticsessions++;
+      user_session_increment (sm, u, 1 /* static */);
 
       /* Add to lookup tables */
       s_kv.value = s - tsm->sessions;
