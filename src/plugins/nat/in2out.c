@@ -310,6 +310,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   u32 outside_fib_index;
   uword * p;
   udp_header_t * udp0 = ip4_next_header (ip0);
+  u8 is_sm = 0;
 
   if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
     {
@@ -349,12 +350,9 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
           b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
           return SNAT_IN2OUT_NEXT_DROP;
         }
-      u->nsessions++;
     }
   else
-    {
-      u->nstaticsessions++;
-    }
+    is_sm = 1;
 
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
@@ -363,8 +361,9 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
-  if (address_index == ~0)
+  if (is_sm)
     s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+  user_session_increment (sm, u, is_sm);
   s->outside_address_index = address_index;
   s->in2out = *key0;
   s->out2in = key1;
@@ -1266,14 +1265,8 @@ create_ses:
       s->in2out.fib_index = rx_fib_index;
       s->in2out.port = s->out2in.port = ip->protocol;
       if (is_sm)
-        {
-          u->nstaticsessions++;
-          s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-        }
-      else
-        {
-          u->nsessions++;
-        }
+	s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+      user_session_increment (sm, u, is_sm);
 
       /* Add to lookup tables */
       key.l_addr.as_u32 = old_addr;
@@ -1396,7 +1389,7 @@ snat_in2out_lb (snat_main_t *sm,
       s->in2out = l_key;
       s->out2in = e_key;
       s->out2in.protocol = l_key.protocol;
-      u->nstaticsessions++;
+      user_session_increment (sm, u, 1 /* static */);
 
       /* Add to lookup tables */
       s_kv.value = s - tsm->sessions;
