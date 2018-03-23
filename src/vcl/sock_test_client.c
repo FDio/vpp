@@ -37,6 +37,7 @@ typedef struct
 #endif
   struct sockaddr_storage server_addr;
   uint32_t server_addr_size;
+  uint32_t cfg_seq_num;
   sock_test_socket_t ctrl_socket;
   sock_test_socket_t *test_socket;
   uint32_t num_test_sockets;
@@ -57,12 +58,18 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
   if (socket->cfg.verbose)
     sock_test_cfg_dump (&socket->cfg, 1 /* is_client */ );
 
+  ctrl->cfg.seq_num = ++scm->cfg_seq_num;
+  if (socket->cfg.verbose)
+    {
+      printf ("CLIENT (fd %d): Sending config sent to server.\n", socket->fd);
+      sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+    }
   tx_bytes = sock_test_write (socket->fd, (uint8_t *) & ctrl->cfg,
 			      sizeof (ctrl->cfg), NULL, ctrl->cfg.verbose);
   if (tx_bytes < 0)
     {
-      fprintf (stderr, "CLIENT: ERROR: write test cfg failed (%d)!\n",
-	       tx_bytes);
+      fprintf (stderr, "CLIENT (fd %d): ERROR: write test cfg failed (%d)!\n",
+	       socket->fd, tx_bytes);
       return tx_bytes;
     }
 
@@ -73,21 +80,33 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
 
   if (rl_cfg->magic != SOCK_TEST_CFG_CTRL_MAGIC)
     {
-      fprintf (stderr, "CLIENT: ERROR: Bad server reply cfg -- aborting!\n");
+      fprintf (stderr, "CLIENT (fd %d): ERROR: Bad server reply cfg "
+	       "-- aborting!\n", socket->fd);
       return -1;
-    }
-  if (socket->cfg.verbose)
-    {
-      printf ("CLIENT (fd %d): Got config back from server.\n", socket->fd);
-      sock_test_cfg_dump (rl_cfg, 1 /* is_client */ );
     }
   if ((rx_bytes != sizeof (sock_test_cfg_t))
       || !sock_test_cfg_verify (rl_cfg, &ctrl->cfg))
     {
-      fprintf (stderr, "CLIENT: ERROR: Invalid config received "
-	       "from server -- aborting!\n");
-      sock_test_cfg_dump (rl_cfg, 1 /* is_client */ );
+      fprintf (stderr, "CLIENT (fd %d): ERROR: Invalid config received "
+	       "from server!\n", socket->fd);
+      if (rx_bytes != sizeof (sock_test_cfg_t))
+	{
+	  fprintf (stderr, "\tRx bytes %d != cfg size %lu\n",
+		   rx_bytes, sizeof (sock_test_cfg_t));
+	}
+      else
+	{
+	  sock_test_cfg_dump (rl_cfg, 1 /* is_client */ );
+	  fprintf (stderr, "CLIENT (fd %d): Valid config sent to server.\n",
+		   socket->fd);
+	  sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+	}
       return -1;
+    }
+  else if (socket->cfg.verbose)
+    {
+      printf ("CLIENT (fd %d): Got config back from server.\n", socket->fd);
+      sock_test_cfg_dump (rl_cfg, 1 /* is_client */ );
     }
   ctrl->cfg.ctrl_handle = ((ctrl->cfg.ctrl_handle == ~0) ?
 			   rl_cfg->ctrl_handle : ctrl->cfg.ctrl_handle);
@@ -118,7 +137,8 @@ echo_test_client ()
       tsock = &scm->test_socket[n];
       tsock->cfg = ctrl->cfg;
       sock_test_socket_buf_alloc (tsock);
-      sock_test_cfg_sync (tsock);
+      if (sock_test_cfg_sync (tsock))
+	return;
 
       memcpy (tsock->txbuf, ctrl->txbuf, nbytes);
       memset (&tsock->stats, 0, sizeof (tsock->stats));

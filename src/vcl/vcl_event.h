@@ -39,8 +39,8 @@ typedef union vce_event_key_
 typedef struct vce_event_
 {
   vce_event_key_t evk;
-  u32 refcnt;
-  void *data;
+  u32 recycle;
+  u64 data[2]; // Hard code size to avoid allocator thrashing.
 } vce_event_t;
 
 typedef void (*vce_event_callback_t) (void *reg /*vce_event_handler_reg_t* */);
@@ -87,9 +87,9 @@ int vce_generate_event (vce_event_thread_t *evt, u32 ev_idx);
  * - removes event from event_pool
  *
  * @param evt - vce_event_thread_t - event system state
- * @param ev  - vce_event_t - event to remove
+ * @param ev_idx  - u32 - index of event to remove
  */
-void vce_clear_event (vce_event_thread_t *evt, vce_event_t *ev);
+void vce_clear_event (vce_event_thread_t *evt, u32 ev_idx);
 
 /**
  * @brief vce_get_event_from_index()
@@ -100,6 +100,20 @@ void vce_clear_event (vce_event_thread_t *evt, vce_event_t *ev);
  * @return vce_event_t *
  */
 vce_event_t * vce_get_event_from_index(vce_event_thread_t *evt, u32 ev_idx);
+
+/**
+ * @brief vce_get_event_data()
+ *
+ * @param ev - vce_event_t * - event
+ * @param data_size - u32 - required size of data
+ *
+ * @return vce_event_t *
+ */
+always_inline void * vce_get_event_data(vce_event_t *ev, u32 data_size)
+{
+	ASSERT(sizeof(ev->data) >= data_size);
+	return (&ev->data);
+}
 
 /**
  * @brief vce_get_event_handler()
