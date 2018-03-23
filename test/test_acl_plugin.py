@@ -13,6 +13,8 @@ from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
+from vpp_lo_interface import VppLoInterface
+
 
 class TestACLplugin(VppTestCase):
     """ ACL plugin Test Case """
@@ -245,6 +247,17 @@ class TestACLplugin(VppTestCase):
             self.vapi.acl_interface_set_acl_list(sw_if_index=i.sw_if_index,
                                                  n_input=1,
                                                  acls=[reply.acl_index])
+        return
+
+    def apply_rules_to(self, rules, tag='', sw_if_index=0xFFFFFFFF):
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules,
+                                          tag=tag)
+        self.logger.info("Dumped ACL: " + str(
+            self.vapi.acl_dump(reply.acl_index)))
+        # Apply a ACL on the interface as inbound
+        self.vapi.acl_interface_set_acl_list(sw_if_index=sw_if_index,
+                                             n_input=1,
+                                             acls=[reply.acl_index])
         return
 
     def etype_whitelist(self, whitelist, n_input):
@@ -1392,6 +1405,32 @@ class TestACLplugin(VppTestCase):
                              0, False, True, 0xaaaa)
 
         self.logger.info("ACLP_TEST_FINISH_0305")
+
+    def test_0315_del_intf(self):
+        """ apply an acl and delete the interface
+        """
+        self.logger.info("ACLP_TEST_START_0315")
+
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
+                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
+                     self.proto[self.IP][self.TCP]))
+        # deny ip any any in the end
+        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+
+        # create an interface
+        intf = []
+        intf.append(VppLoInterface(self, 0))
+
+        # Apply rules
+        self.apply_rules_to(rules, "permit ipv4 tcp", intf[0].sw_if_index)
+
+        # Remove the interface
+        intf[0].remove_vpp_config()
+
+        self.logger.info("ACLP_TEST_FINISH_0315")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
