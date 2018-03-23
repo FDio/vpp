@@ -709,6 +709,21 @@ acl_fa_node_fn (vlib_main_t * vm,
 	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
 	  else
 	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+
+	  /*
+	   * Kick off the prefetch for the next packet(s)
+	   */
+	  if (PREDICT_TRUE(n_left_from > 2)) {
+	    u32 biX;
+	    vlib_buffer_t *bX; // future block
+	    biX = from[2];
+	    bX = vlib_get_buffer (vm, biX);
+	    CLIB_PREFETCH(&bX->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	  }
+	  if (PREDICT_TRUE(n_left_from > 1)) {
+	    CLIB_PREFETCH(vnet_buffer(vlib_get_buffer(vm, from[1])), 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	  }
+
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
