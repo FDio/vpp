@@ -159,11 +159,13 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_test"),
   };
 
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "app attached");
   server_index = attach_args.app_index;
+  vec_free (attach_args.name);
 
   server_sep.is_ip4 = 1;
   vnet_bind_args_t bind_args = {
@@ -236,6 +238,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_test"),
   };
 
   vnet_bind_args_t bind_args = {
@@ -524,6 +527,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Cleanup
    */
+  vec_free (attach_args.name);
   vec_free (ns_id);
   session_delete_loopback (sw_if_index);
   return 0;
@@ -838,6 +842,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_test"),
   };
 
   vnet_bind_args_t bind_args = {
@@ -1356,6 +1361,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   vnet_application_detach (&detach_args);
 
   vec_free (ns_id);
+  vec_free (attach_args.name);
   return 0;
 }
 
@@ -1426,6 +1432,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_test"),
   };
 
   attach_args.api_client_index = dummy_server_api_index;
@@ -1481,6 +1488,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 		"local session endpoint lookup should not work after detach");
   if (verbose)
     unformat_free (&tmp_input);
+  vec_free (attach_args.name);
   return 0;
 }
 

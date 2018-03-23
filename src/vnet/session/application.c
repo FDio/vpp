@@ -28,6 +28,11 @@ static application_t *app_pool;
  */
 static uword *app_by_api_client_index;
 
+/**
+ * Hash table of builtin apps by name
+ */
+static uword *app_by_name;
+
 static u8 *
 app_get_name_from_reg_index (application_t * app)
 {
@@ -41,6 +46,14 @@ app_get_name_from_reg_index (application_t * app)
     app_name = format (0, "%s%c", regp->name, 0);
 
   return app_name;
+}
+
+static u8 *
+app_get_name (application_t * app)
+{
+  if (!app->name)
+    return app_get_name_from_reg_index (app);
+  return app->name;
 }
 
 u32
@@ -104,13 +117,19 @@ application_name_from_index (u32 app_index)
 static void
 application_table_add (application_t * app)
 {
-  hash_set (app_by_api_client_index, app->api_client_index, app->index);
+  if (app->api_client_index != APP_INVALID_INDEX)
+    hash_set (app_by_api_client_index, app->api_client_index, app->index);
+  else if (app->name)
+    hash_set_mem (app_by_name, app->name, app->index);
 }
 
 static void
 application_table_del (application_t * app)
 {
-  hash_unset (app_by_api_client_index, app->api_client_index);
+  if (app->api_client_index != APP_INVALID_INDEX)
+    hash_unset (app_by_api_client_index, app->api_client_index);
+  else if (app->name)
+    hash_unset_mem (app_by_name, app->name);
 }
 
 application_t *
@@ -118,6 +137,17 @@ application_lookup (u32 api_client_index)
 {
   uword *p;
   p = hash_get (app_by_api_client_index, api_client_index);
+  if (p)
+    return application_get (p[0]);
+
+  return 0;
+}
+
+application_t *
+application_lookup_name (const u8 * name)
+{
+  uword *p;
+  p = hash_get_mem (app_by_name, name);
   if (p)
     return application_get (p[0]);
 
@@ -213,6 +243,7 @@ application_del (application_t * app)
   vec_free (app->tls_key);
 
   application_table_del (app);
+  vec_free (app->name);
   pool_put (app_pool, app);
 }
 
@@ -257,8 +288,8 @@ application_verify_cfg (ssvm_segment_type_t st)
 }
 
 int
-application_init (application_t * app, u32 api_client_index, u64 * options,
-		  session_cb_vft_t * cb_fns)
+application_init (application_t * app, u32 api_client_index, u8 * app_name,
+		  u64 * options, session_cb_vft_t * cb_fns)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   u32 first_seg_size, prealloc_fifo_pairs;
@@ -328,6 +359,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   app->local_connects = hash_create (0, sizeof (u64));
   app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
   app->event_queue = segment_manager_event_queue (sm);
+  app->name = vec_dup (app_name);
 
   /* If no scope enabled, default to global */
   if (!application_has_global_scope (app)
@@ -1380,21 +1412,19 @@ format_application (u8 * s, va_list * args)
 		    "API Client", "Namespace", "Add seg size", "Rx fifo size",
 		    "Tx fifo size");
       else
-	s =
-	  format (s, "%-10s%-20s%-15s%-40s", "Index", "Name", "API Client",
-		  "Namespace");
+	s = format (s, "%-10s%-20s%-15s%-40s", "Index", "Name", "API Client",
+		    "Namespace");
       return s;
     }
 
-  app_name = app_get_name_from_reg_index (app);
+  app_name = app_get_name (app);
   app_ns_name = app_namespace_id_from_index (app->ns_index);
   props = application_segment_manager_properties (app);
   if (verbose)
-    s =
-      format (s, "%-10d%-20s%-15d%-15d%-15d%-15d%-15d", app->index, app_name,
-	      app->api_client_index, app->ns_index,
-	      props->add_segment_size,
-	      props->rx_fifo_size, props->tx_fifo_size);
+    s = format (s, "%-10d%-20s%-15d%-15d%-15d%-15d%-15d", app->index,
+		app_name, app->api_client_index, app->ns_index,
+		props->add_segment_size, props->rx_fifo_size,
+		props->tx_fifo_size);
   else
     s = format (s, "%-10d%-20s%-15d%-40s", app->index, app_name,
 		app->api_client_index, app_ns_name);

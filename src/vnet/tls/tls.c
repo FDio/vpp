@@ -726,8 +726,9 @@ tls_init (vlib_main_t * vm)
   memset (options, 0, sizeof (options));
 
   a->session_cb_vft = &tls_app_cb_vft;
-  a->api_client_index = (1 << 24) + 1;
+  a->api_client_index = APP_INVALID_INDEX;
   a->options = options;
+  a->name = format (0, "tls");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
@@ -753,7 +754,7 @@ tls_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
-
+  vec_free (a->name);
   return 0;
 }
 

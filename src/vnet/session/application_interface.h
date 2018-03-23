@@ -28,6 +28,9 @@ typedef struct _vnet_app_attach_args_t
   /** Binary API client index */
   u32 api_client_index;
 
+  /** Application name. Used by builtin apps */
+  u8 *name;
+
   /** Application and segment manager options */
   u64 *options;
 
