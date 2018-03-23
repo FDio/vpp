@@ -644,6 +644,9 @@ static inline u32 icmp_out2in (snat_main_t *sm,
                          dst_address /* changed member */);
   ip0->checksum = ip_csum_fold (sum0);
 
+  if (icmp0->checksum == 0)
+    icmp0->checksum = 0xffff;
+
   if (!icmp_is_error_message (icmp0))
     {
       new_id0 = sm0.port;
