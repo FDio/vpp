@@ -144,6 +144,13 @@ typedef struct _vcl_poll
   short *revents;
 } vcl_poll_t;
 
+typedef struct vppcom_ioevent_
+{
+  uint32_t session_index;
+  size_t bytes;
+} vppcom_ioevent_t;
+
+
 /*
  * VPPCOM Public API Functions
  */
@@ -219,6 +226,34 @@ vppcom_retval_str (int retval)
  */
 typedef void (*vppcom_session_listener_cb) (uint32_t, vppcom_endpt_t *,
 					    void *);
+
+/**
+ * User registered callback for IO events (rx/tx)
+ * @param vppcom_ioevent_t* -
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_ioevent_cb) (vppcom_ioevent_t *, void *);
+
+/**
+ * @brief vppcom_session_register_listener accepts a bound session_index, and
+ * listens for connections.
+ *
+ * On successful connection, calls registered callback (cb) with new
+ * session_index.
+ *
+ * On error, calls registered error callback (errcb).
+ *
+ * @param session_index - bound session_index to create listener on
+ * @param cb  - on new accepted session callback
+ * @param errcb  - on failure callback
+ * @param flags - placeholder for future use. Must be ZERO
+ * @param q_len - max listener connection backlog
+ * @param ptr - user data
+ * @return
+ */
+extern int vppcom_session_register_ioevent_cb (uint32_t session_index,
+					       vppcom_session_ioevent_cb cb,
+					       uint8_t rx, void *ptr);
 
 /**
  * User registered ERROR callback for any errors associated with
