@@ -2765,6 +2765,12 @@ class VppPapiProvider(object):
                         {'acl_index': acl_index},
                         expected_retval=expected_retval)
 
+    def acl_interface_list_dump(self, sw_if_index=0xFFFFFFFF,
+                                expected_retval=0):
+        return self.api(self.papi.acl_interface_list_dump,
+                        {'sw_if_index': sw_if_index},
+                        expected_retval=expected_retval)
+
     def macip_acl_add(self, rules, tag=""):
         """ Add MACIP acl
 
