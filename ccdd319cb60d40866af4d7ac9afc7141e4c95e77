@@ -37,6 +37,87 @@
     },
     {
       "key": {
+        "uuid": "87d74b8a_e28a1c60",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-23T19:44:21Z",
+      "side": 1,
+      "message": "I see you did this about already with VLIB_BUFFER_FLOW_MARK.  Sorry for the noise.",
+      "parentUuid": "f782c47a_f564dd7e",
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b4a5cbc_f4ada0ed",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-23T19:44:21Z",
+      "side": 1,
+      "message": "A better name may be FLOW_ID or FLOW_ID_PRESENT as it is our own flow_id stored and not the flow mark value from NIC HW?",
+      "range": {
+        "startLine": 75,
+        "startChar": 20,
+        "endLine": 75,
+        "endChar": 29
+      },
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "297610ea_bb637d32",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 399,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-23T19:44:21Z",
+      "side": 1,
+      "message": "should this be reduced from 11 to 10?",
+      "range": {
+        "startLine": 399,
+        "startChar": 15,
+        "endLine": 399,
+        "endChar": 17
+      },
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2273ff65_a786d14c",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1334,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-23T19:44:21Z",
+      "side": 1,
+      "message": "Need to clear VLIB_BUFFER_FLOW_MARK from vlib buffer flags somewhere in this node in order to prevent other feature nodes from wasting cycles to check flow_id.",
+      "revId": "ccdd319cb60d40866af4d7ac9afc7141e4c95e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d34c56e1_1273a2e0",
         "filename": "src/vnet/vxlan/vxlan.c",
         "patchSetId": 1
