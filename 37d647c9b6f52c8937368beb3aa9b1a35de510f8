@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8d93323_489af10b",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-03-23T21:42:44Z",
+      "side": 1,
+      "message": "I have added this to filter the api/*test_plugins.so to those which are enabled in startup.conf",
+      "revId": "37d647c9b6f52c8937368beb3aa9b1a35de510f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
