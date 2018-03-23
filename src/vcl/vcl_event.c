@@ -59,10 +59,10 @@ vce_generate_event (vce_event_thread_t *evt, u32 ev_idx)
 }
 
 void
-vce_clear_event (vce_event_thread_t *evt, vce_event_t *ev)
+vce_clear_event (vce_event_thread_t *evt, u32 ev_idx)
 {
   clib_spinlock_lock (&(evt->events_lockp));
-  pool_put (evt->vce_events, ev);
+  pool_put_index (evt->vce_events, ev_idx);
   clib_spinlock_unlock (&(evt->events_lockp));
 }
 
@@ -96,7 +96,7 @@ vce_get_event_handler (vce_event_thread_t *evt, vce_event_key_t *evk)
 
 vce_event_handler_reg_t *
 vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
-		      vce_event_callback_t cb, void *cb_args)
+                      vce_event_callback_t cb, void *cb_args)
 {
   vce_event_handler_reg_t *handler;
   vce_event_handler_reg_t *old_handler = 0;
@@ -115,25 +115,25 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
       /* If we are just re-registering, ignore and move on
        * else store the old handler_fn for unregister to re-instate */
       if (old_handler->handler_fn == cb)
-	{
+        {
 
-	  clib_spinlock_unlock (&evt->handlers_lockp);
+          clib_spinlock_unlock (&evt->handlers_lockp);
 
-	  /* Signal event thread that a handler exists in case any
-	   * recycled events requiring this handler are pending */
-	  pthread_mutex_lock (&(evt->generator_lock));
-	  pthread_cond_signal (&(evt->generator_cond));
-	  pthread_mutex_unlock (&(evt->generator_lock));
-	  return old_handler;
-	}
+          /* Signal event thread that a handler exists in case any
+           * recycled events requiring this handler are pending */
+          pthread_mutex_lock (&(evt->generator_lock));
+          pthread_cond_signal (&(evt->generator_cond));
+          pthread_mutex_unlock (&(evt->generator_lock));
+          return old_handler;
+        }
     }
 
   pool_get (evt->vce_event_handlers, handler);
   handler_index = (u32) (handler - evt->vce_event_handlers);
 
   handler->handler_fn = cb;
-  handler->replaced_handler_idx = (p) ? p[0] : ~0;
-  handler->ev_idx = ~0; //This will be set by the event thread if event happens
+  handler->replaced_handler_idx = (u32) ((p) ? p[0] : ~0);
+  handler->ev_idx = (u32) ~0; //This will be set by the event thread if event happens
   handler->evk = evk->as_u64;
   handler->handler_fn_args = cb_args;
 
@@ -216,17 +216,16 @@ vce_event_thread_fn (void *arg)
   evt->recycle_event = 1; // Used for recycling events with no handlers
   clib_spinlock_unlock (&(evt->events_lockp));
 
-  do
+  while (1)
     {
-      while ( (clib_fifo_elts (evt->event_index_fifo) == 0) ||
-	      evt->recycle_event)
-	{
+      while ((clib_fifo_elts (evt->event_index_fifo) == 0) ||
+             evt->recycle_event)
+        {
           clib_spinlock_lock (&(evt->events_lockp));
-	  evt->recycle_event = 0;
+          evt->recycle_event = 0;
           clib_spinlock_unlock (&(evt->events_lockp));
-	  pthread_cond_wait (&(evt->generator_cond),
-			     &(evt->generator_lock));
-	}
+          pthread_cond_wait (&(evt->generator_cond), &(evt->generator_lock));
+        }
 
       /* Remove event */
       clib_spinlock_lock (&(evt->events_lockp));
@@ -240,16 +239,16 @@ vce_event_thread_fn (void *arg)
 
       p = hash_get (evt->handlers_index_by_event_key, ev->evk.as_u64);
       if (!p)
-	{
-	  /* If an event falls in the woods, and there is no handler to hear it,
-	   * does it make any sound?
-	   * I don't know either, so lets try recycling the event */
-	  clib_fifo_add1 (evt->event_index_fifo, ev_idx);
-	  evt->recycle_event = 1;
+        {
+          /* If an event falls in the woods, and there is no handler to hear it,
+           * does it make any sound?
+           * I don't know either, so lets try recycling the event */
+          clib_fifo_add1 (evt->event_index_fifo, ev_idx);
+          evt->recycle_event = 1;
           clib_spinlock_unlock (&(evt->events_lockp));
-	  clib_spinlock_unlock (&evt->handlers_lockp);
+          clib_spinlock_unlock (&evt->handlers_lockp);
           pthread_mutex_unlock (&(evt->generator_lock));
-	}
+        }
       else
         {
           handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
@@ -264,7 +263,6 @@ vce_event_thread_fn (void *arg)
 
       pthread_mutex_lock (&(evt->generator_lock));
     }
-  while (1);
   return NULL;
 }
 
@@ -281,5 +279,6 @@ vce_start_event_thread (vce_event_thread_t *evt, u8 max_events)
   clib_spinlock_init (&(evt->handlers_lockp));
 
   return pthread_create (&(evt->thread), NULL /* attr */ ,
-			 vce_event_thread_fn, evt);
+                         vce_event_thread_fn, evt);
 }
+
