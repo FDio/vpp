@@ -65,6 +65,7 @@ typedef enum
 typedef struct  __attribute__ ((packed))
 {
   uint32_t magic;
+  uint32_t seq_num;
   uint32_t test;
   uint32_t ctrl_handle;
   uint32_t num_test_sockets;
@@ -215,6 +216,7 @@ sock_test_cfg_dump (sock_test_cfg_t * cfg, uint8_t is_client)
   printf ("  test config (%p):\n"
           SOCK_TEST_SEPARATOR_STRING
 	  "                 magic:  0x%08x\n"
+	  "               seq_num:  0x%08x\n"
 	  "%-5s             test:  %s (%d)\n"
 	  "           ctrl handle:  %d (0x%x)\n"
 	  "%-5s num test sockets:  %u (0x%08x)\n"
@@ -224,7 +226,7 @@ sock_test_cfg_dump (sock_test_cfg_t * cfg, uint8_t is_client)
 	  "%-5s       num writes:  %lu (0x%08lx)\n"
 	  "       client tx bytes:  %lu (0x%08lx)\n"
           SOCK_TEST_SEPARATOR_STRING,
-	  (void *) cfg, cfg->magic,
+	  (void *) cfg, cfg->magic, cfg->seq_num,
           is_client && (cfg->test == SOCK_TEST_TYPE_UNI) ?
           "'"SOCK_TEST_TOKEN_RUN_UNI"'" :
           is_client && (cfg->test == SOCK_TEST_TYPE_BI) ?
