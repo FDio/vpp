@@ -22,6 +22,30 @@
       "revId": "f47316a4180261d75d1eaa7e6849a18ee23276a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4b857d41_2382d602",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-03-23T21:42:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ef712961_84656d17",
+      "range": {
+        "startLine": 526,
+        "startChar": 8,
+        "endLine": 526,
+        "endChar": 15
+      },
+      "revId": "f47316a4180261d75d1eaa7e6849a18ee23276a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
