@@ -1115,6 +1115,12 @@ class TestMACIP(MethodHolder):
         self.assertEqual(reply.acls[sw_if_index1], 0)
         self.assertEqual(reply.acls[sw_if_index2], 1)
         self.assertEqual(reply.acls[sw_if_index3], 1)
+        self.logger.info("MACIP ACL on multiple interfaces:")
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1234"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 0"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
 
         intf[2].remove_vpp_config()
         intf[1].remove_vpp_config()

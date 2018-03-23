@@ -220,6 +220,9 @@ typedef struct {
   /* MACIP (input) ACLs associated with the interfaces */
   u32 *macip_acl_by_sw_if_index;
 
+  /* Vector of interfaces on which given MACIP ACLs are applied */
+  u32 **sw_if_index_vec_by_macip_acl;
+
   /* bitmaps when set the processing is enabled on the interface */
   uword *fa_in_acl_on_sw_if_index;
   uword *fa_out_acl_on_sw_if_index;
