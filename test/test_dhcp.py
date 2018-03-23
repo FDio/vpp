@@ -1195,7 +1195,6 @@ class TestDHCP(VppTestCase):
         self.pg4.unconfig_ip6()
         self.pg5.unconfig_ip6()
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_dhcp_client(self):
         """ DHCP Client"""
 
@@ -1218,7 +1217,9 @@ class TestDHCP(VppTestCase):
         p_offer = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                    IP(src=self.pg3.remote_ip4, dst="255.255.255.255") /
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                   BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
+                   BOOTP(op=1,
+                         yiaddr=self.pg3.local_ip4,
+                         chaddr=mactobinary(self.pg3.local_mac)) /
                    DHCP(options=[('message-type', 'offer'),
                                  ('server_id', self.pg3.remote_ip4),
                                  ('end')]))
@@ -1237,7 +1238,8 @@ class TestDHCP(VppTestCase):
         p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                  IP(src=self.pg3.remote_ip4, dst="255.255.255.255") /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                 BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
+                 BOOTP(op=1, yiaddr=self.pg3.local_ip4,
+                       chaddr=mactobinary(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
@@ -1308,7 +1310,8 @@ class TestDHCP(VppTestCase):
         p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                  IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                 BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
+                 BOOTP(op=1, yiaddr=self.pg3.local_ip4,
+                       chaddr=mactobinary(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
@@ -1365,7 +1368,8 @@ class TestDHCP(VppTestCase):
         p_offer = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                    IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                   BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
+                   BOOTP(op=1, yiaddr=self.pg3.local_ip4,
+                         chaddr=mactobinary(self.pg3.local_mac)) /
                    DHCP(options=[('message-type', 'offer'),
                                  ('server_id', self.pg3.remote_ip4),
                                  ('end')]))
@@ -1385,7 +1389,8 @@ class TestDHCP(VppTestCase):
         p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                  IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                 BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
+                 BOOTP(op=1, yiaddr=self.pg3.local_ip4,
+                       chaddr=mactobinary(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
