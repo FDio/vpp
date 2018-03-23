@@ -269,7 +269,7 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        sys.stdin.readline("Press ENTER to continue running the testcase...")
+        raw_input("Press ENTER to continue running the testcase...")
 
     @classmethod
     def run_vpp(cls):
@@ -383,9 +383,8 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                sys.stdin.readline(
-                    "When done debugging, press ENTER to kill the process and "
-                    "finish running the testcase...")
+                raw_input("When done debugging, press ENTER to kill the "
+                          "process and finish running the testcase...")
 
         os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
         cls.pump_thread_stop_flag.set()
