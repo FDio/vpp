@@ -1079,36 +1079,52 @@ application_local_session_connect_notify (local_session_t * ls)
 }
 
 int
-application_local_session_disconnect (u32 app_index, local_session_t * ls)
+application_local_session_cleanup (application_t * client,
+				   application_t * server,
+				   local_session_t * ls)
 {
   svm_fifo_segment_private_t *seg;
-  application_t *client, *server;
   segment_manager_t *sm;
   uword client_key;
+  u8 has_transport;
+
+  has_transport = session_has_transport ((stream_session_t *) ls);
+  client_key = application_client_local_connect_key (ls);
+  if (!has_transport)
+    sm = application_get_local_segment_manager_w_session (server, ls);
+  else
+    sm = application_get_listen_segment_manager (server,
+						 (stream_session_t *) ls);
+
+  seg = segment_manager_get_segment (sm, ls->svm_segment_index);
+  if (client)
+    hash_unset (client->local_connects, client_key);
+
+  if (!has_transport)
+    {
+      server->cb_fns.del_segment_callback (server->api_client_index,
+					   &seg->ssvm);
+      if (client)
+	client->cb_fns.del_segment_callback (client->api_client_index,
+					     &seg->ssvm);
+      segment_manager_del_segment (sm, seg);
+    }
+
+  application_free_local_session (server, ls);
+
+  return 0;
+}
+
+int
+application_local_session_disconnect (u32 app_index, local_session_t * ls)
+{
+  application_t *client, *server;
 
   client = application_get_if_valid (ls->client_index);
   server = application_get (ls->app_index);
 
   if (ls->session_state == SESSION_STATE_CLOSED)
-    {
-    cleanup:
-      client_key = application_client_local_connect_key (ls);
-      sm = application_get_local_segment_manager_w_session (server, ls);
-      seg = segment_manager_get_segment (sm, ls->svm_segment_index);
-
-      if (client)
-	{
-	  hash_unset (client->local_connects, client_key);
-	  client->cb_fns.del_segment_callback (client->api_client_index,
-					       &seg->ssvm);
-	}
-
-      server->cb_fns.del_segment_callback (server->api_client_index,
-					   &seg->ssvm);
-      segment_manager_del_segment (sm, seg);
-      application_free_local_session (server, ls);
-      return 0;
-    }
+    return application_local_session_cleanup (client, server, ls);
 
   if (app_index == ls->client_index)
     {
@@ -1118,7 +1134,7 @@ application_local_session_disconnect (u32 app_index, local_session_t * ls)
     {
       if (!client)
 	{
-	  goto cleanup;
+	  return application_local_session_cleanup (client, server, ls);
 	}
       else if (ls->session_state < SESSION_STATE_READY)
 	{
@@ -1127,17 +1143,27 @@ application_local_session_disconnect (u32 app_index, local_session_t * ls)
 						     (stream_session_t *) ls,
 						     1 /* is_fail */ );
 	  ls->session_state = SESSION_STATE_CLOSED;
-	  goto cleanup;
+	  return application_local_session_cleanup (client, server, ls);
 	}
       else
 	{
-	  send_local_session_disconnect_callback (ls->client_index, ls);
+	  send_local_session_disconnect_callback (client->index, ls);
 	}
     }
 
   ls->session_state = SESSION_STATE_CLOSED;
 
   return 0;
+}
+
+int
+application_local_session_disconnect_w_index (u32 app_index, u32 ls_index)
+{
+  application_t *app;
+  local_session_t *ls;
+  app = application_get (app_index);
+  ls = application_get_local_session (app, ls_index);
+  return application_local_session_disconnect (app_index, ls);
 }
 
 void

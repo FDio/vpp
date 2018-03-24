@@ -204,6 +204,8 @@ int application_local_session_connect (u32 table_index,
 int application_local_session_connect_notify (local_session_t * ls);
 int application_local_session_disconnect (u32 app_index,
 					  local_session_t * ls);
+int application_local_session_disconnect_w_index (u32 app_index,
+						  u32 ls_index);
 void application_local_sessions_del (application_t * app);
 
 always_inline u32

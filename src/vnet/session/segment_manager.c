@@ -366,6 +366,14 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
     while (fifo)
       {
+	if (fifo->master_thread_index == 255)
+	  {
+	    svm_fifo_t *next = fifo->next;
+	    application_local_session_disconnect_w_index (sm->app_index,
+	                                                  fifo->master_session_index);
+	    fifo = next;
+	    continue;
+	  }
 	session = session_get (fifo->master_session_index,
 	                       fifo->master_thread_index);
 	stream_session_disconnect (session);
