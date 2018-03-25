@@ -154,7 +154,8 @@ unix_physmem_region_iommu_register (vlib_physmem_region_t * pr)
 
   vec_foreach_index (i, pr->page_table)
   {
-    dma_map.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
+    dma_map.vaddr = 
+      pointer_to_uword (pr->mem) + ((u64) i << pr->log2_page_size);
     dma_map.size = 1 << pr->log2_page_size;
     dma_map.iova = pr->page_table[i];
     if (ioctl (fd, VFIO_IOMMU_MAP_DMA, &dma_map) != 0)
@@ -221,7 +222,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
       int i;
       for (i = 0; i < pr->n_pages; i++)
 	{
-	  void *ptr = pr->mem + (i << pr->log2_page_size);
+	  void *ptr = pr->mem + ((u64) i << pr->log2_page_size);
 	  int node;
 	  move_pages (0, 1, &ptr, 0, &node, 0);
 	  if (numa_node != node)
