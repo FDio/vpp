@@ -940,7 +940,7 @@ icmpr_send_proc (void *data)
   memset (&start, 0, sizeof (start));
   memset (&end, 0, sizeof (end));
 
-  timespec_get (&start, TIME_UTC);
+  timespec_get (&start, TIME_UTC_);
   while (count)
     {
       i = 0;
@@ -985,7 +985,7 @@ icmpr_send_proc (void *data)
       c->tx_counter += tx;
       count -= tx;
     }
-  timespec_get (&end, TIME_UTC);
+  timespec_get (&end, TIME_UTC_);
   INFO ("Pakcet sequence finished!");
   INFO ("Seq len: %u", seq);
   uint64_t t1 = end.tv_sec - start.tv_sec;
@@ -1223,7 +1223,7 @@ poll_event (int timeout)
   sigemptyset (&sigset);
   en = epoll_pwait (epfd, &evt, 1, timeout, &sigset);
   /* id event polled */
-  timespec_get (&start, TIME_UTC);
+  timespec_get (&start, TIME_UTC_);
   if (en < 0)
     {
       DBG ("epoll_pwait: %s", strerror (errno));
@@ -1256,7 +1256,7 @@ poll_event (int timeout)
 	}
     }
 
-  timespec_get (&end, TIME_UTC);
+  timespec_get (&end, TIME_UTC_);
   LOG ("interrupt: %ld", end.tv_nsec - start.tv_nsec);
 
   if ((app_err < 0) || (memif_err < 0))

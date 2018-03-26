@@ -53,14 +53,14 @@ unit_test_LDADD = $(CHECK_LIBS)
 # main lib
 #
 libmemif_la_SOURCES = src/main.c src/socket.c
-libmemif_la_CPPFLAGS = $(AM_CPPFLAGS) -Isrc
+libmemif_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src
 
 #
 # ICMP responder example
 #
 icmpr_SOURCES = examples/icmp_responder/main.c examples/icmp_responder/icmp_proto.c
 icmpr_LDADD = libmemif.la
-icmpr_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
+icmpr_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src -I$(top_srcdir)/examples/icmp_responder
 
 #
 # ICMP responder libmemif event polling example
@@ -68,7 +68,7 @@ icmpr_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
 icmpr_epoll_SOURCES = examples/icmp_responder-epoll/main.c \
                     examples/icmp_responder/icmp_proto.c
 icmpr_epoll_LDADD = libmemif.la -lpthread
-icmpr_epoll_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
+icmpr_epoll_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src -I$(top_srcdir)/examples/icmp_responder
 
 #
 # ICMP responder multi-thread example
@@ -76,11 +76,11 @@ icmpr_epoll_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
 icmpr_mt_SOURCES = examples/icmp_responder-mt/main.c \
                       examples/icmp_responder/icmp_proto.c
 icmpr_mt_LDADD = libmemif.la -lpthread
-icmpr_mt_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
+icmpr_mt_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src -I$(top_srcdir)/examples/icmp_responder
 
 noinst_PROGRAMS = icmpr icmpr-epoll icmpr-mt
 
-include_HEADERS = src/libmemif.h src/memif.h
+include_HEADERS = src/libmemif.h
 
 lib_LTLIBRARIES = libmemif.la
 
