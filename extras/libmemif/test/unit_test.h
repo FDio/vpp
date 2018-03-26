@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <check.h>
 
+#include <memif.h>
 #include <libmemif.h>
 
 #define TEST_APP_NAME "unit_test_app"

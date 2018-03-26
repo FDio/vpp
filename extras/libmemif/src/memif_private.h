@@ -28,6 +28,7 @@
 #include <sys/timerfd.h>
 #include <string.h>
 
+#include <memif.h>
 #include <libmemif.h>
 
 #define MEMIF_NAME_LEN 32
@@ -45,11 +46,14 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 #define MEMIF_MAX_M2S_RING		255
 #define MEMIF_MAX_S2M_RING		255
 #define MEMIF_MAX_REGION		255
-#define MEMIF_MAX_LOG2_RING_SIZE	15
+#define MEMIF_MAX_LOG2_RING_SIZE	14
 
 #define MEMIF_MAX_FDS 512
 
 #define memif_min(a,b) (((a) < (b)) ? (a) : (b))
+
+#define EXPECT_TRUE(x) __builtin_expect((x),1)
+#define EXPECT_FALSE(x) __builtin_expect((x),0)
 
 #ifdef MEMIF_DBG
 #define DBG(...) do {                                                             \
@@ -57,31 +61,8 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
                         printf(__VA_ARGS__);                                            \
                         printf("\n");                                                   \
                         } while (0)
-
-#define DBG_UNIX(...) do {                                                        \
-                      printf("MEMIF_DEBUG_UNIX:%s:%s:%d: ", __FILE__, __func__, __LINE__);  \
-                      printf(__VA_ARGS__);                                    \
-                      printf("\n");                                           \
-                      } while (0)
-
-#define error_return_unix(...) do {                                             \
-                                DBG_UNIX(__VA_ARGS__);                          \
-                                return -1;                                      \
-                                } while (0)
-#define error_return(...) do {                                                  \
-                            DBG(__VA_ARGS__);                                   \
-                            return -1;                                          \
-                            } while (0)
 #else
 #define DBG(...)
-#define DBG_UNIX(...)
-#define error_return_unix(...) do {                                             \
-                                return -1;                                      \
-                                } while (0)
-#define error_return(...) do {                                                  \
-                            return -1;                                          \
-                            } while (0)
-
 #endif /* MEMIF_DBG */
 
 typedef struct
@@ -160,18 +141,12 @@ typedef struct memif_connection
 #define MEMIF_CONNECTION_FLAG_WRITE (1 << 0)
 } memif_connection_t;
 
-/*
- * WIP
- */
 typedef struct
 {
-  int key;			/* fd or id */
+  int key;
   void *data_struct;
 } memif_list_elt_t;
 
-/*
- * WIP
- */
 typedef struct
 {
   int fd;
@@ -181,10 +156,6 @@ typedef struct
   memif_list_elt_t *interface_list;	/* memif master interfaces listening on this socket */
 } memif_socket_t;
 
-/*
- * WIP
- */
-/* probably function like memif_cleanup () will need to be called to close timerfd */
 typedef struct
 {
   memif_control_fd_update_t *control_fd_update;
@@ -193,8 +164,8 @@ typedef struct
   uint16_t disconn_slaves;
   uint8_t app_name[MEMIF_NAME_LEN];
 
-  /* master implementation... */
-  memif_socket_t ms;
+  memif_alloc_t *alloc;
+  memif_free_t *free;
 
   uint16_t control_list_len;
   uint16_t interrupt_list_len;
@@ -244,7 +215,7 @@ int free_list_elt (memif_list_elt_t * list, uint16_t len, int key);
 
 #ifndef HAVE_MEMFD_CREATE
 static inline int
-memfd_create (const char *name, unsigned int flags)
+memif_memfd_create (const char *name, unsigned int flags)
 {
   return syscall (__NR_memfd_create, name, flags);
 }
