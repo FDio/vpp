@@ -513,6 +513,8 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 endif
 	$(call banner,"Building sample-plugin")
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+	$(call banner,"Building libmemif")
+	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
