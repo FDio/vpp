@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "16bde72c_04896f2f",
+        "filename": "src/vnet/devices/flow.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-26T16:04:45Z",
+      "side": 1,
+      "message": "Should disable indentation to preserve the original one.",
+      "range": {
+        "startLine": 82,
+        "startChar": 2,
+        "endLine": 82,
+        "endChar": 21
+      },
+      "revId": "07f5a2b5bc60cb4de8ffe5e74401ab96f404288f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26f562c0_80b92775",
+        "filename": "src/vnet/devices/flow.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-26T16:04:45Z",
+      "side": 1,
+      "message": "What are dead_flows and last_dispatch used for?",
+      "range": {
+        "startLine": 124,
+        "startChar": 6,
+        "endLine": 124,
+        "endChar": 19
+      },
+      "revId": "07f5a2b5bc60cb4de8ffe5e74401ab96f404288f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
