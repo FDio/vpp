@@ -299,6 +299,10 @@ memif_rx_poll (void *ptr)
       data->rx_buf_num += rx;
       if (rx == 0)
 	{
+	  /* if queue is in polling mode, it's not refilled */
+	  err = memif_refill_queue (c->conn, data->qid, -1);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    INFO ("memif_buffer_free: %s", memif_strerror (err));
 	  continue;
 	}
 
@@ -309,7 +313,7 @@ memif_rx_poll (void *ptr)
 
       err =
 	memif_buffer_alloc (c->conn, data->qid, data->tx_bufs,
-			    data->rx_buf_num, &tx, 0);
+			    data->rx_buf_num, &tx, 128);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -324,16 +328,16 @@ memif_rx_poll (void *ptr)
       for (i = 0; i < rx; i++)
 	{
 	  resolve_packet ((void *) (data->rx_bufs + i)->data,
-			  (data->rx_bufs + i)->data_len,
+			  (data->rx_bufs + i)->len,
 			  (void *) (data->tx_bufs + i)->data,
-			  &(data->tx_bufs + i)->data_len, c->ip_addr);
+			  &(data->tx_bufs + i)->len, c->ip_addr);
 	}
 
       /* mark memif buffers and shared memory buffers as free */
-      err = memif_buffer_free (c->conn, data->qid, data->rx_bufs, rx, &fb);
+      err = memif_refill_queue (c->conn, data->qid, -1);
       if (err != MEMIF_ERR_SUCCESS)
 	INFO ("memif_buffer_free: %s", memif_strerror (err));
-      data->rx_buf_num -= fb;
+      data->rx_buf_num -= rx;
 
       DBG ("freed %d buffers. %u/%u alloc/free buffers",
 	   fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
@@ -355,10 +359,10 @@ error:
   goto close;
 
 close:
-  err = memif_buffer_free (c->conn, data->qid, data->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, data->qid, -1);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  data->rx_buf_num -= fb;
+  data->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
   free (data->rx_bufs);
@@ -439,7 +443,7 @@ memif_rx_interrupt (void *ptr)
 
 	  err =
 	    memif_buffer_alloc (c->conn, data->qid, data->tx_bufs,
-				data->rx_buf_num, &tx, 0);
+				data->rx_buf_num, &tx, 128);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    {
 	      INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -454,17 +458,16 @@ memif_rx_interrupt (void *ptr)
 	  for (i = 0; i < rx; i++)
 	    {
 	      resolve_packet ((void *) (data->rx_bufs + i)->data,
-			      (data->rx_bufs + i)->data_len,
+			      (data->rx_bufs + i)->len,
 			      (void *) (data->tx_bufs + i)->data,
-			      &(data->tx_bufs + i)->data_len, c->ip_addr);
+			      &(data->tx_bufs + i)->len, c->ip_addr);
 	    }
 
 	  /* mark memif buffers and shared memory buffers as free */
-	  err =
-	    memif_buffer_free (c->conn, data->qid, data->rx_bufs, rx, &fb);
+	  err = memif_refill_queue (c->conn, data->qid, rx);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    INFO ("memif_buffer_free: %s", memif_strerror (err));
-	  data->rx_buf_num -= fb;
+	  data->rx_buf_num -= rx;
 
 	  DBG ("freed %d buffers. %u/%u alloc/free buffers",
 	       fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
@@ -487,10 +490,10 @@ error:
   goto close;
 
 close:
-  err = memif_buffer_free (c->conn, data->qid, data->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, data->qid, rx);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  data->rx_buf_num -= fb;
+  data->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
   free (data->rx_bufs);
@@ -611,7 +614,6 @@ icmpr_memif_create (long index)
   args.num_s2m_rings = 2;
   args.num_m2s_rings = 2;
   strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
-  strncpy ((char *) args.instance_name, APP_NAME, strlen (APP_NAME));
   args.mode = 0;
   /* socket filename is not specified, because this app is supposed to
      connect to VPP over memif. so default socket filename will be used */
@@ -675,7 +677,7 @@ print_help ()
   printf (" (debug)");
 #endif
   printf ("\n");
-  printf ("memif version: %d\n", MEMIF_VERSION);
+  printf ("memif version: %d\n", memif_get_version ());
   printf ("commands:\n");
   printf ("\thelp - prints this help\n");
   printf ("\texit - exit app\n");
@@ -896,7 +898,7 @@ main ()
   /* if valid callback is passed as argument, fd event polling will be done by user
      all file descriptors and events will be passed to user in this callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
-  err = memif_init (control_fd_update, APP_NAME);
+  err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_init: %s", memif_strerror (err));
 

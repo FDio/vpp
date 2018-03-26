@@ -214,7 +214,7 @@ print_help ()
   printf (" (debug)");
 #endif
   printf ("\n");
-  printf ("memif version: %d\n", MEMIF_VERSION);
+  printf ("memif version: %d\n", memif_get_version ());
   printf ("\tuse CTRL+C to exit\n");
 }
 
@@ -225,7 +225,7 @@ icmpr_buffer_alloc (long n, uint16_t qid)
   int err;
   uint16_t r;
   /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
-  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
+  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 128);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -306,30 +306,29 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   for (i = 0; i < rx; i++)
     {
       resolve_packet ((void *) (c->rx_bufs + i)->data,
-		      (c->rx_bufs + i)->data_len,
+		      (c->rx_bufs + i)->len,
 		      (void *) (c->tx_bufs + i)->data,
-		      &(c->tx_bufs + i)->data_len, c->ip_addr);
+		      &(c->tx_bufs + i)->len, c->ip_addr);
     }
 
-  uint16_t fb;
   /* mark memif buffers and shared memory buffers as free */
-  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
-  c->rx_buf_num -= fb;
+  err = memif_refill_queue (c->conn, qid, rx);
+  c->rx_buf_num -= rx;
 
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
 
   icmpr_tx_burst (c->tx_qid);
 
   return 0;
 
 error:
-  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, qid, rx);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  c->rx_buf_num -= fb;
+  c->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 
@@ -346,7 +345,6 @@ icmpr_memif_create (int is_master)
   args.num_s2m_rings = 2;
   args.num_m2s_rings = 2;
   strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
-  strncpy ((char *) args.instance_name, APP_NAME, strlen (APP_NAME));
   args.mode = 0;
   /* socket filename is not specified, because this app is supposed to
      connect to VPP over memif. so default socket filename will be used */
@@ -396,7 +394,7 @@ main (int argc, char *argv[])
   /* if valid callback is passed as argument, fd event polling will be done by user
      all file descriptors and events will be passed to user in this callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
-  err = memif_init (NULL, APP_NAME);
+  err = memif_init (NULL, APP_NAME, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_init: %s", memif_strerror (err));
 

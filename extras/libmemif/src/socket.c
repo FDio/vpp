@@ -32,6 +32,7 @@
 
 #include <socket.h>
 #include <memif.h>
+#include <memif_private.h>
 
 /* sends msg to socket */
 static_fn int
@@ -70,8 +71,9 @@ memif_msg_send (int fd, memif_msg_t * msg, int afd)
 static_fn int
 memif_msg_enq_ack (memif_connection_t * c)
 {
+  libmemif_main_t *lm = &libmemif_main;
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
 
@@ -121,8 +123,9 @@ memif_msg_send_hello (int fd)
 static_fn int
 memif_msg_enq_init (memif_connection_t * c)
 {
+  libmemif_main_t *lm = &libmemif_main;
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
   memset (e, 0, sizeof (memif_msg_queue_elt_t));
@@ -136,8 +139,8 @@ memif_msg_enq_init (memif_connection_t * c)
   i->id = c->args.interface_id;
   i->mode = c->args.mode;
 
-  strncpy ((char *) i->name, (char *) c->args.instance_name,
-	   strlen ((char *) c->args.instance_name));
+  strncpy ((char *) i->name, (char *) lm->app_name,
+	   strlen ((char *) lm->app_name));
   if (c->args.secret)
     strncpy ((char *) i->secret, (char *) c->args.secret, sizeof (i->secret));
 
@@ -162,11 +165,12 @@ memif_msg_enq_init (memif_connection_t * c)
 static_fn int
 memif_msg_enq_add_region (memif_connection_t * c, uint8_t region_index)
 {
+  libmemif_main_t *lm = &libmemif_main;
   /* maybe check if region is valid? */
   memif_region_t *mr = &c->regions[region_index];
 
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
 
@@ -199,8 +203,9 @@ memif_msg_enq_add_region (memif_connection_t * c, uint8_t region_index)
 static_fn int
 memif_msg_enq_add_ring (memif_connection_t * c, uint8_t index, uint8_t dir)
 {
+  libmemif_main_t *lm = &libmemif_main;
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
 
@@ -244,8 +249,9 @@ memif_msg_enq_add_ring (memif_connection_t * c, uint8_t index, uint8_t dir)
 static_fn int
 memif_msg_enq_connect (memif_connection_t * c)
 {
+  libmemif_main_t *lm = &libmemif_main;
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
 
@@ -278,8 +284,9 @@ memif_msg_enq_connect (memif_connection_t * c)
 static_fn int
 memif_msg_enq_connected (memif_connection_t * c)
 {
+  libmemif_main_t *lm = &libmemif_main;
   memif_msg_queue_elt_t *e =
-    (memif_msg_queue_elt_t *) malloc (sizeof (memif_msg_queue_elt_t));
+    (memif_msg_queue_elt_t *) lm->alloc (sizeof (memif_msg_queue_elt_t));
   if (e == NULL)
     return memif_syscall_error_handler (errno);
 
@@ -519,7 +526,7 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
       mq =
 	(memif_queue_t *) realloc (c->rx_queues,
 				   sizeof (memif_queue_t) * (ar->index + 1));
-	memset(mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
+      memset (mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
       c->rx_queues = mq;
@@ -539,7 +546,7 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
       mq =
 	(memif_queue_t *) realloc (c->tx_queues,
 				   sizeof (memif_queue_t) * (ar->index + 1));
-	memset(mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
+      memset (mq, 0, sizeof (memif_queue_t) * (ar->index + 1));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
       c->tx_queues = mq;
@@ -579,6 +586,9 @@ memif_msg_receive_connect (memif_connection_t * c, memif_msg_t * msg)
 	  add_list_elt (&elt, &lm->interrupt_list, &lm->interrupt_list_len);
 
 	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
+
+	  /* refill ring buffers */
+	  memif_refill_queue ((void *) c, i, -1);
 	}
 
     }
@@ -607,7 +617,12 @@ memif_msg_receive_connected (memif_connection_t * c, memif_msg_t * msg)
   if (c->on_interrupt != NULL)
     {
       for (i = 0; i < c->run_args.num_s2m_rings; i++)
-	lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
+	{
+	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
+
+	  /* refill ring buffers */
+	  memif_refill_queue ((void *) c, i, -1);
+	}
     }
 
   c->on_connect ((void *) c, c->private_ctx);
@@ -814,6 +829,7 @@ memif_conn_fd_read_ready (memif_connection_t * c)
 int
 memif_conn_fd_write_ready (memif_connection_t * c)
 {
+  libmemif_main_t *lm = &libmemif_main;
   int err = MEMIF_ERR_SUCCESS;	/* 0 */
 
 
@@ -834,7 +850,7 @@ memif_conn_fd_write_ready (memif_connection_t * c)
         MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_WRITE | MEMIF_FD_EVENT_MOD);
 */
   err = memif_msg_send (c->fd, &e->msg, e->fd);
-  free (e);
+  lm->free (e);
   goto done;
 
 done:

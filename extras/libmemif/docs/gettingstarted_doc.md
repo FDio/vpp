@@ -15,10 +15,10 @@ control_fd_update (int fd, uint8_t events)
 ```
    - Call memif initialization function. memif\_init
 ```C
-err = memif_init (control_fd_update, APP_NAME);
+err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
 ```
    
-> If event occurres on any file descriptor returned by this callback, call memif\_control\_fd\_handler function.
+> If event occurres on any file descriptor returned by this callback, call memif\_control\_fd\_handler function. Since version 2.0, last two optional arguments are used to specify custom memory allocation.
 ```C
 memif_err = memif_control_fd_handler (evt.data.fd, events);
 ``` 
@@ -54,7 +54,6 @@ args.buffer_size = 2048;
 args.num_s2m_rings = 2;
 args.num_m2s_rings = 2;
 strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
-strncpy ((char *) args.instance_name, APP_NAME, strlen (APP_NAME));
 args.mode = 0;
 args.interface_id = 0;
 ```
@@ -102,40 +101,45 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 ```
 
 6. Memif buffers
-    - Packet data are stored in memif\_buffer\_t. Pointer _data_ points to shared memory buffer, and unsigned integer *data\_len* contains packet data length.
+    - Packet data are stored in memif\_buffer\_t. Pointer _data_ points to shared memory buffer, and unsigned integer *_len* contains buffer length.
+    - flags: MEMIF\_BUFFER\_FLAG\_NEXT states that the buffer is not large enough to contain whole packet, so next buffer contains the rest of the packet. (chained buffers)
 ```C
 typedef struct
 {
     uint16_t desc_index;
-    uint32_t buffer_len;
-    uint32_t data_len;
+    uint32_t len;
+    uint8_t flags;
     void *data;
 } memif_buffer_t;
 ```
 
 5. Packet receive
-    - Api call memif\_rx\_burst will set all required fields in memif buffers provided by user application.
+    - Api call memif\_rx\_burst will set all required fields in memif buffers provided by user application and dequeue received buffers.
 ```C
-err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
+err = memif_rx_burst (c->conn, qid, c->bufs, MAX_MEMIF_BUFS, &rx);
 ```
     - User application can then process packets.
-    - Api call memif\_buffer\_free will make supplied memif buffers ready for next receive and mark shared memory buffers as free.
+    - Api call memif\_refill\_queue will enqueue rx buffers.
 ```C
-err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+err = memif_refill_queue (c->conn, qid, rx);
 ```
 
 6. Packet transmit
-    - Api call memif\_buffer\_alloc will set all required fields in memif buffers provided by user application.
+    - Api call memif\_buffer\_alloc will find free tx buffers and set all required fields in memif buffers provided by user application.
 ```C
 err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r);
 ```
     - User application can populate shared memory buffers with packets.
-    - Api call memif\_tx\_burst will inform peer interface (master memif on VPP) that there are packets ready to receive and mark memif buffers as free.
+    - Api call memif\_tx\_burst will enqueue tx buffers
 ```C
 err = memif_tx_burst (c->conn, qid, c->tx_bufs, c->tx_buf_num, &r);
 ```
 
 7. Helper functions
+    - Memif version
+```C
+uint16_t memif_ver = memif_get_version ();
+```
     - Memif details
       - Api call memif\_get\_details will return details about connection.
 ```C
@@ -172,7 +176,7 @@ ICMP Responder custom fd event polling.
 ICMP Responder multi-thread.
 - @ref extras/libmemif/examples/icmp_responder-mt
 
-> Simple example of libmemif multi-thread usage. Connection establishment is handled by main thread. There are two rx queues in this example. One in polling mode and second in interrupt mode.
+> Simple example of libmemif multi-thread usage. Connection establishment is handled by main thread. There are two rx/tx queues in this example. One in polling mode and second in interrupt mode.
 
 VPP config:
 ```
