@@ -47,6 +47,10 @@
 
 #include <time.h>
 
+#ifndef TIME_UTC
+#define TIME_UTC 1
+#endif
+
 #include <libmemif.h>
 #include <icmp_proto.h>
 

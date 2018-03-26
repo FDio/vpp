@@ -215,7 +215,7 @@ int free_list_elt (memif_list_elt_t * list, uint16_t len, int key);
 
 #ifndef HAVE_MEMFD_CREATE
 static inline int
-memif_memfd_create (const char *name, unsigned int flags)
+memfd_create (const char *name, unsigned int flags)
 {
   return syscall (__NR_memfd_create, name, flags);
 }

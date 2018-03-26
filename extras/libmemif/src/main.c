@@ -1346,7 +1346,7 @@ memif_init_regions_and_queues (memif_connection_t * conn)
     (conn->run_args.num_s2m_rings + conn->run_args.num_m2s_rings);
 
   if ((r->fd =
-       memif_memfd_create ("memif region 0", MFD_ALLOW_SEALING)) == -1)
+       memfd_create ("memif region 0", MFD_ALLOW_SEALING)) == -1)
     return memif_syscall_error_handler (errno);
 
   if ((fcntl (r->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
