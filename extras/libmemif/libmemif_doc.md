@@ -47,21 +47,23 @@ Run container:
 ```
 Example application will start in debug mode. Output should look like this:
 ```
-ICMP_Responder:add_epoll_fd:204: fd 0 added to epoll
-MEMIF_DEBUG:src/main.c:memif_init:383: app name: ICMP_Responder
-ICMP_Responder:add_epoll_fd:204: fd 4 added to epoll
+ICMP_Responder:add_epoll_fd:233: fd 0 added to epoll
+ICMP_Responder:add_epoll_fd:233: fd 5 added to epoll
 LIBMEMIF EXAMPLE APP: ICMP_Responder (debug)
 ==============================
-libmemif version: 1.0 (debug)
-memif version: 256
+libmemif version: 2.0 (debug)
+memif version: 512
 commands:
 	help - prints this help
 	exit - exit app
-	conn <index> - create memif (slave-mode)
+	conn <index> <mode> [<interrupt-desc>] - create memif. index is also used as interface id, mode 0 = slave 1 = master, interrupt-desc none = default 0 = if ring is full wait 1 = handle only ARP requests
 	del  <index> - delete memif
 	show - show connection details
 	ip-set <index> <ip-addr> - set interface ip address
 	rx-mode <index> <qid> <polling|interrupt> - set queue rx mode
+	sh-count - print counters
+	cl-count - clear counters
+	send <index> <tx> <ip> <mac> - send icmp
 ```
 
 Continue with @ref libmemif_example_setup which contains instructions on how to set up conenction between icmpr-epoll example app and VPP-memif.
