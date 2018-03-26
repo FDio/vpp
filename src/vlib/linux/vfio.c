@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -11,30 +11,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-/*
- * pci.c: Linux user space PCI bus management.
- *
- * Copyright (c) 2008 Eliot Dresselhaus
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include <unistd.h>
@@ -51,6 +27,10 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 #include <vlib/physmem.h>
+
+#ifndef VFIO_NOIOMMU_IOMMU
+#define VFIO_NOIOMMU_IOMMU 8
+#endif
 
 linux_vfio_main_t vfio_main;
 
@@ -103,7 +83,7 @@ get_vfio_iommu_group (int group)
 }
 
 static clib_error_t *
-open_vfio_iommu_group (int group)
+open_vfio_iommu_group (int group, int is_noiommu)
 {
   linux_vfio_main_t *lvm = &vfio_main;
   linux_pci_vfio_iommu_group_t *g;
@@ -118,7 +98,7 @@ open_vfio_iommu_group (int group)
       g->refcnt++;
       return 0;
     }
-  s = format (s, "/dev/vfio/%u%c", group, 0);
+  s = format (s, "/dev/vfio/%s%u%c", is_noiommu ? "noiommu-" : "", group, 0);
   fd = open ((char *) s, O_RDWR);
   if (fd < 0)
     return clib_error_return_unix (0, "open '%s'", s);
@@ -148,13 +128,17 @@ open_vfio_iommu_group (int group)
 
   if (lvm->iommu_mode == 0)
     {
-      if (ioctl (lvm->container_fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU) < 0)
+      if (is_noiommu)
+	lvm->iommu_mode = VFIO_NOIOMMU_IOMMU;
+      else
+	lvm->iommu_mode = VFIO_TYPE1_IOMMU;
+
+      if (ioctl (lvm->container_fd, VFIO_SET_IOMMU, lvm->iommu_mode) < 0)
 	{
 	  err = clib_error_return_unix (0, "ioctl(VFIO_SET_IOMMU) "
 					"'/dev/vfio/vfio'");
 	  goto error;
 	}
-      lvm->iommu_mode = VFIO_TYPE1_IOMMU;
     }
 
 
@@ -178,6 +162,7 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
   int iommu_group;
   u8 *tmpstr;
   int fd;
+  int is_noiommu = 0;
 
   s = format (s, "/sys/bus/pci/devices/%U/iommu_group", format_vlib_pci_addr,
 	      addr);
@@ -195,7 +180,20 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
     }
   vec_reset_length (s);
 
-  if ((err = open_vfio_iommu_group (iommu_group)))
+  s =
+    format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
+	    format_vlib_pci_addr, addr);
+  err = clib_sysfs_read ((char *) s, "%s", &tmpstr);
+  if (err == 0)
+    {
+      if (strncmp ((char *) tmpstr, "vfio-noiommu", 12) == 0)
+	is_noiommu = 1;
+      vec_free (tmpstr);
+    }
+  else
+    clib_error_free (err);
+  vec_reset_length (s);
+  if ((err = open_vfio_iommu_group (iommu_group, is_noiommu)))
     return err;
 
   g = get_vfio_iommu_group (iommu_group);
@@ -232,8 +230,13 @@ linux_vfio_init (vlib_main_t * vm)
 	  close (fd);
 	  fd = -1;
 	}
-      else if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
-	lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
+      else
+	{
+	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
+	    lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
+	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_NOIOMMU_IOMMU) == 1)
+	    lvm->flags |= LINUX_VFIO_F_HAVE_NOIOMMU;
+	}
     }
 
   lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
