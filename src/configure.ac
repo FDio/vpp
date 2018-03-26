@@ -189,6 +189,14 @@ AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
 AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
 
 ###############################################################################
+# misc compiler flags
+###############################################################################
+
+CC_CHECK_FLAG("-Wno-address-of-packed-member")
+AS_IF([test "$cc_flag_check" = yes],
+	[CFLAGS="${CFLAGS} -Wno-address-of-packed-member"], [])
+
+###############################################################################
 # Substitutions and defines
 ###############################################################################
 
