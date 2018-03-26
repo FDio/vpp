@@ -1259,6 +1259,10 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
       u32 lc_index = (*pinout_lc_index_by_sw_if_index)[sw_if_index];
       if (~0 == lc_index)
 	{
+	  if (~0 == am->interface_acl_user_id)
+	    am->interface_acl_user_id =
+	      acl_plugin_register_user_module ("interface ACL", "sw_if_index",
+					       "is_input");
 	  lc_index =
 	    acl_plugin_get_lookup_context_index (am->interface_acl_user_id,
 						 sw_if_index, is_input);
@@ -4089,9 +4093,7 @@ acl_init (vlib_main_t * vm)
   /* use the new fancy hash-based matching */
   am->use_hash_acl_matching = 1;
 
-  am->interface_acl_user_id =
-    acl_plugin_register_user_module ("interface ACL", "sw_if_index",
-				     "is_input");
+  am->interface_acl_user_id = ~0;	/* defer till the first use */
 
   return error;
 }
