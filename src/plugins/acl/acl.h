@@ -38,8 +38,6 @@
 #define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
-#define ACL_FA_DEFAULT_HEAP_SIZE (2 << 29)
-
 #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
@@ -136,7 +134,7 @@ typedef struct
 typedef struct {
   /* mheap to hold all the ACL module related allocations, other than hash */
   void *acl_mheap;
-  u32 acl_mheap_size;
+  uword acl_mheap_size;
 
   /* API message ID base */
   u16 msg_id_base;
@@ -154,7 +152,7 @@ typedef struct {
 
   /* mheap to hold all the miscellaneous allocations related to hash-based lookups */
   void *hash_lookup_mheap;
-  u32 hash_lookup_mheap_size;
+  uword hash_lookup_mheap_size;
   int acl_lookup_hash_initialized;
 /*
   applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
