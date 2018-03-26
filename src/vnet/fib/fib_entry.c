@@ -118,8 +118,8 @@ format_fib_entry (u8 * s, va_list * args)
 
     s = format (s, "%U", format_fib_prefix, &fib_entry->fe_prefix);
 
-//    if (level >= FIB_ENTRY_FORMAT_DETAIL)
-//    {
+    if (level >= FIB_ENTRY_FORMAT_DETAIL)
+    {
 	s = format (s, " fib:%d", fib_entry->fe_fib_index);
 	s = format (s, " index:%d", fib_entry_get_index(fib_entry));
 	s = format (s, " locks:%d", fib_entry->fe_node.fn_locks);
@@ -154,11 +154,11 @@ format_fib_entry (u8 * s, va_list * args)
 	}));
     
 	s = format (s, "\n forwarding: ");
-//    }
-//    else
-//    {
-//	s = format (s, "\n");
-//    }
+    }
+    else
+    {
+	s = format (s, "\n");
+    }
 
     fct = fib_entry_get_default_chain_type(fib_entry);
 
