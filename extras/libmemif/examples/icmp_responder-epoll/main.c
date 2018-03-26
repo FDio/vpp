@@ -319,7 +319,7 @@ icmpr_buffer_alloc (long index, long n, uint16_t * r, uint16_t i,
   memif_connection_t *c = &memif_connection[index];
   int err;
   /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
-  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs + i, n, r, 0);
+  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs + i, n, r, 128);
   if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
     {
       INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -361,10 +361,10 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
     }
 
   int err = MEMIF_ERR_SUCCESS, ret_val;
-  uint16_t rx, tx;
-  uint16_t fb;
-  int i;			/* rx buffer iterator */
-  int j;			/* tx bufferiterator */
+  uint16_t rx = 0, tx = 0;
+  uint16_t fb = 0;
+  int i = 0;			/* rx buffer iterator */
+  int j = 0;			/* tx bufferiterator */
 
   /* loop while there are packets in shm */
   do
@@ -380,54 +380,34 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	}
 
       i = 0;
-
-      /* try to alloc required number of buffers buffers */
-      err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 0);
+      err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 128);
       if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 	{
 	  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
 	  goto error;
 	}
       j = 0;
-      c->tx_err_counter = rx - tx;
+      c->tx_err_counter += rx - tx;
 
-      /* process bufers */
       while (tx)
 	{
-	  while (tx > 2)
-	    {
-	      resolve_packet ((void *) (c->rx_bufs + i)->data,
-			      (c->rx_bufs + i)->data_len,
-			      (void *) (c->tx_bufs + j)->data,
-			      &(c->tx_bufs + j)->data_len, c->ip_addr);
-	      resolve_packet ((void *) (c->rx_bufs + i + 1)->data,
-			      (c->rx_bufs + i + 1)->data_len,
-			      (void *) (c->tx_bufs + j + 1)->data,
-			      &(c->tx_bufs + j + 1)->data_len, c->ip_addr);
-
-	      i += 2;
-	      j += 2;
-	      tx -= 2;
-	    }
 	  resolve_packet ((void *) (c->rx_bufs + i)->data,
-			  (c->rx_bufs + i)->data_len,
+			  (c->rx_bufs + i)->len,
 			  (void *) (c->tx_bufs + j)->data,
-			  &(c->tx_bufs + j)->data_len, c->ip_addr);
+			  &(c->tx_bufs + j)->len, c->ip_addr);
 	  i++;
 	  j++;
 	  tx--;
 	}
-      /* mark memif buffers and shared memory buffers as free */
-      /* free processed buffers */
-      err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+
+      err = memif_refill_queue (c->conn, qid, rx);
       if (err != MEMIF_ERR_SUCCESS)
 	INFO ("memif_buffer_free: %s", memif_strerror (err));
-      rx -= fb;
+      rx -= rx;
 
       DBG ("freed %d buffers. %u/%u alloc/free buffers",
-	   fb, rx, MAX_MEMIF_BUFS - rx);
+	   rx, rx, MAX_MEMIF_BUFS - rx);
 
-      /* transmit allocated buffers */
       err = memif_tx_burst (c->conn, qid, c->tx_bufs, j, &tx);
       if (err != MEMIF_ERR_SUCCESS)
 	{
@@ -442,10 +422,10 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   return 0;
 
 error:
-  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, qid, rx);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  c->rx_buf_num -= fb;
+  c->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
@@ -466,7 +446,7 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
     }
 
   int err = MEMIF_ERR_SUCCESS, ret_val;
-  uint16_t rx, tx;
+  uint16_t rx = 0, tx = 0;
   uint16_t fb;
   int i;			/* rx buffer iterator */
   int j;			/* tx bufferiterator */
@@ -492,7 +472,7 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	{
 
 	  /* try to alloc required number of buffers buffers */
-	  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 0);
+	  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 128);
 	  if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 	    {
 	      INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -506,33 +486,32 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	      while (tx > 2)
 		{
 		  resolve_packet ((void *) (c->rx_bufs + i)->data,
-				  (c->rx_bufs + i)->data_len,
+				  (c->rx_bufs + i)->len,
 				  (void *) (c->tx_bufs + j)->data,
-				  &(c->tx_bufs + j)->data_len, c->ip_addr);
+				  &(c->tx_bufs + j)->len, c->ip_addr);
 		  resolve_packet ((void *) (c->rx_bufs + i + 1)->data,
-				  (c->rx_bufs + i + 1)->data_len,
+				  (c->rx_bufs + i + 1)->len,
 				  (void *) (c->tx_bufs + j + 1)->data,
-				  &(c->tx_bufs + j + 1)->data_len,
-				  c->ip_addr);
+				  &(c->tx_bufs + j + 1)->len, c->ip_addr);
 
 		  i += 2;
 		  j += 2;
 		  tx -= 2;
 		}
 	      resolve_packet ((void *) (c->rx_bufs + i)->data,
-			      (c->rx_bufs + i)->data_len,
+			      (c->rx_bufs + i)->len,
 			      (void *) (c->tx_bufs + j)->data,
-			      &(c->tx_bufs + j)->data_len, c->ip_addr);
+			      &(c->tx_bufs + j)->len, c->ip_addr);
 	      i++;
 	      j++;
 	      tx--;
 	    }
 	  /* mark memif buffers and shared memory buffers as free */
 	  /* free processed buffers */
-	  err = memif_buffer_free (c->conn, qid, c->rx_bufs + prev_i, j, &fb);
+	  err = memif_refill_queue (c->conn, qid, j);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    INFO ("memif_buffer_free: %s", memif_strerror (err));
-	  rx -= fb;
+	  rx -= j;
 	  prev_i = i;
 
 	  DBG ("freed %d buffers. %u/%u alloc/free buffers",
@@ -555,10 +534,10 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   return 0;
 
 error:
-  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, qid, rx);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  c->rx_buf_num -= fb;
+  c->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
@@ -605,17 +584,17 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	      if (icmpr_buffer_alloc (c->index, 1, &tx, i, qid) < 0)
 		break;
 	      resolve_packet ((void *) (c->rx_bufs + i)->data,
-			      (c->rx_bufs + i)->data_len,
+			      (c->rx_bufs + i)->len,
 			      (void *) (c->tx_bufs + i)->data,
-			      &(c->tx_bufs + i)->data_len, c->ip_addr);
+			      &(c->tx_bufs + i)->len, c->ip_addr);
 	      icmpr_tx_burst (c->index, qid);
 	    }
 	}
 
-      err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+      err = memif_refill_queue (c->conn, qid, rx);
       if (err != MEMIF_ERR_SUCCESS)
 	INFO ("memif_buffer_free: %s", memif_strerror (err));
-      c->rx_buf_num -= fb;
+      c->rx_buf_num -= rx;
 
 
     }
@@ -624,10 +603,10 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   return 0;
 
 error:
-  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+  err = memif_refill_queue (c->conn, qid, rx);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  c->rx_buf_num -= fb;
+  c->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
@@ -655,10 +634,9 @@ icmpr_memif_create (long index, long mode, char *s)
   args.is_master = mode;
   args.log2_ring_size = 11;
   args.buffer_size = 2048;
-  args.num_s2m_rings = 2;
-  args.num_m2s_rings = 2;
+  args.num_s2m_rings = 1;
+  args.num_m2s_rings = 1;
   strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
-  strncpy ((char *) args.instance_name, APP_NAME, strlen (APP_NAME));
   args.mode = 0;
   /* socket filename is not specified, because this app is supposed to
      connect to VPP over memif. so default socket filename will be used */
@@ -779,7 +757,7 @@ print_help ()
   printf (" (debug)");
 #endif
   printf ("\n");
-  printf ("memif version: %d\n", MEMIF_VERSION);
+  printf ("memif version: %d\n", memif_get_version ());
   printf ("commands:\n");
   printf ("\thelp - prints this help\n");
   printf ("\texit - exit app\n");
@@ -968,7 +946,7 @@ icmpr_send_proc (void *data)
       i = 0;
       err = memif_buffer_alloc (c->conn, 0, c->tx_bufs,
 				MAX_MEMIF_BUFS >
-				count ? count : MAX_MEMIF_BUFS, &tx, 0);
+				count ? count : MAX_MEMIF_BUFS, &tx, 128);
       if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 	{
 	  INFO ("memif_buffer_alloc: %s Thread exiting...\n",
@@ -982,16 +960,16 @@ icmpr_send_proc (void *data)
 	  while (tx > 2)
 	    {
 	      generate_packet ((void *) c->tx_bufs[i].data,
-			       &c->tx_bufs[i].data_len, c->ip_addr,
+			       &c->tx_bufs[i].len, c->ip_addr,
 			       d->ip_daddr, d->hw_daddr, seq++);
 	      generate_packet ((void *) c->tx_bufs[i + 1].data,
-			       &c->tx_bufs[i + 1].data_len, c->ip_addr,
+			       &c->tx_bufs[i + 1].len, c->ip_addr,
 			       d->ip_daddr, d->hw_daddr, seq++);
 	      i += 2;
 	      tx -= 2;
 	    }
 	  generate_packet ((void *) c->tx_bufs[i].data,
-			   &c->tx_bufs[i].data_len, c->ip_addr,
+			   &c->tx_bufs[i].len, c->ip_addr,
 			   d->ip_daddr, d->hw_daddr, seq++);
 	  i++;
 	  tx--;
@@ -1313,13 +1291,17 @@ main ()
   /* if valid callback is passed as argument, fd event polling will be done by user
      all file descriptors and events will be passed to user in this callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
-  err = memif_init (control_fd_update, APP_NAME);
+  err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)
-    INFO ("memif_init: %s", memif_strerror (err));
+    {
+      INFO ("memif_init: %s", memif_strerror (err));
+      icmpr_free ();
+      exit (-1);
+    }
 
   for (i = 0; i < MAX_CONNS; i++)
     {
-      memif_connection[i].conn = NULL;
+      memset (&memif_connection[i], 0, sizeof (memif_connection_t));
       ctx[i] = i;
     }
 

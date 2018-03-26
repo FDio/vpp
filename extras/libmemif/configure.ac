@@ -1,4 +1,4 @@
-AC_INIT(libmemif, 1.0)
+AC_INIT(libmemif, 2.0)
 LT_INIT
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
