@@ -1,4 +1,4 @@
-AC_INIT(libmemif, 1.0)
+AC_INIT(libmemif, 2.0)
 LT_INIT
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
@@ -6,8 +6,6 @@ AC_PREFIX_DEFAULT([/usr])
 
 PKG_CHECK_MODULES([CHECK], [check], [HAVE_CHECK=1], [HAVE_CHECK=0])
 AM_CONDITIONAL([USE_CHECK],[test "$HAVE_CHECK" -eq 1])
-
-AC_CHECK_FUNC([memfd_create], [AC_DEFINE([HAVE_MEMFD_CREATE], [1], [Define if memfd exists])])
 
 AC_PROG_CC
 
