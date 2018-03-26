@@ -121,7 +121,34 @@ acl_set_heap (acl_main_t * am)
 {
   if (0 == am->acl_mheap)
     {
+      if (0 == am->acl_mheap_size)
+	{
+	  vlib_thread_main_t *tm = vlib_get_thread_main ();
+	  u64 per_worker_slack = 1000000LL;
+	  u64 per_worker_size =
+	    per_worker_slack +
+	    ((u64) am->fa_conn_table_max_entries) * sizeof (fa_session_t);
+	  u64 per_worker_size_with_slack = per_worker_slack + per_worker_size;
+	  u64 main_slack = 2000000LL;
+	  u64 bihash_size = (u64) am->fa_conn_table_hash_memory_size;
+
+	  am->acl_mheap_size =
+	    per_worker_size_with_slack * tm->n_vlib_mains + bihash_size +
+	    main_slack;
+	}
+      u64 max_possible = ((uword) ~ 0);
+      if (am->acl_mheap_size > max_possible)
+	{
+	  clib_warning ("ACL heap size requested: %lld, max possible %lld",
+			am->acl_mheap_size, max_possible);
+	}
       am->acl_mheap = mheap_alloc (0 /* use VM */ , am->acl_mheap_size);
+      if (0 == am->acl_mheap)
+	{
+	  clib_error
+	    ("ACL plugin failed to allocate main heap of %U bytes, abort",
+	     format_memory_size, am->acl_mheap_size);
+	}
       mheap_t *h = mheap_header (am->acl_mheap);
       h->flags |= MHEAP_FLAG_THREAD_SAFE;
     }
@@ -3976,8 +4003,8 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
   u32 conn_table_hash_buckets;
   u32 conn_table_hash_memory_size;
   u32 conn_table_max_entries;
-  u32 main_heap_size;
-  u32 hash_heap_size;
+  uword main_heap_size;
+  uword hash_heap_size;
   u32 hash_lookup_hash_buckets;
   u32 hash_lookup_hash_memory;
 
@@ -3992,9 +4019,15 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "connection count max %d",
 			 &conn_table_max_entries))
 	am->fa_conn_table_max_entries = conn_table_max_entries;
-      else if (unformat (input, "main heap size %d", &main_heap_size))
+      else
+	if (unformat
+	    (input, "main heap size %U", unformat_memory_size,
+	     &main_heap_size))
 	am->acl_mheap_size = main_heap_size;
-      else if (unformat (input, "hash lookup heap size %d", &hash_heap_size))
+      else
+	if (unformat
+	    (input, "hash lookup heap size %U", unformat_memory_size,
+	     &hash_heap_size))
 	am->hash_lookup_mheap_size = hash_heap_size;
       else if (unformat (input, "hash lookup hash buckets %d",
 			 &hash_lookup_hash_buckets))
@@ -4035,7 +4068,7 @@ acl_init (vlib_main_t * vm)
 
   acl_setup_fa_nodes ();
 
-  am->acl_mheap_size = ACL_FA_DEFAULT_HEAP_SIZE;
+  am->acl_mheap_size = 0;	/* auto size when initializing */
   am->hash_lookup_mheap_size = ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE;
 
   am->hash_lookup_hash_buckets = ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS;
