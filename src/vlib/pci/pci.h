@@ -59,6 +59,9 @@ typedef CLIB_PACKED (union
 
 typedef struct vlib_pci_device_info
 {
+  u32 flags;
+#define VLIB_PCI_DEVICE_INFO_F_NOIOMMU		(1 << 0);
+
   /* addr */
   vlib_pci_addr_t addr;
 

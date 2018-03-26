@@ -27,6 +27,7 @@ typedef struct
 {
   u32 flags;
 #define LINUX_VFIO_F_HAVE_IOMMU		(1 << 0)
+#define LINUX_VFIO_F_HAVE_NOIOMMU	(1 << 1)
   int container_fd;
 
   /* VFIO */
