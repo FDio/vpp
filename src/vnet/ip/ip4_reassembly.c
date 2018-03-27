@@ -1110,8 +1110,7 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
 			     ip4_reass_main.ip4_reass_expire_node_idx,
 			     IP4_EVENT_CONFIG_CHANGED, 0);
   u32 new_nbuckets = ip4_reass_get_nbuckets ();
-  if (ip4_reass_main.max_reass_n > 0 && new_nbuckets > 1 &&
-      new_nbuckets != old_nbuckets)
+  if (ip4_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
     {
       clib_bihash_24_8_t new_hash;
       memset (&new_hash, 0, sizeof (new_hash));
@@ -1170,16 +1169,16 @@ ip4_reass_init_function (vlib_main_t * vm)
   ASSERT (node);
   rm->ip4_reass_expire_node_idx = node->index;
 
+  ip4_reass_set_params (IP4_REASS_TIMEOUT_DEFAULT_MS,
+			IP4_REASS_MAX_REASSEMBLIES_DEFAULT,
+			IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
+
   nbuckets = ip4_reass_get_nbuckets ();
   clib_bihash_init_24_8 (&rm->hash, "ip4-reass", nbuckets, nbuckets * 1024);
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
   ASSERT (node);
   rm->ip4_drop_idx = node->index;
-
-  ip4_reass_set_params (IP4_REASS_TIMEOUT_DEFAULT_MS,
-			IP4_REASS_MAX_REASSEMBLIES_DEFAULT,
-			IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   return error;
 }
@@ -1425,8 +1424,14 @@ VLIB_CLI_COMMAND (show_ip4_reassembly_cmd, static) = {
 vnet_api_error_t
 ip4_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
-  return vnet_feature_enable_disable ("ip4-unicast", "ip4-reassembly-feature",
-				      sw_if_index, enable_disable, 0, 0);
+  vnet_api_error_t rv =
+    vnet_feature_enable_disable ("ip4-unicast", "ip4-reassembly-feature",
+				 sw_if_index, enable_disable, 0, 0);
+  if (!enable_disable && VNET_API_ERROR_NO_SUCH_ENTRY == rv)
+    {
+      rv = 0;
+    }
+  return rv;
 }
 
 /*
