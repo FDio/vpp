@@ -600,9 +600,8 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
 always_inline u32
 multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
 {
-  clib_bihash_kv_48_8_t kv;
   clib_bihash_kv_48_8_t result;
-  fa_5tuple_t *kv_key = (fa_5tuple_t *)kv.key;
+  fa_5tuple_t *kv_key = (fa_5tuple_t *)result.key;
   hash_acl_lookup_value_t *result_val = (hash_acl_lookup_value_t *)&result.value;
   u64 *pmatch = (u64 *)match;
   u64 *pmask;
@@ -625,7 +624,7 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
     ace_mask_type_entry_t *mte = vec_elt_at_index(am->ace_mask_type_pool, mask_type_index);
     pmatch = (u64 *)match;
     pmask = (u64 *)&mte->mask;
-    pkey = (u64 *)kv.key;
+    pkey = (u64 *)result.key;
     /*
     * unrolling the below loop results in a noticeable performance increase.
     int i;
@@ -642,9 +641,7 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
     *pkey++ = *pmatch++ & *pmask++;
 
     kv_key->pkt.mask_type_index_lsb = mask_type_index;
-    DBG("        KEY %3d: %016llx %016llx %016llx %016llx %016llx %016llx", mask_type_index,
-		kv.key[0], kv.key[1], kv.key[2], kv.key[3], kv.key[4], kv.key[5]);
-    int res = clib_bihash_search_48_8 (&am->acl_lookup_hash, &kv, &result);
+    int res = clib_bihash_search_inline_48_8 (&am->acl_lookup_hash, &result);
     if (res == 0) {
       DBG("ACL-MATCH! result_val: %016llx", result_val->as_u64);
       if (result_val->applied_entry_index < curr_match_index) {

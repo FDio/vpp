@@ -634,11 +634,12 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return sess;
 }
 
-static int
+always_inline int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
-  return (clib_bihash_search_40_8 (&am->fa_sessions_hash, &p5tuple->kv, pvalue_sess) == 0);
+  *pvalue_sess = p5tuple->kv;
+  return (clib_bihash_search_inline_40_8 (&am->fa_sessions_hash, pvalue_sess) == 0);
 }
 
 
