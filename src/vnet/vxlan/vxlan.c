@@ -605,7 +605,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
                                    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
-  ip46_address_t src , dst;
+  ip46_address_t src = ip46_address_initializer, dst = ip46_address_initializer;
   u8 is_add = 1;
   u8 src_set = 0;
   u8 dst_set = 0;
@@ -617,15 +617,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
-  u32 tmp;
-  int rv;
-  vnet_vxlan_add_del_tunnel_args_t _a, * a = &_a;
-  u32 tunnel_sw_if_index;
+  u32 table_id;
   clib_error_t *error = NULL;
-
-  /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
-  memset(&src, 0, sizeof src);
-  memset(&dst, 0, sizeof dst);
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -639,138 +632,93 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "instance %d", &instance))
       ;
     else if (unformat (line_input, "src %U",
-                       unformat_ip4_address, &src.ip4))
+                       unformat_ip46_address, &src, IP46_TYPE_ANY))
       {
         src_set = 1;
-        ipv4_set = 1;
+        ip46_address_is_ip4(&src) ? (ipv4_set = 1) : (ipv6_set = 1);
       }
     else if (unformat (line_input, "dst %U",
-                       unformat_ip4_address, &dst.ip4))
+                       unformat_ip46_address, &dst, IP46_TYPE_ANY))
       {
         dst_set = 1;
-        ipv4_set = 1;
-      }
-    else if (unformat (line_input, "src %U", 
-                       unformat_ip6_address, &src.ip6))
-      {
-        src_set = 1;
-        ipv6_set = 1;
-      }
-    else if (unformat (line_input, "dst %U",
-                       unformat_ip6_address, &dst.ip6))
-      {
-        dst_set = 1;
-        ipv6_set = 1;
+        ip46_address_is_ip4(&dst) ? (ipv4_set = 1) : (ipv6_set = 1);
       }
     else if (unformat (line_input, "group %U %U",
-                       unformat_ip4_address, &dst.ip4,
+                       unformat_ip46_address, &dst, IP46_TYPE_ANY,
 		       unformat_vnet_sw_interface,
 		       vnet_get_main(), &mcast_sw_if_index))
       {
         grp_set = dst_set = 1;
-        ipv4_set = 1;
+        ip46_address_is_ip4(&dst) ? (ipv4_set = 1) : (ipv6_set = 1);
       }
-    else if (unformat (line_input, "group %U %U",
-                       unformat_ip6_address, &dst.ip6,
-		       unformat_vnet_sw_interface,
-		       vnet_get_main(), &mcast_sw_if_index))
+    else if (unformat (line_input, "encap-vrf-id %d", &table_id))
       {
-        grp_set = dst_set = 1;
-        ipv6_set = 1;
-      }
-    else if (unformat (line_input, "encap-vrf-id %d", &tmp))
-      {
-        encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), tmp);
+        encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), table_id);
         if (encap_fib_index == ~0)
           {
-            error = clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
-            goto done;
+            error = clib_error_return (0, "nonexistent encap-vrf-id %d", table_id);
+            break;
           }
       }
     else if (unformat (line_input, "decap-next %U", unformat_decap_next, 
                        &decap_next_index, ipv4_set))
       ;
     else if (unformat (line_input, "vni %d", &vni))
-      {
-        if (vni >> 24)  
-          {
-            error = clib_error_return (0, "vni %d out of range", vni);
-            goto done;
-          }
-      }
+      ;
     else 
       {
         error = clib_error_return (0, "parse error: '%U'",
                                    format_unformat_error, line_input);
-        goto done;
+        break;
       }
   }
 
+  unformat_free (line_input);
+
+  if (error)
+    return error;
+
   if (src_set == 0)
-    {
-      error = clib_error_return (0, "tunnel src address not specified");
-      goto done;
-    }
+    return clib_error_return (0, "tunnel src address not specified");
 
   if (dst_set == 0)
-    {
-      error = clib_error_return (0, "tunnel dst address not specified");
-      goto done;
-    }
+    return clib_error_return (0, "tunnel dst address not specified");
 
   if (grp_set && !ip46_address_is_multicast(&dst))
-    {
-      error = clib_error_return (0, "tunnel group address not multicast");
-      goto done;
-    }
+    return clib_error_return (0, "tunnel group address not multicast");
 
   if (grp_set == 0 && ip46_address_is_multicast(&dst))
-    {
-      error = clib_error_return (0, "dst address must be unicast");
-      goto done;
-    }
+    return clib_error_return (0, "dst address must be unicast");
 
   if (grp_set && mcast_sw_if_index == ~0)
-    {
-      error = clib_error_return (0, "tunnel nonexistent multicast device");
-      goto done;
-    }
+    return clib_error_return (0, "tunnel nonexistent multicast device");
 
   if (ipv4_set && ipv6_set)
-    {
-      error = clib_error_return (0, "both IPv4 and IPv6 addresses specified");
-      goto done;
-    }
+    return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
 
   if (ip46_address_cmp(&src, &dst) == 0)
-    {
-      error = clib_error_return (0, "src and dst addresses are identical");
-      goto done;
-    }
+    return clib_error_return (0, "src and dst addresses are identical");
 
   if (decap_next_index == ~0)
-    {
-      error = clib_error_return (0, "next node not found");
-      goto done;
-    }
+    return clib_error_return (0, "next node not found");
 
   if (vni == 0)
-    {
-      error = clib_error_return (0, "vni not specified");
-      goto done;
-    }
+    return clib_error_return (0, "vni not specified");
 
-  memset (a, 0, sizeof (*a));
+  if (vni >> 24)  
+    return clib_error_return (0, "vni %d out of range", vni);
 
-  a->is_add = is_add;
-  a->is_ip6 = ipv6_set;
-  a->instance = instance;
-
-#define _(x) a->x = x;
-  foreach_copy_field;
+  vnet_vxlan_add_del_tunnel_args_t a = {
+  .is_add = is_add,
+  .is_ip6 = ipv6_set,
+  .instance = instance,
+#define _(x) .x = x,
+  foreach_copy_field
 #undef _
+  };
 
-  rv = vnet_vxlan_add_del_tunnel (a, &tunnel_sw_if_index);
+  u32 tunnel_sw_if_index;
+  int rv = vnet_vxlan_add_del_tunnel (&a, &tunnel_sw_if_index);
 
   switch(rv)
     {
@@ -781,25 +729,18 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_TUNNEL_EXIST:
-      error = clib_error_return (0, "tunnel already exists...");
-      goto done;
+      return clib_error_return (0, "tunnel already exists...");
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      error = clib_error_return (0, "tunnel does not exist...");
-      goto done;
+      return clib_error_return (0, "tunnel does not exist...");
 
     case VNET_API_ERROR_INSTANCE_IN_USE:
-      error = clib_error_return (0, "Instance is in use");
-      goto done;
+      return clib_error_return (0, "Instance is in use");
 
     default:
-      error = clib_error_return
+      return clib_error_return
         (0, "vnet_vxlan_add_del_tunnel returned %d", rv);
-      goto done;
     }
-
-done:
-  unformat_free (line_input);
 
   return error;
 }
