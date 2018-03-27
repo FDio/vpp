@@ -87,6 +87,15 @@ vnet_get_sup_hw_interface (vnet_main_t * vnm, u32 sw_if_index)
   return vnet_get_hw_interface (vnm, sw->hw_if_index);
 }
 
+always_inline vnet_hw_interface_t *
+vnet_get_sw_hw_interface (vnet_main_t * vnm, u32 sw_if_index)
+{
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+  if (sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
+    return vnet_get_hw_interface (vnm, sw->hw_if_index);
+  return vnet_get_sup_hw_interface (vnm, sw_if_index);
+}
+
 always_inline vnet_hw_interface_class_t *
 vnet_get_hw_interface_class (vnet_main_t * vnm, u32 hw_class_index)
 {
@@ -219,19 +228,11 @@ vnet_hw_interface_get_flags (vnet_main_t * vnm, u32 hw_if_index)
 }
 
 always_inline uword
-vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index,
-			   vlib_rx_or_tx_t dir)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  return hw->max_l3_packet_bytes[dir];
-}
-
-always_inline uword
 vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index,
 			   vlib_rx_or_tx_t dir)
 {
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  return (hw->max_l3_packet_bytes[dir]);
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+  return (sw->max_l3_packet_bytes[dir]);
 }
 
 always_inline uword
@@ -292,8 +293,8 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 					       vnet_hw_interface_rx_mode
 					       mode);
 
-/* Set the MTU on the HW interface */
-void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
+/* Set the MTU on the SW interface */
+int vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu);
 
 /* update the unnumbered state of an interface */
 void vnet_sw_interface_update_unnumbered (u32 sw_if_index,
