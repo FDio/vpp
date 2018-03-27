@@ -38,13 +38,14 @@ class VppNeighbor(VppObject):
         self.af = af
         self.is_static = is_static
         self.is_no_fib_entry = is_no_fib_entry
-        self.nbr_addr = inet_pton(af, nbr_addr)
+        self.nbr_addr = nbr_addr
+        self.nbr_addr_n = inet_pton(af, nbr_addr)
 
     def add_vpp_config(self):
         self._test.vapi.ip_neighbor_add_del(
             self.sw_if_index,
             self.mac_addr,
-            self.nbr_addr,
+            self.nbr_addr_n,
             is_add=1,
             is_ipv6=1 if AF_INET6 == self.af else 0,
             is_static=self.is_static,
@@ -55,25 +56,20 @@ class VppNeighbor(VppObject):
         self._test.vapi.ip_neighbor_add_del(
             self.sw_if_index,
             self.mac_addr,
-            self.nbr_addr,
+            self.nbr_addr_n,
             is_ipv6=1 if AF_INET6 == self.af else 0,
             is_add=0,
             is_static=self.is_static)
 
     def query_vpp_config(self):
-        dump = self._test.vapi.ip_neighbor_dump(
-            self.sw_if_index,
-            is_ipv6=1 if AF_INET6 == self.af else 0)
-        for n in dump:
-            if self.nbr_addr == n.ip_address \
-               and self.is_static == n.is_static:
-                return True
-        return False
+        return find_nbr(self._test,
+                        self.sw_if_index,
+                        self.nbr_addr,
+                        self.is_static,
+                        self.af)
 
     def __str__(self):
         return self.object_id()
 
     def object_id(self):
-        return ("%d:%s"
-                % (self.sw_if_index,
-                   inet_ntop(self.af, self.nbr_addr)))
+        return ("%d:%s" % (self.sw_if_index, self.nbr_addr))
