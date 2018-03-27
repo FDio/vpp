@@ -250,7 +250,7 @@ mastership_socket_read_ready (clib_file_t * uf)
   mc_multicast_socket_t *ms =
     &msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP];
   clib_error_t *error;
-  u32 bi;
+  u32 bi = 0;
 
   error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
 			  0);
@@ -273,7 +273,7 @@ to_relay_socket_read_ready (clib_file_t * uf)
   mc_multicast_socket_t *ms_from_relay =
     &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
   clib_error_t *error;
-  u32 bi;
+  u32 bi = 0;
   u32 is_master = mcm->relay_state == MC_RELAY_STATE_MASTER;
 
   /* Not the ordering master? Turf the msg */
@@ -304,7 +304,7 @@ from_relay_socket_read_ready (clib_file_t * uf)
   mc_multicast_socket_t *ms =
     &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
   clib_error_t *error;
-  u32 bi;
+  u32 bi = 0;
 
   error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
 			  0);
@@ -324,7 +324,7 @@ join_socket_read_ready (clib_file_t * uf)
   vlib_main_t *vm = mcm->vlib_main;
   mc_multicast_socket_t *ms = &msm->multicast_sockets[MC_TRANSPORT_JOIN];
   clib_error_t *error;
-  u32 bi;
+  u32 bi = 0;
 
   error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
 			  0);
@@ -359,7 +359,7 @@ ack_socket_read_ready (clib_file_t * uf)
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
   clib_error_t *error;
-  u32 bi;
+  u32 bi = 0;
 
   error = recvmsg_helper (msm, msm->ack_socket, /* rx_addr */ 0, &bi,
 			  /* drop_message */ 0);
