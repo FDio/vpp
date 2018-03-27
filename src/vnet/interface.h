@@ -512,14 +512,6 @@ typedef struct vnet_hw_interface_t
   /* Largest packet size for this interface. */
   u32 max_packet_bytes;
 
-  /* Number of extra bytes that go on the wire.
-     Packet length on wire
-     = max (length + per_packet_overhead_bytes, min_packet_bytes). */
-  u32 per_packet_overhead_bytes;
-
-  /* Receive and transmit layer 3 packet size limits (MRU/MTU). */
-  u32 max_l3_packet_bytes[VLIB_N_RX_TX];
-
   /* Hash table mapping sub interface id to sw_if_index. */
   uword *sub_interface_sw_if_index_by_id;
 
@@ -655,6 +647,9 @@ typedef struct
   u32 unnumbered_sw_if_index;
 
   u32 link_speed;
+
+  /* Receive and transmit layer 3 packet size limits (MRU/MTU). */
+  u32 max_l3_packet_bytes[VLIB_N_RX_TX];
 
   union
   {
