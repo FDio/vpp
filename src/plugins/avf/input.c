@@ -407,7 +407,7 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .sibling_of = "device-input",
   .format_trace = format_avf_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
-  .state = VLIB_NODE_STATE_POLLING,
+  .state = VLIB_NODE_STATE_DISABLED,
   .n_errors = AVF_INPUT_N_ERROR,
   .error_strings = avf_input_error_strings,
 };
