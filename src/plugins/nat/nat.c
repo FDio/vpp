@@ -2862,7 +2862,7 @@ nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
   snat_user_t *u;
 
   ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
-  if (sm->num_workers)
+  if (sm->num_workers > 1)
     tsm =
       vec_elt_at_index (sm->per_thread_data,
 			sm->worker_in2out_cb (&ip, fib_index));
