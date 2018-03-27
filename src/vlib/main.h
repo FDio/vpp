@@ -58,6 +58,7 @@
 
 typedef struct vlib_main_t
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Instruction level timing state. */
   clib_time_t clib_time;
 

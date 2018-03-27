@@ -821,7 +821,8 @@ start_workers (vlib_main_t * vm)
 	      /* Fork vlib_global_main et al. Look for bugs here */
 	      oldheap = clib_mem_set_heap (w->thread_mheap);
 
-	      vm_clone = clib_mem_alloc (sizeof (*vm_clone));
+	      vm_clone = clib_mem_alloc_aligned (sizeof (*vm_clone),
+						 CLIB_CACHE_LINE_BYTES);
 	      clib_memcpy (vm_clone, vlib_mains[0], sizeof (*vm_clone));
 
 	      vm_clone->thread_index = worker_thread_index;
@@ -838,7 +839,8 @@ start_workers (vlib_main_t * vm)
 	      nm = &vlib_mains[0]->node_main;
 	      nm_clone = &vm_clone->node_main;
 	      /* fork next frames array, preserving node runtime indices */
-	      nm_clone->next_frames = vec_dup (nm->next_frames);
+	      nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
+						       CLIB_CACHE_LINE_BYTES);
 	      for (j = 0; j < vec_len (nm_clone->next_frames); j++)
 		{
 		  vlib_next_frame_t *nf = &nm_clone->next_frames[j];
@@ -875,7 +877,8 @@ start_workers (vlib_main_t * vm)
 		  n++;
 		}
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
-		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
+		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
+				 CLIB_CACHE_LINE_BYTES);
 	      vec_foreach (rt,
 			   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
 	      {
@@ -889,7 +892,8 @@ start_workers (vlib_main_t * vm)
 	      }
 
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
-		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT]);
+		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
+				 CLIB_CACHE_LINE_BYTES);
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
@@ -901,7 +905,8 @@ start_workers (vlib_main_t * vm)
 					 n->runtime_data_bytes));
 	      }
 
-	      nm_clone->processes = vec_dup (nm->processes);
+	      nm_clone->processes = vec_dup_aligned (nm->processes,
+						     CLIB_CACHE_LINE_BYTES);
 
 	      /* zap the (per worker) frame freelists, etc */
 	      nm_clone->frame_sizes = 0;
@@ -912,10 +917,11 @@ start_workers (vlib_main_t * vm)
 	      clib_mem_set_heap (oldheap);
 	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
 
-	      vm_clone->error_main.counters =
-		vec_dup (vlib_mains[0]->error_main.counters);
-	      vm_clone->error_main.counters_last_clear =
-		vec_dup (vlib_mains[0]->error_main.counters_last_clear);
+	      vm_clone->error_main.counters = vec_dup_aligned
+		(vlib_mains[0]->error_main.counters, CLIB_CACHE_LINE_BYTES);
+	      vm_clone->error_main.counters_last_clear = vec_dup_aligned
+		(vlib_mains[0]->error_main.counters_last_clear,
+		 CLIB_CACHE_LINE_BYTES);
 
 	      /* Fork the vlib_buffer_main_t free lists, etc. */
 	      orig_freelist_pool = vm_clone->buffer_free_list_pool;
@@ -1093,7 +1099,8 @@ vlib_worker_thread_node_refork (void)
 
   nm_clone = &vm_clone->node_main;
   vec_free (nm_clone->next_frames);
-  nm_clone->next_frames = vec_dup (nm->next_frames);
+  nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
+					   CLIB_CACHE_LINE_BYTES);
 
   for (j = 0; j < vec_len (nm_clone->next_frames); j++)
     {
@@ -1161,7 +1168,8 @@ vlib_worker_thread_node_refork (void)
   /* re-clone internal nodes */
   old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL];
   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
-    vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
+    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
+		     CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
   {
@@ -1187,7 +1195,8 @@ vlib_worker_thread_node_refork (void)
   /* re-clone input nodes */
   old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT];
   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
-    vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT]);
+    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
+		     CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
   {
@@ -1210,7 +1219,8 @@ vlib_worker_thread_node_refork (void)
 
   vec_free (old_rt);
 
-  nm_clone->processes = vec_dup (nm->processes);
+  nm_clone->processes = vec_dup_aligned (nm->processes,
+					 CLIB_CACHE_LINE_BYTES);
 }
 
 void
