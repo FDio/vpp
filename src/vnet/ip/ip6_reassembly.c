@@ -1144,8 +1144,7 @@ ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
 			     ip6_reass_main.ip6_reass_expire_node_idx,
 			     IP6_EVENT_CONFIG_CHANGED, 0);
   u32 new_nbuckets = ip6_reass_get_nbuckets ();
-  if (ip6_reass_main.max_reass_n > 0 && new_nbuckets > 1 &&
-      new_nbuckets != old_nbuckets)
+  if (ip6_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
     {
       clib_bihash_48_8_t new_hash;
       memset (&new_hash, 0, sizeof (new_hash));
@@ -1204,6 +1203,10 @@ ip6_reass_init_function (vlib_main_t * vm)
   ASSERT (node);
   rm->ip6_reass_expire_node_idx = node->index;
 
+  ip6_reass_set_params (IP6_REASS_TIMEOUT_DEFAULT_MS,
+			IP6_REASS_MAX_REASSEMBLIES_DEFAULT,
+			IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
+
   nbuckets = ip6_reass_get_nbuckets ();
   clib_bihash_init_48_8 (&rm->hash, "ip6-reass", nbuckets, nbuckets * 1024);
 
@@ -1218,10 +1221,6 @@ ip6_reass_init_function (vlib_main_t * vm)
     return error;
   ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
 			 ip6_reass_node.index);
-
-  ip6_reass_set_params (IP6_REASS_TIMEOUT_DEFAULT_MS,
-			IP6_REASS_MAX_REASSEMBLIES_DEFAULT,
-			IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   return error;
 }
