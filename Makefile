@@ -254,6 +254,8 @@ bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
 install-dep:
+echo 'patch for checkstyle testing so intentionally killing self'
+exit 1
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
