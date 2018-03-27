@@ -1895,8 +1895,13 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    {
 	      p1->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
+
 	  adj0 = adj_get (adj_index0);
 	  adj1 = adj_get (adj_index1);
+
+	  /* Guess we are only writing on simple Ethernet header. */
+	  vnet_rewrite_two_headers (adj0[0], adj1[0],
+				    ip0, ip1, sizeof (ethernet_header_t));
 
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
@@ -1916,16 +1921,24 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  error0 =
-	    (vlib_buffer_length_in_chain (vm, p0) >
-	     adj0[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error0);
-	  error1 =
-	    (vlib_buffer_length_in_chain (vm, p1) >
-	     adj1[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error1);
+	  if (vlib_buffer_length_in_chain (vm, p0) >
+	      adj0[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error0 = IP6_ERROR_MTU_EXCEEDED;
+	      next0 = IP6_REWRITE_NEXT_ICMP_ERROR;
+	      icmp6_error_set_vnet_buffer (p0, ICMP6_packet_too_big, 0,
+					   adj0[0].
+					   rewrite_header.max_l3_packet_bytes);
+	    }
+	  if (vlib_buffer_length_in_chain (vm, p1) >
+	      adj1[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error1 = IP6_ERROR_MTU_EXCEEDED;
+	      next1 = IP6_REWRITE_NEXT_ICMP_ERROR;
+	      icmp6_error_set_vnet_buffer (p1, ICMP6_packet_too_big, 0,
+					   adj1[0].
+					   rewrite_header.max_l3_packet_bytes);
+	    }
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP headerr */
@@ -1942,6 +1955,19 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
+
+	      if (is_midchain)
+		{
+		  adj0->sub_type.midchain.fixup_func
+		    (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+		}
+	      if (is_mcast)
+		{
+		  /*
+		   * copy bytes from the IP address into the MAC rewrite
+		   */
+		  vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+		}
 	    }
 	  if (PREDICT_TRUE (error1 == IP6_ERROR_NONE))
 	    {
@@ -1956,26 +1982,19 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index1, &next1, p1);
-	    }
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_two_headers (adj0[0], adj1[0],
-				    ip0, ip1, sizeof (ethernet_header_t));
-
-	  if (is_midchain)
-	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-		(vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
-	    }
-	  if (is_mcast)
-	    {
-	      /*
-	       * copy bytes from the IP address into the MAC rewrite
-	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
-	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
+	      if (is_midchain)
+		{
+		  adj1->sub_type.midchain.fixup_func
+		    (vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
+		}
+	      if (is_mcast)
+		{
+		  /*
+		   * copy bytes from the IP address into the MAC rewrite
+		   */
+		  vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
+		}
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2051,11 +2070,15 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  error0 =
-	    (vlib_buffer_length_in_chain (vm, p0) >
-	     adj0[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error0);
+	  if (vlib_buffer_length_in_chain (vm, p0) >
+	      adj0[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error0 = IP6_ERROR_MTU_EXCEEDED;
+	      next0 = IP6_REWRITE_NEXT_ICMP_ERROR;
+	      icmp6_error_set_vnet_buffer (p0, ICMP6_packet_too_big, 0,
+					   adj0[0].
+					   rewrite_header.max_l3_packet_bytes);
+	    }
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP headerr */
@@ -2073,16 +2096,16 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
-	    }
 
-	  if (is_midchain)
-	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	    }
-	  if (is_mcast)
-	    {
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+	      if (is_midchain)
+		{
+		  adj0->sub_type.midchain.fixup_func
+		    (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+		}
+	      if (is_mcast)
+		{
+		  vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+		}
 	    }
 
 	  p0->error = error_node->errors[error0];

@@ -102,7 +102,7 @@ public class FutureApiExample {
                         + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
                     new String(details.interfaceName, StandardCharsets.UTF_8),
                     details.l2AddressLength, details.adminUpDown,
-                    details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
+                    details.linkUpDown, details.linkSpeed, (int) details.mtu));
         }
     }
 
