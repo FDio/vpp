@@ -1,5 +1,5 @@
 #!/bin/bash
-
+exit 1
 # Get Command Line arguements if present
 VPP_DIR=$1
 if [ "x$1" != "x" ]; then
