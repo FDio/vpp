@@ -86,9 +86,9 @@ public class CallbackApiExample {
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
+                    + "linkUpDown=%d, linkSpeed=%d, mtu=%d%n",
                 new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
-                msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
+                msg.linkUpDown, msg.linkSpeed, (int) msg.mtu);
         }
 
         @Override
