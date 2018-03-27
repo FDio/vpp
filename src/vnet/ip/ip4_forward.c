@@ -2108,7 +2108,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer
 		(p0, ICMP4_destination_unreachable,
 		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
+		 adj0[0].rewrite_header.max_l3_packet_bytes);
 	    }
 	  if (vlib_buffer_length_in_chain (vm, p1) >
 	      adj1[0].rewrite_header.max_l3_packet_bytes)
@@ -2118,8 +2118,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer
 		(p1, ICMP4_destination_unreachable,
 		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
+		 adj1[0].rewrite_header.max_l3_packet_bytes);
 	    }
+
+	  /* Guess we are only writing on simple Ethernet header. */
+	  vnet_rewrite_two_headers (adj0[0], adj1[0],
+				    ip0, ip1, sizeof (ethernet_header_t));
 
 	  if (is_mcast)
 	    {
@@ -2143,10 +2147,17 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
+	      if (is_midchain)
+		{
+		  adj0->sub_type.midchain.fixup_func
+		    (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+		}
+
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
+
 	    }
 	  if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	    {
@@ -2157,15 +2168,17 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 
+	      if (is_midchain)
+		{
+		  adj1->sub_type.midchain.fixup_func
+		    (vm, adj1, p1, adj0->sub_type.midchain.fixup_data);
+		}
+
 	      if (PREDICT_FALSE
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index1, &next1, p1);
 	    }
-
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_two_headers (adj0[0], adj1[0],
-				    ip0, ip1, sizeof (ethernet_header_t));
 
 	  /*
 	   * Bump the per-adjacency counters
@@ -2185,13 +2198,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 	    }
 
-	  if (is_midchain)
-	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-		(vm, adj1, p1, adj0->sub_type.midchain.fixup_data);
-	    }
 	  if (is_mcast)
 	    {
 	      /*
@@ -2272,6 +2278,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+
 	  if (is_mcast)
 	    {
 	      /*
@@ -2299,8 +2306,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer
 		(p0, ICMP4_destination_unreachable,
 		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
+		 adj0[0].rewrite_header.max_l3_packet_bytes);
 	    }
+
 	  if (is_mcast)
 	    {
 	      error0 = ((adj0[0].rewrite_header.sw_if_index ==
