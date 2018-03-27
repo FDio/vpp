@@ -696,12 +696,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    clib_warning ("VLAN strip cannot be supported by interface\n");
 	}
 
-      if (hi)
-	hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
-	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
-      else
-	clib_warning ("hi NULL");
-
+      vnet_sw_interface_set_mtu (dm->vnet_main, sw->sw_if_index,
+				 xd->port_conf.rxmode.max_rx_pkt_len -
+				 sizeof (ethernet_header_t));
       rte_eth_dev_set_mtu (xd->device_index, mtu);
     }
 
@@ -1530,9 +1527,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 		    /* Init l3 packet size allowed on bonded interface */
 		    bhi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
-		    bhi->max_l3_packet_bytes[VLIB_RX] =
-		      bhi->max_l3_packet_bytes[VLIB_TX] =
-		      ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
+		    vnet_sw_interface_set_mtu (vnm, bhi->sw_if_index,
+					       ETHERNET_MAX_PACKET_BYTES -
+					       sizeof (ethernet_header_t));
+
 		    while (nlink >= 1)
 		      {		/* for all slave links */
 			int slave = slink[--nlink];
@@ -1570,11 +1568,13 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			clib_memcpy (shi->hw_address, addr, 6);
 			clib_memcpy (sei->address, addr, 6);
 			/* Set l3 packet size allowed as the lowest of slave */
-			if (bhi->max_l3_packet_bytes[VLIB_RX] >
-			    shi->max_l3_packet_bytes[VLIB_RX])
-			  bhi->max_l3_packet_bytes[VLIB_RX] =
-			    bhi->max_l3_packet_bytes[VLIB_TX] =
-			    shi->max_l3_packet_bytes[VLIB_RX];
+			vnet_sw_interface_t *bsi =
+			  vnet_get_sw_interface (vnm, bhi->sw_if_index);
+			if (bsi->max_l3_packet_bytes[VLIB_RX] >
+			    ssi->max_l3_packet_bytes[VLIB_RX])
+			  bsi->max_l3_packet_bytes[VLIB_RX] =
+			    bsi->max_l3_packet_bytes[VLIB_TX] =
+			    ssi->max_l3_packet_bytes[VLIB_RX];
 			/* Set max packet size allowed as the lowest of slave */
 			if (bhi->max_packet_bytes > shi->max_packet_bytes)
 			  bhi->max_packet_bytes = shi->max_packet_bytes;

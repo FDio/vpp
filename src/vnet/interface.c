@@ -122,20 +122,55 @@ unserialize_vnet_sw_interface_set_flags (serialize_main_t * m, va_list * va)
      /* helper_flags no redistribution */ 0);
 }
 
-void
-vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu)
+static void
+vnet_sw_interface_set_mtu_cb (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
 {
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  u32 *mtu = ctx;
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  ASSERT (si);
 
-  if (hi->max_packet_bytes != mtu)
+  si->max_l3_packet_bytes[VLIB_TX] = si->max_l3_packet_bytes[VLIB_RX] = *mtu;
+  adj_mtu_update (sw_if_index);
+}
+
+/*
+ * MTU is set per software interface. Setting MTU on a parent
+ * interface will override the MTU setting on sub-interfaces.
+ * TODO: If sub-interface MTU is ~0 inherit from parent?
+ */
+int
+vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu)
+{
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  vnet_hw_interface_t *hi = vnet_get_sw_hw_interface (vnm, sw_if_index);
+
+  if (mtu < hi->min_packet_bytes)
+    return VNET_API_ERROR_INVALID_VALUE;
+  if (mtu > hi->max_packet_bytes)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  /* If done on a parent interface */
+  if (si->sw_if_index == si->sup_sw_if_index)
     {
-      u16 l3_pad = hi->max_packet_bytes - hi->max_l3_packet_bytes[VLIB_TX];
-      hi->max_packet_bytes = mtu;
-      hi->max_l3_packet_bytes[VLIB_TX] =
-	hi->max_l3_packet_bytes[VLIB_RX] = mtu - l3_pad;
-      ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_MTU);
-      adj_mtu_update (hw_if_index);
+      if (hi->hw_class_index == ethernet_hw_interface_class.index)
+	{
+	  ethernet_set_flags (vnm, hi->hw_if_index,
+			      ETHERNET_INTERFACE_FLAG_MTU);
+	}
+
+      /* Override MTU on any sub-interface */
+      vnet_hw_interface_walk_sw (vnm,
+				 hi->hw_if_index,
+				 vnet_sw_interface_set_mtu_cb, &mtu);
     }
+  else
+    {
+      si->max_l3_packet_bytes[VLIB_TX] = si->max_l3_packet_bytes[VLIB_RX] =
+	mtu;
+      adj_mtu_update (sw_if_index);
+    }
+
+  return 0;
 }
 
 static void
@@ -584,6 +619,9 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
   if (sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
     sw->sup_sw_if_index = sw->sw_if_index;
 
+  sw->max_l3_packet_bytes[VLIB_RX] = ~0;
+  sw->max_l3_packet_bytes[VLIB_TX] = ~0;
+
   /* Allocate counters for this interface. */
   {
     u32 i;
@@ -758,9 +796,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   hw->max_rate_bits_per_sec = 0;
   hw->min_packet_bytes = 0;
-  hw->per_packet_overhead_bytes = 0;
-  hw->max_l3_packet_bytes[VLIB_RX] = ~0;
-  hw->max_l3_packet_bytes[VLIB_TX] = ~0;
+  hw->max_packet_bytes = 9000;	/* default */
 
   if (dev_class->tx_function == 0)
     goto no_output_nodes;	/* No output/tx nodes to create */
