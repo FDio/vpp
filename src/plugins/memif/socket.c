@@ -153,6 +153,7 @@ memif_msg_enq_add_ring (memif_if_t * mif, u8 index, u8 direction)
   ar->offset = mq->offset;
   ar->log2_ring_size = mq->log2_ring_size;
   ar->flags = (direction == MEMIF_RING_S2M) ? MEMIF_MSG_ADD_RING_FLAG_S2M : 0;
+  ar->private_hdr_size = 0;
 }
 
 static void
@@ -325,6 +326,9 @@ memif_msg_receive_add_ring (memif_if_t * mif, memif_msg_t * msg, int fd)
 
   if (fd < 0)
     return clib_error_return (0, "missing ring interrupt fd");
+
+  if (ar->private_hdr_size != 0)
+    return clib_error_return (0, "private headers not supported");
 
   if (ar->flags & MEMIF_MSG_ADD_RING_FLAG_S2M)
     {
