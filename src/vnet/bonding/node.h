@@ -315,7 +315,7 @@ typedef struct
 
 typedef u32 (*load_balance_func) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node, bond_if_t * bif,
-				  vlib_buffer_t * b0);
+				  vlib_buffer_t * b0, uword slave_count);
 
 typedef struct
 {

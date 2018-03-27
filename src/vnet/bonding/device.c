@@ -98,7 +98,8 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 static inline u32
 bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     bond_if_t * bif, vlib_buffer_t * b0)
+			     bond_if_t * bif, vlib_buffer_t * b0,
+			     uword slave_count)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_buffer_t *c0;
@@ -108,7 +109,7 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_frame_t *f;
 
 
-  for (i = 1; i < vec_len (bif->active_slaves); i++)
+  for (i = 1; i < slave_count; i++)
     {
       sw_if_index = *vec_elt_at_index (bif->active_slaves, i);
       f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
@@ -129,7 +130,7 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static inline u32
 bond_load_balance_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      bond_if_t * bif, vlib_buffer_t * b0)
+		      bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
   u32 a = 0, b = 0, c = 0, t1, t2;
@@ -146,7 +147,7 @@ bond_load_balance_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
   hash_v3_mix32 (a, b, c);
   hash_v3_finalize32 (a, b, c);
 
-  return c % vec_len (bif->active_slaves);
+  return c % slave_count;
 }
 
 static inline u16 *
@@ -174,7 +175,7 @@ bond_locate_ethertype (ethernet_header_t * eth)
 
 static inline u32
 bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       bond_if_t * bif, vlib_buffer_t * b0)
+		       bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
   u8 ip_version;
@@ -186,7 +187,7 @@ bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
       (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return (bond_load_balance_l2 (vm, node, bif, b0));
+    return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 
   ip4 = (ip4_header_t *) (ethertype_p + 1);
   ip_version = (ip4->ip_version_and_header_length >> 4);
@@ -209,7 +210,7 @@ bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
       hash_v3_mix32 (a, b, c);
       hash_v3_finalize32 (a, b, c);
 
-      return c % vec_len (bif->active_slaves);
+      return c % slave_count;
     }
   else if (ip_version == 0x6)
     {
@@ -225,14 +226,14 @@ bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
       c = (ip6->dst_address.as_u64[0] ^ ip6->dst_address.as_u64[1]);
 
       hash_mix64 (a, b, c);
-      return c % vec_len (bif->active_slaves);
+      return c % slave_count;
     }
-  return (bond_load_balance_l2 (vm, node, bif, b0));
+  return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 }
 
 static inline u32
 bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       bond_if_t * bif, vlib_buffer_t * b0)
+		       bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
   u8 ip_version;
@@ -245,7 +246,7 @@ bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
       (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return (bond_load_balance_l2 (vm, node, bif, b0));
+    return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 
   ip4 = (ip4_header_t *) (ethertype_p + 1);
   ip_version = (ip4->ip_version_and_header_length >> 4);
@@ -266,7 +267,7 @@ bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
       hash_v3_mix32 (a, b, c);
       hash_v3_finalize32 (a, b, c);
 
-      return c % vec_len (bif->active_slaves);
+      return c % slave_count;
     }
   else if (ip_version == 0x6)
     {
@@ -300,19 +301,20 @@ bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
       c = (t2 << 16) | t1;
       hash_mix64 (a, b, c);
 
-      return c % vec_len (bif->active_slaves);
+      return c % slave_count;
     }
 
-  return (bond_load_balance_l2 (vm, node, bif, b0));
+  return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 }
 
 static inline u32
 bond_load_balance_round_robin (vlib_main_t * vm,
 			       vlib_node_runtime_t * node,
-			       bond_if_t * bif, vlib_buffer_t * b0)
+			       bond_if_t * bif, vlib_buffer_t * b0,
+			       uword slave_count)
 {
   bif->lb_rr_last_index++;
-  bif->lb_rr_last_index %= vec_len (bif->active_slaves);
+  bif->lb_rr_last_index %= slave_count;
 
   return bif->lb_rr_last_index;
 }
@@ -320,7 +322,8 @@ bond_load_balance_round_robin (vlib_main_t * vm,
 static inline u32
 bond_load_balance_active_backup (vlib_main_t * vm,
 				 vlib_node_runtime_t * node,
-				 bond_if_t * bif, vlib_buffer_t * b0)
+				 bond_if_t * bif, vlib_buffer_t * b0,
+				 uword slave_count)
 {
   /* First interface is the active, the rest is backup */
   return 0;
@@ -354,6 +357,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *to_next;
   u32 sif_if_index, sif_if_index1, sif_if_index2, sif_if_index3;
   vlib_frame_t *f;
+  uword slave_count;
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
@@ -368,7 +372,8 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   clib_spinlock_lock_if_init (&bif->lockp);
-  if (PREDICT_FALSE (vec_len (bif->active_slaves) == 0))
+  slave_count = vec_len (bif->active_slaves);
+  if (PREDICT_FALSE (slave_count == 0))
     {
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
@@ -388,8 +393,8 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       return frame->n_vectors;
     }
 
-  vec_validate_aligned (bif->per_thread_info[thread_index].frame,
-			vec_len (bif->active_slaves), CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (bif->per_thread_info[thread_index].frame, slave_count,
+			CLIB_CACHE_LINE_BYTES);
 
   /* Number of buffers / pkts */
   n_left_from = frame->n_vectors;
@@ -441,16 +446,16 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  port =
 	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							     b0);
+							     b0, slave_count);
 	  port1 =
 	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							     b1);
+							     b1, slave_count);
 	  port2 =
 	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							     b2);
+							     b2, slave_count);
 	  port3 =
 	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							     b3);
+							     b3, slave_count);
 
 	  sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
 	  sif_if_index1 = *vec_elt_at_index (bif->active_slaves, port1);
@@ -579,7 +584,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  port =
 	    (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							     b0);
+							     b0, slave_count);
 	  sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
 	  if (bif->per_thread_info[thread_index].frame[port] == 0)
@@ -607,7 +612,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  for (port = 0; port < vec_len (bif->active_slaves); port++)
+  for (port = 0; port < slave_count; port++)
     {
       f = bif->per_thread_info[thread_index].frame[port];
       if (f == 0)
