@@ -103,6 +103,7 @@ typedef struct __attribute__ ((packed))
   memif_region_index_t region;
   memif_region_offset_t offset;
   memif_log2_ring_size_t log2_ring_size;
+  uint16_t private_hdr_size;	/* used for private metadata */
 } memif_msg_add_ring_t;
 
 typedef struct __attribute__ ((packed))
