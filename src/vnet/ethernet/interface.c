@@ -300,11 +300,10 @@ ethernet_register_interface (vnet_main_t * vnm,
     ETHERNET_MIN_PACKET_BYTES;
   hi->max_packet_bytes = hi->max_supported_packet_bytes =
     ETHERNET_MAX_PACKET_BYTES;
-  hi->per_packet_overhead_bytes =
-    /* preamble */ 8 + /* inter frame gap */ 12;
 
   /* Standard default ethernet MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, hi->sw_if_index);
+  si->max_l3_packet_bytes[VLIB_RX] = si->max_l3_packet_bytes[VLIB_TX] = 9000;
 
   clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_free (hi->hw_address);

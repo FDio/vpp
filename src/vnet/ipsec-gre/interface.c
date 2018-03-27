@@ -174,11 +174,10 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 
       hi->min_packet_bytes = 64 + sizeof (gre_header_t) +
 	sizeof (ip4_header_t) + sizeof (esp_header_t) + sizeof (esp_footer_t);
-      hi->per_packet_overhead_bytes =
-	/* preamble */ 8 + /* inter frame gap */ 12;
 
       /* Standard default gre MTU. */
-      hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
+      vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, hi->sw_if_index);
+      si->max_l3_packet_bytes[VLIB_RX] = si->max_l3_packet_bytes[VLIB_TX] =
 	9000;
 
       clib_memcpy (&t->tunnel_src, &a->src, sizeof (t->tunnel_src));
