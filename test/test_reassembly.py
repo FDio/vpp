@@ -749,7 +749,6 @@ class TestIPv6Reassembly(VppTestCase):
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
 
 
-@unittest.skip("removing GRE tunnels broken, need fix")
 class TestFIFReassembly(VppTestCase):
     """ Fragments in fragments reassembly """
 
@@ -965,7 +964,7 @@ class TestFIFReassembly(VppTestCase):
 
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
         # so that it's query_vpp_config() works as it should
-        # self.gre6.remove_vpp_config()
+        self.gre6.remove_vpp_config()
 
 
 if __name__ == '__main__':
