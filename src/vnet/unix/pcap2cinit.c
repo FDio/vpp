@@ -39,10 +39,15 @@ pcap2cinit (pcap_main_t * pm, FILE * ofp)
 {
   int i, j;
   u8 *pkt;
+  pcap_file_header_t *fh;
+  pcap_packet_header_t *ph;
 
-  for (i = 0; i < vec_len (pm->packets_read); i++)
+  fh = (pcap_file_header_t *) pm->file_baseva;
+  ph = (pcap_packet_header_t *) (fh + 1);
+
+  for (i = 0; i < pm->packets_read; i++)
     {
-      pkt = (u8 *) pm->packets_read[i];
+      pkt = ph->data;
 
       fformat (ofp, "static u8 __pcap_pkt%d [] = {\n  ", i);
 
@@ -54,11 +59,14 @@ pcap2cinit (pcap_main_t * pm, FILE * ofp)
 	    fformat (ofp, "0x%02x, ", pkt[j]);
 	}
       fformat (ofp, "\n};\n");
+
+      ph = (pcap_packet_header_t *)
+	(((u8 *) (ph)) + sizeof (*ph) + ph->n_packet_bytes_stored_in_file);
     }
 
   fformat (ofp, "static u8 *__pcap_pkts [] = {\n");
 
-  for (i = 0; i < vec_len (pm->packets_read); i++)
+  for (i = 0; i < pm->packets_read; i++)
     fformat (ofp, "  __pcap_pkt%d, \n", i);
 
   fformat (ofp, "};\n");
@@ -93,7 +101,7 @@ main (int argc, char **argv)
 	{
 	usage:
 	  fformat (stderr,
-		   "usage: pcap2pg -i <input-file> [-o <output-file>]\n");
+		   "usage: pcap2cinit -i <input-file> [-o <output-file>]\n");
 	  exit (1);
 	}
     }
@@ -102,7 +110,7 @@ main (int argc, char **argv)
     goto usage;
 
   pm->file_name = (char *) input_file;
-  error = pcap_read (pm);
+  error = pcap_map (pm);
 
   if (error)
     {

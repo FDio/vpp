@@ -73,114 +73,118 @@
 clib_error_t *
 pcap_close (pcap_main_t * pm)
 {
-  close (pm->file_descriptor);
-  pm->flags &= ~PCAP_MAIN_INIT_DONE;
-  pm->file_descriptor = -1;
+  u64 actual_size = pm->current_va - pm->file_baseva;
+
+  (void) munmap (pm->file_baseva, pm->max_file_size);
+  pm->file_baseva = 0;
+  pm->flags &= ~PCAP_FLAG_INIT_DONE;
+
+  if ((pm->flags & PCAP_FLAG_WRITE_ENABLE) == 0)
+    return 0;
+
+  if (truncate (pm->file_name, actual_size) < 0)
+    clib_unix_warning ("setting file size to %llu", actual_size);
+
   return 0;
 }
 
-/**
- * @brief Write PCAP file
- *
- * @return rc - clib_error_t
- *
- */
 clib_error_t *
-pcap_write (pcap_main_t * pm)
+pcap_init (pcap_main_t * pm)
 {
-  clib_error_t *error = 0;
+  pcap_file_header_t *fh;
+  u8 zero = 0;
+  int fd;
 
-  if (!(pm->flags & PCAP_MAIN_INIT_DONE))
+  if (pm->flags & PCAP_FLAG_INIT_DONE)
+    return 0;
+
+  if (!pm->file_name)
+    pm->file_name = "/tmp/vnet.pcap";
+
+  if (pm->flags & PCAP_FLAG_THREAD_SAFE)
+    clib_spinlock_init (&pm->lock);
+
+  fd = open (pm->file_name, O_CREAT | O_TRUNC | O_RDWR, 0664);
+  if (fd < 0)
     {
-      pcap_file_header_t fh;
-      int n;
-
-      if (!pm->file_name)
-	pm->file_name = "/tmp/vnet.pcap";
-
-      pm->file_descriptor =
-	open (pm->file_name, O_CREAT | O_TRUNC | O_WRONLY, 0664);
-      if (pm->file_descriptor < 0)
-	{
-	  error =
-	    clib_error_return_unix (0, "failed to open `%s'", pm->file_name);
-	  goto done;
-	}
-
-      pm->flags |= PCAP_MAIN_INIT_DONE;
-      pm->n_packets_captured = 0;
-      pm->n_pcap_data_written = 0;
-
-      /* Write file header. */
-      memset (&fh, 0, sizeof (fh));
-      fh.magic = 0xa1b2c3d4;
-      fh.major_version = 2;
-      fh.minor_version = 4;
-      fh.time_zone = 0;
-      fh.max_packet_size_in_bytes = 1 << 16;
-      fh.packet_type = pm->packet_type;
-      n = write (pm->file_descriptor, &fh, sizeof (fh));
-      if (n != sizeof (fh))
-	{
-	  if (n < 0)
-	    error =
-	      clib_error_return_unix (0, "write file header `%s'",
-				      pm->file_name);
-	  else
-	    error =
-	      clib_error_return (0, "short write of file header `%s'",
-				 pm->file_name);
-	  goto done;
-	}
+      return clib_error_return_unix (0, "failed to create `%s'",
+				     pm->file_name);
     }
 
-  while (vec_len (pm->pcap_data) > pm->n_pcap_data_written)
+  if (pm->max_file_size == 0ULL)
+    pm->max_file_size = PCAP_DEFAULT_FILE_SIZE;
+
+  /* Round to a multiple of the page size */
+  pm->max_file_size += (u64) clib_mem_get_page_size ();
+  pm->max_file_size &= ~(u64) clib_mem_get_page_size ();
+
+  /* Set file size. */
+  if (lseek (fd, pm->max_file_size - 1, SEEK_SET) == (off_t) - 1)
     {
-      int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
-
-      n = write (pm->file_descriptor,
-		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written),
-		 n);
-
-      if (n < 0 && unix_error_is_fatal (errno))
-	{
-	  error = clib_error_return_unix (0, "write `%s'", pm->file_name);
-	  goto done;
-	}
-      pm->n_pcap_data_written += n;
+      close (fd);
+      (void) unlink (pm->file_name);
+      return clib_error_return_unix (0, "file size seek");
     }
 
-  if (pm->n_pcap_data_written >= vec_len (pm->pcap_data))
+  if (write (fd, &zero, 1) != 1)
     {
-      vec_reset_length (pm->pcap_data);
-      pm->n_pcap_data_written = 0;
+      close (fd);
+      (void) unlink (pm->file_name);
+      return clib_error_return_unix (0, "file size write");
     }
 
-  if (pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_close (pm);
-
-done:
-  if (error)
+  pm->file_baseva = mmap (0, pm->max_file_size,
+			  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (pm->file_baseva == (u8 *) MAP_FAILED)
     {
-      if (pm->file_descriptor >= 0)
-	close (pm->file_descriptor);
+      clib_error_t *error = clib_error_return_unix (0, "mmap");
+      close (fd);
+      (void) unlink (pm->file_name);
+      return error;
     }
-  return error;
+  (void) close (fd);
+
+  pm->flags |= PCAP_FLAG_INIT_DONE | PCAP_FLAG_WRITE_ENABLE;
+  pm->n_packets_captured = 0;
+  pm->n_pcap_data_written = 0;
+
+  /* Initialize file header */
+  fh = pm->file_header = (pcap_file_header_t *) pm->file_baseva;
+  pm->current_va = pm->file_baseva + sizeof (*fh);
+
+  fh->magic = 0xa1b2c3d4;
+  fh->major_version = 2;
+  fh->minor_version = 4;
+  fh->time_zone = 0;
+  fh->max_packet_size_in_bytes = 1 << 16;
+  fh->packet_type = pm->packet_type;
+  return 0;
 }
 
+
 /**
- * @brief Read PCAP file
+ * @brief mmap a PCAP file, e.g. to read from another process
  *
  * @return rc - clib_error_t
  *
  */
 clib_error_t *
-pcap_read (pcap_main_t * pm)
+pcap_map (pcap_main_t * pm)
 {
   clib_error_t *error = 0;
-  int fd, need_swap, n;
-  pcap_file_header_t fh;
-  pcap_packet_header_t ph;
+  int fd;
+  pcap_file_header_t *fh;
+  pcap_packet_header_t *ph;
+  struct stat statb;
+  u64 packets_read = 0;
+  u32 min_packet_bytes = ~0;
+  u32 max_packet_bytes = 0;
+
+  if (stat (pm->file_name, &statb) < 0)
+    {
+      error = clib_error_return_unix (0, "stat `%s'", pm->file_name);
+      goto done;
+    }
 
   fd = open (pm->file_name, O_RDONLY);
   if (fd < 0)
@@ -189,67 +193,57 @@ pcap_read (pcap_main_t * pm)
       goto done;
     }
 
-  if (read (fd, &fh, sizeof (fh)) != sizeof (fh))
+  if (statb.st_size < sizeof (*fh) + sizeof (*ph))
     {
-      error =
-	clib_error_return_unix (0, "read file header `%s'", pm->file_name);
+      error = clib_error_return_unix (0, "`%s' is too short", pm->file_name);
       goto done;
     }
 
-  need_swap = 0;
-  if (fh.magic == 0xd4c3b2a1)
+  pm->max_file_size = statb.st_size;
+  pm->file_baseva = mmap (0, statb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+  if (pm->file_baseva == (u8 *) MAP_FAILED)
     {
-      need_swap = 1;
-#define _(t,f) fh.f = clib_byte_swap_##t (fh.f);
-      foreach_pcap_file_header;
-#undef _
+      error = clib_error_return_unix (0, "mmap");
+      goto done;
     }
 
-  if (fh.magic != 0xa1b2c3d4)
+  pm->flags |= PCAP_FLAG_INIT_DONE;
+  fh = pm->file_header = (pcap_file_header_t *) pm->file_baseva;
+  ph = (pcap_packet_header_t *) (fh + 1);
+
+  if (fh->magic != 0xa1b2c3d4)
     {
       error = clib_error_return (0, "bad magic `%s'", pm->file_name);
       goto done;
     }
 
-  pm->min_packet_bytes = 0;
-  pm->max_packet_bytes = 0;
-  while ((n = read (fd, &ph, sizeof (ph))) != 0)
+  /* for the client's convenience, count packets; compute min/max sizes */
+  while (ph < (pcap_packet_header_t *) pm->file_baseva + pm->max_file_size)
     {
-      u8 *data;
+      if (ph->n_packet_bytes_stored_in_file == 0)
+	break;
 
-      if (need_swap)
-	{
-#define _(t,f) ph.f = clib_byte_swap_##t (ph.f);
-	  foreach_pcap_packet_header;
-#undef _
-	}
+      packets_read++;
+      min_packet_bytes =
+	ph->n_packet_bytes_stored_in_file <
+	min_packet_bytes ? ph->n_packet_bytes_stored_in_file :
+	min_packet_bytes;
+      max_packet_bytes =
+	ph->n_packet_bytes_stored_in_file >
+	max_packet_bytes ? ph->n_packet_bytes_stored_in_file :
+	max_packet_bytes;
 
-      data = vec_new (u8, ph.n_bytes_in_packet);
-      if (read (fd, data, ph.n_packet_bytes_stored_in_file) !=
-	  ph.n_packet_bytes_stored_in_file)
-	{
-	  error = clib_error_return (0, "short read `%s'", pm->file_name);
-	  goto done;
-	}
-
-      if (vec_len (pm->packets_read) == 0)
-	pm->min_packet_bytes = pm->max_packet_bytes = ph.n_bytes_in_packet;
-      else
-	{
-	  pm->min_packet_bytes =
-	    clib_min (pm->min_packet_bytes, ph.n_bytes_in_packet);
-	  pm->max_packet_bytes =
-	    clib_max (pm->max_packet_bytes, ph.n_bytes_in_packet);
-	}
-
-      vec_add1 (pm->packets_read, data);
+      ph = (pcap_packet_header_t *)
+	(((u8 *) (ph)) + sizeof (*ph) + ph->n_packet_bytes_stored_in_file);
     }
+  pm->packets_read = packets_read;
+  pm->min_packet_bytes = min_packet_bytes;
+  pm->max_packet_bytes = max_packet_bytes;
 
 done:
   if (fd >= 0)
     close (fd);
   return error;
-
 }
 
 /*

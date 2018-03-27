@@ -127,7 +127,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
 		{
 		  dm->pcap_main.n_packets_to_capture =
 		    dm->pcap_main.n_packets_captured;
-		  error = pcap_write (&dm->pcap_main);
+		  error = pcap_close (&dm->pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else
@@ -263,7 +263,12 @@ pcap_trace_command_fn (vlib_main_t * vm,
 	  if (dm->pcap_pkts_to_capture)
 	    dm->pcap_main.n_packets_to_capture = dm->pcap_pkts_to_capture;
 
+	  dm->pcap_main.max_file_size =
+	    (2 << 10) * dm->pcap_main.n_packets_to_capture;
+
 	  dm->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+	  pcap_init (&dm->pcap_main);
+
 	  dm->tx_pcap_enable = 1;
 	  vlib_cli_output (vm, "pcap tx capture on...");
 	}

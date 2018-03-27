@@ -61,14 +61,20 @@ pcap2pg (pcap_main_t * pm, FILE * ofp)
 {
   int i, j;
   u8 *pkt;
+  pcap_file_header_t *fh;
+  pcap_packet_header_t *ph;
 
-  for (i = 0; i < vec_len (pm->packets_read); i++)
+  fh = (pcap_file_header_t *) pm->file_baseva;
+  ph = (pcap_packet_header_t *) (fh + 1);
+
+  for (i = 0; i < pm->packets_read; i++)
     {
       int offset;
       ethernet_header_t *h;
       u64 ethertype;
 
-      pkt = pm->packets_read[i];
+      pkt = ph->data;
+
       h = (ethernet_header_t *) pkt;
 
       stream_boilerplate (ofp, i, pkt);
@@ -114,6 +120,9 @@ pcap2pg (pcap_main_t * pm, FILE * ofp)
 
       fformat (ofp, " }\n");
       fformat (ofp, "}\n\n");
+
+      ph = (pcap_packet_header_t *)
+	(((u8 *) (ph)) + sizeof (*ph) + ph->n_packet_bytes_stored_in_file);
     }
   return 0;
 }
@@ -154,7 +163,7 @@ main (int argc, char **argv)
     goto usage;
 
   pm->file_name = (char *) input_file;
-  error = pcap_read (pm);
+  error = pcap_map (pm);
 
   if (error)
     {
@@ -166,8 +175,10 @@ main (int argc, char **argv)
     {
       ofp = fopen ((char *) output_file, "w+");
       if (ofp == NULL)
-	clib_unix_warning ("Couldn't create '%s'", output_file);
-      exit (1);
+	{
+	  clib_unix_warning ("Couldn't create '%s'", output_file);
+	  exit (1);
+	}
     }
   else
     {

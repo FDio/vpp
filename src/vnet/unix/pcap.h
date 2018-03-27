@@ -44,6 +44,9 @@
 #define included_vnet_pcap_h
 
 #include <vlib/vlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 /**
  * @brief Packet types supported by PCAP
@@ -126,21 +129,36 @@ typedef struct
   /** File name of pcap output. */
   char *file_name;
 
+  /** spinlock, initialized if flagged PCAP_FLAG_THREAD_SAFE */
+  clib_spinlock_t lock;
+
+
   /** Number of packets to capture. */
   u32 n_packets_to_capture;
 
   /** Packet type */
   pcap_packet_type_t packet_type;
 
+  /** Maximum file size */
+  u64 max_file_size;
+
+  /** Base address */
+  u8 *file_baseva;
+
+  /** current memory address */
+  u8 *current_va;
+
   /** Number of packets currently captured. */
   u32 n_packets_captured;
 
+  /** Pointer to file header in svm, for ease of updating */
+  pcap_file_header_t *file_header;
+
   /** flags */
   u32 flags;
-#define PCAP_MAIN_INIT_DONE (1 << 0)
-
-  /** File descriptor for reading/writing. */
-  int file_descriptor;
+#define PCAP_FLAG_INIT_DONE (1 << 0)
+#define PCAP_FLAG_THREAD_SAFE (1 << 1)
+#define PCAP_FLAG_WRITE_ENABLE (1 << 2)
 
   /** Bytes written */
   u32 n_pcap_data_written;
@@ -148,18 +166,24 @@ typedef struct
   /** Vector of pcap data. */
   u8 *pcap_data;
 
-  /** Packets read from file. */
-  u8 **packets_read;
+  /** Packets in mapped pcap file. */
+  u64 packets_read;
 
   /** Min/Max Packet bytes */
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
 
-/** Write out data to output file. */
-clib_error_t *pcap_write (pcap_main_t * pm);
+/* Some sensible default size */
+#define PCAP_DEFAULT_FILE_SIZE (10<<20)
 
-/** Read data from file. */
-clib_error_t *pcap_read (pcap_main_t * pm);
+/** initialize a pcap file (for writing) */
+clib_error_t *pcap_init (pcap_main_t * pm);
+
+/** Flush / unmap a pcap file */
+clib_error_t *pcap_close (pcap_main_t * pm);
+
+/** mmap a pcap data file. */
+clib_error_t *pcap_map (pcap_main_t * pm);
 
 /**
  * @brief Add packet
@@ -179,7 +203,12 @@ pcap_add_packet (pcap_main_t * pm,
   pcap_packet_header_t *h;
   u8 *d;
 
-  vec_add2 (pm->pcap_data, d, sizeof (h[0]) + n_bytes_in_trace);
+  d = pm->current_va;
+  pm->current_va += sizeof (h[0]) + n_bytes_in_trace;
+
+  /* Out of space? */
+  if (PREDICT_FALSE (pm->current_va >= pm->file_baseva + pm->max_file_size))
+    return 0;
   h = (void *) (d);
   h->time_in_sec = time_now;
   h->time_in_usec = 1e6 * (time_now - h->time_in_sec);
@@ -208,7 +237,16 @@ pcap_add_buffer (pcap_main_t * pm,
   f64 time_now = vlib_time_now (vm);
   void *d;
 
+  clib_spinlock_lock_if_init (&pm->lock);
+
   d = pcap_add_packet (pm, time_now, n_left, n);
+  if (PREDICT_FALSE (d == 0))
+    {
+      pcap_close (pm);
+      clib_spinlock_unlock_if_init (&pm->lock);
+      return;
+    }
+
   while (1)
     {
       u32 copy_length = clib_min ((u32) n_left, b->current_length);
@@ -220,11 +258,10 @@ pcap_add_buffer (pcap_main_t * pm,
       ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
       b = vlib_get_buffer (vm, b->next_buffer);
     }
+  if (pm->n_packets_captured >= pm->n_packets_to_capture)
+    pcap_close (pm);
 
-  /** Flush output vector. */
-  if (vec_len (pm->pcap_data) >= 64 * 1024
-      || pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_write (pm);
+  clib_spinlock_unlock_if_init (&pm->lock);
 }
 
 #endif /* included_vnet_pcap_h */

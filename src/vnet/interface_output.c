@@ -1157,7 +1157,11 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 	      if (im->pcap_pkts_to_capture)
 		im->pcap_main.n_packets_to_capture = im->pcap_pkts_to_capture;
 
+	      im->pcap_main.max_file_size =
+		(2 << 10) * im->pcap_main.n_packets_to_capture;
+
 	      im->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+	      pcap_init (&im->pcap_main);
 	      im->drop_pcap_enable = 1;
 	      matched = 1;
 	      vlib_cli_output (vm, "pcap drop capture on...");
@@ -1180,7 +1184,7 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 		{
 		  im->pcap_main.n_packets_to_capture =
 		    im->pcap_main.n_packets_captured;
-		  error = pcap_write (&im->pcap_main);
+		  pcap_close (&im->pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else

@@ -82,16 +82,19 @@ pg_capture (pg_capture_args_t * a)
 {
   pg_main_t *pg = &pg_main;
   pg_interface_t *pi;
+  clib_error_t *error;
 
   if (a->is_enabled == 1)
     {
       struct stat sb;
       if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "Cannot create pcap file");
+	return clib_error_return (0, "pcap file exists, but it should not");
     }
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
   vec_free (pi->pcap_file_name);
+  if (pi->pcap_main.flags & PCAP_FLAG_INIT_DONE)
+    pcap_close (&pi->pcap_main);
   memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
 
   if (a->is_enabled == 0)
@@ -101,8 +104,10 @@ pg_capture (pg_capture_args_t * a)
   pi->pcap_main.file_name = (char *) pi->pcap_file_name;
   pi->pcap_main.n_packets_to_capture = a->count;
   pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+  pi->pcap_main.max_file_size = (8 << 10) * a->count;
+  error = pcap_init (&pi->pcap_main);
 
-  return 0;
+  return error;
 }
 
 static clib_error_t *
@@ -219,6 +224,11 @@ VLIB_CLI_COMMAND (show_streams_cli, static) = {
 static clib_error_t *
 pg_pcap_read (pg_stream_t * s, char *file_name)
 {
+  u8 **replay_packet_templates = 0;
+  u8 *this_template;
+  int i = 0;
+  pcap_file_header_t *fh;
+  pcap_packet_header_t *ph;
 #ifndef CLIB_UNIX
   return clib_error_return (0, "no pcap support");
 #else
@@ -226,8 +236,30 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
   clib_error_t *error;
   memset (&pm, 0, sizeof (pm));
   pm.file_name = file_name;
-  error = pcap_read (&pm);
-  s->replay_packet_templates = pm.packets_read;
+  error = pcap_map (&pm);
+
+  vec_validate (replay_packet_templates, pm.packets_read - 1);
+
+  fh = (pcap_file_header_t *) pm.file_baseva;
+  ph = (pcap_packet_header_t *) (fh + 1);
+
+  while (ph < (pcap_packet_header_t *) (pm.file_baseva + pm.max_file_size))
+    {
+      if (ph->n_packet_bytes_stored_in_file == 0)
+	break;
+
+      this_template = 0;
+      vec_validate (this_template, ph->n_packet_bytes_stored_in_file - 1);
+      clib_memcpy (this_template, ph->data,
+		   ph->n_packet_bytes_stored_in_file);
+
+      replay_packet_templates[i++] = this_template;
+
+      ph = (pcap_packet_header_t *)
+	(((u8 *) (ph)) + sizeof (*ph) + ph->n_packet_bytes_stored_in_file);
+    }
+
+  s->replay_packet_templates = replay_packet_templates;
   s->min_packet_bytes = pm.min_packet_bytes;
   s->max_packet_bytes = pm.max_packet_bytes;
   s->buffer_bytes = pm.max_packet_bytes;
@@ -235,7 +267,9 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
   s->flags |= PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE;
 
   if (s->n_packets_limit == 0)
-    s->n_packets_limit = vec_len (pm.packets_read);
+    s->n_packets_limit = pm.packets_read;
+
+  pcap_close (&pm);
 
   return error;
 #endif /* CLIB_UNIX */
@@ -524,7 +558,7 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   u8 *pcap_file_name = 0;
   u32 hw_if_index;
   u32 is_disable = 0;
-  u32 count = ~0;
+  u32 count = 100;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;

@@ -632,6 +632,11 @@ vnet_gpe_get_encap_mode (void)
   return lgm->encap_mode;
 }
 
+/*
+ * This function should be rewritten. Use pcap2init to convert the
+ * [single] packet in the pcap file to a C array initializer, and
+ * use the initializer to set up a packet.
+ */
 static clib_error_t *
 lisp_gpe_test_send_nsh_packet (u8 * file_name)
 {
@@ -640,13 +645,15 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   pcap_main_t pm;
   clib_error_t *error = 0;
+  pcap_file_header_t *fh;
+  pcap_packet_header_t *ph;
 
   if (!file_name)
     return clib_error_create ("no pcap file specified!");
 
   memset (&pm, 0, sizeof (pm));
   pm.file_name = (char *) file_name;
-  error = pcap_read (&pm);
+  error = pcap_map (&pm);
   if (error)
     return error;
 
@@ -661,13 +668,20 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
 
   hip = hash_get (nsh_ifaces->hw_if_index_by_dp_table, 0);
   if (hip == 0)
-    return clib_error_create ("The NSH 0 interface doesn't exist");
+    {
+      pcap_close (&pm);
+      return clib_error_create ("The NSH 0 interface doesn't exist");
+    }
 
   hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = hi->sw_if_index;
-  u8 *p = vlib_buffer_put_uninit (b, vec_len (pm.packets_read[0]));
-  clib_memcpy (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
+
+  fh = (pcap_file_header_t *) pm.file_baseva;
+  ph = (pcap_packet_header_t *) (fh + 1);
+
+  u8 *p = vlib_buffer_put_uninit (b, ph->n_packet_bytes_stored_in_file);
+  clib_memcpy (p, ph->data, ph->n_packet_bytes_stored_in_file);
   vlib_buffer_pull (b, sizeof (ethernet_header_t));
 
   vlib_node_t *n = vlib_get_node_by_name (lgm->vlib_main,
@@ -677,6 +691,8 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
   to_next[0] = bi;
   f->n_vectors = 1;
   vlib_put_frame_to_node (lgm->vlib_main, n->index, f);
+
+  pcap_close (&pm);
 
   return error;
 }
