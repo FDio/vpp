@@ -505,11 +505,9 @@ enslave_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.group = ~0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "interface %U",
+      if (unformat (line_input, "%U %U",
+		    unformat_vnet_sw_interface, vnm, &args.group,
 		    unformat_vnet_sw_interface, vnm, &args.slave))
-	;
-      else if (unformat (line_input, "to %U", unformat_vnet_sw_interface, vnm,
-			 &args.group))
 	;
       else if (unformat (line_input, "passive"))
 	args.is_passive = 1;
@@ -529,7 +527,7 @@ enslave_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (args.group == ~0)
     return clib_error_return (0, "Missing bond interface");
   if (args.slave == ~0)
-    return clib_error_return (0, "please specify valid interface name");
+    return clib_error_return (0, "please specify valid slave interface name");
 
   bond_enslave (vm, &args);
 
@@ -538,8 +536,9 @@ enslave_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enslave_interface_command, static) = {
-  .path = "enslave",
-  .short_help = "enslave interface <interface> to <BondEthernetx> [passive] [long-timeout]",
+  .path = "bond add",
+  .short_help = "bond add <BondEthernetx> <slave-interface> "
+                "[passive] [long-timeout]",
   .function = enslave_interface_command_fn,
 };
 /* *INDENT-ON* */
@@ -576,7 +575,7 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.slave = ~0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "interface %U",
+      if (unformat (line_input, "%U",
 		    unformat_vnet_sw_interface, vnm, &args.slave))
 	;
       else
@@ -591,7 +590,7 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (args.error)
     return args.error;
   if (args.slave == ~0)
-    return clib_error_return (0, "please specify valid interface name");
+    return clib_error_return (0, "please specify valid slave interface name");
 
   bond_detach_slave (vm, &args);
 
@@ -600,8 +599,8 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (detach_interface_command, static) = {
-  .path = "detach",
-  .short_help = "detach interface <interface>",
+  .path = "bond del",
+  .short_help = "bond del <slave-interface>",
   .function = detach_interface_command_fn,
 };
 /* *INDENT-ON* */
