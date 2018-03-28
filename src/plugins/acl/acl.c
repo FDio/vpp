@@ -1182,6 +1182,21 @@ acl_is_not_defined (acl_main_t * am, u32 acl_list_index)
   return (pool_is_free_index (am->acls, acl_list_index));
 }
 
+static void
+increment_policy_epoch (acl_main_t * am, u32 sw_if_index, int is_input)
+{
+
+  u32 **ppolicy_epoch_by_swi =
+    is_input ? &am->input_policy_epoch_by_sw_if_index :
+    &am->output_policy_epoch_by_sw_if_index;
+  vec_validate (*ppolicy_epoch_by_swi, sw_if_index);
+
+  u32 *p_epoch = vec_elt_at_index ((*ppolicy_epoch_by_swi), sw_if_index);
+  *p_epoch =
+    ((1 + *p_epoch) & FA_POLICY_EPOCH_MASK) +
+    (is_input * FA_POLICY_EPOCH_IS_INPUT);
+}
+
 static int
 acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 				  u8 is_input, u32 * vec_acl_list_index,
@@ -1268,12 +1283,20 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
   (*pinout_acl_vec_by_sw_if_index)[sw_if_index] =
     vec_dup (vec_acl_list_index);
 
-  /* if no commonalities between the ACL# - then we should definitely clear the sessions */
-  if (may_clear_sessions && *may_clear_sessions
-      && !clib_bitmap_is_zero (change_acl_bitmap))
+  if (am->reclassify_sessions)
     {
-      acl_clear_sessions (am, sw_if_index);
-      *may_clear_sessions = 0;
+      /* re-applying ACLs means a new policy epoch */
+      increment_policy_epoch (am, sw_if_index, is_input);
+    }
+  else
+    {
+      /* if no commonalities between the ACL# - then we should definitely clear the sessions */
+      if (may_clear_sessions && *may_clear_sessions
+	  && !clib_bitmap_is_zero (change_acl_bitmap))
+	{
+	  acl_clear_sessions (am, sw_if_index);
+	  *may_clear_sessions = 0;
+	}
     }
 
   /*
@@ -3202,6 +3225,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
       am->l4_match_nonfirst_fragment = (val != 0);
       goto done;
     }
+  if (unformat (input, "reclassify-sessions %u", &val))
+    {
+      am->reclassify_sessions = (val != 0);
+      goto done;
+    }
   if (unformat (input, "event-trace"))
     {
       if (!unformat (input, "%u", &val))
@@ -3571,6 +3599,15 @@ acl_plugin_show_interface (acl_main_t * am, u32 sw_if_index, int show_acl,
 	continue;
 
       vlib_cli_output (vm, "sw_if_index %d:\n", swi);
+      if (swi < vec_len (am->input_policy_epoch_by_sw_if_index))
+	vlib_cli_output (vm, "   input policy epoch: %x\n",
+			 vec_elt (am->input_policy_epoch_by_sw_if_index,
+				  swi));
+      if (swi < vec_len (am->output_policy_epoch_by_sw_if_index))
+	vlib_cli_output (vm, "   output policy epoch: %x\n",
+			 vec_elt (am->output_policy_epoch_by_sw_if_index,
+				  swi));
+
 
       if (intf_has_etype_whitelist (am, swi, 1))
 	{
@@ -3761,13 +3798,21 @@ acl_plugin_show_sessions (acl_main_t * am,
 					       ?
 					       pw->fa_session_dels_by_sw_if_index
 					       [sw_if_index] : 0;
+					       u64 n_epoch_changes =
+					       sw_if_index <
+					       vec_len
+					       (pw->fa_session_epoch_change_by_sw_if_index)
+					       ?
+					       pw->fa_session_epoch_change_by_sw_if_index
+					       [sw_if_index] : 0;
 					       vlib_cli_output (vm,
-								"    sw_if_index %d: add %lu - del %lu = %lu",
+								"    sw_if_index %d: add %lu - del %lu = %lu; epoch chg: %lu",
 								sw_if_index,
 								n_adds,
 								n_dels,
 								n_adds -
-								n_dels);
+								n_dels,
+								n_epoch_changes);
 					       }
 		    ));
 
@@ -3829,6 +3874,7 @@ acl_plugin_show_sessions (acl_main_t * am,
 		   am->fa_cleaner_wait_time_increment * 1000.0,
 		   ((f64) am->fa_current_cleaner_timer_wait_interval) *
 		   1000.0 / (f64) vm->clib_time.clocks_per_second);
+  vlib_cli_output (vm, "Reclassify sessions: %d", am->reclassify_sessions);
 }
 
 static clib_error_t *
@@ -4007,6 +4053,7 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
   uword hash_heap_size;
   u32 hash_lookup_hash_buckets;
   u32 hash_lookup_hash_memory;
+  u32 reclassify_sessions;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -4035,6 +4082,10 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "hash lookup hash memory %d",
 			 &hash_lookup_hash_memory))
 	am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+      else if (unformat (input, "reclassify sessions %d",
+			 &reclassify_sessions))
+	am->reclassify_sessions = reclassify_sessions;
+
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
@@ -4086,6 +4137,7 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_hash_memory_size =
     ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
+  am->reclassify_sessions = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vec_validate (am->per_worker_data, tm->n_vlib_mains - 1);
   {
