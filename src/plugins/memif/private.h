@@ -83,6 +83,7 @@ typedef struct
   void *shm;
   memif_region_size_t region_size;
   int fd;
+  u8 is_external;
 } memif_region_t;
 
 typedef struct
@@ -101,6 +102,7 @@ typedef struct
 
   u16 last_head;
   u16 last_tail;
+  u32 *buffers;
 
   /* interrupts */
   int int_fd;
@@ -116,7 +118,9 @@ typedef struct
   _(1, IS_SLAVE, "slave")		\
   _(2, CONNECTING, "connecting")	\
   _(3, CONNECTED, "connected")		\
-  _(4, DELETING, "deleting")
+  _(4, DELETING, "deleting")		\
+  _(5, ZERO_COPY, "zero-copy")		\
+  _(6, ERROR, "error")
 
 typedef enum
 {
@@ -201,6 +205,7 @@ typedef struct
 
   /* buffer template */
   vlib_buffer_t buffer_template;
+  memif_desc_t desc_template;
 } memif_per_thread_data_t;
 
 typedef struct
@@ -238,6 +243,7 @@ typedef struct
   u32 socket_id;
   u8 *secret;
   u8 is_master;
+  u8 is_zero_copy;
   memif_interface_mode_t mode:8;
   memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
