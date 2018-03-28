@@ -362,7 +362,7 @@ sctp_enqueue_to_output_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			     u8 is_ip4, u8 flush)
+			     u8 is_ip4, u32 fib_index, u8 flush)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   u32 thread_index = vlib_get_thread_index ();
@@ -372,8 +372,8 @@ sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  /* Default FIB for now */
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
   /* Send to IP lookup */
   next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
@@ -403,9 +403,9 @@ sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 sctp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			   u8 is_ip4)
+			   u8 is_ip4, u32 fib_index)
 {
-  sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 0);
+  sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 0);
 }
 
 /**
@@ -1342,7 +1342,8 @@ sctp_send_init (sctp_connection_t * sctp_conn)
   sctp_prepare_init_chunk (sctp_conn, idx, b);
 
   sctp_push_ip_hdr (tm, &sctp_conn->sub_conn[idx], b);
-  sctp_enqueue_to_ip_lookup (vm, b, bi, sctp_conn->sub_conn[idx].c_is_ip4);
+  sctp_enqueue_to_ip_lookup (vm, b, bi, sctp_conn->sub_conn[idx].c_is_ip4,
+			     sctp_conn->sub_conn[idx].c_fib_index);
 
   /* Start the T1_INIT timer */
   sctp_timer_set (sctp_conn, idx, SCTP_TIMER_T1_INIT,
@@ -1820,7 +1821,8 @@ sctp46_output_inline (vlib_main_t * vm,
 	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+	    sctp_conn->sub_conn[idx].c_fib_index;
 
 	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
