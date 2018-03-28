@@ -709,7 +709,7 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
   tls_vfts[type] = *vft;
 }
 
-clib_error_t *
+static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
