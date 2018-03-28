@@ -99,35 +99,20 @@ memif_add_copy_op (memif_per_thread_data_t * ptd, void *data, u32 len,
 static_always_inline uword
 memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type)
+			   memif_ring_type_t type, memif_queue_t * mq,
+			   memif_per_thread_data_t * ptd)
 {
-  u8 qid;
   memif_ring_t *ring;
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
   u32 n_copy_op;
   u16 ring_size, mask, slot, free_slots;
-  u32 thread_index = vlib_get_thread_index ();
-  memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
-						   thread_index);
-  u8 tx_queues = vec_len (mif->tx_queues);
-  memif_queue_t *mq;
   int n_retries = 5;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   memif_copy_op_t *co;
   memif_region_index_t last_region = ~0;
   void *last_region_shm = 0;
 
-  if (tx_queues < vec_len (vlib_mains))
-    {
-      ASSERT (tx_queues > 0);
-      qid = thread_index % tx_queues;
-      clib_spinlock_lock_if_init (&mif->lockp);
-    }
-  else
-    qid = thread_index;
-
-  mq = vec_elt_at_index (mif->tx_queues, qid);
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
   mask = ring_size - 1;
@@ -307,6 +292,113 @@ no_free_slots:
   return frame->n_vectors;
 }
 
+static_always_inline uword
+memif_interface_tx_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      vlib_frame_t * frame, memif_if_t * mif,
+			      memif_queue_t * mq,
+			      memif_per_thread_data_t * ptd)
+{
+  memif_ring_t *ring = mq->ring;
+  u32 *buffers = vlib_frame_args (frame);
+  u32 n_left = frame->n_vectors;
+  u16 slot, free_slots, n_free;
+  u16 ring_size = 1 << mq->log2_ring_size;
+  u16 mask = ring_size - 1;
+  int n_retries = 5;
+  vlib_buffer_t *b0;
+
+retry:
+  n_free = ring->tail - mq->last_tail;
+  if (n_free >= 16)
+    {
+      vlib_buffer_free_from_ring_no_next (vm, mq->buffers, mq->last_tail,
+					  ring_size, n_free);
+      mq->last_tail += n_free;
+    }
+
+  slot = ring->head;
+  free_slots = ring_size - ring->head + mq->last_tail;
+
+  while (n_left && free_slots)
+    {
+      u16 s0;
+      u16 slots_in_packet = 1;
+      memif_desc_t *d0;
+      u32 bi0;
+
+      CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], CLIB_CACHE_LINE_BYTES,
+		     STORE);
+
+      if (PREDICT_TRUE (n_left >= 4))
+	vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[3]), LOAD);
+
+      bi0 = buffers[0];
+
+    next_in_chain:
+      s0 = slot & mask;
+      d0 = &ring->desc[s0];
+      mq->buffers[s0] = bi0;
+      b0 = vlib_get_buffer (vm, bi0);
+
+      d0->region = b0->buffer_pool_index + 1;
+      d0->offset = (void *) b0->data + b0->current_data -
+	mif->regions[d0->region].shm;
+      d0->length = b0->current_length;
+
+      free_slots--;
+      slot++;
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  if (PREDICT_FALSE (free_slots == 0))
+	    {
+	      /* revert to last fully processed packet */
+	      free_slots += slots_in_packet;
+	      slot -= slots_in_packet;
+	      goto no_free_slots;
+	    }
+
+	  d0->flags = MEMIF_DESC_FLAG_NEXT;
+	  bi0 = b0->next_buffer;
+
+	  /* next */
+	  slots_in_packet++;
+	  goto next_in_chain;
+	}
+
+      d0->flags = 0;
+
+      /* next from */
+      buffers++;
+      n_left--;
+    }
+no_free_slots:
+
+  CLIB_MEMORY_STORE_BARRIER ();
+  ring->head = slot;
+
+  if (n_left && n_retries--)
+    goto retry;
+
+  clib_spinlock_unlock_if_init (&mif->lockp);
+
+  if (n_left)
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
+			n_left);
+      vlib_buffer_free (vm, buffers, n_left);
+    }
+
+  if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
+    {
+      u64 b = 1;
+      CLIB_UNUSED (int r) = write (mq->int_fd, &b, sizeof (b));
+      mq->int_count++;
+    }
+
+  return frame->n_vectors;
+}
+
 uword
 CLIB_MULTIARCH_FN (memif_interface_tx) (vlib_main_t * vm,
 					vlib_node_runtime_t * node,
@@ -315,11 +407,29 @@ CLIB_MULTIARCH_FN (memif_interface_tx) (vlib_main_t * vm,
   memif_main_t *nm = &memif_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+  memif_queue_t *mq;
+  u32 thread_index = vlib_get_thread_index ();
+  memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
+						   thread_index);
+  u8 tx_queues = vec_len (mif->tx_queues);
 
-  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_S2M);
+  if (tx_queues < vec_len (vlib_mains))
+    {
+      ASSERT (tx_queues > 0);
+      mq = vec_elt_at_index (mif->tx_queues, thread_index % tx_queues);
+      clib_spinlock_lock_if_init (&mif->lockp);
+    }
   else
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_M2S);
+    mq = vec_elt_at_index (mif->tx_queues, thread_index);
+
+  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+    return memif_interface_tx_zc_inline (vm, node, frame, mif, mq, ptd);
+  else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_S2M,
+				      mq, ptd);
+  else
+    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_M2S,
+				      mq, ptd);
 }
 
 static __clib_unused void

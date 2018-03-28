@@ -459,6 +459,30 @@ vlib_buffer_free_from_ring (vlib_main_t * vm, u32 * ring, u32 start,
     }
 }
 
+/** \brief Free buffers from ring without freeing tail buffers
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 * ) buffer index ring
+    @param start - (u32) first slot in the ring
+    @param ring_size - (u32) ring size
+    @param n_buffers - (u32) number of buffers
+*/
+always_inline void
+vlib_buffer_free_from_ring_no_next (vlib_main_t * vm, u32 * ring, u32 start,
+				    u32 ring_size, u32 n_buffers)
+{
+  ASSERT (n_buffers <= ring_size);
+
+  if (PREDICT_TRUE (start + n_buffers <= ring_size))
+    {
+      vlib_buffer_free (vm, ring + start, n_buffers);
+    }
+  else
+    {
+      vlib_buffer_free_no_next (vm, ring + start, ring_size - start);
+      vlib_buffer_free_no_next (vm, ring, n_buffers - (ring_size - start));
+    }
+}
 
 /* Add/delete buffer free lists. */
 vlib_buffer_free_list_index_t vlib_buffer_create_free_list (vlib_main_t * vm,

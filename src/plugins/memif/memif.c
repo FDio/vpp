@@ -110,36 +110,42 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       clib_mem_free (mif->sock);
     }
 
+  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
-  {
-    mq = vec_elt_at_index (mif->rx_queues, i);
-    if (mq->ring)
-      {
-	int rv;
-	rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
-	if (rv)
-	  DBG ("Warning: unable to unassign interface %d, "
-	       "queue %d: rc=%d", mif->hw_if_index, i, rv);
-	mq->ring = 0;
-      }
-  }
+    {
+      mq = vec_elt_at_index (mif->rx_queues, i);
+      if (mq->ring)
+	{
+	  int rv;
+	  rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
+	  if (rv)
+	    DBG ("Warning: unable to unassign interface %d, "
+		 "queue %d: rc=%d", mif->hw_if_index, i, rv);
+	  mq->ring = 0;
+	}
+    }
 
   /* free tx and rx queues */
-  vec_foreach (mq, mif->rx_queues) memif_queue_intfd_close (mq);
+  vec_foreach (mq, mif->rx_queues)
+    memif_queue_intfd_close (mq);
   vec_free (mif->rx_queues);
 
-  vec_foreach (mq, mif->tx_queues) memif_queue_intfd_close (mq);
+  vec_foreach (mq, mif->tx_queues)
+    memif_queue_intfd_close (mq);
   vec_free (mif->tx_queues);
 
   /* free memory regions */
   vec_foreach (mr, mif->regions)
-  {
-    int rv;
-    if ((rv = munmap (mr->shm, mr->region_size)))
-      clib_warning ("munmap failed, rv = %d", rv);
-    if (mr->fd > -1)
-      close (mr->fd);
-  }
+    {
+      int rv;
+      if (mr->is_external)
+	continue;
+      if ((rv = munmap (mr->shm, mr->region_size)))
+	clib_warning ("munmap failed, rv = %d", rv);
+      if (mr->fd > -1)
+	close (mr->fd);
+    }
+  /* *INDENT-ON* */
   vec_free (mif->regions);
   vec_free (mif->remote_name);
   vec_free (mif->remote_if_name);
@@ -184,66 +190,70 @@ memif_connect (memif_if_t * mif)
   vec_free (mif->local_disc_string);
   vec_free (mif->remote_disc_string);
 
+  /* *INDENT-OFF* */
   vec_foreach (mr, mif->regions)
-  {
-    if (mr->shm)
-      continue;
+    {
+      if (mr->shm)
+	continue;
 
-    if (mr->fd < 0)
-      clib_error_return (0, "no memory region fd");
+      if (mr->fd < 0)
+	clib_error_return (0, "no memory region fd");
 
-    if ((mr->shm = mmap (NULL, mr->region_size, PROT_READ | PROT_WRITE,
-			 MAP_SHARED, mr->fd, 0)) == MAP_FAILED)
-      return clib_error_return_unix (0, "mmap");
-  }
+      if ((mr->shm = mmap (NULL, mr->region_size, PROT_READ | PROT_WRITE,
+			   MAP_SHARED, mr->fd, 0)) == MAP_FAILED)
+	return clib_error_return_unix (0, "mmap");
+    }
+  /* *INDENT-ON* */
 
   template.read_function = memif_int_fd_read_ready;
 
+  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
-  {
-    memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
+    {
+      memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
 
-    mq->ring = mif->regions[mq->region].shm + mq->offset;
-    if (mq->ring->cookie != MEMIF_COOKIE)
-      return clib_error_return (0, "wrong cookie on tx ring %u", i);
-  }
+      mq->ring = mif->regions[mq->region].shm + mq->offset;
+      if (mq->ring->cookie != MEMIF_COOKIE)
+	return clib_error_return (0, "wrong cookie on tx ring %u", i);
+    }
 
   vec_foreach_index (i, mif->rx_queues)
-  {
-    memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
-    int rv;
+    {
+      memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
+      int rv;
 
-    mq->ring = mif->regions[mq->region].shm + mq->offset;
-    if (mq->ring->cookie != MEMIF_COOKIE)
-      return clib_error_return (0, "wrong cookie on tx ring %u", i);
+      mq->ring = mif->regions[mq->region].shm + mq->offset;
+      if (mq->ring->cookie != MEMIF_COOKIE)
+	return clib_error_return (0, "wrong cookie on tx ring %u", i);
 
-    if (mq->int_fd > -1)
-      {
-	template.file_descriptor = mq->int_fd;
-	template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
-	template.description = format (0, "%U rx %u int",
-				       format_memif_device_name,
-				       mif->dev_instance, i);
-	memif_file_add (&mq->int_clib_file_index, &template);
-      }
-    vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
-    rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
-					VNET_HW_INTERFACE_RX_MODE_DEFAULT);
-    if (rv)
-      clib_warning
-	("Warning: unable to set rx mode for interface %d queue %d: "
-	 "rc=%d", mif->hw_if_index, i, rv);
-    else
-      {
-	vnet_hw_interface_rx_mode rxmode;
-	vnet_hw_interface_get_rx_mode (vnm, mif->hw_if_index, i, &rxmode);
+      if (mq->int_fd > -1)
+	{
+	  template.file_descriptor = mq->int_fd;
+	  template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
+	  template.description = format (0, "%U rx %u int",
+					 format_memif_device_name,
+					 mif->dev_instance, i);
+	  memif_file_add (&mq->int_clib_file_index, &template);
+	}
+      vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
+      rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
+					  VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+      if (rv)
+	clib_warning
+	  ("Warning: unable to set rx mode for interface %d queue %d: "
+	   "rc=%d", mif->hw_if_index, i, rv);
+      else
+	{
+	  vnet_hw_interface_rx_mode rxmode;
+	  vnet_hw_interface_get_rx_mode (vnm, mif->hw_if_index, i, &rxmode);
 
-	if (rxmode == VNET_HW_INTERFACE_RX_MODE_POLLING)
-	  mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
-	else
-	  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, i);
-      }
-  }
+	  if (rxmode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+	    mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
+	  else
+	    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, i);
+	}
+    }
+  /* *INDENT-ON* */
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
@@ -270,6 +280,7 @@ memif_get_ring (memif_if_t * mif, memif_ring_type_t type, u16 ring_num)
 clib_error_t *
 memif_init_regions_and_queues (memif_if_t * mif)
 {
+  vlib_main_t *vm = vlib_get_main ();
   memif_ring_t *ring = NULL;
   int i, j;
   u64 buffer_offset;
@@ -277,16 +288,18 @@ memif_init_regions_and_queues (memif_if_t * mif)
   clib_mem_vm_alloc_t alloc = { 0 };
   clib_error_t *err;
 
-  vec_validate_aligned (mif->regions, 0, CLIB_CACHE_LINE_BYTES);
-  r = vec_elt_at_index (mif->regions, 0);
+  ASSERT (vec_len (mif->regions) == 0);
+  vec_add2_aligned (mif->regions, r, 1, CLIB_CACHE_LINE_BYTES);
 
   buffer_offset = (mif->run.num_s2m_rings + mif->run.num_m2s_rings) *
     (sizeof (memif_ring_t) +
      sizeof (memif_desc_t) * (1 << mif->run.log2_ring_size));
 
-  r->region_size = buffer_offset +
-    mif->run.buffer_size * (1 << mif->run.log2_ring_size) *
-    (mif->run.num_s2m_rings + mif->run.num_m2s_rings);
+  r->region_size = buffer_offset;
+
+  if ((mif->flags & MEMIF_IF_FLAG_ZERO_COPY) == 0)
+    r->region_size += mif->run.buffer_size * (1 << mif->run.log2_ring_size) *
+      (mif->run.num_s2m_rings + mif->run.num_m2s_rings);
 
   alloc.name = "memif region";
   alloc.size = r->region_size;
@@ -299,11 +312,32 @@ memif_init_regions_and_queues (memif_if_t * mif)
   r->fd = alloc.fd;
   r->shm = alloc.addr;
 
+  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+    {
+      vlib_buffer_pool_t *bp;
+      /* *INDENT-OFF* */
+      vec_foreach (bp, buffer_main.buffer_pools)
+	{
+	  vlib_physmem_region_t *pr;
+	  pr = vlib_physmem_get_region (vm, bp->physmem_region);
+	  vec_add2_aligned (mif->regions, r, 1, CLIB_CACHE_LINE_BYTES);
+	  r->fd = pr->fd;
+	  r->region_size = pr->size;
+	  r->shm = pr->mem;
+	  r->is_external = 1;
+	}
+      /* *INDENT-ON* */
+    }
+
   for (i = 0; i < mif->run.num_s2m_rings; i++)
     {
       ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
       ring->head = ring->tail = 0;
       ring->cookie = MEMIF_COOKIE;
+
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+	continue;
+
       for (j = 0; j < (1 << mif->run.log2_ring_size); j++)
 	{
 	  u16 slot = i * (1 << mif->run.log2_ring_size) + j;
@@ -318,6 +352,10 @@ memif_init_regions_and_queues (memif_if_t * mif)
       ring = memif_get_ring (mif, MEMIF_RING_M2S, i);
       ring->head = ring->tail = 0;
       ring->cookie = MEMIF_COOKIE;
+
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+	continue;
+
       for (j = 0; j < (1 << mif->run.log2_ring_size); j++)
 	{
 	  u16 slot =
@@ -332,36 +370,48 @@ memif_init_regions_and_queues (memif_if_t * mif)
   ASSERT (mif->tx_queues == 0);
   vec_validate_aligned (mif->tx_queues, mif->run.num_s2m_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
-  {
-    memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
-    if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
-      return clib_error_return_unix (0, "eventfd[tx queue %u]", i);
-    mq->int_clib_file_index = ~0;
-    mq->ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
-    mq->log2_ring_size = mif->cfg.log2_ring_size;
-    mq->region = 0;
-    mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
-    mq->last_head = 0;
-    mq->type = MEMIF_RING_S2M;
-  }
+    {
+      memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
+      if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
+	return clib_error_return_unix (0, "eventfd[tx queue %u]", i);
+      mq->int_clib_file_index = ~0;
+      mq->ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
+      mq->log2_ring_size = mif->cfg.log2_ring_size;
+      mq->region = 0;
+      mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
+      mq->last_head = 0;
+      mq->type = MEMIF_RING_S2M;
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
+			      CLIB_CACHE_LINE_BYTES);
+    }
+  /* *INDENT-ON* */
 
   ASSERT (mif->rx_queues == 0);
   vec_validate_aligned (mif->rx_queues, mif->run.num_m2s_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
-  {
-    memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
-    if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
-      return clib_error_return_unix (0, "eventfd[rx queue %u]", i);
-    mq->int_clib_file_index = ~0;
-    mq->ring = memif_get_ring (mif, MEMIF_RING_M2S, i);
-    mq->log2_ring_size = mif->cfg.log2_ring_size;
-    mq->region = 0;
-    mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
-    mq->last_head = 0;
-    mq->type = MEMIF_RING_M2S;
-  }
+    {
+      memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
+      if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
+	return clib_error_return_unix (0, "eventfd[rx queue %u]", i);
+      mq->int_clib_file_index = ~0;
+      mq->ring = memif_get_ring (mif, MEMIF_RING_M2S, i);
+      mq->log2_ring_size = mif->cfg.log2_ring_size;
+      mq->region = 0;
+      mq->offset = (void *) mq->ring - (void *) mif->regions[mq->region].shm;
+      mq->last_head = 0;
+      mq->type = MEMIF_RING_M2S;
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
+			      CLIB_CACHE_LINE_BYTES);
+    }
+  /* *INDENT-ON* */
 
   return 0;
 }
@@ -616,10 +666,10 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
       if (msf->is_listener)
 	{
 	  int i;
+	  /* *INDENT-OFF* */
 	  vec_foreach_index (i, msf->pending_clients)
-	  {
 	    memif_socket_close (msf->pending_clients + i);
-	  }
+	  /* *INDENT-ON* */
 	  memif_socket_close (&msf->sock);
 	  vec_free (msf->pending_clients);
 	}
@@ -854,7 +904,11 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   msf->ref_cnt++;
 
   if (args->is_master == 0)
-    mif->flags |= MEMIF_IF_FLAG_IS_SLAVE;
+    {
+      mif->flags |= MEMIF_IF_FLAG_IS_SLAVE;
+      if (args->is_zero_copy)
+	mif->flags |= MEMIF_IF_FLAG_ZERO_COPY;
+    }
 
   hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
