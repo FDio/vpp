@@ -136,6 +136,18 @@ def run_forked(suite):
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
+                    with open("/proc/sys/kernel/core_pattern", "r") as f:
+                        corefmt = f.read()
+                        if corefmt.startswith("|"):
+                            global_logger.error(
+                                "WARNING: redirecting the core dump through a"
+                                " filter may result in truncated dumps.")
+                            global_logger.error(
+                                "   You may want to check the filter settings"
+                                " or uninstall it and edit the"
+                                " /proc/sys/kernel/core_pattern accordingly.")
+                            global_logger.error(
+                                "   current core pattern is: %s" % corefmt)
                     global_logger.debug("Running `file %s':" % core_path)
                     try:
                         info = check_output(["file", core_path])
