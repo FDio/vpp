@@ -7,7 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, DpoProto
 
 
 class VCLAppWorker(Worker):
@@ -75,7 +75,7 @@ class VCLTestCase(VppTestCase):
         self.vapi.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(range(2))
 
-        table_id = 0
+        table_id = 1
 
         for i in self.lo_interfaces:
             i.admin_up()
@@ -89,22 +89,23 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add(namespace_id="0", secret=1234,
+        self.vapi.app_namespace_add(namespace_id="1", secret=1234,
                                     sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add(namespace_id="1", secret=5678,
+        self.vapi.app_namespace_add(namespace_id="2", secret=5678,
                                     sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
-                                          nh_table_id=1)])
+                                          nh_table_id=2)], table_id=1)
         ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
-                                          nh_table_id=0)], table_id=1)
+                                          nh_table_id=1)], table_id=2)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
+        self.logger.debug(self.vapi.cli("show ip fib"))
 
     def thru_host_stack_tear_down(self):
         for i in self.lo_interfaces:
@@ -131,19 +132,21 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add(namespace_id="0", secret=1234,
+        self.vapi.app_namespace_add(namespace_id="1", secret=1234,
                                     sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add(namespace_id="1", secret=5678,
+        self.vapi.app_namespace_add(namespace_id="2", secret=5678,
                                     sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(self, self.loop1.local_ip6, 128,
-                            [VppRoutePath("0.0.0.0", 0xffffffff,
-                                          nh_table_id=2)],
+                            [VppRoutePath("::0", 0xffffffff,
+                                          nh_table_id=2,
+                                          proto=DpoProto.DPO_PROTO_IP6)],
                             table_id=1, is_ip6=1)
         ip_t10 = VppIpRoute(self, self.loop0.local_ip6, 128,
-                            [VppRoutePath("0.0.0.0", 0xffffffff,
-                                          nh_table_id=1)],
+                            [VppRoutePath("::0", 0xffffffff,
+                                          nh_table_id=1,
+                                          proto=DpoProto.DPO_PROTO_IP6)],
                             table_id=2, is_ip6=1)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
@@ -162,7 +165,7 @@ class VCLTestCase(VppTestCase):
                              client_app, client_args):
         self.env = {'VCL_API_PREFIX': self.shm_prefix,
                     'VCL_APP_SCOPE_GLOBAL': "true",
-                    'VCL_APP_NAMESPACE_ID': "0",
+                    'VCL_APP_NAMESPACE_ID': "1",
                     'VCL_APP_NAMESPACE_SECRET': "1234"}
 
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
@@ -170,7 +173,7 @@ class VCLTestCase(VppTestCase):
         worker_server.start()
         self.sleep(0.2)
 
-        self.env.update({'VCL_APP_NAMESPACE_ID': "1",
+        self.env.update({'VCL_APP_NAMESPACE_ID': "2",
                          'VCL_APP_NAMESPACE_SECRET': "5678"})
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
                                      self.logger, self.env)
@@ -314,6 +317,7 @@ class VCLThruHostStackTestCase(VCLTestCase):
 
         super(VCLThruHostStackTestCase, self).tearDown()
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_ldp_thru_host_stack_echo(self):
         """ run LDP thru host stack echo test """
 
@@ -329,9 +333,9 @@ class VCLThruHostStackTestCase(VCLTestCase):
         """ run VCL thru host stack echo test """
 
         # TBD: Enable this when VPP  thru host teardown config bug is fixed.
-        # self.thru_host_stack_test("vcl_test_server", self.server_args,
-        #                           "vcl_test_client",
-        #                           self.client_echo_test_args)
+        self.thru_host_stack_test("vcl_test_server", self.server_args,
+                                  "vcl_test_client",
+                                  self.client_echo_test_args)
 
     # TBD: Remove VCLThruHostStackExtended*TestCase classes and move
     #      tests here when VPP  thru host teardown/setup config bug
@@ -617,6 +621,7 @@ class VCLIpv6ThruHostStackTestCase(VCLTestCase):
 
         super(VCLIpv6ThruHostStackTestCase, self).tearDown()
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_ldp_ipv6_thru_host_stack_echo(self):
         """ run LDP IPv6 thru host stack echo test """
 
@@ -634,8 +639,8 @@ class VCLIpv6ThruHostStackTestCase(VCLTestCase):
         # TBD: Enable this when VPP IPv6 thru host teardown
         # config bug is fixed.
         # self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-        #                           "vcl_test_client",
-        #                           self.client_ipv6_echo_test_args)
+        #                          "vcl_test_client",
+        #                          self.client_ipv6_echo_test_args)
 
     # TBD: Remove VCLIpv6ThruHostStackExtended*TestCase classes and move
     #      tests here when VPP  thru host teardown/setup config bug
@@ -796,6 +801,7 @@ class VCLIpv6ThruHostStackIperfTestCase(VCLTestCase):
 
         super(VCLIpv6ThruHostStackIperfTestCase, self).tearDown()
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_ldp_thru_host_stack_iperf3(self):
         """ run LDP thru host stack iperf3 test """
 

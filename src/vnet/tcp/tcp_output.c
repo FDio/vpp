@@ -630,7 +630,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 
 always_inline void
 tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			    u8 is_ip4, u8 flush)
+			    u8 is_ip4, u32 fib_index, u8 flush)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 thread_index = vlib_get_thread_index ();
@@ -640,8 +640,8 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  /* Default FIB for now */
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
   /* Send to IP lookup */
   next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
@@ -667,16 +667,16 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 tcp_enqueue_to_ip_lookup_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			      u8 is_ip4)
+			      u8 is_ip4, u32 fib_index)
 {
-  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 1);
+  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 1);
 }
 
 always_inline void
 tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4)
+			  u8 is_ip4, u32 fib_index)
 {
-  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 0);
+  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 0);
 }
 
 always_inline void
@@ -814,7 +814,7 @@ void
 tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
 {
   vlib_buffer_t *b;
-  u32 bi;
+  u32 bi, sw_if_index, fib_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
   u8 tcp_hdr_len, flags = 0;
@@ -822,11 +822,15 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
   u32 seq, ack;
   ip4_header_t *ih4, *pkt_ih4;
   ip6_header_t *ih6, *pkt_ih6;
+  fib_protocol_t fib_proto;
 
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
 
   b = vlib_get_buffer (vm, bi);
+  sw_if_index = vnet_buffer (pkt)->sw_if_index[VLIB_RX];
+  fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  fib_index = fib_table_get_index_for_sw_if_index (fib_proto, sw_if_index);
   tcp_init_buffer (vm, b);
 
   /* Make and write options */
@@ -878,7 +882,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
       ASSERT (!bogus);
     }
 
-  tcp_enqueue_to_ip_lookup_now (vm, b, bi, is_ip4);
+  tcp_enqueue_to_ip_lookup_now (vm, b, bi, is_ip4, fib_index);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
@@ -927,7 +931,7 @@ tcp_send_reset (tcp_connection_t * tc)
       th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
       ASSERT (!bogus);
     }
-  tcp_enqueue_to_ip_lookup_now (vm, b, bi, tc->c_is_ip4);
+  tcp_enqueue_to_ip_lookup_now (vm, b, bi, tc->c_is_ip4, tc->c_fib_index);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
@@ -991,7 +995,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tc->rto_boff = 0;
 
   tcp_push_ip_hdr (tm, tc, b);
-  tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
+  tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4, tc->c_fib_index);
   TCP_EVT_DBG (TCP_EVT_SYN_SENT, tc);
 }
 
@@ -1469,7 +1473,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       /* This goes straight to ipx_lookup. Retransmit timer set already */
       tcp_push_ip_hdr (tm, tc, b);
-      tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
+      tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4, tc->c_fib_index);
     }
   /* Retransmit SYN-ACK */
   else if (tc->state == TCP_STATE_SYN_RCVD)
@@ -1880,7 +1884,7 @@ tcp46_output_inline (vlib_main_t * vm,
 #endif
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
 
 	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	done:
