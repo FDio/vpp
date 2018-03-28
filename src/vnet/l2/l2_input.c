@@ -156,29 +156,12 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
    *   set tx sw-if-handle
    */
 
-  u16 ethertype;
-  u8 protocol;
-  l2_input_config_t *config;
-  l2_bridge_domain_t *bd_config;
-  u16 bd_index0;
-  u32 feature_bitmap;
-  u32 feat_mask;
-  ethernet_header_t *h0;
-  u8 *l3h0;
-  u32 sw_if_index0;
-
-#define get_u16(addr) ( *((u16 *)(addr)) )
-
-  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-  h0 = vlib_buffer_get_current (b0);
-  l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
-
-  ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
-  feat_mask = ~0;
+  u32 feat_mask = ~0;
+  u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+  ethernet_header_t *h0 = vlib_buffer_get_current (b0);
 
   /* Get config for the input interface */
-  config = vec_elt_at_index (msm->configs, sw_if_index0);
+  l2_input_config_t *config = vec_elt_at_index (msm->configs, sw_if_index0);
 
   /* Save split horizon group */
   vnet_buffer (b0)->l2.shg = config->shg;
@@ -186,7 +169,11 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
   /* determine layer2 kind for stat and mask */
   if (PREDICT_FALSE (ethernet_address_cast (h0->dst_address)))
     {
-      protocol = ((ip6_header_t *) l3h0)->protocol;
+      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
+
+#define get_u16(addr) ( *((u16 *)(addr)) )
+      u16 ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
+      u8 protocol = ((ip6_header_t *) l3h0)->protocol;
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
       feat_mask &= ~(L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD);
@@ -237,12 +224,13 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
   if (config->bridge)
     {
       /* Do bridge-domain processing */
-      bd_index0 = config->bd_index;
+      u16 bd_index0 = config->bd_index;
       /* save BD ID for next feature graph nodes */
       vnet_buffer (b0)->l2.bd_index = bd_index0;
 
       /* Get config for the bridge domain interface */
-      bd_config = vec_elt_at_index (msm->bd_configs, bd_index0);
+      l2_bridge_domain_t *bd_config =
+	vec_elt_at_index (msm->bd_configs, bd_index0);
 
       /* Save bridge domain and interface seq_num */
       /* *INDENT-OFF* */
@@ -272,7 +260,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
     feat_mask = L2INPUT_FEAT_DROP;
 
   /* mask out features from bitmap using packet type and bd config */
-  feature_bitmap = config->feature_bitmap & feat_mask;
+  u32 feature_bitmap = config->feature_bitmap & feat_mask;
 
   /* save for next feature graph nodes */
   vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
@@ -399,9 +387,6 @@ l2input_node_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vlib_node_increment_counter (vm, l2input_node.index,
-				       L2INPUT_ERROR_L2INPUT, 4);
-
 	  classify_and_dispatch (msm, b0, &next0);
 	  classify_and_dispatch (msm, b1, &next1);
 	  classify_and_dispatch (msm, b2, &next2);
@@ -442,9 +427,6 @@ l2input_node_inline (vlib_main_t * vm,
 	      clib_memcpy (t->dst, h0->dst_address, 6);
 	    }
 
-	  vlib_node_increment_counter (vm, l2input_node.index,
-				       L2INPUT_ERROR_L2INPUT, 1);
-
 	  classify_and_dispatch (msm, b0, &next0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -455,6 +437,9 @@ l2input_node_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  vlib_node_increment_counter (vm, l2input_node.index,
+			       L2INPUT_ERROR_L2INPUT, frame->n_vectors);
 
   return frame->n_vectors;
 }
