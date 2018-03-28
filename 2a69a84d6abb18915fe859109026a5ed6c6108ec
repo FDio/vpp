@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "433792e8_e72a2cd4",
+        "filename": "src/m4/ax_vpp_detect_clsz.m4",
+        "patchSetId": 5
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-03-28T13:54:01Z",
+      "side": 1,
+      "message": "This has to be vpp_log2_clsz\u003d6. I will change it to default 6",
+      "range": {
+        "startLine": 60,
+        "startChar": 24,
+        "endLine": 60,
+        "endChar": 39
+      },
+      "revId": "2a69a84d6abb18915fe859109026a5ed6c6108ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
