@@ -44,7 +44,7 @@ typedef struct _transport_connection
     /*
      * Opaque connection ID
      */
-    u8 opaque_conn_id[42];
+    u8 opaque_conn_id[46];
   };
 
   u32 s_index;			/**< Parent session index */

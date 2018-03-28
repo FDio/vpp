@@ -562,6 +562,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_proto = TRANSPORT_PROTO_TCP;
   tc->c_fib_index = rmt->fib_index;
+
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
