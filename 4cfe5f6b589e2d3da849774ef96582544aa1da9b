@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f2696611_e9da9170",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1357,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-03-28T15:46:41Z",
+      "side": 1,
+      "message": "I think a node name like vxlan-flow-input or vxlan-flow-passthru-input would be more meaningful, to include the term \"flow\" in there.",
+      "range": {
+        "startLine": 1357,
+        "startChar": 17,
+        "endLine": 1357,
+        "endChar": 25
+      },
+      "revId": "4cfe5f6b589e2d3da849774ef96582544aa1da9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
