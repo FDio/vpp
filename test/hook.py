@@ -5,6 +5,7 @@ import traceback
 from log import RED, single_line_delim, double_line_delim
 from debug import spawn_gdb
 from subprocess import check_output, CalledProcessError
+from util import check_core_path
 
 
 class Hook(object):
@@ -70,6 +71,7 @@ class PollHook(Hook):
         else:
             self.logger.error("Core file present, debug with: gdb %s %s" %
                               (self.testcase.vpp_bin, core_path))
+            check_core_path(self.logger, core_path)
             self.logger.error("Running `file %s':" % core_path)
             try:
                 info = check_output(["file", core_path])
