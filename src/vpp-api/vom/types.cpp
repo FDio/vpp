@@ -39,7 +39,11 @@ rc_t::from_vpp_retval(int32_t rv)
     return (rc_t::OK);
   }
   if (-68 == rv) {
-    // interface laready exists
+    // sub interface already exists
+    return (rc_t::OK);
+  }
+  if (-79 == rv) {
+    // interface already exists
     return (rc_t::OK);
   }
 
