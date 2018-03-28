@@ -13,6 +13,7 @@ from debug import spawn_gdb
 from log import global_logger
 from discover_tests import discover_tests
 from subprocess import check_output, CalledProcessError
+from util import check_core_path
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
@@ -136,6 +137,7 @@ def run_forked(suite):
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
+                    check_core_path(global_logger, core_path)
                     global_logger.debug("Running `file %s':" % core_path)
                     try:
                         info = check_output(["file", core_path])
