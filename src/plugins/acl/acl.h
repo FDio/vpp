@@ -186,6 +186,15 @@ typedef struct {
   /* lookup contexts where a given ACL is used */
   u32 **lc_index_vec_by_acl;
 
+  /* input and output policy epochs by interface */
+  u32 *input_policy_epoch_by_sw_if_index;
+  u32 *output_policy_epoch_by_sw_if_index;
+
+  /* whether we need to take the epoch of the session into account */
+  int reclassify_sessions;
+
+
+
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
 
