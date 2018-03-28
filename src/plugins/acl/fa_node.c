@@ -589,7 +589,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index, u32
 
 static fa_session_t *
 acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		    fa_5tuple_t * p5tuple)
+		    fa_5tuple_t * p5tuple, u16 current_policy_epoch)
 {
   clib_bihash_kv_40_8_t *pkv = &p5tuple->kv;
   clib_bihash_kv_40_8_t kv;
@@ -603,6 +603,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 
   pool_get_aligned (pw->fa_sessions_pool, sess, CLIB_CACHE_LINE_BYTES);
   f_sess_id.session_index = sess - pw->fa_sessions_pool;
+  f_sess_id.intf_policy_epoch = current_policy_epoch;
 
   kv.key[0] = pkv->key[0];
   kv.key[1] = pkv->key[1];
@@ -662,6 +663,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -709,6 +711,10 @@ acl_fa_node_fn (vlib_main_t * vm,
 	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
 	  else
 	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+
+          u32 **p_epoch_vec = is_input ? &am->input_policy_epoch_by_sw_if_index
+                                       :  &am->output_policy_epoch_by_sw_if_index;
+          u16 current_policy_epoch = sw_if_index0 < vec_len(*p_epoch_vec) ? vec_elt(*p_epoch_vec, sw_if_index0) : (is_input * FA_POLICY_EPOCH_IS_INPUT);
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
@@ -782,6 +788,21 @@ acl_fa_node_fn (vlib_main_t * vm,
                     acl_check_needed = 0;
                     action = 0;
                   }
+                  if (PREDICT_FALSE(am->reclassify_sessions)) {
+                   /* if the MSB of policy epoch matches but not the LSB means it is a stale session */
+                   if ( (0 == ((current_policy_epoch ^ f_sess_id.intf_policy_epoch) & FA_POLICY_EPOCH_IS_INPUT))
+                        && (current_policy_epoch != f_sess_id.intf_policy_epoch) ) {
+                      /* delete session and increment the counter */
+                      vec_validate (pw->fa_session_epoch_change_by_sw_if_index, sw_if_index0);
+                      vec_elt (pw->fa_session_epoch_change_by_sw_if_index, sw_if_index0)++;
+                      if(acl_fa_conn_list_delete_session(am, f_sess_id)) {
+                        /* delete the session only if we were able to unlink it */
+                        acl_fa_delete_session (am, sw_if_index0, f_sess_id);
+                      }
+                      acl_check_needed = 1;
+                      trace_bitmap |= 0x40000000;
+                    }
+                  }
 		}
 	    }
 
@@ -804,7 +825,7 @@ acl_fa_node_fn (vlib_main_t * vm,
                       if (PREDICT_TRUE (valid_new_sess)) {
                         fa_session_t *sess = acl_fa_add_session (am, is_input,
                                                                  sw_if_index0,
-                                                                 now, &kv_sess);
+                                                                 now, &kv_sess, current_policy_epoch);
                         acl_fa_track_session (am, is_input, sw_if_index0, now,
                                               sess, &fa_5tuple);
                         pkts_new_session += 1;
