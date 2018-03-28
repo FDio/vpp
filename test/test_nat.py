@@ -1031,6 +1031,7 @@ class TestNAT44(MethodHolder):
                 twice_nat=sm.twice_nat,
                 out2in_only=sm.out2in_only,
                 tag=sm.tag,
+                external_sw_if_index=sm.external_sw_if_index,
                 is_add=0)
 
         lb_static_mappings = self.vapi.nat44_lb_static_mapping_dump()
@@ -2463,14 +2464,43 @@ class TestNAT44(MethodHolder):
         # configure interface address and check static mappings
         self.pg7.config_ip4()
         static_mappings = self.vapi.nat44_static_mapping_dump()
-        self.assertEqual(1, len(static_mappings))
-        self.assertEqual(static_mappings[0].external_ip_address[0:4],
-                         self.pg7.local_ip4n)
-        self.assertEqual(0xFFFFFFFF, static_mappings[0].external_sw_if_index)
-        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
+        self.assertEqual(2, len(static_mappings))
+        resolved = False
+        for sm in static_mappings:
+            if sm.external_sw_if_index == 0xFFFFFFFF:
+                self.assertEqual(sm.external_ip_address[0:4],
+                                 self.pg7.local_ip4n)
+                self.assertEqual((sm.tag).split('\0', 1)[0], tag)
+                resolved = True
+        self.assertTrue(resolved)
 
         # remove interface address and check static mappings
         self.pg7.unconfig_ip4()
+        static_mappings = self.vapi.nat44_static_mapping_dump()
+        self.assertEqual(1, len(static_mappings))
+        self.assertEqual(self.pg7.sw_if_index,
+                         static_mappings[0].external_sw_if_index)
+        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
+
+        # configure interface address again and check static mappings
+        self.pg7.config_ip4()
+        static_mappings = self.vapi.nat44_static_mapping_dump()
+        self.assertEqual(2, len(static_mappings))
+        resolved = False
+        for sm in static_mappings:
+            if sm.external_sw_if_index == 0xFFFFFFFF:
+                self.assertEqual(sm.external_ip_address[0:4],
+                                 self.pg7.local_ip4n)
+                self.assertEqual((sm.tag).split('\0', 1)[0], tag)
+                resolved = True
+        self.assertTrue(resolved)
+
+        # remove static mapping
+        self.nat44_add_static_mapping(
+            '1.2.3.4',
+            external_sw_if_index=self.pg7.sw_if_index,
+            tag=tag,
+            is_add=0)
         static_mappings = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(0, len(static_mappings))
 
@@ -2494,17 +2524,23 @@ class TestNAT44(MethodHolder):
         # configure interface address and check identity mappings
         self.pg7.config_ip4()
         identity_mappings = self.vapi.nat44_identity_mapping_dump()
-        self.assertEqual(1, len(identity_mappings))
-        self.assertEqual(identity_mappings[0].ip_address,
-                         self.pg7.local_ip4n)
-        self.assertEqual(0xFFFFFFFF, identity_mappings[0].sw_if_index)
-        self.assertEqual(port, identity_mappings[0].port)
-        self.assertEqual(IP_PROTOS.tcp, identity_mappings[0].protocol)
+        resolved = False
+        self.assertEqual(2, len(identity_mappings))
+        for sm in identity_mappings:
+            if sm.sw_if_index == 0xFFFFFFFF:
+                self.assertEqual(identity_mappings[0].ip_address,
+                                 self.pg7.local_ip4n)
+                self.assertEqual(port, identity_mappings[0].port)
+                self.assertEqual(IP_PROTOS.tcp, identity_mappings[0].protocol)
+                resolved = True
+        self.assertTrue(resolved)
 
         # remove interface address and check identity mappings
         self.pg7.unconfig_ip4()
         identity_mappings = self.vapi.nat44_identity_mapping_dump()
-        self.assertEqual(0, len(identity_mappings))
+        self.assertEqual(1, len(identity_mappings))
+        self.assertEqual(self.pg7.sw_if_index,
+                         identity_mappings[0].sw_if_index)
 
     def test_ipfix_nat44_sess(self):
         """ IPFIX logging NAT44 session created/delted """

@@ -687,25 +687,67 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   if (sw_if_index != ~0)
     {
       ip4_address_t * first_int_addr;
+      snat_static_map_resolve_t *rp, *rp_match = 0;
+
+      for (i = 0; i < vec_len (sm->to_resolve); i++)
+        {
+          rp = sm->to_resolve + i;
+          if (rp->sw_if_index != sw_if_index &&
+              rp->l_addr.as_u32 != l_addr.as_u32 &&
+              rp->vrf_id != vrf_id && rp->addr_only != addr_only)
+            continue;
+
+          if (!addr_only)
+            {
+              if (rp->l_port != l_port && rp->e_port != e_port && rp->proto != proto)
+                continue;
+            }
+
+          rp_match = rp;
+          break;
+        }
 
       /* Might be already set... */
       first_int_addr = ip4_interface_first_address
         (sm->ip4_main, sw_if_index, 0 /* just want the address*/);
 
-      /* DHCP resolution required? */
-      if (first_int_addr == 0)
+      if (is_add)
         {
-          snat_add_static_mapping_when_resolved
-            (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-             addr_only,  is_add, tag);
-          return 0;
+          if (rp_match)
+            return VNET_API_ERROR_VALUE_EXIST;
+
+          /* DHCP resolution required? */
+          if (first_int_addr == 0)
+            {
+              snat_add_static_mapping_when_resolved
+                (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
+                 addr_only,  is_add, tag);
+              return 0;
+            }
+            else
+            {
+              e_addr.as_u32 = first_int_addr->as_u32;
+              /* Identity mapping? */
+              if (l_addr.as_u32 == 0)
+                l_addr.as_u32 = e_addr.as_u32;
+            }
         }
-        else
+      else
         {
-          e_addr.as_u32 = first_int_addr->as_u32;
-          /* Identity mapping? */
-          if (l_addr.as_u32 == 0)
-            l_addr.as_u32 = e_addr.as_u32;
+          if (!rp_match)
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+          vec_del1 (sm->to_resolve, i);
+
+          if (first_int_addr)
+            {
+              e_addr.as_u32 = first_int_addr->as_u32;
+              /* Identity mapping? */
+              if (l_addr.as_u32 == 0)
+                l_addr.as_u32 = e_addr.as_u32;
+            }
+          else
+            return 0;
         }
     }
 
@@ -2701,7 +2743,6 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
 {
   snat_main_t *sm = &snat_main;
   snat_static_map_resolve_t *rp;
-  u32 *indices_to_delete = 0;
   ip4_address_t l_addr;
   int i, j;
   int rv;
@@ -2759,17 +2800,7 @@ match:
               if (rv)
                 clib_warning ("snat_add_static_mapping returned %d",
                               rv);
-              vec_free (rp->tag);
-              vec_add1 (indices_to_delete, j);
             }
-        }
-      /* If we resolved any of the outstanding static mappings */
-      if (vec_len(indices_to_delete))
-        {
-          /* Delete them */
-          for (j = vec_len(indices_to_delete)-1; j >= 0; j--)
-            vec_delete(sm->to_resolve, 1, j);
-          vec_free(indices_to_delete);
         }
       return;
     }
