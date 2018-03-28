@@ -1670,6 +1670,9 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU =
 	    sctp_listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU;
 	  child_conn->state = SCTP_STATE_CLOSED;
+	  child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.fib_index =
+	    sctp_listener->sub_conn[SCTP_PRIMARY_PATH_IDX].
+	    connection.fib_index;
 
 	  if (is_ip4)
 	    {
