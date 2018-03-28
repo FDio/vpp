@@ -76,6 +76,10 @@ typedef struct {
   u64 reserved2[5];       /* +5*8 bytes = 64 */
 } fa_session_t;
 
+#define FA_POLICY_EPOCH_MASK 0x7fff
+/* input policy epochs have the MSB set */
+#define FA_POLICY_EPOCH_IS_INPUT 0x8000
+
 
 /* This structure is used to fill in the u64 value
    in the per-sw-if-index hash table */
@@ -85,7 +89,7 @@ typedef struct {
     struct {
       u32 session_index;
       u16 thread_index;
-      u16 reserved0;
+      u16 intf_policy_epoch;
     };
   };
 } fa_full_session_id_t;
@@ -117,6 +121,8 @@ typedef struct {
   /* adds and deletes per-worker-per-interface */
   u64 *fa_session_dels_by_sw_if_index;
   u64 *fa_session_adds_by_sw_if_index;
+  /* sessions deleted due to epoch change */
+  u64 *fa_session_epoch_change_by_sw_if_index;
   /* Vector of expired connections retrieved from lists */
   u32 *expired;
   /* the earliest next expiry time */
