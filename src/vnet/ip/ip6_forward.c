@@ -975,12 +975,15 @@ ip6_urpf_loose_check (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
 {
   const load_balance_t *lb0;
   index_t lbi;
+  u32 fib_index;
 
-  lbi = ip6_fib_table_fwding_lookup_with_if_index (im,
-						   vnet_buffer
-						   (b)->sw_if_index[VLIB_RX],
-						   &i->src_address);
+  fib_index = vec_elt (im->fib_index_by_sw_if_index,
+		       vnet_buffer (b)->sw_if_index[VLIB_RX]);
+  fib_index =
+    (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
+    fib_index : vnet_buffer (b)->sw_if_index[VLIB_TX];
 
+  lbi = ip6_fib_table_fwding_lookup (im, fib_index, &i->src_address);
   lb0 = load_balance_get (lbi);
 
   return (fib_urpf_check_size (lb0->lb_urpf));
