@@ -2757,6 +2757,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  child0->c_rmt_port = th0->src_port;
 	  child0->c_is_ip4 = is_ip4;
 	  child0->state = TCP_STATE_SYN_RCVD;
+	  child0->c_fib_index = lc0->c_fib_index;
 
 	  if (is_ip4)
 	    {

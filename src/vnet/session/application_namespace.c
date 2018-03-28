@@ -81,7 +81,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	    fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP4,
 						    a->sw_if_index);
 	  a->ip6_fib_id =
-	    fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP4,
+	    fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP6,
 						    a->sw_if_index);
 	}
       if (a->sw_if_index == APP_NAMESPACE_INVALID_INDEX
