@@ -54,6 +54,8 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
   listener->state = TCP_STATE_LISTEN;
+  if (lcl->sw_if_index != ENDPOINT_INVALID_INDEX)
+    listener->c_sw_if_index = lcl->sw_if_index;
 
   tcp_connection_timers_init (listener);
 
@@ -562,6 +564,8 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_proto = TRANSPORT_PROTO_TCP;
   tc->c_fib_index = rmt->fib_index;
+  if (rmt->sw_if_index != ENDPOINT_INVALID_INDEX)
+    tc->c_sw_if_index = rmt->sw_if_index;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 

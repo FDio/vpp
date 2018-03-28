@@ -40,11 +40,12 @@ typedef struct _transport_connection
       u8 proto;			/**< Protocol id */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u32 fib_index;		/**< Network namespace */
+      u32 sw_if_index;		/**< Local interface */
     };
     /*
      * Opaque connection ID
      */
-    u8 opaque_conn_id[42];
+    u8 opaque_conn_id[46];
   };
 
   u32 s_index;			/**< Parent session index */
@@ -70,6 +71,7 @@ typedef struct _transport_connection
 #define c_rmt_port connection.rmt_port
 #define c_proto connection.proto
 #define c_fib_index connection.fib_index
+#define c_sw_if_index connection.sw_if_index
 #define c_s_index connection.s_index
 #define c_c_index connection.c_index
 #define c_is_ip4 connection.is_ip4
