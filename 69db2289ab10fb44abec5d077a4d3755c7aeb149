@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "47224d54_532f1322",
+        "filename": "src/vnet/adj/adj.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-03-28T12:52:46Z",
+      "side": 1,
+      "message": "update adj.h too.",
+      "revId": "69db2289ab10fb44abec5d077a4d3755c7aeb149",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
