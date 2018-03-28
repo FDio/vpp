@@ -636,11 +636,9 @@ class VCLIpv6ThruHostStackTestCase(VCLTestCase):
     def test_vcl_ipv6_thru_host_stack_echo(self):
         """ run VCL IPv6 thru host stack echo test """
 
-        # TBD: Enable this when VPP IPv6 thru host teardown
-        # config bug is fixed.
-        # self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-        #                          "vcl_test_client",
-        #                          self.client_ipv6_echo_test_args)
+        self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
+                                  "vcl_test_client",
+                                  self.client_ipv6_echo_test_args)
 
     # TBD: Remove VCLIpv6ThruHostStackExtended*TestCase classes and move
     #      tests here when VPP  thru host teardown/setup config bug
