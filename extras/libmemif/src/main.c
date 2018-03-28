@@ -54,7 +54,7 @@
 /* private structs and functions */
 #include <memif_private.h>
 
-#define ERRLIST_LEN 38
+#define ERRLIST_LEN 39
 #define MAX_ERRBUF_LEN 256
 
 #if __x86_x64__
@@ -144,7 +144,9 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_POLL_CANCEL */
   "Memif event polling was canceled.",
   /* MEMIF_ERR_MAX_RING */
-  "Maximum log2 ring size is 15"
+  "Maximum log2 ring size is 15.",
+  /* MEMIF_ERR_PRIVHDR */
+  "Private headers not supported."
 };
 
 #define MEMIF_ERR_UNDEFINED "undefined error"

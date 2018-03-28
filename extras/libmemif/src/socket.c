@@ -227,6 +227,7 @@ memif_msg_enq_add_ring (memif_connection_t * c, uint8_t index, uint8_t dir)
   ar->region = mq->region;
   ar->log2_ring_size = mq->log2_ring_size;
   ar->flags = (dir == MEMIF_RING_S2M) ? MEMIF_MSG_ADD_RING_FLAG_S2M : 0;
+  ar->private_hdr_size = 0;
 
   e->next = NULL;
   if (c->msg_queue == NULL)
@@ -515,6 +516,9 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
 
   if (fd < 0)
     return MEMIF_ERR_NO_INTFD;
+
+  if (ar->private_hdr_size != 0)
+    return MEMIF_ERR_PRIVHDR;
 
   if (ar->flags & MEMIF_MSG_ADD_RING_FLAG_S2M)
     {
