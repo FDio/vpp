@@ -981,10 +981,8 @@ format_adj_nbr_incomplete (u8* s, va_list *ap)
                 format_ip46_address, &adj->sub_type.nbr.next_hop,
 		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, " %U",
-                format_vnet_sw_interface_name,
-                vnm,
-                vnet_get_sw_interface(vnm,
-                                      adj->rewrite_header.sw_if_index));
+                format_vnet_sw_if_index_name,
+                vnm, adj->rewrite_header.sw_if_index);
 
     return (s);
 }
