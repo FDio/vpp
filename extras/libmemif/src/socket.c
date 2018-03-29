@@ -590,9 +590,6 @@ memif_msg_receive_connect (memif_connection_t * c, memif_msg_t * msg)
 	  add_list_elt (&elt, &lm->interrupt_list, &lm->interrupt_list_len);
 
 	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
-
-	  /* refill ring buffers */
-	  memif_refill_queue ((void *) c, i, -1);
 	}
 
     }
@@ -623,9 +620,6 @@ memif_msg_receive_connected (memif_connection_t * c, memif_msg_t * msg)
       for (i = 0; i < c->run_args.num_s2m_rings; i++)
 	{
 	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
-
-	  /* refill ring buffers */
-	  memif_refill_queue ((void *) c, i, -1);
 	}
     }
 

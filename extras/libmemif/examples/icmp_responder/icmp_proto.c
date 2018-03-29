@@ -37,6 +37,7 @@
 #include <net/if_arp.h>
 #include <asm/byteorder.h>
 #include <byteswap.h>
+#include <assert.h>
 
 #include <icmp_proto.h>
 
@@ -334,6 +335,191 @@ generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
   ip->tot_len = __bswap_16 (*size - sizeof (struct ether_header));
   ip->check = 0;
   ip->check = cksum (ip, sizeof (struct iphdr));
+
+  return 0;
+}
+
+int
+generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
+		  uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq,
+		  icmpr_flow_mode_t mode)
+{
+  struct ether_header *eh;
+  struct iphdr *ip;
+  struct icmphdr *icmp;
+
+  *size = 0;
+
+  if (mode == ICMPR_FLOW_MODE_ETH)
+    {
+      eh = (struct ether_header *) pck;
+      *size += generate_eth (eh, hw_daddr);
+    }
+
+  ip = (struct iphdr *) (pck + *size);
+  *size += generate_ip (ip, saddr, daddr);
+
+  icmp = (struct icmphdr *) (pck + *size);
+  *size += generate_icmp (icmp, seq);
+
+  ((struct icmphdr *) (pck + *size - sizeof (struct icmphdr)))->checksum =
+    cksum (pck + *size - sizeof (struct icmphdr), sizeof (struct icmphdr));
+
+  ip->tot_len = __bswap_16 (*size - sizeof (struct ether_header));
+  ip->check = 0;
+  ip->check = cksum (ip, sizeof (struct iphdr));
+
+  return 0;
+}
+
+#define GET_HEADER(out,hdr,src,off) do {	\
+					out = (hdr*)(src + off); \
+					off += sizeof (hdr); \
+				} while (0)
+
+int
+resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
+{
+  struct ether_header *eh;
+  struct ether_arp *eah;
+  struct iphdr *ip;
+  struct icmphdr *icmp;
+  uint32_t offset = 0;
+
+  if (pck == NULL)
+    return 0;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  memcpy (eh->ether_dhost, eh->ether_shost, 6);
+  memcpy (eh->ether_shost, "aaaaaa", 6);
+
+  if (eh->ether_type == 0x0608)
+    {
+      GET_HEADER (eah, struct ether_arp, pck, offset);
+      struct arphdr *arp = &eah->ea_hdr;
+
+      arp->ar_hrd = __bswap_16 (ARPHRD_ETHER);
+      arp->ar_pro = __bswap_16 (0x0800);
+
+      arp->ar_hln = 6;
+      arp->ar_pln = 4;
+
+      arp->ar_op = __bswap_16 (ARPOP_REPLY);
+
+      memcpy (eah->arp_tha, eah->arp_sha, 6);
+      memcpy (eah->arp_tpa, eah->arp_spa, 4);
+
+      memcpy (eah->arp_sha, eh->ether_shost, 6);
+      memcpy (eah->arp_spa, ip_addr, 4);
+    }
+
+  else if (eh->ether_type == 0x0008)
+    {
+      GET_HEADER (ip, struct iphdr, pck, offset);
+
+      if (ip->protocol == 1)
+	{
+	  ip->ihl = 5;
+	  ip->version = 4;
+	  ip->tos = 0;
+	  ip->tot_len = 0x0000;
+	  ip->id = 0;
+	  ip->frag_off = 0;
+	  ip->ttl = 0x40;
+	  ip->protocol = 1;
+	  ip->check = 0x0000;
+	  ip->daddr = ip->saddr;
+	  ((uint8_t *) & ip->saddr)[0] = ip_addr[0];
+	  ((uint8_t *) & ip->saddr)[1] = ip_addr[1];
+	  ((uint8_t *) & ip->saddr)[2] = ip_addr[2];
+	  ((uint8_t *) & ip->saddr)[3] = ip_addr[3];
+
+	  GET_HEADER (icmp, struct icmphdr, pck, offset);
+
+	  icmp->type = 0x00;
+	  icmp->code = 0;
+	  icmp->checksum = cksum (icmp, sizeof (struct icmphdr));
+
+	  /* rest is payload */
+	  offset = *size;
+
+	  ip->tot_len = __bswap_16 (offset - sizeof (struct ether_header));
+	  ip->check = cksum (ip, sizeof (struct iphdr));
+	}
+    }
+
+  assert (offset == *size && "unsupported protocol");
+  return 0;
+}
+
+
+int
+resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
+{
+  struct ether_header *eh;
+  struct ether_arp *eah;
+  struct iphdr *ip;
+  struct icmphdr *icmp;
+  int32_t offset = 0;
+  uint16_t encap_size = sizeof (struct ether_header);
+  void *pck = *pck_;
+
+  if (pck == NULL)
+    return 0;
+
+  *pck_ -= encap_size;
+  offset -= encap_size;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  uint8_t hw_daddr[6];
+  memset (hw_daddr, 0, sizeof (uint8_t) * 6);
+
+  generate_eth (eh, hw_daddr);
+
+  if (eh->ether_type == 0x0008)
+    {
+      GET_HEADER (ip, struct iphdr, pck, offset);
+
+      if (ip->protocol == 1)
+	{
+	  ip->ihl = 5;
+	  ip->version = 4;
+	  ip->tos = 0;
+	  ip->tot_len = 0x0000;
+	  ip->id = 0;
+	  ip->frag_off = 0;
+	  ip->ttl = 0x40;
+	  ip->protocol = 1;
+	  ip->check = 0x0000;
+	  ip->daddr = ip->saddr;
+	  ((uint8_t *) & ip->saddr)[0] = ip_addr[0];
+	  ((uint8_t *) & ip->saddr)[1] = ip_addr[1];
+	  ((uint8_t *) & ip->saddr)[2] = ip_addr[2];
+	  ((uint8_t *) & ip->saddr)[3] = ip_addr[3];
+
+	  GET_HEADER (icmp, struct icmphdr, pck, offset);
+
+	  icmp->type = 0x00;
+	  icmp->code = 0;
+	  icmp->checksum = cksum (icmp, sizeof (struct icmphdr));
+
+	  /* rest is payload */
+	  offset = *size;
+
+	  ip->tot_len = __bswap_16 (offset - sizeof (struct ether_header));
+	  ip->check = cksum (ip, sizeof (struct iphdr));
+	}
+    }
+
+  offset += encap_size;
+
+  assert (offset != *size &&
+	  "new packet length must be increased by encap size");
+
+  /* overwrite packet size */
+  *size = offset;
 
   return 0;
 }

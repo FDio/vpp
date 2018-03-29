@@ -299,10 +299,6 @@ memif_rx_poll (void *ptr)
       data->rx_buf_num += rx;
       if (rx == 0)
 	{
-	  /* if queue is in polling mode, it's not refilled */
-	  err = memif_refill_queue (c->conn, data->qid, -1);
-	  if (err != MEMIF_ERR_SUCCESS)
-	    INFO ("memif_buffer_free: %s", memif_strerror (err));
 	  continue;
 	}
 
@@ -313,7 +309,7 @@ memif_rx_poll (void *ptr)
 
       err =
 	memif_buffer_alloc (c->conn, data->qid, data->tx_bufs,
-			    data->rx_buf_num, &tx, 128);
+			    data->rx_buf_num, &tx, 0);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -334,10 +330,10 @@ memif_rx_poll (void *ptr)
 	}
 
       /* mark memif buffers and shared memory buffers as free */
-      err = memif_refill_queue (c->conn, data->qid, -1);
+      err = memif_refill_queue (c->conn, data->qid, rx, 0);
       if (err != MEMIF_ERR_SUCCESS)
 	INFO ("memif_buffer_free: %s", memif_strerror (err));
-      data->rx_buf_num -= rx;
+      data->rx_buf_num -= fb;
 
       DBG ("freed %d buffers. %u/%u alloc/free buffers",
 	   fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
@@ -359,10 +355,10 @@ error:
   goto close;
 
 close:
-  err = memif_refill_queue (c->conn, data->qid, -1);
+  err = memif_refill_queue (c->conn, data->qid, rx, 0);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  data->rx_buf_num -= rx;
+  data->rx_buf_num -= fb;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
   free (data->rx_bufs);
@@ -443,7 +439,7 @@ memif_rx_interrupt (void *ptr)
 
 	  err =
 	    memif_buffer_alloc (c->conn, data->qid, data->tx_bufs,
-				data->rx_buf_num, &tx, 128);
+				data->rx_buf_num, &tx, 0);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    {
 	      INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -464,10 +460,10 @@ memif_rx_interrupt (void *ptr)
 	    }
 
 	  /* mark memif buffers and shared memory buffers as free */
-	  err = memif_refill_queue (c->conn, data->qid, rx);
+	  err = memif_refill_queue (c->conn, data->qid, rx, 0);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    INFO ("memif_buffer_free: %s", memif_strerror (err));
-	  data->rx_buf_num -= rx;
+	  data->rx_buf_num -= fb;
 
 	  DBG ("freed %d buffers. %u/%u alloc/free buffers",
 	       fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
@@ -490,10 +486,10 @@ error:
   goto close;
 
 close:
-  err = memif_refill_queue (c->conn, data->qid, rx);
+  err = memif_refill_queue (c->conn, data->qid, rx, 0);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  data->rx_buf_num -= rx;
+  data->rx_buf_num -= fb;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, data->rx_buf_num, MAX_MEMIF_BUFS - data->rx_buf_num);
   free (data->rx_bufs);

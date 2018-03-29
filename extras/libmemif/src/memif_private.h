@@ -69,6 +69,7 @@ typedef struct
 {
   void *shm;
   uint32_t region_size;
+  uint32_t buffer_offset;
   int fd;
 } memif_region_t;
 
