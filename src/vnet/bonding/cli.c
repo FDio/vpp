@@ -176,6 +176,8 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vnet_hw_interface_t *hw;
   u32 *sif_sw_if_index;
   u32 thread_index;
+  u32 **s_list = 0;
+  u32 i;
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || bond_dev_class.index != hw->dev_class_index)
@@ -185,10 +187,19 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   vec_foreach (sif_sw_if_index, bif->slaves)
   {
-    sif = bond_get_slave_by_sw_if_index (*sif_sw_if_index);
-    if (sif)
-      bond_delete_neighbor (vm, bif, sif);
+    vec_add1 (s_list, sif_sw_if_index);
   }
+
+  for (i = 0; i < vec_len (s_list); i++)
+    {
+      sif_sw_if_index = s_list[i];
+      sif = bond_get_slave_by_sw_if_index (*sif_sw_if_index);
+      if (sif)
+	bond_delete_neighbor (vm, bif, sif);
+    }
+
+  if (s_list)
+    vec_free (s_list);
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, bif->hw_if_index, 0);
