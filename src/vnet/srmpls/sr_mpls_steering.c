@@ -393,21 +393,15 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 
   memset (&key, 0, sizeof (sr_mpls_steering_key_t));
 
-  /* Compute the steer policy key */
-  if (traffic_type == SR_STEER_IPV4 || traffic_type == SR_STEER_IPV6)
-    {
-      key.prefix.as_u64[0] = prefix->as_u64[0];
-      key.prefix.as_u64[1] = prefix->as_u64[1];
-      key.mask_width = mask_width;
-      key.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
-    }
-  else
-    return -1;
-
-  key.traffic_type = traffic_type;
-
   if (traffic_type != SR_STEER_IPV4 && traffic_type != SR_STEER_IPV6)
     return -1;
+
+  /* Compute the steer policy key */
+  key.prefix.as_u64[0] = prefix->as_u64[0];
+  key.prefix.as_u64[1] = prefix->as_u64[1];
+  key.mask_width = mask_width;
+  key.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
+  key.traffic_type = traffic_type;
 
   /*
    * Search for steering policy. If already exists we are adding a new

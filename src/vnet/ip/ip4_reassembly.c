@@ -497,6 +497,8 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	reass.next_range_bi;
     }
   while (~0 != sub_chain_bi);
+
+  ASSERT (last_b != NULL);
   last_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
   ASSERT (rt->buffers_n >= (buf_cnt - dropped_cnt));
   rt->buffers_n -= buf_cnt - dropped_cnt;

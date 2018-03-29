@@ -2253,6 +2253,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
             ({
 	      vl_api_registration_t *vl_reg;
               vl_reg = vl_api_client_index_to_registration (reg->client_index);
+              ASSERT (vl_reg != NULL);
 	      if (reg && vl_api_can_send_msg (vl_reg))
 	        {
 	          vl_api_ip4_arp_event_t * event = vl_msg_api_alloc (sizeof *event);
