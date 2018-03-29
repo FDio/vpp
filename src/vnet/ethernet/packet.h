@@ -40,6 +40,8 @@
 #ifndef included_ethernet_packet_h
 #define included_ethernet_packet_h
 
+#include <vnet/interface.h>
+
 typedef enum
 {
 #define ethernet_type(n,s) ETHERNET_TYPE_##s = n,
@@ -67,6 +69,13 @@ ethernet_address_cast (u8 * a)
   return (a[0] >> 0) & 1;
 }
 
+always_inline int
+ethernet_address_is_broadcast (u8 * a)
+{
+  return clib_mem_unaligned (a, u32) == 0xffffffff &&
+    clib_mem_unaligned (a + 4, u16) == 0xffff;
+}
+
 always_inline uword
 ethernet_address_is_locally_administered (u8 * a)
 {
@@ -77,6 +86,42 @@ always_inline void
 ethernet_address_set_locally_administered (u8 * a)
 {
   a[0] |= 1 << 1;
+}
+
+always_inline int
+eh_dst_addr_to_rx_ctype (ethernet_header_t * eh)
+{
+  if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
+		    ETHERNET_ADDRESS_UNICAST))
+    {
+      return VNET_INTERFACE_COUNTER_RX_UNICAST;
+    }
+  else if (ethernet_address_is_broadcast (eh->dst_address))
+    {
+      return VNET_INTERFACE_COUNTER_RX_BROADCAST;
+    }
+  else
+    {
+      return VNET_INTERFACE_COUNTER_RX_MULTICAST;
+    }
+}
+
+always_inline int
+eh_dst_addr_to_tx_ctype (ethernet_header_t * eh)
+{
+  if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
+		    ETHERNET_ADDRESS_UNICAST))
+    {
+      return VNET_INTERFACE_COUNTER_TX_UNICAST;
+    }
+  else if (ethernet_address_is_broadcast (eh->dst_address))
+    {
+      return VNET_INTERFACE_COUNTER_TX_BROADCAST;
+    }
+  else
+    {
+      return VNET_INTERFACE_COUNTER_TX_MULTICAST;
+    }
 }
 
 /* For VLAN ethernet type. */

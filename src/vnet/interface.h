@@ -633,25 +633,25 @@ typedef enum
   VNET_N_SIMPLE_INTERFACE_COUNTER = 9,
   /* Combined counters. */
   VNET_INTERFACE_COUNTER_RX = 0,
-  VNET_INTERFACE_COUNTER_TX = 1,
-  VNET_INTERFACE_COUNTER_RX_UNICAST = 2,
-  VNET_INTERFACE_COUNTER_TX_UNICAST = 3,
-  VNET_INTERFACE_COUNTER_RX_MULTICAST = 4,
-  VNET_INTERFACE_COUNTER_TX_MULTICAST = 5,
-  VNET_INTERFACE_COUNTER_RX_BROADCAST = 6,
+  VNET_INTERFACE_COUNTER_RX_UNICAST = 1,
+  VNET_INTERFACE_COUNTER_RX_MULTICAST = 2,
+  VNET_INTERFACE_COUNTER_RX_BROADCAST = 3,
+  VNET_INTERFACE_COUNTER_TX = 4,
+  VNET_INTERFACE_COUNTER_TX_UNICAST = 5,
+  VNET_INTERFACE_COUNTER_TX_MULTICAST = 6,
   VNET_INTERFACE_COUNTER_TX_BROADCAST = 7,
   VNET_N_COMBINED_INTERFACE_COUNTER = 8,
 } vnet_interface_counter_type_t;
 
-#define foreach_combined_interface_counter(X)                  \
-  X(VNET_INTERFACE_COUNTER_RX, rx)                             \
-  X(VNET_INTERFACE_COUNTER_TX, tx)                             \
-  X(VNET_INTERFACE_COUNTER_RX_UNICAST, rx_unicast)             \
-  X(VNET_INTERFACE_COUNTER_TX_UNICAST, tx_unicast)             \
-  X(VNET_INTERFACE_COUNTER_RX_MULTICAST, rx_multicast)         \
-  X(VNET_INTERFACE_COUNTER_TX_MULTICAST, tx_multicast)         \
-  X(VNET_INTERFACE_COUNTER_RX_BROADCAST, rx_broadcast)         \
-  X(VNET_INTERFACE_COUNTER_TX_BROADCAST, tx_broadcast)
+#define foreach_rx_combined_interface_counter(_x)               \
+  for (_x = VNET_INTERFACE_COUNTER_RX;                          \
+       _x <= VNET_INTERFACE_COUNTER_RX_BROADCAST;               \
+       _x++)
+
+#define foreach_tx_combined_interface_counter(_x)               \
+  for (_x = VNET_INTERFACE_COUNTER_TX;                          \
+       _x <= VNET_INTERFACE_COUNTER_TX_BROADCAST;               \
+       _x++)
 
 typedef enum
 {

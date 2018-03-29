@@ -49,6 +49,7 @@ interface::interface(const std::string& name,
   , m_state(itf_state)
   , m_table_id(route::DEFAULT_TABLE)
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
+  , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
 {
@@ -66,6 +67,7 @@ interface::interface(const std::string& name,
   , m_state(itf_state)
   , m_table_id(m_rd->table_id())
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
+  , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
 {
@@ -79,6 +81,7 @@ interface::interface(const interface& o)
   , m_state(o.m_state)
   , m_table_id(o.m_table_id)
   , m_l2_address(o.m_l2_address)
+  , m_stats_type(o.m_stats_type)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
 {
@@ -403,9 +406,14 @@ interface::set(const std::string& tag)
 }
 
 void
-interface::enable_stats_i(interface::stat_listener& el)
+interface::enable_stats_i(interface::stat_listener& el, const stats_type_t& st)
 {
   if (!m_stats) {
+    if (stats_type_t::DETAILED == st) {
+      m_stats_type = st;
+      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
+        m_stats_type, handle_i(), true));
+    }
     m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
     HW::enqueue(m_stats);
     HW::write();
@@ -413,9 +421,9 @@ interface::enable_stats_i(interface::stat_listener& el)
 }
 
 void
-interface::enable_stats(interface::stat_listener& el)
+interface::enable_stats(interface::stat_listener& el, const stats_type_t& st)
 {
-  singular()->enable_stats_i(el);
+  singular()->enable_stats_i(el, st);
 }
 
 std::shared_ptr<interface>

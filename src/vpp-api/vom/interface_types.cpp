@@ -35,6 +35,9 @@ const interface::oper_state_t interface::oper_state_t::UP(1, "up");
 const interface::admin_state_t interface::admin_state_t::DOWN(0, "down");
 const interface::admin_state_t interface::admin_state_t::UP(1, "up");
 
+const interface::stats_type_t interface::stats_type_t::DETAILED(0, "detailed");
+const interface::stats_type_t interface::stats_type_t::NORMAL(1, "normal");
+
 interface::type_t
 interface::type_t::from_string(const std::string& str)
 {
@@ -74,6 +77,11 @@ interface::oper_state_t::oper_state_t(int v, const std::string& s)
 
 interface::admin_state_t::admin_state_t(int v, const std::string& s)
   : enum_base<interface::admin_state_t>(v, s)
+{
+}
+
+interface::stats_type_t::stats_type_t(int v, const std::string& s)
+  : enum_base<interface::stats_type_t>(v, s)
 {
 }
 

@@ -299,6 +299,9 @@ void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
 void vnet_sw_interface_update_unnumbered (u32 sw_if_index,
 					  u32 ip_sw_if_index, u8 enable);
 
+int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
+						    u8 enable);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;
