@@ -1177,14 +1177,9 @@ static void
   vl_api_collect_detailed_interface_stats_reply_t *rmp;
   int rv = 0;
 
-  if (mp->enable_disable)
-    {
-      collect_detailed_interface_stats_flag_set ();
-    }
-  else
-    {
-      collect_detailed_interface_stats_flag_clear ();
-    }
+  rv =
+    vnet_sw_interface_stats_collect_enable_disable (ntohl (mp->sw_if_index),
+						    mp->enable_disable);
 
   REPLY_MACRO (VL_API_COLLECT_DETAILED_INTERFACE_STATS_REPLY);
 }
