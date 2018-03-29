@@ -203,15 +203,20 @@ typedef enum
 
 /** \brief Memif buffer
     @param desc_index - ring descriptor index
-    @param len - buffer length
+    @param ring - pointer to ring containing descriptor for this buffer
+    @param len - available length
     @param flags - memif buffer flags
     @param data - pointer to shared memory data
 */
 typedef struct
 {
   uint16_t desc_index;
+  void *ring;
   uint32_t len;
+/** next buffer present (chained buffers) */
 #define MEMIF_BUFFER_FLAG_NEXT (1 << 0)
+/** states that buffer is from rx ring */
+#define MEMIF_BUFFER_FLAG_RX (1 << 1)
   uint8_t flags;
   void *data;
 } memif_buffer_t;
@@ -423,6 +428,22 @@ int memif_control_fd_handler (int fd, uint8_t events);
 */
 int memif_delete (memif_conn_handle_t * conn);
 
+/** \brief Memif buffer enq tx
+    @param conn - memif conenction handle
+    @param qid - number indentifying queue
+    @param bufs - memif buffers
+    @param count - number of memif buffers to enque
+    @param count_out - returns number of allocated buffers
+
+    Slave is producer of buffers.
+    If connection handle points to master returns MEMIF_ERR_INVAL_ARG.
+
+    \return memif_err_t
+*/
+int memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
+			 memif_buffer_t * bufs, uint16_t count,
+			 uint16_t * count_out);
+
 /** \brief Memif buffer alloc
     @param conn - memif conenction handle
     @param qid - number indentifying queue
@@ -441,11 +462,12 @@ int memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
     @param conn - memif conenction handle
     @param qid - number indentifying queue
     @param count - number of buffers to be placed on ring
+    @param headroom - offset the buffer by headroom
 
     \return memif_err_t
 */
 int memif_refill_queue (memif_conn_handle_t conn, uint16_t qid,
-			uint16_t count);
+			uint16_t count, uint16_t headroom);
 
 /** \brief Memif transmit buffer burst
     @param conn - memif conenction handle
