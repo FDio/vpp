@@ -225,7 +225,7 @@ icmpr_buffer_alloc (long n, uint16_t qid)
   int err;
   uint16_t r;
   /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
-  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 128);
+  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -311,24 +311,25 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 		      &(c->tx_bufs + i)->len, c->ip_addr);
     }
 
+  uint16_t fb;
   /* mark memif buffers and shared memory buffers as free */
-  err = memif_refill_queue (c->conn, qid, rx);
-  c->rx_buf_num -= rx;
+  err = memif_refill_queue (c->conn, qid, rx, 0);
+  c->rx_buf_num -= fb;
 
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
 
   icmpr_tx_burst (c->tx_qid);
 
   return 0;
 
 error:
-  err = memif_refill_queue (c->conn, qid, rx);
+  err = memif_refill_queue (c->conn, qid, rx, 0);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
-  c->rx_buf_num -= rx;
+  c->rx_buf_num -= fb;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 

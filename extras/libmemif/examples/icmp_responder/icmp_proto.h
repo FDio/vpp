@@ -18,11 +18,27 @@
 #ifndef _ICMP_PROTO_H_
 #define _ICMP_PROTO_H_
 
+typedef enum
+{
+  ICMPR_FLOW_MODE_ETH = 0,
+  ICMPR_FLOW_MODE_IP,
+} icmpr_flow_mode_t;
+
 int resolve_packet (void *in_pck, ssize_t in_size, void *out_pck,
 		    uint32_t * out_size, uint8_t ip_addr[4]);
 
+/* resolve packet in place */
+int resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4]);
+
+/* resolve packet in place and add eth encap */
+int resolve_packet3 (void **pck, uint32_t * size, uint8_t ip_addr[4]);
+
 int generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
 		     uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq);
+
+int generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
+		      uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq,
+		      icmpr_flow_mode_t);
 
 int print_packet (void *pck);
 
