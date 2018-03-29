@@ -919,8 +919,9 @@ error:
     {
       if (p->fd != -1)
 	close (p->fd);
-      if (p->config_fd != -1)
+      if (p->config_fd != -1 && p->config_fd != p->fd)
 	close (p->config_fd);
+      p->config_fd = p->fd = -1;
     }
   return err;
 }
