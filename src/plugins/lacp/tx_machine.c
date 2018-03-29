@@ -40,7 +40,8 @@ lacp_tx_action_transmit (void *p1, void *p2)
 {
   vlib_main_t *vm = (vlib_main_t *) p1;
   slave_if_t *sif = (slave_if_t *) p2;
-  f64 now = vlib_time_now (vm);
+  lacp_main_t *lm = &lacp_main;
+  f64 now = vlib_time_now (lm->vlib_main);
 
   if (!lacp_timer_is_running (sif->periodic_timer))
     return 0;
@@ -52,6 +53,7 @@ lacp_tx_action_transmit (void *p1, void *p2)
   if (sif->ntt)
     {
       lacp_send_lacp_pdu (vm, sif);
+      lacp_schedule_periodic_timer (lm->vlib_main, sif);
     }
   sif->ntt = 0;
 

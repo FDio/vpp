@@ -99,7 +99,7 @@ lacp_ptx_action_slow_periodic (void *p1, void *p2)
   else
     timer_expired = 0;
 
-  lacp_start_periodic_timer (lm->vlib_main, sif, LACP_SLOW_PERIODIC_TIMER);
+  lacp_schedule_periodic_timer (lm->vlib_main, sif);
 
   if (timer_expired || (sif->partner.state & LACP_STATE_LACP_TIMEOUT))
     lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
