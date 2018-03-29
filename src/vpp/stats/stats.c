@@ -848,18 +848,26 @@ do_combined_per_interface_counters (stats_main_t * sm)
 	  vp->sw_if_index = htonl (reg->item);
 
 	  im = &vnet_get_main ()->interface_main;
-	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
-	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->rx_packets, u64) =
-	    clib_host_to_net_u64 (v.packets);
-	  clib_mem_unaligned (&vp->rx_bytes, u64) =
-	    clib_host_to_net_u64 (v.bytes);
-	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
-	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->tx_packets, u64) =
-	    clib_host_to_net_u64 (v.packets);
-	  clib_mem_unaligned (&vp->tx_bytes, u64) =
-	    clib_host_to_net_u64 (v.bytes);
+
+#define _(X, x)                  \
+          cm = im->combined_sw_if_counters + X; \
+          vlib_get_combined_counter (cm, reg->item, &v); \
+          clib_mem_unaligned (&vp->x##_packets, u64) = \
+            clib_host_to_net_u64 (v.packets); \
+          clib_mem_unaligned (&vp->x##_bytes, u64) = \
+            clib_host_to_net_u64 (v.bytes);
+
+
+	  _(VNET_INTERFACE_COUNTER_RX, rx);
+	  _(VNET_INTERFACE_COUNTER_TX, tx);
+	  _(VNET_INTERFACE_COUNTER_RX_UNICAST, rx_unicast);
+	  _(VNET_INTERFACE_COUNTER_TX_UNICAST, tx_unicast);
+	  _(VNET_INTERFACE_COUNTER_RX_MULTICAST, rx_multicast);
+	  _(VNET_INTERFACE_COUNTER_TX_MULTICAST, tx_multicast);
+	  _(VNET_INTERFACE_COUNTER_RX_BROADCAST, rx_broadcast);
+	  _(VNET_INTERFACE_COUNTER_TX_BROADCAST, tx_broadcast);
+
+#undef _
 
 	  vl_api_send_msg (vl_reg, (u8 *) mp);
 	}
