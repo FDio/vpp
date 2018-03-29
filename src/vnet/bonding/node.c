@@ -50,15 +50,14 @@ format_bond_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   bond_packet_trace_t *t = va_arg (*args, bond_packet_trace_t *);
-  vnet_hw_interface_t *hw, *hw1;
-  vnet_main_t *vnm = vnet_get_main ();
 
-  hw = vnet_get_sup_hw_interface (vnm, t->sw_if_index);
-  hw1 = vnet_get_sup_hw_interface (vnm, t->bond_sw_if_index);
-  s = format (s, "src %U, dst %U, %s -> %s",
+  s = format (s, "src %U, dst %U, %U -> %U",
 	      format_ethernet_address, t->ethernet.src_address,
 	      format_ethernet_address, t->ethernet.dst_address,
-	      hw->name, hw1->name);
+	      format_vnet_sw_if_index_name, vnet_get_main (),
+	      t->sw_if_index,
+	      format_vnet_sw_if_index_name, vnet_get_main (),
+	      t->bond_sw_if_index);
 
   return s;
 }
@@ -381,6 +380,17 @@ bond_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  // sw_if_index points to the physical interface
 	  sif = bond_get_slave_by_sw_if_index (sw_if_index);
 	  bond_sw_if_index_rewrite (vm, node, sif, eth, b0);
+
+	  if (PREDICT_FALSE (n_trace > 0))
+	    {
+	      vlib_trace_buffer (vm, node, next0, b0, 0 /* follow_chain */ );
+	      vlib_set_trace_count (vm, node, --n_trace);
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      t0->ethernet = *eth;
+	      t0->sw_if_index = sw_if_index;
+	      t0->bond_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	    }
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
