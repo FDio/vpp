@@ -41,6 +41,7 @@ libvnet_la_SOURCES +=				\
   vnet/interface_cli.c				\
   vnet/interface_format.c			\
   vnet/interface_output.c			\
+  vnet/interface_stats.c			\
   vnet/misc.c					\
   vnet/replication.c
 
