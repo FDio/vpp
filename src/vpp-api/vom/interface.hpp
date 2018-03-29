@@ -32,6 +32,7 @@ namespace VOM {
  */
 namespace interface_cmds {
 class stats_enable_cmd;
+class collect_detail_stats_change_cmd;
 class events_cmd;
 };
 
@@ -41,6 +42,15 @@ class events_cmd;
 class interface : public object_base
 {
 public:
+  struct stats_type_t : public enum_base<stats_type_t>
+  {
+    const static stats_type_t DETAILED;
+    const static stats_type_t NORMAL;
+
+  private:
+    stats_type_t(int v, const std::string& s);
+  };
+
   /**
    * The key for interface's key
    */
@@ -447,7 +457,8 @@ public:
   /**
    * Enable stats for this interface
    */
-  void enable_stats(stat_listener& el);
+  void enable_stats(stat_listener& el,
+                    const stats_type_t& st = stats_type_t::NORMAL);
 
 protected:
   /**
@@ -540,7 +551,7 @@ private:
   /**
    * enable the interface stats in the singular instance
    */
-  void enable_stats_i(stat_listener& el);
+  void enable_stats_i(stat_listener& el, const stats_type_t& st);
 
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
@@ -598,6 +609,11 @@ private:
    * HW state of the L2 address
    */
   HW::item<l2_address_t> m_l2_address;
+
+  /**
+   * The state of the detailed stats collection
+   */
+  HW::item<stats_type_t> m_stats_type;
 
   /**
    * Operational state of the interface

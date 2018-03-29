@@ -412,6 +412,48 @@ set_mac_cmd::to_string() const
   return (s.str());
 }
 
+collect_detail_stats_change_cmd::collect_detail_stats_change_cmd(
+  HW::item<interface::stats_type_t>& item,
+  const handle_t& hdl,
+  bool enable)
+  : rpc_cmd(item)
+  , m_hdl(hdl)
+  , m_enable(enable)
+{
+}
+
+bool
+collect_detail_stats_change_cmd::operator==(
+  const collect_detail_stats_change_cmd& other) const
+{
+  return ((m_hdl == other.m_hdl) && (m_hw_item == other.m_hw_item) &&
+          (m_enable == other.m_enable));
+}
+
+rc_t
+collect_detail_stats_change_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.sw_if_index = m_hdl.value();
+  payload.enable_disable = m_enable;
+
+  VAPI_CALL(req.execute());
+
+  m_hw_item.set(wait());
+
+  return (rc_t::OK);
+}
+
+std::string
+collect_detail_stats_change_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "itf-stats: " << m_hw_item.to_string() << " hdl:" << m_hdl.to_string();
+  return (s.str());
+}
+
 events_cmd::events_cmd(interface::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)

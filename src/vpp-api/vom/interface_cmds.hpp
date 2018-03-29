@@ -332,7 +332,7 @@ private:
 };
 
 /**
- * A command class that binds an interface to an L3 table
+ * A command class that changes the MAC address on an interface
  */
 class set_mac_cmd : public rpc_cmd<HW::item<l2_address_t>,
                                    rc_t,
@@ -365,6 +365,50 @@ private:
    * the handle of the interface to update
    */
   const HW::item<handle_t>& m_hdl;
+};
+
+/**
+ * A command class that enables detailed stats collection on an interface
+ */
+class collect_detail_stats_change_cmd
+  : public rpc_cmd<HW::item<interface::stats_type_t>,
+                   rc_t,
+                   vapi::Collect_detailed_interface_stats>
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the handle of the interface
+   */
+  collect_detail_stats_change_cmd(HW::item<interface::stats_type_t>& item,
+                                  const handle_t& h,
+                                  bool enable);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const collect_detail_stats_change_cmd& i) const;
+
+private:
+  /**
+   * the handle of the interface to update
+   */
+  const handle_t& m_hdl;
+
+  /**
+   * enable or disable the detailed stats collection
+   */
+  bool m_enable;
 };
 
 /**
