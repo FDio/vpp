@@ -98,14 +98,14 @@ lacp_mux_action_detached (void *p1, void *p2)
 {
   vlib_main_t *vm = (vlib_main_t *) p1;
   slave_if_t *sif = (slave_if_t *) p2;
+  lacp_main_t *lm = &lacp_main;
 
   lacp_detach_mux_from_aggregator (vm, sif);
   sif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, sif);
   sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   sif->ntt = 1;
-  lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			 &sif->tx_state);
+  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
 
   if (sif->selected == LACP_PORT_SELECTED)
     lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
@@ -123,14 +123,14 @@ lacp_mux_action_attached (void *p1, void *p2)
 {
   vlib_main_t *vm = (vlib_main_t *) p1;
   slave_if_t *sif = (slave_if_t *) p2;
+  lacp_main_t *lm = &lacp_main;
 
   lacp_attach_mux_to_aggregator (vm, sif);
   sif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, sif);
   sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   sif->ntt = 1;
-  lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			 &sif->tx_state);
+  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
 
   if ((sif->selected == LACP_PORT_UNSELECTED) ||
       (sif->selected == LACP_PORT_STANDBY))
@@ -171,13 +171,13 @@ lacp_mux_action_collecting_distributing (void *p1, void *p2)
 {
   vlib_main_t *vm = (vlib_main_t *) p1;
   slave_if_t *sif = (slave_if_t *) p2;
+  lacp_main_t *lm = &lacp_main;
 
   sif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
     LACP_STATE_DISTRIBUTING;
   bond_enable_collecting_distributing (vm, sif);
   sif->ntt = 1;
-  lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			 &sif->tx_state);
+  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
   if ((sif->selected == LACP_PORT_UNSELECTED) ||
       (sif->selected == LACP_PORT_STANDBY) ||
       !(sif->partner.state & LACP_STATE_SYNCHRONIZATION))

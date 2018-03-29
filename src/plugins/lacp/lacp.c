@@ -89,7 +89,7 @@ lacp_send_ethernet_lacp_pdu (slave_if_t * sif)
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
 
-  sif->last_lacpdu_time = vlib_time_now (vm);
+  sif->last_lacpdu_time = vlib_time_now (lm->vlib_main);
 }
 
 /*
@@ -106,8 +106,6 @@ lacp_pick_packet_template (slave_if_t * sif)
 void
 lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
 {
-  lacp_main_t *lm = &lacp_main;
-
   if (sif->mode != BOND_MODE_LACP)
     {
       lacp_stop_timer (&sif->periodic_timer);
@@ -133,10 +131,6 @@ lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
     default:
       ASSERT (0);
     }
-
-  lacp_start_periodic_timer (lm->vlib_main, sif, sif->is_long_timeout ?
-			     LACP_SLOW_PERIODIC_TIMER :
-			     LACP_FAST_PERIODIC_TIMER);
 }
 
 void
