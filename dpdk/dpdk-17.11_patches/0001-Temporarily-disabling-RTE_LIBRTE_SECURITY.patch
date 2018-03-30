@@ -1,0 +1,25 @@
+From 67b4ed278a0d8e93edf3c8ec3b7810232255935b Mon Sep 17 00:00:00 2001
+From: Ray Kinsella <ray.kinsella@intel.com>
+Date: Fri, 30 Mar 2018 12:46:05 +0100
+Subject: [PATCH] Temporarily disabling RTE_LIBRTE_SECURITY
+
+---
+ config/common_base | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/common_base b/config/common_base
+index e74febe..36eec3a 100644
+--- a/config/common_base
++++ b/config/common_base
+@@ -565,7 +565,7 @@ CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO_DEBUG=n
+ #
+ # Compile generic security library
+ #
+-CONFIG_RTE_LIBRTE_SECURITY=y
++CONFIG_RTE_LIBRTE_SECURITY=n
+ 
+ #
+ # Compile generic event device library
+-- 
+2.7.4
+
