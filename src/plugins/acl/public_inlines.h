@@ -16,6 +16,7 @@
 #ifndef included_acl_inlines_h
 #define included_acl_inlines_h
 
+#include <stdint.h>
 
 #include <plugins/acl/acl.h>
 #include <plugins/acl/fa_node.h>
