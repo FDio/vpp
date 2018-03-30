@@ -660,7 +660,7 @@ def autoconfig_setup(ask_questions=True):
         cmd = 'modprobe uio_pci_generic'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {}'. format(cmd, node['host'], stderr))
+            logging.warning('{} failed on node {} {}'. format(cmd, node['host'], stderr))
 
 
 # noinspection PyUnresolvedReferences
