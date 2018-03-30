@@ -280,8 +280,11 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 	  vl_api_force_rpc_call_main_thread
 	    (garp_na_proc_callback, (u8 *) & bd_port, sizeof (uword));
 	}
-      xd->flags |= link_up ?
-	DPDK_DEVICE_FLAG_BOND_SLAVE_UP : ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
+
+      if (link_up)
+	xd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
+      else
+	xd->flags &= ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
     }
   else				/* Should not happen as callback not setup for "normal" links */
     {
