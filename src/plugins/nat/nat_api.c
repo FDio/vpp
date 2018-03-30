@@ -2581,6 +2581,54 @@ send_reply:
   REPLY_MACRO (VL_API_DSLITE_ADD_DEL_POOL_ADDR_RANGE_REPLY);
 }
 
+static void
+send_dslite_address_details (snat_address_t * ap,
+			     vl_api_registration_t * reg, u32 context)
+{
+  vl_api_dslite_address_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+
+  memset (rmp, 0, sizeof (*rmp));
+
+  rmp->_vl_msg_id = ntohs (VL_API_DSLITE_ADDRESS_DETAILS + sm->msg_id_base);
+  clib_memcpy (rmp->ip_address, &(ap->addr), 4);
+  rmp->context = context;
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  dslite_main_t *dm = &dslite_main;
+  snat_address_t *ap;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* *INDENT-OFF* */
+  vec_foreach (ap, dm->addr_pool)
+    {
+      send_dslite_address_details (ap, reg, mp->context);
+    }
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_dslite_address_dump_t_print (vl_api_dslite_address_dump_t * mp,
+				    void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_address_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_dslite_add_del_pool_addr_range_t_print
   (vl_api_dslite_add_del_pool_addr_range_t * mp, void *handle)
 {
@@ -2834,6 +2882,7 @@ _(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
 _(NAT64_PREFIX_DUMP, nat64_prefix_dump)                                 \
 _(NAT64_ADD_DEL_INTERFACE_ADDR, nat64_add_del_interface_addr)           \
 _(DSLITE_ADD_DEL_POOL_ADDR_RANGE, dslite_add_del_pool_addr_range)       \
+_(DSLITE_ADDRESS_DUMP, dslite_address_dump)				\
 _(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)                           \
 _(DSLITE_GET_AFTR_ADDR, dslite_get_aftr_addr)                           \
 _(DSLITE_SET_B4_ADDR, dslite_set_b4_addr)                               \
