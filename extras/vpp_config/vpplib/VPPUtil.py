@@ -145,6 +145,8 @@ class VPPUtil(object):
         # reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n'.format(fdio_release, ubuntu_version)
         # When using release
         reps += 'repositories/fd.io.ubuntu.{}.main/ ./\n'.format(ubuntu_version)
+        # When using master
+        # reps += 'repositories/fd.io.master.ubuntu.{}.main/ ./\n'.format(ubuntu_version)
 
         cmd = 'echo "{0}" | sudo tee {1}'.format(reps, sfile)
         (ret, stdout, stderr) = self.exec_command(cmd)
@@ -202,12 +204,18 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        reps = '[fdio-stable-{}]\n'.format(fdio_release)
-        reps += 'name=fd.io stable/{} branch latest merge\n'.format(fdio_release)
+        # Latest
+        # reps = '[fdio-master]\n'
+        # reps += 'name=fd.io master branch latest merge\n'
+        # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.master.{}/\n'.format(centos_version)
+        # reps = '[fdio-stable-{}]\n'.format(fdio_release)
+        # reps += 'name=fd.io stable/{} branch latest merge\n'.format(fdio_release)
         # When using stable
         # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.{}.{}/\n'.\
         #     format(fdio_release, centos_version)
         # When using release
+        reps = '[fdio-release]\n'
+        reps += 'name=fd.io release branch latest merge\n'
         reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.{}/\n'.format(centos_version)
         reps += 'enabled=1\n'
         reps += 'gpgcheck=0'
@@ -240,13 +248,17 @@ class VPPUtil(object):
         :type node: dict
         """
         distro = self.get_linux_distro()
+        logging.info("  {}".format(distro[0]))
         if distro[0] == 'Ubuntu':
+            logging.info("Install Ubuntu")
             self._install_vpp_ubuntu(node)
         elif distro[0] == 'CentOS Linux':
             logging.info("Install CentOS")
             self._install_vpp_centos(node)
         else:
-            return
+            logging.info("Install CentOS (default)")
+            self._install_vpp_centos(node)
+        return
 
     def _uninstall_vpp_pkg_ubuntu(self, node, pkg):
         """
@@ -348,11 +360,14 @@ class VPPUtil(object):
 
         distro = self.get_linux_distro()
         if distro[0] == 'Ubuntu':
+            logging.info("Uninstall Ubuntu")
             self._uninstall_vpp_ubuntu(node)
         elif distro[0] == 'CentOS Linux':
             logging.info("Uninstall CentOS")
             self._uninstall_vpp_centos(node)
         else:
+            logging.info("Uninstall CentOS (Default)")
+            self._uninstall_vpp_centos(node)
             return
 
     def show_vpp_settings(self, *additional_cmds):
@@ -574,6 +589,7 @@ class VPPUtil(object):
         elif distro[0] == 'CentOS Linux':
             pkgs = self._get_installed_vpp_pkgs_centos()
         else:
+            pkgs = self._get_installed_vpp_pkgs_centos()
             return []
 
         return pkgs
@@ -712,7 +728,7 @@ class VPPUtil(object):
         distro = platform.linux_distribution()
         if distro[0] == 'Ubuntu' or \
                         distro[0] == 'CentOS Linux' or \
-                        distro[:26] == 'Linux Distribution Red Hat':
+                        distro[:7] == 'Red Hat':
             return distro
         else:
             raise RuntimeError('Linux Distribution {} is not supported'.format(distro[0]))
