@@ -1211,6 +1211,24 @@ autoreply define dslite_add_del_pool_addr_range {
   u8 is_add;
 };
 
+/** \brief Dump DS-Lite addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief DS-Lite address details response
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+*/
+define dslite_address_details {
+  u32 context;
+  u8 ip_address[4];
+};
+
 /** \brief Set AFTR IPv6 and IPv4 addresses
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
