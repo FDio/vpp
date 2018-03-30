@@ -176,7 +176,6 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
   int l3_offset;
   int l4_offset;
-  u16 ports[2];
   u16 proto;
 
   if (is_l2_path)
@@ -258,16 +257,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
       p5tuple_pkt->kv.key[1] = 0;
       p5tuple_pkt->kv.key[2] = 0;
       p5tuple_pkt->kv.key[3] = 0;
-      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[0].ip4));
-      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						dst_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[1].ip4));
+      *(u32 *)&p5tuple_pkt->addr[0].ip4 = *(u32 *) get_ptr_to_offset (b0, offsetof (ip4_header_t, src_address) + l3_offset);
+      *(u32 *)&p5tuple_pkt->addr[1].ip4 = *(u32 *) get_ptr_to_offset (b0, offsetof (ip4_header_t, dst_address) + l3_offset);
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip4_header_t,
@@ -294,7 +285,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
       p5tuple_pkt->pkt.l4_valid = 1;
-      if (icmp_protos_v4v6[is_ip6] == proto)
+      if (PREDICT_FALSE(icmp_protos_v4v6[is_ip6] == proto))
 	{
 	  /* type */
 	  p5tuple_pkt->l4.port[0] =
@@ -309,13 +300,10 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 	}
       else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
 	{
-	  clib_memcpy (&ports,
-		       get_ptr_to_offset (b0,
-					  l4_offset + offsetof (tcp_header_t,
-								src_port)),
-		       sizeof (ports));
-	  p5tuple_pkt->l4.port[0] = clib_net_to_host_u16 (ports[0]);
-	  p5tuple_pkt->l4.port[1] = clib_net_to_host_u16 (ports[1]);
+	  u16 *s_ports = get_ptr_to_offset (b0, l4_offset + offsetof (tcp_header_t,
+                                                                src_port));
+	  p5tuple_pkt->l4.port[0] = clib_net_to_host_u16 (s_ports[0]);
+	  p5tuple_pkt->l4.port[1] = clib_net_to_host_u16 (s_ports[1]);
 
 	  p5tuple_pkt->pkt.tcp_flags =
 	    *(u8 *) get_ptr_to_offset (b0,

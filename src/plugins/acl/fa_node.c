@@ -148,20 +148,20 @@ static char *acl_fa_error_strings[] = {
 };
 /* *INDENT-ON* */
 
-static int
+always_inline int
 acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
 {
   return am->fa_sessions_hash_is_initialized;
 }
 
-static int
+always_inline int
 acl_fa_ifc_has_in_acl (acl_main_t * am, int sw_if_index0)
 {
   int it_has = clib_bitmap_get (am->fa_in_acl_on_sw_if_index, sw_if_index0);
   return it_has;
 }
 
-static int
+always_inline int
 acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 {
   int it_has = clib_bitmap_get (am->fa_out_acl_on_sw_if_index, sw_if_index0);
@@ -169,22 +169,47 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 }
 
 /* Session keys match the packets received, and mirror the packets sent */
-static u32
+always_inline int
 acl_make_5tuple_session_key (acl_main_t * am, int is_input, int is_ip6,
                              u32 sw_if_index, fa_5tuple_t * p5tuple_pkt,
                              fa_5tuple_t * p5tuple_sess)
 {
-  int src_index = is_input ? 0 : 1;
-  int dst_index = is_input ? 1 : 0;
-  u32 valid_new_sess = 1;
-  p5tuple_sess->addr[src_index] = p5tuple_pkt->addr[0];
-  p5tuple_sess->addr[dst_index] = p5tuple_pkt->addr[1];
-  p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
+  // int src_index = is_input ? 0 : 1;
+  // int dst_index = is_input ? 1 : 0;
+  int valid_new_sess = 1;
+
+  if (is_ip6) {
+    if (is_input) {
+      p5tuple_sess->addr[0].ip6 = p5tuple_pkt->addr[0].ip6;
+      p5tuple_sess->addr[1].ip6 = p5tuple_pkt->addr[1].ip6;
+    } else {
+      p5tuple_sess->addr[1].ip6 = p5tuple_pkt->addr[0].ip6;
+      p5tuple_sess->addr[0].ip6 = p5tuple_pkt->addr[1].ip6;
+    }
+  } else {
+    if (is_input) {
+      p5tuple_sess->addr[0].ip4.as_u32 = p5tuple_sess->addr[0].pad[0] = p5tuple_sess->addr[0].pad[1] = p5tuple_sess->addr[0].pad[2] = p5tuple_pkt->addr[0].ip4.as_u32;
+      p5tuple_sess->addr[1].ip4.as_u32 = p5tuple_sess->addr[1].pad[0] = p5tuple_sess->addr[1].pad[1] = p5tuple_sess->addr[1].pad[2] = p5tuple_pkt->addr[1].ip4.as_u32;
+      // p5tuple_sess->addr[1].ip4 = p5tuple_pkt->addr[1].ip4;
+    } else {
+      //p5tuple_sess->addr[1].ip4 = p5tuple_pkt->addr[0].ip4;
+      //p5tuple_sess->addr[0].ip4 = p5tuple_pkt->addr[1].ip4;
+      p5tuple_sess->addr[0].ip4.as_u32 = p5tuple_sess->addr[0].pad[0] = p5tuple_sess->addr[0].pad[1] = p5tuple_sess->addr[0].pad[2] = p5tuple_pkt->addr[1].ip4.as_u32;
+      p5tuple_sess->addr[1].ip4.as_u32 = p5tuple_sess->addr[1].pad[0] = p5tuple_sess->addr[1].pad[1] = p5tuple_sess->addr[1].pad[2] = p5tuple_pkt->addr[0].ip4.as_u32;
+    }
+  }
+  p5tuple_sess->l4.proto = p5tuple_pkt->l4.proto;
+  p5tuple_sess->l4.lsb_of_sw_if_index = p5tuple_pkt->l4.lsb_of_sw_if_index;
 
   if (PREDICT_TRUE(p5tuple_pkt->l4.proto != icmp_protos[is_ip6]))
     {
-      p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
-      p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+      if (is_input) {
+        p5tuple_sess->l4.port[0] = p5tuple_pkt->l4.port[0];
+        p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[1];
+      } else {
+        p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[0];
+        p5tuple_sess->l4.port[0] = p5tuple_pkt->l4.port[1];
+      }
     }
   else
     {
@@ -634,7 +659,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return sess;
 }
 
-static int
+always_inline int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
@@ -688,7 +713,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u32 match_acl_pos = ~0;
 	  u32 match_rule_index = ~0;
 	  u8 error0 = 0;
-	  u32 valid_new_sess;
+	  int valid_new_sess;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -709,6 +734,23 @@ acl_fa_node_fn (vlib_main_t * vm,
 	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
 	  else
 	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+
+
+         /*
+          * Kick off the prefetch for the next packet(s)
+          */
+         if (PREDICT_TRUE(n_left_from > 4)) {
+           u32 biX;
+           vlib_buffer_t *bX; // future block
+           biX = from[4];
+           bX = vlib_get_buffer (vm, biX);
+           CLIB_PREFETCH(&bX->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+         }
+         if (PREDICT_TRUE(n_left_from > 2)) {
+           CLIB_PREFETCH(vnet_buffer(vlib_get_buffer(vm, from[2])), 2*CLIB_CACHE_LINE_BYTES, LOAD);
+         }
+
+
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
