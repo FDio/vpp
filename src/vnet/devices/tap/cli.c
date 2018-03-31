@@ -265,8 +265,9 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	// RX = 0, TX = 1
 	vring = vec_elt_at_index (vif->vrings, i);
 	vlib_cli_output (vm, "  Virtqueue (%s)", (i & 1) ? "TX" : "RX");
-	vlib_cli_output (vm, "    qsz %d, last_used_idx %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx,
+	vlib_cli_output (vm,
+			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+			 vring->size, vring->last_used_idx, vring->desc_next,
 			 vring->desc_in_use);
 	vlib_cli_output (vm,
 			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",

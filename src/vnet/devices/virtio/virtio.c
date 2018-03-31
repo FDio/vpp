@@ -140,13 +140,13 @@ static_always_inline void
 virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring)
 {
   u16 used = vring->desc_in_use;
-  u16 next = vring->desc_next;
+  u16 last = vring->last_used_idx;
   u16 mask = vring->size - 1;
 
   while (used)
     {
-      vlib_buffer_free (vm, &vring->buffers[next], 1);
-      next = (next + 1) & mask;
+      vlib_buffer_free (vm, &vring->buffers[last & mask], 1);
+      last++;
       used--;
     }
 }
