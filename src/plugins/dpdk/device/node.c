@@ -298,24 +298,24 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	      next1 = dpdk_rx_next_from_etype (mb1);
 	      next2 = dpdk_rx_next_from_etype (mb2);
 	      next3 = dpdk_rx_next_from_etype (mb3);
+
+	      or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
+			     mb2->ol_flags | mb3->ol_flags);
+	      if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
+		{
+		  dpdk_rx_error_from_mb (mb0, &next0, &error0);
+		  dpdk_rx_error_from_mb (mb1, &next1, &error1);
+		  dpdk_rx_error_from_mb (mb2, &next2, &error2);
+		  dpdk_rx_error_from_mb (mb3, &next3, &error3);
+		  b0->error = node->errors[error0];
+		  b1->error = node->errors[error1];
+		  b2->error = node->errors[error2];
+		  b3->error = node->errors[error3];
+		}
 	    }
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 11]);
 	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
-
-	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
-			 mb2->ol_flags | mb3->ol_flags);
-	  if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
-	    {
-	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
-	      dpdk_rx_error_from_mb (mb1, &next1, &error1);
-	      dpdk_rx_error_from_mb (mb2, &next2, &error2);
-	      dpdk_rx_error_from_mb (mb3, &next3, &error3);
-	      b0->error = node->errors[error0];
-	      b1->error = node->errors[error1];
-	      b2->error = node->errors[error2];
-	      b3->error = node->errors[error3];
-	    }
 
 	  offset0 = device_input_next_node_advance[next0];
 	  b0->current_data = mb0->data_off + offset0 - RTE_PKTMBUF_HEADROOM;
@@ -436,10 +436,12 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	    next0 = xd->per_interface_next_index;
 	  else
-	    next0 = dpdk_rx_next_from_etype (mb0);
+	    {
+	      next0 = dpdk_rx_next_from_etype (mb0);
 
-	  dpdk_rx_error_from_mb (mb0, &next0, &error0);
-	  b0->error = node->errors[error0];
+	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
+	      b0->error = node->errors[error0];
+	    }
 
 	  offset0 = device_input_next_node_advance[next0];
 	  b0->current_data = mb0->data_off + offset0 - RTE_PKTMBUF_HEADROOM;
