@@ -330,7 +330,7 @@ wipe-release: test-wipe $(BR)/.deps.ok
 
 rebuild-release: wipe-release build-release
 
-export VPP_PYTHON_PREFIX=$(BR)/python
+export VPP_PYTHON_PREFIX ?= $(BR)/python
 
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
@@ -376,6 +376,9 @@ test-shell:
 
 test-shell-debug:
 	$(call test,vpp,vpp_debug,shell)
+
+test-dep:
+	@make -C test test-dep
 
 test-doc:
 	@make -C test doc
