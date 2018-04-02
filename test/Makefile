@@ -128,6 +128,8 @@ sanity: verify-no-running-vpp
 ext:
 	make -C ext
 
+test-dep: verify-python-path $(PAPI_INSTALL_DONE)
+
 test: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
 	$(call retest-func)
 
