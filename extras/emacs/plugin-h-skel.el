@@ -21,6 +21,7 @@ nil
 '(if (not (boundp 'plugin-name))
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
+'(setq capital-oh-en "ON")
 "
 /*
  * " plugin-name ".h - skeleton vpp engine plug-in header file 
@@ -63,4 +64,13 @@ typedef struct {
 vlib_node_registration_t " plugin-name "_node;
 
 #endif /* __included_" plugin-name "_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: " capital-oh-en "
+ *
+ * Local Variables:
+ * eval: (c-set-style \"gnu\")
+ * End:
+ */
+
 ")
