@@ -29,6 +29,19 @@ sub_interface::sub_interface(const interface& parent,
 {
 }
 
+/**
+ * Construct a new object matching the desried state
+ */
+sub_interface::sub_interface(const interface& parent,
+                             admin_state_t state,
+                             const route_domain& rd,
+                             vlan_id_t vlan)
+  : interface(mk_name(parent, vlan), parent.type(), state, rd)
+  , m_parent(parent.singular())
+  , m_vlan(vlan)
+{
+}
+
 sub_interface::~sub_interface()
 {
   sweep();
