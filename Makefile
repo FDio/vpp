@@ -501,6 +501,28 @@ define banner
 	@echo " "
 endef
 
+verify-clang:
+ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
+	install-dep $(BR)/.deps.ok dpdk-install-dev
+	$(call banner,"Building for PLATFORM=vpp using clang")
+	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
+else
+	$(error "This option currently only for Ubuntu 16.04")
+endif
+
+verify-cc: install-dep $(BR)/.deps.ok dpdk-install-dev
+	$(call banner,"Building for PLATFORM=vpp using gcc")
+	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+	$(call banner,"Building sample-plugin")
+	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+	$(call banner,"Building libmemif")
+	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	$(call banner,"Building $(PKG) packages")
+	@make pkg-$(PKG)
+ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
+	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+endif
+
 verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
