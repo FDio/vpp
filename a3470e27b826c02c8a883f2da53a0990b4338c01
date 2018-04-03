@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74d50f34_ce4dbed1",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-03T20:01:51Z",
+      "side": 1,
+      "message": "Trailing whitespace",
+      "range": {
+        "startLine": 504,
+        "startChar": 13,
+        "endLine": 504,
+        "endChar": 14
+      },
+      "revId": "a3470e27b826c02c8a883f2da53a0990b4338c01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f87e2408_07934771",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-03T20:01:51Z",
+      "side": 1,
+      "message": "I really don\u0027t like copy paste here. please avoid doing that either with macro or by calling another make instance",
+      "range": {
+        "startLine": 514,
+        "startChar": 0,
+        "endLine": 523,
+        "endChar": 51
+      },
+      "revId": "a3470e27b826c02c8a883f2da53a0990b4338c01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
