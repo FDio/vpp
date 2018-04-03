@@ -71,7 +71,7 @@ ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
     }
 
   clib_memcpy (&prefix.fp_addr, ip46_address, sizeof (ip46_address_t));
-  fei = fib_table_lookup (0, &prefix);
+  fei = fib_table_lookup (fib_index, &prefix);
   flags = fib_entry_get_flags (fei);
 
   return (flags & FIB_ENTRY_FLAG_LOCAL);
