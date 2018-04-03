@@ -34,6 +34,12 @@ public:
    * Construct a new object matching the desried state
    */
   sub_interface(const interface& parent, admin_state_t state, vlan_id_t vlan);
+
+  sub_interface(const interface& parent,
+                admin_state_t state,
+                const route_domain& rd,
+                vlan_id_t vlan);
+
   /**
    * Destructor
    */
