@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5988f748_ff02495e",
+        "filename": "src/vnet/interface_stats.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-03T08:57:25Z",
+      "side": 1,
+      "message": "use VLIB_RX/VLIB_TX",
+      "revId": "891a8d338764398ec239c676ce4350ca0a580bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dbc2ca0a_30aa9e4b",
+        "filename": "src/vpp-api/vom/interface.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-03T08:57:25Z",
+      "side": 1,
+      "message": "why is this needed here?",
+      "revId": "891a8d338764398ec239c676ce4350ca0a580bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fe54d99_91c04de3",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 868,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-03T08:57:25Z",
+      "side": 1,
+      "message": "what do these statements do that the loops below don\u0027t?",
+      "revId": "891a8d338764398ec239c676ce4350ca0a580bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
