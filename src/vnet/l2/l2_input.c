@@ -176,7 +176,8 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
       u8 protocol = ((ip6_header_t *) l3h0)->protocol;
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
-      feat_mask &= ~(L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD);
+      feat_mask &= ~(L2INPUT_FEAT_FWD |
+		     L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_GBP_FWD);
 
       /* Disable ARP-term for non-ARP and non-ICMP6 packet */
       if (ethertype != ETHERNET_TYPE_ARP &&
@@ -673,6 +674,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  /* Do BVI interface initializations */
 	  if (bvi)
 	    {
+              vnet_sw_interface_t *si;
+
 	      /* ensure BD has no bvi interface (or replace that one with this??) */
 	      if (bd_config->bvi_sw_if_index != ~0)
 		{
@@ -693,6 +696,10 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 						    "l2-input",
 						    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	      ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+
+              /* since this is a BVI interface we want to flood to it */
+              si = vnet_get_sw_interface (vnm, sw_if_index);
+              si->flood_class = VNET_FLOOD_CLASS_BVI;
 	    }
 
 	  /* Add interface to bridge-domain flood vector */

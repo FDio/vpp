@@ -258,9 +258,8 @@ interface::key() const
 std::queue<cmd*>&
 interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  if (type_t::LOOPBACK == m_type) {
-    q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
-  } else if (type_t::BVI == m_type) {
+  if ((type_t::LOOPBACK == m_type) ||
+      (type_t::BVI == m_type)) {
     q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
     q.push(new interface_cmds::set_tag(m_hdl, m_name));
     /*

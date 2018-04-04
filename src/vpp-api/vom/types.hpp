@@ -94,7 +94,7 @@ struct rc_t : public enum_base<rc_t>
   /**
    * Destructor
    */
-  ~rc_t();
+  ~rc_t() = default;
 
   /**
    * The value un-set

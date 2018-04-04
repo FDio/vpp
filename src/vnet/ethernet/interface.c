@@ -621,6 +621,10 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
   {
     vnet_sw_interface_t *si = vnet_get_hw_sw_interface (vnm, hw_if_index);
     *sw_if_indexp = si->sw_if_index;
+
+    /* By default don't flood to loopbacks, as packets just keep
+     * coming back ... If this loopback becomes a BVI, we'll change it */
+    si->flood_class = VNET_FLOOD_CLASS_NO_FLOOD;
   }
 
   return 0;
