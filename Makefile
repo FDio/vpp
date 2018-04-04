@@ -501,7 +501,7 @@ define banner
 	@echo " "
 endef
 
-verify: install-dep $(BR)/.deps.ok dpdk-install-dev
+verify:
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
