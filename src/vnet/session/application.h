@@ -131,6 +131,9 @@ typedef struct _application
 
   /** Preferred tls engine */
   u8 tls_engine;
+
+  /** Preferred quic crypto engine */
+  u8 quic_engine;
 } application_t;
 
 #define APP_INVALID_INDEX ((u32)~0)
