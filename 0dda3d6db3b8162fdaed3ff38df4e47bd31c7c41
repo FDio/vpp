@@ -1,0 +1,796 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eee1bbc3_9f90b5cc",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "You are changing the binary API.\nIn lb.api, the documentation says that IPv4 addresses must be in the lower 32 bits.\nPlease revert back to the original API syntax.",
+      "range": {
+        "startLine": 116,
+        "startChar": 6,
+        "endLine": 118,
+        "endChar": 56
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2019e5b3_63b3158e",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Please don\u0027t use tabs to be coherent with the rest of the file.",
+      "range": {
+        "startLine": 160,
+        "startChar": 2,
+        "endLine": 160,
+        "endChar": 3
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "67f37307_06213c17",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Style: There should be spaces around equality checks",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a847870c_d9a39a0a",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Same remark regarding IPv4 format in the API",
+      "range": {
+        "startLine": 217,
+        "startChar": 5,
+        "endLine": 222,
+        "endChar": 5
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a322e527_a640e542",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Same",
+      "range": {
+        "startLine": 232,
+        "startChar": 5,
+        "endLine": 236,
+        "endChar": 5
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c45c9fbb_ee9d54a6",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "type is initially set to 0, but you don\u0027t check in case the IP version and encap are compatible. You could end-up with a type 0 (GRE6) when the user actually set, for example, NAT4 with an IPv6 prefix.",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "16f4cfd4_d50505a4",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "You could shorten the code a bit by using the lb_vip_add_args_t struct directly rather than the intermediate variables.",
+      "range": {
+        "startLine": 118,
+        "startChar": 4,
+        "endLine": 122,
+        "endChar": 30
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9bfa1d2_a58a41ce",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Remove tabs",
+      "range": {
+        "startLine": 128,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a6e9db23_0efb741a",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "I still think there is some redundancy since the absence of node_port could be interpreted as clusterip, and inversely, rather than defining a specific type. But this is ok.",
+      "range": {
+        "startLine": 162,
+        "startChar": 8,
+        "endLine": 162,
+        "endChar": 33
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7bb694cd_15dcdc01",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "You could reduce the amount of code quite a lot by having the 2 CLI commands call tiny functions which call a sincle lb_set_interface_nat_command_fn with a \u0027is_nat6\u0027 argument.",
+      "range": {
+        "startLine": 346,
+        "startChar": 0,
+        "endLine": 346,
+        "endChar": 32
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3c8d17f_0f09b133",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Remove all the tabs please.",
+      "range": {
+        "startLine": 381,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c1b0279_ed902339",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "There is no need to add this. It was not ambiguous.",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 13
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "231710e3_75810edf",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Since the type is specified, do you really need both node_port and port ?\nCouldn\u0027t a single port be enough, and the type be used to differentiate ?",
+      "range": {
+        "startLine": 50,
+        "startChar": 2,
+        "endLine": 50,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "22e71b43_07fcd443",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Not necessary.",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 17
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba6484c8_cf09c423",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Remove all the tabs",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "40c9b42d_ce1174de",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "tabs...",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 149,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e9528bd0_d71f4be6",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Those 2 cases could be a single one if node_port and port were using the same variable.",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4dfc99bc_cd46aa3e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "remove tabs",
+      "range": {
+        "startLine": 195,
+        "startChar": 0,
+        "endLine": 195,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3728388c_747b410f",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Please only declare variables where used.",
+      "range": {
+        "startLine": 270,
+        "startChar": 2,
+        "endLine": 273,
+        "endChar": 36
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e44e2d8c_de7c693a",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Remove tabs",
+      "range": {
+        "startLine": 291,
+        "startChar": 0,
+        "endLine": 291,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff5cc554_3241b998",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "tab",
+      "range": {
+        "startLine": 866,
+        "startChar": 0,
+        "endLine": 866,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19e65fd1_2c4e01bc",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Do we support that ?",
+      "range": {
+        "startLine": 85,
+        "startChar": 2,
+        "endLine": 85,
+        "endChar": 20
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d2b344f_328a8cf5",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Those types are quite specific to kube-proxy.",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5babbb5_16dcb5df",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Defined twice.\nI think you should remove this other and keep this one.\nBut the names are still very specific to kubeproxy (not a big issue though).",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "095d544f_c3152523",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Remove tabs everywhere",
+      "range": {
+        "startLine": 310,
+        "startChar": 1,
+        "endLine": 310,
+        "endChar": 2
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1c003f4_c7d8aa89",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Why not using ip_proto directly rather than going through the lb_nat_protocol_t type.",
+      "range": {
+        "startLine": 346,
+        "startChar": 2,
+        "endLine": 351,
+        "endChar": 19
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86850d30_b558ed07",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Most of this information could be removed by just storing the VIP index.\nIf what you are looking for is optimizing the data-path, are you sure all of this information is needed ? I don\u0027t think the data-path nodes need to know what is the type (they already know since they are called).",
+      "range": {
+        "startLine": 384,
+        "startChar": 0,
+        "endLine": 397,
+        "endChar": 20
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e817c562_edd22509",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Coming back here after reviewing the rest, I feel like there is no need at all for this structure. I think this comes from the NAT code but is not required in the LB code since the VIP contains all the required information. The hash tables mapping keys to those mappings should rather map keys to vip indexes. Then this structure, and associated pool, is not used anymore.",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24e7c27f_af4d846c",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "tab",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 96,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e76d6376_8b7e09e3",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "tabs everywhere",
+      "range": {
+        "startLine": 349,
+        "startChar": 0,
+        "endLine": 349,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6603943e_05c35f12",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Why do you need to use the vip_index_by_nodeport hash table if you already have the VIP in there ?",
+      "range": {
+        "startLine": 550,
+        "startChar": 19,
+        "endLine": 550,
+        "endChar": 58
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6a3f7de_1e9ce67e",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Why do you copy the key instead of using the same pointer ?",
+      "range": {
+        "startLine": 586,
+        "startChar": 2,
+        "endLine": 586,
+        "endChar": 26
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a34db7de_34d616f1",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "This function should return an index to the pool rather than copying the content of the structure",
+      "range": {
+        "startLine": 597,
+        "startChar": 6,
+        "endLine": 597,
+        "endChar": 33
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9918062d_bff6a070",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Same thing for copying key",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b8010fb9_011c568a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 649,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Same thing for copying value.",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "57f4c481_c3ef6ec4",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 712,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-04-04T11:56:51Z",
+      "side": 1,
+      "message": "Random tabs at some places",
+      "range": {
+        "startLine": 712,
+        "startChar": 0,
+        "endLine": 712,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
