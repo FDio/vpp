@@ -73,6 +73,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_CLI,
     /**
+     * A low (below routing) priority source a plugin can use
+     */
+    FIB_SOURCE_PLUGIN_LOW,
+    /**
      * LISP
      */
     FIB_SOURCE_LISP,
@@ -169,6 +173,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
     [FIB_SOURCE_PLUGIN_HI] = "plugin-hi",               \
+    [FIB_SOURCE_PLUGIN_LOW] = "plugin-low",             \
     [FIB_SOURCE_INTERPOSE] = "interpose",               \
 }
 
