@@ -933,6 +933,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *socket_mem = 0;
   u8 *huge_dir_path = 0;
 
+  if (dm->requirements_check_failed)
+    return error;
+
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
@@ -1468,6 +1471,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
+  if (dm->requirements_check_failed)
+    return 0;
+
   error = dpdk_lib_init (dm);
 
   if (error)
@@ -1628,6 +1634,9 @@ dpdk_init (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (dm->requirements_check_failed)
+    return error;
 
   /* verify that structs are cacheline aligned */
   STATIC_ASSERT (offsetof (dpdk_device_t, cacheline0) == 0,

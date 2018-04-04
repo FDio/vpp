@@ -633,6 +633,10 @@ static clib_error_t *
 buffer_state_validation_init (vlib_main_t * vm)
 {
   void *oldheap;
+  dpdk_main_t *dm = &dpdk_main;
+
+  if (dm->requirements_check_failed)
+    return 0;
 
   vlib_buffer_state_heap = mheap_alloc (0, 10 << 20);
 
@@ -709,11 +713,30 @@ dpdk_buffer_poison_trajectory_all (void)
 }
 #endif
 
+/*
+ * Buffer callbacks. Set manually in dpdk_buffer_init,
+ * to allow the htlb page check to fully disable the plugin.
+ */
+
+static vlib_buffer_callbacks_t __dpdk_buffer_callbacks = {
+  .vlib_buffer_fill_free_list_cb = &dpdk_buffer_fill_free_list,
+  .vlib_buffer_free_cb = &dpdk_buffer_free,
+  .vlib_buffer_free_no_next_cb = &dpdk_buffer_free_no_next,
+  .vlib_packet_template_init_cb = &dpdk_packet_template_init,
+  .vlib_buffer_delete_free_list_cb = &dpdk_buffer_delete_free_list,
+};
+
 static clib_error_t *
 dpdk_buffer_init (vlib_main_t * vm)
 {
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  dpdk_main_t *dm = &dpdk_main;
+
+  if (dm->requirements_check_failed)
+    return 0;
+
+  vlib_buffer_callbacks = &__dpdk_buffer_callbacks;
 
   vec_validate_aligned (dbm->ptd, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -724,16 +747,6 @@ dpdk_buffer_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (dpdk_buffer_init);
-
-/* *INDENT-OFF* */
-VLIB_BUFFER_REGISTER_CALLBACKS (dpdk, static) = {
-  .vlib_buffer_fill_free_list_cb = &dpdk_buffer_fill_free_list,
-  .vlib_buffer_free_cb = &dpdk_buffer_free,
-  .vlib_buffer_free_no_next_cb = &dpdk_buffer_free_no_next,
-  .vlib_packet_template_init_cb = &dpdk_packet_template_init,
-  .vlib_buffer_delete_free_list_cb = &dpdk_buffer_delete_free_list,
-};
-/* *INDENT-ON* */
 
 #if __x86_64__
 vlib_buffer_fill_free_list_cb_t __clib_weak dpdk_buffer_fill_free_list_avx512;

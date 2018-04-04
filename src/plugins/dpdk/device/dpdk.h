@@ -370,6 +370,9 @@ typedef struct
    */
   u8 admin_up_down_in_progress;
 
+  /* Set if the plugin should self-disable e.g. due to lack of htlb pages */
+  u8 requirements_check_failed;
+
   /* which cpus are running I/O TX */
   int hqos_cpu_first_index;
   int hqos_cpu_count;
