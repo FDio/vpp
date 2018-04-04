@@ -1,8 +1,6 @@
 /*
  *------------------------------------------------------------------
- * gbp_api.c - layer 2 emulation api
- *
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -56,6 +54,12 @@
 #define foreach_gbp_api_msg                                 \
   _(GBP_ENDPOINT_ADD_DEL, gbp_endpoint_add_del)             \
   _(GBP_ENDPOINT_DUMP, gbp_endpoint_dump)                   \
+  _(GBP_SUBNET_ADD_DEL, gbp_subnet_add_del)                 \
+  _(GBP_SUBNET_DUMP, gbp_subnet_dump)                       \
+  _(GBP_ENDPOINT_GROUP_ADD_DEL, gbp_endpoint_group_add_del) \
+  _(GBP_ENDPOINT_GROUP_DUMP, gbp_endpoint_group_dump)       \
+  _(GBP_RECIRC_ADD_DEL, gbp_recirc_add_del)                 \
+  _(GBP_RECIRC_DUMP, gbp_recirc_dump)                       \
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)
 
@@ -94,7 +98,8 @@ vl_api_gbp_endpoint_add_del_t_handler (vl_api_gbp_endpoint_add_del_t * mp)
 
   if (mp->is_add)
     {
-      gbp_endpoint_update (sw_if_index, &ip, ntohl (mp->endpoint.epg_id));
+      rv =
+	gbp_endpoint_update (sw_if_index, &ip, ntohl (mp->endpoint.epg_id));
     }
   else
     {
@@ -160,6 +165,223 @@ vl_api_gbp_endpoint_dump_t_handler (vl_api_gbp_endpoint_dump_t * mp)
   };
 
   gbp_endpoint_walk (gbp_endpoint_send_details, &ctx);
+}
+
+static void
+  vl_api_gbp_endpoint_group_add_del_t_handler
+  (vl_api_gbp_endpoint_group_add_del_t * mp)
+{
+  vl_api_gbp_endpoint_group_add_del_reply_t *rmp;
+  u32 uplink_sw_if_index;
+  int rv = 0;
+
+  uplink_sw_if_index = ntohl (mp->epg.uplink_sw_if_index);
+  if (!vnet_sw_if_index_is_api_valid (uplink_sw_if_index))
+    goto bad_sw_if_index;
+
+  if (mp->is_add)
+    {
+      rv = gbp_endpoint_group_add (ntohl (mp->epg.epg_id),
+				   ntohl (mp->epg.bd_id),
+				   ntohl (mp->epg.ip4_table_id),
+				   ntohl (mp->epg.ip6_table_id),
+				   uplink_sw_if_index);
+    }
+  else
+    {
+      gbp_endpoint_group_delete (ntohl (mp->epg.epg_id));
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_GBP_ENDPOINT_GROUP_ADD_DEL_REPLY + GBP_MSG_BASE);
+}
+
+static void
+vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t * mp)
+{
+  vl_api_gbp_subnet_add_del_reply_t *rmp;
+  int rv = 0;
+  fib_prefix_t pfx = {
+    .fp_len = mp->subnet.address_length,
+    .fp_proto = (mp->subnet.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+  };
+
+  if (mp->subnet.is_ip6)
+    clib_memcpy (&pfx.fp_addr.ip6, mp->subnet.address,
+		 sizeof (pfx.fp_addr.ip6));
+  else
+    clib_memcpy (&pfx.fp_addr.ip4, mp->subnet.address,
+		 sizeof (pfx.fp_addr.ip4));
+
+  rv = gbp_subnet_add_del (ntohl (mp->subnet.table_id),
+			   &pfx,
+			   ntohl (mp->subnet.sw_if_index),
+			   ntohl (mp->subnet.epg_id),
+			   mp->is_add, mp->subnet.is_internal);
+
+  REPLY_MACRO (VL_API_GBP_SUBNET_ADD_DEL_REPLY + GBP_MSG_BASE);
+}
+
+static int
+gbp_subnet_send_details (u32 table_id,
+			 const fib_prefix_t * pfx,
+			 u32 sw_if_index,
+			 epg_id_t epg, u8 is_internal, void *args)
+{
+  vl_api_gbp_subnet_details_t *mp;
+  gbp_walk_ctx_t *ctx;
+
+  ctx = args;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_GBP_SUBNET_DETAILS + GBP_MSG_BASE);
+  mp->context = ctx->context;
+
+  mp->subnet.is_internal = is_internal;
+  mp->subnet.sw_if_index = ntohl (sw_if_index);
+  mp->subnet.epg_id = ntohl (epg);
+  mp->subnet.is_ip6 = (pfx->fp_proto == FIB_PROTOCOL_IP6);
+  mp->subnet.address_length = pfx->fp_len;
+  mp->subnet.table_id = ntohl (table_id);
+  if (mp->subnet.is_ip6)
+    clib_memcpy (&mp->subnet.address,
+		 &pfx->fp_addr.ip6, sizeof (pfx->fp_addr.ip6));
+  else
+    clib_memcpy (&mp->subnet.address,
+		 &pfx->fp_addr.ip4, sizeof (pfx->fp_addr.ip4));
+
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (1);
+}
+
+static void
+vl_api_gbp_subnet_dump_t_handler (vl_api_gbp_subnet_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  gbp_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  gbp_subnet_walk (gbp_subnet_send_details, &ctx);
+}
+
+static int
+gbp_endpoint_group_send_details (gbp_endpoint_group_t * gepg, void *args)
+{
+  vl_api_gbp_endpoint_group_details_t *mp;
+  gbp_walk_ctx_t *ctx;
+
+  ctx = args;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_GROUP_DETAILS + GBP_MSG_BASE);
+  mp->context = ctx->context;
+
+  mp->epg.uplink_sw_if_index = ntohl (gepg->gepg_uplink_sw_if_index);
+  mp->epg.epg_id = ntohl (gepg->gepg_id);
+  mp->epg.bd_id = ntohl (gepg->gepg_bd);
+  mp->epg.ip4_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP4]);
+  mp->epg.ip6_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP6]);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (1);
+}
+
+static void
+vl_api_gbp_endpoint_group_dump_t_handler (vl_api_gbp_endpoint_group_dump_t *
+					  mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  gbp_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  gbp_endpoint_group_walk (gbp_endpoint_group_send_details, &ctx);
+}
+
+static void
+vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
+{
+  vl_api_gbp_recirc_add_del_reply_t *rmp;
+  u32 sw_if_index;
+  int rv = 0;
+
+  sw_if_index = ntohl (mp->recirc.sw_if_index);
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    goto bad_sw_if_index;
+
+  if (mp->is_add)
+    gbp_recirc_add (sw_if_index,
+		    ntohl (mp->recirc.epg_id), mp->recirc.is_ext);
+  else
+    gbp_recirc_delete (sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_GBP_RECIRC_ADD_DEL_REPLY + GBP_MSG_BASE);
+}
+
+static int
+gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
+{
+  vl_api_gbp_recirc_details_t *mp;
+  gbp_walk_ctx_t *ctx;
+
+  ctx = args;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_GBP_RECIRC_DETAILS + GBP_MSG_BASE);
+  mp->context = ctx->context;
+
+  mp->recirc.epg_id = ntohl (gr->gr_epg);
+  mp->recirc.sw_if_index = ntohl (gr->gr_sw_if_index);
+  mp->recirc.is_ext = ntohl (gr->gr_is_ext);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (1);
+}
+
+static void
+vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  gbp_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  gbp_recirc_walk (gbp_recirc_send_details, &ctx);
 }
 
 static void

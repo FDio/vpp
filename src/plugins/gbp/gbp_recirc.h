@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef __GBP_RECIRC_H__
+#define __GBP_RECIRC_H__
+
+#include <plugins/gbp/gbp_types.h>
+#include <vnet/fib/fib_types.h>
+
+/**
+ * An Endpoint Group representation
+ */
+typedef struct gpb_recirc_t_
+{
+  /**
+   * EPG ID that packets will classify to when they arrive on this recirc
+   */
+  epg_id_t gr_epg;
+
+  /**
+   * FIB indices the EPG is mapped to
+   */
+  u32 gr_fib_index[FIB_PROTOCOL_IP_MAX];
+
+  /**
+   * Is the interface for packets post-NAT translatoin (i.e. ext)
+   * or pre-NAT ranslation (i.e. internal)
+   */
+  u8 gr_is_ext;
+
+  /**
+   */
+  u32 gr_sw_if_index;
+
+} gbp_recirc_t;
+
+extern int gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext);
+extern void gbp_recirc_delete (u32 sw_if_index);
+
+typedef int (*gbp_recirc_cb_t) (gbp_recirc_t * gbpe, void *ctx);
+extern void gbp_recirc_walk (gbp_recirc_cb_t bgpe, void *ctx);
+
+/**
+ * Data plane functions
+ */
+extern gbp_recirc_t *gbp_recirc_pool;
+extern index_t *gbp_recirc_db;
+
+always_inline const gbp_recirc_t *
+gbp_recirc_get (u32 sw_if_index)
+{
+  return (pool_elt_at_index (gbp_recirc_pool, gbp_recirc_db[sw_if_index]));
+}
+#endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -167,7 +167,10 @@ typedef struct
 ethernet_arp_ip4_entry_t *ip4_neighbor_entries (u32 sw_if_index);
 u8 *format_ethernet_arp_ip4_entry (u8 * s, va_list * va);
 
-void send_ip4_garp (vlib_main_t * vm, vnet_hw_interface_t * hi);
+void send_ip4_garp (vlib_main_t * vm, const vnet_hw_interface_t * hi);
+void send_ip4_garp_w_addr (vlib_main_t * vm,
+			   const ip4_address_t * ip4_addr,
+			   const vnet_hw_interface_t * hi);
 
 #endif /* included_ethernet_arp_packet_h */
 

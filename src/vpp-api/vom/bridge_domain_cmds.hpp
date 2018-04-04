@@ -35,7 +35,10 @@ public:
    * Constructor
    */
   create_cmd(HW::item<uint32_t>& item,
-             const bridge_domain::learning_mode_t& lmode);
+             const bridge_domain::learning_mode_t& lmode,
+             const bridge_domain::arp_term_mode_t& amode,
+             const bridge_domain::flood_mode_t& fmode,
+             const bridge_domain::mac_age_mode_t& mmode);
 
   /**
    * Issue the command to VPP/HW
@@ -56,6 +59,18 @@ private:
    * the learning mode for the bridge
    */
   bridge_domain::learning_mode_t m_learning_mode;
+  /**
+   * the learning mode for the bridge
+   */
+  bridge_domain::arp_term_mode_t m_arp_term_mode;
+  /**
+   * the flood mode for the bridge
+   */
+  bridge_domain::flood_mode_t m_flood_mode;
+  /**
+   * the flood mode for the bridge
+   */
+  bridge_domain::mac_age_mode_t m_mac_age_mode;
 };
 
 /**

@@ -2498,11 +2498,22 @@ ethernet_arp_change_mac (u32 sw_if_index)
 }
 
 void
-send_ip4_garp (vlib_main_t * vm, vnet_hw_interface_t * hi)
+send_ip4_garp (vlib_main_t * vm, const vnet_hw_interface_t * hi)
+{
+  ip4_main_t *i4m = &ip4_main;
+  ip4_address_t *ip4_addr =
+    ip4_interface_first_address (i4m, hi->sw_if_index, 0);
+
+  send_ip4_garp_w_addr (vm, ip4_addr, hi);
+}
+
+void
+send_ip4_garp_w_addr (vlib_main_t * vm,
+		      const ip4_address_t * ip4_addr,
+		      const vnet_hw_interface_t * hi)
 {
   ip4_main_t *i4m = &ip4_main;
   u32 sw_if_index = hi->sw_if_index;
-  ip4_address_t *ip4_addr = ip4_interface_first_address (i4m, sw_if_index, 0);
 
   if (ip4_addr)
     {

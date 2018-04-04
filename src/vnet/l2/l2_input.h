@@ -109,10 +109,13 @@ l2input_bd_config (u32 bd_index)
  _(FLOOD,         "l2-flood")                   \
  _(ARP_TERM,      "arp-term-l2bd")              \
  _(UU_FLOOD,      "l2-flood")                   \
+ _(GBP_FWD,       "gbp-fwd")                    \
  _(FWD,           "l2-fwd")                     \
  _(RW,            "l2-rw")                      \
  _(LEARN,         "l2-learn")                   \
  _(L2_EMULATION,  "l2-emulation")               \
+ _(GBP_NULL_CLASSIFY, "gbp-null-classify")      \
+ _(GBP_SRC_CLASSIFY,  "gbp-src-classify")       \
  _(VTR,           "l2-input-vtr")               \
  _(VPATH,         "vpath-input-l2")             \
  _(ACL,           "l2-input-acl")               \

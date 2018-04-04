@@ -18,19 +18,13 @@
 
 #include <ostream>
 
+#include "vom/gbp_endpoint_group.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/types.hpp"
 
 namespace VOM {
-
 /**
- * EPG IDs are 32 bit integers
- */
-typedef uint32_t epg_id_t;
-
-/**
- * A entry in the ARP termination table of a Bridge Domain
+ * A GBP Enpoint (i.e. a VM)
  */
 class gbp_endpoint : public object_base
 {
@@ -45,7 +39,8 @@ public:
    */
   gbp_endpoint(const interface& itf,
                const boost::asio::ip::address& ip_addr,
-               epg_id_t epg_id);
+               const mac_address_t& mac,
+               const gbp_endpoint_group& epg);
 
   /**
    * Copy Construct
@@ -166,12 +161,17 @@ private:
   /**
    * The IP address of the endpoint
    */
-  boost::asio::ip::address m_ip_addr;
+  boost::asio::ip::address m_ip;
 
   /**
-   * The EPG ID
+   * The MAC address of the endpoint
    */
-  epg_id_t m_epg_id;
+  mac_address_t m_mac;
+
+  /**
+   * The EPG the endpoint is in
+   */
+  std::shared_ptr<gbp_endpoint_group> m_epg;
 
   /**
    * A map of all bridge_domains
