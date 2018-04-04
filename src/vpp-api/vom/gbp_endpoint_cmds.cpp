@@ -23,10 +23,12 @@ namespace gbp_endpoint_cmds {
 create_cmd::create_cmd(HW::item<bool>& item,
                        const handle_t& itf,
                        const boost::asio::ip::address& ip_addr,
+                       const mac_address_t& mac,
                        epg_id_t epg_id)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_ip_addr(ip_addr)
+  , m_mac(mac)
   , m_epg_id(epg_id)
 {
 }
@@ -35,7 +37,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_ip_addr == other.m_ip_addr) &&
-          (m_epg_id == other.m_epg_id));
+          (m_mac == other.m_mac) && (m_epg_id == other.m_epg_id));
 }
 
 rc_t
@@ -48,6 +50,7 @@ create_cmd::issue(connection& con)
   payload.endpoint.sw_if_index = m_itf.value();
   payload.endpoint.epg_id = m_epg_id;
   to_bytes(m_ip_addr, &payload.endpoint.is_ip6, payload.endpoint.address);
+  m_mac.to_bytes(payload.endpoint.mac, 6);
 
   VAPI_CALL(req.execute());
 

@@ -4670,11 +4670,23 @@ ethernet_ndp_change_mac (u32 sw_if_index)
 }
 
 void
-send_ip6_na (vlib_main_t * vm, vnet_hw_interface_t * hi)
+send_ip6_na (vlib_main_t * vm, const vnet_hw_interface_t * hi)
 {
   ip6_main_t *i6m = &ip6_main;
   u32 sw_if_index = hi->sw_if_index;
   ip6_address_t *ip6_addr = ip6_interface_first_address (i6m, sw_if_index);
+
+  send_ip6_na_w_addr (vm, ip6_addr, hi);
+}
+
+void
+send_ip6_na_w_addr (vlib_main_t * vm,
+		    const ip6_address_t * ip6_addr,
+		    const vnet_hw_interface_t * hi)
+{
+  ip6_main_t *i6m = &ip6_main;
+  u32 sw_if_index = hi->sw_if_index;
+
   if (ip6_addr)
     {
       clib_warning

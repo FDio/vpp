@@ -275,9 +275,7 @@ interface::key() const
 std::queue<cmd*>&
 interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  if (type_t::LOOPBACK == m_type) {
-    q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
-  } else if (type_t::BVI == m_type) {
+  if ((type_t::LOOPBACK == m_type) || (type_t::BVI == m_type)) {
     q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
     q.push(new interface_cmds::set_tag(m_hdl, m_name));
     /*
@@ -516,8 +514,12 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   HW::write();
 
   for (auto& itf_record : *cmd) {
-    std::shared_ptr<interface> itf =
-      interface_factory::new_interface(itf_record.get_payload());
+    auto payload = itf_record.get_payload();
+    VOM_LOG(log_level_t::DEBUG) << "dump: [" << payload.sw_if_index
+                                << " name:" << (char*)payload.interface_name
+                                << " tag:" << (char*)payload.tag << "]";
+
+    std::shared_ptr<interface> itf = interface_factory::new_interface(payload);
 
     if (itf && interface::type_t::LOCAL != itf->type()) {
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();

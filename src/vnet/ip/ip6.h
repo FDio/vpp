@@ -404,7 +404,10 @@ int vnet_ip6_nd_term (vlib_main_t * vm,
 		      ethernet_header_t * eth,
 		      ip6_header_t * ip, u32 sw_if_index, u16 bd_index);
 
-void send_ip6_na (vlib_main_t * vm, vnet_hw_interface_t * hi);
+void send_ip6_na (vlib_main_t * vm, const vnet_hw_interface_t * hi);
+void send_ip6_na_w_addr (vlib_main_t * vm,
+			 const ip6_address_t * addr,
+			 const vnet_hw_interface_t * hi);
 
 u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
 

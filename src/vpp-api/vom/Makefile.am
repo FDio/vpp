@@ -66,8 +66,14 @@ endif
 GBP_SOURCES =
 if ENABLE_GBP_PLUGIN
 GBP_SOURCES += 				\
+	gbp_recirc_cmds.cpp		\
+	gbp_recirc.cpp			\
+	gbp_subnet_cmds.cpp		\
+	gbp_subnet.cpp			\
 	gbp_endpoint_cmds.cpp		\
 	gbp_endpoint.cpp		\
+	gbp_endpoint_group_cmds.cpp	\
+	gbp_endpoint_group.cpp		\
 	gbp_contract_cmds.cpp		\
 	gbp_contract.cpp
 endif
@@ -142,7 +148,7 @@ vomincludedir = $(includedir)/vom
 
 ACL_INCLUDES =
 if ENABLE_ACL_PLUGIN
-ACL_INCLUDES += 				\
+ACL_INCLUDES += 			\
 	acl_binding.hpp			\
 	acl_ethertype.hpp		\
 	acl_l2_rule.hpp			\
@@ -153,7 +159,7 @@ endif
 
 NAT_INCLUDES =
 if ENABLE_NAT_PLUGIN
-NAT_INCLUDES += 				\
+NAT_INCLUDES += 			\
 	nat_static.hpp			\
 	nat_binding.hpp
 endif
@@ -166,8 +172,11 @@ endif
 
 GBP_INCLUDES =
 if ENABLE_GBP_PLUGIN
-GBP_INCLUDES += 				\
+GBP_INCLUDES += 			\
 	gbp_endpoint.hpp		\
+	gbp_endpoint_group.hpp		\
+	gbp_subnet.hpp			\
+	gbp_recirc.hpp			\
 	gbp_contract.hpp
 endif
 
