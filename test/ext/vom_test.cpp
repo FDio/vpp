@@ -892,7 +892,11 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     bridge_domain bd1(33);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd, bridge_domain::learning_mode_t::ON));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
+                                              bridge_domain::learning_mode_t::ON,
+                                              bridge_domain::arp_term_mode_t::ON,
+                                              bridge_domain::flood_mode_t::ON,
+                                              bridge_domain::mac_age_mode_t::OFF));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 
@@ -973,7 +977,11 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     bridge_domain bd2(99);
 
     HW::item<uint32_t> hw_bd2(99, rc_t::OK);
-    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd2, bridge_domain::learning_mode_t::ON));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd2,
+                                              bridge_domain::learning_mode_t::ON,
+                                              bridge_domain::arp_term_mode_t::ON,
+                                              bridge_domain::flood_mode_t::ON,
+                                              bridge_domain::mac_age_mode_t::OFF));
 
     TRY_CHECK_RC(OM::write(jkr, bd2));
 
@@ -1020,8 +1028,8 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
 
     // VXLAN create
     vxlan_tunnel::endpoint_t ep(boost::asio::ip::address::from_string("10.10.10.10"),
-                               boost::asio::ip::address::from_string("10.10.10.11"),
-                               322);
+                                boost::asio::ip::address::from_string("10.10.10.11"),
+                                322);
 
     vxlan_tunnel vxt(ep.src, ep.dst, ep.vni);
 
@@ -1031,10 +1039,17 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     TRY_CHECK_RC(OM::write(franz, vxt));
 
     // bridge-domain create
-    bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF);
+    bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF,
+                      bridge_domain::arp_term_mode_t::OFF,
+                      bridge_domain::flood_mode_t::OFF,
+                      bridge_domain::mac_age_mode_t::ON);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd, bridge_domain::learning_mode_t::OFF));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
+                                              bridge_domain::learning_mode_t::OFF,
+                                              bridge_domain::arp_term_mode_t::OFF,
+                                              bridge_domain::flood_mode_t::OFF,
+                                              bridge_domain::mac_age_mode_t::ON));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 

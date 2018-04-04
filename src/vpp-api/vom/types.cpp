@@ -28,9 +28,6 @@ rc_t::rc_t(int v, const std::string s)
   : enum_base<rc_t>(v, s)
 {
 }
-rc_t::~rc_t()
-{
-}
 
 const rc_t&
 rc_t::from_vpp_retval(int32_t rv)
