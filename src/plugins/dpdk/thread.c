@@ -69,6 +69,11 @@ static vlib_thread_callbacks_t callbacks = {
 static clib_error_t *
 dpdk_thread_init (vlib_main_t * vm)
 {
+  dpdk_main_t *dm = &dpdk_main;
+
+  if (dm->requirements_check_failed)
+    return 0;
+
   vlib_thread_cb_register (vm, &callbacks);
   return 0;
 }

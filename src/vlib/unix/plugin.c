@@ -175,7 +175,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 	  if (error)
 	    {
 	      clib_error_report (error);
-	      os_exit (1);
+	      goto error;
 	    }
 	}
       else
