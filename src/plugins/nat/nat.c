@@ -785,6 +785,17 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           vrf_id = sm->inside_vrf_id;
         }
 
+      if (!out2in_only)
+        {
+          m_key.addr = l_addr;
+          m_key.port = addr_only ? 0 : l_port;
+          m_key.protocol = addr_only ? 0 : proto;
+          m_key.fib_index = fib_index;
+          kv.key = m_key.as_u64;
+          if (!clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv, &value))
+            return VNET_API_ERROR_VALUE_EXIST;
+        }
+
       /* Find external address in allocated addresses and reserve port for
          address and port pair mapping when dynamic translations enabled */
       if (!(addr_only || sm->static_mapping_only || out2in_only))
