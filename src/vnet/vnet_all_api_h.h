@@ -73,6 +73,7 @@
 #include <vnet/feature/feature.api.h>
 #include <vnet/sctp/sctp.api.h>
 #include <vnet/qos/qos.api.h>
+#include <vnet/quic/quic.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
