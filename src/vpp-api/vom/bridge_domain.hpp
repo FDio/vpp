@@ -52,6 +52,21 @@ public:
   };
 
   /**
+   * Bridge Domain Learning mode
+   */
+  struct flood_mode_t : enum_base<flood_mode_t>
+  {
+    const static flood_mode_t ON;
+    const static flood_mode_t OFF;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    flood_mode_t(int v, const std::string& s);
+  };
+
+  /**
    * The value of the defaultbridge domain
    */
   const static uint32_t DEFAULT_TABLE = 0;
@@ -60,7 +75,8 @@ public:
    * Construct a new object matching the desried state
    */
   bridge_domain(uint32_t id,
-                const learning_mode_t& lmode = learning_mode_t::ON);
+                const learning_mode_t& lmode = learning_mode_t::ON,
+                const flood_mode_t& fmode = flood_mode_t::ON);
 
   /**
    * Copy Constructor
@@ -179,9 +195,14 @@ private:
   HW::item<uint32_t> m_id;
 
   /**
-   * The leanring mode of the bridge
+   * The learning mode of the bridge
    */
   learning_mode_t m_learning_mode;
+
+  /**
+   * The flood mode of the bridge
+   */
+  flood_mode_t m_flood_mode;
 
   /**
    * A map of all interfaces key against the interface's name

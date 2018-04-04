@@ -1034,6 +1034,17 @@ fib_table_get_table_id_for_sw_if_index (fib_protocol_t proto,
 }
 
 u32
+fib_table_get_table_id (u32 fib_index,
+                        fib_protocol_t proto)
+{
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get(fib_index, proto);
+
+    return ((NULL != fib_table ? fib_table->ft_table_id : ~0));
+}
+
+u32
 fib_table_find (fib_protocol_t proto,
 		u32 table_id)
 {

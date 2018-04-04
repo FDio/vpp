@@ -16,6 +16,7 @@
 #ifndef __VOM_INST_DB_H__
 #define __VOM_INST_DB_H__
 
+#include <map>
 #include <memory>
 #include <ostream>
 
