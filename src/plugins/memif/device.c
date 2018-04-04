@@ -311,7 +311,8 @@ retry:
   n_free = ring->tail - mq->last_tail;
   if (n_free >= 16)
     {
-      vlib_buffer_free_from_ring_no_next (vm, mq->buffers, mq->last_tail,
+      vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
+					  mq->last_tail & mask,
 					  ring_size, n_free);
       mq->last_tail += n_free;
     }
