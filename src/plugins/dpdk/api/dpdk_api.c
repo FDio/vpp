@@ -297,6 +297,9 @@ dpdk_api_init (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   clib_error_t *error = 0;
 
+  if (dm->requirements_check_failed)
+    return error;
+
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_init)))
     return error;

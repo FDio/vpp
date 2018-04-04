@@ -17,6 +17,7 @@
 #include <vnet/plugin/plugin.h>
 #include <dpdk/device/dpdk.h>
 #include <vpp/app/version.h>
+#include <vppinfra/linux/sysfs.h>
 
 /*
  * Called by the dpdk driver's rte_delay_us() function.
@@ -77,6 +78,9 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
 
+  if (dm->requirements_check_failed)
+    return error;
+
   if ((error = vlib_call_init_function (vm, dpdk_init)))
     return error;
 
@@ -88,9 +92,34 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_main_init);
 
+clib_error_t *
+dpdk_plugin_init_requirements_check (vlib_main_t *vm)
+{
+  dpdk_main_t * dm = &dpdk_main;
+  clib_error_t *error;
+  int n;
+
+  error = clib_sysfs_get_free_hugepages (0 /* socket */, 2048 /* 2m pages */, 
+                                         &n);
+
+  if (error)
+    return error;
+
+  if (n < 32)
+    {
+      dm->requirements_check_failed = 1;
+      return clib_error_return 
+        (0, "DPDK plugin: plugin disabled, only %d hugepages available", n);
+    }
+
+  return 0;
+}
+
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Data Plane Development Kit (DPDK)",
+    .early_init = "dpdk_plugin_init_requirements_check",
 };
 /* *INDENT-ON* */
