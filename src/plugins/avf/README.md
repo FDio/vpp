@@ -1,4 +1,4 @@
-# Intel AVF device plugin for VPP   
+# Intel AVF device plugin for VPP    {#avf_plugin_doc}
 
 ##Overview
 This plugins provides native device support for intel Adaptive Virtual

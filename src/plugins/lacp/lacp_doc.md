@@ -1,7 +1,6 @@
-# VPP Link Aggregation Control Protocol (LACP) implementation    {#lacp_doc}
+# VPP Link Aggregation Control Protocol (LACP) implementation    {#lacp_plugin_doc}
 
 This document is to describe the usage of VPP LACP implementation.
-
 
 ## LACP
 
@@ -29,28 +28,33 @@ detach interface <interface>
 
 ### Configuration example
 
+```
 create bond mode lacp
 set interface state BondEthernet0 up
 enslave interface TenGigabitEthernet7/0/0 to BondEthernet1
 enslave interface TenGigabitEthernet7/0/1 to BondEthernet1
 enslave interface TenGigabitEthernet5/0/0 to BondEthernet1
 enslave interface TenGigabitEthernet5/0/1 to BondEthernet1
+```
 
+```
 detach interface TenGigabitEthernet5/0/1
+```
 
+```
 delete bond BondEthernet0
+```
 
 ### Operational data
 
+```
 show lacp [<interface>] [details]
+```
 
 Example:
 
-show lacp
-
-
-DBGvpp# sh lacp
-sh lacp
+```
+DBGvpp# show lacp
                                                         actor state                      partner state
 interface name            sw_if_index  bond interface   exp/def/dis/col/syn/agg/tim/act  exp/def/dis/col/syn/agg/tim/act
 GigabitEthernet2/0/1      1            BondEthernet0      0   0   1   1   1   1   1   1    0   0   1   1   1   1   1   1
@@ -75,18 +79,26 @@ TenGigabitEthernet6/0/0   4            BondEthernet2      0   0   1   1   1   1 
   LAG ID: [(ffff,90-e2-ba-36-31-21,0002,00ff,0002), (ffff,90-e2-ba-29-f5-31,000f,00ff,0001)]
   RX-state: CURRENT, TX-state: TRANSMIT, MUX-state: COLLECTING_DISTRIBUTING, PTX-state: PERIODIC_TX
 DBGvpp#
+```
 
+```
 show bond [details]
+````
 
+Example:
 
-DBGvpp# sh bond
+```
+DBGvpp# show bond
 sh bond
 interface name   sw_if_index   mode         load balance  active slaves  slaves
 BondEthernet0    10            lacp         l2            1              1
 BondEthernet1    11            lacp         l34           4              4
 BondEthernet2    12            lacp         l23           2              2
 DBGvpp#
+```
 
 ### Debugging
 
+```
 debug lacp [<interface>] <on | off>
+```

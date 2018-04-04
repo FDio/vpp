@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1804
 * @subpage release_notes_1801
 * @subpage release_notes_1710
 * @subpage release_notes_1707
@@ -8,6 +9,13 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_1801 Release notes for VPP 18.04
+
+More than 530 commits since the 18.01 release.
+
+TODO
+
 
 @page release_notes_1801 Release notes for VPP 18.01
 
