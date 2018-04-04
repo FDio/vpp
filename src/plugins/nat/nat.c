@@ -716,15 +716,16 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           if (rp_match)
             return VNET_API_ERROR_VALUE_EXIST;
 
+          snat_add_static_mapping_when_resolved
+            (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
+             addr_only,  is_add, tag);
+
           /* DHCP resolution required? */
           if (first_int_addr == 0)
             {
-              snat_add_static_mapping_when_resolved
-                (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-                 addr_only,  is_add, tag);
               return 0;
             }
-            else
+          else
             {
               e_addr.as_u32 = first_int_addr->as_u32;
               /* Identity mapping? */
@@ -1774,6 +1775,15 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                        u32 if_address_index,
                                        u32 is_delete);
 
+static void
+nat_ip4_add_del_addr_only_sm_cb (ip4_main_t * im,
+                                 uword opaque,
+                                 u32 sw_if_index,
+                                 ip4_address_t * address,
+                                 u32 address_length,
+                                 u32 if_address_index,
+                                 u32 is_delete);
+
 static int
 nat_alloc_addr_and_port_default (snat_address_t * addresses,
                                  u32 fib_index,
@@ -1848,6 +1858,11 @@ static clib_error_t * snat_init (vlib_main_t * vm)
 
   /* Set up the interface address add/del callback */
   cb4.function = snat_ip4_add_del_interface_address_cb;
+  cb4.function_opaque = 0;
+
+  vec_add1 (im->add_del_interface_address_callbacks, cb4);
+
+  cb4.function = nat_ip4_add_del_addr_only_sm_cb;
   cb4.function_opaque = 0;
 
   vec_add1 (im->add_del_interface_address_callbacks, cb4);
@@ -2733,6 +2748,77 @@ u8 * format_det_map_ses (u8 * s, va_list * args)
 }
 
 static void
+nat_ip4_add_del_addr_only_sm_cb (ip4_main_t * im,
+                                 uword opaque,
+                                 u32 sw_if_index,
+                                 ip4_address_t * address,
+                                 u32 address_length,
+                                 u32 if_address_index,
+                                 u32 is_delete)
+{
+  snat_main_t *sm = &snat_main;
+  snat_static_map_resolve_t *rp;
+  snat_static_mapping_t *m;
+  snat_session_key_t m_key;
+  clib_bihash_kv_8_8_t kv, value;
+  int i, rv;
+  ip4_address_t l_addr;
+
+  for (i = 0; i < vec_len (sm->to_resolve); i++)
+    {
+      rp = sm->to_resolve + i;
+      if (rp->addr_only == 0)
+        continue;
+      if (rp->sw_if_index == sw_if_index)
+        goto match;
+    }
+
+  return;
+
+match:
+  m_key.addr.as_u32 = address->as_u32;
+  m_key.port = rp->addr_only ? 0 : rp->e_port;
+  m_key.protocol = rp->addr_only ? 0 : rp->proto;
+  m_key.fib_index = sm->outside_fib_index;
+  kv.key = m_key.as_u64;
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    m = 0;
+  else
+    m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  if (!is_delete)
+    {
+      /* Don't trip over lease renewal, static config */
+      if (m)
+        return;
+    }
+  else
+    {
+      if (!m)
+        return;
+    }
+
+  /* Indetity mapping? */
+  if (rp->l_addr.as_u32 == 0)
+    l_addr.as_u32 = address[0].as_u32;
+  else
+    l_addr.as_u32 = rp->l_addr.as_u32;
+  /* Add the static mapping */
+  rv = snat_add_static_mapping (l_addr,
+                                address[0],
+                                rp->l_port,
+                                rp->e_port,
+                                rp->vrf_id,
+                                rp->addr_only,
+                                ~0 /* sw_if_index */,
+                                rp->proto,
+                                !is_delete,
+                                0, 0, rp->tag);
+  if (rv)
+    clib_warning ("snat_add_static_mapping returned %d", rv);
+}
+
+static void
 snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                        uword opaque,
                                        u32 sw_if_index,
@@ -2778,6 +2864,8 @@ match:
       for (j = 0; j < vec_len (sm->to_resolve); j++)
         {
           rp = sm->to_resolve + j;
+          if (rp->addr_only)
+            continue;
           /* On this interface? */
           if (rp->sw_if_index == sw_if_index)
             {
