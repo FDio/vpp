@@ -522,7 +522,7 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
   if (is_add)
     fib_table_entry_update_one_path(fib_index,
                                     &prefix,
-                                    FIB_SOURCE_PLUGIN_HI,
+                                    FIB_SOURCE_PLUGIN_LOW,
                                     (FIB_ENTRY_FLAG_CONNECTED |
                                      FIB_ENTRY_FLAG_LOCAL |
                                      FIB_ENTRY_FLAG_EXCLUSIVE),
@@ -536,7 +536,7 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
   else
     fib_table_entry_delete(fib_index,
                            &prefix,
-                           FIB_SOURCE_PLUGIN_HI);
+                           FIB_SOURCE_PLUGIN_LOW);
 }
 
 void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
@@ -562,7 +562,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
   if (vrf_id != ~0)
     ap->fib_index =
       fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
-                                         FIB_SOURCE_PLUGIN_HI);
+                                         FIB_SOURCE_PLUGIN_LOW);
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
@@ -1154,7 +1154,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
                                                      vrf_id,
-                                                     FIB_SOURCE_PLUGIN_HI);
+                                                     FIB_SOURCE_PLUGIN_LOW);
 
       /* Find external address in allocated addresses and reserve port for
          address and port pair mapping when dynamic translations enabled */
@@ -1267,7 +1267,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       if (!m)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_HI);
+      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
 
       /* Free external address port */
       if (!(sm->static_mapping_only || out2in_only))
@@ -1438,7 +1438,7 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
 
   if (a->fib_index != ~0)
     fib_table_unlock(a->fib_index, FIB_PROTOCOL_IP4,
-                     FIB_SOURCE_PLUGIN_HI);
+                     FIB_SOURCE_PLUGIN_LOW);
 
   /* Delete sessions using address */
   if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
