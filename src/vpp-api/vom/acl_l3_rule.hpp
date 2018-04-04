@@ -121,7 +121,7 @@ public:
    */
   const route::prefix_t& src() const;
   uint32_t priority() const;
-  action_t action() const;
+  const action_t& action() const;
   const route::prefix_t& dst() const;
   uint8_t proto() const;
   uint16_t srcport_or_icmptype_first() const;

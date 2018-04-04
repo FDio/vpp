@@ -55,8 +55,8 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
-  const epg_id_t m_src_epg_id;
-  const epg_id_t m_dst_epg_id;
+  epg_id_t m_src_epg_id;
+  epg_id_t m_dst_epg_id;
   const handle_t m_acl;
 };
 
