@@ -668,6 +668,16 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'mtu': mtu})
 
+    def sw_interface_set_promiscuous(self, sw_if_index, enable):
+        """
+        :param sw_if_index:
+        :param enable:
+
+        """
+        return self.api(self.papi.sw_interface_set_promiscuous,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})
+
     def sw_interface_set_mac_address(self, sw_if_index, mac):
         return self.api(self.papi.sw_interface_set_mac_address,
                         {'sw_if_index': sw_if_index,
@@ -3237,6 +3247,59 @@ class VppPapiProvider(object):
     def gbp_endpoint_dump(self):
         """ GBP endpoint Dump """
         return self.api(self.papi.gbp_endpoint_dump, {})
+
+    def gbp_endpoint_group_add_del(self, is_add, epg, bd,
+                                   ip4_rd,
+                                   ip6_rd,
+                                   uplink_sw_if_index):
+        """ GBP endpoint group Add/Del """
+        return self.api(self.papi.gbp_endpoint_group_add_del,
+                        {'is_add': is_add,
+                         'epg': {
+                             'uplink_sw_if_index': uplink_sw_if_index,
+                             'bd_id': bd,
+                             'ip4_table_id': ip4_rd,
+                             'ip6_table_id': ip6_rd,
+                             'epg_id': epg}})
+
+    def gbp_endpoint_group_dump(self):
+        """ GBP endpoint group Dump """
+        return self.api(self.papi.gbp_endpoint_group_dump, {})
+
+    def gbp_recirc_add_del(self, is_add, sw_if_index, epg, is_ext):
+        """ GBP recirc Add/Del """
+        return self.api(self.papi.gbp_recirc_add_del,
+                        {'is_add': is_add,
+                         'recirc': {
+                             'is_ext': is_ext,
+                             'sw_if_index': sw_if_index,
+                             'epg_id': epg}})
+
+    def gbp_recirc_dump(self):
+        """ GBP recirc Dump """
+        return self.api(self.papi.gbp_recirc_dump, {})
+
+    def gbp_subnet_add_del(self, is_add, table_id,
+                           is_internal,
+                           addr, addr_len,
+                           sw_if_index=0xffffffff,
+                           epg_id=0xffffffff,
+                           is_ip6=False):
+        """ GBP Subnet Add/Del """
+        return self.api(self.papi.gbp_subnet_add_del,
+                        {'is_add': is_add,
+                         'subnet': {
+                             'is_internal': is_internal,
+                             'is_ip6': is_ip6,
+                             'sw_if_index': sw_if_index,
+                             'epg_id': epg_id,
+                             'address': addr,
+                             'address_length': addr_len,
+                             'table_id': table_id}})
+
+    def gbp_subnet_dump(self):
+        """ GBP Subnet Dump """
+        return self.api(self.papi.gbp_subnet_dump, {})
 
     def gbp_contract_add_del(self, is_add, src_epg, dst_epg, acl_index):
         """ GBP contract Add/Del """
