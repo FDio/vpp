@@ -383,9 +383,13 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  clib_memcpy64_x4 (b0, b1, b2, b3, bt);
 
 	  b0->current_length = po[0].packet_len;
+	  n_rx_bytes += b0->current_length;
 	  b1->current_length = po[1].packet_len;
+	  n_rx_bytes += b1->current_length;
 	  b2->current_length = po[2].packet_len;
+	  n_rx_bytes += b2->current_length;
 	  b3->current_length = po[3].packet_len;
+	  n_rx_bytes += b3->current_length;
 
 	  memif_add_to_chain (vm, b0, ptd->buffers + fbvi0 + 1, buffer_size);
 	  memif_add_to_chain (vm, b1, ptd->buffers + fbvi1 + 1, buffer_size);
@@ -455,6 +459,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  clib_memcpy (b0, bt, 64);
 	  b0->current_length = po->packet_len;
+	  n_rx_bytes += b0->current_length;
 
 	  memif_add_to_chain (vm, b0, ptd->buffers + fbvi0 + 1, buffer_size);
 
@@ -534,15 +539,16 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_packets = 0, n_rx_bytes = 0;
   u32 *to_next = 0, *buffers;
   u32 bi0, bi1, bi2, bi3;
+  u16 s0, s1, s2, s3;
+  memif_desc_t *d0, *d1, *d2, *d3;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 thread_index = vlib_get_thread_index ();
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
-  vlib_buffer_t *bt = &ptd->buffer_template;
   u16 cur_slot, last_slot, ring_size, n_slots, mask, head;
   i16 start_offset;
   u32 buffer_length;
-  u16 n_alloc;
+  u16 n_alloc, n_from;
 
   mq = vec_elt_at_index (mif->rx_queues, qid);
   ring = mq->ring;
@@ -568,8 +574,6 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			CLIB_CACHE_LINE_BYTES);
   while (n_slots && n_rx_packets < MEMIF_RX_VECTOR_SZ)
     {
-      u16 s0;
-      memif_desc_t *d0;
       vlib_buffer_t *hb;
 
       s0 = cur_slot & mask;
@@ -582,7 +586,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       hb = b0 = vlib_get_buffer (vm, bi0);
       b0->current_data = start_offset;
       b0->current_length = start_offset + d0->length;
-
+      n_rx_bytes += d0->length;
 
       if (0 && memif_desc_is_invalid (mif, d0, buffer_length))
 	return 0;
@@ -597,7 +601,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  d0 = &ring->desc[s0];
 	  bi0 = mq->buffers[s0];
 
-	  /*previous buffer */
+	  /* previous buffer */
 	  b0->next_buffer = bi0;
 	  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
 
@@ -606,6 +610,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_data = start_offset;
 	  b0->current_length = start_offset + d0->length;
 	  hb->total_length_not_including_first_buffer += d0->length;
+	  n_rx_bytes += d0->length;
 
 	  cur_slot++;
 	  n_slots--;
@@ -617,10 +622,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* release slots from the ring */
   mq->last_tail = cur_slot;
 
-  u32 n_from = n_rx_packets;
-
-  vnet_buffer (bt)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-
+  n_from = n_rx_packets;
   buffers = ptd->buffers;
 
   while (n_from)
@@ -769,12 +771,12 @@ refill:
   head = ring->head;
   n_slots = ring_size - head + mq->last_tail;
 
-  if (n_slots < 8)
+  if (n_slots < 32)
     goto done;
 
   memif_desc_t *dt = &ptd->desc_template;
   memset (dt, 0, sizeof (memif_desc_t));
-  dt->length = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES - start_offset;
+  dt->length = buffer_length;
 
   n_alloc = vlib_buffer_alloc_to_ring (vm, mq->buffers, head & mask,
 				       ring_size, n_slots);
@@ -785,15 +787,64 @@ refill:
 			MEMIF_INPUT_ERROR_BUFFER_ALLOC_FAIL, 1);
     }
 
-  while (n_alloc--)
+  while (n_alloc >= 32)
     {
-      u16 s = head++ & mask;
-      memif_desc_t *d = &ring->desc[s];
-      clib_memcpy (d, dt, sizeof (memif_desc_t));
-      b0 = vlib_get_buffer (vm, mq->buffers[s]);
-      d->region = b0->buffer_pool_index + 1;
-      d->offset =
-	(void *) b0->data - mif->regions[d->region].shm + start_offset;
+      bi0 = mq->buffers[(head + 4) & mask];
+      vlib_prefetch_buffer_with_index (vm, bi0, LOAD);
+      bi1 = mq->buffers[(head + 5) & mask];
+      vlib_prefetch_buffer_with_index (vm, bi1, LOAD);
+      bi2 = mq->buffers[(head + 6) & mask];
+      vlib_prefetch_buffer_with_index (vm, bi2, LOAD);
+      bi3 = mq->buffers[(head + 7) & mask];
+      vlib_prefetch_buffer_with_index (vm, bi3, LOAD);
+
+      s0 = head++ & mask;
+      s1 = head++ & mask;
+      s2 = head++ & mask;
+      s3 = head++ & mask;
+
+      d0 = &ring->desc[s0];
+      d1 = &ring->desc[s1];
+      d2 = &ring->desc[s2];
+      d3 = &ring->desc[s3];
+
+      clib_memcpy (d0, dt, sizeof (memif_desc_t));
+      clib_memcpy (d1, dt, sizeof (memif_desc_t));
+      clib_memcpy (d2, dt, sizeof (memif_desc_t));
+      clib_memcpy (d3, dt, sizeof (memif_desc_t));
+
+      b0 = vlib_get_buffer (vm, mq->buffers[s0]);
+      b1 = vlib_get_buffer (vm, mq->buffers[s1]);
+      b2 = vlib_get_buffer (vm, mq->buffers[s2]);
+      b3 = vlib_get_buffer (vm, mq->buffers[s3]);
+
+      d0->region = b0->buffer_pool_index + 1;
+      d1->region = b1->buffer_pool_index + 1;
+      d2->region = b2->buffer_pool_index + 1;
+      d3->region = b3->buffer_pool_index + 1;
+
+      d0->offset =
+	(void *) b0->data - mif->regions[d0->region].shm + start_offset;
+      d1->offset =
+	(void *) b1->data - mif->regions[d1->region].shm + start_offset;
+      d2->offset =
+	(void *) b2->data - mif->regions[d2->region].shm + start_offset;
+      d3->offset =
+	(void *) b3->data - mif->regions[d3->region].shm + start_offset;
+
+      n_alloc -= 4;
+    }
+  while (n_alloc)
+    {
+      s0 = head++ & mask;
+      d0 = &ring->desc[s0];
+      clib_memcpy (d0, dt, sizeof (memif_desc_t));
+      b0 = vlib_get_buffer (vm, mq->buffers[s0]);
+      d0->region = b0->buffer_pool_index + 1;
+      d0->offset =
+	(void *) b0->data - mif->regions[d0->region].shm + start_offset;
+
+      n_alloc -= 1;
     }
 
   CLIB_MEMORY_STORE_BARRIER ();
@@ -831,7 +882,7 @@ CLIB_MULTIARCH_FN (memif_input_fn) (vlib_main_t * vm,
 	      n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
 						    dq->queue_id, mode_eth);
 	  }
-	if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+	else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	  {
 	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
 	      n_rx += memif_device_input_inline (vm, node, frame, mif,
