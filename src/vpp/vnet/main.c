@@ -20,7 +20,53 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vpp/app/version.h>
 #include <vpp/api/vpe_msg_enum.h>
+#include <limits.h>
 
+/*
+ * Load plugins from /usr/lib/vpp_plugins by default
+ */
+char *vlib_plugin_path = "/usr/lib/vpp_plugins";
+char *vlib_plugin_app_version = VPP_BUILD_VER;
+
+static void
+vpp_find_plugin_path ()
+{
+  extern char *vat_plugin_path;
+  char *p, path[PATH_MAX];
+  int rv;
+  u8 *s;
+
+  /* find executable path */
+  if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
+    return;
+
+  /* readlink doesn't provide null termination */
+  path[rv] = 0;
+
+  /* strip filename */
+  if ((p = strrchr (path, '/')) == 0)
+    return;
+  *p = 0;
+
+  /* strip bin/ */
+  if ((p = strrchr (path, '/')) == 0)
+    return;
+  *p = 0;
+
+  s = format (0, "%s/lib/vpp_plugins", path);
+#if uword_bits == 64
+  s = format (s, ":%s/lib64/vpp_plugins", path);
+#endif
+  vec_add1 (s, 0);
+  vlib_plugin_path = (char *) s;
+
+  s = format (0, "%s/lib/vpp_api_test_plugins", path);
+#if uword_bits == 64
+  s = format (s, ":%s/lib64/vpp_api_test_plugins", path);
+#endif
+  vec_add1 (s, 0);
+  vat_plugin_path = (char *) s;
+}
 
 static void
 vpe_main_init (vlib_main_t * vm)
@@ -39,18 +85,14 @@ vpe_main_init (vlib_main_t * vm)
    * Create the binary api plugin hashes before loading plugins
    */
   vat_plugin_hash_create ();
+
+  vpp_find_plugin_path ();
 }
 
 /*
  * Default path for runtime data
  */
 char *vlib_default_runtime_dir = "vpp";
-
-/*
- * Load plugins from /usr/lib/vpp_plugins by default
- */
-char *vlib_plugin_path = "/usr/lib/vpp_plugins";
-char *vlib_plugin_app_version = VPP_BUILD_VER;
 
 int
 main (int argc, char *argv[])

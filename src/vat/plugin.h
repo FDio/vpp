@@ -26,6 +26,7 @@
 typedef struct
 {
   u8 *name;
+  u8 *filename;
   struct stat file_info;
   void *handle;
 } plugin_info_t;

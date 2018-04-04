@@ -24,13 +24,13 @@
 plugin_main_t vat_plugin_main;
 
 static int
-load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
+load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
 {
   void *handle, *register_handle;
   clib_error_t *(*fp) (vat_main_t *);
   clib_error_t *error;
 
-  handle = dlopen ((char *) pi->name, RTLD_LAZY);
+  handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
   /*
    * Note: this can happen if the plugin has an undefined symbol reference,
@@ -119,6 +119,7 @@ vat_load_new_plugins (plugin_main_t * pm)
       while ((entry = readdir (dp)))
 	{
 	  u8 *plugin_name;
+	  u8 *file_name;
 
 	  if (pm->plugin_name_filter)
 	    {
@@ -128,13 +129,14 @@ vat_load_new_plugins (plugin_main_t * pm)
 		  goto next;
 	    }
 
-	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
-				entry->d_name, 0);
+	  file_name = format (0, "%s/%s%c", plugin_path[i], entry->d_name, 0);
+	  plugin_name = format (0, "%s%c", entry->d_name, 0);
 
 	  /* unreadable */
-	  if (stat ((char *) plugin_name, &statb) < 0)
+	  if (stat ((char *) file_name, &statb) < 0)
 	    {
 	    ignore:
+	      vec_free (file_name);
 	      vec_free (plugin_name);
 	      continue;
 	    }
@@ -148,10 +150,12 @@ vat_load_new_plugins (plugin_main_t * pm)
 	    {
 	      vec_add2 (pm->plugin_info, pi, 1);
 	      pi->name = plugin_name;
+	      pi->filename = file_name;
 	      pi->file_info = statb;
 
-	      if (load_one_plugin (pm, pi))
+	      if (load_one_vat_plugin (pm, pi))
 		{
+		  vec_free (file_name);
 		  vec_free (plugin_name);
 		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
 		  continue;
