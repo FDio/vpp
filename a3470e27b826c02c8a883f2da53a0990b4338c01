@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "8f9ba95b_35038862",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 772
+      },
+      "writtenOn": "2018-04-04T13:44:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "74d50f34_ce4dbed1",
+      "range": {
+        "startLine": 504,
+        "startChar": 13,
+        "endLine": 504,
+        "endChar": 14
+      },
+      "revId": "a3470e27b826c02c8a883f2da53a0990b4338c01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f87e2408_07934771",
         "filename": "Makefile",
         "patchSetId": 1
@@ -45,6 +69,30 @@
       "revId": "a3470e27b826c02c8a883f2da53a0990b4338c01",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "639e886d_2f29e641",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 772
+      },
+      "writtenOn": "2018-04-04T13:44:30Z",
+      "side": 1,
+      "message": "well if your comfortable with it I really want this to flat replace verify:  which I was going to do after i created the clang only build job.  \nrather then medium term i can just do the replace right here, right now.\nthoughts?",
+      "parentUuid": "f87e2408_07934771",
+      "range": {
+        "startLine": 514,
+        "startChar": 0,
+        "endLine": 523,
+        "endChar": 51
+      },
+      "revId": "a3470e27b826c02c8a883f2da53a0990b4338c01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
