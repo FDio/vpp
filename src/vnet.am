@@ -1007,6 +1007,18 @@ libvnet_la_SOURCES += vnet/tls/tls.c
 
 nobase_include_HEADERS +=			\
   vnet/tls/tls.h
+  
+########################################
+# QUIC protocol
+########################################
+
+libvnet_la_SOURCES += vnet/quic/quic.c \
+vnet/quic/quic_api.c
+
+nobase_include_HEADERS +=			\
+  vnet/quic/quic.h
+  
+API_FILES += vnet/quic/quic.api  
 
 ########################################
 # Linux packet interface
