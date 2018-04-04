@@ -65,7 +65,7 @@ l2_rule::priority() const
   return m_priority;
 }
 
-action_t
+const action_t&
 l2_rule::action() const
 {
   return m_action;

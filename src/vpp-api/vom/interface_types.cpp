@@ -51,7 +51,8 @@ interface::type_t::from_string(const std::string& str)
     return interface::type_t::ETHERNET;
   } else if (str.find("vxlan") != std::string::npos) {
     return interface::type_t::VXLAN;
-  } else if (str.find("loop") != std::string::npos) {
+  } else if ((str.find("loop") != std::string::npos) ||
+             (str.find("recirc") != std::string::npos)) {
     return interface::type_t::LOOPBACK;
   } else if (str.find("host-") != std::string::npos) {
     return interface::type_t::AFPACKET;

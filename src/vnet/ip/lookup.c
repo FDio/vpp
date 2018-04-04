@@ -1133,7 +1133,7 @@ ip4_probe_neighbor_wait (vlib_main_t * vm, ip4_address_t * a, u32 sw_if_index,
   for (i = 0; i < retry_count; i++)
     {
       /* The interface may be down, etc. */
-      e = ip4_probe_neighbor (vm, a, sw_if_index);
+      e = ip4_probe_neighbor (vm, a, NULL, sw_if_index);
 
       if (e)
 	return e;

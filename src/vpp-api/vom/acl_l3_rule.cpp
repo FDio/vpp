@@ -147,7 +147,7 @@ l3_rule::priority() const
   return m_priority;
 }
 
-action_t
+const action_t&
 l3_rule::action() const
 {
   return m_action;

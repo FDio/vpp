@@ -250,8 +250,9 @@ void ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 int ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2);
 
 /* Send an ARP request to see if given destination is reachable on given interface. */
-clib_error_t *ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst,
-				  u32 sw_if_index);
+clib_error_t *ip4_probe_neighbor (vlib_main_t * vm,
+				  ip4_address_t * dst,
+				  ip4_address_t * src, u32 sw_if_index);
 
 clib_error_t *ip4_set_arp_limit (u32 arp_limit);
 

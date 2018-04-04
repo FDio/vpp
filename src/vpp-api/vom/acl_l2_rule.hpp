@@ -69,7 +69,7 @@ public:
    * Getters
    */
   uint32_t priority() const;
-  action_t action() const;
+  const action_t& action() const;
   const route::prefix_t& src_ip() const;
   const mac_address_t& mac() const;
   const mac_address_t& mac_mask() const;

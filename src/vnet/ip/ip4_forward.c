@@ -1842,12 +1842,12 @@ VLIB_INIT_FUNCTION (arp_notrace_init);
 
 /* Send an ARP request to see if given destination is reachable on given interface. */
 clib_error_t *
-ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
+ip4_probe_neighbor (vlib_main_t * vm,
+		    ip4_address_t * dst, ip4_address_t * src, u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
   ethernet_arp_header_t *h;
-  ip4_address_t *src;
   ip_interface_address_t *ia;
   ip_adjacency_t *adj;
   vnet_hw_interface_t *hi;
@@ -1866,8 +1866,9 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 				sw_if_index);
     }
 
-  src =
-    ip4_interface_address_matching_destination (im, dst, sw_if_index, &ia);
+  if (NULL == src)
+    src =
+      ip4_interface_address_matching_destination (im, dst, sw_if_index, &ia);
   if (!src)
     {
       vnm->api_errno = VNET_API_ERROR_NO_MATCHING_INTERFACE;

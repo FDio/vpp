@@ -13,8 +13,17 @@
 
 vppplugins_LTLIBRARIES += gbp_plugin.la
 
-gbp_plugin_la_SOURCES = 	\
-	gbp/gbp.c		\
+gbp_plugin_la_SOURCES = 		\
+	gbp/gbp_subnet.c		\
+	gbp/gbp_contract.c		\
+	gbp/gbp_endpoint.c		\
+	gbp/gbp_endpoint_group.c	\
+	gbp/gbp_classify.c  		\
+	gbp/gbp_recirc.c  		\
+	gbp/gbp_policy.c		\
+	gbp/gbp_policy_dpo.c		\
+	gbp/gbp_fwd.c			\
+	gbp/gbp_fwd_dpo.c		\
 	gbp/gbp_api.c
 
 API_FILES += gbp/gbp.api

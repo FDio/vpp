@@ -1,6 +1,6 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -27,6 +27,7 @@ typeonly define gbp_endpoint
   u32 epg_id;
   u8  is_ip6;
   u8  address[16];
+  u8  mac[6];
 };
 
 autoreply define gbp_endpoint_add_del
@@ -47,6 +48,93 @@ define gbp_endpoint_details
 {
   u32 context;
   vl_api_gbp_endpoint_t endpoint;
+};
+
+typeonly define gbp_endpoint_group
+{
+  u32 epg_id;
+  u32 bd_id;
+  u32 ip4_table_id;
+  u32 ip6_table_id;
+  u32 uplink_sw_if_index;
+};
+
+autoreply define gbp_endpoint_group_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_endpoint_group_t epg;
+};
+
+define gbp_endpoint_group_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_endpoint_group_details
+{
+  u32 context;
+  vl_api_gbp_endpoint_group_t epg;
+};
+
+typeonly define gbp_recirc
+{
+  u32 epg_id;
+  u32 sw_if_index;
+  u8  is_ext;
+};
+
+autoreply define gbp_recirc_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_recirc_t recirc;
+};
+
+define gbp_recirc_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_recirc_details
+{
+  u32 context;
+  vl_api_gbp_recirc_t recirc;
+};
+
+typeonly define gbp_subnet
+{
+  u32 table_id;
+  u32 sw_if_index;
+  u32 epg_id;
+  u8  is_ip6;
+  u8  is_internal;
+  u8  address_length;
+  u8  address[16];
+};
+
+autoreply define gbp_subnet_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_subnet_t subnet;
+};
+
+define gbp_subnet_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_subnet_details
+{
+  u32 context;
+  vl_api_gbp_subnet_t subnet;
 };
 
 typeonly define gbp_contract
