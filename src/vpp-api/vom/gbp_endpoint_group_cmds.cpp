@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,25 +13,31 @@
  * limitations under the License.
  */
 
-#include "vom/bridge_domain_cmds.hpp"
-
-DEFINE_VAPI_MSG_IDS_L2_API_JSON;
+#include "vom/gbp_endpoint_group_cmds.hpp"
 
 namespace VOM {
-namespace bridge_domain_cmds {
-create_cmd::create_cmd(HW::item<uint32_t>& item,
-                       const bridge_domain::learning_mode_t& lmode,
-                       const bridge_domain::flood_mode_t& fmode)
+namespace gbp_endpoint_group_cmds {
+
+create_cmd::create_cmd(HW::item<bool>& item,
+                       epg_id_t epg_id,
+                       uint32_t bd_id,
+                       route::table_id_t rd_id,
+                       const handle_t& itf)
   : rpc_cmd(item)
-  , m_learning_mode(lmode)
-  , m_flood_mode(fmode)
+  , m_epg_id(epg_id)
+  , m_bd_id(bd_id)
+  , m_rd_id(rd_id)
+  , m_itf(itf)
 {
 }
 
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
-  return (m_hw_item.data() == other.m_hw_item.data());
+  return ((m_itf == other.m_itf) &&
+          (m_bd_id == other.m_bd_id) &&
+          (m_rd_id == other.m_rd_id) &&
+          (m_epg_id == other.m_epg_id));
 }
 
 rc_t
@@ -40,40 +46,44 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_hw_item.data();
-  payload.flood = m_flood_mode.value();
-  payload.uu_flood = m_flood_mode.value();
-  payload.forward = 1;
-  payload.learn = m_learning_mode.value();
-  payload.arp_term = 1;
-  payload.mac_age = 0;
   payload.is_add = 1;
+  payload.epg.uplink_sw_if_index = m_itf.value();
+  payload.epg.epg_id = m_epg_id;
+  payload.epg.bd_id = m_bd_id;
+  payload.epg.ip4_table_id = m_rd_id;
+  payload.epg.ip6_table_id = m_rd_id;
 
   VAPI_CALL(req.execute());
 
   m_hw_item.set(wait());
 
-  return (rc_t::OK);
+  return rc_t::OK;
 }
 
 std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "bridge-domain-create: " << m_hw_item.to_string();
+  s << "gbp-endpoint-group-create: " << m_hw_item.to_string()
+    << " epg-id:" << m_epg_id
+    << " bd-id:" << m_bd_id
+    << " rd-id:" << m_rd_id
+    << " itf:" << m_itf;
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<uint32_t>& item)
+delete_cmd::delete_cmd(HW::item<bool>& item,
+                       epg_id_t epg_id)
   : rpc_cmd(item)
+  , m_epg_id(epg_id)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return (m_hw_item == other.m_hw_item);
+    return (m_epg_id == other.m_epg_id);
 }
 
 rc_t
@@ -82,22 +92,22 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_hw_item.data();
   payload.is_add = 0;
+  payload.epg.epg_id = m_epg_id;
 
   VAPI_CALL(req.execute());
 
-  wait();
-  m_hw_item.set(rc_t::NOOP);
+  m_hw_item.set(wait());
 
-  return (rc_t::OK);
+  return rc_t::OK;
 }
 
 std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "bridge-domain-delete: " << m_hw_item.to_string();
+  s << "gbp-endpoint-group-delete: " << m_hw_item.to_string()
+    << " epg:" << m_epg_id;
 
   return (s.str());
 }
@@ -117,9 +127,6 @@ dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
-  auto& payload = m_dump->get_request().get_payload();
-  payload.bd_id = ~0;
-
   VAPI_CALL(m_dump->execute());
 
   wait();
@@ -130,10 +137,11 @@ dump_cmd::issue(connection& con)
 std::string
 dump_cmd::to_string() const
 {
-  return ("bridge-domain-dump");
+  return ("gbp-endpoint-group-dump");
 }
-}
-}
+
+}; // namespace gbp_endpoint_group_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

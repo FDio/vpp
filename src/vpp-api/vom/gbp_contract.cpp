@@ -22,20 +22,20 @@ singular_db<gbp_contract::key_t, gbp_contract> gbp_contract::m_db;
 
 gbp_contract::event_handler gbp_contract::m_evh;
 
-gbp_contract::gbp_contract(epg_id_t src_epg_id,
-                           epg_id_t dst_epg_id,
+gbp_contract::gbp_contract(const gbp_endpoint_group& src_epg,
+                           const gbp_endpoint_group& dst_epg,
                            const ACL::l3_list& acl)
   : m_hw(false)
-  , m_src_epg_id(src_epg_id)
-  , m_dst_epg_id(dst_epg_id)
+  , m_src_epg(src_epg.singular())
+  , m_dst_epg(dst_epg.singular())
   , m_acl(acl.singular())
 {
 }
 
 gbp_contract::gbp_contract(const gbp_contract& gbpc)
   : m_hw(gbpc.m_hw)
-  , m_src_epg_id(gbpc.m_src_epg_id)
-  , m_dst_epg_id(gbpc.m_dst_epg_id)
+  , m_src_epg(gbpc.m_src_epg)
+  , m_dst_epg(gbpc.m_dst_epg)
   , m_acl(gbpc.m_acl)
 {
 }
@@ -51,7 +51,7 @@ gbp_contract::~gbp_contract()
 const gbp_contract::key_t
 gbp_contract::key() const
 {
-  return (std::make_pair(m_src_epg_id, m_dst_epg_id));
+  return (std::make_pair(m_src_epg->key(), m_dst_epg->key()));
 }
 
 bool
@@ -64,8 +64,8 @@ void
 gbp_contract::sweep()
 {
   if (m_hw) {
-    HW::enqueue(
-      new gbp_contract_cmds::delete_cmd(m_hw, m_src_epg_id, m_dst_epg_id));
+    HW::enqueue(new gbp_contract_cmds::delete_cmd(m_hw, m_src_epg->id(),
+                                                  m_dst_epg->id()));
   }
   HW::write();
 }
@@ -75,7 +75,7 @@ gbp_contract::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle()));
+      m_hw, m_src_epg->id(), m_dst_epg->id(), m_acl->handle()));
   }
 }
 
@@ -83,8 +83,8 @@ std::string
 gbp_contract::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-contract:[{" << m_src_epg_id << ", " << m_dst_epg_id << "}, "
-    << m_acl->to_string() << "]";
+  s << "gbp-contract:[{" << m_src_epg->to_string() << ", "
+    << m_dst_epg->to_string() << "}, " << m_acl->to_string() << "]";
 
   return (s.str());
 }
@@ -92,12 +92,9 @@ gbp_contract::to_string() const
 void
 gbp_contract::update(const gbp_contract& r)
 {
-  /*
- * create the table if it is not yet created
- */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle()));
+      m_hw, m_src_epg->id(), m_dst_epg->id(), m_acl->handle()));
   }
 }
 
@@ -151,10 +148,13 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<ACL::l3_list> acl =
       ACL::l3_list::find(payload.contract.acl_index);
+    std::shared_ptr<gbp_endpoint_group> src_epg =
+      gbp_endpoint_group::find(payload.contract.src_epg);
+    std::shared_ptr<gbp_endpoint_group> dst_epg =
+      gbp_endpoint_group::find(payload.contract.dst_epg);
 
-    if (acl) {
-      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
-                        *acl);
+    if (acl && src_epg && dst_epg) {
+      gbp_contract gbpc(*src_epg, *dst_epg, *acl);
       OM::commit(key, gbpc);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();

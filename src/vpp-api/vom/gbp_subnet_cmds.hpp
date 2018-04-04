@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,31 +13,33 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_GBP_CONTRACT_CMDS_H__
-#define __VOM_GBP_CONTRACT_CMDS_H__
+#ifndef __VOM_GBP_SUBNET_CMDS_H__
+#define __VOM_GBP_SUBNET_CMDS_H__
 
 #include "vom/dump_cmd.hpp"
-#include "vom/gbp_contract.hpp"
+#include "vom/gbp_subnet.hpp"
 
 #include <vapi/gbp.api.vapi.hpp>
 
 namespace VOM {
-namespace gbp_contract_cmds {
+namespace gbp_subnet_cmds {
 
 /**
-* A command class that creates or updates the GBP contract
+* A command class that creates or updates the GBP subnet
 */
 class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_contract_add_del>
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_subnet_add_del>
 {
 public:
   /**
    * Constructor
    */
   create_cmd(HW::item<bool>& item,
-             epg_id_t src_epg_id,
-             epg_id_t dst_epg_id,
-             const handle_t& acl);
+             route::table_id_t rd,
+             const route::prefix_t& prefix,
+             bool internal,
+             const handle_t& itf,
+             epg_id_t epg_id);
 
   /**
    * Issue the command to VPP/HW
@@ -55,22 +57,26 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
-  epg_id_t m_src_epg_id;
-  epg_id_t m_dst_epg_id;
-  const handle_t m_acl;
+    const route::table_id_t m_rd;
+    const route::prefix_t m_prefix;
+    const bool m_internal;
+  const handle_t m_itf;
+  const epg_id_t m_epg_id;
 };
 
 /**
- * A cmd class that deletes a GBP contract
+ * A cmd class that deletes a GBP subnet
  */
 class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_contract_add_del>
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_subnet_add_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, epg_id_t src_epg_id, epg_id_t dst_epg_id);
+  delete_cmd(HW::item<bool>& item,
+             route::table_id_t rd,
+             const route::prefix_t& prefix);
 
   /**
    * Issue the command to VPP/HW
@@ -88,20 +94,21 @@ public:
   bool operator==(const delete_cmd& i) const;
 
 private:
-  const epg_id_t m_src_epg_id;
-  const epg_id_t m_dst_epg_id;
+    const route::table_id_t m_rd;
+    const route::prefix_t m_prefix;
 };
 
 /**
- * A cmd class that Dumps all the GBP endpoints
+ * A cmd class that Dumps all the GBP subnets
  */
-class dump_cmd : public VOM::dump_cmd<vapi::Gbp_contract_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Gbp_subnet_dump>
 {
 public:
   /**
    * Constructor
    */
-  dump_cmd() = default;
+  dump_cmd();
+  dump_cmd(const dump_cmd& d);
 
   /**
    * Issue the command to VPP/HW
@@ -123,7 +130,7 @@ private:
    */
   HW::item<bool> item;
 };
-}; // namespace gbp_contract_cmds
+}; // namespace gbp_enpoint_cms
 }; // namespace VOM
 
 /*

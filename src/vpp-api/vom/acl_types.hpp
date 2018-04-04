@@ -26,16 +26,6 @@ namespace ACL {
 struct action_t : public enum_base<action_t>
 {
   /**
-   * Constructor
-   */
-  action_t(int v, const std::string s);
-
-  /**
-   * Destructor
-   */
-  ~action_t() = default;
-
-  /**
    * Permit and Reflexive
    */
   const static action_t PERMITANDREFLEX;
@@ -60,6 +50,9 @@ struct action_t : public enum_base<action_t>
    *which implements the connection tracking ....
    */
   static const action_t& from_bool(bool b, uint8_t c);
+
+private:
+  action_t(int v, const std::string s);
 };
 };
 };

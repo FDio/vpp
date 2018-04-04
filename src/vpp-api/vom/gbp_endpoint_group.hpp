@@ -13,42 +13,51 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_GBP_ENDPOINT_H__
-#define __VOM_GBP_ENDPOINT_H__
+#ifndef __VOM_GBP_ENDPOINT_GROUP_H__
+#define __VOM_GBP_ENDPOINT_GROUP_H__
 
-#include "vom/gbp_endpoint_group.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
+#include "vom/types.hpp"
+
+#include "vom/bridge_domain.hpp"
+#include "vom/route_domain.hpp"
 
 namespace VOM {
+
 /**
- * A GBP Enpoint (i.e. a VM)
+ * EPG IDs are 32 bit integers
  */
-class gbp_endpoint : public object_base
+typedef uint32_t epg_id_t;
+
+/**
+ * A entry in the ARP termination table of a Bridge Domain
+ */
+class gbp_endpoint_group : public object_base
 {
 public:
   /**
-   * The key for a GBP endpoint; interface and IP
+   * The key for a GBP endpoint group is its ID
    */
-  typedef std::pair<interface::key_t, boost::asio::ip::address> key_t;
+  typedef epg_id_t key_t;
 
   /**
-   * Construct a GBP endpoint
+   * Construct a GBP endpoint_group
    */
-  gbp_endpoint(const interface& itf,
-               const boost::asio::ip::address& ip_addr,
-               const mac_address_t& mac,
-               const gbp_endpoint_group& epg);
+  gbp_endpoint_group(epg_id_t epg_id,
+                     const interface& itf,
+                     const route_domain& rd,
+                     const bridge_domain& bd);
 
   /**
    * Copy Construct
    */
-  gbp_endpoint(const gbp_endpoint& r);
+  gbp_endpoint_group(const gbp_endpoint_group& r);
 
   /**
    * Destructor
    */
-  ~gbp_endpoint();
+  ~gbp_endpoint_group();
 
   /**
    * Return the object's key
@@ -58,17 +67,17 @@ public:
   /**
    * comparison operator
    */
-  bool operator==(const gbp_endpoint& bdae) const;
+  bool operator==(const gbp_endpoint_group& bdae) const;
 
   /**
    * Return the matching 'singular instance'
    */
-  std::shared_ptr<gbp_endpoint> singular() const;
+  std::shared_ptr<gbp_endpoint_group> singular() const;
 
   /**
    * Find the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<gbp_endpoint> find(const key_t& k);
+  static std::shared_ptr<gbp_endpoint_group> find(const key_t& k);
 
   /**
    * Dump all bridge_domain-doamin into the stream provided
@@ -84,6 +93,11 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
+
+  /**
+   * Get the ID of the EPG
+   */
+  epg_id_t id() const;
 
 private:
   /**
@@ -124,12 +138,13 @@ private:
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
    */
-  void update(const gbp_endpoint& obj);
+  void update(const gbp_endpoint_group& obj);
 
   /**
    * Find or add the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<gbp_endpoint> find_or_add(const gbp_endpoint& temp);
+  static std::shared_ptr<gbp_endpoint_group> find_or_add(
+    const gbp_endpoint_group& temp);
 
   /*
    * It's the VPPHW class that updates the objects in HW
@@ -139,7 +154,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<key_t, gbp_endpoint>;
+  friend class singular_db<key_t, gbp_endpoint_group>;
 
   /**
    * Sweep/reap the object if still stale
@@ -147,37 +162,36 @@ private:
   void sweep(void);
 
   /**
-   * HW configuration for the result of creating the endpoint
+   * HW configuration for the result of creating the endpoint_group
    */
   HW::item<bool> m_hw;
 
   /**
-   * The interface the endpoint is attached to.
+   * The EPG ID
+   */
+  epg_id_t m_epg_id;
+
+  /**
+   * The uplink interface for the endpoint group
    */
   std::shared_ptr<interface> m_itf;
 
   /**
-   * The IP address of the endpoint
+   * The route-domain the EPG uses
    */
-  boost::asio::ip::address m_ip;
+  std::shared_ptr<route_domain> m_rd;
 
   /**
-   * The MAC address of the endpoint
+   * The bridge-domain the EPG uses
    */
-  mac_address_t m_mac;
-
-  /**
-   * The EPG the endpoint is in
-   */
-  std::shared_ptr<gbp_endpoint_group> m_epg;
+  std::shared_ptr<bridge_domain> m_bd;
 
   /**
    * A map of all bridge_domains
    */
-  static singular_db<key_t, gbp_endpoint> m_db;
+  static singular_db<key_t, gbp_endpoint_group> m_db;
 };
 
-std::ostream& operator<<(std::ostream& os, const gbp_endpoint::key_t& key);
 }; // namespace
 
 /*

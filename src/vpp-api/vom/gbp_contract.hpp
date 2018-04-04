@@ -17,10 +17,9 @@
 #define __VOM_GBP_CONTRACT_H__
 
 #include "vom/acl_list.hpp"
-#include "vom/gbp_endpoint.hpp"
+#include "vom/gbp_endpoint_group.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/types.hpp"
 
 namespace VOM {
 
@@ -33,13 +32,13 @@ public:
   /**
    * The key for a contract is the pari of EPG-IDs
    */
-  typedef std::pair<epg_id_t, epg_id_t> key_t;
+  typedef std::pair<gbp_endpoint_group::key_t, gbp_endpoint_group::key_t> key_t;
 
   /**
    * Construct a GBP contract
    */
-  gbp_contract(epg_id_t src_epg_id,
-               epg_id_t dst_epg_id,
+  gbp_contract(const gbp_endpoint_group& src_epg,
+               const gbp_endpoint_group& dst_epg,
                const ACL::l3_list& acl);
 
   /**
@@ -154,14 +153,14 @@ private:
   HW::item<bool> m_hw;
 
   /**
-   * The source EPG ID
+   * The source/provider EPG
    */
-  epg_id_t m_src_epg_id;
+  std::shared_ptr<gbp_endpoint_group> m_src_epg;
 
   /**
-   * The destination EPG ID
+   * The destination/consumer EPG
    */
-  epg_id_t m_dst_epg_id;
+  std::shared_ptr<gbp_endpoint_group> m_dst_epg;
 
   /**
    * The ACL applied to traffic between the gourps

@@ -37,6 +37,7 @@ public:
   create_cmd(HW::item<bool>& item,
              const handle_t& itf,
              const boost::asio::ip::address& ip_addr,
+             const mac_address_t& mac,
              epg_id_t epg_id);
 
   /**
@@ -57,6 +58,7 @@ public:
 private:
   const handle_t m_itf;
   const boost::asio::ip::address m_ip_addr;
+  const mac_address_t m_mac;
   const epg_id_t m_epg_id;
 };
 

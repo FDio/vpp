@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-#include "vom/gbp_endpoint_cmds.hpp"
-
-DEFINE_VAPI_MSG_IDS_GBP_API_JSON;
+#include "vom/gbp_subnet_cmds.hpp"
 
 namespace VOM {
-namespace gbp_endpoint_cmds {
+namespace gbp_subnet_cmds {
 
 create_cmd::create_cmd(HW::item<bool>& item,
+                       route::table_id_t rd,
+                       const route::prefix_t& prefix,
+                       bool internal,
                        const handle_t& itf,
-                       const boost::asio::ip::address& ip_addr,
-                       const mac_address_t& mac,
                        epg_id_t epg_id)
   : rpc_cmd(item)
+  , m_rd(rd)
+  , m_prefix(prefix)
+  , m_internal(internal)
   , m_itf(itf)
-  , m_ip_addr(ip_addr)
-  , m_mac(mac)
   , m_epg_id(epg_id)
 {
 }
@@ -36,8 +36,11 @@ create_cmd::create_cmd(HW::item<bool>& item,
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
-  return ((m_itf == other.m_itf) && (m_ip_addr == other.m_ip_addr) &&
-          (m_mac == other.m_mac) && (m_epg_id == other.m_epg_id));
+  return ((m_itf == other.m_itf) &&
+          (m_rd == other.m_rd) &&
+          (m_prefix == other.m_prefix) &&
+          (m_itf == other.m_itf) &&
+          (m_epg_id == other.m_epg_id));
 }
 
 rc_t
@@ -47,10 +50,13 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.endpoint.sw_if_index = m_itf.value();
-  payload.endpoint.epg_id = m_epg_id;
-  to_bytes(m_ip_addr, &payload.endpoint.is_ip6, payload.endpoint.address);
-  m_mac.to_bytes(payload.endpoint.mac, 6);
+  payload.subnet.is_internal = m_internal;
+  payload.subnet.table_id = m_rd;
+  payload.subnet.sw_if_index = m_itf.value();
+  payload.subnet.epg_id = m_epg_id;
+  m_prefix.to_vpp(&payload.subnet.is_ip6,
+                  payload.subnet.address,
+                  &payload.subnet.address_length);
 
   VAPI_CALL(req.execute());
 
@@ -63,25 +69,29 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-create: " << m_hw_item.to_string() << " itf:" << m_itf
-    << " ip:" << m_ip_addr.to_string() << " epg-id:" << m_epg_id;
+  s << "gbp-subnet-create: " << m_hw_item.to_string()
+    << "internal:" << m_internal
+    << ", " << m_rd
+    << ":" << m_prefix.to_string()
+    << " itf:" << m_itf
+    << " epg-id:" << m_epg_id;
 
   return (s.str());
 }
 
 delete_cmd::delete_cmd(HW::item<bool>& item,
-                       const handle_t& itf,
-                       const boost::asio::ip::address& ip_addr)
+                       route::table_id_t rd,
+                       const route::prefix_t& prefix)
   : rpc_cmd(item)
-  , m_itf(itf)
-  , m_ip_addr(ip_addr)
+  , m_rd(rd)
+  , m_prefix(prefix)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return ((m_itf == other.m_itf) && (m_ip_addr == other.m_ip_addr));
+  return ((m_rd == other.m_rd) && (m_prefix == other.m_prefix));
 }
 
 rc_t
@@ -91,9 +101,14 @@ delete_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.endpoint.sw_if_index = m_itf.value();
-  payload.endpoint.epg_id = ~0;
-  to_bytes(m_ip_addr, &payload.endpoint.is_ip6, payload.endpoint.address);
+  payload.subnet.table_id = m_rd;
+  m_prefix.to_vpp(&payload.subnet.is_ip6,
+                  payload.subnet.address,
+                  &payload.subnet.address_length);
+
+  payload.subnet.is_internal = 0;
+  payload.subnet.sw_if_index = ~0;
+  payload.subnet.epg_id = ~0;
 
   VAPI_CALL(req.execute());
 
@@ -106,8 +121,9 @@ std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-delete: " << m_hw_item.to_string() << " itf:" << m_itf
-    << " ip:" << m_ip_addr.to_string();
+  s << "gbp-subnet-delete: " << m_hw_item.to_string()
+    << ", " << m_rd
+    << ":" << m_prefix.to_string();
 
   return (s.str());
 }
@@ -137,10 +153,10 @@ dump_cmd::issue(connection& con)
 std::string
 dump_cmd::to_string() const
 {
-  return ("gbp-endpoint-dump");
+  return ("gbp-subnet-dump");
 }
 
-}; // namespace gbp_endpoint_cmds
+}; // namespace gbp_subnet_cmds
 }; // namespace VOM
 
 /*

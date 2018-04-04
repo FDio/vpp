@@ -13,31 +13,31 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_GBP_CONTRACT_CMDS_H__
-#define __VOM_GBP_CONTRACT_CMDS_H__
+#ifndef __VOM_GBP_RECIRC_CMDS_H__
+#define __VOM_GBP_RECIRC_CMDS_H__
 
 #include "vom/dump_cmd.hpp"
-#include "vom/gbp_contract.hpp"
+#include "vom/gbp_recirc.hpp"
 
 #include <vapi/gbp.api.vapi.hpp>
 
 namespace VOM {
-namespace gbp_contract_cmds {
+namespace gbp_recirc_cmds {
 
 /**
-* A command class that creates or updates the GBP contract
+* A command class that creates or updates the GBP recirc
 */
 class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_contract_add_del>
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_recirc_add_del>
 {
 public:
   /**
    * Constructor
    */
   create_cmd(HW::item<bool>& item,
-             epg_id_t src_epg_id,
-             epg_id_t dst_epg_id,
-             const handle_t& acl);
+             const handle_t& itf,
+             bool is_ext,
+             epg_id_t epg_id);
 
   /**
    * Issue the command to VPP/HW
@@ -55,22 +55,23 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
-  epg_id_t m_src_epg_id;
-  epg_id_t m_dst_epg_id;
-  const handle_t m_acl;
+  const handle_t m_itf;
+    bool m_is_ext;
+    const epg_id_t m_epg_id;
 };
 
 /**
- * A cmd class that deletes a GBP contract
+ * A cmd class that deletes a GBP recirc
  */
 class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_contract_add_del>
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_recirc_add_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, epg_id_t src_epg_id, epg_id_t dst_epg_id);
+  delete_cmd(HW::item<bool>& item,
+             const handle_t& itf);
 
   /**
    * Issue the command to VPP/HW
@@ -88,20 +89,20 @@ public:
   bool operator==(const delete_cmd& i) const;
 
 private:
-  const epg_id_t m_src_epg_id;
-  const epg_id_t m_dst_epg_id;
+  const handle_t m_itf;
 };
 
 /**
- * A cmd class that Dumps all the GBP endpoints
+ * A cmd class that Dumps all the GBP recircs
  */
-class dump_cmd : public VOM::dump_cmd<vapi::Gbp_contract_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Gbp_recirc_dump>
 {
 public:
   /**
    * Constructor
    */
-  dump_cmd() = default;
+  dump_cmd();
+  dump_cmd(const dump_cmd& d);
 
   /**
    * Issue the command to VPP/HW
@@ -123,7 +124,7 @@ private:
    */
   HW::item<bool> item;
 };
-}; // namespace gbp_contract_cmds
+}; // namespace gbp_enpoint_cms
 }; // namespace VOM
 
 /*

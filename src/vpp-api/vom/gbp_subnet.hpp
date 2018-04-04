@@ -13,42 +13,49 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_GBP_ENDPOINT_H__
-#define __VOM_GBP_ENDPOINT_H__
+#ifndef __VOM_GBP_SUBNET_H__
+#define __VOM_GBP_SUBNET_H__
 
-#include "vom/gbp_endpoint_group.hpp"
-#include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
+#include "vom/route.hpp"
+#include "vom/gbp_endpoint_group.hpp"
+#include "vom/gbp_recirc.hpp"
 
 namespace VOM {
 /**
  * A GBP Enpoint (i.e. a VM)
  */
-class gbp_endpoint : public object_base
+class gbp_subnet : public object_base
 {
 public:
   /**
-   * The key for a GBP endpoint; interface and IP
+   * The key for a GBP subnet; table and prefix
    */
-  typedef std::pair<interface::key_t, boost::asio::ip::address> key_t;
+  typedef std::pair<route_domain::key_t, route::prefix_t> key_t;
+
+ /**
+   * Construct an internal GBP subnet
+   */
+  gbp_subnet(const route_domain& rd,
+             const route::prefix_t& prefix);
 
   /**
-   * Construct a GBP endpoint
+   * Construct an external GBP subnet
    */
-  gbp_endpoint(const interface& itf,
-               const boost::asio::ip::address& ip_addr,
-               const mac_address_t& mac,
-               const gbp_endpoint_group& epg);
+  gbp_subnet(const route_domain& rd,
+             const route::prefix_t& prefix,
+             const gbp_recirc& recirc,
+             const gbp_endpoint_group &epg);
 
   /**
    * Copy Construct
    */
-  gbp_endpoint(const gbp_endpoint& r);
+  gbp_subnet(const gbp_subnet& r);
 
   /**
    * Destructor
    */
-  ~gbp_endpoint();
+  ~gbp_subnet();
 
   /**
    * Return the object's key
@@ -58,17 +65,17 @@ public:
   /**
    * comparison operator
    */
-  bool operator==(const gbp_endpoint& bdae) const;
+  bool operator==(const gbp_subnet& bdae) const;
 
   /**
    * Return the matching 'singular instance'
    */
-  std::shared_ptr<gbp_endpoint> singular() const;
+  std::shared_ptr<gbp_subnet> singular() const;
 
   /**
    * Find the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<gbp_endpoint> find(const key_t& k);
+  static std::shared_ptr<gbp_subnet> find(const key_t& k);
 
   /**
    * Dump all bridge_domain-doamin into the stream provided
@@ -86,6 +93,22 @@ public:
   std::string to_string() const;
 
 private:
+  struct type_t : public enum_base<type_t>
+  {
+      /**
+       * Internal subnet is reachable through the source EPG's
+       * uplink interface.
+       */
+      const static type_t INTERNAL;
+
+      /**
+       * External subnet requires NAT translation before egress.
+       */
+      const static type_t EXTERNAL;
+  private:
+      type_t(int v, const std::string s);
+  };
+
   /**
    * Class definition for listeners to OM events
    */
@@ -124,12 +147,12 @@ private:
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
    */
-  void update(const gbp_endpoint& obj);
+  void update(const gbp_subnet& obj);
 
   /**
    * Find or add the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<gbp_endpoint> find_or_add(const gbp_endpoint& temp);
+  static std::shared_ptr<gbp_subnet> find_or_add(const gbp_subnet& temp);
 
   /*
    * It's the VPPHW class that updates the objects in HW
@@ -139,7 +162,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<key_t, gbp_endpoint>;
+  friend class singular_db<key_t, gbp_subnet>;
 
   /**
    * Sweep/reap the object if still stale
@@ -147,37 +170,41 @@ private:
   void sweep(void);
 
   /**
-   * HW configuration for the result of creating the endpoint
+   * HW configuration for the result of creating the subnet
    */
   HW::item<bool> m_hw;
 
-  /**
-   * The interface the endpoint is attached to.
-   */
-  std::shared_ptr<interface> m_itf;
+    /**
+     * the route domain the prefix is in
+     */
+    std::shared_ptr<route_domain> m_rd;
 
-  /**
-   * The IP address of the endpoint
-   */
-  boost::asio::ip::address m_ip;
+    /**
+     * prefix to match
+     */
+    const route::prefix_t m_prefix;
 
-  /**
-   * The MAC address of the endpoint
+  /*
+   * Subnet type
    */
-  mac_address_t m_mac;
+    const type_t m_type;
 
-  /**
-   * The EPG the endpoint is in
-   */
-  std::shared_ptr<gbp_endpoint_group> m_epg;
+    /**
+     * The interface the prefix is reachable through
+     */
+    std::shared_ptr<gbp_recirc> m_recirc;
+
+    /**
+     * The EPG the subnet is in
+     */
+    std::shared_ptr<gbp_endpoint_group> m_epg;
 
   /**
    * A map of all bridge_domains
    */
-  static singular_db<key_t, gbp_endpoint> m_db;
+  static singular_db<key_t, gbp_subnet> m_db;
 };
 
-std::ostream& operator<<(std::ostream& os, const gbp_endpoint::key_t& key);
 }; // namespace
 
 /*

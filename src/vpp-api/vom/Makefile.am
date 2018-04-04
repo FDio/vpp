@@ -66,8 +66,14 @@ endif
 GBP_SOURCES =
 if ENABLE_GBP_PLUGIN
 GBP_SOURCES += 				\
+	gbp_recirc_cmds.cpp		\
+	gbp_recirc.cpp			\
+	gbp_subnet_cmds.cpp		\
+	gbp_subnet.cpp			\
 	gbp_endpoint_cmds.cpp		\
 	gbp_endpoint.cpp		\
+	gbp_endpoint_group_cmds.cpp	\
+	gbp_endpoint_group.cpp		\
 	gbp_contract_cmds.cpp		\
 	gbp_contract.cpp
 endif

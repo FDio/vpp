@@ -28,15 +28,13 @@
  *
  */
 
-#ifndef __GBP_H__
-#define __GBP_H__
+#ifndef __GBP_TYPES_H__
+#define __GBP_TYPES_H__
 
-#include <plugins/gbp/gbp_types.h>
-#include <plugins/gbp/gbp_endpoint.h>
-#include <plugins/gbp/gbp_endpoint_group.h>
-#include <plugins/gbp/gbp_contract.h>
-#include <plugins/gbp/gbp_subnet.h>
-#include <plugins/gbp/gbp_recirc.h>
+#include <vnet/vnet.h>
+
+typedef u32 epg_id_t;
+#define EPG_INVALID (~0)
 
 #endif
 
