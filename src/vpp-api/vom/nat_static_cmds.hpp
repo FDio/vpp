@@ -129,6 +129,111 @@ private:
   HW::item<bool> item;
 };
 
+/**
+ * A command class that creates NAT 66 static mapping
+ */
+class create_66_cmd
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_static_mapping>
+{
+public:
+  /**
+   * Constructor
+   */
+  create_66_cmd(HW::item<bool>& item,
+                route::table_id_t id,
+                const boost::asio::ip::address_v6& inside,
+                const boost::asio::ip::address_v6& outside);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const create_66_cmd& i) const;
+
+private:
+  route::table_id_t m_id;
+  const boost::asio::ip::address_v6 m_inside;
+  const boost::asio::ip::address_v6 m_outside;
+};
+
+/**
+ * A cmd class that deletes a NAT 66 static mapping
+ */
+class delete_66_cmd
+  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_static_mapping>
+{
+public:
+  /**
+   * Constructor
+   */
+  delete_66_cmd(HW::item<bool>& item,
+                route::table_id_t id,
+                const boost::asio::ip::address_v6& inside,
+                const boost::asio::ip::address_v6& outside);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const delete_66_cmd& i) const;
+
+private:
+  route::table_id_t m_id;
+  const boost::asio::ip::address_v6 m_inside;
+  const boost::asio::ip::address_v6 m_outside;
+};
+
+/**
+ * A cmd class that Dumps all the nat_statics
+ */
+class dump_66_cmd : public dump_cmd<vapi::Nat66_static_mapping_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_66_cmd() = default;
+  ~dump_66_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_66_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
+};
+
 }; // namespace nat_static_cmds
 }; // namespace vom
 

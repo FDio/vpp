@@ -20,9 +20,11 @@ DEFINE_VAPI_MSG_IDS_L2_API_JSON;
 namespace VOM {
 namespace bridge_domain_cmds {
 create_cmd::create_cmd(HW::item<uint32_t>& item,
-                       const bridge_domain::learning_mode_t& lmode)
+                       const bridge_domain::learning_mode_t& lmode,
+                       const bridge_domain::flood_mode_t& fmode)
   : rpc_cmd(item)
   , m_learning_mode(lmode)
+  , m_flood_mode(fmode)
 {
 }
 
@@ -39,8 +41,8 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_hw_item.data();
-  payload.flood = 1;
-  payload.uu_flood = 1;
+  payload.flood = m_flood_mode.value();
+  payload.uu_flood = m_flood_mode.value();
   payload.forward = 1;
   payload.learn = m_learning_mode.value();
   payload.arp_term = 1;

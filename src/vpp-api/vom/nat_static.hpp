@@ -39,7 +39,7 @@ public:
    * table
    */
   nat_static(const boost::asio::ip::address& inside,
-             const boost::asio::ip::address_v4& outside);
+             const boost::asio::ip::address& outside);
 
   /**
    * Construct an NAT Static binding with the outside address in
@@ -47,7 +47,7 @@ public:
    */
   nat_static(const route_domain& rd,
              const boost::asio::ip::address& inside,
-             const boost::asio::ip::address_v4& outside);
+             const boost::asio::ip::address& outside);
 
   /**
    * Copy Construct
@@ -171,9 +171,9 @@ private:
   const boost::asio::ip::address m_inside;
 
   /**
-   * The 'outside' IP address - always v4
+   * The 'outside' IP address
    */
-  const boost::asio::ip::address_v4 m_outside;
+  const boost::asio::ip::address m_outside;
 
   /**
    * A map of all NAT statics

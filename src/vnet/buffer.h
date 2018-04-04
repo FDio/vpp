@@ -387,6 +387,12 @@ typedef struct
 
   u8 __unused[2];
 
+  /* Group Based Policy */
+  struct
+  {
+    u32 src_epg;
+  } gbp;
+
   union
   {
     struct
@@ -396,7 +402,7 @@ typedef struct
       u16 *trajectory_trace;
 #endif
     };
-    u32 unused[11];
+    u32 unused[10];
   };
 } vnet_buffer_opaque2_t;
 
