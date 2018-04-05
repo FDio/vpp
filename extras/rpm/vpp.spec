@@ -54,10 +54,12 @@ BuildRequires: subunit, subunit-devel
 %if 0%{?fedora} >= 26
 BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv
+BuildRequires: mbedtls-devel
 %else
 %if 0%{?fedora} == 25
 BuildRequires: openssl-devel
 BuildRequires: python-devel, python2-virtualenv
+BuildRequires: mbedtls-devel
 %else
 BuildREquires: openssl-devel
 BuildRequires: python-devel, python-virtualenv
@@ -70,7 +72,6 @@ BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
 BuildRequires: boost boost-devel
 BuildRequires: selinux-policy selinux-policy-devel
-BuildRequires: mbedtls-devel
 
 Source: %{name}-%{_version}-%{_release}.tar.xz
 # Source: vpp-latest.tar.xz
