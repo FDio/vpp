@@ -293,7 +293,7 @@ vl_api_bier_imp_add_t_handler (vl_api_bier_imp_add_t * mp)
 {
     vl_api_bier_imp_add_reply_t *rmp;
     vnet_main_t *vnm;
-    index_t bii;
+    index_t bii = ~0;
     int rv = 0;
 
     vnm = vnet_get_main ();
