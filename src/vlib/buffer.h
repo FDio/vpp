@@ -565,6 +565,10 @@ static void __vlib_add_buffer_callbacks_t_##x (void)                    \
       clib_panic ("vlib buffer callbacks already registered");          \
     vlib_buffer_callbacks = &__##x##_buffer_callbacks;                  \
 }                                                                       \
+static void __vlib_rm_buffer_callbacks_t_##x (void)                     \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_rm_buffer_callbacks_t_##x (void)                     \
+{ vlib_buffer_callbacks = 0; }                                          \
 __VA_ARGS__ vlib_buffer_callbacks_t __##x##_buffer_callbacks
 
 /*

@@ -88,9 +88,17 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_main_init);
 
+
+clib_error_t *
+dpdk_early_init (vlib_main_t *vm)
+{
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Data Plane Development Kit (DPDK)",
+    .early_init = "dpdk_early_init",
 };
 /* *INDENT-ON* */

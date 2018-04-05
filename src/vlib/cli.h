@@ -162,6 +162,15 @@ static void __vlib_cli_command_registration_##x (void)                  \
     x.next_cli_command = cm->cli_command_registrations;                 \
     cm->cli_command_registrations = &x;                                 \
 }                                                                       \
+static void __vlib_cli_command_unregistration_##x (void)                \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_cli_command_unregistration_##x (void)                \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    vlib_cli_main_t *cm = &vm->cli_main;                                \
+    VLIB_REMOVE_FROM_LINKED_LIST (cm->cli_command_registrations, &x,    \
+                                  next_cli_command);                    \
+}                                                                       \
 __VA_ARGS__ vlib_cli_command_t x
 #define VLIB_CLI_PARSE_RULE(x) \
   vlib_cli_parse_rule_t x
