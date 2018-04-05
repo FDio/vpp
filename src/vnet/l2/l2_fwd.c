@@ -49,6 +49,9 @@ typedef struct
   /* next node index for the L3 input node of each ethertype */
   next_by_ethertype_t l3_next;
 
+  /* Next nodes for each feature */
+  u32 feat_next_node_index[32];
+
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -109,7 +112,6 @@ static char *l2fwd_error_strings[] = {
 typedef enum
 {
   L2FWD_NEXT_L2_OUTPUT,
-  L2FWD_NEXT_FLOOD,
   L2FWD_NEXT_DROP,
   L2FWD_N_NEXT,
 } l2fwd_next_t;
@@ -201,13 +203,13 @@ l2fwd_process (vlib_main_t * vm,
   if (PREDICT_FALSE (try_flood))
     {
       /*
-       * lookup miss, so flood
-       * TODO:replicate packet to each intf in bridge-domain
-       * For now just drop
+       * lookup miss, so flood which is typically the next feature
+       * unless some other feature is inserted before uu_flood
        */
       if (vnet_buffer (b0)->l2.feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
 	{
-	  *next0 = L2FWD_NEXT_FLOOD;
+	  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
+					 L2INPUT_FEAT_FWD);
 	}
       else
 	{
@@ -469,7 +471,6 @@ VLIB_REGISTER_NODE (l2fwd_node,static) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [L2FWD_NEXT_L2_OUTPUT] = "l2-output",
-    [L2FWD_NEXT_FLOOD] = "l2-flood",
     [L2FWD_NEXT_DROP] = "error-drop",
   },
 };
@@ -482,6 +483,13 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2fwd_node, l2fwd_node_fn)
 
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
+
+  /* Initialize the feature next-node indexes */
+  feat_bitmap_init_next_nodes (vm,
+			       l2fwd_node.index,
+			       L2INPUT_N_FEAT,
+			       l2input_get_feat_names (),
+			       mp->feat_next_node_index);
 
   /* init the hash table ptr */
   mp->mac_table = get_mac_table ();
