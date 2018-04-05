@@ -190,6 +190,8 @@ typedef struct _vnet_device_class
   vnet_interface_set_mac_address_function_t *mac_addr_change_function;
 } vnet_device_class_t;
 
+void vnet_rm_device_class_registration (vnet_device_class_t * p);
+
 #define VNET_DEVICE_CLASS(x,...)                                        \
   __VA_ARGS__ vnet_device_class_t x;                                    \
 static void __vnet_add_device_class_registration_##x (void)             \
@@ -200,6 +202,10 @@ static void __vnet_add_device_class_registration_##x (void)             \
     x.next_class_registration = vnm->device_class_registrations;        \
     vnm->device_class_registrations = &x;                               \
 }                                                                       \
+static void __vnet_rm_device_class_registration_##x (void)              \
+    __attribute__((__destructor__)) ;                                   \
+static void __vnet_rm_device_class_registration_##x (void)              \
+    {  vnet_rm_device_class_registration (&x); }                        \
 __VA_ARGS__ vnet_device_class_t x
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\

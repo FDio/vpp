@@ -106,6 +106,30 @@ static void __vlib_add_##tag##_function_##x (void)              \
     = vm->tag##_function_registrations;                         \
   vm->tag##_function_registrations = &_vlib_init_function;      \
  _vlib_init_function.f = &x;                                    \
+}                                                               \
+static void __vlib_rm_##tag##_function_##x (void)               \
+    __attribute__((__destructor__)) ;                           \
+static void __vlib_rm_##tag##_function_##x (void)               \
+{                                                               \
+  vlib_main_t * vm = vlib_get_main();                           \
+  _vlib_init_function_list_elt_t *next;                         \
+  if (vm->tag##_function_registrations->f == &x)                \
+    {                                                           \
+      vm->tag##_function_registrations =                        \
+        vm->tag##_function_registrations->next_init_function;   \
+      return;                                                   \
+    }                                                           \
+  next = vm->tag##_function_registrations;                      \
+  while (next->next_init_function)                              \
+    {                                                           \
+      if (next->next_init_function->f == &x)                    \
+        {                                                       \
+          next->next_init_function =                            \
+            next->next_init_function->next_init_function;       \
+          return;                                               \
+        }                                                       \
+      next = next->next_init_function;                          \
+    }                                                           \
 }
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
@@ -115,6 +139,8 @@ static void __vlib_add_##tag##_function_##x (void)              \
   VLIB_DECLARE_INIT_FUNCTION(x,main_loop_enter)
 #define VLIB_MAIN_LOOP_EXIT_FUNCTION(x) \
 VLIB_DECLARE_INIT_FUNCTION(x,main_loop_exit)
+
+void vlib_remove_config_function (vlib_config_function_runtime_t * rt);
 
 #define VLIB_CONFIG_FUNCTION(x,n,...)                           \
     __VA_ARGS__ vlib_config_function_runtime_t                  \
@@ -128,6 +154,13 @@ static void __vlib_add_config_function_##x (void)               \
        = vm->config_function_registrations;                     \
     vm->config_function_registrations                           \
        = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
+}                                                               \
+static void __vlib_remove_config_function_##x (void)            \
+    __attribute__((__destructor__)) ;                           \
+static void __vlib_remove_config_function_##x (void)            \
+{                                                               \
+     vlib_remove_config_function                                \
+       (& VLIB_CONFIG_FUNCTION_SYMBOL (x));                     \
 }                                                               \
   vlib_config_function_runtime_t                                \
     VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \
@@ -149,6 +182,13 @@ static void __vlib_add_config_function_##x (void)               \
        = vm->config_function_registrations;                     \
     vm->config_function_registrations                           \
        = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
+}                                                               \
+static void __vlib_remove_config_function_##x (void)            \
+    __attribute__((__destructor__)) ;                           \
+static void __vlib_remove_config_function_##x (void)            \
+{                                                               \
+     vlib_remove_config_function                                \
+       (& VLIB_CONFIG_FUNCTION_SYMBOL (x));                     \
 }                                                               \
   vlib_config_function_runtime_t                                \
     VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \

@@ -140,6 +140,8 @@ typedef struct _vlib_node_registration
 
 } vlib_node_registration_t;
 
+void vlib_remove_node_registration (vlib_node_registration_t * p);
+
 #define VLIB_REGISTER_NODE(x,...)                                       \
     __VA_ARGS__ vlib_node_registration_t x;                             \
 static void __vlib_add_node_registration_##x (void)                     \
@@ -150,6 +152,10 @@ static void __vlib_add_node_registration_##x (void)                     \
     x.next_registration = vm->node_main.node_registrations;             \
     vm->node_main.node_registrations = &x;                              \
 }                                                                       \
+static void __vlib_remove_node_registration_##x (void)                  \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_remove_node_registration_##x (void)                  \
+    { vlib_remove_node_registration (&x); }                             \
 __VA_ARGS__ vlib_node_registration_t x
 
 #if CLIB_DEBUG > 0

@@ -1603,6 +1603,31 @@ VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
 };
 /* *INDENT-ON* */
 
+void
+vnet_rm_device_class_registration (vnet_device_class_t * p)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_class_t *next;
+
+  if (vnm->device_class_registrations == p)
+    {
+      vnm->device_class_registrations = p->next_class_registration;
+      return;
+    }
+
+  next = vnm->device_class_registrations;
+  while (next->next_class_registration)
+    {
+      if (next->next_class_registration == p)
+	{
+	  next->next_class_registration =
+	    next->next_class_registration->next_class_registration;
+	  return;
+	}
+      next = next->next_class_registration;
+    }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

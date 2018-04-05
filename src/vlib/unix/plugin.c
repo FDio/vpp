@@ -155,7 +155,8 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
     {
       /* This should never happen unless somebody chagnes registration macro */
       clib_warning ("Missing plugin registration in plugin '%s'", pi->name);
-      os_exit (1);
+      dlclose (pi->handle);
+      goto error;
     }
 
   pi->reg = reg;
@@ -175,7 +176,8 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 	  if (error)
 	    {
 	      clib_error_report (error);
-	      os_exit (1);
+	      dlclose (pi->handle);
+	      goto error;
 	    }
 	}
       else
