@@ -582,6 +582,18 @@ stats_enable_cmd::retire(connection& con)
   wait();
 }
 
+interface::stat_listener&
+stats_enable_cmd::listener() const
+{
+  return m_listener;
+}
+
+void
+stats_enable_cmd::set(const rc_t& rc)
+{
+  m_listener.status().set(rc);
+}
+
 void
 stats_enable_cmd::notify()
 {

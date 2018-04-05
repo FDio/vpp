@@ -484,6 +484,16 @@ public:
   std::string to_string() const;
 
   /**
+   * (re)set status
+   */
+  void set(const rc_t& rc);
+
+  /**
+   * get listener
+   */
+  interface::stat_listener& listener() const;
+
+  /**
    * Comparison operator - only used for UT
    */
   bool operator==(const stats_enable_cmd& i) const;
@@ -502,7 +512,7 @@ private:
   /**
    * The interface on which we are enabling states
    */
-  handle_t m_swifindex;
+  const handle_t& m_swifindex;
 };
 
 /**

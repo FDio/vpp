@@ -169,6 +169,10 @@ interface::sweep()
   }
 
   if (m_stats) {
+    if (stats_type_t::DETAILED == m_stats_type) {
+      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
+        m_stats_type, handle_i(), false));
+    }
     HW::enqueue(new interface_cmds::stats_disable_cmd(m_hdl.data()));
     m_stats.reset();
   }
@@ -196,6 +200,18 @@ interface::replay()
 
   if (m_state && interface::admin_state_t::UP == m_state.data()) {
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
+  }
+
+  if (m_stats) {
+    if (stats_type_t::DETAILED == m_stats_type) {
+      m_stats_type.set(rc_t::NOOP);
+      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
+        m_stats_type, handle_i(), true));
+    }
+    stat_listener& listener = m_stats->listener();
+    listener.status().set(rc_t::NOOP);
+    m_stats.reset(new interface_cmds::stats_enable_cmd(listener, handle_i()));
+    HW::enqueue(m_stats);
   }
 
   if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
