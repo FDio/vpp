@@ -101,6 +101,31 @@ static void __vnet_interface_function_init_##tag##_##f (void)           \
  init_function.next_interface_function = vnm->tag##_functions[p];       \
  vnm->tag##_functions[p] = &init_function;                              \
  init_function.fp = (void *) &f;                                        \
+}                                                                       \
+static void __vnet_interface_function_deinit_##tag##_##f (void)         \
+    __attribute__((__destructor__)) ;                                   \
+                                                                        \
+static void __vnet_interface_function_deinit_##tag##_##f (void)         \
+{                                                                       \
+ vnet_main_t * vnm = vnet_get_main();                                   \
+ _vnet_interface_function_list_elt_t *next;                             \
+ if (vnm->tag##_functions[p]->fp == (void *) &f)                        \
+    {                                                                   \
+      vnm->tag##_functions[p] =                                         \
+        vnm->tag##_functions[p]->next_interface_function;               \
+      return;                                                           \
+    }                                                                   \
+  next = vnm->tag##_functions[p];                                       \
+  while (next->next_interface_function)                                 \
+    {                                                                   \
+      if (next->next_interface_function->fp == (void *) &f)             \
+        {                                                               \
+          next->next_interface_function =                               \
+            next->next_interface_function->next_interface_function;     \
+          return;                                                       \
+        }                                                               \
+      next = next->next_interface_function;                             \
+    }                                                                   \
 }
 
 #define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
@@ -199,6 +224,14 @@ static void __vnet_add_device_class_registration_##x (void)             \
     vnet_main_t * vnm = vnet_get_main();                                \
     x.next_class_registration = vnm->device_class_registrations;        \
     vnm->device_class_registrations = &x;                               \
+}                                                                       \
+static void __vnet_rm_device_class_registration_##x (void)              \
+    __attribute__((__destructor__)) ;                                   \
+static void __vnet_rm_device_class_registration_##x (void)              \
+{                                                                       \
+    vnet_main_t * vnm = vnet_get_main();                                \
+    VLIB_REMOVE_FROM_LINKED_LIST (vnm->device_class_registrations,      \
+                                  &x, next_class_registration);         \
 }                                                                       \
 __VA_ARGS__ vnet_device_class_t x
 
@@ -367,6 +400,14 @@ static void __vnet_add_hw_interface_class_registration_##x (void)       \
     vnet_main_t * vnm = vnet_get_main();                                \
     x.next_class_registration = vnm->hw_interface_class_registrations;  \
     vnm->hw_interface_class_registrations = &x;                         \
+}                                                                       \
+static void __vnet_rm_hw_interface_class_registration_##x (void)        \
+    __attribute__((__destructor__)) ;                                   \
+static void __vnet_rm_hw_interface_class_registration_##x (void)        \
+{                                                                       \
+    vnet_main_t * vnm = vnet_get_main();                                \
+    VLIB_REMOVE_FROM_LINKED_LIST (vnm->hw_interface_class_registrations,\
+                                  &x, next_class_registration);         \
 }                                                                       \
 __VA_ARGS__ vnet_hw_interface_class_t x
 
