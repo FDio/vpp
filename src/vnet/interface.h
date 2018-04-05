@@ -200,6 +200,14 @@ static void __vnet_add_device_class_registration_##x (void)             \
     x.next_class_registration = vnm->device_class_registrations;        \
     vnm->device_class_registrations = &x;                               \
 }                                                                       \
+static void __vnet_rm_device_class_registration_##x (void)              \
+    __attribute__((__destructor__)) ;                                   \
+static void __vnet_rm_device_class_registration_##x (void)              \
+{                                                                       \
+    vnet_main_t * vnm = vnet_get_main();                                \
+    VLIB_REMOVE_FROM_LINKED_LIST (vnm->device_class_registrations,      \
+                                  &x, next_class_registration);         \
+}                                                                       \
 __VA_ARGS__ vnet_device_class_t x
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
@@ -367,6 +375,14 @@ static void __vnet_add_hw_interface_class_registration_##x (void)       \
     vnet_main_t * vnm = vnet_get_main();                                \
     x.next_class_registration = vnm->hw_interface_class_registrations;  \
     vnm->hw_interface_class_registrations = &x;                         \
+}                                                                       \
+static void __vnet_rm_hw_interface_class_registration_##x (void)        \
+    __attribute__((__destructor__)) ;                                   \
+static void __vnet_rm_hw_interface_class_registration_##x (void)        \
+{                                                                       \
+    vnet_main_t * vnm = vnet_get_main();                                \
+    VLIB_REMOVE_FROM_LINKED_LIST (vnm->hw_interface_class_registrations,\
+                                  &x, next_class_registration);         \
 }                                                                       \
 __VA_ARGS__ vnet_hw_interface_class_t x
 
