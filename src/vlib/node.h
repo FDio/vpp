@@ -150,6 +150,14 @@ static void __vlib_add_node_registration_##x (void)                     \
     x.next_registration = vm->node_main.node_registrations;             \
     vm->node_main.node_registrations = &x;                              \
 }                                                                       \
+static void __vlib_rm_node_registration_##x (void)                      \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_rm_node_registration_##x (void)                      \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    VLIB_REMOVE_FROM_LINKED_LIST (vm->node_main.node_registrations,     \
+                                  &x, next_registration);               \
+}                                                                       \
 __VA_ARGS__ vlib_node_registration_t x
 
 #if CLIB_DEBUG > 0
