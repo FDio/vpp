@@ -724,6 +724,31 @@ done:
   return error;
 }
 
+void
+vlib_remove_node_registration (vlib_node_registration_t * p)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_registration_t *next;
+
+  if (vm->node_main.node_registrations == p)
+    {
+      vm->node_main.node_registrations = p->next_registration;
+      return;
+    }
+
+  next = vm->node_main.node_registrations;
+  while (next->next_registration)
+    {
+      if (next->next_registration == p)
+	{
+	  next->next_registration =
+	    next->next_registration->next_registration;
+	  return;
+	}
+      next = next->next_registration;
+    }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

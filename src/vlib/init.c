@@ -159,6 +159,31 @@ done:
   return error;
 }
 
+void
+vlib_remove_config_function (vlib_config_function_runtime_t * p)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_config_function_runtime_t *next;
+
+  if (vm->config_function_registrations == p)
+    {
+      vm->config_function_registrations = p->next_registration;
+      return;
+    }
+
+  next = vm->config_function_registrations;
+  while (next->next_registration)
+    {
+      if (next->next_registration == p)
+	{
+	  next->next_registration =
+	    next->next_registration->next_registration;
+	  return;
+	}
+      next = next->next_registration;
+    }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -1284,6 +1284,31 @@ cli_path_compare (void *a1, void *a2)
   return vec_cmp (*s1, *s2);
 }
 
+void
+vlib_cli_command_remove_registration (vlib_cli_command_t * cmd)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_cli_main_t *cm = &vm->cli_main;
+  vlib_cli_command_t *next;
+
+  if (cm->cli_command_registrations == cmd)
+    {
+      cm->cli_command_registrations = cmd->next_cli_command;
+      return;
+    }
+
+  next = cm->cli_command_registrations;
+  while (next->next_cli_command)
+    {
+      if (next->next_cli_command == cmd)
+	{
+	  next->next_cli_command = next->next_cli_command->next_cli_command;
+	  return;
+	}
+      next = next->next_cli_command;
+    }
+}
+
 static clib_error_t *
 show_cli_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
 		 vlib_cli_command_t * cmd)

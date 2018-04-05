@@ -352,6 +352,8 @@ extern vlib_thread_main_t vlib_thread_main;
 
 #include <vlib/global_funcs.h>
 
+void vlib_thread_remove_registration (vlib_thread_registration_t * p);
+
 #define VLIB_REGISTER_THREAD(x,...)                     \
   __VA_ARGS__ vlib_thread_registration_t x;             \
 static void __vlib_add_thread_registration_##x (void)   \
@@ -362,6 +364,10 @@ static void __vlib_add_thread_registration_##x (void)   \
   x.next = tm->next;                                    \
   tm->next = &x;                                        \
 }                                                       \
+static void __vlib_rm_thread_registration_##x (void)    \
+  __attribute__((__destructor__)) ;                     \
+static void __vlib_rm_thread_registration_##x (void)    \
+  { vlib_thread_remove_registration (&x); }             \
 __VA_ARGS__ vlib_thread_registration_t x
 
 always_inline u32
