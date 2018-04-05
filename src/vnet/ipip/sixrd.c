@@ -36,7 +36,6 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>	// Really needed?
 
 extern vlib_node_registration_t ip4_sixrd_node;
 
