@@ -261,6 +261,14 @@ static void __mc_serialize_msg_registration_##x (void)          \
     x.next_registration = vm->mc_msg_registrations;             \
     vm->mc_msg_registrations = &x;                              \
 }                                                               \
+static void __mc_serialize_msg_unregistration_##x (void)        \
+    __attribute__((__destructor__)) ;                           \
+static void __mc_serialize_msg_unregistration_##x (void)        \
+{                                                               \
+    vlib_main_t * vm = vlib_get_main();                         \
+    VLIB_REMOVE_FROM_LINKED_LIST (vm->mc_msg_registrations, &x, \
+                                  next_registration);           \
+}                                                               \
 __VA_ARGS__ mc_serialize_msg_t x
 
 typedef enum

@@ -109,6 +109,14 @@ static void __vnet_add_feature_arc_registration_##x (void)	\
   vnet_feat_arc_##x.next = fm->next_arc;			\
   fm->next_arc = & vnet_feat_arc_##x;				\
 }								\
+static void __vnet_rm_feature_arc_registration_##x (void)	\
+  __attribute__((__destructor__)) ;				\
+static void __vnet_rm_feature_arc_registration_##x (void)	\
+{								\
+  vnet_feature_main_t * fm = &feature_main;			\
+  vnet_feature_arc_registration_t *r = &vnet_feat_arc_##x;	\
+  VLIB_REMOVE_FROM_LINKED_LIST (fm->next_arc, r, next);		\
+}								\
 __VA_ARGS__ vnet_feature_arc_registration_t vnet_feat_arc_##x
 
 #define VNET_FEATURE_INIT(x,...)				\
@@ -120,6 +128,14 @@ static void __vnet_add_feature_registration_##x (void)		\
   vnet_feature_main_t * fm = &feature_main;			\
   vnet_feat_##x.next = fm->next_feature;			\
   fm->next_feature = & vnet_feat_##x;				\
+}								\
+static void __vnet_rm_feature_registration_##x (void)		\
+  __attribute__((__destructor__)) ;				\
+static void __vnet_rm_feature_registration_##x (void)		\
+{								\
+  vnet_feature_main_t * fm = &feature_main;			\
+  vnet_feature_registration_t *r = &vnet_feat_##x;		\
+  VLIB_REMOVE_FROM_LINKED_LIST (fm->next_feature, r, next);	\
 }								\
 __VA_ARGS__ vnet_feature_registration_t vnet_feat_##x
 

@@ -13,6 +13,13 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <linux/vfio.h>
+#include <sys/ioctl.h>
+
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <dpdk/device/dpdk.h>
@@ -88,9 +95,45 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_main_init);
 
+
+clib_error_t *
+dpdk_early_init (vlib_main_t *vm)
+{
+  int fd = -1;
+  u64 *pt = 0;
+  clib_error_t *err = 0;
+
+  /* check if pagemap is accessible - if we get zero result
+     dpdk will not be able to get physical memory address and game is over
+     unless we have IOMMU */
+  pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
+  if (pt && pt[0])
+    goto done;
+
+  if ((fd = open ("/dev/vfio/vfio", O_RDWR) == -1))
+      goto error;
+
+  if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
+      goto error;
+
+  /* if we have type 1 IOMMU page map is not needed */
+  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
+    goto done;
+
+error:
+  err = clib_error_return (0, "access to physical devices is not allowed");
+
+done:
+  if (fd != -1)
+    close (fd);
+  vec_free (pt);
+  return err;
+}
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Data Plane Development Kit (DPDK)",
+    .early_init = "dpdk_early_init",
 };
 /* *INDENT-ON* */

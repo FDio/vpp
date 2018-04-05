@@ -362,6 +362,13 @@ static void __vlib_add_thread_registration_##x (void)   \
   x.next = tm->next;                                    \
   tm->next = &x;                                        \
 }                                                       \
+static void __vlib_rm_thread_registration_##x (void)    \
+  __attribute__((__destructor__)) ;                     \
+static void __vlib_rm_thread_registration_##x (void)    \
+{                                                       \
+  vlib_thread_main_t * tm = &vlib_thread_main;          \
+  VLIB_REMOVE_FROM_LINKED_LIST (tm->next, &x, next);    \
+}                                                       \
 __VA_ARGS__ vlib_thread_registration_t x
 
 always_inline u32
