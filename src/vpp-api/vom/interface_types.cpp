@@ -42,7 +42,8 @@ interface::type_t
 interface::type_t::from_string(const std::string& str)
 {
   if ((str.find("Virtual") != std::string::npos) ||
-      (str.find("vhost") != std::string::npos)) {
+      (str.find("vhost") != std::string::npos) ||
+      (str.find("vhu") != std::string::npos)) {
     return interface::type_t::VHOST;
   } else if (str.find("Bond") != std::string::npos) {
     return interface::type_t::BOND;
