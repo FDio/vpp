@@ -1812,6 +1812,30 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
     clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
 }
 
+void
+vlib_thread_remove_registration (vlib_thread_registration_t * p)
+{
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  vlib_thread_registration_t *next;
+
+  if (tm->next == p)
+    {
+      tm->next = p->next;
+      return;
+    }
+
+  next = tm->next;
+  while (next->next)
+    {
+      if (next->next == p)
+	{
+	  next->next = next->next->next;
+	  return;
+	}
+      next = next->next;
+    }
+}
+
 clib_error_t *
 threads_init (vlib_main_t * vm)
 {
