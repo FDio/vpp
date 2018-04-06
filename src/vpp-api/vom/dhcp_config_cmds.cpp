@@ -49,6 +49,7 @@ bind_cmd::issue(connection& con)
   payload.is_add = 1;
   payload.pid = getpid();
   payload.want_dhcp_event = 1;
+  payload.set_broadcast_flag = m_set_broadcast_flag;
 
   memset(payload.hostname, 0, sizeof(payload.hostname));
   memcpy(payload.hostname, m_hostname.c_str(),

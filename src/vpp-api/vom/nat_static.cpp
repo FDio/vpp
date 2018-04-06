@@ -15,6 +15,7 @@
 
 #include "vom/nat_static.hpp"
 #include "vom/nat_static_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<nat_static::key_t, nat_static> nat_static::m_db;
@@ -136,7 +137,7 @@ nat_static::singular() const
 void
 nat_static::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 nat_static::event_handler::event_handler()
@@ -190,7 +191,7 @@ nat_static::event_handler::order() const
 void
 nat_static::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

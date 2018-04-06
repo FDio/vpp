@@ -15,6 +15,7 @@
 
 #include "vom/vxlan_tunnel.hpp"
 #include "vom/logger.hpp"
+#include "vom/singular_db_funcs.hpp"
 #include "vom/vxlan_tunnel_cmds.hpp"
 
 namespace VOM {
@@ -197,7 +198,7 @@ vxlan_tunnel::singular_i() const
 void
 vxlan_tunnel::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void

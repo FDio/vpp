@@ -424,7 +424,7 @@ ip6_ioam_analyse_register_hbh_handler (u8 option,
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
 
-  ASSERT (option < ARRAY_LEN (am->analyse_hbh_handler));
+  ASSERT ((u32) option < ARRAY_LEN (am->analyse_hbh_handler));
 
   /* Already registered */
   if (am->analyse_hbh_handler[option])
@@ -440,7 +440,7 @@ ip6_ioam_analyse_unregister_hbh_handler (u8 option)
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
 
-  ASSERT (option < ARRAY_LEN (am->analyse_hbh_handler));
+  ASSERT ((u32) option < ARRAY_LEN (am->analyse_hbh_handler));
 
   /* Not registered */
   if (!am->analyse_hbh_handler[option])

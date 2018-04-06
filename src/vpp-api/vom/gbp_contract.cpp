@@ -15,6 +15,7 @@
 
 #include "vom/gbp_contract.hpp"
 #include "vom/gbp_contract_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -122,7 +123,7 @@ gbp_contract::singular() const
 void
 gbp_contract::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 gbp_contract::event_handler::event_handler()
@@ -171,7 +172,7 @@ gbp_contract::event_handler::order() const
 void
 gbp_contract::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&

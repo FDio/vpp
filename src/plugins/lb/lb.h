@@ -235,7 +235,7 @@ typedef struct {
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
 #define lb_vip_is_gre6(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE6)
-#define lb_vip_is_l3dsr(vip) ((vip)->type == LB_VIP_TYPE_IP4_L3DSR)
+#define lb_vip_is_l3dsr(vip) (vip)->type == LB_VIP_TYPE_IP4_L3DSR
 
 #define lb_encap_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \

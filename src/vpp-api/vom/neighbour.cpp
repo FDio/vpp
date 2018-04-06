@@ -15,6 +15,7 @@
 
 #include "vom/neighbour.hpp"
 #include "vom/neighbour_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<neighbour::key_t, neighbour> neighbour::m_db;
@@ -120,7 +121,7 @@ neighbour::singular() const
 void
 neighbour::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&
@@ -203,7 +204,7 @@ neighbour::event_handler::order() const
 void
 neighbour::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

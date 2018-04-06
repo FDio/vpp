@@ -16,6 +16,7 @@
 #include "vom/acl_list.hpp"
 #include "vom/acl_list_cmds.hpp"
 #include "vom/logger.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 namespace ACL {
@@ -67,6 +68,13 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
      */
     OM::commit(key, acl);
   }
+}
+
+template <>
+void
+l2_list::event_handler::show(std::ostream& os)
+{
+  db_dump(m_db, os);
 }
 
 template <>
@@ -126,6 +134,13 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
      */
     OM::commit(key, acl);
   }
+}
+
+template <>
+void
+l3_list::event_handler::show(std::ostream& os)
+{
+  db_dump(m_db, os);
 }
 
 template <>

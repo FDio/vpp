@@ -16,6 +16,8 @@
 #ifndef __VOM_GBP_ENDPOINT_H__
 #define __VOM_GBP_ENDPOINT_H__
 
+#include <ostream>
+
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"

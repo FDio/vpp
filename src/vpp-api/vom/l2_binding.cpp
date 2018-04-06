@@ -15,6 +15,7 @@
 
 #include "vom/l2_binding.hpp"
 #include "vom/l2_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -195,7 +196,7 @@ l2_binding::singular() const
 void
 l2_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 l2_binding::event_handler::event_handler()
@@ -227,7 +228,7 @@ l2_binding::event_handler::order() const
 void
 l2_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

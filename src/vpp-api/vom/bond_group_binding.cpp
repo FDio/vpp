@@ -15,6 +15,7 @@
 
 #include "vom/bond_group_binding.hpp"
 #include "vom/bond_group_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -73,7 +74,7 @@ bond_group_binding::sweep()
 void
 bond_group_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -166,7 +167,7 @@ bond_group_binding::event_handler::order() const
 void
 bond_group_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 /*

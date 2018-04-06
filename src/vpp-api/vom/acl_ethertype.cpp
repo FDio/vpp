@@ -15,6 +15,7 @@
 
 #include "vom/acl_ethertype.hpp"
 #include "vom/acl_ethertype_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 namespace ACL {
@@ -122,7 +123,7 @@ acl_ethertype::find(const key_t& key)
 void
 acl_ethertype::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -237,7 +238,7 @@ acl_ethertype::event_handler::order() const
 void
 acl_ethertype::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 };
 };

@@ -244,14 +244,6 @@ ppp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ppp_init);
 
-ppp_main_t *
-ppp_get_main (vlib_main_t * vm)
-{
-  vlib_call_init_function (vm, ppp_init);
-  return &ppp_main;
-}
-
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

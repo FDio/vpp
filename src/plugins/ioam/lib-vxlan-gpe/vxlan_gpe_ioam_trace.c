@@ -89,7 +89,7 @@ vxlan_gpe_ioam_add_register_option (u8 option,
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->add_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->add_options));
 
   /* Already registered */
   if (hm->add_options[option])
@@ -106,7 +106,7 @@ vxlan_gpe_add_unregister_option (u8 option)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->add_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->add_options));
 
   /* Not registered */
   if (!hm->add_options[option])
@@ -128,7 +128,7 @@ vxlan_gpe_ioam_register_option (u8 option,
 {
   vxlan_gpe_ioam_main_t *im = &vxlan_gpe_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (im->options));
+  ASSERT ((u32) option < ARRAY_LEN (im->options));
 
   /* Already registered */
   if (im->options[option])
@@ -145,7 +145,7 @@ vxlan_gpe_ioam_unregister_option (u8 option)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->options));
 
   /* Not registered */
   if (!hm->options[option])

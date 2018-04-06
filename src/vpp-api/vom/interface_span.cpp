@@ -15,6 +15,7 @@
 
 #include "vom/interface_span.hpp"
 #include "vom/interface_span_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -63,7 +64,7 @@ interface_span::sweep()
 void
 interface_span::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -170,7 +171,7 @@ interface_span::event_handler::order() const
 void
 interface_span::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 const interface_span::state_t interface_span::state_t::DISABLED(0, "disable");

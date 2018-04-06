@@ -17,6 +17,7 @@
 #include "vom/bridge_domain_cmds.hpp"
 #include "vom/interface.hpp"
 #include "vom/l2_binding.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -137,7 +138,7 @@ bridge_domain::singular() const
 void
 bridge_domain::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -199,7 +200,7 @@ bridge_domain::event_handler::order() const
 void
 bridge_domain::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 
