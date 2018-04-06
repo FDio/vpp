@@ -124,9 +124,12 @@ class TestJVpp(VppTestCase):
 
         out, err = self.process.communicate()
         self.logger.info("Process output : {0}{1}".format(os.linesep, out))
-        self.logger.info("Process error output : {0}{1}"
-                         .format(os.linesep, err))
-        self.assert_equal(self.process.returncode, 0, "process return code")
+
+        if self.process.returncode != 0:
+            raise Exception(
+                "Command {0} failed with return code: {1}.{2}"
+                "Process error output: {2}{3}"
+                .format(command, self.process.returncode, os.linesep, err))
 
     def tearDown(self):
         self.logger.info("Tearing down jvpp test")
