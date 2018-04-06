@@ -755,8 +755,8 @@ format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
     {
       if (ip4_fib_mtrie_leaf_is_non_empty (p, i))
 	{
-	  FORMAT_PLY (s, p, i, base_address,
-		      p->dst_address_bits_base + 8, indent);
+	  s = FORMAT_PLY (s, p, i, base_address,
+			  p->dst_address_bits_base + 8, indent);
 	}
     }
 
@@ -791,7 +791,7 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
 
 	  if (p->dst_address_bits_of_leaves[slot] > 0)
 	    {
-	      FORMAT_PLY (s, p, slot, base_address, 16, 2);
+	      s = FORMAT_PLY (s, p, slot, base_address, 16, 2);
 	    }
 	}
     }

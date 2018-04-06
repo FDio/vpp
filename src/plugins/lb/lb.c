@@ -625,7 +625,7 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
       proto = DPO_PROTO_IP6;
   }
 
-  if(lb_vip_is_gre4(vip))
+  if (lb_vip_is_gre4(vip))
     dpo_type = lbm->dpo_gre4_type;
   else if (lb_vip_is_gre6(vip))
     dpo_type = lbm->dpo_gre6_type;
@@ -813,7 +813,7 @@ lb_as_stack (lb_as_t *as)
   lb_vip_t *vip = &lbm->vips[as->vip_index];
   dpo_type_t dpo_type = 0;
 
-  if(lb_vip_is_gre4(vip))
+  if (lb_vip_is_gre4(vip))
     dpo_type = lbm->dpo_gre4_type;
   else if (lb_vip_is_gre6(vip))
     dpo_type = lbm->dpo_gre6_type;

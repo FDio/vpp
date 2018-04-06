@@ -16,6 +16,7 @@
 #ifndef __VOM_INST_DB_H__
 #define __VOM_INST_DB_H__
 
+#include <map>
 #include <memory>
 #include <ostream>
 
@@ -46,12 +47,12 @@ public:
   /**
    * Get iterator to the beginning of the DB
    */
-  const_iterator cbegin() { return m_map.cbegin(); }
+  const_iterator begin() const { return m_map.cbegin(); }
 
   /**
    * Get iterator to the beginning of the DB
    */
-  const_iterator cend() { return m_map.cend(); }
+  const_iterator end() const { return m_map.cend(); }
 
   /**
    * Find or add the object to the store.
@@ -117,17 +118,6 @@ public:
    * Find the object to the store.
    */
   void add(const KEY& key, std::shared_ptr<OBJ> sp) { m_map[key] = sp; }
-
-  /**
-   * Print each of the object in the DB into the stream provided
-   */
-  void dump(std::ostream& os)
-  {
-    for (auto entry : m_map) {
-      os << "key: " << entry.first << std::endl;
-      os << "  " << entry.second.lock()->to_string() << std::endl;
-    }
-  }
 
   /**
    * Populate VPP from current state, on VPP restart

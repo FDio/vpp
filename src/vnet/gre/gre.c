@@ -320,12 +320,9 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
 typedef enum
 {
-  GRE_ENCAP_NEXT_DROP,
   GRE_ENCAP_NEXT_L2_MIDCHAIN,
   GRE_ENCAP_N_NEXT,
 } gre_encap_next_t;
-
-#define NEXT_IDX (GRE_ENCAP_NEXT_L2_MIDCHAIN)
 
 /**
  * @brief TX function. Only called for L2 payload including TEB or ERSPAN.
@@ -353,7 +350,7 @@ gre_interface_tx (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
 
   /* Speculatively send the first buffer to the last disposition we used */
-  next_index = node->cached_next_index;
+  next_index = GRE_ENCAP_NEXT_L2_MIDCHAIN;
 
   while (n_left_from > 0)
     {
@@ -447,10 +444,6 @@ gre_interface_tx (vlib_main_t * vm,
 	      tr1->dst = gt1->tunnel_dst.fp_addr;
 	      tr1->length = vlib_buffer_length_in_chain (vm, b1);
 	    }
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, NEXT_IDX, NEXT_IDX);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -497,10 +490,6 @@ gre_interface_tx (vlib_main_t * vm,
 	      tr->dst = gt0->tunnel_dst.fp_addr;
 	      tr->length = vlib_buffer_length_in_chain (vm, b0);
 	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, NEXT_IDX);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -530,7 +519,6 @@ VLIB_REGISTER_NODE (gre_encap_node) =
   .error_strings = gre_error_strings,
   .n_next_nodes = GRE_ENCAP_N_NEXT,
   .next_nodes = {
-    [GRE_ENCAP_NEXT_DROP] = "error-drop",
     [GRE_ENCAP_NEXT_L2_MIDCHAIN] = "adj-l2-midchain",
   },
 };
@@ -643,14 +631,6 @@ gre_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gre_init);
-
-gre_main_t *
-gre_get_main (vlib_main_t * vm)
-{
-  vlib_call_init_function (vm, gre_init);
-  return &gre_main;
-}
-
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -15,6 +15,7 @@
 
 #include "vom/lldp_binding.hpp"
 #include "vom/lldp_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -70,7 +71,7 @@ lldp_binding::sweep()
 void
 lldp_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -149,7 +150,7 @@ lldp_binding::event_handler::order() const
 void
 lldp_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

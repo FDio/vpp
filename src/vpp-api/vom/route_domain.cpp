@@ -16,6 +16,7 @@
 #include "vom/route_domain.hpp"
 #include "vom/cmd.hpp"
 #include "vom/route_domain_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -152,7 +153,7 @@ route_domain::singular() const
 void
 route_domain::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -181,7 +182,7 @@ route_domain::event_handler::order() const
 void
 route_domain::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 }; // namespace VOPM

@@ -15,7 +15,7 @@
 
 #include "vom/route.hpp"
 #include "vom/route_cmds.hpp"
-#include "vom/singular_db.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 namespace route {
@@ -367,7 +367,7 @@ ip_route::singular() const
 void
 ip_route::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 ip_route::event_handler::event_handler()
@@ -514,7 +514,7 @@ ip_route::event_handler::order() const
 void
 ip_route::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&

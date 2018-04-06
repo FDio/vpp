@@ -391,13 +391,6 @@ ipsec_gre_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ipsec_gre_init);
 
-ipsec_gre_main_t *
-ipsec_gre_get_main (vlib_main_t * vm)
-{
-  vlib_call_init_function (vm, ipsec_gre_init);
-  return &ipsec_gre_main;
-}
-
 /*
 * fd.io coding-style-patch-verification: ON
 *

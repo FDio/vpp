@@ -174,9 +174,9 @@ bier_test_validate_entry (index_t bei,
     res = 0;
     bier_entry_contribute_forwarding(bei, &dpo);
 
-    BIER_TEST_I((DPO_LOAD_BALANCE == dpo.dpoi_type),
-                "Entry links to %U",
-                format_dpo_type, dpo.dpoi_type);
+    res = BIER_TEST_I((DPO_LOAD_BALANCE == dpo.dpoi_type),
+                      "Entry links to %U",
+                      format_dpo_type, dpo.dpoi_type);
 
     if (!res)
     {

@@ -15,6 +15,7 @@
 
 #include "vom/bridge_domain_entry.hpp"
 #include "vom/bridge_domain_entry_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<bridge_domain_entry::key_t, bridge_domain_entry>
@@ -138,7 +139,7 @@ bridge_domain_entry::singular() const
 void
 bridge_domain_entry::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 bridge_domain_entry::event_handler::event_handler()
@@ -202,7 +203,7 @@ bridge_domain_entry::event_handler::order() const
 void
 bridge_domain_entry::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&

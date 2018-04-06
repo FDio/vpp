@@ -15,6 +15,7 @@
 
 #include "vom/bridge_domain_arp_entry.hpp"
 #include "vom/bridge_domain_arp_entry_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -141,7 +142,7 @@ bridge_domain_arp_entry::singular() const
 void
 bridge_domain_arp_entry::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 bridge_domain_arp_entry::event_handler::event_handler()
@@ -172,7 +173,7 @@ bridge_domain_arp_entry::event_handler::order() const
 void
 bridge_domain_arp_entry::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&

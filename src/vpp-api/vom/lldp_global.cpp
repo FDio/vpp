@@ -15,6 +15,7 @@
 
 #include "vom/lldp_global.hpp"
 #include "vom/lldp_global_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -70,7 +71,7 @@ lldp_global::sweep()
 void
 lldp_global::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -148,7 +149,7 @@ lldp_global::event_handler::order() const
 void
 lldp_global::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

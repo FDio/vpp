@@ -501,7 +501,7 @@ sixrd_init (vlib_main_t * vm)
   clib_error_t *error = 0;
 
   /* Make sure the IPIP tunnel subsystem is initialised */
-  vlib_call_init_function (vm, ipip_init);
+  error = vlib_call_init_function (vm, ipip_init);
 
   sixrd_adj_delegate_type =
     adj_delegate_register_new_type (&sixrd_adj_delegate_vft);

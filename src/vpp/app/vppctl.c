@@ -157,7 +157,7 @@ main (int argc, char *argv[])
   argc--;
   argv++;
 
-  if (argc > 1 && strcmp (argv[0], "-s") == 0)
+  if (argc > 1 && strncmp (argv[0], "-s", 2) == 0)
     {
       s->config = argv[1];
       argc -= 2;

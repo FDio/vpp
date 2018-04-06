@@ -15,6 +15,7 @@
 
 #include "vom/ip_unnumbered.hpp"
 #include "vom/ip_unnumbered_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -58,7 +59,7 @@ ip_unnumbered::sweep()
 void
 ip_unnumbered::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -128,7 +129,7 @@ ip_unnumbered::event_handler::order() const
 void
 ip_unnumbered::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 
