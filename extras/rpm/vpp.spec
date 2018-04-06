@@ -3,8 +3,7 @@
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _builddir        %{_topdir}
-%define _tmp_build_dir   %{name}-%{_version}.0
-%define _mu_build_dir    %{_topdir}/%{_tmp_build_dir}/build-root
+%define _mu_build_dir    %{_topdir}/%{name}-%{_version}/build-root
 %define _vpp_tag	 %{getenv:TAG}
 %if "%{_vpp_tag}" == ""
 %define _vpp_tag	 vpp
@@ -151,20 +150,13 @@ Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targ
 This package contains a tailored VPP SELinux policy
 
 %prep
-# Unpack into dir with longer name as work around of debugedit bug in in rpm-build 4.13
-rm -rf %{name}-%{_version}
-rm -rf %{_tmp_build_dir}
-/usr/bin/xz -dc '%{_sourcedir}/%{name}-%{_version}-%{_release}.tar.xz' | /usr/bin/tar -xf -
-mv %{name}-%{_version} %{_tmp_build_dir}
-cd '%{_tmp_build_dir}'
-/usr/bin/chmod -Rf a+rX,u+w,g-w,o-w .
+%setup -q -n %{name}-%{_version}
 
 %pre
 # Add the vpp group
 groupadd -f -r vpp
 
 %build
-cd '%{_tmp_build_dir}'
 %if %{with aesni}
     make bootstrap
     make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
