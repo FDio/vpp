@@ -15,6 +15,7 @@
 
 #include "vom/gbp_endpoint.hpp"
 #include "vom/gbp_endpoint_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -122,7 +123,7 @@ gbp_endpoint::singular() const
 void
 gbp_endpoint::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 gbp_endpoint::event_handler::event_handler()
@@ -174,7 +175,7 @@ gbp_endpoint::event_handler::order() const
 void
 gbp_endpoint::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 } // namespace VOM
 

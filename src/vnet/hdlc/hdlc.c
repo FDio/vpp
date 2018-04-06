@@ -243,14 +243,6 @@ hdlc_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (hdlc_init);
 
-hdlc_main_t *
-hdlc_get_main (vlib_main_t * vm)
-{
-  vlib_call_init_function (vm, hdlc_init);
-  return &hdlc_main;
-}
-
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

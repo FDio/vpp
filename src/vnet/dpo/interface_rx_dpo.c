@@ -244,7 +244,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
 
-    next_index = node->cached_next_index;
+    next_index = INTERFACE_RX_DPO_INPUT;
 
     while (n_left_from > 0)
     {
@@ -305,11 +305,6 @@ interface_rx_dpo_inline (vlib_main_t * vm,
                 tr1 = vlib_add_trace (vm, node, b1, sizeof (*tr1));
                 tr1->sw_if_index = ido1->ido_sw_if_index;
             }
-
-            vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, bi1,
-                                            INTERFACE_RX_DPO_INPUT,
-                                            INTERFACE_RX_DPO_INPUT);
         }
 
         while (n_left_from > 0 && n_left_to_next > 0)
@@ -349,10 +344,6 @@ interface_rx_dpo_inline (vlib_main_t * vm,
                 tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
                 tr->sw_if_index = ido0->ido_sw_if_index;
             }
-
-            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0,
-                                            INTERFACE_RX_DPO_INPUT);
         }
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }

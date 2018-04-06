@@ -2699,7 +2699,7 @@ ip6_hbh_register_option (u8 option,
   ip6_main_t *im = &ip6_main;
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
 
-  ASSERT (option < ARRAY_LEN (hm->options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->options));
 
   /* Already registered */
   if (hm->options[option])
@@ -2720,7 +2720,7 @@ ip6_hbh_unregister_option (u8 option)
   ip6_main_t *im = &ip6_main;
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
 
-  ASSERT (option < ARRAY_LEN (hm->options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->options));
 
   /* Not registered */
   if (!hm->options[option])

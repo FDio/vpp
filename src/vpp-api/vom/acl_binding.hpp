@@ -26,6 +26,7 @@
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
 #include "vom/singular_db.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 namespace ACL {
@@ -123,7 +124,7 @@ private:
     /**
      * Show the object in the Singular DB
      */
-    void show(std::ostream& os) { m_db.dump(os); }
+    void show(std::ostream& os) { db_dump(m_db, os); }
 
     /**
      * Get the sortable Id of the listener

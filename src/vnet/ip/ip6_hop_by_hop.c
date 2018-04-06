@@ -103,7 +103,7 @@ ip6_hbh_add_register_option (u8 option,
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->add_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->add_options));
 
   /* Already registered */
   if (hm->add_options[option])
@@ -120,7 +120,7 @@ ip6_hbh_add_unregister_option (u8 option)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->add_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->add_options));
 
   /* Not registered */
   if (!hm->add_options[option])
@@ -138,7 +138,7 @@ ip6_hbh_config_handler_register (u8 option,
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->config_handler));
+  ASSERT ((u32) option < ARRAY_LEN (hm->config_handler));
 
   /* Already registered  */
   if (hm->config_handler[option])
@@ -154,7 +154,7 @@ ip6_hbh_config_handler_unregister (u8 option)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->config_handler));
+  ASSERT ((u32) option < ARRAY_LEN (hm->config_handler));
 
   /* Not registered */
   if (!hm->config_handler[option])
@@ -171,7 +171,7 @@ ip6_hbh_flow_handler_register (u8 option,
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->flow_handler));
+  ASSERT ((u32) option < ARRAY_LEN (hm->flow_handler));
 
   /* Already registered */
   if (hm->flow_handler[option])
@@ -187,7 +187,7 @@ ip6_hbh_flow_handler_unregister (u8 option)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->flow_handler));
+  ASSERT ((u32) option < ARRAY_LEN (hm->flow_handler));
 
   /* Not registered */
   if (!hm->flow_handler[option])
@@ -484,7 +484,7 @@ ip6_hbh_pop_register_option (u8 option,
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->pop_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->pop_options));
 
   /* Already registered */
   if (hm->pop_options[option])
@@ -500,7 +500,7 @@ ip6_hbh_pop_unregister_option (u8 option)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
-  ASSERT (option < ARRAY_LEN (hm->pop_options));
+  ASSERT ((u32) option < ARRAY_LEN (hm->pop_options));
 
   /* Not registered */
   if (!hm->pop_options[option])

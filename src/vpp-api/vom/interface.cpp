@@ -22,6 +22,7 @@
 #include "vom/l3_binding_cmds.hpp"
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -148,13 +149,13 @@ interface::l2_address() const
 interface::const_iterator_t
 interface::cbegin()
 {
-  return m_db.cbegin();
+  return m_db.begin();
 }
 
 interface::const_iterator_t
 interface::cend()
 {
-  return m_db.cend();
+  return m_db.end();
 }
 
 void
@@ -485,7 +486,7 @@ interface::remove(const HW::item<handle_t>& item)
 void
 interface::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -626,7 +627,7 @@ interface::event_handler::order() const
 void
 interface::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 } // namespace VOM

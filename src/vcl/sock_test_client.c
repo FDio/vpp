@@ -794,16 +794,20 @@ parse_input ()
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_t rv = SOCK_TEST_TYPE_NONE;
 
-  if (!strcmp (SOCK_TEST_TOKEN_EXIT, ctrl->txbuf))
+  if (!strncmp (SOCK_TEST_TOKEN_EXIT, ctrl->txbuf,
+		strlen (SOCK_TEST_TOKEN_EXIT)))
     rv = SOCK_TEST_TYPE_EXIT;
 
-  else if (!strcmp (SOCK_TEST_TOKEN_HELP, ctrl->txbuf))
+  else if (!strncmp (SOCK_TEST_TOKEN_HELP, ctrl->txbuf,
+		     strlen (SOCK_TEST_TOKEN_HELP)))
     dump_help ();
 
-  else if (!strcmp (SOCK_TEST_TOKEN_SHOW_CFG, ctrl->txbuf))
+  else if (!strncmp (SOCK_TEST_TOKEN_SHOW_CFG, ctrl->txbuf,
+		     strlen (SOCK_TEST_TOKEN_SHOW_CFG)))
     scm->dump_cfg = 1;
 
-  else if (!strcmp (SOCK_TEST_TOKEN_VERBOSE, ctrl->txbuf))
+  else if (!strncmp (SOCK_TEST_TOKEN_VERBOSE, ctrl->txbuf,
+		     strlen (SOCK_TEST_TOKEN_VERBOSE)))
     cfg_verbose_toggle ();
 
   else if (!strncmp (SOCK_TEST_TOKEN_TXBUF_SIZE, ctrl->txbuf,

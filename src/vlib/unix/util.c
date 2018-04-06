@@ -73,7 +73,8 @@ foreach_directory_file (char *dir_name,
       if (scan_dirs)
 	{
 	  if (e->d_type == DT_DIR
-	      && (!strcmp (e->d_name, ".") || !strcmp (e->d_name, "..")))
+	      && (!strncmp (e->d_name, ".", 1) ||
+		  !strncmp (e->d_name, "..", 2)))
 	    continue;
 	}
       else

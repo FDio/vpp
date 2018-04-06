@@ -1347,7 +1347,6 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 	  lc_index =
 	    acl_plugin_get_lookup_context_index (am->interface_acl_user_id,
 						 sw_if_index, is_input);
-	  ASSERT (lc_index >= 0);
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = lc_index;
 	}
       acl_plugin_set_acl_vec_for_context (lc_index, vec_acl_list_index);

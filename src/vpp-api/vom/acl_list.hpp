@@ -192,7 +192,7 @@ private:
     /**
      * Show the object in the Singular DB
      */
-    void show(std::ostream& os) { m_db.dump(os); }
+    void show(std::ostream& os);
 
     /**
      * Get the sortable Id of the listener

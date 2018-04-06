@@ -15,6 +15,7 @@
 
 #include "vom/l3_binding.hpp"
 #include "vom/l3_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<l3_binding::key_t, l3_binding> l3_binding::m_db;
@@ -92,13 +93,13 @@ l3_binding::itf() const
 l3_binding::const_iterator_t
 l3_binding::cbegin()
 {
-  return m_db.cbegin();
+  return m_db.begin();
 }
 
 l3_binding::const_iterator_t
 l3_binding::cend()
 {
-  return m_db.cend();
+  return m_db.end();
 }
 
 std::string
@@ -146,7 +147,7 @@ l3_binding::singular() const
 void
 l3_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&
@@ -167,9 +168,9 @@ l3_binding::find(const interface& i)
  */
   std::deque<std::shared_ptr<l3_binding>> l3s;
 
-  auto it = m_db.cbegin();
+  auto it = m_db.begin();
 
-  while (it != m_db.cend()) {
+  while (it != m_db.end()) {
     /*
      * The key in the DB is a pair of the interface's name and prefix.
      * If the keys match, save the L3-config
@@ -215,7 +216,7 @@ l3_binding::event_handler::order() const
 void
 l3_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

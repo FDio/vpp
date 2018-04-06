@@ -16,6 +16,7 @@
 #include "vom/nat_binding.hpp"
 #include "vom/cmd.hpp"
 #include "vom/nat_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<const nat_binding::key_t, nat_binding> nat_binding::m_db;
@@ -157,7 +158,7 @@ nat_binding::singular() const
 void
 nat_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&
@@ -224,7 +225,7 @@ nat_binding::event_handler::order() const
 void
 nat_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

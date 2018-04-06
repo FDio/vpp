@@ -15,6 +15,7 @@
 
 #include "vom/arp_proxy_config.hpp"
 #include "vom/arp_proxy_config_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 singular_db<arp_proxy_config::key_t, arp_proxy_config> arp_proxy_config::m_db;
@@ -57,7 +58,7 @@ arp_proxy_config::sweep()
 void
 arp_proxy_config::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -126,7 +127,7 @@ arp_proxy_config::event_handler::order() const
 void
 arp_proxy_config::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 std::ostream&

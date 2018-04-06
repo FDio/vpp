@@ -15,6 +15,7 @@
 
 #include "vom/l2_emulation.hpp"
 #include "vom/l2_emulation_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -122,7 +123,7 @@ l2_emulation::singular() const
 void
 l2_emulation::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 l2_emulation::event_handler::event_handler()
@@ -154,7 +155,7 @@ l2_emulation::event_handler::order() const
 void
 l2_emulation::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

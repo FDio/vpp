@@ -115,7 +115,6 @@ VLIB_INIT_FUNCTION (ethernet_init);
 ethernet_main_t *
 ethernet_get_main (vlib_main_t * vm)
 {
-  vlib_call_init_function (vm, ethernet_init);
   return &ethernet_main;
 }
 

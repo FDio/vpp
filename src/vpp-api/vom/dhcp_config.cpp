@@ -15,6 +15,7 @@
 
 #include "vom/dhcp_config.hpp"
 #include "vom/dhcp_config_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 /**
@@ -90,7 +91,7 @@ dhcp_config::sweep()
 void
 dhcp_config::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -180,7 +181,7 @@ dhcp_config::event_handler::order() const
 void
 dhcp_config::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 

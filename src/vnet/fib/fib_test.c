@@ -526,11 +526,11 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	    }
 	    break;
 	case FT_LB_ADJ:
-	    FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
-			(DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
+	    res = FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
+                              (DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
+                             "bucket %d stacks on %U",
+                             bucket,
+                             format_dpo_type, dpo->dpoi_type);
 	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
 			"bucket %d stacks on adj %d",
 			bucket,
@@ -540,7 +540,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
         {
             const mpls_disp_dpo_t *mdd;
 
-            FIB_TEST_I((DPO_MPLS_DISPOSITION_PIPE == dpo->dpoi_type),
+            res = FIB_TEST_I((DPO_MPLS_DISPOSITION_PIPE == dpo->dpoi_type),
 		       "bucket %d stacks on %U",
 		       bucket,
 		       format_dpo_type, dpo->dpoi_type);
@@ -549,11 +549,11 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 
             dpo = &mdd->mdd_dpo;
 
-	    FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
-			(DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
+	    res = FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
+                              (DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
+                            "bucket %d stacks on %U",
+                             bucket,
+                             format_dpo_type, dpo->dpoi_type);
 	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
 			"bucket %d stacks on adj %d",
 			bucket,
@@ -561,30 +561,30 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	    break;
         }
 	case FT_LB_INTF:
-	    FIB_TEST_I((DPO_INTERFACE_RX == dpo->dpoi_type),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
+	    res = FIB_TEST_I((DPO_INTERFACE_RX == dpo->dpoi_type),
+                             "bucket %d stacks on %U",
+                             bucket,
+                             format_dpo_type, dpo->dpoi_type);
 	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
 			"bucket %d stacks on adj %d",
 			bucket,
 			exp->adj.adj);
 	    break;
 	case FT_LB_L2:
-	    FIB_TEST_I((DPO_DVR == dpo->dpoi_type),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
+	    res = FIB_TEST_I((DPO_DVR == dpo->dpoi_type),
+                             "bucket %d stacks on %U",
+                             bucket,
+                             format_dpo_type, dpo->dpoi_type);
 	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
 			"bucket %d stacks on adj %d",
 			bucket,
 			exp->adj.adj);
 	    break;
 	case FT_LB_O_LB:
-	    FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
-                       "bucket %d stacks on %U",
-                       bucket,
-                       format_dpo_type, dpo->dpoi_type);
+	    res = FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
+                             "bucket %d stacks on %U",
+                             bucket,
+                             format_dpo_type, dpo->dpoi_type);
             FIB_TEST_LB((exp->lb.lb == dpo->dpoi_index),
                         "bucket %d stacks on lb %d not %d",
                         bucket,

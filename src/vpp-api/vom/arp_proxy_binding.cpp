@@ -15,6 +15,7 @@
 
 #include "vom/arp_proxy_binding.hpp"
 #include "vom/arp_proxy_binding_cmds.hpp"
+#include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
 
@@ -61,7 +62,7 @@ arp_proxy_binding::sweep()
 void
 arp_proxy_binding::dump(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 
 void
@@ -134,7 +135,7 @@ arp_proxy_binding::event_handler::order() const
 void
 arp_proxy_binding::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  db_dump(m_db, os);
 }
 }
 /*
