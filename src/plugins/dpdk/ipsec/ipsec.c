@@ -330,11 +330,10 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform *xfs;
   struct rte_cryptodev_sym_session **s;
   crypto_session_key_t key = { 0 };
+  clib_error_t *erorr = 0;
 
   key.drv_id = res->drv_id;
   key.sa_idx = sa_idx;
-
-  data = vec_elt_at_index (dcm->data, res->numa);
 
   sa = pool_elt_at_index (im->sad, sa_idx);
 
@@ -362,6 +361,9 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 	}
     }
 
+  data = vec_elt_at_index (dcm->data, res->numa);
+  clib_spinlock_lock_if_init (&data->lockp);
+
   /*
    * DPDK_VER >= 1708:
    *   Multiple worker/threads share the session for an SA
@@ -375,7 +377,8 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
       if (!session[0])
 	{
 	  data->session_h_failed += 1;
-	  return clib_error_return (0, "failed to create session header");
+	  erorr = clib_error_return (0, "failed to create session header");
+	  goto done;
 	}
       hash_set (data->session_by_sa_index, sa_idx, session[0]);
     }
@@ -391,13 +394,16 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   if (ret)
     {
       data->session_drv_failed[res->drv_id] += 1;
-      return clib_error_return (0, "failed to init session for drv %u",
-				res->drv_id);
+      erorr = clib_error_return (0, "failed to init session for drv %u",
+				 res->drv_id);
+      goto done;
     }
 
   hash_set (data->session_by_drv_id_and_sa_index, key.val, session[0]);
 
-  return 0;
+done:
+  clib_spinlock_unlock_if_init (&data->lockp);
+  return erorr;
 }
 
 static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
@@ -509,34 +515,32 @@ add_del_sa_session (u32 sa_index, u8 is_add)
   /* *INDENT-OFF* */
   vec_foreach (data, dcm->data)
     {
+      clib_spinlock_lock_if_init (&data->lockp);
       val = hash_get (data->session_by_sa_index, sa_index);
+      s = (struct rte_cryptodev_sym_session *) val;
+      if (s)
+        {
+          vec_foreach_index (drv_id, dcm->drv)
+            {
+              key.drv_id = drv_id;
+              val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+              s = (struct rte_cryptodev_sym_session *) val;
+              if (s)
+                hash_unset (data->session_by_drv_id_and_sa_index, key.val);
+            }
 
-      if (!val)
-	continue;
+          hash_unset (data->session_by_sa_index, sa_index);
 
-      s = (struct rte_cryptodev_sym_session *) val[0];
+          u64 ts = unix_time_now_nsec ();
+          dpdk_crypto_session_disposal (data->session_disposal, ts);
 
-      vec_foreach_index (drv_id, dcm->drv)
-	{
-	  key.drv_id = drv_id;
-	  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+          crypto_session_disposal_t sd;
+          sd.ts = ts;
+          sd.session = s;
 
-	  if (!val)
-	    continue;
-
-	  hash_unset (data->session_by_drv_id_and_sa_index, key.val);
-	}
-
-      hash_unset (data->session_by_sa_index, sa_index);
-
-      u64 ts = unix_time_now_nsec ();
-      dpdk_crypto_session_disposal (data->session_disposal, ts);
-
-      crypto_session_disposal_t sd;
-      sd.ts = ts;
-      sd.session = s;
-
-      vec_add1 (data->session_disposal, sd);
+          vec_add1 (data->session_disposal, sd);
+        }
+      clib_spinlock_unlock_if_init (&data->lockp);
     }
   /* *INDENT-ON* */
 
@@ -925,6 +929,7 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
     return error;
 
   data->session_drv[dev->drv_id] = mp;
+  clib_spinlock_init (&data->lockp);
 
   return NULL;
 }
@@ -977,6 +982,7 @@ crypto_disable (void)
 	rte_mempool_free (data->session_drv[i]);
 
       vec_free (data->session_drv);
+      clib_spinlock_free (&data->lockp);
     }
   /* *INDENT-ON* */
 

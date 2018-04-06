@@ -135,6 +135,7 @@ typedef struct
   u64 crypto_op_get_failed;
   u64 session_h_failed;
   u64 *session_drv_failed;
+  clib_spinlock_t lockp;
 } crypto_data_t;
 
 typedef struct
