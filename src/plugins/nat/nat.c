@@ -682,12 +682,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   u32 ses_index;
   u64 user_index;
   snat_session_t * s;
+  snat_static_map_resolve_t *rp, *rp_match = 0;
 
   /* If the external address is a specific interface address */
   if (sw_if_index != ~0)
     {
       ip4_address_t * first_int_addr;
-      snat_static_map_resolve_t *rp, *rp_match = 0;
 
       for (i = 0; i < vec_len (sm->to_resolve); i++)
         {
@@ -830,7 +830,26 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
             }
           /* External address must be allocated */
           if (!a && (l_addr.as_u32 != e_addr.as_u32))
-            return VNET_API_ERROR_NO_SUCH_ENTRY;
+            {
+              if (sw_if_index != ~0)
+                {
+                  for (i = 0; i < vec_len (sm->to_resolve); i++)
+                    {
+                      rp = sm->to_resolve + i;
+                      if (rp->addr_only)
+                         continue;
+                      if (rp->sw_if_index != sw_if_index &&
+                          rp->l_addr.as_u32 != l_addr.as_u32 &&
+                          rp->vrf_id != vrf_id && rp->l_port != l_port &&
+                          rp->e_port != e_port && rp->proto != proto)
+                        continue;
+
+                      vec_del1 (sm->to_resolve, i);
+                      break;
+                    }
+                }
+              return VNET_API_ERROR_NO_SUCH_ENTRY;
+            }
         }
 
       pool_get (sm->static_mappings, m);
@@ -942,7 +961,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   else
     {
       if (!m)
-        return VNET_API_ERROR_NO_SUCH_ENTRY;
+        {
+          if (sw_if_index != ~0)
+            return 0;
+          else
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+        }
 
       /* Free external address port */
       if (!(addr_only || sm->static_mapping_only || out2in_only))
