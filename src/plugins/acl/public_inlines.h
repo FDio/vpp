@@ -26,6 +26,19 @@
 /* check if a given ACL exists */
 
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
+
+/*
+ * Define a pointer to the acl_main which will be filled during the initialization.
+ */
+acl_main_t *p_acl_main = 0;
+
+/*
+ * If the file is included more than once, the symbol collision will make the problem obvious.
+ * If the include is done only once, it is just a lonely null var
+ * sitting around.
+ */
+void *ERROR_ACL_PLUGIN_EXPORTS_FILE_MUST_BE_INCLUDED_ONLY_IN_ONE_PLACE = 0;
+
 u8 (*acl_plugin_acl_exists) (u32 acl_index);
 #else
 u8 acl_plugin_acl_exists (u32 acl_index);
@@ -128,18 +141,19 @@ acl_plugin_match_5tuple_inline (u32 lc_index,
 
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
 
-#define LOAD_SYMBOL_FROM_PLUGIN(p, s)                                     \
+#define LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                              \
 ({                                                                        \
-    s = vlib_get_plugin_symbol(p, #s);                                    \
-    if (!s)                                                               \
+    st = vlib_get_plugin_symbol(p, #s);                                    \
+    if (!st)                                                               \
         return clib_error_return(0,                                       \
                 "Plugin %s and/or symbol %s not found.", p, #s);          \
 })
 
-#define LOAD_SYMBOL(s) LOAD_SYMBOL_FROM_PLUGIN("acl_plugin.so", s)
+#define LOAD_SYMBOL(s) LOAD_SYMBOL_FROM_PLUGIN_TO("acl_plugin.so", s, s)
 
 static inline clib_error_t * acl_plugin_exports_init (void)
 {
+    LOAD_SYMBOL_FROM_PLUGIN_TO("acl_plugin.so", acl_main, p_acl_main);
     LOAD_SYMBOL(acl_plugin_acl_exists);
     LOAD_SYMBOL(acl_plugin_register_user_module);
     LOAD_SYMBOL(acl_plugin_get_lookup_context_index);
@@ -345,7 +359,7 @@ always_inline void
 acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6,
 		 int is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
 {
-  acl_main_t *am = &acl_main;
+  acl_main_t *am = p_acl_main;
   acl_fill_5tuple(am, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
 }
 
@@ -528,7 +542,7 @@ acl_plugin_single_acl_match_5tuple (u32 acl_index, fa_5tuple_t * pkt_5tuple,
 		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
-  acl_main_t * am = &acl_main;
+  acl_main_t * am = p_acl_main;
   return single_acl_match_5tuple(am, acl_index, pkt_5tuple, is_ip6, r_action,
                                  r_acl_match_p, r_rule_match_p, trace_bitmap);
 }
@@ -538,7 +552,7 @@ linear_multi_acl_match_5tuple (u32 lc_index, fa_5tuple_t * pkt_5tuple,
 		       int is_ip6, u8 *r_action, u32 *acl_pos_p, u32 * acl_match_p,
 		       u32 * rule_match_p, u32 * trace_bitmap)
 {
-  acl_main_t *am = &acl_main;
+  acl_main_t *am = p_acl_main;
   int i;
   u32 *acl_vector;
   u8 action = 0;
@@ -691,7 +705,7 @@ hash_multi_acl_match_5tuple (u32 lc_index, fa_5tuple_t * pkt_5tuple,
                        int is_ip6, u8 *action, u32 *acl_pos_p, u32 * acl_match_p,
                        u32 * rule_match_p, u32 * trace_bitmap)
 {
-  acl_main_t *am = &acl_main;
+  acl_main_t *am = p_acl_main;
   applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
   u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
@@ -717,7 +731,7 @@ acl_plugin_match_5tuple_inline (u32 lc_index,
                                            u32 * r_rule_match_p,
                                            u32 * trace_bitmap)
 {
-  acl_main_t *am = &acl_main;
+  acl_main_t *am = p_acl_main;
   if (am->use_hash_acl_matching) {
     return hash_multi_acl_match_5tuple(lc_index, (fa_5tuple_t *)pkt_5tuple, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
