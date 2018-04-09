@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "09b9c772_2cb897c7",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 588,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-09T15:12:30Z",
+      "side": 1,
+      "message": "We need to restore the flood mode of loopback to VNET_FLOOD_CLASS_NO_FLOOD around here.",
+      "range": {
+        "startLine": 588,
+        "startChar": 28,
+        "endLine": 588,
+        "endChar": 32
+      },
+      "revId": "b906fc444213eccd885e95d518d7f3e2bf25d472",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
