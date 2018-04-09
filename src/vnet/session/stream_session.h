@@ -31,30 +31,19 @@ typedef enum
   SESSION_STATE_CONNECTING,
   SESSION_STATE_ACCEPTING,
   SESSION_STATE_READY,
-  SESSION_STATE_CONNECTING_READY,
+  SESSION_STATE_OPENED,
   SESSION_STATE_CLOSED,
   SESSION_STATE_N_STATES,
 } stream_session_state_t;
 
-/* TODO convert to macro once cleanup completed */
-typedef struct app_session_
+typedef struct generic_session_
 {
-  /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
-
-  /** Type */
-  session_type_t session_type;
-
-  /** State */
-  volatile u8 session_state;
-
-  /** Session index in owning pool */
-  u32 session_index;
-
-  /** Application index */
-  u32 app_index;
-} app_session_t;
+  svm_fifo_t *rx_fifo;		/**< rx fifo */
+  svm_fifo_t *tx_fifo;		/**< tx fifo */
+  session_type_t session_type;	/**< session type */
+  volatile u8 session_state;	/**< session state */
+  u32 session_index;		/**< index in owning pool */
+} generic_session_t;
 
 typedef struct _stream_session_t
 {

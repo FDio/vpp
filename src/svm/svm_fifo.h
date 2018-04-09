@@ -80,6 +80,11 @@ typedef struct _svm_fifo
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 
+typedef enum
+{
+  SVM_FIFO_FULL = -2,
+} svm_fifo_err_t;
+
 #if SVM_FIFO_TRACE
 #define svm_fifo_trace_add(_f, _s, _l, _t)		\
 {							\
@@ -150,6 +155,7 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
+void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
 
 format_function_t format_svm_fifo;
 

@@ -36,9 +36,9 @@ typedef enum
 
 typedef struct
 {
-  transport_connection_t connection;	      /** must be first */
-  /** ersatz MTU to limit fifo pushes to test data size */
-  u32 mtu;
+  transport_connection_t connection;	/**< must be first */
+  clib_spinlock_t rx_lock;		/**< rx fifo lock */
+  u8 is_connected;			/**< connected mode */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -207,7 +207,7 @@ udp_pool_remove_peeker (u32 thread_index)
 }
 
 always_inline udp_connection_t *
-udp_conenction_clone_safe (u32 connection_index, u32 thread_index)
+udp_connection_clone_safe (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *old_c, *new_c;
   u32 current_thread_index = vlib_get_thread_index ();

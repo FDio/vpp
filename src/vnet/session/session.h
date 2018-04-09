@@ -204,6 +204,31 @@ struct _session_manager_main
 
 };
 
+typedef struct session_dgram_pre_hdr_
+{
+  u32 data_length;
+  u32 data_offset;
+} session_dgram_pre_hdr_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct session_dgram_header_
+{
+  u32 data_length;
+  u32 data_offset;
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+  u8 is_ip4;
+}) session_dgram_hdr_t;
+/* *INDENT-ON* */
+
+#define SESSION_CONN_ID_LEN 37
+#define SESSION_CONN_HDR_LEN 45
+
+STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
+	       "session conn id wrong length");
+
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;
 
@@ -342,6 +367,14 @@ session_has_transport (stream_session_t * s)
   return (session_get_transport_proto (s) != TRANSPORT_PROTO_NONE);
 }
 
+always_inline transport_service_type_t
+session_transport_service_type (stream_session_t * s)
+{
+  transport_proto_t tp;
+  tp = session_get_transport_proto (s);
+  return transport_protocol_service_type (tp);
+}
+
 /**
  * Acquires a lock that blocks a session pool from expanding.
  *
@@ -442,8 +475,10 @@ int
 session_enqueue_stream_connection (transport_connection_t * tc,
 				   vlib_buffer_t * b, u32 offset,
 				   u8 queue_event, u8 is_in_order);
-int session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
-				      u8 proto, u8 queue_event);
+int session_enqueue_dgram_connection (stream_session_t * s,
+				      session_dgram_hdr_t * hdr,
+				      vlib_buffer_t * b, u8 proto,
+				      u8 queue_event);
 int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			       u32 offset, u32 max_bytes);
 u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
@@ -490,6 +525,7 @@ session_manager_get_vpp_event_queue (u32 thread_index)
 }
 
 int session_manager_flush_enqueue_events (u8 proto, u32 thread_index);
+int session_manager_flush_all_enqueue_events (u8 transport_proto);
 
 always_inline u64
 listen_session_get_handle (stream_session_t * s)
