@@ -58,8 +58,12 @@ typedef enum
 
 typedef struct
 {
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
+  ip46_address_t *rmt_ip;
+  u16 rmt_port;
+  u8 is_ip4;
+  u8 is_vc;
 } session_t;
 
 typedef struct
@@ -87,6 +91,8 @@ typedef struct
 
   /* URI for connect */
   u8 *connect_uri;
+
+  u32 fifo_size;
 
   int i_am_master;
 
@@ -168,7 +174,6 @@ void
 application_send_attach (uri_udp_test_main_t * utm)
 {
   vl_api_application_attach_t *bmp;
-  u32 fifo_size = 1 << 20;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
@@ -179,8 +184,8 @@ application_send_attach (uri_udp_test_main_t * utm)
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 2;
-  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = utm->fifo_size;
+  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = utm->fifo_size;
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = 16768;
@@ -301,8 +306,8 @@ cut_through_thread_fn (void *arg)
 
   s = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
 
-  rx_fifo = s->server_rx_fifo;
-  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
 
   vec_validate (my_copy_buffer, 64 * 1024 - 1);
 
@@ -372,8 +377,8 @@ client_send_cut_through (uri_udp_test_main_t * utm, session_t * session)
   for (i = 0; i < vec_len (test_data); i++)
     test_data[i] = i & 0xff;
 
-  rx_fifo = session->server_rx_fifo;
-  tx_fifo = session->server_tx_fifo;
+  rx_fifo = session->rx_fifo;
+  tx_fifo = session->tx_fifo;
 
   before = clib_time_now (&utm->clib_time);
 
@@ -456,27 +461,48 @@ client_send_cut_through (uri_udp_test_main_t * utm, session_t * session)
 }
 
 static void
-send_test_chunk (uri_udp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
+send_test_chunk (uri_udp_test_main_t * utm, session_t *s,
 		 u32 bytes)
 {
+  u32 bytes_to_snd, max_enqueue, actual_write;
   u8 *test_data = utm->connect_test_data;
-  u64 bytes_sent = 0;
   int test_buf_offset = 0;
-  u32 bytes_to_snd;
-  u32 queue_max_chunk = 128 << 10, actual_write;
   session_fifo_event_t evt;
+  u64 bytes_sent = 0;
+  svm_fifo_t *f;
   int rv;
 
   bytes_to_snd = (bytes == 0) ? vec_len (test_data) : bytes;
   if (bytes_to_snd > vec_len (test_data))
     bytes_to_snd = vec_len (test_data);
 
+  f = s->tx_fifo;
+
   while (bytes_to_snd > 0 && !utm->time_to_stop)
     {
-      actual_write = (bytes_to_snd > queue_max_chunk) ?
-	queue_max_chunk : bytes_to_snd;
-      rv = svm_fifo_enqueue_nowait (tx_fifo, actual_write,
-				    test_data + test_buf_offset);
+      max_enqueue = svm_fifo_max_enqueue (f);
+      if (svm_fifo_max_enqueue (f) <= 0)
+	continue;
+      actual_write = clib_min (bytes_to_snd, max_enqueue);
+
+      if (!s->is_vc)
+	{
+	  session_dgram_header_t hdr;
+	  if (max_enqueue <= sizeof(session_dgram_header_t))
+	    continue;
+	  max_enqueue -= sizeof(session_dgram_header_t);
+	  hdr.data_length = actual_write;
+	  hdr.data_offset = 0;
+	  clib_memcpy ((u8 *) &hdr.rmt_ip, s->rmt_ip, sizeof(ip46_address_t));
+	  hdr.is_ip4 = s->is_ip4;
+	  hdr.rmt_port = s->rmt_port;
+	  memset(&hdr.lcl_ip, 0, sizeof (ip46_address_t));
+	  hdr.lcl_port = 0;
+	  svm_fifo_enqueue_nowait (f, sizeof(hdr), (u8 *)&hdr);
+	}
+
+      rv = svm_fifo_enqueue_nowait (f, actual_write,
+	                            test_data + test_buf_offset);
 
       if (rv > 0)
 	{
@@ -484,12 +510,10 @@ send_test_chunk (uri_udp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	  test_buf_offset += rv;
 	  bytes_sent += rv;
 
-	  if (svm_fifo_set_event (tx_fifo))
+	  if (svm_fifo_set_event (f))
 	    {
-	      /* Fabricate TX event, send to vpp */
-	      evt.fifo = tx_fifo;
+	      evt.fifo = f;
 	      evt.event_type = FIFO_EVENT_APP_TX;
-
 	      svm_queue_add (utm->vpp_event_queue,
 			     (u8 *) & evt, 0 /* do wait for mutex */ );
 	    }
@@ -498,27 +522,26 @@ send_test_chunk (uri_udp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 }
 
 static void
-recv_test_chunk (uri_udp_test_main_t * utm, session_t * session)
+recv_test_chunk (uri_udp_test_main_t * utm, session_t * s)
 {
-  svm_fifo_t *rx_fifo;
-  int buffer_offset, bytes_to_read = 0, rv;
+  session_dgram_header_t *hdr;
+  int to_read, rv;
 
-  rx_fifo = session->server_rx_fifo;
-  bytes_to_read = svm_fifo_max_dequeue (rx_fifo);
-  bytes_to_read =
-    vec_len (utm->rx_buf) > bytes_to_read ?
-    bytes_to_read : vec_len (utm->rx_buf);
-
-  buffer_offset = 0;
-  while (bytes_to_read > 0)
+  if (!s->is_vc)
     {
-      rv = svm_fifo_dequeue_nowait (rx_fifo, bytes_to_read,
-				    utm->rx_buf + buffer_offset);
-      if (rv > 0)
-	{
-	  bytes_to_read -= rv;
-	  buffer_offset += rv;
-	}
+      hdr = (session_dgram_header_t *) svm_fifo_head (s->rx_fifo);
+      to_read = hdr->data_length - hdr->data_offset;
+      rv = svm_fifo_peek (s->rx_fifo, hdr->data_offset, to_read, utm->rx_buf);
+      hdr->data_offset += rv;
+      if (hdr->data_offset == hdr->data_length)
+	svm_fifo_dequeue_drop (s->rx_fifo, hdr->data_length);
+    }
+  else
+    {
+      to_read = clib_max (svm_fifo_max_dequeue (s->rx_fifo),
+                          vec_len (utm->rx_buf));
+      rv = svm_fifo_dequeue_nowait (s->rx_fifo, to_read, utm->rx_buf);
+      ASSERT (rv == to_read);
     }
 }
 
@@ -526,9 +549,7 @@ void
 client_send_data (uri_udp_test_main_t * utm)
 {
   u8 *test_data;
-  int mypid = getpid ();
   session_t *session;
-  svm_fifo_t *tx_fifo;
   u32 n_iterations;
   int i;
 
@@ -538,8 +559,6 @@ client_send_data (uri_udp_test_main_t * utm)
 
   test_data = utm->connect_test_data;
   session = pool_elt_at_index (utm->sessions, utm->connected_session);
-  tx_fifo = session->server_tx_fifo;
-
   ASSERT (vec_len (test_data) > 0);
 
   vec_validate (utm->rx_buf, vec_len (test_data) - 1);
@@ -547,7 +566,7 @@ client_send_data (uri_udp_test_main_t * utm)
 
   for (i = 0; i < n_iterations; i++)
     {
-      send_test_chunk (utm, tx_fifo, mypid, 0);
+      send_test_chunk (utm, session, 0);
       recv_test_chunk (utm, session);
       if (utm->time_to_stop)
 	break;
@@ -692,16 +711,16 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 
   pool_get (utm->sessions, session);
 
-  session->server_rx_fifo = svm_fifo_segment_alloc_fifo
+  session->rx_fifo = svm_fifo_segment_alloc_fifo
     (utm->seg, 128 * 1024, FIFO_SEGMENT_RX_FREELIST);
-  ASSERT (session->server_rx_fifo);
+  ASSERT (session->rx_fifo);
 
-  session->server_tx_fifo = svm_fifo_segment_alloc_fifo
+  session->tx_fifo = svm_fifo_segment_alloc_fifo
     (utm->seg, 128 * 1024, FIFO_SEGMENT_TX_FREELIST);
-  ASSERT (session->server_tx_fifo);
+  ASSERT (session->tx_fifo);
 
-  session->server_rx_fifo->master_session_index = session - utm->sessions;
-  session->server_tx_fifo->master_session_index = session - utm->sessions;
+  session->rx_fifo->master_session_index = session - utm->sessions;
+  session->tx_fifo->master_session_index = session - utm->sessions;
   utm->cut_through_session_index = session - utm->sessions;
 
   rv = pthread_create (&utm->cut_through_thread_handle,
@@ -722,8 +741,8 @@ send_reply:
   rmp->segment_name_length = vec_len (a->segment_name);
   if (session)
     {
-      rmp->server_rx_fifo = pointer_to_uword (session->server_rx_fifo);
-      rmp->server_tx_fifo = pointer_to_uword (session->server_tx_fifo);
+      rmp->server_rx_fifo = pointer_to_uword (session->rx_fifo);
+      rmp->server_tx_fifo = pointer_to_uword (session->tx_fifo);
     }
 
   memcpy (rmp->segment_name, a->segment_name, vec_len (a->segment_name));
@@ -759,9 +778,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   if (start_time == 0.0)
     start_time = clib_time_now (&utm->clib_time);
 
-  utm->vpp_event_queue =
-    uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
-
+  utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
+	                                   svm_queue_t *);
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
@@ -778,8 +796,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
       rx_fifo->master_session_index = session_index;
       tx_fifo->master_session_index = session_index;
       utm->cut_through_session_index = session_index;
-      session->server_rx_fifo = rx_fifo;
-      session->server_tx_fifo = tx_fifo;
+      session->rx_fifo = rx_fifo;
+      session->tx_fifo = tx_fifo;
 
       rv = pthread_create (&utm->cut_through_thread_handle,
 			   NULL /*attr */ , cut_through_thread_fn, 0);
@@ -793,8 +811,11 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     {
       rx_fifo->client_session_index = session_index;
       tx_fifo->client_session_index = session_index;
-      session->server_rx_fifo = rx_fifo;
-      session->server_tx_fifo = tx_fifo;
+      session->rx_fifo = rx_fifo;
+      session->tx_fifo = tx_fifo;
+      clib_memcpy (&session->rmt_ip, mp->ip, sizeof (ip46_address_t));
+      session->is_ip4 = mp->is_ip4;
+      session->rmt_port = mp->port;
     }
 
   hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -864,13 +885,11 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
       return;
     }
 
+  ASSERT (mp->server_rx_fifo && mp->server_tx_fifo);
+
   pool_get (utm->sessions, session);
-  session->server_rx_fifo = uword_to_pointer (mp->server_rx_fifo,
-					      svm_fifo_t *);
-  ASSERT (session->server_rx_fifo);
-  session->server_tx_fifo = uword_to_pointer (mp->server_tx_fifo,
-					      svm_fifo_t *);
-  ASSERT (session->server_tx_fifo);
+  session->rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
+  session->tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
   /* Cut-through case */
   if (mp->client_event_queue_address)
@@ -887,6 +906,10 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
       utm->connected_session = session - utm->sessions;
       utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
 					       svm_queue_t *);
+
+      clib_memcpy (&session->rmt_ip, mp->lcl_ip, sizeof (ip46_address_t));
+      session->is_ip4 = mp->is_ip4;
+      session->rmt_port = mp->lcl_port;
     }
   utm->state = STATE_READY;
 }
@@ -962,7 +985,7 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
   int rv;
 
   rx_fifo = e->fifo;
-  tx_fifo = utm->sessions[rx_fifo->client_session_index].server_tx_fifo;
+  tx_fifo = utm->sessions[rx_fifo->client_session_index].tx_fifo;
   svm_fifo_unset_event (rx_fifo);
 
   do
@@ -1115,6 +1138,8 @@ main (int argc, char **argv)
   init_error_string_table (utm);
   svm_fifo_segment_main_init (0x200000000ULL, 20);
   unformat_init_command_line (a, argv);
+
+  utm->fifo_size = 128 << 10;
 
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
     {

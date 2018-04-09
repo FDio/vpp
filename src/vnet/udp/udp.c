@@ -93,7 +93,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
 
-  node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
+  node_index = lcl->is_ip4 ? udps4_input_node.index : udps6_input_node.index;
   udp_register_dst_port (vm, clib_net_to_host_u16 (lcl->port), node_index,
 			 1 /* is_ipv4 */ );
   return listener->c_c_index;
@@ -283,7 +283,7 @@ udp_open_connection (transport_endpoint_t * rmt)
 	}
     }
 
-  node_index = rmt->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
+  node_index = rmt->is_ip4 ? udps4_input_node.index : udps6_input_node.index;
   udp_register_dst_port (vm, lcl_port, node_index, 1 /* is_ipv4 */ );
 
   uc = udp_connection_alloc (thread_index);
