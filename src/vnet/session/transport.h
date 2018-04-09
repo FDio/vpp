@@ -35,10 +35,10 @@ typedef struct _transport_connection
     {
       ip46_address_t rmt_ip;	/**< Remote IP */
       ip46_address_t lcl_ip;	/**< Local IP */
-      u16 lcl_port;		/**< Local port */
       u16 rmt_port;		/**< Remote port */
-      u8 proto;			/**< Protocol id */
+      u16 lcl_port;		/**< Local port */
       u8 is_ip4;		/**< Flag if IP4 connection */
+      u8 proto;			/**< Protocol id */
       u32 fib_index;		/**< Network namespace */
     };
     /*
@@ -88,6 +88,7 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_SCTP,
   TRANSPORT_PROTO_NONE,
   TRANSPORT_PROTO_TLS,
+  TRANSPORT_PROTO_UDPC,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
@@ -99,7 +100,7 @@ uword unformat_transport_proto (unformat_input_t * input, va_list * args);
   _(u32, sw_if_index) 	/**< interface endpoint is associated with  */	\
   _(ip46_address_t, ip) /**< ip address */				\
   _(u32, fib_index)	/**< fib table endpoint is associated with */	\
-  _(u8, is_ip4)	/**< 1 if ip4 */					\
+  _(u8, is_ip4)		/**< set if ip4 */				\
   _(u16, port)		/**< port in net order */			\
 
 typedef struct _transport_endpoint
@@ -123,18 +124,6 @@ always_inline u8
 transport_endpoint_fib_proto (transport_endpoint_t * tep)
 {
   return tep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-}
-
-always_inline u8
-transport_is_stream (u8 proto)
-{
-  return ((proto == TRANSPORT_PROTO_TCP) || (proto == TRANSPORT_PROTO_SCTP));
-}
-
-always_inline u8
-transport_is_dgram (u8 proto)
-{
-  return (proto == TRANSPORT_PROTO_UDP);
 }
 
 int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
