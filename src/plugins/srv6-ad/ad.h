@@ -53,6 +53,7 @@ typedef struct
   u8 ip_version;
 
   u32 sw_if_index_in;						    /**< Incoming iface from proxied dev. */
+  u32 rw_len;		      /**< Number of bits to be rewritten */
   u8 *rewrite;								/**< Headers to be rewritten */
 } srv6_ad_localsid_t;
 
