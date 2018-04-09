@@ -201,6 +201,9 @@ void acl_plugin_put_lookup_context_index (u32 lc_index)
  */
 int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
 {
+  int rv = 0;
+  uword *seen_acl_bitmap = 0;
+  u32 *pacln = 0;
   acl_main_t *am = &acl_main;
   acl_lookup_context_t *acontext;
   if (am->trace_acl) {
@@ -216,6 +219,25 @@ int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
   }
   void *oldheap = acl_plugin_set_heap ();
 
+  vec_foreach (pacln, acl_list)
+  {
+    if (pool_is_free_index (am->acls, *pacln))
+      {
+        /* ACL is not defined. Can not apply */
+        clib_warning ("ERROR: ACL %d not defined", *pacln);
+        rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+        goto done;
+      }
+    if (clib_bitmap_get (seen_acl_bitmap, *pacln))
+      {
+        /* ACL being applied twice within the list. error. */
+        clib_warning ("ERROR: ACL %d being applied twice", *pacln);
+        rv = VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+        goto done;
+      }
+    seen_acl_bitmap = clib_bitmap_set (seen_acl_bitmap, *pacln, 1);
+  }
+
   acontext = pool_elt_at_index(am->acl_lookup_contexts, lc_index);
   u32 *old_acl_vector = acontext->acl_indices;
   acontext->acl_indices = vec_dup(acl_list);
@@ -226,8 +248,11 @@ int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
   apply_acl_vec(lc_index, acontext->acl_indices);
 
   vec_free(old_acl_vector);
+
+done:
+  clib_bitmap_free (seen_acl_bitmap);
   clib_mem_set_heap (oldheap);
-  return 0;
+  return rv;
 }
 
 
