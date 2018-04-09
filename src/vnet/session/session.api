@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.2";
+option version = "1.0.3";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -119,11 +119,23 @@ autoreply define unmap_segment {
                  "tcp://::/0/80" [ipv6] etc.
     @param options - socket options, fifo sizes, etc.
 */
-autoreply define bind_uri {
+define bind_uri {
   u32 client_index;
   u32 context;
   u32 accept_cookie;
   u8 uri[128];
+};
+
+define bind_uri_reply {
+  u32 context;
+  u64 handle;
+  i32 retval;
+  u64 rx_fifo;
+  u64 tx_fifo;
+  u8 lcl_is_ip4;
+  u8 lcl_ip[16];
+  u16 lcl_port;
+  u64 vpp_evt_q;
 };
 
 /** \brief Unbind a given URI
@@ -314,8 +326,12 @@ autoreply define connect_sock {
     @param context - sender context, to match reply w/ request
     @param handle - bind handle
     @param retval - return code for the request
-    @param event_queue_address - vpp event queue address or 0 if this 
-                                 connection shouldn't send events
+    @param lcl_is_ip4 - local ip address type
+    @param lcl_ip6 - local ip address
+    @param lcl_port - local port
+    @param rx_fifo - rx fifo address if allocated (connectionless)
+    @param tx_fifo - tx fifo address if allocated (connectionless) 
+    @param vpp_evt_q - vpp event queue address (connectionless)
     @param segment_name_length - length of segment name 
     @param segment_name - name of segment client needs to attach to
 */
@@ -323,10 +339,12 @@ define bind_sock_reply {
   u32 context;
   u64 handle;
   i32 retval;
-  u64 server_event_queue_address;
   u8 lcl_is_ip4;
   u8 lcl_ip[16];
   u16 lcl_port;
+  u64 rx_fifo;
+  u64 tx_fifo;
+  u64 vpp_evt_q;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[128];

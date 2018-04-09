@@ -34,13 +34,14 @@ typedef struct
    * Config params
    */
   u8 no_echo;			/**< Don't echo traffic */
-  u32 fifo_size;			/**< Fifo size */
+  u32 fifo_size;		/**< Fifo size */
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
   u32 private_segment_count;	/**< Number of private segments  */
   u32 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
+  u8 is_dgram;			/**< set if transport is dgram */
   /*
    * Test state
    */
@@ -157,6 +158,7 @@ echo_server_rx_callback (stream_session_t * s)
   echo_server_main_t *esm = &echo_server_main;
   session_fifo_event_t evt;
   u32 thread_index = vlib_get_thread_index ();
+  app_session_transport_t at;
 
   ASSERT (s->thread_index == thread_index);
 
@@ -173,7 +175,7 @@ echo_server_rx_callback (stream_session_t * s)
     return 0;
 
   /* Number of bytes we're going to copy */
-  max_transfer = (max_dequeue < max_enqueue) ? max_dequeue : max_enqueue;
+  max_transfer = clib_min (max_dequeue, max_enqueue);
 
   /* No space in tx fifo */
   if (PREDICT_FALSE (max_transfer == 0))
@@ -205,34 +207,44 @@ echo_server_rx_callback (stream_session_t * s)
       return 0;
     }
 
-  _vec_len (esm->rx_buf[thread_index]) = max_transfer;
-
-  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_transfer,
-					     esm->rx_buf[thread_index]);
+  vec_validate (esm->rx_buf[thread_index], max_transfer);
+  if (!esm->is_dgram)
+    {
+      actual_transfer = app_recv_stream_raw (rx_fifo,
+                                             esm->rx_buf[thread_index],
+	                                     max_transfer);
+    }
+  else
+    {
+      actual_transfer = app_recv_dgram_raw (rx_fifo,
+                                            esm->rx_buf[thread_index],
+	                                    max_transfer, &at);
+    }
   ASSERT (actual_transfer == max_transfer);
 
-//  test_bytes (esm, actual_transfer);
+  /* test_bytes (esm, actual_transfer); */
 
   /*
    * Echo back
    */
 
-  n_written = svm_fifo_enqueue_nowait (tx_fifo, actual_transfer,
-				       esm->rx_buf[thread_index]);
+  if (!esm->is_dgram)
+    {
+      n_written = app_send_stream_raw (tx_fifo,
+                                       esm->vpp_queue[s->thread_index],
+	                               esm->rx_buf[thread_index],
+	                               actual_transfer, 1);
+    }
+  else
+    {
+      n_written = app_send_dgram_raw (tx_fifo, &at,
+	                              esm->vpp_queue[s->thread_index],
+	                              esm->rx_buf[thread_index],
+	                              actual_transfer, 1);
+    }
 
   if (n_written != max_transfer)
     clib_warning ("short trout!");
-
-  if (svm_fifo_set_event (tx_fifo))
-    {
-      /* Fabricate TX event, send to vpp */
-      evt.fifo = tx_fifo;
-      evt.event_type = FIFO_EVENT_APP_TX;
-
-      if (svm_queue_add (esm->vpp_queue[s->thread_index],
-			 (u8 *) & evt, 0 /* do wait for mutex */ ))
-	clib_warning ("failed to enqueue tx evt");
-    }
 
   if (PREDICT_FALSE (n_written < max_dequeue))
     goto rx_event;
@@ -411,6 +423,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
   esm->tls_engine = TLS_ENGINE_OPENSSL;
+  esm->is_dgram = 0;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -479,6 +492,8 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       clib_warning ("No uri provided! Using default: %s", default_uri);
       esm->server_uri = (char *) format (0, "%s%c", default_uri, 0);
     }
+  if (esm->server_uri[0] == 'u' && esm->server_uri[3] != 'c')
+    esm->is_dgram = 1;
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
   vec_free (appns_id);
