@@ -57,6 +57,9 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "SCTP");
       break;
+    case TRANSPORT_PROTO_UDPC:
+      s = format (s, "UDPC");
+      break;
     }
   return s;
 }
@@ -75,6 +78,9 @@ format_transport_proto_short (u8 * s, va_list * args)
       break;
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "S");
+      break;
+    case TRANSPORT_PROTO_UDPC:
+      s = format (s, "U");
       break;
     }
   return s;
@@ -100,6 +106,10 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_TLS;
   else if (unformat (input, "TLS"))
     *proto = TRANSPORT_PROTO_TLS;
+  else if (unformat (input, "udpc"))
+    *proto = TRANSPORT_PROTO_UDPC;
+  else if (unformat (input, "UDPC"))
+    *proto = TRANSPORT_PROTO_UDPC;
   else
     return 0;
   return 1;
