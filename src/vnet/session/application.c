@@ -445,19 +445,22 @@ application_start_listen (application_t * srv, session_endpoint_t * sep,
   s = listen_session_new (0, sst);
   s->app_index = srv->index;
 
-  if (stream_session_listen (s, sep))
-    goto err;
-
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager. */
-  sm = application_alloc_segment_manager (srv);
-  if (sm == 0)
+  if (!(sm = application_alloc_segment_manager (srv)))
     goto err;
 
   /* Add to app's listener table. Useful to find all child listeners
    * when app goes down, although, just for unbinding this is not needed */
   handle = listen_session_get_handle (s);
   hash_set (srv->listeners_table, handle, segment_manager_index (sm));
+
+  if (stream_session_listen (s, sep))
+    {
+      segment_manager_del (sm);
+      hash_unset (srv->listeners_table, handle);
+      goto err;
+    }
 
   *res = handle;
   return 0;
