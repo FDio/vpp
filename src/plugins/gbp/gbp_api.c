@@ -59,15 +59,6 @@
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)
 
-/**
- * L2 Emulation Main
- */
-typedef struct gbp_main_t_
-{
-  u16 msg_id_base;
-} gbp_main_t;
-
-static gbp_main_t gbp_main;
 
 #define GBP_MSG_BASE gbp_main.msg_id_base
 
