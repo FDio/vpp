@@ -49,6 +49,7 @@ udp_connection_alloc (u32 thread_index)
   uc->c_c_index = uc - um->connections[thread_index];
   uc->c_thread_index = thread_index;
   uc->c_proto = TRANSPORT_PROTO_UDP;
+  clib_spinlock_init(&uc->rx_lock);
   return uc;
 }
 
@@ -92,6 +93,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
+  clib_spinlock_init (&listener->rx_lock);
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
   udp_register_dst_port (vm, clib_net_to_host_u16 (lcl->port), node_index,
@@ -140,7 +142,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
     }
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   return 0;
@@ -283,7 +285,7 @@ udp_open_connection (transport_endpoint_t * rmt)
 	}
     }
 
-  node_index = rmt->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
+  node_index = rmt->is_ip4 ? udps4_input_node.index : udps6_input_node.index;
   udp_register_dst_port (vm, lcl_port, node_index, 1 /* is_ipv4 */ );
 
   uc = udp_connection_alloc (thread_index);
@@ -323,7 +325,7 @@ const static transport_proto_vft_t udp_proto = {
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
   .tx_type = TRANSPORT_TX_DEQUEUE,
-  .service_type = TRANSPORT_SERVICE_VC,
+  .service_type = TRANSPORT_SERVICE_CL,
 };
 /* *INDENT-ON* */
 

@@ -39,6 +39,7 @@ typedef struct
   transport_connection_t connection;	      /** must be first */
   /** ersatz MTU to limit fifo pushes to test data size */
   u32 mtu;
+  clib_spinlock_t rx_lock;	/**< rx fifo lock */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -140,6 +141,8 @@ typedef struct
 extern udp_main_t udp_main;
 extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
+extern vlib_node_registration_t udps4_input_node;
+extern vlib_node_registration_t udps6_input_node;
 
 always_inline udp_connection_t *
 udp_connection_get (u32 conn_index, u32 thread_index)
@@ -207,7 +210,7 @@ udp_pool_remove_peeker (u32 thread_index)
 }
 
 always_inline udp_connection_t *
-udp_conenction_clone_safe (u32 connection_index, u32 thread_index)
+udp_connection_clone_safe (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *old_c, *new_c;
   u32 current_thread_index = vlib_get_thread_index ();

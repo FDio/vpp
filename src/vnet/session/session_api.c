@@ -480,8 +480,10 @@ done:
 static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
-  vl_api_bind_uri_reply_t *rmp;
+  transport_connection_t *tc = 0;
   vnet_bind_args_t _a, *a = &_a;
+  vl_api_bind_uri_reply_t *rmp;
+  stream_session_t *s;
   application_t *app;
   int rv;
 
@@ -505,7 +507,23 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
     }
 
 done:
-  REPLY_MACRO (VL_API_BIND_URI_REPLY);
+  REPLY_MACRO2 (VL_API_BIND_URI_REPLY,({
+    if (!rv)
+      {
+	rmp->handle = a->handle;
+	if (app && application_has_global_scope (app))
+	  {
+	    s = listen_session_get_from_handle (a->handle);
+	    tc = listen_session_get_transport (s);
+            rmp->lcl_is_ip4 = tc->is_ip4;
+            clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+            rmp->lcl_port = tc->lcl_port;
+            rmp->lcl_is_ip4 = tc->is_ip4;
+            rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
+            rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
+	  }
+      }
+  }));
 }
 
 static void
@@ -777,6 +795,8 @@ done:
 	    tc = listen_session_get_transport (s);
             rmp->lcl_is_ip4 = tc->is_ip4;
             clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+            rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
+            rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
 	  }
       }
   }));
