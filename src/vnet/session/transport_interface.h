@@ -23,7 +23,7 @@ typedef enum transport_dequeue_type_
 {
   TRANSPORT_TX_PEEK,		/**< reliable transport protos */
   TRANSPORT_TX_DEQUEUE,		/**< unreliable transport protos */
-  TRANSPORT_TX_INTERNAL,		/**< apps acting as transports */
+  TRANSPORT_TX_INTERNAL,	/**< apps acting as transports */
   TRANSPORT_TX_N_FNS
 } transport_tx_fn_type_t;
 
@@ -31,7 +31,7 @@ typedef enum transport_service_type_
 {
   TRANSPORT_SERVICE_VC,		/**< virtual circuit service */
   TRANSPORT_SERVICE_CL,		/**< connectionless service */
-  TRANSPORT_SERVICE_APP,		/**< app transport service */
+  TRANSPORT_SERVICE_APP,	/**< app transport service */
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
