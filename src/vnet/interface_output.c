@@ -1089,6 +1089,12 @@ VNET_FEATURE_INIT (span_tx, static) = {
   .runs_before = VNET_FEATURES ("interface-tx"),
 };
 
+VNET_FEATURE_INIT (ipsec_if_tx, static) = {
+  .arc_name = "interface-output",
+  .node_name = "ipsec-if-output",
+  .runs_before = VNET_FEATURES ("interface-tx"),
+};
+
 VNET_FEATURE_INIT (interface_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "interface-tx",
