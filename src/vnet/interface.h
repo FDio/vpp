@@ -597,11 +597,15 @@ typedef struct
 
 typedef enum
 {
+  /* THe BVI interface */
+  VNET_FLOOD_CLASS_BVI,
   /* Always flood */
   VNET_FLOOD_CLASS_NORMAL,
   VNET_FLOOD_CLASS_TUNNEL_MASTER,
   /* Does not flood when tunnel master is in the same L2 BD */
-  VNET_FLOOD_CLASS_TUNNEL_NORMAL
+  VNET_FLOOD_CLASS_TUNNEL_NORMAL,
+  /* Never flood to this type */
+  VNET_FLOOD_CLASS_NO_FLOOD,
 } vnet_flood_class_t;
 
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
