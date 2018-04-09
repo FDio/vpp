@@ -22,6 +22,30 @@
       "revId": "d737f0700c870dc263ba67ec9d847cfa83889c7e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bfc1dc20_203320d1",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 9
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-04-09T16:48:01Z",
+      "side": 1,
+      "message": "As I understand you want to get rid of vppinfra/config.h and pass -DCLIB_LOG2_CACHE_LINE_BYTES\u003d128 to CFLAGS/CXXFLAGS/CPPFLAGS? \nThis is doable. I can submit patch tomorrow.",
+      "parentUuid": "17e9a46a_6c777f5d",
+      "range": {
+        "startLine": 188,
+        "startChar": 0,
+        "endLine": 188,
+        "endChar": 18
+      },
+      "revId": "d737f0700c870dc263ba67ec9d847cfa83889c7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
