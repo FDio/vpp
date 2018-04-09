@@ -128,38 +128,46 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
 static void
 update_flood_count (l2_bridge_domain_t * bd_config)
 {
-  bd_config->flood_count = vec_len (bd_config->members) -
-    (bd_config->tun_master_count ? bd_config->tun_normal_count : 0);
+  bd_config->flood_count = (vec_len (bd_config->members) -
+			    (bd_config->tun_master_count ?
+			     bd_config->tun_normal_count : 0));
+  bd_config->flood_count -= bd_config->no_flood_count;
 }
 
 void
 bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member)
 {
-  u32 ix;
+  u32 ix = 0;
   vnet_sw_interface_t *sw_if = vnet_get_sw_interface
     (vnet_get_main (), member->sw_if_index);
 
   /*
    * Add one element to the vector
-   * vector is ordered [ bvi, normal/tun_masters..., tun_normals... ]
+   * vector is ordered [ bvi, normal/tun_masters..., tun_normals... no_flood]
    * When flooding, the bvi interface (if present) must be the last member
    * processed due to how BVI processing can change the packet. To enable
    * this order, we make the bvi interface the first in the vector and
-   * flooding walks the vector in reverse.
+   * flooding walks the vector in reverse. The flood-count determines where
+   * in the member list to start the walk from.
    */
   switch (sw_if->flood_class)
     {
+    case VNET_FLOOD_CLASS_NO_FLOOD:
+      bd_config->no_flood_count++;
+      ix = vec_len (bd_config->members);
+      break;
+    case VNET_FLOOD_CLASS_BVI:
+      ix = 0;
+      break;
     case VNET_FLOOD_CLASS_TUNNEL_MASTER:
       bd_config->tun_master_count++;
       /* Fall through */
-    default:
-      /* Fall through */
     case VNET_FLOOD_CLASS_NORMAL:
-      ix = (member->flags & L2_FLOOD_MEMBER_BVI) ? 0 :
-	vec_len (bd_config->members) - bd_config->tun_normal_count;
+      ix = (vec_len (bd_config->members) -
+	    bd_config->tun_normal_count - bd_config->no_flood_count);
       break;
     case VNET_FLOOD_CLASS_TUNNEL_NORMAL:
-      ix = vec_len (bd_config->members);
+      ix = (vec_len (bd_config->members) - bd_config->no_flood_count);
       bd_config->tun_normal_count++;
       break;
     }
