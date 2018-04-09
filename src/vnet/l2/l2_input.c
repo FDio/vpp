@@ -579,6 +579,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
       /* undo any BVI-related config */
       if (bd_config->bvi_sw_if_index == sw_if_index)
 	{
+	  vnet_sw_interface_t *si;
+
 	  bd_config->bvi_sw_if_index = ~0;
 	  config->bvi = 0;
 
@@ -591,6 +593,10 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 						"ethernet-input",
 						VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	  ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+
+	  /* since this is a no longer BVI interface do not to flood to it */
+	  si = vnet_get_sw_interface (vnm, sw_if_index);
+	  si->flood_class = VNET_FLOOD_CLASS_NO_FLOOD;
 	}
 
       /* Clear MACs learned on the interface */
@@ -673,6 +679,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  /* Do BVI interface initializations */
 	  if (bvi)
 	    {
+	      vnet_sw_interface_t *si;
+
 	      /* ensure BD has no bvi interface (or replace that one with this??) */
 	      if (bd_config->bvi_sw_if_index != ~0)
 		{
@@ -693,6 +701,10 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 						    "l2-input",
 						    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	      ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+
+	      /* since this is a BVI interface we want to flood to it */
+	      si = vnet_get_sw_interface (vnm, sw_if_index);
+	      si->flood_class = VNET_FLOOD_CLASS_BVI;
 	    }
 
 	  /* Add interface to bridge-domain flood vector */

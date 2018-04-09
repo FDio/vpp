@@ -78,6 +78,9 @@ typedef struct
   /* Tunnels (Unicast vxlan) are flooded if there are no masters */
   u32 tun_normal_count;
 
+  /* Interface on which packets are not flooded */
+  u32 no_flood_count;
+
   /* hash ip4/ip6 -> mac for arp/nd termination */
   uword *mac_by_ip4;
   uword *mac_by_ip6;
