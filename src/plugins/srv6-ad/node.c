@@ -160,7 +160,10 @@ end_ad_processing (vlib_buffer_t * b0,
   ls0_mem = ls0->plugin_mem;
 
   /* Cache IP header and extensions */
-  vec_validate (ls0_mem->rewrite, total_size - 1);
+  if (PREDICT_FALSE (vec_len (ls0_mem->rewrite != total_size)))
+  {
+    vec_resize (ls0_mem->rewrite, total_size);
+  }
   clib_memcpy (ls0_mem->rewrite, ip0, total_size);
 
   /* Remove IP header and extensions */
