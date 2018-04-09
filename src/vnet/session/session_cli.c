@@ -23,6 +23,9 @@ format_stream_session_fifos (u8 * s, va_list * args)
   session_fifo_event_t _e, *e = &_e;
   u8 found;
 
+  if (!ss->server_rx_fifo || !ss->server_tx_fifo)
+    return s;
+
   s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo, 1);
   if (verbose > 2 && ss->server_rx_fifo->has_event)
     {
@@ -76,6 +79,8 @@ format_stream_session (u8 * s, va_list * args)
     {
       s = format (s, "%-40U%v", tp_vft->format_listener, ss->connection_index,
 		  str);
+      if (verbose > 1)
+	s = format (s, "\n%U", format_stream_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {

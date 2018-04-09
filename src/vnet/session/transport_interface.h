@@ -23,7 +23,8 @@ typedef enum transport_dequeue_type_
 {
   TRANSPORT_TX_PEEK,		/**< reliable transport protos */
   TRANSPORT_TX_DEQUEUE,		/**< unreliable transport protos */
-  TRANSPORT_TX_INTERNAL,		/**< apps acting as transports */
+  TRANSPORT_TX_INTERNAL,	/**< apps acting as transports */
+  TRANSPORT_TX_DGRAM,		/**< datagram mode */
   TRANSPORT_TX_N_FNS
 } transport_tx_fn_type_t;
 
@@ -31,7 +32,7 @@ typedef enum transport_service_type_
 {
   TRANSPORT_SERVICE_VC,		/**< virtual circuit service */
   TRANSPORT_SERVICE_CL,		/**< connectionless service */
-  TRANSPORT_SERVICE_APP,		/**< app transport service */
+  TRANSPORT_SERVICE_APP,	/**< app transport service */
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
@@ -96,6 +97,7 @@ void transport_register_protocol (transport_proto_t transport_proto,
 				  const transport_proto_vft_t * vft,
 				  fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
+transport_service_type_t transport_protocol_service_type (transport_proto_t);
 void transport_update_time (f64 time_now, u8 thread_index);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 
