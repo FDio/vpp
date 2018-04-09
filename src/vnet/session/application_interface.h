@@ -173,6 +173,90 @@ extern const u32 test_srv_crt_rsa_len;
 extern const char test_srv_key_rsa[];
 extern const u32 test_srv_key_rsa_len;
 
+typedef struct app_session_data_
+{
+  svm_fifo_t *rx_fifo;		/**< rx fifo */
+  svm_fifo_t *tx_fifo;		/**< tx fifo */
+  session_type_t session_type;	/**< session type */
+  volatile u8 session_state;	/**< session state */
+  u32 session_index;		/**< index in owning pool */
+  ip46_address_t lcl_ip;	/**< local ip */
+  ip46_address_t rmt_ip;	/**< remote ip */
+  u16 lcl_port;			/**< local port */
+  u16 rmt_port;			/**< remote port */
+  u8 is_ip4;			/**< set if uses ip4 networking */
+  svm_queue_t *vpp_evt_q;	/**< vpp event queue for session */
+  u8 is_dgram;			/**< set if it works in dgram mode */
+} app_session_t;
+
+always_inline int
+app_send_dgram (app_session_t *s, u8 *data, u32 len, u8 do_block)
+{
+  u32 max_enqueue, actual_write;
+  session_dgram_header_t hdr;
+  session_fifo_event_t evt;
+  int rv;
+
+  max_enqueue = svm_fifo_max_enqueue (s->tx_fifo);
+  if (svm_fifo_max_enqueue (s->tx_fifo) <= 0)
+    return 0;
+
+  if (max_enqueue <= sizeof (session_dgram_header_t))
+    return 0;
+
+  max_enqueue -= sizeof (session_dgram_header_t);
+  actual_write = clib_min (len, max_enqueue);
+  hdr.data_length = actual_write;
+  hdr.data_offset = 0;
+  clib_memcpy (&hdr.rmt_ip, &s->rmt_ip, sizeof(ip46_address_t));
+  hdr.is_ip4 = s->is_ip4;
+  hdr.rmt_port = s->rmt_port;
+  clib_memcpy (&hdr.lcl_ip, &s->lcl_ip, sizeof(ip46_address_t));
+  hdr.lcl_port = s->lcl_port;
+  rv = svm_fifo_enqueue_nowait (s->tx_fifo, sizeof(hdr), (u8 *) &hdr);
+  if (rv <= 0)
+    return 0;
+
+  ASSERT (rv == sizeof (hdr));
+
+  if ((rv = svm_fifo_enqueue_nowait (s->tx_fifo, actual_write, data)) > 0)
+    {
+      if (svm_fifo_set_event (s->tx_fifo))
+	{
+	  evt.fifo = s->tx_fifo;
+	  evt.event_type = FIFO_EVENT_APP_TX;
+	  svm_queue_add (s->vpp_evt_q, (u8 *) &evt, do_block);
+	}
+    }
+  return rv;
+}
+
+always_inline int
+app_send_stream (app_session_t *s, u8 *data, u32 len, u8 do_block)
+{
+  session_fifo_event_t evt;
+  int rv;
+
+  if ((rv = svm_fifo_enqueue_nowait (s->tx_fifo, len, data) > 0))
+    {
+      if (svm_fifo_set_event (s->tx_fifo))
+	{
+	  evt.fifo = s->tx_fifo;
+	  evt.event_type = FIFO_EVENT_APP_TX;
+	  svm_queue_add (s->vpp_evt_q, (u8 *) &evt, do_block);
+	}
+    }
+  return rv;
+}
+
+always_inline int
+app_send (app_session_t *s, u8 *data, u32 len, u8 do_block)
+{
+  if (s->is_dgram)
+    return app_send_dgram (s, data, len, do_block);
+  return app_send_stream (s, data, len, do_block);
+}
+
 #endif /* __included_uri_h__ */
 
 /*

@@ -615,6 +615,20 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f,
 						copy_from_here);
 }
 
+void
+svm_fifo_overwrite_head (svm_fifo_t *f, u8 *data, u32 len)
+{
+  u32 first_chunk;
+  ASSERT (len <= f->nitems);
+  if (len < f->nitems - f->head)
+    clib_memcpy (&f->data[f->head], data, len);
+  else
+    {
+      first_chunk = len - (f->nitems - f->head);
+      clib_memcpy (&f->data[f->head], data, first_chunk);
+      clib_memcpy (f->data, data + first_chunk, len - first_chunk);
+    }
+}
 
 static int
 svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
