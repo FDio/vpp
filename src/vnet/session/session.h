@@ -207,6 +207,14 @@ struct _session_manager_main
 
 };
 
+typedef struct session_dgram_header_
+{
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+} session_dgram_header_t;
+
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;
 

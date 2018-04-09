@@ -286,6 +286,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
+	      if (transport_vft->service_type == TRANSPORT_SERVICE_CL)
+		read_header_first;
+
 	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
 						      len_to_deq0, data0);
 	      if (n_bytes_read <= 0)
@@ -293,7 +296,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  b0->current_length = n_bytes_read;
-
 	  left_to_snd0 -= n_bytes_read;
 	  *n_tx_packets = *n_tx_packets + 1;
 

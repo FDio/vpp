@@ -356,13 +356,18 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 }
 
 int
-session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
-				  u8 proto, u8 queue_event)
+session_enqueue_dgram_connection (transport_connection_t *tc,
+                                  stream_session_t * s, vlib_buffer_t * b,
+                                  u8 proto, u8 queue_event)
 {
   int enqueued = 0, rv, in_order_off;
 
-  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
+  if (svm_fifo_max_enqueue (s->server_rx_fifo)
+      < b->current_length + sizeof(session_dgram_header_t))
     return -1;
+
+  svm_fifo_enqueue_nowait (s->server_rx_fifo, sizeof(session_dgram_header_t),
+	                   tc);
   enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
 				      vlib_buffer_get_current (b));
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
