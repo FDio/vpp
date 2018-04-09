@@ -112,6 +112,8 @@ srv6_ad_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 	}
     }
 
+  ls_mem->rw_len = 0;
+
   return 0;
 }
 

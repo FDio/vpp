@@ -160,8 +160,12 @@ end_ad_processing (vlib_buffer_t * b0,
   ls0_mem = ls0->plugin_mem;
 
   /* Cache IP header and extensions */
-  vec_validate (ls0_mem->rewrite, total_size - 1);
+  if (PREDICT_FALSE (total_size > ls0_mem->rw_len))
+    {
+      vec_validate (ls0_mem->rewrite, total_size - 1);
+    }
   clib_memcpy (ls0_mem->rewrite, ip0, total_size);
+  ls0_mem->rw_len = total_size;
 
   /* Remove IP header and extensions */
   vlib_buffer_advance (b0, total_size);
@@ -332,11 +336,11 @@ srv6_ad4_rewrite_fn (vlib_main_t * vm,
 	  else
 	    {
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
-		      (vec_len (ls0_mem->rewrite) + b0->current_data));
+		      (ls0_mem->rw_len + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - vec_len (ls0_mem->rewrite),
-			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
-	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
+	      clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
+			   ls0_mem->rewrite, ls0_mem->rw_len);
+	      vlib_buffer_advance (b0, -(word) ls0_mem->rw_len);
 
 	      ip0 = vlib_buffer_get_current (b0);
 
@@ -348,7 +352,7 @@ srv6_ad4_rewrite_fn (vlib_main_t * vm,
 	      ip0_encap->checksum = checksum0;
 
 	      /* Update outer IPv6 length (in case it has changed) */
-	      new_l0 = vec_len (ls0_mem->rewrite) - sizeof (ip6_header_t) +
+	      new_l0 = ls0_mem->rw_len - sizeof (ip6_header_t) +
 		clib_net_to_host_u16 (ip0_encap->length);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	    }
@@ -465,11 +469,11 @@ srv6_ad6_rewrite_fn (vlib_main_t * vm,
 	  else
 	    {
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
-		      (vec_len (ls0_mem->rewrite) + b0->current_data));
+		      (ls0_mem->rw_len + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - vec_len (ls0_mem->rewrite),
-			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
-	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
+	      clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
+			   ls0_mem->rewrite, ls0_mem->rw_len);
+	      vlib_buffer_advance (b0, -(word) ls0_mem->rw_len);
 
 	      ip0 = vlib_buffer_get_current (b0);
 
@@ -477,7 +481,7 @@ srv6_ad6_rewrite_fn (vlib_main_t * vm,
 	      ip0_encap->hop_limit -= 1;
 
 	      /* Update outer IPv6 length (in case it has changed) */
-	      new_l0 = vec_len (ls0_mem->rewrite) +
+	      new_l0 = ls0_mem->rw_len +
 		clib_net_to_host_u16 (ip0_encap->payload_length);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	    }
