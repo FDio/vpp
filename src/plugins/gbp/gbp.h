@@ -116,6 +116,13 @@ typedef struct gbp_contract_t_
   u32 gc_acl_index;;
 } gbp_contract_t;
 
+typedef struct
+{
+  u16 msg_id_base;
+  u32 gbp_acl_user_id;
+} gbp_main_t;
+
+extern gbp_main_t gbp_main;
 
 extern void gbp_contract_update (epg_id_t src_epg,
 				 epg_id_t dst_epg, u32 acl_index);

@@ -16,6 +16,9 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <plugins/acl/exports.h>
+
+gbp_main_t gbp_main;
 
 /**
  * IP4 destintion address to destination EPG mapping table
@@ -237,22 +240,55 @@ gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx)
 void
 gbp_contract_update (epg_id_t src_epg, epg_id_t dst_epg, u32 acl_index)
 {
+  gbp_main_t *gm = &gbp_main;
+  u32 *acl_vec = 0, index = ~0;
+  uword *p;
+
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
-  hash_set (gbp_contract_db.gc_hash, key.as_u64, acl_index);
+  if (~0 == gm->gbp_acl_user_id)
+    gm->gbp_acl_user_id =
+      acl_plugin_register_user_module ("GBP ACL", "src epg", "dst epg");
+
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      index = p[0];
+    }
+  else
+    {
+      index =
+	acl_plugin_get_lookup_context_index (gm->gbp_acl_user_id, src_epg,
+					     dst_epg);
+      hash_set (gbp_contract_db.gc_hash, key.as_u64, index);
+    }
+
+  if (index == ~0)
+    return;
+  vec_add1 (acl_vec, acl_index);
+  acl_plugin_set_acl_vec_for_context (index, acl_vec);
+  vec_free (acl_vec);
 }
 
 void
 gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
 {
+  uword *p;
+  u32 index = ~0;
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      index = p[0];
+      acl_plugin_put_lookup_context_index (index);
+    }
   hash_unset (gbp_contract_db.gc_hash, key.as_u64);
 }
 
@@ -628,14 +664,30 @@ gbp_inline (vlib_main_t * vm,
 			}
 		      else
 			{
+			  fa_5tuple_opaque_t pkt_5tuple;
+			  u8 action = 0;
+			  u32 acl_pos_p, acl_match_p;
+			  u32 rule_match_p, trace_bitmap;
 			  /*
-			   * TODO tests against the ACL
+			   * tests against the ACL
 			   */
-			  /*
-			   * ACL tables are not available outside of ACL plugin
-			   * until then bypass the ACL to next node
-			   */
-			  vnet_feature_next (sw_if_index0, &next0, b0);
+			  acl_plugin_fill_5tuple_inline (acl_index0, b0,
+							 is_ip6,
+							 /* is_input */ 0,
+							 /* is_l2_path */ 0,
+							 (fa_5tuple_opaque_t
+							  *) & pkt_5tuple);
+			  acl_plugin_match_5tuple_inline (acl_index0,
+							  (fa_5tuple_opaque_t
+							   *) & pkt_5tuple,
+							  is_ip6, &action,
+							  &acl_pos_p,
+							  &acl_match_p,
+							  &rule_match_p,
+							  &trace_bitmap);
+
+			  if (action > 0)
+			    vnet_feature_next (sw_if_index0, &next0, b0);
 			}
 		    }
 		  else
@@ -763,12 +815,18 @@ VNET_FEATURE_INIT (gbp_6_node, static) = {
 static clib_error_t *
 gbp_init (vlib_main_t * vm)
 {
+
+  gbp_main_t *gm = &gbp_main;
+  clib_error_t *error = 0;
+
+  error = acl_plugin_exports_init ();
+  gm->gbp_acl_user_id = ~0;
   gbp_endpoint_db = hash_create_mem (0,
 				     sizeof (gbp_endpoint_key_t),
 				     sizeof (u32));
   gbp_ip6_to_epg_db.g6ie_hash =
     hash_create_mem (0, sizeof (ip6_address_t), sizeof (u32));
-  return 0;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (gbp_init);
