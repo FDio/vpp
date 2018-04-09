@@ -346,7 +346,7 @@ class TestIpIrb(VppTestCase):
         all_rules = []
         for old_acl in orig_acls:
             for rule in old_acl.r:
-                all_rules.append(dict(vars(rule)))
+                all_rules.append(dict(rule._asdict()))
 
         # Add a few ACLs made from shuffled rules
         shuffle(all_rules)
