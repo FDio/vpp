@@ -180,7 +180,7 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	  these_constraints++;
 	}
 
-      this_reg = this_reg->next;
+      this_reg = this_reg->next_in_arc;
     }
 
   n_features = vec_len (node_names);

@@ -43,7 +43,7 @@ typedef clib_error_t *(vnet_feature_enable_disable_function_t)
 typedef struct _vnet_feature_registration
 {
   /** next registration in list of all registrations*/
-  struct _vnet_feature_registration *next;
+  struct _vnet_feature_registration *next, *next_in_arc;
   /** Feature arc name */
   char *arc_name;
   /** Graph node name */

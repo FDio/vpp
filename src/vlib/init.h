@@ -81,20 +81,22 @@ typedef struct vlib_config_function_runtime_t
 
 #define VLIB_REMOVE_FROM_LINKED_LIST(first,p,next)              \
 {                                                               \
+  ASSERT (first);                                               \
   if (first == p)                                               \
       first = (p)->next;                                        \
   else                                                          \
     {                                                           \
       __typeof__ (p) current = first;                           \
-	while (current->next)                                   \
-	  {                                                     \
-	    if (current->next == p)                             \
-	      {                                                 \
-		current->next = current->next->next;            \
-		break;                                          \
-	      }                                                 \
-	    current = current->next;                            \
-	  }                                                     \
+      while (current->next)                                     \
+	{                                                       \
+	  if (current->next == p)                               \
+	    {                                                   \
+	      current->next = current->next->next;              \
+	      break;                                            \
+	    }                                                   \
+	  current = current->next;                              \
+	}                                                       \
+      ASSERT (current);                                         \
     }                                                           \
 }
 
