@@ -70,7 +70,7 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
 			    vlib_buffer_t * b0, u32 bi0, u8 n_bufs_per_seg,
 			    u32 left_from_seg, u32 * left_to_snd0,
 			    u16 * n_bufs, u32 * tx_offset, u16 deq_per_buf,
-			    u8 peek_data)
+			    u8 peek_data, transport_service_type_t ts_type)
 {
   vlib_buffer_t *chain_b0, *prev_b0;
   u32 chain_bi0, to_deq;
@@ -102,7 +102,23 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
 	}
       else
 	{
-	  n_bytes_read = svm_fifo_dequeue_nowait (fifo, len_to_deq0, data0);
+	  if (ts_type == TRANSPORT_SERVICE_CL)
+	    {
+	      session_dgram_header_t * hdr;
+	      u16 deq_now;
+	      hdr = (session_dgram_header_t *) svm_fifo_head (fifo);
+	      deq_now = clib_min (hdr->data_length - hdr->data_offset,
+		                  len_to_deq0);
+	      n_bytes_read = svm_fifo_peek (fifo, hdr->data_offset, deq_now,
+		                            data0);
+	      ASSERT (n_bytes_read > 0);
+
+	      hdr->data_offset += n_bytes_read;
+	      if (hdr->data_offset == hdr->data_length)
+		svm_fifo_dequeue_drop (fifo, hdr->data_length);
+	    }
+	  else
+	    n_bytes_read = svm_fifo_dequeue_nowait (fifo, len_to_deq0, data0);
 	}
       ASSERT (n_bytes_read == len_to_deq0);
       chain_b0->current_length = n_bytes_read;
@@ -286,14 +302,36 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
-						      len_to_deq0, data0);
-	      if (n_bytes_read <= 0)
-		goto dequeue_fail;
+	      if (transport_vft->service_type == TRANSPORT_SERVICE_CL)
+		{
+		  svm_fifo_t *f = s0->server_tx_fifo;
+		  session_dgram_header_t * hdr;
+		  u16 deq_now;
+
+		  hdr = (session_dgram_header_t *) svm_fifo_head (f);
+		  deq_now = clib_min (hdr->data_length - hdr->data_offset,
+		                      len_to_deq0);
+		  n_bytes_read = svm_fifo_peek (f, hdr->data_offset, deq_now,
+			                        data0);
+		  if (PREDICT_FALSE (n_bytes_read <= 0))
+		    goto dequeue_fail;
+
+		  hdr->data_offset += n_bytes_read;
+		  if (hdr->data_offset == hdr->data_length)
+		    svm_fifo_dequeue_drop (f, hdr->data_length);
+
+		  /* XXX pass ip/port to udp/packet */
+		}
+	      else
+		{
+		  n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
+			                                  len_to_deq0, data0);
+		  if (n_bytes_read <= 0)
+		    goto dequeue_fail;
+		}
 	    }
 
 	  b0->current_length = n_bytes_read;
-
 	  left_to_snd0 -= n_bytes_read;
 	  *n_tx_packets = *n_tx_packets + 1;
 
@@ -307,7 +345,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  s0->server_tx_fifo, b0, bi0,
 					  n_bufs_per_seg, left_for_seg,
 					  &left_to_snd0, &n_bufs, &tx_offset,
-					  deq_per_buf, peek_data);
+					  deq_per_buf, peek_data,
+					  transport_vft->service_type);
 	    }
 
 	  /* Ask transport to push header after current_length and

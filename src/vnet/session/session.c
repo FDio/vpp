@@ -355,14 +355,19 @@ session_enqueue_stream_connection (transport_connection_t * tc,
   return enqueued;
 }
 
+
 int
-session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
-				  u8 proto, u8 queue_event)
+session_enqueue_dgram_connection (stream_session_t * s,
+                                  session_dgram_header_t *hdr,
+                                  vlib_buffer_t * b, u8 proto, u8 queue_event)
 {
   int enqueued = 0, rv, in_order_off;
 
-  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
-    return -1;
+  ASSERT (svm_fifo_max_enqueue (s->server_rx_fifo)
+	   > b->current_length + sizeof(*hdr));
+
+  svm_fifo_enqueue_nowait (s->server_rx_fifo, sizeof (session_dgram_header_t),
+                           (u8 *)hdr);
   enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
 				      vlib_buffer_get_current (b));
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
@@ -915,16 +920,35 @@ session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
   return session_open_srv_fns[tst] (app_index, rmt, opaque);
 }
 
-/**
- * Ask transport to listen on local transport endpoint.
- *
- * @param s Session for which listen will be called. Note that unlike
- * 	    established sessions, listen sessions are not associated to a
- * 	    thread.
- * @param tep Local endpoint to be listened on.
- */
 int
 session_listen_vc (stream_session_t * s, session_endpoint_t * sep)
+{
+  transport_connection_t *tc;
+  u32 tci;
+
+  /* Transport bind/listen  */
+  tci = tp_vfts[sep->transport_proto].bind (s->session_index,
+					    session_endpoint_to_transport
+					    (sep));
+
+  if (tci == (u32) ~ 0)
+    return -1;
+
+  /* Attach transport to session */
+  s->connection_index = tci;
+  tc = tp_vfts[sep->transport_proto].get_listener (tci);
+
+  /* Weird but handle it ... */
+  if (tc == 0)
+    return -1;
+
+  /* Add to the main lookup table */
+  session_lookup_add_connection (tc, s->session_index);
+  return 0;
+}
+
+int
+session_listen_cl (stream_session_t * s, session_endpoint_t * sep)
 {
   transport_connection_t *tc;
   u32 tci;
@@ -973,6 +997,14 @@ session_listen_srv_fns[TRANSPORT_N_SERVICES] = {
 };
 /* *INDENT-ON* */
 
+/**
+ * Ask transport to listen on local transport endpoint.
+ *
+ * @param s Session for which listen will be called. Note that unlike
+ * 	    established sessions, listen sessions are not associated to a
+ * 	    thread.
+ * @param tep Local endpoint to be listened on.
+ */
 int
 stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
 {

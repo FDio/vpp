@@ -207,6 +207,30 @@ struct _session_manager_main
 
 };
 
+typedef struct session_dgram_pre_header_
+{
+  u16 data_length;
+  u16 data_offset;
+} session_dgram_pre_header_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct session_dgram_header_
+{
+  u16 data_length;
+  u16 data_offset;
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+  u8 is_ip4;
+}) session_dgram_header_t;
+/* *INDENT-ON* */
+
+#define SESSION_CONN_ID_LEN 37
+
+STATIC_ASSERT (sizeof (session_dgram_header_t) == (SESSION_CONN_ID_LEN + 4),
+               "session conn id wrong length");
+
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;
 
@@ -460,8 +484,10 @@ int
 session_enqueue_stream_connection (transport_connection_t * tc,
 				   vlib_buffer_t * b, u32 offset,
 				   u8 queue_event, u8 is_in_order);
-int session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
-				      u8 proto, u8 queue_event);
+int session_enqueue_dgram_connection (stream_session_t * s,
+                                      session_dgram_header_t *hdr,
+                                      vlib_buffer_t * b, u8 proto,
+                                      u8 queue_event);
 int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			       u32 offset, u32 max_bytes);
 u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
