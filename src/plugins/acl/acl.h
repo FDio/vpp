@@ -362,6 +362,13 @@ AH has a special treatment of its length, it is in 32-bit words, not 64-bit word
 
 
 extern acl_main_t acl_main;
+/*
+ * pointer to the above.
+ * Needed for some gymnastics to be able to provide
+ * the inline functions from this plugin to other plugins.
+ */
+
+extern acl_main_t *p_acl_main;
 
 void *acl_plugin_set_heap();
 
