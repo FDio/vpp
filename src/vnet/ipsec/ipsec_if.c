@@ -242,6 +242,9 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hi->output_node_index = ipsec_if_output_node.index;
       t->hw_if_index = hw_if_index;
 
+      vnet_feature_enable_disable ("interface-output", "ipsec-if-output",
+				   hi->sw_if_index, 1, 0, 0);
+
       /*1st interface, register protocol */
       if (pool_elts (im->tunnel_interfaces) == 1)
 	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
@@ -259,6 +262,10 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
+
+      vnet_feature_enable_disable ("interface-output", "ipsec-if-output",
+				   hi->sw_if_index, 0, 0, 0);
+
       vec_add1 (im->free_tunnel_if_indices, t->hw_if_index);
 
       vnet_interface_counter_lock (vim);
