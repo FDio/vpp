@@ -54,6 +54,7 @@
 #include "public_inlines.h"
 
 acl_main_t acl_main;
+acl_main_t *p_acl_main = &acl_main;
 
 #define REPLY_MSG_ID_BASE am->msg_id_base
 #include <vlibapi/api_helper_macros.h>
