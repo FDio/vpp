@@ -145,6 +145,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   int i, n_bytes_read;
   u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
   u32 bufs_alloc, bufs_now;
+  session_dgram_header_t *hdr;
 
   next_index = next0 = smm->session_type_to_next[s0->session_type];
 
@@ -286,14 +287,33 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
-						      len_to_deq0, data0);
-	      if (n_bytes_read <= 0)
-		goto dequeue_fail;
+	      if (transport_vft->service_type == TRANSPORT_SERVICE_CL)
+		{
+		  u16 deq_now;
+		  hdr = (session_dgram_header_t *) svm_fifo_head (
+		      s0->server_tx_fifo);
+		  deq_now = clib_min (hdr->data_length - hdr->data_offset,
+		                      len_to_deq0);
+		  n_bytes_read = svm_fifo_peek (s0->server_tx_fifo,
+			                        hdr->data_offset, deq_now,
+			                        data0);
+		  if (PREDICT_FALSE (n_bytes_read <= 0))
+		    goto dequeue_fail;
+
+		  hdr->data_offset += n_bytes_read;
+		  if (hdr->data_offset == hdr->data_length)
+		    svm_fifo_dequeue_drop (s0->server_tx_fifo, hdr->data_length);
+		}
+	      else
+		{
+		  n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
+			                                  len_to_deq0, data0);
+		  if (n_bytes_read <= 0)
+		    goto dequeue_fail;
+		}
 	    }
 
 	  b0->current_length = n_bytes_read;
-
 	  left_to_snd0 -= n_bytes_read;
 	  *n_tx_packets = *n_tx_packets + 1;
 

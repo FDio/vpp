@@ -35,10 +35,10 @@ typedef struct _transport_connection
     {
       ip46_address_t rmt_ip;	/**< Remote IP */
       ip46_address_t lcl_ip;	/**< Local IP */
-      u16 lcl_port;		/**< Local port */
       u16 rmt_port;		/**< Remote port */
-      u8 proto;			/**< Protocol id */
+      u16 lcl_port;		/**< Local port */
       u8 is_ip4;		/**< Flag if IP4 connection */
+      u8 proto;			/**< Protocol id */
       u32 fib_index;		/**< Network namespace */
     };
     /*
