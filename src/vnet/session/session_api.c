@@ -480,9 +480,12 @@ done:
 static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
-  vl_api_bind_uri_reply_t *rmp;
+  transport_connection_t *tc = 0;
   vnet_bind_args_t _a, *a = &_a;
-  application_t *app;
+  vl_api_bind_uri_reply_t *rmp;
+  stream_session_t *s;
+  application_t *app = 0;
+  svm_queue_t *vpp_evt_q;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -505,7 +508,30 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
     }
 
 done:
-  REPLY_MACRO (VL_API_BIND_URI_REPLY);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_BIND_URI_REPLY, ({
+    if (!rv)
+      {
+        rmp->handle = a->handle;
+	rmp->lcl_is_ip4 = tc->is_ip4;
+  	rmp->lcl_port = tc->lcl_port;
+        if (app && application_has_global_scope (app))
+            {
+              s = listen_session_get_from_handle (a->handle);
+              tc = listen_session_get_transport (s);
+              clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
+              if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
+                {
+                  rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
+                  rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
+                  vpp_evt_q = session_manager_get_vpp_event_queue (0);
+                  rmp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+                }
+            }
+      }
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -733,6 +759,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   stream_session_t *s;
   transport_connection_t *tc = 0;
   ip46_address_t *ip46;
+  svm_queue_t *vpp_evt_q;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -775,8 +802,14 @@ done:
 	  {
 	    s = listen_session_get_from_handle (a->handle);
 	    tc = listen_session_get_transport (s);
-            rmp->lcl_is_ip4 = tc->is_ip4;
             clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+            if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
+              {
+        	rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
+        	rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
+        	vpp_evt_q = session_manager_get_vpp_event_queue (0);
+        	rmp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+              }
 	  }
       }
   }));

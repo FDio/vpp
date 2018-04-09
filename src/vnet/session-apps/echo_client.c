@@ -46,23 +46,21 @@ static void
 send_data_chunk (echo_client_main_t * ecm, session_t * s)
 {
   u8 *test_data = ecm->connect_test_data;
-  int test_buf_offset;
+  int test_buf_len, test_buf_offset, rv;
   u32 bytes_this_chunk;
-  session_fifo_event_t evt;
-  svm_fifo_t *txf;
-  int rv;
 
   ASSERT (vec_len (test_data) > 0);
+  test_buf_len = vec_len (test_data);
+  test_buf_offset = s->bytes_sent % test_buf_len;
+  bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
+			       s->bytes_to_send);
 
-  test_buf_offset = s->bytes_sent % vec_len (test_data);
-  bytes_this_chunk = vec_len (test_data) - test_buf_offset;
-
-  bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
-    ? bytes_this_chunk : s->bytes_to_send;
-
-  txf = s->server_tx_fifo;
-  rv = svm_fifo_enqueue_nowait (txf, bytes_this_chunk,
-				test_data + test_buf_offset);
+  if (!ecm->is_dgram)
+    rv = app_send_stream (&s->data, test_data + test_buf_offset,
+			  bytes_this_chunk, 0);
+  else
+    rv = app_send_dgram (&s->data, test_data + test_buf_offset,
+			 bytes_this_chunk, 0);
 
   /* If we managed to enqueue data... */
   if (rv > 0)
@@ -89,35 +87,24 @@ send_data_chunk (echo_client_main_t * ecm, session_t * s)
 	  ed->data[1] = s->bytes_sent;
 	  ed->data[2] = s->bytes_to_send;
 	}
-
-      /* Poke the session layer */
-      if (svm_fifo_set_event (txf))
-	{
-	  /* Fabricate TX event, send to vpp */
-	  evt.fifo = txf;
-	  evt.event_type = FIFO_EVENT_APP_TX;
-
-	  if (svm_queue_add
-	      (ecm->vpp_event_queue[txf->master_thread_index], (u8 *) & evt,
-	       0 /* do wait for mutex */ ))
-	    clib_warning ("could not enqueue event");
-	}
     }
 }
 
 static void
 receive_data_chunk (echo_client_main_t * ecm, session_t * s)
 {
-  svm_fifo_t *rx_fifo = s->server_rx_fifo;
-  u32 my_thread_index = vlib_get_thread_index ();
+  svm_fifo_t *rx_fifo = s->data.rx_fifo;
+  u32 thread_index = vlib_get_thread_index ();
   int n_read, i;
 
   if (ecm->test_bytes)
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo,
-					vec_len (ecm->rx_buf
-						 [my_thread_index]),
-					ecm->rx_buf[my_thread_index]);
+      if (!ecm->is_dgram)
+	n_read = app_recv_stream (&s->data, ecm->rx_buf[thread_index],
+				  vec_len (ecm->rx_buf[thread_index]));
+      else
+	n_read = app_recv_dgram (&s->data, ecm->rx_buf[thread_index],
+				 vec_len (ecm->rx_buf[thread_index]));
     }
   else
     {
@@ -148,17 +135,18 @@ receive_data_chunk (echo_client_main_t * ecm, session_t * s)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (ecm->rx_buf[my_thread_index][i]
+	      if (ecm->rx_buf[thread_index][i]
 		  != ((s->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
 				n_read, s->bytes_received + i,
-				ecm->rx_buf[my_thread_index][i],
+				ecm->rx_buf[thread_index][i],
 				((s->bytes_received + i) & 0xff));
 		  ecm->test_failed = 1;
 		}
 	    }
 	}
+      ASSERT (n_read <= s->bytes_to_receive);
       s->bytes_to_receive -= n_read;
       s->bytes_received += n_read;
     }
@@ -230,20 +218,15 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       if (sp->bytes_to_receive > 0)
 	{
-	  receive_data_chunk (ecm, sp);
 	  delete_session = 0;
 	}
       if (PREDICT_FALSE (delete_session == 1))
 	{
-	  u32 index, thread_index;
 	  stream_session_t *s;
 
 	  __sync_fetch_and_add (&ecm->tx_total, sp->bytes_sent);
 	  __sync_fetch_and_add (&ecm->rx_total, sp->bytes_received);
-
-	  session_parse_handle (sp->vpp_session_handle,
-				&index, &thread_index);
-	  s = session_get_if_valid (index, thread_index);
+	  s = session_get_from_handle_if_valid (sp->vpp_session_handle);
 
 	  if (s)
 	    {
@@ -312,8 +295,8 @@ echo_clients_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  /* Init test data. Bigecmuffer */
-  vec_validate (ecm->connect_test_data, 1024 * 1024 - 1);
+  /* Init test data. Big buffer */
+  vec_validate (ecm->connect_test_data, 4 * 1024 * 1024 - 1);
   for (i = 0; i < vec_len (ecm->connect_test_data); i++)
     ecm->connect_test_data[i] = i & 0xff;
 
@@ -363,11 +346,21 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session_index = session - ecm->sessions;
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->server_rx_fifo = s->server_rx_fifo;
-  session->server_rx_fifo->client_session_index = session_index;
-  session->server_tx_fifo = s->server_tx_fifo;
-  session->server_tx_fifo->client_session_index = session_index;
+  session->data.rx_fifo = s->server_rx_fifo;
+  session->data.rx_fifo->client_session_index = session_index;
+  session->data.tx_fifo = s->server_tx_fifo;
+  session->data.tx_fifo->client_session_index = session_index;
+  session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
+
+  if (ecm->is_dgram)
+    {
+      transport_connection_t *tc;
+      tc = session_get_transport (s);
+      clib_memcpy (&session->data.transport, tc,
+		   sizeof (session->data.transport));
+      session->data.is_dgram = 1;
+    }
 
   vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
   __sync_fetch_and_add (&ecm->ready_connections, 1);
@@ -410,6 +403,28 @@ echo_clients_session_disconnect_callback (stream_session_t * s)
 static int
 echo_clients_rx_callback (stream_session_t * s)
 {
+  echo_client_main_t *ecm = &echo_client_main;
+  session_t *sp;
+
+  sp = pool_elt_at_index (ecm->sessions,
+			  s->server_rx_fifo->client_session_index);
+  receive_data_chunk (ecm, sp);
+
+  if (svm_fifo_max_dequeue (s->server_rx_fifo))
+    {
+      session_fifo_event_t evt;
+      svm_queue_t *q;
+      if (svm_fifo_set_event (s->server_rx_fifo))
+	{
+	  evt.fifo = s->server_rx_fifo;
+	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
+	  q = session_manager_get_vpp_event_queue (s->thread_index);
+	  if (PREDICT_FALSE (q->cursize == q->maxsize))
+	    clib_warning ("out of event queue space");
+	  else if (svm_queue_add (q, (u8 *) & evt, 0))
+	    clib_warning ("failed to enqueue self-tap");
+	}
+    }
   return 0;
 }
 
@@ -544,7 +559,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 }
 
 #define ec_cli_output(_fmt, _args...) 			\
-  if (!ecm->no_output)  					\
+  if (!ecm->no_output)  				\
     vlib_cli_output(vm, _fmt, ##_args)
 
 static clib_error_t *
@@ -662,6 +677,9 @@ echo_clients_command_fn (vlib_main_t * vm,
       clib_warning ("No uri provided. Using default: %s", default_uri);
       ecm->connect_uri = format (0, "%s%c", default_uri, 0);
     }
+
+  if (ecm->connect_uri[0] == 'u' && ecm->connect_uri[3] != 'c')
+    ecm->is_dgram = 1;
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();

@@ -169,6 +169,9 @@ format_svm_fifo (u8 * s, va_list * args)
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   int verbose = va_arg (*args, int);
 
+  if (!s)
+    return s;
+
   s = format (s, "cursize %u nitems %u has_event %d\n",
 	      f->cursize, f->nitems, f->has_event);
   s = format (s, " head %d tail %d\n", f->head, f->tail);
@@ -459,7 +462,7 @@ svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes,
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   if (PREDICT_FALSE (cursize == f->nitems))
-    return -2;			/* fifo stuffed */
+    return SVM_FIFO_FULL;
 
   nitems = f->nitems;
 
@@ -615,6 +618,20 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f,
 						copy_from_here);
 }
 
+void
+svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
+{
+  u32 first_chunk;
+  ASSERT (len <= f->nitems);
+  if (len < f->nitems - f->head)
+    clib_memcpy (&f->data[f->head], data, len);
+  else
+    {
+      first_chunk = len - (f->nitems - f->head);
+      clib_memcpy (&f->data[f->head], data, first_chunk);
+      clib_memcpy (f->data, data + first_chunk, len - first_chunk);
+    }
+}
 
 static int
 svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
