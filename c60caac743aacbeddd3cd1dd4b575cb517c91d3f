@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c63ce67d_692028c8",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1281,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-09T17:41:59Z",
+      "side": 1,
+      "message": "This means we cannot handle VXLAN packets on a sub-interface with VLAN tags?  Will VXLAN packets with VLAN tag match the flow?",
+      "range": {
+        "startLine": 1281,
+        "startChar": 4,
+        "endLine": 1281,
+        "endChar": 24
+      },
+      "revId": "c60caac743aacbeddd3cd1dd4b575cb517c91d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
