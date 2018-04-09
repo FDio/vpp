@@ -30,14 +30,11 @@
 
 typedef struct
 {
+  app_session_t data;
   u64 bytes_to_send;
   u64 bytes_sent;
   u64 bytes_to_receive;
   u64 bytes_received;
-
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
-
   u64 vpp_session_handle;
 } session_t;
 
@@ -46,7 +43,7 @@ typedef struct
   /*
    * Application setup parameters
    */
-  svm_queue_t *vl_input_queue;	/**< vpe input queue */
+  svm_queue_t *vl_input_queue;		/**< vpe input queue */
   svm_queue_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
@@ -65,6 +62,7 @@ typedef struct
   u32 private_segment_count;		/**< Number of private fifo segs */
   u32 private_segment_size;		/**< size of private fifo segs */
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
+  u8 is_dgram;
   /*
    * Test state variables
    */
