@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip_frag.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/ethernet/arp_packet.h>	/* for ethernet_arp_header_t */
 #include <vnet/ppp/ppp.h>
@@ -2013,6 +2014,8 @@ typedef enum
 {
   IP4_REWRITE_NEXT_DROP,
   IP4_REWRITE_NEXT_ICMP_ERROR,
+  IP4_REWRITE_NEXT_FRAGMENT,
+  IP4_REWRITE_N_NEXT		/* Last */
 } ip4_rewrite_next_t;
 
 /**
@@ -2042,8 +2045,10 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	}
       else
 	{
-	  /* Add support for fragmentation here */
-	  *next = IP4_REWRITE_NEXT_DROP;
+	  /* IP fragmentation */
+	  ip_frag_set_vnet_buffer (b, 0, adj_packet_bytes,
+				   IP4_FRAG_NEXT_IP4_LOOKUP, 0);
+	  *next = IP4_REWRITE_NEXT_FRAGMENT;
 	}
     }
 }
@@ -2539,10 +2544,11 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 
   .format_trace = format_ip4_rewrite_trace,
 
-  .n_next_nodes = 2,
+  .n_next_nodes = IP4_REWRITE_N_NEXT,
   .next_nodes = {
     [IP4_REWRITE_NEXT_DROP] = "ip4-drop",
     [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [IP4_REWRITE_NEXT_FRAGMENT] = "ip4-frag",
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite)
