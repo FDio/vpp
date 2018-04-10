@@ -102,23 +102,38 @@ dpdk_early_init (vlib_main_t *vm)
   int fd = -1;
   u64 *pt = 0;
   clib_error_t *err = 0;
+  clib_mem_vm_alloc_t alloc = { 0 };
 
   /* check if pagemap is accessible - if we get zero result
      dpdk will not be able to get physical memory address and game is over
      unless we have IOMMU */
   pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
   if (pt && pt[0])
-    goto done;
+    goto check_hugetlb;
 
-  if ((fd = open ("/dev/vfio/vfio", O_RDWR) == -1))
+  if ((fd = open ("/dev/vfio/vfio", O_RDWR)) == -1)
       goto error;
 
   if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
       goto error;
 
   /* if we have type 1 IOMMU page map is not needed */
-  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
-    goto done;
+  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) != 1)
+    goto error;
+
+check_hugetlb:
+  alloc.flags = CLIB_MEM_VM_F_SHARED | CLIB_MEM_VM_F_HUGETLB | CLIB_MEM_VM_F_HUGETLB_PREALLOC;
+  alloc.size = 1;
+
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+    {
+      clib_error_free (err);
+      goto error;
+    }
+  else
+    clib_mem_vm_free (alloc.addr, 1 << alloc.log2_page_size);
+
+  goto done;
 
 error:
   err = clib_error_return (0, "access to physical devices is not allowed");
