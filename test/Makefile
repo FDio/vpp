@@ -196,7 +196,7 @@ checkstyle: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\
