@@ -501,7 +501,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   int rv;
   snat_protocol_t proto = ~0;
   u8 proto_set = 0;
-  u8 twice_nat = 0;
+  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
 
   if (sm->deterministic)
@@ -538,7 +538,9 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
 	proto_set = 1;
       else if (unformat (line_input, "twice-nat"))
-	twice_nat = 1;
+	twice_nat = TWICE_NAT;
+      else if (unformat (line_input, "self-twice-nat"))
+	twice_nat = TWICE_NAT_SELF;
       else if (unformat (line_input, "out2in-only"))
 	out2in_only = 1;
       else if (unformat (line_input, "del"))
@@ -688,7 +690,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   snat_protocol_t proto;
   u8 proto_set = 0;
   nat44_lb_addr_port_t *locals = 0, local;
-  u8 twice_nat = 0;
+  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
 
   if (sm->deterministic)
@@ -718,7 +720,9 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 			 &proto))
 	proto_set = 1;
       else if (unformat (line_input, "twice-nat"))
-	twice_nat = 1;
+	twice_nat = TWICE_NAT;
+      else if (unformat (line_input, "self-twice-nat"))
+	twice_nat = TWICE_NAT_SELF;
       else if (unformat (line_input, "out2in-only"))
 	out2in_only = 1;
       else if (unformat (line_input, "del"))
@@ -1584,7 +1588,8 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .function = add_static_mapping_command_fn,
   .short_help =
     "nat44 add static mapping tcp|udp|icmp local <addr> [<port>] "
-    "external <addr> [<port>] [vrf <table-id>] [twice-nat] [out2in-only] [del]",
+    "external <addr> [<port>] [vrf <table-id>] [twice-nat|self-twice-nat] "
+    "[out2in-only] [del]",
 };
 
 /*?
@@ -1622,8 +1627,8 @@ VLIB_CLI_COMMAND (add_lb_static_mapping_command, static) = {
   .function = add_lb_static_mapping_command_fn,
   .short_help =
     "nat44 add load-balancing static mapping protocol tcp|udp "
-    "external <addr>:<port> local <addr>:<port> probability <n> [twice-nat] "
-    "[vrf <table-id>] [out2in-only] [del]",
+    "external <addr>:<port> local <addr>:<port> probability <n> "
+    "[twice-nat|self-twice-nat] [vrf <table-id>] [out2in-only] [del]",
 };
 
 /*?

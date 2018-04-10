@@ -1302,6 +1302,7 @@ class VppPapiProvider(object):
             vrf_id=0,
             protocol=0,
             twice_nat=0,
+            self_twice_nat=0,
             out2in_only=0,
             tag="",
             is_add=1):
@@ -1316,6 +1317,9 @@ class VppPapiProvider(object):
         :param vrf_id: VRF ID
         :param protocol: IP protocol (Default value = 0)
         :param twice_nat: 1 if translate external host address and port
+        :param self_twice_nat: 1 if translate external host address and port
+                               whenever external host address equals
+                               local address of internal host
         :param out2in_only: if 1 rule is matching only out2in direction
         :param tag: Opaque string tag
         :param is_add: 1 if add, 0 if delete (Default value = 1)
@@ -1332,6 +1336,7 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'protocol': protocol,
              'twice_nat': twice_nat,
+             'self_twice_nat': self_twice_nat,
              'out2in_only': out2in_only,
              'tag': tag})
 
@@ -1496,6 +1501,7 @@ class VppPapiProvider(object):
             protocol,
             vrf_id=0,
             twice_nat=0,
+            self_twice_nat=0,
             out2in_only=0,
             tag='',
             local_num=0,
@@ -1515,6 +1521,7 @@ class VppPapiProvider(object):
              'protocol': protocol,
              'vrf_id': vrf_id,
              'twice_nat': twice_nat,
+             'self_twice_nat': self_twice_nat,
              'out2in_only': out2in_only,
              'tag': tag,
              'local_num': local_num,
