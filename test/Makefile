@@ -194,7 +194,7 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle==2.3.1"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
