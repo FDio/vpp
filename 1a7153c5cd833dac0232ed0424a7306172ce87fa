@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "058703d1_1f5a9f45",
+        "filename": "src/vpp-api/vom/bridge_domain_cmds.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-10T16:10:36Z",
+      "side": 1,
+      "message": "Do we expect ARP termination to be used?  Will the IP to MAC table be populated to make VPP respond to ARP requests?  Or, will control plane call want_ip4_arp/ip6_nd_events API with address set to 0 to get MAC/IP binding from ARP request or ICMP6 NS packets in BDs?",
+      "range": {
+        "startLine": 48,
+        "startChar": 2,
+        "endLine": 48,
+        "endChar": 9
+      },
+      "revId": "1a7153c5cd833dac0232ed0424a7306172ce87fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4865fd7d_eaf89d98",
+        "filename": "src/vpp-api/vom/bridge_domain_cmds.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-10T16:10:36Z",
+      "side": 1,
+      "message": "Should we enable aging if learning is enabled?  Aging interval is typically set to 5 minutes.",
+      "range": {
+        "startLine": 49,
+        "startChar": 10,
+        "endLine": 49,
+        "endChar": 17
+      },
+      "revId": "1a7153c5cd833dac0232ed0424a7306172ce87fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
