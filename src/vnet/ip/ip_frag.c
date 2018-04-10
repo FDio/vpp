@@ -85,6 +85,12 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
       return;
     }
 
+  if (p->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      *error = IP_FRAG_ERROR_MALFORMED;
+      return;
+    }
+
   if (ip4_is_fragment (ip4))
     {
       ip_frag_id = ip4->fragment_id;
@@ -338,6 +344,12 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
     {
       //A malicious packet could set an extension header with a too big size
       //and make us modify another vlib_buffer
+      *error = IP_FRAG_ERROR_MALFORMED;
+      return;
+    }
+
+  if (p->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
       *error = IP_FRAG_ERROR_MALFORMED;
       return;
     }
