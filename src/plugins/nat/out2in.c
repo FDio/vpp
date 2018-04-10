@@ -871,6 +871,7 @@ snat_out2in_unknown_proto (snat_main_t *sm,
       s->ext_host_addr.as_u32 = ip->src_address.as_u32;
       s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+      s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
       s->outside_address_index = ~0;
       s->out2in.addr.as_u32 = old_addr;
       s->out2in.fib_index = rx_fib_index;
@@ -935,7 +936,8 @@ snat_out2in_lb (snat_main_t *sm,
   snat_user_t *u;
   u32 address_index;
   snat_session_key_t eh_key;
-  u8 twice_nat, lb;
+  twice_nat_type_t twice_nat;
+  u8 lb;
 
   old_addr = ip->dst_address.as_u32;
 
@@ -987,6 +989,7 @@ snat_out2in_lb (snat_main_t *sm,
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
       if (lb)
         s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
+      s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
       s->outside_address_index = ~0;
       s->out2in = e_key;
       s->in2out = l_key;
@@ -997,7 +1000,9 @@ snat_out2in_lb (snat_main_t *sm,
       if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
         clib_warning ("out2in-ed key add failed");
 
-      if (twice_nat)
+      if (twice_nat == TWICE_NAT ||
+          (twice_nat == TWICE_NAT_SELF &&
+           ip->src_address.as_u32 == l_key.addr.as_u32))
         {
           eh_key.protocol = proto;
           if (snat_alloc_outside_address_and_port (sm->twice_nat_addresses, 0,
