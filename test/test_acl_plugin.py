@@ -1093,7 +1093,8 @@ class TestACLplugin(VppTestCase):
         self.logger.info("ACLP_TEST_FINISH_0020")
 
     def test_0021_udp_deny_port_verify_fragment_deny(self):
-        """ deny single UDPv4/v6, permit ip any, verify non-initial fragment blocked
+        """ deny single UDPv4/v6, permit ip any, verify non-initial fragment
+        blocked
         """
         self.logger.info("ACLP_TEST_START_0021")
 

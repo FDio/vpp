@@ -568,7 +568,8 @@ class VppPapiProvider(object):
                          'enable': enable})
 
     def bridge_flags(self, bd_id, is_set, feature_bitmap):
-        """Enable/disable required feature of the bridge domain with defined ID.
+        """Enable/disable required feature of the bridge domain with defined
+        ID.
 
         :param int bd_id: Bridge domain ID.
         :param int is_set: Set to 1 to enable, set to 0 to disable the feature.
