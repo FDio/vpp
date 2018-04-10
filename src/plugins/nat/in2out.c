@@ -1384,6 +1384,7 @@ snat_in2out_lb (snat_main_t *sm,
         }
 
       s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
+      s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
       if (lb)
         s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
