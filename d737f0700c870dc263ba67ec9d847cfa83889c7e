@@ -46,6 +46,30 @@
       "revId": "d737f0700c870dc263ba67ec9d847cfa83889c7e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "efcbc11d_b91d0185",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 9
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-04-10T20:57:29Z",
+      "side": 1,
+      "message": "Just a suggestion. :)\n\nWhere is Damjan? He must be on vacation.. :)",
+      "parentUuid": "bfc1dc20_203320d1",
+      "range": {
+        "startLine": 188,
+        "startChar": 0,
+        "endLine": 188,
+        "endChar": 18
+      },
+      "revId": "d737f0700c870dc263ba67ec9d847cfa83889c7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
