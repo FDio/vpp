@@ -654,7 +654,11 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
  * @param addr_only If 0 address port and pair mapping, otherwise address only.
  * @param sw_if_index External port instead of specific IP address.
  * @param is_add If 0 delete static mapping, otherwise add.
- * @param twice_nat If 1 translate external host address and port.
+ * @param twice_nat If value is TWICE_NAT then translate external host address
+ *                  and port.
+ *                  If value is TWICE_NAT_SELF then translate external host
+ *                  address and port whenever external host address equals
+ *                  local address of internal host.
  * @param out2in_only If 1 rule match only out2in direction
  * @param tag - opaque string tag
  *
@@ -663,7 +667,8 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
                             u32 sw_if_index, snat_protocol_t proto, int is_add,
-                            u8 twice_nat, u8 out2in_only, u8 * tag)
+                            twice_nat_type_t twice_nat, u8 out2in_only,
+                            u8 * tag)
 {
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t *m;
@@ -1974,7 +1979,7 @@ int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t * mapping,
                                u8 by_external,
                                u8 *is_addr_only,
-                               u8 *twice_nat)
+                               twice_nat_type_t *twice_nat)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -2718,7 +2723,8 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
                       format_snat_protocol, m->proto,
                       m->vrf_id,
                       format_ip4_address, &m->external_addr, m->external_port,
-                      m->twice_nat ? "twice-nat" : "",
+                      m->twice_nat == TWICE_NAT ? "twice-nat" :
+                      m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
                       m->out2in_only ? "out2in-only" : "");
           vec_foreach (local, m->locals)
             s = format (s, "\n  local %U:%d probability %d\%",

@@ -891,7 +891,7 @@ snat_out2in_lb (snat_main_t *sm,
   snat_user_t *u;
   u32 address_index;
   snat_session_key_t eh_key;
-  u8 twice_nat;
+  twice_nat_type_t twice_nat;
 
   old_addr = ip->dst_address.as_u32;
 
@@ -952,7 +952,9 @@ snat_out2in_lb (snat_main_t *sm,
       if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
         clib_warning ("out2in-ed key add failed");
 
-      if (twice_nat)
+      if (twice_nat == TWICE_NAT ||
+          (twice_nat == TWICE_NAT_SELF &&
+           ip->src_address.as_u32 == l_key.addr.as_u32))
         {
           eh_key.protocol = proto;
           if (snat_alloc_outside_address_and_port (sm->twice_nat_addresses, 0,

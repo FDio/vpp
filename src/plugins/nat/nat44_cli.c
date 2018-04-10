@@ -478,7 +478,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   int rv;
   snat_protocol_t proto = ~0;
   u8 proto_set = 0;
-  u8 twice_nat = 0;
+  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
 
   /* Get a line of input. */
@@ -512,7 +512,9 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
 	proto_set = 1;
       else if (unformat (line_input, "twice-nat"))
-	twice_nat = 1;
+	twice_nat = TWICE_NAT;
+      else if (unformat (line_input, "self-twice-nat"))
+	twice_nat = TWICE_NAT_SELF;
       else if (unformat (line_input, "out2in-only"))
 	out2in_only = 1;
       else if (unformat (line_input, "del"))
@@ -1505,7 +1507,8 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .function = add_static_mapping_command_fn,
   .short_help =
     "nat44 add static mapping tcp|udp|icmp local <addr> [<port>] "
-    "external <addr> [<port>] [vrf <table-id>] [twice-nat] [out2in-only] [del]",
+    "external <addr> [<port>] [vrf <table-id>] [twice-nat|self-twice-nat] "
+    "[out2in-only] [del]",
 };
 
 /*?

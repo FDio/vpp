@@ -1072,7 +1072,8 @@ class TestNAT44(MethodHolder):
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
                                  is_add=1, external_sw_if_index=0xFFFFFFFF,
-                                 proto=0, twice_nat=0, out2in_only=0, tag=""):
+                                 proto=0, twice_nat=0, self_twice_nat=0,
+                                 out2in_only=0, tag=""):
         """
         Add/delete NAT44 static mapping
 
@@ -1085,6 +1086,9 @@ class TestNAT44(MethodHolder):
         :param external_sw_if_index: External interface instead of IP address
         :param proto: IP protocol (Mandatory if port specified)
         :param twice_nat: 1 if translate external host address and port
+        :param self_twice_nat: 1 if translate external host address and port
+                               whenever external host address equals
+                               local address of internal host
         :param out2in_only: if 1 rule is matching only out2in direction
         :param tag: Opaque string tag
         """
@@ -1103,6 +1107,7 @@ class TestNAT44(MethodHolder):
             vrf_id,
             proto,
             twice_nat,
+            self_twice_nat,
             out2in_only,
             tag,
             is_add)
@@ -3844,37 +3849,53 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-    def test_twice_nat(self):
-        """ Twice NAT44 """
+    def twice_nat_common(self, self_twice_nat=False, same_pg=False):
         twice_nat_addr = '10.0.1.3'
+
         port_in = 8080
         port_out = 80
         eh_port_out = 4567
         eh_port_in = 0
+
+        pg0 = self.pg0
+        if same_pg:
+            pg1 = self.pg0
+        else:
+            pg1 = self.pg1
+
+        eh_translate = (not self_twice_nat) or same_pg
+
         self.nat44_add_address(self.nat_addr)
         self.nat44_add_address(twice_nat_addr, twice_nat=1)
-        self.nat44_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
-                                      port_in, port_out, proto=IP_PROTOS.tcp,
-                                      twice_nat=1)
-        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
-        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+        self.nat44_add_static_mapping(pg0.remote_ip4, self.nat_addr,
+                                      port_in, port_out,
+                                      proto=IP_PROTOS.tcp,
+                                      twice_nat=int(not self_twice_nat),
+                                      self_twice_nat=int(self_twice_nat))
+        self.vapi.nat44_interface_add_del_feature(pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(pg1.sw_if_index,
                                                   is_inside=0)
 
-        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
-             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+        p = (Ether(src=pg1.remote_mac, dst=pg1.local_mac) /
+             IP(src=pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=eh_port_out, dport=port_out))
-        self.pg1.add_stream(p)
+        pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture(1)
+        capture = pg0.get_capture(1)
         p = capture[0]
         try:
             ip = p[IP]
             tcp = p[TCP]
-            self.assertEqual(ip.dst, self.pg0.remote_ip4)
-            self.assertEqual(ip.src, twice_nat_addr)
+            self.assertEqual(ip.dst, pg0.remote_ip4)
             self.assertEqual(tcp.dport, port_in)
-            self.assertNotEqual(tcp.sport, eh_port_out)
+            if eh_translate:
+                self.assertEqual(ip.src, twice_nat_addr)
+                self.assertNotEqual(tcp.sport, eh_port_out)
+            else:
+                self.assertEqual(ip.src, pg1.remote_ip4)
+                self.assertEqual(tcp.sport, eh_port_out)
+            eh_addr_in = ip.src
             eh_port_in = tcp.sport
             self.check_tcp_checksum(p)
             self.check_ip_checksum(p)
@@ -3882,18 +3903,18 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
+        p = (Ether(src=pg0.remote_mac, dst=pg0.local_mac) /
+             IP(src=pg0.remote_ip4, dst=eh_addr_in) /
              TCP(sport=port_in, dport=eh_port_in))
-        self.pg0.add_stream(p)
+        pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(1)
+        capture = pg1.get_capture(1)
         p = capture[0]
         try:
             ip = p[IP]
             tcp = p[TCP]
-            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(ip.dst, pg1.remote_ip4)
             self.assertEqual(ip.src, self.nat_addr)
             self.assertEqual(tcp.dport, eh_port_out)
             self.assertEqual(tcp.sport, port_out)
@@ -3902,6 +3923,18 @@ class TestNAT44(MethodHolder):
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
+
+    def test_twice_nat(self):
+        """ Twice NAT44 """
+        self.twice_nat_common()
+
+    def test_self_twice_nat_positive(self):
+        """ Self Twice NAT44 (positive test case) """
+        self.twice_nat_common(self_twice_nat=True, same_pg=True)
+
+    def test_self_twice_nat_negative(self):
+        """ Self Twice NAT44 (negative test case) """
+        self.twice_nat_common(self_twice_nat=True)
 
     def test_twice_nat_lb(self):
         """ Twice NAT44 local service load balancing """
