@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a6edba6f_7b5bd5ce",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eee1bbc3_9f90b5cc",
+      "range": {
+        "startLine": 116,
+        "startChar": 6,
+        "endLine": 118,
+        "endChar": 56
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2019e5b3_63b3158e",
         "filename": "src/plugins/lb/api.c",
         "patchSetId": 10
@@ -36,6 +60,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Please don\u0027t use tabs to be coherent with the rest of the file.",
+      "range": {
+        "startLine": 160,
+        "startChar": 2,
+        "endLine": 160,
+        "endChar": 3
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b5e747a_c88910ff",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2019e5b3_63b3158e",
       "range": {
         "startLine": 160,
         "startChar": 2,
@@ -65,6 +113,24 @@
     },
     {
       "key": {
+        "uuid": "67a461a8_62877dbd",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "67f37307_06213c17",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a847870c_d9a39a0a",
         "filename": "src/plugins/lb/api.c",
         "patchSetId": 10
@@ -76,6 +142,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Same remark regarding IPv4 format in the API",
+      "range": {
+        "startLine": 217,
+        "startChar": 5,
+        "endLine": 222,
+        "endChar": 5
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f1e6a4b8_78315bb7",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a847870c_d9a39a0a",
       "range": {
         "startLine": 217,
         "startChar": 5,
@@ -111,6 +201,30 @@
     },
     {
       "key": {
+        "uuid": "b52a78d5_d2e5f6a6",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a322e527_a640e542",
+      "range": {
+        "startLine": 232,
+        "startChar": 5,
+        "endLine": 236,
+        "endChar": 5
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c45c9fbb_ee9d54a6",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 10
@@ -128,6 +242,24 @@
     },
     {
       "key": {
+        "uuid": "41fb1d7e_144411c9",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c45c9fbb_ee9d54a6",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "16f4cfd4_d50505a4",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 10
@@ -139,6 +271,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "You could shorten the code a bit by using the lb_vip_add_args_t struct directly rather than the intermediate variables.",
+      "range": {
+        "startLine": 118,
+        "startChar": 4,
+        "endLine": 122,
+        "endChar": 30
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e62dbe65_3712cb0d",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "16f4cfd4_d50505a4",
       "range": {
         "startLine": 118,
         "startChar": 4,
@@ -174,6 +330,30 @@
     },
     {
       "key": {
+        "uuid": "97f3184f_0885b05a",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9bfa1d2_a58a41ce",
+      "range": {
+        "startLine": 128,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a6e9db23_0efb741a",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 10
@@ -185,6 +365,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "I still think there is some redundancy since the absence of node_port could be interpreted as clusterip, and inversely, rather than defining a specific type. But this is ok.",
+      "range": {
+        "startLine": 162,
+        "startChar": 8,
+        "endLine": 162,
+        "endChar": 33
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "88e8baa4_e72d0c48",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "These parameters are configured from k8s control plane. Need to keep consistent with it.",
+      "parentUuid": "a6e9db23_0efb741a",
       "range": {
         "startLine": 162,
         "startChar": 8,
@@ -220,6 +424,30 @@
     },
     {
       "key": {
+        "uuid": "ed43ae01_70ce4f7d",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7bb694cd_15dcdc01",
+      "range": {
+        "startLine": 346,
+        "startChar": 0,
+        "endLine": 346,
+        "endChar": 32
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e3c8d17f_0f09b133",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 10
@@ -231,6 +459,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Remove all the tabs please.",
+      "range": {
+        "startLine": 381,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "765d72a6_2ac6e419",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e3c8d17f_0f09b133",
       "range": {
         "startLine": 381,
         "startChar": 0,
@@ -266,6 +518,30 @@
     },
     {
       "key": {
+        "uuid": "f5c897be_74ac5e24",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Neale Ranns pointed out this issue to me: \"if these macros where passed the prefix  ::192.168.16.2/128 (a v4 embedded v6 address – RFC6052) what address family would it return?\". So add this field in api. Also it keeps consistent with other apis with ipv4/ipv6, such as vxlan, tcp.",
+      "parentUuid": "4c1b0279_ed902339",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 13
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "231710e3_75810edf",
         "filename": "src/plugins/lb/lb.api",
         "patchSetId": 10
@@ -277,6 +553,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Since the type is specified, do you really need both node_port and port ?\nCouldn\u0027t a single port be enough, and the type be used to differentiate ?",
+      "range": {
+        "startLine": 50,
+        "startChar": 2,
+        "endLine": 50,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fff7687d_a6d67f82",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "I think no. Since k8s configures the data plane with the four parameters listed here, we should keep it here.",
+      "parentUuid": "231710e3_75810edf",
       "range": {
         "startLine": 50,
         "startChar": 2,
@@ -312,6 +612,30 @@
     },
     {
       "key": {
+        "uuid": "f1cf6399_0d7c2027",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Please see above reply.",
+      "parentUuid": "22e71b43_07fcd443",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 17
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba6484c8_cf09c423",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 10
@@ -323,6 +647,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Remove all the tabs",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b5e2b3c_7cbc4e19",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba6484c8_cf09c423",
       "range": {
         "startLine": 61,
         "startChar": 0,
@@ -358,6 +706,30 @@
     },
     {
       "key": {
+        "uuid": "bd318637_b82cac51",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "40c9b42d_ce1174de",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 149,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e9528bd0_d71f4be6",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 10
@@ -375,6 +747,24 @@
     },
     {
       "key": {
+        "uuid": "5ca4258a_b644bf2b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e9528bd0_d71f4be6",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4dfc99bc_cd46aa3e",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 10
@@ -386,6 +776,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "remove tabs",
+      "range": {
+        "startLine": 195,
+        "startChar": 0,
+        "endLine": 195,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dcf39655_364d9fb9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4dfc99bc_cd46aa3e",
       "range": {
         "startLine": 195,
         "startChar": 0,
@@ -421,6 +835,30 @@
     },
     {
       "key": {
+        "uuid": "1da021e9_c0423156",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "I tried to declare those variables in the pool_foreach , but it failed.",
+      "parentUuid": "3728388c_747b410f",
+      "range": {
+        "startLine": 270,
+        "startChar": 2,
+        "endLine": 273,
+        "endChar": 36
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e44e2d8c_de7c693a",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 10
@@ -432,6 +870,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Remove tabs",
+      "range": {
+        "startLine": 291,
+        "startChar": 0,
+        "endLine": 291,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "23831f46_d7f85611",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e44e2d8c_de7c693a",
       "range": {
         "startLine": 291,
         "startChar": 0,
@@ -467,6 +929,30 @@
     },
     {
       "key": {
+        "uuid": "8f1ef14a_50f55b36",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ff5cc554_3241b998",
+      "range": {
+        "startLine": 866,
+        "startChar": 0,
+        "endLine": 866,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "19e65fd1_2c4e01bc",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 10
@@ -478,6 +964,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Do we support that ?",
+      "range": {
+        "startLine": 85,
+        "startChar": 2,
+        "endLine": 85,
+        "endChar": 20
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a5eecff6_6134d681",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "19e65fd1_2c4e01bc",
       "range": {
         "startLine": 85,
         "startChar": 2,
@@ -513,6 +1023,30 @@
     },
     {
       "key": {
+        "uuid": "680894e9_9b512706",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Yes, we need to support kube-proxy first.",
+      "parentUuid": "6d2b344f_328a8cf5",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e5babbb5_16dcb5df",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 10
@@ -524,6 +1058,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Defined twice.\nI think you should remove this other and keep this one.\nBut the names are still very specific to kubeproxy (not a big issue though).",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 16
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f6eebd8_0c4c2e7a",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e5babbb5_16dcb5df",
       "range": {
         "startLine": 202,
         "startChar": 0,
@@ -559,6 +1117,30 @@
     },
     {
       "key": {
+        "uuid": "1ef5f5c9_36227e3b",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "095d544f_c3152523",
+      "range": {
+        "startLine": 310,
+        "startChar": 1,
+        "endLine": 310,
+        "endChar": 2
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1c003f4_c7d8aa89",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 10
@@ -570,6 +1152,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Why not using ip_proto directly rather than going through the lb_nat_protocol_t type.",
+      "range": {
+        "startLine": 346,
+        "startChar": 2,
+        "endLine": 351,
+        "endChar": 19
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b688bcc1_0b44ab18",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "In order to support below structure:\nhere protocol only has three fields.\ntypedef struct {\n  union\n  {\n    struct\n    {\n      ip4_address_t addr;\n      u16 port;\n      u16 protocol:3,\n          fib_index:13;\n    };\n    u64 as_u64;\n  };\n} lb_snat4_key_t;",
+      "parentUuid": "a1c003f4_c7d8aa89",
       "range": {
         "startLine": 346,
         "startChar": 2,
@@ -605,6 +1211,30 @@
     },
     {
       "key": {
+        "uuid": "50100bc2_b548b96c",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86850d30_b558ed07",
+      "range": {
+        "startLine": 384,
+        "startChar": 0,
+        "endLine": 397,
+        "endChar": 20
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e817c562_edd22509",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 10
@@ -622,6 +1252,24 @@
     },
     {
       "key": {
+        "uuid": "39905535_db1f158d",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "For vip and port case, it is true.\nBut for nodeip and nodeport case, we need to store nodeip in this structure.",
+      "parentUuid": "e817c562_edd22509",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "24e7c27f_af4d846c",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 10
@@ -633,6 +1281,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "tab",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 96,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6993d314_513162a0",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24e7c27f_af4d846c",
       "range": {
         "startLine": 96,
         "startChar": 0,
@@ -668,6 +1340,30 @@
     },
     {
       "key": {
+        "uuid": "0f1ac323_b16719fa",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e76d6376_8b7e09e3",
+      "range": {
+        "startLine": 349,
+        "startChar": 0,
+        "endLine": 349,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6603943e_05c35f12",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 10
@@ -679,6 +1375,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Why do you need to use the vip_index_by_nodeport hash table if you already have the VIP in there ?",
+      "range": {
+        "startLine": 550,
+        "startChar": 19,
+        "endLine": 550,
+        "endChar": 58
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3408cc0d_fa328ac2",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6603943e_05c35f12",
       "range": {
         "startLine": 550,
         "startChar": 19,
@@ -714,6 +1434,30 @@
     },
     {
       "key": {
+        "uuid": "e2abbac8_3a0947f1",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e6a3f7de_1e9ce67e",
+      "range": {
+        "startLine": 586,
+        "startChar": 2,
+        "endLine": 586,
+        "endChar": 26
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a34db7de_34d616f1",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 10
@@ -725,6 +1469,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "This function should return an index to the pool rather than copying the content of the structure",
+      "range": {
+        "startLine": 597,
+        "startChar": 6,
+        "endLine": 597,
+        "endChar": 33
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5097e35_9539b192",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a34db7de_34d616f1",
       "range": {
         "startLine": 597,
         "startChar": 6,
@@ -754,6 +1522,24 @@
     },
     {
       "key": {
+        "uuid": "75d953c4_273eb803",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9918062d_bff6a070",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b8010fb9_011c568a",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 10
@@ -771,6 +1557,24 @@
     },
     {
       "key": {
+        "uuid": "094991ec_5091096c",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 649,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8010fb9_011c568a",
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "57f4c481_c3ef6ec4",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 10
@@ -782,6 +1586,30 @@
       "writtenOn": "2018-04-04T11:56:51Z",
       "side": 1,
       "message": "Random tabs at some places",
+      "range": {
+        "startLine": 712,
+        "startChar": 0,
+        "endLine": 712,
+        "endChar": 1
+      },
+      "revId": "0dda3d6db3b8162fdaed3ff38df4e47bd31c7c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2fa3134c_d32a73d2",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 712,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-04-10T07:16:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "57f4c481_c3ef6ec4",
       "range": {
         "startLine": 712,
         "startChar": 0,
