@@ -119,7 +119,6 @@ class TestMTU(VppTestCase):
             # n.show2()
             self.validate_bytes(str(p[1]), icmp4_reply)
 
-        '''
         # Now with DF off. Expect fragments.
         # First go with 1500 byte packets.
         p_payload = UDP(sport=1234, dport=1234) / self.payload(
@@ -127,19 +126,18 @@ class TestMTU(VppTestCase):
         p4 = p_ether / p_ip4 / p_payload
         p4.flags = 0
         p4_reply = p_ip4 / p_payload
-        p4_reply.ttl = 62 # check this
+        p4_reply.ttl = 62  # check this
         p4_reply.flags = 0
         p4_reply.id = 256
         self.pg_enable_capture()
         self.pg0.add_stream(p4*1)
         self.pg_start()
         rx = self.pg1.get_capture(3)
-        print('RX', len(rx))
         reass_pkt = reassemble(rx)
         self.validate(reass_pkt, p4_reply)
+
         '''
         # Now what happens with a 9K frame
-        '''
         p_payload = UDP(sport=1234, dport=1234) / self.payload(
             current_mtu - 20 - 8)
         p4 = p_ether / p_ip4 / p_payload
@@ -158,6 +156,7 @@ class TestMTU(VppTestCase):
         p4_reply.show2()
         self.validate(reass_pkt, p4_reply)
         '''
+
         # Reset MTU
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
                                        [current_mtu, 0, 0, 0])
