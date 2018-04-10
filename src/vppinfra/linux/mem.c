@@ -127,6 +127,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 
 	  if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
 	    {
+	      rmdir ((char *) mount_dir);
 	      err = clib_error_return_unix (0, "mount hugetlb directory '%s'",
 					    mount_dir);
 	      goto error;
@@ -136,6 +137,8 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 
 	  if ((fd = open ((char *) filename, O_CREAT | O_RDWR, 0755)) == -1)
 	    {
+	      umount2 ((char *) mount_dir, MNT_DETACH);
+	      rmdir ((char *) mount_dir);
 	      err = clib_error_return_unix (0, "open");
 	      goto error;
 	    }
