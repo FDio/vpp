@@ -53,15 +53,9 @@ enum class dependency_t
   INTERFACE,
 
   /**
-   * bond group binding is after interfaces but before
-   * anything else
+   * virtual interfaces - those that depend on some real interface
    */
-  BOND_BINDING,
-
-  /**
-   * Tunnel or virtual interfaces next
-   */
-  TUNNEL,
+  VIRTUAL_INTERFACE,
 
   /**
    * Tables in which entries are added, e.g bridge/route-domains
@@ -89,8 +83,6 @@ enum class dependency_t
  */
 struct rc_t : public enum_base<rc_t>
 {
-  rc_t(const rc_t& rc) = default;
-
   /**
    * Destructor
    */

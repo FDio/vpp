@@ -28,7 +28,7 @@ namespace nat_binding_cmds {
  * A functor class that binds a NAT configuration to an input interface
  */
 class bind_44_input_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_interface_add_del_feature>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_interface_add_del_feature>
 {
 public:
   /**
@@ -68,7 +68,7 @@ private:
  * A cmd class that unbinds a NAT configuration from an input interface
  */
 class unbind_44_input_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_interface_add_del_feature>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_interface_add_del_feature>
 {
 public:
   /**
@@ -108,9 +108,7 @@ private:
  * A functor class that binds a NAT configuration to an output interface
  */
 class bind_44_output_cmd
-  : public rpc_cmd<HW::item<bool>,
-                   rc_t,
-                   vapi::Nat44_interface_add_del_output_feature>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_interface_add_del_output_feature>
 {
 public:
   /**
@@ -150,9 +148,7 @@ private:
  * A cmd class that unbinds a NAT configuration from an output interface
  */
 class unbind_44_output_cmd
-  : public rpc_cmd<HW::item<bool>,
-                   rc_t,
-                   vapi::Nat44_interface_add_del_output_feature>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_interface_add_del_output_feature>
 {
 public:
   /**
@@ -260,7 +256,7 @@ private:
 * A functor class that binds a NAT configuration to an input interface
 */
 class bind_66_input_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_interface>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat66_add_del_interface>
 {
 public:
   /**
@@ -300,7 +296,7 @@ private:
  * A cmd class that unbinds a NAT configuration from an input interface
  */
 class unbind_66_input_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_interface>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat66_add_del_interface>
 {
 public:
   /**

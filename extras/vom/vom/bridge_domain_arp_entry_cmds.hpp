@@ -27,7 +27,7 @@ namespace bridge_domain_arp_entry_cmds {
 /**
 * A command class that creates or updates the bridge domain ARP Entry
 */
-class create_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bd_ip_mac_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Bd_ip_mac_add_del>
 {
 public:
   /**
@@ -62,7 +62,7 @@ private:
 /**
  * A cmd class that deletes a bridge domain ARP entry
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bd_ip_mac_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Bd_ip_mac_add_del>
 {
 public:
   /**

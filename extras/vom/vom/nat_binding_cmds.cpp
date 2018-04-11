@@ -44,9 +44,7 @@ bind_44_input_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -86,9 +84,7 @@ unbind_44_input_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -128,9 +124,7 @@ bind_44_output_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -170,9 +164,7 @@ unbind_44_output_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -276,7 +268,7 @@ bind_66_input_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
+  wait();
 
   return rc_t::OK;
 }
@@ -318,7 +310,7 @@ unbind_66_input_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
+  wait();
 
   return rc_t::OK;
 }

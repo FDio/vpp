@@ -32,11 +32,11 @@ class VppPipe(VppInterface):
         self.result = self._test.vapi.pipe_create(
             0 if self.instance == 0xffffffff else 1,
             self.instance)
-        self.set_sw_if_index(self.result.parent_sw_if_index)
+        self.set_sw_if_index(self.result.sw_if_index)
 
     def remove_vpp_config(self):
         self._test.vapi.pipe_delete(
-            self.result.parent_sw_if_index)
+            self.result.sw_if_index)
 
     def __str__(self):
         return self.object_id()
@@ -47,7 +47,7 @@ class VppPipe(VppInterface):
     def query_vpp_config(self):
         pipes = self._test.vapi.pipe_dump()
         for p in pipes:
-            if p.parent_sw_if_index == self.result.parent_sw_if_index:
+            if p.sw_if_index == self.result.sw_if_index:
                 return True
         return False
 
@@ -78,9 +78,7 @@ class TestPipe(VppTestCase):
     def test_pipe(self):
         """ Pipes """
 
-        pipes = []
-        pipes.append(VppPipe(self))
-        pipes.append(VppPipe(self, 10))
+        pipes = [VppPipe(self), VppPipe(self, 10)]
 
         for p in pipes:
             p.add_vpp_config()

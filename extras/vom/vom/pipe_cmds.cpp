@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,62 +13,79 @@
  * limitations under the License.
  */
 
-#include "vom/bridge_domain_cmds.hpp"
+#include "vom/pipe_cmds.hpp"
 
-DEFINE_VAPI_MSG_IDS_L2_API_JSON;
+DEFINE_VAPI_MSG_IDS_PIPE_API_JSON;
 
 namespace VOM {
-namespace bridge_domain_cmds {
-create_cmd::create_cmd(HW::item<uint32_t>& item,
-                       const bridge_domain::learning_mode_t& lmode,
-                       const bridge_domain::arp_term_mode_t& amode,
-                       const bridge_domain::flood_mode_t& fmode,
-                       const bridge_domain::mac_age_mode_t& mmode)
-  : rpc_cmd(item)
-  , m_learning_mode(lmode)
-  , m_arp_term_mode(amode)
-  , m_flood_mode(fmode)
-  , m_mac_age_mode(mmode)
+namespace pipe_cmds {
+
+create_cmd::create_cmd(HW::item<handle_t>& item,
+                       const std::string& name,
+                       uint32_t instance,
+                       HW::item<pipe::handle_pair_t>& ends)
+  : interface::create_cmd<vapi::Pipe_create>(item, name)
+  , m_hdl_pair(ends)
+  , m_instance(instance)
 {
 }
 
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
-  return (m_hw_item.data() == other.m_hw_item.data());
+  return (m_name == other.m_name);
 }
 
+vapi_error_e
+create_cmd::operator()(vapi::Pipe_create& reply)
+{
+  auto& payload = reply.get_response().get_payload();
+
+  VOM_LOG(log_level_t::DEBUG) << to_string() << " " << payload.retval;
+
+  const rc_t& rc = rc_t::from_vpp_retval(payload.retval);
+
+  m_hdl_pair = { pipe::handle_pair_t(payload.pipe_sw_if_index[0],
+                                     payload.pipe_sw_if_index[1]),
+                 rc };
+
+  fulfill(HW::item<handle_t>(payload.sw_if_index, rc));
+
+  return (VAPI_OK);
+}
 rc_t
 create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_hw_item.data();
-  payload.flood = m_flood_mode.value();
-  payload.uu_flood = m_flood_mode.value();
-  payload.forward = 1;
-  payload.learn = m_learning_mode.value();
-  payload.arp_term = m_arp_term_mode.value();
-  payload.mac_age = m_mac_age_mode.value();
-  payload.is_add = 1;
+
+  payload.is_specified = 1;
+  payload.user_instance = m_instance;
 
   VAPI_CALL(req.execute());
 
-  return (wait());
+  if (rc_t::OK == wait()) {
+    insert_interface();
+  }
+
+  return rc_t::OK;
 }
 
 std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "bridge-domain-create: " << m_hw_item.to_string();
+
+  s << "pipe-create: " << m_name << " instance:" << m_instance;
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<uint32_t>& item)
-  : rpc_cmd(item)
+delete_cmd::delete_cmd(HW::item<handle_t>& item,
+                       HW::item<pipe::handle_pair_t>& end_pair)
+  : interface::delete_cmd<vapi::Pipe_delete>(item)
+  , m_hdl_pair(end_pair)
 {
 }
 
@@ -83,14 +100,13 @@ delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
-  auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_hw_item.data();
-  payload.is_add = 0;
-
   VAPI_CALL(req.execute());
 
   wait();
   m_hw_item.set(rc_t::NOOP);
+  m_hdl_pair.set(rc_t::NOOP);
+
+  remove_interface();
 
   return (rc_t::OK);
 }
@@ -98,14 +114,7 @@ delete_cmd::issue(connection& con)
 std::string
 delete_cmd::to_string() const
 {
-  std::ostringstream s;
-  s << "bridge-domain-delete: " << m_hw_item.to_string();
-
-  return (s.str());
-}
-
-dump_cmd::dump_cmd()
-{
+  return ("pipe-delete");
 }
 
 bool
@@ -119,9 +128,6 @@ dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
-  auto& payload = m_dump->get_request().get_payload();
-  payload.bd_id = ~0;
-
   VAPI_CALL(m_dump->execute());
 
   wait();
@@ -132,10 +138,11 @@ dump_cmd::issue(connection& con)
 std::string
 dump_cmd::to_string() const
 {
-  return ("bridge-domain-dump");
+  return ("pipe-dump");
 }
-}
-}
+
+} // namespace pipe_cmds
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

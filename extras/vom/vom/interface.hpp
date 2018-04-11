@@ -115,6 +115,16 @@ public:
     const static type_t BOND;
 
     /**
+     * pipe-parent type
+     */
+    const static type_t PIPE;
+
+    /**
+     * pipe-end type
+     */
+    const static type_t PIPE_END;
+
+    /**
      * Convert VPP's name of the interface to a type
      */
     static type_t from_string(const std::string& str);
@@ -271,11 +281,11 @@ public:
    * A base class for interface Create commands
    */
   template <typename MSG>
-  class create_cmd : public rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>
+  class create_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     create_cmd(HW::item<handle_t>& item, const std::string& name)
-      : rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>(item)
+      : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
     {
     }
@@ -298,7 +308,7 @@ public:
      */
     void succeeded()
     {
-      rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>::succeeded();
+      rpc_cmd<HW::item<handle_t>, MSG>::succeeded();
       interface::add(m_name, this->item());
     }
 
@@ -321,9 +331,7 @@ public:
         handle = sw_if_index;
       }
 
-      HW::item<handle_t> res(handle, rc);
-
-      this->fulfill(res);
+      this->fulfill(HW::item<handle_t>(handle, rc));
 
       return (VAPI_OK);
     }
@@ -339,17 +347,17 @@ public:
    * Base class for intterface Delete commands
    */
   template <typename MSG>
-  class delete_cmd : public rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>
+  class delete_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     delete_cmd(HW::item<handle_t>& item, const std::string& name)
-      : rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>(item)
+      : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
     {
     }
 
     delete_cmd(HW::item<handle_t>& item)
-      : rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, MSG>(item)
+      : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name()
     {
     }
@@ -471,6 +479,7 @@ protected:
    */
   void set(const handle_t& handle);
   friend class interface_factory;
+  friend class pipe;
 
   /**
    * The SW interface handle VPP has asigned to the interface

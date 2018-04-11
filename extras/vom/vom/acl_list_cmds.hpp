@@ -29,8 +29,7 @@ namespace list_cmds {
  * A command class that Create the list
  */
 template <typename RULE, typename UPDATE>
-class update_cmd
-  : public rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>
+class update_cmd : public rpc_cmd<HW::item<handle_t>, UPDATE>
 {
 public:
   typedef typename list<RULE>::rules_t cmd_rules_t;
@@ -42,7 +41,7 @@ public:
   update_cmd(HW::item<handle_t>& item,
              const cmd_key_t& key,
              const cmd_rules_t& rules)
-    : rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>(item)
+    : rpc_cmd<HW::item<handle_t>, UPDATE>(item)
     , m_key(key)
     , m_rules(rules)
   {
@@ -78,7 +77,7 @@ public:
 
   void succeeded()
   {
-    rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>::succeeded();
+    rpc_cmd<HW::item<handle_t>, UPDATE>::succeeded();
     list<RULE>::add(m_key, this->item());
   }
 
@@ -124,14 +123,14 @@ private:
  * A cmd class that Deletes an ACL
  */
 template <typename RULE, typename DELETE>
-class delete_cmd : public rpc_cmd<HW::item<handle_t>, rc_t, DELETE>
+class delete_cmd : public rpc_cmd<HW::item<handle_t>, DELETE>
 {
 public:
   /**
    * Constructor
    */
   delete_cmd(HW::item<handle_t>& item)
-    : rpc_cmd<HW::item<handle_t>, rc_t, DELETE>(item)
+    : rpc_cmd<HW::item<handle_t>, DELETE>(item)
   {
   }
 

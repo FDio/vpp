@@ -27,7 +27,7 @@ namespace hw_cmds {
 /**
 *A command poll the HW for liveness
 */
-class poll : public rpc_cmd<HW::item<bool>, rc_t, vapi::Control_ping>
+class poll : public rpc_cmd<HW::item<bool>, vapi::Control_ping>
 {
 public:
   /**
