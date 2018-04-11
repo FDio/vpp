@@ -1063,9 +1063,9 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                               (clib_net_to_host_u16 (s->out2in.port) != e_port))
                             continue;
                         }
-                      
-                      if (s->flags & SNAT_SESSION_FLAG_LOAD_BALANCING)
-                          continue;
+
+                      if (is_lb_session (s))
+                        continue;
 
                       nat_free_session_data (sm, s, tsm - sm->per_thread_data);
                       clib_dlist_remove (tsm->list_pool, s->per_user_index);
@@ -1390,6 +1390,9 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       s =  pool_elt_at_index (tsm->sessions, ses_index);
                       elt = pool_elt_at_index (tsm->list_pool, elt->next);
                       ses_index = elt->value;
+
+                      if (!(is_lb_session (s)))
+                        continue;
 
                       if ((s->in2out.addr.as_u32 != local->addr.as_u32) &&
                           (clib_net_to_host_u16 (s->in2out.port) != local->port))
@@ -1966,6 +1969,7 @@ void snat_free_outside_address_and_port (snat_address_t * addresses,
  *                    address.
  * @param is_addr_only If matched mapping is address only
  * @param twice_nat If matched mapping is twice NAT.
+ * @param lb If matched mapping is load-balanced.
  *
  * @returns 0 if match found otherwise 1.
  */
@@ -1974,7 +1978,8 @@ int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t * mapping,
                                u8 by_external,
                                u8 *is_addr_only,
-                               u8 *twice_nat)
+                               u8 *twice_nat,
+                               u8 *lb)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -2044,6 +2049,9 @@ int snat_static_mapping_match (snat_main_t * sm,
 
   if (PREDICT_FALSE(twice_nat != 0))
     *twice_nat = m->twice_nat;
+
+  if (PREDICT_FALSE(lb != 0))
+    *lb = vec_len (m->locals) > 0;
 
   return 0;
 }

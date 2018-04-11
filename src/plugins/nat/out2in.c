@@ -423,7 +423,7 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
     {
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
-      if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only, 0))
+      if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only, 0, 0))
         {
           if (!sm->forwarding_enabled)
             {
@@ -562,7 +562,7 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
     }
   key0.fib_index = rx_fib_index0;
 
-  if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only, 0))
+  if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only, 0, 0))
     {
       /* Don't NAT packet aimed at the intfc address */
       if (is_interface_addr(sm, node, sw_if_index0, ip0->dst_address.as_u32))
@@ -891,7 +891,7 @@ snat_out2in_lb (snat_main_t *sm,
   snat_user_t *u;
   u32 address_index;
   snat_session_key_t eh_key;
-  u8 twice_nat;
+  u8 twice_nat, lb;
 
   old_addr = ip->dst_address.as_u32;
 
@@ -920,7 +920,7 @@ snat_out2in_lb (snat_main_t *sm,
       e_key.port = udp->dst_port;
       e_key.protocol = proto;
       e_key.fib_index = rx_fib_index;
-      if (snat_static_mapping_match(sm, e_key, &l_key, 1, 0, &twice_nat))
+      if (snat_static_mapping_match(sm, e_key, &l_key, 1, 0, &twice_nat, &lb))
         return 0;
 
       u = nat_user_get_or_create (sm, &l_key.addr, l_key.fib_index,
@@ -941,7 +941,8 @@ snat_out2in_lb (snat_main_t *sm,
       s->ext_host_addr.as_u32 = ip->src_address.as_u32;
       s->ext_host_port = udp->src_port;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-      s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
+      if (lb)
+        s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
       s->outside_address_index = ~0;
       s->out2in = e_key;
       s->in2out = l_key;
@@ -1164,7 +1165,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
+              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0, 0))
                 {
                   if (!sm->forwarding_enabled)
                     {
@@ -1340,7 +1341,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key1, &sm1, 1, 0, 0))
+              if (snat_static_mapping_match(sm, key1, &sm1, 1, 0, 0, 0))
                 {
                   if (!sm->forwarding_enabled)
                     {
@@ -1552,7 +1553,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
+              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0, 0))
                 {
                   if (!sm->forwarding_enabled)
                     {
@@ -1805,7 +1806,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                 {
                   /* Try to match static mapping by external address and port,
                      destination address and port in packet */
-                  if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
+                  if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0, 0))
                     {
                       if (!sm->forwarding_enabled)
                         {
@@ -2883,7 +2884,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
           key0.port = udp0->dst_port;
           key0.fib_index = rx_fib_index0;
 
-          if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
+          if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0, 0))
             {
               b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace00;

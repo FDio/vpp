@@ -421,7 +421,8 @@ int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t * mapping,
                                u8 by_external,
                                u8 *is_addr_only,
-                               u8 *twice_nat);
+                               u8 *twice_nat,
+                               u8 *lb);
 
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
                                u8 p_len,
