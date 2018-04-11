@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "01d18ba7_8164b658",
+        "filename": "src/plugins/gbp/gbp_classify.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-11T15:49:54Z",
+      "side": 1,
+      "message": "should this be ip6-lookup?",
+      "range": {
+        "startLine": 219,
+        "startChar": 15,
+        "endLine": 219,
+        "endChar": 21
+      },
+      "revId": "cc6998141cef5ada3af25d3de46d738df9a4a223",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3486a7df_4a4fa074",
+        "filename": "src/plugins/gbp/gbp_classify.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-11T15:49:54Z",
+      "side": 1,
+      "message": "Instead of hard coded 0 and 1 here, may I suggest to use enum names showing which node each array is for. Then the enum can be used in the inline function gbp_classify_inline() to make it easier to follow.",
+      "range": {
+        "startLine": 248,
+        "startChar": 33,
+        "endLine": 248,
+        "endChar": 34
+      },
+      "revId": "cc6998141cef5ada3af25d3de46d738df9a4a223",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "41c917db_057a639d",
+        "filename": "src/plugins/gbp/gbp_fwd.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-11T15:49:54Z",
+      "side": 1,
+      "message": "Seems the node is not using feature bitmap to determine the next index as it is either drop or l2-output. Thus, the next index array and init is not necessary, unless you want to keep this for possible future usage.",
+      "range": {
+        "startLine": 178,
+        "startChar": 2,
+        "endLine": 178,
+        "endChar": 29
+      },
+      "revId": "cc6998141cef5ada3af25d3de46d738df9a4a223",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
