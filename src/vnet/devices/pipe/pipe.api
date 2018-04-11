@@ -38,28 +38,28 @@ define pipe_create
 /** \brief Reply for pipe create reply
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
-    @param parent_sw_if_index - software index allocated for the new pipe parent interface
-                                Use the parent interface for link up/down and to delete
+    @param sw_if_index - software index allocated for the new pipe parent interface
+                         Use the parent interface for link up/down and to delete
     @param pipe_sw_if_index - the two SW indicies that form the ends of the pipe.
 */
 define pipe_create_reply
 {
   u32 context;
   i32 retval;
-  u32 parent_sw_if_index;
+  u32 sw_if_index;
   u32 pipe_sw_if_index[2];
 };
 
 /** \brief Delete pipe interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param parnet_sw_if_index - interface index of existing pipe interface
+    @param sw_if_index - interface index of existing pipe interface
 */
 autoreply define pipe_delete
 {
   u32 client_index;
   u32 context;
-  u32 parent_sw_if_index;
+  u32 sw_if_index;
 };
 
 /** \brief Dump pipe interfaces request */
@@ -71,14 +71,14 @@ define pipe_dump
 
 /** \brief Reply for pipe dump request
     @param sw_if_index - software index of pipe interface
-    @param parent_sw_if_index - software index allocated for the pipe parent interface
+    @param sw_if_index - software index allocated for the pipe parent interface
     @param pipe_sw_if_index - the two SW indicies that form the ends of the pipe.
     @param instance - instance allocated
 */
 define pipe_details
 {
   u32 context;
-  u32 parent_sw_if_index;
+  u32 sw_if_index;
   u32 pipe_sw_if_index[2];
   u32 instance;
 };

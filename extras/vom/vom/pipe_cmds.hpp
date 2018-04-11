@@ -13,37 +13,37 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_BRIDGE_DOMAIN_CMDS_H__
-#define __VOM_BRIDGE_DOMAIN_CMDS_H__
+#ifndef __VOM_PIPE_CMDS_H__
+#define __VOM_PIPE_CMDS_H__
 
-#include "vom/bridge_domain.hpp"
 #include "vom/dump_cmd.hpp"
+#include "vom/pipe.hpp"
 #include "vom/rpc_cmd.hpp"
 
-#include <vapi/l2.api.vapi.hpp>
+#include <vapi/pipe.api.vapi.hpp>
 
 namespace VOM {
-namespace bridge_domain_cmds {
+namespace pipe_cmds {
 /**
- * A command class that creates an Bridge-Domain
+ * A functor class that creates an interface
  */
-class create_cmd
-  : public rpc_cmd<HW::item<uint32_t>, vapi::Bridge_domain_add_del>
+class create_cmd : public interface::create_cmd<vapi::Pipe_create>
 {
 public:
   /**
-   * Constructor
+   * Cstrunctor taking the reference to the parent
+   * and the sub-interface's VLAN
    */
-  create_cmd(HW::item<uint32_t>& item,
-             const bridge_domain::learning_mode_t& lmode,
-             const bridge_domain::arp_term_mode_t& amode,
-             const bridge_domain::flood_mode_t& fmode,
-             const bridge_domain::mac_age_mode_t& mmode);
+  create_cmd(HW::item<handle_t>& item,
+             const std::string& name,
+             uint32_t instance,
+             HW::item<pipe::handle_pair_t>& ends);
 
   /**
    * Issue the command to VPP/HW
    */
   rc_t issue(connection& con);
+
   /**
    * convert to string format for debug purposes
    */
@@ -54,41 +54,29 @@ public:
    */
   bool operator==(const create_cmd& i) const;
 
+  virtual vapi_error_e operator()(vapi::Pipe_create& reply);
+
 private:
-  /**
-   * the learning mode for the bridge
-   */
-  bridge_domain::learning_mode_t m_learning_mode;
-  /**
-   * the learning mode for the bridge
-   */
-  bridge_domain::arp_term_mode_t m_arp_term_mode;
-  /**
-   * the flood mode for the bridge
-   */
-  bridge_domain::flood_mode_t m_flood_mode;
-  /**
-   * the flood mode for the bridge
-   */
-  bridge_domain::mac_age_mode_t m_mac_age_mode;
+  HW::item<pipe::handle_pair_t>& m_hdl_pair;
+  uint32_t m_instance;
 };
 
 /**
- * A cmd class that Delete an Bridge-Domain
+ * A cmd class that Delete an interface
  */
-class delete_cmd
-  : public rpc_cmd<HW::item<uint32_t>, vapi::Bridge_domain_add_del>
+class delete_cmd : public interface::delete_cmd<vapi::Pipe_delete>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<uint32_t>& item);
+  delete_cmd(HW::item<handle_t>& item, HW::item<pipe::handle_pair_t>& end_pair);
 
   /**
    * Issue the command to VPP/HW
    */
   rc_t issue(connection& con);
+
   /**
    * convert to string format for debug purposes
    */
@@ -98,19 +86,21 @@ public:
    * Comparison operator - only used for UT
    */
   bool operator==(const delete_cmd& i) const;
+
+private:
+  HW::item<pipe::handle_pair_t>& m_hdl_pair;
 };
 
 /**
- * A cmd class that Dumps all the bridge domains
+ * A cmd class that Dumps all the Vpp interfaces
  */
-class dump_cmd : public VOM::dump_cmd<vapi::Bridge_domain_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Pipe_dump>
 {
 public:
   /**
-   * Constructor
+   * Default Constructor
    */
-  dump_cmd();
-  dump_cmd(const dump_cmd& d);
+  dump_cmd() = default;
 
   /**
    * Issue the command to VPP/HW
@@ -125,15 +115,10 @@ public:
    * Comparison operator - only used for UT
    */
   bool operator==(const dump_cmd& i) const;
+};
 
-private:
-  /**
-   * HW reutrn code
-   */
-  HW::item<bool> item;
-};
-};
-};
+}; // namespace pipe_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

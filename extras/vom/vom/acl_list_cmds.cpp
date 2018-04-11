@@ -74,7 +74,8 @@ l3_update_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
+
   if (m_hw_item.rc() == rc_t::OK)
     insert_acl();
 
@@ -140,7 +141,8 @@ l2_update_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
+
   if (m_hw_item.rc() == rc_t::OK)
     insert_acl();
 

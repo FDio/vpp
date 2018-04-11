@@ -246,7 +246,7 @@ vxlan_tunnel::event_handler::handle_replay()
 dependency_t
 vxlan_tunnel::event_handler::order() const
 {
-  return (dependency_t::TUNNEL);
+  return (dependency_t::VIRTUAL_INTERFACE);
 }
 
 void

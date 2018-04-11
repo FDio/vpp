@@ -161,7 +161,7 @@ bond_group_binding::event_handler::order() const
    * We want enslaved interfaces bind to bond after interface
    * but before anything else.
    */
-  return (dependency_t::BOND_BINDING);
+  return (dependency_t::VIRTUAL_INTERFACE);
 }
 
 void
