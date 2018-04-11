@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True
 
 # Global dictionary of new types (including enums)
 global_types = {}
+global_crc = 0
 
 
 def global_type_add(name):
@@ -30,7 +31,7 @@ def global_type_add(name):
 
 # All your trace are belong to us!
 def exception_handler(exception_type, exception, traceback):
-    print ("%s: %s" % (exception_type.__name__, exception))
+    print("%s: %s" % (exception_type.__name__, exception))
 
 
 #
@@ -119,6 +120,7 @@ class VPPAPILexer(object):
     # A string containing ignored characters (spaces and tabs)
     t_ignore = ' \t'
 
+
 class Service():
     def __init__(self, caller, reply, events=[], stream=False):
         self.caller = caller
@@ -129,10 +131,12 @@ class Service():
 
 class Typedef():
     def __init__(self, name, flags, block):
+        global global_crc
         self.name = name
         self.flags = flags
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
+        global_crc = binascii.crc32(str(block), global_crc)
         global_type_add(name)
 
     def __repr__(self):
@@ -141,10 +145,12 @@ class Typedef():
 
 class Define():
     def __init__(self, name, flags, block):
+        global global_crc
         self.name = name
         self.flags = flags
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
+        global_crc = binascii.crc32(str(block), global_crc)
         self.typeonly = False
         self.dont_trace = False
         self.manual_print = False
@@ -176,6 +182,7 @@ class Define():
 
 class Enum():
     def __init__(self, name, block, enumtype='u32'):
+        global global_crc
         self.name = name
         self.enumtype = enumtype
         count = 0
@@ -188,6 +195,7 @@ class Enum():
 
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
+        global_crc = binascii.crc32(str(block), global_crc)
         global_type_add(name)
 
     def __repr__(self):
@@ -215,8 +223,10 @@ class Import():
 
 class Option():
     def __init__(self, option):
+        global global_crc
         self.option = option
         self.crc = binascii.crc32(str(option)) & 0xffffffff
+        global_crc = binascii.crc32(str(option), global_crc)
 
     def __repr__(self):
         return str(self.option)
@@ -350,8 +360,9 @@ class VPPAPIParser(object):
                              | RPC ID RETURNS ID EVENTS event_list ';' '''
         if p[2] == p[4]:
             # Verify that caller and reply differ
-            self._parse_error('Reply ID ({}) should not be equal to Caller ID'.format(p[2]),
-                              self._token_coord(p, 1))
+            self._parse_error(
+                'Reply ID ({}) should not be equal to Caller ID'.format(p[2]),
+                self._token_coord(p, 1))
         if len(p) == 8:
             p[0] = Service(p[2], p[4], p[6])
         elif len(p) == 7:
@@ -574,7 +585,6 @@ class VPPAPI(object):
                     if isinstance(o2, Service):
                         s['services'].append(o2)
 
-
         msgs = {d.name: d for d in s['defines']}
         svcs = {s.caller: s for s in s['services']}
         replies = {s.reply: s for s in s['services']}
@@ -582,9 +592,11 @@ class VPPAPI(object):
 
         for service in svcs:
             if service not in msgs:
-                raise ValueError('Service definition refers to unknown message'
-                                 ' definition: {}'.format(service))
-            if svcs[service].reply != 'null' and svcs[service].reply not in msgs:
+                raise ValueError(
+                    'Service definition refers to unknown message'
+                    ' definition: {}'.format(service))
+            if svcs[service].reply != 'null' and \
+               svcs[service].reply not in msgs:
                 raise ValueError('Service definition refers to unknown message'
                                  ' definition in reply: {}'
                                  .format(svcs[service].reply))
@@ -633,8 +645,9 @@ class VPPAPI(object):
             if d+'_reply' in msgs:
                 s['services'].append(Service(d, d+'_reply'))
             else:
-                raise ValueError('{} missing reply message ({}) or service definition'
-                                 .format(d, d+'_reply'))
+                raise ValueError(
+                    '{} missing reply message ({}) or service definition'
+                    .format(d, d+'_reply'))
 
         return s
 
@@ -656,10 +669,6 @@ def add_msg_id(s):
     for o in s:
         o.block.insert(0, Field('u16', '_vl_msg_id'))
     return s
-
-
-def getcrc(s):
-    return binascii.crc32(str(s)) & 0xffffffff
 
 
 dirlist = []
@@ -710,7 +719,6 @@ def main():
         logging.basicConfig()
     log = logging.getLogger('vppapigen')
 
-
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
     result = parser.parse_file(args.input, log)
 
@@ -721,7 +729,7 @@ def main():
     # Add msg_id field
     s['defines'] = add_msg_id(s['defines'])
 
-    file_crc = getcrc(s)
+    file_crc = global_crc & 0xffffffff
 
     #
     # Debug
@@ -743,7 +751,7 @@ def main():
     if not args.pluginpath:
         cand = []
         cand.append(os.path.dirname(os.path.realpath(__file__)))
-        cand.append(os.path.dirname(os.path.realpath(__file__)) + \
+        cand.append(os.path.dirname(os.path.realpath(__file__)) +
                     '/../share/vpp/')
         for c in cand:
             c += '/'
@@ -764,7 +772,7 @@ def main():
 
     result = plugin.run(filename, s, file_crc)
     if result:
-        print (result, file=args.output)
+        print(result, file=args.output)
     else:
         raise Exception('Running plugin failed: {} {}'
                         .format(filename, result))
