@@ -131,14 +131,14 @@ public:
   /**
    * A functor class that binds the ra config to the interface
    */
-  class config_cmd : public rpc_cmd<HW::item<bool>, rc_t, CMD>
+  class config_cmd : public rpc_cmd<HW::item<bool>, CMD>
   {
   public:
     /**
      * Constructor
      */
     config_cmd(HW::item<bool>& item, const handle_t& itf, const class_t& cls)
-      : rpc_cmd<HW::item<bool>, rc_t, CMD>(item)
+      : rpc_cmd<HW::item<bool>, CMD>(item)
       , m_itf(itf)
       , m_cls(cls)
     {
@@ -184,14 +184,14 @@ public:
   /**
    * A cmd class that Unbinds L3 Config from an interface
    */
-  class unconfig_cmd : public rpc_cmd<HW::item<bool>, rc_t, CMD>
+  class unconfig_cmd : public rpc_cmd<HW::item<bool>, CMD>
   {
   public:
     /**
      * Constructor
      */
     unconfig_cmd(HW::item<bool>& item, const handle_t& itf, const class_t& cls)
-      : rpc_cmd<HW::item<bool>, rc_t, CMD>(item)
+      : rpc_cmd<HW::item<bool>, CMD>(item)
       , m_itf(itf)
       , m_cls(cls)
     {

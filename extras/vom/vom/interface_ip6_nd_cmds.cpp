@@ -31,9 +31,7 @@ ip6nd_ra_config::config_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>
@@ -68,9 +66,7 @@ ip6nd_ra_prefix::config_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>

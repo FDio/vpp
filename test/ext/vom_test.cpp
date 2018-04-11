@@ -67,6 +67,8 @@
 #include "vom/nat_static_cmds.hpp"
 #include "vom/nat_binding.hpp"
 #include "vom/nat_binding_cmds.hpp"
+#include "vom/pipe.hpp"
+#include "vom/pipe_cmds.hpp"
 
 using namespace boost;
 using namespace VOM;
@@ -426,6 +428,14 @@ public:
                     else if (typeid(*f_exp) == typeid(interface_cmds::events_cmd))
                     {
                         rc = handle_derived<interface_cmds::events_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(pipe_cmds::create_cmd))
+                    {
+                        rc = handle_derived<pipe_cmds::create_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(pipe_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<pipe_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else
                     {
@@ -1858,6 +1868,74 @@ BOOST_AUTO_TEST_CASE(test_prefixes) {
     BOOST_CHECK(p4_s_32.low().address() == boost::asio::ip::address::from_string("192.168.1.1"));
     BOOST_CHECK(p4_s_32.high().address() == boost::asio::ip::address::from_string("192.168.1.1"));
 
+}
+
+BOOST_AUTO_TEST_CASE(test_pipes) {
+    VppInit vi;
+    const std::string gk = "GKChesterton";
+
+    const std::string pipe_name_1 = "pipe1";
+    VOM::pipe pipe1(1, interface::admin_state_t::UP);
+    HW::item<handle_t> hw_hdl(4, rc_t::OK);
+    HW::item<pipe::handle_pair_t> hw_hdl_pair(std::make_pair(5,6), rc_t::OK);
+
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP,
+                                                rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
+                                                  rc_t::OK);
+    ADD_EXPECT(pipe_cmds::create_cmd(hw_hdl, pipe_name_1, 1, hw_hdl_pair));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_hdl));
+    TRY_CHECK_RC(OM::write(gk, pipe1));
+
+    pipe1.set_ends(hw_hdl_pair.data());
+
+    // put each end of the pipe in a BD
+    bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF,
+                      bridge_domain::arp_term_mode_t::OFF,
+                      bridge_domain::flood_mode_t::OFF,
+                      bridge_domain::mac_age_mode_t::ON);
+
+    HW::item<uint32_t> hw_bd(33, rc_t::OK);
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
+                                              bridge_domain::learning_mode_t::OFF,
+                                              bridge_domain::arp_term_mode_t::OFF,
+                                              bridge_domain::flood_mode_t::OFF,
+                                              bridge_domain::mac_age_mode_t::ON));
+
+    TRY_CHECK_RC(OM::write(gk, bd1));
+
+    l2_binding *l2_1 = new l2_binding(*pipe1.east(), bd1);
+    HW::item<bool> hw_l2_1_bind(true, rc_t::OK);
+
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_1_bind,
+                                         pipe1.east()->handle(),
+                                         hw_bd.data(), false));
+    TRY_CHECK_RC(OM::write(gk, *l2_1));
+
+    l2_binding *l2_2 = new l2_binding(*pipe1.west(), bd1);
+    HW::item<bool> hw_l2_2_bind(true, rc_t::OK);
+
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_2_bind,
+                                         pipe1.west()->handle(),
+                                         hw_bd.data(), false));
+    TRY_CHECK_RC(OM::write(gk, *l2_2));
+
+    STRICT_ORDER_OFF();
+
+    delete l2_1;
+    delete l2_2;
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_1_bind,
+                                           pipe1.east()->handle(),
+                                           hw_bd.data(),
+                                           false));
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_1_bind,
+                                           pipe1.west()->handle(),
+                                           hw_bd.data(),
+                                           false));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_hdl));
+    ADD_EXPECT(pipe_cmds::delete_cmd(hw_hdl, hw_hdl_pair));
+    ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
+    TRY_CHECK(OM::remove(gk));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

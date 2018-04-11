@@ -78,9 +78,7 @@ class TestPipe(VppTestCase):
     def test_pipe(self):
         """ Pipes """
 
-        pipes = []
-        pipes.append(VppPipe(self))
-        pipes.append(VppPipe(self, 10))
+        pipes = [VppPipe(self), VppPipe(self, 10)]
 
         for p in pipes:
             p.add_vpp_config()

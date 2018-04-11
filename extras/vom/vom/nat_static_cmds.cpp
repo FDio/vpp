@@ -55,9 +55,7 @@ create_44_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -178,9 +176,7 @@ create_66_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string

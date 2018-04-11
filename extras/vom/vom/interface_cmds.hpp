@@ -177,7 +177,7 @@ public:
  * A command class to set tag on interfaces
  */
 class set_tag
-  : public rpc_cmd<HW::item<handle_t>, rc_t, vapi::Sw_interface_tag_add_del>
+  : public rpc_cmd<HW::item<handle_t>, vapi::Sw_interface_tag_add_del>
 {
 public:
   /**
@@ -211,7 +211,6 @@ private:
  * A cmd class that changes the admin state
  */
 class state_change_cmd : public rpc_cmd<HW::item<interface::admin_state_t>,
-                                        rc_t,
                                         vapi::Sw_interface_set_flags>
 {
 public:
@@ -246,9 +245,8 @@ private:
 /**
  * A command class that binds an interface to an L3 table
  */
-class set_table_cmd : public rpc_cmd<HW::item<route::table_id_t>,
-                                     rc_t,
-                                     vapi::Sw_interface_set_table>
+class set_table_cmd
+  : public rpc_cmd<HW::item<route::table_id_t>, vapi::Sw_interface_set_table>
 {
 public:
   /**
@@ -289,9 +287,8 @@ private:
 /**
  * A command class that changes the MAC address on an interface
  */
-class set_mac_cmd : public rpc_cmd<HW::item<l2_address_t>,
-                                   rc_t,
-                                   vapi::Sw_interface_set_mac_address>
+class set_mac_cmd
+  : public rpc_cmd<HW::item<l2_address_t>, vapi::Sw_interface_set_mac_address>
 {
 public:
   /**
@@ -327,7 +324,6 @@ private:
  */
 class collect_detail_stats_change_cmd
   : public rpc_cmd<HW::item<interface::stats_type_t>,
-                   rc_t,
                    vapi::Collect_detailed_interface_stats>
 {
 public:
@@ -474,9 +470,7 @@ private:
  * A command class represents our desire to recieve interface stats
  */
 class stats_disable_cmd
-  : public rpc_cmd<HW::item<bool>,
-                   rc_t,
-                   vapi::Want_per_interface_combined_stats>
+  : public rpc_cmd<HW::item<bool>, vapi::Want_per_interface_combined_stats>
 {
 public:
   /**

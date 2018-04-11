@@ -28,8 +28,7 @@ namespace lldp_binding_cmds {
 /**
 *A command class that binds the LLDP config to the interface
 */
-class bind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_lldp>
+class bind_cmd : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_lldp>
 {
 public:
   /**
@@ -68,8 +67,7 @@ private:
 /**
  * A cmd class that Unbinds Lldp Config from an interface
  */
-class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_lldp>
+class unbind_cmd : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_lldp>
 {
 public:
   /**

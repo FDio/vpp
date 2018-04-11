@@ -79,6 +79,12 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
     sp = interface::find(hdl);
     if (sp && !tag.empty())
       sp->set(tag);
+  } else if (interface::type_t::PIPE == type) {
+    /*
+     * there's not enough information in a SW interface record to
+     * construct a pipe. so skip it. They have
+     * their own dump routines
+     */
   } else if ((name.find(".") != std::string::npos) && (0 != vd.sub_id)) {
     /*
      * Sub-interface
@@ -228,6 +234,24 @@ interface_factory::new_bond_member_interface(
   bond_member bm(*itf, mode, rate);
   return (bm);
 }
+
+std::shared_ptr<pipe>
+interface_factory::new_pipe_interface(const vapi_payload_pipe_details& payload)
+{
+  std::shared_ptr<pipe> sp;
+
+  handle_t hdl(payload.sw_if_index);
+  pipe::handle_pair_t hdl_pair(payload.pipe_sw_if_index[0],
+                               payload.pipe_sw_if_index[1]);
+
+  sp = pipe(payload.instance, interface::admin_state_t::UP).singular();
+
+  sp->set(hdl);
+  sp->set_ends(hdl_pair);
+
+  return (sp);
+}
+
 }; // namespace VOM
 
 /*

@@ -27,7 +27,7 @@ namespace l2_emulation_cmds {
 /**
  * A functor class that enable L2 emulation to an interface
  */
-class enable_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2_emulation>
+class enable_cmd : public rpc_cmd<HW::item<bool>, vapi::L2_emulation>
 {
 public:
   /**
@@ -59,7 +59,7 @@ private:
 /**
  * A cmd class that Unbinds L2 configuration from an interface
  */
-class disable_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2_emulation>
+class disable_cmd : public rpc_cmd<HW::item<bool>, vapi::L2_emulation>
 {
 public:
   /**

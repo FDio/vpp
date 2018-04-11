@@ -34,9 +34,7 @@ l3_bind_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>
@@ -64,9 +62,7 @@ l3_unbind_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>
@@ -116,9 +112,7 @@ l2_bind_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>
@@ -145,9 +139,7 @@ l2_unbind_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 template <>
