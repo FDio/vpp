@@ -103,16 +103,19 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_buffer_t *c0;
-  int i;
+  int port;
   u32 *to_next = 0;
   u32 sw_if_index;
   vlib_frame_t *f;
+  u16 thread_index = vlib_get_thread_index ();
 
-
-  for (i = 1; i < slave_count; i++)
+  for (port = 1; port < slave_count; port++)
     {
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, i);
-      f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
+      sw_if_index = *vec_elt_at_index (bif->active_slaves, port);
+      if (bif->per_thread_info[thread_index].frame[port] == 0)
+	bif->per_thread_info[thread_index].frame[port] =
+	  vnet_get_frame_to_sw_interface (vnm, sw_if_index);
+      f = bif->per_thread_info[thread_index].frame[port];
       to_next = vlib_frame_vector_args (f);
       to_next += f->n_vectors;
       c0 = vlib_buffer_copy (vm, b0);
@@ -121,7 +124,6 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (c0)->sw_if_index[VLIB_TX] = sw_if_index;
 	  to_next[0] = vlib_get_buffer_index (vm, c0);
 	  f->n_vectors++;
-	  vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
 	}
     }
 
