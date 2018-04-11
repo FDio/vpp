@@ -133,7 +133,15 @@ vl_api_nat_set_workers_t_handler (vl_api_nat_set_workers_t * mp)
   vl_api_nat_set_workers_reply_t *rmp;
   int rv = 0;
   uword *bitmap = 0;
-  u64 mask = clib_net_to_host_u64 (mp->worker_mask);
+  u64 mask;
+
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
+  mask = clib_net_to_host_u64 (mp->worker_mask);
 
   if (sm->num_workers < 2)
     {
@@ -200,6 +208,9 @@ vl_api_nat_worker_dump_t_handler (vl_api_nat_worker_dump_t * mp)
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   u32 *worker_index;
+
+  if (sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -411,6 +422,12 @@ static void
   int rv = 0;
   u32 *tmp;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   if (sm->static_mapping_only)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
@@ -499,6 +516,9 @@ vl_api_nat44_address_dump_t_handler (vl_api_nat44_address_dump_t * mp)
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_address_t *a;
+
+  if (sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -614,13 +634,19 @@ static void
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = snat_interface_add_del_output_feature (sw_if_index, mp->is_inside,
 					      is_del);
 
   BAD_SW_IF_INDEX_LABEL;
-
+send_reply:
   REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
 }
 
@@ -664,6 +690,9 @@ static void
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
 
+  if (sm->deterministic)
+    return;
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -699,6 +728,12 @@ static void
   snat_protocol_t proto;
   u8 *tag = 0;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
   memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
   if (mp->addr_only == 0)
@@ -720,6 +755,7 @@ static void
 
   vec_free (tag);
 
+send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_REPLY);
 }
 
@@ -822,6 +858,9 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   snat_static_map_resolve_t *rp;
   int j;
 
+  if (sm->deterministic)
+    return;
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -866,6 +905,12 @@ static void
   snat_protocol_t proto = ~0;
   u8 *tag = 0;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   if (mp->addr_only == 0)
     {
       port = clib_net_to_host_u16 (mp->port);
@@ -887,6 +932,7 @@ static void
 
   vec_free (tag);
 
+send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
 }
 
@@ -970,6 +1016,9 @@ static void
   snat_static_map_resolve_t *rp;
   int j;
 
+  if (sm->deterministic)
+    return;
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -1010,12 +1059,18 @@ static void
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = snat_add_interface_address (sm, sw_if_index, is_del, mp->twice_nat);
 
   BAD_SW_IF_INDEX_LABEL;
-
+send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_INTERFACE_ADDR_REPLY);
 }
 
@@ -1058,6 +1113,9 @@ vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   u32 *i;
+
+  if (sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -1111,6 +1169,9 @@ vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_user_t *u;
+
+  if (sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -1181,6 +1242,9 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   u32 session_index, head_index, elt_index;
   dlist_elt_t *head, *elt;
   ip4_header_t ip;
+
+  if (sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -1266,6 +1330,12 @@ static void
   snat_protocol_t proto;
   u8 *tag = 0;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   locals = unformat_nat44_lb_addr_port (mp->locals, mp->local_num);
   clib_memcpy (&e_addr, mp->external_addr, 4);
   proto = ip_proto_to_snat_proto (mp->protocol);
@@ -1283,6 +1353,7 @@ static void
   vec_free (locals);
   vec_free (tag);
 
+send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_LB_STATIC_MAPPING_REPLY);
 }
 
@@ -1346,6 +1417,9 @@ static void
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
 
+  if (sm->deterministic)
+    return;
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -1380,6 +1454,12 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
   int rv = 0;
   snat_protocol_t proto;
 
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   memcpy (&addr.as_u8, mp->address, 4);
   port = clib_net_to_host_u16 (mp->port);
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
@@ -1387,6 +1467,7 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
 
   rv = nat44_del_session (sm, &addr, port, proto, vrf_id, mp->is_in);
 
+send_reply:
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
 }
 
@@ -1474,6 +1555,12 @@ vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t * mp)
   int rv = 0;
   ip4_address_t in_addr, out_addr;
 
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   if (!mp->is_nat44)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -1512,6 +1599,13 @@ vl_api_nat_det_forward_t_handler (vl_api_nat_det_forward_t * mp)
   u16 lo_port = 0, hi_port = 0;
   snat_det_map_t *dm;
   ip4_address_t in_addr, out_addr;
+
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      REPLY_MACRO (VL_API_NAT_DET_FORWARD_REPLY);
+      return;
+    }
 
   if (!mp->is_nat44)
     {
@@ -1562,6 +1656,13 @@ vl_api_nat_det_reverse_t_handler (vl_api_nat_det_reverse_t * mp)
   int rv = 0;
   ip4_address_t out_addr, in_addr;
   snat_det_map_t *dm;
+
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      REPLY_MACRO (VL_API_NAT_DET_REVERSE_REPLY);
+      return;
+    }
 
   in_addr.as_u32 = 0;
   clib_memcpy (&out_addr, mp->out_addr, 4);
@@ -1627,6 +1728,9 @@ vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t * mp)
   snat_main_t *sm = &snat_main;
   snat_det_map_t *m;
 
+  if (!sm->deterministic)
+    return;
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -1654,11 +1758,18 @@ vl_api_nat_det_set_timeouts_t_handler (vl_api_nat_det_set_timeouts_t * mp)
   vl_api_nat_det_set_timeouts_reply_t *rmp;
   int rv = 0;
 
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   sm->udp_timeout = ntohl (mp->udp);
   sm->tcp_established_timeout = ntohl (mp->tcp_established);
   sm->tcp_transitory_timeout = ntohl (mp->tcp_transitory);
   sm->icmp_timeout = ntohl (mp->icmp);
 
+send_reply:
   REPLY_MACRO (VL_API_NAT_DET_SET_TIMEOUTS_REPLY);
 }
 
@@ -1683,6 +1794,13 @@ vl_api_nat_det_get_timeouts_t_handler (vl_api_nat_det_get_timeouts_t * mp)
   snat_main_t *sm = &snat_main;
   vl_api_nat_det_get_timeouts_reply_t *rmp;
   int rv = 0;
+
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      REPLY_MACRO (VL_API_NAT_DET_GET_TIMEOUTS_REPLY);
+      return;
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT_DET_GET_TIMEOUTS_REPLY,
@@ -1717,6 +1835,12 @@ vl_api_nat_det_close_session_out_t_handler (vl_api_nat_det_close_session_out_t
   snat_det_map_t *dm;
   snat_det_session_t *ses;
   int rv = 0;
+
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
 
   clib_memcpy (&out_addr, mp->out_addr, 4);
   clib_memcpy (&ext_addr, mp->ext_addr, 4);
@@ -1769,6 +1893,12 @@ vl_api_nat_det_close_session_in_t_handler (vl_api_nat_det_close_session_in_t *
   snat_det_map_t *dm;
   snat_det_session_t *ses;
   int rv = 0;
+
+  if (!sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
 
   if (!mp->is_nat44)
     {
@@ -1842,6 +1972,9 @@ vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
   snat_det_map_t *dm;
   snat_det_session_t *s, empty_ses;
   u16 i;
+
+  if (!sm->deterministic)
+    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
