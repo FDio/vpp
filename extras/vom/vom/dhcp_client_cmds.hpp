@@ -29,7 +29,7 @@ namespace dhcp_client_cmds {
 /**
   * A command class that binds the DHCP config to the interface
   */
-class bind_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Dhcp_client_config>
+class bind_cmd : public rpc_cmd<HW::item<bool>, vapi::Dhcp_client_config>
 {
 public:
   /**
@@ -80,8 +80,7 @@ private:
 /**
  * A cmd class that Unbinds Dhcp Config from an interface
  */
-class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Dhcp_client_config>
+class unbind_cmd : public rpc_cmd<HW::item<bool>, vapi::Dhcp_client_config>
 {
 public:
   /**

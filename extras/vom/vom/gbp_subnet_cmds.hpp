@@ -27,8 +27,7 @@ namespace gbp_subnet_cmds {
 /**
 * A command class that creates or updates the GBP subnet
 */
-class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_subnet_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_subnet_add_del>
 {
 public:
   /**
@@ -67,8 +66,7 @@ private:
 /**
  * A cmd class that deletes a GBP subnet
  */
-class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_subnet_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_subnet_add_del>
 {
 public:
   /**

@@ -51,9 +51,9 @@ create_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
 
-  if (m_hw_item) {
+  if (rc_t::OK == m_hw_item.rc()) {
     insert_interface();
   }
 

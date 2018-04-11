@@ -26,7 +26,7 @@ namespace bond_group_binding_cmds {
 /**
  * A command class that binds the slave interface to the bond interface
  */
-class bind_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bond_enslave>
+class bind_cmd : public rpc_cmd<HW::item<bool>, vapi::Bond_enslave>
 {
 public:
   /**
@@ -65,7 +65,7 @@ private:
 /**
  * A cmd class that detach slave from a bond interface
  */
-class unbind_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bond_detach_slave>
+class unbind_cmd : public rpc_cmd<HW::item<bool>, vapi::Bond_detach_slave>
 {
 public:
   /**

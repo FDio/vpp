@@ -29,7 +29,7 @@ namespace interface_span_cmds {
  * A command class that configures the interface span
  */
 class config_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_span_enable_disable>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_span_enable_disable>
 {
 public:
   /**
@@ -73,7 +73,7 @@ private:
  * A cmd class that Unconfigs interface span
  */
 class unconfig_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_span_enable_disable>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_span_enable_disable>
 {
 public:
   /**
