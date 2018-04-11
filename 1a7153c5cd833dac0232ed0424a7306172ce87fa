@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa7e6497_de37d523",
+        "filename": "src/vpp-api/vom/bridge_domain_cmds.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-11T09:27:47Z",
+      "side": 1,
+      "message": "in the currently use case for VOM that I have, ARP termination is used. So this was defaulted to 1. I can add the config knob.",
+      "parentUuid": "058703d1_1f5a9f45",
+      "range": {
+        "startLine": 48,
+        "startChar": 2,
+        "endLine": 48,
+        "endChar": 9
+      },
+      "revId": "1a7153c5cd833dac0232ed0424a7306172ce87fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4865fd7d_eaf89d98",
         "filename": "src/vpp-api/vom/bridge_domain_cmds.cpp",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2018-04-10T16:10:36Z",
       "side": 1,
       "message": "Should we enable aging if learning is enabled?  Aging interval is typically set to 5 minutes.",
+      "range": {
+        "startLine": 49,
+        "startChar": 10,
+        "endLine": 49,
+        "endChar": 17
+      },
+      "revId": "1a7153c5cd833dac0232ed0424a7306172ce87fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "473ad3fd_dc27ee1d",
+        "filename": "src/vpp-api/vom/bridge_domain_cmds.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-11T09:27:47Z",
+      "side": 1,
+      "message": "i\u0027l add the config knob here too.",
+      "parentUuid": "4865fd7d_eaf89d98",
       "range": {
         "startLine": 49,
         "startChar": 10,
