@@ -141,6 +141,41 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
 }
 
+static u32
+link_speed_convert_to_kbps (u32 bit_link_speed)
+{
+#define _M(speed)       (u32)((speed)*1000U)
+#define _G(speed)       (u32)(_M(speed)*1000U)
+  switch (bit_link_speed)
+    {
+    case VNET_HW_INTERFACE_FLAG_SPEED_10M:
+      return _M (10);
+    case VNET_HW_INTERFACE_FLAG_SPEED_100M:
+      return _M (100);
+    case VNET_HW_INTERFACE_FLAG_SPEED_1G:
+      return _G (1);
+    case VNET_HW_INTERFACE_FLAG_SPEED_2_5G:
+      return _G (2.5);
+    case VNET_HW_INTERFACE_FLAG_SPEED_5G:
+      return _G (5);
+    case VNET_HW_INTERFACE_FLAG_SPEED_10G:
+      return _G (10);
+    case VNET_HW_INTERFACE_FLAG_SPEED_20G:
+      return _G (20);
+    case VNET_HW_INTERFACE_FLAG_SPEED_25G:
+      return _G (25);
+    case VNET_HW_INTERFACE_FLAG_SPEED_40G:
+      return _G (40);
+    case VNET_HW_INTERFACE_FLAG_SPEED_50G:
+      return _G (50);
+    case VNET_HW_INTERFACE_FLAG_SPEED_56G:
+      return _G (56);
+    case VNET_HW_INTERFACE_FLAG_SPEED_100G:
+      return _G (100);
+    }
+  return bit_link_speed;
+}
+
 static void
 send_sw_interface_details (vpe_api_main_t * am,
 			   vl_api_registration_t * rp,
@@ -159,8 +194,8 @@ send_sw_interface_details (vpe_api_main_t * am,
   mp->link_up_down = (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
   mp->link_duplex = ((hi->flags & VNET_HW_INTERFACE_FLAG_DUPLEX_MASK) >>
 		     VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT);
-  mp->link_speed = ((hi->flags & VNET_HW_INTERFACE_FLAG_SPEED_MASK) >>
-		    VNET_HW_INTERFACE_FLAG_SPEED_SHIFT);
+  mp->link_speed = link_speed_convert_to_kbps (hi->flags &
+					       VNET_HW_INTERFACE_FLAG_SPEED_MASK);
   mp->link_mtu = ntohs (hi->max_packet_bytes);
   mp->context = context;
 
