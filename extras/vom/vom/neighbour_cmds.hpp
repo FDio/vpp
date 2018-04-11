@@ -27,8 +27,8 @@ namespace neighbour_cmds {
 /**
  * A command class that creates or updates the bridge domain ARP Entry
  */
-class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_neighbor_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>,
+                                  vapi::Ip_neighbor_add_del>
 {
 public:
   /**
@@ -63,8 +63,8 @@ private:
 /**
  * A cmd class that deletes a bridge domain ARP entry
  */
-class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_neighbor_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>,
+                                  vapi::Ip_neighbor_add_del>
 {
 public:
   /**

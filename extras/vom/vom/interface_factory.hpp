@@ -18,13 +18,16 @@
 
 #include <vapi/vapi.hpp>
 
+#include "vom/bond_interface.hpp"
 #include "vom/bond_member.hpp"
 #include "vom/interface.hpp"
+#include "vom/pipe.hpp"
 #include "vom/tap_interface.hpp"
 
 #include <vapi/af_packet.api.vapi.hpp>
 #include <vapi/bond.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
+#include <vapi/pipe.api.vapi.hpp>
 #include <vapi/tap.api.vapi.hpp>
 #include <vapi/tapv2.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
@@ -57,6 +60,9 @@ public:
 
   static bond_member new_bond_member_interface(
     const vapi_payload_sw_interface_slave_details& vd);
+
+  static std::shared_ptr<pipe> new_pipe_interface(
+    const vapi_payload_pipe_details& payload);
 };
 };
 

@@ -29,7 +29,7 @@ namespace binding_cmds {
  * A command class that binds the ACL to the interface
  */
 template <typename BIND>
-class bind_cmd : public rpc_cmd<HW::item<bool>, rc_t, BIND>
+class bind_cmd : public rpc_cmd<HW::item<bool>, BIND>
 {
 public:
   /**
@@ -39,7 +39,7 @@ public:
            const direction_t& direction,
            const handle_t& itf,
            const handle_t& acl)
-    : rpc_cmd<HW::item<bool>, rc_t, BIND>(item)
+    : rpc_cmd<HW::item<bool>, BIND>(item)
     , m_direction(direction)
     , m_itf(itf)
     , m_acl(acl)
@@ -85,7 +85,7 @@ private:
  * A command class that binds the ACL to the interface
  */
 template <typename BIND>
-class unbind_cmd : public rpc_cmd<HW::item<bool>, rc_t, BIND>
+class unbind_cmd : public rpc_cmd<HW::item<bool>, BIND>
 {
 public:
   /**
@@ -95,7 +95,7 @@ public:
              const direction_t& direction,
              const handle_t& itf,
              const handle_t& acl)
-    : rpc_cmd<HW::item<bool>, rc_t, BIND>(item)
+    : rpc_cmd<HW::item<bool>, BIND>(item)
     , m_direction(direction)
     , m_itf(itf)
     , m_acl(acl)

@@ -37,7 +37,7 @@ loopback_create_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
 
   if (m_hw_item.rc() == rc_t::OK) {
     insert_interface();
@@ -74,7 +74,7 @@ af_packet_create_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
 
   if (m_hw_item.rc() == rc_t::OK) {
     insert_interface();
@@ -120,7 +120,7 @@ vhost_create_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item = wait();
+  wait();
 
   if (m_hw_item.rc() == rc_t::OK) {
     insert_interface();
@@ -257,9 +257,7 @@ state_change_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return rc_t::OK;
+  return (wait());
 }
 
 std::string
@@ -299,9 +297,7 @@ set_table_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return (rc_t::OK);
+  return (wait());
 }
 
 std::string
@@ -338,9 +334,7 @@ set_mac_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return (rc_t::OK);
+  return (wait());
 }
 
 std::string
@@ -380,9 +374,7 @@ collect_detail_stats_change_cmd::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  m_hw_item.set(wait());
-
-  return (rc_t::OK);
+  return (wait());
 }
 
 std::string
@@ -691,9 +683,7 @@ set_tag::issue(connection& con)
 
   VAPI_CALL(req.execute());
 
-  wait();
-
-  return rc_t::OK;
+  return (wait());
 }
 std::string
 set_tag::to_string() const

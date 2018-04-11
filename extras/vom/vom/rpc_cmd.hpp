@@ -34,7 +34,7 @@ namespace VOM {
  * The command is templatised on the type of the HW::item to be set by
  * the command, and the data returned in the promise,
  */
-template <typename HWITEM, typename DATA, typename MSG>
+template <typename HWITEM, typename MSG>
 class rpc_cmd : public cmd
 {
 public:
@@ -71,34 +71,27 @@ public:
   /**
    * Fulfill the commands promise. Called from the RX thread
    */
-  void fulfill(const DATA& d)
-  {
-    m_promise.set_value(d);
-
-    /*
-     * we reset the promise after setting the value to reuse it
-     * when we run the retire command from the same cmd object
-     */
-    //    m_promise = std::promise<DATA>();
-  }
+  void fulfill(const HWITEM& d) { m_promise.set_value(d); }
 
   /**
    * Wait on the commands promise. i.e. block on the completion
    * of the command.
    */
-  DATA wait()
+  rc_t wait()
   {
     std::future_status status;
-    std::future<DATA> result;
+    std::future<HWITEM> result;
 
     result = m_promise.get_future();
     status = result.wait_for(std::chrono::seconds(5));
 
     if (status != std::future_status::ready) {
-      return (DATA(rc_t::TIMEOUT));
+      m_hw_item.set(rc_t::TIMEOUT);
+    } else {
+      m_hw_item = result.get();
     }
 
-    return (result.get());
+    return (m_hw_item.rc());
   }
 
   /**
@@ -116,9 +109,13 @@ public:
    */
   virtual vapi_error_e operator()(MSG& reply)
   {
+    HWITEM hi = m_hw_item;
     int retval = reply.get_response().get_payload().retval;
     VOM_LOG(log_level_t::DEBUG) << to_string() << " " << retval;
-    fulfill(rc_t::from_vpp_retval(retval));
+
+    /* set a temporary value in this callback thread */
+    hi.set(rc_t::from_vpp_retval(retval));
+    fulfill(hi);
 
     return (VAPI_OK);
   }
@@ -137,7 +134,7 @@ protected:
   /**
    * The promise that implements the synchronous issue
    */
-  std::promise<DATA> m_promise;
+  std::promise<HWITEM> m_promise;
 };
 };
 

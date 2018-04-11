@@ -36,14 +36,14 @@ namespace VOM {
  * The client can then 'pop' these events from this command object.
  */
 template <typename WANT, typename EVENT>
-class event_cmd : public rpc_cmd<HW::item<bool>, rc_t, WANT>
+class event_cmd : public rpc_cmd<HW::item<bool>, WANT>
 {
 public:
   /**
    * Default constructor
    */
   event_cmd(HW::item<bool>& b)
-    : rpc_cmd<HW::item<bool>, rc_t, WANT>(b)
+    : rpc_cmd<HW::item<bool>, WANT>(b)
   {
   }
 
