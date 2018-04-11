@@ -27,7 +27,7 @@ namespace route_domain_cmds {
 /**
  * A command class that creates the IP table
  */
-class create_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_table_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_table_add_del>
 {
 public:
   /**
@@ -65,7 +65,7 @@ private:
 /**
  * A cmd class that Deletes the IP Table
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_table_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_table_add_del>
 {
 public:
   /**

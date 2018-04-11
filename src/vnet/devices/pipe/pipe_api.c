@@ -59,7 +59,7 @@ vl_api_pipe_create_t_handler (vl_api_pipe_create_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_PIPE_CREATE_REPLY,
   ({
-    rmp->parent_sw_if_index = ntohl (parent_sw_if_index);
+    rmp->sw_if_index = ntohl (parent_sw_if_index);
     rmp->pipe_sw_if_index[0] = ntohl (pipe_sw_if_index[0]);
     rmp->pipe_sw_if_index[1] = ntohl (pipe_sw_if_index[1]);
   }));
@@ -72,7 +72,7 @@ vl_api_pipe_delete_t_handler (vl_api_pipe_delete_t * mp)
   vl_api_pipe_delete_reply_t *rmp;
   int rv;
 
-  rv = vnet_delete_pipe_interface (ntohl (mp->parent_sw_if_index));
+  rv = vnet_delete_pipe_interface (ntohl (mp->sw_if_index));
 
   REPLY_MACRO (VL_API_PIPE_DELETE_REPLY);
 }
@@ -98,7 +98,7 @@ pipe_send_details (u32 parent_sw_if_index,
   mp->context = ctx->context;
 
   mp->instance = ntohl (instance);
-  mp->parent_sw_if_index = ntohl (parent_sw_if_index);
+  mp->sw_if_index = ntohl (parent_sw_if_index);
   mp->pipe_sw_if_index[0] = ntohl (pipe_sw_if_index[0]);
   mp->pipe_sw_if_index[1] = ntohl (pipe_sw_if_index[1]);
 

@@ -27,8 +27,7 @@ namespace gbp_recirc_cmds {
 /**
 * A command class that creates or updates the GBP recirc
 */
-class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_recirc_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_recirc_add_del>
 {
 public:
   /**
@@ -63,8 +62,7 @@ private:
 /**
  * A cmd class that deletes a GBP recirc
  */
-class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_recirc_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_recirc_add_del>
 {
 public:
   /**

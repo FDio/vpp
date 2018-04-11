@@ -28,9 +28,8 @@ namespace acl_ethertype_cmds {
 /**
  * A command class that binds the ethertype list to the interface
  */
-class bind_cmd : public rpc_cmd<HW::item<bool>,
-                                rc_t,
-                                vapi::Acl_interface_set_etype_whitelist>
+class bind_cmd
+  : public rpc_cmd<HW::item<bool>, vapi::Acl_interface_set_etype_whitelist>
 {
 public:
   /**
@@ -69,9 +68,8 @@ private:
 /**
  * A command class that unbinds the ethertype list to the interface
  */
-class unbind_cmd : public rpc_cmd<HW::item<bool>,
-                                  rc_t,
-                                  vapi::Acl_interface_set_etype_whitelist>
+class unbind_cmd
+  : public rpc_cmd<HW::item<bool>, vapi::Acl_interface_set_etype_whitelist>
 {
 public:
   /**

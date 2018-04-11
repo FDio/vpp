@@ -28,7 +28,7 @@ namespace bridge_domain_entry_cmds {
 /**
 * A command class that creates or updates the bridge_domain
 */
-class create_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2fib_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::L2fib_add_del>
 {
 public:
   /**
@@ -65,7 +65,7 @@ private:
 /**
  * A cmd class that deletes a bridge_domain
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2fib_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::L2fib_add_del>
 {
 public:
   /**

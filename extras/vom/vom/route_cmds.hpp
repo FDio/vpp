@@ -29,7 +29,7 @@ namespace ip_route_cmds {
 /**
  * A command class that creates or updates the route
  */
-class update_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
+class update_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_add_del_route>
 {
 public:
   /**
@@ -64,7 +64,7 @@ private:
 /**
  * A cmd class that deletes a route
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_add_del_route>
 {
 public:
   /**

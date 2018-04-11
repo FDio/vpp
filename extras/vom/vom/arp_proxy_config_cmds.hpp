@@ -27,7 +27,7 @@ namespace arp_proxy_config_cmds {
 /**
  * A command class that adds the ARP Proxy config
  */
-class config_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_add_del>
+class config_cmd : public rpc_cmd<HW::item<bool>, vapi::Proxy_arp_add_del>
 {
 public:
   /**
@@ -62,8 +62,7 @@ private:
 /**
  * A cmd class that Unconfigs ArpProxy Config from an interface
  */
-class unconfig_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_add_del>
+class unconfig_cmd : public rpc_cmd<HW::item<bool>, vapi::Proxy_arp_add_del>
 {
 public:
   /**

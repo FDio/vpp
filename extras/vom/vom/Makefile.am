@@ -127,6 +127,8 @@ libvom_la_SOURCES = 			\
 	neighbour_cmds.cpp		\
 	object_base.cpp			\
 	om.cpp				\
+	pipe.cpp			\
+	pipe_cmds.cpp			\
 	prefix.cpp			\
 	ra_config.cpp			\
 	ra_prefix.cpp			\
@@ -214,6 +216,7 @@ vominclude_HEADERS =			\
 	neighbour.hpp			\
 	object_base.hpp			\
 	om.hpp				\
+	pipe.hpp			\
 	prefix.hpp			\
 	ra_config.hpp			\
 	ra_prefix.hpp			\

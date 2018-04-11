@@ -30,7 +30,7 @@ namespace l3_binding_cmds {
  * A functor class that binds the L3 config to the interface
  */
 class bind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_add_del_address>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_add_del_address>
 {
 public:
   /**
@@ -70,7 +70,7 @@ private:
  * A cmd class that Unbinds L3 Config from an interface
  */
 class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_add_del_address>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_add_del_address>
 {
 public:
   /**

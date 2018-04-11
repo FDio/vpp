@@ -27,8 +27,7 @@ namespace gbp_endpoint_cmds {
 /**
 * A command class that creates or updates the GBP endpoint
 */
-class create_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_endpoint_add_del>
+class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_add_del>
 {
 public:
   /**
@@ -65,8 +64,7 @@ private:
 /**
  * A cmd class that deletes a GBP endpoint
  */
-class delete_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Gbp_endpoint_add_del>
+class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_add_del>
 {
 public:
   /**

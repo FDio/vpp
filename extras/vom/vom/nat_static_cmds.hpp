@@ -28,7 +28,7 @@ namespace nat_static_cmds {
  * A command class that creates NAT 44 static mapping
  */
 class create_44_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_add_del_static_mapping>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_add_del_static_mapping>
 {
 public:
   /**
@@ -64,7 +64,7 @@ private:
  * A cmd class that deletes a NAT 44 static mapping
  */
 class delete_44_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_add_del_static_mapping>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat44_add_del_static_mapping>
 {
 public:
   /**
@@ -133,7 +133,7 @@ private:
  * A command class that creates NAT 66 static mapping
  */
 class create_66_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_static_mapping>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat66_add_del_static_mapping>
 {
 public:
   /**
@@ -169,7 +169,7 @@ private:
  * A cmd class that deletes a NAT 66 static mapping
  */
 class delete_66_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat66_add_del_static_mapping>
+  : public rpc_cmd<HW::item<bool>, vapi::Nat66_add_del_static_mapping>
 {
 public:
   /**

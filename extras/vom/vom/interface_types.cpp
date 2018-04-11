@@ -29,6 +29,8 @@ const interface::type_t interface::type_t::TAP(7, "TAP");
 const interface::type_t interface::type_t::TAPV2(8, "TAPV2");
 const interface::type_t interface::type_t::VHOST(9, "VHOST");
 const interface::type_t interface::type_t::BOND(10, "Bond");
+const interface::type_t interface::type_t::PIPE(11, "Pipe");
+const interface::type_t interface::type_t::PIPE_END(12, "Pipe-end");
 
 const interface::oper_state_t interface::oper_state_t::DOWN(0, "down");
 const interface::oper_state_t interface::oper_state_t::UP(1, "up");
@@ -66,6 +68,8 @@ interface::type_t::from_string(const std::string& str)
     return interface::type_t::TAPV2;
   } else if (str.find("bvi") != std::string::npos) {
     return interface::type_t::BVI;
+  } else if (str.find("pipe") != std::string::npos) {
+    return interface::type_t::PIPE;
   }
 
   return interface::type_t::UNKNOWN;

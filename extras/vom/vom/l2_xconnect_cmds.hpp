@@ -30,7 +30,7 @@ namespace l2_xconnect_cmds {
  * A functor class that binds L2 configuration to an interface
  */
 class bind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_l2_xconnect>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_xconnect>
 {
 public:
   /**
@@ -70,7 +70,7 @@ private:
  * A cmd class that Unbinds L2 configuration from an interface
  */
 class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_l2_xconnect>
+  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_xconnect>
 {
 public:
   /**

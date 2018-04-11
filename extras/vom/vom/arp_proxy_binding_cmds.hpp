@@ -27,7 +27,7 @@ namespace arp_proxy_binding_cmds {
  * A command class that binds the LLDP config to the interface
  */
 class bind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_intfc_enable_disable>
+  : public rpc_cmd<HW::item<bool>, vapi::Proxy_arp_intfc_enable_disable>
 {
 public:
   /**
@@ -60,7 +60,7 @@ private:
  * A cmd class that Unbinds ArpProxy Config from an interface
  */
 class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_intfc_enable_disable>
+  : public rpc_cmd<HW::item<bool>, vapi::Proxy_arp_intfc_enable_disable>
 {
 public:
   /**
