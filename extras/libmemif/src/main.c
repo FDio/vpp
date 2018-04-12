@@ -686,9 +686,8 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 	       MEMIF_DEFAULT_SOCKET_FILENAME, sfl);
     }
 
-  if (args->secret)
+  if ((l = strlen ((char *) args->secret)) > 0)
     {
-      l = strlen ((char *) args->secret);
       strncpy ((char *) conn->args.secret, (char *) args->secret, l);
     }
 
@@ -886,7 +885,7 @@ memif_control_fd_handler (int fd, uint8_t events)
 
 	      sun.sun_family = AF_UNIX;
 
-	      strncpy (sun.sun_path, conn->args.socket_filename,
+	      strncpy (sun.sun_path, (char*) conn->args.socket_filename,
 		       sizeof (sun.sun_path) - 1);
 
 	      if (connect (sockfd, (struct sockaddr *) &sun,
@@ -1090,7 +1089,7 @@ memif_disconnect_internal (memif_connection_t * c)
 
   if (c->fd > 0)
     {
-      memif_msg_send_disconnect (c->fd, "interface deleted", 0);
+      memif_msg_send_disconnect (c->fd, (uint8_t *) "interface deleted", 0);
       lm->control_fd_update (c->fd, MEMIF_FD_EVENT_DEL);
       close (c->fd);
     }
@@ -1882,7 +1881,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = strlen ((char *) c->args.interface_name);
   if (l0 + l1 < buflen)
     {
-      md->if_name = strcpy (buf + l0, (char *) c->args.interface_name);
+      md->if_name = (uint8_t *) strcpy (buf + l0, (char *) c->args.interface_name);
       l0 += l1 + 1;
     }
   else
@@ -1891,7 +1890,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = strlen ((char *) lm->app_name);
   if (l0 + l1 < buflen)
     {
-      md->inst_name = strcpy (buf + l0, (char *) lm->app_name);
+      md->inst_name = (uint8_t *) strcpy (buf + l0, (char *) lm->app_name);
       l0 += l1 + 1;
     }
   else
@@ -1900,7 +1899,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = strlen ((char *) c->remote_if_name);
   if (l0 + l1 < buflen)
     {
-      md->remote_if_name = strcpy (buf + l0, (char *) c->remote_if_name);
+      md->remote_if_name = (uint8_t *) strcpy (buf + l0, (char *) c->remote_if_name);
       l0 += l1 + 1;
     }
   else
@@ -1909,7 +1908,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = strlen ((char *) c->remote_name);
   if (l0 + l1 < buflen)
     {
-      md->remote_inst_name = strcpy (buf + l0, (char *) c->remote_name);
+      md->remote_inst_name = (uint8_t *) strcpy (buf + l0, (char *) c->remote_name);
       l0 += l1 + 1;
     }
   else
@@ -1917,12 +1916,12 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 
   md->id = c->args.interface_id;
 
-  if (c->args.secret)
+  if (strlen((char *) c->args.secret) > 0)
     {
       l1 = strlen ((char *) c->args.secret);
       if (l0 + l1 < buflen)
 	{
-	  md->secret = strcpy (buf + l0, (char *) c->args.secret);
+	  md->secret = (uint8_t *) strcpy (buf + l0, (char *) c->args.secret);
 	  l0 += l1 + 1;
 	}
       else
@@ -1936,7 +1935,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 < buflen)
     {
       md->socket_filename =
-	strcpy (buf + l0, (char *) c->args.socket_filename);
+	(uint8_t *) strcpy (buf + l0, (char *) c->args.socket_filename);
       l0 += l1 + 1;
     }
   else
