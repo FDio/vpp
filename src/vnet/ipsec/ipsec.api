@@ -513,6 +513,8 @@ define ipsec_spd_details {
     @param local_integ_key - integrity key for outbound IPsec SA
     @param remote_integ_key_len - length of remote integrity key in bytes
     @param remote_integ_key - integrity key for inbound IPsec SA
+    @param renumber - intf display name uses a specified instance if != 0
+    @param show_instance - instance to display for intf if renumber is set
 */
 define ipsec_tunnel_if_add_del {
   u32 client_index;
@@ -534,6 +536,8 @@ define ipsec_tunnel_if_add_del {
   u8 local_integ_key[128];
   u8 remote_integ_key_len;
   u8 remote_integ_key[128];
+  u8 renumber;
+  u32 show_instance;
 };
 
 /** \brief Add/delete IPsec tunnel interface response

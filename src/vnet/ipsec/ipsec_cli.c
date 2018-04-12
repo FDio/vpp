@@ -726,6 +726,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "remote-spi %u", &a.remote_spi))
 	num_m_args++;
+      else if (unformat (line_input, "instance %u", &a.show_instance))
+	a.renumber = 1;
       else if (unformat (line_input, "del"))
 	a.is_add = 0;
       else
@@ -770,7 +772,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
   .path = "create ipsec tunnel",
-  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi>",
+  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi> [instance <inst_num>]",
   .function = create_ipsec_tunnel_command_fn,
 };
 /* *INDENT-ON* */
