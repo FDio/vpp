@@ -112,7 +112,7 @@ memif_msg_send_hello (int fd)
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
 
-  strncpy ((char *) h->name, lm->app_name, strlen (lm->app_name));
+  strncpy ((char *) h->name, (char *) lm->app_name, strlen ((char *) lm->app_name));
 
   /* msg hello is not enqueued but sent directly,
      because it is the first msg to be sent */
@@ -141,7 +141,7 @@ memif_msg_enq_init (memif_connection_t * c)
 
   strncpy ((char *) i->name, (char *) lm->app_name,
 	   strlen ((char *) lm->app_name));
-  if (c->args.secret)
+  if (strlen((char *) c->args.secret) > 0)
     strncpy ((char *) i->secret, (char *) c->args.secret, sizeof (i->secret));
 
   e->next = NULL;
@@ -424,10 +424,10 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
   strncpy ((char *) c->remote_name, (char *) i->name,
 	   strlen ((char *) i->name));
 
-  if (c->args.secret)
+  if (strlen((char *) c->args.secret) > 0)
     {
       int r;
-      if (i->secret)
+      if (strlen((char *) i->secret) > 0)
 	{
 	  if (strlen ((char *) c->args.secret) != strlen ((char *) i->secret))
 	    {

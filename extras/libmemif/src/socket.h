@@ -16,7 +16,7 @@
  */
 
 #ifndef _SOCKET_H_
-#define _SOCKET_H
+#define _SOCKET_H_
 
 #include <memif_private.h>
 
