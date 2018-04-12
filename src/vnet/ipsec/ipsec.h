@@ -171,6 +171,8 @@ typedef struct
   u8 local_integ_key[128];
   u8 remote_integ_key_len;
   u8 remote_integ_key[128];
+  u8 renumber;
+  u32 show_instance;
 } ipsec_add_del_tunnel_args_t;
 
 typedef struct
@@ -243,6 +245,7 @@ typedef struct
   u32 input_sa_index;
   u32 output_sa_index;
   u32 hw_if_index;
+  u32 show_instance;
 } ipsec_tunnel_if_t;
 
 typedef struct
@@ -277,6 +280,7 @@ typedef struct
   uword *spd_index_by_sw_if_index;
   uword *sa_index_by_sa_id;
   uword *ipsec_if_pool_index_by_key;
+  uword *ipsec_if_real_dev_by_show_dev;
 
   /* node indeces */
   u32 error_drop_node_index;

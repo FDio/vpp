@@ -15285,6 +15285,8 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   u8 is_add = 1;
   u8 esn = 0;
   u8 anti_replay = 0;
+  u8 renumber = 0;
+  u32 instance = ~0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15336,6 +15338,8 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	      return -99;
 	    }
 	}
+      else if (unformat (i, "instance %u", &instance))
+	renumber = 1;
       else
 	{
 	  errmsg ("parse error '%U'\n", format_unformat_error, i);
@@ -15392,6 +15396,12 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
       if (mp->remote_integ_key_len > sizeof (mp->remote_integ_key))
 	mp->remote_integ_key_len = sizeof (mp->remote_integ_key);
       clib_memcpy (mp->remote_integ_key, rik, mp->remote_integ_key_len);
+    }
+
+  if (renumber)
+    {
+      mp->renumber = renumber;
+      mp->show_instance = ntohl (instance);
     }
 
   S (mp);
@@ -23477,7 +23487,8 @@ _(ipsec_sa_set_key, "sa_id <n> crypto_key <hex> integ_key <hex>")       \
 _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  crypto_alg <alg> local_crypto_key <hex> remote_crypto_key <hex>\n" \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
-  "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n")     \
+  "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n"      \
+  "  [instance <n>]")     \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
 _(ipsec_tunnel_if_set_key, "<intfc> <local|remote> <crypto|integ>\n"    \
   "  <alg> <hex>\n")                                                    \

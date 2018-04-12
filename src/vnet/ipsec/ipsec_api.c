@@ -385,6 +385,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 	  mp->local_integ_key_len);
   memcpy (&tun.remote_integ_key, &mp->remote_integ_key,
 	  mp->remote_integ_key_len);
+  tun.renumber = mp->renumber;
+  tun.show_instance = ntohl (mp->show_instance);
 
   rv = ipsec_add_del_tunnel_if_internal (vnm, &tun, &sw_if_index);
 
