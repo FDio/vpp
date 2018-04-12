@@ -639,7 +639,7 @@ class VPP():
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise IOError(1, 'Not connected')
-        return vpp_api.vac_write(str(buf), len(buf))
+        return vpp_api.vac_write(bytes(buf), len(buf))
 
     def _read(self):
         if not self.connected:
