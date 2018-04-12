@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5a65b0b_1e520fd5",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 778
+      },
+      "writtenOn": "2018-04-12T00:25:14Z",
+      "side": 0,
+      "message": "Please add support for self-twice-nat also for LB static mappings.",
+      "revId": "d042194b4bb0512a81924068013ed4e48f021a2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39ea326c_184592dd",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2733,
+      "author": {
+        "id": 778
+      },
+      "writtenOn": "2018-04-12T00:25:14Z",
+      "side": 0,
+      "message": "Change to:\n\nm-\u003etwice_nat \u003d\u003d TWICE_NAT ? \"twice-nat\" :\nm-\u003etwice_nat \u003d\u003d TWICE_NAT_SELF ? \"self-twice-nat\" : \"\",",
+      "revId": "d042194b4bb0512a81924068013ed4e48f021a2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0df243ba_224c238d",
+        "filename": "src/plugins/nat/nat44_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 778
+      },
+      "writtenOn": "2018-04-12T00:25:14Z",
+      "side": 0,
+      "message": "Please add support for self-twice-nat also for LB mappings.",
+      "revId": "d042194b4bb0512a81924068013ed4e48f021a2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
