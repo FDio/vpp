@@ -210,6 +210,7 @@ vominclude_HEADERS =			\
 	route_domain.hpp		\
 	rpc_cmd.hpp			\
 	singular_db.hpp			\
+	singular_db_funcs.hpp		\
 	sub_interface.hpp		\
 	tap_interface.hpp		\
 	types.hpp			\
