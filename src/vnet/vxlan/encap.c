@@ -73,7 +73,6 @@ vxlan_encap_inline (vlib_main_t * vm,
       im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
   u32 pkts_encapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
@@ -83,8 +82,6 @@ vxlan_encap_inline (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   next_index = node->cached_next_index;
-  stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   STATIC_ASSERT_SIZEOF(ip6_vxlan_header_t, 56);
   STATIC_ASSERT_SIZEOF(ip4_vxlan_header_t, 36);
@@ -272,32 +269,10 @@ vxlan_encap_inline (vlib_main_t * vm,
                 udp1->checksum = 0xffff;
             }
 
-	  /* Batch stats increment on the same vxlan tunnel so counter is not
-	     incremented per packet. Note stats are still incremented for deleted
-	     and admin-down tunnel where packets are dropped. It is not worthwhile
-	     to check for this rare case and affect normal path performance. */
-          if (sw_if_index0 == sw_if_index1)
-            {
-              if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index))
-                {
-                  if (stats_n_packets) 
-                    {
-                      vlib_increment_combined_counter (tx_counter, thread_index,
-                          stats_sw_if_index, stats_n_packets, stats_n_bytes);
-                      stats_n_packets = stats_n_bytes = 0;
-                    }
-                  stats_sw_if_index = sw_if_index0;
-                }
-              stats_n_packets += 2;
-              stats_n_bytes += len0 + len1;
-            }
-          else
-            {
-              vlib_increment_combined_counter (tx_counter, thread_index,
-                  sw_if_index0, 1, len0);
-              vlib_increment_combined_counter (tx_counter, thread_index,
-                  sw_if_index1, 1, len1);
-            }
+          vlib_increment_combined_counter (tx_counter, thread_index,
+              sw_if_index0, 1, len0);
+          vlib_increment_combined_counter (tx_counter, thread_index,
+              sw_if_index1, 1, len1);
           pkts_encapsulated += 2;
 
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
@@ -413,22 +388,8 @@ vxlan_encap_inline (vlib_main_t * vm,
                 udp0->checksum = 0xffff;
             }
 
-	  /* Batch stats increment on the same vxlan tunnel so counter is not
-	     incremented per packet. Note stats are still incremented for deleted
-	     and admin-down tunnel where packets are dropped. It is not worthwhile
-	     to check for this rare case and affect normal path performance. */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
-	    {
-	      if (stats_n_packets)
-                {
-                  vlib_increment_combined_counter (tx_counter, thread_index,
-                      stats_sw_if_index, stats_n_packets, stats_n_bytes);
-                  stats_n_bytes = stats_n_packets = 0;
-                }
-	      stats_sw_if_index = sw_if_index0;
-	    }
-	  stats_n_packets += 1;
-	  stats_n_bytes += len0;
+          vlib_increment_combined_counter (tx_counter, thread_index,
+              sw_if_index0, 1, len0);
           pkts_encapsulated ++;
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
@@ -450,14 +411,6 @@ vxlan_encap_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, node->node_index, 
                                VXLAN_ENCAP_ERROR_ENCAPSULATED, 
                                pkts_encapsulated);
-
-  /* Increment any remaining batch stats */
-  if (stats_n_packets)
-    {
-      vlib_increment_combined_counter (tx_counter, thread_index,
-          stats_sw_if_index, stats_n_packets, stats_n_bytes);
-      node->runtime_data[0] = stats_sw_if_index;
-    }
 
   return from_frame->n_vectors;
 }

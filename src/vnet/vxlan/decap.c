@@ -42,7 +42,7 @@ static u8 * format_vxlan_rx_trace (u8 * s, va_list * args)
     }
   else
     {
-      s = format (s, "VXLAN decap error - tunnel for vni %d does not exist", 
+      s = format (s, "VXLAN decap error - tunnel for vni %d does not exist",
 		  t->vni);
     }
   return s;
@@ -62,6 +62,102 @@ validate_vxlan_fib (vlib_buffer_t *b, vxlan_tunnel_t *t, u32 is_ip4)
   return (fib_index == t->encap_fib_index);
 }
 
+typedef struct
+{
+  vxlan4_tunnel_key_t key4;
+  u32 tunnel_index;
+}last_tunnel_cache4;
+
+typedef struct
+{
+  vxlan6_tunnel_key_t key6;
+  u32 tunnel_index;
+}last_tunnel_cache6;
+
+always_inline vxlan_tunnel_t *
+vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
+                    ip4_header_t * ip4_0, vxlan_header_t * vxlan0,
+                    vxlan_tunnel_t ** stats_t0)
+{
+  /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
+  vxlan4_tunnel_key_t key4_0 = {
+    .src = ip4_0->src_address.as_u32,
+    .vni = vxlan0->vni_reserved,
+  };
+
+  if (PREDICT_FALSE (key4_0.as_u64 != cache->key4.as_u64))
+  {
+    uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
+    if (PREDICT_FALSE (p == 0))
+      return 0;
+
+    cache->key4 = key4_0;
+    cache->tunnel_index = p[0];
+  }
+  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->tunnel_index);
+
+  /* Validate VXLAN tunnel SIP against packet DIP */
+  if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
+    *stats_t0 = t0;
+  else
+  {
+    /* try multicast */
+    if (PREDICT_TRUE (!ip4_address_is_multicast (&ip4_0->dst_address)))
+      return 0;
+
+    key4_0.src = ip4_0->dst_address.as_u32;
+    /* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
+    uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
+    if (PREDICT_FALSE (p == NULL))
+      return 0;
+    *stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
+  }
+
+  return t0;
+}
+
+always_inline vxlan_tunnel_t *
+vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
+                    ip6_header_t * ip6_0, vxlan_header_t * vxlan0,
+                    vxlan_tunnel_t ** stats_t0)
+{
+  /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
+  vxlan6_tunnel_key_t key6_0 = {
+    .src = ip6_0->src_address,
+    .vni = vxlan0->vni_reserved,
+  };
+
+  if (PREDICT_FALSE (memcmp(&key6_0, &cache->key6, sizeof key6_0) != 0))
+  {
+    uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
+    if (PREDICT_FALSE (p == NULL))
+      return 0;
+
+    cache->key6 = key6_0;
+    cache->tunnel_index = p[0];
+  }
+  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->tunnel_index);
+
+  /* Validate VXLAN tunnel SIP against packet DIP */
+  if (PREDICT_TRUE (ip6_address_is_equal (&ip6_0->dst_address, &t0->src.ip6)))
+    *stats_t0 = t0;
+  else
+  {
+    /* try multicast */
+    if (PREDICT_TRUE (!ip6_address_is_multicast (&ip6_0->dst_address)))
+      return 0;
+
+    key6_0.src = ip6_0->dst_address;
+    /* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
+    uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
+    if (PREDICT_FALSE (p == NULL))
+      return 0;
+    *stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
+  }
+
+  return t0;
+}
+
 always_inline uword
 vxlan_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
@@ -71,20 +167,19 @@ vxlan_input (vlib_main_t * vm,
   vxlan_main_t * vxm = &vxlan_main;
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
-  u32 last_tunnel_index = ~0;
-  vxlan4_tunnel_key_t last_key4;
-  vxlan6_tunnel_key_t last_key6;
+  vlib_combined_counter_main_t * rx_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
+  vlib_combined_counter_main_t * drop_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
+  last_tunnel_cache4 last4 = { .tunnel_index = ~0 };
+  last_tunnel_cache6 last6 = { .tunnel_index = ~0 };
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
 
   if (is_ip4)
-    last_key4.as_u64 = ~0;
+    last4.key4.as_u64 = ~0;
   else
-    memset (&last_key6, 0xff, sizeof (last_key6));
+    memset (&last6.key6, 0xff, sizeof last6.key6);
 
   u32 next_index = node->cached_next_index;
-  u32 stats_sw_if_index = node->runtime_data[0];
-  u32 stats_n_packets = 0, stats_n_bytes = 0;
 
   u32 * from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
@@ -92,16 +187,10 @@ vxlan_input (vlib_main_t * vm,
   while (n_left_from > 0)
     {
       u32 * to_next, n_left_to_next;
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-          u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-	  u32 next0, next1;
-          vxlan_tunnel_t * t0, * t1, * stats_t0, * stats_t1;
-
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t * p2, * p3;
@@ -116,15 +205,14 @@ vxlan_input (vlib_main_t * vm,
 	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
-	  bi0 = from[0];
-	  bi1 = from[1];
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
+	  u32 bi0 = to_next[0] = from[0];
+	  u32 bi1 = to_next[1] = from[1];
 	  from += 2;
 	  to_next += 2;
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
+	  vlib_buffer_t * b0, * b1;
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
@@ -144,308 +232,105 @@ vxlan_input (vlib_main_t * vm,
             ip6_1 = cur1 - sizeof(udp_header_t) - sizeof(ip6_header_t);
 	  }
 
-          /* pop (ip, udp, vxlan) */
+          /* pop vxlan */
           vlib_buffer_advance (b0, sizeof *vxlan0);
 	  vlib_buffer_advance (b1, sizeof *vxlan1);
 
-          u32 tunnel_index0 = ~0, tunnel_index1 = ~0;
-          u32 error0 = 0, error1 = 0;
-
-	  if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
-	    {
-	      error0 = VXLAN_ERROR_BAD_FLAGS;
-	      next0 = VXLAN_INPUT_NEXT_DROP;
-	      goto trace0;
-	    }
-
-
-          if (is_ip4) {
- 	    /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-	    vxlan4_tunnel_key_t key4_0 = {
-              .src = ip4_0->src_address.as_u32,
-              .vni = vxlan0->vni_reserved,
-	    };
-
-           if (PREDICT_FALSE (key4_0.as_u64 != last_key4.as_u64))
-              {
-                uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next0 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace0;
-                  }
-                last_key4 = key4_0;
-                last_tunnel_index = p[0];
-              }
-            tunnel_index0 = last_tunnel_index;
-	    stats_t0 = t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
-	    /* Validate VXLAN tunnel encap-fib index agaist packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b0, t0, is_ip4) == 0))
-	      {
-		error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next0 = VXLAN_INPUT_NEXT_DROP;
-		goto trace0;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
-	      goto next0; /* valid packet */
-	    if (PREDICT_FALSE (ip4_address_is_multicast (&ip4_0->dst_address)))
-	      {
-		key4_0.src = ip4_0->dst_address.as_u32;
-		/* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
-		uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-		if (PREDICT_TRUE (p != NULL))
-		  {
-		    stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next0; /* valid packet */
-		  }
-	      }
-	    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next0 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace0;
-
-         } else /* !is_ip4 */ {
- 	    /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-            vxlan6_tunnel_key_t key6_0 = {
-	      .src = ip6_0->src_address,
-	      .vni = vxlan0->vni_reserved,
-	    };
-
-            if (PREDICT_FALSE (memcmp(&key6_0, &last_key6, sizeof(last_key6)) != 0))
-              {
-                uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next0 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace0;
-                  }
-                clib_memcpy (&last_key6, &key6_0, sizeof(key6_0));
-                last_tunnel_index = p[0];
-              }
-            tunnel_index0 = last_tunnel_index;
-	    stats_t0 = t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
-	    /* Validate VXLAN tunnel encap-fib index agaist packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b0, t0, is_ip4) == 0))
-	      {
-		error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next0 = VXLAN_INPUT_NEXT_DROP;
-		goto trace0;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip6_address_is_equal (&ip6_0->dst_address,
-						    &t0->src.ip6)))
-		goto next0; /* valid packet */
-	    if (PREDICT_FALSE (ip6_address_is_multicast (&ip6_0->dst_address)))
-	      {
-		key6_0.src = ip6_0->dst_address;
-		uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-		if (PREDICT_TRUE (p != NULL)) 
-		  {
-		    stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next0; /* valid packet */
-		  }
-	      }
-	    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next0 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace0;
+          vxlan_tunnel_t * t0, * stats_t0;
+          vxlan_tunnel_t * t1, * stats_t1;
+          if (is_ip4)
+          {
+            t0 = vxlan4_find_tunnel (vxm, &last4, ip4_0, vxlan0, &stats_t0);
+            t1 = vxlan4_find_tunnel (vxm, &last4, ip4_1, vxlan1, &stats_t1);
+          }
+          else
+          {
+            t0 = vxlan6_find_tunnel (vxm, &last6, ip6_0, vxlan0, &stats_t0);
+            t1 = vxlan6_find_tunnel (vxm, &last6, ip6_1, vxlan1, &stats_t1);
           }
 
-	next0:
-          next0 = t0->decap_next_index;
           u32 len0 = vlib_buffer_length_in_chain (vm, b0);
-
-          /* Required to make the l2 tag push / pop code work on l2 subifs */
-          if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
-            vnet_update_l2_len (b0);
-
-          /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
-          vnet_buffer(b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
-
-	  /* Batch stats increment on the same vxlan tunnel so counter
-	     is not incremented per packet */
-	  u32 sw_if_index0 = stats_t0->sw_if_index;
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
-	    {
-	      if (stats_n_packets)
-	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
-	        }
-	      stats_sw_if_index = sw_if_index0;
-	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
-
-        trace0:
-          b0->error = error0 ? node->errors[error0] : 0;
-
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
-            {
-              vxlan_rx_trace_t *tr 
-                = vlib_add_trace (vm, node, b0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->error = error0;
-              tr->tunnel_index = tunnel_index0;
-              tr->vni = vnet_get_vni (vxlan0);
-            }
-
-	  if (PREDICT_FALSE (vxlan1->flags != VXLAN_FLAGS_I))
-	    {
-	      error1 = VXLAN_ERROR_BAD_FLAGS;
-	      next1 = VXLAN_INPUT_NEXT_DROP;
-	      goto trace1;
-	    }
-
-          if (is_ip4) {
-	    /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-	    vxlan4_tunnel_key_t key4_1 = {
-              .src = ip4_1->src_address.as_u32,
-              .vni = vxlan1->vni_reserved
-	    };
-
-	    if (PREDICT_FALSE (key4_1.as_u64 != last_key4.as_u64))
-              {
-                uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_1.as_u64);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next1 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace1;
-                  }
-                last_key4 = key4_1;
-                last_tunnel_index = p[0];
-              }
-            tunnel_index1 = last_tunnel_index;
- 	    stats_t1 = t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
-
-	    /* Validate VXLAN tunnel encap-fib index against packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b1, t1, is_ip4) == 0))
-	      {
-		error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next1 = VXLAN_INPUT_NEXT_DROP;
-		goto trace1;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip4_1->dst_address.as_u32 == t1->src.ip4.as_u32))
-	      goto next1; /* valid packet */
-	    if (PREDICT_FALSE (ip4_address_is_multicast (&ip4_1->dst_address)))
-	      {
-		/* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
-		key4_1.src = ip4_1->dst_address.as_u32;
-
-		uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_1.as_u64);
-		if (PREDICT_TRUE (p != NULL))
-		  {
-		    stats_t1 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next1; /* valid packet */
-		  }
-	      }
-	    error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next1 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace1;
-
-         } else /* !is_ip4 */ {
-	    /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-            vxlan6_tunnel_key_t key6_1 = {
-	      .src = ip6_1->src_address,
-	      .vni = vxlan1->vni_reserved,
-	    };
-
-            if (PREDICT_FALSE (memcmp(&key6_1, &last_key6, sizeof(last_key6)) != 0))
-              {
-                uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_1);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next1 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace1;
-                  }
-
-                clib_memcpy (&last_key6, &key6_1, sizeof(key6_1));
-                last_tunnel_index = p[0];
-              }
-            tunnel_index1 = last_tunnel_index;
- 	    stats_t1 = t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
-
-	    /* Validate VXLAN tunnel encap-fib index agaist packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b1, t1, is_ip4) == 0))
-	      {
-		error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next1 = VXLAN_INPUT_NEXT_DROP;
-		goto trace1;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip6_address_is_equal (&ip6_1->dst_address,
-						    &t1->src.ip6)))
-		goto next1; /* valid packet */
-	    if (PREDICT_FALSE (ip6_address_is_multicast (&ip6_1->dst_address)))
-	      {
-		key6_1.src = ip6_1->dst_address;
-
-		uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_1);
-		if (PREDICT_TRUE (p != NULL)) 
-		  {
-		    stats_t1 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next1; /* valid packet */
-		  }
-	      }
-	    error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next1 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace1;
-	  }
-
-	next1:
-          next1 = t1->decap_next_index;
           u32 len1 = vlib_buffer_length_in_chain (vm, b1);
 
-          /* Required to make the l2 tag push / pop code work on l2 subifs */
-          if (PREDICT_TRUE(next1 == VXLAN_INPUT_NEXT_L2_INPUT))
-            vnet_update_l2_len (b1);
-
-          /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
-          vnet_buffer(b1)->sw_if_index[VLIB_RX] = t1->sw_if_index;
-
-	  /* Batch stats increment on the same vxlan tunnel so counter
-	     is not incremented per packet */
-	  u32 sw_if_index1 = stats_t1->sw_if_index;
-	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index)) 
-	    {
-	      if (stats_n_packets)
-	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
-	        }
-	      stats_sw_if_index = sw_if_index1;
-	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len1;
-
-        trace1:
-          b1->error = error1 ? node->errors[error1] : 0;
-
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+	  u32 next0, next1;
+          u8 error0 = 0, error1 = 0;
+          /* Validate VXLAN tunnel encap-fib index agaist packet */
+          if (PREDICT_FALSE (t0 == 0 || validate_vxlan_fib (b0, t0, is_ip4) == 0 ||
+                vxlan0->flags != VXLAN_FLAGS_I))
             {
-              vxlan_rx_trace_t *tr 
-                = vlib_add_trace (vm, node, b1, sizeof (*tr));
+              next0 = VXLAN_INPUT_NEXT_DROP;
+
+              if (t0 != 0 && vxlan0->flags != VXLAN_FLAGS_I)
+                {
+                  error0 = VXLAN_ERROR_BAD_FLAGS;
+                  vlib_increment_combined_counter
+                    (drop_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+                }
+              else
+                error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+              b0->error = node->errors[error0];
+            }
+          else
+            {
+              next0 = t0->decap_next_index;
+
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b0);
+
+              /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
+              vlib_increment_combined_counter
+                (rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+              pkts_decapsulated++;
+            }
+
+          /* Validate VXLAN tunnel encap-fib index agaist packet */
+          if (PREDICT_FALSE (t1 == 0 || validate_vxlan_fib (b1, t1, is_ip4) == 0 ||
+                vxlan1->flags != VXLAN_FLAGS_I))
+            {
+              next1 = VXLAN_INPUT_NEXT_DROP;
+
+              if (t1 != 0 && vxlan1->flags != VXLAN_FLAGS_I)
+                {
+                  error1 = VXLAN_ERROR_BAD_FLAGS;
+                  vlib_increment_combined_counter
+                    (drop_counter, thread_index, stats_t1->sw_if_index, 1, len1);
+                }
+              else
+                error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+              b1->error = node->errors[error1];
+            }
+          else
+            {
+              next1 = t1->decap_next_index;
+
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next1 == VXLAN_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b1);
+
+              /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+              vnet_buffer(b1)->sw_if_index[VLIB_RX] = t1->sw_if_index;
+              pkts_decapsulated++;
+
+              vlib_increment_combined_counter
+                (rx_counter, thread_index, stats_t1->sw_if_index, 1, len1);
+            }
+
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+              tr->next_index = next0;
+              tr->error = error0;
+              tr->tunnel_index = t0 == 0 ? ~0 : t0 - vxm->tunnels;
+              tr->vni = vnet_get_vni (vxlan0);
+            }
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
               tr->error = error1;
-              tr->tunnel_index = tunnel_index1;
+              tr->tunnel_index = t1 == 0 ? ~0 : t1 - vxm->tunnels;
               tr->vni = vnet_get_vni (vxlan1);
             }
 
@@ -456,25 +341,19 @@ vxlan_input (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0;
-	  vlib_buffer_t * b0;
-	  u32 next0;
-          ip4_header_t * ip4_0;
-          ip6_header_t * ip6_0;
-          vxlan_tunnel_t * t0, * stats_t0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
+	  u32 bi0 = to_next[0] = from[0];
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
 
           /* udp leaves current_data pointing at the vxlan header */
           void * cur0 = vlib_buffer_get_current (b0);
           vxlan_header_t * vxlan0 = cur0;
+          ip4_header_t * ip4_0;
+          ip6_header_t * ip6_0;
           if (is_ip4)
             ip4_0 = cur0 -sizeof(udp_header_t) - sizeof(ip4_header_t);
           else
@@ -483,154 +362,55 @@ vxlan_input (vlib_main_t * vm,
           /* pop (ip, udp, vxlan) */
           vlib_buffer_advance (b0, sizeof(*vxlan0));
 
-          u32 tunnel_index0 = ~0;
-          u32 error0 = 0;
+          vxlan_tunnel_t * t0, * stats_t0;
+          if (is_ip4)
+            t0 = vxlan4_find_tunnel (vxm, &last4, ip4_0, vxlan0, &stats_t0);
+          else
+            t0 = vxlan6_find_tunnel (vxm, &last6, ip6_0, vxlan0, &stats_t0);
 
-	  if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
-	    {
-	      error0 = VXLAN_ERROR_BAD_FLAGS;
-	      next0 = VXLAN_INPUT_NEXT_DROP;
-	      goto trace00;
-	    }
+          uword len0 = vlib_buffer_length_in_chain (vm, b0);
 
-          if (is_ip4) {
-            vxlan4_tunnel_key_t key4_0 = {
-              .src = ip4_0->src_address.as_u32,
-              .vni = vxlan0->vni_reserved,
-	    };
-
-	    /* Make sure unicast VXLAN tunnel exist by packet SIP and VNI */
-            if (PREDICT_FALSE (key4_0.as_u64 != last_key4.as_u64))
-              {
-                uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next0 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace00;
-                  }
-                last_key4 = key4_0;
-                last_tunnel_index = p[0];
-              }
-            tunnel_index0 = last_tunnel_index;
-	    stats_t0 = t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
-	    /* Validate VXLAN tunnel encap-fib index agaist packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b0, t0, is_ip4) == 0))
-	      {
-		error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next0 = VXLAN_INPUT_NEXT_DROP;
-		goto trace00;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
-	      goto next00; /* valid packet */
-	    if (PREDICT_FALSE (ip4_address_is_multicast (&ip4_0->dst_address)))
-	      {
-		/* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
-		key4_0.src = ip4_0->dst_address.as_u32;
-		uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-		if (PREDICT_TRUE (p != NULL))
-		  {
-		    stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next00; /* valid packet */
-		  }
-	      }
-	    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next0 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace00;
-
-          } else /* !is_ip4 */ {
-	    /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-            vxlan6_tunnel_key_t key6_0 = {
-              .src = ip6_0->src_address,
-              .vni = vxlan0->vni_reserved,
-	    };
-
-            if (PREDICT_FALSE (memcmp(&key6_0, &last_key6, sizeof(last_key6)) != 0))
-              {
-                uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-                if (PREDICT_FALSE (p == NULL))
-                  {
-                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                    next0 = VXLAN_INPUT_NEXT_DROP;
-                    goto trace00;
-                  }
-                clib_memcpy (&last_key6, &key6_0, sizeof(key6_0));
-                last_tunnel_index = p[0];
-              }
-            tunnel_index0 = last_tunnel_index;
-	    stats_t0 = t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
-	    /* Validate VXLAN tunnel encap-fib index agaist packet */
-	    if (PREDICT_FALSE (validate_vxlan_fib (b0, t0, is_ip4) == 0))
-	      {
-		error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-		next0 = VXLAN_INPUT_NEXT_DROP;
-		goto trace00;
-	      }
-
-	    /* Validate VXLAN tunnel SIP against packet DIP */
-	    if (PREDICT_TRUE (ip6_address_is_equal (&ip6_0->dst_address,
-						    &t0->src.ip6)))
-		goto next00; /* valid packet */
-	    if (PREDICT_FALSE (ip6_address_is_multicast (&ip6_0->dst_address)))
-	      {
-		key6_0.src = ip6_0->dst_address;
-		uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-		if (PREDICT_TRUE (p != NULL)) 
-		  {
-		    stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
-		    goto next00; /* valid packet */
-		  }
-	      }
-	    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-	    next0 = VXLAN_INPUT_NEXT_DROP;
-	    goto trace00;
-          }
-
-	next00:
-          next0 = t0->decap_next_index;
-          u32 len0 = vlib_buffer_length_in_chain (vm, b0);
-
-          /* Required to make the l2 tag push / pop code work on l2 subifs */
-          if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
-            vnet_update_l2_len (b0);
-
-          /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
-          vnet_buffer(b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
-
-	  /* Batch stats increment on the same vxlan tunnel so counter
-	     is not incremented per packet */
-	  u32 sw_if_index0 = stats_t0->sw_if_index;
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
-	    {
-	      if (stats_n_packets)
-	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
-	        }
-	      stats_sw_if_index = sw_if_index0;
-	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
-
-
-        trace00:
-          b0->error = error0 ? node->errors[error0] : 0;
-
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+	  u32 next0;
+          u8 error0 = 0;
+          /* Validate VXLAN tunnel encap-fib index agaist packet */
+          if (PREDICT_FALSE (t0 == 0 || validate_vxlan_fib (b0, t0, is_ip4) == 0 ||
+                vxlan0->flags != VXLAN_FLAGS_I))
             {
-              vxlan_rx_trace_t *tr 
+              next0 = VXLAN_INPUT_NEXT_DROP;
+
+              if (t0 != 0 && vxlan0->flags != VXLAN_FLAGS_I)
+                {
+                  error0 = VXLAN_ERROR_BAD_FLAGS;
+                  vlib_increment_combined_counter
+                    (drop_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+                }
+              else
+                error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+              b0->error = node->errors[error0];
+            }
+          else
+            {
+              next0 = t0->decap_next_index;
+
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b0);
+
+              /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
+              pkts_decapsulated++;
+
+              vlib_increment_combined_counter
+                (rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+            }
+
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              vxlan_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
-              tr->tunnel_index = tunnel_index0;
+              tr->tunnel_index = t0 == 0 ? ~0 : t0 - vxm->tunnels;
               tr->vni = vnet_get_vni (vxlan0);
             }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -640,16 +420,6 @@ vxlan_input (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  /* Increment any remaining batch stats */
-  if (stats_n_packets)
-    {
-      pkts_decapsulated += stats_n_packets;
-      vlib_increment_combined_counter 
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
-      node->runtime_data[0] = stats_sw_if_index;
-    }
-
   /* Do we still need this now that tunnel tx stats is kept? */
   u32 node_idx = is_ip4 ? vxlan4_input_node.index : vxlan6_input_node.index;
   vlib_node_increment_counter (vm, node_idx, VXLAN_ERROR_DECAPSULATED,
@@ -836,7 +606,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	    goto exit0; /* not VXLAN packet */
 
 	  /* Validate DIP against VTEPs*/
-	  if (is_ip4) 
+	  if (is_ip4)
 	    {
 	      if (addr4.as_u32 != ip40->dst_address.as_u32)
 	        {
@@ -894,7 +664,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error0 = (len_diff0 >= 0) ? error0 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next0 = error0 ? 
+	  next0 = error0 ?
 	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b0->error = error0 ? error_node->errors[error0] : 0;
 
@@ -918,7 +688,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	    goto exit1; /* not VXLAN packet */
 
 	  /* Validate DIP against VTEPs*/
-	  if (is_ip4) 
+	  if (is_ip4)
 	    {
 	      if (addr4.as_u32 != ip41->dst_address.as_u32)
 	        {
@@ -976,10 +746,10 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error1 = (len_diff1 >= 0) ? error1 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next1 = error1 ? 
+	  next1 = error1 ?
 	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b1->error = error1 ? error_node->errors[error1] : 0;
- 
+
 	  /* vxlan-input node expect current at VXLAN header */
 	  if (is_ip4)
 	    vlib_buffer_advance (b1, sizeof(ip4_header_t)+sizeof(udp_header_t));
@@ -1036,7 +806,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	    goto exit; /* not VXLAN packet */
 
 	  /* Validate DIP against VTEPs*/
-	  if (is_ip4) 
+	  if (is_ip4)
 	    {
 	      if (addr4.as_u32 != ip40->dst_address.as_u32)
 	        {
@@ -1094,7 +864,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error0 = (len_diff0 >= 0) ? error0 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next0 = error0 ? 
+	  next0 = error0 ?
 	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b0->error = error0 ? error_node->errors[error0] : 0;
 
