@@ -144,10 +144,10 @@ test_device_flow (vlib_main_t * vm, unformat_input_t * input,
       vnet_device_flow_del (flow.id);
       break;
     case FLOW_ENABLE:
-      vnet_device_flow_enable (flow.id, hw_if_index);
+      //vnet_device_flow_enable (flow.id, hw_if_index);
       break;
     case FLOW_DISABLE:
-      vnet_device_flow_enable (flow.id, hw_if_index);
+      //vnet_device_flow_enable (flow.id, hw_if_index);
       break;
     default:
       return clib_error_return (0, "please specify action (add, del, enable, "
