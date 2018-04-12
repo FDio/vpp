@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80bcbc9a_2ec22876",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-12T22:36:37Z",
+      "side": 1,
+      "message": "Can we maintain the if/else indentation that matches rest of the module which tried to match vpp coding standard?  When do you think we should fix our VXLAN modules to enable auto style check with patch verify jobs?",
+      "range": {
+        "startLine": 89,
+        "startChar": 2,
+        "endLine": 89,
+        "endChar": 3
+      },
+      "revId": "527e07b4b339131afa4df42f6293ec16ff91a020",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
