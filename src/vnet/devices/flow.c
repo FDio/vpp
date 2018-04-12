@@ -77,10 +77,11 @@ vnet_device_flow_del (u32 flow_id)
   vnet_device_flow_t *f = vnet_device_get_flow (flow_id);
   uword hw_if_index;
 
-  clib_bitmap_foreach(hw_if_index, f->hw_if_bmp,
-    ({
-     vnet_device_flow_disable (flow_id, hw_if_index);
-    }));
+  clib_bitmap_foreach (hw_if_index, f->hw_if_bmp, (
+						    {
+						    vnet_device_flow_disable
+						    (flow_id, hw_if_index);
+						    }));
 
   clib_bitmap_free (f->hw_if_bmp);
   memset (f, 0, sizeof (*f));
@@ -88,23 +89,41 @@ vnet_device_flow_del (u32 flow_id)
 }
 
 void
-vnet_device_flow_enable (u32 flow_id, u32 hw_if_index)
+vnet_device_flow_enable (u32 flow_id, u32 hw_if_index, u32 node_index)
 {
   vnet_device_main_t *dm = &device_main;
   vnet_device_flow_t *f = vnet_device_get_flow (flow_id);
   vnet_device_flow_hw_if_t *hwif;
-  u32 flow_index, *fidp;
+  u32 flow_index;
+  vnet_device_flow_info_t *fip;
 
   vec_validate (dm->interfaces, hw_if_index);
   hwif = vec_elt_at_index (dm->interfaces, hw_if_index);
 
   /* avoid using flow 0 */
   if (pool_elts (hwif->flows) == 0)
-    pool_get (hwif->flows, fidp);
+    pool_get (hwif->flows, fip);
 
-  pool_get (hwif->flows, fidp);
-  flow_index = fidp - hwif->flows;
-  *fidp = flow_id;
+  /* delay removal of disabled / retired flows from pool, to prevent flow index reuse, as packets marked by the deleted flow might already be in the queue */
+  if (vec_len (hwif->retired_flows)
+      && hwif->last_main_loop_count != vlib_get_main ()->main_loop_count)
+    {
+      uword *f;
+      vec_foreach_backwards (f, hwif->retired_flows)
+      {
+	pool_put_index (hwif->flows, *f);
+      }
+      vec_reset_length (hwif->retired_flows);
+    }
+
+  pool_get (hwif->flows, fip);
+  flow_index = fip - hwif->flows;
+  fip->flow_id = flow_id;
+
+  vnet_hw_interface_t *hw =
+    vnet_get_hw_interface (vnet_get_main (), hw_if_index);
+  fip->next_index =
+    vlib_node_add_next (vlib_get_main (), hw->input_node_index, node_index);
 
   hash_set (hwif->flow_index_by_flow_id, flow_id, flow_index);
 
@@ -129,7 +148,7 @@ vnet_device_flow_disable (u32 flow_id, u32 hw_if_index)
   hwif = vec_elt_at_index (dm->interfaces, hw_if_index);
 
   /* don't disable if not enabled */
-  ASSERT (clib_bitmap_get (f->hw_if_bmp, hw_if_index) == 0);
+  ASSERT (clib_bitmap_get (f->hw_if_bmp, hw_if_index) == 1);
 
   f->hw_if_bmp = clib_bitmap_set (f->hw_if_bmp, hw_if_index, 0);
 
@@ -139,7 +158,11 @@ vnet_device_flow_disable (u32 flow_id, u32 hw_if_index)
   if (hwif->callback)
     hwif->callback (VNET_DEVICE_FLOW_DEL, f, hw_if_index, p[0]);
 
-  pool_put_index (hwif->flows, p[0]);
+  vnet_device_flow_info_t *fip = pool_elt_at_index (hwif->flows, p[0]);
+  fip->flow_id = 0;
+  fip->next_index = ~0;
+  vec_add1 (hwif->retired_flows, p[0]);
+  hwif->last_main_loop_count = vlib_get_main ()->main_loop_count;
   hash_unset (hwif->flow_index_by_flow_id, flow_id);
 }
 

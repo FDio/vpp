@@ -560,6 +560,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (error)
 	return error;
 
+      if (devconf->fdir_mode_perfect)
+	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+
       vnet_device_flow_register_cb (xd->hw_if_index, dpdk_device_flow_cb);
 
       /*
@@ -843,6 +846,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
   devconf->hqos_enabled = 0;
+  devconf->fdir_mode_perfect = 0;
   dpdk_device_config_hqos_default (&devconf->hqos);
 
   if (!input)
@@ -862,6 +866,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
       else if (unformat (input, "workers %U", unformat_bitmap_list,
 			 &devconf->workers))
 	;
+      else if (unformat (input, "fdir-mode-perfect"))
+	devconf->fdir_mode_perfect = 1;
       else
 	if (unformat
 	    (input, "rss %U", unformat_vlib_cli_sub_input, &sub_input))

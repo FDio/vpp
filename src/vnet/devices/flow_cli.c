@@ -129,11 +129,11 @@ test_device_flow (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "Please specify source ip address");
       if (flow.ip4_5tuple.dst_addr.as_u32 == ~0)
 	return clib_error_return (0, "Please specify destination ip address");
-      if (flow.ip4_5tuple.src_port == (u16) ~0)
+      if (flow.ip4_5tuple.src_port == (u16) ~ 0)
 	return clib_error_return (0, "Please specify source port");
-      if (flow.ip4_5tuple.dst_port == (u16) ~0)
+      if (flow.ip4_5tuple.dst_port == (u16) ~ 0)
 	return clib_error_return (0, "Please specify destination port");
-      if (flow.ip4_5tuple.protocol == (ip_protocol_t) ~0)
+      if (flow.ip4_5tuple.protocol == (ip_protocol_t) ~ 0)
 	return clib_error_return (0, "Please specify ip protocol");
 
       flow.type = VNET_DEVICE_FLOW_TYPE_IP4_5TUPLE;
@@ -144,14 +144,14 @@ test_device_flow (vlib_main_t * vm, unformat_input_t * input,
       vnet_device_flow_del (flow.id);
       break;
     case FLOW_ENABLE:
-      vnet_device_flow_enable (flow.id, hw_if_index);
+      //vnet_device_flow_enable (flow.id, hw_if_index);
       break;
     case FLOW_DISABLE:
-      vnet_device_flow_enable (flow.id, hw_if_index);
+      //vnet_device_flow_enable (flow.id, hw_if_index);
       break;
     default:
       return clib_error_return (0, "please specify action (add, del, enable, "
-				 "disable)");
+				"disable)");
     }
 
   return 0;
@@ -189,7 +189,7 @@ format_device_flow_entry (u8 * s, va_list * args)
     return format (s, "%U", format_ip6_address, ptr);
 
   if (strncmp (type, "ip_protocol_t", 13) == 0)
-    return format (s, "%U", format_ip_protocol, * (ip_protocol_t *) ptr);
+    return format (s, "%U", format_ip_protocol, *(ip_protocol_t *) ptr);
 
   s = format (s, "unknown type '%s'", type);
   return s;

@@ -81,8 +81,7 @@ foreach_device_flow_entry_##b \
 foreach_device_flow_type
 #undef _
 #undef _fe
-
-typedef struct
+  typedef struct
 {
   vnet_device_flow_type_t type;
   u32 id;
@@ -97,27 +96,40 @@ typedef struct
 
   /* bitmap of hw_if_index where flow is enabled */
   clib_bitmap_t *hw_if_bmp;
+
 } vnet_device_flow_t;
 
 typedef void (vnet_device_flow_cb_t) (vnet_device_flow_action_t action,
 				      vnet_device_flow_t * flow,
-				      u32 hW_if_index, u32 local_flow_index);
+				      u32 hw_if_index, u32 local_flow_index);
+
+typedef struct
+{
+  u32 flow_id;
+  u32 next_index;
+} vnet_device_flow_info_t;
 
 typedef struct
 {
   /* callback registered by driver */
   vnet_device_flow_cb_t *callback;
 
-  /* pool of local interfaces */
-  u32 *flows;
+  /* pool of local flows */
+  vnet_device_flow_info_t *flows;
 
   /* hash */
   uword *flow_index_by_flow_id;
+
+  /* vec of flow indexes to destroy once all packets with stale flow_index are handled */
+  uword *retired_flows;
+
+  /* age of the youngest entry in retired flows */
+  u32 last_main_loop_count;
 } vnet_device_flow_hw_if_t;
 
 u32 vnet_device_flow_request_range (u32 n_entries);
 void vnet_device_flow_add (vnet_device_flow_t * flow);
-void vnet_device_flow_enable (u32 flow_id, u32 hw_if_index);
+void vnet_device_flow_enable (u32 flow_id, u32 hw_if_index, u32 node_index);
 void vnet_device_flow_disable (u32 flow_id, u32 hw_if_index);
 void vnet_device_flow_del (u32 flow_id);
 void vnet_device_flow_register_cb (u32 hw_if_index,
