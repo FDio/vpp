@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c75f158d_10a1f79d",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-12T10:58:33Z",
+      "side": 1,
+      "message": "can you simply add field current_speed to vnet_hw_interface_t and remove corresponding flags?",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 177,
+        "endChar": 1
+      },
+      "revId": "e14e32355a18efa31415a36a79f967404f6b8637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
