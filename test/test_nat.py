@@ -6436,6 +6436,29 @@ class TestNAT66(MethodHolder):
         self.assertEqual(len(sm), 1)
         self.assertEqual(sm[0].total_pkts, 8)
 
+    def test_check_no_translate(self):
+        """ NAT66 translate only when egress interface is outside interface """
+        self.vapi.nat66_add_del_interface(self.pg0.sw_if_index)
+        self.vapi.nat66_add_del_interface(self.pg1.sw_if_index)
+        self.vapi.nat66_add_del_static_mapping(self.pg0.remote_ip6n,
+                                               self.nat_addr_n)
+
+        # in2out
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6) /
+             UDP())
+        self.pg0.add_stream([p])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        packet = capture[0]
+        try:
+            self.assertEqual(packet[IPv6].src, self.pg0.remote_ip6)
+            self.assertEqual(packet[IPv6].dst, self.pg1.remote_ip6)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
     def clear_nat66(self):
         """
         Clear NAT66 configuration.

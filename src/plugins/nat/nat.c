@@ -2441,12 +2441,14 @@ static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t * sm = &snat_main;
+  nat66_main_t * nm = &nat66_main;
   u32 translation_buckets = 1024;
   u32 translation_memory_size = 128<<20;
   u32 user_buckets = 128;
   u32 user_memory_size = 64<<20;
   u32 max_translations_per_user = 100;
   u32 outside_vrf_id = 0;
+  u32 outside_ip6_vrf_id = 0;
   u32 inside_vrf_id = 0;
   u32 static_mapping_buckets = 1024;
   u32 static_mapping_memory_size = 64<<20;
@@ -2478,6 +2480,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "outside VRF id %d",
                          &outside_vrf_id))
+        ;
+      else if (unformat (input, "outside ip6 VRF id %d",
+                         &outside_ip6_vrf_id))
         ;
       else if (unformat (input, "inside VRF id %d",
                          &inside_vrf_id))
@@ -2521,6 +2526,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
                                                              outside_vrf_id,
+                                                             FIB_SOURCE_PLUGIN_HI);
+  nm->outside_vrf_id = outside_ip6_vrf_id;
+  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+                                                             outside_ip6_vrf_id,
                                                              FIB_SOURCE_PLUGIN_HI);
   sm->inside_vrf_id = inside_vrf_id;
   sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
