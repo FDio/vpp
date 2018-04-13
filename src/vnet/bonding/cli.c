@@ -135,7 +135,10 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
   int i;
-  vnet_hw_interface_t *hw;
+  vnet_hw_interface_t *sif_hw, *bif_hw;
+
+  sif_hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+  bif_hw = vnet_get_sup_hw_interface (vnm, bif->sw_if_index);
 
   bif->port_number_bitmap =
     clib_bitmap_set (bif->port_number_bitmap,
@@ -153,11 +156,17 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
       }
   }
 
+  if (bif_hw->l2_if_count)
+    {
+      ethernet_set_flags (vnm, sif_hw->hw_if_index, 0);
+      /* Allow ip packets to go directly to ip4-input etc */
+      ethernet_set_rx_redirect (vnm, sif_hw, 0);
+    }
+
   bond_disable_collecting_distributing (vm, sif);
 
   /* Put back the old mac */
-  hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
-  vnet_hw_interface_change_mac_address (vnm, hw->hw_if_index,
+  vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
 					sif->persistent_hw_address);
 
   pool_put (bm->neighbors, sif);
@@ -406,7 +415,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   bond_if_t *bif;
   slave_if_t *sif;
   vnet_interface_main_t *im = &vnm->interface_main;
-  vnet_hw_interface_t *hw, *hw2;
+  vnet_hw_interface_t *bif_hw, *sif_hw;
   vnet_sw_interface_t *sw;
 
   bif = bond_get_master_by_sw_if_index (args->group);
@@ -423,8 +432,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       args->error = clib_error_return (0, "interface was already enslaved");
       return;
     }
-  hw = vnet_get_sup_hw_interface (vnm, args->slave);
-  if (hw->dev_class_index == bond_dev_class.index)
+  sif_hw = vnet_get_sup_hw_interface (vnm, args->slave);
+  if (sif_hw->dev_class_index == bond_dev_class.index)
     {
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
@@ -454,12 +463,14 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
 	    sif - bm->neighbors);
   vec_add1 (bif->slaves, sif->sw_if_index);
 
-  hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+  sif_hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+
   /* Save the old mac */
-  memcpy (sif->persistent_hw_address, hw->hw_address, 6);
+  memcpy (sif->persistent_hw_address, sif_hw->hw_address, 6);
+  bif_hw = vnet_get_sup_hw_interface (vnm, bif->sw_if_index);
   if (bif->use_custom_mac)
     {
-      vnet_hw_interface_change_mac_address (vnm, hw->hw_if_index,
+      vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
 					    bif->hw_address);
     }
   else
@@ -467,17 +478,24 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       // bond interface gets the mac address from the first slave
       if (vec_len (bif->slaves) == 1)
 	{
-	  memcpy (bif->hw_address, hw->hw_address, 6);
-	  hw2 = vnet_get_sup_hw_interface (vnm, bif->sw_if_index);
-	  vnet_hw_interface_change_mac_address (vnm, hw2->hw_if_index,
-						hw->hw_address);
+	  memcpy (bif->hw_address, sif_hw->hw_address, 6);
+	  vnet_hw_interface_change_mac_address (vnm, bif_hw->hw_if_index,
+						sif_hw->hw_address);
 	}
       else
 	{
 	  // subsequent slaves gets the mac address of the bond interface
-	  vnet_hw_interface_change_mac_address (vnm, hw->hw_if_index,
+	  vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
 						bif->hw_address);
 	}
+    }
+
+  if (bif_hw->l2_if_count)
+    {
+      ethernet_set_flags (vnm, sif_hw->hw_if_index,
+			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+      /* ensure all packets go to ethernet-input */
+      ethernet_set_rx_redirect (vnm, sif_hw, 1);
     }
 
   if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
@@ -490,7 +508,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
     }
 
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
-					  hw->hw_if_index, 1, 0, 0);
+					  sif_hw->hw_if_index, 1, 0, 0);
 
   if (args->rv)
     {

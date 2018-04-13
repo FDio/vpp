@@ -74,6 +74,48 @@ format_bond_interface_name (u8 * s, va_list * args)
 }
 
 static __clib_unused clib_error_t *
+bond_set_l2_mode_function (vnet_main_t * vnm,
+			   struct vnet_hw_interface_t *bif_hw,
+			   i32 l2_if_adjust)
+{
+  bond_if_t *bif;
+  u32 *sw_if_index;
+  struct vnet_hw_interface_t *sif_hw;
+
+  bif = bond_get_master_by_sw_if_index (bif_hw->sw_if_index);
+  if (!bif)
+    return 0;
+
+  if ((bif_hw->l2_if_count == 1) && (l2_if_adjust == 1))
+    {
+      /* Just added first L2 interface on this port */
+      vec_foreach (sw_if_index, bif->slaves)
+      {
+	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	ethernet_set_flags (vnm, sif_hw->hw_if_index,
+			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+
+	/* ensure all packets go to ethernet-input */
+	ethernet_set_rx_redirect (vnm, sif_hw, 1);
+      }
+    }
+  else if ((bif_hw->l2_if_count == 0) && (l2_if_adjust == -1))
+    {
+      /* Just removed last L2 subinterface on this port */
+      vec_foreach (sw_if_index, bif->slaves)
+      {
+	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	ethernet_set_flags (vnm, sif_hw->hw_if_index, 0);
+
+	/* Allow ip packets to go directly to ip4-input etc */
+	ethernet_set_rx_redirect (vnm, sif_hw, 0);
+      }
+    }
+
+  return 0;
+}
+
+static __clib_unused clib_error_t *
 bond_subif_add_del_function (vnet_main_t * vnm, u32 hw_if_index,
 			     struct vnet_sw_interface_t *st, int is_add)
 {
@@ -640,6 +682,7 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .tx_function_n_errors = BOND_TX_N_ERROR,
   .tx_function_error_strings = bond_tx_error_strings,
   .format_device_name = format_bond_interface_name,
+  .set_l2_mode_function = bond_set_l2_mode_function,
   .admin_up_down_function = bond_interface_admin_up_down,
   .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
