@@ -564,6 +564,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   l2_bridge_domain_t *bd_config;
   i32 l2_if_adjust = 0;
   u32 slot;
+  vnet_device_class_t *dev_class;
 
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
   config = l2input_intf_config (sw_if_index);
@@ -797,6 +798,12 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
   /* Set up the L2/L3 flag in the interface parsing tables */
   ethernet_sw_interface_set_l2_mode (vnm, sw_if_index, (mode != MODE_L3));
+
+  dev_class = vnet_get_device_class (vnet_main, hi->dev_class_index);
+  if (dev_class->set_l2_mode_function)
+    {
+      dev_class->set_l2_mode_function (vnet_main, hi, l2_if_adjust);
+    }
 
   return 0;
 }
