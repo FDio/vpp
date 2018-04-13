@@ -174,7 +174,7 @@ send_session_accept_callback (stream_session_t * s)
 
   if (session_has_transport (s))
     {
-      listener = listen_session_get (s->session_type, s->listener_index);
+      listener = listen_session_get (s->listener_index);
       mp->listener_handle = listen_session_get_handle (listener);
       if (application_is_proxy (server))
 	{
@@ -199,8 +199,7 @@ send_session_accept_callback (stream_session_t * s)
       local_session_t *ll;
       if (application_local_session_listener_has_transport (ls))
 	{
-	  listener = listen_session_get (ls->listener_session_type,
-					 ls->listener_index);
+	  listener = listen_session_get (ls->listener_index);
 	  mp->listener_handle = listen_session_get_handle (listener);
 	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
 	}
@@ -210,8 +209,7 @@ send_session_accept_callback (stream_session_t * s)
 						     ls->listener_index);
 	  if (ll->transport_listener_index != ~0)
 	    {
-	      listener = listen_session_get (ll->listener_session_type,
-					     ll->transport_listener_index);
+	      listener = listen_session_get (ll->transport_listener_index);
 	      mp->listener_handle = listen_session_get_handle (listener);
 	    }
 	  else

@@ -442,7 +442,7 @@ application_start_listen (application_t * srv, session_endpoint_t * sep,
   session_type_t sst;
 
   sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
-  s = listen_session_new (sst);
+  s = listen_session_new (0, sst);
   s->app_index = srv->index;
 
   if (stream_session_listen (s, sep))
@@ -566,8 +566,7 @@ application_get_local_segment_manager_w_session (application_t * app,
   stream_session_t *listener;
   if (application_local_session_listener_has_transport (ls))
     {
-      listener = listen_session_get (ls->listener_session_type,
-				     ls->listener_index);
+      listener = listen_session_get (ls->listener_index);
       return application_get_listen_segment_manager (app, listener);
     }
   return segment_manager_get (app->local_segment_manager);

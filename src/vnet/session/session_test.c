@@ -1375,7 +1375,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
-  u8 sst, is_filtered = 0;
+  u8 is_filtered = 0;
   stream_session_t *s;
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
@@ -1454,8 +1454,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 				      TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
 		"successful");
-  sst = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, 1);
-  s = listen_session_get (sst, tc->s_index);
+  s = listen_session_get (tc->s_index);
   SESSION_TEST ((s->app_index == server_index), "lookup should return the"
 		" server");
 

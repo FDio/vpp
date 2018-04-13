@@ -126,9 +126,6 @@ struct _session_manager_main
   /** Per worker-thread session pool peekers rw locks */
   clib_rwlock_t *peekers_rw_locks;
 
-  /** Pool of listen sessions. Same type as stream sessions to ease lookups */
-  stream_session_t **listen_sessions;
-
   /** Per-proto, per-worker enqueue epoch counters */
   u32 *current_enqueue_epoch[TRANSPORT_N_PROTO];
 
@@ -396,21 +393,6 @@ session_get_from_handle_safe (u64 handle)
     }
 }
 
-always_inline stream_session_t *
-stream_session_listener_get (u8 sst, u64 si)
-{
-  return pool_elt_at_index (session_manager_main.listen_sessions[sst], si);
-}
-
-always_inline u32
-stream_session_get_index (stream_session_t * s)
-{
-  if (s->session_state == SESSION_STATE_LISTENING)
-    return s - session_manager_main.listen_sessions[s->session_type];
-
-  return s - session_manager_main.sessions[s->thread_index];
-}
-
 always_inline u32
 stream_session_max_rx_enqueue (transport_connection_t * tc)
 {
@@ -513,59 +495,42 @@ always_inline u64
 listen_session_get_handle (stream_session_t * s)
 {
   ASSERT (s->session_state == SESSION_STATE_LISTENING);
-  return ((u64) s->session_type << 32) | s->session_index;
+  return session_handle (s);
 }
 
 always_inline stream_session_t *
 listen_session_get_from_handle (session_handle_t handle)
 {
-  session_manager_main_t *smm = &session_manager_main;
-  stream_session_t *s;
-  u32 type, index;
-  type = handle >> 32;
-  index = handle & 0xFFFFFFFF;
-
-  if (pool_is_free_index (smm->listen_sessions[type], index))
-    return 0;
-
-  s = pool_elt_at_index (smm->listen_sessions[type], index);
-  ASSERT (s->session_state == SESSION_STATE_LISTENING);
-  return s;
+  return session_get_from_handle (handle);
 }
 
 always_inline void
-listen_session_parse_handle (session_handle_t handle, u32 * type, u32 * index)
+listen_session_parse_handle (session_handle_t handle, u32 * index,
+			     u32 * thread_index)
 {
-  *type = handle >> 32;
-  *index = handle & 0xFFFFFFFF;
+  session_parse_handle (handle, index, thread_index);
 }
 
 always_inline stream_session_t *
-listen_session_new (session_type_t type)
+listen_session_new (u8 thread_index, session_type_t type)
 {
   stream_session_t *s;
-  pool_get_aligned (session_manager_main.listen_sessions[type], s,
-		    CLIB_CACHE_LINE_BYTES);
-  memset (s, 0, sizeof (*s));
-
+  s = session_alloc (thread_index);
   s->session_type = type;
   s->session_state = SESSION_STATE_LISTENING;
-  s->session_index = s - session_manager_main.listen_sessions[type];
-
   return s;
 }
 
 always_inline stream_session_t *
-listen_session_get (session_type_t type, u32 index)
+listen_session_get (u32 index)
 {
-  return pool_elt_at_index (session_manager_main.listen_sessions[type],
-			    index);
+  return session_get (index, 0);
 }
 
 always_inline void
 listen_session_del (stream_session_t * s)
 {
-  pool_put (session_manager_main.listen_sessions[s->session_type], s);
+  session_free (s);
 }
 
 transport_connection_t *listen_session_get_transport (stream_session_t * s);
@@ -573,14 +538,6 @@ transport_connection_t *listen_session_get_transport (stream_session_t * s);
 int
 listen_session_get_local_session_endpoint (stream_session_t * listener,
 					   session_endpoint_t * sep);
-
-always_inline stream_session_t *
-session_manager_get_listener (u8 session_type, u32 index)
-{
-  return
-    pool_elt_at_index (session_manager_main.listen_sessions[session_type],
-		       index);
-}
 
 always_inline u8
 session_manager_is_enabled ()
