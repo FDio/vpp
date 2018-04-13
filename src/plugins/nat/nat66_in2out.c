@@ -69,6 +69,46 @@ typedef enum
   NAT66_IN2OUT_N_NEXT,
 } nat66_in2out_next_t;
 
+static inline u8
+nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
+{
+  nat66_main_t *nm = &nat66_main;
+  u32 sw_if_index;
+  snat_interface_t *i;
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = 128,
+    .fp_addr = {
+		.ip6 = ip6_addr,
+		},
+  };
+
+  fei = fib_table_lookup (rx_fib_index, &pfx);
+  if (FIB_NODE_INDEX_INVALID == fei)
+    return 1;
+  sw_if_index = fib_entry_get_resolving_interface (fei);
+
+  if (sw_if_index == ~0)
+    {
+      fei = fib_table_lookup (nm->outside_fib_index, &pfx);
+      if (FIB_NODE_INDEX_INVALID == fei)
+	return 1;
+      sw_if_index = fib_entry_get_resolving_interface (fei);
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (i, nm->interfaces,
+  ({
+    /* NAT packet aimed at outside interface */
+    if (nat_interface_is_outside (i) && sw_if_index == i->sw_if_index)
+      return 0;
+  }));
+  /* *INDENT-ON* */
+
+  return 1;
+}
+
 static inline uword
 nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * frame)
@@ -130,6 +170,9 @@ nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  fib_index0 =
 	    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
 						 sw_if_index0);
+
+	  if (nat66_not_translate (fib_index0, ip60->dst_address))
+	    goto trace0;
 
 	  sm0 = nat66_static_mapping_get (&ip60->src_address, fib_index0, 1);
 	  if (PREDICT_FALSE (!sm0))

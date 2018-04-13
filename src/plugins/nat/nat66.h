@@ -55,6 +55,9 @@ typedef struct
   clib_bihash_24_8_t sm_e;
   /** Session counters */
   vlib_combined_counter_main_t session_counters;
+
+  u32 outside_vrf_id;
+  u32 outside_fib_index;
 } nat66_main_t;
 
 extern nat66_main_t nat66_main;
