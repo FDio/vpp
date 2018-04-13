@@ -652,16 +652,14 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
 {
   session_kv4_t kv4;
   int rv;
-  session_type_t session_type;
 
   /*
    * First, try a fully formed listener
    */
-  session_type = session_type_from_proto_and_ip (proto, 1);
   make_v4_listener_kv (&kv4, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_manager_get_listener (session_type, (u32) kv4.value);
+    return listen_session_get ((u32) kv4.value);
 
   /*
    * Zero out the lcl ip and check if any 0/0 port binds have been done
@@ -671,7 +669,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
       kv4.key[0] = 0;
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
-	return session_manager_get_listener (session_type, (u32) kv4.value);
+	return listen_session_get ((u32) kv4.value);
     }
   else
     {
@@ -684,7 +682,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   make_v4_proxy_kv (&kv4, lcl, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_manager_get_listener (session_type, (u32) kv4.value);
+    return listen_session_get ((u32) kv4.value);
 
   return 0;
 }
@@ -706,13 +704,11 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
 {
   session_kv6_t kv6;
   int rv;
-  session_type_t session_type;
 
-  session_type = session_type_from_proto_and_ip (proto, 0);
   make_v6_listener_kv (&kv6, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_manager_get_listener (session_type, (u32) kv6.value);
+    return listen_session_get ((u32) kv6.value);
 
   /* Zero out the lcl ip */
   if (ip_wildcard)
@@ -720,7 +716,7 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
       kv6.key[0] = kv6.key[1] = 0;
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
-	return session_manager_get_listener (session_type, (u32) kv6.value);
+	return listen_session_get ((u32) kv6.value);
     }
   else
     {
@@ -730,7 +726,7 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
   make_v6_proxy_kv (&kv6, lcl, proto);
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_manager_get_listener (session_type, (u32) kv6.value);
+    return listen_session_get ((u32) kv6.value);
   return 0;
 }
 

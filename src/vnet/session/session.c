@@ -774,13 +774,10 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   application_t *server;
   stream_session_t *s, *listener;
   segment_manager_t *sm;
-  session_type_t sst;
   int rv;
 
-  sst = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
-
   /* Find the server */
-  listener = listen_session_get (sst, listener_index);
+  listener = listen_session_get (listener_index);
   server = application_get (listener->app_index);
 
   sm = application_get_listen_segment_manager (server, listener);
@@ -1150,7 +1147,6 @@ session_register_transport (transport_proto_t transport_proto,
   session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
 
   vec_validate (smm->session_type_to_next, session_type);
-  vec_validate (smm->listen_sessions, session_type);
   vec_validate (smm->session_tx_fns, session_type);
 
   /* *INDENT-OFF* */

@@ -384,8 +384,7 @@ tls_session_accept_callback (stream_session_t * tls_session)
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
-  tls_listener = listen_session_get (tls_session->session_type,
-				     tls_session->listener_index);
+  tls_listener = listen_session_get (tls_session->listener_index);
   lctx = tls_listener_ctx_get (tls_listener->opaque);
 
   ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
@@ -557,7 +556,6 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   stream_session_t *tls_listener;
   tls_ctx_t *lctx;
   u32 lctx_index;
-  session_type_t st;
   stream_session_t *app_listener;
   tls_engine_type_t engine_type;
 
@@ -581,8 +579,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   tls_listener = listen_session_get_from_handle (tls_handle);
   tls_listener->opaque = lctx_index;
 
-  st = session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, sep->is_ip4);
-  app_listener = listen_session_get (st, app_listener_index);
+  app_listener = listen_session_get (app_listener_index);
 
   lctx = tls_listener_ctx_get (lctx_index);
   lctx->parent_app_index = sep->app_index;
@@ -668,10 +665,10 @@ format_tls_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
-  u32 listener_index, type;
+  u32 listener_index, thread_index;
 
-  listen_session_parse_handle (ctx->tls_session_handle, &type,
-			       &listener_index);
+  listen_session_parse_handle (ctx->tls_session_handle, &listener_index,
+			       &thread_index);
   return format (s, "[TLS] listener app %u child %u", ctx->parent_app_index,
 		 listener_index);
 }
