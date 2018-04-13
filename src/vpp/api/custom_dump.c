@@ -1996,6 +1996,21 @@ static void *vl_api_interface_name_renumber_t_print
   FINISH;
 }
 
+static void *vl_api_ip_probe_neighbor_t_print
+  (vl_api_ip_probe_neighbor_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_probe_neighbor ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  if (mp->is_ipv6)
+    s = format (s, "address %U ", format_ip6_address, &mp->dst_address);
+  else
+    s = format (s, "address %U ", format_ip4_address, &mp->dst_address);
+
+  FINISH;
+}
+
 static void *vl_api_want_ip4_arp_events_t_print
   (vl_api_want_ip4_arp_events_t * mp, void *handle)
 {
@@ -3515,6 +3530,7 @@ _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel) 			\
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
+_(IP_PROBE_NEIGHBOR, ip_probe_neighbor)                                 \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
