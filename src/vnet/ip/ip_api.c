@@ -76,6 +76,7 @@ _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
+_(IP_PROBE_NEIGHBOR, ip_probe_neighbor)      			        \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_IP6_RA_EVENTS, want_ip6_ra_events)                               \
@@ -2678,6 +2679,36 @@ static void
     si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
   else
     si->flags &= ~VNET_SW_INTERFACE_FLAG_PROXY_ARP;
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_ip_probe_neighbor_t_handler (vl_api_ip_probe_neighbor_t * mp)
+{
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_ip_probe_neighbor_reply_t *rmp;
+  clib_error_t *error;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_ipv6)
+    error = ip6_probe_neighbor (vm, (ip6_address_t *) mp->dst_address,
+				sw_if_index);
+  else
+    error = ip4_probe_neighbor (vm, (ip4_address_t *) mp->dst_address,
+				sw_if_index);
+
+  if (error)
+    {
+      clib_error_report (error);
+      rv = clib_error_get_code (error);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
 

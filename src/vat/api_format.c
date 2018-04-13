@@ -5569,6 +5569,7 @@ _(l2_interface_efp_filter_reply)                        \
 _(l2_interface_vlan_tag_rewrite_reply)                  \
 _(modify_vhost_user_if_reply)                           \
 _(delete_vhost_user_if_reply)                           \
+_(ip_probe_neighbor_reply)                              \
 _(want_ip4_arp_events_reply)                            \
 _(want_ip6_nd_events_reply)                             \
 _(want_l2_macs_events_reply)                            \
@@ -5811,9 +5812,10 @@ _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
-_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	    \
+_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
 _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
+_(IP_PROBE_NEIGHBOR_REPLY, ip_probe_neighbor_reply)			\
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
 _(WANT_IP6_ND_EVENTS_REPLY, want_ip6_nd_events_reply)			\
@@ -14456,6 +14458,58 @@ api_interface_name_renumber (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->new_show_dev_instance = ntohl (new_show_dev_instance);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_probe_neighbor (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_probe_neighbor_t *mp;
+  u8 int_set = 0;
+  u8 adr_set = 0;
+  u8 is_ipv6 = 0;
+  u8 dst_adr[16];
+  u32 sw_if_index;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	int_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	int_set = 1;
+      else if (unformat (i, "address %U", unformat_ip4_address, dst_adr))
+	adr_set = 1;
+      else if (unformat (i, "address %U", unformat_ip6_address, dst_adr))
+	{
+	  adr_set = 1;
+	  is_ipv6 = 1;
+	}
+      else
+	break;
+    }
+
+  if (int_set == 0)
+    {
+      errmsg ("missing interface");
+      return -99;
+    }
+
+  if (adr_set == 0)
+    {
+      errmsg ("missing addresses");
+      return -99;
+    }
+
+  M (IP_PROBE_NEIGHBOR, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_ipv6 = is_ipv6;
+  clib_memcpy (mp->dst_address, dst_adr, sizeof (dst_adr));
 
   S (mp);
   W (ret);
@@ -23403,6 +23457,7 @@ _(interface_name_renumber,                                              \
 _(input_acl_set_interface,                                              \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
+_(ip_probe_neighbor, "(<intc> | sw_if_index <nn>) address <ip4|ip6-addr>") \
 _(want_ip4_arp_events, "address <ip4-address> [del]")                   \
 _(want_ip6_nd_events, "address <ip6-address> [del]")                    \
 _(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \

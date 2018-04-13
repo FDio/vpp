@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.2.0";
+option version = "1.2.2";
 import "vnet/fib/fib_types.api";
 
 /** \brief Add / del table request
@@ -650,12 +650,31 @@ autoreply define ip_source_and_port_range_check_interface_add_del
   u32 udp_out_vrf_id;
 };
 
-/** \brief Register for ip4 arp resolution events
+/** \brief IP probe neighbor address on an interface by sending an
+           ARP request (for IP4) or ICMP6 Neighbor Solicitation (for IP6)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param dst_address - target IP address to send IP addr resolution request
+    @param is_ipv6 - [1|0] to indicate if address family is IPv[6|4]
+*/
+autoreply define ip_probe_neighbor
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 dst_address[16];
+  u8 is_ipv6;
+};
+
+/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+           MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 => register for events, 0 => cancel registration
     @param pid - sender's pid
-    @param address - the exact ip4 address of interest
+    @param address - exact IP4 address of interested arp resolution event, or
+                     0 to get MAC/IP info from ARP requests in BDs
 */
 autoreply define want_ip4_arp_events
 {
@@ -666,13 +685,14 @@ autoreply define want_ip4_arp_events
   u32 address;
 };
 
-/** \brief Tell client about an ip4 arp resolution event
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender
     @param address - the exact ip4 address of interest
     @param pid - client pid registered to receive notification
     @param sw_if_index - interface which received ARP packet
     @param new_mac - the new mac address 
-    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
+    @param mac_ip - 0: ARP resolution event, 1: MAC/IP info from L2 BDs
 */
 define ip4_arp_event
 {
@@ -689,12 +709,14 @@ service {
     events ip4_arp_event;
 };
 
-/** \brief Register for ip6 nd resolution events
+/** \brief Register for IP6 ND resolution event on recieving NA reply
+           MAC/IP info from ICMP6 Neighbor Solicitation in L2 BDs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 => register for events, 0 => cancel registration
     @param pid - sender's pid
-    @param address - the exact ip6 address of interest
+    @param address - the exact IP6 address of interested ND resolution event, or
+                     0 to get MAC/IP info from ICMP6 NS in L2 BDs.
 */
 autoreply define want_ip6_nd_events
 {
@@ -705,13 +727,14 @@ autoreply define want_ip6_nd_events
   u8 address[16];
 };
 
-/** \brief Tell client about an ip6 nd resolution or mac/ip event
+/** \brief Tell client about an IP6 ND resolution or
+           MAC/IP info from ICMP6 Neighbor Solicitation in L2 BDs.
     @param client_index - opaque cookie to identify the sender
     @param pid - client pid registered to receive notification
     @param sw_if_index - interface which received ARP packet
     @param address - the exact ip6 address of interest
     @param new_mac - the new mac address 
-    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
+    @param mac_ip - 0: ND resolution event, 1: MAC/IP info from L2 BDs
 */
 define ip6_nd_event
 {
