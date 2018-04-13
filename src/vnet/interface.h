@@ -76,6 +76,11 @@ typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 queue_id,
    vnet_hw_interface_rx_mode mode);
 
+/* Interface set l2 mode callback. */
+typedef clib_error_t *(vnet_interface_set_l2_mode_function_t)
+  (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
+   i32 l2_if_adjust);
+
 typedef enum vnet_interface_function_priority_t_
 {
   VNET_ITF_FUNC_PRIORITY_LOW,
@@ -164,6 +169,9 @@ typedef struct _vnet_device_class
 
   /* Function to call interface rx mode is changed */
   vnet_interface_set_rx_mode_function_t *rx_mode_change_function;
+
+  /* Function to call interface l2 mode is changed */
+  vnet_interface_set_l2_mode_function_t *set_l2_mode_function;
 
   /* Redistribute flag changes/existence of this interface class. */
   u32 redistribute;
