@@ -177,7 +177,7 @@ private:
   /**
    * the route domain the prefix is in
    */
-  std::shared_ptr<route_domain> m_rd;
+  const std::shared_ptr<route_domain> m_rd;
 
   /**
    * prefix to match
@@ -187,7 +187,7 @@ private:
   /*
    * Subnet type
    */
-  const type_t m_type;
+  type_t m_type;
 
   /**
    * The interface the prefix is reachable through

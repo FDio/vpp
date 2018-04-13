@@ -77,10 +77,10 @@ gbp_subnet::key() const
 }
 
 bool
-gbp_subnet::operator==(const gbp_subnet& gbpe) const
+gbp_subnet::operator==(const gbp_subnet& gs) const
 {
-  return ((key() == gbpe.key()) && (m_recirc == gbpe.m_recirc) &&
-          (m_epg == gbpe.m_epg));
+  return ((key() == gs.key()) && (m_type == gs.m_type) &&
+          (m_recirc == gs.m_recirc) && (m_epg == gs.m_epg));
 }
 
 void
@@ -128,6 +128,17 @@ gbp_subnet::update(const gbp_subnet& r)
       m_hw, m_rd->table_id(), m_prefix, (m_type == type_t::INTERNAL),
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
       (m_epg ? m_epg->id() : ~0)));
+  } else {
+    if (m_type != r.m_type) {
+      m_epg = r.m_epg;
+      m_recirc = r.m_recirc;
+      m_type = r.m_type;
+
+      HW::enqueue(new gbp_subnet_cmds::create_cmd(
+        m_hw, m_rd->table_id(), m_prefix, (m_type == type_t::INTERNAL),
+        (m_recirc ? m_recirc->handle() : handle_t::INVALID),
+        (m_epg ? m_epg->id() : ~0)));
+    }
   }
 }
 
