@@ -723,9 +723,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 	  acl_plugin_fill_5tuple_inline (lc_index0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_opaque_t *)&fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  fa_5tuple.pkt.lc_index = lc_index0;
 	  valid_new_sess = acl_make_5tuple_session_key (am, is_input, is_ip6, sw_if_index0,  &fa_5tuple, &kv_sess);
-          fa_5tuple.pkt.is_ip6 = is_ip6;
           // XXDEL fa_5tuple.pkt.is_input = is_input;
           fa_5tuple.pkt.mask_type_index_lsb = ~0;
 #ifdef FA_NODE_VERBOSE_DEBUG
