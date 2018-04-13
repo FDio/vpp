@@ -210,6 +210,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   /* Remainder of the key and per-packet non-key data */
   p5tuple_pkt->kv.key[4] = 0;
   p5tuple_pkt->kv.value = 0;
+  p5tuple_pkt->pkt.is_ip6 = is_ip6;
 
   if (is_ip6)
     {
@@ -732,11 +733,13 @@ acl_plugin_match_5tuple_inline (u32 lc_index,
                                            u32 * trace_bitmap)
 {
   acl_main_t *am = p_acl_main;
+  fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
+  pkt_5tuple_internal->pkt.lc_index = lc_index;
   if (am->use_hash_acl_matching) {
-    return hash_multi_acl_match_5tuple(lc_index, (fa_5tuple_t *)pkt_5tuple, is_ip6, r_action,
+    return hash_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
   } else {
-    return linear_multi_acl_match_5tuple(lc_index, (fa_5tuple_t *)pkt_5tuple, is_ip6, r_action,
+    return linear_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
   }
 }
