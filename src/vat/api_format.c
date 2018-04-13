@@ -981,7 +981,7 @@ static void vl_api_sw_interface_details_t_handler_json
   vat_json_object_add_uint (node, "link_up_down", mp->link_up_down);
   vat_json_object_add_uint (node, "link_duplex", mp->link_duplex);
   vat_json_object_add_uint (node, "link_speed", mp->link_speed);
-  vat_json_object_add_uint (node, "mtu", ntohs (mp->mtu));
+  vat_json_object_add_uint (node, "mtu", ntohs (mp->link_mtu));
   vat_json_object_add_uint (node, "sub_id", ntohl (mp->sub_id));
   vat_json_object_add_uint (node, "sub_dot1ad", mp->sub_dot1ad);
   vat_json_object_add_uint (node, "sub_number_of_tags",

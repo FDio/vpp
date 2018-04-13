@@ -337,8 +337,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   t->dev_instance = t_idx;
   t->user_instance = t_idx;
 
-  /* Set default MTU to 1480 */
-  vnet_sw_interface_set_mtu (vnet_get_main (), t->sw_if_index, 1480);
+  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 1480;
 
   ipip_tunnel_db_add (t, &key);
 

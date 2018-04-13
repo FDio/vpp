@@ -2575,6 +2575,10 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
     {
       if (is_add)
 	{
+	  vnet_hw_interface_t *hw_if0;
+
+	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index);
+
 	  pool_get (nm->if_radv_pool, a);
 
 	  ri = a - nm->if_radv_pool;
@@ -2608,8 +2612,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  a->send_radv = 1;
 
 	  /* fill in radv_info for this interface that will be needed later */
-	  a->adv_link_mtu =
-	    vnet_sw_interface_get_mtu (vnm, sw_if_index, VLIB_TX);
+	  a->adv_link_mtu = hw_if0->max_l3_packet_bytes[VLIB_RX];
 
 	  clib_memcpy (a->link_layer_address, eth_if0->address, 6);
 

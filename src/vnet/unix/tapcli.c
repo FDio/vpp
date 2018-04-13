@@ -1068,9 +1068,8 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
     hw->min_supported_packet_bytes = TAP_MTU_MIN;
     hw->max_supported_packet_bytes = TAP_MTU_MAX;
-    vnet_sw_interface_set_mtu (tm->vnet_main, hw->sw_if_index,
-			       hw->max_supported_packet_bytes -
-			       sizeof (ethernet_header_t));
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] =
+      hw->max_supported_packet_bytes - sizeof (ethernet_header_t);
     ti->sw_if_index = hw->sw_if_index;
     if (ap->sw_if_indexp)
       *(ap->sw_if_indexp) = hw->sw_if_index;

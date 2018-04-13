@@ -1103,29 +1103,32 @@ static clib_error_t *
 mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index, mtu;
+  u32 hw_if_index, mtu;
+  ethernet_main_t *em = &ethernet_main;
 
-  if (unformat (input, "%d %U", &mtu, unformat_vnet_sw_interface, vnm,
-		&sw_if_index))
+  if (unformat (input, "%d %U", &mtu,
+		unformat_vnet_hw_interface, vnm, &hw_if_index))
     {
-      ;
+      vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+      ethernet_interface_t *eif = ethernet_get_interface (em, hw_if_index);
+
+      if (!eif)
+	return clib_error_return (0, "not supported");
+
+      if (mtu < hi->min_supported_packet_bytes)
+	return clib_error_return (0, "Invalid mtu (%d): "
+				  "must be >= min pkt bytes (%d)", mtu,
+				  hi->min_supported_packet_bytes);
+
+      if (mtu > hi->max_supported_packet_bytes)
+	return clib_error_return (0, "Invalid mtu (%d): must be <= (%d)", mtu,
+				  hi->max_supported_packet_bytes);
+
+      vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
     }
   else
-    {
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
-    }
-
-  int rv = vnet_sw_interface_set_mtu (vnm, sw_if_index, mtu);
-  if (rv < 0)
-    {
-      vnet_hw_interface_t *hi = vnet_get_sw_hw_interface (vnm, sw_if_index);
-      ASSERT (hi);
-      return clib_error_return (0, "Invalid mtu (%d): "
-				"must be  between min pkt bytes (%d) and max pkt bytes (%d)",
-				mtu, hi->min_packet_bytes,
-				hi->max_packet_bytes);
-    }
+    return clib_error_return (0, "unknown input `%U'",
+			      format_unformat_error, input);
   return 0;
 }
 
@@ -1403,7 +1406,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_set_if_rx_mode, static) = {
+VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
     .path = "set interface rx-mode",
     .short_help = "set interface rx-mode <interface> [queue <n>] [polling | interrupt | adaptive]",
     .function = set_interface_rx_mode,

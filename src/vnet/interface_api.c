@@ -102,11 +102,40 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u16 mtu = ntohs (mp->mtu);
+  ethernet_main_t *em = &ethernet_main;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = vnet_sw_interface_set_mtu (vnm, sw_if_index, mtu);
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, si->hw_if_index);
+  ethernet_interface_t *eif = ethernet_get_interface (em, si->hw_if_index);
+
+  if (!eif)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto bad_sw_if_index;
+    }
+
+  if (mtu < hi->min_supported_packet_bytes)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  if (mtu > hi->max_supported_packet_bytes)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  vnet_hw_interface_set_mtu (vnm, si->hw_if_index, mtu);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
@@ -132,7 +161,7 @@ send_sw_interface_details (vpe_api_main_t * am,
 		     VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT);
   mp->link_speed = ((hi->flags & VNET_HW_INTERFACE_FLAG_SPEED_MASK) >>
 		    VNET_HW_INTERFACE_FLAG_SPEED_SHIFT);
-  mp->mtu = ntohs (swif->max_l3_packet_bytes[VLIB_TX]);
+  mp->link_mtu = ntohs (hi->max_packet_bytes);
   mp->context = context;
 
   strncpy ((char *) mp->interface_name,

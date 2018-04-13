@@ -476,16 +476,17 @@ ipip_add_tunnel (ipip_transport_t transport,
     {
       vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes = 64 + sizeof (ip4_header_t);
-      hi->max_packet_bytes = 65536 - sizeof (ip4_header_t);
     }
   else
     {
       vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes = 64 + sizeof (ip6_header_t);
-      hi->max_packet_bytes = 65536 - sizeof (ip6_header_t);
     }
 
-  vnet_sw_interface_set_mtu (vnm, sw_if_index, hi->max_packet_bytes);
+  hi->per_packet_overhead_bytes = /* preamble */ 8 + /* inter frame gap */ 12;
+
+  /* Standard default ipip MTU. */
+  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
   t->tunnel_src = *src;
   t->tunnel_dst = *dst;

@@ -1940,29 +1940,6 @@ typedef enum
   IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
-always_inline void
-ip4_mtu_check (vlib_buffer_t * b, u16 buffer_packet_bytes,
-	       u16 adj_packet_bytes, bool df, u32 * next, u32 * error)
-{
-  if (buffer_packet_bytes > adj_packet_bytes)
-    {
-      *error = IP4_ERROR_MTU_EXCEEDED;
-      if (df)
-	{
-	  icmp4_error_set_vnet_buffer
-	    (b, ICMP4_destination_unreachable,
-	     ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-	     adj_packet_bytes);
-	  *next = IP4_REWRITE_NEXT_ICMP_ERROR;
-	}
-      else
-	{
-	  /* Add support for fragmentation here */
-	  *next = IP4_REWRITE_NEXT_DROP;
-	}
-    }
-}
-
 always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -2123,20 +2100,26 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
 	  /* Check MTU of outgoing interface. */
-	  ip4_mtu_check (p0, vlib_buffer_length_in_chain (vm, p0),
-			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 ip0->flags_and_fragment_offset &
-			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-			 &next0, &error0);
-	  ip4_mtu_check (p1, vlib_buffer_length_in_chain (vm, p1),
-			 adj1[0].rewrite_header.max_l3_packet_bytes,
-			 ip1->flags_and_fragment_offset &
-			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-			 &next1, &error1);
-
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_two_headers (adj0[0], adj1[0],
-				    ip0, ip1, sizeof (ethernet_header_t));
+	  if (vlib_buffer_length_in_chain (vm, p0) >
+	      adj0[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error0 = IP4_ERROR_MTU_EXCEEDED;
+	      next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+	      icmp4_error_set_vnet_buffer
+		(p0, ICMP4_destination_unreachable,
+		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+		 0);
+	    }
+	  if (vlib_buffer_length_in_chain (vm, p1) >
+	      adj1[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error1 = IP4_ERROR_MTU_EXCEEDED;
+	      next1 = IP4_REWRITE_NEXT_ICMP_ERROR;
+	      icmp4_error_set_vnet_buffer
+		(p1, ICMP4_destination_unreachable,
+		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+		 0);
+	    }
 
 	  if (is_mcast)
 	    {
@@ -2160,17 +2143,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
-	      if (is_midchain)
-		{
-		  adj0->sub_type.midchain.fixup_func
-		    (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-		}
-
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
-
 	    }
 	  if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	    {
@@ -2181,17 +2157,15 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 
-	      if (is_midchain)
-		{
-		  adj1->sub_type.midchain.fixup_func
-		    (vm, adj1, p1, adj0->sub_type.midchain.fixup_data);
-		}
-
 	      if (PREDICT_FALSE
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index1, &next1, p1);
 	    }
+
+	  /* Guess we are only writing on simple Ethernet header. */
+	  vnet_rewrite_two_headers (adj0[0], adj1[0],
+				    ip0, ip1, sizeof (ethernet_header_t));
 
 	  /*
 	   * Bump the per-adjacency counters
@@ -2211,6 +2185,13 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 	    }
 
+	  if (is_midchain)
+	    {
+	      adj0->sub_type.midchain.fixup_func
+		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+	      adj1->sub_type.midchain.fixup_func
+		(vm, adj1, p1, adj0->sub_type.midchain.fixup_data);
+	    }
 	  if (is_mcast)
 	    {
 	      /*
@@ -2291,7 +2272,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
-
 	  if (is_mcast)
 	    {
 	      /*
@@ -2311,12 +2291,16 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	       vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
-	  ip4_mtu_check (p0, vlib_buffer_length_in_chain (vm, p0),
-			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 ip0->flags_and_fragment_offset &
-			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-			 &next0, &error0);
-
+	  if (vlib_buffer_length_in_chain (vm, p0) >
+	      adj0[0].rewrite_header.max_l3_packet_bytes)
+	    {
+	      error0 = IP4_ERROR_MTU_EXCEEDED;
+	      next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+	      icmp4_error_set_vnet_buffer
+		(p0, ICMP4_destination_unreachable,
+		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+		 0);
+	    }
 	  if (is_mcast)
 	    {
 	      error0 = ((adj0[0].rewrite_header.sw_if_index ==
