@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5fd5f961_11be665f",
+        "filename": "test/vpp_vhost_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-04-13T06:32:23Z",
+      "side": 1,
+      "message": "You are right. I missed .__init__(test) in the statement. If I follow your suggestion to move it to add_vpp_config, where do I get the variable test to pass to the __init__ call?",
+      "parentUuid": "fb88069b_c91c5499",
+      "revId": "3eeb0035bc0094929e70887e786f1946d3d0d7b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "46b5a87a_772677c8",
         "filename": "test/vpp_vhost_interface.py",
         "patchSetId": 3
