@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c1f393ba_5032186d",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-13T13:52:58Z",
+      "side": 1,
+      "message": "needs to handle the case when sw_if_index is used as fib table instead of interface index.\nswitch (mp-\u003ebehavior) {\n    case SR_BEHAVIOR_DX2:\n    case SR_BEHAVIOR_DX4:\n    case SR_BEHAVIOR_DX6:\n    case SR_BEHAVIOR_X:\n      VALIDATE_SW_IF_INDEX (mp);\n      break;\n    case SR_BEHAVIOR_DT4:\n      // TODO validate lookup fib table ipv4\n      break;\n    case SR_BEHAVIOR_DT6:\n      // TODO validate lookup fib table ipv6\n          break;\n  }",
+      "range": {
+        "startLine": 68,
+        "startChar": 1,
+        "endLine": 68,
+        "endChar": 28
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7539bb37_9c48a2b0",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-13T13:52:58Z",
+      "side": 1,
+      "message": "rmp-\u003eis_encap should be set to with t-\u003eis_encap (0.SRH insert // 1.Encapsulation)\nrmp-\u003etype should be set with correct value (0.Default // 1.Spray)",
+      "range": {
+        "startLine": 262,
+        "startChar": 2,
+        "endLine": 262,
+        "endChar": 26
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ec3439b_deae4ce9",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-13T13:52:58Z",
+      "side": 1,
+      "message": "segment list does not contain weight in dump, only the list is created.\nSR policies:\n[0].-\tBSID: a::e\n\tBehavior: Encapsulation\n\tType: Default\n\tFIB table: 0\n\tSegment Lists:\n  \t[1].- \u003c a::, b::, d:: \u003e weight: 0\n  \t[0].- \u003c c::, a::, b:: \u003e weight: 1",
+      "range": {
+        "startLine": 266,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 3
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
