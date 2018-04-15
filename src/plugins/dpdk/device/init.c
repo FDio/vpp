@@ -239,17 +239,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
 
   /* vlib_buffer_t template */
-  vec_validate_aligned (dm->buffer_templates, tm->n_vlib_mains - 1,
+  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
       vlib_buffer_free_list_t *fl;
-      vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, i);
+      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
       fl = vlib_buffer_get_free_list (vm,
 				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (bt, fl);
-      bt->flags = dm->buffer_flags_template;
-      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      vlib_buffer_init_for_free_list (&ptd->buffer_template, fl);
+      ptd->buffer_template.flags = dm->buffer_flags_template;
+      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
   for (i = 0; i < nports; i++)
@@ -546,15 +546,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vec_reset_length (xd->tx_vectors[j]);
 	}
 
-      vec_validate_aligned (xd->rx_vectors, xd->rx_q_used,
-			    CLIB_CACHE_LINE_BYTES);
-      for (j = 0; j < xd->rx_q_used; j++)
-	{
-	  vec_validate_aligned (xd->rx_vectors[j], VLIB_FRAME_SIZE - 1,
-				CLIB_CACHE_LINE_BYTES);
-	  vec_reset_length (xd->rx_vectors[j]);
-	}
-
       /* count the number of descriptors used for this device */
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
 
@@ -621,7 +612,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
 
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
-      xd->vlib_sw_if_index = sw->sw_if_index;
+      xd->sw_if_index = sw->sw_if_index;
       vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
 					dpdk_input_node.index);
 
@@ -1398,7 +1389,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	u8 new_link_state;
       } *ed;
       ed = ELOG_DATA (&vm->elog_main, e);
-      ed->sw_if_index = xd->vlib_sw_if_index;
+      ed->sw_if_index = xd->sw_if_index;
       ed->admin_up = (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0;
       ed->old_link_state = (u8)
 	vnet_hw_interface_is_link_up (vnm, xd->hw_if_index);
@@ -1494,7 +1485,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	    u32 flags;
 	  } *ed;
 	  ed = ELOG_DATA (&vm->elog_main, e);
-	  ed->sw_if_index = xd->vlib_sw_if_index;
+	  ed->sw_if_index = xd->sw_if_index;
 	  ed->flags = hw_flags;
 	}
       vnet_hw_interface_set_flags (vnm, xd->hw_if_index, hw_flags);
@@ -1607,8 +1598,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			  (bhi->bond_info, sdev->hw_if_index, 1);
 			/* Set MACs and slave link flags on slave interface */
 			shi = vnet_get_hw_interface (vnm, sdev->hw_if_index);
-			ssi = vnet_get_sw_interface
-			  (vnm, sdev->vlib_sw_if_index);
+			ssi = vnet_get_sw_interface (vnm, sdev->sw_if_index);
 			sei = pool_elt_at_index
 			  (em->interfaces, shi->hw_instance);
 			shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
