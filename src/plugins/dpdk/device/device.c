@@ -117,7 +117,7 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 		      u16 queue_id, u32 buffer_index, vlib_buffer_t * buffer)
 {
   vlib_main_t *vm = vlib_get_main ();
-  dpdk_tx_dma_trace_t *t0;
+  dpdk_tx_trace_t *t0;
   struct rte_mbuf *mb;
 
   mb = rte_mbuf_from_vlib_buffer (buffer);
@@ -608,7 +608,7 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
 	cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			       VNET_INTERFACE_COUNTER_TX_ERROR);
 
-	vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+	vlib_increment_simple_counter (cm, my_cpu, xd->sw_if_index,
 				       n_packets);
 
 	vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
@@ -787,7 +787,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .tx_function_error_strings = dpdk_tx_func_error_strings,
   .format_device_name = format_dpdk_device_name,
   .format_device = format_dpdk_device,
-  .format_tx_trace = format_dpdk_tx_dma_trace,
+  .format_tx_trace = format_dpdk_tx_trace,
   .clear_counters = dpdk_clear_hw_interface_counters,
   .admin_up_down_function = dpdk_interface_admin_up_down,
   .subif_add_del_function = dpdk_subif_add_del_function,
