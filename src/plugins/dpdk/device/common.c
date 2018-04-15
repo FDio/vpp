@@ -43,7 +43,7 @@ dpdk_device_setup (dpdk_device_t * xd)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   int rv;
   int j;
