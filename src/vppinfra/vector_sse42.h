@@ -200,9 +200,9 @@ u64x2_write_hi (u64x2 x, u64 * a)
 /* Unaligned loads/stores. */
 
 #define _(t)						\
-  always_inline void t##_store_unaligned (t x, t * a)	\
+  always_inline void t##_store_unaligned (t x, void * a)	\
   { _mm_storeu_si128 ((__m128i *) a, (__m128i) x); }	\
-  always_inline t t##_load_unaligned (t * a)		\
+  always_inline t t##_load_unaligned (void * a)		\
   { return (t) _mm_loadu_si128 ((__m128i *) a); }
 
 _(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)

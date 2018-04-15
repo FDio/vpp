@@ -106,7 +106,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_NO_BUF);
 
-      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
 				     xd->stats.rx_nombuf -
 				     xd->last_stats.rx_nombuf);
     }
@@ -117,7 +117,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_MISS);
 
-      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
 				     xd->stats.imissed -
 				     xd->last_stats.imissed);
     }
@@ -129,7 +129,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_ERROR);
 
-      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
 				     rxerrors - last_rxerrors);
     }
 
