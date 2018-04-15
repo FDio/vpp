@@ -238,17 +238,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
 
   /* vlib_buffer_t template */
-  vec_validate_aligned (dm->buffer_templates, tm->n_vlib_mains - 1,
+  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
       vlib_buffer_free_list_t *fl;
-      vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, i);
+      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
       fl = vlib_buffer_get_free_list (vm,
 				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (bt, fl);
-      bt->flags = dm->buffer_flags_template;
-      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      vlib_buffer_init_for_free_list (&ptd->buffer_template, fl);
+      ptd->buffer_template.flags = dm->buffer_flags_template;
+      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
   for (i = 0; i < nports; i++)
@@ -539,15 +539,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vec_validate_ha (xd->tx_vectors[j], xd->nb_tx_desc,
 			   sizeof (tx_ring_hdr_t), CLIB_CACHE_LINE_BYTES);
 	  vec_reset_length (xd->tx_vectors[j]);
-	}
-
-      vec_validate_aligned (xd->rx_vectors, xd->rx_q_used,
-			    CLIB_CACHE_LINE_BYTES);
-      for (j = 0; j < xd->rx_q_used; j++)
-	{
-	  vec_validate_aligned (xd->rx_vectors[j], VLIB_FRAME_SIZE - 1,
-				CLIB_CACHE_LINE_BYTES);
-	  vec_reset_length (xd->rx_vectors[j]);
 	}
 
       /* count the number of descriptors used for this device */

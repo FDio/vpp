@@ -168,7 +168,6 @@ typedef struct
 
   /* dpdk rte_mbuf rx and tx vectors, VLIB_FRAME_SIZE */
   struct rte_mbuf ***tx_vectors;	/* one per worker thread */
-  struct rte_mbuf ***rx_vectors;
 
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
@@ -341,18 +340,31 @@ typedef struct
 
 extern dpdk_config_main_t dpdk_config_main;
 
+#define DPDK_RX_BURST_SZ VLIB_FRAME_SIZE
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  struct rte_mbuf *mbufs[DPDK_RX_BURST_SZ];
+  u32 buffers[DPDK_RX_BURST_SZ];
+  u64 ol_flags[DPDK_RX_BURST_SZ];
+  u16 next[DPDK_RX_BURST_SZ];
+  vlib_buffer_t buffer_template;
+  u32 n_bytes;
+  u32 n_segs;
+  u64 or_ol_flags;
+} dpdk_per_thread_data_t;
+
 typedef struct
 {
 
   /* Devices */
   dpdk_device_t *devices;
   dpdk_device_and_queue_t **devices_by_hqos_cpu;
+  dpdk_per_thread_data_t *per_thread_data;
 
   /* per-thread recycle lists */
   u32 **recycle;
-
-  /* per-thread buffer templates */
-  vlib_buffer_t *buffer_templates;
 
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
