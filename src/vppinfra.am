@@ -261,6 +261,8 @@ nobase_include_HEADERS = \
   vppinfra/vec_bootstrap.h \
   vppinfra/vector.h \
   vppinfra/vector_altivec.h \
+  vppinfra/vector_avx2.h \
+  vppinfra/vector_avx512.h \
   vppinfra/vector_funcs.h \
   vppinfra/vector_neon.h \
   vppinfra/vector_sse42.h \

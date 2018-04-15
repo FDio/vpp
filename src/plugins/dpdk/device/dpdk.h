@@ -181,14 +181,13 @@ typedef struct
   dpdk_portid_t device_index;
 
   u32 hw_if_index;
-  u32 vlib_sw_if_index;
+  u32 sw_if_index;
 
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
   /* dpdk rte_mbuf rx and tx vectors, VLIB_FRAME_SIZE */
   struct rte_mbuf ***tx_vectors;	/* one per worker thread */
-  struct rte_mbuf ***rx_vectors;
 
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
@@ -350,18 +349,29 @@ typedef struct
 
 extern dpdk_config_main_t dpdk_config_main;
 
+#define DPDK_RX_BURST_SZ VLIB_FRAME_SIZE
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  struct rte_mbuf *mbufs[DPDK_RX_BURST_SZ];
+  u32 buffers[DPDK_RX_BURST_SZ];
+  u16 next[DPDK_RX_BURST_SZ];
+  u16 etype[DPDK_RX_BURST_SZ];
+  u8 flags[DPDK_RX_BURST_SZ];
+  vlib_buffer_t buffer_template;
+} dpdk_per_thread_data_t;
+
 typedef struct
 {
 
   /* Devices */
   dpdk_device_t *devices;
   dpdk_device_and_queue_t **devices_by_hqos_cpu;
+  dpdk_per_thread_data_t *per_thread_data;
 
   /* per-thread recycle lists */
   u32 **recycle;
-
-  /* per-thread buffer templates */
-  vlib_buffer_t *buffer_templates;
 
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
@@ -416,7 +426,7 @@ typedef struct
   /* Copy of VLIB buffer; packet data stored in pre_data. */
   vlib_buffer_t buffer;
   u8 data[256];			/* First 256 data bytes, used for hexdump */
-} dpdk_tx_dma_trace_t;
+} dpdk_tx_trace_t;
 
 typedef struct
 {
@@ -426,7 +436,7 @@ typedef struct
   struct rte_mbuf mb;
   vlib_buffer_t buffer;		/* Copy of VLIB buffer; pkt data stored in pre_data. */
   u8 data[256];			/* First 256 data bytes, used for hexdump */
-} dpdk_rx_dma_trace_t;
+} dpdk_rx_trace_t;
 
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
@@ -467,8 +477,8 @@ void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
 format_function_t format_dpdk_device_errors;
-format_function_t format_dpdk_tx_dma_trace;
-format_function_t format_dpdk_rx_dma_trace;
+format_function_t format_dpdk_tx_trace;
+format_function_t format_dpdk_rx_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 unformat_function_t unformat_dpdk_log_level;
