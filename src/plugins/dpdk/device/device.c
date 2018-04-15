@@ -608,7 +608,7 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
 	cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			       VNET_INTERFACE_COUNTER_TX_ERROR);
 
-	vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+	vlib_increment_simple_counter (cm, my_cpu, xd->sw_if_index,
 				       n_packets);
 
 	vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
