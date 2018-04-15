@@ -58,8 +58,11 @@
 #define CLIB_HAVE_VEC128
 #endif
 
-#if defined (__AVX__)
+#if defined (__AVX2__)
 #define CLIB_HAVE_VEC256
+#if defined (__clang__)  && __clang_major__ < 4
+#undef CLIB_HAVE_VEC256
+#endif
 #endif
 
 #if defined (__AVX512F__)
@@ -179,7 +182,7 @@ t##s##x##c##_sub (t##s##x##c v1, t##s##x##c v2)		\
   foreach_vec
 #undef _
 
-/* this macro generate _splat inline funcitons for each scalar vector type */
+/* this macro generate _splat inline functions for each scalar vector type */
 #define _(t, s, c) \
   static_always_inline t##s##x##c			\
 t##s##x##c##_splat (t##s x)				\
@@ -192,11 +195,19 @@ t##s##x##c##_splat (t##s x)				\
 							\
     return r;						\
 }
-  foreach_int_vec foreach_uint_vec
+  foreach_vec128i foreach_vec128u
 #undef _
 
 #if defined (__SSE4_2__) && __GNUC__ >= 4
 #include <vppinfra/vector_sse42.h>
+#endif
+
+#if defined (__AVX2__)
+#include <vppinfra/vector_avx2.h>
+#endif
+
+#if defined (__AVX512F__)
+#include <vppinfra/vector_avx512.h>
 #endif
 
 #if defined (__ALTIVEC__)
