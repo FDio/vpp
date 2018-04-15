@@ -200,9 +200,9 @@ u64x2_write_hi (u64x2 x, u64 * a)
 /* Unaligned loads/stores. */
 
 #define _(t)						\
-  always_inline void t##_store_unaligned (t x, t * a)	\
+  always_inline void t##_store_unaligned (t x, void * a)	\
   { _mm_storeu_si128 ((__m128i *) a, (__m128i) x); }	\
-  always_inline t t##_load_unaligned (t * a)		\
+  always_inline t t##_load_unaligned (void * a)		\
   { return (t) _mm_loadu_si128 ((__m128i *) a); }
 
 _(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)
@@ -426,6 +426,63 @@ u64x2_is_all_zero (u64x2 x)
 {
   return _mm_testz_si128 ((__m128i) x, (__m128i) x);
 }
+
+#ifdef CLIB_HAVE_VEC256
+
+always_inline u16x16
+u16x16_load_unaligned (void *p)
+{
+    return (u16x16) _mm256_loadu_si256 (p);
+}
+
+always_inline u64x4
+u64x4_load_unaligned (void *p)
+{
+    return (u64x4) _mm256_loadu_si256 (p);
+}
+
+always_inline u32x8
+u32x8_permute (u32x8 v, u32x8 idx)
+{
+    return (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);
+}
+
+always_inline u32x4
+u32x8_extract_lo (u32x8 v)
+{
+    return (u32x4) _mm256_extracti128_si256 ((__m256i) v, 0);
+}
+
+always_inline u32x4
+u32x8_extract_hi (u32x8 v)
+{
+    return (u32x4) _mm256_extracti128_si256 ((__m256i) v, 1);
+}
+
+always_inline u16x16
+u16x16_splat (u16 x)
+{
+  return (u16x16) _mm256_set1_epi16 (x);
+}
+
+always_inline u64x4
+u64x4_splat (u64 x)
+{
+  return (u64x4) _mm256_set1_epi64x (x);
+}
+
+always_inline int
+u16x16_is_all_zero (u16x16 x)
+{
+    return _mm256_testz_si256 ((__m256i) x, (__m256i) x);
+}
+
+always_inline int
+u16x16_is_all_equal (u16x16 v, u16 x)
+{
+    return u16x16_is_all_zero (v != u16x16_splat (x));
+}
+#endif
 
 #define u32x4_select(A,MASK)						\
 ({									\
