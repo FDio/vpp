@@ -179,7 +179,7 @@ t##s##x##c##_sub (t##s##x##c v1, t##s##x##c v2)		\
   foreach_vec
 #undef _
 
-/* this macro generate _splat inline funcitons for each scalar vector type */
+/* this macro generate _splat inline functions for each scalar vector type */
 #define _(t, s, c) \
   static_always_inline t##s##x##c			\
 t##s##x##c##_splat (t##s x)				\
@@ -192,7 +192,7 @@ t##s##x##c##_splat (t##s x)				\
 							\
     return r;						\
 }
-  foreach_int_vec foreach_uint_vec
+  foreach_vec128i foreach_vec128u
 #undef _
 
 #if defined (__SSE4_2__) && __GNUC__ >= 4
