@@ -608,16 +608,16 @@ format_dpdk_device (u8 * s, va_list * args)
 }
 
 u8 *
-format_dpdk_tx_dma_trace (u8 * s, va_list * va)
+format_dpdk_tx_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main ();
-  dpdk_tx_dma_trace_t *t = va_arg (*va, dpdk_tx_dma_trace_t *);
+  dpdk_tx_trace_t *t = va_arg (*va, dpdk_tx_trace_t *);
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, t->device_index);
   u32 indent = format_get_indent (s);
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
 
   s = format (s, "%U tx queue %d",
 	      format_vnet_sw_interface_name, vnm, sw, t->queue_index);
@@ -638,17 +638,17 @@ format_dpdk_tx_dma_trace (u8 * s, va_list * va)
 }
 
 u8 *
-format_dpdk_rx_dma_trace (u8 * s, va_list * va)
+format_dpdk_rx_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main ();
-  dpdk_rx_dma_trace_t *t = va_arg (*va, dpdk_rx_dma_trace_t *);
+  dpdk_rx_trace_t *t = va_arg (*va, dpdk_rx_trace_t *);
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, t->device_index);
   format_function_t *f;
   u32 indent = format_get_indent (s);
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
 
   s = format (s, "%U rx queue %d",
 	      format_vnet_sw_interface_name, vnm, sw, t->queue_index);
