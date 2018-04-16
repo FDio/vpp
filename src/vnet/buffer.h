@@ -249,7 +249,15 @@ typedef struct
 	u32 table_index;
 	u32 opaque_index;
       };
-      u64 hash;
+      union
+      {
+        struct
+        {
+          u32 l2_save_protocol;
+          u32 l2_flow_hash;
+        };
+        u64 hash;
+      };
     } l2_classify;
 
     /* IO - worker thread handoff */
@@ -393,6 +401,11 @@ typedef struct
     u32 src_epg;
   } gbp;
 
+  struct
+  {
+    u32 lc_index;
+  } aclp;
+
   union
   {
     struct
@@ -402,7 +415,7 @@ typedef struct
       u16 *trajectory_trace;
 #endif
     };
-    u32 unused[10];
+    u32 unused[9];
   };
 } vnet_buffer_opaque2_t;
 
