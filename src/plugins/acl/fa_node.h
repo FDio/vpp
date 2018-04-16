@@ -1,6 +1,9 @@
 #ifndef _FA_NODE_H_
 #define _FA_NODE_H_
 
+#define VALE_ELOG //Added by Valerio
+//#define VALE_ELOG_ACL2 //Added by Valerio
+
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
@@ -110,9 +113,31 @@ CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);
 
 /* Session ID MUST be the same as u64 */
 CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), sizeof(u64));
-#undef CT_ASSERT_EQUAL
 
 typedef struct {
+  fa_5tuple_t pkt_5tuple;
+  fa_5tuple_t sess_5tuple;
+  u64 pkt_hash;
+  u8 action;
+  u8 error;
+  u8 valid_new_sess;
+  u8 acl_check_needed;
+  u16 match_acl_in_index;
+  u16 match_rule_index;
+} block_meta_t;
+
+/* block meta should be one cache line */
+// CT_ASSERT_EQUAL(block_meta_t_is_64_bytes, sizeof(block_meta_t), 64);
+#undef CT_ASSERT_EQUAL
+
+#define MAX_PACKETS_PER_STRIDE VLIB_FRAME_SIZE
+
+typedef struct {
+  /* The work-in-progress data about the vector being processed, for IPv4 and IPv6 */
+  block_meta_t block_meta[2][MAX_PACKETS_PER_STRIDE];
+
+  /* incremented every time the node is run */
+  int generation;
   /* The pool of sessions managed by this worker */
   fa_session_t *fa_sessions_pool;
   /* per-worker ACL_N_TIMEOUTS of conn lists */
@@ -182,6 +207,8 @@ void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 
 u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
+
+u8 *format_acl_plugin_5tuple_for_acl_hash (u8 * s, va_list * args);
 
 /* use like: elog_acl_maybe_trace_X1(am, "foobar: %d", "i4", int32_value); */
 
