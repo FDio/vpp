@@ -1,6 +1,9 @@
 #ifndef _FA_NODE_H_
 #define _FA_NODE_H_
 
+#define VALE_ELOG //Added by Valerio
+//#define VALE_ELOG_ACL2 //Added by Valerio
+
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
@@ -20,6 +23,9 @@
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE (1<<30)
 #define ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES 1000000
+
+#define TRACE_BIT_STAGES 0x000000FF
+#define TRACE_BIT_STAGE(x) (1 << (x))
 
 typedef union {
   u64 as_u64;
@@ -52,7 +58,7 @@ typedef union {
     fa_packet_info_t pkt;
   };
   clib_bihash_kv_40_8_t kv;
-} fa_5tuple_t;
+} fa_5tuple_t __attribute__ ((aligned (16)));
 
 typedef struct {
   u8 opaque[sizeof(fa_5tuple_t)];
@@ -110,9 +116,54 @@ CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);
 
 /* Session ID MUST be the same as u64 */
 CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), sizeof(u64));
-#undef CT_ASSERT_EQUAL
 
 typedef struct {
+  fa_5tuple_t pkt_5tuple; // +40+8 = 48
+  fa_5tuple_t sess_5tuple; // 40+8 = 96
+  union {
+    u64 hash;			// +8 = 104
+    struct {
+      u32 save_sw_if_index;
+      u32 save_reserved;
+    };
+  };
+  u64 f_sess_id;		// +8 = 112
+  union {
+    struct {
+      u32 match_acl_in_index;       // +2 = 118
+      u32 match_rule_index;         // +2 = 120
+    };
+    u64 match_rule_as_u64;
+  };
+  u32 trace_bitmap;             // +4 = 116
+  u8 action;			// +1
+  u8 error;			// +1
+  union {
+    struct {
+      u8 valid_new_sess:1;            // +1
+      u8 acl_check_needed:1;          // +1 = 120
+      u8 session_found:1;             // +1 = 125 
+      u8 buffer_zone_meta_record:1;  // special buffer records in the end
+      u8 flags_reserved:1;
+    };
+    u8 all_flags;
+  };
+  u8 reserved[1];
+} block_meta_t;
+
+/* block meta should be one cache line */
+// CT_ASSERT_EQUAL(block_meta_t_is_64_bytes, sizeof(block_meta_t), 64);
+CT_ASSERT_EQUAL(block_meta_t_is_64_bytes, sizeof(block_meta_t), 128);
+#undef CT_ASSERT_EQUAL
+
+#define MAX_PACKETS_PER_STRIDE VLIB_FRAME_SIZE
+
+typedef struct {
+  /* The work-in-progress data about the vector being processed, for IPv4 and IPv6 */
+  block_meta_t *block_meta[2]; // [MAX_PACKETS_PER_STRIDE + 8];
+
+  /* incremented every time the node is run */
+  int generation;
   /* The pool of sessions managed by this worker */
   fa_session_t *fa_sessions_pool;
   /* per-worker ACL_N_TIMEOUTS of conn lists */
@@ -182,6 +233,8 @@ void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 
 u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
+
+u8 *format_acl_plugin_5tuple_for_acl_hash (u8 * s, va_list * args);
 
 /* use like: elog_acl_maybe_trace_X1(am, "foobar: %d", "i4", int32_value); */
 
