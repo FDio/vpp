@@ -28,13 +28,13 @@
 #define IGMP_SG_TIMER				(3 * IGMP_QUERY_TIMER)
 #define IGMP_DEFAULT_ROBUSTNESS_VARIABLE	(2)
 
-#define IGMP_DBG 1
+#define ENABLE_IGMP_DBG 0
 
-#if IGMP_DBG
-#define DBG(...) clib_warning(__VA_ARGS__)
+#if ENABLE_IGMP_DBG == 1
+#define IGMP_DBG(...) clib_warning(__VA_ARGS__)
 #else
-#define DBG(...)
-#endif /* IGMP_DBG */
+#define IGMP_DBG(...)
+#endif /* ENABLE_IGMP_DBG */
 
 #define group_ptr(p, l) ((igmp_membership_group_v3_t *)((char*)p + l))
 

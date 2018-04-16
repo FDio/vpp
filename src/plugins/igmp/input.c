@@ -118,7 +118,7 @@ uword
 igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_frame_t * frame)
 {
-  DBG ("IGMP_INPUT");
+  IGMP_DBG ("IGMP_INPUT");
   u32 n_left_from, *from, *to_next;
   igmp_parse_query_next_t next_index;
   vlib_node_runtime_t *error_node =
@@ -243,7 +243,7 @@ uword
 igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_frame_t * frame)
 {
-  DBG ("IGMP_PARSE_QUERY");
+  IGMP_DBG ("IGMP_PARSE_QUERY");
 
   u32 n_left_from, *from, *to_next;
   igmp_parse_query_next_t next_index;
@@ -285,7 +285,7 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      config = igmp_config_lookup (im, sw_if_index);
 	      if (!config)
 		{
-		  DBG ("No config on interface %u", sw_if_index);
+		  IGMP_DBG ("No config on interface %u", sw_if_index);
 		}
 	      else
 		{
@@ -348,7 +348,7 @@ uword
 igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 		   vlib_frame_t * frame)
 {
-  DBG ("IGMP_PARSE_REPORT");
+  IGMP_DBG ("IGMP_PARSE_REPORT");
 
   igmp_main_t *im = &igmp_main;
   u32 n_left_from, *from, *to_next;
@@ -409,14 +409,14 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      config->flags |= IGMP_CONFIG_FLAG_QUERY_RESP_RECVED;
 	      if (config->cli_api_configured)
 		{
-		  DBG ("Interface %u has (S,G)s configured by CLI/API",
-		       sw_if_index);
+		  IGMP_DBG ("Interface %u has (S,G)s configured by CLI/API",
+			    sw_if_index);
 		  error = IGMP_ERROR_CLI_API_CONFIG;
 		  b->error = error_node->errors[error];
 		  goto next_frame;
 		}
 	    }
-	  DBG ("interface %u", sw_if_index);
+	  IGMP_DBG ("interface %u", sw_if_index);
 	  int i, j = 0;
 	  for (i = 0; i < clib_net_to_host_u16 (igmp->n_groups); i++)
 	    {
