@@ -33,6 +33,21 @@
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+#include <vppinfra/elog.h>
+
+#endif
+
+//===Added by Valerio
+#ifdef VALE_ELOG_ACL2
+
+#include <vppinfra/elog.h>
+
+#endif
+
+
 typedef struct
 {
   u32 next_index;
@@ -99,6 +114,18 @@ format_acl_plugin_5tuple (u8 * s, va_list * args)
 {
   return format_fa_5tuple(s, args);
 }
+
+u8 *
+format_acl_plugin_5tuple_for_acl_hash (u8 * s, va_list * args)
+{
+  u64 *p = va_arg (*args, u64 *);
+  s = format(s, "  pkt info %016llx %016llx %016llx %016llx %016llx %016llx %016llx",
+     p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+  s = format (s, "\n   %U", format_fa_5tuple, p);
+  return s; 
+}
+
+
 
 /* packet trace format function */
 static u8 *
@@ -635,11 +662,13 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return sess;
 }
 
-static int
+always_inline int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
-  return (clib_bihash_search_40_8 (&am->fa_sessions_hash, &p5tuple->kv, pvalue_sess) == 0);
+  return (BV (clib_bihash_search_inline_2)
+	  (&am->fa_sessions_hash, &p5tuple->kv,
+	   pvalue_sess) == 0);
 }
 
 
@@ -669,6 +698,17 @@ acl_fa_node_fn (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+  u64 clk_f, clk_l;
+  clk_f = clib_cpu_time_now ();
+  //clk_f = clib_cpu_time_now ();
+  u32 n_frame_elog = frame->n_vectors;
+
+#endif
+
+
   error_node = vlib_node_get_runtime (vm, acl_fa_node->index);
 
   while (n_left_from > 0)
@@ -692,9 +732,22 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u8 error0 = 0;
 	  u32 valid_new_sess;
 
+
+         /* Prefetch next iteration. */
+          if(n_left_from > 1)
+	  { 
+            vlib_buffer_t * p1;
+
+            p1 = vlib_get_buffer (vm, from[1]);
+
+            vlib_prefetch_buffer_header (p1, LOAD);
+
+            CLIB_PREFETCH (p1->data, CLIB_CACHE_LINE_BYTES, STORE);
+          }
+
+
 	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
+	  to_next[0] = bi0 = from[0];
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
@@ -804,12 +857,36 @@ acl_fa_node_fn (vlib_main_t * vm,
 		}
 	    }
 
+
+
 	  if (acl_check_needed)
 	    {
               action = 0; /* deny by default */
 	      acl_plugin_match_5tuple_inline (lc_index0, (fa_5tuple_opaque_t *)&fa_5tuple,
 				       is_ip6, &action, &match_acl_pos, &match_acl_in_index,
 				       &match_rule_index, &trace_bitmap);
+
+              //Added by Valerio
+#ifdef VALE_ELOG_ACL2
+              /*Log event*/
+              // Replace and/or change with u32 Vector Size inside the stuct. Also change the %ll
+              ELOG_TYPE_DECLARE (e) = {
+                      .format = "ACL: %d ACE: %d Action = %d",
+                      .format_args = "i4i4i1",
+              };
+              struct {u32 acl_i; u32 ace_i; u8 action;} *ed;
+              ed = ELOG_DATA (&vm->elog_main, e);
+              ed->acl_i = match_acl_in_index;
+              ed->ace_i = match_rule_index;
+              ed->action = action;
+
+              /*End of Log event*/
+
+
+#endif
+
+
+
 	      error0 = action;
 	      if (1 == action)
 		pkts_acl_permit += 1;
@@ -890,6 +967,32 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+  clk_l = clib_cpu_time_now ();
+
+/*Log event*/
+// Replace and/or change with u32 Vector Size inside the stuct. Also change the %ll
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "Vector size: %d Clock cycles = %ld",
+    .format_args = "i4i8",
+  };
+  struct {u32 vector_size; u64 clock_cycles;} *ed;
+  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed->vector_size = n_frame_elog;
+  ed->clock_cycles = clk_l - clk_f;
+
+/*End of Log event*/
+
+
+#endif
+
+
+
 
   vlib_node_increment_counter (vm, acl_fa_node->index,
 			       ACL_FA_ERROR_ACL_CHECK, pkts_acl_checked);

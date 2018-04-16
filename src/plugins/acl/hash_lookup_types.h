@@ -24,7 +24,7 @@ typedef struct {
   u32 acl_index;
   u32 ace_index;
 
-  u32 mask_type_index;
+  u32 base_mask_type_index;
   u8 src_portrange_not_powerof2;
   u8 dst_portrange_not_powerof2;
 
@@ -37,7 +37,7 @@ typedef struct {
  */
 typedef struct {
   /* The mask types present in this ACL */
-  uword *mask_type_index_bitmap;
+  uword *base_mask_type_index_bitmap;
   /* hash ACL applied on these lookup contexts */
   u32 *lc_index_list;
   hash_ace_info_t *rules;
@@ -51,6 +51,8 @@ typedef struct {
   u32 ace_index;
   /* the index of the hash_ace_info_t */
   u32 hash_ace_info_index;
+  /* applied mask type #Vale */
+  u32 mask_type_index;
   /*
    * in case of the same key having multiple entries,
    * this holds the index of the next entry.
@@ -65,6 +67,10 @@ typedef struct {
    * chain tail, if this is the first entry
    */
   u32 tail_applied_entry_index;
+  /* #Vale
+   * number of collisions on HT-spot of this entry
+   */
+  u64 collision;
   /*
    * number of hits on this entry
    */
@@ -81,10 +87,11 @@ typedef struct {
 
 typedef struct {
    /*
-    * A logical OR of all the applied_ace_hash_entry_t=>
-    *                            hash_ace_info_t=>mask_type_index bits set
+    * A logical OR of all the applied_ace_hash_entry_t=>mask_type_index bits set
     */
    uword *mask_type_index_bitmap;
+
+
    /* applied ACLs so we can track them independently from main ACL module */
    u32 *applied_acls;
 } applied_hash_acl_info_t;
@@ -102,6 +109,20 @@ typedef union {
     u8 reserved_flags:6;
   };
 } hash_acl_lookup_value_t;
+
+
+typedef struct {
+   u32 mask_type_index;
+
+   /* Priority Optimization */
+   u32 max_priority;
+
+   /* Debug Information */
+   u64 num_entries;
+   u64 max_collisions;
+
+} hash_applied_mask_info_t;
+
 
 #define CT_ASSERT_EQUAL(name, x,y) typedef int assert_ ## name ## _compile_time_assertion_failed[((x) == (y))-1]
 
