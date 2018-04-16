@@ -1,6 +1,9 @@
 #ifndef _FA_NODE_H_
 #define _FA_NODE_H_
 
+#define VALE_ELOG //Added by Valerio
+//#define VALE_ELOG_ACL2 //Added by Valerio
+
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
@@ -182,6 +185,8 @@ void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 
 u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
+
+u8 *format_acl_plugin_5tuple_for_acl_hash (u8 * s, va_list * args);
 
 /* use like: elog_acl_maybe_trace_X1(am, "foobar: %d", "i4", int32_value); */
 

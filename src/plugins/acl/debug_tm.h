@@ -15,19 +15,30 @@
  *------------------------------------------------------------------
  */
 
-#define ACL_HASH_LOOKUP_DEBUG 2
+#ifndef _ACL_DEBUG_TM_H_
+#define _ACL_DEBUG_TM_H_
 
-#if ACL_HASH_LOOKUP_DEBUG == 1
-#define DBG0(...) clib_warning(__VA_ARGS__)
-#define DBG(...)
-#define DBG_UNIX_LOG(...)
-#elif ACL_HASH_LOOKUP_DEBUG == 2
-#define DBG0(...) clib_warning(__VA_ARGS__)
-#define DBG(...) vlib_cli_output(&vlib_global_main, __VA_ARGS__)
-#define DBG_UNIX_LOG(...) clib_unix_warning(__VA_ARGS__)
-#else
-#define DBG0(...)
-#define DBG(...)
-#define DBG_UNIX_LOG(...)
+
+#include <stddef.h>
+#include "acl.h"
+
+
+
+clib_error_t*
+acl_describe_partition (vlib_main_t * vm,
+                                   unformat_input_t * i,
+                                   vlib_cli_command_t * cmd);
+
+
+
+clib_error_t*
+acl_compare_partition (vlib_main_t * vm,
+                                   unformat_input_t * i,
+                                   vlib_cli_command_t * cmd);
+
+clib_error_t*
+acl_show_collision (vlib_main_t * vm,
+                                   unformat_input_t * i,
+                                   vlib_cli_command_t * cmd);
+
 #endif
-
