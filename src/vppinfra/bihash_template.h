@@ -363,6 +363,18 @@ static inline void BV (clib_bihash_prefetch_bucket)
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, READ);
 }
 
+static inline void BV (clib_bihash_prefetch_bucket_2)
+  (BVT (clib_bihash) * h, u64 hash)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_bucket) * b;
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES*2, READ);
+}
+
 static inline void BV (clib_bihash_prefetch_data)
   (BVT (clib_bihash) * h, u64 hash)
 {
@@ -384,11 +396,10 @@ static inline void BV (clib_bihash_prefetch_data)
   CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, READ);
 }
 
-static inline int BV (clib_bihash_search_inline_2)
-  (BVT (clib_bihash) * h,
+always_inline int BV (clib_bihash_search_inline_2_with_hash)
+  (BVT (clib_bihash) * h, u64 hash,
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
-  u64 hash;
   u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
@@ -398,8 +409,6 @@ static inline int BV (clib_bihash_search_inline_2)
   int i, limit;
 
   ASSERT (valuep);
-
-  hash = BV (clib_bihash_hash) (search_key);
 
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
@@ -459,6 +468,17 @@ static inline int BV (clib_bihash_search_inline_2)
 	}
     }
   return -1;
+}
+
+static inline int BV (clib_bihash_search_inline_2)
+  (BVT (clib_bihash) * h,
+   BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
+{
+  u64 hash;
+
+  hash = BV (clib_bihash_hash) (search_key);
+
+  return BV (clib_bihash_search_inline_2_with_hash) (h, hash, search_key, valuep);
 }
 
 #endif /* __included_bihash_template_h__ */

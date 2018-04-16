@@ -33,6 +33,23 @@
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+#include <vppinfra/elog.h>
+
+#endif
+
+//===Added by Valerio
+#ifdef VALE_ELOG_ACL2
+
+#include <vppinfra/elog.h>
+
+#endif
+
+#include <plugins/acl/iacaMarks.h>
+
+
 typedef struct
 {
   u32 next_index;
@@ -100,6 +117,18 @@ format_acl_plugin_5tuple (u8 * s, va_list * args)
   return format_fa_5tuple(s, args);
 }
 
+u8 *
+format_acl_plugin_5tuple_for_acl_hash (u8 * s, va_list * args)
+{
+  u64 *p = va_arg (*args, u64 *);
+  s = format(s, "  pkt info %016llx %016llx %016llx %016llx %016llx %016llx %016llx",
+     p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+  s = format (s, "\n   %U", format_fa_5tuple, p);
+  return s; 
+}
+
+
+
 /* packet trace format function */
 static u8 *
 format_acl_fa_trace (u8 * s, va_list * args)
@@ -131,6 +160,7 @@ _(ACL_EXIST_SESSION, "existing session packets") \
 _(ACL_CHECK, "checked packets") \
 _(ACL_RESTART_SESSION_TIMER, "restart session timer") \
 _(ACL_TOO_MANY_SESSIONS, "too many sessions to add new") \
+_(ACL_5TUPLE_COLLISION, "session 5-tuple collision") \
 /* end  of errors */
 
 typedef enum
@@ -148,20 +178,20 @@ static char *acl_fa_error_strings[] = {
 };
 /* *INDENT-ON* */
 
-static int
+always_inline int
 acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
 {
   return am->fa_sessions_hash_is_initialized;
 }
 
-static int
+always_inline int
 acl_fa_ifc_has_in_acl (acl_main_t * am, int sw_if_index0)
 {
   int it_has = clib_bitmap_get (am->fa_in_acl_on_sw_if_index, sw_if_index0);
   return it_has;
 }
 
-static int
+always_inline int
 acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 {
   int it_has = clib_bitmap_get (am->fa_out_acl_on_sw_if_index, sw_if_index0);
@@ -169,25 +199,31 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 }
 
 /* Session keys match the packets received, and mirror the packets sent */
-static u32
+always_inline u32
 acl_make_5tuple_session_key (acl_main_t * am, int is_input, int is_ip6,
-                             u32 sw_if_index, fa_5tuple_t * p5tuple_pkt,
+                             fa_5tuple_t * p5tuple_pkt,
                              fa_5tuple_t * p5tuple_sess)
 {
   int src_index = is_input ? 0 : 1;
   int dst_index = is_input ? 1 : 0;
-  u32 valid_new_sess = 1;
+
   p5tuple_sess->addr[src_index] = p5tuple_pkt->addr[0];
   p5tuple_sess->addr[dst_index] = p5tuple_pkt->addr[1];
   p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
 
-  if (PREDICT_TRUE(p5tuple_pkt->l4.proto != icmp_protos[is_ip6]))
-    {
-      p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
-      p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
-    }
-  else
-    {
+  p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
+  p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+
+  return(p5tuple_pkt->l4.proto != icmp_protos[is_ip6]);
+}
+
+always_inline u32
+acl_make_5tuple_icmp_session_key (acl_main_t * am, int is_input, int is_ip6,
+                             u32 sw_if_index, fa_5tuple_t * p5tuple_pkt,
+                             fa_5tuple_t * p5tuple_sess)
+{
+  u32 valid_new_sess = 1;
+
       static const u8 * icmp_invmap[] = { icmp4_invmap, icmp6_invmap };
       static const u8 * icmp_valid_new[] = { icmp4_valid_new, icmp6_valid_new };
       static const u8 icmp_invmap_size[] = { sizeof(icmp4_invmap),
@@ -227,13 +263,12 @@ acl_make_5tuple_session_key (acl_main_t * am, int is_input, int is_ip6,
         {
           valid_new_sess = 0;
         }
-    }
 
     return valid_new_sess;
 }
 
 
-static int
+always_inline int
 fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 {
   /* seen both SYNs and ACKs but not FINs means we are in establshed state */
@@ -411,7 +446,8 @@ acl_fa_conn_list_delete_session (acl_main_t *am, fa_full_session_id_t sess_id)
   return 1;
 }
 
-static int
+
+always_inline int
 acl_fa_restart_timer_for_session (acl_main_t * am, u64 now, fa_full_session_id_t sess_id)
 {
   if (acl_fa_conn_list_delete_session(am, sess_id)) {
@@ -429,13 +465,13 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now, fa_full_session_id_t
   }
 }
 
-
-static u8
+always_inline u8
 acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
 {
-  sess->last_active_time = now;
-  if (pkt_5tuple->pkt.tcp_flags_valid)
+  if (PREDICT_FALSE(sess->last_active_time - now > 100000))
+    sess->last_active_time = now;
+  if (PREDICT_FALSE(pkt_5tuple->pkt.tcp_flags_valid && ((sess->tcp_flags_seen.as_u8[is_input] & pkt_5tuple->pkt.tcp_flags) != pkt_5tuple->pkt.tcp_flags)))
     {
       sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
     }
@@ -461,7 +497,7 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
   clib_smp_atomic_add(&am->fa_session_total_dels, 1);
 }
 
-static int
+always_inline int
 acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 {
   u64 curr_sess_count;
@@ -587,7 +623,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index, u32
   }
 }
 
-static fa_session_t *
+always_inline fa_session_t *
 acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 		    fa_5tuple_t * p5tuple, u16 current_policy_epoch)
 {
@@ -635,143 +671,436 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return sess;
 }
 
-static int
+always_inline int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
-  return (clib_bihash_search_40_8 (&am->fa_sessions_hash, &p5tuple->kv, pvalue_sess) == 0);
+  return (BV (clib_bihash_search_inline_2)
+          (&am->fa_sessions_hash, &p5tuple->kv,
+           pvalue_sess) == 0);
+}
+
+always_inline int
+acl_fa_find_session_with_hash (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
+		     clib_bihash_kv_40_8_t * pvalue_sess, u64 hash_value)
+{
+  return (BV (clib_bihash_search_inline_2_with_hash)
+          (&am->fa_sessions_hash, hash_value, &p5tuple->kv,
+           pvalue_sess) == 0);
 }
 
 
+always_inline void
+set_block_save_proto(vlib_buffer_t *b0, const int is_l2_path, u32 proto)
+{
+  if (is_l2_path)
+    vnet_buffer (b0)->l2_classify.l2_save_protocol = proto;
+  else
+    vnet_buffer (b0)->ip.save_protocol = proto;
+}
+
+always_inline u16
+get_block_save_proto(vlib_buffer_t *b0, const int is_l2_path)
+{
+  if (is_l2_path)
+    return vnet_buffer (b0)->l2_classify.l2_save_protocol;
+  else
+    return vnet_buffer (b0)->ip.save_protocol;
+}
+
+
+
+always_inline u32
+get_stride_count(u32 n_left_from_start)
+{
+  if (n_left_from_start >= 256)
+    {
+      return 256;
+    }
+  else
+    {
+      return n_left_from_start; 
+    }
+}
+
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame, int is_ip6,
-		int is_input, int is_l2_path, u32 * l2_feat_next_node_index,
+		vlib_node_runtime_t * node, vlib_frame_t * frame, const int is_ip6,
+		const int is_input, const int is_l2_path, u32 * l2_feat_next_node_index,
 		vlib_node_registration_t * acl_fa_node)
 {
+  CLIB_UNUSED(const int iaca_analyze) = is_input && !is_l2_path && !is_ip6;
+
   u32 n_left_from, *from, *to_next;
+  u32 n_left_from_start, *from_start;
+  u32 stride_count;
+  
   acl_fa_next_t next_index;
   u32 pkts_acl_checked = 0;
   u32 pkts_new_session = 0;
   u32 pkts_exist_session = 0;
   u32 pkts_acl_permit = 0;
   u32 pkts_restart_session_timer = 0;
-  u32 trace_bitmap = 0;
   acl_main_t *am = &acl_main;
-  fa_5tuple_t fa_5tuple, kv_sess;
-  clib_bihash_kv_40_8_t value_sess;
   vlib_node_runtime_t *error_node;
-  u64 now = clib_cpu_time_now ();
+  CLIB_UNUSED(u64 now) = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
-  error_node = vlib_node_get_runtime (vm, acl_fa_node->index);
+  u32 l2_cached_first_bit = 42; // guaranteed not to match
+  u32 l2_cached_permit_next_node = 0;
+
+  block_meta_t *block_meta, *block_meta_start;
+
+  pw->generation++;
+
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+  u64 clk_f, clk_l;
+  clk_f = clib_cpu_time_now ();
+  //clk_f = clib_cpu_time_now ();
+  u32 n_frame_elog = frame->n_vectors;
+
+#endif
+
+  block_meta_start = pw->block_meta[is_ip6];
+  from_start = vlib_frame_vector_args (frame);
+  n_left_from_start = frame->n_vectors;
+
+  
+while (n_left_from_start > 0)
+  { // OUTER CYCLE
+
+  stride_count = get_stride_count(n_left_from_start);
+
+/*
+  block_meta_t buffer_zone_meta = { .buffer_zone_meta_record = 1 };
+  block_meta_start[stride_count+0] = buffer_zone_meta;
+  block_meta_start[stride_count+1] = buffer_zone_meta;
+  block_meta_start[stride_count+2] = buffer_zone_meta;
+  block_meta_start[stride_count+3] = buffer_zone_meta;
+  block_meta_start[stride_count+4] = buffer_zone_meta;
+  block_meta_start[stride_count+5] = buffer_zone_meta;
+  block_meta_start[stride_count+6] = buffer_zone_meta;
+  block_meta_start[stride_count+7] = buffer_zone_meta;
+*/
+  block_meta_start[stride_count+0].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+1].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+2].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+3].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+4].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+5].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+6].buffer_zone_meta_record = 1;
+  block_meta_start[stride_count+7].buffer_zone_meta_record = 1;
+ 
+  // if (iaca_analyze) { IACA_END; }
+  /*
+   * Step 1: extract the 5-tuples
+   */
+
+#define DO_THE_WORK
+#ifdef DO_THE_WORK
+  CLIB_PREFETCH (is_input ? &am->input_lc_index_by_sw_if_index : &am->output_lc_index_by_sw_if_index, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+          // if (iaca_analyze) { IACA_START; }
 
   while (n_left_from > 0)
     {
-      u32 n_left_to_next;
+          CLIB_PREFETCH (&block_meta[2], 2*CLIB_CACHE_LINE_BYTES, STORE);
+         /* Prefetch next iteration. */
+          if(PREDICT_TRUE(n_left_from > 8))
+	  { 
+            vlib_buffer_t * p1;
+            p1 = vlib_get_buffer (vm, from[4]);
+            vlib_prefetch_buffer_header (p1, LOAD);
+            CLIB_PREFETCH ((u8 *)p1->data, CLIB_CACHE_LINE_BYTES*3, LOAD);
+          }
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0 = 0;
-	  u8 action = 0;
-	  u32 sw_if_index0;
-	  u32 lc_index0;
-	  int acl_check_needed = 1;
-	  u32 match_acl_in_index = ~0;
-	  u32 match_acl_pos = ~0;
-	  u32 match_rule_index = ~0;
-	  u8 error0 = 0;
-	  u32 valid_new_sess;
-
-	  /* speculatively enqueue b0 to the current next frame */
+	  u32 bi0; vlib_buffer_t *b0;
+          u32 sw_if_index0, lc_index0;
+          block_meta_t *bm0 = &block_meta[0];
 	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+          b0 = vlib_get_buffer (vm, bi0);
 
-	  b0 = vlib_get_buffer (vm, bi0);
+          bm0->action = 0; /* reset action to default deny */
+          // bm0->action = 1; /* reset action to default permit */
+          bm0->error = ACL_FA_ERROR_ACL_CHECK;
+          // bm0->session_found = 0;
+          bm0->all_flags = 0;
+          bm0->match_rule_as_u64 = ~0ULL;
+
+
 
 	  if (is_input)
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  else
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-	  if (is_input)
+	  if (is_input) {
 	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
-	  else
+	  } else {
 	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+          }
 
-          u32 **p_epoch_vec = is_input ? &am->input_policy_epoch_by_sw_if_index
-                                       :  &am->output_policy_epoch_by_sw_if_index;
-          u16 current_policy_epoch = sw_if_index0 < vec_len(*p_epoch_vec) ? vec_elt(*p_epoch_vec, sw_if_index0) : (is_input * FA_POLICY_EPOCH_IS_INPUT);
+	  int valid_new_sess0 = acl_fill_5tuple (am, lc_index0, b0, is_ip6, is_input, is_l2_path, (void *)&bm0->pkt_5tuple, 1, (void *)&bm0->sess_5tuple);
+          if (PREDICT_FALSE(!valid_new_sess0)) {
+	    valid_new_sess0 = acl_make_5tuple_icmp_session_key (am, is_input, is_ip6, bm0->save_sw_if_index,  &bm0->pkt_5tuple, &bm0->sess_5tuple);
+          }
+	  bm0->pkt_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+	  bm0->sess_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+          bm0->save_sw_if_index = sw_if_index0;
+          bm0->trace_bitmap = TRACE_BIT_STAGE(0);
+
+          bm0->valid_new_sess = valid_new_sess0;
+
+          /* Move on to the next block */
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+         // if (iaca_analyze) { IACA_END; }
+  // if (iaca_analyze) { IACA_START; }
+
+#ifdef BLABLABAL
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+  while (n_left_from > 0)
+    {
+          CLIB_PREFETCH (&block_meta[4], 2*CLIB_CACHE_LINE_BYTES, STORE);
+
+	  u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[is_input ? VLIB_RX : VLIB_TX];
+          vnet_buffer2 (b0)->aclp.lc_index = (is_input ? am->input_lc_index_by_sw_if_index[sw_if_index0] : am->output_lc_index_by_sw_if_index[sw_if_index0]);
+
+          /* Move on to the next block */
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+#endif
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  /*
+   * Step 2.1: Check existing sessions: create session keys
+   */
+
+
+#ifdef SESSIONS
+  block_meta = block_meta_start;
+  n_left_from = stride_count;
+
+
+  n_left_from += (n_left_from & 1); // make it even
+  while (n_left_from > 0)
+    {
+          CLIB_PREFETCH (&block_meta[2], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          CLIB_PREFETCH (&block_meta[3], 2*CLIB_CACHE_LINE_BYTES, STORE);
+
+          block_meta_t *bm0 = &block_meta[0];
+          block_meta_t *bm1 = &block_meta[1];
+          fa_5tuple_t *pkt_5tuple0 = &bm0->pkt_5tuple;
+          fa_5tuple_t *pkt_5tuple1 = &bm1->pkt_5tuple;
+
+          fa_5tuple_t *sess_5tuple0 = &bm0->sess_5tuple;
+          fa_5tuple_t *sess_5tuple1 = &bm1->sess_5tuple;
+
 	  /*
-	   * Extract the L3/L4 matching info into a 5-tuple structure,
-	   * then create a session key whose layout is independent on forward or reverse
+	   * create a session key whose layout is independent on forward or reverse
 	   * direction of the packet.
 	   */
 
-	  acl_plugin_fill_5tuple_inline (lc_index0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_opaque_t *)&fa_5tuple);
-          fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  valid_new_sess = acl_make_5tuple_session_key (am, is_input, is_ip6, sw_if_index0,  &fa_5tuple, &kv_sess);
-          // XXDEL fa_5tuple.pkt.is_input = is_input;
-          fa_5tuple.pkt.mask_type_index_lsb = ~0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
-	     kv_sess.kv.key[0], kv_sess.kv.key[1], kv_sess.kv.key[2],
-	     kv_sess.kv.key[3], kv_sess.kv.key[4], kv_sess.kv.value);
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
-	     fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
-	     fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
+	  int valid_new_sess0 = acl_make_5tuple_session_key (am, is_input, is_ip6, pkt_5tuple0, sess_5tuple0);
+	  int valid_new_sess1 = acl_make_5tuple_session_key (am, is_input, is_ip6, pkt_5tuple1, sess_5tuple1);
+
+          bm0->sess_5tuple.l4.lsb_of_sw_if_index = bm0->save_sw_if_index & 0xffff; // sw_if_index0 & 0xffff;
+          bm1->sess_5tuple.l4.lsb_of_sw_if_index = bm1->save_sw_if_index & 0xffff; // sw_if_index0 & 0xffff;
+
+          if (PREDICT_FALSE(!valid_new_sess0)) {
+	    valid_new_sess0 = acl_make_5tuple_icmp_session_key (am, is_input, is_ip6, bm0->save_sw_if_index,  pkt_5tuple0, sess_5tuple0);
+          }
+          if (PREDICT_FALSE(!valid_new_sess1)) {
+	    valid_new_sess1 = acl_make_5tuple_icmp_session_key (am, is_input, is_ip6, bm1->save_sw_if_index,  pkt_5tuple1, sess_5tuple1);
+          }
+          bm0->valid_new_sess = valid_new_sess0;
+          bm1->valid_new_sess = valid_new_sess1;
+
+          block_meta += 2;
+          n_left_from-= 2;
+    }
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  /*
+   * Step 2.2: calculate the hashes for the session lookup/create
+   */
+
+#endif // SESSIONS
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+
+#ifdef BIHASH_HASH_QUADLOOP
+  while (n_left_from >= 4)
+    {
+          block_meta_t *bm0 = &block_meta[0];
+          block_meta_t *bm1 = &block_meta[1];
+          block_meta_t *bm2 = &block_meta[2];
+          block_meta_t *bm3 = &block_meta[3];
+
+          /* make a hash anyway - at bulk, it does not matter */
+          bm0->hash = clib_bihash_hash_40_8(&bm0->sess_5tuple.kv);
+          bm1->hash = clib_bihash_hash_40_8(&bm1->sess_5tuple.kv);
+          bm2->hash = clib_bihash_hash_40_8(&bm2->sess_5tuple.kv);
+          bm3->hash = clib_bihash_hash_40_8(&bm3->sess_5tuple.kv);
+
+          block_meta += 4;
+          n_left_from -= 4;
+    }
 #endif
 
-	  /* Try to match an existing session first */
+  while (n_left_from > 0)
+    {
+          block_meta_t *bm0 = &block_meta[0];
+          fa_5tuple_t *sess_5tuple0 = &bm0->sess_5tuple;
 
-	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
-	    {
-	      if (acl_fa_find_session
-		  (am, sw_if_index0, &kv_sess, &value_sess))
-		{
-		  trace_bitmap |= 0x80000000;
-		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
-		  fa_full_session_id_t f_sess_id;
+          if (bm0->valid_new_sess) {
+            bm0->hash = clib_bihash_hash_40_8(&sess_5tuple0->kv);
+            bm0->trace_bitmap |= TRACE_BIT_STAGE(1);
+          }
 
-                  f_sess_id.as_u64 = value_sess.value;
-                  ASSERT(f_sess_id.thread_index < vec_len(vlib_mains));
+          block_meta++;
+          n_left_from--;
+    }
 
-		  fa_session_t *sess = get_session_ptr(am, f_sess_id.thread_index, f_sess_id.session_index);
-		  int old_timeout_type =
-		    fa_session_get_timeout_type (am, sess);
-		  action =
-		    acl_fa_track_session (am, is_input, sw_if_index0, now,
-					  sess, &fa_5tuple);
-		  /* expose the session id to the tracer */
-		  match_rule_index = f_sess_id.session_index;
-		  int new_timeout_type =
-		    fa_session_get_timeout_type (am, sess);
-		  acl_check_needed = 0;
-		  pkts_exist_session += 1;
-		  /* Tracking might have changed the session timeout type, e.g. from transient to established */
-		  if (PREDICT_FALSE (old_timeout_type != new_timeout_type))
-		    {
-		      acl_fa_restart_timer_for_session (am, now, f_sess_id);
-		      pkts_restart_session_timer++;
-		      trace_bitmap |=
-			0x00010000 + ((0xff & old_timeout_type) << 8) +
-			(0xff & new_timeout_type);
-		    }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  /*
+   * Step 2.3: Check existing sessions: find existing sessions
+   */
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+#ifdef FIND_SESSION_QUAD_LOOP
+
+  while (n_left_from >= 16)
+    {
+          /* no need to check, there is spare space */
+          CLIB_PREFETCH (&block_meta[13], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          CLIB_PREFETCH (&block_meta[14], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          CLIB_PREFETCH (&block_meta[15], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          CLIB_PREFETCH (&block_meta[16], 2*CLIB_CACHE_LINE_BYTES, STORE);
+
+	  clib_bihash_prefetch_bucket_40_8(&am->fa_sessions_hash, block_meta[9].hash);
+	  clib_bihash_prefetch_bucket_40_8(&am->fa_sessions_hash, block_meta[10].hash);
+	  clib_bihash_prefetch_bucket_40_8(&am->fa_sessions_hash, block_meta[11].hash);
+	  clib_bihash_prefetch_bucket_40_8(&am->fa_sessions_hash, block_meta[12].hash);
+
+	  clib_bihash_prefetch_data_40_8(&am->fa_sessions_hash, block_meta[5].hash);
+	  clib_bihash_prefetch_data_40_8(&am->fa_sessions_hash, block_meta[6].hash);
+	  clib_bihash_prefetch_data_40_8(&am->fa_sessions_hash, block_meta[7].hash);
+	  clib_bihash_prefetch_data_40_8(&am->fa_sessions_hash, block_meta[8].hash);
+
+          block_meta_t *bm0 = &block_meta[0];
+          block_meta_t *bm1 = &block_meta[1];
+          block_meta_t *bm2 = &block_meta[2];
+          block_meta_t *bm3 = &block_meta[3];
+
+          clib_bihash_kv_40_8_t value_sess0;
+          clib_bihash_kv_40_8_t value_sess1;
+          clib_bihash_kv_40_8_t value_sess2;
+          clib_bihash_kv_40_8_t value_sess3;
+          value_sess0.value = 0;
+          value_sess1.value = 0;
+          value_sess2.value = 0;
+          value_sess3.value = 0;
+
+          bm0->session_found = acl_fa_find_session_with_hash(am, ~0, &bm0->sess_5tuple, &value_sess0, bm0->hash);
+          bm1->session_found = acl_fa_find_session_with_hash(am, ~0, &bm1->sess_5tuple, &value_sess1, bm1->hash);
+          bm2->session_found = acl_fa_find_session_with_hash(am, ~0, &bm2->sess_5tuple, &value_sess2, bm2->hash);
+          bm3->session_found = acl_fa_find_session_with_hash(am, ~0, &bm3->sess_5tuple, &value_sess3, bm3->hash);
+
+          bm0->f_sess_id = value_sess0.value;
+          bm1->f_sess_id = value_sess1.value;
+          bm2->f_sess_id = value_sess2.value;
+          bm3->f_sess_id = value_sess3.value;
+
+          block_meta += 4;
+          n_left_from -= 4;
+    }
+#endif
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+  while (n_left_from > 0)
+    {
+          /* no need to check, there is spare space */
+          CLIB_PREFETCH (&block_meta[7], 2*CLIB_CACHE_LINE_BYTES, STORE);
+
+	  clib_bihash_prefetch_bucket_40_8(&am->fa_sessions_hash, block_meta[6].hash);
+	  clib_bihash_prefetch_data_40_8(&am->fa_sessions_hash, block_meta[3].hash);
+
+          block_meta_t *bm0 = &block_meta[0];
+          fa_5tuple_t *sess_5tuple0 = &bm0->sess_5tuple;
+
+          clib_bihash_kv_40_8_t value_sess;
+          value_sess.value = 0;
+
+          bm0->session_found = acl_fa_find_session_with_hash(am, ~0, sess_5tuple0, &value_sess, bm0->hash);
+          bm0->f_sess_id = value_sess.value;
+
+          block_meta++;
+          n_left_from--;
+    }
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+
+  while (n_left_from > 0)
+    {
+	  u32 bi0; vlib_buffer_t *b0;
+	  bi0 = from[0];
+          b0 = vlib_get_buffer (vm, bi0);
+
+
+          /* no need to check, there is spare space */
+          CLIB_PREFETCH (&block_meta[4], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          block_meta_t *bm0 = &block_meta[0];
+          u32 sw_if_index0;
+
+          int valid_new_sess = bm0->valid_new_sess;
+
+          if (valid_new_sess) {
+              if (bm0->session_found) {
+                fa_full_session_id_t f_sess_id;
+                f_sess_id.as_u64 = bm0->f_sess_id;
+
+                bm0->trace_bitmap |= TRACE_BIT_STAGE(2);
+
+
+                ASSERT(f_sess_id.thread_index < vec_len(vlib_mains));
+
                   /*
                    * I estimate the likelihood to be very low - the VPP needs
                    * to have >64K interfaces to start with and then on
@@ -781,15 +1110,21 @@ acl_fa_node_fn (vlib_main_t * vm,
                    * If this shows up in real world, we would need to bump
                    * the hash key length.
                    */
-		  if (PREDICT_FALSE(sess->sw_if_index != sw_if_index0)) {
-                    clib_warning("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
-                    acl_check_needed = 0;
-                    action = 0;
-                  }
-                  if (PREDICT_FALSE(am->reclassify_sessions)) {
+                if (PREDICT_FALSE(am->reclassify_sessions)) {
+		  b0 = vlib_get_buffer (vm, bi0);
+
+		  if (is_input)
+			sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		  else
+			sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+		  u32 **p_epoch_vec = is_input ? &am->input_policy_epoch_by_sw_if_index
+						   :  &am->output_policy_epoch_by_sw_if_index;
+		  u16 current_policy_epoch0 = sw_if_index0 < vec_len(*p_epoch_vec) ? vec_elt(*p_epoch_vec, sw_if_index0) : (is_input * FA_POLICY_EPOCH_IS_INPUT);
+
                    /* if the MSB of policy epoch matches but not the LSB means it is a stale session */
-                   if ( (0 == ((current_policy_epoch ^ f_sess_id.intf_policy_epoch) & FA_POLICY_EPOCH_IS_INPUT))
-                        && (current_policy_epoch != f_sess_id.intf_policy_epoch) ) {
+                   if ( (0 == ((current_policy_epoch0 ^ f_sess_id.intf_policy_epoch) & FA_POLICY_EPOCH_IS_INPUT))
+                        && (current_policy_epoch0 != f_sess_id.intf_policy_epoch) ) {
                       /* delete session and increment the counter */
                       vec_validate (pw->fa_session_epoch_change_by_sw_if_index, sw_if_index0);
                       vec_elt (pw->fa_session_epoch_change_by_sw_if_index, sw_if_index0)++;
@@ -797,90 +1132,636 @@ acl_fa_node_fn (vlib_main_t * vm,
                         /* delete the session only if we were able to unlink it */
                         acl_fa_delete_session (am, sw_if_index0, f_sess_id);
                       }
-                      acl_check_needed = 1;
-                      trace_bitmap |= 0x40000000;
+                      bm0->acl_check_needed = 1;
+                      bm0->session_found = 0;
                     }
                   }
-		}
-	    }
+              } else {
+                /* Did not find the session */
+                bm0->acl_check_needed = 1;
+                bm0->session_found = 0;
+              }
+          } else {
+            /* packets without session key */
+            bm0->acl_check_needed = 1;
+            bm0->session_found = 0;
+          }
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
 
-	  if (acl_check_needed)
+  /*
+   * Step 2.4: Check existing sessions: do the housekeeping on existing sessions
+   */
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  while (n_left_from > 0)
+    {
+          CLIB_PREFETCH (&block_meta[7], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          {
+            /* no need to make the prefetches conditional since we can use buffer zone */
+            block_meta_t *bm1 = &block_meta[4];
+            if(bm1->session_found) {
+		  fa_full_session_id_t f_sess_id;
+                  f_sess_id.as_u64 = bm1->f_sess_id;
+                  ASSERT(f_sess_id.thread_index < vec_len(vlib_mains));
+		  fa_session_t *sess = get_session_ptr(am, f_sess_id.thread_index, f_sess_id.session_index);
+                  CLIB_PREFETCH (sess, 2*CLIB_CACHE_LINE_BYTES, STORE);
+            }
+          }
+	  u32 bi0; vlib_buffer_t *b0;
+	  bi0 = from[0];
+          b0 = vlib_get_buffer (vm, bi0);
+
+          block_meta_t *bm0 = &block_meta[0];
+          fa_5tuple_t *pkt_5tuple0 = &bm0->pkt_5tuple;
+          u32 sw_if_index0;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  if (is_input)
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  else
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+          if (bm0->session_found) {
+                  bm0->error = ACL_FA_ERROR_ACL_EXIST_SESSION;
+                  bm0->trace_bitmap |= TRACE_BIT_STAGE(3);
+		  fa_full_session_id_t f_sess_id;
+
+                  f_sess_id.as_u64 = bm0->f_sess_id;
+                  ASSERT(f_sess_id.thread_index < vec_len(vlib_mains));
+
+		  fa_session_t *sess = get_session_ptr(am, f_sess_id.thread_index, f_sess_id.session_index);
+		  int old_timeout_type =
+		    fa_session_get_timeout_type (am, sess);
+		  bm0->action =
+		    acl_fa_track_session (am, is_input, sw_if_index0, now,
+					  sess, pkt_5tuple0);
+		  /* expose the session id to the tracer */
+		  bm0->match_rule_index = f_sess_id.session_index;
+		  int new_timeout_type =
+		    fa_session_get_timeout_type (am, sess);
+		  bm0->acl_check_needed = 0;
+		  pkts_exist_session += 1;
+		  /* Tracking might have changed the session timeout type, e.g. from transient to established */
+		  if (PREDICT_FALSE (old_timeout_type != new_timeout_type))
+		    {
+		      acl_fa_restart_timer_for_session (am, now, f_sess_id);
+		      pkts_restart_session_timer++;
+		    }
+		  if (PREDICT_FALSE(sess->sw_if_index != sw_if_index0)) {
+                    clib_warning("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
+                    bm0->acl_check_needed = 0;
+                    bm0->action = 0;
+                    bm0->session_found = 0;
+                    bm0->error = ACL_FA_ERROR_ACL_5TUPLE_COLLISION;
+                  }
+            }
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  /*
+   * Step 3: check ACLs where needed 
+   */
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+#define TWO_STRIDE_ACL_CHECK
+#ifdef TWO_STRIDE_ACL_CHECK
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  /* Work in progress here */
+
+  {
+    int n_active = 0;
+    hash_lookup_wip_t wip0 = { 0 };
+    hash_lookup_wip_t wip1 = { 0 };
+    hash_lookup_wip_t wip2 = { 0 };
+    hash_lookup_wip_t wip3 = { 0 };
+
+    block_meta_t *bm_next = block_meta_start;
+
+
+    block_meta_t *bm0 = bm_next++;
+    n_left_from--;
+
+    if (PREDICT_FALSE(!bm0->acl_check_needed)) while (!bm0->acl_check_needed && !bm0->buffer_zone_meta_record) {
+      bm0 = bm_next;
+      if (n_left_from == 0)
+        break;
+      bm_next++;
+      n_left_from--;
+    }
+
+    block_meta_t *bm1 = bm_next++; /* notice no autoincrement */
+    if (PREDICT_FALSE(!bm1->acl_check_needed)) while (!bm1->acl_check_needed && !bm1->buffer_zone_meta_record) {
+      bm1 = bm_next;
+      if (n_left_from == 0)
+        break;
+      bm_next++;
+      n_left_from--;
+    }
+
+    block_meta_t *bm2 = bm_next++; /* notice no autoincrement */
+    if (PREDICT_FALSE(!bm2->acl_check_needed)) while (!bm2->acl_check_needed && !bm2->buffer_zone_meta_record) {
+      bm2 = bm_next;
+      if (n_left_from == 0)
+        break;
+      bm_next++;
+      n_left_from--;
+    }
+    block_meta_t *bm3 = bm_next++; /* notice no autoincrement */
+    if (PREDICT_FALSE(!bm3->acl_check_needed)) while (!bm3->acl_check_needed && !bm3->buffer_zone_meta_record) {
+      bm3 = bm_next;
+      if (n_left_from == 0)
+        break;
+      bm_next++;
+      n_left_from--;
+    }
+    
+    n_active += acl_tmhash_match_begin(am, &bm0->pkt_5tuple, &wip0, bm0->buffer_zone_meta_record);
+    n_active += acl_tmhash_match_begin(am, &bm1->pkt_5tuple, &wip1, bm1->buffer_zone_meta_record);
+    n_active += acl_tmhash_match_begin(am, &bm2->pkt_5tuple, &wip2, bm2->buffer_zone_meta_record);
+    n_active += acl_tmhash_match_begin(am, &bm3->pkt_5tuple, &wip3, bm3->buffer_zone_meta_record);
+
+    wip0.id = bm0 - block_meta_start;
+    wip1.id = bm1 - block_meta_start;
+    wip2.id = bm2 - block_meta_start;
+    wip3.id = bm3 - block_meta_start;
+
+    while (n_active > 0) {
+
+      int res0 = acl_tmhash_match_hash_and_prefetch(am, &bm0->pkt_5tuple, &wip0);
+      int res1 = acl_tmhash_match_hash_and_prefetch(am, &bm1->pkt_5tuple, &wip1);
+      int res2 = acl_tmhash_match_hash_and_prefetch(am, &bm2->pkt_5tuple, &wip2);
+      int res3 = acl_tmhash_match_hash_and_prefetch(am, &bm3->pkt_5tuple, &wip3);
+
+      if (PREDICT_FALSE(!res0)) while (!res0) {
+        u32 match_acl_pos0;
+        u8 action0;
+        n_active -= acl_tmhash_check_finalize(am, &bm0->pkt_5tuple, &wip0, &action0,
+                                  &match_acl_pos0, &bm0->match_acl_in_index,
+                                  &bm0->match_rule_index);
+	bm0->error = action0;
+	bm0->action = action0;
+        do {
+          bm0 = bm_next;
+          if (n_left_from == 0)
+            break;
+          bm_next++;
+          n_left_from--;
+        } while (!bm0->acl_check_needed);
+
+        n_active += acl_tmhash_match_begin(am, &bm0->pkt_5tuple, &wip0, bm0->buffer_zone_meta_record);
+        wip0.id = bm0 - block_meta_start;
+        res0 = acl_tmhash_match_hash_and_prefetch(am, &bm0->pkt_5tuple, &wip0);
+      }
+
+      if (PREDICT_FALSE(!res1)) while (!res1) {
+        u32 match_acl_pos1;
+        u8 action1;
+        n_active -= acl_tmhash_check_finalize(am, &bm1->pkt_5tuple, &wip1, &action1,
+                                  &match_acl_pos1, &bm1->match_acl_in_index,
+                                  &bm1->match_rule_index);
+	bm1->error = action1;
+	bm1->action = action1;
+        do {
+          bm1 = bm_next;
+          if (n_left_from == 0)
+            break;
+          bm_next++;
+          n_left_from--;
+        } while (!bm1->acl_check_needed);
+
+        n_active += acl_tmhash_match_begin(am, &bm1->pkt_5tuple, &wip1, bm1->buffer_zone_meta_record);
+        wip1.id = bm1 - block_meta_start;
+        res1 = acl_tmhash_match_hash_and_prefetch(am, &bm1->pkt_5tuple, &wip1);
+      }
+
+      if (PREDICT_FALSE(!res2)) while (!res2) {
+        u32 match_acl_pos2;
+        u8 action2;
+        n_active -= acl_tmhash_check_finalize(am, &bm2->pkt_5tuple, &wip2, &action2,
+                                  &match_acl_pos2, &bm2->match_acl_in_index,
+                                  &bm2->match_rule_index);
+	bm2->error = action2;
+	bm2->action = action2;
+        do {
+          bm2 = bm_next;
+          if (n_left_from == 0)
+            break;
+          bm_next++;
+          n_left_from--;
+        } while (!bm2->acl_check_needed);
+
+        n_active += acl_tmhash_match_begin(am, &bm2->pkt_5tuple, &wip2, bm2->buffer_zone_meta_record);
+        wip2.id = bm2 - block_meta_start;
+        res2 = acl_tmhash_match_hash_and_prefetch(am, &bm2->pkt_5tuple, &wip2);
+      }
+
+      if (PREDICT_FALSE(!res3)) while (!res3) {
+        u32 match_acl_pos3;
+        u8 action3;
+        n_active -= acl_tmhash_check_finalize(am, &bm3->pkt_5tuple, &wip3, &action3,
+                                  &match_acl_pos3, &bm3->match_acl_in_index,
+                                  &bm3->match_rule_index);
+	bm3->error = action3;
+	bm3->action = action3;
+        do {
+          bm3 = bm_next;
+          if (n_left_from == 0)
+            break;
+          bm_next++;
+          n_left_from--;
+        } while (!bm3->acl_check_needed);
+
+        n_active += acl_tmhash_match_begin(am, &bm3->pkt_5tuple, &wip3, bm3->buffer_zone_meta_record);
+        wip3.id = bm3 - block_meta_start;
+        res3 = acl_tmhash_match_hash_and_prefetch(am, &bm3->pkt_5tuple, &wip3);
+      }
+
+
+      acl_tmhash_lookup_hash(am, &bm0->pkt_5tuple, &wip0);
+      acl_tmhash_lookup_hash(am, &bm1->pkt_5tuple, &wip1);
+      acl_tmhash_lookup_hash(am, &bm2->pkt_5tuple, &wip2);
+      acl_tmhash_lookup_hash(am, &bm3->pkt_5tuple, &wip3);
+
+      acl_tmhash_check_collisions(am, &bm0->pkt_5tuple, &wip0);
+      acl_tmhash_check_collisions(am, &bm1->pkt_5tuple, &wip1);
+      acl_tmhash_check_collisions(am, &bm2->pkt_5tuple, &wip2);
+      acl_tmhash_check_collisions(am, &bm3->pkt_5tuple, &wip3);
+    }
+
+  }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+#else
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+  while (n_left_from > 0)
+    {
+
+          block_meta_t *bm0 = &block_meta[0];
+          fa_5tuple_t *pkt_5tuple0 = &bm0->pkt_5tuple;
+          u32 match_acl_in_index0 = ~1, match_rule_index0 = ~1;
+          u32 match_acl_pos0;
+          u8 action = 0;
+
+          if (n_left_from > 1)
+            {
+              CLIB_PREFETCH (&block_meta[1], 2*CLIB_CACHE_LINE_BYTES, STORE);
+            }
+
+	  if (bm0->acl_check_needed)
 	    {
-              action = 0; /* deny by default */
-	      acl_plugin_match_5tuple_inline (lc_index0, (fa_5tuple_opaque_t *)&fa_5tuple,
-				       is_ip6, &action, &match_acl_pos, &match_acl_in_index,
-				       &match_rule_index, &trace_bitmap);
-	      error0 = action;
+              bm0->trace_bitmap |= TRACE_BIT_STAGE(4);
+              u32 lc_index0 = pkt_5tuple0->pkt.lc_index;
+	      acl_plugin_match_5tuple_inline (lc_index0, (fa_5tuple_opaque_t *)&bm0->pkt_5tuple,
+				       is_ip6, &action, &match_acl_pos0, &match_acl_in_index0,
+				       &match_rule_index0, &bm0->trace_bitmap);
+              bm0->match_acl_in_index = match_acl_in_index0;
+              bm0->match_rule_index = match_rule_index0;
+	      bm0->error = action;
+	      bm0->action = action;
+            }
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+#endif // TWO_STRIDE_ACL_CHECK
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+  while (n_left_from > 0)
+    {
+	  u32 bi0; vlib_buffer_t *b0;
+          u32 sw_if_index0;
+	  bi0 = from[0];
+
+          block_meta_t *bm0 = &block_meta[0];
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  if (is_input)
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  else
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+          CLIB_PREFETCH (&block_meta[1], 2*CLIB_CACHE_LINE_BYTES, STORE);
+
+	  if (bm0->acl_check_needed)
+	    {
+              bm0->trace_bitmap |= TRACE_BIT_STAGE(5);
+              u8 action = bm0->action;
 	      if (1 == action)
+              {
 		pkts_acl_permit += 1;
+                action = 2;
+              }
 	      if (2 == action)
 		{
+                  u32 **p_epoch_vec = is_input ? &am->input_policy_epoch_by_sw_if_index
+                                       :  &am->output_policy_epoch_by_sw_if_index;
+                  u16 current_policy_epoch0 = sw_if_index0 < vec_len(*p_epoch_vec) ? vec_elt(*p_epoch_vec, sw_if_index0) : (is_input * FA_POLICY_EPOCH_IS_INPUT);
+
 		  if (!acl_fa_can_add_session (am, is_input, sw_if_index0))
                     acl_fa_try_recycle_session (am, is_input, thread_index, sw_if_index0);
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
-                      if (PREDICT_TRUE (valid_new_sess)) {
+                      if (PREDICT_TRUE (bm0->valid_new_sess)) {
                         fa_session_t *sess = acl_fa_add_session (am, is_input,
                                                                  sw_if_index0,
-                                                                 now, &kv_sess, current_policy_epoch);
+                                                                 now, &bm0->sess_5tuple, current_policy_epoch0); // FIXME: wrong session key here.
                         acl_fa_track_session (am, is_input, sw_if_index0, now,
-                                              sess, &fa_5tuple);
+                                              sess, &bm0->pkt_5tuple);
                         pkts_new_session += 1;
                       } else {
                         /*
                          *  ICMP packets with non-icmp_valid_new type will be
                          *  forwared without being dropped.
                          */
-                        action = 1;
+                        bm0->action = 1;
                         pkts_acl_permit += 1;
                       }
 		    }
 		  else
 		    {
-		      action = 0;
-		      error0 = ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS;
+		      bm0->action = 0;
+		      bm0->error = ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS;
 		    }
 		}
 	    }
 
+          block_meta++;
+          from++;
+          n_left_from--;
+    }
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+
+#endif // DO_THE_WORK
+  /*
+   * Step 4: propagate actions to packets
+   */
+
+  next_index = node->cached_next_index;
+
+  block_meta = block_meta_start;
+  from = from_start;
+  n_left_from = stride_count;
 
 
-	  if (action > 0)
+  error_node = vlib_node_get_runtime (vm, acl_fa_node->index);
+
+  // if (iaca_analyze) { IACA_START; }
+  // if (iaca_analyze) { IACA_END; }
+  CLIB_PREFETCH(l2_feat_next_node_index, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+
+
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 8 && n_left_to_next > 4)
+	{
+	  { 
+            vlib_prefetch_buffer_header (vlib_get_buffer (vm, from[4]), LOAD);
+            vlib_prefetch_buffer_header (vlib_get_buffer (vm, from[5]), LOAD);
+            vlib_prefetch_buffer_header (vlib_get_buffer (vm, from[6]), LOAD);
+            vlib_prefetch_buffer_header (vlib_get_buffer (vm, from[7]), LOAD);
+            // CLIB_PREFETCH (&block_meta[8], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          }
+	  u32 bi0;
+	  u32 bi1;
+	  u32 bi2;
+	  u32 bi3;
+	  vlib_buffer_t *b0;
+	  vlib_buffer_t *b1;
+	  vlib_buffer_t *b2;
+	  vlib_buffer_t *b3;
+	  u32 next0 = 0;
+	  u32 next1 = 0;
+	  u32 next2 = 0;
+	  u32 next3 = 0;
+          u32 sw_if_index0;
+          u32 sw_if_index1;
+          u32 sw_if_index2;
+          u32 sw_if_index3;
+          block_meta_t *bm0 = &block_meta[0];
+          block_meta_t *bm1 = &block_meta[1];
+          block_meta_t *bm2 = &block_meta[2];
+          block_meta_t *bm3 = &block_meta[3];
+
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  bi1 = from[1];
+	  bi2 = from[2];
+	  bi3 = from[3];
+	  to_next[0] = bi0;
+	  to_next[1] = bi1;
+	  to_next[2] = bi2;
+	  to_next[3] = bi3;
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
+          block_meta++;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
+
+	  if (is_input) {
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	    sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	    sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	    sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
+	  } else {
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	    sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	    sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
+	    sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
+          }
+
+	  //if (bm0->action > 0)
 	    {
+              u8 action0 = bm0->action;
+              u8 action1 = bm1->action;
+              u8 action2 = bm2->action;
+              u8 action3 = bm3->action;
 	      if (is_l2_path)
-		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
-	      else
-		vnet_feature_next (sw_if_index0, &next0, b0);
+                {
+                  u32 fb0 = vnet_buffer (b0)->l2.feature_bitmap;
+                  u32 fb1 = vnet_buffer (b1)->l2.feature_bitmap;
+                  u32 fb2 = vnet_buffer (b2)->l2.feature_bitmap;
+                  u32 fb3 = vnet_buffer (b3)->l2.feature_bitmap;
+                  u32 first_bit0;
+                  u32 first_bit1;
+                  u32 first_bit2;
+                  u32 first_bit3;
+                  count_leading_zeros (first_bit0, fb0);
+                  count_leading_zeros (first_bit1, fb1);
+                  count_leading_zeros (first_bit2, fb2);
+                  count_leading_zeros (first_bit3, fb3);
+		  next0 = first_bit0 == l2_cached_first_bit ? l2_cached_permit_next_node : vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
+		  next1 = first_bit1 == l2_cached_first_bit ? l2_cached_permit_next_node : vnet_l2_feature_next (b1, l2_feat_next_node_index, 0);
+		  next2 = first_bit2 == l2_cached_first_bit ? l2_cached_permit_next_node : vnet_l2_feature_next (b2, l2_feat_next_node_index, 0);
+		  next3 = first_bit3 == l2_cached_first_bit ? l2_cached_permit_next_node : vnet_l2_feature_next (b3, l2_feat_next_node_index, 0);
+                  l2_cached_first_bit = first_bit0;
+                  l2_cached_permit_next_node = next0;
+                }
+	      else {
+		vnet_feature_next (sw_if_index0, &next0, b0); 
+		vnet_feature_next (sw_if_index1, &next1, b1); 
+		vnet_feature_next (sw_if_index2, &next2, b2); 
+		vnet_feature_next (sw_if_index3, &next3, b3); 
+              }
+
+              next0 = (action0 == 0) ? 0 : next0;
+              next1 = (action1 == 0) ? 0 : next1;
+              next2 = (action2 == 0) ? 0 : next2;
+              next3 = (action3 == 0) ? 0 : next3;
 	    }
-#ifdef FA_NODE_VERBOSE_DEBUG
-          clib_warning("ACL_FA_NODE_DBG: sw_if_index %d lc_index %d action %d acl_index %d rule_index %d", sw_if_index0, lc_index0, action, match_acl_in_index, match_rule_index);
-#endif
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      acl_fa_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
-	      t->lc_index = lc_index0;
+	      t->lc_index = bm0->pkt_5tuple.pkt.lc_index;
 	      t->next_index = next0;
-	      t->match_acl_in_index = match_acl_in_index;
-	      t->match_rule_index = match_rule_index;
-	      t->packet_info[0] = fa_5tuple.kv.key[0];
-	      t->packet_info[1] = fa_5tuple.kv.key[1];
-	      t->packet_info[2] = fa_5tuple.kv.key[2];
-	      t->packet_info[3] = fa_5tuple.kv.key[3];
-	      t->packet_info[4] = fa_5tuple.kv.key[4];
-	      t->packet_info[5] = fa_5tuple.kv.value;
-	      t->action = action;
-	      t->trace_bitmap = trace_bitmap;
+	      t->match_acl_in_index = bm0->match_acl_in_index;
+	      t->match_rule_index = bm0->match_rule_index;
+	      t->packet_info[0] = bm0->pkt_5tuple.kv.key[0];
+	      t->packet_info[1] = bm0->pkt_5tuple.kv.key[1];
+	      t->packet_info[2] = bm0->pkt_5tuple.kv.key[2];
+	      t->packet_info[3] = bm0->pkt_5tuple.kv.key[3];
+	      t->packet_info[4] = bm0->pkt_5tuple.kv.key[4];
+	      t->packet_info[5] = bm0->pkt_5tuple.kv.value;
+	      t->action = bm0->action;
+	      t->trace_bitmap = bm0->trace_bitmap;
+	    }
+
+	  next0 = next0 < node->n_next_nodes ? next0 : 0;
+	  next1 = next1 < node->n_next_nodes ? next1 : 0;
+	  next2 = next2 < node->n_next_nodes ? next2 : 0;
+	  next3 = next3 < node->n_next_nodes ? next3 : 0;
+	  if (0 == next0)
+	    b0->error = error_node->errors[bm0->error];
+	  if (0 == next1)
+	    b1->error = error_node->errors[bm1->error];
+	  if (0 == next2)
+	    b2->error = error_node->errors[bm2->error];
+	  if (0 == next3)
+	    b3->error = error_node->errors[bm3->error];
+
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
+					   to_next, n_left_to_next, bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
+	}
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          if(PREDICT_TRUE(n_left_from > 8))
+	  { 
+            vlib_buffer_t * p1;
+            p1 = vlib_get_buffer (vm, from[8]);
+            vlib_prefetch_buffer_header (p1, LOAD);
+            // CLIB_PREFETCH (&block_meta[8], 2*CLIB_CACHE_LINE_BYTES, STORE);
+          }
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0 = 0;
+          u32 sw_if_index0;
+          block_meta_t *bm0 = &block_meta[0];
+
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+          block_meta++;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  if (is_input)
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  else
+	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+	  //if (bm0->action > 0)
+	    {
+              u8 action0 = bm0->action;
+	      if (is_l2_path)
+                {
+                  u32 fb = vnet_buffer (b0)->l2.feature_bitmap;
+                  u32 first_bit;
+                  count_leading_zeros (first_bit, fb);
+		  next0 = first_bit == l2_cached_first_bit ? l2_cached_permit_next_node : vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
+                  l2_cached_first_bit = first_bit;
+                  l2_cached_permit_next_node = next0;
+                }
+	      else
+		vnet_feature_next (sw_if_index0, &next0, b0);
+
+              next0 = (action0 == 0) ? 0 : next0;
+	    }
+
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      acl_fa_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->sw_if_index = sw_if_index0;
+	      t->lc_index = bm0->pkt_5tuple.pkt.lc_index;
+	      t->next_index = next0;
+	      t->match_acl_in_index = bm0->match_acl_in_index;
+	      t->match_rule_index = bm0->match_rule_index;
+	      t->packet_info[0] = bm0->pkt_5tuple.kv.key[0];
+	      t->packet_info[1] = bm0->pkt_5tuple.kv.key[1];
+	      t->packet_info[2] = bm0->pkt_5tuple.kv.key[2];
+	      t->packet_info[3] = bm0->pkt_5tuple.kv.key[3];
+	      t->packet_info[4] = bm0->pkt_5tuple.kv.key[4];
+	      t->packet_info[5] = bm0->pkt_5tuple.kv.value;
+	      t->action = bm0->action;
+	      t->trace_bitmap = bm0->trace_bitmap;
 	    }
 
 	  next0 = next0 < node->n_next_nodes ? next0 : 0;
 	  if (0 == next0)
-	    b0->error = error_node->errors[error0];
-
-	  pkts_acl_checked += 1;
+	    b0->error = error_node->errors[bm0->error];
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -890,6 +1771,38 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+    // if (iaca_analyze) { IACA_START; }
+    // if (iaca_analyze) { IACA_END; }
+
+    block_meta_start += stride_count;
+    from_start += stride_count;
+    n_left_from_start -= stride_count;
+
+} // OUTER CYCLE
+
+//===Added by Valerio
+#ifdef VALE_ELOG
+
+  clk_l = clib_cpu_time_now ();
+
+/*Log event*/
+// Replace and/or change with u32 Vector Size inside the stuct. Also change the %ll
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "Vector size: %d Clock cycles = %ld",
+    .format_args = "i4i8",
+  };
+  struct {u32 vector_size; u64 clock_cycles;} *ed;
+  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed->vector_size = n_frame_elog;
+  ed->clock_cycles = clk_l - clk_f;
+
+/*End of Log event*/
+
+
+#endif
+
 
   vlib_node_increment_counter (vm, acl_fa_node->index,
 			       ACL_FA_ERROR_ACL_CHECK, pkts_acl_checked);
