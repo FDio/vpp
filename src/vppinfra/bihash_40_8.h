@@ -19,7 +19,7 @@
 
 #define BIHASH_TYPE _40_8
 #define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_KVP_CACHE_SIZE 2
+#define BIHASH_KVP_CACHE_SIZE 0
 
 #ifndef __included_bihash_40_8_h__
 #define __included_bihash_40_8_h__
@@ -69,8 +69,32 @@ format_bihash_kvp_40_8 (u8 * s, va_list * args)
 static inline int
 clib_bihash_key_compare_40_8 (const u64 * a, const u64 * b)
 {
+/*
+  if (a[0] == 0xdeadbeef) {
+    return 1;
+  }
+  if (b[0] == 0xbeefbabe) {
+    return 1;
+  }
+*/
   return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2]) | (a[3] ^ b[3])
 	  | (a[4] ^ b[4])) == 0;
+}
+
+static inline int
+clib_bihash_key_compare_40_8x (u64 * a, u64 * b)
+{
+u64x2 mask = { (u64) -1, 0 };
+u64x2 *a4 = (u64x2 *) a;
+u64x2 *b4 = (u64x2 *) b;
+u64x2 r;
+
+r = a4[2] ^ b4[2];
+r &= mask;
+r |= a4[1] ^ b4[1];
+r |= a4[0] ^ b4[0];
+
+return u64x2_is_all_zero (r);
 }
 
 #undef __included_bihash_template_h__
