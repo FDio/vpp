@@ -120,6 +120,8 @@ clib_sysfs_set_nr_hugepages (int numa_node, int page_size, int nr)
   struct stat sb;
   u8 *p = 0;
 
+  clib_warning("Setting hugepages on node %d page size %d number %d", numa_node, page_size, nr);
+
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
   if (stat ((char *) p, &sb) == 0)
@@ -164,6 +166,8 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
   clib_error_t *error = 0;
   struct stat sb;
   u8 *p = 0;
+
+  clib_warning("Getting hugepages on node %d page size %d number %d", numa_node, page_size);
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 

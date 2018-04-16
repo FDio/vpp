@@ -39,7 +39,7 @@
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
 #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
-#define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
+#define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS (65 * 1024)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
 
 extern vlib_node_registration_t acl_in_node;
@@ -200,9 +200,14 @@ typedef struct {
 
   /* Do we use hash-based ACL matching or linear */
   int use_hash_acl_matching;
+  /* Do we use TUPLEMERGE hash-based ACL matching or linear #Valerio */
+  int use_tm_hash_acl_matching;
 
   /* a pool of all mask types present in all ACEs */
   ace_mask_type_entry_t *ace_mask_type_pool;
+
+  /* a pool of all mask types present in ACEs contained in each lc_index */
+  hash_applied_mask_info_t **hash_applied_mask_pool_by_lc_index;
 
   /*
    * Classify tables used to grab the packets for the ACL check,
