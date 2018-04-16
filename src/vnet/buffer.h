@@ -249,7 +249,15 @@ typedef struct
 	u32 table_index;
 	u32 opaque_index;
       };
-      u64 hash;
+      union
+      {
+        struct
+        {
+          u32 l2_save_protocol;
+          u32 l2_flow_hash;
+        };
+        u64 hash;
+      };
     } l2_classify;
 
     /* IO - worker thread handoff */
