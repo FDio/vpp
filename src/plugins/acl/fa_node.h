@@ -1,6 +1,9 @@
 #ifndef _FA_NODE_H_
 #define _FA_NODE_H_
 
+#define VALE_ELOG //Added by Valerio
+//#define VALE_ELOG_ACL2 //Added by Valerio
+
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
