@@ -22,6 +22,7 @@
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/hash_lookup_private.h>
 
+//#define VALE_ELOG_ACL //Added by Valerio
 
 /* check if a given ACL exists */
 
@@ -166,9 +167,7 @@ static inline clib_error_t * acl_plugin_exports_init (void)
 
 #endif
 
-
-
-always_inline void *
+static void *
 get_ptr_to_offset (vlib_buffer_t * b0, int offset)
 {
   u8 *p = vlib_buffer_get_current (b0) + offset;
@@ -181,189 +180,6 @@ offset_within_packet (vlib_buffer_t * b0, int offset)
   /* For the purposes of this code, "within" means we have at least 8 bytes after it */
   return (offset <= (b0->current_length - 8));
 }
-
-always_inline void
-acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
-{
-  /* IP4 and IP6 protocol numbers of ICMP */
-  static u8 icmp_protos_v4v6[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
-
-  int l3_offset;
-  int l4_offset;
-  u16 ports[2];
-  u16 proto;
-
-  if (is_l2_path)
-    {
-      l3_offset = ethernet_buffer_header_size(b0);
-    }
-  else
-    {
-      if (is_input)
-        l3_offset = 0;
-      else
-        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
-    }
-
-  /* key[0..3] contains src/dst address and is cleared/set below */
-  /* Remainder of the key and per-packet non-key data */
-  p5tuple_pkt->kv.key[4] = 0;
-  p5tuple_pkt->kv.value = 0;
-  p5tuple_pkt->pkt.is_ip6 = is_ip6;
-
-  if (is_ip6)
-    {
-      clib_memcpy (&p5tuple_pkt->addr,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip6_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr));
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip6_header_t,
-					     protocol) + l3_offset);
-      l4_offset = l3_offset + sizeof (ip6_header_t);
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("ACL_FA_NODE_DBG: proto: %d, l4_offset: %d", proto,
-		    l4_offset);
-#endif
-      /* IP6 EH handling is here, increment l4_offset if needs to, update the proto */
-      int need_skip_eh = clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
-      if (PREDICT_FALSE (need_skip_eh))
-	{
-	  while (need_skip_eh && offset_within_packet (b0, l4_offset))
-	    {
-	      /* Fragment header needs special handling */
-	      if (PREDICT_FALSE(ACL_EH_FRAGMENT == proto))
-	        {
-	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-		  u16 frag_offset;
-		  clib_memcpy (&frag_offset, get_ptr_to_offset (b0, 2 + l4_offset), sizeof(frag_offset));
-		  frag_offset = clib_net_to_host_u16(frag_offset) >> 3;
-		  if (frag_offset)
-		    {
-                      p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
-                      /* invalidate L4 offset so we don't try to find L4 info */
-                      l4_offset += b0->current_length;
-		    }
-		  else
-		    {
-		      /* First fragment: skip the frag header and move on. */
-		      l4_offset += 8;
-		    }
-		}
-              else
-                {
-	          u8 nwords = *(u8 *) get_ptr_to_offset (b0, 1 + l4_offset);
-	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-	          l4_offset += 8 * (1 + (u16) nwords);
-                }
-#ifdef FA_NODE_VERBOSE_DEBUG
-	      clib_warning ("ACL_FA_NODE_DBG: new proto: %d, new offset: %d",
-			    proto, l4_offset);
-#endif
-	      need_skip_eh =
-		clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
-	    }
-	}
-    }
-  else
-    {
-      p5tuple_pkt->kv.key[0] = 0;
-      p5tuple_pkt->kv.key[1] = 0;
-      p5tuple_pkt->kv.key[2] = 0;
-      p5tuple_pkt->kv.key[3] = 0;
-      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[0].ip4));
-      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						dst_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[1].ip4));
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip4_header_t,
-					     protocol) + l3_offset);
-      l4_offset = l3_offset + sizeof (ip4_header_t);
-      u16 flags_and_fragment_offset;
-      clib_memcpy (&flags_and_fragment_offset,
-                   get_ptr_to_offset (b0,
-                                      offsetof (ip4_header_t,
-                                                flags_and_fragment_offset)) + l3_offset,
-                                                sizeof(flags_and_fragment_offset));
-      flags_and_fragment_offset = clib_net_to_host_u16 (flags_and_fragment_offset);
-
-      /* non-initial fragments have non-zero offset */
-      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
-        {
-          p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
-          /* invalidate L4 offset so we don't try to find L4 info */
-          l4_offset += b0->current_length;
-        }
-
-    }
-  p5tuple_pkt->l4.proto = proto;
-  if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
-    {
-      p5tuple_pkt->pkt.l4_valid = 1;
-      if (icmp_protos_v4v6[is_ip6] == proto)
-	{
-	  /* type */
-	  p5tuple_pkt->l4.port[0] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     type));
-	  /* code */
-	  p5tuple_pkt->l4.port[1] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     code));
-	}
-      else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
-	{
-	  clib_memcpy (&ports,
-		       get_ptr_to_offset (b0,
-					  l4_offset + offsetof (tcp_header_t,
-								src_port)),
-		       sizeof (ports));
-	  p5tuple_pkt->l4.port[0] = clib_net_to_host_u16 (ports[0]);
-	  p5tuple_pkt->l4.port[1] = clib_net_to_host_u16 (ports[1]);
-
-	  p5tuple_pkt->pkt.tcp_flags =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (tcp_header_t,
-							     flags));
-	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
-	}
-      /*
-       * FIXME: rather than the above conditional, here could
-       * be a nice generic mechanism to extract two L4 values:
-       *
-       * have a per-protocol array of 4 elements like this:
-       *   u8 offset; to take the byte from, off L4 header
-       *   u8 mask; to mask it with, before storing
-       *
-       * this way we can describe UDP, TCP and ICMP[46] semantics,
-       * and add a sort of FPM-type behavior for other protocols.
-       *
-       * Of course, is it faster ? and is it needed ?
-       *
-       */
-    }
-}
-
-always_inline void
-acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
-{
-  acl_main_t *am = p_acl_main;
-  acl_fill_5tuple(am, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
-}
-
 
 
 always_inline int
@@ -409,6 +225,396 @@ fa_acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
 {
   return ((port >= port_first) && (port <= port_last));
 }
+
+
+always_inline int
+single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
+		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
+		  u32 * r_rule_match_p, u32 * trace_bitmap)
+{
+  int i;
+  acl_list_t *a;
+  acl_rule_t *r;
+
+  if (pool_is_free_index (am->acls, acl_index))
+    {
+      if (r_acl_match_p)
+	*r_acl_match_p = acl_index;
+      if (r_rule_match_p)
+	*r_rule_match_p = -1;
+      /* the ACL does not exist but is used for policy. Block traffic. */
+      return 0;
+    }
+  a = am->acls + acl_index;
+  for (i = 0; i < a->count; i++)
+    {
+      r = a->rules + i;
+      if (is_ip6 != r->is_ipv6)
+	{
+	  continue;
+	}
+      if (!fa_acl_match_addr
+	  (&pkt_5tuple->addr[1], &r->dst, r->dst_prefixlen, is_ip6))
+	continue;
+
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning
+	("ACL_FA_NODE_DBG acl %d rule %d pkt dst addr %U match rule addr %U/%d",
+	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[1],
+	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
+         &r->dst, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
+	 r->dst_prefixlen);
+#endif
+
+      if (!fa_acl_match_addr
+	  (&pkt_5tuple->addr[0], &r->src, r->src_prefixlen, is_ip6))
+	continue;
+
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning
+	("ACL_FA_NODE_DBG acl %d rule %d pkt src addr %U match rule addr %U/%d",
+	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[0],
+	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
+         &r->src, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
+	 r->src_prefixlen);
+      clib_warning
+	("ACL_FA_NODE_DBG acl %d rule %d trying to match pkt proto %d with rule %d",
+	 acl_index, i, pkt_5tuple->l4.proto, r->proto);
+#endif
+      if (r->proto)
+	{
+	  if (pkt_5tuple->l4.proto != r->proto)
+	    continue;
+
+          if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment &&
+                     am->l4_match_nonfirst_fragment))
+          {
+            /* non-initial fragment with frag match configured - match this rule */
+            *trace_bitmap |= 0x80000000;
+            *r_action = r->is_permit;
+            if (r_acl_match_p)
+	      *r_acl_match_p = acl_index;
+            if (r_rule_match_p)
+	      *r_rule_match_p = i;
+            return 1;
+          }
+
+	  /* A sanity check just to ensure we are about to match the ports extracted from the packet */
+	  if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
+	    continue;
+
+#ifdef FA_NODE_VERBOSE_DEBUG
+	  clib_warning
+	    ("ACL_FA_NODE_DBG acl %d rule %d pkt proto %d match rule %d",
+	     acl_index, i, pkt_5tuple->l4.proto, r->proto);
+#endif
+
+	  if (!fa_acl_match_port
+	      (pkt_5tuple->l4.port[0], r->src_port_or_type_first,
+	       r->src_port_or_type_last, is_ip6))
+	    continue;
+
+#ifdef FA_NODE_VERBOSE_DEBUG
+	  clib_warning
+	    ("ACL_FA_NODE_DBG acl %d rule %d pkt sport %d match rule [%d..%d]",
+	     acl_index, i, pkt_5tuple->l4.port[0], r->src_port_or_type_first,
+	     r->src_port_or_type_last);
+#endif
+
+	  if (!fa_acl_match_port
+	      (pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
+	       r->dst_port_or_code_last, is_ip6))
+	    continue;
+
+#ifdef FA_NODE_VERBOSE_DEBUG
+	  clib_warning
+	    ("ACL_FA_NODE_DBG acl %d rule %d pkt dport %d match rule [%d..%d]",
+	     acl_index, i, pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
+	     r->dst_port_or_code_last);
+#endif
+	  if (pkt_5tuple->pkt.tcp_flags_valid
+	      && ((pkt_5tuple->pkt.tcp_flags & r->tcp_flags_mask) !=
+		  r->tcp_flags_value))
+	    continue;
+	}
+      /* everything matches! */
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning ("ACL_FA_NODE_DBG acl %d rule %d FULL-MATCH, action %d",
+		    acl_index, i, r->is_permit);
+#endif
+      *r_action = r->is_permit;
+      if (r_acl_match_p)
+	*r_acl_match_p = acl_index;
+      if (r_rule_match_p)
+	*r_rule_match_p = i;
+      return 1;
+    }
+  return 0;
+}
+
+always_inline int
+acl_fill_tuple_l4(acl_main_t * am, vlib_buffer_t * b0, int proto, int icmp_proto_val, fa_5tuple_t * p5tuple_pkt)
+{
+  u16 ports[2];
+  int l4_offset = vnet_buffer (b0)->l4_hdr_offset;
+  if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
+    {
+      if (PREDICT_TRUE((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto)))
+	{
+	  clib_memcpy (&ports,
+		       get_ptr_to_offset (b0,
+					  l4_offset + offsetof (tcp_header_t,
+								src_port)),
+		       sizeof (ports));
+	  p5tuple_pkt->l4.port[0] = clib_net_to_host_u16 (ports[0]);
+	  p5tuple_pkt->l4.port[1] = clib_net_to_host_u16 (ports[1]);
+#ifdef MERGE_DAMAGE
+  /* key[0..3] contains src/dst address and is cleared/set below */
+  /* Remainder of the key and per-packet non-key data */
+  p5tuple_pkt->kv.key[4] = 0;
+  p5tuple_pkt->kv.value = 0;
+  p5tuple_pkt->pkt.is_ip6 = is_ip6;
+#endif
+	  p5tuple_pkt->pkt.tcp_flags =
+	    *(u8 *) get_ptr_to_offset (b0,
+				       l4_offset + offsetof (tcp_header_t,
+							     flags));
+	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
+          return 1;
+	}
+      else if (icmp_proto_val == proto)
+	{
+	  /* type */
+	  p5tuple_pkt->l4.port[0] =
+	    *(u8 *) get_ptr_to_offset (b0,
+				       l4_offset + offsetof (icmp46_header_t,
+							     type));
+	  /* code */
+	  p5tuple_pkt->l4.port[1] =
+	    *(u8 *) get_ptr_to_offset (b0,
+				       l4_offset + offsetof (icmp46_header_t,
+							     code));
+          return 1;
+	}
+      /*
+       * FIXME: rather than the above conditional, here could
+       * be a nice generic mechanism to extract two L4 values:
+       *
+       * have a per-protocol array of 4 elements like this:
+       *   u8 offset; to take the byte from, off L4 header
+       *   u8 mask; to mask it with, before storing
+       *
+       * this way we can describe UDP, TCP and ICMP[46] semantics,
+       * and add a sort of FPM-type behavior for other protocols.
+       *
+       * Of course, is it faster ? and is it needed ?
+       *
+       */
+    }
+  return 0;
+}
+
+always_inline u16
+acl_fill_tuple_ip6_get_proto (acl_main_t * am, vlib_buffer_t * b0, int l3_offset, fa_5tuple_t * p5tuple_pkt)
+{
+      clib_memcpy (&p5tuple_pkt->addr,
+		   get_ptr_to_offset (b0,
+				      offsetof (ip6_header_t,
+						src_address) + l3_offset),
+		   sizeof (p5tuple_pkt->addr));
+      u16 proto =
+	*(u8 *) get_ptr_to_offset (b0,
+				   offsetof (ip6_header_t,
+					     protocol) + l3_offset);
+      int l4_offset = l3_offset + sizeof (ip6_header_t);
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning ("ACL_FA_NODE_DBG: proto: %d, l4_offset: %d", proto,
+		    l4_offset);
+#endif
+      /* IP6 EH handling is here, increment l4_offset if needs to, update the proto */
+      int need_skip_eh = clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
+      if (PREDICT_FALSE (need_skip_eh))
+	{
+	  while (need_skip_eh && offset_within_packet (b0, l4_offset))
+	    {
+	      /* Fragment header needs special handling */
+	      if (PREDICT_FALSE(ACL_EH_FRAGMENT == proto))
+	        {
+	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
+		  u16 frag_offset;
+		  clib_memcpy (&frag_offset, get_ptr_to_offset (b0, 2 + l4_offset), sizeof(frag_offset));
+		  frag_offset = clib_net_to_host_u16(frag_offset) >> 3;
+		  if (frag_offset)
+		    {
+                      p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+                      /* invalidate L4 offset so we don't try to find L4 info */
+                      l4_offset += b0->current_length;
+		    }
+		  else
+		    {
+		      /* First fragment: skip the frag header and move on. */
+		      l4_offset += 8;
+		    }
+		}
+              else
+                {
+	          u8 nwords = *(u8 *) get_ptr_to_offset (b0, 1 + l4_offset);
+	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
+	          l4_offset += 8 * (1 + (u16) nwords);
+                }
+#ifdef FA_NODE_VERBOSE_DEBUG
+	      clib_warning ("ACL_FA_NODE_DBG: new proto: %d, new offset: %d",
+			    proto, l4_offset);
+#endif
+	      need_skip_eh =
+		clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
+	    }
+	}
+  p5tuple_pkt->l4.proto = proto;
+  vnet_buffer (b0)->l4_hdr_offset = l4_offset;
+  return proto;
+}
+
+always_inline u16
+acl_fill_ip4_check_frag_get_l4_offset(acl_main_t * am, vlib_buffer_t * b0, int l3_offset, fa_5tuple_t * p5tuple_pkt)
+{
+      u16 l4_offset = l3_offset + sizeof (ip4_header_t); // FIXME: handle IP options case
+      u16 flags_and_fragment_offset;
+
+      clib_memcpy (&flags_and_fragment_offset,
+                   get_ptr_to_offset (b0,
+                                      offsetof (ip4_header_t,
+                                                flags_and_fragment_offset)) + l3_offset,
+                                                sizeof(flags_and_fragment_offset));
+      flags_and_fragment_offset = clib_net_to_host_u16 (flags_and_fragment_offset);
+
+#define BRANCH_FREE_FRAGS
+#ifdef BRANCH_FREE_FRAGS
+      /* the same size and does not need branching */
+      int non_first_frag = (0xfff & flags_and_fragment_offset) ? 1 : 0;
+      l4_offset += (-non_first_frag) & b0->current_length;
+      p5tuple_pkt->pkt.is_nonfirst_fragment = non_first_frag;
+#else
+      /* non-initial fragments have non-zero offset */
+      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
+        {
+          p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+          /* invalidate L4 offset so we don't try to find L4 info */
+          l4_offset += b0->current_length;
+        }
+#endif
+    return l4_offset;
+}
+
+always_inline u16
+acl_fill_tuple_ip4_get_proto (acl_main_t * am, vlib_buffer_t * b0, int l3_offset, fa_5tuple_t * p5tuple_pkt)
+{
+  u8 proto = 0;
+ // memset(p5tuple_pkt->kv.key, 0, 4*sizeof(p5tuple_pkt->kv.key[0]));
+      proto =
+	*(u8 *) get_ptr_to_offset (b0,
+				   offsetof (ip4_header_t,
+					     protocol) + l3_offset);
+
+      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
+		   get_ptr_to_offset (b0,
+				      offsetof (ip4_header_t,
+						src_address) + l3_offset),
+		   sizeof (p5tuple_pkt->addr[0].ip4));
+      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
+		   get_ptr_to_offset (b0,
+				      offsetof (ip4_header_t,
+						dst_address) + l3_offset),
+		   sizeof (p5tuple_pkt->addr[1].ip4));
+  u16 l4_offset = acl_fill_ip4_check_frag_get_l4_offset (am, b0, l3_offset, p5tuple_pkt);
+  p5tuple_pkt->l4.proto = proto;
+  vnet_buffer (b0)->l4_hdr_offset = l4_offset;
+  return proto;
+}
+
+always_inline int
+acl_get_l3_offset(vlib_buffer_t * b0, const int is_ip6, const int is_input, const int is_l2_path)
+{
+  int l3_offset;
+
+  if (is_l2_path)
+    {
+      l3_offset = ethernet_buffer_header_size(b0);
+    }
+  else
+    {
+      if (is_input)
+        l3_offset = 0;
+      else
+        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
+    }
+
+  return l3_offset;
+}
+
+always_inline void
+acl_fill_5tuple (acl_main_t * am, u32 lc_index0, vlib_buffer_t * b0, const int is_ip6,
+		 const int is_input, const int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+{
+  int l3_offset = acl_get_l3_offset(b0, is_ip6, is_input, is_l2_path);
+  u8 proto;
+  int l4_valid;
+
+  /* key[0..3] contains src/dst address and is cleared/set below */
+  /* Remainder of the key and per-packet non-key data */
+  // p5tuple_pkt->kv.value = 0;
+  if (is_ip6)
+    {
+      proto = acl_fill_tuple_ip6_get_proto(am, b0, l3_offset, p5tuple_pkt);
+      l4_valid = acl_fill_tuple_l4(am, b0, proto, IP_PROTOCOL_ICMP6, p5tuple_pkt);
+    }
+  else
+    {
+      proto = acl_fill_tuple_ip4_get_proto(am, b0, l3_offset, p5tuple_pkt);
+      l4_valid = acl_fill_tuple_l4(am, b0, proto, IP_PROTOCOL_ICMP, p5tuple_pkt);
+    }
+
+  fa_packet_info_t pkt0 = { 0 };
+  pkt0.lc_index = lc_index0;
+  pkt0.is_ip6 = is_ip6;
+  pkt0.l4_valid = l4_valid;
+  pkt0.mask_type_index_lsb = ~0;
+  p5tuple_pkt->kv.value = 0ULL;
+  p5tuple_pkt->pkt.as_u64  = pkt0.as_u64;
+}
+
+always_inline u16
+acl_fill_5tuple_l3_get_proto (acl_main_t * am, vlib_buffer_t * b0, const int is_ip6, const int l3_offset, fa_5tuple_t * p5tuple_pkt)
+{
+
+  u16 proto;
+
+  /* key[0..3] contains src/dst address and is cleared/set below */
+  /* Remainder of the key and per-packet non-key data */
+  p5tuple_pkt->kv.value = 0;
+  if (is_ip6)
+    {
+      proto = acl_fill_tuple_ip6_get_proto(am, b0, l3_offset, p5tuple_pkt);
+    }
+  else
+    {
+      proto = acl_fill_tuple_ip4_get_proto(am, b0, l3_offset, p5tuple_pkt);
+    }
+  return proto;
+}
+
+
+
+always_inline void
+acl_plugin_fill_5tuple_inline (u32 lc_index0, vlib_buffer_t * b0, int is_ip6,
+		 int is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
+{
+  acl_main_t *am = p_acl_main;
+  acl_fill_5tuple(am, lc_index0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
+
+}
+
+#ifdef TO_DELETE
 
 always_inline int
 single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
@@ -538,6 +744,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
   return 0;
 }
 
+#endif // TO_DELETE
+
 always_inline int
 acl_plugin_single_acl_match_5tuple (u32 acl_index, fa_5tuple_t * pkt_5tuple,
 		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
@@ -613,32 +821,119 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
            ((r->dst_port_or_code_first <= match->l4.port[1]) && r->dst_port_or_code_last >= match->l4.port[1]) );
 }
 
+
+
+
+always_inline int
+tm_single_rule_match_5tuple (acl_rule_t *r, 
+		fa_5tuple_t *pkt_5tuple)
+{
+
+	if (pkt_5tuple->pkt.is_ip6 != r->is_ipv6)
+	{
+		return 0;
+	}
+	if (!fa_acl_match_addr
+			(&pkt_5tuple->addr[1], &r->dst, r->dst_prefixlen, pkt_5tuple->pkt.is_ip6))
+		return 0;
+
+
+	if (!fa_acl_match_addr
+			(&pkt_5tuple->addr[0], &r->src, r->src_prefixlen, pkt_5tuple->pkt.is_ip6))
+		return 0;
+
+	if (r->proto)
+	{
+		if (pkt_5tuple->l4.proto != r->proto)
+			return 0;
+
+		/* A sanity check just to ensure we are about to match the ports extracted from the packet */
+		if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
+			return 0;
+
+
+		if (!fa_acl_match_port
+				(pkt_5tuple->l4.port[0], r->src_port_or_type_first,
+				 r->src_port_or_type_last, pkt_5tuple->pkt.is_ip6))
+			return 0;
+
+
+		if (!fa_acl_match_port
+				(pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
+				 r->dst_port_or_code_last, pkt_5tuple->pkt.is_ip6))
+			return 0;
+
+		if (pkt_5tuple->pkt.tcp_flags_valid
+				&& ((pkt_5tuple->pkt.tcp_flags & r->tcp_flags_mask) !=
+					r->tcp_flags_value))
+			return 0;
+	}
+	/* everything matches! */
+	return 1;
+}
+
+always_inline int
+tm_single_ace_match_5tuple (acl_main_t *am, u32 acl_index, u32 ace_index, 
+		fa_5tuple_t *pkt_5tuple)
+{
+	acl_list_t *a = &am->acls[acl_index];
+	acl_rule_t *r = &a->rules[ace_index];
+        return tm_single_rule_match_5tuple(r, pkt_5tuple);
+}
+
+
+
+
+
 always_inline u32
-multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
+tm_multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
 {
   clib_bihash_kv_48_8_t kv;
   clib_bihash_kv_48_8_t result;
-  fa_5tuple_t *kv_key = (fa_5tuple_t *)kv.key;
+  // fa_5tuple_t *kv_key = (fa_5tuple_t *)kv.key;
   hash_acl_lookup_value_t *result_val = (hash_acl_lookup_value_t *)&result.value;
   u64 *pmatch = (u64 *)match;
   u64 *pmask;
   u64 *pkey;
-  int mask_type_index;
-  u32 curr_match_index = ~0;
+  int mask_type_index, order_index;
+  u32 curr_match_index = (~0 -1);
+
+
+//Added by Valerio
+#ifdef VALE_ELOG_ACL
+
+  u32 cand_ord_index=0; 
+  u32 count_htaccess=0; 
+  u32 count_col=0;
+
+#endif
+
 
   u32 lc_index = match->pkt.lc_index;
-  applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, match->pkt.lc_index);
-  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
+  applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
+
+  hash_applied_mask_info_t **hash_applied_mask_pool = vec_elt_at_index(am->hash_applied_mask_pool_by_lc_index, lc_index);
+
+  hash_applied_mask_info_t *minfo;
 
   DBG("TRYING TO MATCH: %016llx %016llx %016llx %016llx %016llx %016llx",
 	       pmatch[0], pmatch[1], pmatch[2], pmatch[3], pmatch[4], pmatch[5]);
 
-  for(mask_type_index=0; mask_type_index < pool_len(am->ace_mask_type_pool); mask_type_index++) {
-    if (!clib_bitmap_get(vec_elt_at_index((*applied_hash_acls), lc_index)->mask_type_index_bitmap, mask_type_index)) {
-      /* This bit is not set. Avoid trying to match */
-      continue;
+  //for(mask_type_index=0; mask_type_index < pool_len(am->ace_mask_type_pool); mask_type_index++) {
+  for(order_index = 0; order_index < vec_len((*hash_applied_mask_pool)); order_index++) {
+
+    //minfo = am->hash_applied_mask_pool[order_index]; 
+    minfo = vec_elt_at_index((*hash_applied_mask_pool), order_index); 
+
+
+    if (minfo->max_priority > (curr_match_index+1)) {
+      /* Index in this partition are greater than our candidate, Avoid trying to match! */
+	    break;
     }
+
+    mask_type_index = minfo->mask_type_index; 
     ace_mask_type_entry_t *mte = vec_elt_at_index(am->ace_mask_type_pool, mask_type_index);
+
     pmatch = (u64 *)match;
     pmask = (u64 *)&mte->mask;
     pkey = (u64 *)kv.key;
@@ -655,51 +950,99 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
     *pkey++ = *pmatch++ & *pmask++;
     *pkey++ = *pmatch++ & *pmask++;
     *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
 
-    kv_key->pkt.mask_type_index_lsb = mask_type_index;
+    fa_packet_info_t last_search;
+    last_search.as_u64 = *pmatch++ & *pmask++;
+    last_search.mask_type_index_lsb = mask_type_index;
+    *pkey++ = last_search.as_u64;
+
+//Added by Valerio
+#ifdef VALE_ELOG_ACL
+  count_htaccess++; 
+#endif
     DBG("        KEY %3d: %016llx %016llx %016llx %016llx %016llx %016llx", mask_type_index,
 		kv.key[0], kv.key[1], kv.key[2], kv.key[3], kv.key[4], kv.key[5]);
-    int res = clib_bihash_search_48_8 (&am->acl_lookup_hash, &kv, &result);
-    if (res == 0) {
-      DBG("ACL-MATCH! result_val: %016llx", result_val->as_u64);
-      if (result_val->applied_entry_index < curr_match_index) {
-	if (PREDICT_FALSE(result_val->need_portrange_check)) {
-          /*
-           * This is going to be slow, since we can have multiple superset
-           * entries for narrow-ish portranges, e.g.:
-           * 0..42 100..400, 230..60000,
-           * so we need to walk linearly and check if they match.
-           */
+    //int res = BV (clib_bihash_search) (&am->acl_lookup_hash, &kv, &result);
+    int res = clib_bihash_search_inline_2_48_8 (&am->acl_lookup_hash, &kv, &result);
 
-          u32 curr_index = result_val->applied_entry_index;
-          while ((curr_index != ~0) && !match_portranges(am, match, curr_index)) {
-            /* while no match and there are more entries, walk... */
-            applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces),curr_index);
-            DBG("entry %d did not portmatch, advancing to %d", curr_index, pae->next_applied_entry_index);
-            curr_index = pae->next_applied_entry_index;
-          }
-          if (curr_index < curr_match_index) {
-            DBG("The index %d is the new candidate in portrange matches.", curr_index);
-            curr_match_index = curr_index;
-          } else {
-            DBG("Curr portmatch index %d is too big vs. current matched one %d", curr_index, curr_match_index);
-          }
-        } else {
-          /* The usual path is here. Found an entry in front of the current candiate - so it's a new one */
-          DBG("This match is the new candidate");
-          curr_match_index = result_val->applied_entry_index;
-	  if (!result_val->shadowed) {
-          /* new result is known to not be shadowed, so no point to look up further */
-            break;
-	  }
-        }
-      }
+#ifdef OLD_STYLE
+    if (res == 0) {
+	    //check collisions
+	    u32 curr_index = result_val->applied_entry_index;
+	    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces),curr_index);
+	    u64 collisions = pae->collision + 1;
+	    int i=0;
+	    for(i=0; i < collisions; i++){
+		    pae = vec_elt_at_index((*applied_hash_aces),curr_index);
+		    if(curr_index < curr_match_index){
+			    //Added by Valerio
+#ifdef VALE_ELOG_ACL
+			    if(collisions > 1) count_col= (count_col + 1);
+#endif
+			    if(tm_single_ace_match_5tuple(am, pae->acl_index, pae->ace_index, match)){
+				    curr_match_index = curr_index;
+#ifdef VALE_ELOG_ACL
+				    cand_ord_index = order_index;
+#endif
+			    }
+		    }
+		    curr_index = pae->next_applied_entry_index;
+	    }
     }
+#else
+    if (res == 0) {
+	    //check collisions
+	    u32 curr_index = result_val->applied_entry_index;
+	    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces),curr_index);
+            collision_match_rule_t *crs = pae->colliding_rules;
+	    int i;
+	    for(i=0; i < vec_len(crs); i++){
+		    if(crs[i].applied_entry_index >= curr_match_index){
+                      continue;
+                    }
+#ifdef VALE_ELOG_ACL
+		    if(collisions > 1) count_col= (count_col + 1);
+#endif
+		    if(tm_single_rule_match_5tuple(&crs[i].rule, match)){
+			    curr_match_index = crs[i].applied_entry_index;
+#ifdef VALE_ELOG_ACL
+			    cand_ord_index = order_index;
+#endif
+		    }
+	    }
+    }
+
+#endif
   }
+
+  //Added by Valerio
+#ifdef VALE_ELOG_ACL
+  /*Log event*/
+  // Replace and/or change with u32 Vector Size inside the stuct. Also change the %ll
+  ELOG_TYPE_DECLARE (e) = {
+	  .format = "ACE: %d, Order_i = %d, HT_a: %d, Col: %d ",
+	  .format_args = "i4i4i4i4",
+  };
+  struct {u32 ace_i; u32 cand_ord_index; u32 ht_ac; u32 col;} *ed;
+  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  //number of access in ht
+  ed->ht_ac = count_htaccess;
+  //number of collisions
+  ed->col = count_col;
+  ed->cand_ord_index = cand_ord_index;
+  if (curr_match_index < vec_len((*applied_hash_aces))) {
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), curr_match_index);
+    ed->ace_i = pae->ace_index;
+}
+  /*End of Log event*/
+
+#endif
+
+
   DBG("MATCH-RESULT: %d", curr_match_index);
   return curr_match_index;
 }
+
 
 always_inline int
 hash_multi_acl_match_5tuple (u32 lc_index, fa_5tuple_t * pkt_5tuple,
@@ -708,7 +1051,8 @@ hash_multi_acl_match_5tuple (u32 lc_index, fa_5tuple_t * pkt_5tuple,
 {
   acl_main_t *am = p_acl_main;
   applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
-  u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
+  u32 match_index = tm_multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
+
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
     pae->hitcount++;
@@ -720,8 +1064,6 @@ hash_multi_acl_match_5tuple (u32 lc_index, fa_5tuple_t * pkt_5tuple,
   }
   return 0;
 }
-
-
 
 always_inline int
 acl_plugin_match_5tuple_inline (u32 lc_index,
@@ -735,15 +1077,31 @@ acl_plugin_match_5tuple_inline (u32 lc_index,
   acl_main_t *am = p_acl_main;
   fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
   pkt_5tuple_internal->pkt.lc_index = lc_index;
-  if (am->use_hash_acl_matching) {
-    return hash_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
+
+  if (PREDICT_TRUE(am->use_hash_acl_matching)) {
+    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
+      /*
+       * For the non-initial fragments we can not build the key with ports,
+       * thus the tuplemerge algorithm as is will give incorrect result.
+       * Fallback to linear search in that case.
+       *
+       * TM can be made to work by never using ports as the key, but
+       * it feels like potential performance impact on non-fragments
+       * makes it a strategy not worth pursuing.
+       *
+       * Another option is to have a totally separate lookup for fragments but it looks like a bit of an overkill...
+       */
+
+      return linear_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+    } else {
+      return hash_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+    }
   } else {
     return linear_multi_acl_match_5tuple(lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
   }
 }
-
-
 
 #endif
