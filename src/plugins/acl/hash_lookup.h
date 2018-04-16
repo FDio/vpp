@@ -18,6 +18,8 @@
 #ifndef _ACL_HASH_LOOKUP_H_
 #define _ACL_HASH_LOOKUP_H_
 
+//#define VALE_ELOG_ACL //Added by Valerio
+
 #include <stddef.h>
 #include "lookup_context.h"
 #include "acl.h"
@@ -43,5 +45,18 @@ void hash_acl_delete(acl_main_t *am, int acl_index);
 
 /* return if there is already a filled-in hash acl info */
 int hash_acl_exists(acl_main_t *am, int acl_index);
+
+
+/*==================================================================*/
+//#define TM_THRESHOLD 39
+#define TM_THRESHOLD 9
+
+void
+tm_hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position);
+
+
+void
+print_mask(fa_5tuple_t *out_mask);
+
 
 #endif
