@@ -27,6 +27,27 @@
 #include <vppinfra/bihash_48_8.h>
 #include <vppinfra/bihash_40_8.h>
 
+/*
+ * ACL rules
+ */
+typedef struct
+{
+  u8 is_permit;
+  u8 is_ipv6;
+  ip46_address_t src;
+  u8 src_prefixlen;
+  ip46_address_t dst;
+  u8 dst_prefixlen;
+  u8 proto;
+  u16 src_port_or_type_first;
+  u16 src_port_or_type_last;
+  u16 dst_port_or_code_first;
+  u16 dst_port_or_code_last;
+  u8 tcp_flags_value;
+  u8 tcp_flags_mask;
+} acl_rule_t;
+
+
 #include "fa_node.h"
 #include "hash_lookup_types.h"
 #include "lookup_context.h"
@@ -39,7 +60,7 @@
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
 #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
-#define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
+#define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS (65 * 1024)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
 
 extern vlib_node_registration_t acl_in_node;
@@ -65,26 +86,6 @@ typedef struct
     ip4_address_t ip4;
   } addr;
 } address_t;
-
-/*
- * ACL rules
- */
-typedef struct
-{
-  u8 is_permit;
-  u8 is_ipv6;
-  ip46_address_t src;
-  u8 src_prefixlen;
-  ip46_address_t dst;
-  u8 dst_prefixlen;
-  u8 proto;
-  u16 src_port_or_type_first;
-  u16 src_port_or_type_last;
-  u16 dst_port_or_code_first;
-  u16 dst_port_or_code_last;
-  u8 tcp_flags_value;
-  u8 tcp_flags_mask;
-} acl_rule_t;
 
 typedef struct
 {
@@ -204,6 +205,9 @@ typedef struct {
   /* a pool of all mask types present in all ACEs */
   ace_mask_type_entry_t *ace_mask_type_pool;
 
+  /* a pool of all mask types present in ACEs contained in each lc_index */
+  hash_applied_mask_info_t **hash_applied_mask_pool_by_lc_index;
+
   /*
    * Classify tables used to grab the packets for the ACL check,
    * and serving as the 5-tuple session tables at the same time
@@ -252,7 +256,7 @@ typedef struct {
   u32 l2_output_classify_next_acl_ip4;
   u32 l2_output_classify_next_acl_ip6;
   /* next node indices for L2 dispatch */
-  u32 fa_acl_in_ip4_l2_node_feat_next_node_index[32];
+  u32 fa_acl_in_ip4_l2_node_feat_next_node_index[32] __attribute__ ((aligned (64)));
   u32 fa_acl_in_ip6_l2_node_feat_next_node_index[32];
   u32 fa_acl_out_ip4_l2_node_feat_next_node_index[32];
   u32 fa_acl_out_ip6_l2_node_feat_next_node_index[32];
