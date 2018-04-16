@@ -32,6 +32,16 @@
 #include "hash_lookup.h"
 #include "hash_lookup_private.h"
 
+//===Added by Valerio
+#ifdef VALE_ELOG_ACL
+
+#include <vppinfra/elog.h>
+//#include "generic/rte_cycles.h" // for rdtsc()
+
+#endif
+
+
+
 
 always_inline applied_hash_ace_entry_t **get_applied_hash_aces(acl_main_t *am, u32 lc_index)
 {
@@ -43,6 +53,30 @@ always_inline applied_hash_ace_entry_t **get_applied_hash_aces(acl_main_t *am, u
   return applied_hash_aces;
 }
 
+
+#ifdef XXX_DELETE
+/*
+ * This returns true if there is indeed a match on the portranges.
+ * With all these levels of indirections, this is not going to be very fast,
+ * so, best use the individual ports or wildcard ports for performance.
+ */
+static int
+match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
+{
+
+  applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, match->pkt.lc_index);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), index);
+
+  acl_rule_t *r = &(am->acls[pae->acl_index].rules[pae->ace_index]);
+  DBG("PORTMATCH: %d <= %d <= %d && %d <= %d <= %d ?",
+		r->src_port_or_type_first, match->l4.port[0], r->src_port_or_type_last,
+		r->dst_port_or_code_first, match->l4.port[1], r->dst_port_or_code_last);
+
+  return ( ((r->src_port_or_type_first <= match->l4.port[0]) && r->src_port_or_type_last >= match->l4.port[0]) &&
+           ((r->dst_port_or_code_first <= match->l4.port[1]) && r->dst_port_or_code_last >= match->l4.port[1]) );
+}
+
+#endif
 
 static void
 hashtable_add_del(acl_main_t *am, clib_bihash_kv_48_8_t *kv, int is_add)
@@ -65,7 +99,7 @@ fill_applied_hash_ace_kv(acl_main_t *am,
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
   memcpy(kv_key, &(vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->match), sizeof(*kv_key));
-  /* initialize the sw_if_index and direction */
+  /* initialize the lc_index and direction */
   kv_key->pkt.lc_index = lc_index;
   kv_val->as_u64 = 0;
   kv_val->applied_entry_index = new_index;
@@ -134,21 +168,6 @@ activate_applied_ace_hash_entry(acl_main_t *am,
   }
 }
 
-static void
-applied_hash_entries_analyze(acl_main_t *am, applied_hash_ace_entry_t **applied_hash_aces)
-{
-  /*
-   * Go over the rules and check which ones are shadowed and which aren't.
-   * Naive approach: try to match the match value from every ACE as if it
-   * was a live packet, and see if the resulting match happens earlier in the list.
-   * if it does not match or it is later in the ACL - then the entry is not shadowed.
-   *
-   * This approach fails, an example:
-   *   deny tcp 2001:db8::/32 2001:db8::/32
-   *   permit ip 2001:db8::1/128 2001:db8::2/128
-   */
-}
-
 static void *
 hash_acl_set_heap(acl_main_t *am)
 {
@@ -191,86 +210,6 @@ acl_plugin_hash_acl_set_trace_heap(int on)
   } else {
     h->flags &= ~MHEAP_FLAG_TRACE;
   }
-}
-
-void
-hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
-{
-  int i;
-
-  DBG0("HASH ACL apply: lc_index %d acl %d", lc_index, acl_index);
-  if (!am->acl_lookup_hash_initialized) {
-    BV (clib_bihash_init) (&am->acl_lookup_hash, "ACL plugin rule lookup bihash",
-                           am->hash_lookup_hash_buckets, am->hash_lookup_hash_memory);
-    am->acl_lookup_hash_initialized = 1;
-  }
-
-  void *oldheap = hash_acl_set_heap(am);
-  vec_validate(am->hash_entry_vec_by_lc_index, lc_index);
-  vec_validate(am->hash_acl_infos, acl_index);
-  applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
-
-  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
-  u32 **hash_acl_applied_lc_index = &ha->lc_index_list;
-
-  int base_offset = vec_len(*applied_hash_aces);
-
-  /* Update the bitmap of the mask types with which the lookup
-     needs to happen for the ACLs applied to this lc_index */
-  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
-  vec_validate((*applied_hash_acls), lc_index);
-  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), lc_index);
-
-  /* ensure the list of applied hash acls is initialized and add this acl# to it */
-  u32 index = vec_search(pal->applied_acls, acl_index);
-  if (index != ~0) {
-    clib_warning("BUG: trying to apply twice acl_index %d on lc_index %d, according to lc",
-                 acl_index, lc_index);
-    goto done;
-  }
-  vec_add1(pal->applied_acls, acl_index);
-  u32 index2 = vec_search((*hash_acl_applied_lc_index), lc_index);
-  if (index2 != ~0) {
-    clib_warning("BUG: trying to apply twice acl_index %d on lc_index %d, according to hash h-acl info",
-                 acl_index, lc_index);
-    goto done;
-  }
-  vec_add1((*hash_acl_applied_lc_index), lc_index);
-
-  pal->mask_type_index_bitmap = clib_bitmap_or(pal->mask_type_index_bitmap,
-                                     ha->mask_type_index_bitmap);
-  /*
-   * if the applied ACL is empty, the current code will cause a
-   * different behavior compared to current linear search: an empty ACL will
-   * simply fallthrough to the next ACL, or the default deny in the end.
-   *
-   * This is not a problem, because after vpp-dev discussion,
-   * the consensus was it should not be possible to apply the non-existent
-   * ACL, so the change adding this code also takes care of that.
-   */
-
-  /* expand the applied aces vector by the necessary amount */
-  vec_resize((*applied_hash_aces), vec_len(ha->rules));
-
-  /* add the rules from the ACL to the hash table for lookup and append to the vector*/
-  for(i=0; i < vec_len(ha->rules); i++) {
-    u32 new_index = base_offset + i;
-    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
-    pae->acl_index = acl_index;
-    pae->ace_index = ha->rules[i].ace_index;
-    pae->acl_position = acl_position;
-    pae->action = ha->rules[i].action;
-    pae->hitcount = 0;
-    pae->hash_ace_info_index = i;
-    /* we might link it in later */
-    pae->next_applied_entry_index = ~0;
-    pae->prev_applied_entry_index = ~0;
-    pae->tail_applied_entry_index = ~0;
-    activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, new_index);
-  }
-  applied_hash_entries_analyze(am, applied_hash_aces);
-done:
-  clib_mem_set_heap (oldheap);
 }
 
 static u32
@@ -336,6 +275,8 @@ move_applied_ace_hash_entry(acl_main_t *am,
   pae->tail_applied_entry_index = ~0;
 }
 
+
+#ifdef XXX_DELETE
 static void
 deactivate_applied_ace_hash_entry(acl_main_t *am,
                             u32 lc_index,
@@ -386,6 +327,7 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
   pae->next_applied_entry_index = ~0;
   pae->tail_applied_entry_index = ~0;
 }
+#endif
 
 
 static void
@@ -402,14 +344,26 @@ hash_acl_build_applied_lookup_bitmap(acl_main_t *am, u32 lc_index)
     u32 a_acl_index = *vec_elt_at_index((pal->applied_acls), i);
     hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, a_acl_index);
     DBG("Update bitmask = %U or %U (acl_index %d)\n", format_bitmap_hex, new_lookup_bitmap,
-          format_bitmap_hex, ha->mask_type_index_bitmap, a_acl_index);
+          format_bitmap_hex, ha->base_mask_type_index_bitmap, a_acl_index);
     new_lookup_bitmap = clib_bitmap_or(new_lookup_bitmap,
-                                       ha->mask_type_index_bitmap);
+                                       ha->base_mask_type_index_bitmap);
   }
   uword *old_lookup_bitmap = pal->mask_type_index_bitmap;
   pal->mask_type_index_bitmap = new_lookup_bitmap;
   clib_bitmap_free(old_lookup_bitmap);
 }
+
+
+static void
+tm_deactivate_applied_ace_hash_entry(acl_main_t *am,
+                            u32 lc_index,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 index);
+
+static void
+tm_remake_mask_type_order_pool(acl_main_t *am,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+				    u32 lc_index);
 
 void
 hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
@@ -461,8 +415,8 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
   DBG("base_offset: %d, tail_offset: %d, tail_len: %d", base_offset, tail_offset, tail_len);
 
   for(i=0; i < vec_len(ha->rules); i ++) {
-    deactivate_applied_ace_hash_entry(am, lc_index,
-                                      applied_hash_aces, base_offset + i);
+      tm_deactivate_applied_ace_hash_entry(am, lc_index,
+				  applied_hash_aces, base_offset + i);
   }
   for(i=0; i < tail_len; i ++) {
     /* move the entry at tail offset to base offset */
@@ -473,7 +427,7 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
   /* trim the end of the vector */
   _vec_len((*applied_hash_aces)) -= vec_len(ha->rules);
 
-  applied_hash_entries_analyze(am, applied_hash_aces);
+  tm_remake_mask_type_order_pool(am, applied_hash_aces, lc_index);
 
   /* After deletion we might not need some of the mask-types anymore... */
   hash_acl_build_applied_lookup_bitmap(am, lc_index);
@@ -499,8 +453,8 @@ hash_acl_reapply(acl_main_t *am, u32 lc_index, int acl_index)
 
   DBG0("Start index for acl %d in lc_index %d is %d", acl_index, lc_index, start_index);
   /*
-   * This function is called after we find out the sw_if_index where ACL is applied.
-   * If the by-sw_if_index vector does not have the ACL#, then it's a bug.
+   * This function is called after we find out the lc_index where ACL is applied.
+   * If the by-lc_index vector does not have the ACL#, then it's a bug.
    */
   ASSERT(start_index < vec_len(*applied_acls));
 
@@ -553,7 +507,7 @@ make_port_mask(u16 *portmask, u16 port_first, u16 port_last)
 }
 
 static void
-make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi, int match_nonfirst_fragment)
+make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi)
 {
   memset(mask, 0, sizeof(*mask));
   memset(&hi->match, 0, sizeof(hi->match));
@@ -575,30 +529,25 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
   if (r->proto != 0) {
     mask->l4.proto = ~0; /* L4 proto needs to be matched */
     hi->match.l4.proto = r->proto;
-    if (match_nonfirst_fragment) {
-      /* match the non-first fragments only */
-      mask->pkt.is_nonfirst_fragment = 1;
-      hi->match.pkt.is_nonfirst_fragment = 1;
-    } else {
-      /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
-      hi->src_portrange_not_powerof2 = make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
-      hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
-      hi->dst_portrange_not_powerof2 = make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
-      hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
-      /* L4 info must be valid in order to match */
-      mask->pkt.l4_valid = 1;
-      hi->match.pkt.l4_valid = 1;
-      /* And we must set the mask to check that it is an initial fragment */
-      mask->pkt.is_nonfirst_fragment = 1;
-      hi->match.pkt.is_nonfirst_fragment = 0;
-      if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0)) {
-	/* if we want to match on TCP flags, they must be masked off as well */
-	mask->pkt.tcp_flags = r->tcp_flags_mask;
-	hi->match.pkt.tcp_flags = r->tcp_flags_value;
-	/* and the flags need to be present within the packet being matched */
-	mask->pkt.tcp_flags_valid = 1;
-	hi->match.pkt.tcp_flags_valid = 1;
-      }
+
+    /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
+    hi->src_portrange_not_powerof2 = make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
+    hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
+    hi->dst_portrange_not_powerof2 = make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
+    hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
+    /* L4 info must be valid in order to match */
+    mask->pkt.l4_valid = 1;
+    hi->match.pkt.l4_valid = 1;
+    /* And we must set the mask to check that it is an initial fragment */
+    mask->pkt.is_nonfirst_fragment = 1;
+    hi->match.pkt.is_nonfirst_fragment = 0;
+    if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0)) {
+      /* if we want to match on TCP flags, they must be masked off as well */
+      mask->pkt.tcp_flags = r->tcp_flags_mask;
+      hi->match.pkt.tcp_flags = r->tcp_flags_value;
+      /* and the flags need to be present within the packet being matched */
+      mask->pkt.tcp_flags_valid = 1;
+      hi->match.pkt.tcp_flags_valid = 1;
     }
   }
   /* Sanitize the mask and the match */
@@ -686,24 +635,15 @@ void hash_acl_add(acl_main_t *am, int acl_index)
     ace_info.acl_index = acl_index;
     ace_info.ace_index = i;
 
-    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info, 0);
-    ace_info.mask_type_index = assign_mask_type_index(am, &mask);
+    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info);
+    mask.pkt.flags_reserved = 0b000;
+    ace_info.base_mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
-    ace_info.match.pkt.mask_type_index_lsb = ace_info.mask_type_index;
-    DBG("ACE: %d mask_type_index: %d", i, ace_info.mask_type_index);
+    ace_info.match.pkt.mask_type_index_lsb = ace_info.base_mask_type_index;
+    DBG("ACE: %d mask_type_index: %d", i, ace_info.base_mask_type_index);
     /* Ensure a given index is set in the mask type index bitmap for this ACL */
-    ha->mask_type_index_bitmap = clib_bitmap_set(ha->mask_type_index_bitmap, ace_info.mask_type_index, 1);
+    ha->base_mask_type_index_bitmap = clib_bitmap_set(ha->base_mask_type_index_bitmap, ace_info.base_mask_type_index, 1);
     vec_add1(ha->rules, ace_info);
-    if (am->l4_match_nonfirst_fragment) {
-      /* add the second rule which matches the noninitial fragments with the respective mask */
-      make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info, 1);
-      ace_info.mask_type_index = assign_mask_type_index(am, &mask);
-      ace_info.match.pkt.mask_type_index_lsb = ace_info.mask_type_index;
-      DBG("ACE: %d (non-initial frags) mask_type_index: %d", i, ace_info.mask_type_index);
-      /* Ensure a given index is set in the mask type index bitmap for this ACL */
-      ha->mask_type_index_bitmap = clib_bitmap_set(ha->mask_type_index_bitmap, ace_info.mask_type_index, 1);
-      vec_add1(ha->rules, ace_info);
-    }
   }
   /*
    * if an ACL is applied somewhere, fill the corresponding lookup data structures.
@@ -750,9 +690,9 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
    * the reference count, possibly freeing up some of them */
   int i;
   for(i=0; i < vec_len(ha->rules); i++) {
-    release_mask_type_index(am, ha->rules[i].mask_type_index);
+    release_mask_type_index(am, ha->rules[i].base_mask_type_index);
   }
-  clib_bitmap_free(ha->mask_type_index_bitmap);
+  clib_bitmap_free(ha->base_mask_type_index_bitmap);
   ha->hash_acl_exists = 0;
   vec_free(ha->rules);
   clib_mem_set_heap (oldheap);
@@ -804,7 +744,7 @@ acl_plugin_show_tables_acl_hash_info (u32 acl_index)
       vlib_cli_output (vm, "  applied lc_index list: %U\n",
 		       format_vec32, ha->lc_index_list, "%d");
       vlib_cli_output (vm, "  mask type index bitmap: %U\n",
-		       format_bitmap_hex, ha->mask_type_index_bitmap);
+		       format_bitmap_hex, ha->base_mask_type_index_bitmap);
       for (j = 0; j < vec_len (ha->rules); j++)
 	{
 	  hash_ace_info_t *pa = &ha->rules[j];
@@ -812,7 +752,7 @@ acl_plugin_show_tables_acl_hash_info (u32 acl_index)
 	  vlib_cli_output (vm,
 			   "    %4d: %016llx %016llx %016llx %016llx %016llx %016llx mask index %d acl %d rule %d action %d src/dst portrange not ^2: %d,%d\n",
 			   j, m[0], m[1], m[2], m[3], m[4], m[5],
-			   pa->mask_type_index, pa->acl_index, pa->ace_index,
+			   pa->base_mask_type_index, pa->acl_index, pa->ace_index,
 			   pa->action, pa->src_portrange_not_powerof2,
 			   pa->dst_portrange_not_powerof2);
 	}
@@ -876,5 +816,1034 @@ acl_plugin_show_tables_bihash (u32 show_bihash_verbose)
   acl_main_t *am = &acl_main;
   vlib_main_t *vm = am->vlib_main;
   show_hash_acl_hash (vm, am, show_bihash_verbose);
+}
+
+
+
+/*==================================================================*/
+/* TupleMerge section # Valerio */
+/*==================================================================*/
+/*
+Code adapted by Valerio Bruschi (valerio.bruschi@telecom-paristech.fr) 
+and based on the TupleMerge [1] simulator kindly made available
+by  James Daly (dalyjamese@gmail.com) and  Eric Torng (torng@cse.msu.edu)
+( http://www.cse.msu.edu/~dalyjame/ or http://www.cse.msu.edu/~torng/ )
+
+[1] James Daly, Eric Torng "TupleMerge: Building Online Packet Classifiers 
+by Omitting Bits", In Proc. IEEE ICCCN 2017, pp. 1-10
+*/
+/*==================================================================*/
+
+int
+count_bits(u64 word){
+        int counter = 0;
+        while(word) {
+                counter += word & 1;
+                word >>= 1;
+        }
+	return counter;
+}
+
+
+
+void
+print_mask(fa_5tuple_t *out_mask){
+//	vlib_main_t *vm = &vlib_global_main;
+	u64 *pmask;
+/*
+	vlib_cli_output(vm, "Mask: %x %x  %x %x %x %x %x %x\n", out_mask->pkt.lc_index, out_mask->pkt.flags_reserved, 
+			out_mask->pkt.is_ip6, out_mask->pkt.is_nonfirst_fragment, 
+			out_mask->pkt.l4_valid, out_mask->pkt.is_input,
+			out_mask->pkt.tcp_flags_valid, out_mask->pkt.tcp_flags);
+*/
+	pmask = (u64 *) out_mask;
+
+	//DBG( "Mask: %lx", out_mask->addr[0].as_u64[1]);
+	//ipv6 addr (mask1/2) || ipv4 addr (mask 2)
+	CLIB_UNUSED(u64 mask1) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+
+	CLIB_UNUSED(u64 mask2) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+
+	//ipv6 addr (mask3/4) || ipv4 addr (mask 4)
+	CLIB_UNUSED(u64 mask3) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+
+	CLIB_UNUSED(u64 mask4) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+	//port_s/d & proto & (?)
+	CLIB_UNUSED(u64 mask5) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+	//flags: interface, type mask, tcp flag
+	CLIB_UNUSED(u64 mask6) = clib_net_to_host_u64 (((u64) *pmask));
+	pmask++;
+	//vlib_cli_output(vm, "Mask: %08lx %08lx %016lx %016lx \n",
+	DBG(   "Mask: %16lx%16lx %16lx%16lx - %016lx %016lx \n",
+			mask1, mask2, mask3, mask4, mask5, mask6);
+	DBG(" as address [0]: %U\n", format_ip46_address, &out_mask->addr[0], IP46_TYPE_ANY);
+	DBG(" as address [1]: %U\n", format_ip46_address, &out_mask->addr[1], IP46_TYPE_ANY);
+
+}
+
+/* check if mask2 can be contained by mask1 */
+u8 
+compare_tuples(fa_5tuple_t *mask1, fa_5tuple_t *mask2){
+	 DBG(  "TM-comparing tuple");
+	print_mask(mask1);
+	print_mask(mask2);
+	//DBG( "TM-comparing tuple-end");
+
+	int i=0;
+	for(i=0;i<2;i++){
+		if ((mask1->addr[0].as_u64[i] & mask2->addr[0].as_u64[i]) != mask1->addr[0].as_u64[i]) return 1;
+		if ((mask1->addr[1].as_u64[i] & mask2->addr[1].as_u64[i]) != mask1->addr[1].as_u64[i]) return 1;
+	}
+
+	/* take care if port are not exact-match  */
+	if ((mask1->l4.as_u64 & mask2->l4.as_u64) != mask1->l4.as_u64) return 1;
+
+	/* this part of the mask needs to be equal  */
+	if ((mask1->pkt.is_ip6 != mask2->pkt.is_ip6)) return 1;
+	if ((mask1->pkt.as_u64 & mask2->pkt.as_u64) != mask1->pkt.as_u64) return 1;
+	//DBG( "%lx %lx", mask1->pkt.as_u64, mask2->pkt.as_u64);
+
+	 DBG(  "TM-comparing tuple-end");
+
+	return 0;
+}
+
+
+/*
+
+Consider the situation when we have to create a new table
+T for a given rule R. This occurs for the first rule inserted and
+for later rules if it is incompatible with all existing tables.
+In this event, we need to determine mT for a new table.
+Setting mT = mR is not a good strategy; if another similar,
+but slightly less specific, rule appears we will be unable to
+add it to T and will thus have to create another new table. We
+thus consider two factors: is the rule more strongly aligned
+with source or destination addresses (usually the two most
+important fields) and how much slack needs to be given to
+allow for other rules. If the source and destination addresses
+are close together (within 4 bits for our experiments), we use
+both of them. Otherwise, we drop the smaller (less specific)
+address and its associated port field from consideration; R is
+predominantly aligned with one of the two fields and should
+be grouped with other similar rules. This is similar to TSS
+dropping port fields, but since it is based on observable rule
+characteristics it is more likely to keep important fields and
+discard less useful ones.
+We then look at the absolute lengths of the addresses. If
+the address is long, we are more likely to try to add shorter
+lengths and likewise the reverse. We thus remove a few bits
+from both address fields with more bits removed from longer
+addresses. For 32 bit addresses, we remove 4 bits, 3 for more
+than 24, 2 for more than 16, and so on (so 8 and fewer bits
+don’t have any removed). We only do this for prefix fields like
+addresses; both range fields (like ports) and exact match fields
+(like protocol) should remain as they are.
+
+*/
+void 
+relax_tuple(fa_5tuple_t *mask){
+	fa_5tuple_t *original_mask = malloc(sizeof(fa_5tuple_t));
+	clib_memcpy(original_mask, mask, sizeof(fa_5tuple_t));
+
+	 DBG( "TM-relaxing - %d", mask->pkt.is_ip6);
+	print_mask(mask);
+
+	int counter_s = 0, counter_d = 0;
+	for(int i=0; i<1; i++){
+		counter_s += count_bits(mask->addr[0].as_u64[i]);
+		counter_d += count_bits(mask->addr[1].as_u64[i]);
+	}
+
+/*
+is the rule more strongly aligned with source or destination addresses 
+(usually the two most important fields) and how much slack needs to be 
+given to allow for other rules. If the source and destination addresses 
+are close together (within 4 bits for our experiments), we use both of them. 
+Otherwise, we drop the smaller (less specific) address and its associated port field from consideration
+*/
+	const int deltaThreshold = 4;
+	//const int deltaThreshold = 8; if IPV6?
+	int delta = counter_s - counter_d;
+	if (-delta > deltaThreshold) {
+		mask->addr[0].as_u64[1] = 0;
+		mask->l4.port[0] = 0;
+        } else if (delta > deltaThreshold) {
+		mask->addr[1].as_u64[1] = 0;
+		mask->l4.port[1] = 0;
+        }
+//	print_mask(mask);
+
+	int mask_is_ip4_like = ip46_address_is_ip4(&mask->addr[0]) && ip46_address_is_ip4(&mask->addr[1]);
+	 DBG( "is_ip4_like %d", mask_is_ip4_like);
+               
+	if(mask_is_ip4_like){
+		//relaxing SRC field
+		if( mask->addr[0].as_u64[1] == 0xFFFFFFFF ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 6)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFFFFFF00 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 5)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFFFF0000 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 4)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFF000000 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 2)&0xFFFFFFFF);
+
+		//relaxing DST field
+		if( mask->addr[1].as_u64[1] == 0xFFFFFFFF ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 6)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFFFFFF00 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 5)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFFFF0000 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 4)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFF000000 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 2)&0xFFFFFFFF);
+	}else{
+		//relaxing SRC field - IPV6
+		if( mask->addr[0].as_u64[0] == 0xFFFFFFFF && mask->addr[0].as_u64[1] == 0 ) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 6)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFFFFFF00 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 5)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFFFF0000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 4)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFF000000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 2)&0xFFFFFFFF);
+
+		//relaxing DST field - IPV6
+		if( mask->addr[1].as_u64[0] == 0xFFFFFFFF && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 6)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFFFFFF00 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 5)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFFFF0000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 4)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFF000000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 2)&0xFFFFFFFF);
+
+	}
+
+	mask->pkt.is_nonfirst_fragment = 0;
+	mask->pkt.l4_valid = 0;
+	print_mask(mask);
+	if(compare_tuples(mask, original_mask) != 0){
+		DBG( "TM-relaxing-ERROR");
+		clib_memcpy(mask, original_mask, sizeof(fa_5tuple_t));
+	}
+	DBG( "TM-relaxing-end");
+}
+
+void 
+relax_tuple2(fa_5tuple_t *mask){
+	fa_5tuple_t *original_mask = malloc(sizeof(fa_5tuple_t));
+	clib_memcpy(original_mask, mask, sizeof(fa_5tuple_t));
+
+	DBG( "TM-relaxing");
+	//print_mask(mask);
+
+	int counter_s = 0, counter_d = 0;
+	for(int i=0; i<2; i++){
+		counter_s += count_bits(mask->addr[0].as_u64[i]);
+		counter_d += count_bits(mask->addr[1].as_u64[i]);
+	}
+
+/*
+is the rule more strongly aligned with source or destination addresses 
+(usually the two most important fields) and how much slack needs to be 
+given to allow for other rules. If the source and destination addresses 
+are close together (within 4 bits for our experiments), we use both of them. 
+Otherwise, we drop the smaller (less specific) address and its associated port field from consideration
+*/
+	const int deltaThreshold = 4;
+	//const int deltaThreshold = 8; if IPV6?
+	int delta = counter_s - counter_d;
+	if (-delta > deltaThreshold) {
+		mask->addr[0].as_u64[1] = 0;
+		mask->l4.port[0] = 0;
+        } else if (delta > deltaThreshold) {
+		mask->addr[1].as_u64[1] = 0;
+		mask->l4.port[1] = 0;
+        }
+	////print_mask(mask);
+
+	int mask_is_ip4_like = ip46_address_is_ip4(&mask->addr[0]) && ip46_address_is_ip4(&mask->addr[1]);
+	 DBG( "is_ip4_like %d", mask_is_ip4_like);
+               
+	if(mask_is_ip4_like){
+		//relaxing SRC field
+		if( mask->addr[0].as_u64[1] == 0xFFFFFFFF ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 3)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFFFFFF00 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 2)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFFFF0000 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 1)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[1] > 0xFF000000 ) 
+			mask->addr[0].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[1]) << 1)&0xFFFFFFFF);
+
+		//relaxing DST field
+		if( mask->addr[1].as_u64[1] == 0xFFFFFFFF ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 3)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFFFFFF00 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 2)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFFFF0000 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 1)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[1] > 0xFF000000 ) 
+			mask->addr[1].as_u64[1] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[1]) << 1)&0xFFFFFFFF);
+	}else{
+		//relaxing SRC field - IPV6
+		if( mask->addr[0].as_u64[0] == 0xFFFFFFFF && mask->addr[0].as_u64[1] == 0 ) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 3)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFFFFFF00 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 2)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFFFF0000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 1)&0xFFFFFFFF);
+
+		else if( mask->addr[0].as_u64[0] > 0xFF000000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[0].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[0].as_u64[0]) << 1)&0xFFFFFFFF);
+
+		//relaxing DST field - IPV6
+		if( mask->addr[1].as_u64[0] == 0xFFFFFFFF && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 3)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFFFFFF00 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 2)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFFFF0000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 1)&0xFFFFFFFF);
+
+		else if( mask->addr[1].as_u64[0] > 0xFF000000 && mask->addr[0].as_u64[1] == 0) 
+			mask->addr[1].as_u64[0] = clib_host_to_net_u64((clib_net_to_host_u64(mask->addr[1].as_u64[0]) << 1)&0xFFFFFFFF);
+
+	}
+
+	mask->pkt.is_nonfirst_fragment = 0;
+	mask->pkt.l4_valid = 0;
+	//print_mask(mask);
+	if(compare_tuples(mask, original_mask) != 0){
+		DBG( "TM-relaxing-ERROR");
+		clib_memcpy(mask, original_mask, sizeof(fa_5tuple_t));
+	}
+	DBG( "TM-relaxing-end");
+}
+
+static void
+tm_hash_acl_build_applied_lookup_bitmap(acl_main_t *am, u32 lc_index)
+{
+  int i;
+  uword *new_lookup_bitmap = 0;
+  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
+  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), lc_index);
+  applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
+
+  for(i=0; i < vec_len(pal->applied_acls); i++) {
+    u32 ace_index=0;
+    for(ace_index=0; ace_index < vec_len(*applied_hash_aces); ace_index++) {
+	    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), ace_index);
+	    new_lookup_bitmap =  clib_bitmap_set(new_lookup_bitmap, pae->mask_type_index, 1);
+
+    }
+
+  }
+  uword *old_lookup_bitmap = pal->mask_type_index_bitmap;
+  pal->mask_type_index_bitmap = new_lookup_bitmap;
+  clib_bitmap_free(old_lookup_bitmap);
+}
+
+static void
+tm_remake_mask_type_order_pool(acl_main_t *am,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 lc_index){
+
+  hash_applied_mask_info_t *new_hash_applied_mask_pool = vec_new(hash_applied_mask_info_t,0);
+
+  DBG( "remake mask type" ); 
+
+  hash_applied_mask_info_t *minfo; 
+  for(int i=0; i < vec_len((*applied_hash_aces)); i++) {
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), i);
+
+    u32 new_index = i;
+    u32 new_pointer = vec_len(new_hash_applied_mask_pool);
+
+    //search in order pool if mask_type_index is already there
+    int search;
+    for (search=0; search < vec_len(new_hash_applied_mask_pool); search++){
+	    minfo = vec_elt_at_index(new_hash_applied_mask_pool, search);
+	    if(minfo->mask_type_index == pae->mask_type_index)
+		    break;
+    }
+
+    vec_validate((new_hash_applied_mask_pool), search);
+    minfo = vec_elt_at_index((new_hash_applied_mask_pool), search);
+    if(search == new_pointer){
+	    //vlib_cli_output(&vlib_global_main, "search: %d, index: %d", search, pae->mask_type_index); 
+	    minfo->mask_type_index = pae->mask_type_index;
+	    minfo->num_entries = 0;
+	    minfo->max_collisions = 0;
+	    minfo->max_priority = ~0;
+    }
+
+    minfo->num_entries = minfo->num_entries + 1;
+
+    if (pae->collision > minfo->max_collisions)
+	    minfo->max_collisions = pae->collision; 
+
+    if((minfo->max_priority > (new_index+1) ) | (minfo->max_priority == 0))
+	    minfo->max_priority = (new_index+1);
+
+  }
+
+  hash_applied_mask_info_t **hash_applied_mask_pool = vec_elt_at_index(am->hash_applied_mask_pool_by_lc_index, lc_index);
+
+  vec_free((*hash_applied_mask_pool));
+  (*hash_applied_mask_pool) = vec_dup(new_hash_applied_mask_pool);
+}
+
+
+static u32
+tm_assign_mask_type_index(acl_main_t *am, fa_5tuple_t *mask, u32 lc_index, applied_hash_acl_info_t **applied_hash_acls)
+{
+	DBG( "TM-assigning mask type index");
+	print_mask(mask);
+
+	u32 mask_type_index = ~0;
+	u32 for_mask_type_index = ~0;
+	ace_mask_type_entry_t *mte;
+	/* look for existing mask comparable with the one in input */
+	//for(for_mask_type_index=0; for_mask_type_index < pool_len(am->ace_mask_type_pool); for_mask_type_index++) {
+/*
+	applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), lc_index);
+	for(for_mask_type_index = pool_len(am->ace_mask_type_pool) -1; for_mask_type_index > 0 ; --for_mask_type_index) {
+		if (!clib_bitmap_get(pal->mask_type_index_bitmap, for_mask_type_index)) {
+			continue;
+		}
+*/
+	hash_applied_mask_info_t **hash_applied_mask_pool = vec_elt_at_index(am->hash_applied_mask_pool_by_lc_index, lc_index);
+	hash_applied_mask_info_t *minfo; 
+
+//	for(int order_index = 0; order_index < vec_len((*hash_applied_mask_pool)); order_index++) {
+	for(int order_index = vec_len((*hash_applied_mask_pool)) -1; order_index >= 0; order_index--) {
+		minfo = vec_elt_at_index((*hash_applied_mask_pool), order_index);
+		for_mask_type_index = minfo->mask_type_index;
+		mte = vec_elt_at_index(am->ace_mask_type_pool, for_mask_type_index);
+		if(compare_tuples(&mte->mask, mask) == 0){
+			mask_type_index = (mte - am->ace_mask_type_pool);
+			break;
+		}
+	}
+
+
+	if(~0 == mask_type_index) {
+		/* if no one mask is founded, then let use a relaxed version of the original one, in order to be used by new ace_entries */
+		DBG( "TM-assigning mask type index-new one");
+		pool_get_aligned (am->ace_mask_type_pool, mte, CLIB_CACHE_LINE_BYTES);
+		mask_type_index = mte - am->ace_mask_type_pool;
+
+		hash_applied_mask_info_t **hash_applied_mask_pool = vec_elt_at_index(am->hash_applied_mask_pool_by_lc_index, lc_index);
+
+		int spot = vec_len((*hash_applied_mask_pool));
+		vec_validate((*hash_applied_mask_pool), spot);
+		minfo = vec_elt_at_index((*hash_applied_mask_pool), spot);
+		minfo->mask_type_index = mask_type_index;
+		minfo->num_entries = 0;
+		minfo->max_collisions = 0;
+		minfo->max_priority = ~0;
+
+		clib_memcpy(&mte->mask, mask, sizeof(mte->mask));
+		relax_tuple(&mte->mask);
+
+		mte->refcount = 0;
+		/*
+		 * We can use only 16 bits, since in the match there is only u16 field.
+		 * Realistically, once you go to 64K of mask types, it is a huge
+		 * problem anyway, so we might as well stop half way.
+		 */
+		ASSERT(mask_type_index < 32768);
+	}
+	mte = am->ace_mask_type_pool + mask_type_index;
+	mte->refcount++;
+
+	DBG( "TM-mask type index-assigned!! -> %d", mask_type_index);
+	//print_mask(&mte->mask);
+	return mask_type_index;
+}
+
+
+static void
+tm_fill_applied_hash_ace_kv(acl_main_t *am,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 lc_index,
+                            u32 new_index, clib_bihash_kv_48_8_t *kv, int is_new)
+{
+  DBG( "TM-filling ace key: %d (is_new: %d)", new_index, is_new);
+
+  fa_5tuple_t *kv_key = (fa_5tuple_t *)kv->key;
+  hash_acl_lookup_value_t *kv_val = (hash_acl_lookup_value_t *)&kv->value;
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
+  hash_ace_info_t *ace_info = vec_elt_at_index(ha->rules, pae->hash_ace_info_index);
+  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
+
+  ace_mask_type_entry_t *mte; 
+  fa_5tuple_t *mask; 
+  if(is_new){
+	  /* start taking base_mask associated to ace, and look if it is comparable with already existing masks */
+	  mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
+	  mask = &mte->mask; 
+	  pae->mask_type_index = tm_assign_mask_type_index(am, mask, lc_index, applied_hash_acls);
+  }
+
+//aggiungere if is_base da poter utilizzare la funzione durante il lookup?
+  /* apply founded mask to ace_key */
+  fa_5tuple_t match = ace_info->match;
+  mte = vec_elt_at_index(am->ace_mask_type_pool, pae->mask_type_index);
+
+  u64 *pmatch =(u64 *) &match;
+  u64 *pmask;
+  u64 *pkey;
+
+  pmatch =(u64 *) &match;
+  pmask = (u64 *)&mte->mask;
+  pkey = (u64 *)kv->key;
+
+
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+
+
+  //  memcpy(kv_key, &(vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->match), sizeof(*kv_key));
+  kv_key->pkt.mask_type_index_lsb = pae->mask_type_index;
+  kv_key->pkt.lc_index = lc_index;
+  kv_val->as_u64 = 0;
+  kv_val->applied_entry_index = new_index;
+  kv_val->need_portrange_check = vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->src_portrange_not_powerof2 ||
+                                   vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->dst_portrange_not_powerof2;
+  /* by default assume all values are shadowed -> check all mask types */
+  kv_val->shadowed = 1;
+  DBG( "TM-filling ace key: %d (is_new: %d) - END", new_index, is_new);
+}
+
+
+static void
+tm_add_del_hashtable_entry(acl_main_t *am,
+                            u32 lc_index,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 index, int is_add)
+{ 
+  clib_bihash_kv_48_8_t kv;
+
+  tm_fill_applied_hash_ace_kv(am, applied_hash_aces, lc_index, index, &kv, 0);
+  hashtable_add_del(am, &kv, is_add);
+}
+
+
+
+static void
+tm_deactivate_applied_ace_hash_entry(acl_main_t *am,
+                            u32 lc_index,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 index)
+{
+  DBG( "TM-deleting - applied_ace:%d", index);
+
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), index);
+  
+  u32 mask_type_index = pae->mask_type_index;
+
+  /* delete the old entry */
+  if (pae->prev_applied_entry_index != ~0) {
+    applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
+    ASSERT(prev_pae->next_applied_entry_index == index);
+    prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
+
+    u32 head_index = find_head_applied_ace_index(applied_hash_aces, index);
+    ASSERT(head_index != ~0);
+    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+    head_pae->collision = head_pae->collision - 1;
+
+    if (pae->next_applied_entry_index == ~0) {
+      /* it was a last entry we removed, update the pointer on the first one */
+/*     u32 head_index = find_head_applied_ace_index(applied_hash_aces, index);
+      ASSERT(head_index != ~0);
+      applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+*/
+      ASSERT(head_pae->tail_applied_entry_index == index);
+      head_pae->tail_applied_entry_index = pae->prev_applied_entry_index;
+    } else {
+      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
+      next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
+    }
+  } else {
+    /* It was the first entry. We need either to reset the hash entry or delete it */
+    if (pae->next_applied_entry_index != ~0) {
+      /* the next element becomes the new first one, so needs the tail pointer to be set */
+      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
+      ASSERT(pae->tail_applied_entry_index != ~0);
+      next_pae->tail_applied_entry_index = pae->tail_applied_entry_index;
+      next_pae->collision = pae->collision - 1;
+      /* unlink from the next element */
+      next_pae->prev_applied_entry_index = ~0;
+      tm_add_del_hashtable_entry(am, lc_index,
+                              applied_hash_aces, pae->next_applied_entry_index, 1);
+    } else {
+      /* no next entry, so just delete the entry in the hash table */
+      tm_add_del_hashtable_entry(am, lc_index,
+                              applied_hash_aces, index, 0);
+    }
+  }
+  /* invalidate the old entry */
+  pae->prev_applied_entry_index = ~0;
+  pae->next_applied_entry_index = ~0;
+  pae->tail_applied_entry_index = ~0;
+  pae->collision = 0;
+
+  /* releasing applied_mask_type and decrease
+   * the reference count, possibly freeing up some of them */
+
+  release_mask_type_index(am, mask_type_index);
+
+  DBG( "TM-deleting - applied_ace:%d - END", index);
+}
+
+static void
+tm_activate_applied_ace_hash_entry(acl_main_t *am,
+                            u32 lc_index,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 new_index, int is_new);
+/*
+this is a signal that we ignored too many bits in
+mT and we need to split the table into two tables. We select
+all of the colliding rules L and find their maximum common
+tuple mL. Normally mL is specific enough to hash L with few
+or no collisions. We then create a new table T2 with tuple mL
+and transfer all compatible rules from T to T2. If mL is not
+specific enough, we find the field with the biggest difference
+between the minimum and maximum tuple lengths for all of
+the rules in L and set that field to be the average of those two
+values. We then transfer all compatible rules as before. This
+guarantees that some rules from L will move and that T2 will
+have a smaller number of collisions than T did.
+*/
+void
+split_partition(acl_main_t *am, u32 first_index, 
+                            u32 lc_index,
+			    applied_hash_ace_entry_t **applied_hash_aces){
+
+	DBG( "TM-split_partition - first_entry:%d", first_index);
+	ace_mask_type_entry_t *mte;
+	fa_5tuple_t *min_tuple = malloc(sizeof(fa_5tuple_t));
+        fa_5tuple_t *max_tuple = malloc(sizeof(fa_5tuple_t));
+	applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), first_index);
+	hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
+	hash_ace_info_t *ace_info;
+	u32 coll_mask_type_index = pae->mask_type_index;
+
+	int i=0;
+	u64 collisions = pae->collision;	
+//	while(pae->next_applied_entry_index == ~0){
+	for(i=0; i<collisions; i++){
+
+		DBG( "TM-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)", 
+				pae->ace_index, pae->mask_type_index, coll_mask_type_index);
+
+		ace_info = vec_elt_at_index(ha->rules, pae->hash_ace_info_index);
+		mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
+		fa_5tuple_t *mask = &mte->mask; 
+
+		if(pae->mask_type_index != coll_mask_type_index) continue;
+		//print_mask(mask);
+		/* Computing min_mask and max_mask for colliding rules */
+		if(i==0){
+			clib_memcpy(min_tuple, mask, sizeof(fa_5tuple_t));
+			clib_memcpy(max_tuple, mask, sizeof(fa_5tuple_t));
+		}else{
+			for(int j=0; j<2; j++){
+				if(clib_net_to_host_u64(mask->addr[j].as_u64[0]) < clib_net_to_host_u64(min_tuple->addr[j].as_u64[0])){
+					min_tuple->addr[j].as_u64[0] = mask->addr[j].as_u64[0];
+					min_tuple->addr[j].as_u64[1] = mask->addr[j].as_u64[1];
+				}else if(clib_net_to_host_u64(mask->addr[j].as_u64[0]) == clib_net_to_host_u64(min_tuple->addr[j].as_u64[0])){
+					if(clib_net_to_host_u64(mask->addr[j].as_u64[1]) < clib_net_to_host_u64(min_tuple->addr[j].as_u64[1])){
+						min_tuple->addr[j].as_u64[0] = mask->addr[j].as_u64[0];
+						min_tuple->addr[j].as_u64[1] = mask->addr[j].as_u64[1];
+					}
+				}
+				if ((mask->l4.port[j] < min_tuple->l4.port[j]))
+					min_tuple->l4.port[j] = mask->l4.port[j];
+			}
+
+			if ((mask->l4.proto < min_tuple->l4.proto))
+				min_tuple->l4.proto = mask->l4.proto;
+
+			if(mask->pkt.as_u64 < min_tuple->pkt.as_u64)
+				min_tuple->pkt.as_u64 = mask->pkt.as_u64;
+
+
+			for(int j=0; j<2; j++){
+				if(clib_net_to_host_u64(mask->addr[j].as_u64[0]) > clib_net_to_host_u64(max_tuple->addr[j].as_u64[0])){
+					max_tuple->addr[j].as_u64[0] = mask->addr[j].as_u64[0];
+					max_tuple->addr[j].as_u64[1] = mask->addr[j].as_u64[1];
+				}else if(clib_net_to_host_u64(mask->addr[j].as_u64[0]) == clib_net_to_host_u64(max_tuple->addr[j].as_u64[0])){
+					if(clib_net_to_host_u64(mask->addr[j].as_u64[1]) > clib_net_to_host_u64(max_tuple->addr[j].as_u64[1])){
+						max_tuple->addr[j].as_u64[0] = mask->addr[j].as_u64[0];
+						max_tuple->addr[j].as_u64[1] = mask->addr[j].as_u64[1];
+					}
+				}
+				if ((mask->l4.port[j] > max_tuple->l4.port[j]))
+					max_tuple->l4.port[j] = mask->l4.port[j];
+			}
+
+			if ((mask->l4.proto < max_tuple->l4.proto))
+				max_tuple->l4.proto = mask->l4.proto;
+
+			if(mask->pkt.as_u64 > max_tuple->pkt.as_u64)
+				max_tuple->pkt.as_u64 = mask->pkt.as_u64;
+		}
+
+		pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
+	}
+
+	 DBG( "TM-split_partition - max/min_tuple");
+	print_mask(max_tuple);
+	print_mask(min_tuple);
+	/* Computing field with max difference between (min/max)_mask */
+	int best_dim=-1, best_delta=0, delta=0;
+
+	/* SRC_addr dimension */
+	for(int i=0; i<2; i++){
+		delta += count_bits(max_tuple->addr[0].as_u64[i]) - count_bits(min_tuple->addr[0].as_u64[i]);
+	}
+	if(delta > best_delta){
+		best_delta = delta;
+		best_dim = 0;
+	}
+
+	/* DST_addr dimension */
+	delta = 0;
+	for(int i=0; i<2; i++){
+		delta += count_bits(max_tuple->addr[1].as_u64[i]) - count_bits(min_tuple->addr[1].as_u64[i]);
+	}
+	if(delta > best_delta){
+		best_delta = delta;
+		best_dim = 1;
+	}
+
+	/* SRC_port dimension */
+	delta = count_bits(max_tuple->l4.port[0]) - count_bits(min_tuple->l4.port[0]);
+	if(delta > best_delta){
+		best_delta = delta;
+		best_dim = 2;
+	}
+
+	/* DST_port dimension */
+	delta = count_bits(max_tuple->l4.port[1]) - count_bits(min_tuple->l4.port[1]);
+	if(delta > best_delta){
+		best_delta = delta;
+		best_dim = 3;
+	}
+
+	/* Proto dimension */
+	delta = count_bits(max_tuple->l4.proto) - count_bits(min_tuple->l4.proto);
+	if(delta > best_delta){
+		best_delta = delta;
+		best_dim = 4;
+	}
+
+	int shifting = 0, ipv4_block = 0;
+	switch(best_dim){
+		case 0: 
+			shifting = (best_delta)/2;
+			ipv4_block = count_bits(max_tuple->addr[0].as_u64[1]);
+			if(ipv4_block > shifting)
+				min_tuple->addr[0].as_u64[1] = 
+					clib_host_to_net_u64((clib_net_to_host_u64(max_tuple->addr[0].as_u64[1]) << (shifting))&0xFFFFFFFF);
+			else{
+				shifting = shifting - ipv4_block;
+				min_tuple->addr[0].as_u64[1] = 0; 
+				min_tuple->addr[0].as_u64[0] = 
+					clib_host_to_net_u64((clib_net_to_host_u64(max_tuple->addr[0].as_u64[0]) << (shifting))&0xFFFFFFFF);
+			}
+
+			break;
+		case 1: 
+			shifting = (best_delta)/2;
+			ipv4_block = count_bits(max_tuple->addr[1].as_u64[1]);
+			if(ipv4_block > shifting)
+				min_tuple->addr[1].as_u64[1] = 
+					clib_host_to_net_u64((clib_net_to_host_u64(max_tuple->addr[1].as_u64[1]) << (shifting))&0xFFFFFFFF);
+			else{
+				shifting = shifting - ipv4_block;
+				min_tuple->addr[1].as_u64[1] = 0; 
+				min_tuple->addr[1].as_u64[0] = 
+					clib_host_to_net_u64((clib_net_to_host_u64(max_tuple->addr[1].as_u64[0]) << (shifting))&0xFFFFFFFF);
+			}
+
+			break;
+		case 2: min_tuple->l4.port[0] = max_tuple->l4.port[0]  << (best_delta)/2;
+			break;
+		case 3: min_tuple->l4.port[1] = max_tuple->l4.port[1] << (best_delta)/2;
+			break;
+		case 4: min_tuple->l4.proto = max_tuple->l4.proto << (best_delta)/2;
+			break;
+		default: relax_tuple2(min_tuple);
+			break;
+	}
+
+	//print_mask(max_tuple);
+	print_mask(min_tuple);
+
+	min_tuple->pkt.is_nonfirst_fragment = 0;
+        u32 new_mask_type_index = assign_mask_type_index(am, min_tuple);
+
+
+	hash_applied_mask_info_t **hash_applied_mask_pool = vec_elt_at_index(am->hash_applied_mask_pool_by_lc_index, lc_index);
+
+	hash_applied_mask_info_t *minfo; 
+	//search in order pool if mask_type_index is already there
+	int search;
+	for (search=0; search < vec_len((*hash_applied_mask_pool)); search++){
+		minfo = vec_elt_at_index((*hash_applied_mask_pool), search);
+		if(minfo->mask_type_index == new_mask_type_index)
+			break;
+	}
+
+
+	vec_validate((*hash_applied_mask_pool), search);
+	minfo = vec_elt_at_index((*hash_applied_mask_pool), search);
+	minfo->mask_type_index = new_mask_type_index;
+	minfo->num_entries = 0;
+	minfo->max_collisions = 0;
+	minfo->max_priority = ~0;
+
+
+	DBG( "TM-split_partition - mask type index-assigned!! -> %d", new_mask_type_index);
+
+	if(coll_mask_type_index == new_mask_type_index){
+		//vlib_cli_output(vm, "TM-There are collisions over threshold, but i'm not able to split! %d %d", coll_mask_type_index, new_mask_type_index);
+		return;
+	}
+
+
+	/* populate new partition */
+	DBG( "TM-Populate new partition");
+	u32 r_ace_index = first_index;
+
+//	for(i=0; i<collisions; i++){
+	for(r_ace_index=0; r_ace_index < vec_len((*applied_hash_aces)); r_ace_index++) {
+
+		applied_hash_ace_entry_t *pop_pae = vec_elt_at_index((*applied_hash_aces), r_ace_index);
+		DBG( "TM-Population-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)", 
+				pop_pae->ace_index, pop_pae->mask_type_index, coll_mask_type_index);
+
+		if(pop_pae->mask_type_index != coll_mask_type_index) continue;
+		u32 next_index = pop_pae->next_applied_entry_index;
+
+		ace_info = vec_elt_at_index(ha->rules, pop_pae->hash_ace_info_index);
+		mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
+		//can insert rule?
+		//mte = vec_elt_at_index(am->ace_mask_type_pool, pop_pae->mask_type_index);
+		fa_5tuple_t *pop_mask = &mte->mask;
+
+		if(compare_tuples(min_tuple, pop_mask) != 0) continue;
+		DBG( "TM-new partition can insert -> applied_ace:%d", r_ace_index);
+
+		//delete and insert in new format
+		tm_deactivate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, r_ace_index);
+
+		/* insert the new entry */
+		pop_pae->mask_type_index = new_mask_type_index;
+
+		//is_new avoid looping!
+		tm_activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, r_ace_index, 0);
+
+		r_ace_index = next_index;
+	}
+
+	/* After deletion we might not need some of the mask-types anymore... and add the new one!*/
+	tm_hash_acl_build_applied_lookup_bitmap(am, lc_index);
+	DBG( "TM-Populate new partition-END");
+	DBG( "TM-split_partition - END");
+
+}
+
+static void
+tm_activate_applied_ace_hash_entry(acl_main_t *am,
+                            u32 lc_index,
+                            applied_hash_ace_entry_t **applied_hash_aces,
+                            u32 new_index, int is_new)
+{
+  clib_bihash_kv_48_8_t kv;
+  ASSERT(new_index != ~0);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
+  DBG("activate_applied_ace_hash_entry lc_index %d new_index %d", lc_index, new_index);
+
+  tm_fill_applied_hash_ace_kv(am, applied_hash_aces, lc_index, new_index, &kv, is_new);
+
+  DBG("APPLY ADD KY: %016llx %016llx %016llx %016llx %016llx %016llx",
+                        kv.key[0], kv.key[1], kv.key[2],
+                        kv.key[3], kv.key[4], kv.key[5]);
+
+  clib_bihash_kv_48_8_t result;
+  hash_acl_lookup_value_t *result_val = (hash_acl_lookup_value_t *)&result.value;
+  int res = BV (clib_bihash_search) (&am->acl_lookup_hash, &kv, &result);
+  ASSERT(new_index != ~0);
+  ASSERT(new_index < vec_len((*applied_hash_aces)));
+  if (res == 0) {
+    DBG( "TM-entry already exists: %d (base_ace: %d)", new_index, pae->ace_index);
+    /* There already exists an entry or more. Append at the end. */
+    u32 first_index = result_val->applied_entry_index;
+    ASSERT(first_index != ~0);
+    DBG("A key already exists, with applied entry index: %d", first_index);
+    applied_hash_ace_entry_t *first_pae = vec_elt_at_index((*applied_hash_aces), first_index);
+    u32 last_index = first_pae->tail_applied_entry_index;
+    ASSERT(last_index != ~0);
+    applied_hash_ace_entry_t *last_pae = vec_elt_at_index((*applied_hash_aces), last_index);
+    DBG("...advance to chained entry index: %d", last_index);
+    /* link ourseves in */
+    last_pae->next_applied_entry_index = new_index;
+    pae->prev_applied_entry_index = last_index;
+    u64 collisions = first_pae->collision + 1;
+    pae->collision = collisions;
+    /* adjust the pointer to the new tail */
+    first_pae->tail_applied_entry_index = new_index;
+    /* adjust collision field in each entry on the same HT-spot */
+    first_pae->collision = collisions;
+    //applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), first_pae->next_applied_entry_index);
+
+    DBG( "TM-entry already exists, first entry: %d (%d %d)", first_index, new_index, collisions);
+    if(collisions > TM_THRESHOLD && is_new){
+	    /* create a new partition in order to replace collisions in a different mask_type */
+	    split_partition(am, first_index, lc_index, applied_hash_aces);
+    }
+  } else {
+    /* It's the very first entry */
+    DBG( "TM-first entry in partition: %d (base_ace: %d)", new_index, pae->ace_index);
+    hashtable_add_del(am, &kv, 1);
+    ASSERT(new_index != ~0);
+    pae->collision = 0;
+    pae->tail_applied_entry_index = new_index;
+  }
+  DBG( "TM-activate applied ace entry: %d (is_new: %d) - END", new_index, is_new);
+
+}
+
+void
+hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
+{
+  int i;
+
+  DBG( "TM-APPLY");
+  DBG0("HASH ACL apply: lc_index %d acl %d", lc_index, acl_index);
+  if (!am->acl_lookup_hash_initialized) {
+    BV (clib_bihash_init) (&am->acl_lookup_hash, "ACL plugin rule lookup bihash",
+                           am->hash_lookup_hash_buckets, am->hash_lookup_hash_memory);
+    clib_bihash_set_kvp_format_fn_48_8(&am->acl_lookup_hash, format_acl_plugin_5tuple_for_acl_hash);
+    am->acl_lookup_hash_initialized = 1;
+  }
+
+  void *oldheap = hash_acl_set_heap(am);
+  vec_validate(am->hash_entry_vec_by_lc_index, lc_index);
+  vec_validate(am->hash_acl_infos, acl_index);
+  applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
+
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
+  u32 **hash_acl_applied_lc_index = &ha->lc_index_list;
+
+  int base_offset = vec_len(*applied_hash_aces);
+
+  /* Update the bitmap of the mask types with which the lookup
+     needs to happen for the ACLs applied to this lc_index */
+  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
+  vec_validate((*applied_hash_acls), lc_index);
+
+  vec_validate(am->hash_applied_mask_pool_by_lc_index, lc_index);
+
+  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), lc_index);
+
+  /* ensure the list of applied hash acls is initialized and add this acl# to it */
+  u32 index = vec_search(pal->applied_acls, acl_index);
+  if (index != ~0) {
+    clib_warning("BUG: trying to apply twice acl_index %d on lc_index %d, according to lc",
+                 acl_index, lc_index);
+    goto done;
+  }
+  vec_add1(pal->applied_acls, acl_index);
+  u32 index2 = vec_search((*hash_acl_applied_lc_index), lc_index);
+  if (index2 != ~0) {
+    clib_warning("BUG: trying to apply twice acl_index %d on lc_index %d, according to hash h-acl info",
+                 acl_index, lc_index);
+    goto done;
+  }
+  vec_add1((*hash_acl_applied_lc_index), lc_index);
+
+  pal->mask_type_index_bitmap = clib_bitmap_or(pal->mask_type_index_bitmap,
+                                     ha->base_mask_type_index_bitmap);
+  /*
+   * if the applied ACL is empty, the current code will cause a
+   * different behavior compared to current linear search: an empty ACL will
+   * simply fallthrough to the next ACL, or the default deny in the end.
+   *
+   * This is not a problem, because after vpp-dev discussion,
+   * the consensus was it should not be possible to apply the non-existent
+   * ACL, so the change adding this code also takes care of that.
+   */
+
+  /* expand the applied aces vector by the necessary amount */
+  vec_resize((*applied_hash_aces), vec_len(ha->rules));
+
+  /* add the rules from the ACL to the hash table for lookup and append to the vector*/
+  for(i=0; i < vec_len(ha->rules); i++) {
+  //for(i = vec_len(ha->rules) -1; i >= 0; --i) {
+    u32 new_index = base_offset + i;
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
+    pae->acl_index = acl_index;
+    pae->ace_index = ha->rules[i].ace_index;
+    pae->acl_position = acl_position;
+    pae->action = ha->rules[i].action;
+    pae->hitcount = 0;
+    pae->hash_ace_info_index = i;
+    /* we might link it in later */
+    pae->mask_type_index = ~0;
+    pae->collision = 0;
+    pae->next_applied_entry_index = ~0;
+    pae->prev_applied_entry_index = ~0;
+    pae->tail_applied_entry_index = ~0;
+    tm_activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, new_index, 1);
+
+    /* Update the applied_bitmap of the mask types with which the lookup
+     needs to happen for the ACLs applied to this lc_index */
+    pal->mask_type_index_bitmap = clib_bitmap_set(pal->mask_type_index_bitmap, pae->mask_type_index, 1);
+  }
+  DBG( "TM-APPLY-resetting bitmap");
+  tm_remake_mask_type_order_pool(am, applied_hash_aces, lc_index);
+
+done:
+  clib_mem_set_heap (oldheap);
+  DBG( "TM-APPLY-end");
 }
 
