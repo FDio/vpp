@@ -567,7 +567,7 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (event_type == IGMP_PROCESS_EVENT_UPDATE_TIMER)
 	goto next_timer;
 
-      DBG ("time: %f", vlib_time_now (vm));
+      IGMP_DBG ("time: %f", vlib_time_now (vm));
 
       /* timer expired */
       if (NULL != timer)
