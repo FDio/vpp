@@ -164,6 +164,51 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
     }
 }
 
+static_always_inline u32
+dpdk_rx_next_from_flow (struct rte_mbuf *mb0, vlib_buffer_t * b0,
+			dpdk_device_t * xd)
+{
+  u32 mark0 = mb0->hash.fdir.hi;
+  dpdk_flow_lookup_entry_t *fle = vec_elt_at_index (xd->flow_lookup_entries, mark0);
+
+  b0->flags |= fle->flow_id == 0 ? 0 : VNET_BUFFER_F_FLOW_ID_PRESENT;
+  vnet_buffer (b0)->flow_id = fle->flow_id;
+  /* next index could still be ~0 if the user wants to only mark */
+  return fle->next_index;
+}
+
+static_always_inline u32
+dpdk_rx_next_from_flow_or_etype (struct rte_mbuf * mb0, vlib_buffer_t * b0,
+				 dpdk_device_t * xd)
+{
+  if (mb0->ol_flags & PKT_RX_FDIR)
+    {
+      u32 next0 = dpdk_rx_next_from_flow (mb0, b0, xd);
+      if (next0 != ~0)
+	{
+	  return next0;
+	}
+    }
+
+  return dpdk_rx_next_from_etype (mb0);
+}
+
+static_always_inline u32
+dpdk_rx_next_from_flow_or (struct rte_mbuf * mb0, vlib_buffer_t * b0,
+			   dpdk_device_t * xd, u32 def_val)
+{
+  if (mb0->ol_flags & PKT_RX_FDIR)
+    {
+      u32 next0 = dpdk_rx_next_from_flow (mb0, b0, xd);
+      if (next0 != ~0)
+	{
+	  return next0;
+	}
+    }
+
+  return def_val;
+}
+
 static_always_inline void
 dpdk_prefetch_buffer (struct rte_mbuf *mb)
 {
@@ -187,7 +232,7 @@ dpdk_prefetch_ethertype (struct rte_mbuf *mb)
 static_always_inline u32
 dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id,
-		   int maybe_multiseg, u32 n_trace)
+		   u16 flags, u32 n_trace)
 {
   u32 n_buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -251,7 +296,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  ASSERT (mb2);
 	  ASSERT (mb3);
 
-	  if (maybe_multiseg)
+	  if (flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
 	    {
 	      if (PREDICT_FALSE (mb0->nb_segs > 1))
 		dpdk_prefetch_buffer (mb0->next);
@@ -288,19 +333,42 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  to_next += 4;
 	  n_left_to_next -= 4;
 
+	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
+			 mb2->ol_flags | mb3->ol_flags);
 	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	    {
-	      next0 = next1 = next2 = next3 = xd->per_interface_next_index;
+	      if (flags & DPDK_DEVICE_FLAG_FLOW && or_ol_flags & PKT_RX_FDIR)
+		{
+		  next0 = dpdk_rx_next_from_flow_or
+                    (mb0, b0, xd, xd->per_interface_next_index);
+		  next1 = dpdk_rx_next_from_flow_or
+                    (mb1, b1, xd, xd->per_interface_next_index);
+		  next2 = dpdk_rx_next_from_flow_or
+                    (mb2, b2, xd, xd->per_interface_next_index);
+		  next3 = dpdk_rx_next_from_flow_or
+                    (mb3, b3, xd, xd->per_interface_next_index);
+
+		}
+	      else
+		next0 = next1 = next2 = next3 = xd->per_interface_next_index;
 	    }
 	  else
 	    {
-	      next0 = dpdk_rx_next_from_etype (mb0);
-	      next1 = dpdk_rx_next_from_etype (mb1);
-	      next2 = dpdk_rx_next_from_etype (mb2);
-	      next3 = dpdk_rx_next_from_etype (mb3);
+	      if (flags & DPDK_DEVICE_FLAG_FLOW && or_ol_flags & PKT_RX_FDIR)
+		{
+		  next0 = dpdk_rx_next_from_flow_or_etype (mb0, b0, xd);
+		  next1 = dpdk_rx_next_from_flow_or_etype (mb1, b1, xd);
+		  next2 = dpdk_rx_next_from_flow_or_etype (mb2, b2, xd);
+		  next3 = dpdk_rx_next_from_flow_or_etype (mb3, b3, xd);
+		}
+	      else
+		{
+		  next0 = dpdk_rx_next_from_etype (mb0);
+		  next1 = dpdk_rx_next_from_etype (mb1);
+		  next2 = dpdk_rx_next_from_etype (mb2);
+		  next3 = dpdk_rx_next_from_etype (mb3);
+		}
 
-	      or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
-			     mb2->ol_flags | mb3->ol_flags);
 	      if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
 		{
 		  dpdk_rx_error_from_mb (mb0, &next0, &error0);
@@ -355,7 +423,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 
 
 	  /* Process subsequent segments of multi-segment packets */
-	  if (maybe_multiseg)
+	  if (flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
 	    {
 	      dpdk_process_subseq_segs (vm, b0, mb0, fl);
 	      dpdk_process_subseq_segs (vm, b1, mb1, fl);
@@ -429,24 +497,31 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 
 	  bi0 = vlib_get_buffer_index (vm, b0);
 
+#if 0
 	  if (mb0->ol_flags & PKT_RX_FDIR)
 	    clib_warning ("fdir.hi %x\n%U\n%U", mb0->hash.fdir.hi,
 			  format_dpdk_rte_mbuf, mb0, b0->data,
 			  format_hexdump, b0->data, 64);
+#endif
 
 	  to_next[0] = bi0;
 	  to_next++;
 	  n_left_to_next--;
 
 	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
-	    next0 = xd->per_interface_next_index;
-	  else
-	    {
-	      next0 = dpdk_rx_next_from_etype (mb0);
+            if (flags & DPDK_DEVICE_FLAG_FLOW)
+              next0 = dpdk_rx_next_from_flow_or (mb0, b0, xd, xd->per_interface_next_index);
+            else
+              next0 = xd->per_interface_next_index;
+	  else if (flags & DPDK_DEVICE_FLAG_FLOW)
+              next0 = dpdk_rx_next_from_flow_or_etype (mb0, b0, xd);
+            else
+              {
+                next0 = dpdk_rx_next_from_etype (mb0);
 
-	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
-	      b0->error = node->errors[error0];
-	    }
+                dpdk_rx_error_from_mb (mb0, &next0, &error0);
+                b0->error = node->errors[error0];
+              }
 
 	  offset0 = device_input_next_node_advance[next0];
 	  b0->current_data = mb0->data_off + offset0 - RTE_PKTMBUF_HEADROOM;
@@ -497,16 +572,29 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 }
 
 static_always_inline u32
+dpdk_device_input_flow (dpdk_main_t * dm, dpdk_device_t * xd,
+			vlib_node_runtime_t * node, u32 thread_index,
+			u16 queue_id, u16 flags, u32 n_trace)
+{
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW)
+    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
+			      flags | DPDK_DEVICE_FLAG_FLOW, n_trace);
+  else
+    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
+			      flags, n_trace);
+}
+
+static_always_inline u32
 dpdk_device_input_mseg (dpdk_main_t * dm, dpdk_device_t * xd,
 			vlib_node_runtime_t * node, u32 thread_index,
 			u16 queue_id, u32 n_trace)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
-    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
-			      /* maybe_multiseg */ 1, n_trace);
+    return dpdk_device_input_flow (dm, xd, node, thread_index, queue_id,
+				   DPDK_DEVICE_FLAG_MAYBE_MULTISEG, n_trace);
   else
-    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
-			      /* maybe_multiseg */ 0, n_trace);
+    return dpdk_device_input_flow (dm, xd, node, thread_index, queue_id,
+				   0, n_trace);
 }
 
 static inline void

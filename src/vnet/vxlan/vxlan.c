@@ -19,6 +19,7 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/interface.h>
+#include <vnet/flow/flow.h>
 #include <vlib/vlib.h>
 
 /**
@@ -69,6 +70,8 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+
+  s = format (s, "flows_used %d ", t->flows_used);
 
   return s;
 }
@@ -450,6 +453,22 @@ int vnet_vxlan_add_del_tunnel
           t->sibling_index = fib_entry_child_add
             (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, dev_instance);
           vxlan_tunnel_restack_dpo(t);
+
+          u32 flow_id = t->dev_instance + vxm->flow_id_start;
+          vnet_flow_t flow = {
+            .id = flow_id,
+            .actions = VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK,
+            .redirect_node_index = vxlan4_flow_input_node.index,
+            .type = VNET_FLOW_TYPE_IP4_VXLAN,
+            .ip4_vxlan = {
+              .src_addr = t->dst.ip4,
+              .dst_addr = t->src.ip4,
+              .dst_port = UDP_DST_PORT_vxlan,
+              .vni = t->vni,
+            },
+          };
+          vnet_flow_add (vnm, &flow);
+          clib_warning("created flow id:%d", flow.id);
 	} 
       else
         {
@@ -530,7 +549,6 @@ int vnet_vxlan_add_del_tunnel
       /* deleting a tunnel: tunnel must exist */
       if (!p)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
-
       u32 instance = p[0];
       t = pool_elt_at_index (vxm->tunnels, instance);
 
@@ -546,6 +564,9 @@ int vnet_vxlan_add_del_tunnel
 
       if (!ip46_address_is_multicast(&t->dst))
         {
+          u32 flow_id = t->dev_instance + vxm->flow_id_start;
+          vnet_flow_del (vnm, flow_id);
+
 	  vtep_addr_unref(&t->src);
 	  fib_entry_child_remove(t->fib_entry_index, t->sibling_index);
 	  fib_table_entry_delete_index(t->fib_entry_index, FIB_SOURCE_RR);
@@ -558,7 +579,7 @@ int vnet_vxlan_add_del_tunnel
       vnet_delete_hw_interface (vnm, t->hw_if_index);
       hash_unset (vxm->instance_used, t->user_instance);
 
-      fib_node_deinit(&t->node);
+      fib_node_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
     }
@@ -989,13 +1010,91 @@ VLIB_CLI_COMMAND (set_interface_ip6_vxlan_bypass_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+offload_vxlan_command_fn (vlib_main_t * vm,
+                        unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  vnet_main_t * vnm = vnet_get_main();
+  u32 rx_sw_if_index = ~0;
+  u32 hw_if_index = ~0;
+  int is_add = 1;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "hw %U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+        continue;
+      if (unformat (line_input, "rx %U", unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
+        continue;
+      if (unformat (line_input, "del"))
+      {
+        is_add = 0;
+        continue;
+      }
+      return clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
+    }
+
+  if (rx_sw_if_index == ~0)
+    return clib_error_return (0, "missing rx interface");
+  if (hw_if_index == ~0)
+    return clib_error_return (0, "missing hw interface");
+
+  vxlan_main_t * vxm = &vxlan_main;
+  u32 t_index = (rx_sw_if_index > vec_len (vxm->tunnel_index_by_sw_if_index)) ?
+	  ~0 : vxm->tunnel_index_by_sw_if_index[rx_sw_if_index];
+  if (t_index == ~0)
+    return clib_error_return (0, "%U is not a vxlan tunnel",format_vnet_sw_if_index_name, 
+			vnm, rx_sw_if_index);
+
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
+
+  if (!ip46_address_is_ip4(&t->dst))
+    return clib_error_return (0, "currently only IPV4 tunnels are supported"); 
+
+  vnet_hw_interface_t * hw_if = vnet_get_hw_interface (vnm, hw_if_index);
+  ip4_main_t *im = &ip4_main;
+  u32 rx_fib_index = vec_elt (im->fib_index_by_sw_if_index, hw_if->sw_if_index);
+
+  if (t->encap_fib_index != rx_fib_index)
+    return clib_error_return (0, "interface/tunnel fib mismatch");
+
+  u32 flow_id = t->dev_instance + vxm->flow_id_start;
+
+  if (is_add)
+  {
+    t->flows_used++;
+    vnet_flow_enable(vnm, flow_id, hw_if_index);
+  }
+  else
+  {
+    vnet_flow_disable(vnm, flow_id, hw_if_index);
+    t->flows_used--;
+  }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (offload_vxlan_command, static) = {
+    .path = "offload vxlan",
+    .short_help =
+    "offload vxlan hw <hw_inerface> rx <sw_interface> [del]",
+    .function = offload_vxlan_command_fn,
+};
+/* *INDENT-ON* */
+
 clib_error_t *vxlan_init (vlib_main_t *vm)
 {
   vxlan_main_t * vxm = &vxlan_main;
-  
   vxm->vnet_main = vnet_get_main();
   vxm->vlib_main = vm;
 
+  vnet_flow_get_range (vxm->vnet_main, "vxlan", 1024 * 1024, &vxm->flow_id_start);
+  
   /* initialize the ip6 hash */
   vxm->vxlan6_tunnel_by_key = hash_create_mem(0,
         sizeof(vxlan6_tunnel_key_t),
