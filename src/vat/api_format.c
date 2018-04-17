@@ -177,6 +177,12 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+static uword
+api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
+{
+  return 0;
+}
+
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
 unformat_ip4_address (unformat_input_t * input, va_list * args)
@@ -440,14 +446,20 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
-  u32 sw_if_index;
 
-  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-    return 0;
-
-  *result = sw_if_index;
-  return 1;
+  return unformat (input, "%U", unformat_vnet_sw_interface, vnm, result);
 }
+
+static uword
+api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
+{
+  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 *result = va_arg (*args, u32 *);
+
+  return unformat (input, "%U", unformat_vnet_hw_interface, vnm, result);
+}
+
 #endif /* VPP_API_TEST_BUILTIN */
 
 static uword
@@ -2266,6 +2278,38 @@ static void vl_api_vxlan_add_del_tunnel_reply_t_handler_json
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
   vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void vl_api_vxlan_offload_rx_reply_t_handler
+  (vl_api_vxlan_offload_rx_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_vxlan_offload_rx_reply_t_handler_json
+  (vl_api_vxlan_offload_rx_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -5682,6 +5726,7 @@ _(L2TPV3_INTERFACE_ENABLE_DISABLE_REPLY,                                \
 _(L2TPV3_SET_LOOKUP_KEY_REPLY, l2tpv3_set_lookup_key_reply)             \
 _(SW_IF_L2TPV3_TUNNEL_DETAILS, sw_if_l2tpv3_tunnel_details)             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
+_(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
 _(GENEVE_ADD_DEL_TUNNEL_REPLY, geneve_add_del_tunnel_reply)             \
 _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
 _(GENEVE_TUNNEL_DETAILS, geneve_tunnel_details)                         \
@@ -12852,6 +12897,59 @@ api_sw_interface_tap_v2_dump (vat_main_t * vam)
   MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
+  W (ret);
+  return ret;
+}
+
+static int
+api_vxlan_offload_rx (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_vxlan_offload_rx_t *mp;
+  u32 hw_if_index = ~0, rx_if_index = ~0;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "hw %U", api_unformat_hw_if_index, vam,
+			 &hw_if_index))
+	;
+      else if (unformat (line_input, "hw hw_if_index %u", &hw_if_index))
+	;
+      else if (unformat (line_input, "rx %U", api_unformat_sw_if_index, vam,
+			 &rx_if_index))
+	;
+      else if (unformat (line_input, "rx sw_if_index %u", &rx_if_index))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, line_input);
+	  return -99;
+	}
+    }
+
+  if (hw_if_index == ~0)
+    {
+      errmsg ("no hw interface");
+      return -99;
+    }
+
+  if (rx_if_index == ~0)
+    {
+      errmsg ("no rx tunnel");
+      return -99;
+    }
+
+  M (VXLAN_OFFLOAD_RX, mp);
+
+  mp->hw_if_index = ntohl (hw_if_index);
+  mp->sw_if_index = ntohl (rx_if_index);
+  mp->enable = is_add;
+
+  S (mp);
   W (ret);
   return ret;
 }
@@ -23650,6 +23748,9 @@ _(l2tpv3_interface_enable_disable,                                      \
 _(l2tpv3_set_lookup_key,                                                \
   "lookup_v6_src | lookup_v6_dst | lookup_session_id")                  \
 _(sw_if_l2tpv3_tunnel_dump, "")                                         \
+_(vxlan_offload_rx,                                                     \
+  "hw { <interface name> | hw_if_index <nn>} "                          \
+  "rx { <vxlan tunnel name> | sw_if_index <nn> } [del]")                \
 _(vxlan_add_del_tunnel,                                                 \
   "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
   "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"		\
