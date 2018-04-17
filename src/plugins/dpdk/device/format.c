@@ -255,6 +255,21 @@ format_dpdk_device_name (u8 * s, va_list * args)
   return ret;
 }
 
+u8 *
+format_dpdk_device_flags (u8 * s, va_list * args)
+{
+  dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
+  u8 *t = 0;
+
+#define _(a, b, c) if (xd->flags & (1 << a)) \
+t = format (t, "%s%s", t ? " ":"", c);
+  foreach_dpdk_device_flags
+#undef _
+    s = format (s, "%v", t);
+  vec_free (t);
+  return s;
+}
+
 static u8 *
 format_dpdk_device_type (u8 * s, va_list * args)
 {
@@ -463,6 +478,8 @@ format_dpdk_device (u8 * s, va_list * args)
   s = format (s, "%U\n%Ucarrier %U",
 	      format_dpdk_device_type, xd->device_index,
 	      format_white_space, indent + 2, format_dpdk_link_status, xd);
+  s = format (s, "%Uflags: %U\n",
+	      format_white_space, indent + 2, format_dpdk_device_flags, xd);
 
   rte_eth_dev_info_get (xd->device_index, &di);
 
