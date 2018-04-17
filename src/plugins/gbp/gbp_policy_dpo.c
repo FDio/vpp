@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include <plugins/gbp/gbp.h>
-#include <plugins/gbp/gbp_policy_dpo.h>
-#include <plugins/gbp/gbp_recirc.h>
-
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/load_balance.h>
+
+#include <plugins/gbp/gbp.h>
+#include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_recirc.h>
 
 /**
  * DPO pool
@@ -171,10 +171,13 @@ gbp_policy_dpo_get_type (void)
 static clib_error_t *
 gbp_policy_dpo_module_init (vlib_main_t * vm)
 {
+  clib_error_t *error = 0;
+
+  error = acl_plugin_exports_init ();
   gbp_policy_dpo_type = dpo_register_new_type (&gbp_policy_dpo_vft,
 					       gbp_policy_dpo_nodes);
 
-  return (NULL);
+  return error;
 }
 
 VLIB_INIT_FUNCTION (gbp_policy_dpo_module_init);
@@ -195,7 +198,7 @@ typedef enum
 always_inline uword
 gbp_policy_dpo_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, fib_protocol_t fproto)
+		       vlib_frame_t * from_frame, u8 is_ip6)
 {
   u32 n_left_from, next_index, *from, *to_next;
 
@@ -249,14 +252,28 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 		  if (~0 != acl_index0)
 		    {
+		      fa_5tuple_opaque_t pkt_5tuple;
+		      u8 action = 0;
+		      u32 acl_pos_p, acl_match_p;
+		      u32 rule_match_p, trace_bitmap;
 		      /*
-		       * TODO tests against the ACL
+		       * tests against the ACL
 		       */
-		      /*
-		       * ACL tables are not available outside of ACL plugin
-		       * until then bypass the ACL to next node
-		       */
-		      next0 = gpd0->gpd_dpo.dpoi_next_node;
+		      acl_plugin_fill_5tuple_inline (acl_index0, b0, is_ip6,
+						     /* is_input */ 0,
+						     /* is_l2_path */ 0,
+						     (fa_5tuple_opaque_t *) &
+						     pkt_5tuple);
+		      acl_plugin_match_5tuple_inline (acl_index0,
+						      (fa_5tuple_opaque_t *) &
+						      pkt_5tuple, is_ip6,
+						      &action, &acl_pos_p,
+						      &acl_match_p,
+						      &rule_match_p,
+						      &trace_bitmap);
+
+		      if (action > 0)
+			next0 = gpd0->gpd_dpo.dpoi_next_node;
 		    }
 		}
 	    }
@@ -304,14 +321,14 @@ static uword
 ip4_gbp_policy_dpo (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return (gbp_policy_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP4));
+  return (gbp_policy_dpo_inline (vm, node, from_frame, 0));
 }
 
 static uword
 ip6_gbp_policy_dpo (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return (gbp_policy_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP6));
+  return (gbp_policy_dpo_inline (vm, node, from_frame, 1));
 }
 
 /* *INDENT-OFF* */

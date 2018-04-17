@@ -124,16 +124,30 @@ gbp_policy (vlib_main_t * vm,
 
 		  if (~0 != acl_index0)
 		    {
+		      fa_5tuple_opaque_t pkt_5tuple;
+		      u8 action = 0;
+		      u32 acl_pos_p, acl_match_p;
+		      u32 rule_match_p, trace_bitmap;
 		      /*
-		       * TODO tests against the ACL
+		       * tests against the ACL
 		       */
-		      /*
-		       * ACL tables are not available outside of ACL plugin
-		       * until then bypass the ACL to next node
-		       */
-		      next0 =
-			vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
-					      L2OUTPUT_FEAT_GBP_POLICY);
+		      acl_plugin_fill_5tuple_inline (acl_index0, b0, 0,
+						     /* is_input */ 0,
+						     /* is_l2_path */ 1,
+						     (fa_5tuple_opaque_t *) &
+						     pkt_5tuple);
+		      acl_plugin_match_5tuple_inline (acl_index0,
+						      (fa_5tuple_opaque_t *) &
+						      pkt_5tuple, 0, &action,
+						      &acl_pos_p,
+						      &acl_match_p,
+						      &rule_match_p,
+						      &trace_bitmap);
+
+		      if (action > 0)
+			next0 =
+			  vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
+						L2OUTPUT_FEAT_GBP_POLICY);
 		    }
 		}
 	    }
@@ -209,6 +223,9 @@ static clib_error_t *
 gbp_policy_init (vlib_main_t * vm)
 {
   gbp_policy_main_t *gpm = &gbp_policy_main;
+  clib_error_t *error = 0;
+
+  error = acl_plugin_exports_init ();
 
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
@@ -217,7 +234,7 @@ gbp_policy_init (vlib_main_t * vm)
 			       l2output_get_feat_names (),
 			       gpm->l2_output_feat_next);
 
-  return 0;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (gbp_policy_init);
