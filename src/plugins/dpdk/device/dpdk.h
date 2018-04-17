@@ -152,6 +152,26 @@ typedef struct
   u32 flush_count;
 } dpdk_device_hqos_per_hqos_thread_t;
 
+#define foreach_dpdk_device_flags \
+  _( 0, ADMIN_UP, "admin-up") \
+  _( 1, PROMISC, "promisc") \
+  _( 2, PMD, "pmd") \
+  _( 3, PMD_INIT_FAIL, "pmd-init-fail") \
+  _( 4, MAYBE_MULTISEG, "maybe-multiseg") \
+  _( 5, HAVE_SUBIF, "subif") \
+  _( 6, HQOS, "hqos") \
+  _( 7, BOND_SLAVE, "bond-slave") \
+  _( 8, BOND_SLAVE_UP, "bond-slave-up") \
+  _( 9, TX_OFFLOAD, "tx-offload") \
+  _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
+
+enum
+{
+#define _(a, b, c) DPDK_DEVICE_FLAG_##b = (1 << a),
+  foreach_dpdk_device_flags
+#undef _
+};
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -174,17 +194,6 @@ typedef struct
   i8 cpu_socket;
 
   u16 flags;
-#define DPDK_DEVICE_FLAG_ADMIN_UP           (1 << 0)
-#define DPDK_DEVICE_FLAG_PROMISC            (1 << 1)
-#define DPDK_DEVICE_FLAG_PMD                (1 << 2)
-#define DPDK_DEVICE_FLAG_PMD_INIT_FAIL      (1 << 3)
-#define DPDK_DEVICE_FLAG_MAYBE_MULTISEG     (1 << 4)
-#define DPDK_DEVICE_FLAG_HAVE_SUBIF         (1 << 5)
-#define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
-#define DPDK_DEVICE_FLAG_BOND_SLAVE         (1 << 7)
-#define DPDK_DEVICE_FLAG_BOND_SLAVE_UP      (1 << 8)
-#define DPDK_DEVICE_FLAG_TX_OFFLOAD         (1 << 9)
-#define DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM   (1 << 10)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
