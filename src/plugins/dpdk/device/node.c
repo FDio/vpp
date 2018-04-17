@@ -500,7 +500,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       next_index = xd->per_interface_next_index;
     }
 
-  /* as all packets belong to thr same interface feature arc lookup
+  /* as all packets belong to the same interface feature arc lookup
      can be don once and result stored in the buffer template */
   if (PREDICT_FALSE (vnet_device_input_have_features (xd->sw_if_index)))
     {
