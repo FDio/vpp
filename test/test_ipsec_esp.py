@@ -1,13 +1,11 @@
 import socket
+import unittest
 
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
-from scapy.layers.ipsec import *
+from scapy.layers.ipsec import SecurityAssociation, ESP
 
-from framework import VppTestCase
-from vpp_ip_route import VppIpRoute
-
-from util import ppp
+from framework import VppTestCase, VppTestRunner
 
 
 class TestIpsecEsp(VppTestCase):
@@ -283,7 +281,7 @@ class TestIpsecEsp(VppTestCase):
                 self.pg2, send_pkts, self.pg2, count=count)
             # ESP TRA VPP encryption/decryption verification
             for Pkts in recv_pkts:
-                decrypt_pkt = self.local_tra_sa.decrypt(Pkts[IP])
+                self.local_tra_sa.decrypt(Pkts[IP])
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
