@@ -3937,7 +3937,7 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   u32 acl_index = ~0;
-  u32 sw_if_index = ~0;
+  u32 lc_index = ~0;
   int show_acl_hash_info = 0;
   int show_applied_info = 0;
   int show_mask_type = 0;
@@ -3954,7 +3954,7 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
   else if (unformat (input, "applied"))
     {
       show_applied_info = 1;
-      unformat (input, "sw_if_index %u", &sw_if_index);
+      unformat (input, "lc_index %u", &lc_index);
     }
   else if (unformat (input, "mask"))
     {
@@ -3981,7 +3981,7 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
   if (show_acl_hash_info)
     acl_plugin_show_tables_acl_hash_info (acl_index);
   if (show_applied_info)
-    acl_plugin_show_tables_applied_info (sw_if_index);
+    acl_plugin_show_tables_applied_info (lc_index);
   if (show_bihash)
     acl_plugin_show_tables_bihash (show_bihash_verbose);
 
@@ -4050,7 +4050,7 @@ VLIB_CLI_COMMAND (aclplugin_show_sessions_command, static) = {
 
 VLIB_CLI_COMMAND (aclplugin_show_tables_command, static) = {
     .path = "show acl-plugin tables",
-    .short_help = "show acl-plugin tables [ acl [index N] | applied [ sw_if_index N ] | mask | hash [verbose N] ]",
+    .short_help = "show acl-plugin tables [ acl [index N] | applied [ lc_index N ] | mask | hash [verbose N] ]",
     .function = acl_show_aclplugin_tables_fn,
 };
 
