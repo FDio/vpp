@@ -3253,6 +3253,13 @@ show_vhost_user_command_fn (vlib_main_t * vm,
       if (unformat
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	{
+	  hi = vnet_get_hw_interface (vnm, hw_if_index);
+	  if (vhost_user_dev_class.index != hi->dev_class_index)
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, input);
+	      goto done;
+	    }
 	  vec_add1 (hw_if_indices, hw_if_index);
 	}
       else if (unformat (input, "descriptors") || unformat (input, "desc"))
