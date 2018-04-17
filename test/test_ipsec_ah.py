@@ -1,13 +1,11 @@
 import socket
+import unittest
 
 from scapy.layers.inet import IP, ICMP
-from scapy.layers.l2 import Ether
-from scapy.layers.ipsec import *
+from scapy.layers.l2 import Ether, Raw
+from scapy.layers.ipsec import SecurityAssociation, AH
 
-from framework import VppTestCase
-from vpp_ip_route import VppIpRoute
-
-from util import ppp
+from framework import VppTestCase, VppTestRunner
 
 
 class TestIpsecAh(VppTestCase):
@@ -265,7 +263,7 @@ class TestIpsecAh(VppTestCase):
             for Pkts in recv_pkts:
                 Pkts[AH].padding = Pkts[AH].icv[12:]
                 Pkts[AH].icv = Pkts[AH].icv[:12]
-                decrypt_pkt = self.local_tra_sa.decrypt(Pkts[IP])
+                self.local_tra_sa.decrypt(Pkts[IP])
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
