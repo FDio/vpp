@@ -742,7 +742,7 @@ abf_itf_bond_init (vlib_main_t * vm)
     return (acl_init_res);
 
   abf_acl_user_id =
-    acl_plugin_register_user_module ("abp plugin", "sw_if_index", NULL);
+    acl_plugin_register_user_module ("ABF plugin", "sw_if_index", NULL);
 
   return (NULL);
 }

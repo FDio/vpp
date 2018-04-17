@@ -198,6 +198,12 @@ class TestAbf(VppTestCase):
                                            self.pg1.sw_if_index)])
         abf_1.add_vpp_config()
 
+        self.vapi.cli("abt attach ip4 acl 1 pg0")
+        self.logger.error(self.vapi.cli("sh abt attach pg2"))
+        self.logger.error(self.vapi.cli("sh abt attach pg1"))
+        self.logger.error(self.vapi.cli("sh abt attach pg0"))
+        self.logger.error(self.vapi.cli("sh int feat pg0"))
+
         #
         # Attach the policy to input interface Pg0
         #
