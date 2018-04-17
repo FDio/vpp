@@ -47,7 +47,61 @@
 #define foreach_vpe_api_msg                             \
 _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
-_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)
+_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
+_(VXLAN_OFFLOAD_RX, vxlan_offload_rx)
+
+static void
+vl_api_vxlan_offload_rx_t_handler (vl_api_vxlan_offload_rx_t * mp)
+{
+  vl_api_vxlan_offload_rx_reply_t *rmp;
+  int rv = 0;
+  u32 hw_if_index = ntohl (mp->hw_if_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  if (!vnet_hw_interface_is_valid (vnet_get_main (), hw_if_index))
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto err;
+    }
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 t_index = vnet_vxlan_get_tunnel_index (sw_if_index);
+  if (t_index == ~0)
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
+      goto err;
+    }
+
+  vxlan_main_t *vxm = &vxlan_main;
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
+  if (!ip46_address_is_ip4 (&t->dst))
+    {
+      rv = VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
+      goto err;
+    }
+
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, hw_if_index);
+  ip4_main_t *im = &ip4_main;
+  u32 rx_fib_index =
+    vec_elt (im->fib_index_by_sw_if_index, hw_if->sw_if_index);
+
+  if (t->encap_fib_index != rx_fib_index)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto err;
+    }
+
+  if (vnet_vxlan_add_del_rx_flow (hw_if_index, t_index, mp->enable))
+    {
+      rv = VNET_API_ERROR_UNSPECIFIED;
+      goto err;
+    }
+  BAD_SW_IF_INDEX_LABEL;
+err:
+
+  REPLY_MACRO (VL_API_VXLAN_OFFLOAD_RX_REPLY);
+}
 
 static void
   vl_api_sw_interface_set_vxlan_bypass_t_handler
