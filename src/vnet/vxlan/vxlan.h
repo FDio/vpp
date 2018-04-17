@@ -112,6 +112,7 @@ typedef struct {
    */
   u32 sibling_index;
 
+  u32 flow_index;       /* infra flow index */
   u32 dev_instance;	/* Real device instance in tunnel vector */
   u32 user_instance;	/* Instance name being shown to user */
 
@@ -161,6 +162,7 @@ typedef struct {
 
   /* Record used instances */
   uword *instance_used;
+  u32 flow_id_start;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -169,6 +171,7 @@ extern vlib_node_registration_t vxlan4_input_node;
 extern vlib_node_registration_t vxlan6_input_node;
 extern vlib_node_registration_t vxlan4_encap_node;
 extern vlib_node_registration_t vxlan6_encap_node;
+extern vlib_node_registration_t vxlan4_flow_input_node;
 
 u8 * format_vxlan_encap_trace (u8 * s, va_list * args);
 
