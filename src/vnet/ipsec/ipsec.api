@@ -130,6 +130,7 @@ autoreply define ipsec_spd_add_del_entry
     @param is_tunnel_ipv6 - IPsec tunnel mode is IPv6 if non-zero, else IPv4 tunnel only valid if is_tunnel is non-zero
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+    @param udp_encap - enable UDP encapsulation for NAT traversal
 
     To be added:
      Anti-replay
@@ -163,6 +164,7 @@ autoreply define ipsec_sad_add_del_entry
   u8 is_tunnel_ipv6;
   u8 tunnel_src_address[16];
   u8 tunnel_dst_address[16];
+  u8 udp_encap;
 };
 
 /** \brief IPsec: Update Security Association keys
@@ -587,6 +589,7 @@ define ipsec_sa_dump {
     @param last_seq_hi - high 32 bits of highest ESN received inbound
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
     @param total_data_size - total bytes sent or received
+    @param udp_encap - 1 if UDP encap enabled, 0 otherwise
 */
 define ipsec_sa_details {
   u32 context;
@@ -618,6 +621,7 @@ define ipsec_sa_details {
   u64 replay_window;
 
   u64 total_data_size;
+  u8 udp_encap;
 };
 
 /** \brief Set key on IPsec interface
