@@ -47,10 +47,10 @@ static u32 *abf_alctx_per_itf[FIB_PROTOCOL_MAX];
  * ABF ACL module user id returned during the initialization
  */
 static u32 abf_acl_user_id;
-/*
+
+/**
  * ACL plugin method vtable
  */
-
 static acl_plugin_methods_t acl_plugin;
 
 /**
@@ -759,7 +759,7 @@ abf_itf_bond_init (vlib_main_t * vm)
     return (acl_init_res);
 
   abf_acl_user_id =
-    acl_plugin.register_user_module ("abp plugin", "sw_if_index", NULL);
+    acl_plugin.register_user_module ("ABF plugin", "sw_if_index", NULL);
 
   return (NULL);
 }
