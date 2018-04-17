@@ -236,27 +236,28 @@ set_reassembly_command_fn (vlib_main_t * vm,
       return NULL;
     }
 
-  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (!unformat_user
+      (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
       return clib_error_return (0, "Invalid interface name");
     }
 
-  if (unformat (input, "on"))
+  if (unformat (line_input, "on"))
     {
       ip4_on = 1;
       ip6_on = 1;
     }
-  else if (unformat (input, "off"))
+  else if (unformat (line_input, "off"))
     {
       ip4_on = 0;
       ip6_on = 0;
     }
-  else if (unformat (input, "ip4"))
+  else if (unformat (line_input, "ip4"))
     {
       ip4_on = 1;
       ip6_on = 0;
     }
-  else if (unformat (input, "ip6"))
+  else if (unformat (line_input, "ip6"))
     {
       ip4_on = 0;
       ip6_on = 1;
