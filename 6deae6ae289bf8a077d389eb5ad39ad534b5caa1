@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "daa0bb7b_25029f18",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 11
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-04-17T17:23:16Z",
+      "side": 1,
+      "message": "Agree.",
+      "parentUuid": "4e01bd26_fa969c88",
+      "revId": "6deae6ae289bf8a077d389eb5ad39ad534b5caa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1dbaa0cc_25b6432d",
         "filename": "src/vppinfra.am",
         "patchSetId": 11
@@ -30,6 +48,30 @@
       "writtenOn": "2018-04-17T17:08:09Z",
       "side": 1,
       "message": "Can you make this always 64 as default so no \"else\" needed...",
+      "range": {
+        "startLine": 191,
+        "startChar": 46,
+        "endLine": 191,
+        "endChar": 75
+      },
+      "revId": "6deae6ae289bf8a077d389eb5ad39ad534b5caa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b51b030a_1cde7d42",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 11
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-04-17T17:23:16Z",
+      "side": 1,
+      "message": "this change will make vppinfra/config.h to supersede CLIB_LOG2_CACHE_LINE_BYTES definition in src/vppinfra/cache.h. In other words definition of CLIB_LOG2_CACHE_LINE_BYTES in src/vppinfra/cache.h will become void. Is that fine?",
+      "parentUuid": "1dbaa0cc_25b6432d",
       "range": {
         "startLine": 191,
         "startChar": 46,
