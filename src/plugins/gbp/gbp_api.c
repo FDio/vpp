@@ -46,7 +46,7 @@
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <acl/acl_all_api_h.h>
+#include <gbp/gbp_all_api_h.h>
 #undef vl_api_version
 
 #include <vlibapi/api_helper_macros.h>
@@ -63,17 +63,11 @@
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)
 
-/**
- * L2 Emulation Main
- */
-typedef struct gbp_main_t_
-{
-  u16 msg_id_base;
-} gbp_main_t;
+gbp_main_t gbp_main;
 
-static gbp_main_t gbp_main;
+static u16 msg_id_base;
 
-#define GBP_MSG_BASE gbp_main.msg_id_base
+#define GBP_MSG_BASE msg_id_base
 
 static void
 vl_api_gbp_endpoint_add_del_t_handler (vl_api_gbp_endpoint_add_del_t * mp)
@@ -418,7 +412,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 
   mp->contract.src_epg = ntohl (gbpc->gc_key.gck_src);
   mp->contract.dst_epg = ntohl (gbpc->gc_key.gck_dst);
-  mp->contract.acl_index = ntohl (gbpc->gc_acl_index);
+  mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -484,10 +478,11 @@ gbp_init (vlib_main_t * vm)
   gbp_main_t *gbpm = &gbp_main;
   u8 *name = format (0, "gbp_%08x%c", api_version, 0);
 
-  /* Ask for a correctly-sized block of API message decode slots */
-  gbpm->msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
-					      VL_MSG_FIRST_AVAILABLE);
+  gbpm->gbp_acl_user_id = ~0;
 
+  /* Ask for a correctly-sized block of API message decode slots */
+  msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
+					VL_MSG_FIRST_AVAILABLE);
   gbp_api_hookup (vm);
 
   /* Add our API messages to the global name_crc hash table */
