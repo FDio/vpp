@@ -3060,9 +3060,8 @@ class VppPapiProvider(object):
         :returns: reply from the API
         """
         return self.api(
-            self.papi.ipsec_interface_add_del_spd, {
-                'spd_id': spd_id,
-                'sw_if_index': sw_if_index, 'is_add': is_add})
+            self.papi.ipsec_interface_add_del_spd,
+            {'spd_id': spd_id, 'sw_if_index': sw_if_index, 'is_add': is_add})
 
     def ipsec_sad_add_del_entry(self,
                                 sad_id,
@@ -3077,7 +3076,8 @@ class VppPapiProvider(object):
                                 crypto_key_length=0,
                                 crypto_key='JPjyOWBeVEQiMe7h',
                                 is_add=1,
-                                is_tunnel=1):
+                                is_tunnel=1,
+                                udp_encap=0):
         """ IPSEC SA add/del
         Sample CLI : 'ipsec sa add 10 spi 1001 esp \
             crypto-key 4a506a794f574265564551694d653768 \
@@ -3130,7 +3130,8 @@ class VppPapiProvider(object):
              'crypto_key_length': crypto_key_length,
              'crypto_key': crypto_key,
              'is_add': is_add,
-             'is_tunnel': is_tunnel})
+             'is_tunnel': is_tunnel,
+             'udp_encap': udp_encap})
 
     def ipsec_spd_add_del_entry(self,
                                 spd_id,

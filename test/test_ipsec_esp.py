@@ -31,11 +31,11 @@ class TestIpsecEsp(VppTestCase):
     TUNNEL MODE:
 
      ---   encrypt   ---   plain   ---
-    |pg0| ------->  |VPP| ------> |pg1|
+    |pg0| <-------  |VPP| <------ |pg1|
      ---             ---           ---
 
      ---   decrypt   ---   plain   ---
-    |pg0| <-------  |VPP| <------ |pg1|
+    |pg0| ------->  |VPP| ------> |pg1|
      ---             ---           ---
 
     Note : IPv6 is not covered
@@ -103,14 +103,14 @@ class TestIpsecEsp(VppTestCase):
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=50)
+                protocol=socket.IPPROTO_ESP)
             cls.vapi.ipsec_spd_add_del_entry(
                 spd_id,
                 l_startaddr,
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=50,
+                protocol=socket.IPPROTO_ESP,
                 is_outbound=0)
             l_startaddr = l_stopaddr = socket.inet_pton(
                 socket.AF_INET, cls.remote_pg0_lb_addr)
@@ -172,14 +172,14 @@ class TestIpsecEsp(VppTestCase):
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=50)
+                protocol=socket.IPPROTO_ESP)
             cls.vapi.ipsec_spd_add_del_entry(
                 spd_id,
                 l_startaddr,
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=50,
+                protocol=socket.IPPROTO_ESP,
                 is_outbound=0)
             l_startaddr = l_stopaddr = cls.pg2.local_ip4n
             r_startaddr = r_stopaddr = cls.pg2.remote_ip4n

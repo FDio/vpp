@@ -44,6 +44,14 @@ typedef CLIB_PACKED (struct {
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
+  ip4_header_t ip4;
+  udp_header_t udp;
+  esp_header_t esp;
+}) ip4_and_udp_and_esp_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   esp_header_t esp;
 }) ip6_and_esp_header_t;

@@ -72,7 +72,6 @@ autoreply define ipsec_interface_add_del_spd
     @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
     @param policy - 0 = bypass (no IPsec processing), 1 = discard (discard packet with ICMP processing), 2 = resolve (send request to control plane for SA resolving, and discard without ICMP processing), 3 = protect (apply IPsec policy using following parameters)
     @param sa_id - SAD instance id (control plane allocated)
-
 */
 
 autoreply define ipsec_spd_add_del_entry
@@ -130,6 +129,7 @@ autoreply define ipsec_spd_add_del_entry
     @param is_tunnel_ipv6 - IPsec tunnel mode is IPv6 if non-zero, else IPv4 tunnel only valid if is_tunnel is non-zero
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+    @param udp_encap - enable UDP encapsulation for NAT traversal
 
     To be added:
      Anti-replay
@@ -163,6 +163,7 @@ autoreply define ipsec_sad_add_del_entry
   u8 is_tunnel_ipv6;
   u8 tunnel_src_address[16];
   u8 tunnel_dst_address[16];
+  u8 udp_encap;
 };
 
 /** \brief IPsec: Update Security Association keys
