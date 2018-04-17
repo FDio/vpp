@@ -68,6 +68,29 @@
       "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "877a5d60_69f11a33",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-17T12:37:26Z",
+      "side": 1,
+      "message": "sid list and num_sids is not set. api dump returns empty array and 0 number of sids",
+      "range": {
+        "startLine": 266,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 3
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
