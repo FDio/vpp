@@ -868,7 +868,7 @@ sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
 void
 sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 			    vlib_buffer_t * b, ip4_address_t * ip4_addr,
-			    ip6_address_t * ip6_addr)
+			    u8 add_ip4, ip6_address_t * ip6_addr, u8 add_ip6)
 {
   vlib_main_t *vm = vlib_get_main ();
   sctp_ipv4_addr_param_t *ip4_param = 0;
@@ -881,12 +881,12 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
   u16 alloc_bytes =
     sizeof (sctp_init_ack_chunk_t) + sizeof (sctp_state_cookie_param_t);
 
-  if (PREDICT_TRUE (ip4_addr != NULL))
+  if (PREDICT_FALSE (add_ip4 == 1))
     {
       /* Create room for variable-length fields in the INIT_ACK chunk */
       alloc_bytes += SCTP_IPV4_ADDRESS_TYPE_LENGTH;
     }
-  if (PREDICT_TRUE (ip6_addr != NULL))
+  if (PREDICT_FALSE (add_ip6 == 1))
     {
       /* Create room for variable-length fields in the INIT_ACK chunk */
       alloc_bytes += SCTP_IPV6_ADDRESS_TYPE_LENGTH;
