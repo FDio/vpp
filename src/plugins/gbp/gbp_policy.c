@@ -68,6 +68,7 @@ static uword
 gbp_policy (vlib_main_t * vm,
 	    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index;
@@ -86,9 +87,11 @@ gbp_policy (vlib_main_t * vm,
 	{
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
+	  gbp_contract_value_t value0 = {
+	    .as_u64 = ~0,
+	  };
 	  u32 bi0, sw_if_index0;
 	  vlib_buffer_t *b0;
-	  u32 acl_index0;
 
 	  next0 = GBP_POLICY_NEXT_DENY;
 	  bi0 = from[0];
@@ -106,7 +109,6 @@ gbp_policy (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  key0.gck_dst = gbp_port_to_epg (sw_if_index0);
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
-	  acl_index0 = ~0;
 
 	  if (~0 != key0.gck_src)
 	    {
@@ -120,20 +122,48 @@ gbp_policy (vlib_main_t * vm,
 		}
 	      else
 		{
-		  acl_index0 = gbp_acl_lookup (&key0);
+		  value0.as_u64 = gbp_acl_lookup (&key0);
 
-		  if (~0 != acl_index0)
+		  if (~0 != value0.gc_lc_index)
 		    {
+		      fa_5tuple_opaque_t pkt_5tuple0;
+		      u8 action0 = 0;
+		      u32 acl_pos_p0, acl_match_p0;
+		      u32 rule_match_p0, trace_bitmap0;
+		      u8 *h0, l2_len0;
+		      u16 ether_type0;
+		      u8 is_ip60 = 0;
+
+		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
+		      h0 = vlib_buffer_get_current (b0);
+
+		      ether_type0 =
+			clib_net_to_host_u16 (*(u16 *) (h0 + l2_len0 - 2));
+
+		      is_ip60 = (ether_type0 == ETHERNET_TYPE_IP6) ? 1 : 0;
 		      /*
-		       * TODO tests against the ACL
+		       * tests against the ACL
 		       */
-		      /*
-		       * ACL tables are not available outside of ACL plugin
-		       * until then bypass the ACL to next node
-		       */
-		      next0 =
-			vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
-					      L2OUTPUT_FEAT_GBP_POLICY);
+		      acl_plugin_fill_5tuple_inline (gm->
+						     acl_plugin.p_acl_main,
+						     value0.gc_lc_index, b0,
+						     is_ip60,
+						     /* is_input */ 0,
+						     /* is_l2_path */ 1,
+						     &pkt_5tuple0);
+		      acl_plugin_match_5tuple_inline (gm->
+						      acl_plugin.p_acl_main,
+						      value0.gc_lc_index,
+						      &pkt_5tuple0, is_ip60,
+						      &action0, &acl_pos_p0,
+						      &acl_match_p0,
+						      &rule_match_p0,
+						      &trace_bitmap0);
+
+		      if (action0 > 0)
+			next0 =
+			  vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
+						L2OUTPUT_FEAT_GBP_POLICY);
 		    }
 		}
 	    }
@@ -153,7 +183,7 @@ gbp_policy (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->src_epg = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
-	      t->acl_index = acl_index0;
+	      t->acl_index = value0.gc_acl_index;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -209,6 +239,7 @@ static clib_error_t *
 gbp_policy_init (vlib_main_t * vm)
 {
   gbp_policy_main_t *gpm = &gbp_policy_main;
+  clib_error_t *error = 0;
 
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
@@ -217,7 +248,7 @@ gbp_policy_init (vlib_main_t * vm)
 			       l2output_get_feat_names (),
 			       gpm->l2_output_feat_next);
 
-  return 0;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (gbp_policy_init);
