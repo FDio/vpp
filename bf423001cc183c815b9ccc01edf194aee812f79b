@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "90b16a25_776dc817",
+        "filename": "src/vlib/log.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 649,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-17T23:37:58Z",
+      "side": 1,
+      "message": "can we survive with one test command  :) ?",
+      "range": {
+        "startLine": 649,
+        "startChar": 0,
+        "endLine": 649,
+        "endChar": 21
+      },
+      "revId": "bf423001cc183c815b9ccc01edf194aee812f79b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
