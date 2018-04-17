@@ -47,6 +47,8 @@ typedef struct
   u32 sa_id;
   u32 spi;
   u32 seq;
+  bool is_udp_encapped;
+  udp_header_t udp;
 } ipsec_input_trace_t;
 
 /* packet trace format function */
@@ -70,6 +72,10 @@ format_ipsec_input_trace (u8 * s, va_list * args)
   else
     {
       s = format (s, "esp: no sa spi %u seq %u", t->spi, t->seq);
+    }
+  if (t->is_udp_encapped)
+    {
+      s = format (s, " (UDP encapped: %U)", format_udp_header, &t->udp, sizeof(t->udp));
     }
   return s;
 }
@@ -216,7 +222,9 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_ESP))
+	  if (PREDICT_TRUE
+	      (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
+	       || ip0->protocol == IP_PROTOCOL_UDP))
 	    {
 #if 0
 	      clib_warning
@@ -228,6 +236,13 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 #endif
 
 	      esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	      if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_UDP))
+		{
+		  esp0 =
+		    (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
+		}
+	      /* FIXME TODO missing check whether there is enough data inside
+	       * IP/UDP to contain ESP header & stuff ? */
 	      p0 = ipsec_input_protect_policy_match (spd0,
 						     clib_net_to_host_u32
 						     (ip0->src_address.
@@ -245,7 +260,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->esp_decrypt_next_index;
-		  vlib_buffer_advance (b0, ip4_header_bytes (ip0));
+		  vlib_buffer_advance (b0, ((u8 *) esp0 - (u8 *) ip0));
 		  goto trace0;
 		}
 
@@ -255,12 +270,24 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		{
 		  ipsec_input_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP)
+		  if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP ||
+		      ip0->protocol == IP_PROTOCOL_UDP)
 		    {
 		      if (p0)
 			tr->sa_id = p0->sa_id;
 		      tr->spi = clib_host_to_net_u32 (esp0->spi);
 		      tr->seq = clib_host_to_net_u32 (esp0->seq);
+		      if (ip0->protocol == IP_PROTOCOL_UDP)
+			{
+			  tr->is_udp_encapped = true;
+			  clib_memcpy (&tr->udp,
+				       (u8 *) esp0 - sizeof (udp_header_t),
+				       sizeof (udp_header_t));
+			}
+		      else
+			{
+			  tr->is_udp_encapped = false;
+			}
 		    }
 		}
 

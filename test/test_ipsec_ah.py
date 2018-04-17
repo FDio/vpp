@@ -99,14 +99,14 @@ class TestIpsecAh(VppTestCase):
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=51)
+                protocol=socket.IPPROTO_AH)
             cls.vapi.ipsec_spd_add_del_entry(
                 spd_id,
                 l_startaddr,
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=51,
+                protocol=socket.IPPROTO_AH,
                 is_outbound=0)
             l_startaddr = l_stopaddr = socket.inet_pton(
                 socket.AF_INET, cls.remote_pg0_lb_addr)
@@ -164,14 +164,14 @@ class TestIpsecAh(VppTestCase):
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=51)
+                protocol=socket.IPPROTO_AH)
             cls.vapi.ipsec_spd_add_del_entry(
                 spd_id,
                 l_startaddr,
                 l_stopaddr,
                 r_startaddr,
                 r_stopaddr,
-                protocol=51,
+                protocol=socket.IPPROTO_AH,
                 is_outbound=0)
             l_startaddr = l_stopaddr = cls.pg2.local_ip4n
             r_startaddr = r_stopaddr = cls.pg2.remote_ip4n

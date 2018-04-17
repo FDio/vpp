@@ -176,7 +176,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	goto done;
     }
 
-  ipsec_add_del_sa (vm, &sa, is_add);
+  ipsec_add_del_sa (vm, &sa, is_add, 0 /* enable nat traversal */);
 
 done:
   unformat_free (line_input);

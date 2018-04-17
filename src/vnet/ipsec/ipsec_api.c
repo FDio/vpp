@@ -241,7 +241,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
       goto out;
     }
 
-  rv = ipsec_add_del_sa (vm, &sa, mp->is_add);
+  rv = ipsec_add_del_sa (vm, &sa, mp->is_add, mp->enable_nat_traversal);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
   goto out;
