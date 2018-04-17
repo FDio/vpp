@@ -198,6 +198,10 @@ class TestAbf(VppTestCase):
                                            self.pg1.sw_if_index)])
         abf_1.add_vpp_config()
 
+        self.vapi.cli("abt attach ip4 acl %d pg0" % acl_1.acl_index)
+        self.logger.info(self.vapi.cli("sh abt attach pg0"))
+        self.logger.info(self.vapi.cli("sh int feat pg0"))
+
         #
         # Attach the policy to input interface Pg0
         #
@@ -264,6 +268,7 @@ class TestAbf(VppTestCase):
         attach_4.remove_vpp_config()
 
         self.send_and_assert_no_replies(self.pg1, p_2 * 65, "Detached")
+        self.vapi.cli("abt attach del ip4 acl %d pg0" % acl_1.acl_index)
 
     def test_abf6(self):
         """ IPv6 ACL Based Forwarding
@@ -303,6 +308,8 @@ class TestAbf(VppTestCase):
                                 45, is_ipv6=True)
         attach_1.add_vpp_config()
 
+        self.vapi.cli("trace acl ip6 %d pg0" % acl_1.acl_index)
+
         #
         # a packet matching the rule
         #
@@ -332,6 +339,7 @@ class TestAbf(VppTestCase):
         # now expect packets forwarded.
         #
         self.send_and_expect(self.pg0, p * 65, self.pg1)
+        self.vapi.cli("trace acl del ip6 pg0")
 
 
 if __name__ == '__main__':

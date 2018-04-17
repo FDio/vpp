@@ -34,6 +34,10 @@ if ENABLE_ABF_PLUGIN
 include abf.am
 endif
 
+if ENABLE_ABT_PLUGIN
+include abt.am
+endif
+
 if ENABLE_ACL_PLUGIN
 include acl.am
 endif
