@@ -59,6 +59,15 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_device_stop (xd);
     }
 
+  /* Enable flow director when flows exist */
+  if (xd->pmd == VNET_DPDK_PMD_I40E)
+    {
+      if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0)
+	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+      else
+	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_NONE;
+    }
+
   rv = rte_eth_dev_configure (xd->device_index, xd->rx_q_used,
 			      xd->tx_q_used, &xd->port_conf);
 
