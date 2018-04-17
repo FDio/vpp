@@ -38,6 +38,25 @@ typedef struct gbp_contract_key_t_
 } gbp_contract_key_t;
 
 /**
+ * The value for an Contract
+ */
+typedef struct gbp_contract_value_t_
+{
+  union
+  {
+    struct
+    {
+      /**
+       * lookup context and acl index
+       */
+      u32 gc_lc_index;
+      u32 gc_acl_index;
+    };
+    u64 as_u64;
+  };
+} gbp_contract_value_t;
+
+/**
  * A Group Based Policy Contract.
  *  Determines the ACL that applies to traffic pass between two endpoint groups
  */
@@ -51,7 +70,7 @@ typedef struct gbp_contract_t_
   /**
    * The ACL to apply for packets from the source to the destination EPG
    */
-  u32 gc_acl_index;;
+  gbp_contract_value_t gc_value;
 } gbp_contract_t;
 
 /**
@@ -78,7 +97,7 @@ extern void gbp_contract_walk (gbp_contract_cb_t bgpe, void *ctx);
  */
 extern gbp_contract_db_t gbp_contract_db;
 
-always_inline u32
+always_inline u64
 gbp_acl_lookup (gbp_contract_key_t * key)
 {
   uword *p;
