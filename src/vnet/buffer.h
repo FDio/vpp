@@ -64,7 +64,8 @@
   _(16, L4_HDR_OFFSET_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
-  _(19, QOS_DATA_VALID, 0)
+  _(19, QOS_DATA_VALID, 0)                              \
+  _(20, FLOW_ID_PRESENT, "flow-id-present")
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
