@@ -21,7 +21,7 @@ from util import mactobinary
 
 class VppGbpEndpoint(VppObject):
     """
-    GDB Endpoint
+    GBP Endpoint
     """
 
     @property
@@ -94,7 +94,7 @@ class VppGbpEndpoint(VppObject):
 
 class VppGbpRecirc(VppObject):
     """
-    GDB Recirculation Interface
+    GBP Recirculation Interface
     """
 
     def __init__(self, test, epg, recirc, is_ext=False):
@@ -134,7 +134,7 @@ class VppGbpRecirc(VppObject):
 
 class VppGbpSubnet(VppObject):
     """
-    GDB Subnet
+    GBP Subnet
     """
 
     def __init__(self, test, table_id, address, address_len,
@@ -199,7 +199,7 @@ class VppGbpSubnet(VppObject):
 
 class VppGbpEndpointGroup(VppObject):
     """
-    GDB Endpoint Group
+    GBP Endpoint Group
     """
 
     def __init__(self, test, epg, rd, bd, uplink,
@@ -250,7 +250,7 @@ class VppGbpEndpointGroup(VppObject):
 
 class VppGbpContract(VppObject):
     """
-    GDB Contract
+    GBP Contract
     """
 
     def __init__(self, test, src_epg, dst_epg, acl_index):
@@ -287,6 +287,61 @@ class VppGbpContract(VppObject):
         for c in cs:
             if c.contract.src_epg == self.src_epg \
                and c.contract.dst_epg == self.dst_epg:
+                return True
+        return False
+
+
+class VppGbpAcl(VppObject):
+    """
+    GBP Acl
+    """
+
+    def __init__(self, test):
+        self._test = test
+        self.acl_index = 4294967295
+
+    def create_rule(self, is_ipv6=0, permit_deny=0, proto=-1,
+                    s_prefix=0, s_ip='\x00\x00\x00\x00', sport_from=0,
+                    sport_to=65535, d_prefix=0, d_ip='\x00\x00\x00\x00',
+                    dport_from=0, dport_to=65535):
+        if proto == -1 or proto == 0:
+            sport_to = 0
+            dport_to = sport_to
+        elif proto == 1 or proto == 58:
+            sport_to = 255
+            dport_to = sport_to
+        rule = ({'is_permit': permit_deny, 'is_ipv6': is_ipv6, 'proto': proto,
+                 'srcport_or_icmptype_first': sport_from,
+                 'srcport_or_icmptype_last': sport_to,
+                 'src_ip_prefix_len': s_prefix,
+                 'src_ip_addr': s_ip,
+                 'dstport_or_icmpcode_first': dport_from,
+                 'dstport_or_icmpcode_last': dport_to,
+                 'dst_ip_prefix_len': d_prefix,
+                 'dst_ip_addr': d_ip})
+        return rule
+
+    def add_vpp_config(self, rules):
+
+        reply = self._test.vapi.acl_add_replace(self.acl_index,
+                                                r=rules,
+                                                tag='GBPTest')
+        self.acl_index = reply.acl_index
+        return self.acl_index
+
+    def remove_vpp_config(self):
+        self._test.vapi.acl_del(self.acl_index)
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "gbp-acl;[%d]" % (self.acl_index)
+
+    def query_vpp_config(self):
+        cs = self._test.vapi.acl_dump()
+        for c in cs:
+            if c.acl_index == self.acl_index:
                 return True
         return False
 
@@ -875,7 +930,11 @@ class TestGBP(VppTestCase):
         #
         # A uni-directional contract from EPG 220 -> 221
         #
-        c1 = VppGbpContract(self, 220, 221, 0)
+        acl = VppGbpAcl(self)
+        rule = acl.create_rule(permit_deny=1, proto=17)
+        rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
+        acl_index = acl.add_vpp_config([rule, rule2])
+        c1 = VppGbpContract(self, 220, 221, acl_index)
         c1.add_vpp_config()
 
         self.send_and_expect_bridged(self.pg0,
@@ -887,7 +946,7 @@ class TestGBP(VppTestCase):
         #
         # contract for the return direction
         #
-        c2 = VppGbpContract(self, 221, 220, 0)
+        c2 = VppGbpContract(self, 221, 220, acl_index)
         c2.add_vpp_config()
 
         self.send_and_expect_bridged(self.pg0,
@@ -907,7 +966,7 @@ class TestGBP(VppTestCase):
         #
         # A uni-directional contract from EPG 220 -> 222 'L3 routed'
         #
-        c3 = VppGbpContract(self, 220, 222, 0)
+        c3 = VppGbpContract(self, 220, 222, acl_index)
         c3.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh gbp contract"))
@@ -923,6 +982,7 @@ class TestGBP(VppTestCase):
         c2.remove_vpp_config()
         c1.remove_vpp_config()
         c3.remove_vpp_config()
+        acl.remove_vpp_config()
 
         self.send_and_assert_no_replies(self.pg2,
                                         pkt_inter_epg_221_to_220 * 65)
@@ -988,7 +1048,15 @@ class TestGBP(VppTestCase):
         self.send_and_assert_no_replies(self.pg0,
                                         pkt_inter_epg_220_to_global * 65)
 
-        c4 = VppGbpContract(self, 220, 333, 0)
+        acl2 = VppGbpAcl(self)
+        rule = acl2.create_rule(permit_deny=1, proto=17, sport_from=1234,
+                                sport_to=1234, dport_from=1234, dport_to=1234)
+        rule2 = acl2.create_rule(is_ipv6=1, permit_deny=1, proto=17,
+                                 sport_from=1234, sport_to=1234,
+                                 dport_from=1234, dport_to=1234)
+
+        acl_index2 = acl2.add_vpp_config([rule, rule2])
+        c4 = VppGbpContract(self, 220, 333, acl_index2)
         c4.add_vpp_config()
 
         self.send_and_expect_natted(self.pg0,
@@ -1020,7 +1088,7 @@ class TestGBP(VppTestCase):
         self.send_and_assert_no_replies(self.pg7,
                                         pkt_inter_epg_220_from_global * 65)
 
-        c5 = VppGbpContract(self, 333, 220, 0)
+        c5 = VppGbpContract(self, 333, 220, acl_index2)
         c5.add_vpp_config()
 
         self.send_and_expect_unnatted(self.pg7,
