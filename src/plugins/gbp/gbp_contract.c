@@ -25,22 +25,64 @@ gbp_contract_db_t gbp_contract_db;
 void
 gbp_contract_update (epg_id_t src_epg, epg_id_t dst_epg, u32 acl_index)
 {
+  gbp_main_t *gm = &gbp_main;
+  u32 *acl_vec = 0;
+  gbp_contract_value_t value = {
+    .gc_lc_index = ~0,
+    .gc_acl_index = ~0,
+  };
+  uword *p;
+
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
-  hash_set (gbp_contract_db.gc_hash, key.as_u64, acl_index);
+  if (~0 == gm->gbp_acl_user_id)
+    {
+      acl_plugin_exports_init (&gm->acl_plugin);
+      gm->gbp_acl_user_id =
+	gm->acl_plugin.register_user_module ("GBP ACL", "src-epg", "dst-epg");
+    }
+
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      value.as_u64 = p[0];
+    }
+  else
+    {
+      value.gc_lc_index =
+	gm->acl_plugin.get_lookup_context_index (gm->gbp_acl_user_id, src_epg,
+						 dst_epg);
+      value.gc_acl_index = acl_index;
+      hash_set (gbp_contract_db.gc_hash, key.as_u64, value.as_u64);
+    }
+
+  if (value.gc_lc_index == ~0)
+    return;
+  vec_add1 (acl_vec, acl_index);
+  gm->acl_plugin.set_acl_vec_for_context (value.gc_lc_index, acl_vec);
+  vec_free (acl_vec);
 }
 
 void
 gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
 {
+  gbp_main_t *gm = &gbp_main;
+  uword *p;
+  gbp_contract_value_t value;
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      value.as_u64 = p[0];
+      gm->acl_plugin.put_lookup_context_index (value.gc_lc_index);
+    }
   hash_unset (gbp_contract_db.gc_hash, key.as_u64);
 }
 
@@ -48,14 +90,14 @@ void
 gbp_contract_walk (gbp_contract_cb_t cb, void *ctx)
 {
   gbp_contract_key_t key;
-  u32 acl_index;
+  gbp_contract_value_t value;
 
   /* *INDENT-OFF* */
-  hash_foreach(key.as_u64, acl_index, gbp_contract_db.gc_hash,
+  hash_foreach(key.as_u64, value.as_u64, gbp_contract_db.gc_hash,
   ({
     gbp_contract_t gbpc = {
       .gc_key = key,
-      .gc_acl_index = acl_index,
+      .gc_value = value,
     };
 
     if (!cb(&gbpc, ctx))
@@ -112,11 +154,14 @@ gbp_contract_cli (vlib_main_t * vm,
  * @cliexstart{set gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>}
  * @cliexend
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_contract_cli_node, static) =
 {
-.path = "gbp contract",.short_help =
-    "gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>",.function
-    = gbp_contract_cli,};
+  .path = "gbp contract",
+  .short_help =
+    "gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>",
+  .function = gbp_contract_cli,
+};
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -124,15 +169,15 @@ gbp_contract_show (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   gbp_contract_key_t key;
-  epg_id_t epg_id;
+  gbp_contract_value_t value;
 
   vlib_cli_output (vm, "Contracts:");
 
   /* *INDENT-OFF* */
-  hash_foreach (key.as_u64, epg_id, gbp_contract_db.gc_hash,
+  hash_foreach (key.as_u64, value.as_u64, gbp_contract_db.gc_hash,
   {
     vlib_cli_output (vm, "  {%d,%d} -> %d", key.gck_src,
-                     key.gck_dst, epg_id);
+                     key.gck_dst, value.gc_acl_index);
   });
   /* *INDENT-ON* */
 
