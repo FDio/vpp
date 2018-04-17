@@ -291,6 +291,58 @@ class VppGbpContract(VppObject):
         return False
 
 
+class VppGbpAcl(VppObject):
+    """
+    GDB Acl
+    """
+
+    def __init__(self, test):
+        self._test = test
+        self.acl_index = 4294967295
+
+    def add_vpp_config(self):
+        rule = ({'is_permit': 1, 'is_ipv6': 0, 'proto': 0,
+                 'srcport_or_icmptype_first': 0,
+                 'srcport_or_icmptype_last': 0,
+                 'src_ip_prefix_len': 0,
+                 'src_ip_addr': '\x00\x00\x00\x00',
+                 'dstport_or_icmpcode_first': 0,
+                 'dstport_or_icmpcode_last': 0,
+                 'dst_ip_prefix_len': 0,
+                 'dst_ip_addr': '\x00\x00\x00\x00'})
+        rule2 = ({'is_permit': 1, 'is_ipv6': 1, 'proto': 0,
+                  'srcport_or_icmptype_first': 0,
+                  'srcport_or_icmptype_last': 0,
+                  'src_ip_prefix_len': 0,
+                  'src_ip_addr': '\x00\x00\x00\x00',
+                  'dstport_or_icmpcode_first': 0,
+                  'dstport_or_icmpcode_last': 0,
+                  'dst_ip_prefix_len': 0,
+                  'dst_ip_addr': '\x00\x00\x00\x00'})
+
+        reply = self._test.vapi.acl_add_replace(self.acl_index,
+                                                r=[rule, rule2],
+                                                tag='GBPTest')
+        self.acl_index = reply.acl_index
+        return self.acl_index
+
+    def remove_vpp_config(self):
+        self._test.vapi.acl_del(self.acl_index)
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "gbp-acl;[%d]" % (self.acl_index)
+
+    def query_vpp_config(self):
+        cs = self._test.vapi.acl_dump()
+        for c in cs:
+            if c.acl_index == self.acl_index:
+                return True
+        return False
+
+
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 
@@ -875,7 +927,9 @@ class TestGBP(VppTestCase):
         #
         # A uni-directional contract from EPG 220 -> 221
         #
-        c1 = VppGbpContract(self, 220, 221, 0)
+        acl = VppGbpAcl(self)
+        acl_index = acl.add_vpp_config()
+        c1 = VppGbpContract(self, 220, 221, acl_index)
         c1.add_vpp_config()
 
         self.send_and_expect_bridged(self.pg0,
@@ -887,7 +941,7 @@ class TestGBP(VppTestCase):
         #
         # contract for the return direction
         #
-        c2 = VppGbpContract(self, 221, 220, 0)
+        c2 = VppGbpContract(self, 221, 220, acl_index)
         c2.add_vpp_config()
 
         self.send_and_expect_bridged(self.pg0,
@@ -907,7 +961,7 @@ class TestGBP(VppTestCase):
         #
         # A uni-directional contract from EPG 220 -> 222 'L3 routed'
         #
-        c3 = VppGbpContract(self, 220, 222, 0)
+        c3 = VppGbpContract(self, 220, 222, acl_index)
         c3.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh gbp contract"))
@@ -988,7 +1042,7 @@ class TestGBP(VppTestCase):
         self.send_and_assert_no_replies(self.pg0,
                                         pkt_inter_epg_220_to_global * 65)
 
-        c4 = VppGbpContract(self, 220, 333, 0)
+        c4 = VppGbpContract(self, 220, 333, acl_index)
         c4.add_vpp_config()
 
         self.send_and_expect_natted(self.pg0,
@@ -1020,7 +1074,7 @@ class TestGBP(VppTestCase):
         self.send_and_assert_no_replies(self.pg7,
                                         pkt_inter_epg_220_from_global * 65)
 
-        c5 = VppGbpContract(self, 333, 220, 0)
+        c5 = VppGbpContract(self, 333, 220, acl_index)
         c5.add_vpp_config()
 
         self.send_and_expect_unnatted(self.pg7,
