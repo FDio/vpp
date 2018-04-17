@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4e01bd26_fa969c88",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 11
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-17T17:08:09Z",
+      "side": 1,
+      "message": "Please add following wrapper in config.h:\n\n#ifndef included_clib_config_h\n#define included_clib_config_h\n\n...\n#endif",
+      "revId": "6deae6ae289bf8a077d389eb5ad39ad534b5caa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1dbaa0cc_25b6432d",
+        "filename": "src/vppinfra.am",
+        "patchSetId": 11
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-04-17T17:08:09Z",
+      "side": 1,
+      "message": "Can you make this always 64 as default so no \"else\" needed...",
+      "range": {
+        "startLine": 191,
+        "startChar": 46,
+        "endLine": 191,
+        "endChar": 75
+      },
+      "revId": "6deae6ae289bf8a077d389eb5ad39ad534b5caa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
