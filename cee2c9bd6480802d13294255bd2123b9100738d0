@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "cd698ce0_2256ac11",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-17T13:47:31Z",
+      "side": 1,
+      "message": "should be:\n  rmp-\u003etype \u003d t-\u003etype;\n  rmp-\u003eis_encap \u003d t-\u003eis_encap;",
+      "parentUuid": "7539bb37_9c48a2b0",
+      "range": {
+        "startLine": 262,
+        "startChar": 2,
+        "endLine": 262,
+        "endChar": 26
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ec3439b_deae4ce9",
         "filename": "src/vnet/srv6/sr_api.c",
         "patchSetId": 9
@@ -82,6 +106,30 @@
       "writtenOn": "2018-04-17T12:37:26Z",
       "side": 1,
       "message": "sid list and num_sids is not set. api dump returns empty array and 0 number of sids",
+      "range": {
+        "startLine": 266,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 3
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a76afd2d_79f1803f",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-17T13:47:31Z",
+      "side": 1,
+      "message": "sidLists were not set because rmp-\u003enum_sid_lists was not set. Once this is set even the lists are filled.\n\nThis should be set before filling the segments list:\nrmp-\u003enum_sid_lists \u003d vec_len (t-\u003esegments_lists);",
+      "parentUuid": "877a5d60_69f11a33",
       "range": {
         "startLine": 266,
         "startChar": 0,
