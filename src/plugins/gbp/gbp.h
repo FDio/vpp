@@ -37,6 +37,15 @@
 #include <plugins/gbp/gbp_contract.h>
 #include <plugins/gbp/gbp_subnet.h>
 #include <plugins/gbp/gbp_recirc.h>
+#include <plugins/acl/exports.h>
+
+typedef struct
+{
+  u16 msg_id_base;
+  u32 gbp_acl_user_id;
+} gbp_main_t;
+
+extern gbp_main_t gbp_main;
 
 #endif
 

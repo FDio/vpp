@@ -25,22 +25,55 @@ gbp_contract_db_t gbp_contract_db;
 void
 gbp_contract_update (epg_id_t src_epg, epg_id_t dst_epg, u32 acl_index)
 {
+  gbp_main_t *gm = &gbp_main;
+  u32 *acl_vec = 0, index = ~0;
+  uword *p;
+
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
-  hash_set (gbp_contract_db.gc_hash, key.as_u64, acl_index);
+  if (~0 == gm->gbp_acl_user_id)
+    gm->gbp_acl_user_id =
+      acl_plugin_register_user_module ("GBP ACL", "src epg", "dst epg");
+
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      index = p[0];
+    }
+  else
+    {
+      index =
+	acl_plugin_get_lookup_context_index (gm->gbp_acl_user_id, src_epg,
+					     dst_epg);
+      hash_set (gbp_contract_db.gc_hash, key.as_u64, index);
+    }
+
+  if (index == ~0)
+    return;
+  vec_add1 (acl_vec, acl_index);
+  acl_plugin_set_acl_vec_for_context (index, acl_vec);
+  vec_free (acl_vec);
 }
 
 void
 gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
 {
+  uword *p;
+  u32 index = ~0;
   gbp_contract_key_t key = {
     .gck_src = src_epg,
     .gck_dst = dst_epg,
   };
 
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  if (p != NULL)
+    {
+      index = p[0];
+      acl_plugin_put_lookup_context_index (index);
+    }
   hash_unset (gbp_contract_db.gc_hash, key.as_u64);
 }
 
