@@ -31,12 +31,22 @@
 #ifndef __GBP_H__
 #define __GBP_H__
 
+#include <plugins/acl/exports.h>
+
 #include <plugins/gbp/gbp_types.h>
 #include <plugins/gbp/gbp_endpoint.h>
 #include <plugins/gbp/gbp_endpoint_group.h>
 #include <plugins/gbp/gbp_contract.h>
 #include <plugins/gbp/gbp_subnet.h>
 #include <plugins/gbp/gbp_recirc.h>
+
+typedef struct
+{
+  u32 gbp_acl_user_id;
+  acl_plugin_methods_t acl_plugin;
+} gbp_main_t;
+
+extern gbp_main_t gbp_main;
 
 #endif
 
