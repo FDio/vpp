@@ -1633,6 +1633,20 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   FINISH;
 }
 
+static void *vl_api_vxlan_offload_rx_t_print
+  (vl_api_vxlan_offload_rx_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: vxlan_offload_rx ");
+
+  s = format (s, "hw %d ", ntohl (mp->hw_if_index));
+  s = format (s, "rx %d ", ntohl (mp->sw_if_index));
+  if (!mp->enable)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
 static void *vl_api_vxlan_tunnel_dump_t_print
   (vl_api_vxlan_tunnel_dump_t * mp, void *handle)
 {
@@ -3553,6 +3567,7 @@ _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
+_(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
 _(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
 _(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
 _(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
