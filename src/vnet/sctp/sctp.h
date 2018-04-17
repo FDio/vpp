@@ -312,19 +312,18 @@ void sctp_init_mss (sctp_connection_t * sctp_conn);
 
 void sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				 vlib_buffer_t * b, ip4_address_t * ip4_addr,
-				 ip6_address_t * ip6_addr);
-void
-sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
-					  u8 idx, vlib_buffer_t * b,
-					  ip4_address_t * ip4_addr,
-					  ip6_address_t * ip6_addr);
+				 u8 add_ip4, ip6_address_t * ip6_addr,
+				 u8 add_ip6);
+void sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
+					       u8 idx, vlib_buffer_t * b,
+					       ip4_address_t * ip4_addr,
+					       ip6_address_t * ip6_addr);
 void sctp_prepare_abort_for_collision (sctp_connection_t * sctp_conn, u8 idx,
 				       vlib_buffer_t * b,
 				       ip4_address_t * ip4_addr,
 				       ip6_address_t * ip6_addr);
-void
-sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
-			      vlib_buffer_t * b, u8 err_cause);
+void sctp_prepare_operation_error (sctp_connection_t * sctp_conn, u8 idx,
+				   vlib_buffer_t * b, u8 err_cause);
 void sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
 				     vlib_buffer_t * b, u8 reuse_buffer);
 void sctp_prepare_cookie_ack_chunk (sctp_connection_t * sctp_conn, u8 idx,
