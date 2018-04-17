@@ -241,7 +241,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
       goto out;
     }
 
-  rv = ipsec_add_del_sa (vm, &sa, mp->is_add);
+  rv = ipsec_add_del_sa (vm, &sa, mp->is_add, mp->udp_encap);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
   goto out;
@@ -457,6 +457,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   if (sa->use_anti_replay)
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
   mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
+  mp->udp_encap = sa->udp_encap;
 
   vl_api_send_msg (reg, (u8 *) mp);
 }

@@ -53,6 +53,7 @@ _ (3784, bfd4)                                  \
 _ (3785, bfd_echo4)                             \
 _ (4341, lisp_gpe)                              \
 _ (4342, lisp_cp)                          	\
+_ (4500, ipsec)                                 \
 _ (4739, ipfix)                                 \
 _ (4789, vxlan)					\
 _ (4789, vxlan6)				\

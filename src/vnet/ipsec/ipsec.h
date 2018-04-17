@@ -127,6 +127,7 @@ typedef struct
 
   u8 is_tunnel;
   u8 is_tunnel_ip6;
+  u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
 
@@ -318,7 +319,8 @@ int ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 int ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add);
 int ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy,
 			  int is_add);
-int ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add);
+int ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add,
+		      u8 udp_encap);
 int ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update);
 
 u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);

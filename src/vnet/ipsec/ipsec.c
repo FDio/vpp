@@ -19,11 +19,13 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
+#include <vnet/udp/udp.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
+
 
 ipsec_main_t ipsec_main;
 
@@ -411,7 +413,8 @@ ipsec_is_sa_used (u32 sa_index)
 }
 
 int
-ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
+ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add,
+		  u8 udp_encap)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa = 0;
@@ -450,6 +453,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       pool_get (im->sad, sa);
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
+      sa->udp_encap = udp_encap ? 1 : 0;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
       if (im->cb.add_del_sa_sess_cb)
 	{

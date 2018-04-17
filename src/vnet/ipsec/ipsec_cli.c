@@ -176,7 +176,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	goto done;
     }
 
-  ipsec_add_del_sa (vm, &sa, is_add);
+  ipsec_add_del_sa (vm, &sa, is_add, 0 /* enable nat traversal */ );
 
 done:
   unformat_free (line_input);
@@ -451,9 +451,10 @@ show_ipsec_command_fn (vlib_main_t * vm,
   /* *INDENT-OFF* */
   pool_foreach (sa, im->sad, ({
     if (sa->id) {
-      vlib_cli_output(vm, "sa %u spi %u mode %s protocol %s", sa->id, sa->spi,
+      vlib_cli_output(vm, "sa %u spi %u mode %s protocol %s%s", sa->id, sa->spi,
                       sa->is_tunnel ? "tunnel" : "transport",
-                      sa->protocol ? "esp" : "ah");
+                      sa->protocol ? "esp" : "ah",
+		      sa->udp_encap ? " udp-encap-enabled" : "");
       if (sa->protocol == IPSEC_PROTOCOL_ESP) {
         vlib_cli_output(vm, "  crypto alg %U%s%U integrity alg %U%s%U",
                         format_ipsec_crypto_alg, sa->crypto_alg,
