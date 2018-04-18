@@ -102,8 +102,7 @@ parse_header (ethernet_input_variant_t variant,
 
       e0 = (void *) (b0->data + b0->current_data);
 
-      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
-      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
+      vnet_buffer (b0)->ei.l2_hdr_offset = b0->current_data;
 
       vlib_buffer_advance (b0, sizeof (e0[0]));
 
@@ -207,7 +206,7 @@ identify_subint (vnet_hw_interface_t * hi,
       if (!(*is_l2))
 	{
 	  ethernet_header_t *e0;
-	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
+	  e0 = (void *) (b0->data + vnet_buffer (b0)->ei.l2_hdr_offset);
 
 	  if (!(ethernet_address_cast (e0->dst_address)))
 	    {
@@ -226,11 +225,19 @@ identify_subint (vnet_hw_interface_t * hi,
 static_always_inline void
 determine_next_node (ethernet_main_t * em,
 		     ethernet_input_variant_t variant,
-		     u32 is_l20,
+		     u32 is_l20, u32 l2_hdr_size_set,
 		     u32 type0, vlib_buffer_t * b0, u8 * error0, u8 * next0)
 {
-  u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-  vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
+  if (l2_hdr_size_set)
+    vnet_buffer (b0)->l2.l2_len = vnet_buffer (b0)->l2_hdr_size;
+  else
+    {
+      u32 eth_start = vnet_buffer (b0)->ei.l2_hdr_offset;
+      vnet_buffer (b0)->l2.l2_len = vnet_buffer (b0)->l2_hdr_size =
+	b0->current_data - eth_start;
+      b0->flags |= VNET_BUFFER_F_L2_HDR_SIZE_VALID;
+    }
+
   if (PREDICT_FALSE (*error0 != ETHERNET_ERROR_NONE))
     {
       // some error occurred
@@ -402,15 +409,15 @@ ethernet_input_inline (vlib_main_t * vm,
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
 
-	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
-	      vnet_buffer (b1)->l2_hdr_offset = b1->current_data;
+	      vnet_buffer (b0)->l2_hdr_size = sizeof (ethernet_header_t);
+	      vnet_buffer (b1)->l2_hdr_size = sizeof (ethernet_header_t);
 	      vnet_buffer (b0)->l3_hdr_offset =
-		vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
+		b0->current_data + sizeof (ethernet_header_t);
 	      vnet_buffer (b1)->l3_hdr_offset =
-		vnet_buffer (b1)->l2_hdr_offset + sizeof (ethernet_header_t);
-	      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		b1->current_data + sizeof (ethernet_header_t);
+	      b0->flags |= VNET_BUFFER_F_L2_HDR_SIZE_VALID |
 		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
-	      b1->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+	      b1->flags |= VNET_BUFFER_F_L2_HDR_SIZE_VALID |
 		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
@@ -430,12 +437,12 @@ ethernet_input_inline (vlib_main_t * vm,
 		      (hi->hw_address != 0) &&
 		      !eth_mac_equal ((u8 *) e1, hi->hw_address))
 		    error1 = ETHERNET_ERROR_L3_MAC_MISMATCH;
-		  determine_next_node (em, variant, 0, type0, b0,
-				       &error0, &next0);
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-		  determine_next_node (em, variant, 0, type1, b1,
-				       &error1, &next1);
+		  determine_next_node (em, variant, 0, 1, type0, b0,
+				       &error0, &next0);
 		  vlib_buffer_advance (b1, sizeof (ethernet_header_t));
+		  determine_next_node (em, variant, 0, 1, type1, b1,
+				       &error1, &next1);
 		}
 	      goto ship_it01;
 	    }
@@ -503,9 +510,9 @@ ethernet_input_inline (vlib_main_t * vm,
 	    {
 
 	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->l2_hdr_offset;
+		- vnet_buffer (b0)->ei.l2_hdr_offset;
 	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data
-		- vnet_buffer (b1)->l2_hdr_offset;
+		- vnet_buffer (b1)->ei.l2_hdr_offset;
 
 	      stats_n_packets += 2;
 	      stats_n_bytes += len0 + len1;
@@ -556,14 +563,14 @@ ethernet_input_inline (vlib_main_t * vm,
 	  if (variant == ETHERNET_INPUT_VARIANT_NOT_L2)
 	    is_l20 = is_l21 = 0;
 
-	  determine_next_node (em, variant, is_l20, type0, b0, &error0,
+	  determine_next_node (em, variant, is_l20, 0, type0, b0, &error0,
 			       &next0);
-	  determine_next_node (em, variant, is_l21, type1, b1, &error1,
+	  determine_next_node (em, variant, is_l21, 0, type1, b1, &error1,
 			       &next1);
-	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
-	    vnet_buffer (b0)->l2.l2_len;
-	  vnet_buffer (b1)->l3_hdr_offset = vnet_buffer (b1)->l2_hdr_offset +
-	    vnet_buffer (b1)->l2.l2_len;
+	  vnet_buffer (b0)->l3_hdr_offset =
+	    vnet_buffer (b0)->ei.l2_hdr_offset + vnet_buffer (b0)->l2.l2_len;
+	  vnet_buffer (b1)->l3_hdr_offset =
+	    vnet_buffer (b1)->ei.l2_hdr_offset + vnet_buffer (b1)->l2.l2_len;
 	  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 	  b1->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
@@ -636,10 +643,10 @@ ethernet_input_inline (vlib_main_t * vm,
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
 
-	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+	      vnet_buffer (b0)->l2_hdr_size = sizeof (ethernet_header_t);
 	      vnet_buffer (b0)->l3_hdr_offset =
-		vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
-	      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		b0->current_data + sizeof (ethernet_header_t);
+	      b0->flags |= VNET_BUFFER_F_L2_HDR_SIZE_VALID |
 		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
@@ -653,7 +660,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		      (hi->hw_address != 0) &&
 		      !eth_mac_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
-		  determine_next_node (em, variant, 0, type0, b0,
+		  determine_next_node (em, variant, 0, 1, type0, b0,
 				       &error0, &next0);
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		}
@@ -703,7 +710,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	    {
 
 	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->l2_hdr_offset;
+		- vnet_buffer (b0)->ei.l2_hdr_offset;
 
 	      stats_n_packets += 1;
 	      stats_n_bytes += len0;
@@ -736,10 +743,10 @@ ethernet_input_inline (vlib_main_t * vm,
 	  if (variant == ETHERNET_INPUT_VARIANT_NOT_L2)
 	    is_l20 = 0;
 
-	  determine_next_node (em, variant, is_l20, type0, b0, &error0,
+	  determine_next_node (em, variant, is_l20, 0, type0, b0, &error0,
 			       &next0);
-	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
-	    vnet_buffer (b0)->l2.l2_len;
+	  vnet_buffer (b0)->l3_hdr_offset =
+	    vnet_buffer (b0)->ei.l2_hdr_offset + vnet_buffer (b0)->l2.l2_len;
 	  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	ship_it0:

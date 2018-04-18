@@ -1805,20 +1805,21 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	  if (is_ip4)
 	    {
-	      vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-				    IP_PROTOCOL_TCP, 1);
+	      u8 *ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4,
+					      &tc0->c_rmt_ip4,
+					      IP_PROTOCOL_TCP, 1);
 	      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      vnet_buffer (b0)->l3_hdr_size = (u8 *) th0 - ih0;
 	      th0->checksum = 0;
 	    }
 	  else
 	    {
-	      ip6_header_t *ih0;
-	      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
-					  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
+	      u8 *ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
+					      &tc0->c_rmt_ip6,
+					      IP_PROTOCOL_TCP);
 	      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      vnet_buffer (b0)->l3_hdr_size = (u8 *) th0 - ih0;
 	      th0->checksum = 0;
 	    }
 

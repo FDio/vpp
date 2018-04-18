@@ -56,9 +56,6 @@ l2_to_bvi (vlib_main_t * vlib_main,
       return TO_BVI_ERR_BAD_MAC;
     }
 
-  /* Save L2 header position which may be changed due to packet replication */
-  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
-
   /* Strip L2 header */
   l2_len = vnet_buffer (b0)->l2.l2_len;
   vlib_buffer_advance (b0, l2_len);
@@ -66,7 +63,11 @@ l2_to_bvi (vlib_main_t * vlib_main,
   l3h = vlib_buffer_get_current (b0);
   ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
 
-  /* Set the input interface to be the BVI interface */
+  /* Set the input interface to be the BVI interface for L3 forwarding */
+  vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
+  vnet_buffer (b0)->l2_hdr_size = l2_len;
+  b0->flags |=
+    VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L2_HDR_SIZE_VALID;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = bvi_sw_if_index;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 

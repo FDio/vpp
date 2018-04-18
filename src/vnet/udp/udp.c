@@ -124,21 +124,22 @@ u32
 udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
 {
   udp_connection_t *uc;
+  u8 *uh, *ih;
   vlib_main_t *vm = vlib_get_main ();
 
   uc = udp_get_connection_from_transport (tc);
 
-  vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
+  uh = vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
   if (tc->is_ip4)
-    vlib_buffer_push_ip4 (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-			  IP_PROTOCOL_UDP, 1);
+    ih = vlib_buffer_push_ip4 (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
+			       IP_PROTOCOL_UDP, 1);
   else
     {
-      ip6_header_t *ih;
       ih = vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
 				 IP_PROTOCOL_UDP);
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
     }
+  vnet_buffer (b)->l3_hdr_size = uh - ih;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;

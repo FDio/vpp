@@ -108,7 +108,7 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
   /* Update l2 parameters */
   vnet_buffer (b0)->l2.l2_len +=
     (word) config->push_bytes - (word) config->pop_bytes;
-  vnet_buffer (b0)->l2_hdr_offset -=
+  vnet_buffer (b0)->l2_hdr_size +=
     (word) config->push_bytes - (word) config->pop_bytes;
 
   /* Update vlan tag count */

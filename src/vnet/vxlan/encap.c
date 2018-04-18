@@ -235,10 +235,10 @@ vxlan_encap_inline (vlib_main_t * vm,
             {
               b0->flags |= csum_flags;
               vnet_buffer (b0)->l3_hdr_offset = l3_0 - b0->data;
-              vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+              vnet_buffer (b0)->l3_hdr_size = (u8 *) udp0 - l3_0;
               b1->flags |= csum_flags;
               vnet_buffer (b1)->l3_hdr_offset = l3_1 - b1->data;
-              vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
+              vnet_buffer (b1)->l3_hdr_size = (u8 *) udp1 - l3_1;
             }
           /* IPv4 UDP checksum only if checksum offload is used */
           else if (is_ip4)
@@ -366,7 +366,7 @@ vxlan_encap_inline (vlib_main_t * vm,
             {
               b0->flags |= csum_flags;
               vnet_buffer (b0)->l3_hdr_offset = l3_0 - b0->data;
-              vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+              vnet_buffer (b0)->l3_hdr_size = (u8 *) udp0 - l3_0;
             }
           /* IPv4 UDP checksum only if checksum offload is used */
           else if (is_ip4)

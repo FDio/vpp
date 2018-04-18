@@ -379,7 +379,10 @@ ethernet_setup_node (vlib_main_t * vm, u32 node_index)
 always_inline ethernet_header_t *
 ethernet_buffer_get_header (vlib_buffer_t * b)
 {
-  return (void *) (b->data + vnet_buffer (b)->l2_hdr_offset);
+  ASSERT ((b)->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
+  ASSERT ((b)->flags & VNET_BUFFER_F_L2_HDR_SIZE_VALID);
+  return (void *)
+    (b->data + vnet_buffer (b)->l3_hdr_offset - vnet_buffer (b)->l2_hdr_size);
 }
 
 /** Returns the number of VLAN headers in the current Ethernet frame in the

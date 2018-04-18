@@ -29,18 +29,21 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "%s ", v);
   foreach_vnet_buffer_flag
 #undef _
-    if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
-    a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
+    if (b->flags & VNET_BUFFER_F_L2_HDR_SIZE_VALID)
+    a = format (a, "l2-hdr-size %d ", vnet_buffer (b)->l2_hdr_size);
 
   if (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
     a = format (a, "l3-hdr-offset %d ", vnet_buffer (b)->l3_hdr_offset);
 
-  if (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
-    a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
+  if (b->flags & VNET_BUFFER_F_L3_HDR_SIZE_VALID)
+    a = format (a, "l3-hdr-size %d ", vnet_buffer (b)->l3_hdr_size);
 
   if (b->flags & VNET_BUFFER_F_QOS_DATA_VALID)
     a = format (a, "qos %d.%d ",
 		vnet_buffer2 (b)->qos.bits, vnet_buffer2 (b)->qos.source);
+
+  if (vnet_buffer (b)->flow_id)
+    a = format (a, "flow-id %d ", vnet_buffer (b)->flow_id);
 
   s = format (s, "%U", format_vlib_buffer, b);
   if (a)

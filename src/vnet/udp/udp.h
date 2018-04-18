@@ -258,10 +258,7 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
   uh->checksum = 0;
   uh->length = clib_host_to_net_u16 (b->current_length);
   if (offload_csum)
-    {
-      b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-      vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
-    }
+    b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   return uh;
 }
 

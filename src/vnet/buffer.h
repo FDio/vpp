@@ -59,9 +59,9 @@
   _(11, OFFLOAD_TCP_CKSUM, "offload-tcp-cksum")		\
   _(12, OFFLOAD_UDP_CKSUM, "offload-udp-cksum")		\
   _(13, IS_NATED, "nated")				\
-  _(14, L2_HDR_OFFSET_VALID, 0)				\
+  _(14, L2_HDR_SIZE_VALID, 0)				\
   _(15, L3_HDR_OFFSET_VALID, 0)				\
-  _(16, L4_HDR_OFFSET_VALID, 0)				\
+  _(16, L3_HDR_SIZE_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
   _(19, QOS_DATA_VALID, 0)
@@ -113,13 +113,19 @@ _(tcp)
 typedef struct
 {
   u32 sw_if_index[VLIB_N_RX_TX];
-  i16 l2_hdr_offset;
+  u32 flow_id;
   i16 l3_hdr_offset;
-  i16 l4_hdr_offset;
-  u16 dont_waste_me;
+  u8 l2_hdr_size;
+  u8 l3_hdr_size;
 
   union
   {
+    /* Used by ethernet-input node */
+    struct opaque_ei
+    {
+      i16 l2_hdr_offset;
+    } ei;
+
     /* IP4/6 buffer opaque. */
     struct
     {

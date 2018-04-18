@@ -321,8 +321,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b0->current_data = mb0->data_off + offset0 - RTE_PKTMBUF_HEADROOM;
 	  b0->flags |= device_input_next_node_flags[next0];
 	  vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
-	  vnet_buffer (b0)->l2_hdr_offset =
-	    mb0->data_off - RTE_PKTMBUF_HEADROOM;
+	  vnet_buffer (b0)->l2_hdr_size = offset0;
 	  b0->current_length = mb0->data_len - offset0;
 	  n_rx_bytes += mb0->pkt_len;
 
@@ -330,8 +329,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b1->current_data = mb1->data_off + offset1 - RTE_PKTMBUF_HEADROOM;
 	  b1->flags |= device_input_next_node_flags[next1];
 	  vnet_buffer (b1)->l3_hdr_offset = b1->current_data;
-	  vnet_buffer (b1)->l2_hdr_offset =
-	    mb1->data_off - RTE_PKTMBUF_HEADROOM;
+	  vnet_buffer (b1)->l2_hdr_size = offset1;
 	  b1->current_length = mb1->data_len - offset1;
 	  n_rx_bytes += mb1->pkt_len;
 
@@ -339,8 +337,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b2->current_data = mb2->data_off + offset2 - RTE_PKTMBUF_HEADROOM;
 	  b2->flags |= device_input_next_node_flags[next2];
 	  vnet_buffer (b2)->l3_hdr_offset = b2->current_data;
-	  vnet_buffer (b2)->l2_hdr_offset =
-	    mb2->data_off - RTE_PKTMBUF_HEADROOM;
+	  vnet_buffer (b2)->l2_hdr_size = offset2;
 	  b2->current_length = mb2->data_len - offset2;
 	  n_rx_bytes += mb2->pkt_len;
 
@@ -348,8 +345,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b3->current_data = mb3->data_off + offset3 - RTE_PKTMBUF_HEADROOM;
 	  b3->flags |= device_input_next_node_flags[next3];
 	  vnet_buffer (b3)->l3_hdr_offset = b3->current_data;
-	  vnet_buffer (b3)->l2_hdr_offset =
-	    mb3->data_off - RTE_PKTMBUF_HEADROOM;
+	  vnet_buffer (b3)->l2_hdr_size = offset3;
 	  b3->current_length = mb3->data_len - offset3;
 	  n_rx_bytes += mb3->pkt_len;
 
@@ -447,8 +443,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b0->current_data = mb0->data_off + offset0 - RTE_PKTMBUF_HEADROOM;
 	  b0->flags |= device_input_next_node_flags[next0];
 	  vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
-	  vnet_buffer (b0)->l2_hdr_offset =
-	    mb0->data_off - RTE_PKTMBUF_HEADROOM;
+	  vnet_buffer (b0)->l2_hdr_size = offset0;
 	  b0->current_length = mb0->data_len - offset0;
 	  n_rx_bytes += mb0->pkt_len;
 

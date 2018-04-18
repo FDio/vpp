@@ -170,10 +170,14 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 
   ASSERT (!(is_ip4 && is_ip6));
 
-  ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-  ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  i16 l3_offset = vnet_buffer (b)->l3_hdr_offset;
+  i16 l4_offset =
+    vnet_buffer (b)->l3_hdr_offset + vnet_buffer (b)->l3_hdr_size;
+
+  ip4 = (ip4_header_t *) (b->data + l3_offset);
+  ip6 = (ip6_header_t *) (b->data + l3_offset);
+  th = (tcp_header_t *) (b->data + l4_offset);
+  uh = (udp_header_t *) (b->data + l4_offset);
 
   if (is_ip4)
     {

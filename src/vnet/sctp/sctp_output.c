@@ -1661,7 +1661,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	      sctp_hdr = ip4_next_header (iph4);
 	      sctp_hdr->checksum = checksum;
 
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      vnet_buffer (b0)->l3_hdr_size = (u8 *) th0 - (u8 *) iph4;
 
 #if SCTP_DEBUG_STATE_MACHINE
 	      packet_length = clib_net_to_host_u16 (iph4->length);
@@ -1689,7 +1689,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	      sctp_hdr->checksum = checksum;
 
 	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) iph6 - b0->data;
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      vnet_buffer (b0)->l3_hdr_size = (u8 *) th0 - (u8 *) iph6;
 
 #if SCTP_DEBUG_STATE_MACHINE
 	      packet_length = clib_net_to_host_u16 (iph6->payload_length);
