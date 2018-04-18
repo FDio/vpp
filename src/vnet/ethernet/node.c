@@ -229,8 +229,6 @@ determine_next_node (ethernet_main_t * em,
 		     u32 is_l20,
 		     u32 type0, vlib_buffer_t * b0, u8 * error0, u8 * next0)
 {
-  u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-  vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
   if (PREDICT_FALSE (*error0 != ETHERNET_ERROR_NONE))
     {
       // some error occurred
@@ -238,8 +236,10 @@ determine_next_node (ethernet_main_t * em,
     }
   else if (is_l20)
     {
-      *next0 = em->l2_next;
       // record the L2 len and reset the buffer so the L2 header is preserved
+      u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
+      vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
+      *next0 = em->l2_next;
       ASSERT (vnet_buffer (b0)->l2.l2_len ==
 	      ethernet_buffer_header_size (b0));
       vlib_buffer_advance (b0, -ethernet_buffer_header_size (b0));
@@ -430,12 +430,12 @@ ethernet_input_inline (vlib_main_t * vm,
 		      (hi->hw_address != 0) &&
 		      !eth_mac_equal ((u8 *) e1, hi->hw_address))
 		    error1 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
-		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
+		  vlib_buffer_advance (b1, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type1, b1,
 				       &error1, &next1);
-		  vlib_buffer_advance (b1, sizeof (ethernet_header_t));
 		}
 	      goto ship_it01;
 	    }
