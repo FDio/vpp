@@ -483,7 +483,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 {
   sctp_init_ack_chunk_t *init_ack_chunk =
     (sctp_init_ack_chunk_t *) (sctp_hdr);
-  sctp_state_cookie_param_t state_cookie;
 
   char hostname[FQDN_MAX_LENGTH];
 
@@ -560,8 +559,9 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 		sctp_state_cookie_param_t *state_cookie_param =
 		  (sctp_state_cookie_param_t *) opt_params_hdr;
 
-		clib_memcpy (&state_cookie, state_cookie_param,
+		clib_memcpy (&(sctp_conn->cookie_param), state_cookie_param,
 			     sizeof (sctp_state_cookie_param_t));
+
 		break;
 	      }
 	    case SCTP_HOSTNAME_ADDRESS_TYPE:
@@ -586,9 +586,6 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 	  pointer_offset += increment;
 	}
     }
-
-  clib_memcpy (&(sctp_conn->cookie_param), &state_cookie,
-	       sizeof (sctp_state_cookie_param_t));
 
   sctp_prepare_cookie_echo_chunk (sctp_conn, idx, b0, 1);
 
