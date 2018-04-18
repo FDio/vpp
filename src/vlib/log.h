@@ -28,7 +28,8 @@ typedef u32 vlib_log_class_t;
   _(4, WARNING, warn) \
   _(5, NOTICE, notice) \
   _(6, INFO, info) \
-  _(7, DEBUG, debug)
+  _(7, DEBUG, debug) \
+  _(8, DISABLED, disabled)
 
 typedef enum
 {
