@@ -514,12 +514,12 @@ done:
     if (!rv)
       {
         rmp->handle = a->handle;
-	rmp->lcl_is_ip4 = tc->is_ip4;
-  	rmp->lcl_port = tc->lcl_port;
         if (app && application_has_global_scope (app))
             {
               s = listen_session_get_from_handle (a->handle);
               tc = listen_session_get_transport (s);
+              rmp->lcl_is_ip4 = tc->is_ip4;
+              rmp->lcl_port = tc->lcl_port;
               clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
               if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
                 {
