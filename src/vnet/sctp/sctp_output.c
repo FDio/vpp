@@ -1702,7 +1702,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	    {
 	      clib_warning
 		("Trying to send an unrecognized chunk... something is really bad.");
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 	    }
@@ -1735,7 +1735,7 @@ sctp46_output_inline (vlib_main_t * vm,
 				      connection.rmt_port,
 				      sctp_hdr->dst_port);
 
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 	    }
@@ -1758,7 +1758,7 @@ sctp46_output_inline (vlib_main_t * vm,
 		 sctp_chunk_to_string (chunk_type),
 		 sctp_state_to_string (sctp_conn->state));
 
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = SCTP_OUTPUT_NEXT_DROP;
 	      goto done;
 

@@ -274,7 +274,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	;
       else
       {
-          error = clib_error_return (0, "unkown input: %U",
+          error = clib_error_return (0, "unknown input: %U",
                                      format_unformat_error, line_input);
           goto done;
       }

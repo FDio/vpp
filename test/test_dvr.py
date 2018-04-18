@@ -321,7 +321,7 @@ class TestDVR(VppTestCase):
         route_2.add_vpp_config()
 
         #
-        # packets are dropped because bridge does not flood unkown unicast
+        # packets are dropped because bridge does not flood unknown unicast
         #
         self.send_and_assert_no_replies(self.pg0, pkt_no_tag)
 
