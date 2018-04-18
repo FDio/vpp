@@ -721,13 +721,30 @@ if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "rto_stat: rto %u srtt %u rttvar %u ",			\
+    .format = "rcv_stat: rto %u srtt %u rttvar %u ",			\
     .format_args = "i4i4i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 3);						\
   ed->data[0] = _tc->rto;						\
   ed->data[1] = _tc->srtt;						\
   ed->data[2] = _tc->rttvar;						\
+}									\
+}
+#define TCP_EVT_CC_SND_STAT_HANDLER(_tc, ...)				\
+{									\
+if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "snd_stat: dack %u sacked %u lost %u out %u rxt %u",	\
+    .format_args = "i4i4i4i4i4",					\
+  };									\
+  DECLARE_ETD(_tc, _e, 5);						\
+  ed->data[0] = _tc->rcv_dupacks;					\
+  ed->data[1] = _tc->sack_sb.sacked_bytes;				\
+  ed->data[2] = _tc->sack_sb.lost_bytes;				\
+  ed->data[3] = tcp_bytes_out (_tc);					\
+  ed->data[3] = _tc->snd_rxt_bytes;					\
 }									\
 }
 

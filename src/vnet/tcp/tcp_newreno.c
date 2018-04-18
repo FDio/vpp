@@ -36,8 +36,14 @@ newreno_rcv_ack (tcp_connection_t * tc)
     }
   else
     {
-      /* Round up to 1 if needed */
-      tc->cwnd += clib_max ((tc->snd_mss * tc->snd_mss) / tc->cwnd, 1);
+      /* tc->cwnd += clib_max ((tc->snd_mss * tc->snd_mss) / tc->cwnd, 1); */
+      tc->cwnd_acc_bytes += tc->bytes_acked;
+      if (tc->cwnd_acc_bytes >= tc->cwnd)
+	{
+	  u32 inc = tc->cwnd_acc_bytes / tc->cwnd;
+	  tc->cwnd += inc * tc->snd_mss;
+	  tc->cwnd_acc_bytes -= inc * tc->cwnd;
+	}
     }
 }
 
