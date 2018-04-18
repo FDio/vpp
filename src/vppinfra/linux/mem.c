@@ -213,7 +213,8 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
       u64 mask[16] = { 0 };
       mask[0] = 1 << a->numa_node;
       rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
-      if (rv)
+      if (rv == -1 && a->numa_node != 0 &&
+	  (a->flags & CLIB_MEM_VM_F_NUMA_FORCE) != 0)
 	{
 	  err = clib_error_return_unix (0, "set_mempolicy");
 	  goto error;
