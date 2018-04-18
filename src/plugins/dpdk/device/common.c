@@ -30,6 +30,9 @@
 void
 dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {
+  dpdk_log_err ("Interface %U error %d: %s",
+		format_dpdk_device_name, xd->device_index, rv,
+		rte_strerror (rv));
   xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s",
 				  str, xd->device_index, rv,
 				  rte_strerror (rv));
@@ -166,6 +169,9 @@ dpdk_device_start (dpdk_device_t * xd)
 	  rte_eth_allmulticast_enable (dpdk_port);
 	}
     }
+
+  dpdk_log_info ("Interface %U started",
+		 format_dpdk_device_name, xd->device_index);
 }
 
 void
@@ -188,6 +194,8 @@ dpdk_device_stop (dpdk_device_t * xd)
 	  rte_eth_dev_stop (dpdk_port);
 	}
     }
+  dpdk_log_info ("Interface %U stopped",
+		 format_dpdk_device_name, xd->device_index);
 }
 
 /* Even type for send_garp_na_process */
@@ -258,7 +266,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
   RTE_SET_USED (param);
   if (type != RTE_ETH_EVENT_INTR_LSC)
     {
-      clib_warning ("Unknown event %d received for port %d", type, port_id);
+      dpdk_log_info ("Unknown event %d received for port %d", type, port_id);
       return -1;
     }
 
@@ -269,12 +277,10 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
     {
       uword bd_port = xd->bond_port;
       int bd_mode = rte_eth_bond_mode_get (bd_port);
-#if 0
-      clib_warning ("Port %d state to %s, "
-		    "slave of port %d BondEthernet%d in mode %d",
-		    port_id, (link_up) ? "UP" : "DOWN",
-		    bd_port, xd->port_id, bd_mode);
-#endif
+      dpdk_log_info ("Port %d state to %s, "
+		     "slave of port %d BondEthernet%d in mode %d",
+		     port_id, (link_up) ? "UP" : "DOWN",
+		     bd_port, xd->port_id, bd_mode);
       if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
 	{
 	  vl_api_force_rpc_call_main_thread
@@ -289,12 +295,12 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
   else				/* Should not happen as callback not setup for "normal" links */
     {
       if (link_up)
-	clib_warning ("Port %d Link Up - speed %u Mbps - %s",
-		      port_id, (unsigned) link.link_speed,
-		      (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-		      "full-duplex" : "half-duplex");
+	dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s",
+		       port_id, (unsigned) link.link_speed,
+		       (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+		       "full-duplex" : "half-duplex");
       else
-	clib_warning ("Port %d Link Down\n\n", port_id);
+	dpdk_log_info ("Port %d Link Down\n\n", port_id);
     }
 
   return 0;

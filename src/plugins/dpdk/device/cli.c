@@ -12,11 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <unistd.h>
+#include <fcntl.h>
+
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
 #include <vppinfra/xxhash.h>
+#include <vppinfra/linux/sysfs.c>
 
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
@@ -376,10 +381,95 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_dpdk_bufferr,static) = {
+VLIB_CLI_COMMAND (cmd_show_dpdk_buffer,static) = {
     .path = "show dpdk buffer",
     .short_help = "show dpdk buffer",
     .function = show_dpdk_buffer,
+    .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
+		   vlib_cli_command_t * cmd)
+{
+  clib_error_t *err = 0;
+  u32 pipe_max_size;
+  int fds[2];
+  u8 *s = 0;
+  int n, n_try;
+  FILE *f;
+
+  err = clib_sysfs_read ("/proc/sys/fs/pipe-max-size", "%u", &pipe_max_size);
+
+  if (err)
+    return err;
+
+  if (pipe (fds) == -1)
+    return clib_error_return_unix (0, "pipe");
+
+#ifndef F_SETPIPE_SZ
+#define F_SETPIPE_SZ	(1024 + 7)
+#endif
+
+  if (fcntl (fds[1], F_SETPIPE_SZ, pipe_max_size) == -1)
+    {
+      err = clib_error_return_unix (0, "fcntl(F_SETPIPE_SZ)");
+      goto error;
+    }
+
+  if (fcntl (fds[0], F_SETFL, O_NONBLOCK) == -1)
+    {
+      err = clib_error_return_unix (0, "fcntl(F_SETFL)");
+      goto error;
+    }
+
+  if ((f = fdopen (fds[1], "a")) == 0)
+    {
+      err = clib_error_return_unix (0, "fdopen");
+      goto error;
+    }
+
+  rte_dump_physmem_layout (f);
+  fflush (f);
+
+  n = n_try = 4096;
+  while (n == n_try)
+    {
+      uword len = vec_len (s);
+      vec_resize (s, len + n_try);
+
+      n = read (fds[0], s + len, n_try);
+      if (n < 0 && errno != EAGAIN)
+	{
+	  err = clib_error_return_unix (0, "read");
+	  goto error;
+	}
+      _vec_len (s) = len + (n < 0 ? 0 : n);
+    }
+
+  vlib_cli_output (vm, "%v", s);
+
+error:
+  close (fds[0]);
+  close (fds[1]);
+  vec_free (s);
+  return err;
+}
+
+/*?
+ * This command displays DPDK physmem layout
+ *
+ * @cliexpar
+ * Example of how to display DPDK physmem layout:
+ * @cliexstart{show dpdk physmem}
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_show_dpdk_physmem,static) = {
+    .path = "show dpdk physmem",
+    .short_help = "show dpdk physmem",
+    .function = show_dpdk_physmem,
     .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
