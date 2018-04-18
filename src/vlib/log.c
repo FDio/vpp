@@ -18,11 +18,6 @@
 #include <vlib/log.h>
 #include <syslog.h>
 
-#define VLIB_LOG_DEFAULT_SIZE 50
-#define VLIB_LOG_DEFAULT_RATE_LIMIT 10
-#define VLIB_LOG_DEFAULT_UNTHROTTLE_TIME 3
-#define VLIB_LOG_DEFAULT_LOG_LEVEL VLIB_LOG_LEVEL_CRIT
-
 typedef struct
 {
   vlib_log_level_t level;
@@ -40,7 +35,6 @@ typedef struct
   // level of log messages sent to syslog for this subclass
   vlib_log_level_t syslog_level;
   // flag saying whether this subclass is logged to syslog
-  bool syslog_enabled;
   f64 last_event_timestamp;
   int last_sec_count;
   int is_throttling;
@@ -64,12 +58,19 @@ typedef struct
   vlib_log_class_t log_class;
 
   int default_rate_limit;
+  int default_log_level;
+  int default_syslog_log_level;
   int unthrottle_time;
   u32 indent;
 } vlib_log_main_t;
 
-vlib_log_main_t log_main;
-
+vlib_log_main_t log_main = {
+  .default_log_level = VLIB_LOG_LEVEL_NOTICE,
+  .default_syslog_log_level = VLIB_LOG_LEVEL_WARNING,
+  .unthrottle_time = 3,
+  .size = 512,
+  .default_rate_limit = 50,
+};
 
 static int
 last_log_entry ()
@@ -103,11 +104,13 @@ vlib_log_level_to_syslog_priority (vlib_log_level_t level)
 {
   switch (level)
     {
+#define LOG_DISABLED LOG_DEBUG
 #define _(n,uc,lc) \
     case VLIB_LOG_LEVEL_##uc:\
       return LOG_##uc;
       foreach_vlib_log_level
 #undef _
+#undef LOG_DISABLED
     }
   return LOG_DEBUG;
 }
@@ -188,7 +191,8 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
     lm->count++;
 
 syslog:
-  if (sc->syslog_enabled && level <= sc->syslog_level)
+  if (sc->syslog_level != VLIB_LOG_LEVEL_DISABLED &&
+      level <= sc->syslog_level)
     {
       u8 *tmp = format (NULL, "%U", format_vlib_log_class, class);
       if (use_formatted_log_entry)
@@ -238,7 +242,8 @@ vlib_log_register_class (char *class, char *subclass)
   s->index = s - c->subclasses;
   s->name = subclass ? format (0, "%s", subclass) : 0;
   s->rate_limit = lm->default_rate_limit;
-  s->level = VLIB_LOG_DEFAULT_LOG_LEVEL;
+  s->level = lm->default_log_level;
+  s->syslog_level = lm->default_syslog_log_level;
   return (c->index << 16) | (s->index);
 }
 
@@ -269,7 +274,6 @@ static clib_error_t *
 vlib_log_init (vlib_main_t * vm)
 {
   vlib_log_main_t *lm = &log_main;
-  lm->size = VLIB_LOG_DEFAULT_SIZE;
   vec_validate (lm->entries, lm->size);
   lm->log_class = vlib_log_register_class ("log", 0);
   u8 *tmp = format (NULL, "%U %-10U %-10U ", format_time_float, 0, (f64) 0,
@@ -295,10 +299,10 @@ show_log (vlib_main_t * vm,
   while (count--)
     {
       e = vec_elt_at_index (lm->entries, i);
-      vlib_cli_output (vm, "%U %-10U %-10U %v (%d)",
+      vlib_cli_output (vm, "%U %-10U %-10U %v",
 		       format_time_float, 0, e->timestamp,
 		       format_vlib_log_level, e->level,
-		       format_vlib_log_class, e->class, e->string, i);
+		       format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;
     }
 
@@ -310,6 +314,51 @@ VLIB_CLI_COMMAND (cli_show_log, static) = {
   .path = "show logging",
   .short_help = "show logging",
   .function = show_log,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_log_config (vlib_main_t * vm,
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  vlib_log_main_t *lm = &log_main;
+  vlib_log_class_data_t *c;
+  vlib_log_subclass_data_t *sc;
+
+  vlib_cli_output (vm, "%-20s %u entries", "Buffer Size:", lm->size);
+  vlib_cli_output (vm, "Defaults:\n");
+  vlib_cli_output (vm, "%-20s %U", "  Log Level:",
+		   format_vlib_log_level, lm->default_log_level);
+  vlib_cli_output (vm, "%-20s %U", "  Syslog Log Level:",
+		   format_vlib_log_level, lm->default_syslog_log_level);
+  vlib_cli_output (vm, "%-20s %u msgs/sec", "  Rate Limit:",
+		   lm->default_rate_limit);
+  vlib_cli_output (vm, "\n");
+  vlib_cli_output (vm, "%-22s %-14s %-14s %s",
+		   "Class/Subclass", "Level", "Syslog Level", "Rate Limit");
+
+  vec_foreach (c, lm->classes)
+  {
+    vlib_cli_output (vm, "%s", c->name);
+    vec_foreach (sc, c->subclasses)
+    {
+      vlib_cli_output (vm, "  %-20s %-14U %-14U %d",
+		       sc->name ? (char *) sc->name : "default",
+		       format_vlib_log_level, sc->level,
+		       format_vlib_log_level, sc->syslog_level,
+		       sc->rate_limit);
+    }
+  }
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_show_log_config, static) = {
+  .path = "show logging configuration",
+  .short_help = "show logging configuration",
+  .function = show_log_config,
 };
 /* *INDENT-ON* */
 
@@ -456,15 +505,6 @@ set_log_class (vlib_main_t * vm,
       vec_foreach (subclass, class->subclasses)
       {
 	subclass->syslog_level = syslog_level;
-	subclass->syslog_enabled = true;
-      }
-    }
-  else
-    {
-      vlib_log_subclass_data_t *subclass;
-      vec_foreach (subclass, class->subclasses)
-      {
-	subclass->syslog_enabled = false;
       }
     }
   if (set_rate_limit)
@@ -640,19 +680,20 @@ static clib_error_t *
 log_config (vlib_main_t * vm, unformat_input_t * input)
 {
   vlib_log_main_t *lm = &log_main;
-  int size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "size %d", &size))
-	{
-	  lm->size = size;
-	  vec_validate (lm->entries, lm->size);
-	}
+      if (unformat (input, "size %d", &lm->size))
+	vec_validate (lm->entries, lm->size);
       else if (unformat (input, "unthrottle-time %d", &lm->unthrottle_time))
-	{
-	  // nothing to do here
-	}
+	;
+      else if (unformat (input, "default-log-level %U",
+			 unformat_vlib_log_level, &lm->default_log_level))
+	;
+      else if (unformat (input, "default-syslog-log-level %U",
+			 unformat_vlib_log_level,
+			 &lm->default_syslog_log_level))
+	;
       else
 	{
 	  return unformat_parse_error (input);
