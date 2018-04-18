@@ -79,14 +79,14 @@ typedef struct
 always_inline u32
 ip4_reass_buffer_get_data_offset_no_check (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   return vnb->ip.reass.range_first - vnb->ip.reass.fragment_first;
 }
 
 always_inline u32
 ip4_reass_buffer_get_data_offset (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   ASSERT (vnb->ip.reass.range_first >= vnb->ip.reass.fragment_first);
   return ip4_reass_buffer_get_data_offset_no_check (b);
 }
@@ -94,7 +94,7 @@ ip4_reass_buffer_get_data_offset (vlib_buffer_t * b)
 always_inline u16
 ip4_reass_buffer_get_data_len_no_check (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   return clib_min (vnb->ip.reass.range_last, vnb->ip.reass.fragment_last) -
     (vnb->ip.reass.fragment_first + ip4_reass_buffer_get_data_offset (b)) + 1;
 }
@@ -102,7 +102,7 @@ ip4_reass_buffer_get_data_len_no_check (vlib_buffer_t * b)
 always_inline u16
 ip4_reass_buffer_get_data_len (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   ASSERT (vnb->ip.reass.range_last > vnb->ip.reass.fragment_first);
   return ip4_reass_buffer_get_data_len_no_check (b);
 }
@@ -205,7 +205,7 @@ ip4_reass_trace_details (vlib_main_t * vm, u32 bi,
 			 ip4_reass_range_trace_t * trace)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   trace->range_first = vnb->ip.reass.range_first;
   trace->range_last = vnb->ip.reass.range_last;
   trace->data_offset = ip4_reass_buffer_get_data_offset_no_check (b);
@@ -266,7 +266,7 @@ ip4_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     ip4_reass_trace_operation_e action, u32 size_diff)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   if (pool_is_free_index (vm->trace_main.trace_buffer_pool, b->trace_index))
     {
       // this buffer's trace is gone
@@ -312,7 +312,7 @@ ip4_reass_on_timeout (vlib_main_t * vm, ip4_reass_main_t * rm,
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
-  vnet_buffer_opaque_t *range_vnb;
+  vnet_buffer_t *range_vnb;
   while (~0 != range_bi)
     {
       range_b = vlib_get_buffer (vm, range_bi);
@@ -584,11 +584,11 @@ ip4_reass_insert_range_in_chain (vlib_main_t * vm,
 {
 
   vlib_buffer_t *new_next_b = vlib_get_buffer (vm, new_next_bi);
-  vnet_buffer_opaque_t *new_next_vnb = vnet_buffer (new_next_b);
+  vnet_buffer_t *new_next_vnb = vnet_buffer (new_next_b);
   if (~0 != prev_range_bi)
     {
       vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_range_bi);
-      vnet_buffer_opaque_t *prev_vnb = vnet_buffer (prev_b);
+      vnet_buffer_t *prev_vnb = vnet_buffer (prev_b);
       new_next_vnb->ip.reass.next_range_bi = prev_vnb->ip.reass.next_range_bi;
       prev_vnb->ip.reass.next_range_bi = new_next_bi;
     }
@@ -613,11 +613,11 @@ ip4_reass_remove_range_from_chain (vlib_main_t * vm,
 				   u32 discard_bi)
 {
   vlib_buffer_t *discard_b = vlib_get_buffer (vm, discard_bi);
-  vnet_buffer_opaque_t *discard_vnb = vnet_buffer (discard_b);
+  vnet_buffer_t *discard_vnb = vnet_buffer (discard_b);
   if (~0 != prev_range_bi)
     {
       vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_range_bi);
-      vnet_buffer_opaque_t *prev_vnb = vnet_buffer (prev_b);
+      vnet_buffer_t *prev_vnb = vnet_buffer (prev_b);
       ASSERT (prev_vnb->ip.reass.next_range_bi == discard_bi);
       prev_vnb->ip.reass.next_range_bi = discard_vnb->ip.reass.next_range_bi;
     }
@@ -658,7 +658,7 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
   ip4_header_t *fip = vlib_buffer_get_current (fb);
   ASSERT (fb->current_length >= sizeof (*fip));
-  vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
+  vnet_buffer_t *fvnb = vnet_buffer (fb);
   u32 fragment_first = fvnb->ip.reass.fragment_first =
     ip4_get_fragment_offset_bytes (fip);
   u32 fragment_length =
@@ -694,7 +694,7 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (~0 != candidate_range_bi)
     {
       vlib_buffer_t *candidate_b = vlib_get_buffer (vm, candidate_range_bi);
-      vnet_buffer_opaque_t *candidate_vnb = vnet_buffer (candidate_b);
+      vnet_buffer_t *candidate_vnb = vnet_buffer (candidate_b);
       if (fragment_first > candidate_vnb->ip.reass.range_last)
 	{
 	  // this fragments starts after candidate range
@@ -1346,7 +1346,7 @@ format_ip4_reass (u8 * s, va_list * args)
   while (~0 != bi)
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-      vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+      vnet_buffer_t *vnb = vnet_buffer (b);
       s = format (s, "  #%03u: range: [%u, %u], bi: %u, off: %d, len: %u, "
 		  "fragment[%u, %u]\n",
 		  counter, vnb->ip.reass.range_first,

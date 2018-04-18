@@ -212,7 +212,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  src_epg0 = vnet_buffer2 (b0)->gbp.src_epg;
+	  src_epg0 = vnet_buffer (b0)->gbp.src_epg;
 	  next_dpo0 = gbp_epg_dpo_lookup (src_epg0, fproto);
 
 	  if (PREDICT_TRUE (NULL != next_dpo0))

@@ -35,12 +35,12 @@ format_vnet_buffer (u8 * s, va_list * args)
   if (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
     a = format (a, "l3-hdr-offset %d ", vnet_buffer (b)->l3_hdr_offset);
 
-  if (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
-    a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
+  if (b->flags & VNET_BUFFER_F_L3_HDR_SZ_VALID)
+    a = format (a, "l3-hdr-sz %d ", vnet_buffer (b)->l3_hdr_sz);
 
   if (b->flags & VNET_BUFFER_F_QOS_DATA_VALID)
     a = format (a, "qos %d.%d ",
-		vnet_buffer2 (b)->qos.bits, vnet_buffer2 (b)->qos.source);
+		vnet_buffer (b)->qos.bits, vnet_buffer (b)->qos.source);
 
   s = format (s, "%U", format_vlib_buffer, b);
   if (a)

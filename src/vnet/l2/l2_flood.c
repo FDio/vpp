@@ -191,7 +191,7 @@ l2flood_process (vlib_main_t * vm,
     }
   else
     {
-      vnet_buffer_opaque_t *vnet_buff_op;
+      vnet_buffer_t *vnet_buff_op;
 
       /* Do flood "recycle node" processing */
 
@@ -210,7 +210,7 @@ l2flood_process (vlib_main_t * vm,
       current_member = (i32) ctx->feature_counter - 1;
 
       /* Need to update input index from saved packet context */
-      vnet_buff_op = (vnet_buffer_opaque_t *) ctx->vnet_buffer;
+      vnet_buff_op = (vnet_buffer_t *) ctx->vnet_buffer;
       *sw_if_index0 = vnet_buff_op->sw_if_index[VLIB_RX];
 
       /* Find next member that passes the reflection and SHG check */

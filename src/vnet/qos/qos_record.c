@@ -157,8 +157,8 @@ qos_record_inline (vlib_main_t * vm,
 	      ip4_0 = vlib_buffer_get_current (b0);
 	      qos0 = ip4_0->tos;
 	    }
-	  vnet_buffer2 (b0)->qos.bits = qos0;
-	  vnet_buffer2 (b0)->qos.source = QOS_SOURCE_IP;
+	  vnet_buffer (b0)->qos.bits = qos0;
+	  vnet_buffer (b0)->qos.source = QOS_SOURCE_IP;
 	  b0->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 

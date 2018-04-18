@@ -172,8 +172,10 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 
   ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
   ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset +
+			 vnet_buffer (b)->l3_hdr_sz);
+  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset +
+			 vnet_buffer (b)->l3_hdr_sz);
 
   if (is_ip4)
     {
@@ -328,10 +330,10 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
-	      b0->feature_arc_index = arc;
-	      b1->feature_arc_index = arc;
-	      b2->feature_arc_index = arc;
-	      b3->feature_arc_index = arc;
+	      vnet_buffer (b0)->feature_arc_index = arc;
+	      vnet_buffer (b1)->feature_arc_index = arc;
+	      vnet_buffer (b2)->feature_arc_index = arc;
+	      vnet_buffer (b3)->feature_arc_index = arc;
 	      b0->current_config_index = current_config_index;
 	      b1->current_config_index = current_config_index;
 	      b2->current_config_index = current_config_index;
@@ -415,7 +417,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
-	      b0->feature_arc_index = arc;
+	      vnet_buffer (b0)->feature_arc_index = arc;
 	      b0->current_config_index = current_config_index;
 	    }
 
