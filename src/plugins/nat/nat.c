@@ -152,6 +152,21 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
   snat_main_per_thread_data_t *tsm =
     vec_elt_at_index (sm->per_thread_data, thread_index);
 
+  if (is_fwd_bypass_session (s))
+    {
+      ed_key.l_addr = s->in2out.addr;
+      ed_key.r_addr = s->ext_host_addr;
+      ed_key.l_port = s->in2out.port;
+      ed_key.r_port = s->ext_host_port;
+      ed_key.proto = snat_proto_to_ip_proto (s->in2out.protocol);
+      ed_key.fib_index = 0;
+      ed_kv.key[0] = ed_key.as_u64[0];
+      ed_kv.key[1] = ed_key.as_u64[1];
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &ed_kv, 0))
+        clib_warning ("in2out_ed key del failed");
+      return;
+    }
+
   /* Endpoint dependent session lookup tables */
   if (is_ed_session (s))
     {
