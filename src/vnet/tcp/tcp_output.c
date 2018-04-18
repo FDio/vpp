@@ -1826,6 +1826,12 @@ tcp46_output_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE
 	      (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
 	    {
+	      /* N.B. Should not filter burst of dupacks. Two issues:
+	       * 1) dupacks open cwnd on remote peer when congested
+	       * 2) acks leaving should have the latest rcv_wnd since the
+	       *    burst may have eaten up all of it, so only the old ones
+	       *     could be filtered.
+	       */
 	      if (!tcp_session_has_ooo_data (tc0))
 		{
 		  error0 = TCP_ERROR_FILTERED_DUPACKS;
