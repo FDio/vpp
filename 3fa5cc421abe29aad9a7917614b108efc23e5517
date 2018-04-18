@@ -1,0 +1,182 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f87b24fb_1b520933",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "I like this new structure ;-)",
+      "range": {
+        "startLine": 376,
+        "startChar": 2,
+        "endLine": 376,
+        "endChar": 15
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cd60bf8a_6be6a29c",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "Naive question: wouldn\u0027t it be \u0027more efficient\u0027 to add these to the if statements where they\u0027re used?",
+      "range": {
+        "startLine": 175,
+        "startChar": 2,
+        "endLine": 175,
+        "endChar": 4
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6c1cc2ed_95890257",
+        "filename": "src/vnet/ip/ip4.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "I can\u0027t tell where we use it but, don\u0027t we need to add L3_HDR_SZ_VALID here?",
+      "range": {
+        "startLine": 364,
+        "startChar": 14,
+        "endLine": 364,
+        "endChar": 34
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f5d7fb8_04d2f467",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "why not add the offset here as well?\nvnet_buffer (b)-\u003el3_hdr_offset \u003d (u8 *) ip6h - b-\u003edata;",
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ad0559ef_f9a7d5a0",
+        "filename": "src/vnet/lisp-cp/packets.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "pkt_push_ip uses underneath vlib_buffer_push_ip[4|6] so both l3_hdr_offset and l3_hdr_sz should be computed already.",
+      "range": {
+        "startLine": 182,
+        "startChar": 11,
+        "endLine": 182,
+        "endChar": 22
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c0240774_fbcef4a7",
+        "filename": "src/vnet/sctp/sctp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1664,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "You already added this to vlib_buffer_push_ip4 so it should be removable ..",
+      "range": {
+        "startLine": 1664,
+        "startChar": 25,
+        "endLine": 1664,
+        "endChar": 34
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "478a19f7_dffd87dc",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1813,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "With your changes this is already computed in vlib_buffer_push_ip4.",
+      "range": {
+        "startLine": 1813,
+        "startChar": 25,
+        "endLine": 1813,
+        "endChar": 34
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ebb2f50b_c6460398",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1823,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 1,
+      "message": "Whatever works for v4 should be done to v6 as well. Not sure why they were different in the first place.",
+      "range": {
+        "startLine": 1822,
+        "startChar": 3,
+        "endLine": 1823,
+        "endChar": 9
+      },
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

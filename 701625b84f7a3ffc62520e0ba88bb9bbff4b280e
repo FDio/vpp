@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d2919fb_75fde89a",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-18T18:43:27Z",
+      "side": 0,
+      "message": "Apart from the format function, do we use this?",
+      "range": {
+        "startLine": 64,
+        "startChar": 8,
+        "endLine": 64,
+        "endChar": 27
+      },
+      "revId": "701625b84f7a3ffc62520e0ba88bb9bbff4b280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
