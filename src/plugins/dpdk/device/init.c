@@ -19,6 +19,7 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/unix/unix.h>
+#include <vlib/log.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
@@ -227,11 +228,11 @@ dpdk_lib_init (dpdk_main_t * dm)
   nports = rte_eth_dev_count ();
   if (nports < 1)
     {
-      clib_warning ("DPDK drivers found no ports...");
+      dpdk_log_notice ("DPDK drivers found no ports...");
     }
 
   if (CLIB_DEBUG > 0)
-    clib_warning ("DPDK drivers found %d ports...", nports);
+    dpdk_log_notice ("DPDK drivers found %d ports...", nports);
 
   if (dm->conf->enable_tcp_udp_checksum)
     dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
@@ -660,7 +661,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_device_setup (xd);
 
       if (vec_len (xd->errors))
-	clib_warning ("setup failed for device %U. Errors:\n  %U",
+	dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
 		      format_dpdk_device_name, i,
 		      format_dpdk_device_errors, xd);
 
@@ -683,7 +684,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
 	    vlan_strip = 1;	/* remove vlan tag from VIC port by default */
 	  else
-	    clib_warning ("VLAN strip disabled for interface\n");
+	    dpdk_log_warn ("VLAN strip disabled for interface\n");
 	}
       else if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	vlan_strip = 1;
@@ -695,9 +696,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
 	  xd->port_conf.rxmode.hw_vlan_strip = vlan_off;
 	  if (rte_eth_dev_set_vlan_offload (xd->device_index, vlan_off) == 0)
-	    clib_warning ("VLAN strip enabled for interface\n");
+	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
-	    clib_warning ("VLAN strip cannot be supported by interface\n");
+	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
 	}
 
       if (hi)
@@ -710,7 +711,7 @@ dpdk_lib_init (dpdk_main_t * dm)
     }
 
   if (nb_desc > dm->conf->num_mbufs)
-    clib_warning ("%d mbufs allocated but total rx/tx ring size is %d\n",
+    dpdk_log_err ("%d mbufs allocated but total rx/tx ring size is %d\n",
 		  dm->conf->num_mbufs, nb_desc);
 
   return 0;
@@ -788,7 +789,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       }
     else
       {
-        clib_warning ("Unsupported PCI device 0x%04x:0x%04x found "
+        dpdk_log_warn ("Unsupported PCI device 0x%04x:0x%04x found "
 		      "at PCI address %s\n", (u16) d->vendor_id, (u16) d->device_id,
 		      pci_addr);
         continue;
@@ -912,6 +913,37 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 			 &pci_addr);
 
   return error;
+}
+
+static clib_error_t *
+dpdk_log_read_ready (clib_file_t * uf)
+{
+  unformat_input_t input;
+  u8 *line, *s = 0;
+  int n, n_try;
+
+  n = n_try = 4096;
+  while (n == n_try)
+    {
+      uword len = vec_len (s);
+      vec_resize (s, len + n_try);
+
+      n = read (uf->file_descriptor, s + len, n_try);
+      if (n < 0 && errno != EAGAIN)
+	return clib_error_return_unix (0, "read");
+      _vec_len (s) = len + (n < 0 ? 0 : n);
+    }
+
+  unformat_init_vector (&input, s);
+
+  while (unformat_user (&input, unformat_line, &line))
+    {
+      dpdk_log_notice ("%v", line);
+      vec_free (line);
+    }
+
+  unformat_free (&input);
+  return 0;
 }
 
 static clib_error_t *
@@ -1264,6 +1296,19 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   /* Set up DPDK eal and packet mbuf pool early. */
 
   rte_log_set_global_level (log_level);
+  int log_fds[2] = { 0 };
+  if (pipe (log_fds) == 0)
+    {
+      FILE *f = fdopen (log_fds[1], "a");
+      if (f && rte_openlog_stream (f) == 0)
+	{
+	  clib_file_t t = { 0 };
+	  t.read_function = dpdk_log_read_ready;
+	  t.file_descriptor = log_fds[0];
+	  t.description = format (0, "DPDK logging pipe");
+	  clib_file_add (&file_main, &t);
+	}
+    }
 
   vm = vlib_get_main ();
 
@@ -1272,10 +1317,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     conf->eal_init_args_str = format (conf->eal_init_args_str, "%s ",
 				      conf->eal_init_args[i]);
 
-  clib_warning ("EAL init args: %s", conf->eal_init_args_str);
-  ret =
-    rte_eal_init (vec_len (conf->eal_init_args),
-		  (char **) conf->eal_init_args);
+  dpdk_log_warn ("EAL init args: %s", conf->eal_init_args_str);
+  ret = rte_eal_init (vec_len (conf->eal_init_args),
+		      (char **) conf->eal_init_args);
 
   /* lazy umount hugepages */
   umount2 ((char *) huge_dir_path, MNT_DETACH);
@@ -1284,10 +1328,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
-
-  /* Dump the physical memory layout prior to creating the mbuf_pool */
-  fprintf (stdout, "DPDK physical memory layout:\n");
-  rte_dump_physmem_layout (stdout);
 
   /* set custom ring memory allocator */
   {
@@ -1432,7 +1472,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	case 0:
 	  break;
 	default:
-	  clib_warning ("unknown link speed %d", xd->link.link_speed);
+	  dpdk_log_warn ("unknown link speed %d", xd->link.link_speed);
 	  break;
 	}
     }
@@ -1517,12 +1557,12 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		      (slink[0], (struct ether_addr *) addr);
 
 		    /* Set MAC of bounded interface to that of 1st slave link */
-		    clib_warning ("Set MAC for bond port %d BondEthernet%d",
-				  i, xd->port_id);
+		    dpdk_log_info ("Set MAC for bond port %d BondEthernet%d",
+				   i, xd->port_id);
 		    rv = rte_eth_bond_mac_address_set
 		      (i, (struct ether_addr *) addr);
 		    if (rv)
-		      clib_warning ("Set MAC addr failure rv=%d", rv);
+		      dpdk_log_warn ("Set MAC addr failure rv=%d", rv);
 
 		    /* Populate MAC of bonded interface in VPP hw tables */
 		    bhi = vnet_get_hw_interface
@@ -1547,11 +1587,13 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			/* Add MAC to all slave links except the first one */
 			if (nlink)
 			  {
-			    clib_warning ("Add MAC for slave port %d", slave);
+			    dpdk_log_info ("Add MAC for slave port %d",
+					   slave);
 			    rv = rte_eth_dev_mac_addr_add
 			      (slave, (struct ether_addr *) addr, 0);
 			    if (rv)
-			      clib_warning ("Add MAC addr failure rv=%d", rv);
+			      dpdk_log_warn ("Add MAC addr failure rv=%d",
+					     rv);
 			  }
 			/* Setup slave link state change callback handling */
 			rte_eth_dev_callback_register
@@ -1664,6 +1706,8 @@ dpdk_init (vlib_main_t * vm)
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
     return error;
+
+  dm->log_default = vlib_log_register_class ("dpdk", 0);
 
   return error;
 }

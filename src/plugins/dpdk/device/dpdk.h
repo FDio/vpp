@@ -400,6 +400,9 @@ typedef struct
 
   /* API message ID base */
   u16 msg_id_base;
+
+  /* logging */
+  vlib_log_class_t log_default;
 } dpdk_main_t;
 
 extern dpdk_main_t dpdk_main;
@@ -449,6 +452,15 @@ typedef enum
 #undef _
     DPDK_N_ERROR,
 } dpdk_error_t;
+
+#define dpdk_log_err(...) \
+  vlib_log(VLIB_LOG_LEVEL_ERR, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_warn(...) \
+  vlib_log(VLIB_LOG_LEVEL_WARNING, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_notice(...) \
+  vlib_log(VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_info(...) \
+  vlib_log(VLIB_LOG_LEVEL_INFO, dpdk_main.log_default, __VA_ARGS__)
 
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
