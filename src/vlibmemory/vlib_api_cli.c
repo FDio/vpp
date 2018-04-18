@@ -721,7 +721,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm,
 			     "Error while writing start of buffer trace to file\n");
 	  else if (rv < 0)
-	    vlib_cli_output (vm, "Unkown error while saving: %d", rv);
+	    vlib_cli_output (vm, "Unknown error while saving: %d", rv);
 	  else
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
 	  vec_free (chroot_filename);

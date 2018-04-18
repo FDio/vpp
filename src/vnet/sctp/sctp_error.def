@@ -44,7 +44,7 @@ sctp_error (SHUTDOWN_COMPLETE_VIOLATION, "SHUTDOWN_COMPLETE chunk received in in
 sctp_error (FIFO_FULL, "Packets dropped for lack of rx fifo space") 
 sctp_error (PARTIALLY_ENQUEUED, "Packets partially pushed into rx fifo") 
 sctp_error (EVENT_FIFO_FULL, "Events not sent for lack of event fifo space") 
-sctp_error (UNKOWN_CHUNK, "Unrecognized / unknown chunk or chunk-state mismatch")
+sctp_error (UNKNOWN_CHUNK, "Unrecognized / unknown chunk or chunk-state mismatch")
 sctp_error (BUNDLING_VIOLATION, "Bundling not allowed")
 sctp_error (PUNT, "Packets punted")
 sctp_error (FILTERED, "Packets filtered")

@@ -1060,7 +1060,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * hence we should never get to the "default" case below.
 	       */
 	    default:
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
@@ -1400,7 +1400,7 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 	       * hence we should never get to the "default" case below.
 	       */
 	    default:
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
@@ -1709,7 +1709,7 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		 child_conn->sub_conn[SCTP_PRIMARY_PATH_IDX].
 		 connection.c_index, sctp_chunk_to_string (chunk_type));
 
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = sctp_next_drop (is_ip4);
 	      goto drop;
 	    }
@@ -1917,7 +1917,7 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * hence we should never get to the "default" case below.
 	       */
 	    default:
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = sctp_next_drop (is_ip4);
 	      goto done;
 	    }
@@ -2188,7 +2188,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      sctp_prepare_operation_error (sctp_conn, SCTP_PRIMARY_PATH_IDX,
 					    b0, UNRECOGNIZED_CHUNK_TYPE);
 
-	      error0 = SCTP_ERROR_UNKOWN_CHUNK;
+	      error0 = SCTP_ERROR_UNKNOWN_CHUNK;
 	      next0 = sctp_next_output (is_ip4);
 	      goto done;
 	    }

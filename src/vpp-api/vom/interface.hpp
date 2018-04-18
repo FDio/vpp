@@ -67,7 +67,7 @@ public:
   struct type_t : enum_base<type_t>
   {
     /**
-     * Unkown type
+     * Unknown type
      */
     const static type_t UNKNOWN;
     /**

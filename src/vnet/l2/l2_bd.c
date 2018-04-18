@@ -521,7 +521,7 @@ VLIB_CLI_COMMAND (bd_flood_cli, static) = {
 /* *INDENT-ON* */
 
 /**
-    Set bridge-domain unkown-unicast flood enable/disable.
+    Set bridge-domain unknown-unicast flood enable/disable.
     The CLI format is:
     set bridge-domain uu-flood <bd_index> [disable]
 */
