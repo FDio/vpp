@@ -941,6 +941,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
 {
   tcp_fastrecovery_on (tc);
   tc->snd_congestion = tc->snd_una_max;
+  tc->cwnd_acc_bytes = 0;
   tc->cc_algo->congestion (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 4);
 }
