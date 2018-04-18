@@ -127,10 +127,10 @@ qos_mark_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  input_source0 = vnet_buffer2 (b0)->qos.source;
+	  input_source0 = vnet_buffer (b0)->qos.source;
 
 	  qem0 = qos_egress_map_interface (sw_if_index0, output_source);
-	  qos0 = qem0->qem_output[input_source0][vnet_buffer2 (b0)->qos.bits];
+	  qos0 = qem0->qem_output[input_source0][vnet_buffer (b0)->qos.bits];
 
 	  if (PREDICT_TRUE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 	    {

@@ -105,7 +105,7 @@ gbp_policy (vlib_main_t * vm,
 	   */
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  key0.gck_dst = gbp_port_to_epg (sw_if_index0);
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
+	  key0.gck_src = vnet_buffer (b0)->gbp.src_epg;
 	  acl_index0 = ~0;
 
 	  if (~0 != key0.gck_src)

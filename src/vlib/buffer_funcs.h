@@ -917,13 +917,6 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
 {
   vlib_buffer_t *src = &fl->buffer_init_template;
 
-  /* Make sure vlib_buffer_t is cacheline aligned and sized */
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline0) == 0);
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline1) ==
-	  CLIB_CACHE_LINE_BYTES);
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline2) ==
-	  CLIB_CACHE_LINE_BYTES * 2);
-
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == vlib_buffer_get_free_list_index (src));
 

@@ -61,7 +61,7 @@
   _(13, IS_NATED, "nated")				\
   _(14, L2_HDR_OFFSET_VALID, 0)				\
   _(15, L3_HDR_OFFSET_VALID, 0)				\
-  _(16, L4_HDR_OFFSET_VALID, 0)				\
+  _(16, L3_HDR_SZ_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
   _(19, QOS_DATA_VALID, 0)
@@ -83,40 +83,21 @@ enum
 #undef _
 };
 
-#define foreach_buffer_opaque_union_subtype     \
-_(ip)                                           \
-_(swt)                                          \
-_(l2)                                           \
-_(l2t)                                          \
-_(gre)                                          \
-_(l2_classify)                                  \
-_(handoff)                                      \
-_(policer)                                      \
-_(ipsec)					\
-_(map)						\
-_(map_t)					\
-_(ip_frag)					\
-_(mpls)					        \
-_(tcp)
-
-/*
- * vnet stack buffer opaque array overlay structure.
- * The vnet_buffer_opaque_t *must* be the same size as the
- * vlib_buffer_t "opaque" structure member, 32 bytes.
- *
- * When adding a union type, please add a stanza to
- * foreach_buffer_opaque_union_subtype (directly above).
- * Code in vnet_interface_init(...) verifies the size
- * of the union, and will announce any deviations in an
- * impossible-to-miss manner.
- */
 typedef struct
 {
-  u32 sw_if_index[VLIB_N_RX_TX];
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u8 rsvd0[CLIB_CACHE_LINE_BYTES - STRUCT_SIZE_OF (vlib_buffer_t, opaque)];
+  /* start of vlib_buffer_t 1st cacheline opaque data */
+
+  u8 feature_arc_index;	/**< Used to identify feature arcs by intermediate
+                           feature node
+                        */
+  u8 l3_hdr_sz;
   i16 l2_hdr_offset;
   i16 l3_hdr_offset;
-  i16 l4_hdr_offset;
-  u16 dont_waste_me;
+  u32 sw_if_index[VLIB_N_RX_TX];
+  u32 flow_id;
+
 
   union
   {
@@ -359,21 +340,12 @@ typedef struct
 
     u32 unused[6];
   };
-} vnet_buffer_opaque_t;
 
-/*
- * The opaque field of the vlib_buffer_t is intepreted as a
- * vnet_buffer_opaque_t. Hence it should be big enough to accommodate one.
- */
-STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
-	       STRUCT_SIZE_OF (vlib_buffer_t, opaque),
-	       "VNET buffer meta-data too large for vlib_buffer");
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  u8 rsvd1[CLIB_CACHE_LINE_BYTES - STRUCT_SIZE_OF (vlib_buffer_t, opaque2)];
 
-#define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
+  /* start of vlib_buffer_t 2st cacheline opaque data */
 
-/* Full cache line (64 bytes) of additional space */
-typedef struct
-{
   /**
    * QoS marking data that needs to persist from the recording nodes
    * (nominally in the ingress path) to the marking node (in the
@@ -384,8 +356,6 @@ typedef struct
     u8 bits;
     u8 source;
   } qos;
-
-  u8 __unused[2];
 
   /* Group Based Policy */
   struct
@@ -402,19 +372,17 @@ typedef struct
       u16 *trajectory_trace;
 #endif
     };
-    u32 unused[10];
   };
-} vnet_buffer_opaque2_t;
-
-#define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
+} vnet_buffer_t;
 
 /*
- * The opaque2 field of the vlib_buffer_t is intepreted as a
- * vnet_buffer_opaque2_t. Hence it should be big enough to accommodate one.
+ * The opaque field of the vlib_buffer_t is intepreted as a
+ * vnet_buffer_t. Hence it should be big enough to accommodate one.
  */
-STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
-	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
-	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
+STATIC_ASSERT (sizeof (vnet_buffer_t) == 2 * CLIB_CACHE_LINE_BYTES,
+	       "vnet_buffer_t bigger than 2 cachelines");
+
+#define vnet_buffer(b) ((vnet_buffer_t *) (b))
 
 format_function_t format_vnet_buffer;
 

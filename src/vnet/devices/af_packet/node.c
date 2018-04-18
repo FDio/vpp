@@ -134,8 +134,7 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 		ip4_header_bytes (ip4)))->checksum = 0;
 	}
       vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
-      vnet_buffer (b)->l4_hdr_offset =
-	sizeof (ethernet_header_t) + ip4_header_bytes (ip4);
+      vnet_buffer (b)->l3_hdr_sz = ip4_header_bytes (ip4);
     }
   else if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP6)
     {
@@ -168,8 +167,7 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 		sizeof (ethernet_header_t) + ip6_hdr_len))->checksum = 0;
 	}
       vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
-      vnet_buffer (b)->l4_hdr_offset =
-	sizeof (ethernet_header_t) + ip6_hdr_len;
+      vnet_buffer (b)->l3_hdr_sz = ip6_hdr_len;
     }
 }
 

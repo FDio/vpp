@@ -231,7 +231,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	    gbp_policy_dpo_get_i (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
 
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
+	  key0.gck_src = vnet_buffer (b0)->gbp.src_epg;
 	  key0.gck_dst = gpd0->gpd_epg;
 
 	  if (~0 != key0.gck_src)
@@ -433,7 +433,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	      src_epg0 = 0;
 	    }
 
-	  vnet_buffer2 (b0)->gbp.src_epg = src_epg0;
+	  vnet_buffer (b0)->gbp.src_epg = src_epg0;
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {

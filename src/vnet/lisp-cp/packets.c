@@ -182,7 +182,7 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
       ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP, 1);
       b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
-      vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
+      vnet_buffer (b)->l3_hdr_sz = (u8 *) uh - (u8 *) ih;
       uh->checksum = 0;
     }
   else

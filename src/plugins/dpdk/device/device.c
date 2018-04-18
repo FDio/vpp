@@ -349,8 +349,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
     return;
 
   mb->l2_len = vnet_buffer (b)->l3_hdr_offset - b->current_data;
-  mb->l3_len = vnet_buffer (b)->l4_hdr_offset -
-    vnet_buffer (b)->l3_hdr_offset;
+  mb->l3_len = vnet_buffer (b)->l3_hdr_sz;
   mb->outer_l3_len = 0;
   mb->outer_l2_len = 0;
   ol_flags = is_ip4 ? PKT_TX_IPV4 : PKT_TX_IPV6;

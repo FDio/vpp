@@ -134,19 +134,11 @@ typedef struct
                                visit enabled feature nodes
                             */
 
-  u8 feature_arc_index;	/**< Used to identify feature arcs by intermediate
-                           feature node
-                        */
-
   u8 n_add_refs; /**< Number of additional references to this buffer. */
 
   u8 buffer_pool_index;	/**< index of buffer pool this buffer belongs. */
-  u8 dont_waste_me[1]; /**< Available space in the (precious)
-                          first 32 octets of buffer metadata
-                          Before allocating any of it, discussion required!
-                       */
 
-  u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
+  u8 opaque[42]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h
                  */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -178,6 +170,10 @@ typedef struct
 
   u8 data[0]; /**< Packet data. Hardware DMA here */
 } vlib_buffer_t;		/* Must be a multiple of 64B. */
+
+STATIC_ASSERT (sizeof (vlib_buffer_t) ==
+	       2 * CLIB_CACHE_LINE_BYTES + VLIB_BUFFER_PRE_DATA_SIZE,
+	       "vlib_buffer_t size issue");
 
 #define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
 

@@ -94,8 +94,7 @@ mrvl_pp2_set_buf_data_len_flags (vlib_buffer_t * b, struct pp2_ppio_desc *d,
     }
 
   if (add_flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
-    vnet_buffer (b)->l4_hdr_offset = vnet_buffer (b)->l3_hdr_offset +
-      DM_RXD_GET_IPHDR_LEN (d) * 4;
+    vnet_buffer (b)->l3_hdr_sz = DM_RXD_GET_IPHDR_LEN (d) * 4;
 
   return len;
 }
@@ -136,7 +135,7 @@ mrvl_pp2_next_from_desc (vlib_node_runtime_t * node, struct pp2_ppio_desc * d,
 	(b, d,
 	 VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	 VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4);
+	 VNET_BUFFER_F_L3_HDR_SZ_VALID | VNET_BUFFER_F_IS_IP4);
     }
 
   /* ipv4 packet can be value 4 or 5 */
@@ -147,7 +146,7 @@ mrvl_pp2_next_from_desc (vlib_node_runtime_t * node, struct pp2_ppio_desc * d,
 	(b, d,
 	 VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	 VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6);
+	 VNET_BUFFER_F_L3_HDR_SZ_VALID | VNET_BUFFER_F_IS_IP6);
     }
 
   *next = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
