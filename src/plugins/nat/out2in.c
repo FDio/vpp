@@ -333,11 +333,15 @@ next_src_nat (snat_main_t * sm, ip4_header_t * ip, u32 proto, u16 src_port,
 }
 
 static void
-create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip)
+create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
+                      u32 thread_index)
 {
   nat_ed_ses_key_t key;
-  clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_16_8_t kv, value;
   udp_header_t *udp;
+  snat_user_t *u;
+  snat_session_t *s = 0;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
     {
@@ -363,10 +367,50 @@ create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip)
   key.fib_index = 0;
   kv.key[0] = key.as_u64[0];
   kv.key[1] = key.as_u64[1];
-  kv.value = ~0ULL;
 
-  if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &kv, 1))
-    clib_warning ("in2out_ed key add failed");
+  if (!clib_bihash_search_16_8 (&sm->in2out_ed, &kv, &value))
+    {
+      s = pool_elt_at_index (tsm->sessions, value.value);
+    }
+  else
+    {
+      if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
+        return;
+
+      u = nat_user_get_or_create (sm, &ip->dst_address, sm->inside_fib_index, thread_index);
+      if (!u)
+        {
+          clib_warning ("create NAT user failed");
+          return;
+        }
+
+      s = nat_session_alloc_or_recycle (sm, u, thread_index);
+      if (!s)
+        {
+          clib_warning ("create NAT session failed");
+          return;
+        }
+
+      s->ext_host_addr = key.r_addr;
+      s->ext_host_port = key.r_port;
+      s->flags |= SNAT_SESSION_FLAG_FWD_BYPASS;
+      s->outside_address_index = ~0;
+      s->out2in.addr = key.l_addr;
+      s->out2in.port = key.l_port;
+      s->out2in.protocol = ip_proto_to_snat_proto (key.proto);
+      s->out2in.fib_index = 0;
+      s->in2out = s->out2in;
+      user_session_increment (sm, u, 0);
+
+      kv.value = s - tsm->sessions;
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &kv, 1))
+        clib_warning ("in2out_ed key add failed");
+    }
+
+  /* Per-user LRU list maintenance */
+  clib_dlist_remove (tsm->list_pool, s->per_user_index);
+  clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                      s->per_user_index);
 }
 
 /**
@@ -446,7 +490,7 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
                   next0 = SNAT_OUT2IN_NEXT_IN2OUT;
                   goto out;
                 }
-              create_bypass_for_fwd(sm, ip0);
+              create_bypass_for_fwd(sm, ip0, rx_fib_index0, thread_index);
               goto out;
             }
         }
@@ -1193,7 +1237,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                           next0 = SNAT_OUT2IN_NEXT_IN2OUT;
                           goto trace0;
                         }
-                      create_bypass_for_fwd(sm, ip0);
+                      create_bypass_for_fwd(sm, ip0, rx_fib_index0, thread_index);
                       goto trace0;
                     }
                 }
@@ -1371,7 +1415,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                           next1 = SNAT_OUT2IN_NEXT_IN2OUT;
                           goto trace1;
                         }
-                      create_bypass_for_fwd(sm, ip1);
+                      create_bypass_for_fwd(sm, ip1, rx_fib_index1, thread_index);
                       goto trace1;
                     }
                 }
@@ -1585,7 +1629,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                           next0 = SNAT_OUT2IN_NEXT_IN2OUT;
                           goto trace00;
                         }
-                      create_bypass_for_fwd(sm, ip0);
+                      create_bypass_for_fwd(sm, ip0, rx_fib_index0, thread_index);
                       goto trace00;
                     }
                 }
@@ -1841,7 +1885,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                               next0 = SNAT_OUT2IN_NEXT_IN2OUT;
                               goto trace0;
                             }
-                          create_bypass_for_fwd(sm, ip0);
+                          create_bypass_for_fwd(sm, ip0, rx_fib_index0, thread_index);
                           goto trace0;
                         }
                     }

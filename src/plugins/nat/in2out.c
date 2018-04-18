@@ -490,11 +490,14 @@ icmp_get_ed_key(ip4_header_t *ip0, nat_ed_ses_key_t *p_key0)
 }
 
 static inline int
-nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip)
+nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
+                                      u32 thread_index)
 {
   nat_ed_ses_key_t key;
   clib_bihash_kv_16_8_t kv, value;
   udp_header_t *udp;
+  snat_session_t *s = 0;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   if (!sm->forwarding_enabled)
     return 0;
@@ -525,7 +528,19 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip)
   kv.key[1] = key.as_u64[1];
 
   if (!clib_bihash_search_16_8 (&sm->in2out_ed, &kv, &value))
-    return value.value == ~0ULL;
+    {
+      s = pool_elt_at_index (sm->per_thread_data[thread_index].sessions, value.value);
+      if (is_fwd_bypass_session (s))
+        {
+          /* Per-user LRU list maintenance */
+          clib_dlist_remove (tsm->list_pool, s->per_user_index);
+          clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                              s->per_user_index);
+          return 1;
+        }
+      else
+        return 0;
+    }
 
   return 0;
 }
@@ -1348,9 +1363,9 @@ snat_in2out_lb (snat_main_t *sm,
 
   if (!clib_bihash_search_16_8 (&sm->in2out_ed, &s_kv, &s_value))
     {
-      if (s_value.value == ~0ULL)
-        return 0;
       s = pool_elt_at_index (tsm->sessions, s_value.value);
+      if (is_fwd_bypass_session (s))
+        return 0;
     }
   else
     {
@@ -1588,7 +1603,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_output_feature)
                 {
-                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0)))
+                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0, thread_index)))
                     goto trace00;
                 }
 
@@ -1780,7 +1795,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_output_feature)
                 {
-                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip1)))
+                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip1, thread_index)))
                     goto trace01;
                 }
 
@@ -2008,7 +2023,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
                if (is_output_feature)
                 {
-                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0)))
+                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(sm, ip0, thread_index)))
                     goto trace0;
                 }
 
