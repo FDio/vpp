@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab1c49d2_74d7e21b",
+        "filename": "src/plugins/nat/nat.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-04-19T06:28:01Z",
+      "side": 1,
+      "message": "do you really need this one? you don\u0027t even set this flag for all endpoint dependent sessions.",
+      "revId": "bab8783275ea491cbb8334abee5f9c9ed50d25ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
