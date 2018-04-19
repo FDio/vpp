@@ -2,6 +2,190 @@
   "comments": [
     {
       "key": {
+        "uuid": "c3cbe268_f02966ed",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "we can add missing weight in sids list here:\n\n typeonly define srv6_sid_list\n {\n   u8 num_sids;\n+  u32 weight;\n   vl_api_srv6_sid_t sids[16];\n };",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 30,
+        "endChar": 2
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0afedfcb_5d5294b8",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 53
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "628dc971_92d954a2",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 43,
+        "startChar": 4,
+        "endLine": 43,
+        "endChar": 71
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "27e2d324_781c7153",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 74
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d91a2b1d_b8221338",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 89,
+        "startChar": 4,
+        "endLine": 89,
+        "endChar": 74
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ada5d8a_9c0b0062",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 110,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 50
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f30a1cd4_09a4c33b",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "isn`t u8 enough for a mask width? This seems to be just a number not full mask representation.",
+      "range": {
+        "startLine": 155,
+        "startChar": 2,
+        "endLine": 155,
+        "endChar": 17
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b897e4e1_22c3f2b2",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "same as above. isn`t u8 enough?",
+      "range": {
+        "startLine": 220,
+        "startChar": 0,
+        "endLine": 220,
+        "endChar": 17
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c1f393ba_5032186d",
         "filename": "src/vnet/srv6/sr_api.c",
         "patchSetId": 9
@@ -130,6 +314,30 @@
       "side": 1,
       "message": "sidLists were not set because rmp-\u003enum_sid_lists was not set. Once this is set even the lists are filled.\n\nThis should be set before filling the segments list:\nrmp-\u003enum_sid_lists \u003d vec_len (t-\u003esegments_lists);",
       "parentUuid": "877a5d60_69f11a33",
+      "range": {
+        "startLine": 266,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 3
+      },
+      "revId": "cee2c9bd6480802d13294255bd2123b9100738d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "14287744_f8e61517",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-19T07:56:17Z",
+      "side": 1,
+      "message": "we can add weight here like:\nwrite_sid_list-\u003eweight \u003d htonl(segment_list-\u003eweight);\n\nand add it in srv6_sid_list type definition:\n typeonly define srv6_sid_list\n {\n   u8 num_sids;\n   u32 weight;\n   vl_api_srv6_sid_t sids[16];\n };",
+      "parentUuid": "5ec3439b_deae4ce9",
       "range": {
         "startLine": 266,
         "startChar": 0,
