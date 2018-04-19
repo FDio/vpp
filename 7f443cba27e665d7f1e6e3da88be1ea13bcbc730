@@ -69,6 +69,29 @@
       "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7098f0f7_07a2f3a5",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-19T22:45:19Z",
+      "side": 1,
+      "message": "I like to make sure I understand how features are started by using the buffer template once for all following burst of packets. So the feature is advanced in the template pass the first feature and then copied to all the buffers in the following rx_burst, right? This is really cool! \nI suppose one side effect compare with before is that, at end of all features, we will always get back to ethernet-input node and not the node determined by etype. This seems a good compromise especially we also get rid of per packet packet-trace check.",
+      "range": {
+        "startLine": 414,
+        "startChar": 6,
+        "endLine": 414,
+        "endChar": 40
+      },
+      "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
