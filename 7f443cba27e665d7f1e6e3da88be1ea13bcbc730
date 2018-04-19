@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9d8006d_cc2d8271",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-19T20:02:50Z",
+      "side": 1,
+      "message": "Should also include \"\u0026 use_etype\" here as we should not drop packets with bad IP checksum if the interface is in L2 mode.  This was fixed in the current DPDK input node recently.",
+      "range": {
+        "startLine": 49,
+        "startChar": 35,
+        "endLine": 49,
+        "endChar": 54
+      },
+      "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
