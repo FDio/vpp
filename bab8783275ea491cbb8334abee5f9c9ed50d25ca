@@ -16,6 +16,24 @@
       "revId": "bab8783275ea491cbb8334abee5f9c9ed50d25ca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "61cc6c7e_f4c2205f",
+        "filename": "src/plugins/nat/nat.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2018-04-19T08:30:35Z",
+      "side": 1,
+      "message": "I\u0027ll set the flag for all endpoint dependent sessions in the next path and I\u0027ll remove this particular function.\n\nThis change introduces new endpoint dependent sessions. The new flag is supposed to mark every endpoint dependent session so we won\u0027t need a new flag for every new endpoint dependent session type in the future.",
+      "parentUuid": "ab1c49d2_74d7e21b",
+      "revId": "bab8783275ea491cbb8334abee5f9c9ed50d25ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
