@@ -22,6 +22,53 @@
       "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "790957d4_ea880830",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-19T21:23:18Z",
+      "side": 1,
+      "message": "I mean \"\u0026\u0026 use_etype\".  Also realized use_etype would also be 0 if feature is enabled. See my next comment about feature invocation where device have next-index set.",
+      "parentUuid": "c9d8006d_cc2d8271",
+      "range": {
+        "startLine": 49,
+        "startChar": 35,
+        "endLine": 49,
+        "endChar": 54
+      },
+      "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "806b6d49_2ab6d135",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-19T21:23:18Z",
+      "side": 1,
+      "message": "This path would behave differently than the current DPDK-input node where input feature would still be started. This is also the path if L2 mode is enabled on the interface where next_index is set to ethernet-input. Thus, L2 interface packets won\u0027t get interface input features applied.",
+      "range": {
+        "startLine": 409,
+        "startChar": 4,
+        "endLine": 409,
+        "endChar": 25
+      },
+      "revId": "7f443cba27e665d7f1e6e3da88be1ea13bcbc730",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
