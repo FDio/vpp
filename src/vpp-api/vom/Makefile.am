@@ -221,6 +221,7 @@ vominclude_HEADERS =			\
 	singular_db.hpp			\
 	singular_db_funcs.hpp		\
 	sub_interface.hpp		\
+	sub_interface_cmds.hpp		\
 	tap_interface.hpp		\
 	types.hpp			\
 	vxlan_tunnel.hpp		\
