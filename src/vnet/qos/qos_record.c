@@ -23,6 +23,7 @@
  * Per-interface, per-protocol vector of feature on/off configurations
  */
 static u8 *qos_record_configs[QOS_N_SOURCES];
+static u32 l2_qos_input_next[QOS_N_SOURCES][32];
 
 static void
 qos_record_feature_config (u32 sw_if_index,
@@ -39,6 +40,8 @@ qos_record_feature_config (u32 sw_if_index,
 				   sw_if_index, enable, NULL, 0);
       vnet_feature_enable_disable ("ip4-multicast", "ip4-qos-record",
 				   sw_if_index, enable, NULL, 0);
+      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_L2_IP_QOS_RECORD,
+				  enable);
       break;
     case QOS_SOURCE_MPLS:
     case QOS_SOURCE_VLAN:
@@ -116,7 +119,7 @@ typedef struct qos_record_trace_t_
 static inline uword
 qos_record_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, int is_ip6)
+		   vlib_frame_t * frame, int is_ip6, int is_l2)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -137,6 +140,7 @@ qos_record_inline (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 sw_if_index0, next0, bi0;
 	  qos_bits_t qos0;
+	  u8 l2_len;
 
 	  next0 = 0;
 	  bi0 = from[0];
@@ -147,6 +151,26 @@ qos_record_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
+	  if (is_l2)
+	    {
+	      l2_len = vnet_buffer (b0)->l2.l2_len;
+	      u8 *l3h;
+	      u16 ethertype;
+
+	      vlib_buffer_advance (b0, l2_len);
+
+	      l3h = vlib_buffer_get_current (b0);
+	      ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
+
+	      if (ethertype == ETHERNET_TYPE_IP4)
+		is_ip6 = 0;
+	      else if (ethertype == ETHERNET_TYPE_IP6)
+		is_ip6 = 1;
+	      else
+		goto non_ip;
+	    }
+
 	  if (is_ip6)
 	    {
 	      ip6_0 = vlib_buffer_get_current (b0);
@@ -162,8 +186,6 @@ qos_record_inline (vlib_main_t * vm,
 	  b0->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  vnet_feature_next (sw_if_index0, &next0, b0);
-
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
@@ -171,6 +193,17 @@ qos_record_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->bits = qos0;
 	    }
+
+	non_ip:
+	  if (is_l2)
+	    {
+	      vlib_buffer_advance (b0, -l2_len);
+	      next0 = vnet_l2_feature_next (b0,
+					    l2_qos_input_next[QOS_SOURCE_IP],
+					    L2INPUT_FEAT_L2_IP_QOS_RECORD);
+	    }
+	  else
+	    vnet_feature_next (sw_if_index0, &next0, b0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -201,14 +234,21 @@ static inline uword
 ip4_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-  return (qos_record_inline (vm, node, frame, 0));
+  return (qos_record_inline (vm, node, frame, 0, 0));
 }
 
 static inline uword
 ip6_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-  return (qos_record_inline (vm, node, frame, 1));
+  return (qos_record_inline (vm, node, frame, 1, 0));
+}
+
+static inline uword
+l2_ip_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
+		  vlib_frame_t * frame)
+{
+  return (qos_record_inline (vm, node, frame, 0, 1));
 }
 
 /* *INDENT-OFF* */
@@ -255,8 +295,39 @@ VNET_FEATURE_INIT (ip6_qos_record_node, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "ip6-qos-record",
 };
+
+VLIB_REGISTER_NODE (l2_ip_qos_record_node, static) = {
+  .function = l2_ip_qos_record,
+  .name = "l2-ip-qos-record",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_record_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  /* Consider adding error "no IP after L2, no recording" */
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (l2_ip_qos_record_node, l2_ip_qos_record);
 /* *INDENT-ON* */
 
+clib_error_t *
+l2_ip_qos_init (vlib_main_t * vm)
+{
+  /* Initialize the feature next-node indexes */
+  feat_bitmap_init_next_nodes (vm,
+			       l2_ip_qos_record_node.index,
+			       L2INPUT_N_FEAT,
+			       l2input_get_feat_names (),
+			       l2_qos_input_next[QOS_SOURCE_IP]);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (l2_ip_qos_init);
 
 static clib_error_t *
 qos_record_cli (vlib_main_t * vm,
