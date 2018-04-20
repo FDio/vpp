@@ -449,7 +449,7 @@ found:
 
   /* If fragment at end is too small to be a new object,
      give user's object a bit more space than requested. */
-  if (hi_free_usize < (word) MHEAP_MIN_USER_DATA_BYTES)
+  if (hi_free_usize < (word) MHEAP_MIN_USER_DATA_BYTES * 4)
     {
       search_n_user_data_bytes += f1 - o1;
       o1 = f1;
@@ -491,7 +491,7 @@ found:
   if (lo_free_usize > 0)
     {
       ASSERT (lo_free_usize >= (word) MHEAP_MIN_USER_DATA_BYTES);
-      mheap_elt_set_size (v, f0, lo_free_usize, /* is_free */ 1);
+      //mheap_elt_set_size (v, f0, lo_free_usize, /* is_free */ 1);
       new_free_elt (v, f0, lo_free_usize);
     }
 
@@ -500,7 +500,7 @@ found:
   if (hi_free_usize > 0)
     {
       uword uo = o1 + MHEAP_ELT_OVERHEAD_BYTES;
-      mheap_elt_set_size (v, uo, hi_free_usize, /* is_free */ 1);
+      //mheap_elt_set_size (v, uo, hi_free_usize, /* is_free */ 1);
       new_free_elt (v, uo, hi_free_usize);
     }
 
@@ -539,6 +539,9 @@ mheap_get_search_free_list (void *v,
 	}
     }
 
+  /* kingwel, lookup a free bin which is big enough to hold everything align+align_offset+lo_free_size+overhead */
+  word modifier = (align > MHEAP_USER_DATA_WORD_BYTES ? align + align_offset + sizeof(mheap_elt_t) : 0);
+  bin = user_data_size_to_bin_index (n_user_bytes + modifier);
   for (i = bin / BITS (uword); i < ARRAY_LEN (h->non_empty_free_elt_heads);
        i++)
     {
