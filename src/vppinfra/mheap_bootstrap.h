@@ -119,10 +119,10 @@ typedef struct
 } mheap_elt_t;
 
 /* Number of bytes of "overhead": e.g. not user data. */
-#define MHEAP_ELT_OVERHEAD_BYTES (sizeof (mheap_elt_t) - STRUCT_OFFSET_OF (mheap_elt_t, user_data))
+#define MHEAP_ELT_OVERHEAD_BYTES (STRUCT_OFFSET_OF (mheap_elt_t, user_data))
 
 /* User objects must be large enough to hold 2 x u32 free offsets in free elt. */
-#define MHEAP_MIN_USER_DATA_BYTES MHEAP_ELT_OVERHEAD_BYTES
+#define MHEAP_MIN_USER_DATA_BYTES (sizeof (mheap_elt_t) - MHEAP_ELT_OVERHEAD_BYTES)
 
 /* Number of byte in user data "words". */
 #define MHEAP_USER_DATA_WORD_BYTES STRUCT_SIZE_OF (mheap_elt_t, user_data[0])
