@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5fdbf8b0_2d1b7714",
+        "filename": "src/vnet/qos/qos_record.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-20T00:43:58Z",
+      "side": 1,
+      "message": "I don\u0027t think we really need a ...main_t struct here as these convenience variables are used. Perhaps just a l2_input_xx_next[] array per l2-xx-qos-record node would be good enough. Can also be like a l2_input_next[qos_source][32] array, I suppose.",
+      "range": {
+        "startLine": 30,
+        "startChar": 2,
+        "endLine": 30,
+        "endChar": 25
+      },
+      "revId": "ef1e40108174d59dc36514ab57c52110347d2a0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
