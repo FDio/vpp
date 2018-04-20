@@ -135,8 +135,10 @@ typedef struct
   /* Count of allocations with this traceback. */
 #if CLIB_VEC64 > 0
   u64 n_allocations;
+  u64 n_gets;
 #else
   u32 n_allocations;
+  u32 n_gets;
 #endif
 
   /* Count of bytes allocated with this traceback. */
@@ -189,6 +191,9 @@ typedef struct
     u64 n_search_attempts;
     u64 n_objects_searched;
     u64 n_objects_found;
+    u64 n_low_split;
+    u64 n_high_split;
+    u64 n_objects_combined;
   } free_list;
 
   u64 n_vector_expands;
