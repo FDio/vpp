@@ -30,16 +30,9 @@
 /*
  * Define a pointer to the acl_main which will be filled during the initialization.
  */
-acl_main_t *p_acl_main = 0;
+static acl_main_t *p_acl_main = 0;
 
-/*
- * If the file is included more than once, the symbol collision will make the problem obvious.
- * If the include is done only once, it is just a lonely null var
- * sitting around.
- */
-void *ERROR_ACL_PLUGIN_EXPORTS_FILE_MUST_BE_INCLUDED_ONLY_IN_ONE_PLACE = 0;
-
-u8 (*acl_plugin_acl_exists) (u32 acl_index);
+static u8 (*acl_plugin_acl_exists) (u32 acl_index);
 #else
 u8 acl_plugin_acl_exists (u32 acl_index);
 #endif
@@ -51,7 +44,7 @@ u8 acl_plugin_acl_exists (u32 acl_index);
  */
 
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-u32 (*acl_plugin_register_user_module) (char *caller_module_string, char *val1_label, char *val2_label);
+static u32 (*acl_plugin_register_user_module) (char *caller_module_string, char *val1_label, char *val2_label);
 #else
 u32 acl_plugin_register_user_module (char *caller_module_string, char *val1_label, char *val2_label);
 #endif
@@ -63,7 +56,7 @@ u32 acl_plugin_register_user_module (char *caller_module_string, char *val1_labe
  * of use within your module. They are useful for debugging.
  */
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_get_lookup_context_index) (u32 acl_user_id, u32 val1, u32 val2);
+static int (*acl_plugin_get_lookup_context_index) (u32 acl_user_id, u32 val1, u32 val2);
 #else
 int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2);
 #endif
@@ -73,7 +66,7 @@ int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2);
  * any asssociated data structures.
  */
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-void (*acl_plugin_put_lookup_context_index) (u32 lc_index);
+static void (*acl_plugin_put_lookup_context_index) (u32 lc_index);
 #else
 void acl_plugin_put_lookup_context_index (u32 lc_index);
 #endif
@@ -83,7 +76,7 @@ void acl_plugin_put_lookup_context_index (u32 lc_index);
  * Any existing list will be overwritten. acl_list is a vector.
  */
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_set_acl_vec_for_context) (u32 lc_index, u32 *acl_list);
+static int (*acl_plugin_set_acl_vec_for_context) (u32 lc_index, u32 *acl_list);
 #else
 int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list);
 #endif
@@ -91,7 +84,7 @@ int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list);
 /* Fill the 5-tuple from the packet */
 
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-void (*acl_plugin_fill_5tuple) (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
+static void (*acl_plugin_fill_5tuple) (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
                                 int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt);
 #else
 void acl_plugin_fill_5tuple (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
@@ -109,7 +102,7 @@ void acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6
 
 
 #ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_match_5tuple) (u32 lc_index,
+static int (*acl_plugin_match_5tuple) (u32 lc_index,
                                            fa_5tuple_opaque_t * pkt_5tuple,
                                            int is_ip6, u8 * r_action,
                                            u32 * r_acl_pos_p,
