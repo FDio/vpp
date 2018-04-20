@@ -72,13 +72,15 @@ lacp_start_periodic_timer (vlib_main_t * vm, slave_if_t * sif, u8 expiration)
 static inline void
 lacp_schedule_periodic_timer (vlib_main_t * vm, slave_if_t * sif)
 {
-  // do fast rate if we are not yet synchronized
-  if (((sif->actor.state & (LACP_STATE_SYNCHRONIZATION |
-			    LACP_STATE_COLLECTING |
-			    LACP_STATE_DISTRIBUTING)) !=
-       (LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
-	LACP_STATE_DISTRIBUTING))
-      && (sif->partner.state & LACP_STATE_AGGREGATION))
+  // do fast rate if partner is in short timeout or
+  // we are not yet synchronized
+  if ((sif->partner.state & LACP_STATE_LACP_TIMEOUT) ||
+      (((sif->actor.state & (LACP_STATE_SYNCHRONIZATION |
+			     LACP_STATE_COLLECTING |
+			     LACP_STATE_DISTRIBUTING)) !=
+	(LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
+	 LACP_STATE_DISTRIBUTING))
+       && (sif->partner.state & LACP_STATE_AGGREGATION)))
     lacp_start_periodic_timer (vm, sif, LACP_FAST_PERIODIC_TIMER);
   else
     lacp_start_periodic_timer (vm, sif, LACP_SLOW_PERIODIC_TIMER);

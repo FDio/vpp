@@ -249,6 +249,8 @@ lacp_input_format_trace (u8 * s, va_list * args)
   u8 *p;
   lacp_state_struct *state_entry;
 
+  s = format (s, "%U:\n", format_vnet_sw_if_index_name, vnet_get_main (),
+	      t->sw_if_index);
   s = format (s, "Length: %d\n", t->len);
   if (t->len >= sizeof (lacp_pdu_t))
     {
