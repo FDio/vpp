@@ -1293,7 +1293,7 @@ session_manager_main_enable (vlib_main_t * vm)
 	clib_rwlock_init (&smm->peekers_rw_locks[i]);
     }
 
-#if SESSION_DBG
+#if SESSION_DEBUG
   vec_validate (smm->last_event_poll_by_thread, num_threads - 1);
 #endif
 

@@ -194,7 +194,7 @@ struct _session_manager_main
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
 
-#if SESSION_DBG
+#if SESSION_DEBUG
   /**
    * last event poll time by thread
    * Debug only. Will cause false cache-line sharing as-is
