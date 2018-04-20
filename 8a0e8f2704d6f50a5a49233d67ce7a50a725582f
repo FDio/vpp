@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "28de5d44_d371a3d9",
+        "filename": "src/plugins/gbp/gbp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-20T14:27:17Z",
+      "side": 1,
+      "message": "why is this variable needed anywhere outside of gbp_api.c?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "48f4ef0a_27ba0dc9",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-20T14:27:17Z",
+      "side": 1,
+      "message": "why not do this an INIT function?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "caafcc05_692934cd",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-20T14:27:17Z",
+      "side": 1,
+      "message": "there\u0027s a pattern to the way stack variables are declared in this file :)",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "122d6eac_a7578967",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-20T14:27:17Z",
+      "side": 1,
+      "message": "why cast?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a905a57c_5aa5d3d1",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-20T14:27:17Z",
+      "side": 1,
+      "message": "why swap?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
