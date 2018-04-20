@@ -366,9 +366,12 @@ extern acl_main_t acl_main;
  * pointer to the above.
  * Needed for some gymnastics to be able to provide
  * the inline functions from this plugin to other plugins.
+ * If the ACL_PLUGIN_EXTERNAL_EXPORTS is defined, then
+ * there is a static definition in public_exports.h - do not collide with that.
  */
-
+#ifndef ACL_PLUGIN_EXTERNAL_EXPORTS
 extern acl_main_t *p_acl_main;
+#endif
 
 void *acl_plugin_set_heap();
 
