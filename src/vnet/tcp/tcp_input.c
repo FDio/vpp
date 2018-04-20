@@ -2780,9 +2780,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 3. check for a SYN (did that already) */
 
 	  /* Make sure connection wasn't just created */
-	  child0 =
-	    tcp_lookup_connection (lc0->c_fib_index, b0, my_thread_index,
-				   is_ip4);
+	  child0 = tcp_lookup_connection (lc0->c_fib_index, b0,
+					  my_thread_index, is_ip4);
 	  if (PREDICT_FALSE (child0->state != TCP_STATE_LISTEN))
 	    {
 	      error0 = TCP_ERROR_CREATE_EXISTS;
