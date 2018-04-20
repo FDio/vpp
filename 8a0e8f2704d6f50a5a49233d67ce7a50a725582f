@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c4c23fa2_ea0ce661",
+        "filename": "src/plugins/gbp/gbp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-04-20T16:48:48Z",
+      "side": 1,
+      "message": "It is not required but it was previously declared in gbp_main_t. I\u0027ll see how to keep it local to this file.",
+      "parentUuid": "28de5d44_d371a3d9",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "48f4ef0a_27ba0dc9",
         "filename": "src/plugins/gbp/gbp_contract.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2018-04-20T14:27:17Z",
       "side": 1,
       "message": "why not do this an INIT function?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9bdbed1c_b61da75a",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-04-20T16:48:48Z",
+      "side": 1,
+      "message": "Yes, you are right. I\u0027ll move it to INIT function.",
+      "parentUuid": "48f4ef0a_27ba0dc9",
       "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "e34c23d7_6b720522",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-04-20T16:48:48Z",
+      "side": 1,
+      "message": "Okay, I\u0027ll adapt that pattern :)",
+      "parentUuid": "caafcc05_692934cd",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "122d6eac_a7578967",
         "filename": "src/plugins/gbp/gbp_policy.c",
         "patchSetId": 4
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "fbd1b31a_ebb0d873",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-04-20T16:48:48Z",
+      "side": 1,
+      "message": "It was done that way in ACL plugin.",
+      "parentUuid": "122d6eac_a7578967",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a905a57c_5aa5d3d1",
         "filename": "src/plugins/gbp/gbp_policy_dpo.c",
         "patchSetId": 4
@@ -81,6 +153,24 @@
       "writtenOn": "2018-04-20T14:27:17Z",
       "side": 1,
       "message": "why swap?",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "392f36c4_76d03a2e",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-04-20T16:48:48Z",
+      "side": 1,
+      "message": "I was having problem with Bi hash which was used in ip fib and acl.",
+      "parentUuid": "a905a57c_5aa5d3d1",
       "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
