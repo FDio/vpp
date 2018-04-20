@@ -256,6 +256,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   n_bufs = vec_len (smm->tx_buffers[thread_index]);
   left_to_snd0 = max_len_to_snd0;
+  n_frames_per_evt = 1;
   for (i = 0; i < n_frames_per_evt; i++)
     {
       /* Make sure we have at least one full frame of buffers ready */
