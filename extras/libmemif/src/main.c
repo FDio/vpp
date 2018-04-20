@@ -44,6 +44,7 @@
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
 #include <signal.h>
+#include <linux/memfd.h>
 
 /* memif protocol msg, ring and descriptor definitions */
 #include <memif.h>
