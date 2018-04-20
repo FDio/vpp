@@ -77,6 +77,7 @@ typedef enum
 /* lacp packet trace capture */
 typedef struct
 {
+  u32 sw_if_index;
   u32 len;
   union
   {

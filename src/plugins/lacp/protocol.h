@@ -69,7 +69,7 @@ typedef enum
 } lacp_state_t;
 
 #define foreach_lacp_state_flag	     	                \
-  _(0, LACP_STATE_LACP_ACTIViTY, "activity")	        \
+  _(0, LACP_STATE_LACP_ACTIVITY, "activity")	        \
   _(1, LACP_STATE_LACP_TIMEOUT, "lacp timeout")         \
   _(2, LACP_STATE_AGGREGATION, "aggregation")           \
   _(3, LACP_STATE_SYNCHRONIZATION, "synchronization")   \
