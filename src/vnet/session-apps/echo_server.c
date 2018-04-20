@@ -63,7 +63,6 @@ echo_server_session_accept_callback (stream_session_t * s)
     session_manager_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
   esm->byte_index = 0;
-  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
   esm->rx_retries[s->thread_index][s->session_index] = 0;
   return 0;
 }
@@ -391,7 +390,9 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   vec_validate (echo_server_main.vpp_queue, num_threads - 1);
   vec_validate (esm->rx_buf, num_threads - 1);
   vec_validate (esm->rx_retries, num_threads - 1);
-
+  for (i = 0; i < vec_len (esm->rx_retries); i++)
+    vec_validate (esm->rx_retries[i],
+		  pool_elts (session_manager_main.sessions[i]));
   esm->rcv_buffer_size = clib_max (esm->rcv_buffer_size, esm->fifo_size);
   for (i = 0; i < num_threads; i++)
     vec_validate (esm->rx_buf[i], esm->rcv_buffer_size);

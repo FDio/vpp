@@ -44,10 +44,7 @@ typedef enum _session_evt_dbg
   {									\
     u32 data[_size];							\
   } * ed;								\
-  transport_proto_vft_t *vft = 						\
-      transport_protocol_get_vft (_s->session_type);			\
-  transport_connection_t *_tc = 					\
-      vft->get_connection (_s->connection_index, _s->thread_index);	\
+  transport_connection_t *_tc = session_get_transport (_s);		\
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
 			_e, _tc->elog_track)
 
@@ -101,24 +98,23 @@ typedef enum _session_evt_dbg
 #endif /* SESSION_DEQ_NODE_EVTS */
 
 #if SESSION_EVT_POLL_DBG && SESSION_DEBUG > 1
-#define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)			\
+#define SESSION_EVT_POLL_GAP(_smm, _ti)					\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "nixon-gap: %d MS",					\
+    .format = "nixon-gap: %d us",					\
     .format_args = "i4",						\
   };									\
   DEC_SESSION_ED(_e, 1);						\
   ed->data[0] =	(u32) ((now -						\
-    _smm->last_event_poll_by_thread[my_thread_index])*1000.0);		\
+      _smm->last_event_poll_by_thread[_ti])*1000000.0);			\
 }
-#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _my_thread_index)	\
+#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _ti)			\
 {									\
-  if (PREDICT_TRUE(							\
-	      smm->last_event_poll_by_thread[my_thread_index] != 0.0))	\
-    if (now > smm->last_event_poll_by_thread[_my_thread_index] + 500e-6)\
-	SESSION_EVT_POLL_GAP(smm, my_thread_index);			\
-  _smm->last_event_poll_by_thread[my_thread_index] = now;		\
+  if (PREDICT_TRUE (smm->last_event_poll_by_thread[_ti] != 0.0))	\
+    if (now > smm->last_event_poll_by_thread[_ti] + 500e-6)		\
+      SESSION_EVT_POLL_GAP(smm, _ti);					\
+  _smm->last_event_poll_by_thread[_ti] = now;				\
 }
 
 #else
