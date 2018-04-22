@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "51273e5e_57b04eee",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-04-22T23:53:47Z",
+      "side": 1,
+      "message": "This could probably be a u16, which could be grouped with n_add_refs and buffer_pool_index.",
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9baa060_e69435ab",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-04-22T23:53:47Z",
+      "side": 1,
+      "message": "This is starting to look a bit like a landfill. We\u0027ve statically allocated 6 bytes for seldom-used features. I guess there isn\u0027t a sane alternative, but if we take this procedure to the limit, the vlib_buffer_t will eventually feature multiple seldom-touched cache-lines.",
+      "revId": "3fa5cc421abe29aad9a7917614b108efc23e5517",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f87b24fb_1b520933",
         "filename": "src/vnet/buffer.h",
         "patchSetId": 2
