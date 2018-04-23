@@ -296,6 +296,11 @@ typedef enum vnet_link_t_
     [VNET_LINK_NSH] = "nsh",           \
 }
 
+#define FOR_EACH_VNET_LINK(_link)    \
+  for (_link = VNET_LINK_IP4;        \
+       _link <= VNET_LINK_NSH;       \
+       _link++)
+
 /**
  * @brief Number of link types. Not part of the enum so it does not have to be included in
  * switch statements

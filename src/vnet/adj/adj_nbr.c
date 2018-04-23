@@ -584,29 +584,6 @@ adj_nbr_walk (u32 sw_if_index,
 }
 
 /**
- * @brief Context for a walk of the adjacency neighbour DB
- */
-typedef struct adj_walk_nh_ctx_t_
-{
-    adj_walk_cb_t awc_cb;
-    void *awc_ctx;
-    const ip46_address_t *awc_nh;
-} adj_walk_nh_ctx_t;
-
-static void
-adj_nbr_walk_nh_cb (BVT(clib_bihash_kv) * kvp,
-		    void *arg)
-{
-    ip_adjacency_t *adj;
-    adj_walk_nh_ctx_t *ctx = arg;
-
-    adj = adj_get(kvp->value);
-
-    if (!ip46_address_cmp(&adj->sub_type.nbr.next_hop, ctx->awc_nh)) 
-	ctx->awc_cb(kvp->value, ctx->awc_ctx);
-}
-
-/**
  * @brief Walk adjacencies on a link with a given v4 next-hop.
  * that is visit the adjacencies with different link types.
  */
@@ -622,17 +599,16 @@ adj_nbr_walk_nh4 (u32 sw_if_index,
     ip46_address_t nh = {
 	.ip4 = *addr,
     };
+    vnet_link_t linkt;
+    adj_index_t ai;
 
-    adj_walk_nh_ctx_t awc = {
-	.awc_ctx = ctx,
-	.awc_cb = cb,
-	.awc_nh = &nh,
-    };
+    FOR_EACH_VNET_LINK(linkt)
+    {
+        ai = adj_nbr_find (FIB_PROTOCOL_IP4, linkt, &nh, sw_if_index);
 
-    BV(clib_bihash_foreach_key_value_pair) (
-	adj_nbr_tables[FIB_PROTOCOL_IP4][sw_if_index],
-	adj_nbr_walk_nh_cb,
-	&awc);
+        if (INDEX_INVALID != ai)
+            cb(ai, ctx);
+    }
 }
 
 /**
@@ -651,17 +627,16 @@ adj_nbr_walk_nh6 (u32 sw_if_index,
     ip46_address_t nh = {
 	.ip6 = *addr,
     };
+    vnet_link_t linkt;
+    adj_index_t ai;
 
-    adj_walk_nh_ctx_t awc = {
-	.awc_ctx = ctx,
-	.awc_cb = cb,
-	.awc_nh = &nh,
-    };
+    FOR_EACH_VNET_LINK(linkt)
+    {
+        ai = adj_nbr_find (FIB_PROTOCOL_IP6, linkt, &nh, sw_if_index);
 
-    BV(clib_bihash_foreach_key_value_pair) (
-	adj_nbr_tables[FIB_PROTOCOL_IP6][sw_if_index],
-	adj_nbr_walk_nh_cb,
-	&awc);
+        if (INDEX_INVALID != ai)
+            cb(ai, ctx);
+    }
 }
 
 /**
@@ -678,16 +653,16 @@ adj_nbr_walk_nh (u32 sw_if_index,
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
-    adj_walk_nh_ctx_t awc = {
-	.awc_ctx = ctx,
-	.awc_cb = cb,
-	.awc_nh = nh,
-    };
+    vnet_link_t linkt;
+    adj_index_t ai;
 
-    BV(clib_bihash_foreach_key_value_pair) (
-	adj_nbr_tables[adj_nh_proto][sw_if_index],
-	adj_nbr_walk_nh_cb,
-	&awc);
+    FOR_EACH_VNET_LINK(linkt)
+    {
+        ai = adj_nbr_find (FIB_PROTOCOL_IP4, linkt, nh, sw_if_index);
+
+        if (INDEX_INVALID != ai)
+            cb(ai, ctx);
+    }
 }
 
 /**
