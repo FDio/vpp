@@ -107,7 +107,8 @@ vl_api_igmp_enable_disable_t_handler (vl_api_igmp_enable_disable_t * mp)
 
 static void
 send_igmp_details (unix_shared_memory_queue_t * q, igmp_main_t * im,
-		   igmp_config_t * config, igmp_sg_t * sg, u32 context)
+		   igmp_config_t * config, igmp_group_t * group,
+		   igmp_src_t * src, u32 context)
 {
   vl_api_igmp_details_t *mp;
 
@@ -117,8 +118,8 @@ send_igmp_details (unix_shared_memory_queue_t * q, igmp_main_t * im,
   mp->_vl_msg_id = htons (VL_API_IGMP_DETAILS + im->msg_id_base);
   mp->context = context;
   mp->sw_if_index = htonl (config->sw_if_index);
-  clib_memcpy (mp->saddr, &sg->saddr.ip4, sizeof (u8) * 4);
-  clib_memcpy (mp->gaddr, &sg->gaddr.ip4, sizeof (u8) * 4);
+  clib_memcpy (mp->saddr, &src->addr.ip4, sizeof (u8) * 4);
+  clib_memcpy (mp->gaddr, &group->addr.ip4, sizeof (u8) * 4);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
@@ -128,7 +129,8 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
 {
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
-  igmp_sg_t *sg;
+  igmp_group_t *group;
+  igmp_src_t *src;
 
   unix_shared_memory_queue_t *q =
     vl_api_client_index_to_input_queue (mp->client_index);
@@ -140,9 +142,12 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
       /* *INDENT-OFF* */
       pool_foreach (config, im->configs, (
         {
-	    pool_foreach (sg, config->sg, (
+	    pool_foreach (group, config->groups, (
 	      {
-	        send_igmp_details (q, im, config, sg, mp->context);
+		pool_foreach (src, group->srcs, (
+		  {
+		    send_igmp_details (q, im, config, group, src, mp->context);
+		  }));
 	      }));
         }));
       /* *INDENT-ON* */
@@ -152,9 +157,12 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
   if (config)
     {
       /* *INDENT-OFF* */
-      pool_foreach (sg, config->sg, (
+      pool_foreach (group, config->groups, (
 	{
-	  send_igmp_details (q, im, config, sg, mp->context);
+	  pool_foreach (src, group->srcs, (
+	    {
+	      send_igmp_details (q, im, config, group, src, mp->context);
+	    }));
 	}));
       /* *INDENT-ON* */
     }
@@ -235,7 +243,8 @@ done:;
 
 void
 send_igmp_event (unix_shared_memory_queue_t * q, u32 context,
-		 igmp_main_t * im, igmp_config_t * config, igmp_sg_t * sg)
+		 igmp_main_t * im, igmp_config_t * config,
+		 igmp_group_t * group, igmp_src_t * src)
 {
   vl_api_igmp_event_t *mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
@@ -243,16 +252,17 @@ send_igmp_event (unix_shared_memory_queue_t * q, u32 context,
   mp->_vl_msg_id = ntohs ((VL_API_IGMP_EVENT) + im->msg_id_base);
   mp->context = context;
   mp->sw_if_index = htonl (config->sw_if_index);
-  clib_memcpy (&mp->saddr, &sg->saddr.ip4, sizeof (ip4_address_t));
-  clib_memcpy (&mp->gaddr, &sg->gaddr.ip4, sizeof (ip4_address_t));
+  clib_memcpy (&mp->saddr, &src->addr.ip4, sizeof (ip4_address_t));
+  clib_memcpy (&mp->gaddr, &group->addr.ip4, sizeof (ip4_address_t));
   mp->is_join =
-    (sg->group_type == IGMP_MEMBERSHIP_GROUP_mode_is_filter_include) ? 1 : 0;
+    (group->type == IGMP_MEMBERSHIP_GROUP_mode_is_filter_include) ? 1 : 0;
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
 void
-igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_sg_t * sg)
+igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
+	    igmp_src_t * src)
 {
   igmp_api_client_t *api_client;
   unix_shared_memory_queue_t *q;
@@ -261,15 +271,13 @@ igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_sg_t * sg)
     ({
       q = vl_api_client_index_to_input_queue (api_client->client_index);
       if (q)
-	send_igmp_event (q, 0, im, config, sg);
+	send_igmp_event (q, 0, im, config, group, src);
     }));
   /* *INDENT-ON* */
-  if (sg->group_type == IGMP_MEMBERSHIP_GROUP_block_old_sources)
+  if (group->type == IGMP_MEMBERSHIP_GROUP_block_old_sources)
     {
-      hash_unset_mem (config->igmp_sg_by_key, sg->key);
-      clib_mem_free (sg->key);
-      pool_put (config->sg, sg);
-      if (pool_elts (config->sg) == 0)
+      igmp_clear_group (config, group);
+      if (pool_elts (config->groups) == 0)
 	{
 	  hash_unset_mem (im->igmp_config_by_sw_if_index,
 			  &config->sw_if_index);
