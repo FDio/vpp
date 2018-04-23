@@ -502,6 +502,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = DPO_PROTO_ETHERNET;
             *payload_proto = DPO_PROTO_ETHERNET;
+            rpath->frp_flags |= FIB_ROUTE_PATH_INTF_RX;
         }
         else if (unformat (input, "via-label %U",
                            unformat_mpls_unicast_label,
