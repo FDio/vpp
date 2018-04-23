@@ -40,7 +40,7 @@ autoreply define pot_profile_add {
   u64 lpc;
   u64 polynomial_public;
   u8 list_name_len;
-  u8 list_name[0];
+  u8 list_name[list_name_len];
 };
 
 /** \brief Proof of Transit(POT): Activate POT profile in the list
@@ -53,7 +53,7 @@ autoreply define pot_profile_activate {
   u32 context;
   u8 id;
   u8 list_name_len;
-  u8 list_name[0];
+  u8 list_name[list_name_len];
 };
 
 /** \brief Delete POT Profile 
@@ -66,7 +66,7 @@ autoreply define pot_profile_del {
   u32 client_index;
   u32 context;
   u8 list_name_len;
-  u8 list_name[0];
+  u8 list_name[list_name_len];
 };
 
 /** \brief Show POT Profiles
