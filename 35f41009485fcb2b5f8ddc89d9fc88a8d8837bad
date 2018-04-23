@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2906cb5_26a8d5a2",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-23T20:19:22Z",
+      "side": 1,
+      "message": "Should this be (ptd-\u003enext[n] !\u003d VNET_DEVICE_NEXT_IP4_INPUT) or\n((ptd-\u003enext[n] ^ VNET_DEVICE_NEXT_IP4_INPUT) \u003d\u003d 0) ?",
+      "range": {
+        "startLine": 533,
+        "startChar": 21,
+        "endLine": 533,
+        "endChar": 53
+      },
+      "revId": "35f41009485fcb2b5f8ddc89d9fc88a8d8837bad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
