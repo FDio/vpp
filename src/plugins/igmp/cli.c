@@ -166,19 +166,21 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   igmp_main_t *im = &igmp_main;
   vnet_main_t *vnm = vnet_get_main ();
   igmp_config_t *config;
-  igmp_sg_t *sg;
+  igmp_group_t *group;
+  igmp_src_t *src;
 
   /* *INDENT-OFF* */
   pool_foreach (config, im->configs, (
     {
       vlib_cli_output (vm, "interface: %U", format_vnet_sw_if_index_name,
 		       vnm, config->sw_if_index);
-	pool_foreach (sg, config->sg, (
+	pool_foreach (group, config->groups, (
 	  {
-	    vlib_cli_output (vm, "\t(S,G): %U:%U:%U", format_ip46_address,
-			     &sg->saddr, ip46_address_is_ip4 (&sg->saddr),
-			     format_ip46_address, &sg->gaddr, ip46_address_is_ip4
-			     (&sg->gaddr), format_igmp_report_type, sg->group_type);
+	    vlib_cli_output (vm, "\t%U:%U", format_igmp_report_type, group->type, format_ip46_address, &group->addr, ip46_address_is_ip4 (&group->addr));
+	    pool_foreach (src, group->srcs, (
+	      {
+		vlib_cli_output (vm, "\t\t%U", format_ip46_address, &src->addr, ip46_address_is_ip4 (&src->addr));
+	      }));
 	  }));
     }));
   /* *INDENT-ON* */

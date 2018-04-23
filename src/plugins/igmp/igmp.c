@@ -33,28 +33,57 @@
 
 igmp_main_t igmp_main;
 
-/* clear all (S,G)s on specified config and remove this config from pool */
+void
+igmp_clear_group (igmp_config_t * config, igmp_group_t * group)
+{
+  igmp_src_t *src;
+
+  ASSERT (config);
+  ASSERT (group);
+
+  IGMP_DBG ("group_type %u, sw_if_index %d", group->type,
+	    config->sw_if_index);
+
+  /* *INDENT-OFF* */
+  pool_foreach (src, group->srcs, (
+    {
+      clib_mem_free (src->key);
+    }));
+  /* *INDENT-ON* */
+  pool_free (group->srcs);
+  hash_free (group->igmp_src_by_key);
+
+  hash_unset_mem (config->igmp_group_by_key, group->key);
+  clib_mem_free (group->key);
+  pool_put (config->groups, group);
+}
+
 void
 igmp_clear_config (igmp_config_t * config)
 {
   igmp_main_t *im = &igmp_main;
-  igmp_sg_t *sg;
+  igmp_group_t *group;
 
   ASSERT (config);
   /* *INDENT-OFF* */
-  pool_foreach (sg, config->sg, (
+  pool_foreach (group, config->groups, (
     {
-      clib_mem_free (sg->key);
+      igmp_clear_group (config, group);
     }));
   /* *INDENT-ON* */
-  pool_free (config->sg);
-  hash_free (config->igmp_sg_by_key);
+  pool_free (config->groups);
+  hash_free (config->igmp_group_by_key);
 
   hash_unset_mem (im->igmp_config_by_sw_if_index, &config->sw_if_index);
   pool_put (im->configs, config);
 }
 
-/* sort igmp timers, so that the first to expire is at end */
+/** \brief igmp timer compare
+    @param _a - igmp timer
+    @param _b - igmp timer
+
+    Compare function for igmp_timer_t sorting.
+*/
 int
 igmp_timer_compare (const void *_a, const void *_b)
 {
@@ -75,13 +104,6 @@ igmp_sort_timers (igmp_timer_t * timers)
 			     IGMP_PROCESS_EVENT_UPDATE_TIMER, 0);
 }
 
-/* create new per interface timer
- *
- * - delayed reports
- * - query msg
- * - query resp
- */
-
 void
 igmp_create_int_timer (f64 time, u32 sw_if_index,
 		       igmp_timer_function_t * func)
@@ -99,8 +121,8 @@ igmp_create_int_timer (f64 time, u32 sw_if_index,
 }
 
 void
-igmp_create_sg_timer (f64 time, u32 sw_if_index, igmp_sg_key_t * key,
-		      igmp_timer_function_t * func)
+igmp_create_group_timer (f64 time, u32 sw_if_index, igmp_key_t * gkey,
+			 igmp_timer_function_t * func)
 {
   igmp_main_t *im = &igmp_main;
   igmp_timer_t *timer;
@@ -110,14 +132,44 @@ igmp_create_sg_timer (f64 time, u32 sw_if_index, igmp_sg_key_t * key,
   timer->func = func;
   timer->exp_time = time;
   timer->sw_if_index = sw_if_index;
-  /* duplicate key, to prevent segmentation fault if (S,G) is removed */
-  timer->data = clib_mem_alloc (sizeof (igmp_sg_key_t));
-  clib_memcpy (timer->data, key, sizeof (igmp_sg_key_t));
+
+
+  ASSERT (gkey);
+  /* duplicate keys, to prevent segmentation fault if (S,G) is removed */
+  timer->data = clib_mem_alloc (sizeof (igmp_key_t));
+  clib_memcpy (&((igmp_key_t *) timer->data)[0], gkey, sizeof (igmp_key_t));
 
   igmp_sort_timers (im->timers);
 }
 
-/* get next timer to expire */
+void
+igmp_create_src_timer (f64 time, u32 sw_if_index, igmp_key_t * gkey,
+		       igmp_key_t * skey, igmp_timer_function_t * func)
+{
+  igmp_main_t *im = &igmp_main;
+  igmp_timer_t *timer;
+
+  pool_get (im->timers, timer);
+  memset (timer, 0, sizeof (igmp_timer_t));
+  timer->func = func;
+  timer->exp_time = time;
+  timer->sw_if_index = sw_if_index;
+
+  ASSERT (gkey);
+  ASSERT (skey);
+  /* duplicate keys, to prevent segmentation fault if (S,G) is removed */
+  timer->data = clib_mem_alloc (sizeof (igmp_key_t) * 2);
+  clib_memcpy (&((igmp_key_t *) timer->data)[0], gkey, sizeof (igmp_key_t));
+  clib_memcpy (&((igmp_key_t *) timer->data)[1], skey, sizeof (igmp_key_t));
+
+  igmp_sort_timers (im->timers);
+}
+
+/** \brief igmp get next timer
+    @param im - igmp main
+
+    Get next timer.
+*/
 always_inline igmp_timer_t *
 igmp_get_next_timer (igmp_main_t * im)
 {
@@ -153,126 +205,85 @@ igmp_create_report_v2 (vlib_buffer_t * b, igmp_config_t * config)
 }
 */
 
-/* create IGMPv3 report with single (S,G)
- * used to send state chenge reports
- */
-static void
-igmp_create_report_v31 (vlib_buffer_t * b, igmp_config_t * config)
-{
-  ip_csum_t sum;
-  u16 csum;
-  igmp_main_t *im = &igmp_main;
-  igmp_sg_t *sg;
-  u32 len = 0;
-
-  sg = vec_elt_at_index (config->sg, im->next_index.sg_index);
-
-  len = sizeof (igmp_membership_report_v3_t);
-  igmp_membership_report_v3_t *igmp =
-    (igmp_membership_report_v3_t *) (vlib_buffer_get_current (b));
-  memset (igmp, 0, sizeof (igmp_membership_report_v3_t));
-
-  igmp->header.type = IGMP_TYPE_membership_report_v3;
-  igmp->n_groups = clib_host_to_net_u16 (1);
-
-  len += sizeof (igmp_membership_group_v3_t);
-  memset (igmp->groups, 0, sizeof (igmp_membership_group_v3_t));
-  igmp->groups[0].type = sg->group_type;
-  igmp->groups[0].n_aux_u32s = 0;
-  clib_memcpy (&igmp->groups[0].dst_address, &sg->gaddr.ip4,
-	       sizeof (ip4_address_t));
-
-  igmp->groups[0].n_src_addresses = clib_host_to_net_u16 (1);
-
-  len += sizeof (ip4_address_t);
-  clib_memcpy (&igmp->groups[0].src_addresses[0], &sg->saddr.ip4,
-	       sizeof (ip4_address_t));
-
-  sum = ip_incremental_checksum (0, igmp, len);
-  csum = ~ip_csum_fold (sum);
-  igmp->header.checksum = csum;
-
-  b->current_data += len;
-  b->current_length += len;
-}
-
-u8
-ip4_lookup (ip4_address_t * a, igmp_membership_report_v3_t * igmp, u16 n,
-	    igmp_membership_group_v3_type_t type)
-{
-  u16 i;
-  u8 rv = 0;
-  u32 l = sizeof (igmp_membership_report_v3_t);
-
-  for (i = 0; i < n; i++)
-    {
-      if ((!ip4_address_compare (a, &(group_ptr (igmp, l)->dst_address))) &&
-	  (type == group_ptr (igmp, l)->type))
-	{
-	  rv = 1;
-	  break;
-	}
-      l += sizeof (igmp_membership_group_v3_t) +
-	clib_net_to_host_u16 (group_ptr (igmp, l)->n_src_addresses) *
-	sizeof (ip4_address_t);
-    }
-
-  return rv;
-}
-
-/* create IGMPv3 report with all (S,G)s on config
- * used to respond to general queries
- */
-static void
-igmp_create_report_v32 (vlib_buffer_t * b, igmp_config_t * config)
-{
-  ip_csum_t sum;
-  u16 csum;
-  igmp_sg_t *sg0, *sg1;
-  u32 len = 0;
-  u16 n_groups = 0, n_srcs = 0;
-  u32 grp_s = sizeof (igmp_membership_group_v3_t);
-
-  len = sizeof (igmp_membership_report_v3_t);
-  igmp_membership_report_v3_t *igmp =
-    (igmp_membership_report_v3_t *) (vlib_buffer_get_current (b));
-  memset (igmp, 0, sizeof (igmp_membership_report_v3_t));
-
-  igmp->header.type = IGMP_TYPE_membership_report_v3;
-
 /* TODO: divide (S,G)s to multiple reports...
  * - create report limited by <packet size|number of (S,G)s>?
  * - save loop state
  * - on next timer continue loop
  * - case of new query -> reset loop
  */
-  /* *INDENT-OFF* */
-  pool_foreach (sg0, config->sg, (
-    {
-      if (ip4_lookup (&sg0->gaddr.ip4, igmp, n_groups, sg0->group_type))
-	continue;
-      memset (igmp + len, 0, grp_s);
-      clib_memcpy (&group_ptr (igmp, len)->dst_address, &sg0->gaddr.ip4, sizeof (ip4_address_t));
-      group_ptr (igmp, len)->type = sg0->group_type;
-      len += grp_s;
-      n_srcs = 0;
-      pool_foreach (sg1, config->sg, (
-	{
-	  if ((!ip4_address_compare (&group_ptr (igmp, len - grp_s)->dst_address,
-	       &sg1->gaddr.ip4)) && (group_ptr (igmp, len - grp_s)->type == (sg1->group_type)))
-	    {
-	      clib_memcpy (group_ptr (igmp, len	+ sizeof (ip4_address_t) * n_srcs),
-			   &sg1->saddr.ip4, sizeof (ip4_address_t));
-	      n_srcs++;
-	    }
-	}));
-      group_ptr (igmp, len - grp_s)->n_src_addresses = clib_host_to_net_u16 (n_srcs);
-      len += sizeof (ip4_address_t) * n_srcs;
-      n_groups++;
-    }));
-  /* *INDENT-ON* */
 
-  igmp->n_groups = clib_host_to_net_u16 (n_groups);
+/** \brief igmp create report all (v3)
+    @param b - vlib buffer
+    @param config - igmp configuration
+    @param group - igmp group
+
+    Create IGMPv3 report. If group is NULL, send all groups on interface.
+*/
+static void
+igmp_create_report_v3 (vlib_buffer_t * b, igmp_config_t * config,
+		       igmp_group_t * group)
+{
+  ip_csum_t sum;
+  u16 csum;
+  u32 len = 0;
+  int i;
+
+  igmp_src_t *src;
+
+  igmp_membership_group_v3_t *igmp_group;
+
+  len = sizeof (igmp_membership_report_v3_t);
+
+  igmp_membership_report_v3_t *igmp =
+    (igmp_membership_report_v3_t *) (vlib_buffer_get_current (b));
+  memset (igmp, 0, sizeof (igmp_membership_report_v3_t));
+
+  igmp->header.type = IGMP_TYPE_membership_report_v3;
+  igmp->n_groups =
+    clib_net_to_host_u16 ((group) ? 1 : pool_elts (config->groups));
+
+  /* get pointer to first group */
+  igmp_group = igmp->groups;
+
+  /* if group is not NULL, send the specified group */
+  if (group)
+    {
+      memset (igmp_group, 0, sizeof (igmp_membership_group_v3_t));
+      igmp_group->type = group->type;
+      igmp_group->n_src_addresses =
+	clib_host_to_net_u16 (pool_elts (group->srcs));
+      igmp_group->dst_address = group->addr.ip4;
+      i = 0;
+      /* *INDENT-OFF* */
+      pool_foreach (src, group->srcs, (
+	{
+	  igmp_group->src_addresses[i++] = src->addr.ip4;
+	}));
+      /* *INDENT-ON* */
+      len += sizeof (ip4_address_t) * i;
+      len += sizeof (igmp_membership_group_v3_t);
+    }
+  else
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (group, config->groups, (
+	{
+	  memset (igmp_group, 0, sizeof (igmp_membership_group_v3_t));
+	  igmp_group->type = group->type;
+	  igmp_group->n_src_addresses =
+	    clib_host_to_net_u16 (pool_elts (group->srcs));
+	  igmp_group->dst_address = group->addr.ip4;
+	  i = 0;
+	  pool_foreach (src, group->srcs, (
+	    {
+	      igmp_group->src_addresses[i++] = src->addr.ip4;
+	    }));
+	  len += sizeof (ip4_address_t) * i;
+	  len += sizeof (igmp_membership_group_v3_t);
+	  igmp_group = group_ptr (igmp, len);
+	}));
+      /* *INDENT-ON* */
+    }
 
   sum = ip_incremental_checksum (0, igmp, len);
   csum = ~ip_csum_fold (sum);
@@ -282,14 +293,25 @@ igmp_create_report_v32 (vlib_buffer_t * b, igmp_config_t * config)
   b->current_length += len;
 }
 
+/** \brief igmp create query (v3)
+    @param b - vlib buffer
+    @param config - configuration that sends the query
+    @param group - if not NULL, create Group-specific query
+
+    Create igmp v3 qeury inside vlib buffer b.
+    If group == NULL create general query,
+    else, create group specific query.
+*/
 static void
-igmp_create_general_query_v3 (vlib_buffer_t * b, igmp_config_t * config)
+igmp_create_query_v3 (vlib_buffer_t * b, igmp_config_t * config,
+		      igmp_group_t * group)
 {
   vlib_main_t *vm = vlib_get_main ();
   ip_csum_t sum;
   u16 csum;
 
-  igmp_message_t *igmp = (igmp_message_t *) (vlib_buffer_get_current (b));
+  igmp_membership_query_v3_t *igmp =
+    (igmp_membership_query_v3_t *) (vlib_buffer_get_current (b));
   memset (igmp, 0, sizeof (igmp_membership_query_v3_t));
 
   igmp->header.type = IGMP_TYPE_membership_query;
@@ -298,6 +320,9 @@ igmp_create_general_query_v3 (vlib_buffer_t * b, igmp_config_t * config)
   config->flags &= ~IGMP_CONFIG_FLAG_QUERY_RESP_RECVED;
   igmp_create_int_timer (vlib_time_now (vm) + (f64) (igmp->header.code / 10),
 			 config->sw_if_index, igmp_query_resp_exp);
+
+  if (PREDICT_FALSE (group != NULL))
+    clib_memcpy (&igmp->dst, &group->addr.ip4, sizeof (ip4_address_t));
 
   sum =
     ip_incremental_checksum (0, igmp, sizeof (igmp_membership_query_v3_t));
@@ -308,9 +333,17 @@ igmp_create_general_query_v3 (vlib_buffer_t * b, igmp_config_t * config)
   b->current_length += sizeof (igmp_membership_query_v3_t);
 }
 
+/** \brief igmp create ip4
+    @param b - vlib buffer
+    @param config - igmp configuration
+    @param group - igmp membership group
+    @param is_report - if zero create query, else create report
 
+    Create ip4 header in vlib buffer b.
+*/
 static void
-igmp_create_ip4 (vlib_buffer_t * b, igmp_config_t * config, u8 is_report)
+igmp_create_ip4 (vlib_buffer_t * b, igmp_config_t * config,
+		 igmp_group_t * group, u8 is_report)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
 
@@ -330,23 +363,44 @@ igmp_create_ip4 (vlib_buffer_t * b, igmp_config_t * config, u8 is_report)
       ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
       clib_memcpy (&ip4->src_address, if_ip, sizeof (ip4_address_t));
     }
-  ip4->dst_address.as_u8[0] = 224;
-  ip4->dst_address.as_u8[1] = 0;
-  ip4->dst_address.as_u8[2] = 0;
-  ip4->dst_address.as_u8[3] = is_report ? 22 : 1;
+
+  if (is_report)
+    ip4->dst_address.as_u32 =
+      clib_host_to_net_u32 (IGMP_MEMBERSHIP_REPORT_ADDRESS);
+  else
+    {
+      if ((group != NULL))
+	clib_memcpy (&ip4->dst_address, &group->addr.ip4,
+		     sizeof (ip4_address_t));
+      else
+	ip4->dst_address.as_u32 =
+	  clib_host_to_net_u32 (IGMP_GENERAL_QUERY_ADDRESS);
+    }
 
   b->current_data += ip4_header_bytes (ip4);
   b->current_length += ip4_header_bytes (ip4);
 
-  config->next_create_msg (b, config);
+  config->next_create_msg (b, config, group);
   ip4->length = clib_host_to_net_u16 (b->current_length);
 
   ip4->checksum = ip4_header_checksum (ip4);
 }
 
+
+/** \brief igmp send message
+    @param vm - vlib main
+    @param node - vlib runtime node
+    @param im - igmp main
+    @param config - igmp configuration
+    @param group - igmp mebership group
+    @param is_report - 0 == qeury, else report
+
+    Send an igmp message. Get free vlib buffer fill it with igmp packet and transmit.
+*/
 static void
 igmp_send_msg (vlib_main_t * vm, vlib_node_runtime_t * node,
-	       igmp_main_t * im, igmp_config_t * config, u8 is_report)
+	       igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
+	       u8 is_report)
 {
   u32 thread_index = vlib_get_thread_index ();
   u32 *to_next;
@@ -388,7 +442,7 @@ igmp_send_msg (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b->current_data = 0;
 	  b->current_length = 0;
 
-	  igmp_create_ip4 (b, config, is_report);
+	  igmp_create_ip4 (b, config, group, is_report);
 
 	  b->current_data = 0;
 
@@ -414,6 +468,8 @@ igmp_send_query (vlib_main_t * vm, vlib_node_runtime_t * rt, igmp_main_t * im,
 		 igmp_timer_t * timer)
 {
   igmp_config_t *config;
+/* TODO: group-specific query: pass group key in timer */
+  igmp_group_t *group = NULL;
 
   u32 sw_if_index = timer->sw_if_index;
 
@@ -424,11 +480,13 @@ igmp_send_query (vlib_main_t * vm, vlib_node_runtime_t * rt, igmp_main_t * im,
     return;
 
   /* TODO: implement IGMPv2 */
-  config->next_create_msg = igmp_create_general_query_v3;
-  igmp_send_msg (vm, rt, im, config, /* is_report */ 0);
+  config->next_create_msg = igmp_create_query_v3;
+  igmp_send_msg (vm, rt, im, config, group, /* is_report */ 0);
 
-  igmp_create_int_timer (vlib_time_now (vm) + IGMP_QUERY_TIMER, sw_if_index,
-			 igmp_send_query);
+  /* in case of group query we don't want to set up another qery timer */
+  if (PREDICT_TRUE (!group))
+    igmp_create_int_timer (vlib_time_now (vm) + IGMP_QUERY_TIMER, sw_if_index,
+			   igmp_send_query);
 }
 
 void
@@ -436,6 +494,8 @@ igmp_query_resp_exp (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		     igmp_main_t * im, igmp_timer_t * timer)
 {
   igmp_config_t *config;
+/* TODO: group-specific query: pass group key in timer */
+  igmp_group_t *group = NULL;
 
   u32 sw_if_index = timer->sw_if_index;
 
@@ -444,7 +504,17 @@ igmp_query_resp_exp (vlib_main_t * vm, vlib_node_runtime_t * rt,
   config = igmp_config_lookup (im, sw_if_index);
   if (!config)
     return;
-  /* if report not reveived in max resp time clear igmp on interface */
+
+  /* if group != NULL this is a group-specific qeury timer */
+  if (PREDICT_FALSE (group != NULL))
+    {
+      if ((group->flags & IGMP_GROUP_FLAG_QUERY_RESP_RECVED) == 0)
+	{
+	  igmp_clear_group (config, group);
+	  return;
+	}
+    }
+  /* if report not received in max resp time clear igmp on interface */
   if ((config->flags & IGMP_CONFIG_FLAG_QUERY_RESP_RECVED) == 0)
     {
       igmp_clear_config (config);
@@ -468,8 +538,9 @@ igmp_send_report (vlib_main_t * vm, vlib_node_runtime_t * rt,
   if (config->flags & IGMP_CONFIG_FLAG_CAN_SEND_REPORT)
     {
       /* TODO: implement IGMPv2 and IGMPv1 */
-      config->next_create_msg = igmp_create_report_v32;
-      igmp_send_msg (vm, rt, im, config, /* is_report */ 1);
+      config->next_create_msg = igmp_create_report_v3;
+      /* pass NULL as group to send all groups at once */
+      igmp_send_msg (vm, rt, im, config, NULL, /* is_report */ 1);
       /* WIP: unset flag after all reports sent */
       config->flags &= ~IGMP_CONFIG_FLAG_CAN_SEND_REPORT;
     }
@@ -480,68 +551,144 @@ igmp_send_state_changed (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			 igmp_main_t * im, igmp_timer_t * timer)
 {
   igmp_config_t *config;
-  igmp_sg_t *sg;
+  igmp_group_t *group;
+  igmp_src_t *src;
+  igmp_key_t gkey;
+
+  u32 sw_if_index = timer->sw_if_index;
+  IGMP_DBG ("sw_if_index %d", sw_if_index);
+
+  ASSERT (timer->data);
+  clib_memcpy (&gkey, timer->data, sizeof (igmp_key_t));
 
   pool_put (im->timers, timer);
 
-  config = vec_elt_at_index (im->configs, im->next_index.config_index);
-  sg = vec_elt_at_index (config->sg, im->next_index.sg_index);
+  config = igmp_config_lookup (im, sw_if_index);
+  if (!config)
+    return;
 
-  config->next_create_msg = igmp_create_report_v31;
-  igmp_send_msg (vm, rt, im, config, /* is_report */ 1);
+  group = igmp_group_lookup (config, &gkey);
+  if (!group)
+    return;
 
+  config->next_create_msg = igmp_create_report_v3;
+  igmp_send_msg (vm, rt, im, config, group, /* is_report */ 1);
 
-  if (sg->group_type == IGMP_MEMBERSHIP_GROUP_change_to_filter_include)
+  IGMP_DBG ("group_type %u", group->type);
+
+  if (group->type == IGMP_MEMBERSHIP_GROUP_change_to_filter_include)
     {
-      sg->group_type = IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
-    }
-  else if (sg->group_type == IGMP_MEMBERSHIP_GROUP_block_old_sources)
-    {
-      /* remove API/CLI configured (S,G) */
-      hash_unset_mem (config->igmp_sg_by_key, sg->key);
-      clib_mem_free (sg->key);
-      pool_put (config->sg, sg);
-      if (pool_elts (config->sg) == 0)
+      igmp_key_t new_gkey;
+      igmp_group_t *new_group;
+      igmp_src_t *new_src;
+
+      clib_memcpy (&new_gkey.data, &group->addr, sizeof (ip46_address_t));
+      new_gkey.group_type = IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
+
+      new_group = igmp_group_lookup (config, &new_gkey);
+      if (!new_group)
 	{
-	  hash_unset_mem (im->igmp_config_by_sw_if_index,
-			  &config->sw_if_index);
-	  pool_put (im->configs, config);
+	  IGMP_DBG ("creating new group...");
+	  pool_get (config->groups, new_group);
+	  /* get valid pointer to old group */
+	  group = igmp_group_lookup (config, &gkey);
+
+	  memset (new_group, 0, sizeof (igmp_group_t));
+
+	  clib_memcpy (&new_group->addr, &group->addr,
+		       sizeof (ip46_address_t));
+	  new_group->n_srcs = 0;
+	  new_group->type = new_gkey.group_type;
+
+	  new_group->key = clib_mem_alloc (sizeof (igmp_key_t));
+	  clib_memcpy (new_group->key, &new_gkey, sizeof (igmp_key_t));
+	  new_group->igmp_src_by_key =
+	    hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
+	  hash_set_mem (config->igmp_group_by_key, new_group->key,
+			new_group - config->groups);
 	}
+      /* *INDENT-OFF* */
+      /* loop through old group sources */
+      pool_foreach (src, group->srcs, (
+	{
+	  /* add sources to new group */
+	  new_src = igmp_src_lookup (new_group, src->key);
+	  if (!new_src)
+	    {
+	      pool_get (new_group->srcs, new_src);
+	      memset (new_src, 0, sizeof (igmp_src_t));
+	      new_group->n_srcs += 1;
+	      new_src->key = clib_mem_alloc (sizeof (igmp_key_t));
+	      clib_memcpy (new_src->key, src->key, sizeof (igmp_key_t));
+	      clib_memcpy (&new_src->addr, &src->addr,
+	        sizeof (ip46_address_t));
+
+	      hash_set_mem (new_group->igmp_src_by_key, new_src->key,
+		    new_src - new_group->srcs);
+	    }
+	}));
+      /* *INDENT-ON* */
     }
 
+  /* remove group */
+  IGMP_DBG ("remove group");
+  igmp_clear_group (config, group);
+  if (pool_elts (config->groups) == 0)
+    {
+      hash_unset_mem (im->igmp_config_by_sw_if_index, &config->sw_if_index);
+      pool_put (im->configs, config);
+    }
 }
 
 void
-igmp_sg_exp (vlib_main_t * vm, vlib_node_runtime_t * rt, igmp_main_t * im,
-	     igmp_timer_t * timer)
+igmp_src_exp (vlib_main_t * vm, vlib_node_runtime_t * rt,
+	      igmp_main_t * im, igmp_timer_t * timer)
 {
   igmp_config_t *config;
-  igmp_sg_t *sg;
+  igmp_group_t *group;
+  igmp_src_t *src;
 
-  igmp_sg_key_t *key = (igmp_sg_key_t *) timer->data;
+  ASSERT (timer->data);
+
+  igmp_key_t *gkey = (igmp_key_t *) & ((igmp_key_t *) timer->data)[0];
+  igmp_key_t *skey = (igmp_key_t *) & ((igmp_key_t *) timer->data)[1];
 
   config = igmp_config_lookup (im, timer->sw_if_index);
   if (!config)
     goto done;
-  sg = igmp_sg_lookup (config, key);
-  if (!sg)
+  group = igmp_group_lookup (config, gkey);
+  if (!group)
     goto done;
-
+  src = igmp_src_lookup (group, skey);
+  if (!src)
+    goto done;
   /* check if this timer is valid */
-  if (timer->exp_time != sg->exp_time)
+  if (timer->exp_time != src->exp_time)
     {
-      timer->exp_time = sg->exp_time;
+      timer->exp_time = src->exp_time;
       igmp_sort_timers (im->timers);
       return;
     }
 
-  /* source timer expired, remove (S,G) */
-  igmp_listen (vm, 0, timer->sw_if_index, key->saddr, key->gaddr, 0);
+  ip46_address_t saddr;
+  ip46_address_t gaddr;
+  clib_memcpy (&saddr, skey->data, sizeof (ip46_address_t));
+  clib_memcpy (&gaddr, gkey->data, sizeof (ip46_address_t));
 
+  /* source timer expired, remove src */
+  igmp_listen (vm, 0, timer->sw_if_index, saddr, gaddr, 0);
 done:
+  clib_mem_free (timer->data);
   pool_put (im->timers, timer);
 }
 
+/** \brief igmp timer process
+    @param vm - vlib main
+    @param rt - vlib runtime node
+    @param f - vlib frame
+
+    Handle igmp timers.
+*/
 static uword
 igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    vlib_frame_t * f)
@@ -550,29 +697,23 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   uword *event_data = 0, event_type;
   f64 time_start;
   igmp_timer_t *timer = NULL;
-
   while (1)
     {
+      /* suspend util timer expires */
       if (NULL != timer)
 	vlib_process_wait_for_event_or_clock (vm,
 					      timer->exp_time - time_start);
       else
 	vlib_process_wait_for_event (vm);
-
       time_start = vlib_time_now (vm);
-
       event_type = vlib_process_get_events (vm, &event_data);
       vec_reset_length (event_data);
-
       if (event_type == IGMP_PROCESS_EVENT_UPDATE_TIMER)
 	goto next_timer;
-
       IGMP_DBG ("time: %f", vlib_time_now (vm));
-
       /* timer expired */
       if (NULL != timer)
 	timer->func (vm, rt, im, timer);
-
     next_timer:
       timer = igmp_get_next_timer (im);
     }
@@ -600,97 +741,184 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 {
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
-  igmp_sg_t *sg;
-  igmp_sg_key_t key;
+  igmp_group_t *group;
+  igmp_src_t *src;
+  igmp_key_t skey;
+  igmp_key_t gkey;
+
+  igmp_membership_group_v3_type_t group_type =
+    (cli_api_configured) ?
+    IGMP_MEMBERSHIP_GROUP_change_to_filter_include :
+    IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
   int rv = 0;
 
-  /* set the lookup key */
-  clib_memcpy (&key.saddr, &saddr, sizeof (ip46_address_t));
-  clib_memcpy (&key.gaddr, &gaddr, sizeof (ip46_address_t));
+  /* set the lookup keys */
+  skey.group_type = 0;
+  gkey.group_type = group_type;
+  clib_memcpy (&skey.data, &saddr, sizeof (ip46_address_t));
+  clib_memcpy (&gkey.data, &gaddr, sizeof (ip46_address_t));
 
   if (enable)
     {
+      /* find configuration, if it dosn't exist, create new */
       config = igmp_config_lookup (im, sw_if_index);
       if (!config)
 	{
 	  pool_get (im->configs, config);
 	  memset (config, 0, sizeof (igmp_config_t));
 	  config->sw_if_index = sw_if_index;
-	  config->igmp_sg_by_key =
-	    hash_create_mem (0, sizeof (igmp_sg_key_t), sizeof (uword));
+	  config->igmp_group_by_key =
+	    hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
 	  config->cli_api_configured = cli_api_configured;
 	  /* use IGMPv3 by default */
 	  config->igmp_ver = IGMP_V3;
 	  config->robustness_var = IGMP_DEFAULT_ROBUSTNESS_VARIABLE;
 	  config->flags |= IGMP_CONFIG_FLAG_QUERY_RESP_RECVED;
+
 	  if (!cli_api_configured)
 	    {
+	      /* create qery timer */
 	      igmp_create_int_timer (vlib_time_now (vm) + IGMP_QUERY_TIMER,
 				     sw_if_index, igmp_send_query);
 	    }
 	  config->adj_index =
 	    adj_mcast_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
 				   config->sw_if_index);
-	  hash_set_mem (im->igmp_config_by_sw_if_index, &config->sw_if_index,
-			config - im->configs);
+	  hash_set_mem (im->igmp_config_by_sw_if_index,
+			&config->sw_if_index, config - im->configs);
 	}
       else if (config->cli_api_configured != cli_api_configured)
 	{
 	  rv = -2;
 	  goto error;
 	}
-      sg = igmp_sg_lookup (config, &key);
-      if (!sg)
+      /* find igmp group, if it dosn't exist, create new */
+      group = igmp_group_lookup (config, &gkey);
+      if (!group)
 	{
-	  pool_get (config->sg, sg);
-	  memset (sg, 0, sizeof (igmp_sg_t));
-	  sg->key = clib_mem_alloc (sizeof (igmp_sg_key_t));
-	  clib_memcpy (sg->key, &key, sizeof (igmp_sg_key_t));
-	  clib_memcpy (&sg->saddr, &saddr, sizeof (ip46_address_t));
-	  clib_memcpy (&sg->gaddr, &gaddr, sizeof (ip46_address_t));
-	  sg->group_type = IGMP_MEMBERSHIP_GROUP_change_to_filter_include;
+	  pool_get (config->groups, group);
+	  memset (group, 0, sizeof (igmp_group_t));
+	  group->key = clib_mem_alloc (sizeof (igmp_key_t));
+	  clib_memcpy (group->key, &gkey, sizeof (igmp_key_t));
+	  clib_memcpy (&group->addr, &gaddr, sizeof (ip46_address_t));
+	  group->igmp_src_by_key =
+	    hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
+	  group->n_srcs = 0;
+	  group->type = gkey.group_type;
 	  if (cli_api_configured)
 	    {
 	      /* create state-changed report timer with zero timeout */
-	      igmp_create_int_timer (0, sw_if_index, igmp_send_state_changed);
+	      igmp_create_group_timer (0, sw_if_index, group->key,
+				       igmp_send_state_changed);
 	    }
-	  else
+
+	  hash_set_mem (config->igmp_group_by_key, group->key,
+			group - config->groups);
+	}
+      /* find source, if it dosn't exist, create new */
+      src = igmp_src_lookup (group, &skey);
+      if (!src)
+	{
+	  pool_get (group->srcs, src);
+	  memset (src, 0, sizeof (igmp_src_t));
+	  group->n_srcs += 1;
+	  src->key = clib_mem_alloc (sizeof (igmp_key_t));
+	  clib_memcpy (src->key, &skey, sizeof (igmp_key_t));
+	  clib_memcpy (&src->addr, &saddr, sizeof (ip46_address_t));
+	  if (!cli_api_configured)
 	    {
-	      sg->group_type = IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
-	      sg->exp_time = vlib_time_now (vm) + IGMP_SG_TIMER;
-	      igmp_create_sg_timer (sg->exp_time, config->sw_if_index,
-				    sg->key, igmp_sg_exp);
-	      /* notify all registered api clients */
-	      igmp_event (im, config, sg);
+	      /* arm source timer (after expiration remove (S,G)) */
+	      igmp_event (im, config, group, src);
+	      src->exp_time = vlib_time_now (vm) + IGMP_SRC_TIMER;
+	      igmp_create_src_timer (src->exp_time, config->sw_if_index,
+				     group->key, src->key, igmp_src_exp);
 	    }
-	  hash_set_mem (config->igmp_sg_by_key, sg->key, sg - config->sg);
+
+	  hash_set_mem (group->igmp_src_by_key, src->key, src - group->srcs);
 	}
       else
 	{
 	  rv = -1;
 	  goto error;
 	}
-
-      im->next_index.config_index = config - im->configs;
-      im->next_index.sg_index = sg - config->sg;
     }
   else
     {
       config = igmp_config_lookup (im, sw_if_index);
       if (config)
 	{
-	  sg = igmp_sg_lookup (config, &key);
-	  if (sg)
+	  gkey.group_type = IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
+	  group = igmp_group_lookup (config, &gkey);
+	  if (group)
 	    {
-	      sg->group_type = IGMP_MEMBERSHIP_GROUP_block_old_sources;
-	      im->next_index.config_index = config - im->configs;
-	      im->next_index.sg_index = sg - config->sg;
-	      /* notify all registered api clients */
-	      if (!cli_api_configured)
-		igmp_event (im, config, sg);
+	      src = igmp_src_lookup (group, &skey);
+	      if (src)
+		{
+		  /* add source to block_all_sources group */
+		  igmp_key_t new_gkey;
+		  igmp_group_t *new_group;
+
+		  clib_memcpy (&new_gkey, &gkey, sizeof (igmp_key_t));
+		  new_gkey.group_type =
+		    IGMP_MEMBERSHIP_GROUP_block_old_sources;
+		  new_group = igmp_group_lookup (config, &new_gkey);
+		  if (!new_group)
+		    {
+		      pool_get (config->groups, new_group);
+
+		      group = igmp_group_lookup (config, &gkey);
+
+		      memset (new_group, 0, sizeof (igmp_group_t));
+		      new_group->key = clib_mem_alloc (sizeof (igmp_key_t));
+		      clib_memcpy (new_group->key, &new_gkey,
+				   sizeof (igmp_key_t));
+		      clib_memcpy (&new_group->addr, &group->addr,
+				   sizeof (ip46_address_t));
+		      new_group->igmp_src_by_key =
+			hash_create_mem (0, sizeof (igmp_key_t),
+					 sizeof (uword));
+		      new_group->n_srcs = 0;
+		      new_group->type = new_gkey.group_type;
+		      hash_set_mem (config->igmp_group_by_key, new_group->key,
+				    new_group - config->groups);
+		    }
+		  igmp_src_t *new_src;
+		  new_src = igmp_src_lookup (new_group, &skey);
+		  if (!new_src)
+		    {
+		      pool_get (new_group->srcs, new_src);
+		      memset (new_src, 0, sizeof (igmp_src_t));
+		      new_group->n_srcs += 1;
+		      new_src->key = clib_mem_alloc (sizeof (igmp_key_t));
+		      clib_memcpy (new_src->key, src->key,
+				   sizeof (igmp_key_t));
+		      clib_memcpy (&new_src->addr, &src->addr,
+				   sizeof (ip46_address_t));
+		      hash_set_mem (new_group->igmp_src_by_key, new_src->key,
+				    new_src - new_group->srcs);
+		    }
+
+		  /* notify all registered api clients */
+		  if (!cli_api_configured)
+		    igmp_event (im, config, new_group, new_src);
+		  else
+		    igmp_create_group_timer (0, sw_if_index, new_group->key,
+					     igmp_send_state_changed);
+		  /* remove source form mode_is_filter_include group */
+		  hash_unset_mem (group->igmp_src_by_key, src->key);
+		  clib_mem_free (src->key);
+		  pool_put (group->srcs, src);
+		  group->n_srcs -= 1;
+		  if (group->n_srcs <= 0)
+		    igmp_clear_group (config, group);
+		  if (pool_elts (config->groups) <= 0)
+		    igmp_clear_config (config);
+		}
 	      else
-		igmp_create_int_timer (0, sw_if_index,
-				       igmp_send_state_changed);
+		{
+		  rv = -1;
+		  goto error;
+		}
 	    }
 	  else
 	    {
@@ -709,13 +937,19 @@ error:
   return rv;
 }
 
+/** \brief igmp hardware interface link up down
+    @param vnm - vnet main
+    @param hw_if_index - interface hw_if_index
+    @param flags - hw interface flags
+
+    If an interface goes down, remove its (S,G)s.
+*/
 static clib_error_t *
 igmp_hw_interface_link_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
   clib_error_t *error = NULL;
-
   /* remove igmp from a down interface to prevent crashes... */
   config =
     igmp_config_lookup (im,
@@ -731,6 +965,11 @@ igmp_hw_interface_link_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (igmp_hw_interface_link_up_down);
 
+/** \brief igmp initialization
+    @param vm - vlib main
+
+    initialize igmp plugin. Initialize igmp_main, set mfib to allow igmp traffic.
+*/
 static clib_error_t *
 igmp_init (vlib_main_t * vm)
 {
@@ -738,20 +977,15 @@ igmp_init (vlib_main_t * vm)
   igmp_main_t *im = &igmp_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
-
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
     return error;
-
   im->igmp_config_by_sw_if_index =
     hash_create_mem (0, sizeof (u32), sizeof (uword));
   im->igmp_api_client_by_client_index =
     hash_create_mem (0, sizeof (u32), sizeof (uword));
-
   vec_validate_aligned (im->buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-
   ip4_register_protocol (IP_PROTOCOL_IGMP, igmp_input_node.index);
-
   igmp_type_info_t *ti;
   igmp_report_type_info_t *rti;
 #define igmp_type(n,s)				\
@@ -760,19 +994,15 @@ do {						\
   ti->type = n;					\
   ti->name = (u8 *) #s;				\
 } while (0);
-
 #define igmp_report_type(n,s)				\
 do {						\
   vec_add2 (im->report_type_infos, rti, 1);		\
   rti->type = n;					\
   rti->name = (u8 *) #s;				\
 } while (0);
-
 #include "igmp.def"
-
 #undef igmp_type
 #undef igmp_report_type
-
   for (i = 0; i < vec_len (im->type_infos); i++)
     {
       ti = im->type_infos + i;
@@ -786,17 +1016,18 @@ do {						\
     }
 
   /* General Query address */
-  ip46_address_t addr0;
-  addr0.ip4.as_u8[0] = 224;
-  addr0.ip4.as_u8[1] = 0;
-  addr0.ip4.as_u8[2] = 0;
-  addr0.ip4.as_u8[3] = 1;
+  ip46_address_t addr0 = {
+    .as_u64[0] = 0,
+    .as_u64[1] = 0
+  };
+  addr0.ip4.as_u32 = clib_host_to_net_u32 (IGMP_GENERAL_QUERY_ADDRESS);
+
   /* Report address */
-  ip46_address_t addr1;
-  addr1.ip4.as_u8[0] = 224;
-  addr1.ip4.as_u8[1] = 0;
-  addr1.ip4.as_u8[2] = 0;
-  addr1.ip4.as_u8[3] = 22;
+  ip46_address_t addr1 = {
+    .as_u64[0] = 0,
+    .as_u64[1] = 0
+  };
+  addr1.ip4.as_u32 = clib_host_to_net_u32 (IGMP_MEMBERSHIP_REPORT_ADDRESS);
 
   fib_route_path_t path = {
     .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
@@ -806,32 +1037,36 @@ do {						\
     .frp_weight = 0,
     .frp_flags = FIB_ROUTE_PATH_LOCAL,
   };
+
   const mfib_prefix_t mpfx0 = {
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_len = 32,
     .fp_grp_addr = addr0,
   };
+
   const mfib_prefix_t mpfx1 = {
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_len = 32,
     .fp_grp_addr = addr1,
   };
-  /* configure MFIB to accept IGMPv3 general query and reports from all interfaces */
-  mfib_table_entry_path_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
-  mfib_table_entry_path_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
 
-  mfib_table_entry_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE, 0,
-			   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
-  mfib_table_entry_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE, 0,
-			   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
-
+  /* configure MFIB to accept IGMPv3 general query
+   * and reports from all interfaces
+   */
+  mfib_table_entry_path_update (0, &mpfx0,
+				MFIB_SOURCE_DEFAULT_ROUTE, &path,
+				MFIB_ITF_FLAG_FORWARD);
+  mfib_table_entry_path_update (0, &mpfx1,
+				MFIB_SOURCE_DEFAULT_ROUTE, &path,
+				MFIB_ITF_FLAG_FORWARD);
+  mfib_table_entry_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE,
+			   0, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+  mfib_table_entry_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE,
+			   0, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
   return (error);
 }
 
 VLIB_INIT_FUNCTION (igmp_init);
-
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
