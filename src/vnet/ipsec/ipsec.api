@@ -227,7 +227,7 @@ autoreply define ikev2_profile_set_auth
   u8 auth_method;
   u8 is_hex;
   u32 data_len;
-  u8 data[0];
+  u8 data[data_len];
 };
 
 /** \brief IKEv2: Set IKEv2 profile local/remote identification
@@ -249,7 +249,7 @@ autoreply define ikev2_profile_set_id
   u8 is_local;
   u8 id_type;
   u32 data_len;
-  u8 data[0];
+  u8 data[data_len];
 };
 
 /** \brief IKEv2: Set IKEv2 profile traffic selector parameters

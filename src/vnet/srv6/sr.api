@@ -43,6 +43,11 @@ autoreply define sr_localsid_add_del
   u8 nh_addr[16];
 };
 
+typeonly define sr_ip6_address
+{
+  u8 data[16];
+};
+
 /** \brief IPv6 SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -63,7 +68,7 @@ autoreply define sr_policy_add
   u8 type;
   u32 fib_table;
   u8 n_segments;
-  u8 segments[0];
+  vl_api_sr_ip6_address_t segments[n_segments];
 };
 
 /** \brief IPv6 SR policy modification
@@ -89,7 +94,7 @@ autoreply define sr_policy_mod
   u32 sl_index;
   u32 weight;
   u8 n_segments;
-  u8 segments[0];
+  vl_api_sr_ip6_address_t segments[n_segments];
 };
 
 /** \brief IPv6 SR policy deletion
