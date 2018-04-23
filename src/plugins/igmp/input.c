@@ -354,11 +354,14 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, *to_next;
   igmp_input_next_t next_index;
   igmp_config_t *config;
-  igmp_sg_t *sg;
-  igmp_membership_group_v3_t *group;
-  ip4_address_t *src;
-  igmp_sg_key_t key;
-  memset (&key, 0, sizeof (igmp_sg_key_t));
+  igmp_group_t *group;
+  igmp_src_t *src;
+  igmp_membership_group_v3_t *igmp_group;
+  ip4_address_t *src_addr;
+  igmp_key_t gkey;
+  igmp_key_t skey;
+  memset (&gkey, 0, sizeof (igmp_key_t));
+  memset (&skey, 0, sizeof (igmp_key_t));
   ip46_address_t saddr;
   memset (&saddr, 0, sizeof (ip46_address_t));
   ip46_address_t gaddr;
@@ -420,77 +423,98 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  int i, j = 0;
 	  for (i = 0; i < clib_net_to_host_u16 (igmp->n_groups); i++)
 	    {
-	      group = group_ptr (igmp, len);
-	      src = group->src_addresses;
-	      if (group->type == IGMP_MEMBERSHIP_GROUP_mode_is_filter_include)
+	      igmp_group = group_ptr (igmp, len);
+	      src_addr = igmp_group->src_addresses;
+	      if (igmp_group->type ==
+		  IGMP_MEMBERSHIP_GROUP_mode_is_filter_include)
 		{
-		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		  ip46_address_set_ip4 ((ip46_address_t *) & gkey.data,
+					&igmp_group->dst_address);
+
+		  gkey.group_type =
+		    IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
+
+		  group = igmp_group_lookup (config, &gkey);
+		  if (group)
 		    {
-		      /* update (S,G) expiration timer */
-		      key.saddr.ip4 = *src;
-		      key.gaddr.ip4 = group->dst_address;
-		      sg = igmp_sg_lookup (config, &key);
-		      if (sg)
-			sg->exp_time = vlib_time_now (vm) + IGMP_SG_TIMER;
-		      src++;
+		      for (j = 0;
+			   j <
+			   clib_net_to_host_u16 (igmp_group->n_src_addresses);
+			   j++)
+			{
+			  /* update (S,G) expiration timer */
+			  ip46_address_set_ip4 ((ip46_address_t *) &
+						skey.data, src_addr);
+			  src = igmp_src_lookup (group, &skey);
+			  if (src)
+			    src->exp_time =
+			      vlib_time_now (vm) + IGMP_SRC_TIMER;
+			  src_addr++;
+			}
 		    }
 		}
-	      else if (group->type ==
+	      else if (igmp_group->type ==
 		       IGMP_MEMBERSHIP_GROUP_mode_is_filter_exclude)
 		{
 		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		       j < clib_net_to_host_u16 (igmp_group->n_src_addresses);
+		       j++)
 		    {
 		      /* nothing for now... */
-		      src++;
+		      src_addr++;
 		    }
 		}
-	      else if (group->type ==
+	      else if (igmp_group->type ==
 		       IGMP_MEMBERSHIP_GROUP_change_to_filter_include)
 		{
 		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		       j < clib_net_to_host_u16 (igmp_group->n_src_addresses);
+		       j++)
 		    {
 		      /* add new (S,G) to interface */
-		      saddr.ip4 = *src;
-		      gaddr.ip4 = group->dst_address;
+		      saddr.ip4 = *src_addr;
+		      gaddr.ip4 = igmp_group->dst_address;
 		      igmp_listen (vm, 1, sw_if_index, saddr, gaddr, 0);
-		      src++;
+		      src_addr++;
 		    }
 		}
-	      else if (group->type ==
+	      else if (igmp_group->type ==
 		       IGMP_MEMBERSHIP_GROUP_change_to_filter_exclude)
 		{
 		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		       j < clib_net_to_host_u16 (igmp_group->n_src_addresses);
+		       j++)
 		    {
 		      /* remove (S,G) from interface */
-		      saddr.ip4 = *src;
-		      gaddr.ip4 = group->dst_address;
+		      saddr.ip4 = *src_addr;
+		      gaddr.ip4 = igmp_group->dst_address;
 		      igmp_listen (vm, 0, sw_if_index, saddr, gaddr, 0);
-		      src++;
+		      src_addr++;
 		    }
 		}
-	      else if (group->type == IGMP_MEMBERSHIP_GROUP_allow_new_sources)
+	      else if (igmp_group->type ==
+		       IGMP_MEMBERSHIP_GROUP_allow_new_sources)
 		{
 		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		       j < clib_net_to_host_u16 (igmp_group->n_src_addresses);
+		       j++)
 		    {
 		      /* nothing for now... */
-		      src++;
+		      src_addr++;
 		    }
 		}
-	      else if (group->type == IGMP_MEMBERSHIP_GROUP_block_old_sources)
+	      else if (igmp_group->type ==
+		       IGMP_MEMBERSHIP_GROUP_block_old_sources)
 		{
 		  for (j = 0;
-		       j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+		       j < clib_net_to_host_u16 (igmp_group->n_src_addresses);
+		       j++)
 		    {
 		      /* remove (S,G) from interface */
-		      saddr.ip4 = *src;
-		      gaddr.ip4 = group->dst_address;
+		      saddr.ip4 = *src_addr;
+		      gaddr.ip4 = igmp_group->dst_address;
 		      igmp_listen (vm, 0, sw_if_index, saddr, gaddr, 0);
-		      src++;
+		      src_addr++;
 		    }
 		}
 	      /*
