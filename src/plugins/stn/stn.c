@@ -79,61 +79,6 @@ format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
   return s;
 }
 
-static void
-stn_punt_fn (vlib_main_t * vm,
-	           vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  stn_main_t *stn = &stn_main;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      /* Single loop */
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 pi0;
-	  vlib_buffer_t *p0;
-	  u32 next0;
-
-	  pi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-
-/*
- * We are not guaranteed any particular layer here.
- * So we need to reparse from the beginning of the packet.
- * which may not start from zero with some DPDK drivers.
-
-	  ip4_header_t *ip = vlib_buffer_get_current(p0);
-	  if ((ip->ip_version_and_header_length & 0xf0) == 0x40)
-*
-*/
-         int ethernet_header_offset = 0; /* to be filled by DPDK */
-         ethernet_header_t *eth = (ethernet_header_t *)(p0->data + ethernet_header_offset);
-         /* ensure the block current data starts at L3 boundary now for the subsequent nodes */
-         vlib_buffer_advance(p0, ethernet_header_offset + sizeof(ethernet_header_t) - p0->current_data);
-          if (clib_net_to_host_u16(eth->type) == ETHERNET_TYPE_IP4)
-	    next0 = stn->punt_to_stn_ip4_next_index;
-	  else
-	    next0 = stn->punt_to_stn_ip6_next_index;
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, pi0, next0);
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-}
-
 typedef enum
 {
   STN_IP_PUNT_DROP,
@@ -142,8 +87,9 @@ typedef enum
 
 static_always_inline uword
 stn_ip46_punt_fn (vlib_main_t * vm,
-	           vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   u8 is_ipv4)
+                  vlib_node_runtime_t * node,
+                  vlib_frame_t * frame,
+                  u8 is_ipv4)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   stn_main_t *stn = &stn_main;
@@ -199,6 +145,10 @@ stn_ip46_punt_fn (vlib_main_t * vm,
 	      else
 		clib_memcpy(eth, &stn_ip6_ethernet_header, sizeof(*eth));
 	    }
+          else
+          {
+              vnet_feature_next (0, &next0, p0);
+          }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -261,6 +211,11 @@ VLIB_REGISTER_NODE (stn_ip6_punt, static) =
       [STN_IP_PUNT_DROP] = "error-drop"
   },
 };
+VNET_FEATURE_INIT (stn_ip6_punt_feat_node, static) = {
+  .arc_name = "ip6-punt",
+  .node_name = "stn-ip6-punt",
+  .runs_before = VNET_FEATURES("ip6-punt-redirect"),
+};
 /** *INDENT-ON* */
 
 u8 *
@@ -291,6 +246,11 @@ VLIB_REGISTER_NODE (stn_ip4_punt, static) =
       [STN_IP_PUNT_DROP] = "error-drop",
   },
 };
+VNET_FEATURE_INIT (stn_ip4_punt_feat_node, static) = {
+  .arc_name = "ip4-punt",
+  .node_name = "stn-ip4-punt",
+  .runs_before = VNET_FEATURES("ip4-punt-redirect"),
+};
 /** *INDENT-ON* */
 
 clib_error_t *
@@ -308,12 +268,6 @@ stn_init (vlib_main_t * vm)
   clib_memcpy(stn_ip6_ethernet_header.dst_address, stn_hw_addr_dst, 6);
   clib_memcpy(stn_ip6_ethernet_header.src_address, stn_hw_addr_local, 6);
   stn_ip6_ethernet_header.type = clib_host_to_net_u16(ETHERNET_TYPE_IP6);
-
-  u32 punt_node_index = vlib_get_node_by_name(vm, (u8 *)"error-punt")->index;
-  stn->punt_to_stn_ip4_next_index =
-      vlib_node_add_next(vm, punt_node_index, stn_ip4_punt.index);
-  stn->punt_to_stn_ip6_next_index =
-        vlib_node_add_next(vm, punt_node_index, stn_ip6_punt.index);
 
   return stn_api_init (vm, stn);
 
@@ -354,9 +308,11 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
       stn->n_rules++;
       if (stn->n_rules == 1)
 	{
-	  foreach_vlib_main({
-	    this_vlib_main->os_punt_frame = stn_punt_fn;
-	  });
+            vnet_feature_enable_disable("ip6-punt", "stn-ip6-punt",
+                                        0, 1, 0, 0);
+            vnet_feature_enable_disable("ip4-punt", "stn-ip4-punt",
+                                        0, 1, 0, 0);
+
 	  udp_punt_unknown(vm, 0, 1);
 	  udp_punt_unknown(vm, 1, 1);
 	  tcp_punt_unknown(vm, 0, 1);
@@ -378,16 +334,8 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
 
       /* enabling forwarding on the output node (might not be done since
        * it is unnumbered) */
-      vnet_feature_enable_disable("ip4-unicast", "ip4-lookup", args->sw_if_index,
-				  1, 0, 0);
-      vnet_feature_enable_disable("ip6-unicast", "ip6-lookup", args->sw_if_index,
-				  1, 0, 0);
-      vnet_feature_enable_disable("ip4-unicast", "ip4-not-enabled",
-                                  args->sw_if_index,
-				  0, 0, 0);
-      vnet_feature_enable_disable("ip6-unicast", "ip6-not-enabled",
-                                  args->sw_if_index,
-				  0, 0, 0);
+      ip4_sw_interface_enable_disable(args->sw_if_index, 1);
+      ip6_sw_interface_enable_disable(args->sw_if_index, 1);
     }
   else if (r)
     {
@@ -397,9 +345,10 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
       stn->n_rules--;
       if (stn->n_rules == 0)
 	{
-	  foreach_vlib_main({
-	    this_vlib_main->os_punt_frame = NULL;
-	  });
+            vnet_feature_enable_disable("ip6-punt", "stn-ip6-punt",
+                                        0, 0, 0, 0);
+            vnet_feature_enable_disable("ip4-punt", "stn-ip4-punt",
+                                        0, 0, 0, 0);
 	}
     }
   else
