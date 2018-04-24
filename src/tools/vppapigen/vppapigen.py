@@ -71,6 +71,7 @@ class VPPAPILexer(object):
         'import': 'IMPORT',
         'true': 'TRUE',
         'false': 'FALSE',
+        'union': 'UNION',
     }
 
     tokens = ['STRING_LITERAL',
@@ -137,10 +138,33 @@ class Typedef():
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
         global_crc = binascii.crc32(str(block), global_crc)
+        self.manual_print = False
+        self.manual_endian = False
+        for f in flags:
+            if f == 'manual_print':
+                self.manual_print = True
+            elif f == 'manual_endian':
+                self.manual_endian = True
         global_type_add(name)
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
+
+
+class Union():
+    def __init__(self, name, block):
+        self.type = 'Union'
+        self.manual_print = False
+        self.manual_endian = False
+        global global_crc
+        self.name = name
+        self.block = block
+        self.crc = binascii.crc32(str(block)) & 0xffffffff
+        global_crc = binascii.crc32(str(block), global_crc)
+        global_type_add(name)
+
+    def __repr__(self):
+        return str(self.block)
 
 
 class Define():
@@ -151,17 +175,13 @@ class Define():
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
         global_crc = binascii.crc32(str(block), global_crc)
-        self.typeonly = False
         self.dont_trace = False
         self.manual_print = False
         self.manual_endian = False
         self.autoreply = False
         self.singular = False
         for f in flags:
-            if f == 'typeonly':
-                self.typeonly = True
-                global_type_add(name)
-            elif f == 'dont_trace':
+            if f == 'dont_trace':
                 self.dont_trace = True
             elif f == 'manual_print':
                 self.manual_print = True
@@ -185,6 +205,7 @@ class Enum():
         global global_crc
         self.name = name
         self.enumtype = enumtype
+
         count = 0
         for i, b in enumerate(block):
             if type(b) is list:
@@ -334,6 +355,7 @@ class VPPAPIParser(object):
                 | option
                 | import
                 | enum
+                | union
                 | service'''
         p[0] = p[1]
 
@@ -407,7 +429,11 @@ class VPPAPIParser(object):
 
     def p_define_flist(self, p):
         '''define : flist DEFINE ID '{' block_statements_opt '}' ';' '''
-        p[0] = Define(p[3], p[1], p[5])
+        # Legacy typedef
+        if 'typeonly' in p[1]:
+            p[0] = Typedef(p[3], p[1], p[5])
+        else:
+            p[0] = Define(p[3], p[1], p[5])
 
     def p_flist(self, p):
         '''flist : flag
@@ -432,7 +458,7 @@ class VPPAPIParser(object):
         p[0] = Typedef(p[2], [], p[4])
 
     def p_block_statements_opt(self, p):
-        '''block_statements_opt : block_statements'''
+        '''block_statements_opt : block_statements '''
         p[0] = p[1]
 
     def p_block_statements(self, p):
@@ -526,6 +552,10 @@ class VPPAPIParser(object):
                               self._token_coord(p, 1))
         p[0] = p[1]
 
+    def p_union(self, p):
+        '''union : UNION ID '{' block_statements_opt '}' ';' '''
+        p[0] = Union(p[2], p[4])
+
     # Error rule for syntax errors
     def p_error(self, p):
         if p:
@@ -559,35 +589,33 @@ class VPPAPI(object):
 
     def process(self, objs):
         s = {}
-        s['defines'] = []
-        s['typedefs'] = []
-        s['imports'] = []
-        s['options'] = {}
-        s['enums'] = []
-        s['services'] = []
-
+        s['Option'] = {}
+        s['Define'] = []
+        s['Service'] = []
+        s['types'] = []
+        s['Import'] = []
         for o in objs:
+            tname = o.__class__.__name__
             if isinstance(o, Define):
-                if o.typeonly:
-                    s['typedefs'].append(o)
-                else:
-                    s['defines'].append(o)
-                    if o.autoreply:
-                        s['defines'].append(self.autoreply_block(o.name))
+                s[tname].append(o)
+                if o.autoreply:
+                    s[tname].append(self.autoreply_block(o.name))
             elif isinstance(o, Option):
-                s['options'][o[1]] = o[2]
-            elif isinstance(o, Enum):
-                s['enums'].append(o)
-            elif isinstance(o, Typedef):
-                s['typedefs'].append(o)
+                s[tname][o[1]] = o[2]
             elif type(o) is list:
                 for o2 in o:
                     if isinstance(o2, Service):
-                        s['services'].append(o2)
+                        s['Service'].append(o2)
+            elif isinstance(o, Enum) or isinstance(o, Typedef) or isinstance(o, Union):
+                s['types'].append(o)
+            else:
+                if tname not in s:
+                    raise ValueError('Unknown class type: {} {}'.format(tname, o))
+                s[tname].append(o)
 
-        msgs = {d.name: d for d in s['defines']}
-        svcs = {s.caller: s for s in s['services']}
-        replies = {s.reply: s for s in s['services']}
+        msgs = {d.name: d for d in s['Define']}
+        svcs = {s.caller: s for s in s['Service']}
+        replies = {s.reply: s for s in s['Service']}
         seen_services = {}
 
         for service in svcs:
@@ -627,7 +655,7 @@ class VPPAPI(object):
                 if d in svcs:
                     continue
                 if d[:-5]+'_details' in msgs:
-                    s['services'].append(Service(d, d[:-5]+'_details',
+                    s['Service'].append(Service(d, d[:-5]+'_details',
                                                  stream=True))
                 else:
                     raise ValueError('{} missing details message'
@@ -643,7 +671,7 @@ class VPPAPI(object):
             if d in svcs:
                 continue
             if d+'_reply' in msgs:
-                s['services'].append(Service(d, d+'_reply'))
+                s['Service'].append(Service(d, d+'_reply'))
             else:
                 raise ValueError(
                     '{} missing reply message ({}) or service definition'
@@ -651,18 +679,18 @@ class VPPAPI(object):
 
         return s
 
-    def process_imports(self, objs, in_import):
+    def process_imports(self, objs, in_import, result):
         imported_objs = []
         for o in objs:
-            if isinstance(o, Import):
-                return self.process_imports(o.result, True) + objs
-            if in_import:
-                if isinstance(o, Define) and o.typeonly:
-                    imported_objs.append(o)
-        if in_import:
-            return imported_objs
-        return objs
+            # Only allow the following object types from imported file
+            if in_import and not (isinstance(o, Enum) or
+                                  isinstance(o, Union) or
+                                  isinstance(o, Typedef)):
+                continue
+            result.append(o)
 
+            if isinstance(o, Import):
+                self.process_imports(o.result, True, result)
 
 # Add message ids to each message.
 def add_msg_id(s):
@@ -720,14 +748,15 @@ def main():
     log = logging.getLogger('vppapigen')
 
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
-    result = parser.parse_file(args.input, log)
+    parsed_objects = parser.parse_file(args.input, log)
 
     # Build a list of objects. Hash of lists.
-    result = parser.process_imports(result, False)
+    result = []
+    parser.process_imports(parsed_objects, False, result)
     s = parser.process(result)
 
     # Add msg_id field
-    s['defines'] = add_msg_id(s['defines'])
+    s['Define'] = add_msg_id(s['Define'])
 
     file_crc = global_crc & 0xffffffff
 
@@ -736,10 +765,10 @@ def main():
     if args.debug:
         import pprint
         pp = pprint.PrettyPrinter(indent=4)
-        for t in s['defines']:
+        for t in s['Define']:
             pp.pprint([t.name, t.flags, t.block])
-        for t in s['typedefs']:
-            pp.pprint([t.name, t.flags, t.block])
+        for t in s['types']:
+            pp.pprint([t.name, t.block])
 
     #
     # Generate representation

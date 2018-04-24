@@ -42,7 +42,7 @@ def msg_ids(s):
 #ifdef vl_msg_id
 '''
 
-    for t in s['defines']:
+    for t in s['Define']:
         output += "vl_msg_id(VL_API_%s, vl_api_%s_t_handler)\n" % \
                   (t.name.upper(), t.name)
     output += "#endif"
@@ -58,7 +58,7 @@ def msg_names(s):
 #ifdef vl_msg_name
 '''
 
-    for t in s['defines']:
+    for t in s['Define']:
         dont_trace = 0 if t.dont_trace else 1
         output += "vl_msg_name(vl_api_%s_t, %d)\n" % (t.name, dont_trace)
     output += "#endif"
@@ -75,7 +75,7 @@ def msg_name_crc_list(s, suffix):
 '''
     output += "#define foreach_vl_msg_name_crc_%s " % suffix
 
-    for t in s['defines']:
+    for t in s['Define']:
         output += "\\\n_(VL_API_%s, %s, %08x) " % \
                    (t.name.upper(), t.name, t.crc)
     output += "\n#endif"
@@ -93,7 +93,7 @@ def duplicate_wrapper_tail():
     return '#endif\n\n'
 
 
-def typedefs(s, filename):
+def typedefs(objs, filename):
     name = filename.replace('.', '_')
     output = '''\
 
@@ -105,30 +105,32 @@ def typedefs(s, filename):
 #define included_{module}
 '''
     output = output.format(module=name)
-    for e in s['enums']:
-        output += duplicate_wrapper_head(e.name)
-        output += "typedef enum {\n"
-        for b in e.block:
-            output += "    %s = %s,\n" % (b[0], b[1])
-        output += '} vl_api_%s_t;\n' % e.name
-        output += duplicate_wrapper_tail()
-
-    for t in s['typedefs'] + s['defines']:
-        output += duplicate_wrapper_head(t.name)
-        output += "typedef VL_API_PACKED(struct _vl_api_%s {\n" % t.name
-        for b in t.block:
-            if b.type == 'Field':
-                output += "    %s %s;\n" % (b.fieldtype, b.fieldname)
-            elif b.type == 'Array':
-                if b.lengthfield:
-                    output += "    %s %s[0];\n" % (b.fieldtype, b.fieldname)
-                else:
-                    output += "    %s %s[%s];\n" % (b.fieldtype, b.fieldname,
-                                                    b.length)
+    for o in objs:
+        tname = o.__class__.__name__
+        output += duplicate_wrapper_head(o.name)
+        if tname == 'Enum':
+            output += "typedef enum {\n"
+            for b in o.block:
+                output += "    %s = %s,\n" % (b[0], b[1])
+            output += '} vl_api_%s_t;\n' % o.name
+        else:
+            if tname == 'Union':
+                output += "typedef VL_API_PACKED(union _vl_api_%s {\n" % o.name
             else:
-                raise ValueError("Error in processing array type %s" % b)
+                output += "typedef VL_API_PACKED(struct _vl_api_%s {\n" % o.name
+            for b in o.block:
+                if b.type == 'Field':
+                    output += "    %s %s;\n" % (b.fieldtype, b.fieldname)
+                elif b.type == 'Array':
+                    if b.lengthfield:
+                        output += "    %s %s[0];\n" % (b.fieldtype, b.fieldname)
+                    else:
+                        output += "    %s %s[%s];\n" % (b.fieldtype, b.fieldname,
+                                                        b.length)
+                else:
+                    raise ValueError("Error in processing array type %s" % b)
 
-        output += '}) vl_api_%s_t;\n' % t.name
+            output += '}) vl_api_%s_t;\n' % o.name
         output += duplicate_wrapper_tail()
 
     output += "\n#endif"
@@ -148,7 +150,7 @@ format_strings = {'u8': '%u',
                   'f64': '%.2f', }
 
 
-def printfun(s):
+def printfun(objs):
     output = '''\
 /****** Print functions *****/
 #ifdef vl_printfun
@@ -162,7 +164,9 @@ def printfun(s):
 #endif
 
 '''
-    for t in s['typedefs'] + s['defines']:
+    for t in objs:
+        if t.__class__.__name__ == 'Enum':
+            continue
         if t.manual_print:
             output += "/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name
             continue
@@ -199,7 +203,7 @@ endian_strings = {
 }
 
 
-def endianfun(s):
+def endianfun(objs):
     output = '''\
 
 /****** Endian swap functions *****/\n\
@@ -214,7 +218,9 @@ def endianfun(s):
 
 '''
 
-    for t in s['typedefs'] + s['defines']:
+    for t in objs:
+        if t.__class__.__name__ == 'Enum':
+            continue
         if t.manual_endian:
             output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name
             continue
@@ -247,8 +253,8 @@ def version_tuple(s, module):
 #ifdef vl_api_version_tuple
 
 '''
-    if 'version' in s['options']:
-        v = s['options']['version']
+    if 'version' in s['Option']:
+        v = s['Option']['version']
         (major, minor, patch) = v.split('.')
         output += "vl_api_version_tuple(%s, %s, %s, %s)\n" % \
                   (module, major, minor, patch)
@@ -269,9 +275,9 @@ def run(input_filename, s, file_crc):
     output += msg_ids(s)
     output += msg_names(s)
     output += msg_name_crc_list(s, filename)
-    output += typedefs(s, filename + file_extension)
-    output += printfun(s)
-    output += endianfun(s)
+    output += typedefs(s['types'] + s['Define'], filename + file_extension)
+    output += printfun(s['types'] + s['Define'])
+    output += endianfun(s['types'] + s['Define'])
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
                                         file_crc=file_crc)

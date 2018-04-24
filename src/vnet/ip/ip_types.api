@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+typedef ip4_address {
+  u8 address[4];
+};
+
+typedef ip6_address {
+  u8 address[16];
+};
+
+enum address_family {
+  ADDRESS_IP4 = 0,
+  ADDRESS_IP6,
+};
+
+union address_union {
+  vl_api_ip4_address_t ip4;
+  vl_api_ip6_address_t ip6;
+};
+
+typedef address {
+  vl_api_address_family_t af;
+  vl_api_address_union_t un;
+};
