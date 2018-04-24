@@ -383,9 +383,8 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   slave_if_t *sif;
   vnet_sw_interface_t *sw;
   vlib_main_t *vm = lm->vlib_main;
-  vnet_interface_main_t *im = &vnm->interface_main;
 
-  sw = pool_elt_at_index (im->sw_interfaces, hw_if_index);
+  sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
   sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
   if (sif)
     {
