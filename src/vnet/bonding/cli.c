@@ -135,10 +135,9 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
   int i;
-  vnet_hw_interface_t *sif_hw, *bif_hw;
+  vnet_hw_interface_t *sif_hw;
 
   sif_hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
-  bif_hw = vnet_get_sup_hw_interface (vnm, bif->sw_if_index);
 
   bif->port_number_bitmap =
     clib_bitmap_set (bif->port_number_bitmap,
@@ -155,13 +154,6 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
 	break;
       }
   }
-
-  if (bif_hw->l2_if_count)
-    {
-      ethernet_set_flags (vnm, sif_hw->hw_if_index, 0);
-      /* Allow ip packets to go directly to ip4-input etc */
-      ethernet_set_rx_redirect (vnm, sif_hw, 0);
-    }
 
   bond_disable_collecting_distributing (vm, sif);
 
