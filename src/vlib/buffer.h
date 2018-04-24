@@ -120,19 +120,22 @@ typedef struct
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
 
-
-    STRUCT_MARK (template_end);
+  u32 flow_id;	/**< Generic flow identifier */
 
   u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set.
                      */
+    STRUCT_MARK (template_end);
 
-  vlib_error_t error;	/**< Error code for buffers to be enqueued
+  union
+  {
+    vlib_error_t error;	/**< Error code for buffers to be enqueued
                            to error handler.
                         */
-  u32 current_config_index; /**< Used by feature subgraph arcs to
-                               visit enabled feature nodes
-                            */
+    u32 current_config_index; /**< Used by feature subgraph arcs to
+                                 visit enabled feature nodes
+                              */
+  };
 
   u8 feature_arc_index;	/**< Used to identify feature arcs by intermediate
                            feature node
@@ -180,6 +183,9 @@ typedef struct
 } vlib_buffer_t;		/* Must be a multiple of 64B. */
 
 #define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
+
+STATIC_ASSERT (VLIB_BUFFER_HDR_SIZE == 2 * CLIB_CACHE_LINE_BYTES,
+	       "vlib_buffer_t header size must be 2 cachelines big");
 
 /** \brief Prefetch buffer metadata.
     The first 64 bytes of buffer contains most header information
