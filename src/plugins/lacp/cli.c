@@ -242,17 +242,14 @@ show_lacp_fn (vlib_main_t * vm, unformat_input_t * input,
   slave_if_t *sif;
   clib_error_t *error = 0;
   u8 details = 0;
-  u32 hw_if_index, *sw_if_indices = 0;
-  vnet_interface_main_t *im = &vnm->interface_main;
-  vnet_sw_interface_t *sw;
+  u32 sw_if_index, *sw_if_indices = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	{
-	  sw = pool_elt_at_index (im->sw_interfaces, hw_if_index);
-	  sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
+	  sif = bond_get_slave_by_sw_if_index (sw_if_index);
 	  if (!sif)
 	    {
 	      error = clib_error_return (0, "interface is not enslaved");
@@ -304,11 +301,9 @@ debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
   lacp_main_t *lm = &lacp_main;
   u8 onoff = 0;
   u8 input_found = 0;
-  u32 hw_if_index = ~0;
+  u32 sw_if_index = ~0;
   slave_if_t *sif;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnm->interface_main;
-  vnet_sw_interface_t *sw;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -317,7 +312,7 @@ debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U",
-		    unformat_vnet_hw_interface, vnm, &hw_if_index))
+		    unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       if (input_found)
 	{
@@ -346,10 +341,9 @@ debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!input_found)
     return clib_error_return (0, "must specify on or off");
 
-  if (hw_if_index != ~0)
+  if (sw_if_index != ~0)
     {
-      sw = pool_elt_at_index (im->sw_interfaces, hw_if_index);
-      sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
+      sif = bond_get_slave_by_sw_if_index (sw_if_index);
       if (!sif)
 	return (clib_error_return (0, "Please enslave the interface first"));
       sif->debug = onoff;
