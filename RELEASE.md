@@ -1,6 +1,7 @@
 # Release Notes    {#release_notes}
 
 * @subpage release_notes_1804
+* @subpage release_notes_18011
 * @subpage release_notes_1801
 * @subpage release_notes_1710
 * @subpage release_notes_1707
@@ -10,11 +11,1480 @@
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
-@page release_notes_1801 Release notes for VPP 18.04
 
-More than 530 commits since the 18.01 release.
+@page release_notes_1804 Release notes for VPP 18.04
 
-TODO
+More than 570 commits since the 18.01 release.
+
+## Features
+
+### Infrastructure
+- DPDK 18.02.1
+- ARM aarch64 integrated into CI
+
+### VNET & Plugins
+- ERSPAN
+- L3DSR load balancing support
+- VPC bonding / LACP
+- IPv4/IPv6 packet reassembly
+- IPv6 link-local support
+- Asymmetrical static NAT
+- 464XLAT for NAT44
+- MAP-T CE support
+- Intel Adaptive Virtual Function native device driver plugin
+- Marvell device plugin
+- SRv6 static, dynamic and masquerading proxy plugins
+- MPLS Uniform mode
+- IGMP plugin
+- IPIP tunnel support (IPv4/IPv6 over IPv4/IPv6)
+- IPv6 Router Discovery mechanism
+
+### VLIB
+- ARM-optimized library variations for key functions
+- Better handling of physmem on non-NUMA kernels
+
+### Host stack
+- TLS support via OpenSSL or mbedtls software engines
+- Session layer can utilize both shm and memfd (secure) FIFO segments
+- STCP
+- VCL logging / tracing
+
+### API framework
+- New API definition compiler (vppapigen)
+- Memory (shm) and socket APIs refactored
+- API handlers refactored to make them transport (shared memory or socket)
+    agnostic
+- Improved support for bootstrapping of the shm API with memfd segments
+    over the socket API
+
+### Packaging
+- SELinux for RPM builds
+- Debuginfo RPMs
+- ARM aarch64 for Ubuntu
+
+## Known issues
+
+For the full list of issues please refer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1804)
+
+## API changes
+
+Description of results:
+
+* _Definition changed_: indicates that the API file was modified between releases.
+* _Only in image_: indicates the API is new for this release.
+* _Only in file_: indicates the API has been removed in this release.
+
+Message Name                                                 | Results
+------------------------------------------------------------ | ----------------
+accept_session                                               | definition changed
+accept_session_reply                                         | definition changed
+acl_add_replace                                              | definition changed
+acl_add_replace_reply                                        | definition changed
+acl_del                                                      | definition changed
+acl_del_reply                                                | definition changed
+acl_details                                                  | definition changed
+acl_dump                                                     | definition changed
+acl_interface_add_del                                        | definition changed
+acl_interface_add_del_reply                                  | definition changed
+acl_interface_etype_whitelist_details                        | only in image
+acl_interface_etype_whitelist_dump                           | only in image
+acl_interface_list_details                                   | definition changed
+acl_interface_list_dump                                      | definition changed
+acl_interface_set_acl_list                                   | definition changed
+acl_interface_set_acl_list_reply                             | definition changed
+acl_interface_set_etype_whitelist                            | definition changed
+acl_plugin_control_ping                                      | definition changed
+acl_plugin_control_ping_reply                                | definition changed
+acl_plugin_get_version                                       | definition changed
+acl_plugin_get_version_reply                                 | definition changed
+add_node_next                                                | definition changed
+add_node_next_reply                                          | definition changed
+af_packet_create                                             | definition changed
+af_packet_create_reply                                       | definition changed
+af_packet_delete                                             | definition changed
+af_packet_delete_reply                                       | definition changed
+af_packet_set_l4_cksum_offload                               | definition changed
+af_packet_set_l4_cksum_offload_reply                         | definition changed
+api_versions                                                 | definition changed
+api_versions_reply                                           | definition changed
+app_namespace_add_del                                        | definition changed
+app_namespace_add_del_reply                                  | definition changed
+application_attach                                           | definition changed
+application_attach_reply                                     | definition changed
+application_detach                                           | definition changed
+application_detach_reply                                     | definition changed
+application_tls_cert_add                                     | definition changed
+application_tls_key_add                                      | definition changed
+bd_ip_mac_add_del                                            | definition changed
+bd_ip_mac_add_del_reply                                      | definition changed
+bfd_auth_del_key                                             | definition changed
+bfd_auth_del_key_reply                                       | definition changed
+bfd_auth_keys_details                                        | definition changed
+bfd_auth_keys_dump                                           | definition changed
+bfd_auth_set_key                                             | definition changed
+bfd_auth_set_key_reply                                       | definition changed
+bfd_udp_add                                                  | definition changed
+bfd_udp_add_reply                                            | definition changed
+bfd_udp_auth_activate                                        | definition changed
+bfd_udp_auth_activate_reply                                  | definition changed
+bfd_udp_auth_deactivate                                      | definition changed
+bfd_udp_auth_deactivate_reply                                | definition changed
+bfd_udp_del                                                  | definition changed
+bfd_udp_del_echo_source                                      | definition changed
+bfd_udp_del_echo_source_reply                                | definition changed
+bfd_udp_del_reply                                            | definition changed
+bfd_udp_mod                                                  | definition changed
+bfd_udp_mod_reply                                            | definition changed
+bfd_udp_session_details                                      | definition changed
+bfd_udp_session_dump                                         | definition changed
+bfd_udp_session_set_flags                                    | definition changed
+bfd_udp_session_set_flags_reply                              | definition changed
+bfd_udp_set_echo_source                                      | definition changed
+bfd_udp_set_echo_source_reply                                | definition changed
+bier_disp_entry_add_del                                      | definition changed
+bier_disp_entry_add_del_reply                                | definition changed
+bier_disp_entry_details                                      | definition changed
+bier_disp_entry_dump                                         | definition changed
+bier_disp_table_add_del                                      | definition changed
+bier_disp_table_add_del_reply                                | definition changed
+bier_disp_table_details                                      | definition changed
+bier_disp_table_dump                                         | definition changed
+bier_imp_add                                                 | definition changed
+bier_imp_add_reply                                           | definition changed
+bier_imp_del                                                 | definition changed
+bier_imp_del_reply                                           | definition changed
+bier_imp_details                                             | definition changed
+bier_imp_dump                                                | definition changed
+bier_route_add_del                                           | definition changed
+bier_route_add_del_reply                                     | definition changed
+bier_route_details                                           | definition changed
+bier_route_dump                                              | definition changed
+bier_table_add_del                                           | definition changed
+bier_table_add_del_reply                                     | definition changed
+bier_table_details                                           | definition changed
+bier_table_dump                                              | definition changed
+bind_sock                                                    | definition changed
+bind_sock_reply                                              | definition changed
+bind_uri                                                     | definition changed
+bind_uri_reply                                               | definition changed
+bond_create                                                  | definition changed
+bond_delete                                                  | definition changed
+bond_detach_slave                                            | definition changed
+bond_enslave                                                 | definition changed
+bridge_domain_add_del                                        | definition changed
+bridge_domain_add_del_reply                                  | definition changed
+bridge_domain_details                                        | definition changed
+bridge_domain_dump                                           | definition changed
+bridge_domain_set_mac_age                                    | definition changed
+bridge_domain_set_mac_age_reply                              | definition changed
+bridge_flags                                                 | definition changed
+bridge_flags_reply                                           | definition changed
+cdp_enable                                                   | definition changed
+classify_add_del_session                                     | definition changed
+classify_add_del_session_reply                               | definition changed
+classify_add_del_table                                       | definition changed
+classify_add_del_table_reply                                 | definition changed
+classify_session_details                                     | definition changed
+classify_session_dump                                        | definition changed
+classify_set_interface_ip_table                              | definition changed
+classify_set_interface_ip_table_reply                        | definition changed
+classify_set_interface_l2_tables                             | definition changed
+classify_set_interface_l2_tables_reply                       | definition changed
+classify_table_by_interface                                  | definition changed
+classify_table_by_interface_reply                            | definition changed
+classify_table_ids                                           | definition changed
+classify_table_ids_reply                                     | definition changed
+classify_table_info                                          | definition changed
+classify_table_info_reply                                    | definition changed
+cli                                                          | definition changed
+cli_inband                                                   | definition changed
+cli_inband_reply                                             | definition changed
+cli_reply                                                    | definition changed
+collect_detailed_interface_stats                             | definition changed
+connect_session                                              | definition changed
+connect_session_reply                                        | definition changed
+connect_sock                                                 | definition changed
+connect_sock_reply                                           | definition changed
+connect_uri                                                  | definition changed
+connect_uri_reply                                            | definition changed
+control_ping                                                 | definition changed
+control_ping_reply                                           | definition changed
+cop_interface_enable_disable                                 | definition changed
+cop_interface_enable_disable_reply                           | definition changed
+cop_whitelist_enable_disable                                 | definition changed
+cop_whitelist_enable_disable_reply                           | definition changed
+create_loopback                                              | definition changed
+create_loopback_instance                                     | definition changed
+create_loopback_instance_reply                               | definition changed
+create_loopback_reply                                        | definition changed
+create_subif                                                 | definition changed
+create_subif_reply                                           | definition changed
+create_vhost_user_if                                         | definition changed
+create_vhost_user_if_reply                                   | definition changed
+create_vlan_subif                                            | definition changed
+create_vlan_subif_reply                                      | definition changed
+delete_loopback                                              | definition changed
+delete_loopback_reply                                        | definition changed
+delete_subif                                                 | definition changed
+delete_subif_reply                                           | definition changed
+delete_vhost_user_if                                         | definition changed
+delete_vhost_user_if_reply                                   | definition changed
+dhcp_client_config                                           | definition changed
+dhcp_client_config_reply                                     | definition changed
+dhcp_compl_event                                             | definition changed
+dhcp_proxy_config                                            | definition changed
+dhcp_proxy_config_reply                                      | definition changed
+dhcp_proxy_details                                           | definition changed
+dhcp_proxy_dump                                              | definition changed
+dhcp_proxy_set_vss                                           | definition changed
+dhcp_proxy_set_vss_reply                                     | definition changed
+disconnect_session                                           | definition changed
+disconnect_session_reply                                     | definition changed
+dns_enable_disable                                           | definition changed
+dns_enable_disable_reply                                     | definition changed
+dns_name_server_add_del                                      | definition changed
+dns_name_server_add_del_reply                                | definition changed
+dns_resolve_ip                                               | definition changed
+dns_resolve_ip_reply                                         | definition changed
+dns_resolve_name                                             | definition changed
+dns_resolve_name_reply                                       | definition changed
+dslite_add_del_pool_addr_range                               | definition changed
+dslite_add_del_pool_addr_range_reply                         | definition changed
+dslite_get_aftr_addr                                         | definition changed
+dslite_get_b4_addr                                           | definition changed
+dslite_set_aftr_addr                                         | definition changed
+dslite_set_aftr_addr_reply                                   | definition changed
+dslite_set_b4_addr                                           | definition changed
+feature_enable_disable                                       | definition changed
+feature_enable_disable_reply                                 | definition changed
+flow_classify_details                                        | definition changed
+flow_classify_dump                                           | definition changed
+flow_classify_set_interface                                  | definition changed
+flow_classify_set_interface_reply                            | definition changed
+flowprobe_params                                             | definition changed
+flowprobe_params_reply                                       | definition changed
+flowprobe_tx_interface_add_del                               | definition changed
+flowprobe_tx_interface_add_del_reply                         | definition changed
+gbp_contract_add_del                                         | definition changed
+gbp_contract_details                                         | only in image
+gbp_contract_dump                                            | only in image
+gbp_endpoint_add_del                                         | definition changed
+gbp_endpoint_details                                         | only in image
+gbp_endpoint_dump                                            | only in image
+geneve_add_del_tunnel                                        | definition changed
+geneve_add_del_tunnel_reply                                  | definition changed
+geneve_tunnel_details                                        | definition changed
+geneve_tunnel_dump                                           | definition changed
+get_first_msg_id                                             | definition changed
+get_first_msg_id_reply                                       | definition changed
+get_next_index                                               | definition changed
+get_next_index_reply                                         | definition changed
+get_node_graph                                               | definition changed
+get_node_graph_reply                                         | definition changed
+get_node_index                                               | definition changed
+get_node_index_reply                                         | definition changed
+gpe_add_del_fwd_entry                                        | definition changed
+gpe_add_del_fwd_entry_reply                                  | definition changed
+gpe_add_del_iface                                            | definition changed
+gpe_add_del_iface_reply                                      | definition changed
+gpe_add_del_native_fwd_rpath                                 | definition changed
+gpe_add_del_native_fwd_rpath_reply                           | definition changed
+gpe_enable_disable                                           | definition changed
+gpe_enable_disable_reply                                     | definition changed
+gpe_fwd_entries_get                                          | definition changed
+gpe_fwd_entries_get_reply                                    | definition changed
+gpe_fwd_entry_path_details                                   | definition changed
+gpe_fwd_entry_path_dump                                      | definition changed
+gpe_fwd_entry_vnis_get                                       | definition changed
+gpe_fwd_entry_vnis_get_reply                                 | definition changed
+gpe_get_encap_mode                                           | definition changed
+gpe_get_encap_mode_reply                                     | definition changed
+gpe_native_fwd_rpaths_get                                    | definition changed
+gpe_native_fwd_rpaths_get_reply                              | definition changed
+gpe_set_encap_mode                                           | definition changed
+gpe_set_encap_mode_reply                                     | definition changed
+gre_add_del_tunnel                                           | definition changed
+gre_add_del_tunnel_reply                                     | definition changed
+gre_tunnel_details                                           | definition changed
+gre_tunnel_dump                                              | definition changed
+gtpu_add_del_tunnel                                          | definition changed
+gtpu_add_del_tunnel_reply                                    | definition changed
+gtpu_tunnel_details                                          | definition changed
+gtpu_tunnel_dump                                             | definition changed
+igmp_clear_interface                                         | definition changed
+igmp_details                                                 | only in image
+igmp_dump                                                    | only in image
+igmp_enable_disable                                          | definition changed
+igmp_event                                                   | only in image
+igmp_listen                                                  | definition changed
+ikev2_initiate_del_child_sa                                  | definition changed
+ikev2_initiate_del_child_sa_reply                            | definition changed
+ikev2_initiate_del_ike_sa                                    | definition changed
+ikev2_initiate_del_ike_sa_reply                              | definition changed
+ikev2_initiate_rekey_child_sa                                | definition changed
+ikev2_initiate_rekey_child_sa_reply                          | definition changed
+ikev2_initiate_sa_init                                       | definition changed
+ikev2_initiate_sa_init_reply                                 | definition changed
+ikev2_profile_add_del                                        | definition changed
+ikev2_profile_add_del_reply                                  | definition changed
+ikev2_profile_set_auth                                       | definition changed
+ikev2_profile_set_auth_reply                                 | definition changed
+ikev2_profile_set_id                                         | definition changed
+ikev2_profile_set_id_reply                                   | definition changed
+ikev2_profile_set_ts                                         | definition changed
+ikev2_profile_set_ts_reply                                   | definition changed
+ikev2_set_esp_transforms                                     | definition changed
+ikev2_set_esp_transforms_reply                               | definition changed
+ikev2_set_ike_transforms                                     | definition changed
+ikev2_set_ike_transforms_reply                               | definition changed
+ikev2_set_local_key                                          | definition changed
+ikev2_set_local_key_reply                                    | definition changed
+ikev2_set_responder                                          | definition changed
+ikev2_set_responder_reply                                    | definition changed
+ikev2_set_sa_lifetime                                        | definition changed
+ikev2_set_sa_lifetime_reply                                  | definition changed
+input_acl_set_interface                                      | definition changed
+input_acl_set_interface_reply                                | definition changed
+interface_name_renumber                                      | definition changed
+interface_name_renumber_reply                                | definition changed
+ioam_cache_ip6_enable_disable                                | definition changed
+ioam_cache_ip6_enable_disable_reply                          | definition changed
+ioam_disable                                                 | definition changed
+ioam_disable_reply                                           | definition changed
+ioam_enable                                                  | definition changed
+ioam_enable_reply                                            | definition changed
+ioam_export_ip6_enable_disable                               | definition changed
+ioam_export_ip6_enable_disable_reply                         | definition changed
+ip4_arp_event                                                | definition changed
+ip6_fib_details                                              | definition changed
+ip6_fib_dump                                                 | definition changed
+ip6_mfib_details                                             | definition changed
+ip6_mfib_dump                                                | definition changed
+ip6_nd_address_autoconfig                                    | definition changed
+ip6_nd_event                                                 | definition changed
+ip6_ra_event                                                 | only in image
+ip6nd_proxy_add_del                                          | definition changed
+ip6nd_proxy_add_del_reply                                    | definition changed
+ip6nd_proxy_details                                          | definition changed
+ip6nd_proxy_dump                                             | definition changed
+ip6nd_send_router_solicitation                               | definition changed
+ip_add_del_route                                             | definition changed
+ip_add_del_route_reply                                       | definition changed
+ip_address_details                                           | definition changed
+ip_address_dump                                              | definition changed
+ip_container_proxy_add_del                                   | definition changed
+ip_container_proxy_add_del_reply                             | definition changed
+ip_details                                                   | definition changed
+ip_dump                                                      | definition changed
+ip_fib_details                                               | definition changed
+ip_fib_dump                                                  | definition changed
+ip_mfib_details                                              | definition changed
+ip_mfib_dump                                                 | definition changed
+ip_mroute_add_del                                            | definition changed
+ip_mroute_add_del_reply                                      | definition changed
+ip_neighbor_add_del                                          | definition changed
+ip_neighbor_add_del_reply                                    | definition changed
+ip_neighbor_details                                          | definition changed
+ip_neighbor_dump                                             | definition changed
+ip_punt_police                                               | definition changed
+ip_punt_police_reply                                         | definition changed
+ip_punt_redirect                                             | definition changed
+ip_punt_redirect_reply                                       | definition changed
+ip_reassembly_enable_disable                                 | definition changed
+ip_reassembly_get                                            | definition changed
+ip_reassembly_set                                            | definition changed
+ip_source_and_port_range_check_add_del                       | definition changed
+ip_source_and_port_range_check_add_del_reply                 | definition changed
+ip_source_and_port_range_check_interface_add_del             | definition changed
+ip_source_and_port_range_check_interface_add_del_reply       | definition changed
+ip_table_add_del                                             | definition changed
+ip_table_add_del_reply                                       | definition changed
+ipfix_classify_stream_details                                | definition changed
+ipfix_classify_stream_dump                                   | definition changed
+ipfix_classify_table_add_del                                 | definition changed
+ipfix_classify_table_add_del_reply                           | definition changed
+ipfix_classify_table_details                                 | definition changed
+ipfix_classify_table_dump                                    | definition changed
+ipfix_exporter_details                                       | definition changed
+ipfix_exporter_dump                                          | definition changed
+ipip_6rd_add_tunnel                                          | definition changed
+ipip_6rd_del_tunnel                                          | definition changed
+ipip_add_tunnel                                              | definition changed
+ipip_del_tunnel                                              | definition changed
+ipip_tunnel_details                                          | only in image
+ipip_tunnel_dump                                             | only in image
+ipsec_gre_add_del_tunnel                                     | definition changed
+ipsec_gre_add_del_tunnel_reply                               | definition changed
+ipsec_gre_tunnel_details                                     | definition changed
+ipsec_gre_tunnel_dump                                        | definition changed
+ipsec_interface_add_del_spd                                  | definition changed
+ipsec_interface_add_del_spd_reply                            | definition changed
+ipsec_sa_details                                             | definition changed
+ipsec_sa_dump                                                | definition changed
+ipsec_sa_set_key                                             | definition changed
+ipsec_sa_set_key_reply                                       | definition changed
+ipsec_sad_add_del_entry                                      | definition changed
+ipsec_sad_add_del_entry_reply                                | definition changed
+ipsec_spd_add_del                                            | definition changed
+ipsec_spd_add_del_entry                                      | definition changed
+ipsec_spd_add_del_entry_reply                                | definition changed
+ipsec_spd_add_del_reply                                      | definition changed
+ipsec_spd_details                                            | definition changed
+ipsec_spd_dump                                               | definition changed
+ipsec_tunnel_if_add_del                                      | definition changed
+ipsec_tunnel_if_add_del_reply                                | definition changed
+ipsec_tunnel_if_set_key                                      | definition changed
+ipsec_tunnel_if_set_key_reply                                | definition changed
+ipsec_tunnel_if_set_sa                                       | definition changed
+ipsec_tunnel_if_set_sa_reply                                 | definition changed
+kp_add_del_pod                                               | definition changed
+kp_add_del_pod_reply                                         | definition changed
+kp_add_del_vip                                               | definition changed
+kp_add_del_vip_reply                                         | definition changed
+kp_conf                                                      | definition changed
+kp_conf_reply                                                | definition changed
+l2_emulation                                                 | definition changed
+l2_emulation_reply                                           | definition changed
+l2_fib_clear_table                                           | definition changed
+l2_fib_clear_table_reply                                     | definition changed
+l2_fib_table_details                                         | definition changed
+l2_fib_table_dump                                            | definition changed
+l2_flags                                                     | definition changed
+l2_flags_reply                                               | definition changed
+l2_interface_efp_filter                                      | definition changed
+l2_interface_efp_filter_reply                                | definition changed
+l2_interface_pbb_tag_rewrite                                 | definition changed
+l2_interface_pbb_tag_rewrite_reply                           | definition changed
+l2_interface_vlan_tag_rewrite                                | definition changed
+l2_interface_vlan_tag_rewrite_reply                          | definition changed
+l2_macs_event                                                | definition changed
+l2_patch_add_del                                             | definition changed
+l2_patch_add_del_reply                                       | definition changed
+l2_xconnect_details                                          | definition changed
+l2_xconnect_dump                                             | definition changed
+l2fib_add_del                                                | definition changed
+l2fib_add_del_reply                                          | definition changed
+l2fib_flush_all                                              | definition changed
+l2fib_flush_all_reply                                        | definition changed
+l2fib_flush_bd                                               | definition changed
+l2fib_flush_bd_reply                                         | definition changed
+l2fib_flush_int                                              | definition changed
+l2fib_flush_int_reply                                        | definition changed
+l2tpv3_create_tunnel                                         | definition changed
+l2tpv3_create_tunnel_reply                                   | definition changed
+l2tpv3_interface_enable_disable                              | definition changed
+l2tpv3_interface_enable_disable_reply                        | definition changed
+l2tpv3_set_lookup_key                                        | definition changed
+l2tpv3_set_lookup_key_reply                                  | definition changed
+l2tpv3_set_tunnel_cookies                                    | definition changed
+l2tpv3_set_tunnel_cookies_reply                              | definition changed
+lb_add_del_as                                                | definition changed
+lb_add_del_as_reply                                          | definition changed
+lb_add_del_vip                                               | definition changed
+lb_add_del_vip_reply                                         | definition changed
+lb_conf                                                      | definition changed
+lb_conf_reply                                                | definition changed
+lisp_add_del_adjacency                                       | definition changed
+lisp_add_del_adjacency_reply                                 | definition changed
+lisp_add_del_local_eid                                       | definition changed
+lisp_add_del_local_eid_reply                                 | definition changed
+lisp_add_del_locator                                         | definition changed
+lisp_add_del_locator_reply                                   | definition changed
+lisp_add_del_locator_set                                     | definition changed
+lisp_add_del_locator_set_reply                               | definition changed
+lisp_add_del_map_request_itr_rlocs                           | definition changed
+lisp_add_del_map_request_itr_rlocs_reply                     | definition changed
+lisp_add_del_map_resolver                                    | definition changed
+lisp_add_del_map_resolver_reply                              | definition changed
+lisp_add_del_map_server                                      | definition changed
+lisp_add_del_map_server_reply                                | definition changed
+lisp_add_del_remote_mapping                                  | definition changed
+lisp_add_del_remote_mapping_reply                            | definition changed
+lisp_adjacencies_get                                         | definition changed
+lisp_adjacencies_get_reply                                   | definition changed
+lisp_eid_table_add_del_map                                   | definition changed
+lisp_eid_table_add_del_map_reply                             | definition changed
+lisp_eid_table_details                                       | definition changed
+lisp_eid_table_dump                                          | definition changed
+lisp_eid_table_map_details                                   | definition changed
+lisp_eid_table_map_dump                                      | definition changed
+lisp_eid_table_vni_details                                   | definition changed
+lisp_eid_table_vni_dump                                      | definition changed
+lisp_enable_disable                                          | definition changed
+lisp_enable_disable_reply                                    | definition changed
+lisp_get_map_request_itr_rlocs                               | definition changed
+lisp_get_map_request_itr_rlocs_reply                         | definition changed
+lisp_locator_details                                         | definition changed
+lisp_locator_dump                                            | definition changed
+lisp_locator_set_details                                     | definition changed
+lisp_locator_set_dump                                        | definition changed
+lisp_map_register_enable_disable                             | definition changed
+lisp_map_register_enable_disable_reply                       | definition changed
+lisp_map_request_mode                                        | definition changed
+lisp_map_request_mode_reply                                  | definition changed
+lisp_map_resolver_details                                    | definition changed
+lisp_map_resolver_dump                                       | definition changed
+lisp_map_server_details                                      | definition changed
+lisp_map_server_dump                                         | definition changed
+lisp_pitr_set_locator_set                                    | definition changed
+lisp_pitr_set_locator_set_reply                              | definition changed
+lisp_rloc_probe_enable_disable                               | definition changed
+lisp_rloc_probe_enable_disable_reply                         | definition changed
+lisp_use_petr                                                | definition changed
+lisp_use_petr_reply                                          | definition changed
+lldp_config                                                  | definition changed
+lldp_config_reply                                            | definition changed
+macip_acl_add                                                | definition changed
+macip_acl_add_replace                                        | definition changed
+macip_acl_add_replace_reply                                  | definition changed
+macip_acl_add_reply                                          | definition changed
+macip_acl_del                                                | definition changed
+macip_acl_del_reply                                          | definition changed
+macip_acl_details                                            | definition changed
+macip_acl_dump                                               | definition changed
+macip_acl_interface_add_del                                  | definition changed
+macip_acl_interface_add_del_reply                            | definition changed
+macip_acl_interface_get                                      | definition changed
+macip_acl_interface_get_reply                                | definition changed
+macip_acl_interface_list_details                             | definition changed
+macip_acl_interface_list_dump                                | definition changed
+map_add_del_rule                                             | definition changed
+map_add_del_rule_reply                                       | definition changed
+map_add_domain                                               | definition changed
+map_add_domain_reply                                         | definition changed
+map_another_segment                                          | definition changed
+map_another_segment_reply                                    | definition changed
+map_del_domain                                               | definition changed
+map_del_domain_reply                                         | definition changed
+map_domain_details                                           | definition changed
+map_domain_dump                                              | definition changed
+map_rule_details                                             | definition changed
+map_rule_dump                                                | definition changed
+map_summary_stats                                            | definition changed
+map_summary_stats_reply                                      | definition changed
+memclnt_create                                               | definition changed
+memclnt_create_reply                                         | definition changed
+memclnt_delete                                               | definition changed
+memclnt_delete_reply                                         | definition changed
+memclnt_keepalive                                            | definition changed
+memclnt_keepalive_reply                                      | definition changed
+memclnt_read_timeout                                         | definition changed
+memclnt_rx_thread_suspend                                    | definition changed
+memfd_segment_create                                         | definition changed
+memfd_segment_create_reply                                   | definition changed
+memif_create                                                 | definition changed
+memif_create_reply                                           | definition changed
+memif_delete                                                 | definition changed
+memif_delete_reply                                           | definition changed
+memif_details                                                | definition changed
+memif_dump                                                   | definition changed
+memif_socket_filename_add_del                                | definition changed
+memif_socket_filename_details                                | only in image
+memif_socket_filename_dump                                   | only in image
+mfib_signal_details                                          | definition changed
+mfib_signal_dump                                             | definition changed
+modify_vhost_user_if                                         | definition changed
+modify_vhost_user_if_reply                                   | definition changed
+mpls_fib_details                                             | definition changed
+mpls_fib_dump                                                | definition changed
+mpls_ip_bind_unbind                                          | definition changed
+mpls_ip_bind_unbind_reply                                    | definition changed
+mpls_route_add_del                                           | definition changed
+mpls_route_add_del_reply                                     | definition changed
+mpls_table_add_del                                           | definition changed
+mpls_table_add_del_reply                                     | definition changed
+mpls_tunnel_add_del                                          | definition changed
+mpls_tunnel_add_del_reply                                    | definition changed
+mpls_tunnel_details                                          | definition changed
+mpls_tunnel_dump                                             | definition changed
+nat44_add_del_address_range                                  | definition changed
+nat44_add_del_address_range_reply                            | definition changed
+nat44_add_del_identity_mapping                               | definition changed
+nat44_add_del_identity_mapping_reply                         | definition changed
+nat44_add_del_interface_addr                                 | definition changed
+nat44_add_del_interface_addr_reply                           | definition changed
+nat44_add_del_lb_static_mapping                              | definition changed
+nat44_add_del_lb_static_mapping_reply                        | definition changed
+nat44_add_del_static_mapping                                 | definition changed
+nat44_add_del_static_mapping_reply                           | definition changed
+nat44_address_details                                        | definition changed
+nat44_address_dump                                           | definition changed
+nat44_del_session                                            | definition changed
+nat44_del_session_reply                                      | definition changed
+nat44_forwarding_enable_disable                              | definition changed
+nat44_forwarding_enable_disable_reply                        | definition changed
+nat44_forwarding_is_enabled                                  | definition changed
+nat44_forwarding_is_enabled_reply                            | definition changed
+nat44_identity_mapping_details                               | definition changed
+nat44_identity_mapping_dump                                  | definition changed
+nat44_interface_add_del_feature                              | definition changed
+nat44_interface_add_del_feature_reply                        | definition changed
+nat44_interface_add_del_output_feature                       | definition changed
+nat44_interface_add_del_output_feature_reply                 | definition changed
+nat44_interface_addr_details                                 | definition changed
+nat44_interface_addr_dump                                    | definition changed
+nat44_interface_details                                      | definition changed
+nat44_interface_dump                                         | definition changed
+nat44_interface_output_feature_details                       | definition changed
+nat44_interface_output_feature_dump                          | definition changed
+nat44_lb_static_mapping_details                              | definition changed
+nat44_lb_static_mapping_dump                                 | definition changed
+nat44_static_mapping_details                                 | definition changed
+nat44_static_mapping_dump                                    | definition changed
+nat44_user_details                                           | definition changed
+nat44_user_dump                                              | definition changed
+nat44_user_session_details                                   | definition changed
+nat44_user_session_dump                                      | definition changed
+nat64_add_del_interface_addr                                 | definition changed
+nat64_add_del_interface_addr_reply                           | definition changed
+nat64_add_del_interface                                      | definition changed
+nat64_add_del_interface_reply                                | definition changed
+nat64_add_del_pool_addr_range                                | definition changed
+nat64_add_del_pool_addr_range_reply                          | definition changed
+nat64_add_del_prefix                                         | definition changed
+nat64_add_del_prefix_reply                                   | definition changed
+nat64_add_del_static_bib                                     | definition changed
+nat64_add_del_static_bib_reply                               | definition changed
+nat64_bib_details                                            | definition changed
+nat64_bib_dump                                               | definition changed
+nat64_get_timeouts                                           | definition changed
+nat64_get_timeouts_reply                                     | definition changed
+nat64_interface_details                                      | definition changed
+nat64_interface_dump                                         | definition changed
+nat64_pool_addr_details                                      | definition changed
+nat64_pool_addr_dump                                         | definition changed
+nat64_prefix_details                                         | definition changed
+nat64_prefix_dump                                            | definition changed
+nat64_set_timeouts                                           | definition changed
+nat64_set_timeouts_reply                                     | definition changed
+nat64_st_details                                             | definition changed
+nat64_st_dump                                                | definition changed
+nat66_add_del_interface                                      | definition changed
+nat66_add_del_static_mapping                                 | definition changed
+nat66_interface_details                                      | only in image
+nat66_interface_dump                                         | only in image
+nat66_static_mapping_details                                 | only in image
+nat66_static_mapping_dump                                    | only in image
+nat_control_ping                                             | definition changed
+nat_control_ping_reply                                       | definition changed
+nat_det_add_del_map                                          | definition changed
+nat_det_add_del_map_reply                                    | definition changed
+nat_det_close_session_in                                     | definition changed
+nat_det_close_session_in_reply                               | definition changed
+nat_det_close_session_out                                    | definition changed
+nat_det_close_session_out_reply                              | definition changed
+nat_det_forward                                              | definition changed
+nat_det_forward_reply                                        | definition changed
+nat_det_get_timeouts                                         | definition changed
+nat_det_get_timeouts_reply                                   | definition changed
+nat_det_map_details                                          | definition changed
+nat_det_map_dump                                             | definition changed
+nat_det_reverse                                              | definition changed
+nat_det_reverse_reply                                        | definition changed
+nat_det_session_details                                      | definition changed
+nat_det_session_dump                                         | definition changed
+nat_det_set_timeouts                                         | definition changed
+nat_det_set_timeouts_reply                                   | definition changed
+nat_get_reass                                                | definition changed
+nat_get_reass_reply                                          | definition changed
+nat_ipfix_enable_disable                                     | definition changed
+nat_ipfix_enable_disable_reply                               | definition changed
+nat_reass_details                                            | definition changed
+nat_reass_dump                                               | definition changed
+nat_set_reass                                                | definition changed
+nat_set_reass_reply                                          | definition changed
+nat_set_workers                                              | definition changed
+nat_set_workers_reply                                        | definition changed
+nat_show_config                                              | definition changed
+nat_show_config_reply                                        | definition changed
+nat_worker_details                                           | definition changed
+nat_worker_dump                                              | definition changed
+netmap_create                                                | definition changed
+netmap_create_reply                                          | definition changed
+netmap_delete                                                | definition changed
+netmap_delete_reply                                          | definition changed
+oam_add_del                                                  | definition changed
+oam_add_del_reply                                            | definition changed
+oam_event                                                    | definition changed
+one_add_del_adjacency                                        | definition changed
+one_add_del_adjacency_reply                                  | definition changed
+one_add_del_l2_arp_entry                                     | definition changed
+one_add_del_l2_arp_entry_reply                               | definition changed
+one_add_del_local_eid                                        | definition changed
+one_add_del_local_eid_reply                                  | definition changed
+one_add_del_locator                                          | definition changed
+one_add_del_locator_reply                                    | definition changed
+one_add_del_locator_set                                      | definition changed
+one_add_del_locator_set_reply                                | definition changed
+one_add_del_map_request_itr_rlocs                            | definition changed
+one_add_del_map_request_itr_rlocs_reply                      | definition changed
+one_add_del_map_resolver                                     | definition changed
+one_add_del_map_resolver_reply                               | definition changed
+one_add_del_map_server                                       | definition changed
+one_add_del_map_server_reply                                 | definition changed
+one_add_del_ndp_entry                                        | definition changed
+one_add_del_ndp_entry_reply                                  | definition changed
+one_add_del_remote_mapping                                   | definition changed
+one_add_del_remote_mapping_reply                             | definition changed
+one_adjacencies_get                                          | definition changed
+one_adjacencies_get_reply                                    | definition changed
+one_eid_table_add_del_map                                    | definition changed
+one_eid_table_add_del_map_reply                              | definition changed
+one_eid_table_details                                        | definition changed
+one_eid_table_dump                                           | definition changed
+one_eid_table_map_details                                    | definition changed
+one_eid_table_map_dump                                       | definition changed
+one_eid_table_vni_details                                    | definition changed
+one_eid_table_vni_dump                                       | definition changed
+one_enable_disable                                           | definition changed
+one_enable_disable_petr_mode                                 | definition changed
+one_enable_disable_petr_mode_reply                           | definition changed
+one_enable_disable_pitr_mode                                 | definition changed
+one_enable_disable_pitr_mode_reply                           | definition changed
+one_enable_disable_reply                                     | definition changed
+one_enable_disable_xtr_mode                                  | definition changed
+one_enable_disable_xtr_mode_reply                            | definition changed
+one_get_map_request_itr_rlocs                                | definition changed
+one_get_map_request_itr_rlocs_reply                          | definition changed
+one_get_transport_protocol                                   | definition changed
+one_get_transport_protocol_reply                             | definition changed
+one_l2_arp_bd_get                                            | definition changed
+one_l2_arp_bd_get_reply                                      | definition changed
+one_l2_arp_entries_get                                       | definition changed
+one_l2_arp_entries_get_reply                                 | definition changed
+one_locator_details                                          | definition changed
+one_locator_dump                                             | definition changed
+one_locator_set_details                                      | definition changed
+one_locator_set_dump                                         | definition changed
+one_map_register_enable_disable                              | definition changed
+one_map_register_enable_disable_reply                        | definition changed
+one_map_register_fallback_threshold                          | definition changed
+one_map_register_fallback_threshold_reply                    | definition changed
+one_map_register_set_ttl                                     | definition changed
+one_map_register_set_ttl_reply                               | definition changed
+one_map_request_mode                                         | definition changed
+one_map_request_mode_reply                                   | definition changed
+one_map_resolver_details                                     | definition changed
+one_map_resolver_dump                                        | definition changed
+one_map_server_details                                       | definition changed
+one_map_server_dump                                          | definition changed
+one_ndp_bd_get                                               | definition changed
+one_ndp_bd_get_reply                                         | definition changed
+one_ndp_entries_get                                          | definition changed
+one_ndp_entries_get_reply                                    | definition changed
+one_nsh_set_locator_set                                      | definition changed
+one_nsh_set_locator_set_reply                                | definition changed
+one_pitr_set_locator_set                                     | definition changed
+one_pitr_set_locator_set_reply                               | definition changed
+one_rloc_probe_enable_disable                                | definition changed
+one_rloc_probe_enable_disable_reply                          | definition changed
+one_set_transport_protocol                                   | definition changed
+one_set_transport_protocol_reply                             | definition changed
+one_show_petr_mode                                           | definition changed
+one_show_petr_mode_reply                                     | definition changed
+one_show_pitr_mode                                           | definition changed
+one_show_pitr_mode_reply                                     | definition changed
+one_show_xtr_mode                                            | definition changed
+one_show_xtr_mode_reply                                      | definition changed
+one_stats_details                                            | definition changed
+one_stats_dump                                               | definition changed
+one_stats_enable_disable                                     | definition changed
+one_stats_enable_disable_reply                               | definition changed
+one_stats_flush                                              | definition changed
+one_stats_flush_reply                                        | definition changed
+one_use_petr                                                 | definition changed
+one_use_petr_reply                                           | definition changed
+output_acl_set_interface                                     | definition changed
+p2p_ethernet_add                                             | definition changed
+p2p_ethernet_add_reply                                       | definition changed
+p2p_ethernet_del                                             | definition changed
+p2p_ethernet_del_reply                                       | definition changed
+pg_capture                                                   | definition changed
+pg_capture_reply                                             | definition changed
+pg_create_interface                                          | definition changed
+pg_create_interface_reply                                    | definition changed
+pg_enable_disable                                            | definition changed
+pg_enable_disable_reply                                      | definition changed
+policer_add_del                                              | definition changed
+policer_add_del_reply                                        | definition changed
+policer_classify_details                                     | definition changed
+policer_classify_dump                                        | definition changed
+policer_classify_set_interface                               | definition changed
+policer_classify_set_interface_reply                         | definition changed
+policer_details                                              | definition changed
+policer_dump                                                 | definition changed
+pot_profile_activate                                         | definition changed
+pot_profile_activate_reply                                   | definition changed
+pot_profile_add                                              | definition changed
+pot_profile_add_reply                                        | definition changed
+pot_profile_del                                              | definition changed
+pot_profile_del_reply                                        | definition changed
+pot_profile_show_config_details                              | definition changed
+pot_profile_show_config_dump                                 | definition changed
+pppoe_add_del_session                                        | definition changed
+pppoe_add_del_session_reply                                  | definition changed
+pppoe_session_details                                        | definition changed
+pppoe_session_dump                                           | definition changed
+proxy_arp_add_del                                            | definition changed
+proxy_arp_add_del_reply                                      | definition changed
+proxy_arp_intfc_enable_disable                               | definition changed
+proxy_arp_intfc_enable_disable_reply                         | definition changed
+punt                                                         | definition changed
+punt_reply                                                   | definition changed
+punt_socket_deregister                                       | definition changed
+punt_socket_deregister_reply                                 | definition changed
+punt_socket_register                                         | definition changed
+punt_socket_register_reply                                   | definition changed
+qos_egress_map_delete                                        | definition changed
+qos_egress_map_update                                        | definition changed
+qos_mark_enable_disable                                      | definition changed
+qos_record_enable_disable                                    | definition changed
+reset_fib                                                    | definition changed
+reset_fib_reply                                              | definition changed
+reset_session                                                | definition changed
+reset_session_reply                                          | definition changed
+rpc_call                                                     | definition changed
+rpc_call_reply                                               | definition changed
+rx_thread_exit                                               | definition changed
+sctp_add_src_dst_connection                                  | definition changed
+sctp_config                                                  | definition changed
+sctp_del_src_dst_connection                                  | definition changed
+session_enable_disable                                       | definition changed
+session_enable_disable_reply                                 | definition changed
+session_rule_add_del                                         | definition changed
+session_rule_add_del_reply                                   | definition changed
+session_rules_details                                        | definition changed
+session_rules_dump                                           | definition changed
+set_arp_neighbor_limit                                       | definition changed
+set_arp_neighbor_limit_reply                                 | definition changed
+set_ip_flow_hash                                             | definition changed
+set_ip_flow_hash_reply                                       | definition changed
+set_ipfix_classify_stream                                    | definition changed
+set_ipfix_classify_stream_reply                              | definition changed
+set_ipfix_exporter                                           | definition changed
+set_ipfix_exporter_reply                                     | definition changed
+show_lisp_map_register_state                                 | definition changed
+show_lisp_map_register_state_reply                           | definition changed
+show_lisp_map_request_mode                                   | definition changed
+show_lisp_map_request_mode_reply                             | definition changed
+show_lisp_pitr                                               | definition changed
+show_lisp_pitr_reply                                         | definition changed
+show_lisp_rloc_probe_state                                   | definition changed
+show_lisp_rloc_probe_state_reply                             | definition changed
+show_lisp_status                                             | definition changed
+show_lisp_status_reply                                       | definition changed
+show_lisp_use_petr                                           | definition changed
+show_lisp_use_petr_reply                                     | definition changed
+show_one_map_register_fallback_threshold                     | definition changed
+show_one_map_register_fallback_threshold_reply               | definition changed
+show_one_map_register_state                                  | definition changed
+show_one_map_register_state_reply                            | definition changed
+show_one_map_register_ttl                                    | definition changed
+show_one_map_register_ttl_reply                              | definition changed
+show_one_map_request_mode                                    | definition changed
+show_one_map_request_mode_reply                              | definition changed
+show_one_nsh_mapping                                         | definition changed
+show_one_nsh_mapping_reply                                   | definition changed
+show_one_pitr                                                | definition changed
+show_one_pitr_reply                                          | definition changed
+show_one_rloc_probe_state                                    | definition changed
+show_one_rloc_probe_state_reply                              | definition changed
+show_one_stats_enable_disable                                | definition changed
+show_one_stats_enable_disable_reply                          | definition changed
+show_one_status                                              | definition changed
+show_one_status_reply                                        | definition changed
+show_one_use_petr                                            | definition changed
+show_one_use_petr_reply                                      | definition changed
+show_version                                                 | definition changed
+show_version_reply                                           | definition changed
+sock_init_shm                                                | definition changed
+sockclnt_create                                              | definition changed
+sockclnt_create_reply                                        | definition changed
+sockclnt_delete                                              | definition changed
+sockclnt_delete_reply                                        | definition changed
+sr_localsid_add_del                                          | definition changed
+sr_localsid_add_del_reply                                    | definition changed
+sr_localsids_details                                         | definition changed
+sr_localsids_dump                                            | definition changed
+sr_mpls_policy_add                                           | definition changed
+sr_mpls_policy_add_reply                                     | definition changed
+sr_mpls_policy_assign_endpoint_color                         | definition changed
+sr_mpls_policy_assign_endpoint_color_reply                   | definition changed
+sr_mpls_policy_del                                           | definition changed
+sr_mpls_policy_del_reply                                     | definition changed
+sr_mpls_policy_mod                                           | definition changed
+sr_mpls_policy_mod_reply                                     | definition changed
+sr_mpls_steering_add_del                                     | definition changed
+sr_mpls_steering_add_del_reply                               | definition changed
+sr_policy_add                                                | definition changed
+sr_policy_add_reply                                          | definition changed
+sr_policy_del                                                | definition changed
+sr_policy_del_reply                                          | definition changed
+sr_policy_mod                                                | definition changed
+sr_policy_mod_reply                                          | definition changed
+sr_set_encap_source                                          | definition changed
+sr_set_encap_source_reply                                    | definition changed
+sr_steering_add_del                                          | definition changed
+sr_steering_add_del_reply                                    | definition changed
+stats_get_poller_delay                                       | definition changed
+stn_add_del_rule                                             | definition changed
+stn_add_del_rule_reply                                       | definition changed
+stn_rule_details                                             | only in file
+stn_rules_details                                            | only in image
+stn_rules_dump                                               | definition changed
+sw_if_l2tpv3_tunnel_details                                  | definition changed
+sw_if_l2tpv3_tunnel_dump                                     | definition changed
+sw_interface_add_del_address                                 | definition changed
+sw_interface_add_del_address_reply                           | definition changed
+sw_interface_bond_details                                    | only in image
+sw_interface_bond_dump                                       | only in image
+sw_interface_clear_stats                                     | definition changed
+sw_interface_clear_stats_reply                               | definition changed
+sw_interface_details                                         | definition changed
+sw_interface_dump                                            | definition changed
+sw_interface_event                                           | definition changed
+sw_interface_get_mac_address                                 | definition changed
+sw_interface_get_table                                       | definition changed
+sw_interface_get_table_reply                                 | definition changed
+sw_interface_ip6_enable_disable                              | definition changed
+sw_interface_ip6_enable_disable_reply                        | definition changed
+sw_interface_ip6_set_link_local_address                      | definition changed
+sw_interface_ip6_set_link_local_address_reply                | definition changed
+sw_interface_ip6nd_ra_config                                 | definition changed
+sw_interface_ip6nd_ra_config_reply                           | definition changed
+sw_interface_ip6nd_ra_prefix                                 | definition changed
+sw_interface_ip6nd_ra_prefix_reply                           | definition changed
+sw_interface_lacp_details                                    | only in image
+sw_interface_lacp_dump                                       | only in image
+sw_interface_set_dpdk_hqos_pipe                              | definition changed
+sw_interface_set_dpdk_hqos_pipe_reply                        | definition changed
+sw_interface_set_dpdk_hqos_subport                           | definition changed
+sw_interface_set_dpdk_hqos_subport_reply                     | definition changed
+sw_interface_set_dpdk_hqos_tctbl                             | definition changed
+sw_interface_set_dpdk_hqos_tctbl_reply                       | definition changed
+sw_interface_set_flags                                       | definition changed
+sw_interface_set_flags_reply                                 | definition changed
+sw_interface_set_geneve_bypass                               | definition changed
+sw_interface_set_geneve_bypass_reply                         | definition changed
+sw_interface_set_gtpu_bypass                                 | definition changed
+sw_interface_set_gtpu_bypass_reply                           | definition changed
+sw_interface_set_l2_bridge                                   | definition changed
+sw_interface_set_l2_bridge_reply                             | definition changed
+sw_interface_set_l2_xconnect                                 | definition changed
+sw_interface_set_l2_xconnect_reply                           | definition changed
+sw_interface_set_lldp                                        | definition changed
+sw_interface_set_lldp_reply                                  | definition changed
+sw_interface_set_mac_address                                 | definition changed
+sw_interface_set_mac_address_reply                           | definition changed
+sw_interface_set_mpls_enable                                 | definition changed
+sw_interface_set_mpls_enable_reply                           | definition changed
+sw_interface_set_mtu                                         | definition changed
+sw_interface_set_mtu_reply                                   | definition changed
+sw_interface_set_rx_mode                                     | definition changed
+sw_interface_set_rx_mode_reply                               | definition changed
+sw_interface_set_table                                       | definition changed
+sw_interface_set_table_reply                                 | definition changed
+sw_interface_set_unnumbered                                  | definition changed
+sw_interface_set_unnumbered_reply                            | definition changed
+sw_interface_set_vpath                                       | definition changed
+sw_interface_set_vpath_reply                                 | definition changed
+sw_interface_set_vxlan_bypass                                | definition changed
+sw_interface_set_vxlan_bypass_reply                          | definition changed
+sw_interface_set_vxlan_gpe_bypass                            | definition changed
+sw_interface_set_vxlan_gpe_bypass_reply                      | definition changed
+sw_interface_slave_details                                   | only in image
+sw_interface_slave_dump                                      | only in image
+sw_interface_span_details                                    | definition changed
+sw_interface_span_dump                                       | definition changed
+sw_interface_span_enable_disable                             | definition changed
+sw_interface_span_enable_disable_reply                       | definition changed
+sw_interface_tag_add_del                                     | definition changed
+sw_interface_tag_add_del_reply                               | definition changed
+sw_interface_tap_details                                     | definition changed
+sw_interface_tap_dump                                        | definition changed
+sw_interface_tap_v2_details                                  | definition changed
+sw_interface_tap_v2_dump                                     | definition changed
+sw_interface_vhost_user_details                              | definition changed
+sw_interface_vhost_user_dump                                 | definition changed
+tap_connect                                                  | definition changed
+tap_connect_reply                                            | definition changed
+tap_create_v2                                                | definition changed
+tap_create_v2_reply                                          | definition changed
+tap_delete                                                   | definition changed
+tap_delete_reply                                             | definition changed
+tap_delete_v2                                                | definition changed
+tap_delete_v2_reply                                          | definition changed
+tap_modify                                                   | definition changed
+tap_modify_reply                                             | definition changed
+tcp_configure_src_addresses                                  | definition changed
+tcp_configure_src_addresses_reply                            | definition changed
+trace_plugin_msg_ids                                         | definition changed
+trace_profile_add                                            | definition changed
+trace_profile_add_reply                                      | definition changed
+trace_profile_del                                            | definition changed
+trace_profile_del_reply                                      | definition changed
+trace_profile_show_config                                    | definition changed
+trace_profile_show_config_reply                              | definition changed
+udp_encap_add_del                                            | definition changed
+udp_encap_add_del_reply                                      | definition changed
+udp_encap_details                                            | definition changed
+udp_encap_dump                                               | definition changed
+udp_ping_add_del                                             | definition changed
+udp_ping_add_del_reply                                       | only in image
+udp_ping_add_del_req                                         | only in file
+udp_ping_export                                              | definition changed
+udp_ping_export_reply                                        | only in image
+udp_ping_export_req                                          | only in file
+unbind_sock                                                  | definition changed
+unbind_sock_reply                                            | definition changed
+unbind_uri                                                   | definition changed
+unbind_uri_reply                                             | definition changed
+unmap_segment                                                | definition changed
+vnet_get_summary_stats                                       | definition changed
+vnet_get_summary_stats_reply                                 | definition changed
+vnet_interface_combined_counters                             | definition changed
+vnet_interface_simple_counters                               | definition changed
+vnet_ip4_fib_counters                                        | definition changed
+vnet_ip4_mfib_counters                                       | definition changed
+vnet_ip4_nbr_counters                                        | definition changed
+vnet_ip6_fib_counters                                        | definition changed
+vnet_ip6_mfib_counters                                       | definition changed
+vnet_ip6_nbr_counters                                        | definition changed
+vnet_per_interface_combined_counters                         | definition changed
+vnet_per_interface_simple_counters                           | definition changed
+vnet_udp_encap_counters                                      | only in image
+vxlan_add_del_tunnel                                         | definition changed
+vxlan_add_del_tunnel_reply                                   | definition changed
+vxlan_gpe_add_del_tunnel                                     | definition changed
+vxlan_gpe_add_del_tunnel_reply                               | definition changed
+vxlan_gpe_ioam_disable                                       | definition changed
+vxlan_gpe_ioam_disable_reply                                 | definition changed
+vxlan_gpe_ioam_enable                                        | definition changed
+vxlan_gpe_ioam_enable_reply                                  | definition changed
+vxlan_gpe_ioam_export_enable_disable                         | definition changed
+vxlan_gpe_ioam_export_enable_disable_reply                   | definition changed
+vxlan_gpe_ioam_transit_disable                               | definition changed
+vxlan_gpe_ioam_transit_disable_reply                         | definition changed
+vxlan_gpe_ioam_transit_enable                                | definition changed
+vxlan_gpe_ioam_transit_enable_reply                          | definition changed
+vxlan_gpe_ioam_vni_disable                                   | definition changed
+vxlan_gpe_ioam_vni_disable_reply                             | definition changed
+vxlan_gpe_ioam_vni_enable                                    | definition changed
+vxlan_gpe_ioam_vni_enable_reply                              | definition changed
+vxlan_gpe_tunnel_details                                     | definition changed
+vxlan_gpe_tunnel_dump                                        | definition changed
+vxlan_tunnel_details                                         | definition changed
+vxlan_tunnel_dump                                            | definition changed
+want_bfd_events                                              | definition changed
+want_bfd_events_reply                                        | definition changed
+want_igmp_events                                             | definition changed
+want_interface_combined_stats                                | definition changed
+want_interface_combined_stats_reply                          | definition changed
+want_interface_events                                        | definition changed
+want_interface_events_reply                                  | definition changed
+want_interface_simple_stats                                  | definition changed
+want_interface_simple_stats_reply                            | definition changed
+want_ip4_arp_events                                          | definition changed
+want_ip4_arp_events_reply                                    | definition changed
+want_ip4_fib_stats                                           | definition changed
+want_ip4_fib_stats_reply                                     | definition changed
+want_ip4_mfib_stats                                          | definition changed
+want_ip4_mfib_stats_reply                                    | definition changed
+want_ip4_nbr_stats                                           | definition changed
+want_ip4_nbr_stats_reply                                     | definition changed
+want_ip6_fib_stats                                           | definition changed
+want_ip6_fib_stats_reply                                     | definition changed
+want_ip6_mfib_stats                                          | definition changed
+want_ip6_mfib_stats_reply                                    | definition changed
+want_ip6_nbr_stats                                           | definition changed
+want_ip6_nbr_stats_reply                                     | definition changed
+want_ip6_nd_events                                           | definition changed
+want_ip6_nd_events_reply                                     | definition changed
+want_ip6_ra_events                                           | definition changed
+want_l2_macs_events                                          | definition changed
+want_l2_macs_events_reply                                    | definition changed
+want_oam_events                                              | definition changed
+want_oam_events_reply                                        | definition changed
+want_per_interface_combined_stats                            | definition changed
+want_per_interface_combined_stats_reply                      | definition changed
+want_per_interface_simple_stats                              | definition changed
+want_per_interface_simple_stats_reply                        | definition changed
+want_stats                                                   | definition changed
+want_stats_reply                                             | definition changed
+want_udp_encap_stats                                         | definition changed
+
+Found 1036 api message signature differences
+
+### Patches that changed API definitions
+
+| @c src/vpp/stats/stats.api ||
+| ------- | ------- |
+| [43b1f44](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=43b1f44) | UDP Encap counters |
+| [ff92efe](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ff92efe) | stats: allow configuring poller delay |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vpp/oam/oam.api ||
+| ------- | ------- |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vpp/api/vpe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/interface.api ||
+| ------- | ------- |
+| [0cae3f7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0cae3f7) | Detailed Interface stats API takes sw_if_index |
+| [6f4a6be](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6f4a6be) | Interface Unicast, Multicast and Broadcast stats on the API |
+| [c037423](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c037423) | IPv6 ND Router discovery control plane (VPP-1095) |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/unix/tap.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/qos/qos.api ||
+| ------- | ------- |
+| [039cbfe](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=039cbfe) | QoS recording and marking |
+
+| @c src/vnet/policer/policer.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/mpls/mpls.api ||
+| ------- | ------- |
+| [31ed744](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=31ed744) | MPLS Unifom mode |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/span/span.api ||
+| ------- | ------- |
+| [179ab36](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=179ab36) | SPAN: Add "is_l2" flag to DETAILS response messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/vxlan-gpe/vxlan_gpe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/l2tp/l2tp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/lldp/lldp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/srmpls/sr_mpls.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/cop/cop.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/feature/feature.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ipsec-gre/ipsec_gre.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/geneve/geneve.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/lisp-gpe/lisp_gpe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/map/map.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [e31d956](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e31d956) | MAP: Add RFC6052 mapping to MAP-T |
+
+| @c src/vnet/lisp-cp/lisp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/lisp-cp/one.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/tcp/tcp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/dhcp/dhcp.api ||
+| ------- | ------- |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [54c6dc4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=54c6dc4) | For DHCP client configuration control the setting of the broadcast flag in the DISCOVER message sent. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/gre/gre.api ||
+| ------- | ------- |
+| [a43ccae](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a43ccae) | Optimize GRE Tunnel and add support for ERSPAN encap |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/flow/flow.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/devices/virtio/vhost_user.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/devices/af_packet/af_packet.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/devices/tap/tapv2.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [7866c45](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7866c45) | tapv2: add option to set host-side default gw |
+
+| @c src/vnet/devices/netmap/netmap.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/dns/dns.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/bonding/bond.api ||
+| ------- | ------- |
+| [9cd2d7a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9cd2d7a) | bond: Add bonding driver and LACP protocol |
+
+| @c src/vnet/session/session.api ||
+| ------- | ------- |
+| [8f89dd0](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8f89dd0) | tls: enforce certificate verification |
+| [371ca50](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=371ca50) | session: first approximation implementation of tls |
+| [f8f516a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f8f516a) | session: support local sessions and deprecate redirects |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ethernet/p2p_ethernet.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ip/rd_cp.api ||
+| ------- | ------- |
+| [c037423](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c037423) | IPv6 ND Router discovery control plane (VPP-1095) |
+
+| @c src/vnet/ip/punt.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ip/ip.api ||
+| ------- | ------- |
+| [4c53313](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4c53313) | reassembly: feature/concurrency |
+| [4b9669d](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4b9669d) | IPv6 ND Router discovery data plane (VPP-1095) |
+| [31ed744](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=31ed744) | MPLS Unifom mode |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [75e7d13](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75e7d13) | IPv4/6 reassembly |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [f068c3e](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f068c3e) | DVR: run L3 output features |
+
+| @c src/vnet/classify/classify.api ||
+| ------- | ------- |
+| [815d7d5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=815d7d5) | classifier-based ACL: refactor + add output ACL |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ipip/ipip.api ||
+| ------- | ------- |
+| [298c695](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=298c695) | IPIP: Add IP{v4,v6} over IP{v4,v6} configured tunnel support. |
+
+| @c src/vnet/udp/udp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/bfd/bfd.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/srv6/sr.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/ipsec/ipsec.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/bier/bier.api ||
+| ------- | ------- |
+| [31ed744](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=31ed744) | MPLS Unifom mode |
+| [f051072](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f051072) | BIER: fix support for longer bit-string lengths |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/sctp/sctp.api ||
+| ------- | ------- |
+| [c7fe4f3](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c7fe4f3) | SCTP: API to configure some tunables |
+| [465c087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=465c087) | SCTP: API to delete a sub-connection |
+| [3c6a976](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3c6a976) | SCTP: API to add a sub-connection |
+
+| @c src/vnet/l2/l2.api ||
+| ------- | ------- |
+| [e23c99e](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e23c99e) | Improve l2_macs_events API to provide MAC move information |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/vxlan/vxlan.api ||
+| ------- | ------- |
+| [31ed744](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=31ed744) | MPLS Unifom mode |
+| [3d460bd](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3d460bd) | VXLAN: Allow user to specify a custom vxlan tunnel instance id. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/fib/fib_types.api ||
+| ------- | ------- |
+| [2303cb1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2303cb1) | FIB Interpose Source |
+| [8145842](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8145842) | Common form of fib-path reproting in dumps |
+| [31ed744](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=31ed744) | MPLS Unifom mode |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/vnet/pg/pg.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/examples/sample-plugin/sample/sample.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/lb/lb.api ||
+| ------- | ------- |
+| [647f609](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=647f609) | Add L3DSR feature in LB plugin |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/gtpu/gtpu.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/kubeproxy/kp.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/pppoe/pppoe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/nat/nat.api ||
+| ------- | ------- |
+| [f2a23cc](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f2a23cc) | NAT66 1:1 mapping (VPP-1108) |
+| [9dba781](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9dba781) | NAT44: nat44_static_mapping_details protocol=0 if addr_only=0 (VPP-1158) |
+| [bc39e34](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bc39e34) | NAT: add missing CLI and API documentation (VPP-1142) |
+| [5f22499](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5f22499) | NAT44: add opaque string tag to static mapping APIs (VPP-1147) |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [e82488f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e82488f) | NAT44: asymmetrical static mapping rule (VPP-1135) |
+| [240b5ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=240b5ef) | NAT44: asymmetrical load balancing static mapping rule (VPP-1132) |
+| [c5c6a33](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5c6a33) | Add basic support for DS-Lite CE (VPP-1059) |
+
+| @c src/plugins/l2e/l2e.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/lib-pot/pot.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/ip6/ioam_cache.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/udp-ping/udp_ping.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [149a143](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=149a143) | fix udp_ping api naming error |
+
+| @c src/plugins/ioam/export/ioam_export.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/ioam/lib-trace/trace.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/igmp/igmp.api ||
+| ------- | ------- |
+| [7b867a8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7b867a8) | IGMP plugin |
+
+| @c src/plugins/memif/memif.api ||
+| ------- | ------- |
+| [30349b0](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=30349b0) | memif: Add new API calls to manage memif socket names. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/lacp/lacp.api ||
+| ------- | ------- |
+| [9cd2d7a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9cd2d7a) | bond: Add bonding driver and LACP protocol |
+
+| @c src/plugins/acl/acl.api ||
+| ------- | ------- |
+| [27fe75a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=27fe75a) | acl-plugin: add the support for dumping the ethertype whitelist (VPP-1163) |
+| [c43b3f9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c43b3f9) | acl-plugin: add whitelisted ethertype mode (VPP-1163) |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/flowprobe/flowprobe.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/dpdk/api/dpdk.api ||
+| ------- | ------- |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/gbp/gbp.api ||
+| ------- | ------- |
+| [bc27d1b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bc27d1b) | GBP plugin |
+
+| @c src/plugins/stn/stn.api ||
+| ------- | ------- |
+| [62bab65](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=62bab65) | STN: Fix stn_rules_dump/details to follow API convention |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+
+| @c src/plugins/cdp/cdp.api ||
+| ------- | ------- |
+| [aaacfbc](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=aaacfbc) | Move the vnet cdp protocol implementation to a plugin |
+
+| @c src/vlibmemory/memclnt.api ||
+| ------- | ------- |
+| [51e5968](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=51e5968) | API: Add service definitions for events and singleton messages (second attempt) |
+| [2de1f15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2de1f15) | Revert "API: Add service definitions for events and singleton messages." |
+| [f7b7fa5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7b7fa5) | API: Add service definitions for events and singleton messages. |
+| [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
+| [90a6398](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=90a6398) | sock api: add infra for bootstrapping shm clients |
+
+
+
+@page release_notes_18011 Release notes for VPP 18.01.1
+
+This is bug fix release.
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1801)
 
 
 @page release_notes_1801 Release notes for VPP 18.01
@@ -36,7 +1506,7 @@ More than 560 commits since the 17.10 release.
   - Twice NAT44
   - NAT hairpinning rework
   - NAT64 multi-thread
-  - NAT64 IPFix
+  - NAT64 IPFIX
   - NAT64 Fragmentation
   - NAT: DS-Lite
   - Remove old SNAT API
@@ -82,152 +1552,154 @@ For the full list of fixed issues please refer to:
 
 ## API changes
 
-Message Name                                                 Result
-af_packet_set_l4_cksum_offload                               definition changed
-api_versions                                                 definition changed
-app_namespace_add_del                                        definition changed
-application_attach                                           definition changed
-bier_disp_entry_add_del                                      definition changed
-bier_disp_entry_details                                      only in image
-bier_disp_entry_dump                                         only in image
-bier_disp_table_add_del                                      definition changed
-bier_disp_table_details                                      only in image
-bier_disp_table_dump                                         only in image
-bier_imp_add                                                 definition changed
-bier_imp_del                                                 definition changed
-bier_imp_details                                             only in image
-bier_imp_dump                                                only in image
-bier_route_add_del                                           definition changed
-bier_route_details                                           only in image
-bier_route_dump                                              only in image
-bier_table_add_del                                           definition changed
-bier_table_details                                           only in image
-bier_table_dump                                              only in image
-bind_sock_reply                                              definition changed
-connect_session_reply                                        definition changed
-connect_sock                                                 definition changed
-connect_uri                                                  definition changed
-dhcp_proxy_details                                           definition changed
-dhcp_proxy_set_vss                                           definition changed
-dns_enable_disable                                           definition changed
-dns_name_server_add_del                                      definition changed
-dns_resolve_ip                                               definition changed
-dns_resolve_name                                             definition changed
-dslite_add_del_pool_addr_range                               definition changed
-dslite_set_aftr_addr                                         definition changed
-geneve_add_del_tunnel                                        definition changed
-geneve_tunnel_details                                        only in image
-geneve_tunnel_dump                                           only in image
-ip_add_del_route                                             definition changed
-ip_container_proxy_add_del                                   definition changed
-ip_mroute_add_del                                            definition changed
-ip_neighbor_details                                          definition changed
-ip_punt_police                                               definition changed
-ip_punt_redirect                                             definition changed
-ipsec_sa_details                                             only in image
-ipsec_sa_dump                                                only in image
-ipsec_sad_add_del_entry                                      definition changed
-ipsec_tunnel_if_set_key                                      definition changed
-ipsec_tunnel_if_set_sa                                       definition changed
-kp_add_del_pod                                               definition changed
-kp_add_del_vip                                               definition changed
-kp_conf                                                      definition changed
-l2_emulation                                                 definition changed
-l2_fib_table_details                                         definition changed
-l2fib_add_del                                                definition changed
-memclnt_keepalive                                            definition changed
-memfd_segment_create                                         definition changed
-mpls_ip_bind_unbind                                          definition changed
-mpls_route_add_del                                           definition changed
-nat44_add_del_address_range                                  definition changed
-nat44_add_del_identity_mapping                               definition changed
-nat44_add_del_interface_addr                                 definition changed
-nat44_add_del_lb_static_mapping                              definition changed
-nat44_add_del_static_mapping                                 definition changed
-nat44_address_details                                        definition changed
-nat44_del_session                                            definition changed
-nat44_forwarding_enable_disable                              definition changed
-nat44_forwarding_is_enabled                                  definition changed
-nat44_identity_mapping_details                               only in image
-nat44_identity_mapping_dump                                  only in image
-nat44_interface_addr_details                                 definition changed
-nat44_lb_static_mapping_details                              definition changed
-nat44_static_mapping_details                                 definition changed
-nat64_add_del_interface_addr                                 definition changed
-nat_get_reass                                                definition changed
-nat_reass_details                                            only in image
-nat_reass_dump                                               only in image
-nat_set_reass                                                definition changed
-reset_vrf                                                    definition changed
-session_rule_add_del                                         definition changed
-session_rules_details                                        only in image
-session_rules_dump                                           only in image
-snat_add_address_range                                       definition changed
-snat_add_del_interface_addr                                  definition changed
-snat_add_det_map                                             definition changed
-snat_add_static_mapping                                      definition changed
-snat_address_details                                         only in file
-snat_address_dump                                            only in file
-snat_control_ping                                            definition changed
-snat_det_close_session_in                                    definition changed
-snat_det_close_session_out                                   definition changed
-snat_det_forward                                             definition changed
-snat_det_get_timeouts                                        definition changed
-snat_det_map_details                                         only in file
-snat_det_map_dump                                            only in file
-snat_det_reverse                                             definition changed
-snat_det_session_details                                     only in file
-snat_det_session_dump                                        only in file
-snat_det_set_timeouts                                        definition changed
-snat_interface_add_del_feature                               definition changed
-snat_interface_add_del_output_feature                        definition changed
-snat_interface_addr_details                                  only in file
-snat_interface_addr_dump                                     only in file
-snat_interface_details                                       only in file
-snat_interface_dump                                          only in file
-snat_interface_output_feature_details                        only in file
-snat_interface_output_feature_dump                           only in file
-snat_ipfix_enable_disable                                    definition changed
-snat_set_workers                                             definition changed
-snat_show_config                                             definition changed
-snat_static_mapping_details                                  only in file
-snat_static_mapping_dump                                     only in file
-snat_user_details                                            only in file
-snat_user_dump                                               only in file
-snat_user_session_details                                    only in file
-snat_user_session_dump                                       only in file
-snat_worker_details                                          only in file
-snat_worker_dump                                             only in file
-sockclnt_create                                              definition changed
-sockclnt_delete                                              definition changed
-sr_localsids_details                                         only in image
-sr_localsids_dump                                            only in image
-sr_mpls_policy_add                                           definition changed
-sr_mpls_policy_assign_endpoint_color                         definition changed
-sr_mpls_policy_del                                           definition changed
-sr_mpls_policy_mod                                           definition changed
-sr_mpls_steering_add_del                                     definition changed
-sr_set_encap_source                                          definition changed
-stn_add_del_rule                                             definition changed
-stn_rule_details                                             only in image
-stn_rules_dump                                               only in image
-sw_interface_set_geneve_bypass                               definition changed
-sw_interface_set_lldp                                        definition changed
-sw_interface_set_rx_mode                                     definition changed
-sw_interface_tap_v2_details                                  only in image
-sw_interface_tap_v2_dump                                     only in image
-tap_create_v2                                                definition changed
-tap_delete_v2                                                definition changed
-udp_encap_add_del                                            definition changed
-udp_encap_details                                            only in image
-udp_encap_dump                                               only in image
-vnet_ip4_mfib_counters                                       only in image
-vnet_ip6_mfib_counters                                       only in image
-want_ip4_mfib_stats                                          definition changed
-want_ip6_mfib_stats                                          definition changed
+Message Name                                                 | Result
+-------------------------------------------------------------|-----------------
+af_packet_set_l4_cksum_offload                               | definition changed
+api_versions                                                 | definition changed
+app_namespace_add_del                                        | definition changed
+application_attach                                           | definition changed
+bier_disp_entry_add_del                                      | definition changed
+bier_disp_entry_details                                      | only in image
+bier_disp_entry_dump                                         | only in image
+bier_disp_table_add_del                                      | definition changed
+bier_disp_table_details                                      | only in image
+bier_disp_table_dump                                         | only in image
+bier_imp_add                                                 | definition changed
+bier_imp_del                                                 | definition changed
+bier_imp_details                                             | only in image
+bier_imp_dump                                                | only in image
+bier_route_add_del                                           | definition changed
+bier_route_details                                           | only in image
+bier_route_dump                                              | only in image
+bier_table_add_del                                           | definition changed
+bier_table_details                                           | only in image
+bier_table_dump                                              | only in image
+bind_sock_reply                                              | definition changed
+connect_session_reply                                        | definition changed
+connect_sock                                                 | definition changed
+connect_uri                                                  | definition changed
+dhcp_proxy_details                                           | definition changed
+dhcp_proxy_set_vss                                           | definition changed
+dns_enable_disable                                           | definition changed
+dns_name_server_add_del                                      | definition changed
+dns_resolve_ip                                               | definition changed
+dns_resolve_name                                             | definition changed
+dslite_add_del_pool_addr_range                               | definition changed
+dslite_set_aftr_addr                                         | definition changed
+geneve_add_del_tunnel                                        | definition changed
+geneve_tunnel_details                                        | only in image
+geneve_tunnel_dump                                           | only in image
+ip_add_del_route                                             | definition changed
+ip_container_proxy_add_del                                   | definition changed
+ip_mroute_add_del                                            | definition changed
+ip_neighbor_details                                          | definition changed
+ip_punt_police                                               | definition changed
+ip_punt_redirect                                             | definition changed
+ipsec_sa_details                                             | only in image
+ipsec_sa_dump                                                | only in image
+ipsec_sad_add_del_entry                                      | definition changed
+ipsec_tunnel_if_set_key                                      | definition changed
+ipsec_tunnel_if_set_sa                                       | definition changed
+kp_add_del_pod                                               | definition changed
+kp_add_del_vip                                               | definition changed
+kp_conf                                                      | definition changed
+l2_emulation                                                 | definition changed
+l2_fib_table_details                                         | definition changed
+l2fib_add_del                                                | definition changed
+memclnt_keepalive                                            | definition changed
+memfd_segment_create                                         | definition changed
+mpls_ip_bind_unbind                                          | definition changed
+mpls_route_add_del                                           | definition changed
+nat44_add_del_address_range                                  | definition changed
+nat44_add_del_identity_mapping                               | definition changed
+nat44_add_del_interface_addr                                 | definition changed
+nat44_add_del_lb_static_mapping                              | definition changed
+nat44_add_del_static_mapping                                 | definition changed
+nat44_address_details                                        | definition changed
+nat44_del_session                                            | definition changed
+nat44_forwarding_enable_disable                              | definition changed
+nat44_forwarding_is_enabled                                  | definition changed
+nat44_identity_mapping_details                               | only in image
+nat44_identity_mapping_dump                                  | only in image
+nat44_interface_addr_details                                 | definition changed
+nat44_lb_static_mapping_details                              | definition changed
+nat44_static_mapping_details                                 | definition changed
+nat64_add_del_interface_addr                                 | definition changed
+nat_get_reass                                                | definition changed
+nat_reass_details                                            | only in image
+nat_reass_dump                                               | only in image
+nat_set_reass                                                | definition changed
+reset_vrf                                                    | definition changed
+session_rule_add_del                                         | definition changed
+session_rules_details                                        | only in image
+session_rules_dump                                           | only in image
+snat_add_address_range                                       | definition changed
+snat_add_del_interface_addr                                  | definition changed
+snat_add_det_map                                             | definition changed
+snat_add_static_mapping                                      | definition changed
+snat_address_details                                         | only in file
+snat_address_dump                                            | only in file
+snat_control_ping                                            | definition changed
+snat_det_close_session_in                                    | definition changed
+snat_det_close_session_out                                   | definition changed
+snat_det_forward                                             | definition changed
+snat_det_get_timeouts                                        | definition changed
+snat_det_map_details                                         | only in file
+snat_det_map_dump                                            | only in file
+snat_det_reverse                                             | definition changed
+snat_det_session_details                                     | only in file
+snat_det_session_dump                                        | only in file
+snat_det_set_timeouts                                        | definition changed
+snat_interface_add_del_feature                               | definition changed
+snat_interface_add_del_output_feature                        | definition changed
+snat_interface_addr_details                                  | only in file
+snat_interface_addr_dump                                     | only in file
+snat_interface_details                                       | only in file
+snat_interface_dump                                          | only in file
+snat_interface_output_feature_details                        | only in file
+snat_interface_output_feature_dump                           | only in file
+snat_ipfix_enable_disable                                    | definition changed
+snat_set_workers                                             | definition changed
+snat_show_config                                             | definition changed
+snat_static_mapping_details                                  | only in file
+snat_static_mapping_dump                                     | only in file
+snat_user_details                                            | only in file
+snat_user_dump                                               | only in file
+snat_user_session_details                                    | only in file
+snat_user_session_dump                                       | only in file
+snat_worker_details                                          | only in file
+snat_worker_dump                                             | only in file
+sockclnt_create                                              | definition changed
+sockclnt_delete                                              | definition changed
+sr_localsids_details                                         | only in image
+sr_localsids_dump                                            | only in image
+sr_mpls_policy_add                                           | definition changed
+sr_mpls_policy_assign_endpoint_color                         | definition changed
+sr_mpls_policy_del                                           | definition changed
+sr_mpls_policy_mod                                           | definition changed
+sr_mpls_steering_add_del                                     | definition changed
+sr_set_encap_source                                          | definition changed
+stn_add_del_rule                                             | definition changed
+stn_rule_details                                             | only in image
+stn_rules_dump                                               | only in image
+sw_interface_set_geneve_bypass                               | definition changed
+sw_interface_set_lldp                                        | definition changed
+sw_interface_set_rx_mode                                     | definition changed
+sw_interface_tap_v2_details                                  | only in image
+sw_interface_tap_v2_dump                                     | only in image
+tap_create_v2                                                | definition changed
+tap_delete_v2                                                | definition changed
+udp_encap_add_del                                            | definition changed
+udp_encap_details                                            | only in image
+udp_encap_dump                                               | only in image
+vnet_ip4_mfib_counters                                       | only in image
+vnet_ip6_mfib_counters                                       | only in image
+want_ip4_mfib_stats                                          | definition changed
+want_ip6_mfib_stats                                          | definition changed
+
 Found 142 api message signature differences
 
-- patches that changed api files
+### Patches that changed API definitions
 
 ./src/examples/sample-plugin/sample/sample.api
 0d056e5e vppapigen: support per-file (major,minor,patch) version stamps
@@ -472,6 +1944,7 @@ c91f5024 Support kube-proxy data plane
 0d056e5e vppapigen: support per-file (major,minor,patch) version stamps
 59b2565c Repair vlib API socket server
 
+
 @page release_notes_1710 Release notes for VPP 17.10
 
 More than 400 commits since the 1707 release.
@@ -529,110 +2002,112 @@ For the full list of fixed issues please refer to:
 
 ## API changes
 
-Message Name                         			     Result
-bridge_domain_add_del                                        definition changed
-bridge_domain_details                                        definition changed
-connect_session                                              definition changed
-connect_sock                                                 definition changed
-connect_sock_reply                                           definition changed
-connect_uri_reply                                            definition changed
-create_vhost_user_if                                         definition changed
-dhcp_client_config                                           definition changed
-ip4_arp_event                                                definition changed
-ip6_fib_details                                              definition changed
-ip6_nd_event                                                 definition changed
-ip_add_del_route                                             definition changed
-ip_fib_details                                               definition changed
-ip_table_add_del                                             definition changed
-l2_macs_event                                                only in image
-macip_acl_add_replace                                        definition changed
-macip_acl_interface_list_details                             only in image
-macip_acl_interface_list_dump                                only in image
-modify_vhost_user_if                                         definition changed
-mpls_fib_details                                             definition changed
-mpls_route_add_del                                           definition changed
-mpls_table_add_del                                           definition changed
-mpls_tunnel_add_del                                          definition changed
-nat44_add_del_address_range                                  definition changed
-nat44_add_del_interface_addr                                 definition changed
-nat44_add_del_lb_static_mapping                              definition changed
-nat44_add_del_static_mapping                                 definition changed
-nat44_address_details                                        only in image
-nat44_address_dump                                           only in image
-nat44_interface_add_del_feature                              definition changed
-nat44_interface_add_del_output_feature                       definition changed
-nat44_interface_addr_details                                 only in image
-nat44_interface_addr_dump                                    only in image
-nat44_interface_details                                      only in image
-nat44_interface_dump                                         only in image
-nat44_interface_output_feature_details                       only in image
-nat44_interface_output_feature_dump                          only in image
-nat44_lb_static_mapping_details                              only in image
-nat44_lb_static_mapping_dump                                 only in image
-nat44_static_mapping_details                                 only in image
-nat44_static_mapping_dump                                    only in image
-nat44_user_details                                           only in image
-nat44_user_dump                                              only in image
-nat44_user_session_details                                   only in image
-nat44_user_session_dump                                      only in image
-nat_control_ping                                             definition changed
-nat_det_add_del_map                                          definition changed
-nat_det_close_session_in                                     definition changed
-nat_det_close_session_out                                    definition changed
-nat_det_forward                                              definition changed
-nat_det_get_timeouts                                         definition changed
-nat_det_map_details                                          only in image
-nat_det_map_dump                                             only in image
-nat_det_reverse                                              definition changed
-nat_det_session_details                                      only in image
-nat_det_session_dump                                         only in image
-nat_det_set_timeouts                                         definition changed
-nat_ipfix_enable_disable                                     definition changed
-nat_set_workers                                              definition changed
-nat_show_config                                              definition changed
-nat_worker_details                                           only in image
-nat_worker_dump                                              only in image
-one_add_del_ndp_entry                                        definition changed
-one_enable_disable_petr_mode                                 definition changed
-one_enable_disable_pitr_mode                                 definition changed
-one_enable_disable_xtr_mode                                  definition changed
-one_get_transport_protocol                                   definition changed
-one_map_register_fallback_threshold                          definition changed
-one_map_register_set_ttl                                     definition changed
-one_ndp_bd_get                                               definition changed
-one_ndp_entries_get                                          definition changed
-one_set_transport_protocol                                   definition changed
-one_show_petr_mode                                           definition changed
-one_show_pitr_mode                                           definition changed
-one_show_xtr_mode                                            definition changed
-p2p_ethernet_add                                             definition changed
-pppoe_add_del_session                                        definition changed
-pppoe_session_details                                        only in image
-pppoe_session_dump                                           only in image
-punt_socket_deregister                                       definition changed
-punt_socket_register                                         definition changed
-show_one_map_register_fallback_threshold                     definition changed
-show_one_map_register_ttl                                    definition changed
-snat_interface_add_del_output_feature                        definition changed
-snat_interface_output_feature_details                        only in image
-snat_interface_output_feature_dump                           only in image
-sw_interface_event                                           only in image
-sw_interface_set_flags                                       definition changed
-sw_interface_span_dump                                       definition changed
-sw_interface_span_enable_disable                             definition changed
-sw_interface_vhost_user_details                              definition changed
-tcp_configure_src_addresses                                  definition changed
-vnet_per_interface_combined_counters                         only in image
-vnet_per_interface_simple_counters                           only in image
-want_interface_combined_stats                                definition changed
-want_interface_simple_stats                                  definition changed
-want_ip4_fib_stats                                           definition changed
-want_ip4_nbr_stats                                           definition changed
-want_ip6_fib_stats                                           definition changed
-want_ip6_nbr_stats                                           definition changed
-want_l2_macs_events                                          definition changed
-want_per_interface_combined_stats                            definition changed
-want_per_interface_simple_stats                              definition changed
+Message Name                         			     | Result
+-------------------------------------------------------------|----------------
+bridge_domain_add_del                                        | definition changed
+bridge_domain_details                                        | definition changed
+connect_session                                              | definition changed
+connect_sock                                                 | definition changed
+connect_sock_reply                                           | definition changed
+connect_uri_reply                                            | definition changed
+create_vhost_user_if                                         | definition changed
+dhcp_client_config                                           | definition changed
+ip4_arp_event                                                | definition changed
+ip6_fib_details                                              | definition changed
+ip6_nd_event                                                 | definition changed
+ip_add_del_route                                             | definition changed
+ip_fib_details                                               | definition changed
+ip_table_add_del                                             | definition changed
+l2_macs_event                                                | only in image
+macip_acl_add_replace                                        | definition changed
+macip_acl_interface_list_details                             | only in image
+macip_acl_interface_list_dump                                | only in image
+modify_vhost_user_if                                         | definition changed
+mpls_fib_details                                             | definition changed
+mpls_route_add_del                                           | definition changed
+mpls_table_add_del                                           | definition changed
+mpls_tunnel_add_del                                          | definition changed
+nat44_add_del_address_range                                  | definition changed
+nat44_add_del_interface_addr                                 | definition changed
+nat44_add_del_lb_static_mapping                              | definition changed
+nat44_add_del_static_mapping                                 | definition changed
+nat44_address_details                                        | only in image
+nat44_address_dump                                           | only in image
+nat44_interface_add_del_feature                              | definition changed
+nat44_interface_add_del_output_feature                       | definition changed
+nat44_interface_addr_details                                 | only in image
+nat44_interface_addr_dump                                    | only in image
+nat44_interface_details                                      | only in image
+nat44_interface_dump                                         | only in image
+nat44_interface_output_feature_details                       | only in image
+nat44_interface_output_feature_dump                          | only in image
+nat44_lb_static_mapping_details                              | only in image
+nat44_lb_static_mapping_dump                                 | only in image
+nat44_static_mapping_details                                 | only in image
+nat44_static_mapping_dump                                    | only in image
+nat44_user_details                                           | only in image
+nat44_user_dump                                              | only in image
+nat44_user_session_details                                   | only in image
+nat44_user_session_dump                                      | only in image
+nat_control_ping                                             | definition changed
+nat_det_add_del_map                                          | definition changed
+nat_det_close_session_in                                     | definition changed
+nat_det_close_session_out                                    | definition changed
+nat_det_forward                                              | definition changed
+nat_det_get_timeouts                                         | definition changed
+nat_det_map_details                                          | only in image
+nat_det_map_dump                                             | only in image
+nat_det_reverse                                              | definition changed
+nat_det_session_details                                      | only in image
+nat_det_session_dump                                         | only in image
+nat_det_set_timeouts                                         | definition changed
+nat_ipfix_enable_disable                                     | definition changed
+nat_set_workers                                              | definition changed
+nat_show_config                                              | definition changed
+nat_worker_details                                           | only in image
+nat_worker_dump                                              | only in image
+one_add_del_ndp_entry                                        | definition changed
+one_enable_disable_petr_mode                                 | definition changed
+one_enable_disable_pitr_mode                                 | definition changed
+one_enable_disable_xtr_mode                                  | definition changed
+one_get_transport_protocol                                   | definition changed
+one_map_register_fallback_threshold                          | definition changed
+one_map_register_set_ttl                                     | definition changed
+one_ndp_bd_get                                               | definition changed
+one_ndp_entries_get                                          | definition changed
+one_set_transport_protocol                                   | definition changed
+one_show_petr_mode                                           | definition changed
+one_show_pitr_mode                                           | definition changed
+one_show_xtr_mode                                            | definition changed
+p2p_ethernet_add                                             | definition changed
+pppoe_add_del_session                                        | definition changed
+pppoe_session_details                                        | only in image
+pppoe_session_dump                                           | only in image
+punt_socket_deregister                                       | definition changed
+punt_socket_register                                         | definition changed
+show_one_map_register_fallback_threshold                     | definition changed
+show_one_map_register_ttl                                    | definition changed
+snat_interface_add_del_output_feature                        | definition changed
+snat_interface_output_feature_details                        | only in image
+snat_interface_output_feature_dump                           | only in image
+sw_interface_event                                           | only in image
+sw_interface_set_flags                                       | definition changed
+sw_interface_span_dump                                       | definition changed
+sw_interface_span_enable_disable                             | definition changed
+sw_interface_vhost_user_details                              | definition changed
+tcp_configure_src_addresses                                  | definition changed
+vnet_per_interface_combined_counters                         | only in image
+vnet_per_interface_simple_counters                           | only in image
+want_interface_combined_stats                                | definition changed
+want_interface_simple_stats                                  | definition changed
+want_ip4_fib_stats                                           | definition changed
+want_ip4_nbr_stats                                           | definition changed
+want_ip6_fib_stats                                           | definition changed
+want_ip6_nbr_stats                                           | definition changed
+want_l2_macs_events                                          | definition changed
+want_per_interface_combined_stats                            | definition changed
+want_per_interface_simple_stats                              | definition changed
+
 Found 103 api message signature differences
 
 Patches that updated the API files:
@@ -717,6 +2192,7 @@ f7a55ad7 PUNT socket: External control plane processes connected via UNIX domain
 831fb59f Stats refactor
 8a19f12a Allow individual stats API and introduce stats.api
 
+
 @page release_notes_1707 Release notes for VPP 17.07
 
 More than 400 commits since the 1704 release.
@@ -779,6 +2255,7 @@ For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
 For the full list of fixed issues please reffer to:
 - fd.io [JIRA](https://jira.fd.io)
 - git [commit log](https://git.fd.io/vpp/log/?h=stable/1707)
+
 
 @page release_notes_1704 Release notes for VPP 17.04
 
@@ -906,14 +2383,6 @@ For the full list of fixed issues please reffer to:
 - fd.io [JIRA](https://jira.fd.io)
 - git [commit log](https://git.fd.io/vpp/log/?h=stable/1704)
 
-@page release_notes_17011 Release notes for VPP 17.01.1
-
-This is bug fix release.
-
-For the full list of fixed issues please reffer to:
-- fd.io [JIRA](https://jira.fd.io)
-- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
-
 
 @page release_notes_17011 Release notes for VPP 17.01.1
 
@@ -922,6 +2391,16 @@ This is bug fix release.
 For the full list of fixed issues please reffer to:
 - fd.io [JIRA](https://jira.fd.io)
 - git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
+
+
+@page release_notes_17011 Release notes for VPP 17.01.1
+
+This is bug fix release.
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
+
 
 @page release_notes_1701 Release notes for VPP 17.01
 
@@ -1005,6 +2484,7 @@ For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
 For the full list of fixed issues please reffer to:
 - fd.io [JIRA](https://jira.fd.io)
 - git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
+
 
 @page release_notes_1609 Release notes for VPP 16.09
 
