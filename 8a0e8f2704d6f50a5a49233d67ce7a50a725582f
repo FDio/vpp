@@ -142,6 +142,24 @@
     },
     {
       "key": {
+        "uuid": "6b3a4bf8_8e8387d4",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-24T15:14:01Z",
+      "side": 1,
+      "message": "but is it needed?",
+      "parentUuid": "fbd1b31a_ebb0d873",
+      "revId": "8a0e8f2704d6f50a5a49233d67ce7a50a725582f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a905a57c_5aa5d3d1",
         "filename": "src/plugins/gbp/gbp_policy_dpo.c",
         "patchSetId": 4
