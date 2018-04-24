@@ -40,6 +40,8 @@ def walk_defs(s):
                     f = [b.fieldtype, b.fieldname, b.length, b.lengthfield]
                 else:
                     f = [b.fieldtype, b.fieldname, b.length]
+            elif b.type == 'Union':
+                print('UNION')
             else:
                 raise ValueError("Error in processing array type %s" % b)
             d.append(f)
@@ -58,9 +60,10 @@ def walk_defs(s):
 def run(filename, s, file_crc):
     j = {}
 
-    j['types'] = walk_defs(s['typedefs'])
-    j['messages'] = walk_defs(s['defines'])
-    j['enums'] = walk_enums(s['enums'])
-    j['services'] = walk_services(s['services'])
+    j['types'] = walk_defs([o for o in s['types'] if o.__class__.__name__ == 'Typedef'])
+    j['messages'] = walk_defs(s['Define'])
+    j['unions'] = walk_defs([o for o in s['types'] if o.__class__.__name__ == 'Union'])
+    j['enums'] = walk_enums([o for o in s['types'] if o.__class__.__name__ == 'Enum'])
+    j['services'] = walk_services(s['Service'])
     j['vl_api_version'] = hex(file_crc)
     return json.dumps(j, indent=4, separators=(',', ': '))
