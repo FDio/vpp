@@ -68,6 +68,7 @@ typedef struct
   struct rte_crypto_op **ops;
   u16 cipher_resource_idx[IPSEC_CRYPTO_N_ALG];
   u16 auth_resource_idx[IPSEC_INTEG_N_ALG];
+    CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } crypto_worker_main_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
 
 typedef struct
