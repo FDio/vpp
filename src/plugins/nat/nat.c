@@ -365,6 +365,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   u32 n_left_from, * from, * to_next;
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -416,7 +417,9 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               kv0.key = m_key0.as_u64;
               if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
                 {
-                  next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                  m = pool_elt_at_index (sm->static_mappings, value0.value);
+                  if (m->local_addr.as_u32 != m->external_addr.as_u32)
+                    next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
                   goto enqueue0;
                 }
               udp_header_t * udp0 = ip4_next_header (ip0);
@@ -424,7 +427,11 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
               kv0.key = m_key0.as_u64;
               if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
-                next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                {
+                  m = pool_elt_at_index (sm->static_mappings, value0.value);
+                  if (m->local_addr.as_u32 != m->external_addr.as_u32)
+                    next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                }
             }
 
         enqueue0:
@@ -1793,7 +1800,7 @@ fib:
 
   pool_foreach (m, sm->static_mappings,
   ({
-    if (!(m->addr_only))
+    if (!(m->addr_only)  || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);

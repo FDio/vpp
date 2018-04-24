@@ -3350,10 +3350,13 @@ class TestNAT44(MethodHolder):
 
         self.vapi.nat44_forwarding_enable_disable(1)
         self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_add_del_identity_mapping(ip=self.pg1.remote_ip4n)
         self.nat44_add_static_mapping(self.pg0.remote_ip4, external_addr,
                                       local_port, external_port,
                                       proto=IP_PROTOS.tcp, out2in_only=1)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index,
+                                                  is_inside=0)
         self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index,
                                                          is_inside=0)
 
