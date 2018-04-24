@@ -92,6 +92,16 @@ gbp_policy_dpo_unlock (dpo_id_t * dpo)
     }
 }
 
+static u32
+gbp_policy_dpo_get_urpf (const dpo_id_t * dpo)
+{
+  gbp_policy_dpo_t *gpd;
+
+  gpd = gbp_policy_dpo_get_from_dpo (dpo);
+
+  return (gpd->gpd_sw_if_index);
+}
+
 void
 gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
 			    epg_id_t epg, u32 sw_if_index, dpo_id_t * dpo)
@@ -138,6 +148,7 @@ const static dpo_vft_t gbp_policy_dpo_vft = {
   .dv_lock = gbp_policy_dpo_lock,
   .dv_unlock = gbp_policy_dpo_unlock,
   .dv_format = format_gbp_policy_dpo,
+  .dv_get_urpf = gbp_policy_dpo_get_urpf,
 };
 
 /**
@@ -499,7 +510,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip4_lpm_classify_node, gbp_ip4_lpm_classify);
 
 VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
   .function = gbp_ip6_lpm_classify,
-  .name = "ip6-gpb-lpm-classify",
+  .name = "ip6-gbp-lpm-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
