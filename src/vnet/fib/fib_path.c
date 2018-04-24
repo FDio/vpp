@@ -2072,7 +2072,7 @@ fib_path_get_resolving_interface (fib_node_index_t path_index)
     case FIB_PATH_TYPE_BIER_IMP:
 	break;
     }
-    return (~0);
+    return (dpo_get_urpf(&path->fp_dpo));
 }
 
 index_t
