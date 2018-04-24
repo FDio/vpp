@@ -83,33 +83,6 @@ enum
 #undef _
 };
 
-#define foreach_buffer_opaque_union_subtype     \
-_(ip)                                           \
-_(swt)                                          \
-_(l2)                                           \
-_(l2t)                                          \
-_(gre)                                          \
-_(l2_classify)                                  \
-_(handoff)                                      \
-_(policer)                                      \
-_(ipsec)					\
-_(map)						\
-_(map_t)					\
-_(ip_frag)					\
-_(mpls)					        \
-_(tcp)
-
-/*
- * vnet stack buffer opaque array overlay structure.
- * The vnet_buffer_opaque_t *must* be the same size as the
- * vlib_buffer_t "opaque" structure member, 32 bytes.
- *
- * When adding a union type, please add a stanza to
- * foreach_buffer_opaque_union_subtype (directly above).
- * Code in vnet_interface_init(...) verifies the size
- * of the union, and will announce any deviations in an
- * impossible-to-miss manner.
- */
 typedef struct
 {
   u32 sw_if_index[VLIB_N_RX_TX];
