@@ -221,7 +221,7 @@ class VPP():
             localdir = os.path.dirname(os.path.realpath(main.__file__))
         else:
             # use cwd if there is no calling script
-            localdir = os.cwd()
+            localdir = os.getcwd()
         localdir_s = localdir.split(os.path.sep)
 
         def dmatch(dir):
