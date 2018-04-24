@@ -45,9 +45,13 @@ class VppGbpEndpoint(VppObject):
         if is_ip6:
             self.proto = DpoProto.DPO_PROTO_IP6
             self.af = AF_INET6
+            self.is_ip6 = True
+            self.ip_len = 128
         else:
             self.proto = DpoProto.DPO_PROTO_IP4
             self.af = AF_INET
+            self.is_ip6 = False
+            self.ip_len = 32
         self.ip_n = inet_pton(self.af, ip)
         self.floating_ip_n = inet_pton(self.af, fip)
 
@@ -184,7 +188,8 @@ class VppGbpSubnet(VppObject):
         ss = self._test.vapi.gbp_subnet_dump()
         for s in ss:
             if s.subnet.table_id == self.table_id and \
-               s.subnet.address_length == self.address_len:
+               s.subnet.address_length == self.address_len and \
+               s.subnet.is_ip6 == self.is_ip6:
                 if self.is_ip6:
                     if s.subnet.address == self.address_n:
                         return True
@@ -353,6 +358,16 @@ class TestGBP(VppTestCase):
             self.assertEqual(r[IP].dst, tx[0][IP].dst)
         return rx
 
+    def send_and_expect_natted6(self, src, tx, dst, src_ip):
+        rx = self.send_and_expect(src, tx, dst)
+
+        for r in rx:
+            self.assertEqual(r[Ether].src, tx[0][Ether].src)
+            self.assertEqual(r[Ether].dst, tx[0][Ether].dst)
+            self.assertEqual(r[IPv6].src, src_ip)
+            self.assertEqual(r[IPv6].dst, tx[0][IPv6].dst)
+        return rx
+
     def send_and_expect_unnatted(self, src, tx, dst, dst_ip):
         rx = self.send_and_expect(src, tx, dst)
 
@@ -363,6 +378,16 @@ class TestGBP(VppTestCase):
             self.assertEqual(r[IP].src, tx[0][IP].src)
         return rx
 
+    def send_and_expect_unnatted6(self, src, tx, dst, dst_ip):
+        rx = self.send_and_expect(src, tx, dst)
+
+        for r in rx:
+            self.assertEqual(r[Ether].src, tx[0][Ether].src)
+            self.assertEqual(r[Ether].dst, tx[0][Ether].dst)
+            self.assertEqual(r[IPv6].dst, dst_ip)
+            self.assertEqual(r[IPv6].src, tx[0][IPv6].src)
+        return rx
+
     def send_and_expect_double_natted(self, src, tx, dst, src_ip, dst_ip):
         rx = self.send_and_expect(src, tx, dst)
 
@@ -371,6 +396,16 @@ class TestGBP(VppTestCase):
             self.assertEqual(r[Ether].dst, dst.remote_mac)
             self.assertEqual(r[IP].dst, dst_ip)
             self.assertEqual(r[IP].src, src_ip)
+        return rx
+
+    def send_and_expect_double_natted6(self, src, tx, dst, src_ip, dst_ip):
+        rx = self.send_and_expect(src, tx, dst)
+
+        for r in rx:
+            self.assertEqual(r[Ether].src, self.router_mac)
+            self.assertEqual(r[Ether].dst, dst.remote_mac)
+            self.assertEqual(r[IPv6].dst, dst_ip)
+            self.assertEqual(r[IPv6].src, src_ip)
         return rx
 
     def test_gbp(self):
@@ -486,9 +521,9 @@ class TestGBP(VppTestCase):
                 self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
                                                           is_inside=1,
                                                           is_add=1)
-                # self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                #                                  is_inside=1,
-                #                                  is_add=1)
+                self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
+                                                  is_inside=1,
+                                                  is_add=1)
 
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
                                                    epg.bvi_ip4_n,
@@ -496,10 +531,11 @@ class TestGBP(VppTestCase):
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
                                                    epg.bvi_ip6_n,
                                                    128,
-                                                   is_ipv6=1)
+                                                   is_ipv6=True)
 
             # EPG uplink interfaces in the BD
             epg.uplink.set_table_ip4(epg.rd)
+            epg.uplink.set_table_ip6(epg.rd)
             self.vapi.sw_interface_set_l2_bridge(epg.uplink.sw_if_index,
                                                  epg.bd)
 
@@ -533,6 +569,7 @@ class TestGBP(VppTestCase):
         for recirc in recircs:
             # EPG's ingress recirculation interface maps to its RD
             recirc.recirc.set_table_ip4(recirc.epg.rd)
+            recirc.recirc.set_table_ip6(recirc.epg.rd)
 
             # in the bridge to allow DVR. L2 emulation to punt to L3
             self.vapi.sw_interface_set_l2_bridge(recirc.recirc.sw_if_index,
@@ -540,22 +577,14 @@ class TestGBP(VppTestCase):
             self.vapi.sw_interface_set_l2_emulation(
                 recirc.recirc.sw_if_index)
 
-            if recirc.is_ext:
-                # recirc interfaces on NAT EPGs are outside and an
-                # output feature
-                self.vapi.nat44_interface_add_del_output_feature(
-                    recirc.recirc.sw_if_index,
-                    is_inside=0,
-                    is_add=1)
-            else:
-                self.vapi.nat44_interface_add_del_feature(
-                    recirc.recirc.sw_if_index,
-                    is_inside=0,
-                    is_add=1)
-                # self.vapi.nat66_add_del_interface(
-                #    recirc.recirc.sw_if_index,
-                #    is_inside=0,
-                #    is_add=1)
+            self.vapi.nat44_interface_add_del_feature(
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=1)
+            self.vapi.nat66_add_del_interface(
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=1)
 
             recirc.add_vpp_config()
 
@@ -569,7 +598,7 @@ class TestGBP(VppTestCase):
             # adj-fibs due to the fact the the BVI address has /32 and
             # the subnet is not attached.
             #
-            r = VppIpRoute(self, ep.ip, 32,
+            r = VppIpRoute(self, ep.ip, ep.ip_len,
                            [VppRoutePath(ep.ip,
                                          ep.epg.bvi.sw_if_index,
                                          proto=ep.proto)],
@@ -610,10 +639,10 @@ class TestGBP(VppTestCase):
                                                        ep.floating_ip_n,
                                                        vrf_id=0,
                                                        addr_only=1)
-            # else:
-            # self.vapi.nat66_add_del_static_mapping(ep.ip_n,
-            #                                       ep.floating_ip_n,
-            #                                       vrf_id=20)
+            else:
+                self.vapi.nat66_add_del_static_mapping(ep.ip_n,
+                                                       ep.floating_ip_n,
+                                                       vrf_id=0)
 
             # VPP EP create ...
             ep.add_vpp_config()
@@ -633,11 +662,11 @@ class TestGBP(VppTestCase):
             self.vapi.bd_ip_mac_add_del(bd_id=epg_nat.bd,
                                         mac=ep.bin_mac,
                                         ip=ep.floating_ip_n,
-                                        is_ipv6=0,
+                                        is_ipv6=ep.is_ip6,
                                         is_add=1)
 
             # floating IPs route via EPG recirc
-            r = VppIpRoute(self, ep.floating_ip, 32,
+            r = VppIpRoute(self, ep.floating_ip, ep.ip_len,
                            [VppRoutePath(ep.floating_ip,
                                          ep.recirc.recirc.sw_if_index,
                                          is_dvr=1,
@@ -916,21 +945,39 @@ class TestGBP(VppTestCase):
                            sw_if_index=recirc_nat.recirc.sw_if_index,
                            epg=epg_nat.epg)
         se2.add_vpp_config()
+        se16 = VppGbpSubnet(self, 0, "::", 0,
+                            is_internal=False,
+                            sw_if_index=recirc_nat.recirc.sw_if_index,
+                            epg=epg_nat.epg,
+                            is_ip6=True)
+        se16.add_vpp_config()
         # in the NAT RD an external subnet via the NAT EPG's uplink
         se3 = VppGbpSubnet(self, 20, "0.0.0.0", 0,
                            is_internal=False,
                            sw_if_index=epg_nat.uplink.sw_if_index,
                            epg=epg_nat.epg)
+        se36 = VppGbpSubnet(self, 20, "::", 0,
+                            is_internal=False,
+                            sw_if_index=epg_nat.uplink.sw_if_index,
+                            epg=epg_nat.epg,
+                            is_ip6=True)
         se4 = VppGbpSubnet(self, 20, "11.0.0.0", 8,
                            is_internal=False,
                            sw_if_index=epg_nat.uplink.sw_if_index,
                            epg=epg_nat.epg)
         se3.add_vpp_config()
+        se36.add_vpp_config()
         se4.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh ip fib 0.0.0.0/0"))
         self.logger.info(self.vapi.cli("sh ip fib 11.0.0.1"))
+        self.logger.info(self.vapi.cli("sh ip6 fib ::/0"))
+        self.logger.info(self.vapi.cli("sh ip6 fib %s" %
+                                       eps[4].floating_ip))
 
+        #
+        # From an EP to an outside addess: IN2OUT
+        #
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
                                              dst=self.router_mac) /
                                        IP(src=eps[0].ip, dst="1.1.1.1") /
@@ -947,8 +994,22 @@ class TestGBP(VppTestCase):
         self.send_and_expect_natted(self.pg0,
                                     pkt_inter_epg_220_to_global * 65,
                                     self.pg7,
-                                    "11.0.0.1")
+                                    eps[0].floating_ip)
 
+        pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
+                                             dst=self.router_mac) /
+                                       IPv6(src=eps[4].ip, dst="6001::1") /
+                                       UDP(sport=1234, dport=1234) /
+                                       Raw('\xa5' * 100))
+
+        self.send_and_expect_natted6(self.pg0,
+                                     pkt_inter_epg_220_to_global * 65,
+                                     self.pg7,
+                                     eps[4].floating_ip)
+
+        #
+        # From a global address to an EP: OUT2IN
+        #
         pkt_inter_epg_220_from_global = (Ether(src=self.router_mac,
                                                dst=self.pg0.remote_mac) /
                                          IP(dst=eps[0].floating_ip,
@@ -964,9 +1025,25 @@ class TestGBP(VppTestCase):
 
         self.send_and_expect_unnatted(self.pg7,
                                       pkt_inter_epg_220_from_global * 65,
-                                      self.pg0,
-                                      "10.0.0.1")
+                                      eps[0].itf,
+                                      eps[0].ip)
 
+        pkt_inter_epg_220_from_global = (Ether(src=self.router_mac,
+                                               dst=self.pg0.remote_mac) /
+                                         IPv6(dst=eps[4].floating_ip,
+                                              src="6001::1") /
+                                         UDP(sport=1234, dport=1234) /
+                                         Raw('\xa5' * 100))
+
+        self.send_and_expect_unnatted6(self.pg7,
+                                       pkt_inter_epg_220_from_global * 65,
+                                       eps[4].itf,
+                                       eps[4].ip)
+
+        #
+        # From a local VM to another local VM using resp. public addresses:
+        #  IN2OUT2IN
+        #
         pkt_intra_epg_220_global = (Ether(src=self.pg0.remote_mac,
                                           dst=self.router_mac) /
                                     IP(src=eps[0].ip,
@@ -974,11 +1051,24 @@ class TestGBP(VppTestCase):
                                     UDP(sport=1234, dport=1234) /
                                     Raw('\xa5' * 100))
 
-        self.send_and_expect_double_natted(self.pg0,
+        self.send_and_expect_double_natted(eps[0].itf,
                                            pkt_intra_epg_220_global * 65,
-                                           self.pg1,
-                                           "11.0.0.1",
-                                           "10.0.0.2")
+                                           eps[1].itf,
+                                           eps[0].floating_ip,
+                                           eps[1].ip)
+
+        pkt_intra_epg_220_global = (Ether(src=self.pg4.remote_mac,
+                                          dst=self.router_mac) /
+                                    IPv6(src=eps[4].ip,
+                                         dst=eps[5].floating_ip) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+
+        self.send_and_expect_double_natted6(eps[4].itf,
+                                            pkt_intra_epg_220_global * 65,
+                                            eps[5].itf,
+                                            eps[4].floating_ip,
+                                            eps[5].ip)
 
         #
         # cleanup
@@ -991,11 +1081,11 @@ class TestGBP(VppTestCase):
                                                        vrf_id=0,
                                                        addr_only=1,
                                                        is_add=0)
-            # else:
-            # self.vapi.nat66_add_del_static_mapping(ep.ip_n,
-            #                                       ep.floating_ip_n,
-            #                                       vrf_id=0,
-            #                                       is_add=0)
+            else:
+                self.vapi.nat66_add_del_static_mapping(ep.ip_n,
+                                                       ep.floating_ip_n,
+                                                       vrf_id=0,
+                                                       is_add=0)
 
         for epg in epgs:
             # IP config on the BVI interfaces
@@ -1003,37 +1093,39 @@ class TestGBP(VppTestCase):
                                                    epg.bvi_ip4_n,
                                                    32,
                                                    is_add=0)
+            self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
+                                                   epg.bvi_ip6_n,
+                                                   128,
+                                                   is_add=0,
+                                                   is_ipv6=True)
             self.logger.info(self.vapi.cli("sh int addr"))
 
             epg.uplink.set_table_ip4(0)
+            epg.uplink.set_table_ip6(0)
 
             if epg != epgs[0] and epg != epgs[3]:
                 epg.bvi.set_table_ip4(0)
+                epg.bvi.set_table_ip6(0)
 
                 self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
                                                           is_inside=1,
                                                           is_add=0)
-                # self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                #                                  is_inside=1,
-                #                                  is_add=0)
+                self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
+                                                  is_inside=1,
+                                                  is_add=0)
 
         for recirc in recircs:
             recirc.recirc.set_table_ip4(0)
+            recirc.recirc.set_table_ip6(0)
 
-            if recirc.is_ext:
-                self.vapi.nat44_interface_add_del_output_feature(
-                    recirc.recirc.sw_if_index,
-                    is_inside=0,
-                    is_add=0)
-            else:
-                self.vapi.nat44_interface_add_del_feature(
-                    recirc.recirc.sw_if_index,
-                    is_inside=0,
-                    is_add=0)
-                # self.vapi.nat66_add_del_interface(
-                #    recirc.recirc.sw_if_index,
-                #    is_inside=0,
-                #    is_add=0)
+            self.vapi.nat44_interface_add_del_feature(
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=0)
+            self.vapi.nat66_add_del_interface(
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=0)
 
 
 if __name__ == '__main__':

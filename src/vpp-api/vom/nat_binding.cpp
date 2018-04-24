@@ -85,11 +85,20 @@ nat_binding::sweep()
 {
   if (m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new nat_binding_cmds::unbind_44_input_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::unbind_44_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        HW::enqueue(new nat_binding_cmds::unbind_66_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      }
     } else {
-      HW::enqueue(new nat_binding_cmds::unbind_44_output_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::unbind_44_output_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        VOM_LOG(log_level_t::ERROR) << "NAT 66 output feature not supported";
+      }
     }
   }
   HW::write();
@@ -100,11 +109,20 @@ nat_binding::replay()
 {
   if (m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        HW::enqueue(new nat_binding_cmds::bind_66_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      }
     } else {
-      HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        VOM_LOG(log_level_t::ERROR) << "NAT 66 output feature not supported";
+      }
     }
   }
 }
@@ -117,11 +135,20 @@ nat_binding::update(const nat_binding& desired)
  */
   if (!m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        HW::enqueue(new nat_binding_cmds::bind_66_input_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      }
     } else {
-      HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
-        m_binding, m_itf->handle(), m_zone));
+      if (l3_proto_t::IPV4 == m_proto) {
+        HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
+          m_binding, m_itf->handle(), m_zone));
+      } else {
+        VOM_LOG(log_level_t::ERROR) << "NAT 66 output feature not supported";
+      }
     }
   }
 }
@@ -211,6 +238,21 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     nat_binding nb(*itf, direction_t::OUTPUT, l3_proto_t::IPV4,
+                   zone_t::from_vpp(payload.is_inside));
+    OM::commit(key, nb);
+  }
+
+  std::shared_ptr<nat_binding_cmds::dump_input_66_cmd> i6cmd =
+    std::make_shared<nat_binding_cmds::dump_input_66_cmd>();
+
+  HW::enqueue(i6cmd);
+  HW::write();
+
+  for (auto& record : *i6cmd) {
+    auto& payload = record.get_payload();
+
+    std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+    nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV6,
                    zone_t::from_vpp(payload.is_inside));
     OM::commit(key, nb);
   }
