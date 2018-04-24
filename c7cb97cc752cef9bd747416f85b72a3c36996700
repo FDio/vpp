@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e8771e8_460d00ea",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-24T15:18:05Z",
+      "side": 1,
+      "message": "SCTP. I\u0027ll let Marco decide but I\u0027d put this under host stack heading.",
+      "range": {
+        "startLine": 28,
+        "startChar": 4,
+        "endLine": 28,
+        "endChar": 8
+      },
+      "revId": "c7cb97cc752cef9bd747416f85b72a3c36996700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b4388ec9_f00150b8",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-24T15:18:05Z",
+      "side": 1,
+      "message": "- session layer can use both shm and memfd (secure) fifo segments",
+      "range": {
+        "startLine": 33,
+        "startChar": 2,
+        "endLine": 33,
+        "endChar": 12
+      },
+      "revId": "c7cb97cc752cef9bd747416f85b72a3c36996700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5a1b767_ec428fac",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-24T15:18:05Z",
+      "side": 1,
+      "message": "We already have TLS with OpenSSL and mbedtls software engines implemented, so you can remove the todo.",
+      "range": {
+        "startLine": 34,
+        "startChar": 4,
+        "endLine": 34,
+        "endChar": 14
+      },
+      "revId": "c7cb97cc752cef9bd747416f85b72a3c36996700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8dd686ee_a8fd55b9",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-04-24T15:18:05Z",
+      "side": 1,
+      "message": "- Binary API (or whatever other heading :))\n    - refactor memory (shm) and socket apis \n    - refactor of api handlers to make them transport (shm or socket) independent\n    - improved support for bootstrapping of shm api with memfd segments over socket api",
+      "revId": "c7cb97cc752cef9bd747416f85b72a3c36996700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
