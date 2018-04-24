@@ -363,6 +363,9 @@ exit:
   return elts;
 }
 
+/*
+ * Return a copy of the clients list.
+ */
 vpe_client_registration_t *
 get_clients_for_stat (u32 reg, u32 item)
 {
@@ -381,10 +384,13 @@ get_clients_for_stat (u32 reg, u32 item)
   registration = pool_elt_at_index (sm->stats_registrations[reg], p[0]);
 
   vec_reset_length (clients);
-  pool_foreach (client, registration->clients, (
-						 {
-						 vec_add1 (clients, *client);}
-		));
+
+  /* *INDENT-OFF* */
+  pool_foreach (client, registration->clients,
+  ({
+    vec_add1 (clients, *client);}
+  ));
+  /* *INDENT-ON* */
   return clients;
 }
 
@@ -608,6 +614,7 @@ static void
 	  reg_prev = reg;
 	}
     }
+  vec_free (clients);
 #if STATS_DEBUG > 0
   fformat (stdout, "%U\n", format_vnet_combined_counters, mp);
 #endif
@@ -2355,6 +2362,7 @@ static void
 	  continue;
 	}
     }
+  vec_free (clients);
 
 #if STATS_DEBUG > 0
   fformat (stdout, "%U\n", format_vnet_simple_counters, mp);
@@ -2408,6 +2416,7 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 	  continue;
 	}
     }
+  vec_free (clients);
 
   if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
@@ -2457,6 +2466,7 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 	  continue;
 	}
     }
+  vec_free (clients);
 
   /* *INDENT-ON* */
   if (reg_prev && vl_api_can_send_msg (reg_prev))
@@ -2507,6 +2517,8 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 	  continue;
 	}
     }
+  vec_free (clients);
+
   /* *INDENT-ON* */
   if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
@@ -2556,6 +2568,8 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 	  continue;
 	}
     }
+  vec_free (clients);
+
   /* *INDENT-ON* */
   if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
