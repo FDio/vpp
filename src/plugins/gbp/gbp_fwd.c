@@ -99,7 +99,7 @@ gbp_fwd (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /*
 	   * lookup the uplink based on src EPG
 	   */
-	  src_epg = vnet_buffer2 (b0)->gbp.src_epg;
+	  src_epg = vnet_buffer (b0)->gbp.src_epg;
 
 	  sw_if_index0 = gbp_epg_itf_lookup (src_epg);
 

@@ -56,8 +56,7 @@ replication_prep (vlib_main_t * vm,
   ctx->recycle_node_index = recycle_node_index;
 
   /* Save vnet state */
-  clib_memcpy (ctx->vnet_buffer, vnet_buffer (b0),
-	       sizeof (vnet_buffer_opaque_t));
+  clib_memcpy (ctx->vnet_buffer, vnet_buffer (b0), sizeof (vnet_buffer_t));
 
   /* Save packet contents */
   ctx->l2_packet = l2_packet;
@@ -102,8 +101,7 @@ replication_recycle (vlib_main_t * vm, vlib_buffer_t * b0, u32 is_last)
   ctx = pool_elt_at_index (rm->contexts[thread_index], b0->recycle_count);
 
   /* Restore vnet buffer state */
-  clib_memcpy (vnet_buffer (b0), ctx->vnet_buffer,
-	       sizeof (vnet_buffer_opaque_t));
+  clib_memcpy (vnet_buffer (b0), ctx->vnet_buffer, sizeof (vnet_buffer_t));
 
   /* Restore the vlan flags */
   b0->flags &= ~VNET_BUFFER_FLAGS_VLAN_BITS;

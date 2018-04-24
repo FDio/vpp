@@ -111,7 +111,7 @@ gbp_classify_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vnet_buffer2 (b0)->gbp.src_epg = src_epg;
+	  vnet_buffer (b0)->gbp.src_epg = src_epg;
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {

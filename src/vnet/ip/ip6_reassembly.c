@@ -57,14 +57,14 @@ typedef struct
 always_inline u32
 ip6_reass_buffer_get_data_offset_no_check (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   return vnb->ip.reass.range_first - vnb->ip.reass.fragment_first;
 }
 
 always_inline u32
 ip6_reass_buffer_get_data_offset (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   ASSERT (vnb->ip.reass.range_first >= vnb->ip.reass.fragment_first);
   return ip6_reass_buffer_get_data_offset_no_check (b);
 }
@@ -72,7 +72,7 @@ ip6_reass_buffer_get_data_offset (vlib_buffer_t * b)
 always_inline u16
 ip6_reass_buffer_get_data_len_no_check (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   return clib_min (vnb->ip.reass.range_last, vnb->ip.reass.fragment_last) -
     (vnb->ip.reass.fragment_first + ip6_reass_buffer_get_data_offset (b)) + 1;
 }
@@ -80,7 +80,7 @@ ip6_reass_buffer_get_data_len_no_check (vlib_buffer_t * b)
 always_inline u16
 ip6_reass_buffer_get_data_len (vlib_buffer_t * b)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   ASSERT (vnb->ip.reass.range_last > vnb->ip.reass.fragment_first);
   return ip6_reass_buffer_get_data_len_no_check (b);
 }
@@ -188,7 +188,7 @@ ip6_reass_trace_details (vlib_main_t * vm, u32 bi,
 			 ip6_reass_range_trace_t * trace)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   trace->range_first = vnb->ip.reass.range_first;
   trace->range_last = vnb->ip.reass.range_last;
   trace->data_offset = ip6_reass_buffer_get_data_offset_no_check (b);
@@ -255,7 +255,7 @@ ip6_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     u32 size_diff)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   if (pool_is_free_index (vm->trace_main.trace_buffer_pool, b->trace_index))
     {
       // this buffer's trace is gone
@@ -304,7 +304,7 @@ ip6_reass_drop_all (vlib_main_t * vm, ip6_reass_main_t * rm,
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
-  vnet_buffer_opaque_t *range_vnb;
+  vnet_buffer_t *range_vnb;
   while (~0 != range_bi)
     {
       range_b = vlib_get_buffer (vm, range_bi);
@@ -543,7 +543,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   first_b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   first_b->total_length_not_including_first_buffer = total_length;
   // drop fragment header
-  vnet_buffer_opaque_t *first_b_vnb = vnet_buffer (first_b);
+  vnet_buffer_t *first_b_vnb = vnet_buffer (first_b);
   ip6_header_t *ip = vlib_buffer_get_current (first_b);
   u16 ip6_frag_hdr_offset = first_b_vnb->ip.reass.ip6_frag_hdr_offset;
   ip6_ext_header_t *prev_hdr;
@@ -636,11 +636,11 @@ ip6_reass_insert_range_in_chain (vlib_main_t * vm, ip6_reass_main_t * rm,
 {
 
   vlib_buffer_t *new_next_b = vlib_get_buffer (vm, new_next_bi);
-  vnet_buffer_opaque_t *new_next_vnb = vnet_buffer (new_next_b);
+  vnet_buffer_t *new_next_vnb = vnet_buffer (new_next_b);
   if (~0 != prev_range_bi)
     {
       vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_range_bi);
-      vnet_buffer_opaque_t *prev_vnb = vnet_buffer (prev_b);
+      vnet_buffer_t *prev_vnb = vnet_buffer (prev_b);
       new_next_vnb->ip.reass.next_range_bi = prev_vnb->ip.reass.next_range_bi;
       prev_vnb->ip.reass.next_range_bi = new_next_bi;
     }
@@ -666,7 +666,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   int consumed = 0;
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
-  vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
+  vnet_buffer_t *fvnb = vnet_buffer (fb);
   fvnb->ip.reass.ip6_frag_hdr_offset =
     (u8 *) frag_hdr - (u8 *) vlib_buffer_get_current (fb);
   ip6_header_t *fip = vlib_buffer_get_current (fb);
@@ -709,7 +709,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (~0 != candidate_range_bi)
     {
       vlib_buffer_t *candidate_b = vlib_get_buffer (vm, candidate_range_bi);
-      vnet_buffer_opaque_t *candidate_vnb = vnet_buffer (candidate_b);
+      vnet_buffer_t *candidate_vnb = vnet_buffer (candidate_b);
       if (fragment_first > candidate_vnb->ip.reass.range_last)
 	{
 	  // this fragments starts after candidate range
@@ -809,7 +809,7 @@ ip6_reass_verify_fragment_multiple_8 (vlib_main_t * vm,
 				      vlib_buffer_t * b,
 				      ip6_frag_hdr_t * frag_hdr)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   ip6_header_t *ip = vlib_buffer_get_current (b);
   int more_fragments = ip6_frag_hdr_more (frag_hdr);
   u32 fragment_length =
@@ -831,7 +831,7 @@ ip6_reass_verify_packet_size_lt_64k (vlib_main_t * vm,
 				     vlib_buffer_t * b,
 				     ip6_frag_hdr_t * frag_hdr)
 {
-  vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  vnet_buffer_t *vnb = vnet_buffer (b);
   u32 fragment_first = ip6_frag_hdr_offset_bytes (frag_hdr);
   u32 fragment_length =
     vlib_buffer_length_in_chain (vm, b) -
@@ -1436,7 +1436,7 @@ format_ip6_reass (u8 * s, va_list * args)
   while (~0 != bi)
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-      vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+      vnet_buffer_t *vnb = vnet_buffer (b);
       s = format (s, "  #%03u: range: [%u, %u], bi: %u, off: %d, len: %u, "
 		  "fragment[%u, %u]\n",
 		  counter, vnb->ip.reass.range_first,
