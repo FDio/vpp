@@ -1558,13 +1558,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		     sizeof (icmp6_neighbor_discovery_header_t));
 
 		  /* look up the radv_t information for this interface */
-		  vec_validate_init_empty
-		    (nm->if_radv_pool_index_by_sw_if_index, sw_if_index0, ~0);
+		  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) >
+		      sw_if_index0)
+		    {
+		      ri =
+			nm->if_radv_pool_index_by_sw_if_index[sw_if_index0];
 
-		  ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index0];
-
-		  if (ri != ~0)
-		    radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+		      if (ri != ~0)
+			radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+		    }
 
 		  error0 =
 		    ((!radv_info) ?
@@ -1907,13 +1909,15 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		  u32 ri;
 
 		  /* look up the radv_t information for this interface */
-		  vec_validate_init_empty
-		    (nm->if_radv_pool_index_by_sw_if_index, sw_if_index0, ~0);
+		  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) >
+		      sw_if_index0)
+		    {
+		      ri =
+			nm->if_radv_pool_index_by_sw_if_index[sw_if_index0];
 
-		  ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index0];
-
-		  if (ri != ~0)
-		    radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+		      if (ri != ~0)
+			radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+		    }
 
 		  error0 =
 		    ((!radv_info) ?
