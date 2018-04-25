@@ -19,6 +19,8 @@
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -212,9 +214,10 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 		     u32 * sw_if_index)
 {
   af_packet_main_t *apm = &af_packet_main;
-  int ret, fd = -1;
+  int ret, fd = -1, fd2 = -1;
   struct tpacket_req *rx_req = 0;
   struct tpacket_req *tx_req = 0;
+  struct ifreq ifr;
   u8 *ring = 0;
   af_packet_if_t *apif = 0;
   u8 hw_addr[6];
@@ -248,13 +251,45 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   tx_req->tp_block_nr = AF_PACKET_TX_BLOCK_NR;
   tx_req->tp_frame_nr = AF_PACKET_TX_FRAME_NR;
 
-  host_if_index = if_nametoindex ((const char *) host_if_name);
-
-  if (!host_if_index)
+  /*
+   * make sure host side of interface is 'UP' before binding AF_PACKET
+   * socket on it.
+   */
+  if ((fd2 = socket (AF_UNIX, SOCK_DGRAM, 0)) < 0)
     {
-      DBG_SOCK ("Wrong host interface name");
+      DBG_SOCK ("Failed to create socket");
+      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto error;
+    }
+
+  clib_memcpy (ifr.ifr_name, (const char *) host_if_name,
+	       vec_len (host_if_name));
+  if ((ret = ioctl (fd2, SIOCGIFINDEX, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_create error: %d", ret);
+      close (fd2);
       return VNET_API_ERROR_INVALID_INTERFACE;
     }
+
+  host_if_index = ifr.ifr_ifindex;
+  if ((ret = ioctl (fd2, SIOCGIFFLAGS, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_create error: %d", ret);
+      goto error;
+    }
+
+  if (!(ifr.ifr_flags & IFF_UP))
+    {
+      ifr.ifr_flags |= IFF_UP;
+      if ((ret = ioctl (fd2, SIOCSIFFLAGS, &ifr)) < 0)
+	{
+	  clib_unix_warning ("af_packet_create error: %d", ret);
+	  goto error;
+	}
+    }
+
+  if (fd2 > -1)
+    close (fd2);
 
   ret = create_packet_v2_sock (host_if_index, rx_req, tx_req, &fd, &ring);
 
@@ -347,6 +382,8 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   return 0;
 
 error:
+  if (fd2 > -1)
+    close (fd2);
   vec_free (host_if_name_dup);
   vec_free (rx_req);
   vec_free (tx_req);
