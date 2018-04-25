@@ -2548,16 +2548,14 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 				    u32 flags)
 {
   vnet_hw_interface_t *hif = vnet_get_hw_interface (vnm, hw_if_index);
-  uword is_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui =
     pool_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
+  u32 hw_flags = 0;
+  vui->admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
+  hw_flags = vui->admin_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
 
-  vui->admin_up = is_up;
-
-  if (is_up && vui->is_up)
-    vnet_hw_interface_set_flags (vnm, vui->hw_if_index,
-				 VNET_HW_INTERFACE_FLAG_LINK_UP);
+  vnet_hw_interface_set_flags (vnm, vui->hw_if_index, hw_flags);
 
   return /* no error */ 0;
 }

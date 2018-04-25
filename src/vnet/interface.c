@@ -485,10 +485,13 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	error = call_elf_section_interface_callbacks
 	  (vnm, sw_if_index, flags,
 	   vnm->sw_interface_admin_up_down_functions);
-      si->flags = old_flags;
 
       if (error)
-	goto done;
+	{
+	  /* restore flags on error */
+	  si->flags = old_flags;
+	  goto done;
+	}
 
       if (si->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
 	{
