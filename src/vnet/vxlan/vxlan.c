@@ -123,15 +123,29 @@ VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
 static void
 vxlan_tunnel_restack_dpo(vxlan_tunnel_t * t)
 {
-    dpo_id_t dpo = DPO_INVALID;
-    u32 encap_index = ip46_address_is_ip4(&t->dst) ?
-        vxlan4_encap_node.index : vxlan6_encap_node.index;
-    fib_forward_chain_type_t forw_type = ip46_address_is_ip4(&t->dst) ?
-        FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
+  u8 is_ip4 = ip46_address_is_ip4(&t->dst);
+  dpo_id_t dpo = DPO_INVALID;
+  fib_forward_chain_type_t forw_type = is_ip4 ?
+      FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
-    fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
-    dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
-    dpo_reset(&dpo);
+  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
+
+  /* vxlan uses the payload hash as the udp source port
+   * hence the packet's hash is unknown
+   * skip single bucket load balance dpo's */
+  while (DPO_LOAD_BALANCE == dpo.dpoi_type)
+    {
+      load_balance_t *lb = load_balance_get (dpo.dpoi_index);
+      if (lb->lb_n_buckets > 1)
+        break;
+
+      dpo_copy (&dpo, load_balance_get_bucket_i (lb, 0));
+    }
+
+  u32 encap_index = is_ip4 ?
+      vxlan4_encap_node.index : vxlan6_encap_node.index;
+  dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
+  dpo_reset(&dpo);
 }
 
 static vxlan_tunnel_t *
