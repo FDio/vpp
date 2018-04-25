@@ -19,6 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/vxlan/vxlan.h>
+#include <vnet/qos/qos_types.h>
 
 /* Statistics (not all errors) */
 #define foreach_vxlan_encap_error    \
@@ -181,6 +182,7 @@ vxlan_encap_inline (vlib_main_t * vm,
           u16 payload_l1 = clib_host_to_net_u16 (len1 - l3_len);
 
           ip4_header_t * ip4_0, * ip4_1;
+	  qos_bits_t ip4_0_tos = 0, ip4_1_tos = 0;
           ip6_header_t * ip6_0, * ip6_1;
           udp_header_t * udp0, * udp1;
           u8 * l3_0, * l3_1;
@@ -198,6 +200,17 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      ip4_1 = &hdr1->ip4;
               ip4_0->length = clib_host_to_net_u16 (len0);
               ip4_1->length = clib_host_to_net_u16 (len1);
+
+	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
+	        {
+		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
+		  ip4_0->tos = ip4_0_tos;
+		}
+	      if (PREDICT_FALSE (b1->flags & VNET_BUFFER_F_QOS_DATA_VALID))
+	        {
+		  ip4_1_tos = vnet_buffer2 (b1)->qos.bits;
+		  ip4_1->tos = ip4_1_tos;
+		}
 
               l3_0 = (u8 *)ip4_0;
               l3_1 = (u8 *)ip4_1;
@@ -246,10 +259,20 @@ vxlan_encap_inline (vlib_main_t * vm,
               ip_csum_t sum0 = ip4_0->checksum;
               sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
                   length /* changed member */);
+	      if (PREDICT_FALSE (ip4_0_tos))
+	        {
+		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
+		      tos /* changed member */);
+		}
               ip4_0->checksum = ip_csum_fold (sum0);
               ip_csum_t sum1 = ip4_1->checksum;
               sum1 = ip_csum_update (sum1, 0, ip4_1->length, ip4_header_t,
                   length /* changed member */);
+	      if (PREDICT_FALSE (ip4_1_tos))
+	        {
+		  sum1 = ip_csum_update (sum1, 0, ip4_1_tos, ip4_header_t,
+		      tos /* changed member */);
+		}
               ip4_1->checksum = ip_csum_fold (sum1);
             }
           /* IPv6 UDP checksum is mandatory */
@@ -329,6 +352,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 
           udp_header_t * udp0;
           ip4_header_t * ip4_0;
+	  qos_bits_t ip4_0_tos = 0;
           ip6_header_t * ip6_0;
           u8 * l3_0;
 	  if (is_ip4)
@@ -340,6 +364,12 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      /* Fix the IP4 checksum and length */
               ip4_0 = &hdr->ip4;
               ip4_0->length = clib_host_to_net_u16 (len0);
+
+	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
+	        {
+		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
+		  ip4_0->tos = ip4_0_tos;
+		}
 
               l3_0 = (u8*)ip4_0;
 	      udp0 = &hdr->udp;
@@ -374,6 +404,11 @@ vxlan_encap_inline (vlib_main_t * vm,
               ip_csum_t sum0 = ip4_0->checksum;
               sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
                   length /* changed member */);
+	      if (PREDICT_FALSE (ip4_0_tos))
+	        {
+		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
+		      tos /* changed member */);
+		}
               ip4_0->checksum = ip_csum_fold (sum0);
             }
           /* IPv6 UDP checksum is mandatory */
