@@ -197,10 +197,18 @@ fib_table_post_insert_actions (fib_table_t *fib_table,
 
         /*
          * inform the covering entry that a new more specific
-         * has been inserted beneath it
+         * has been inserted beneath it.
+         * If the prefix that has been inserted is a host route
+         * then it is not possible that it will be the cover for any
+         * other entry, so we can elide the walk. This is particularly
+         * beneficial since there are often many host entries sharing the
+         * same cover (i.e. ADJ or RR sourced entries).
          */
-	fib_entry_cover_change_notify(fib_entry_cover_index,
-				      fib_entry_index);
+        if (!fib_entry_is_host(fib_entry_index))
+        {
+            fib_entry_cover_change_notify(fib_entry_cover_index,
+                                          fib_entry_index);
+        }
     }
 }
 
