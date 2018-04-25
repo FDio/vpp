@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "94be9458_6cff4570",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-25T14:42:35Z",
+      "side": 1,
+      "message": "the SRv6 code does not need to be changed to accommodate this new interface?",
+      "revId": "e9fcf23506866d50c2a88a6dd9d90bc2acf8c5c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
