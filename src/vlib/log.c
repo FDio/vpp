@@ -399,11 +399,11 @@ unformat_vlib_log_level (unformat_input_t * input, va_list * args)
   vlib_log_level_t *level = va_arg (*args, vlib_log_level_t *);
   u8 *level_str = NULL;
   uword rv = 1;
-  if (unformat (input, "%v", &level_str))
+  if (unformat (input, "%s", &level_str))
     {
 #define _(v, uc, lc)                                   \
   const char __##uc[] = #lc;                           \
-  if (!memcmp (level_str, __##uc, sizeof (__##uc))) \
+  if (!strcmp ((const char *) level_str, __##uc))	\
     {                                                  \
       *level = VLIB_LOG_LEVEL_##uc;                 \
       rv = 1;                                          \
