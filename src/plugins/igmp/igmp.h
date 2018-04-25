@@ -28,7 +28,7 @@
 #define IGMP_SRC_TIMER				(3 * IGMP_QUERY_TIMER)
 #define IGMP_DEFAULT_ROBUSTNESS_VARIABLE	(2)
 
-#define ENABLE_IGMP_DBG 1
+#define ENABLE_IGMP_DBG 0
 
 #if ENABLE_IGMP_DBG == 1
 #define IGMP_DBG(...) clib_warning(__VA_ARGS__)
