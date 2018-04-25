@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "648200fd_f0de3733",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-25T10:49:06Z",
+      "side": 1,
+      "message": "VALIDATE_SW_IF_INDEX should be called only for EndX, EndDX2, EndDX4, EndDX6.\n\n  if(mp-\u003ebehavior \u003d\u003d SR_BEHAVIOR_X ||\n     mp-\u003ebehavior \u003d\u003d SR_BEHAVIOR_DX6 ||\n     mp-\u003ebehavior \u003d\u003d SR_BEHAVIOR_DX4 ||\n     mp-\u003ebehavior \u003d\u003d SR_BEHAVIOR_DX2)\n  VALIDATE_SW_IF_INDEX (mp);",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 4
+      },
+      "revId": "bfde96ff8cdbf7088121bbfa9b2e9b8cbdadecdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
