@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "551d16c0_62405113",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-25T16:30:59Z",
+      "side": 1,
+      "message": "Right now, record only support IP QoS and VTS control agent will configure qos-record for IP TOS only. So we thought we can bypass any map and check for qos source type here. The plan to support mapping with other QoS sources would be to enable qos-mark on the underlay interface output, which would overwrite any TOS done by VXLAN encap here. In other words, our design is a short-cut here with some assumption on VXLAN encap.  It should work most of the time.",
+      "parentUuid": "658275bd_26b9d750",
+      "revId": "4aff30d78f5c45687756e47b5feb604e5245aeb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "97afd0ed_2682a0be",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2018-04-25T07:33:05Z",
       "side": 1,
       "message": "should this be a check for if the TOS has changed?",
+      "revId": "4aff30d78f5c45687756e47b5feb604e5245aeb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b73603a_af55c689",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-04-25T16:30:59Z",
+      "side": 1,
+      "message": "The tos field is always 0 from the VXLAN encap header. So it is changed if not 0.",
+      "parentUuid": "97afd0ed_2682a0be",
       "revId": "4aff30d78f5c45687756e47b5feb604e5245aeb6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
