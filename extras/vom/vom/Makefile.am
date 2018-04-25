@@ -15,7 +15,7 @@ AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
-AM_CXXFLAGS = -Wall -Werror -std=gnu++11 -I${top_srcdir} -I${top_builddir}/vpp-api/vapi/ -I$(top_srcdir)/vpp-api/ -I${libdir}/../include
+AM_CXXFLAGS = -Wall -Werror -std=gnu++11 -I${top_srcdir}
 
 bin_PROGRAMS =
 noinst_LTLIBRARIES =
@@ -25,7 +25,7 @@ lib_LTLIBRARIES = libvom.la
 
 libvom_la_DEPENDENCIES =
 libvom_la_LIBADD = 					\
-	$(top_builddir)/vpp-api/vapi/libvapiclient.la	\
+	-lvapiclient					\
 	-lpthread					\
 	-lboost_thread					\
 	$(BOOST_SYSTEM_LIB) 				\

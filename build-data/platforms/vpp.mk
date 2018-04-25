@@ -26,7 +26,7 @@ vpp_uses_dpdk = yes
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
-vpp_root_packages = vpp
+vpp_root_packages = vpp vom
 
 # DPDK configuration parameters
 # vpp_uses_dpdk_mlx5_pmd = yes
@@ -41,10 +41,6 @@ vpp_configure_args_vpp =
 ifeq ($(MACHINE),i686)
 vpp_configure_args_vpp += --disable-lb-plugin
 endif
-
-# To disable the VPP object model build - and save about half the build time -
-# uncomment the following...
-# vpp_configure_args_vpp += --disable-vom
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror

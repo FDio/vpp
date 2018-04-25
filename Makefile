@@ -353,7 +353,7 @@ export VPP_PYTHON_PREFIX ?= $(BR)/python
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
 define test
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install vom-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
 	  TEST_DIR=$(WS_ROOT)/test \
@@ -527,6 +527,8 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
 	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	$(call banner,"Building VOM")
+	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
