@@ -1428,6 +1428,19 @@ fib_entry_get_best_source (fib_node_index_t entry_index)
 }
 
 /**
+ * Return !0 is the entry represents a host prefix
+ */
+int
+fib_entry_is_host (fib_node_index_t fib_entry_index)
+{
+    fib_prefix_t pfx;
+
+    fib_entry_get_prefix(fib_entry_index, &pfx);
+
+    return (fib_prefix_is_host(&pfx));
+}
+
+/**
  * Return !0 is the entry is reoslved, i.e. will return a valid forwarding
  * chain
  */
