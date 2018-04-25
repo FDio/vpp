@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c88632f0_ce778254",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-04-25T11:00:30Z",
+      "side": 1,
+      "message": "can you perform the hash calculation here based on the encap header?",
+      "revId": "feea9e900a1892f75e4300216d3058c789e033ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
