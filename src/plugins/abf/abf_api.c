@@ -317,6 +317,12 @@ abf_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (abf_api_init);
 
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "ACL based Forwarding",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
