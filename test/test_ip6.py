@@ -84,7 +84,7 @@ class TestIPv6ND(VppTestCase):
         dst_ip = inet_ntop(AF_INET6, nsma)
 
         # NS is broadcast
-        self.assertEqual(rx[Ether].dst, "ff:ff:ff:ff:ff:ff")
+        self.assertEqual(rx[Ether].dst, in6_getnsmac(nsma))
 
         # and from the router's MAC
         self.assertEqual(rx[Ether].src, intf.local_mac)
