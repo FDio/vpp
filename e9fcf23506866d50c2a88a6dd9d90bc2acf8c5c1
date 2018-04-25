@@ -16,6 +16,24 @@
       "revId": "e9fcf23506866d50c2a88a6dd9d90bc2acf8c5c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3899a7be_cdc46ffb",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2018-04-25T15:28:30Z",
+      "side": 1,
+      "message": "In the code the \u0027segments\u0027 variable is immediately retyped to ip6_address_t* which is basically same as vl_api_sr_ip6_address_t*. I added the new type to the API file because I was unable to use ip6_address_t there.",
+      "parentUuid": "94be9458_6cff4570",
+      "revId": "e9fcf23506866d50c2a88a6dd9d90bc2acf8c5c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
