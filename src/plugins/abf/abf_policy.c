@@ -17,7 +17,6 @@
 
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_walk.h>
 
@@ -447,13 +446,6 @@ abf_policy_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (abf_policy_init);
-
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "ACL based Forwarding",
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
