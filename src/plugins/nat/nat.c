@@ -1629,12 +1629,18 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
                                              sw_if_index, 0, 0, 0);
                 vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                              sw_if_index, 1, 0, 0);
+                if (!is_inside)
+                  vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
+                                               sw_if_index, 1, 0, 0);
               }
             else
               {
                 vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                              sw_if_index, 0, 0, 0);
                 pool_put (sm->interfaces, i);
+                if (is_inside)
+                  vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
+                                               sw_if_index, 0, 0, 0);
               }
           }
         else
@@ -1665,6 +1671,9 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
                                          sw_if_index, 0, 0, 0);
             vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                          sw_if_index, 1, 0, 0);
+            if (!is_inside)
+              vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
+                                           sw_if_index, 0, 0, 0);
             goto set_flags;
           }
 
@@ -1680,21 +1689,21 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   i->flags = 0;
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0, 0);
 
+  if (is_inside && !sm->out2in_dpo)
+    vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
+                                 sw_if_index, 1, 0, 0);
+
 set_flags:
   if (is_inside)
-    i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+    {
+      i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+      return 0;
+    }
   else
     i->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
 
   /* Add/delete external addresses to FIB */
 fib:
-  if (is_inside && !sm->out2in_dpo)
-    {
-      vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
-                                   sw_if_index, !is_del, 0, 0);
-      return 0;
-    }
-
   vec_foreach (ap, sm->addresses)
     snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
 
@@ -2751,12 +2760,13 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
   nat44_lb_addr_port_t *local;
 
   if (m->addr_only)
-      s = format (s, "local %U external %U vrf %d %s",
+      s = format (s, "local %U external %U vrf %d %s %s",
                   format_ip4_address, &m->local_addr,
                   format_ip4_address, &m->external_addr,
                   m->vrf_id,
                   m->twice_nat == TWICE_NAT ? "twice-nat" :
-                  m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "");
+                  m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
+                  m->out2in_only ? "out2in-only" : "");
   else
    {
       if (vec_len (m->locals))
