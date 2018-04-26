@@ -8,7 +8,7 @@ BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
 export DPDK_BUILD_DIR=$(CURDIR)/_build
 export DPDK_INSTALL_DIR=$(CURDIR)/debian/tmp/usr
 
-SRC=_build/dpdk-$(BASE_VER)
+SRC=$(wildcard _build/dpdk*$(BASE_VER))
 
 MAKE_ARGS=-C ..
 
