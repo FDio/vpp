@@ -639,7 +639,7 @@ dpdk_lib_init (dpdk_main_t * dm)
        * ethernet_register_interface() above*/
       if (hi)
 	{
-	  hi->max_packet_bytes = max_rx_frame;
+	  hi->max_packet_bytes = mtu;
 	  hi->max_supported_packet_bytes = max_rx_frame;
 	}
 
