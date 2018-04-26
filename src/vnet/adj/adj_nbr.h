@@ -162,6 +162,14 @@ adj_nbr_walk_nh6 (u32 sw_if_index,
 		  void *ctx);
 
 /**
+ * @brief Lookup neighbor adjancency.
+ */
+adj_index_t
+adj_nbr_find (fib_protocol_t nh_proto,
+	      vnet_link_t link_type,
+	      const ip46_address_t *nh_addr,
+	      u32 sw_if_index);
+/**
  * @brief
  *  Module initialisation
  */
