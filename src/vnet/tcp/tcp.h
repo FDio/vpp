@@ -305,6 +305,7 @@ typedef struct _tcp_connection
   u16 mss;		/**< Our max seg size that includes options */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
+  u32 sw_if_index;	/**< Interface for the connection */
 } tcp_connection_t;
 
 struct _tcp_cc_algorithm

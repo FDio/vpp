@@ -210,6 +210,7 @@ tcp_connection_new (u8 thread_index)
   memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - tm->connections[thread_index];
   tc->c_thread_index = thread_index;
+  tc->sw_if_index = ~0;
   return tc;
 }
 

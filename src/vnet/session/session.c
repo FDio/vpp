@@ -1103,6 +1103,18 @@ stream_session_cleanup (stream_session_t * s)
 						    s->thread_index);
 }
 
+u32
+session_sw_if_index_w_connection (transport_connection_t *tc)
+{
+  app_namespace_t *app_ns;
+  stream_session_t *s;
+  application_t *app;
+  s = session_get (tc->s_index, tc->thread_index);
+  app = application_get (s->app_index);
+  app_ns = app_namespace_get (app->ns_index);
+  return app_ns->sw_if_index;
+}
+
 /**
  * Allocate event queues in the shared-memory segment
  *
