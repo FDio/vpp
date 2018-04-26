@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d95932b_13b40327",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-04-26T11:31:22Z",
+      "side": 1,
+      "message": "4",
+      "range": {
+        "startLine": 45,
+        "startChar": 32,
+        "endLine": 45,
+        "endChar": 33
+      },
+      "revId": "70b1ecd1af68ab4fb16a4d0a1f69152639e8b952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
