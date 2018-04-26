@@ -20,6 +20,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/qos/qos_types.h>
+#include <vnet/adj/rewrite.h>
 
 /* Statistics (not all errors) */
 #define foreach_vxlan_encap_error    \
@@ -87,8 +88,9 @@ vxlan_encap_inline (vlib_main_t * vm,
   STATIC_ASSERT_SIZEOF(ip6_vxlan_header_t, 56);
   STATIC_ASSERT_SIZEOF(ip4_vxlan_header_t, 36);
 
-  word const underlay_hdr_len = is_ip4 ?
+  u8 const underlay_hdr_len = is_ip4 ?
     sizeof(ip4_vxlan_header_t) : sizeof(ip6_vxlan_header_t);
+  u8 const rw_hdr_offset = sizeof t0->rewrite_data - underlay_hdr_len;
   u16 const l3_len = is_ip4 ? sizeof(ip4_header_t) : sizeof(ip6_header_t);
   u32 const csum_flags = is_ip4 ?
     VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4 |
@@ -118,20 +120,17 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
-	  u32 bi0 = from[0];
-	  u32 bi1 = from[1];
+	  u32 bi0 = to_next[0] = from[0];
+	  u32 bi1 = to_next[1] = from[1];
+	  from += 2;
+	  to_next += 2;
+	  n_left_to_next -= 2;
+	  n_left_from -= 2;
 
 	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
 	  vlib_buffer_t * b1 = vlib_get_buffer (vm, bi1);
           u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
           u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
-
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
@@ -170,8 +169,8 @@ vxlan_encap_inline (vlib_main_t * vm,
           vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
           vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
-          ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
-          ASSERT(vec_len(t1->rewrite) == underlay_hdr_len);
+          ASSERT(t0->rewrite_header.data_bytes == underlay_hdr_len);
+          ASSERT(t1->rewrite_header.data_bytes == underlay_hdr_len);
 
           vlib_buffer_advance (b0, -underlay_hdr_len);
           vlib_buffer_advance (b1, -underlay_hdr_len);
@@ -181,6 +180,15 @@ vxlan_encap_inline (vlib_main_t * vm,
           u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);
           u16 payload_l1 = clib_host_to_net_u16 (len1 - l3_len);
 
+          void * underlay0 = vlib_buffer_get_current(b0);
+          void * underlay1 = vlib_buffer_get_current(b1);
+
+	  /* vnet_rewrite_two_header writes only in (uword) 8 bytes chunks
+           * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
+           * use memcpy as a workaround */
+          clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
+          clib_memcpy(underlay1, t1->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
+
           ip4_header_t * ip4_0, * ip4_1;
 	  qos_bits_t ip4_0_tos = 0, ip4_1_tos = 0;
           ip6_header_t * ip6_0, * ip6_1;
@@ -188,12 +196,8 @@ vxlan_encap_inline (vlib_main_t * vm,
           u8 * l3_0, * l3_1;
 	  if (is_ip4)
 	    {
-              ip4_vxlan_header_t * hdr0 = vlib_buffer_get_current(b0);
-              ip4_vxlan_header_t * rewrite0 = (void *)t0->rewrite;
-              ip4_vxlan_header_t * hdr1 = vlib_buffer_get_current(b1);
-              ip4_vxlan_header_t * rewrite1 = (void *)t1->rewrite;
-              *hdr0 = *rewrite0;
-              *hdr1 = *rewrite1;
+              ip4_vxlan_header_t * hdr0 = underlay0;
+              ip4_vxlan_header_t * hdr1 = underlay1;
 
 	      /* Fix the IP4 checksum and length */
 	      ip4_0 = &hdr0->ip4;
@@ -219,12 +223,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    }
 	  else /* ipv6 */
 	    {
-              ip6_vxlan_header_t * hdr0 = vlib_buffer_get_current(b0);
-              ip6_vxlan_header_t * rewrite0 = (void *) t0->rewrite;
-              ip6_vxlan_header_t * hdr1 = vlib_buffer_get_current(b0);
-              ip6_vxlan_header_t * rewrite1 = (void *) t1->rewrite;
-              *hdr0 = *rewrite0;
-              *hdr1 = *rewrite1;
+              ip6_vxlan_header_t * hdr0 = underlay0;
+              ip6_vxlan_header_t * hdr1 = underlay1;
 
 	      /* Fix IP6 payload length */
               ip6_0 = &hdr0->ip6;
@@ -321,15 +321,14 @@ vxlan_encap_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0 = from[0];
-	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
-          u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
-
-	  to_next[0] = bi0;
+	  u32 bi0 = to_next[0] = from[0];
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
+
+	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+          u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
@@ -344,8 +343,15 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    }
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
-          ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
+          ASSERT(t0->rewrite_header.data_bytes == underlay_hdr_len);
+
           vlib_buffer_advance (b0, -underlay_hdr_len);
+          void * underlay0 = vlib_buffer_get_current(b0);
+
+	  /* vnet_rewrite_one_header writes only in (uword) 8 bytes chunks
+           * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
+           * use memcpy as a workaround */
+          clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
 
  	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
           u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);
@@ -357,9 +363,7 @@ vxlan_encap_inline (vlib_main_t * vm,
           u8 * l3_0;
 	  if (is_ip4)
 	    {
-              ip4_vxlan_header_t * rewrite = (void *)t0->rewrite;
-              ip4_vxlan_header_t * hdr = vlib_buffer_get_current(b0);
-              *hdr = *rewrite;
+              ip4_vxlan_header_t * hdr = underlay0;
 
 	      /* Fix the IP4 checksum and length */
               ip4_0 = &hdr->ip4;
@@ -376,9 +380,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    }
 	  else /* ip6 path */
 	    {
-              ip6_vxlan_header_t * hdr = vlib_buffer_get_current(b0);
-              ip6_vxlan_header_t * rewrite = (void *) t0->rewrite;
-              *hdr = *rewrite;
+              ip6_vxlan_header_t * hdr = underlay0;
 
 	      /* Fix IP6 payload length */
               ip6_0 = &hdr->ip6;
