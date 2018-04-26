@@ -1153,40 +1153,40 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  error1 = (!good_l4_csum1 ? IP6_ERROR_UDP_CHECKSUM + type1 : error1);
 
 	  /* Drop packets from unroutable hosts. */
-	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
-	  if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip0->src_address))
+	  if (!ip6_address_is_link_local_unicast (&ip0->src_address))
 	    {
-	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
+	      /* If this is a neighbor solicitation (ICMP), skip source RPF check */
+	      if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL
+		  && type0 != IP_BUILTIN_PROTOCOL_ICMP)
+		error0 =
+		  !ip6_urpf_loose_check (im, p0, ip0) ?
+		  IP6_ERROR_SRC_LOOKUP_MISS : error0;
+	      /* TODO maybe move to lookup? */
+	      vnet_buffer (p0)->ip.fib_index =
+		vec_elt (im->fib_index_by_sw_if_index,
+			 vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p0)->ip.fib_index =
+		(vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
+		 (u32) ~ 0) ? vnet_buffer (p0)->
+		ip.fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
 	    }
-	  if (error1 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type1 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip1->src_address))
+	  if (!ip6_address_is_link_local_unicast (&ip1->src_address))
 	    {
-	      error1 = (!ip6_urpf_loose_check (im, p1, ip1)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error1);
+	      if (error1 == IP6_ERROR_UNKNOWN_PROTOCOL
+		  && type1 != IP_BUILTIN_PROTOCOL_ICMP)
+		error1 =
+		  !ip6_urpf_loose_check (im, p1, ip1) ?
+		  IP6_ERROR_SRC_LOOKUP_MISS : error1;
+
+	      vnet_buffer (p1)->ip.fib_index =
+		vec_elt (im->fib_index_by_sw_if_index,
+			 vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p1)->ip.fib_index =
+		(vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
+		 (u32) ~ 0) ? vnet_buffer (p1)->
+		ip.fib_index : vnet_buffer (p1)->sw_if_index[VLIB_TX];
+
 	    }
-
-	  /* TODO maybe move to lookup? */
-	  vnet_buffer (p0)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->ip.fib_index =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p0)->ip.
-	    fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-
-	  vnet_buffer (p1)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p1)->ip.fib_index =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p1)->ip.
-	    fib_index : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-
-
 	skip_checks:
 
 	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
@@ -1291,22 +1291,23 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  IP6_ERROR_ICMP_CHECKSUM);
 	  error0 = (!good_l4_csum0 ? IP6_ERROR_UDP_CHECKSUM + type0 : error0);
 
-	  /* If this is a neighbor solicitation (ICMP), skip src RPF check */
-	  if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip0->src_address))
+	  if (!ip6_address_is_link_local_unicast (&ip0->src_address))
 	    {
-	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
-	    }
+	      /* If this is a neighbor solicitation (ICMP), skip src RPF check */
+	      if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL
+		  && type0 != IP_BUILTIN_PROTOCOL_ICMP)
+		error0 =
+		  !ip6_urpf_loose_check (im, p0, ip0) ?
+		  IP6_ERROR_SRC_LOOKUP_MISS : error0;
 
-	  vnet_buffer (p0)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->ip.fib_index =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p0)->ip.
-	    fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	      vnet_buffer (p0)->ip.fib_index =
+		vec_elt (im->fib_index_by_sw_if_index,
+			 vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p0)->ip.fib_index =
+		(vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
+		 (u32) ~ 0) ? vnet_buffer (p0)->
+		ip.fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	    }
 
 	skip_check:
 

@@ -505,6 +505,7 @@ void stream_session_cleanup (stream_session_t * s);
 void session_send_session_evt_to_thread (u64 session_handle,
 					 fifo_event_type_t evt_type,
 					 u32 thread_index);
+u32 session_sw_if_index_w_connection (transport_connection_t * tc);
 ssvm_private_t *session_manager_get_evt_q_segment (void);
 
 u8 *format_stream_session (u8 * s, va_list * args);
