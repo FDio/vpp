@@ -53,7 +53,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora opensuse,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse opensuse-leap,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
@@ -136,6 +136,13 @@ ifeq ($(SUSE_ID),15.0)
 else
 	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6
 	RPM_SUSE_PYTHON_DEPS += python-virtualenv
+endif
+endif
+
+ifeq ($(OS_ID),opensuse-leap)
+ifeq ($(SUSE_ID),15.0)
+	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc6
+	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
 endif
 endif
 
@@ -278,6 +285,9 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
+	@sudo -E zypper refresh
+	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
+else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else
