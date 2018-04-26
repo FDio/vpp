@@ -120,7 +120,8 @@ typedef struct {
  _(NEXT_PACKET, "packet from existing sessions", 0) \
  _(FIRST_PACKET, "first session packet", 1) \
  _(UNTRACKED_PACKET, "untracked packet", 2) \
- _(NO_SERVER, "no server configured", 3)
+ _(NO_SERVER, "no server configured", 3) \
+ _(MAX_SESSION, "max sessions", 4)
 
 typedef enum {
 #define _(a,b,c) LB_VIP_COUNTER_##a = c,
@@ -272,7 +273,12 @@ typedef struct {
    * starts at 0 and is decremented instead. i.e. do not use it.
    */
   vlib_refcount_t as_refcount;
-
+  /**
+   * Each VIP has an associated reference counter.
+   * As ass[0] has a special meaning, its associated counter
+   * starts at 0 and is decremented instead. i.e. do not use it.
+   */
+  vlib_refcount_t vip_refcount;
   /**
    * Some global data is per-cpu
    */
@@ -307,6 +313,11 @@ typedef struct {
    * Per VIP counter
    */
   vlib_simple_counter_main_t vip_counters[LB_N_VIP_COUNTERS];
+
+  /**
+   * Per AS counter
+   */
+  vlib_simple_counter_main_t as_counters[LB_N_VIP_COUNTERS];
 
   /**
    * DPO used to send packet from IP4/6 lookup to LB node.
