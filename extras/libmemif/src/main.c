@@ -15,6 +15,7 @@
  *------------------------------------------------------------------
  */
 
+#define _GNU_SOURCE
 #include <stdint.h>
 #include <net/if.h>
 #include <sys/types.h>
