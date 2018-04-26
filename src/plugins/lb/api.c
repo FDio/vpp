@@ -187,11 +187,146 @@ static void *vl_api_lb_add_del_as_t_print
   FINISH;
 }
 
+static void
+vl_api_lb_get_vip_list_t_handler
+(vl_api_lb_get_vip_list_t * mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_get_vip_list_reply_t * rmp;
+  int msg_size = 0;
+  lb_vip_t *vip = 0;
+  int rv = 0;
+  u32 vip_count = 0;
+  int vip_index = 0;
+
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vip_count = pool_len(lbm->vips);
+  msg_size = sizeof (*rmp) + sizeof (rmp->vips[0]) * vip_count;
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id =
+    ntohs (VL_API_LB_GET_VIP_LIST_REPLY + lbm->msg_id_base);
+  rmp->context = mp->context;
+  rmp->retval = rv;
+
+  /* constrcut as stats under this vip */
+  rmp->vip_count = htonl(vip_count);
+  pool_foreach(vip, lbm->vips, {
+      memcpy(rmp->vips[vip_index].ip_prefix, vip->prefix.as_u8, sizeof(vip->prefix));
+      rmp->vips[vip_index].prefix_length = vip->plen;
+      vip_index++;
+  });
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void *vl_api_lb_get_vip_list_t_print
+(vl_api_lb_get_vip_list_t *mp, void * handle)
+{
+  u8 * s;
+  s = format (0, "SCRIPT: lb_get_vip_list ");
+
+  FINISH;
+}
+
+static void
+vl_api_lb_get_vip_conn_t_handler
+(vl_api_lb_get_vip_conn_t * mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_get_vip_conn_reply_t * rmp;
+  int msg_size = 0;
+  u32 vip_index;
+  lb_vip_t *vip = 0;
+  int rv = 0;
+  u32 as_count = 0;
+  u32 *as_index;
+  ip46_address_t prefix;
+  counter_t v;
+
+  memcpy(&prefix.ip6, mp->ip_prefix, sizeof(prefix.ip6));
+
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rv = lb_vip_find_index(&prefix, mp->prefix_length, &vip_index);
+  if (rv)
+    {
+      /* *INDENT-OFF* */
+      REPLY_MACRO2(VL_API_LB_GET_VIP_CONN_REPLY,
+      ({
+        rmp->retval = rv;
+      }));
+      /* *INDENT-ON* */
+      return;
+    }
+
+  vip = &lbm->vips[vip_index];
+  as_count = pool_len(vip->as_indexes);
+
+  msg_size = sizeof (*rmp) + sizeof (rmp->as_conns[0]) * as_count;
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id =
+    htons (VL_API_LB_GET_VIP_CONN_REPLY + lbm->msg_id_base);
+  rmp->context = mp->context;
+
+  /*constrcut vip stats */
+  memcpy(rmp->vip_conn.ip_prefix, mp->ip_prefix, sizeof(mp->ip_prefix));
+  rmp->vip_conn.prefix_length = mp->prefix_length;
+  v = vlib_refcount_get(&lbm->vip_refcount, vip_index);
+  rmp->vip_conn.cur_conn = clib_host_to_net_u64(v);
+  v = vlib_get_simple_counter(&lbm->vip_counters[LB_VIP_COUNTER_MAX_SESSION],
+                              vip_index);
+  rmp->vip_conn.max_conn = clib_host_to_net_u64(v);
+  v = vlib_get_simple_counter(&lbm->vip_counters[LB_VIP_COUNTER_FIRST_PACKET],
+                              vip_index);
+  rmp->vip_conn.total_conn = clib_host_to_net_u64(v);
+
+  /* constrcut as stats under this vip */
+  lb_as_t *as;
+  rmp->as_count = htonl(as_count);
+  pool_foreach(as_index, vip->as_indexes, {
+      as = &lbm->ass[*as_index];
+      memcpy(rmp->as_conns[*as_index].ip_prefix, &(as->address), sizeof(as->address.ip6));
+      v = vlib_refcount_get(&lbm->as_refcount, *as_index);
+      rmp->as_conns[*as_index].cur_conn = clib_host_to_net_u64(v);
+      v = vlib_get_simple_counter(&lbm->as_counters[LB_VIP_COUNTER_MAX_SESSION],
+                                  *as_index);
+      rmp->as_conns[*as_index].max_conn = clib_host_to_net_u64(v);
+      v = vlib_get_simple_counter(&lbm->as_counters[LB_VIP_COUNTER_FIRST_PACKET],
+                                  *as_index);
+      rmp->as_conns[*as_index].total_conn = clib_host_to_net_u64(v);
+  });
+
+  rmp->retval = rv;
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void *vl_api_lb_get_vip_conn_t_print
+(vl_api_lb_get_vip_conn_t *mp, void * handle)
+{
+  u8 * s;
+  s = format (0, "SCRIPT: lb_get_vip_conn ");
+  s = format (s, "%U ", format_ip46_prefix,
+              (ip46_address_t *)mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_lb_plugin_api_msg            \
 _(LB_CONF, lb_conf)                          \
 _(LB_ADD_DEL_VIP, lb_add_del_vip)            \
-_(LB_ADD_DEL_AS, lb_add_del_as)
+_(LB_ADD_DEL_AS, lb_add_del_as)              \
+_(LB_GET_VIP_LIST, lb_get_vip_list)          \
+_(LB_GET_VIP_CONN, lb_get_vip_conn)
 
 static clib_error_t * lb_api_init (vlib_main_t * vm)
 {
