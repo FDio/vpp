@@ -116,7 +116,8 @@ typedef struct
   i16 l2_hdr_offset;
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;
-  u16 dont_waste_me;
+  u8 feature_arc_index;
+  u8 dont_waste_me;
 
   union
   {

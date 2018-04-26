@@ -41,33 +41,33 @@
 #define included_vlib_error_h
 
 /* Combined 16 bit node & 16 bit code as 32 bit number. */
-typedef u32 vlib_error_t;
+typedef u16 vlib_error_t;
 
 always_inline u32
 vlib_error_get_node (vlib_error_t e)
 {
-  return e >> 12;
+  return e >> 6;
 }
 
 always_inline u32
 vlib_error_get_code (vlib_error_t e)
 {
-  return e & 0xfff;
+  return e & 0x3f;
 }
 
 always_inline vlib_error_t
 vlib_error_set (u32 node_index, u32 code)
 {
-  ASSERT (node_index < (1 << 20));
-  ASSERT (code < (1 << 12));
-  return (node_index << 12) | code;
+  ASSERT (node_index < (1 << 10));
+  ASSERT (code < (1 << 6));
+  return (node_index << 6) | code;
 }
 
 always_inline vlib_error_t
 vlib_error_set_code (vlib_error_t e, u32 code)
 {
   ASSERT (vlib_error_get_code (e) == 0);
-  ASSERT (code < (1 << 12));
+  ASSERT (code < (1 << 6));
   e |= code;
   return e;
 }

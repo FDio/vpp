@@ -437,8 +437,7 @@ always_inline void
 ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    ip6_reass_main_t * rm, ip6_reass_per_thread_t * rt,
 		    ip6_reass_t * reass, u32 * bi0, u32 * next0,
-		    vlib_error_t * error0, u32 ** vec_drop_compress,
-		    bool is_feature)
+		    u32 * error0, u32 ** vec_drop_compress, bool is_feature)
 {
   ASSERT (~0 != reass->first_bi);
   *bi0 = reass->first_bi;
@@ -660,7 +659,7 @@ always_inline void
 ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  ip6_reass_main_t * rm, ip6_reass_per_thread_t * rt,
 		  ip6_reass_t * reass, u32 * bi0, u32 * next0,
-		  vlib_error_t * error0, ip6_frag_hdr_t * frag_hdr,
+		  u32 * error0, ip6_frag_hdr_t * frag_hdr,
 		  u32 ** vec_drop_overlap, u32 ** vec_drop_compress,
 		  bool is_feature)
 {

@@ -402,7 +402,7 @@ always_inline void
 ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    ip4_reass_main_t * rm, ip4_reass_per_thread_t * rt,
 		    ip4_reass_t * reass, u32 * bi0, u32 * next0,
-		    vlib_error_t * error0, u32 ** vec_drop_compress,
+		    u32 * error0, u32 ** vec_drop_compress,
 		    u32 ** vec_drop_overlap, bool is_feature)
 {
   ASSERT (~0 != reass->first_bi);
@@ -651,7 +651,7 @@ always_inline void
 ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  ip4_reass_main_t * rm, ip4_reass_per_thread_t * rt,
 		  ip4_reass_t * reass, u32 * bi0, u32 * next0,
-		  vlib_error_t * error0, u32 ** vec_drop_overlap,
+		  u32 * error0, u32 ** vec_drop_overlap,
 		  u32 ** vec_drop_compress, bool is_feature)
 {
   int consumed = 0;

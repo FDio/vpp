@@ -204,7 +204,7 @@ vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
 
   if (PREDICT_FALSE (vnet_have_features (arc, sw_if_index)))
     {
-      b->feature_arc_index = arc;
+      vnet_buffer (b)->feature_arc_index = arc;
       b->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       return vnet_get_config_data (&cm->config_main, &b->current_config_index,
@@ -225,7 +225,7 @@ vnet_feature_next_with_data (u32 sw_if_index, u32 * next0,
 			     vlib_buffer_t * b0, u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
-  u8 arc = b0->feature_arc_index;
+  u8 arc = vnet_buffer (b0)->feature_arc_index;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
 
   return vnet_get_config_data (&cm->config_main,
@@ -270,7 +270,7 @@ vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
       vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b0, -adv);
 
-      b0->feature_arc_index = feature_arc_index;
+      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       vnet_get_config_data (&cm->config_main, &b0->current_config_index,
@@ -309,8 +309,8 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
       vnet_buffer (b1)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b1, -adv);
 
-      b0->feature_arc_index = feature_arc_index;
-      b1->feature_arc_index = feature_arc_index;
+      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
+      vnet_buffer (b1)->feature_arc_index = feature_arc_index;
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       b1->current_config_index = b0->current_config_index;
@@ -366,10 +366,10 @@ vnet_feature_start_device_input_x4 (u32 sw_if_index,
       vnet_buffer (b3)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b3, -adv);
 
-      b0->feature_arc_index = feature_arc_index;
-      b1->feature_arc_index = feature_arc_index;
-      b2->feature_arc_index = feature_arc_index;
-      b3->feature_arc_index = feature_arc_index;
+      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
+      vnet_buffer (b1)->feature_arc_index = feature_arc_index;
+      vnet_buffer (b2)->feature_arc_index = feature_arc_index;
+      vnet_buffer (b3)->feature_arc_index = feature_arc_index;
 
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
