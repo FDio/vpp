@@ -93,7 +93,7 @@ adj_nbr_remove (adj_index_t ai,
     BV(clib_bihash_add_del) (adj_nbr_tables[nh_proto][sw_if_index], &kv, 0);
 }
 
-static adj_index_t
+adj_index_t
 adj_nbr_find (fib_protocol_t nh_proto,
 	      vnet_link_t link_type,
 	      const ip46_address_t *nh_addr,
