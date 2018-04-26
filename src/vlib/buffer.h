@@ -120,31 +120,24 @@ typedef struct
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
 
+  u32 flow_id;	/**< Generic flow identifier */
 
-    STRUCT_MARK (template_end);
 
   u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set.
                      */
 
-  vlib_error_t error;	/**< Error code for buffers to be enqueued
-                           to error handler.
-                        */
+    STRUCT_MARK (template_end);
+
   u32 current_config_index; /**< Used by feature subgraph arcs to
                                visit enabled feature nodes
                             */
-
-  u8 feature_arc_index;	/**< Used to identify feature arcs by intermediate
-                           feature node
+  vlib_error_t error;	/**< Error code for buffers to be enqueued
+                           to error handler.
                         */
-
   u8 n_add_refs; /**< Number of additional references to this buffer. */
 
   u8 buffer_pool_index;	/**< index of buffer pool this buffer belongs. */
-  u8 dont_waste_me[1]; /**< Available space in the (precious)
-                          first 32 octets of buffer metadata
-                          Before allocating any of it, discussion required!
-                       */
 
   u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h

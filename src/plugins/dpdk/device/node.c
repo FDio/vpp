@@ -518,7 +518,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       for (n = 0; n < n_rx_packets; n++)
 	ptd->next[n] = next_index;
 
-      bt->feature_arc_index = 0;
+      vnet_buffer (bt)->feature_arc_index = 0;
       bt->current_config_index = 0;
     }
   else

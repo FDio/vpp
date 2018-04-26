@@ -133,6 +133,7 @@ ip4_input_check_x2 (vlib_main_t * vm,
       else
 	*next0 = error0 != IP4_ERROR_OPTIONS ?
 	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+      p0->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
     {
@@ -146,10 +147,9 @@ ip4_input_check_x2 (vlib_main_t * vm,
       else
 	*next1 = error1 != IP4_ERROR_OPTIONS ?
 	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+      p1->error = error_node->errors[error1];
     }
 
-  p0->error = error_node->errors[error0];
-  p1->error = error_node->errors[error1];
 }
 
 always_inline void
@@ -208,9 +208,9 @@ ip4_input_check_x1 (vlib_main_t * vm,
       else
 	*next0 = error0 != IP4_ERROR_OPTIONS ?
 	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+      p0->error = error_node->errors[error0];
     }
 
-  p0->error = error_node->errors[error0];
 }
 
 /*

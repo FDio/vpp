@@ -1523,7 +1523,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	      s->next_index;
 	    vnet_buffer (b)->device_input_feat.buffer_advance = 0;
 	    b->current_config_index = current_config_index;
-	    b->feature_arc_index = feature_arc_index;
+	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
       n_trace = vlib_get_trace_count (vm, node);
