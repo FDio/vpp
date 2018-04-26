@@ -18,6 +18,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/adj/rewrite.h>
 #include <vnet/interface.h>
 #include <vlib/vlib.h>
 
@@ -218,21 +219,18 @@ static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 {
   union {
-    ip4_vxlan_header_t * h4;
-    ip6_vxlan_header_t * h6;
-    u8 *rw;
-  } r = { .rw = 0 };
-  int len = is_ip6 ? sizeof *r.h6 : sizeof *r.h4;
-
-  vec_validate_aligned (r.rw, len-1, CLIB_CACHE_LINE_BYTES);
+    ip4_vxlan_header_t h4;
+    ip6_vxlan_header_t h6;
+  } h = {0};
+  int len = is_ip6 ? sizeof h.h6 : sizeof h.h4;
 
   udp_header_t * udp;
   vxlan_header_t * vxlan;
   /* Fixed portion of the (outer) ip header */
   if (!is_ip6) 
     {
-      ip4_header_t * ip = &r.h4->ip4;
-      udp = &r.h4->udp, vxlan = &r.h4->vxlan;
+      ip4_header_t * ip = &h.h4.ip4;
+      udp = &h.h4.udp, vxlan = &h.h4.vxlan;
       ip->ip_version_and_header_length = 0x45;
       ip->ttl = 254;
       ip->protocol = IP_PROTOCOL_UDP;
@@ -245,8 +243,8 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
     }
   else
     {
-      ip6_header_t * ip = &r.h6->ip6;
-      udp = &r.h6->udp, vxlan = &r.h6->vxlan;
+      ip6_header_t * ip = &h.h6.ip6;
+      udp = &h.h6.udp, vxlan = &h.h6.vxlan;
       ip->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
       ip->hop_limit = 255;
       ip->protocol = IP_PROTOCOL_UDP;
@@ -261,8 +259,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 
   /* VXLAN header */
   vnet_set_vni_and_flags(vxlan, t->vni);
-
-  t->rewrite = r.rw;
+  vnet_rewrite_set_data (*t, &h, len);
 }
 
 static bool
@@ -573,7 +570,6 @@ int vnet_vxlan_add_del_tunnel
       hash_unset (vxm->instance_used, t->user_instance);
 
       fib_node_deinit(&t->node);
-      vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
     }
 

@@ -66,9 +66,6 @@ typedef CLIB_PACKED(struct {
 }) vxlan6_tunnel_key_t;
 
 typedef struct {
-  /* Rewrite string. $$$$ embed vnet_rewrite header */
-  u8 * rewrite;
-
   /* FIB DPO for IP forwarding of VXLAN encap packet */
   dpo_id_t next_dpo;  
 
@@ -114,6 +111,8 @@ typedef struct {
 
   u32 dev_instance;	/* Real device instance in tunnel vector */
   u32 user_instance;	/* Instance name being shown to user */
+
+  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 } vxlan_tunnel_t;
 
 #define foreach_vxlan_input_next        \
