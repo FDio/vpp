@@ -2819,6 +2819,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  child0->irs = vnet_buffer (b0)->tcp.seq_number;
 	  child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
 	  child0->rcv_las = child0->rcv_nxt;
+	  child0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
 	   * segments are used to initialize PAWS. */
