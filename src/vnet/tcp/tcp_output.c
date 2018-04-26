@@ -15,6 +15,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/lisp-cp/packets.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <math.h>
 
 vlib_node_registration_t tcp4_output_node;
@@ -24,16 +25,19 @@ typedef enum _tcp_output_next
 {
   TCP_OUTPUT_NEXT_DROP,
   TCP_OUTPUT_NEXT_IP_LOOKUP,
+  TCP_OUTPUT_NEXT_INTERFACE_OUTPUT,
   TCP_OUTPUT_N_NEXT
 } tcp_output_next_t;
 
 #define foreach_tcp4_output_next              	\
   _ (DROP, "error-drop")                        \
-  _ (IP_LOOKUP, "ip4-lookup")
+  _ (IP_LOOKUP, "ip4-lookup")			\
+  _ (INTERFACE_OUTPUT, "interface-output")
 
 #define foreach_tcp6_output_next              	\
   _ (DROP, "error-drop")                        \
-  _ (IP_LOOKUP, "ip6-lookup")
+  _ (IP_LOOKUP, "ip6-lookup")			\
+  _ (INTERFACE_OUTPUT, "interface-output")
 
 static char *tcp_error_strings[] = {
 #define tcp_error(n,s) s,
@@ -1747,6 +1751,41 @@ tcp_session_has_ooo_data (tcp_connection_t * tc)
   return svm_fifo_has_ooo_data (s->server_rx_fifo);
 }
 
+always_inline void
+tcp_output_paint_rewrite (tcp_connection_t * tc0, vlib_buffer_t * b0,
+			  u32 * next0, u32 * error0)
+{
+  ip6_neighbor_t *nbr;
+  u8 *rewrite = 0;
+  u32 rw_len;
+  if (tc0->sw_if_index == (u32) ~ 0)
+    goto drop;
+
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->sw_if_index;
+  nbr = ip6_neighbors_entries (tc0->sw_if_index);
+  if (PREDICT_FALSE (!nbr))
+    goto drop;
+
+  rewrite = ethernet_build_rewrite (vnet_get_main (), tc0->sw_if_index,
+				    VNET_LINK_IP6, nbr->link_layer_address);
+  if (PREDICT_FALSE (!rewrite))
+    goto drop;
+
+  rw_len = vec_len (rewrite);
+  ASSERT (rw_len == sizeof (ethernet_header_t));
+  b0->current_data -= rw_len;
+  b0->current_length += rw_len;
+  clib_memcpy (vlib_buffer_get_current (b0), rewrite, rw_len);
+  *next0 = TCP_OUTPUT_NEXT_INTERFACE_OUTPUT;
+  return;
+
+drop:
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+  *next0 = TCP_OUTPUT_NEXT_DROP;
+  *error0 = TCP_ERROR_LINK_LOCAL_RW;
+  return;
+}
+
 always_inline uword
 tcp46_output_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
@@ -1802,6 +1841,8 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	  th0 = vlib_buffer_get_current (b0);
 	  TCP_EVT_DBG (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 
 	  if (is_ip4)
 	    {
@@ -1820,6 +1861,10 @@ tcp46_output_inline (vlib_main_t * vm,
 	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
 	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
 	      th0->checksum = 0;
+
+	      if (PREDICT_FALSE
+		  (ip6_address_is_link_local_unicast (&tc0->c_rmt_ip6)))
+		tcp_output_paint_rewrite (tc0, b0, &next0, &error0);
 	    }
 
 	  /* Filter out DUPACKs if there are no OOO segments left */
@@ -1889,10 +1934,6 @@ tcp46_output_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
 #endif
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
-
-	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	done:
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
