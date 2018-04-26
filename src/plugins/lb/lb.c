@@ -869,6 +869,7 @@ lb_init (vlib_main_t * vm)
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);
+  vlib_refcount_init(&lbm->vip_refcount);
 
   //Allocate and init default AS.
   lbm->ass = 0;
