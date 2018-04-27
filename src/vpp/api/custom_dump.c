@@ -38,7 +38,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/lisp-cp/lisp_types.h>
-
+#include <vnet/qos/qos_types.h>
 #include <vpp/stats/stats.h>
 #include <vpp/oam/oam.h>
 
@@ -3418,6 +3418,20 @@ static void *vl_api_ip_container_proxy_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_qos_record_enable_disable_t_print
+  (vl_api_qos_record_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: qos_record_enable_disable ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "input_source %U ", format_qos_source, mp->input_source);
+
+  if (!mp->enable)
+    s = format (s, "disable ");
+
+  FINISH;
+}
 
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
@@ -3624,7 +3638,8 @@ _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)                     \
 _(DNS_RESOLVE_NAME, dns_resolve_name)					\
 _(DNS_RESOLVE_IP, dns_resolve_ip)					\
 _(SESSION_RULE_ADD_DEL, session_rule_add_del)                           \
-_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)
+_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)                   \
+_(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
