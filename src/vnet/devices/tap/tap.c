@@ -76,6 +76,7 @@ open_netns_fd (char *netns)
   return fd;
 }
 
+#define TAP_MAX_INSTANCE 1024
 
 void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
@@ -93,12 +94,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
   clib_error_t *err = 0;
-  uword *p;
 
   if (args->id != ~0)
     {
-      p = hash_get (tm->dev_instance_by_interface_id, args->id);
-      if (p)
+      if (clib_bitmap_get (tm->tap_ids, args->id))
 	{
 	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
 	  args->error = clib_error_return (0, "interface already exists");
@@ -107,22 +106,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   else
     {
-      int tries = 1000;
-      while (--tries)
-	{
-	  args->id = tm->last_used_interface_id++;
-	  p = hash_get (tm->dev_instance_by_interface_id, args->id);
-	  if (!p)
-	    break;
-	}
+      args->id = clib_bitmap_first_clear (tm->tap_ids);
+    }
 
-      if (!tries)
-	{
-	  args->rv = VNET_API_ERROR_UNSPECIFIED;
-	  args->error =
-	    clib_error_return (0, "cannot find free interface id");
-	  return;
-	}
+  if (args->id > TAP_MAX_INSTANCE)
+    {
+      args->rv = VNET_API_ERROR_UNSPECIFIED;
+      args->error = clib_error_return (0, "cannot find free interface id");
+      return;
     }
 
   memset (&ifr, 0, sizeof (ifr));
@@ -382,8 +373,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       goto error;
     }
 
-  hash_set (tm->dev_instance_by_interface_id, vif->id, vif->dev_instance);
-
+  tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 1);
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
   args->sw_if_index = vif->sw_if_index;
@@ -415,6 +405,7 @@ error:
   if (vif->fd != -1)
     close (vif->fd);
   vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
+  vec_free (vif->vrings);
   memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
@@ -457,7 +448,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
   vec_free (vif->vrings);
 
-  hash_unset (tm->dev_instance_by_interface_id, vif->id);
+  tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_spinlock_free (&vif->lockp);
   memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
@@ -530,10 +521,11 @@ tap_init (vlib_main_t * vm)
   error = vlib_call_init_function (vm, vlib_log_init);
   if (error)
     return error;
-  tm->dev_instance_by_interface_id = hash_create (0, sizeof (uword));
+
   tm->log_default = vlib_log_register_class ("tap", 0);
   vlib_log_info (tm->log_default, "initialized");
-  return 0;
+
+  return NULL;
 }
 
 VLIB_INIT_FUNCTION (tap_init);

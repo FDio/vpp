@@ -67,11 +67,11 @@ typedef struct
 
 typedef struct
 {
-  u32 last_used_interface_id;
-  uword *dev_instance_by_interface_id;
-
   /* logging */
   vlib_log_class_t log_default;
+
+  /* bit-map of in-use IDs */
+  uword *tap_ids;
 } tap_main_t;
 
 void tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args);
