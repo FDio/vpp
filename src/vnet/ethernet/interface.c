@@ -307,7 +307,6 @@ ethernet_register_interface (vnet_main_t * vnm,
   hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
   clib_memcpy (ei->address, address, sizeof (ei->address));
-  vec_free (hi->hw_address);
   vec_add (hi->hw_address, address, sizeof (ei->address));
 
   if (error)

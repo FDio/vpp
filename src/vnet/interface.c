@@ -717,7 +717,7 @@ vnet_register_interface (vnet_main_t * vnm,
   vnet_feature_config_main_t *fcm;
   vnet_config_main_t *cm;
   u32 hw_index, i;
-  char *tx_node_name, *output_node_name;
+  char *tx_node_name = NULL, *output_node_name = NULL;
 
   pool_get (im->hw_interfaces, hw);
   memset (hw, 0, sizeof (*hw));
@@ -907,6 +907,8 @@ no_output_nodes:
 				      VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
   vnet_hw_interface_set_flags_helper (vnm, hw_index, /* flags */ 0,
 				      VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
+  vec_free (tx_node_name);
+  vec_free (output_node_name);
 
   return hw_index;
 }
@@ -973,6 +975,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);
+  vec_free (hw->hw_address);
   vec_free (hw->input_node_thread_index_by_queue);
   vec_free (hw->dq_runtime_index_by_queue);
 
