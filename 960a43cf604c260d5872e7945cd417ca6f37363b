@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec4b66ff_7624d9d1",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-04-27T14:08:09Z",
+      "side": 1,
+      "message": "Curious: why? It should be valid to wire the port and then bring it up when you\u0027re ready to pass traffic, otherwise you risk having Linux default behaviors interfering.",
+      "range": {
+        "startLine": 254,
+        "startChar": 0,
+        "endLine": 256,
+        "endChar": 5
+      },
+      "revId": "960a43cf604c260d5872e7945cd417ca6f37363b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
