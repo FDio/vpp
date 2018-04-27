@@ -332,7 +332,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
-  svm_fifo_t *f;
+  svm_fifo_t *f = 0;
   void *oldheap;
   int freelist_index;
 
@@ -351,9 +351,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
     - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
 
   sh = s->ssvm.sh;
-
   ssvm_lock_non_recursive (sh, 1);
-  oldheap = ssvm_push_heap (sh);
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
 
   switch (list_index)
@@ -361,12 +359,17 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
     case FIFO_SEGMENT_RX_FREELIST:
     case FIFO_SEGMENT_TX_FREELIST:
       vec_validate_init_empty (fsh->free_fifos, freelist_index, 0);
-
       f = fsh->free_fifos[freelist_index];
-      if (PREDICT_FALSE (f == 0))
+      if (PREDICT_FALSE (!f))
 	{
+	  /* Preallocated and no fifo left. Don't even try */
+	  if (fsh->flags & FIFO_SEGMENT_F_IS_PREALLOCATED)
+	    goto done;
+
+	  oldheap = ssvm_push_heap (sh);
 	  allocate_new_fifo_chunk (fsh, data_size_in_bytes,
 				   FIFO_SEGMENT_ALLOC_CHUNK_SIZE);
+	  ssvm_pop_heap (oldheap);
 	  f = fsh->free_fifos[freelist_index];
 	}
       if (PREDICT_TRUE (f != 0))
@@ -380,7 +383,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 	  f->freelist_index = freelist_index;
 	  goto found;
 	}
-      /* FALLTHROUGH */
+      break;
     case FIFO_SEGMENT_FREELIST_NONE:
       break;
 
@@ -389,14 +392,13 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
       break;
     }
 
-  /* Note: this can fail, in which case: create another segment */
+  /* Catch all that allocates just one fifo. Note: this can fail,
+   * in which case: create another segment */
+  oldheap = ssvm_push_heap (sh);
   f = svm_fifo_create (data_size_in_bytes);
+  ssvm_pop_heap (oldheap);
   if (PREDICT_FALSE (f == 0))
-    {
-      ssvm_pop_heap (oldheap);
-      ssvm_unlock_non_recursive (sh);
-      return (0);
-    }
+    goto done;
   f->freelist_index = freelist_index;
 
 found:
@@ -415,7 +417,7 @@ found:
     }
   fsh->n_active_fifos++;
 
-  ssvm_pop_heap (oldheap);
+done:
   ssvm_unlock_non_recursive (sh);
   return (f);
 }
