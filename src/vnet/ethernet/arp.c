@@ -269,7 +269,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
     flags = format (flags, "N");
 
   s = format (s, "%=12U%=16U%=6s%=20U%U",
-	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
+	      format_vlib_time, vnm->vlib_main, e->time_last_updated,
 	      format_ip4_address, &e->ip4_address,
 	      flags ? (char *) flags : "",
 	      format_ethernet_address, e->ethernet_address,
@@ -616,14 +616,17 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
        */
       if (0 == memcmp (e->ethernet_address,
 		       a->ethernet, sizeof (e->ethernet_address)))
-	goto check_customers;
+	{
+	  e->time_last_updated = vlib_time_now (vm);
+	  goto check_customers;
+	}
 
       /* Update time stamp and ethernet address. */
       clib_memcpy (e->ethernet_address, a->ethernet,
 		   sizeof (e->ethernet_address));
     }
 
-  e->cpu_time_last_updated = clib_cpu_time_now ();
+  e->time_last_updated = vlib_time_now (vm);
   if (is_static)
     e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC;
   else
@@ -1297,6 +1300,13 @@ ip4_arp_entry_sort (void *a1, void *a2)
   if (!cmp)
     cmp = ip4_address_compare (&e1->ip4_address, &e2->ip4_address);
   return cmp;
+}
+
+ethernet_arp_ip4_entry_t *
+ip4_neighbors_pool (void)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  return am->ip4_entry_pool;
 }
 
 ethernet_arp_ip4_entry_t *

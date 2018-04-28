@@ -2011,6 +2011,25 @@ static void *vl_api_ip_probe_neighbor_t_print
   FINISH;
 }
 
+static void *vl_api_ip_scan_neighbor_enable_disable_t_print
+  (vl_api_ip_scan_neighbor_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_scan_neighbor_enable_disable ");
+  if (mp->enable_disable)
+    s = format (s, "enable ");
+  else
+    s = format (s, "disable ");
+  s = format (s, "interval %d ", mp->scan_interval);
+  s = format (s, "max-time %d ", mp->max_proc_time);
+  s = format (s, "max-update %d ", mp->max_update);
+  s = format (s, "delay %d ", mp->scan_int_delay);
+  s = format (s, "stale %d ", mp->stale_threshold);
+
+  FINISH;
+}
+
 static void *vl_api_want_ip4_arp_events_t_print
   (vl_api_want_ip4_arp_events_t * mp, void *handle)
 {
