@@ -223,6 +223,9 @@ extern vlib_main_t vlib_global_main;
 
 void vlib_worker_loop (vlib_main_t * vm);
 
+/* Maximum f64 value */
+#define TIME_MAX (1.7976931348623157e+308)
+
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
 {
