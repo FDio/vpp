@@ -196,6 +196,9 @@ clib_time_now_internal (clib_time_t * c, u64 n)
   return t * c->seconds_per_clock;
 }
 
+/* Maximum f64 value as max clib_time */
+#define CLIB_TIME_MAX (1.7976931348623157e+308)
+
 always_inline f64
 clib_time_now (clib_time_t * c)
 {

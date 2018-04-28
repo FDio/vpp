@@ -1122,9 +1122,6 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   return delta_t + accum_t;
 }
 
-/* Maximum f64 value */
-#define TIME_MAX (1.7976931348623157e+308)
-
 static uword
 l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			       vlib_frame_t * f)
@@ -1133,7 +1130,7 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   l2fib_main_t *fm = &l2fib_main;
   l2learn_main_t *lm = &l2learn_main;
   bool enabled = 0;
-  f64 start_time, next_age_scan_time = TIME_MAX;
+  f64 start_time, next_age_scan_time = CLIB_TIME_MAX;
 
   while (1)
     {
@@ -1192,7 +1189,7 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  if (enabled)
 	    next_age_scan_time = start_time + L2FIB_AGE_SCAN_INTERVAL;
 	  else
-	    next_age_scan_time = TIME_MAX;
+	    next_age_scan_time = CLIB_TIME_MAX;
 	}
     }
   return 0;
