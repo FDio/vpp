@@ -2125,36 +2125,171 @@ handle_ip6_nd_event (u32 pool_index)
     }
 }
 
+/*
+ * Set IP neighbor scan parameters as follows:
+ *   - Scan interval                       : 60 sec
+ *   - Max processing allowed per run      : 20 usec
+ *   - Max probe/delete operations per run : 10
+ *   - Scan interrupt delay to resume scan : 1 msec
+ *   - Minimum timeout to resume scan      : 100 usec
+ *   - Neighbor stale threashold           : 4 x scan-interval
+ */
+#define IP_NEIGHBOR_SCAN_INTERVAL (60.0)
+#define IP_NEIGHBOR_MAX_PROC_TIME (20e-6)
+#define IP_NEIGHBOR_MAX_UPDATE 10
+#define IP_NEIGHBOR_SCAN_INT_DELAY (1e-3)
+#define IP_NEIGHBOR_MIN_TIMEOUT (100e-6)
+#define IP_NEIGHBOR_STALE (4*IP_NEIGHBOR_SCAN_INTERVAL)
+
+static_always_inline u32
+scan_neighbors (vlib_main_t * vm, f64 start_time, u32 start_idx, u8 is_ip6)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_arp_ip4_entry_t *np4 = ip4_neighbors_pool ();
+  ip6_neighbor_t *np6 = ip6_neighbors_pool ();
+  ethernet_arp_ip4_entry_t *n4;
+  ip6_neighbor_t *n6;
+  u32 curr_idx = start_idx;
+  u32 loop_count = 0;
+  static u32 update_count;
+  f64 delta, update_time;
+
+  if (is_ip6)
+    {
+      if (pool_is_free_index (np6, start_idx))
+	curr_idx = pool_next_index (np6, start_idx);
+    }
+  else
+    {
+      if (pool_is_free_index (np4, start_idx))
+	curr_idx = pool_next_index (np4, start_idx);
+      update_count = 0;		/* always start with ip4 thus is_ipv6 = 0 */
+    }
+
+  while (curr_idx != ~0)
+    {
+      /* allow no more than 10 neighbor updates or 20 usec of scan */
+      if ((update_count >= IP_NEIGHBOR_MAX_UPDATE) ||
+	  (((loop_count % 100) == 0) &&
+	   ((vlib_time_now (vm) - start_time) > IP_NEIGHBOR_MAX_PROC_TIME)))
+	break;
+
+      if (is_ip6)
+	{
+	  n6 = pool_elt_at_index (np6, curr_idx);
+	  if (n6->flags & IP6_NEIGHBOR_FLAG_STATIC)
+	    goto next_neighbor;
+	  update_time = n6->time_last_updated;
+	}
+      else
+	{
+	  n4 = pool_elt_at_index (np4, curr_idx);
+	  if (n4->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
+	    goto next_neighbor;
+	  update_time = n4->time_last_updated;
+	}
+
+      delta = start_time - update_time;
+      if (delta >= IP_NEIGHBOR_STALE)
+	{
+	  update_count++;
+	  /* delete stale neighbor */
+	  if (is_ip6)
+	    vnet_unset_ip6_ethernet_neighbor
+	      (vm, n6->key.sw_if_index, &n6->key.ip6_address,
+	       n6->link_layer_address, 6);
+	  else
+	    {
+	      ethernet_arp_ip4_over_ethernet_address_t delme;
+	      clib_memcpy (&delme.ethernet, n4->ethernet_address, 6);
+	      delme.ip4.as_u32 = n4->ip4_address.as_u32;
+	      vnet_arp_unset_ip4_over_ethernet (vnm, n4->sw_if_index, &delme);
+	    }
+	}
+      else if (delta >= IP_NEIGHBOR_SCAN_INTERVAL)
+	{
+	  update_count++;
+	  /* probe neighbor */
+	  if (is_ip6)
+	    ip6_probe_neighbor (vm, &n6->key.ip6_address,
+				n6->key.sw_if_index);
+	  else
+	    ip4_probe_neighbor (vm, &n4->ip4_address, n4->sw_if_index);
+	}
+
+    next_neighbor:
+      loop_count++;
+
+      if (is_ip6)
+	curr_idx = pool_next_index (np6, curr_idx);
+      else
+	curr_idx = pool_next_index (np4, curr_idx);
+    }
+
+  return curr_idx;
+}
+
 static uword
 resolver_process (vlib_main_t * vm,
 		  vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  volatile f64 timeout = 100.0;
+  volatile f64 timeout = IP_NEIGHBOR_SCAN_INTERVAL;
   volatile uword *event_data = 0;
+  f64 start, last, next_scan = TIME_MAX;
+  u32 ip4_nidx = 0;		/* ip4 neighbor pool index */
+  u32 ip6_nidx = 0;		/* ip6 neighbor pool index */
 
   while (1)
     {
+      last = vlib_time_now (vm);
       vlib_process_wait_for_event_or_clock (vm, timeout);
 
       uword event_type =
 	vlib_process_get_events (vm, (uword **) & event_data);
 
-      int i;
       switch (event_type)
 	{
 	case IP4_ARP_EVENT:
-	  for (i = 0; i < vec_len (event_data); i++)
+	  for (int i = 0; i < vec_len (event_data); i++)
 	    handle_ip4_arp_event (event_data[i]);
+	  timeout = last + timeout - vlib_time_now (vm);
 	  break;
 
 	case IP6_ND_EVENT:
-	  for (i = 0; i < vec_len (event_data); i++)
+	  for (int i = 0; i < vec_len (event_data); i++)
 	    handle_ip6_nd_event (event_data[i]);
+	  timeout = last + timeout - vlib_time_now (vm);
 	  break;
 
-	case ~0:		/* timeout */
+	case ~0:		/* timeout - do IP neighbor scan */
+	  start = vlib_time_now (vm);
+	  if ((ip4_nidx != 0) || (ip6_nidx == 0))
+	    {
+	      if (ip4_nidx == 0)	/* starting a fresh scan */
+		next_scan = start + IP_NEIGHBOR_SCAN_INTERVAL;
+	      ip4_nidx = scan_neighbors (vm, start, ip4_nidx, /* ip4 */ 0);
+	      if (ip4_nidx != ~0)	/* ip4 scan incomplete */
+		{
+		  timeout = IP_NEIGHBOR_SCAN_INT_DELAY;
+		  break;
+		}
+	      ip4_nidx = 0;	/* ip4 scan done */
+	    }
+	  ip6_nidx = scan_neighbors (vm, start, ip6_nidx, /* ip6 */ 1);
+	  if (ip6_nidx != ~0)	/* ip6 scan incomplete */
+	    timeout = IP_NEIGHBOR_SCAN_INT_DELAY;
+	  else
+	    {
+	      ip6_nidx = 0;	/* ip6 scan done */
+	      timeout = next_scan - vlib_time_now (vm);
+	    }
 	  break;
 	}
+
+      if (timeout > IP_NEIGHBOR_SCAN_INTERVAL)
+	timeout = IP_NEIGHBOR_SCAN_INTERVAL;
+      else if (timeout < IP_NEIGHBOR_MIN_TIMEOUT)
+	timeout = IP_NEIGHBOR_MIN_TIMEOUT;
 
       vec_reset_length (event_data);
     }
