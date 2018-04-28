@@ -1122,9 +1122,6 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   return delta_t + accum_t;
 }
 
-/* Maximum f64 value */
-#define TIME_MAX (1.7976931348623157e+308)
-
 static uword
 l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			       vlib_frame_t * f)

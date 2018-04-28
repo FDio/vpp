@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.2.2";
+option version = "1.2.3";
 import "vnet/fib/fib_types.api";
 
 /** \brief Add / del table request
@@ -649,6 +649,30 @@ autoreply define ip_source_and_port_range_check_interface_add_del
   u32 tcp_out_vrf_id;
   u32 udp_in_vrf_id;
   u32 udp_out_vrf_id;
+};
+
+/** \brief Enable/disable periodic IP neighbor scan
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - 0: disable, 1: IPv4, 2: IPv6, 3: both IPv4/v6
+    @param scan_interval - neighbor scan interval in minutes, 0: default to 1
+    @param max_proc_time - max processing time per run in usec, 0: default to 20
+    @param max_update - max neighbor probe/delete per run, 0: default to 10
+    @param scan_int_delay - delay in msec to resume scan if exceed max proc
+                            time or update, 0: default to 1
+    @param stale_threshold - threshold in minutes for neighbor deletion, 
+                             0: default to 4*scan_interval
+*/
+autoreply define ip_scan_neighbor_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u8 mode;
+  u8 scan_interval;
+  u8 max_proc_time;
+  u8 max_update;
+  u8 scan_int_delay;
+  u8 stale_threshold;
 };
 
 /** \brief IP probe neighbor address on an interface by sending an
