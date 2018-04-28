@@ -475,6 +475,9 @@ do {									\
     (_pool_var (rv) < vec_len (P) ?                                     \
      clib_bitmap_next_clear (_pool_var (p)->free_bitmap, _pool_var(rv)) \
      : ~0);                                                             \
+  _pool_var(rv) =                                                       \
+    (_pool_var (rv) < vec_len (P) ?                                     \
+     _pool_var (rv) : ~0);						\
   _pool_var(rv);                                                        \
 })
 

@@ -22,6 +22,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip_neighbor.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
@@ -5450,6 +5451,7 @@ _(l2_interface_vlan_tag_rewrite_reply)                  \
 _(modify_vhost_user_if_reply)                           \
 _(delete_vhost_user_if_reply)                           \
 _(ip_probe_neighbor_reply)                              \
+_(ip_scan_neighbor_enable_disable_reply)                \
 _(want_ip4_arp_events_reply)                            \
 _(want_ip6_nd_events_reply)                             \
 _(want_l2_macs_events_reply)                            \
@@ -5697,6 +5699,7 @@ _(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
 _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(IP_PROBE_NEIGHBOR_REPLY, ip_probe_neighbor_reply)			\
+_(IP_SCAN_NEIGHBOR_ENABLE_DISABLE_REPLY, ip_scan_neighbor_enable_disable_reply) \
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
 _(WANT_IP6_ND_EVENTS_REPLY, want_ip6_nd_events_reply)			\
@@ -14409,6 +14412,78 @@ api_ip_probe_neighbor (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
   clib_memcpy (mp->dst_address, dst_adr, sizeof (dst_adr));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_scan_neighbor_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_scan_neighbor_enable_disable_t *mp;
+  u8 mode = IP_SCAN_V46_NEIGHBORS;
+  u32 interval = 0, time = 0, update = 0, delay = 0, stale = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "ip4"))
+	mode = IP_SCAN_V4_NEIGHBORS;
+      else if (unformat (i, "ip6"))
+	mode = IP_SCAN_V6_NEIGHBORS;
+      if (unformat (i, "both"))
+	mode = IP_SCAN_V46_NEIGHBORS;
+      else if (unformat (i, "disable"))
+	mode = IP_SCAN_DISABLED;
+      else if (unformat (i, "interval %d", &interval))
+	;
+      else if (unformat (i, "max-time %d", &time))
+	;
+      else if (unformat (i, "max-update %d", &update))
+	;
+      else if (unformat (i, "delay %d", &delay))
+	;
+      else if (unformat (i, "stale %d", &stale))
+	;
+      else
+	break;
+    }
+
+  if (interval > 255)
+    {
+      errmsg ("interval cannot exceed 255 minutes.");
+      return -99;
+    }
+  if (time > 255)
+    {
+      errmsg ("max-time cannot exceed 255 usec.");
+      return -99;
+    }
+  if (update > 255)
+    {
+      errmsg ("max-update cannot exceed 255.");
+      return -99;
+    }
+  if (delay > 255)
+    {
+      errmsg ("delay cannot exceed 255 msec.");
+      return -99;
+    }
+  if (stale > 255)
+    {
+      errmsg ("stale cannot exceed 255 minutes.");
+      return -99;
+    }
+
+  M (IP_SCAN_NEIGHBOR_ENABLE_DISABLE, mp);
+  mp->mode = mode;
+  mp->scan_interval = interval;
+  mp->max_proc_time = time;
+  mp->max_update = update;
+  mp->scan_int_delay = delay;
+  mp->stale_threshold = stale;
 
   S (mp);
   W (ret);
@@ -23406,6 +23481,8 @@ _(input_acl_set_interface,                                              \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
 _(ip_probe_neighbor, "(<intc> | sw_if_index <nn>) address <ip4|ip6-addr>") \
+_(ip_scan_neighbor_enable_disable, "[ip4|ip6|both|disable] [interval <n-min>]\n" \
+  "  [max-time <n-usec>] [max-update <n>] [delay <n-msec>] [stale <n-min>]") \
 _(want_ip4_arp_events, "address <ip4-address> [del]")                   \
 _(want_ip6_nd_events, "address <ip6-address> [del]")                    \
 _(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \

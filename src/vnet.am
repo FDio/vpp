@@ -362,6 +362,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip6_pg.c				\
  vnet/ip/ip6_reassembly.c                       \
  vnet/ip/rd_cp.c                                \
+ vnet/ip/ip_neighbor.c				\
  vnet/ip/ip_api.c				\
  vnet/ip/ip_checksum.c				\
  vnet/ip/ip_frag.c				\
@@ -394,6 +395,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/ip.h					\
  vnet/ip/ip_packet.h				\
  vnet/ip/ip_source_and_port_range_check.h	\
+ vnet/ip/ip_neighbor.h				\
  vnet/ip/lookup.h				\
  vnet/ip/ports.def				\
  vnet/ip/protocols.def				\

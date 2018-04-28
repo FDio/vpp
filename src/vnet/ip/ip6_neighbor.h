@@ -40,9 +40,11 @@ typedef struct
   ip6_neighbor_key_t key;
   u8 link_layer_address[8];
   ip6_neighbor_flags_t flags;
-  u64 cpu_time_last_updated;
+  f64 time_last_updated;
   fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
+
+extern ip6_neighbor_t *ip6_neighbors_pool (void);
 
 extern ip6_neighbor_t *ip6_neighbors_entries (u32 sw_if_index);
 

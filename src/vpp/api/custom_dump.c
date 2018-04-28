@@ -19,6 +19,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip_neighbor.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/dhcp_proxy.h>
@@ -2011,6 +2012,37 @@ static void *vl_api_ip_probe_neighbor_t_print
   FINISH;
 }
 
+static void *vl_api_ip_scan_neighbor_enable_disable_t_print
+  (vl_api_ip_scan_neighbor_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_scan_neighbor_enable_disable ");
+
+  switch (mp->mode)
+    {
+    case IP_SCAN_V4_NEIGHBORS:
+      s = format (s, "ip4 ");
+      break;
+    case IP_SCAN_V6_NEIGHBORS:
+      s = format (s, "ip6 ");
+      break;
+    case IP_SCAN_V46_NEIGHBORS:
+      s = format (s, "both ");
+      break;
+    default:
+      s = format (s, "disable ");
+    }
+
+  s = format (s, "interval %d ", mp->scan_interval);
+  s = format (s, "max-time %d ", mp->max_proc_time);
+  s = format (s, "max-update %d ", mp->max_update);
+  s = format (s, "delay %d ", mp->scan_int_delay);
+  s = format (s, "stale %d ", mp->stale_threshold);
+
+  FINISH;
+}
+
 static void *vl_api_want_ip4_arp_events_t_print
   (vl_api_want_ip4_arp_events_t * mp, void *handle)
 {
@@ -3545,6 +3577,7 @@ _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel) 			\
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(IP_PROBE_NEIGHBOR, ip_probe_neighbor)                                 \
+_(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \

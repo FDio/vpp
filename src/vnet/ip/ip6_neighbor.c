@@ -332,7 +332,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
 
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
   s = format (s, "%=12U%=25U%=6s%=20U%=40U",
-	      format_vlib_cpu_time, vm, n->cpu_time_last_updated,
+	      format_vlib_time, vm, n->time_last_updated,
 	      format_ip6_address, &n->key.ip6_address,
 	      flags ? (char *) flags : "",
 	      format_ethernet_address, n->link_layer_address,
@@ -792,14 +792,17 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
        */
       if (0 == memcmp (n->link_layer_address,
 		       link_layer_address, n_bytes_link_layer_address))
-	goto check_customers;
+	{
+	  n->time_last_updated = vlib_time_now (vm);
+	  goto check_customers;
+	}
 
       clib_memcpy (n->link_layer_address,
 		   link_layer_address, n_bytes_link_layer_address);
     }
 
   /* Update time stamp and flags. */
-  n->cpu_time_last_updated = clib_cpu_time_now ();
+  n->time_last_updated = vlib_time_now (vm);
   if (is_static)
     n->flags |= IP6_NEIGHBOR_FLAG_STATIC;
   else
@@ -940,6 +943,13 @@ ip6_neighbor_sort (void *a1, void *a2)
   if (!cmp)
     cmp = ip6_address_compare (&n1->key.ip6_address, &n2->key.ip6_address);
   return cmp;
+}
+
+ip6_neighbor_t *
+ip6_neighbors_pool (void)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  return nm->neighbor_pool;
 }
 
 ip6_neighbor_t *

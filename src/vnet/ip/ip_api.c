@@ -25,6 +25,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip_neighbor.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
@@ -77,6 +78,7 @@ _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
 _(IP_PROBE_NEIGHBOR, ip_probe_neighbor)      			        \
+_(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_IP6_RA_EVENTS, want_ip6_ra_events)                               \
@@ -2720,6 +2722,25 @@ vl_api_ip_probe_neighbor_t_handler (vl_api_ip_probe_neighbor_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY);
+}
+
+static void
+  vl_api_ip_scan_neighbor_enable_disable_t_handler
+  (vl_api_ip_scan_neighbor_enable_disable_t * mp)
+{
+  int rv = 0;
+  vl_api_ip_scan_neighbor_enable_disable_reply_t *rmp;
+  ip_neighbor_scan_arg_t arg;
+
+  arg.mode = mp->mode;
+  arg.scan_interval = mp->scan_interval;
+  arg.max_proc_time = mp->max_proc_time;
+  arg.max_update = mp->max_update;
+  arg.scan_int_delay = mp->scan_int_delay;
+  arg.stale_threshold = mp->stale_threshold;
+  ip_neighbor_scan_enable_disable (&arg);
+
+  REPLY_MACRO (VL_API_IP_SCAN_NEIGHBOR_ENABLE_DISABLE_REPLY);
 }
 
 static int
