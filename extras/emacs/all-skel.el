@@ -30,6 +30,7 @@
 (load-file "./plugin-msg-enum-skel.el")
 (load-file "./plugin-node-skel.el")
 (load-file "./plugin-test-skel.el")
+(load-file "./plugin-periodic-skel.el")
 (load-file "./tunnel-c-skel.el")
 (load-file "./tunnel-decap-skel.el")
 (load-file "./tunnel-encap-skel.el")

@@ -84,7 +84,7 @@ static uword
 /*
  * " node-name " periodic node declaration 
  */
-static VLIB_REGISTER_NODE (" node-name "_node) = {
+VLIB_REGISTER_NODE (" plugin-name "_periodic_node,static) = {
     .function = " node-name "_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = \"" node-name "-process\",
