@@ -1217,34 +1217,37 @@ snat_in2out_unknown_proto (snat_main_t *sm,
       else
         {
           /* Choose same out address as for TCP/UDP session to same destination */
-          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+          head_index = u->sessions_per_user_list_head_index;
+          head = pool_elt_at_index (tsm->list_pool, head_index);
+          elt_index = head->next;
+	  if (PREDICT_FALSE (elt_index == ~0))
+	    ses_index = ~0;
+	  else
+	    {
+	      elt = pool_elt_at_index (tsm->list_pool, elt_index);
+	      ses_index = elt->value;
+	    }
+
+          while (ses_index != ~0)
             {
-              head_index = u->sessions_per_user_list_head_index;
-              head = pool_elt_at_index (tsm->list_pool, head_index);
-              elt_index = head->next;
+              s =  pool_elt_at_index (tsm->sessions, ses_index);
+              elt_index = elt->next;
               elt = pool_elt_at_index (tsm->list_pool, elt_index);
               ses_index = elt->value;
-              while (ses_index != ~0)
+
+              if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
                 {
-                  s =  pool_elt_at_index (tsm->sessions, ses_index);
-                  elt_index = elt->next;
-                  elt = pool_elt_at_index (tsm->list_pool, elt_index);
-                  ses_index = elt->value;
+                  new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
+                  address_index = s->outside_address_index;
 
-                  if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
-                    {
-                      new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
-                      address_index = s->outside_address_index;
+                  key.fib_index = sm->outside_fib_index;
+                  key.l_addr.as_u32 = new_addr;
+                  s_kv.key[0] = key.as_u64[0];
+                  s_kv.key[1] = key.as_u64[1];
+                  if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
+                    break;
 
-                      key.fib_index = sm->outside_fib_index;
-                      key.l_addr.as_u32 = new_addr;
-                      s_kv.key[0] = key.as_u64[0];
-                      s_kv.key[1] = key.as_u64[1];
-                      if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
-                        break;
-
-                      goto create_ses;
-                    }
+                  goto create_ses;
                 }
             }
           key.fib_index = sm->outside_fib_index;
