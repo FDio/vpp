@@ -546,7 +546,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 	    break;
 	}
       /* *INDENT-ON* */
-      if (rv != 0 && rv != EINVAL)
+      if (rv != 0 && errno != EINVAL)
 	clib_unix_warning ("ioctl(VFIO_IOMMU_MAP_DMA) pool '%s'", pool_name);
     }
 
