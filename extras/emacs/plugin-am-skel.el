@@ -41,6 +41,7 @@ vppplugins_LTLIBRARIES += " plugin-name "_plugin.la
 " plugin-name "_plugin_la_SOURCES = \\
   " plugin-name "/node.c \\
   " plugin-name "/" plugin-name ".c \\
+  " plugin-name "/" plugin-name "_periodic.c \\
   " plugin-name "/" plugin-name ".h \\
   " plugin-name "/" plugin-name "_all_api_h.h \\
   " plugin-name "/" plugin-name "_msg_enum.h

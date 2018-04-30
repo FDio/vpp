@@ -102,6 +102,11 @@ int " plugin-name "_enable_disable (" plugin-name "_main_t * sm, u32 sw_if_index
   vnet_feature_enable_disable (\"device-input\", \"" plugin-name "\",
                                sw_if_index, enable_disable, 0, 0);
 
+  /* Send an event to enable/disable the periodic scanner process */
+  vlib_process_signal_event (sm->vlib_main, " plugin-name"_periodic_node.index, 
+                            " PLUGIN-NAME"_EVENT_PERIODIC_ENABLE_DISABLE, 
+                            (uword)enable_disable);
+
   return rv;
 }
 

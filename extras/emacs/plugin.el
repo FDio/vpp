@@ -41,5 +41,7 @@
       (skel-plugin-node)
       (find-file (concat plugin-name "_test.c"))
       (skel-plugin-test)
+      (find-file (concat plugin-name "_periodic.c"))
+      (skel-plugin-periodic)
       (cd start-dir))))
 
