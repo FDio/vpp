@@ -87,7 +87,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
 
         # read (check sw if dump, ip4 fib, ip6 fib)
         if_dump = self.vapi.sw_interface_dump()
-        fib4_dump = self.vapi.ip_fib_dump()
+        fib4_dump = self.vapi.ip_route_dump(0)
         for i in loopbacks:
             self.assertTrue(i.is_interface_config_in_dump(if_dump))
             self.assertTrue(i.is_ip4_entry_in_fib_dump(fib4_dump))
@@ -107,7 +107,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
 
         # read (check not in sw if dump, ip4 fib, ip6 fib)
         if_dump = self.vapi.sw_interface_dump()
-        fib4_dump = self.vapi.ip_fib_dump()
+        fib4_dump = self.vapi.ip_route_dump(0)
         for i in loopbacks:
             self.assertFalse(i.is_interface_config_in_dump(if_dump))
             self.assertFalse(i.is_ip4_entry_in_fib_dump(fib4_dump))
@@ -134,7 +134,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
 
         # read (check not in sw if dump, ip4 fib, ip6 fib)
         if_dump = self.vapi.sw_interface_dump()
-        fib4_dump = self.vapi.ip_fib_dump()
+        fib4_dump = self.vapi.ip_route_dump(0)
         for i in loopbacks:
             self.assertTrue(i.is_interface_config_in_dump(if_dump))
             self.assertFalse(i.is_ip4_entry_in_fib_dump(fib4_dump))
