@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 import socket
 
 from util import Host, mk_ll_addr
+from vpp_ip import VppIpAddress
 
 
 class VppInterface(object):
@@ -240,9 +241,8 @@ class VppInterface(object):
         """
         for host in self._remote_hosts:
             macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip4n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn)
+                self.sw_if_index, macn, VppIpAddress(host.ip4).encode())
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
@@ -271,9 +271,8 @@ class VppInterface(object):
         """
         for host in self._remote_hosts:
             macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip6n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, is_ipv6=1)
+                self.sw_if_index, macn, VppIpAddress(host.ip6).encode())
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""

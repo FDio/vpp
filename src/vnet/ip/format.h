@@ -60,12 +60,6 @@ format_function_t format_ip_adjacency_packet_data;
 
 format_function_t format_ip46_address;
 
-typedef enum
-{
-  IP46_TYPE_ANY,
-  IP46_TYPE_IP4,
-  IP46_TYPE_IP6
-} ip46_type_t;
 /* unformat_ip46_address expects arguments (ip46_address_t *, ip46_type_t)
  * The type argument is used to enforce a particular IP version. */
 unformat_function_t unformat_ip46_address;

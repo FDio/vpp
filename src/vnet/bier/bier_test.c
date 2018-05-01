@@ -767,12 +767,12 @@ bier_test_mpls_imp (void)
         .frp_bier_imp = bii,
         .frp_weight = 0,
         .frp_flags = FIB_ROUTE_PATH_BIER_IMP,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     mfib_table_entry_path_update(0, // default table
                                  &pfx_1_1_1_1_c_239_1_1_1 ,
                                  MFIB_SOURCE_API,
-                                 &path_via_bier_imp_1,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_bier_imp_1);
     mfib_table_entry_delete(0,
                             &pfx_1_1_1_1_c_239_1_1_1 ,
                             MFIB_SOURCE_API);
