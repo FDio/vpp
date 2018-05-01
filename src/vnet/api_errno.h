@@ -44,7 +44,7 @@ _(FEATURE_DISABLED, -30, "Feature disabled by configuration")           \
 _(INVALID_REGISTRATION, -31, "Invalid registration")                    \
 _(NEXT_HOP_NOT_IN_FIB, -50, "Next hop not in FIB")                      \
 _(UNKNOWN_DESTINATION, -51, "Unknown destination")                      \
-_(PREFIX_MATCHES_NEXT_HOP, -52, "Prefix matches next hop")              \
+_(NO_PATHS_IN_ROUTE, -52, "No paths specified in route")                \
 _(NEXT_HOP_NOT_FOUND_MP, -53, "Next hop not found (multipath)")         \
 _(NO_MATCHING_INTERFACE, -54, "No matching interface for probe")        \
 _(INVALID_VLAN, -55, "Invalid VLAN")                                    \
@@ -145,7 +145,8 @@ _(INVALID_SESSION_ID, -148, "session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
 _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
-_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface")
+_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
+_(FIB_PATH_UNSUPPORTED_NH_PROTO, -153, "Unsupported FIB Path protocol")
 
 typedef enum
 {

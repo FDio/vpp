@@ -233,7 +233,7 @@ mfib_test_entry (fib_node_index_t fei,
 
     MFIB_TEST_REP((eflags == mfe->mfe_flags),
                   "%U has %U expect %U",
-                  format_mfib_prefix, &pfx,
+                  format_mfib_prefix, pfx,
                   format_mfib_entry_flags, mfe->mfe_flags,
                   format_mfib_entry_flags, eflags);
 
@@ -241,7 +241,7 @@ mfib_test_entry (fib_node_index_t fei,
     {
         MFIB_TEST_REP((DPO_DROP == mfe->mfe_rep.dpoi_type),
                       "%U links to %U",
-                      format_mfib_prefix, &pfx,
+                      format_mfib_prefix, pfx,
                       format_dpo_id, &mfe->mfe_rep, 0);
     }
     else
@@ -257,7 +257,7 @@ mfib_test_entry (fib_node_index_t fei,
 
         MFIB_TEST_REP((DPO_REPLICATE == tmp.dpoi_type),
                       "%U links to %U",
-                      format_mfib_prefix, &pfx,
+                      format_mfib_prefix, pfx,
                       format_dpo_type, tmp.dpoi_type);
 
         va_start(ap, n_buckets);
@@ -288,11 +288,11 @@ mfib_test_entry_itf (fib_node_index_t fei,
 
     MFIB_TEST_REP((NULL != mfi),
                   "%U has interface %d",
-                  format_mfib_prefix, &pfx, sw_if_index);
+                  format_mfib_prefix, pfx, sw_if_index);
 
     MFIB_TEST_REP((flags == mfi->mfi_flags),
                   "%U interface %d has flags %U expect %U",
-                  format_mfib_prefix, &pfx, sw_if_index,
+                  format_mfib_prefix, pfx, sw_if_index,
                   format_mfib_itf_flags, flags,
                   format_mfib_itf_flags, mfi->mfi_flags);
 
@@ -408,15 +408,15 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[0]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT,
     };
 
     mfib_table_entry_path_update(fib_index,
                                  pfx_no_forward,
                                  MFIB_SOURCE_API,
-                                 &path_via_if0,
-                                 MFIB_ITF_FLAG_ACCEPT);
+                                 &path_via_if0);
 
     mfei_no_f = mfib_table_lookup_exact_match(fib_index, pfx_no_forward);
     MFIB_TEST(!mfib_test_entry(mfei_no_f,
@@ -424,41 +424,42 @@ mfib_test_i (fib_protocol_t PROTO,
                                0),
               "%U no replcaitions",
               format_mfib_prefix, pfx_no_forward);
-    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_no_f, tm->hw[0]->sw_if_index,
-                                      MFIB_ITF_FLAG_ACCEPT));
+    MFIB_TEST(!mfib_test_entry_itf(mfei_no_f, tm->hw[0]->sw_if_index,
+                                   MFIB_ITF_FLAG_ACCEPT),
+              "%U interface not accepting",
+              format_mfib_prefix, pfx_no_forward);
 
     fib_route_path_t path_via_if1 = {
         .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[1]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     fib_route_path_t path_via_if2 = {
         .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[2]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     fib_route_path_t path_via_if3 = {
         .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[3]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = (MFIB_ITF_FLAG_FORWARD |
+                           MFIB_ITF_FLAG_NEGATE_SIGNAL),
     };
-    fib_route_path_t path_for_us = {
-        .frp_proto = fib_proto_to_dpo(PROTO),
-        .frp_addr = zero_addr,
-        .frp_sw_if_index = 0xffffffff,
-        .frp_fib_index = ~0,
-        .frp_weight = 0,
-        .frp_flags = FIB_ROUTE_PATH_LOCAL,
-    };
+    fib_route_path_t *two_paths = NULL;
+    vec_add1(two_paths, path_via_if2);
+    vec_add1(two_paths, path_via_if3);
 
     /*
      * An (S,G) with 1 accepting and 3 forwarding paths
@@ -466,24 +467,15 @@ mfib_test_i (fib_protocol_t PROTO,
     mfib_table_entry_path_update(fib_index,
                                  pfx_s_g,
                                  MFIB_SOURCE_API,
-                                 &path_via_if0,
-                                 MFIB_ITF_FLAG_ACCEPT);
+                                 &path_via_if0);
     mfib_table_entry_path_update(fib_index,
                                  pfx_s_g,
                                  MFIB_SOURCE_API,
-                                 &path_via_if1,
-                                 MFIB_ITF_FLAG_FORWARD);
-    mfib_table_entry_path_update(fib_index,
-                                 pfx_s_g,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if2,
-                                 MFIB_ITF_FLAG_FORWARD);
-    mfib_table_entry_path_update(fib_index,
-                                 pfx_s_g,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if3,
-                                 (MFIB_ITF_FLAG_FORWARD |
-                                  MFIB_ITF_FLAG_NEGATE_SIGNAL));
+                                 &path_via_if1);
+    mfib_table_entry_paths_update(fib_index,
+                                  pfx_s_g,
+                                  MFIB_SOURCE_API,
+                                  two_paths);
 
     mfei_s_g = mfib_table_lookup_exact_match(fib_index, pfx_s_g);
 
@@ -515,13 +507,11 @@ mfib_test_i (fib_protocol_t PROTO,
     mfei_g_1 = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_1,
                                             MFIB_SOURCE_API,
-                                            &path_via_if0,
-                                            MFIB_ITF_FLAG_ACCEPT);
+                                            &path_via_if0);
     mfib_table_entry_path_update(fib_index,
                                  pfx_star_g_1,
                                  MFIB_SOURCE_API,
-                                 &path_via_if1,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_if1);
 
     /*
      * test we find the *,G and S,G via LPM and exact matches
@@ -583,16 +573,15 @@ mfib_test_i (fib_protocol_t PROTO,
      * A (*,G/m), which the same root G as the (*,G).
      * different paths. test our LPM.
      */
+    path_via_if2.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
     mfei_g_m = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_slash_m,
                                             MFIB_SOURCE_API,
-                                            &path_via_if2,
-                                            MFIB_ITF_FLAG_ACCEPT);
+                                            &path_via_if2);
     mfib_table_entry_path_update(fib_index,
                                  pfx_star_g_slash_m,
                                  MFIB_SOURCE_API,
-                                 &path_via_if3,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_if3);
 
     /*
      * test we find the (*,G/m), (*,G) and (S,G) via LPM and exact matches
@@ -656,11 +645,20 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * Add a for-us path
      */
+    fib_route_path_t path_for_us = {
+        .frp_proto = fib_proto_to_dpo(PROTO),
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = 0xffffffff,
+        .frp_fib_index = ~0,
+        .frp_weight = 1,
+        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+    };
+
     mfei = mfib_table_entry_path_update(fib_index,
                                         pfx_s_g,
                                         MFIB_SOURCE_API,
-                                        &path_for_us,
-                                        MFIB_ITF_FLAG_FORWARD);
+                                        &path_for_us);
 
     MFIB_TEST(!mfib_test_entry(mfei,
                                MFIB_ENTRY_FLAG_NONE,
@@ -693,11 +691,11 @@ mfib_test_i (fib_protocol_t PROTO,
      * update an existing forwarding path to be only accepting
      *   - expect it to be removed from the replication set.
      */
+    path_via_if3.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
     mfib_table_entry_path_update(fib_index,
                                  pfx_s_g,
                                  MFIB_SOURCE_API,
-                                 &path_via_if3,
-                                 MFIB_ITF_FLAG_ACCEPT);
+                                 &path_via_if3);
 
     MFIB_TEST(!mfib_test_entry(mfei,
                                MFIB_ENTRY_FLAG_NONE,
@@ -718,13 +716,13 @@ mfib_test_i (fib_protocol_t PROTO,
      * Make the path forwarding again
      *  - expect it to be added back to the replication set
      */
+    path_via_if3.frp_mitf_flags = (MFIB_ITF_FLAG_FORWARD |
+                              MFIB_ITF_FLAG_ACCEPT |
+                              MFIB_ITF_FLAG_NEGATE_SIGNAL);
     mfib_table_entry_path_update(fib_index,
                                  pfx_s_g,
                                  MFIB_SOURCE_API,
-                                 &path_via_if3,
-                                 (MFIB_ITF_FLAG_FORWARD |
-                                  MFIB_ITF_FLAG_ACCEPT |
-                                  MFIB_ITF_FLAG_NEGATE_SIGNAL));
+                                 &path_via_if3);
 
     mfei = mfib_table_lookup_exact_match(fib_index,
                                          pfx_s_g);
@@ -806,32 +804,37 @@ mfib_test_i (fib_protocol_t PROTO,
     MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index));
 
     /*
-     * remove the accpeting only interface
+     * remove 
      */
-    mfib_table_entry_path_remove(fib_index,
-                                 pfx_s_g,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if0);
+    /* mfib_table_entry_path_remove(fib_index, */
+    /*                              pfx_s_g, */
+    /*                              MFIB_SOURCE_API, */
+    /*                              &path_via_if0); */
 
-    MFIB_TEST(!mfib_test_entry(mfei,
-                               MFIB_ENTRY_FLAG_SIGNAL,
-                               1,
-                               DPO_ADJACENCY_MCAST, ai_2),
-              "%U replicate OK",
-              format_mfib_prefix, pfx_s_g);
-    MFIB_TEST_NS(!mfib_test_entry_itf(mfei, tm->hw[2]->sw_if_index,
-                                      MFIB_ITF_FLAG_FORWARD));
-    MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[0]->sw_if_index));
-    MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[1]->sw_if_index));
-    MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index));
+    /* MFIB_TEST(!mfib_test_entry(mfei, */
+    /*                            MFIB_ENTRY_FLAG_SIGNAL, */
+    /*                            1, */
+    /*                            DPO_ADJACENCY_MCAST, ai_2), */
+    /*           "%U replicate OK", */
+    /*           format_mfib_prefix, pfx_s_g); */
+    /* MFIB_TEST_NS(!mfib_test_entry_itf(mfei, tm->hw[2]->sw_if_index, */
+    /*                                   MFIB_ITF_FLAG_FORWARD)); */
+    /* MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[0]->sw_if_index)); */
+    /* MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[1]->sw_if_index)); */
+    /* MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index)); */
 
     /*
-     * remove the last path, the entry still has flags so it remains
+     * remove the last path and the accpeting only interface, 
+     * the entry still has flags so it remains
      */
-    mfib_table_entry_path_remove(fib_index,
-                                 pfx_s_g,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if2);
+    vec_reset_length(two_paths);
+    vec_add1(two_paths, path_via_if0);
+    vec_add1(two_paths, path_via_if2);
+
+    mfib_table_entry_paths_remove(fib_index,
+                                  pfx_s_g,
+                                  MFIB_SOURCE_API,
+                                  two_paths);
 
     MFIB_TEST(!mfib_test_entry(mfei,
                                MFIB_ENTRY_FLAG_SIGNAL,
@@ -858,12 +861,12 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * An entry with a NS interface
      */
+    path_via_if0.frp_mitf_flags = (MFIB_ITF_FLAG_ACCEPT |
+                              MFIB_ITF_FLAG_NEGATE_SIGNAL);
     mfei_g_2 = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_2,
                                             MFIB_SOURCE_API,
-                                            &path_via_if0,
-                                            (MFIB_ITF_FLAG_ACCEPT |
-                                             MFIB_ITF_FLAG_NEGATE_SIGNAL));
+                                            &path_via_if0);
     MFIB_TEST(!mfib_test_entry(mfei_g_2,
                                MFIB_ENTRY_FLAG_NONE,
                                0),
@@ -886,12 +889,12 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * An entry with a NS interface
      */
+    path_via_if0.frp_mitf_flags = (MFIB_ITF_FLAG_ACCEPT |
+                              MFIB_ITF_FLAG_NEGATE_SIGNAL);
     mfei_g_3 = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_3,
                                             MFIB_SOURCE_API,
-                                            &path_via_if0,
-                                            (MFIB_ITF_FLAG_ACCEPT |
-                                             MFIB_ITF_NEGATE_SIGNAL));
+                                            &path_via_if0);
     MFIB_TEST(!mfib_test_entry(mfei_g_3,
                                MFIB_ENTRY_FLAG_NONE,
                                0),
@@ -1056,28 +1059,28 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_addr = *addr_nbr1,
         .frp_sw_if_index = tm->hw[0]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     fib_route_path_t path_via_nbr2 = {
         .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = *addr_nbr2,
         .frp_sw_if_index = tm->hw[0]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
 
     mfei_g_1 = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_1,
                                             MFIB_SOURCE_API,
-                                            &path_via_nbr1,
-                                            (MFIB_ITF_FLAG_FORWARD));
+                                            &path_via_nbr1);
     mfei_g_1 = mfib_table_entry_path_update(fib_index,
                                             pfx_star_g_1,
                                             MFIB_SOURCE_API,
-                                            &path_via_nbr2,
-                                            (MFIB_ITF_FLAG_FORWARD));
+                                            &path_via_nbr2);
     MFIB_TEST(!mfib_test_entry(mfei_g_1,
                                MFIB_ENTRY_FLAG_NONE,
                                2,
@@ -1230,6 +1233,7 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_fib_index = 0,
         .frp_weight = 1,
         .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     dpo_id_t mldp_dpo = DPO_INVALID;
 
@@ -1240,8 +1244,7 @@ mfib_test_i (fib_protocol_t PROTO,
     mfei = mfib_table_entry_path_update(fib_index,
                                         pfx_s_g,
                                         MFIB_SOURCE_API,
-                                        &path_via_mldp,
-                                        MFIB_ITF_FLAG_FORWARD);
+                                        &path_via_mldp);
 
     MFIB_TEST(!mfib_test_entry(mfei,
                                MFIB_ENTRY_FLAG_NONE,
@@ -1256,8 +1259,7 @@ mfib_test_i (fib_protocol_t PROTO,
     mfei = mfib_table_entry_path_update(fib_index,
                                         pfx_s_g,
                                         MFIB_SOURCE_API,
-                                        &path_for_us,
-                                        MFIB_ITF_FLAG_FORWARD);
+                                        &path_for_us);
     MFIB_TEST(!mfib_test_entry(mfei,
                                MFIB_ENTRY_FLAG_NONE,
                                2,
@@ -1321,6 +1323,7 @@ mfib_test_i (fib_protocol_t PROTO,
     MFIB_TEST(n_itfs == pool_elts(mfib_itf_pool),
               " No more Interfaces %d!=%d",
               n_itfs, pool_elts(mfib_itf_pool));
+    vec_free(two_paths);
 
     return (res);
 }
@@ -1531,32 +1534,36 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[0]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT,
     };
     fib_route_path_t path_via_if1 = {
         .frp_proto = DPROTO,
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[1]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     fib_route_path_t path_via_if2 = {
         .frp_proto = DPROTO,
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[2]->sw_if_index,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = 0,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     fib_route_path_t path_for_us = {
         .frp_proto = DPROTO,
         .frp_addr = zero_addr,
         .frp_sw_if_index = 0xffffffff,
         .frp_fib_index = ~0,
-        .frp_weight = 0,
+        .frp_weight = 1,
         .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
 
     /*
@@ -1581,8 +1588,7 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     mfib_table_entry_path_update(fib_index,
                                  pfx_cover,
                                  MFIB_SOURCE_API,
-                                 &path_via_if1,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_if1);
 
     mfei_cover = mfib_table_lookup_exact_match(fib_index, pfx_cover);
 
@@ -1609,8 +1615,7 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     mfib_table_entry_path_update(fib_index,
                                  pfx_cover,
                                  MFIB_SOURCE_API,
-                                 &path_via_if2,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_if2);
 
     /*
      * expect the /32 and /28 to be via both boths
@@ -1667,8 +1672,7 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     mfib_table_entry_path_update(fib_index,
                                  pfx_cover,
                                  MFIB_SOURCE_API,
-                                 &path_via_if0,
-                                 MFIB_ITF_FLAG_ACCEPT);
+                                 &path_via_if0);
 
     /*
      * expect the /32 and /28 to be via both boths
@@ -1706,8 +1710,7 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     mfib_table_entry_path_update(fib_index,
                                  pfx_cover,
                                  MFIB_SOURCE_API,
-                                 &path_for_us,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_for_us);
 
     /*
      * expect the /32 and /28 to be via all three paths
@@ -1775,11 +1778,10 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     /*
      * source the /32 with its own path
      */
-    mfib_table_entry_path_update(fib_index,
-                                 pfx_host1,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if2,
-                                 MFIB_ITF_FLAG_FORWARD);
+    mfei_host1 = mfib_table_entry_path_update(fib_index,
+                                              pfx_host1,
+                                              MFIB_SOURCE_API,
+                                              &path_via_if2);
     MFIB_TEST(!mfib_test_entry(mfei_host1,
                                MFIB_ENTRY_FLAG_NONE,
                                1,
@@ -1809,17 +1811,16 @@ mfib_test_rr_i (fib_protocol_t FPROTO,
     /*
      * add the RR back then remove the path and RR
      */
-    mfib_table_entry_path_update(fib_index,
-                                 pfx_host1,
-                                 MFIB_SOURCE_API,
-                                 &path_via_if2,
-                                 MFIB_ITF_FLAG_FORWARD);
+    mfei_host1 = mfib_table_entry_path_update(fib_index,
+                                              pfx_host1,
+                                              MFIB_SOURCE_API,
+                                              &path_via_if2);
     MFIB_TEST(!mfib_test_entry(mfei_host1,
                                MFIB_ENTRY_FLAG_NONE,
                                1,
                                DPO_ADJACENCY_MCAST, ai_2),
               "%U replicate OK",
-              format_mfib_prefix, pfx_cover);
+              format_mfib_prefix, pfx_host1);
 
     mfib_table_entry_delete(fib_index, pfx_host1,
                             MFIB_SOURCE_API);

@@ -17,3 +17,4 @@
 
 abf_error (NONE, "no match")
 abf_error (MATCHED, "matched")
+abf_error (MISSED, "missed")

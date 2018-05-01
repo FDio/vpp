@@ -135,8 +135,7 @@ extern int mfib_entry_special_add(fib_node_index_t fib_entry_index,
 
 extern void mfib_entry_path_update(fib_node_index_t fib_entry_index,
                                    mfib_source_t source,
-                                   const fib_route_path_t *rpath,
-                                   mfib_itf_flags_t itf_flags);
+                                   const fib_route_path_t *rpath);
 
 
 extern int mfib_entry_path_remove(fib_node_index_t fib_entry_index,
@@ -188,8 +187,7 @@ extern void mfib_entry_contribute_forwarding(
     mfib_entry_fwd_flags_t flags,
     dpo_id_t *dpo);
 
-extern void mfib_entry_encode(fib_node_index_t fib_entry_index,
-                              fib_route_path_encode_t **api_rpaths);
+extern fib_route_path_t* mfib_entry_encode(fib_node_index_t fib_entry_index);
 
 extern void mfib_entry_module_init(void);
 

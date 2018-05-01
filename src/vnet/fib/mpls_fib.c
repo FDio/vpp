@@ -442,11 +442,24 @@ mpls_fib_show (vlib_main_t * vm,
 
     pool_foreach (fib_table, mpls_main.fibs,
     ({
+        fib_source_t source;
+        u8 *s = NULL;
+
 	if (table_id >= 0 && table_id != fib_table->ft_table_id)
 	    continue;
 
-	vlib_cli_output (vm, "%v, fib_index %d",
-			 fib_table->ft_desc, mpls_main.fibs - fib_table);
+	s = format (s, "%v, fib_index:%d locks:[",
+                    fib_table->ft_desc, mpls_main.fibs - fib_table);
+	FOR_EACH_FIB_SOURCE(source)
+        {
+            if (0 != fib_table->ft_locks[source])
+            {
+                s = format(s, "%U:%d, ",
+                           format_fib_source, source,
+                           fib_table->ft_locks[source]);
+            }
+        }
+        vlib_cli_output (vm, "%v]", s);
 
 	if (MPLS_LABEL_INVALID == label)
 	{
