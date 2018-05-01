@@ -128,10 +128,10 @@ libvom_la_SOURCES = 			\
 	prefix.cpp			\
 	ra_config.cpp			\
 	ra_prefix.cpp			\
-	route.cpp			\
-	route_cmds.cpp			\
-	route_domain.cpp		\
 	route_domain_cmds.cpp		\
+	route_domain.cpp		\
+	route_cmds.cpp			\
+	route.cpp			\
 	sub_interface_cmds.cpp		\
 	sub_interface.cpp		\
 	tap_interface.cpp		\

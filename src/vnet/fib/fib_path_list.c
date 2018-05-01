@@ -806,12 +806,14 @@ fib_path_list_find_rpath (fib_node_index_t path_list_index,
  * The path-list returned could either have been newly created, or
  * can be a shared path-list from the data-base.
  */
-fib_node_index_t
-fib_path_list_path_add (fib_node_index_t path_list_index,
-                        const fib_route_path_t *rpaths)
+fib_node_index_t*
+fib_path_list_paths_add (fib_node_index_t path_list_index,
+                         const fib_route_path_t *rpaths)
 {
-    fib_node_index_t new_path_index, *orig_path_index;
+    fib_node_index_t *new_path_indices, *path_index;
+    const fib_route_path_t *rpath;
     fib_path_list_t *path_list;
+    u32 ii;
 
     /*
      * alloc the new list before we retrieve the old one, lest
@@ -819,40 +821,65 @@ fib_path_list_path_add (fib_node_index_t path_list_index,
      */
     path_list = fib_path_list_get(path_list_index);
 
-    ASSERT(1 == vec_len(rpaths));
     ASSERT(!(path_list->fpl_flags & FIB_PATH_LIST_FLAG_SHARED));
 
-    FIB_PATH_LIST_DBG(orig_path_list, "path-add");
+    FIB_PATH_LIST_DBG(orig_path_list, "paths-add");
 
-    new_path_index = fib_path_create(path_list_index,
-                                     rpaths);
+    new_path_indices = NULL;
+    vec_validate_init_empty(new_path_indices,
+                            vec_len(rpaths) - 1,
+                            FIB_NODE_INDEX_INVALID);
 
-    vec_foreach (orig_path_index, path_list->fpl_paths)
+    vec_foreach (path_index, path_list->fpl_paths)
     {
         /*
          * don't add duplicate paths
          */
-	if (0 == fib_path_cmp(new_path_index, *orig_path_index))
+        int found = 0;
+
+        vec_foreach_index(ii, rpaths)
         {
-            fib_path_destroy(new_path_index);
-            return (*orig_path_index);
+            rpath = &rpaths[ii];
+            if (0 == fib_path_cmp_w_route_path(*path_index, rpath))
+            {
+                found = 1;
+                break;
+            }
+        }
+        if (found)
+        {
+            new_path_indices[ii] = *path_index;
         }
     }
 
     /*
-     * Add the new path - no sort, no sharing, no key..
+     * new_path_indices array contains INVALID for each path not found
+     * and something valid for matches
      */
-    vec_add1(path_list->fpl_paths, new_path_index);
+    vec_foreach_index (ii, new_path_indices)
+    {
+        path_index = &new_path_indices[ii];
+        rpath = &rpaths[ii];
 
-    FIB_PATH_LIST_DBG(path_list, "path-added");
+        if (FIB_NODE_INDEX_INVALID == *path_index)
+        {
+            *path_index = fib_path_create(path_list_index, rpath);
+            /*
+             * Add the new path - no sort, no sharing, no key..
+             */
+            vec_add1(path_list->fpl_paths, *path_index);
 
-    /*
-     * no shared path list requested. resolve and use the one
-     * just created.
-     */
-    fib_path_resolve(new_path_index);
+            /*
+             * no shared path list requested. resolve and use the one
+             * just created.
+             */
+            fib_path_resolve(*path_index);
+        }
+    }
 
-    return (new_path_index);
+    FIB_PATH_LIST_DBG(path_list, "paths-added");
+
+    return (new_path_indices);
 }
 
 fib_node_index_t
@@ -954,51 +981,59 @@ fib_path_list_copy_and_path_add (fib_node_index_t orig_path_list_index,
 }
 
 /*
- * fib_path_list_path_remove
+ * fib_path_list_paths_remove
  */
-fib_node_index_t
-fib_path_list_path_remove (fib_node_index_t path_list_index,
+fib_node_index_t*
+fib_path_list_paths_remove (fib_node_index_t path_list_index,
                            const fib_route_path_t *rpaths)
 {
-    fib_node_index_t match_path_index, tmp_path_index;
+    fib_node_index_t *match_path_indices;
     fib_path_list_t *path_list;
-    fib_node_index_t pi;
+    u32 ii, jj;
 
     path_list = fib_path_list_get(path_list_index);
+    match_path_indices = NULL;
+    vec_validate_init_empty(match_path_indices,
+                            vec_len(rpaths) - 1,
+                            FIB_NODE_INDEX_INVALID);
 
-    ASSERT(1 == vec_len(rpaths));
     ASSERT(!(path_list->fpl_flags & FIB_PATH_LIST_FLAG_SHARED));
 
     FIB_PATH_LIST_DBG(orig_path_list, "path-remove");
 
     /*
-     * create a representation of the path to be removed, so it
-     * can be used as a comparison object during the copy.
+     * the number of existing paths is likely to be larger than the
+     * number of paths being added
      */
-    tmp_path_index = fib_path_create(path_list_index,
-				     rpaths);
-    match_path_index = FIB_NODE_INDEX_INVALID;
-
-    vec_foreach_index (pi, path_list->fpl_paths)
+    vec_foreach_index(ii, path_list->fpl_paths)
     {
-	if (0 == fib_path_cmp(tmp_path_index,
-                              path_list->fpl_paths[pi]))
+        int found = ~0;
+
+        vec_foreach_index(jj, rpaths)
         {
+            if (0 == fib_path_cmp_w_route_path(path_list->fpl_paths[ii],
+                                               &rpaths[jj]))
+            {
+                found = jj;
+                break;
+            }
+        }
+        if (~0 != found)
+        {
+            fib_node_index_t match_path_index;
             /*
              * match - remove it
              */
-            match_path_index = path_list->fpl_paths[pi];
+            match_path_index = path_list->fpl_paths[ii];
+            vec_del1(path_list->fpl_paths, ii);
             fib_path_destroy(match_path_index);
-            vec_del1(path_list->fpl_paths, pi);
-	}
+            match_path_indices[jj] = match_path_index;
+        }
     }
 
-    /*
-     * done with the temporary now
-     */
-    fib_path_destroy(tmp_path_index);
+    FIB_PATH_LIST_DBG(path_list, "paths-removed");
 
-    return (match_path_index);
+    return (match_path_indices);
 }
 
 /*
