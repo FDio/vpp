@@ -65,7 +65,7 @@ class VppSocketFilename(VppObject):
         return self._test.vapi.memif_socket_filename_dump()
 
     def object_id(self):
-        return "%d" % (self.socket_id)
+        return "socket-filename-%d-%s" % (self.socket_id, self.socket_filename)
 
 
 class VppMemif(VppObject):
@@ -88,12 +88,26 @@ class VppMemif(VppObject):
         self.ip4_addr_len = 24
 
     def add_vpp_config(self):
-        rv = self._test.vapi.memif_create(self.role, self.mode, self.rx_queues,
-                                          self.tx_queues, self.if_id,
-                                          self.socket_id, self.secret,
-                                          self.ring_size, self.buffer_size,
-                                          self.hw_addr)
-        self.sw_if_index = rv.sw_if_index
+        rv = self._test.vapi.memif_create(
+            role=self.role,
+            mode=self.mode,
+            rx_queues=self.rx_queues,
+            tx_queues=self.tx_queues,
+            id=self.if_id,
+            socket_id=self.socket_id,
+            secret=self.secret,
+            ring_size=self.ring_size,
+            buffer_size=self.buffer_size,
+            hw_addr=self.hw_addr)
+        try:
+            self.sw_if_index = 0
+        except AttributeError:
+            raise AttributeError('self: %s' % self.__dict__)
+        try:
+            self.sw_if_index = rv.sw_if_index
+        except AttributeError:
+            raise AttributeError("%s %s", self, rv)
+
         return self.sw_if_index
 
     def admin_up(self):

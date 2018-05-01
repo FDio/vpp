@@ -45,6 +45,11 @@ from_api(vapi_enum_ip_neighbor_flags f)
   return out;
 }
 
+invalid_decode::invalid_decode(const std::string reason)
+  : reason(reason)
+{
+}
+
 void
 to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v)
 {
@@ -82,6 +87,16 @@ to_api(const ip_address_t& a,
   }
 }
 
+void
+to_api(const ip_address_t& a, vapi_union_address_union& u)
+{
+  if (a.is_v4()) {
+    memcpy(u.ip4, a.to_v4().to_bytes().data(), 4);
+  } else {
+    memcpy(u.ip6, a.to_v6().to_bytes().data(), 16);
+  }
+}
+
 boost::asio::ip::address_v6
 from_api(const vapi_type_ip6_address& v)
 {
@@ -115,6 +130,26 @@ from_api(const vapi_type_address& v)
   } else {
     std::array<uint8_t, 4> a;
     std::copy(v.un.ip6, v.un.ip6 + 4, std::begin(a));
+    boost::asio::ip::address_v4 v4(a);
+    addr = v4;
+  }
+
+  return addr;
+}
+
+ip_address_t
+from_api(const vapi_union_address_union& u, vapi_enum_fib_path_nh_proto proto)
+{
+  boost::asio::ip::address addr;
+
+  if (FIB_API_PATH_NH_PROTO_IP6 == proto) {
+    std::array<uint8_t, 16> a;
+    std::copy(u.ip6, u.ip6 + 16, std::begin(a));
+    boost::asio::ip::address_v6 v6(a);
+    addr = v6;
+  } else if (FIB_API_PATH_NH_PROTO_IP4 == proto) {
+    std::array<uint8_t, 4> a;
+    std::copy(u.ip6, u.ip6 + 4, std::begin(a));
     boost::asio::ip::address_v4 v4(a);
     addr = v4;
   }
@@ -187,7 +222,42 @@ to_api(const route::mprefix_t& p)
   v.af = af;
   return v;
 }
-};
+
+vapi_enum_fib_path_nh_proto
+to_api(const nh_proto_t& p)
+{
+  if (p == nh_proto_t::IPV4) {
+    return FIB_API_PATH_NH_PROTO_IP4;
+  } else if (p == nh_proto_t::IPV6) {
+    return FIB_API_PATH_NH_PROTO_IP6;
+  } else if (p == nh_proto_t::ETHERNET) {
+    return FIB_API_PATH_NH_PROTO_ETHERNET;
+  } else if (p == nh_proto_t::MPLS) {
+    return FIB_API_PATH_NH_PROTO_MPLS;
+  }
+
+  return FIB_API_PATH_NH_PROTO_IP4;
+}
+const nh_proto_t&
+from_api(vapi_enum_fib_path_nh_proto p)
+{
+  switch (p) {
+    case FIB_API_PATH_NH_PROTO_IP4:
+      return nh_proto_t::IPV4;
+    case FIB_API_PATH_NH_PROTO_IP6:
+      return nh_proto_t::IPV6;
+    case FIB_API_PATH_NH_PROTO_ETHERNET:
+      return nh_proto_t::ETHERNET;
+    case FIB_API_PATH_NH_PROTO_MPLS:
+      return nh_proto_t::MPLS;
+    case FIB_API_PATH_NH_PROTO_BIER:
+      break;
+  }
+
+  return nh_proto_t::IPV4;
+}
+
+}; // VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

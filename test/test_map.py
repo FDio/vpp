@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+from ipaddress import IPv6Network, IPv4Network
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
@@ -76,9 +77,7 @@ class TestMAP(VppTestCase):
                                map_br_pfx,
                                map_br_pfx_len,
                                [VppRoutePath(self.pg1.remote_ip6,
-                                             self.pg1.sw_if_index,
-                                             proto=DpoProto.DPO_PROTO_IP6)],
-                               is_ip6=1)
+                                             self.pg1.sw_if_index)])
         map_route.add_vpp_config()
 
         #
@@ -165,12 +164,9 @@ class TestMAP(VppTestCase):
         # Add a route to 4001::1. Expect the encapped traffic to be
         # sent via that routes next-hop
         #
-        pre_res_route = VppIpRoute(
-            self, "4001::1", 128,
-            [VppRoutePath(self.pg1.remote_hosts[2].ip6,
-                          self.pg1.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
-            is_ip6=1)
+        pre_res_route = VppIpRoute(self, "4001::1", 128,
+                                   [VppRoutePath(self.pg1.remote_hosts[2].ip6,
+                                                 self.pg1.sw_if_index)])
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, "3000::1",
@@ -181,8 +177,7 @@ class TestMAP(VppTestCase):
         # change the route to the pre-solved next-hop
         #
         pre_res_route.modify([VppRoutePath(self.pg1.remote_hosts[3].ip6,
-                                           self.pg1.sw_if_index,
-                                           proto=DpoProto.DPO_PROTO_IP6)])
+                                           self.pg1.sw_if_index)])
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, "3000::1",
@@ -249,8 +244,7 @@ class TestMAP(VppTestCase):
                                32,
                                [VppRoutePath(self.pg1.remote_ip6,
                                              self.pg1.sw_if_index,
-                                             proto=DpoProto.DPO_PROTO_IP6)],
-                               is_ip6=1)
+                                             proto=DpoProto.DPO_PROTO_IP6)])
         map_route.add_vpp_config()
 
         #

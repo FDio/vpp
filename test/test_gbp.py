@@ -17,7 +17,8 @@ from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route
+    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, FibPathProto, \
+    FibPathType
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
@@ -920,13 +921,13 @@ class TestGBP(VppTestCase):
                 ba.add_vpp_config()
 
                 # floating IPs route via EPG recirc
-                r = VppIpRoute(self, fip.address, fip.length,
-                               [VppRoutePath(fip.address,
-                                             ep.recirc.recirc.sw_if_index,
-                                             is_dvr=1,
-                                             proto=fip.dpo_proto)],
-                               table_id=20,
-                               is_ip6=fip.is_ip6)
+                r = VppIpRoute(
+                    self, fip.address, fip.length,
+                    [VppRoutePath(fip.address,
+                                  ep.recirc.recirc.sw_if_index,
+                                  type=FibPathType.FIB_PATH_TYPE_DVR,
+                                  proto=fip.dpo_proto)],
+                    table_id=20)
                 r.add_vpp_config()
 
             # L2 FIB entries in the NAT EPG BD to bridge the packets from
