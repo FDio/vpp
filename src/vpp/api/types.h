@@ -31,6 +31,7 @@ extern uword unformat_vl_api_address (unformat_input_t * input, va_list * args);
 extern uword unformat_vl_api_ip4_address (unformat_input_t * input, va_list * args);
 extern uword unformat_vl_api_ip6_address (unformat_input_t * input, va_list * args);
 extern uword unformat_vl_api_prefix (unformat_input_t * input, va_list * args);
+extern uword unformat_vl_api_mprefix (unformat_input_t * input, va_list * args);
 
 extern u8 *format_vl_api_address (u8 * s, va_list * args);
 extern u8 *format_vl_api_ip4_address (u8 * s, va_list * args);
