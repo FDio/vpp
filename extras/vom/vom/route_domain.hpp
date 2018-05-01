@@ -39,6 +39,15 @@ public:
   typedef route::table_id_t key_t;
 
   /**
+   * The iterator type
+   */
+  typedef singular_db<const key_t, route_domain>::const_iterator
+    const_iterator_t;
+
+  static const_iterator_t cbegin();
+  static const_iterator_t cend();
+
+  /**
    * Construct a new object matching the desried state
    */
   route_domain(route::table_id_t id);
