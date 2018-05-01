@@ -1490,34 +1490,39 @@ fib_entry_src_flags_2_path_list_flags (fib_entry_flag_t eflags)
 
 static void
 fib_entry_flags_update (const fib_entry_t *fib_entry,
-			const fib_route_path_t *rpath,
+			const fib_route_path_t *rpaths,
 			fib_path_list_flags_t *pl_flags,
 			fib_entry_src_t *esrc)
 {
-    if ((esrc->fes_src == FIB_SOURCE_API) ||
-	(esrc->fes_src == FIB_SOURCE_CLI))
+    const fib_route_path_t *rpath;
+
+    vec_foreach(rpath, rpaths)
     {
-	if (fib_path_is_attached(rpath))
-	{
-	    esrc->fes_entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
-	}
-	else
-	{
-	    esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_ATTACHED;
-	}
-	if (rpath->frp_flags & FIB_ROUTE_PATH_DEAG)
-	{
-	    esrc->fes_entry_flags |= FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
-	}
-    }
-    if (fib_route_attached_cross_table(fib_entry, rpath) &&
-        !(esrc->fes_entry_flags & FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT))
-    {
-	esrc->fes_entry_flags |= FIB_ENTRY_FLAG_IMPORT;
-    }
-    else
-    {
-	esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_IMPORT;
+        if ((esrc->fes_src == FIB_SOURCE_API) ||
+            (esrc->fes_src == FIB_SOURCE_CLI))
+        {
+            if (fib_path_is_attached(rpath))
+            {
+                esrc->fes_entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
+            }
+            else
+            {
+                esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_ATTACHED;
+            }
+            if (rpath->frp_flags & FIB_ROUTE_PATH_DEAG)
+            {
+                esrc->fes_entry_flags |= FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
+            }
+        }
+        if (fib_route_attached_cross_table(fib_entry, rpath) &&
+            !(esrc->fes_entry_flags & FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT))
+        {
+            esrc->fes_entry_flags |= FIB_ENTRY_FLAG_IMPORT;
+        }
+        else
+        {
+            esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_IMPORT;
+        }
     }
 }
 
@@ -1533,7 +1538,7 @@ fib_entry_t*
 fib_entry_src_action_path_add (fib_entry_t *fib_entry,
 			       fib_source_t source,
 			       fib_entry_flag_t flags,
-			       const fib_route_path_t *rpath)
+			       const fib_route_path_t *rpaths)
 {
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
@@ -1550,7 +1555,7 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
 	const dpo_id_t *dpo;
 
 	if (flags == FIB_ENTRY_FLAG_EXCLUSIVE) {
-	    dpo = &rpath->dpo;
+	    dpo = &rpaths->dpo;
 	} else {
 	    dpo = drop_dpo_get(fib_entry_get_dpo_proto(fib_entry));
 	}
@@ -1574,10 +1579,10 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
     ASSERT(FIB_ENTRY_SRC_VFT_EXISTS(esrc, fesv_path_add));
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(fib_entry_get_flags_i(fib_entry));
-    fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
+    fib_entry_flags_update(fib_entry, rpaths, &pl_flags, esrc);
 
     FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_add,
-                             (esrc, fib_entry, pl_flags, rpath));
+                             (esrc, fib_entry, pl_flags, rpaths));
     fib_entry = fib_entry_get(fib_entry_index);
 
     fib_path_list_lock(esrc->fes_pl);
@@ -1670,7 +1675,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 fib_entry_src_flag_t
 fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
 				  fib_source_t source,
-				  const fib_route_path_t *rpath)
+				  const fib_route_path_t *rpaths)
 {
     fib_path_list_flags_t pl_flags;
     fib_node_index_t old_path_list;
@@ -1692,10 +1697,10 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
     ASSERT(FIB_ENTRY_SRC_VFT_EXISTS(esrc, fesv_path_remove));
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(fib_entry_get_flags_i(fib_entry));
-    fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
+    fib_entry_flags_update(fib_entry, rpaths, &pl_flags, esrc);
 
     FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_remove,
-                             (esrc, pl_flags, rpath));
+                             (esrc, pl_flags, rpaths));
 
     /*
      * lock the new path-list, unlock the old if it had one

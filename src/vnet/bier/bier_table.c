@@ -779,9 +779,12 @@ bier_table_ecmp_walk (index_t bti,
 
     bt = bier_table_get(bti);
 
-    fib_path_list_walk(bt->bt_pl,
-                       bier_table_ecmp_walk_path_list,
-                       &ewc);
+    if (FIB_NODE_INDEX_INVALID != bt->bt_pl)
+    {
+        fib_path_list_walk(bt->bt_pl,
+                           bier_table_ecmp_walk_path_list,
+                           &ewc);
+    }
 }
 
 void

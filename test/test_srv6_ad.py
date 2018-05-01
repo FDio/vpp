@@ -147,8 +147,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         proto=DpoProto.DPO_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
@@ -282,8 +281,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         proto=DpoProto.DPO_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
@@ -425,8 +423,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         proto=DpoProto.DPO_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
