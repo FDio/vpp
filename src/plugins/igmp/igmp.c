@@ -1029,13 +1029,16 @@ do {						\
   };
   addr1.ip4.as_u32 = clib_host_to_net_u32 (IGMP_MEMBERSHIP_REPORT_ADDRESS);
 
-  fib_route_path_t path = {
-    .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
-    .frp_addr = zero_addr,
-    .frp_sw_if_index = 0xffffffff,
-    .frp_fib_index = 0,
-    .frp_weight = 0,
-    .frp_flags = FIB_ROUTE_PATH_LOCAL,
+  mfib_route_path_t path = {
+    .rpath = {
+      .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
+      .frp_addr = zero_addr,
+      .frp_sw_if_index = 0xffffffff,
+      .frp_fib_index = 0,
+      .frp_weight = 0,
+      .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    },
+    .itf_flags = MFIB_ITF_FLAG_FORWARD,
   };
 
   const mfib_prefix_t mpfx0 = {
@@ -1054,11 +1057,9 @@ do {						\
    * and reports from all interfaces
    */
   mfib_table_entry_path_update (0, &mpfx0,
-				MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
+				MFIB_SOURCE_DEFAULT_ROUTE, &path);
   mfib_table_entry_path_update (0, &mpfx1,
-				MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
+				MFIB_SOURCE_DEFAULT_ROUTE, &path);
   mfib_table_entry_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE,
 			   0, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
   mfib_table_entry_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE,

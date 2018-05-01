@@ -132,7 +132,10 @@ class VppRoutePath(object):
             is_udp_encap=0,
             is_dvr=0,
             next_hop_id=0xffffffff,
-            proto=DpoProto.DPO_PROTO_IP4):
+            proto=DpoProto.DPO_PROTO_IP4,
+            is_local=False,
+            is_unreach=False,
+            is_prohibit=False):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
@@ -150,6 +153,9 @@ class VppRoutePath(object):
         self.is_resolve_attached = is_resolve_attached
         self.is_interface_rx = is_interface_rx
         self.is_source_lookup = is_source_lookup
+        self.is_local = is_local
+        self.is_unreach = is_unreach
+        self.is_prohibit = is_prohibit
         self.is_rpf_id = 0
         if rpf_id != 0:
             self.is_rpf_id = 1
@@ -166,6 +172,9 @@ class VppRoutePath(object):
             else:
                 lstack.append({'label': l,
                                'ttl': 255})
+        n_labels = len(lstack)
+        while (len(lstack) < 16):
+            lstack.append({})
         return lstack
 
     def encode(self):
@@ -176,8 +185,12 @@ class VppRoutePath(object):
                 'table_id': self.nh_table_id,
                 'next_hop_id': self.next_hop_id,
                 'sw_if_index': self.nh_itf,
-                'afi': self.proto,
+                'dpo_proto': self.proto,
                 'is_udp_encap': self.is_udp_encap,
+                'is_local': self.is_local,
+                'is_dvp': self.is_dvr,
+                'is_unreach': self.is_unreach,
+                'is_prohibit': self.is_prohibit,
                 'n_labels': len(self.nh_labels),
                 'label_stack': self.encode_labels()}
 
@@ -210,9 +223,6 @@ class VppIpRoute(VppObject):
         self.dest_addr_len = dest_addr_len
         self.table_id = table_id
         self.is_ip6 = is_ip6
-        self.is_local = is_local
-        self.is_unreach = is_unreach
-        self.is_prohibit = is_prohibit
         self.dest_addr_p = dest_addr
         if is_ip6:
             self.dest_addr = inet_pton(AF_INET6, dest_addr)
@@ -227,24 +237,13 @@ class VppIpRoute(VppObject):
         self.is_prohibit = is_prohibit
 
     def add_vpp_config(self):
-        if self.is_local or self.is_unreach or self.is_prohibit:
-            self._test.vapi.ip_add_del_route(
-                self.dest_addr,
-                self.dest_addr_len,
-                inet_pton(AF_INET6, "::"),
-                0xffffffff,
-                is_local=self.is_local,
-                is_unreach=self.is_unreach,
-                is_prohibit=self.is_prohibit,
-                table_id=self.table_id,
-                is_ipv6=self.is_ip6)
-        else:
-            for path in self.paths:
-                lstack = path.encode_labels()
+        paths = []
+        for path in self.paths:
+            paths.append(path.encode())
 
-                self._test.vapi.ip_add_del_route(
-                    self.dest_addr,
-                    self.dest_addr_len,
+        self._test.vapi.ip_add_del_route(
+            self.dest_addr,
+            self.dest_addr_len,
                     path.nh_addr,
                     path.nh_itf,
                     table_id=self.table_id,

@@ -1203,12 +1203,15 @@ libvnet_la_SOURCES +=				\
   vnet/mfib/mfib_signal.c                       \
   vnet/mfib/mfib_itf.c                          \
   vnet/mfib/mfib_entry.c                        \
-  vnet/mfib/mfib_table.c
+  vnet/mfib/mfib_table.c			\
+  vnet/mfib/mfib_api.c
 
 nobase_include_HEADERS +=			\
   vnet/mfib/ip4_mfib.h                          \
   vnet/mfib/mfib_types.h                        \
   vnet/mfib/mfib_table.h
+
+API_FILES += vnet/mfib/mfib_types.api
 
 ########################################
 # Utilities

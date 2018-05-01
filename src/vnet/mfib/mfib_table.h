@@ -164,8 +164,7 @@ extern fib_node_index_t mfib_table_entry_update(u32 fib_index,
 extern fib_node_index_t mfib_table_entry_path_update(u32 fib_index,
                                                      const mfib_prefix_t *prefix,
                                                      mfib_source_t source,
-                                                     const fib_route_path_t *rpath,
-                                                     mfib_itf_flags_t flags);
+                                                     const mfib_route_path_t *rpath);
 
 /**
  * @brief
@@ -189,7 +188,7 @@ extern fib_node_index_t mfib_table_entry_path_update(u32 fib_index,
 extern void mfib_table_entry_path_remove(u32 fib_index,
                                          const mfib_prefix_t *prefix,
                                          mfib_source_t source,
-                                         const fib_route_path_t *paths);
+                                         const mfib_route_path_t *paths);
 
 
 
@@ -305,6 +304,20 @@ extern u32 mfib_table_get_index_for_sw_if_index(fib_protocol_t proto,
  */
 extern u32 mfib_table_find(fib_protocol_t proto, u32 table_id);
 
+/**
+ * @brief
+ *  Get the Table-ID of the FIB from protocol and index
+ *
+ * @param fib_index
+ *  The FIB index
+ *
+ * @paran proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @return fib_index
+ *  The tableID of the FIB
+ */
+extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
 
 /**
  * @brief

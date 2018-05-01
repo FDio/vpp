@@ -4,6 +4,7 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip6_neighbor.h>
+#include <vnet/fib/fib_table.h>
 #include <signal.h>
 #include <math.h>
 
@@ -111,16 +112,12 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
   return rv != 0;
 }
 
-int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
-
 static int
 add_default_route (vlib_main_t * vm, u32 sw_if_index,
 		   ip6_address_t * next_hop_address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   default_route_t *default_route;
-  vl_api_ip_add_del_route_t mp = { 0, };
-  int rv;
 
   pool_get (rm->default_route_pool, default_route);
 
@@ -128,15 +125,22 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
   default_route->router_address = *next_hop_address;
   default_route->due_time = due_time;
 
-  mp.is_add = 1;
-  mp.is_ipv6 = 1;
-  mp.dst_address_length = 0;
-  mp.next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp.next_hop_address, default_route->router_address.as_u8, 16);
-
-  rv = ip6_add_del_route_t_handler (&mp);
-
-  return rv;
+  {
+    fib_prefix_t pfx = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+    };
+    ip46_address_t nh = {
+      .ip6 = default_route->router_address,
+    };
+    fib_table_entry_update_one_path (0, &pfx,
+				     FIB_SOURCE_API,
+				     FIB_ENTRY_FLAG_NONE,
+				     DPO_PROTO_IP6,
+				     &nh,
+				     default_route->sw_if_index,
+				     0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  }
+  return 0;
 }
 
 static int
@@ -155,21 +159,14 @@ static int
 remove_default_route (vlib_main_t * vm, default_route_t * default_route)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  vl_api_ip_add_del_route_t mp = { 0, };
-  int rv;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+  };
+  fib_table_entry_delete (0, &pfx, FIB_SOURCE_API);
 
-  mp.is_add = 0;
-  mp.is_ipv6 = 1;
-  mp.dst_address_length = 0;
-  mp.next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp.next_hop_address, default_route->router_address.as_u8, 16);
+  pool_put (rm->default_route_pool, default_route);
 
-  rv = ip6_add_del_route_t_handler (&mp);
-
-  if (!rv)
-    pool_put (rm->default_route_pool, default_route);
-
-  return rv;
+  return 0;
 }
 
 static u32

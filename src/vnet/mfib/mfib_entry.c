@@ -833,8 +833,7 @@ mfib_entry_itf_remove (mfib_entry_src_t *msrc,
 void
 mfib_entry_path_update (fib_node_index_t mfib_entry_index,
                         mfib_source_t source,
-                        const fib_route_path_t *rpath,
-                        mfib_itf_flags_t itf_flags)
+                        const mfib_route_path_t *rpath)
 {
     fib_node_index_t path_index;
     mfib_path_ext_t *path_ext;
@@ -850,7 +849,7 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
      * add the path to the path-list. If it's a duplicate we'll get
      * back the original path.
      */
-    path_index = mfib_entry_src_path_add(msrc, rpath);
+    path_index = mfib_entry_src_path_add(msrc, &rpath->rpath);
 
     /*
      * find the path extension for that path
@@ -860,47 +859,48 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
     if (NULL == path_ext)
     {
         old = MFIB_ITF_FLAG_NONE;
-        path_ext = mfib_path_ext_add(msrc, path_index, itf_flags);
+        path_ext = mfib_path_ext_add(msrc, path_index, rpath->itf_flags);
     }
     else
     {
         old = path_ext->mfpe_flags;
-        path_ext->mfpe_flags = itf_flags;
+        path_ext->mfpe_flags = rpath->itf_flags;
     }
 
     /*
      * Has the path changed its contribution to the input interface set.
      * Which only paths with interfaces can do...
      */
-    if (~0 != rpath[0].frp_sw_if_index)
+    if (~0 != rpath->rpath.frp_sw_if_index)
     {
         mfib_itf_t *mfib_itf;
 
-        if (old != itf_flags)
+        if (old != rpath->itf_flags)
         {
             /*
              * change of flag contributions
              */
             mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
-                                           rpath[0].frp_sw_if_index);
+                                           rpath->rpath.frp_sw_if_index);
 
             if (NULL == mfib_itf)
             {
                 mfib_entry_itf_add(msrc,
-                                   rpath[0].frp_sw_if_index,
-                                   mfib_itf_create(path_index, itf_flags));
+                                   rpath->rpath.frp_sw_if_index,
+                                   mfib_itf_create(path_index,
+                                                   rpath->itf_flags));
             }
             else
             {
                 if (mfib_itf_update(mfib_itf,
                                     path_index,
-                                    itf_flags))
+                                    rpath->itf_flags))
                 {
                     /*
                      * no more interface flags on this path, remove
                      * from the data-plane set
                      */
-                    mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+                    mfib_entry_itf_remove(msrc, rpath->rpath.frp_sw_if_index);
                 }
             }
         }
@@ -918,7 +918,7 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
 int
 mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
                         mfib_source_t source,
-                        const fib_route_path_t *rpath)
+                        const mfib_route_path_t *rpath)
 {
     fib_node_index_t path_index;
     mfib_entry_t *mfib_entry;
@@ -940,7 +940,7 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
      * remove the path from the path-list. If it's not there we'll get
      * back invalid
      */
-    path_index = mfib_entry_src_path_remove(msrc, rpath);
+    path_index = mfib_entry_src_path_remove(msrc, &rpath->rpath);
 
     if (FIB_NODE_INDEX_INVALID != path_index)
     {
@@ -948,12 +948,12 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
          * don't need the extension, nor the interface anymore
          */
         mfib_path_ext_remove(msrc, path_index);
-        if (~0 != rpath[0].frp_sw_if_index)
+        if (~0 != rpath->rpath.frp_sw_if_index)
         {
             mfib_itf_t *mfib_itf;
 
             mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
-                                           rpath[0].frp_sw_if_index);
+                                           rpath->rpath.frp_sw_if_index);
 
             if (mfib_itf_update(mfib_itf,
                                 path_index,
@@ -963,7 +963,7 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
                  * no more interface flags on this path, remove
                  * from the data-plane set
                  */
-                mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+                mfib_entry_itf_remove(msrc, rpath->rpath.frp_sw_if_index);
             }
         }
     }
@@ -1201,7 +1201,7 @@ mfib_entry_module_init (void)
 
 void
 mfib_entry_encode (fib_node_index_t mfib_entry_index,
-                  fib_route_path_encode_t **api_rpaths)
+                   mfib_route_path_t **api_rpaths)
 {
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *bsrc;
@@ -1218,14 +1218,14 @@ mfib_entry_encode (fib_node_index_t mfib_entry_index,
 }
 
 
-void
-mfib_entry_get_prefix (fib_node_index_t mfib_entry_index,
-                      mfib_prefix_t *pfx)
+const mfib_prefix_t *
+mfib_entry_get_prefix (fib_node_index_t mfib_entry_index)
 {
     mfib_entry_t *mfib_entry;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
-    *pfx = mfib_entry->mfe_prefix;
+
+    return (&mfib_entry->mfe_prefix);
 }
 
 u32

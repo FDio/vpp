@@ -159,6 +159,26 @@ route_domain::dump(std::ostream& os)
 void
 route_domain::event_handler::handle_populate(const client_db::key_t& key)
 {
+  std::shared_ptr<route_domain_cmds::dump_cmd> cmd =
+    std::make_shared<route_domain_cmds::dump_cmd>();
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& record : *cmd) {
+    auto& payload = record.get_payload();
+
+    route_domain rd(payload.table.table_id);
+
+    VOM_LOG(log_level_t::DEBUG) << "ip-table-dump: " << rd.to_string();
+
+    /*
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, rd);
+  }
 }
 
 route_domain::event_handler::event_handler()

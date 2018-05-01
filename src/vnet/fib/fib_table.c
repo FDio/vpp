@@ -877,12 +877,12 @@ void
 fib_table_entry_delete_index (fib_node_index_t fib_entry_index,
 			      fib_source_t source)
 {
-    fib_prefix_t prefix;
+    const fib_prefix_t *prefix;
 
-    fib_entry_get_prefix(fib_entry_index, &prefix);
+    prefix = fib_entry_get_prefix(fib_entry_index);
 
     fib_table_entry_delete_i(fib_entry_get_fib_index(fib_entry_index),
-                             fib_entry_index, &prefix, source);
+                             fib_entry_index, prefix, source);
 }
 
 fib_node_index_t
