@@ -242,7 +242,7 @@ mpls_tunnel_stack (adj_index_t ai)
 
     mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
 
-    if (NULL == mt)
+    if (NULL == mt || FIB_NODE_INDEX_INVALID == mt->mt_path_list)
         return;
 
     /*
@@ -648,6 +648,7 @@ void
 vnet_mpls_tunnel_path_add (u32 sw_if_index,
                            fib_route_path_t *rpaths)
 {
+    fib_route_path_t *rpath;
     mpls_tunnel_t *mt;
     u32 mti;
 
@@ -689,10 +690,13 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
          */
         fib_path_ext_list_resolve(&mt->mt_path_exts, mt->mt_path_list);
     }
-    fib_path_ext_list_insert(&mt->mt_path_exts,
-                             mt->mt_path_list,
-                             FIB_PATH_EXT_MPLS,
-                             rpaths);
+    vec_foreach(rpath, rpaths)
+    {
+        fib_path_ext_list_insert(&mt->mt_path_exts,
+                                 mt->mt_path_list,
+                                 FIB_PATH_EXT_MPLS,
+                                 rpath);
+    }
     mpls_tunnel_restack(mt);
 }
 

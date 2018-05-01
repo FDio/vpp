@@ -32,13 +32,13 @@ l3_proto_t::l3_proto_t(int v, const std::string& s)
 }
 
 bool
-l3_proto_t::is_ipv6()
+l3_proto_t::is_ipv6() const
 {
   return (*this == IPV6);
 }
 
 bool
-l3_proto_t::is_ipv4()
+l3_proto_t::is_ipv4() const
 {
   return (*this == IPV4);
 }
@@ -492,15 +492,16 @@ route::mprefix_t::mask_width() const
   return (m_len);
 }
 
-void
-route::mprefix_t::to_vpp(uint8_t* is_ip6,
-                         uint8_t* saddr,
-                         uint8_t* gaddr,
-                         uint16_t* len) const
+l3_proto_t
+route::mprefix_t::l3_proto() const
 {
-  *len = m_len;
-  to_bytes(m_saddr, is_ip6, saddr);
-  to_bytes(m_gaddr, is_ip6, gaddr);
+  if (m_gaddr.is_v6()) {
+    return (l3_proto_t::IPV6);
+  } else {
+    return (l3_proto_t::IPV4);
+  }
+
+  return (l3_proto_t::IPV4);
 }
 
 route::mprefix_t&

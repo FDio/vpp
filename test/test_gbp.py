@@ -15,6 +15,8 @@ from vpp_sub_interface import VppDot1QSubint
 from vpp_ip import *
 from vpp_papi_provider import L2_PORT_TYPE
 from vpp_papi import VppEnum, MACAddress
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
+    FibPathType
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -902,13 +904,13 @@ class TestGBP(VppTestCase):
                 ba.add_vpp_config()
 
                 # floating IPs route via EPG recirc
-                r = VppIpRoute(self, fip.address, fip.length,
-                               [VppRoutePath(fip.address,
-                                             ep.recirc.recirc.sw_if_index,
-                                             is_dvr=1,
-                                             proto=fip.dpo_proto)],
-                               table_id=20,
-                               is_ip6=fip.is_ip6)
+                r = VppIpRoute(
+                    self, fip.address, fip.length,
+                    [VppRoutePath(fip.address,
+                                  ep.recirc.recirc.sw_if_index,
+                                  type=FibPathType.FIB_PATH_TYPE_DVR,
+                                  proto=fip.dpo_proto)],
+                    table_id=20)
                 r.add_vpp_config()
 
             # L2 FIB entries in the NAT EPG BD to bridge the packets from

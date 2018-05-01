@@ -12,6 +12,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 #
 # The number of packets to sent.
@@ -172,20 +174,18 @@ class TestECMP(VppTestCase):
         :param int dst_prefix_len: IP address prefix length.
         :param int is_ipv6: 0 if an ip4 route, else ip6
         """
-        af = socket.AF_INET if is_ipv6 == 0 else socket.AF_INET6
-        dst_ip = socket.inet_pton(af, dst_ip_net)
 
+        paths = []
         for pg_if in self.pg_interfaces[1:]:
             for nh_host in pg_if.remote_hosts:
                 nh_host_ip = nh_host.ip4 if is_ipv6 == 0 else nh_host.ip6
-                next_hop_address = socket.inet_pton(af, nh_host_ip)
-                next_hop_sw_if_index = pg_if.sw_if_index
-                self.vapi.ip_add_del_route(
-                    dst_ip, dst_prefix_len, next_hop_address,
-                    next_hop_sw_if_index=next_hop_sw_if_index,
-                    is_ipv6=is_ipv6, is_multipath=1)
-                self.logger.info("Route via %s on %s created" %
-                                 (nh_host_ip, pg_if.name))
+                paths.append(VppRoutePath(nh_host_ip,
+                                          pg_if.sw_if_index))
+
+        rip = VppIpRoute(self, dst_ip_net, dst_prefix_len, paths)
+        rip.add_vpp_config()
+        self.logger.info("Route via %s on %s created" %
+                         (nh_host_ip, pg_if.name))
 
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
