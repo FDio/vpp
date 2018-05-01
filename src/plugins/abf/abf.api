@@ -20,6 +20,7 @@
 */
 
 option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 
 /** \brief Get the plugin version

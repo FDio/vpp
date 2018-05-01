@@ -598,7 +598,14 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = DPO_PROTO_IP4;
             rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
         }
-        else if (unformat (input, "out-labels"))
+      else if (unformat (input, "local"))
+	{
+	  clib_memset (&rpath->frp_addr, 0, sizeof (rpath->frp_addr));
+	  rpath->frp_sw_if_index = ~0;
+	  rpath->frp_weight = 1;
+	  rpath->frp_flags |= FIB_ROUTE_PATH_LOCAL;
+        }
+      else if (unformat (input, "out-labels"))
         {
             while (unformat (input, "%U",
                              unformat_mpls_unicast_label, &out_label))
@@ -614,6 +621,15 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
                            &rpath->frp_sw_if_index))
         {
             rpath->frp_proto = *payload_proto;
+        }
+        else if (unformat (input, "via"))
+        {
+            /* new path, back up and return */
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            break;
         }
         else
         {

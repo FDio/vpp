@@ -6,7 +6,7 @@ from socket import AF_INET, AF_INET6, inet_pton
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
-    VppIpTable, DpoProto
+    VppIpTable, DpoProto, FibPathType
 from vpp_papi import VppEnum
 
 import scapy.compat
@@ -1362,8 +1362,7 @@ class ARPTestCase(VppTestCase):
         ip_10_1 = VppIpRoute(self, "10::1", 128,
                              [VppRoutePath(self.pg0.remote_hosts[1].ip6,
                                            self.pg0.sw_if_index,
-                                           proto=DpoProto.DPO_PROTO_IP6)],
-                             is_ip6=1)
+                                           proto=DpoProto.DPO_PROTO_IP6)])
         ip_10_1.add_vpp_config()
 
         p1 = (Ether(dst=self.pg1.local_mac,
@@ -1396,10 +1395,11 @@ class ARPTestCase(VppTestCase):
         #
         self.pg0.generate_remote_hosts(2)
 
-        forus = VppIpRoute(self, self.pg0.remote_hosts[1].ip4, 32,
-                           [VppRoutePath(self.pg0.remote_hosts[1].ip4,
-                                         self.pg0.sw_if_index)],
-                           is_local=1)
+        forus = VppIpRoute(
+            self, self.pg0.remote_hosts[1].ip4, 32,
+            [VppRoutePath("0.0.0.0",
+                          self.pg0.sw_if_index,
+                          type=FibPathType.FIB_PATH_TYPE_LOCAL)])
         forus.add_vpp_config()
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
