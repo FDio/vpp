@@ -331,23 +331,20 @@ class TestIp4VrfMultiInst(VppTestCase):
         :param int vrf_id: The FIB table / VRF ID to be verified.
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
-        ip_fib_dump = self.vapi.ip_fib_dump()
-        vrf_exist = False
+        ip_fib_dump = self.vapi.ip_route_dump(vrf_id)
+        vrf_exist = len(ip_fib_dump)
         vrf_count = 0
         for ip_fib_details in ip_fib_dump:
-            if ip_fib_details.table_id == vrf_id:
-                if not vrf_exist:
-                    vrf_exist = True
-                addr = socket.inet_ntoa(ip_fib_details.address)
-                found = False
-                for pg_if in self.pg_if_by_vrf_id[vrf_id]:
-                    if found:
+            addr = ip_fib_details.route.prefix.address.un.ip4.address
+            found = False
+            for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                if found:
+                    break
+                for host in pg_if.remote_hosts:
+                    if addr == host.ip4n:
+                        vrf_count += 1
+                        found = True
                         break
-                    for host in pg_if.remote_hosts:
-                        if str(addr) == str(host.ip4):
-                            vrf_count += 1
-                            found = True
-                            break
         if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv4 VRF ID %d is not configured" % vrf_id)
             return VRFState.not_configured

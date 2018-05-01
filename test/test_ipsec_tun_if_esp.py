@@ -4,6 +4,8 @@ from scapy.layers.ipsec import ESP
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTunTests, IpsecTcpTests
 from vpp_ipsec_tun_interface import VppIpsecTunInterface
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 
 class TemplateIpsecTunIfEsp(TemplateIpsec):
@@ -29,8 +31,11 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
         self.ipsec_tun_if.add_vpp_config()
         self.ipsec_tun_if.admin_up()
         self.ipsec_tun_if.config_ip4()
-        src4 = socket.inet_pton(socket.AF_INET, self.remote_tun_if_host)
-        self.vapi.ip_add_del_route(src4, 32, self.ipsec_tun_if.remote_ip4n)
+
+        r = VppIpRoute(self, self.remote_tun_if_host, 32,
+                       [VppRoutePath(self.ipsec_tun_if.remote_ip4,
+                                     INVALID_INDEX)])
+        r.add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:

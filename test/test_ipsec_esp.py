@@ -5,6 +5,8 @@ from scapy.layers.ipsec import ESP
 from framework import VppTestRunner
 from template_ipsec import IpsecTraTests, IpsecTunTests
 from template_ipsec import TemplateIpsec, IpsecTcpTests
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 
 class TemplateIpsecEsp(TemplateIpsec):
@@ -52,8 +54,11 @@ class TemplateIpsecEsp(TemplateIpsec):
         cls.logger.info(cls.vapi.ppcli("show ipsec"))
         cls.config_esp_tun()
         cls.logger.info(cls.vapi.ppcli("show ipsec"))
-        src4 = socket.inet_pton(socket.AF_INET, cls.remote_tun_if_host)
-        cls.vapi.ip_add_del_route(src4, 32, cls.tun_if.remote_ip4n)
+        r = VppIpRoute(cls, cls.remote_tun_if_host, 32,
+                       [VppRoutePath(cls.tun_if.remote_ip4,
+                                     INVALID_INDEX)],
+                       register=False)
+        r.add_vpp_config()
 
     @classmethod
     def config_esp_tun(cls):

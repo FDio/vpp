@@ -79,7 +79,7 @@ class VppIpPrefix():
         self.len = len
 
     def __eq__(self, other):
-        if self.addr == other.addr and self.len == other.len:
+        if self.address == other.address and self.len == other.len:
             return True
         return False
 

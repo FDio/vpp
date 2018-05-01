@@ -5,7 +5,8 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
+    FibPathType
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -41,12 +42,12 @@ class VppGbpEndpoint(VppObject):
         self.floating_ip = fip
         self.is_ip6 = is_ip6
         if is_ip6:
-            self.proto = DpoProto.DPO_PROTO_IP6
+            self.proto = FibPathProto.FIB_PATH_NH_PROTO_IP6
             self.af = AF_INET6
             self.is_ip6 = True
             self.ip_len = 128
         else:
-            self.proto = DpoProto.DPO_PROTO_IP4
+            self.proto = FibPathProto.FIB_PATH_NH_PROTO_IP4
             self.af = AF_INET
             self.is_ip6 = False
             self.ip_len = 32
@@ -656,8 +657,7 @@ class TestGBP(VppTestCase):
             r = VppIpRoute(self, ep.ip, ep.ip_len,
                            [VppRoutePath(ep.ip,
                                          ep.epg.bvi.sw_if_index,
-                                         proto=ep.proto)],
-                           is_ip6=ep.is_ip6)
+                                         proto=ep.proto)])
             r.add_vpp_config()
             ep_routes.append(r)
 
@@ -667,7 +667,7 @@ class TestGBP(VppTestCase):
             a = VppNeighbor(self,
                             ep.epg.bvi.sw_if_index,
                             ep.itf.remote_mac,
-                            ep.ip, af=ep.af)
+                            ep.ip)
             a.add_vpp_config()
             ep_arps.append(a)
 
@@ -724,10 +724,9 @@ class TestGBP(VppTestCase):
             r = VppIpRoute(self, ep.floating_ip, ep.ip_len,
                            [VppRoutePath(ep.floating_ip,
                                          ep.recirc.recirc.sw_if_index,
-                                         is_dvr=1,
+                                         type=FibPathType.FIB_PATH_TYPE_DVR,
                                          proto=ep.proto)],
-                           table_id=20,
-                           is_ip6=ep.is_ip6)
+                           table_id=20)
             r.add_vpp_config()
             ep_routes.append(r)
 

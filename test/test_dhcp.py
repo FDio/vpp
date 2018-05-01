@@ -1053,8 +1053,7 @@ class TestDHCP(VppTestCase):
         nd_entry = VppNeighbor(self,
                                self.pg1.sw_if_index,
                                self.pg1.remote_hosts[1].mac,
-                               self.pg1.remote_hosts[1].ip6,
-                               af=AF_INET6)
+                               self.pg1.remote_hosts[1].ip6)
         nd_entry.add_vpp_config()
 
         #
