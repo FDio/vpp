@@ -508,8 +508,9 @@ int vnet_gtpu_add_del_tunnel
 		.frp_addr = zero_addr,
 		.frp_sw_if_index = 0xffffffff,
 		.frp_fib_index = ~0,
-		.frp_weight = 0,
+		.frp_weight = 1,
 		.frp_flags = FIB_ROUTE_PATH_LOCAL,
+		.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
 	      };
 	      const mfib_prefix_t mpfx = {
 		.fp_proto = fp,
@@ -523,17 +524,14 @@ int vnet_gtpu_add_del_tunnel
 	       *  - the accepting interface is that from the API
 	       */
 	      mfib_table_entry_path_update (t->encap_fib_index,
-					    &mpfx,
-					    MFIB_SOURCE_GTPU,
-					    &path, MFIB_ITF_FLAG_FORWARD);
+					    &mpfx, MFIB_SOURCE_GTPU, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
 	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
 						   &mpfx,
-						   MFIB_SOURCE_GTPU,
-						   &path,
-						   MFIB_ITF_FLAG_ACCEPT);
+						   MFIB_SOURCE_GTPU, &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group

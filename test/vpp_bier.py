@@ -119,36 +119,15 @@ class VppBierRoute(VppObject):
         self.tbl_id = tbl_id
         self.bp = bp
         self.paths = paths
-
-    def encode_paths(self):
-        br_paths = []
-        for p in self.paths:
-            lstack = []
-            for l in p.nh_labels:
-                if type(l) == VppMplsLabel:
-                    lstack.append(l.encode())
-                else:
-                    lstack.append({'label': l, 'ttl': 255})
-            n_labels = len(lstack)
-            while (len(lstack) < 16):
-                lstack.append({})
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': p.proto,
-                             'sw_if_index': 0xffffffff,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': n_labels,
-                             'label_stack': lstack})
-        return br_paths
+        self.encoded_paths = []
+        for path in self.paths:
+            self.encoded_paths.append(path.encode())
 
     def add_vpp_config(self):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.encode_paths(),
+            self.encoded_paths,
             is_add=1)
         self._test.registry.register(self, self._test.logger)
 
@@ -156,7 +135,7 @@ class VppBierRoute(VppObject):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.encode_paths(),
+            self.encoded_paths,
             is_add=0)
 
     def __str__(self):

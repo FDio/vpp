@@ -22,14 +22,13 @@ namespace route {
 namespace ip_route_cmds {
 
 static void
-to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
+to_vpp(const route::path& p, vapi_type_fib_path& payload)
 {
   payload.is_drop = 0;
   payload.is_unreach = 0;
   payload.is_prohibit = 0;
   payload.is_local = 0;
   payload.is_classify = 0;
-  payload.is_multipath = 0;
   payload.is_resolve_host = 0;
   payload.is_resolve_attached = 0;
 
@@ -39,13 +38,13 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
 
   if (route::path::special_t::STANDARD == p.type()) {
     uint8_t path_v6;
-    to_bytes(p.nh(), &path_v6, payload.next_hop_address);
+    to_bytes(p.nh(), &path_v6, payload.next_hop);
 
     if (p.rd()) {
-      payload.next_hop_table_id = p.rd()->table_id();
+      payload.table_id = p.rd()->table_id();
     }
     if (p.itf()) {
-      payload.next_hop_sw_if_index = p.itf()->handle().value();
+      payload.sw_if_index = p.itf()->handle().value();
     }
   } else if (route::path::special_t::DROP == p.type()) {
     payload.is_drop = 1;
@@ -56,9 +55,9 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
   } else if (route::path::special_t::LOCAL == p.type()) {
     payload.is_local = 1;
   }
-  payload.next_hop_weight = p.weight();
-  payload.next_hop_preference = p.preference();
-  payload.next_hop_via_label = 0;
+  payload.weight = p.weight();
+  payload.preference = p.preference();
+  payload.via_label = 0;
   payload.classify_table_index = 0;
 }
 
@@ -84,19 +83,20 @@ update_cmd::operator==(const update_cmd& other) const
 rc_t
 update_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, std::ref(*this));
+  msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
 
-  payload.table_id = m_id;
+  payload.route.table_id = m_id;
   payload.is_add = 1;
   payload.is_multipath = 0;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
+  m_prefix.to_vpp(&payload.route.prefix.is_ip6, payload.route.prefix.address,
+                  &payload.route.prefix.address_length);
 
+  uint32_t ii = 0;
   for (auto& p : m_paths)
-    to_vpp(p, payload);
+    to_vpp(p, payload.route.paths[ii++]);
 
   VAPI_CALL(req.execute());
 
@@ -133,14 +133,14 @@ delete_cmd::operator==(const delete_cmd& other) const
 rc_t
 delete_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, std::ref(*this));
+  msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.table_id = m_id;
+  payload.route.table_id = m_id;
   payload.is_add = 0;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
+  m_prefix.to_vpp(&payload.route.prefix.is_ip6, payload.route.prefix.address,
+                  &payload.route.prefix.address_length);
 
   VAPI_CALL(req.execute());
 
@@ -160,18 +160,19 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_v4_cmd::dump_v4_cmd()
+dump_cmd::dump_cmd(route::table_id_t id)
+  : m_id(id)
 {
 }
 
 bool
-dump_v4_cmd::operator==(const dump_v4_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-dump_v4_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -183,45 +184,19 @@ dump_v4_cmd::issue(connection& con)
 }
 
 std::string
-dump_v4_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("ip-route-v4-dump");
 }
 
-dump_v6_cmd::dump_v6_cmd()
-{
-}
-
-bool
-dump_v6_cmd::operator==(const dump_v6_cmd& other) const
-{
-  return (true);
-}
-
-rc_t
-dump_v6_cmd::issue(connection& con)
-{
-  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
-
-  VAPI_CALL(m_dump->execute());
-
-  wait();
-
-  return rc_t::OK;
-}
-
-std::string
-dump_v6_cmd::to_string() const
-{
-  return ("ip-route-v6-dump");
-}
 } // namespace ip_route_cmds
 } // namespace route
 } // namespace vom
-  /*
-   * fd.io coding-style-patch-verification: ON
-   *
-   * Local Variables:
-   * eval: (c-set-style "mozilla")
-   * End:
-   */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "mozilla")
+ * End:
+ */

@@ -363,12 +363,12 @@ format_map_pre_resolve (u8 * s, va_list * ap)
 
   if (FIB_NODE_INDEX_INVALID != pr->fei)
     {
-      fib_prefix_t pfx;
+      const fib_prefix_t *pfx;
 
-      fib_entry_get_prefix (pr->fei, &pfx);
+      pfx = fib_entry_get_prefix (pr->fei);
 
       return (format (s, "%U (%u)",
-		      format_ip46_address, &pfx.fp_addr, IP46_TYPE_ANY,
+		      format_ip46_address, &pfx->fp_addr, IP46_TYPE_ANY,
 		      pr->dpo.dpoi_index));
     }
   else

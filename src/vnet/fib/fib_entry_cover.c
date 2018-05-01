@@ -133,12 +133,12 @@ fib_entry_cover_change_one (fib_entry_t *cover,
     }
     else if (new_cover != covered)
     {
-	fib_prefix_t pfx_covered, pfx_new_cover;
+	const fib_prefix_t *pfx_covered, *pfx_new_cover;
 
-	fib_entry_get_prefix(covered, &pfx_covered);
-	fib_entry_get_prefix(new_cover, &pfx_new_cover);
+	pfx_covered = fib_entry_get_prefix(covered);
+	pfx_new_cover = fib_entry_get_prefix(new_cover);
 
-	if (fib_prefix_is_cover(&pfx_new_cover, &pfx_covered))
+	if (fib_prefix_is_cover(pfx_new_cover, pfx_covered))
 	{
 	    fib_entry_cover_changed(covered);
 	}

@@ -29,7 +29,7 @@ namespace ip_route_cmds {
 /**
  * A command class that creates or updates the route
  */
-class update_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
+class update_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_route_add_del>
 {
 public:
   /**
@@ -64,7 +64,7 @@ private:
 /**
  * A cmd class that deletes a route
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
+class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_route_add_del>
 {
 public:
   /**
@@ -93,16 +93,16 @@ private:
 };
 
 /**
- * A cmd class that Dumps ipv4 fib
+ * A cmd class that Dumps ip fib routes
  */
-class dump_v4_cmd : public VOM::dump_cmd<vapi::Ip_fib_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Ip_route_dump>
 {
 public:
   /**
    * Constructor
    */
-  dump_v4_cmd();
-  dump_v4_cmd(const dump_cmd& d);
+  dump_cmd(route::table_id_t id);
+  dump_cmd(const dump_cmd& d);
 
   /**
    * Issue the command to VPP/HW
@@ -116,46 +116,14 @@ public:
   /**
    * Comparison operator - only used for UT
    */
-  bool operator==(const dump_v4_cmd& i) const;
+  bool operator==(const dump_cmd& i) const;
 
 private:
   /**
    * HW reutrn code
    */
   HW::item<bool> item;
-};
-
-/**
- * A cmd class that Dumps ipv6 fib
- */
-class dump_v6_cmd : public VOM::dump_cmd<vapi::Ip6_fib_dump>
-{
-public:
-  /**
-   * Constructor
-   */
-  dump_v6_cmd();
-  dump_v6_cmd(const dump_cmd& d);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const dump_v6_cmd& i) const;
-
-private:
-  /**
-   * HW reutrn code
-   */
-  HW::item<bool> item;
+  route::table_id_t m_id;
 };
 
 }; // namespace ip_route_cmds

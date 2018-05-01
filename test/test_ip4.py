@@ -571,7 +571,10 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP unreachables
         #
-        ip_unreach = VppIpRoute(self, "10.0.0.1", 32, [], is_unreach=1)
+        ip_unreach = VppIpRoute(self, "10.0.0.1", 32,
+                                [VppRoutePath("0.0.0.0",
+                                              0xffffffff,
+                                              is_unreach=1)])
         ip_unreach.add_vpp_config()
 
         p_unreach = (Ether(src=self.pg0.remote_mac,
@@ -601,7 +604,10 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP prohibited
         #
-        ip_prohibit = VppIpRoute(self, "10.0.0.2", 32, [], is_prohibit=1)
+        ip_prohibit = VppIpRoute(self, "10.0.0.2", 32,
+                                 [VppRoutePath("0.0.0.0",
+                                               0xffffffff,
+                                               is_prohibit=1)])
         ip_prohibit.add_vpp_config()
 
         p_prohibit = (Ether(src=self.pg0.remote_mac,

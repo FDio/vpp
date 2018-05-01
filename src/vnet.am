@@ -350,6 +350,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
  vnet/ip/ip46_cli.c				\
+ vnet/ip/ip_types.c				\
  vnet/ip/ip4_format.c				\
  vnet/ip/ip4_forward.c				\
  vnet/ip/ip4_punt_drop.c			\
@@ -1196,12 +1197,15 @@ libvnet_la_SOURCES +=				\
   vnet/mfib/mfib_signal.c                       \
   vnet/mfib/mfib_itf.c                          \
   vnet/mfib/mfib_entry.c                        \
-  vnet/mfib/mfib_table.c
+  vnet/mfib/mfib_table.c			\
+  vnet/mfib/mfib_api.c
 
 nobase_include_HEADERS +=			\
   vnet/mfib/ip4_mfib.h                          \
   vnet/mfib/mfib_types.h                        \
   vnet/mfib/mfib_table.h
+
+API_FILES += vnet/mfib/mfib_types.api
 
 ########################################
 # Utilities

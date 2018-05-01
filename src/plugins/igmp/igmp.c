@@ -1005,9 +1005,10 @@ do {						\
     .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
     .frp_addr = zero_addr,
     .frp_sw_if_index = 0xffffffff,
-    .frp_fib_index = 0,
+    .frp_fib_index = 1,
     .frp_weight = 0,
     .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
   };
 
   const mfib_prefix_t mpfx0 = {
@@ -1025,12 +1026,8 @@ do {						\
   /* configure MFIB to accept IGMPv3 general query
    * and reports from all interfaces
    */
-  mfib_table_entry_path_update (0, &mpfx0,
-				MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
-  mfib_table_entry_path_update (0, &mpfx1,
-				MFIB_SOURCE_DEFAULT_ROUTE, &path,
-				MFIB_ITF_FLAG_FORWARD);
+  mfib_table_entry_path_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE, &path);
+  mfib_table_entry_path_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE, &path);
   mfib_table_entry_update (0, &mpfx0, MFIB_SOURCE_DEFAULT_ROUTE,
 			   0, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
   mfib_table_entry_update (0, &mpfx1, MFIB_SOURCE_DEFAULT_ROUTE,
