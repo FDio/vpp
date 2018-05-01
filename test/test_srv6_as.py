@@ -5,7 +5,7 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
@@ -190,10 +190,10 @@ class TestSRv6(VppTestCase):
 
         # configure route to next segment
         route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
-                           [VppRoutePath(self.pg0.remote_ip6,
-                                         self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                           [VppRoutePath(
+                               self.pg0.remote_ip6,
+                               self.pg0.sw_if_index,
+                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
@@ -261,10 +261,10 @@ class TestSRv6(VppTestCase):
 
         # configure route to next segment
         route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
-                           [VppRoutePath(self.pg0.remote_ip6,
-                                         self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                           [VppRoutePath(
+                               self.pg0.remote_ip6,
+                               self.pg0.sw_if_index,
+                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
@@ -332,10 +332,10 @@ class TestSRv6(VppTestCase):
 
         # configure route to next segment
         route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
-                           [VppRoutePath(self.pg0.remote_ip6,
-                                         self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                           [VppRoutePath(
+                               self.pg0.remote_ip6,
+                               self.pg0.sw_if_index,
+                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route.add_vpp_config()
 
         # configure SRv6 localSID behavior
