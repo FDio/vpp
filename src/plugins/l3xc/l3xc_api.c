@@ -108,7 +108,7 @@ vl_api_l3xc_update_t_handler (vl_api_l3xc_update_t * mp)
   for (pi = 0; pi < mp->l3xc.n_paths; pi++)
     {
       path = &paths[pi];
-      rv = fib_path_api_parse (&mp->l3xc.paths[pi], path);
+      rv = fib_api_path_decode (&mp->l3xc.paths[pi], path);
 
       if (0 != rv)
 	{
@@ -155,9 +155,12 @@ typedef struct l3xc_dump_walk_ctx_t_
 static int
 l3xc_send_details (u32 l3xci, void *args)
 {
-  fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
+  fib_path_encode_ctx_t path_ctx = {
+    .rpaths = NULL,
+  };
   vl_api_l3xc_details_t *mp;
   l3xc_dump_walk_ctx_t *ctx;
+  fib_route_path_t *rpath;
   vl_api_fib_path_t *fp;
   size_t msg_size;
   l3xc_t *l3xc;
@@ -177,13 +180,12 @@ l3xc_send_details (u32 l3xci, void *args)
   mp->l3xc.n_paths = n_paths;
   mp->l3xc.sw_if_index = htonl (l3xc->l3xc_sw_if_index);
 
-  fib_path_list_walk_w_ext (l3xc->l3xc_pl, NULL, fib_path_encode,
-			    &api_rpaths);
+  fib_path_list_walk_w_ext (l3xc->l3xc_pl, NULL, fib_path_encode, &path_ctx);
 
   fp = mp->l3xc.paths;
-  vec_foreach (api_rpath, api_rpaths)
+  vec_foreach (rpath, path_ctx.rpaths)
   {
-    fib_api_path_encode (api_rpath, fp);
+    fib_api_path_encode (rpath, fp);
     fp++;
   }
 

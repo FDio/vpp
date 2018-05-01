@@ -1454,6 +1454,7 @@ list(APPEND VNET_SOURCES
   mfib/mfib_forward.c
   mfib/ip4_mfib.c
   mfib/ip6_mfib.c
+  mfib/mfib_api.c
   mfib/mfib_types.c
   mfib/mfib_signal.c
   mfib/mfib_itf.c

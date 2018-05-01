@@ -25,6 +25,8 @@ from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from io import BytesIO
 from vpp_papi import VppEnum
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
+from vpp_neighbor import VppNeighbor
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
@@ -83,29 +85,6 @@ class MethodHolder(VppTestCase):
         Clear NAT44 configuration.
         """
         if hasattr(self, 'pg7') and hasattr(self, 'pg8'):
-            # I found no elegant way to do this
-            self.vapi.ip_add_del_route(
-                dst_address=self.pg7.remote_ip4n,
-                dst_address_length=32,
-                next_hop_address=self.pg7.remote_ip4n,
-                next_hop_sw_if_index=self.pg7.sw_if_index,
-                is_add=0)
-            self.vapi.ip_add_del_route(
-                dst_address=self.pg8.remote_ip4n,
-                dst_address_length=32,
-                next_hop_address=self.pg8.remote_ip4n,
-                next_hop_sw_if_index=self.pg8.sw_if_index,
-                is_add=0)
-
-            for intf in [self.pg7, self.pg8]:
-                self.vapi.ip_neighbor_add_del(
-                    intf.sw_if_index,
-                    intf.remote_mac,
-                    intf.remote_ip4,
-                    flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                           IP_API_NEIGHBOR_FLAG_STATIC),
-                    is_add=0)
-
             if self.pg7.has_ip4_config:
                 self.pg7.unconfig_ip4()
 
@@ -3159,31 +3138,32 @@ class TestNAT44(MethodHolder):
         capture = self.pg2.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip1)
 
+    def create_routes_and_neigbors(self):
+        r1 = VppIpRoute(self, self.pg7.remote_ip4, 32,
+                        [VppRoutePath(self.pg7.remote_ip4,
+                                      self.pg7.sw_if_index)])
+        r2 = VppIpRoute(self, self.pg8.remote_ip4, 32,
+                        [VppRoutePath(self.pg8.remote_ip4,
+                                      self.pg8.sw_if_index)])
+        r1.add_vpp_config()
+        r2.add_vpp_config()
+
+        n1 = VppNeighbor(self,
+                         self.pg7.sw_if_index,
+                         self.pg7.remote_mac,
+                         self.pg7.remote_ip4,
+                         is_static=1)
+        n2 = VppNeighbor(self,
+                         self.pg8.sw_if_index,
+                         self.pg8.remote_mac,
+                         self.pg8.remote_ip4,
+                         is_static=1)
+        n1.add_vpp_config()
+        n2.add_vpp_config()
+
     def test_dynamic_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address """
-
-        self.vapi.ip_neighbor_add_del(
-            self.pg7.sw_if_index,
-            self.pg7.remote_mac,
-            self.pg7.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-        self.vapi.ip_neighbor_add_del(
-            self.pg8.sw_if_index,
-            self.pg8.remote_mac,
-            self.pg8.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-
-        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg7.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg7.sw_if_index)
-        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg8.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg8.sw_if_index)
-
+        self.create_routes_and_neigbors()
         self.nat44_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
         self.vapi.nat44_interface_add_del_feature(
@@ -3212,28 +3192,7 @@ class TestNAT44(MethodHolder):
     def test_static_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address - 1:1 NAT """
 
-        self.vapi.ip_neighbor_add_del(
-            self.pg7.sw_if_index,
-            self.pg7.remote_mac,
-            self.pg7.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-        self.vapi.ip_neighbor_add_del(
-            self.pg8.sw_if_index,
-            self.pg8.remote_mac,
-            self.pg8.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-
-        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg7.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg7.sw_if_index)
-        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg8.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg8.sw_if_index)
-
+        self.create_routes_and_neigbors()
         self.nat44_add_static_mapping(self.pg7.remote_ip4, self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
         self.vapi.nat44_interface_add_del_feature(
@@ -3266,28 +3225,7 @@ class TestNAT44(MethodHolder):
         self.udp_port_out = 30607
         self.icmp_id_out = 30608
 
-        self.vapi.ip_neighbor_add_del(
-            self.pg7.sw_if_index,
-            self.pg7.remote_mac,
-            self.pg7.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-        self.vapi.ip_neighbor_add_del(
-            self.pg8.sw_if_index,
-            self.pg8.remote_mac,
-            self.pg8.remote_ip4,
-            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
-                   IP_API_NEIGHBOR_FLAG_STATIC))
-
-        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg7.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg7.sw_if_index)
-        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg8.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg8.sw_if_index)
-
+        self.create_routes_and_neigbors()
         self.nat44_add_address(self.nat_addr)
         self.nat44_add_static_mapping(self.pg7.remote_ip4, self.nat_addr,
                                       self.tcp_port_in, self.tcp_port_out,
@@ -3476,16 +3414,16 @@ class TestNAT44(MethodHolder):
         nat_ip_vrf10 = "10.0.0.10"
         nat_ip_vrf20 = "10.0.0.20"
 
-        self.vapi.ip_add_del_route(dst_address=self.pg3.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg3.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg3.sw_if_index,
-                                   table_id=10)
-        self.vapi.ip_add_del_route(dst_address=self.pg3.remote_ip4n,
-                                   dst_address_length=32,
-                                   next_hop_address=self.pg3.remote_ip4n,
-                                   next_hop_sw_if_index=self.pg3.sw_if_index,
-                                   table_id=20)
+        r1 = VppIpRoute(self, self.pg3.remote_ip4, 32,
+                        [VppRoutePath(self.pg3.remote_ip4,
+                                      self.pg3.sw_if_index)],
+                        table_id=10)
+        r2 = VppIpRoute(self, self.pg3.remote_ip4, 32,
+                        [VppRoutePath(self.pg3.remote_ip4,
+                                      self.pg3.sw_if_index)],
+                        table_id=20)
+        r1.add_vpp_config()
+        r2.add_vpp_config()
 
         self.nat44_add_address(nat_ip_vrf10, vrf_id=10)
         self.nat44_add_address(nat_ip_vrf20, vrf_id=20)
@@ -4499,11 +4437,12 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg5.set_table_ip4(1)
             cls.pg5.config_ip4()
             cls.pg5.admin_up()
-            cls.vapi.ip_add_del_route(dst_address=cls.pg5.remote_ip4n,
-                                      dst_address_length=32,
-                                      next_hop_address=zero_ip4n,
-                                      next_hop_sw_if_index=cls.pg5.sw_if_index,
-                                      table_id=1)
+            r1 = VppIpRoute(cls, cls.pg5.remote_ip4, 32,
+                            [VppRoutePath("0.0.0.0",
+                                          cls.pg5.sw_if_index)],
+                            table_id=1,
+                            register=False)
+            r1.add_vpp_config()
 
             cls.pg6._local_ip4 = "10.1.2.1"
             cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET,
@@ -4514,25 +4453,31 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg6.set_table_ip4(1)
             cls.pg6.config_ip4()
             cls.pg6.admin_up()
-            cls.vapi.ip_add_del_route(dst_address=cls.pg6.remote_ip4n,
-                                      dst_address_length=32,
-                                      next_hop_address=zero_ip4n,
-                                      next_hop_sw_if_index=cls.pg6.sw_if_index,
-                                      table_id=1)
 
-            cls.vapi.ip_add_del_route(dst_address=cls.pg6.remote_ip4n,
-                                      dst_address_length=16,
-                                      next_hop_address=zero_ip4n, table_id=0,
-                                      next_hop_table_id=1)
-            cls.vapi.ip_add_del_route(dst_address=zero_ip4n,
-                                      dst_address_length=0,
-                                      next_hop_address=zero_ip4n, table_id=1,
-                                      next_hop_table_id=0)
-            cls.vapi.ip_add_del_route(dst_address=zero_ip4n,
-                                      dst_address_length=0,
-                                      next_hop_address=cls.pg1.local_ip4n,
-                                      next_hop_sw_if_index=cls.pg1.sw_if_index,
-                                      table_id=0)
+            r2 = VppIpRoute(cls, cls.pg6.remote_ip4, 32,
+                            [VppRoutePath("0.0.0.0",
+                                          cls.pg6.sw_if_index)],
+                            table_id=1,
+                            register=False)
+            r3 = VppIpRoute(cls, cls.pg6.remote_ip4, 16,
+                            [VppRoutePath("0.0.0.0",
+                                          0xffffffff,
+                                          nh_table_id=1)],
+                            table_id=0,
+                            register=False)
+            r4 = VppIpRoute(cls, "0.0.0.0", 0,
+                            [VppRoutePath("0.0.0.0", 0xffffffff,
+                                          nh_table_id=0)],
+                            table_id=1,
+                            register=False)
+            r5 = VppIpRoute(cls, "0.0.0.0", 0,
+                            [VppRoutePath(cls.pg1.local_ip4,
+                                          cls.pg1.sw_if_index)],
+                            register=False)
+            r2.add_vpp_config()
+            r3.add_vpp_config()
+            r4.add_vpp_config()
+            r5.add_vpp_config()
 
             cls.pg5.resolve_arp()
             cls.pg6.resolve_arp()
@@ -6938,11 +6883,11 @@ class TestNAT44Out2InDPO(MethodHolder):
             cls.pg1.config_ip6()
             cls.pg1.resolve_ndp()
 
-            cls.vapi.ip_add_del_route(dst_address=b'\x00' * 16,
-                                      dst_address_length=0,
-                                      next_hop_address=cls.pg1.remote_ip6n,
-                                      next_hop_sw_if_index=cls.pg1.sw_if_index,
-                                      is_ipv6=True)
+            r1 = VppIpRoute(cls, "::", 0,
+                            [VppRoutePath(cls.pg1.remote_ip6,
+                                          cls.pg1.sw_if_index)],
+                            register=False)
+            r1.add_vpp_config()
 
         except Exception:
             super(TestNAT44Out2InDPO, cls).tearDownClass()
@@ -9386,11 +9331,10 @@ class TestDSliteCE(MethodHolder):
         aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
         self.vapi.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
 
-        self.vapi.ip_add_del_route(dst_address=aftr_ip6_n,
-                                   dst_address_length=128,
-                                   next_hop_address=self.pg1.remote_ip6n,
-                                   next_hop_sw_if_index=self.pg1.sw_if_index,
-                                   is_ipv6=1)
+        r1 = VppIpRoute(self, aftr_ip6, 128,
+                        [VppRoutePath(self.pg1.remote_ip6,
+                                      self.pg1.sw_if_index)])
+        r1.add_vpp_config()
 
         # UDP encapsulation
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /

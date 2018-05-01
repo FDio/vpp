@@ -93,8 +93,7 @@ class ConfigIpsecAH(TemplateIpsec):
             r = VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
                            [VppRoutePath(self.tun_if.remote_addr[p.addr_type],
                                          0xffffffff,
-                                         proto=d)],
-                           is_ip6=p.is_ipv6)
+                                         proto=d)])
             r.add_vpp_config()
             self.net_objs.append(r)
         self.logger.info(self.vapi.ppcli("show ipsec all"))

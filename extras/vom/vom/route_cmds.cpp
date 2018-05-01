@@ -15,6 +15,7 @@
 
 #include <sstream>
 
+#include <vom/api_types.hpp>
 #include <vom/route_api_types.hpp>
 #include <vom/route_cmds.hpp>
 
@@ -22,14 +23,14 @@ namespace VOM {
 namespace route {
 namespace ip_route_cmds {
 
-update_cmd::update_cmd(HW::item<bool>& item,
+update_cmd::update_cmd(HW::item<handle_t>& item,
                        table_id_t id,
                        const prefix_t& prefix,
-                       const path& path)
-  : rpc_cmd(item)
+                       const path_list_t& pl)
+  : srpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
-  , m_path(path)
+  , m_pl(pl)
 {
 }
 
@@ -37,23 +38,26 @@ bool
 update_cmd::operator==(const update_cmd& other) const
 {
   return ((m_prefix == other.m_prefix) && (m_id == other.m_id) &&
-          (m_path == other.m_path));
+          (m_pl == other.m_pl));
 }
 
 rc_t
 update_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, std::ref(*this));
+  msg_t req(con.ctx(), m_pl.size(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
 
-  payload.table_id = m_id;
+  payload.route.table_id = m_id;
   payload.is_add = 1;
   payload.is_multipath = 1;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
-  to_vpp(m_path, payload);
+  payload.route.table_id = m_id;
+  payload.route.prefix = to_api(m_prefix);
+
+  uint32_t ii = 0;
+  for (auto& p : m_pl)
+    to_api(p, payload.route.paths[ii++]);
 
   VAPI_CALL(req.execute());
 
@@ -65,27 +69,26 @@ update_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-create: " << m_hw_item.to_string() << " table-id:" << m_id
-    << " prefix:" << m_prefix.to_string() << " paths:" << m_path.to_string();
+    << " prefix:" << m_prefix.to_string() << " paths:";
+  for (auto p : m_pl)
+    s << p.to_string() << " ";
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item,
+delete_cmd::delete_cmd(HW::item<handle_t>& item,
                        table_id_t id,
-                       const prefix_t& prefix,
-                       const path& path)
+                       const prefix_t& prefix)
   : rpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
-  , m_path(path)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return ((m_prefix == other.m_prefix) && (m_id == other.m_id) &&
-          (m_path == other.m_path));
+  return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
 }
 
 rc_t
@@ -94,12 +97,12 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.table_id = m_id;
+  payload.route.table_id = m_id;
   payload.is_add = 0;
+  payload.is_multipath = 0;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
-  to_vpp(m_path, payload);
+  payload.route.table_id = m_id;
+  payload.route.prefix = to_api(m_prefix);
 
   VAPI_CALL(req.execute());
 
@@ -114,25 +117,32 @@ delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-delete: " << m_hw_item.to_string() << " id:" << m_id
-    << " prefix:" << m_prefix.to_string() << " paths:" << m_path.to_string();
+    << " prefix:" << m_prefix.to_string();
 
   return (s.str());
 }
 
-dump_v4_cmd::dump_v4_cmd()
+dump_cmd::dump_cmd(route::table_id_t id, const l3_proto_t& proto)
+  : m_id(id)
+  , m_proto(proto)
 {
 }
 
 bool
-dump_v4_cmd::operator==(const dump_v4_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-dump_v4_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  auto& payload = m_dump->get_request().get_payload();
+
+  payload.table.table_id = m_id;
+  payload.table.is_ip6 = m_proto.is_ipv6();
 
   VAPI_CALL(m_dump->execute());
 
@@ -142,45 +152,19 @@ dump_v4_cmd::issue(connection& con)
 }
 
 std::string
-dump_v4_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("ip-route-v4-dump");
 }
 
-dump_v6_cmd::dump_v6_cmd()
-{
-}
-
-bool
-dump_v6_cmd::operator==(const dump_v6_cmd& other) const
-{
-  return (true);
-}
-
-rc_t
-dump_v6_cmd::issue(connection& con)
-{
-  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
-
-  VAPI_CALL(m_dump->execute());
-
-  wait();
-
-  return rc_t::OK;
-}
-
-std::string
-dump_v6_cmd::to_string() const
-{
-  return ("ip-route-v6-dump");
-}
 } // namespace ip_route_cmds
 } // namespace route
 } // namespace vom
-  /*
-   * fd.io coding-style-patch-verification: ON
-   *
-   * Local Variables:
-   * eval: (c-set-style "mozilla")
-   * End:
-   */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "mozilla")
+ * End:
+ */
