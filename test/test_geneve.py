@@ -10,6 +10,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.geneve import GENEVE
 from scapy.utils import atol
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 
 class TestGeneve(BridgeDomain, VppTestCase):
@@ -85,11 +87,16 @@ class TestGeneve(BridgeDomain, VppTestCase):
         # Create 10 ucast geneve tunnels under bd
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
-        next_hop_address = cls.pg0.remote_ip4n
-        for dest_ip4n in ip4n_range(next_hop_address, ip_range_start,
-                                    ip_range_end):
+        next_hop_address = cls.pg0.remote_ip4
+        for dest_ip4 in ip4_range(next_hop_address, ip_range_start,
+                                  ip_range_end):
             # add host route so dest_ip4n will not be resolved
-            cls.vapi.ip_add_del_route(dest_ip4n, 32, next_hop_address)
+            rip = VppIpRoute(cls, dest_ip4, 32,
+                             [VppRoutePath(next_hop_address,
+                                           INVALID_INDEX)],
+                             register=False)
+            rip.add_vpp_config()
+            dest_ip4n = socket.inet_pton(socket.AF_INET, dest_ip4)
             r = cls.vapi.geneve_add_del_tunnel(
                 local_addr=cls.pg0.local_ip4n,
                 remote_addr=dest_ip4n,

@@ -112,7 +112,24 @@ to_api(const route::prefix_t& p)
 
   return v;
 }
-};
+
+vapi_enum_fib_path_nh_proto
+to_api(const nh_proto_t& p)
+{
+  if (p == nh_proto_t::IPV4) {
+    return FIB_API_PATH_NH_PROTO_IP4;
+  } else if (p == nh_proto_t::IPV6) {
+    return FIB_API_PATH_NH_PROTO_IP6;
+  } else if (p == nh_proto_t::ETHERNET) {
+    return FIB_API_PATH_NH_PROTO_ETHERNET;
+  } else if (p == nh_proto_t::MPLS) {
+    return FIB_API_PATH_NH_PROTO_MPLS;
+  }
+
+  return FIB_API_PATH_NH_PROTO_IP4;
+}
+
+}; // VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

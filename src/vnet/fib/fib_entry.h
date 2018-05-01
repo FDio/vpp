@@ -539,7 +539,7 @@ extern void fib_entry_update (fib_node_index_t fib_entry_index,
 extern void fib_entry_path_add(fib_node_index_t fib_entry_index,
 			       fib_source_t source,
 			       fib_entry_flag_t flags,
-			       const fib_route_path_t *rpath);
+			       const fib_route_path_t *rpaths);
 extern void fib_entry_special_add(fib_node_index_t fib_entry_index,
 				  fib_source_t source,
 				  fib_entry_flag_t flags,
@@ -553,7 +553,7 @@ extern fib_entry_src_flag_t fib_entry_special_remove(fib_node_index_t fib_entry_
 
 extern fib_entry_src_flag_t fib_entry_path_remove(fib_node_index_t fib_entry_index,
 						  fib_source_t source,
-						  const fib_route_path_t *rpath);
+						  const fib_route_path_t *rpaths);
 
 extern void fib_entry_inherit(fib_node_index_t cover,
                               fib_node_index_t covered);
@@ -601,9 +601,8 @@ extern u32 fib_entry_get_resolving_interface_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);
 
-extern void fib_entry_encode(fib_node_index_t fib_entry_index,
-			     fib_route_path_encode_t **api_rpaths);
-extern const fib_prefix_t *fib_entry_get_prefix(fib_node_index_t fib_entry_index);
+extern fib_route_path_t* fib_entry_encode(fib_node_index_t fib_entry_index);
+extern const fib_prefix_t* fib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern void fib_entry_set_source_data(fib_node_index_t fib_entry_index,
                                       fib_source_t source,

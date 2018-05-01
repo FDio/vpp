@@ -379,6 +379,10 @@ typedef enum fib_route_path_flags_t_
      * A path that resolves via a DVR DPO
      */
     FIB_ROUTE_PATH_DVR = (1 << 14),
+
+    FIB_ROUTE_PATH_ICMP_UNREACH = (1 << 15),
+    FIB_ROUTE_PATH_ICMP_PROHIBIT = (1 << 16),
+    FIB_ROUTE_PATH_CLASSIFY = (1 << 17),
 } fib_route_path_flags_t;
 
 /**
@@ -496,18 +500,24 @@ typedef struct fib_route_path_t_ {
                      */
                     mpls_eos_bit_t frp_eos;
                 };
-            };
-            union {
                 /**
-                 * The interface.
-                 * Will be invalid for recursive paths.
+                 * A path via a BIER imposition object.
+                 * Present in an mfib path list
                  */
-                u32 frp_sw_if_index;
-                /**
-                 * The RPF-ID
-                 */
-                fib_rpf_id_t frp_rpf_id;
+                index_t frp_bier_imp;
             };
+
+            /**
+             * The interface.
+             * Will be invalid for recursive paths.
+             */
+            u32 frp_sw_if_index;
+
+            /**
+             * The RPF-ID
+             */
+            fib_rpf_id_t frp_rpf_id;
+
             union {
                 /**
                  * The FIB index to lookup the nexthop
@@ -523,11 +533,14 @@ typedef struct fib_route_path_t_ {
              * The outgoing MPLS label Stack. NULL implies no label.
              */
             fib_mpls_label_t *frp_label_stack;
-
             /**
 	     * Exclusive DPO
 	     */
 	    dpo_id_t dpo;
+            /**
+             * MFIB interface flags
+             */
+            u32 frp_mitf_flags;
         };
         /**
          * A path that resolves via a BIER Table.
@@ -536,20 +549,24 @@ typedef struct fib_route_path_t_ {
         bier_table_id_t frp_bier_tbl;
 
         /**
-         * A path via a BIER imposition object.
-         * Present in an mfib path list
-         */
-        index_t frp_bier_imp;
-
-        /**
          * UDP encap ID
          */
         u32 frp_udp_encap_id;
 
         /**
+         * Classify table ID
+         */
+        u32 frp_classify_table_id;
+
+        /**
          * Resolving via a BIER Fmask
          */
         index_t frp_bier_fmask;
+
+        /**
+         * The DPO for use with exclusive paths
+         */
+        dpo_id_t frp_dpo;
     };
     /**
      * [un]equal cost path weight
@@ -576,15 +593,6 @@ extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
  * A help string to list the FIB path options
  */
 #define FIB_ROUTE_PATH_HELP "[next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]"
-
-/**
- * @brief 
- * A representation of a fib path for fib_path_encode to convey the information to the caller
- */
-typedef struct fib_route_path_encode_t_ {
-    fib_route_path_t rpath;
-    dpo_id_t dpo;
-} fib_route_path_encode_t;
 
 /**
  * return code to control pat-hlist walk

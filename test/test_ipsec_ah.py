@@ -6,6 +6,8 @@ from scapy.layers.ipsec import AH
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTraTests, IpsecTunTests
 from template_ipsec import IpsecTcpTests
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 
 class TemplateIpsecAh(TemplateIpsec):
@@ -60,10 +62,11 @@ class TemplateIpsecAh(TemplateIpsec):
             cls.config_ah_tun(p)
         cls.logger.info(cls.vapi.ppcli("show ipsec"))
         for _, p in cls.params.items():
-            src = socket.inet_pton(p.addr_type, p.remote_tun_if_host)
-            cls.vapi.ip_add_del_route(src, p.addr_len,
-                                      cls.tun_if.remote_addr_n[p.addr_type],
-                                      is_ipv6=p.is_ipv6)
+            r = VppIpRoute(cls, p.remote_tun_if_host, p.addr_len,
+                           [VppRoutePath(cls.tun_if.remote_addr[p.addr_type],
+                                         INVALID_INDEX)],
+                           register=False)
+            r.add_vpp_config()
 
     @classmethod
     def config_ah_tun(cls, params):

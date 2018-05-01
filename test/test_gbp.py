@@ -10,6 +10,8 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from vpp_ip import *
 from vpp_mac import *
 from vpp_papi_provider import L2_PORT_TYPE
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
+    FibPathType
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -83,7 +85,6 @@ class VppGbpEndpoint(VppObject):
         self._fip4 = VppIpAddress(fip4)
         self._ip6 = VppIpAddress(ip6)
         self._fip6 = VppIpAddress(fip6)
-
         self.vmac = VppMacAddress(self.itf.remote_mac)
 
     def add_vpp_config(self):
@@ -636,8 +637,7 @@ class TestGBP(VppTestCase):
                 r = VppIpRoute(self, ip.address, ip.length,
                                [VppRoutePath(ip.address,
                                              ep.epg.bvi.sw_if_index,
-                                             proto=ip.dpo_proto)],
-                               is_ip6=ip.is_ip6)
+                                             proto=ip.dpo_proto)])
                 r.add_vpp_config()
                 ep_routes.append(r)
 
@@ -647,8 +647,7 @@ class TestGBP(VppTestCase):
                 a = VppNeighbor(self,
                                 ep.epg.bvi.sw_if_index,
                                 ep.itf.remote_mac,
-                                ip.address,
-                                af=ip.af)
+                                ip.address)
                 a.add_vpp_config()
                 ep_arps.append(a)
 
@@ -708,13 +707,13 @@ class TestGBP(VppTestCase):
                                             is_add=1)
 
                 # floating IPs route via EPG recirc
-                r = VppIpRoute(self, fip.address, fip.length,
-                               [VppRoutePath(fip.address,
-                                             ep.recirc.recirc.sw_if_index,
-                                             is_dvr=1,
-                                             proto=fip.dpo_proto)],
-                               table_id=20,
-                               is_ip6=fip.is_ip6)
+                r = VppIpRoute(
+                    self, fip.address, fip.length,
+                    [VppRoutePath(fip.address,
+                                  ep.recirc.recirc.sw_if_index,
+                                  type=FibPathType.FIB_PATH_TYPE_DVR,
+                                  proto=fip.dpo_proto)],
+                    table_id=20)
                 r.add_vpp_config()
                 ep_routes.append(r)
 

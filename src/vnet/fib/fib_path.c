@@ -24,7 +24,8 @@
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/dpo/dvr_dpo.h>
-#include <vnet/dpo/drop_dpo.h>
+#include <vnet/dpo/ip_null_dpo.h>
+#include <vnet/dpo/classify_dpo.h>
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
@@ -350,6 +351,12 @@ typedef struct fib_path_t_ {
 	     */
 	    u32 fp_udp_encap_id;
 	} udp_encap;
+	struct {
+	    /**
+	     * The UDP Encap object this path resolves through
+	     */
+	    u32 fp_classify_table_id;
+	} classify;
 	struct {
 	    /**
 	     * The interface
@@ -877,8 +884,8 @@ fib_path_unresolve (fib_path_t *path)
 	{
 	    fib_entry_child_remove(path->fp_via_fib,
 				   path->fp_sibling);
-	    fib_table_entry_special_remove(path->recursive.fp_tbl_id,
-					   fib_entry_get_prefix(path->fp_via_fib),
+            fib_table_entry_special_remove(path->recursive.fp_tbl_id,
+                                           fib_entry_get_prefix(path->fp_via_fib),
 					   FIB_SOURCE_RR);
             fib_table_unlock(path->recursive.fp_tbl_id,
                              dpo_proto_to_fib(path->fp_nh_proto),
@@ -1239,6 +1246,10 @@ fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 	cfg_flags |= FIB_PATH_CFG_FLAG_DROP;
     if (rpath->frp_flags & FIB_ROUTE_PATH_SOURCE_LOOKUP)
 	cfg_flags |= FIB_PATH_CFG_FLAG_DEAG_SRC;
+    if (rpath->frp_flags & FIB_ROUTE_PATH_ICMP_UNREACH)
+	cfg_flags |= FIB_PATH_CFG_FLAG_ICMP_UNREACH;
+    if (rpath->frp_flags & FIB_ROUTE_PATH_ICMP_PROHIBIT)
+	cfg_flags |= FIB_PATH_CFG_FLAG_ICMP_PROHIBIT;
 
     return (cfg_flags);
 }
@@ -1331,6 +1342,16 @@ fib_path_create (fib_node_index_t pl_index,
     {
 	path->fp_type = FIB_PATH_TYPE_EXCLUSIVE;
 	dpo_copy(&path->exclusive.fp_ex_dpo, &rpath->dpo);
+    }
+    else if ((path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_PROHIBIT) ||
+        (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_UNREACH))
+    {
+        path->fp_type = FIB_PATH_TYPE_SPECIAL;
+    }
+    else if ((path->fp_cfg_flags & FIB_PATH_CFG_FLAG_CLASSIFY))
+    {
+        path->fp_type = FIB_PATH_TYPE_SPECIAL;
+        path->classify.fp_classify_table_id = rpath->frp_classify_table_id;
     }
     else if (~0 != rpath->frp_sw_if_index)
     {
@@ -1725,8 +1746,17 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	case FIB_PATH_TYPE_EXCLUSIVE:
 	    res = dpo_cmp(&path->exclusive.fp_ex_dpo, &rpath->dpo);
 	    break;
-	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
+            if (rpath->frp_flags & FIB_ROUTE_PATH_LOCAL)
+            {
+                res = 0;
+            }
+            else
+            {
+                res = 1;
+            }
+            break;
+	case FIB_PATH_TYPE_SPECIAL:
 	    res = 0;
 	    break;
 	}
@@ -1978,11 +2008,33 @@ fib_path_resolve (fib_node_index_t path_index)
         break;
     }
     case FIB_PATH_TYPE_SPECIAL:
-	/*
-	 * Resolve via the drop
-	 */
-	dpo_copy(&path->fp_dpo, drop_dpo_get(path->fp_nh_proto));
-	break;
+        if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_PROHIBIT)
+        {
+            ip_null_dpo_add_and_lock (path->fp_nh_proto,
+                                      IP_NULL_ACTION_SEND_ICMP_PROHIBIT,
+                                      &path->fp_dpo);
+        }
+        else if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_UNREACH)
+        {
+            ip_null_dpo_add_and_lock (path->fp_nh_proto,
+                                      IP_NULL_ACTION_SEND_ICMP_UNREACH,
+                                      &path->fp_dpo);
+        }
+        else if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_CLASSIFY)
+        {
+            dpo_set (&path->fp_dpo, DPO_CLASSIFY,
+                     path->fp_nh_proto,
+                     classify_dpo_create (path->fp_nh_proto,
+                                          path->classify.fp_classify_table_id));
+        }
+        else
+        {
+            /*
+             * Resolve via the drop
+             */
+            dpo_copy(&path->fp_dpo, drop_dpo_get(path->fp_nh_proto));
+        }
+        break;
     case FIB_PATH_TYPE_DEAG:
     {
         if (DPO_PROTO_BIER == path->fp_nh_proto)
@@ -2431,10 +2483,10 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-		dpo_copy(dpo, &path->fp_dpo);
-		break;
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+		dpo_copy(dpo, &path->fp_dpo);
+		break;
 	    case FIB_FORW_CHAIN_TYPE_BIER:
 		break;
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
@@ -2598,59 +2650,69 @@ fib_path_is_looped (fib_node_index_t path_index)
 fib_path_list_walk_rc_t
 fib_path_encode (fib_node_index_t path_list_index,
 		 fib_node_index_t path_index,
-                 void *ctx)
+                 void *args)
 {
-    fib_route_path_encode_t **api_rpaths = ctx;
-    fib_route_path_encode_t *api_rpath;
+    fib_path_encode_ctx_t *ctx = args;
+    fib_route_path_t *rpath;
     fib_path_t *path;
 
     path = fib_path_get(path_index);
     if (!path)
       return (FIB_PATH_LIST_WALK_CONTINUE);
-    vec_add2(*api_rpaths, api_rpath, 1);
-    api_rpath->rpath.frp_weight = path->fp_weight;
-    api_rpath->rpath.frp_preference = path->fp_preference;
-    api_rpath->rpath.frp_proto = path->fp_nh_proto;
-    api_rpath->rpath.frp_sw_if_index = ~0;
-    api_rpath->rpath.frp_fib_index = 0;
-    api_rpath->dpo = path->fp_dpo;
+
+    vec_add2(ctx->rpaths, rpath, 1);
+    rpath->frp_weight = path->fp_weight;
+    rpath->frp_preference = path->fp_preference;
+    rpath->frp_proto = path->fp_nh_proto;
+    rpath->frp_sw_if_index = ~0;
+    rpath->frp_fib_index = 0;
 
     switch (path->fp_type)
       {
       case FIB_PATH_TYPE_RECEIVE:
-        api_rpath->rpath.frp_addr = path->receive.fp_addr;
-        api_rpath->rpath.frp_sw_if_index = path->receive.fp_interface;
+        rpath->frp_addr = path->receive.fp_addr;
+        rpath->frp_sw_if_index = path->receive.fp_interface;
+        rpath->frp_flags |= FIB_ROUTE_PATH_LOCAL;
         break;
       case FIB_PATH_TYPE_ATTACHED:
-        api_rpath->rpath.frp_sw_if_index = path->attached.fp_interface;
+        rpath->frp_sw_if_index = path->attached.fp_interface;
         break;
       case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
-        api_rpath->rpath.frp_sw_if_index = path->attached_next_hop.fp_interface;
-        api_rpath->rpath.frp_addr = path->attached_next_hop.fp_nh;
+        rpath->frp_sw_if_index = path->attached_next_hop.fp_interface;
+        rpath->frp_addr = path->attached_next_hop.fp_nh;
         break;
       case FIB_PATH_TYPE_BIER_FMASK:
-        api_rpath->rpath.frp_bier_fmask = path->bier_fmask.fp_bier_fmask;
+        rpath->frp_bier_fmask = path->bier_fmask.fp_bier_fmask;
         break;
       case FIB_PATH_TYPE_SPECIAL:
         break;
       case FIB_PATH_TYPE_DEAG:
-        api_rpath->rpath.frp_fib_index = path->deag.fp_tbl_id;
+        rpath->frp_fib_index = path->deag.fp_tbl_id;
         break;
       case FIB_PATH_TYPE_RECURSIVE:
-        api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;
-        api_rpath->rpath.frp_fib_index = path->recursive.fp_tbl_id;
+        rpath->frp_addr = path->recursive.fp_nh.fp_ip;
+        rpath->frp_fib_index = path->recursive.fp_tbl_id;
         break;
       case FIB_PATH_TYPE_DVR:
-          api_rpath->rpath.frp_sw_if_index = path->dvr.fp_interface;
-          api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_DVR;
+          rpath->frp_sw_if_index = path->dvr.fp_interface;
+          rpath->frp_flags |= FIB_ROUTE_PATH_DVR;
           break;
       case FIB_PATH_TYPE_UDP_ENCAP:
-          api_rpath->rpath.frp_udp_encap_id = path->udp_encap.fp_udp_encap_id;
-          api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
+          rpath->frp_udp_encap_id = path->udp_encap.fp_udp_encap_id;
+          rpath->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
           break;
+      case FIB_PATH_TYPE_EXCLUSIVE:
+        rpath->frp_flags |= FIB_ROUTE_PATH_EXCLUSIVE;
       default:
         break;
       }
+
+    if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_DROP)
+        rpath->frp_flags |= FIB_ROUTE_PATH_DROP;
+    if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_UNREACH)
+        rpath->frp_flags |= FIB_ROUTE_PATH_ICMP_UNREACH;
+    if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_PROHIBIT)
+        rpath->frp_flags |= FIB_ROUTE_PATH_ICMP_PROHIBIT;
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }

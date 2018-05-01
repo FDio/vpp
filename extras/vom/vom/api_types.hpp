@@ -34,6 +34,8 @@ mac_address_t from_api(const vapi_type_mac_address& v);
 route::prefix_t from_api(const vapi_type_prefix&);
 
 vapi_type_prefix to_api(const route::prefix_t&);
+
+vapi_enum_fib_path_nh_proto to_api(const nh_proto_t&);
 };
 
 /*

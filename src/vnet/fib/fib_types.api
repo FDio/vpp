@@ -1,5 +1,6 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
+option version = "2.0.0";
+import "vnet/ip/ip_types.api";
+
 /** \brief MPLS label
 */
-typeonly define fib_mpls_label
+typedef fib_mpls_label
 {
   u8 is_uniform;
   u32 label;
@@ -23,47 +27,100 @@ typeonly define fib_mpls_label
   u8 exp;
 };
 
+/** brief A path's nexthop protocol
+ */
+enum fib_path_nh_proto
+{
+  FIB_API_PATH_NH_PROTO_IP4 = 0,
+  FIB_API_PATH_NH_PROTO_IP6,
+  FIB_API_PATH_NH_PROTO_MPLS,
+  FIB_API_PATH_NH_PROTO_ETHERNET,
+  FIB_API_PATH_NH_PROTO_BIER,
+};
+
+/** \brief Flags for the path
+ */
+enum fib_path_flags
+{
+  FIB_API_PATH_FLAG_NONE = 0,
+  /* the path must resolve via an attached route */
+  FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED,
+  /* the path must resolve via a host route */
+  FIB_API_PATH_FLAG_RESOLVE_VIA_HOST,
+};
+
+/* \brief A description of the 'next-hop' for a path
+ *  this can be something that needs resolving like an IP address
+ *  (into an adjacency or another FIB entry) or the index of another
+ *  VPP object that was previously created (i.e. a UDP encap object)
+ */
+typedef fib_path_nh
+{
+  /* proto = IP[46] */
+  vl_api_address_union_t address;
+  /* proto = MPLS */
+  u32 via_label;
+  /* proto = ANY, determined by path type */
+  u32 obj_id;
+  /* path-type = CLASSIFY */
+  u32 classify_table_index;
+};
+
+enum fib_path_type
+{
+  /* Normal Paths */
+  FIB_API_PATH_TYPE_NORMAL = 0,
+  /* local/for-us/receive = packet sent to VPP's L4 stack */
+  FIB_API_PATH_TYPE_LOCAL,
+  /* packet is dropped */
+  FIB_API_PATH_TYPE_DROP,
+  /* Packet is UDP encapped  - set obj_id in fib_path_nh_id */
+  FIB_API_PATH_TYPE_UDP_ENCAP,
+  /* Packet is BIER encapped  - set obj_id in fib_path_nh_id */
+  FIB_API_PATH_TYPE_BIER_IMP,
+  /* packet will generated ICMP unreach to sender */
+  FIB_API_PATH_TYPE_ICMP_UNREACH,
+  /* packet will generated ICMP prohibt to sender */
+  FIB_API_PATH_TYPE_ICMP_PROHIBIT,
+  /* perform a lookup based on the packet's source address */
+  FIB_API_PATH_TYPE_SOURCE_LOOKUP,
+  /* Distributed Virtual router, packet is forwarded with the original
+     L2 header unchanged */
+  FIB_API_PATH_TYPE_DVR,
+  /* packet's RX interface is changed */
+  FIB_API_PATH_TYPE_INTERFACE_RX,
+  /* packet will be sent to a classify table */
+  FIB_API_PATH_TYPE_CLASSIFY,
+};
+
 /** \brief FIB path
     @param sw_if_index - index of the interface
+    @param table_id - The table ID in which to find the next-hop address
+                      (for recursive routes, i.e. when the interface is
+		       not given)
     @param weight - The weight, for UCMP
     @param preference - The preference of the path. lowest preference
-    is prefered
-    @param is_local - local if non-zero, else remote
-    @param is_drop - Drop the packet
-    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
-    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
-    @param is_udp_encap - The path describes a UDP-o-IP encapsulation.
-    @param is_dvr - Does the route resolve via a DVR interface.
-    @param is_source_lookup - The the path is a deaggregate path (i.e. a lookup
-    	   		      in another table) is the lookup on the packet's
-			      source address or destination.
-    @param afi - dpo_proto_t protocol that describes the next-hop address
-    @param via_label - The next-hop is a resolved via a local label
-    @param next_hop[16] - the next hop address
-    @param next_hop_id - Used when the path resolves via an object
-                         that has a unique identifier. e.g. the UDP
-                         encap object
+                        is prefered
+    @param rpf-id - For paths that pop to multicast, this the the
+                    RPF ID the packet will be given (0 and ~0 => unset)
+    @param type - the path type
+    @param flags - path flags
+    @param proto - protocol that describes the next-hop address
+    @param nh - the next-hop/net resolving object
+    @param n_labels - the number of labels present in the stack
+    @param label_stack - a stack of MPLS labels
 */
-typeonly define fib_path
+typedef fib_path
 {
   u32 sw_if_index;
   u32 table_id;
+  u32 rpf_id;
   u8 weight;
   u8 preference;
-  u8 is_local;
-  u8 is_drop;
-  u8 is_udp_encap;
-  u8 is_unreach;
-  u8 is_prohibit;
-  u8 is_resolve_host;
-  u8 is_resolve_attached;
-  u8 is_dvr;
-  u8 is_source_lookup;
-  u8 afi;
-  u8 next_hop[16];
-  u32 next_hop_id;
-  u32 rpf_id;
-  u32 via_label;
+  vl_api_fib_path_type_t type;
+  vl_api_fib_path_flags_t flags;
+  vl_api_fib_path_nh_proto_t proto;
+  vl_api_fib_path_nh_t nh;
   u8 n_labels;
   vl_api_fib_mpls_label_t label_stack[16];
 };

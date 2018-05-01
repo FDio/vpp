@@ -21,14 +21,14 @@
 */
 
 option version = "1.3.0";
+option version = "2.0.0";
+
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/ethernet/ethernet_types.api";
+import "vnet/mfib/mfib_types.api";
 
-/** \brief Add / del table request
-           A table can be added multiple times, but need be deleted only once.
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
+/** \brief An IP table
     @param is_ipv6 - V4 or V6 table
     @param table_id - table ID associated with the route
                       This table ID will apply to both the unicats
@@ -37,20 +37,30 @@ import "vnet/ethernet/ethernet_types.api";
                   not set by the client, then VPP will generate something
 		  meaningfull.
 */
+typeonly define ip_table
+{
+  u32 table_id;
+  u8  is_ip6;
+  u8  name[64];
+};
+
+/** \brief Add / del table request
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
 autoreply define ip_table_add_del
 {
   u32 client_index;
   u32 context;
-  u32 table_id;
-  u8 is_ipv6;
   u8 is_add;
-  u8 name[64];
+  vl_api_ip_table_t table;
 };
 
-/** \brief Dump IP fib table
+/** \brief Dump IP all fib tables
     @param client_index - opaque cookie to identify the sender
 */
-define ip_fib_dump
+define ip_table_dump
 {
   u32 client_index;
   u32 context;
@@ -63,44 +73,107 @@ define ip_fib_dump
     @param count - the number of fib_path in path
     @param path  - array of of fib_path structures
 */
-manual_endian manual_print define ip_fib_details
+manual_endian manual_print define ip_table_details
 {
   u32 context;
-  u32 table_id;
-  u8  table_name[64];
-  u8  address_length;
-  u8  address[4];
-  u32 count;
-  u32 stats_index;
-  vl_api_fib_path_t path[count];
+  vl_api_ip_table_t table;
 };
 
-/** \brief Dump IP6 fib table
+/** \brief An IP route
+  @param table_id The IP table the route is in
+  @param prefix the prefix for the route
+  @param n_paths The number of paths the route has
+  @param paths The paths of the route
+*/  
+typeonly define ip_route
+{
+  u32 table_id;
+  u32 stats_index;
+  vl_api_prefix_t prefix;
+  u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+
+/** \brief Add / del route request
     @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_multipath - Set to 1 if these paths will be added/removed
+                          to/from the existing set, or 0 to replace
+			  the existing set
+    @param is_add - Are the paths being added or removed
 */
-define ip6_fib_dump
+define ip_route_add_del
 {
   u32 client_index;
   u32 context;
+  u8  is_add;
+  u8  is_multipath;
+  vl_api_ip_route_t route;
 };
-
-/** \brief IP6 FIB table entry response
-    @param table_id - IP6 fib table id
-    @param address_length - mask length
-    @param address - ip6 prefix
-    @param count - the number of fib_path in path
-    @param path  - array of of fib_path structures
-*/
-manual_endian manual_print define ip6_fib_details
+define ip_route_add_del_reply
 {
   u32 context;
-  u32 table_id;
-  u8  table_name[64];
-  u8  address_length;
-  u8  address[16];
-  u32 count;
+  i32 retval;
   u32 stats_index;
-  vl_api_fib_path_t path[count];
+};
+
+/** \brief Dump IP routes from a table
+    @param client_index - opaque cookie to identify the sender
+*/
+define ip_route_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief IP FIB table entry response
+    @param route The route entry in the table
+*/
+manual_endian manual_print define ip_route_details
+{
+  u32 context;
+  vl_api_ip_route_t route;
+};
+
+
+/** \brief IP neighbor
+    @param sw_if_index - interface used to reach neighbor
+    @param mac_address - l2 address of the neighbor
+    @param dst_address - ip4 or ip6 address of the neighbor
+    @param is_static - A static neighbor Entry - there are not flushed
+                       If the interface goes down.
+    @param is_no_adj_fib - Do not create a corresponding entry in the FIB
+                           table for the neighbor.
+*/
+typedef ip_neighbor {
+  u32 sw_if_index;
+  u32 stats_index;
+  u8 is_static;
+  u8 is_no_adj_fib;
+  u8 mac_address[6];
+  vl_api_address_t ip_address;
+};
+
+/** \brief IP neighbor add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param neighbor - the neighor to add/remove
+*/
+define ip_neighbor_add_del
+{
+  u32 client_index;
+  u32 context;
+  /* 1 = add, 0 = delete */
+  u8 is_add;
+  vl_api_ip_neighbor_t neighbor;
+};
+define ip_neighbor_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 /** \brief Dump IP neighboors
@@ -111,63 +184,19 @@ manual_endian manual_print define ip6_fib_details
 */
 define ip_neighbor_dump
 {
-    u32 client_index;
-    u32 context;
-    u32 sw_if_index;
-    u8  is_ipv6;
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8  is_ipv6;
 };
 
 /** \brief IP neighboors dump response
     @param context - sender context which was passed in the request
-    @param sw_if_index - The interface used to reach the neighbor
-    @param stats_index - An index in the stats segment that can be used to read
-                         the counters for this neighbour.
-    @param is_static - [1|0] to indicate if neighbor is statically configured
-    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+    @param neighbour - the neighbor
 */
 define ip_neighbor_details {
-    u32 context;
-    u32 sw_if_index;
-    u32 stats_index;
-    u8  is_static;
-    u8  is_ipv6;
-    u8  mac_address[6];
-    u8  ip_address[16];
-};
-
-/** \brief IP neighbor add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface used to reach neighbor
-    @param is_add - 1 to add neighbor, 0 to delete
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
-    @param is_static - A static neighbor Entry - there are not flushed
-                       If the interface goes down.
-    @param is_no_adj_fib - Do not create a corresponding entry in the FIB
-                           table for the neighbor.
-    @param mac_address - l2 address of the neighbor
-    @param dst_address - ip4 or ip6 address of the neighbor
-*/
-define ip_neighbor_add_del
-{
-  u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  /* 1 = add, 0 = delete */
-  u8 is_add;
-  u8 is_ipv6;
-  u8 is_static;
-  u8 is_no_adj_fib;
-  u8 mac_address[6];
-  u8 dst_address[16];
-};
-
-define ip_neighbor_add_del_reply
-{
-  u32 context;
-  i32 retval;
-  u32 stats_index;
+  vl_api_ip_neighbor_t neighbor;
 };
 
 /** \brief Set the ip flow hash config for a fib request
@@ -370,76 +399,19 @@ autoreply define sw_interface_ip6_set_link_local_address
   u8 address[16];
 };
 
-/** \brief Add / del route request
+/** \brief Dump IP multicast fib table
     @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - software index of the new vlan's parent interface
-    @param vrf_id - fib table /vrf associated with the route
-    @param lookup_in_vrf - 
-    @param classify_table_index - 
-    @param is_add - 1 if adding the route, 0 if deleting
-    @param is_drop - Drop the packet
-    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
-    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
-    @param is_ipv6 - 0 if an ip4 route, else ip6
-    @param is_local - The route will result in packets sent to VPP IP stack
-    @param is_udp_encap - The path describes a UDP-o-IP encapsulation.
-    @param is_classify - 
-    @param is_multipath - Set to 1 if this is a multipath route, else 0
-    @param is_dvr - Does the route resolve via a DVR interface.
-    @param is_source_lookup - The the path is a deaggregate path (i.e. a lookup
-    	   		      in another table) is the lookup on the packet's
-			      source address or destination.
-    @param next_hop_weight - Weight for Unequal cost multi-path
-    @param next_hop_preference - Path that are up that have the best preference are
-                                 are used for forwarding. lower value is better.
-    @param next_hop_id - Used when the path resolves via an object that has a unique
-                         identifier.
-    @param dst_address_length - 
-    @param dst_address[16] - 
-    @param next_hop_address[16] - 
-    @param next_hop_n_out_labels - the number of labels in the label stack
-    @param next_hop_out_label_stack - the next-hop output label stack, outer most first
-    @param next_hop_via_label - The next-hop is a resolved via a local label
 */
-define ip_add_del_route
+define ip_mtable_dump
 {
   u32 client_index;
   u32 context;
-  u32 next_hop_sw_if_index;
-  u32 table_id;
-  u32 classify_table_index;
-  u32 next_hop_table_id;
-  u32 next_hop_id;
-  u8 is_add;
-  u8 is_drop;
-  u8 is_unreach;
-  u8 is_prohibit;
-  u8 is_ipv6;
-  u8 is_local;
-  u8 is_classify;
-  u8 is_multipath;
-  u8 is_resolve_host;
-  u8 is_resolve_attached;
-  u8 is_dvr;
-  u8 is_source_lookup;
-  u8 is_udp_encap;
-  u8 next_hop_weight;
-  u8 next_hop_preference;
-  u8 next_hop_proto;
-  u8 dst_address_length;
-  u8 dst_address[16];
-  u8 next_hop_address[16];
-  u8 next_hop_n_out_labels;
-  u32 next_hop_via_label;
-  vl_api_fib_mpls_label_t next_hop_out_label_stack[next_hop_n_out_labels];
 };
-
-define ip_add_del_route_reply
+define ip_mtable_details
 {
+  u32 client_index;
   u32 context;
-  i32 retval;
-  u32 stats_index;
+  vl_api_ip_table_t table;
 };
 
 /** \brief Add / del route request
@@ -470,24 +442,23 @@ define ip_add_del_route_reply
 
     FIXME not complete yet
 */
+typedef ip_mroute
+{
+  u32 table_id;
+  u32 entry_flags;
+  u32 rpf_id;
+  vl_api_mprefix_t prefix;
+  u8 n_paths;
+  vl_api_mfib_path_t paths[n_paths];
+};
+
 define ip_mroute_add_del
 {
   u32 client_index;
   u32 context;
-  u32 next_hop_sw_if_index;
-  u32 table_id;
-  u32 entry_flags;
-  u32 itf_flags;
-  u32 rpf_id;
-  u32 bier_imp;
-  u16 grp_address_length;
-  u8 next_hop_afi;
   u8 is_add;
-  u8 is_ipv6;
-  u8 is_local;
-  u8 grp_address[16];
-  u8 src_address[16];
-  u8 nh_address[16];
+  u8 is_multipath;
+  vl_api_ip_mroute_t route;
 };
 
 define ip_mroute_add_del_reply
@@ -498,62 +469,22 @@ define ip_mroute_add_del_reply
 };
 
 /** \brief Dump IP multicast fib table
-    @param client_index - opaque cookie to identify the sender
+    @param table - Table to dump
 */
-define ip_mfib_dump
+define ip_mroute_dump
 {
   u32 client_index;
   u32 context;
+  vl_api_ip_table_t table;
 };
 
-/** \brief IP Multicast FIB table response
-    @param table_id - IP fib table id
-    @address_length - mask length
-    @grp_address - Group address/prefix
-    @src_address - Source address
-    @param count - the number of fib_path in path
-    @param path  - array of of fib_path structures
+/** \brief IP Multicast Route Details
+    @param route - Details of the route
 */
-manual_endian manual_print define ip_mfib_details
+manual_endian manual_print define ip_mroute_details
 {
   u32 context;
-  u32 table_id;
-  u32 entry_flags;
-  u32 rpf_id;
-  u8  address_length;
-  u8  grp_address[4];
-  u8  src_address[4];
-  u32 count;
-  u32 stats_index;
-  vl_api_fib_path_t path[count];
-};
-
-/** \brief Dump IP6 multicast fib table
-    @param client_index - opaque cookie to identify the sender
-*/
-define ip6_mfib_dump
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief IP6 Multicast FIB table response
-    @param table_id - IP fib table id
-    @address_length - mask length
-    @grp_address - Group address/prefix
-    @src_address - Source address
-    @param count - the number of fib_path in path
-    @param path  - array of of fib_path structures
-*/
-manual_endian manual_print define ip6_mfib_details
-{
-  u32 context;
-  u32 table_id;
-  u8  address_length;
-  u8  grp_address[16];
-  u8  src_address[16];
-  u32 count;
-  vl_api_fib_path_t path[count];
+  vl_api_ip_mroute_t route;
 };
 
 define ip_address_details
@@ -619,9 +550,7 @@ define mfib_signal_details
   u32 context;
   u32 sw_if_index;
   u32 table_id;
-  u16 grp_address_len;
-  u8 grp_address[16];
-  u8 src_address[16];
+  vl_api_mprefix_t prefix;
   u16 ip_packet_len;
   u8 ip_packet_data[256];
 };

@@ -369,7 +369,7 @@ private:
   /**
    * HW configuration for the result of creating the route
    */
-  HW::item<bool> m_hw;
+  HW::item<handle_t> m_hw;
 
   /**
    * The route domain the route is in.

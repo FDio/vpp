@@ -3,8 +3,8 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi_provider import L2_VTR_OP, L2_PORT_TYPE
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -105,7 +105,7 @@ class TestDVR(VppTestCase):
             self, ip_non_tag_bridged, 32,
             [VppRoutePath("0.0.0.0",
                           self.pg1.sw_if_index,
-                          is_dvr=1)])
+                          type=FibPathType.FIB_PATH_TYPE_DVR)])
         route_no_tag.add_vpp_config()
 
         #
@@ -123,7 +123,7 @@ class TestDVR(VppTestCase):
             self, ip_tag_bridged, 32,
             [VppRoutePath("0.0.0.0",
                           sub_if_on_pg3.sw_if_index,
-                          is_dvr=1)])
+                          type=FibPathType.FIB_PATH_TYPE_DVR)])
         route_with_tag.add_vpp_config()
 
         #
@@ -215,17 +215,20 @@ class TestDVR(VppTestCase):
         #
         # Do a FIB dump to make sure the paths are correctly reported as DVR
         #
-        routes = self.vapi.ip_fib_dump()
+        routes = self.vapi.ip_route_dump(0)
 
         for r in routes:
-            if (inet_pton(AF_INET, ip_tag_bridged) == r.address):
+            if (inet_pton(AF_INET, ip_tag_bridged) == r.route.prefix.address):
                 self.assertEqual(r.path[0].sw_if_index,
                                  sub_if_on_pg3.sw_if_index)
-                self.assertEqual(r.path[0].is_dvr, 1)
-            if (inet_pton(AF_INET, ip_non_tag_bridged) == r.address):
+                self.assertEqual(r.path[0].type,
+                                 FibPathType.FIB_PATH_TYPE_DVR)
+            if (inet_pton(AF_INET,
+                          ip_non_tag_bridged) == r.route.prefix.address):
                 self.assertEqual(r.path[0].sw_if_index,
                                  self.pg1.sw_if_index)
-                self.assertEqual(r.path[0].is_dvr, 1)
+                self.assertEqual(r.path[0].type,
+                                 FibPathType.FIB_PATH_TYPE_DVR)
 
         #
         # the explicit route delete is require so it happens before
@@ -307,14 +310,16 @@ class TestDVR(VppTestCase):
         #
         # Add a DVR route to steer traffic at L3
         #
-        route_1 = VppIpRoute(self, "1.1.1.1", 32,
-                             [VppRoutePath("0.0.0.0",
-                                           self.pg1.sw_if_index,
-                                           is_dvr=1)])
-        route_2 = VppIpRoute(self, "1.1.1.2", 32,
-                             [VppRoutePath("0.0.0.0",
-                                           sub_if_on_pg2.sw_if_index,
-                                           is_dvr=1)])
+        route_1 = VppIpRoute(
+            self, "1.1.1.1", 32,
+            [VppRoutePath("0.0.0.0",
+                          self.pg1.sw_if_index,
+                          type=FibPathType.FIB_PATH_TYPE_DVR)])
+        route_2 = VppIpRoute(
+            self, "1.1.1.2", 32,
+            [VppRoutePath("0.0.0.0",
+                          sub_if_on_pg2.sw_if_index,
+                          type=FibPathType.FIB_PATH_TYPE_DVR)])
         route_1.add_vpp_config()
         route_2.add_vpp_config()
 

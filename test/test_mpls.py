@@ -8,7 +8,7 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
-    VppMplsLabel, MplsLspMode
+    FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -481,8 +481,8 @@ class TestMPLS(VppTestCase):
             self, 333, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          labels=[],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          labels=[])],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)
         route_333_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0, [VppMplsLabel(333)])
@@ -506,8 +506,8 @@ class TestMPLS(VppTestCase):
             self, 334, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(3)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          labels=[VppMplsLabel(3)])],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)
         route_334_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0,
@@ -522,8 +522,8 @@ class TestMPLS(VppTestCase):
             self, 335, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)])],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)
         route_335_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(
@@ -569,6 +569,7 @@ class TestMPLS(VppTestCase):
                                                   labels=[VppMplsLabel(44),
                                                           VppMplsLabel(45)])])
         route_34_eos.add_vpp_config()
+        self.logger.info(self.vapi.cli("sh mpls fib 34"))
 
         tx = self.create_stream_labelled_ip4(self.pg0,
                                              [VppMplsLabel(34, ttl=3)])
@@ -758,10 +759,8 @@ class TestMPLS(VppTestCase):
             self, "2001::3", 128,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6,
                           labels=[VppMplsLabel(32,
-                                               mode=MplsLspMode.UNIFORM)])],
-            is_ip6=1)
+                                               mode=MplsLspMode.UNIFORM)])])
         route_2001_3.add_vpp_config()
 
         tx = self.create_stream_ip6(self.pg0, "2001::3",
@@ -951,7 +950,7 @@ class TestMPLS(VppTestCase):
                                           VppMplsLabel(33, ttl=47)])
 
     def test_mpls_tunnel_many(self):
-        """ Multiple Tunnels """
+        """ MPLS Multiple Tunnels """
 
         for ii in range(10):
             mpls_tun = VppMPLSTunnelInterface(
@@ -1094,10 +1093,11 @@ class TestMPLS(VppTestCase):
         # if the packet egresses, then we must have swapped to pg1
         # so as to have matched the route in table 1
         #
-        route_34_eos = VppMplsRoute(self, 34, 1,
-                                    [VppRoutePath("0.0.0.0",
-                                                  self.pg1.sw_if_index,
-                                                  is_interface_rx=1)])
+        route_34_eos = VppMplsRoute(
+            self, 34, 1,
+            [VppRoutePath("0.0.0.0",
+                          self.pg1.sw_if_index,
+                          type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX)])
         route_34_eos.add_vpp_config()
 
         #
@@ -1137,7 +1137,7 @@ class TestMPLS(VppTestCase):
                           labels=[VppMplsLabel(3402)]),
              VppRoutePath("0.0.0.0",
                           self.pg1.sw_if_index,
-                          is_interface_rx=1)],
+                          type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX)],
             is_multicast=1)
         route_3400_eos.add_vpp_config()
 
@@ -1218,6 +1218,7 @@ class TestMPLS(VppTestCase):
              VppMRoutePath(mpls_tun._sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
+        self.logger.info(self.vapi.cli("sh ip mfib index 0"))
 
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "232.1.1.1")
@@ -1256,12 +1257,14 @@ class TestMPLS(VppTestCase):
         # if the packet egresses, then we must have matched the route in
         # table 1
         #
-        route_34_eos = VppMplsRoute(self, 34, 1,
-                                    [VppRoutePath("0.0.0.0",
-                                                  self.pg1.sw_if_index,
-                                                  nh_table_id=1,
-                                                  rpf_id=55)],
-                                    is_multicast=1)
+        route_34_eos = VppMplsRoute(
+            self, 34, 1,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          nh_table_id=1,
+                          rpf_id=55)],
+            is_multicast=1,
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)
 
         route_34_eos.add_vpp_config()
 
@@ -1277,6 +1280,7 @@ class TestMPLS(VppTestCase):
         # set the RPF-ID of the enrtry to match the input packet's
         #
         route_232_1_1_1.update_rpf_id(55)
+        self.logger.info(self.vapi.cli("sh ip mfib index 1 232.1.1.1"))
 
         tx = self.create_stream_labelled_ip4(self.pg0, [VppMplsLabel(34)],
                                              dst_ip="232.1.1.1")
@@ -1313,8 +1317,8 @@ class TestMPLS(VppTestCase):
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
             table_id=1,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
-            is_ip6=1)
+                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_ff.add_vpp_config()
 
         #
@@ -1328,11 +1332,11 @@ class TestMPLS(VppTestCase):
         route_34_eos = VppMplsRoute(
             self, 34, 1,
             [VppRoutePath("::",
-                          self.pg1.sw_if_index,
+                          0xffffffff,
                           nh_table_id=1,
-                          rpf_id=55,
-                          proto=DpoProto.DPO_PROTO_IP6)],
-            is_multicast=1)
+                          rpf_id=55)],
+            is_multicast=1,
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)
 
         route_34_eos.add_vpp_config()
 
@@ -1537,16 +1541,19 @@ class TestMPLSPIC(VppTestCase):
         pkts = []
         for ii in range(64):
             dst = "192.168.1.%d" % ii
-            vpn_routes.append(VppIpRoute(self, dst, 32,
-                                         [VppRoutePath("10.0.0.45",
-                                                       0xffffffff,
-                                                       labels=[145],
-                                                       is_resolve_host=1),
-                                          VppRoutePath("10.0.0.46",
-                                                       0xffffffff,
-                                                       labels=[146],
-                                                       is_resolve_host=1)],
-                                         table_id=1))
+            vpn_routes.append(VppIpRoute(
+                self, dst, 32,
+                [VppRoutePath(
+                    "10.0.0.45",
+                    0xffffffff,
+                    labels=[145],
+                    flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_HOST),
+                 VppRoutePath(
+                     "10.0.0.46",
+                     0xffffffff,
+                     labels=[146],
+                     flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_HOST)],
+                table_id=1))
             vpn_routes[ii].add_vpp_config()
 
             pkts.append(Ether(dst=self.pg2.local_mac,
@@ -1566,7 +1573,7 @@ class TestMPLSPIC(VppTestCase):
         rx0 = self.pg0._get_capture(1)
         rx1 = self.pg1._get_capture(1)
 
-        # not testig the LB hashing algorithm so we're not concerned
+        # not testing the LB hashing algorithm so we're not concerned
         # with the split ratio, just as long as neither is 0
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
@@ -1639,16 +1646,19 @@ class TestMPLSPIC(VppTestCase):
         for ii in range(64):
             dst = "192.168.1.%d" % ii
             local_label = 1600 + ii
-            vpn_routes.append(VppIpRoute(self, dst, 32,
-                                         [VppRoutePath(self.pg2.remote_ip4,
-                                                       0xffffffff,
-                                                       nh_table_id=1,
-                                                       is_resolve_attached=1),
-                                          VppRoutePath(self.pg3.remote_ip4,
-                                                       0xffffffff,
-                                                       nh_table_id=1,
-                                                       is_resolve_attached=1)],
-                                         table_id=1))
+            vpn_routes.append(VppIpRoute(
+                self, dst, 32,
+                [VppRoutePath(
+                    self.pg2.remote_ip4,
+                    0xffffffff,
+                    nh_table_id=1,
+                    flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_ATTACHED),
+                 VppRoutePath(
+                     self.pg3.remote_ip4,
+                     0xffffffff,
+                     nh_table_id=1,
+                     flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_ATTACHED)],
+                table_id=1))
             vpn_routes[ii].add_vpp_config()
 
             vpn_bindings.append(VppMplsIpBind(self, local_label, dst, 32,
@@ -1736,23 +1746,21 @@ class TestMPLSPIC(VppTestCase):
             local_label = 1600 + ii
             vpn_routes.append(VppIpRoute(
                 self, dst, 128,
-                [VppRoutePath(self.pg2.remote_ip6,
-                              0xffffffff,
-                              nh_table_id=1,
-                              is_resolve_attached=1,
-                              proto=DpoProto.DPO_PROTO_IP6),
-                 VppRoutePath(self.pg3.remote_ip6,
-                              0xffffffff,
-                              nh_table_id=1,
-                              proto=DpoProto.DPO_PROTO_IP6,
-                              is_resolve_attached=1)],
-                table_id=1,
-                is_ip6=1))
+                [VppRoutePath(
+                    self.pg2.remote_ip6,
+                    0xffffffff,
+                    nh_table_id=1,
+                    flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_ATTACHED),
+                 VppRoutePath(
+                     self.pg3.remote_ip6,
+                     0xffffffff,
+                     nh_table_id=1,
+                     flags=FibPathFlags.FIB_PATH_FLAG_RESOLVE_VIA_ATTACHED)],
+                table_id=1))
             vpn_routes[ii].add_vpp_config()
 
             vpn_bindings.append(VppMplsIpBind(self, local_label, dst, 128,
-                                              ip_table_id=1,
-                                              is_ip6=1))
+                                              ip_table_id=1))
             vpn_bindings[ii].add_vpp_config()
 
             pkts.append(Ether(dst=self.pg0.local_mac,
@@ -1761,6 +1769,7 @@ class TestMPLSPIC(VppTestCase):
                         IPv6(src=self.pg0.remote_ip6, dst=dst) /
                         UDP(sport=1234, dport=1234) /
                         Raw('\xa5' * 100))
+            self.logger.info(self.vapi.cli("sh ip6 fib %s" % dst))
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1896,8 +1905,9 @@ class TestMPLSL2(VppTestCase):
             self, 55, 1,
             [VppRoutePath("0.0.0.0",
                           mpls_tun_1.sw_if_index,
-                          is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)
         route_55_eos.add_vpp_config()
 
         #
@@ -1958,8 +1968,9 @@ class TestMPLSL2(VppTestCase):
             self, 55, 1,
             [VppRoutePath("0.0.0.0",
                           mpls_tun.sw_if_index,
-                          is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)
         route_55_eos.add_vpp_config()
 
         #
