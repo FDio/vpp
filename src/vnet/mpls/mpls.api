@@ -15,6 +15,7 @@
 
 option version = "1.1.0";
 import "vnet/fib/fib_types.api";
+import "vnet/ip/ip_types.api";
 
 /** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
            a per-prefix label entry.
@@ -36,28 +37,24 @@ autoreply define mpls_ip_bind_unbind
   u32 mb_label;
   u32 mb_ip_table_id;
   u8 mb_is_bind;
-  u8 mb_is_ip4;
-  u8 mb_address_length;
-  u8 mb_address[16];
+  vl_api_prefix_t mb_prefix;
 };
 
+typeonly define mpls_tunnel
+{
+  u32 mt_sw_if_index;
+  u32 mt_tunnel_index;
+  u8 mt_l2_only;
+  u8 mt_is_multicast;
+  u8 mt_n_paths;
+  vl_api_fib_path_t mt_paths[mt_n_paths];
+};
 define mpls_tunnel_add_del
 {
   u32 client_index;
   u32 context;
-  u32 mt_sw_if_index;
   u8 mt_is_add;
-  u8 mt_l2_only;
-  u8 mt_is_multicast;
-  u8 mt_next_hop_proto_is_ip4;
-  u8 mt_next_hop_weight;
-  u8 mt_next_hop_preference;
-  u8 mt_next_hop[16];
-  u8 mt_next_hop_n_out_labels;
-  u32 mt_next_hop_via_label;
-  u32 mt_next_hop_sw_if_index;
-  u32 mt_next_hop_table_id;
-  vl_api_fib_mpls_label_t mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
+  vl_api_mpls_tunnel_t mt_tunnel;
 };
 
 /** \brief Reply for MPLS tunnel add / del request
@@ -90,12 +87,7 @@ define mpls_tunnel_dump
 manual_endian manual_print define mpls_tunnel_details
 {
   u32 context;
-  u32 mt_sw_if_index;
-  u32 mt_tunnel_index;
-  u8 mt_l2_only;
-  u8 mt_is_multicast;
-  u32 mt_count;
-  vl_api_fib_path_t mt_paths[mt_count];
+  vl_api_mpls_tunnel_t mt_tunnel;
 };
 
 /** \brief MPLS Route Add / del route
@@ -107,68 +99,71 @@ manual_endian manual_print define mpls_tunnel_details
                      is not set by the client, then VPP will generate
 		     something meaningfull.
 */
+typeonly define mpls_table
+{
+  u32 mt_table_id;
+  u8  mt_name[64];
+};
 autoreply define mpls_table_add_del
 {
   u32 client_index;
   u32 context;
-  u32 mt_table_id;
   u8  mt_is_add;
-  u8  mt_name[64];
+  vl_api_mpls_table_t mt_table;
+};
+
+/** \brief Dump MPLS fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define mpls_table_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define mpls_table_details
+{
+  u32 context;
+  vl_api_mpls_table_t mt_table;
+};
+
+/** \brief MPLS Route
+    @param mr_label - The MPLS label value
+    @param mr_eos - The End of stack bit
+    @param mr_eos_proto - If EOS then this is the DPO packect's proto post pop
+    @param mr_table_id - The MPLS table-id the route is added in
+    @param mr_is_add - Is this a route add or delete
+    @param mr_is_multicast - Is this a multicast route
+    @param mr_n_paths - The number of paths
+    @param mr_paths - The paths
+*/
+typeonly define mpls_route
+{
+  u32 mr_table_id;
+  u32 mr_label;
+  u8 mr_eos;
+  u8 mr_eos_proto;
+  u8 mr_is_multicast;
+  u8 mr_n_paths;
+  vl_api_fib_path_t mr_paths[mr_n_paths];
 };
 
 /** \brief MPLS Route Add / del route
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param mr_label - The MPLS label value
-    @param mr_eos - The End of stack bit
     @param mr_table_id - The MPLS table-id the route is added in
-    @param mr_classify_table_index - If this is a classify route, 
-                                     this is the classify table index
-                                        create them
     @param mr_is_add - Is this a route add or delete
-    @param mr_is_classify - Is this route result a classify
-    @param mr_is_multicast - Is this a multicast route
     @param mr_is_multipath - Is this route update a multipath - i.e. is this
                              a path addition to an existing route
-    @param mr_is_resolve_host - Recurse resolution constraint via a host prefix
-    @param mr_is_resolve_attached - Recurse resolution constraint via attached prefix
-    @param mr_is_interface_rx - Interface Receive path
-    @param mr_is_interface_rx - RPF-ID Receive path. The next-hop interface
-                                is used as the RPF-ID
-    @param mr_next_hop_proto - The next-hop protocol, of type dpo_proto_t
-    @param mr_next_hop_weight - The weight, for UCMP
-    @param mr_next_hop[16] - the nextop address
-    @param mr_next_hop_sw_if_index - the next-hop SW interface
-    @param mr_next_hop_table_id - the next-hop table-id (if appropriate)
-    @param mr_next_hop_n_out_labels - the number of labels in the label stack
-    @param mr_next_hop_out_label_stack - the next-hop output label stack, outer most first
-    @param next_hop_via_label - The next-hop is a resolved via a local label
+    @param mr_route - The Route
 */
 define mpls_route_add_del
 {
   u32 client_index;
   u32 context;
-  u32 mr_label;
-  u8 mr_eos;
-  u32 mr_table_id;
-  u32 mr_classify_table_index;
   u8 mr_is_add;
-  u8 mr_is_classify;
-  u8 mr_is_multicast;
   u8 mr_is_multipath;
-  u8 mr_is_resolve_host;
-  u8 mr_is_resolve_attached;
-  u8 mr_is_interface_rx;
-  u8 mr_is_rpf_id;
-  u8 mr_next_hop_proto;
-  u8 mr_next_hop_weight;
-  u8 mr_next_hop_preference;
-  u8 mr_next_hop[16];
-  u8 mr_next_hop_n_out_labels;
-  u32 mr_next_hop_sw_if_index;
-  u32 mr_next_hop_table_id;
-  u32 mr_next_hop_via_label;
-  vl_api_fib_mpls_label_t mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+  vl_api_mpls_route_t mr_route;
 };
 
 define mpls_route_add_del_reply
@@ -181,10 +176,11 @@ define mpls_route_add_del_reply
 /** \brief Dump MPLS fib table
     @param client_index - opaque cookie to identify the sender
 */
-define mpls_fib_dump
+define mpls_route_dump
 {
   u32 client_index;
   u32 context;
+  vl_api_mpls_table_t table;
 };
 
 /** \brief mpls FIB table response
@@ -194,15 +190,10 @@ define mpls_fib_dump
     @param count - the number of fib_path in path
     @param path  - array of of fib_path structures
 */
-manual_endian manual_print define mpls_fib_details
+manual_endian manual_print define mpls_route_details
 {
   u32 context;
-  u32 table_id;
-  u8  table_name[64];
-  u8  eos_bit;
-  u32 label;
-  u32 count;
-  vl_api_fib_path_t path[count];
+  vl_api_mpls_route_t mr_route;
 };
 
 /** \brief Enable or Disable MPLS on and interface

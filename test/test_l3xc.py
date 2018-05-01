@@ -34,30 +34,9 @@ class VppL3xc(VppObject):
         self.intf = intf
         self.is_ip6 = is_ip6
         self.paths = paths
-
-    def encode_paths(self):
-        br_paths = []
-        for p in self.paths:
-            lstack = []
-            for l in p.nh_labels:
-                if type(l) == VppMplsLabel:
-                    lstack.append(l.encode())
-                else:
-                    lstack.append({'label': l, 'ttl': 255})
-            n_labels = len(lstack)
-            while (len(lstack) < 16):
-                lstack.append({})
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': p.proto,
-                             'sw_if_index': p.nh_itf,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': n_labels,
-                             'label_stack': lstack})
-        return br_paths
+        self.encoded_paths = []
+        for path in self.paths:
+            self.encoded_paths.append(path.encode())
 
     def add_vpp_config(self):
         self._test.vapi.l3xc_update(
@@ -65,7 +44,7 @@ class VppL3xc(VppObject):
                 'is_ip6': self.is_ip6,
                 'sw_if_index': self.intf.sw_if_index,
                 'n_paths': len(self.paths),
-                'paths': self.encode_paths()
+                'paths': self.encoded_paths
             })
         self._test.registry.register(self, self._test.logger)
 

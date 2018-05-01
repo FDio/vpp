@@ -540,7 +540,7 @@ vpe_api_hookup (vlib_main_t * vm)
    */
   am->is_mp_safe[VL_API_CONTROL_PING] = 1;
   am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
-  am->is_mp_safe[VL_API_IP_ADD_DEL_ROUTE] = 1;
+  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
   am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
 
   /*

@@ -101,7 +101,7 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
   for (pi = 0; pi < mp->policy.n_paths; pi++)
     {
       path = &paths[pi];
-      rv = fib_path_api_parse (&mp->policy.paths[pi], path);
+      rv = fib_api_path_decode (&mp->policy.paths[pi], path);
 
       if (0 != rv)
 	{
@@ -158,9 +158,12 @@ typedef struct abf_dump_walk_ctx_t_
 static int
 abf_policy_send_details (u32 api, void *args)
 {
-  fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
+  fib_path_encode_ctx_t walk_ctx = {
+    .rpaths = NULL,
+  };
   vl_api_abf_policy_details_t *mp;
   abf_dump_walk_ctx_t *ctx;
+  fib_route_path_t *rpath;
   vl_api_fib_path_t *fp;
   size_t msg_size;
   abf_policy_t *ap;
@@ -181,16 +184,18 @@ abf_policy_send_details (u32 api, void *args)
   mp->policy.acl_index = htonl (ap->ap_acl);
   mp->policy.policy_id = htonl (ap->ap_id);
 
-  fib_path_list_walk_w_ext (ap->ap_pl, NULL, fib_path_encode, &api_rpaths);
+  fib_path_list_walk_w_ext (ap->ap_pl, NULL, fib_path_encode, &walk_ctx);
 
   fp = mp->policy.paths;
-  vec_foreach (api_rpath, api_rpaths)
+  vec_foreach (rpath, walk_ctx.rpaths)
   {
-    fib_api_path_encode (api_rpath, fp);
+    fib_api_path_encode (rpath, fp);
     fp++;
   }
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
+
+  vec_free (walk_ctx.rpaths);
 
   return (1);
 }
