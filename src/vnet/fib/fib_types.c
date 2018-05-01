@@ -536,6 +536,15 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = *payload_proto;
         }
+        else if (unformat (input, "via"))
+        {
+            /* new path, back up and return */
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            break;
+        }
         else
         {
             return (0);

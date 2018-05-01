@@ -118,10 +118,10 @@ extern fib_node_index_t fib_path_list_copy_and_path_remove(
     fib_node_index_t pl_index,
     fib_path_list_flags_t flags,
     const fib_route_path_t *path);
-extern fib_node_index_t fib_path_list_path_add (
+extern fib_node_index_t* fib_path_list_paths_add (
     fib_node_index_t path_list_index,
     const fib_route_path_t *rpaths);
-extern fib_node_index_t fib_path_list_path_remove (
+extern fib_node_index_t* fib_path_list_paths_remove (
     fib_node_index_t path_list_index,
     const fib_route_path_t *rpaths);
 

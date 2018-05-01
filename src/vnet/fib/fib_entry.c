@@ -873,13 +873,11 @@ void
 fib_entry_path_add (fib_node_index_t fib_entry_index,
 		    fib_source_t source,
 		    fib_entry_flag_t flags,
-		    const fib_route_path_t *rpath)
+		    const fib_route_path_t *rpaths)
 {
     fib_source_t best_source;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
-
-    ASSERT(1 == vec_len(rpath));
 
     fib_entry = fib_entry_get(fib_entry_index);
     ASSERT(NULL != fib_entry);
@@ -887,7 +885,7 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
     
-    fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpath);
+    fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpaths);
 
     fib_entry_source_change(fib_entry, best_source, source);
 }
@@ -968,15 +966,13 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
 fib_entry_src_flag_t
 fib_entry_path_remove (fib_node_index_t fib_entry_index,
 		       fib_source_t source,
-		       const fib_route_path_t *rpath)
+		       const fib_route_path_t *rpaths)
 {
     fib_entry_src_flag_t sflag;
     fib_source_t best_source;
     fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
-
-    ASSERT(1 == vec_len(rpath));
 
     fib_entry = fib_entry_get(fib_entry_index);
     ASSERT(NULL != fib_entry);
@@ -985,7 +981,7 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
     best_source = fib_entry_src_get_source(bsrc);
     bflags = fib_entry_src_get_flags(bsrc);
 
-    sflag = fib_entry_src_action_path_remove(fib_entry, source, rpath);
+    sflag = fib_entry_src_action_path_remove(fib_entry, source, rpaths);
 
     /*
      * if the path list for the source passed is invalid,
@@ -1433,11 +1429,7 @@ fib_entry_get_best_source (fib_node_index_t entry_index)
 int
 fib_entry_is_host (fib_node_index_t fib_entry_index)
 {
-    fib_prefix_t pfx;
-
-    fib_entry_get_prefix(fib_entry_index, &pfx);
-
-    return (fib_prefix_is_host(&pfx));
+    return (fib_prefix_is_host(fib_entry_get_prefix(fib_entry_index)));
 }
 
 /**
@@ -1601,7 +1593,7 @@ fib_entry_module_init (void)
 
 void
 fib_entry_encode (fib_node_index_t fib_entry_index,
-		  fib_route_path_encode_t **api_rpaths)
+		  fib_route_path_t **api_rpaths)
 {
     fib_entry_t *fib_entry;
 
@@ -1612,14 +1604,14 @@ fib_entry_encode (fib_node_index_t fib_entry_index,
     }
 }
 
-void
-fib_entry_get_prefix (fib_node_index_t fib_entry_index,
-		      fib_prefix_t *pfx)
+const fib_prefix_t *
+fib_entry_get_prefix (fib_node_index_t fib_entry_index)
 {
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
-    *pfx = fib_entry->fe_prefix;
+
+    return (&fib_entry->fe_prefix);
 }
 
 u32
