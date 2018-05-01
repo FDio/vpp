@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@
     This file defines vpp BIER control-plane API messages which are generally
     called through a shared memory interface.
 */
-option version = "1.1.0";
+option version = "1.2.0";
 import "vnet/fib/fib_types.api";
 
 /** \brief BIER Table Indentifier
@@ -77,16 +78,21 @@ define bier_table_details
     @param br_n_paths - The number of paths
     @param br_paths - The array of paths
 */
+typedef bier_route
+{
+  u32 br_bp;
+  vl_api_bier_table_id_t br_tbl_id;
+  u8 br_n_paths;
+  vl_api_fib_path_t br_paths[br_n_paths];
+};
+
 autoreply define bier_route_add_del
 {
   u32 client_index;
   u32 context;
-  u32 br_bp;
   u8 br_is_add;
   u8 br_is_replace;
-  vl_api_bier_table_id_t br_tbl_id;
-  u8 br_n_paths;
-  vl_api_fib_path_t br_paths[br_n_paths];
+  vl_api_bier_route_t br_route;
 };
 
 define bier_route_dump
@@ -99,10 +105,7 @@ define bier_route_dump
 define bier_route_details
 {
   u32 context;
-  u16 br_bp;
-  vl_api_bier_table_id_t br_tbl_id;
-  u32 br_n_paths;
-  vl_api_fib_path_t br_paths[br_n_paths];
+  vl_api_bier_route_t br_route;
 };
 
 /** \brief BIER Imposition Add

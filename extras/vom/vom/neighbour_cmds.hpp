@@ -17,6 +17,7 @@
 #define __VOM_NEIGHBOUR_CMDS_H__
 
 #include "vom/dump_cmd.hpp"
+#include "vom/srpc_cmd.hpp"
 #include "neighbour.hpp"
 
 #include <vapi/ip.api.vapi.hpp>
@@ -27,14 +28,13 @@ namespace neighbour_cmds {
 /**
  * A command class that creates or updates the bridge domain ARP Entry
  */
-class create_cmd : public rpc_cmd<HW::item<bool>,
-                                  vapi::Ip_neighbor_add_del>
+class create_cmd : public srpc_cmd<vapi::Ip_neighbor_add_del>
 {
 public:
   /**
    * Constructor
    */
-  create_cmd(HW::item<bool>& item,
+  create_cmd(HW::item<handle_t>& item,
              handle_t itf,
              const mac_address_t& mac,
              const boost::asio::ip::address& ip_addr);
@@ -63,14 +63,13 @@ private:
 /**
  * A cmd class that deletes a bridge domain ARP entry
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>,
-                                  vapi::Ip_neighbor_add_del>
+class delete_cmd : public srpc_cmd<vapi::Ip_neighbor_add_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item,
+  delete_cmd(HW::item<handle_t>& item,
              handle_t itf,
              const mac_address_t& mac,
              const boost::asio::ip::address& ip_addr);

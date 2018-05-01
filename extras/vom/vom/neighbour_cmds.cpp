@@ -18,11 +18,11 @@
 
 namespace VOM {
 namespace neighbour_cmds {
-create_cmd::create_cmd(HW::item<bool>& item,
+create_cmd::create_cmd(HW::item<handle_t>& item,
                        handle_t itf,
                        const mac_address_t& mac,
                        const boost::asio::ip::address& ip_addr)
-  : rpc_cmd(item)
+  : srpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
@@ -65,11 +65,11 @@ create_cmd::to_string() const
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item,
+delete_cmd::delete_cmd(HW::item<handle_t>& item,
                        handle_t itf,
                        const mac_address_t& mac,
                        const boost::asio::ip::address& ip_addr)
-  : rpc_cmd(item)
+  : srpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
