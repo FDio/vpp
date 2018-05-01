@@ -56,8 +56,8 @@ public:
   const static l3_proto_t IPV6;
   const static l3_proto_t MPLS;
 
-  bool is_ipv4();
-  bool is_ipv6();
+  bool is_ipv4() const;
+  bool is_ipv6() const;
 
   static const l3_proto_t& from_address(const boost::asio::ip::address& addr);
 
@@ -233,8 +233,8 @@ public:
   mprefix_t(const boost::asio::ip::address& gaddr, uint8_t len);
 
   /**
-*Constructor for (S,G)
-*/
+   *Constructor for (S,G)
+   */
   mprefix_t(const boost::asio::ip::address& saddr,
             const boost::asio::ip::address& gaddr,
             uint16_t len);
@@ -299,11 +299,6 @@ public:
    * Get the L3 protocol
    */
   l3_proto_t l3_proto() const;
-
-  void to_vpp(uint8_t* is_ip6,
-              uint8_t* saddr,
-              uint8_t* gaddr,
-              uint16_t* len) const;
 
 private:
   /**

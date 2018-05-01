@@ -505,12 +505,12 @@ abf_input_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, fib_protocol_t fproto)
 {
-  u32 n_left_from, *from, *to_next, next_index, matches;
+  u32 n_left_from, *from, *to_next, next_index, matches, misses;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  matches = 0;
+  matches = misses = 0;
 
   while (n_left_from > 0)
     {
@@ -530,6 +530,7 @@ abf_input_inline (vlib_main_t * vm,
 	  u32 match_acl_pos = ~0;
 	  u32 match_rule_index = ~0;
 	  u32 trace_bitmap = 0;
+	  u32 lc_index;
 	  u8 action;
 
 	  bi0 = from[0];
@@ -549,7 +550,7 @@ abf_input_inline (vlib_main_t * vm,
 	  /*
 	   * check if any of the policies attached to this interface matches.
 	   */
-	  u32 lc_index = abf_alctx_per_itf[fproto][sw_if_index0];
+	  lc_index = abf_alctx_per_itf[fproto][sw_if_index0];
 
 	  /*
 	     A non-inline version looks like this:
@@ -589,6 +590,7 @@ abf_input_inline (vlib_main_t * vm,
 	       *  move on down the feature arc
 	       */
 	      vnet_feature_next (&next0, b0);
+	      misses++;
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -614,6 +616,11 @@ abf_input_inline (vlib_main_t * vm,
 				abf_ip4_node.index :
 				abf_ip6_node.index),
 			       ABF_ERROR_MATCHED, matches);
+  vlib_node_increment_counter (vm,
+			       (fproto = FIB_PROTOCOL_IP6 ?
+				abf_ip4_node.index :
+				abf_ip6_node.index),
+			       ABF_ERROR_MISSED, misses);
 
   return frame->n_vectors;
 }

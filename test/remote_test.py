@@ -10,7 +10,7 @@ import six
 from six import moves
 
 from framework import VppTestCase
-from enum import Enum
+from aenum import Enum
 
 
 class SerializableClassCopy(object):
@@ -18,6 +18,9 @@ class SerializableClassCopy(object):
     Empty class used as a basis for a serializable copy of another class.
     """
     pass
+
+    def __repr__(self):
+        return '<SerializableClassCopy dict=%s>' % self.__dict__
 
 
 class RemoteClassAttr(object):
@@ -44,7 +47,8 @@ class RemoteClassAttr(object):
     def __getattr__(self, attr):
         if attr[0] == '_':
             if not (attr.startswith('__') and attr.endswith('__')):
-                raise AttributeError
+                raise AttributeError('tried to get private attribute: %s ',
+                                     attr)
         self._path.append(attr)
         return self
 
@@ -58,8 +62,9 @@ class RemoteClassAttr(object):
                                   True, value=val)
 
     def __call__(self, *args, **kwargs):
+        ret = True if 'vapi' in self.path_to_str() else False
         return self._remote._remote_exec(RemoteClass.CALL, self.path_to_str(),
-                                         True, *args, **kwargs)
+                                         ret, *args, **kwargs)
 
 
 class RemoteClass(Process):
@@ -119,7 +124,7 @@ class RemoteClass(Process):
             if not (attr.startswith('__') and attr.endswith('__')):
                 if hasattr(super(RemoteClass, self), '__getattr__'):
                     return super(RemoteClass, self).__getattr__(attr)
-                raise AttributeError
+                raise AttributeError('missing: %s', attr)
         return RemoteClassAttr(self, attr)
 
     def __setattr__(self, attr, val):
@@ -137,12 +142,12 @@ class RemoteClass(Process):
         mutable_args = list(args)
         for i, val in enumerate(mutable_args):
             if isinstance(val, RemoteClass) or \
-               isinstance(val, RemoteClassAttr):
+                    isinstance(val, RemoteClassAttr):
                 mutable_args[i] = val.get_remote_value()
         args = tuple(mutable_args)
         for key, val in six.iteritems(kwargs):
             if isinstance(val, RemoteClass) or \
-               isinstance(val, RemoteClassAttr):
+                    isinstance(val, RemoteClassAttr):
                 kwargs[key] = val.get_remote_value()
         # send request
         args = self._make_serializable(args)
@@ -244,7 +249,10 @@ class RemoteClass(Process):
 
         # copy at least serializable attributes and properties
         for name, member in inspect.getmembers(obj):
-            if name[0] == '_':  # skip private members
+            # skip private members and non-writable dunder methods.
+            if name[0] == '_':
+                if name in ['__weakref__']:
+                    continue
                 if not (name.startswith('__') and name.endswith('__')):
                     continue
             if callable(member) and not isinstance(member, property):

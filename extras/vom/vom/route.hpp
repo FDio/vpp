@@ -218,8 +218,6 @@ public:
    */
   const static itf_flags_t FORWARD;
 
-  static const itf_flags_t& from_vpp(uint32_t val);
-
 private:
   /**
    * Private constructor taking the value and the string name
@@ -398,7 +396,7 @@ private:
   /**
    * HW configuration for the result of creating the route
    */
-  HW::item<bool> m_hw;
+  HW::item<handle_t> m_hw;
 
   /**
    * The route domain the route is in.

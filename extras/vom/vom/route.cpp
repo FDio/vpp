@@ -54,14 +54,6 @@ itf_flags_t::itf_flags_t(int v, const std::string& s)
   : enum_base<itf_flags_t>(v, s)
 {
 }
-const itf_flags_t&
-itf_flags_t::from_vpp(uint32_t val)
-{
-  if (itf_flags_t::ACCEPT == (int)val)
-    return itf_flags_t::ACCEPT;
-  else
-    return itf_flags_t::FORWARD;
-}
 
 path::path(special_t special, const nh_proto_t& proto)
   : m_type(special)
@@ -339,9 +331,8 @@ void
 ip_route::sweep()
 {
   if (m_hw) {
-    for (auto& p : m_paths)
-      HW::enqueue(
-        new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix, p));
+    HW::enqueue(
+      new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix));
   }
   HW::write();
 }
@@ -350,9 +341,8 @@ void
 ip_route::replay()
 {
   if (m_hw) {
-    for (auto& p : m_paths)
-      HW::enqueue(
-        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
+    HW::enqueue(
+      new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
   }
 }
 std::string
@@ -369,38 +359,9 @@ ip_route::to_string() const
 void
 ip_route::update(const ip_route& r)
 {
-  if (rc_t::OK != m_hw.rc()) {
-    /*
-     * route not yet installed. install each of the desired paths
-     */
-    m_paths = r.m_paths;
-
-    for (auto& p : m_paths)
-      HW::enqueue(
-        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
-  } else {
-    /*
-     * add each path that is not installed yet and remove each that is no longer
-     * wanted
-     */
-    path_list_t to_add;
-    set_difference(r.m_paths.begin(), r.m_paths.end(), m_paths.begin(),
-                   m_paths.end(), std::inserter(to_add, to_add.begin()));
-
-    for (auto& p : to_add)
-      HW::enqueue(
-        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
-
-    path_list_t to_del;
-    set_difference(m_paths.begin(), m_paths.end(), r.m_paths.begin(),
-                   r.m_paths.end(), std::inserter(to_del, to_del.begin()));
-
-    for (auto& p : to_del)
-      HW::enqueue(
-        new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix, p));
-
-    m_paths = r.m_paths;
-  }
+  m_paths = r.m_paths;
+  HW::enqueue(
+    new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
 }
 
 std::shared_ptr<ip_route>
@@ -442,65 +403,84 @@ ip_route::event_handler::handle_replay()
 void
 ip_route::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4 =
-    std::make_shared<ip_route_cmds::dump_v4_cmd>();
-  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6 =
-    std::make_shared<ip_route_cmds::dump_v6_cmd>();
+  // for each known route-domain
+  auto it = route_domain::cbegin();
 
-  HW::enqueue(cmd_v4);
-  HW::enqueue(cmd_v6);
-  HW::write();
+  while (it != route_domain::cend()) {
 
-  for (auto& record : *cmd_v4) {
-    auto& payload = record.get_payload();
+    std::vector<l3_proto_t> l3s = { l3_proto_t::IPV4, l3_proto_t::IPV4 };
 
-    prefix_t pfx(0, payload.address, payload.address_length);
+    for (auto l3 : l3s) {
+      std::shared_ptr<ip_route_cmds::dump_cmd> cmd =
+        std::make_shared<ip_route_cmds::dump_cmd>(it->second.lock()->table_id(),
+                                                  l3);
 
-    /**
-     * populating the route domain here
-     */
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
+      HW::enqueue(cmd);
+      HW::write();
+
+      for (auto& record : *cmd) {
+        auto& payload = record.get_payload();
+
+        std::shared_ptr<route_domain> rd =
+          route_domain::find(payload.route.table_id);
+
+        if (!rd) {
+          continue;
+        }
+
+        prefix_t pfx = from_api(payload.route.prefix);
+        ip_route ip_r(*rd, pfx);
+
+        for (unsigned int i = 0; i < payload.route.n_paths; i++) {
+          ip_r.add(from_api(payload.route.paths[i]));
+
+          // vapi_type_fib_path& p = payload.route.paths[i];
+          /* if (p.is_local) { */
+          /*   path path_v4(path::special_t::LOCAL); */
+          /*   ip_r.add(path_v4); */
+          /* } */
+          /* } else if (p.is_drop) { */
+          /*   path path_v4(path::special_t::DROP); */
+          /*   ip_r.add(path_v4); */
+          /* } else if (p.is_unreach) { */
+          /*   path path_v4(path::special_t::UNREACH); */
+          /*   ip_r.add(path_v4); */
+          /* } else if (p.is_prohibit) { */
+          /*   path path_v4(path::special_t::PROHIBIT); */
+          /*   ip_r.add(path_v4); */
+          /* } else { */
+          /*   boost::asio::ip::address address = from_bytes(0, p.next_hop);
+           */
+          /*   std::shared_ptr<interface> itf =
+           * interface::find(p.sw_if_index); */
+          /*   if (itf) { */
+          /*     if (p.is_dvr) { */
+          /*       path path_v4(*itf, nh_proto_t::IPV4,
+           * route::path::flags_t::DVR,
+           */
+          /*                    p.weight, p.preference); */
+          /*       ip_r.add(path_v4); */
+          /*     } else { */
+          /*       path path_v4(address, *itf, p.weight, p.preference); */
+          /*       ip_r.add(path_v4); */
+          /*     } */
+          /*   } else { */
+          /*     path path_v4(rd_temp, address, p.weight, p.preference); */
+          /*     ip_r.add(path_v4); */
+          /*   } */
+          /* } */
+        }
+
+        VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
+
+        /*
+         * Write each of the discovered interfaces into the OM,
+         * but disable the HW Command q whilst we do, so that no
+         * commands are sent to VPP
+         */
+        OM::commit(key, ip_r);
+      }
     }
-    ip_route ip_r(rd_temp, pfx);
-
-    for (unsigned int i = 0; i < payload.count; i++) {
-      ip_r.add(from_vpp(payload.path[i], nh_proto_t::IPV4));
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
-  }
-
-  for (auto& record : *cmd_v6) {
-    auto& payload = record.get_payload();
-
-    prefix_t pfx(1, payload.address, payload.address_length);
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
-    }
-    ip_route ip_r(rd_temp, pfx);
-
-    for (unsigned int i = 0; i < payload.count; i++) {
-      ip_r.add(from_vpp(payload.path[i], nh_proto_t::IPV6));
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
   }
 }
 
@@ -645,76 +625,51 @@ ip_mroute::event_handler::handle_replay()
 void
 ip_mroute::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_mroute_cmds::dump_v4_cmd> cmd_v4 =
-    std::make_shared<ip_mroute_cmds::dump_v4_cmd>();
-  std::shared_ptr<ip_mroute_cmds::dump_v6_cmd> cmd_v6 =
-    std::make_shared<ip_mroute_cmds::dump_v6_cmd>();
+  // for each known route-domain
+  auto it = route_domain::cbegin();
 
-  HW::enqueue(cmd_v4);
-  HW::enqueue(cmd_v6);
-  HW::write();
+  while (it != route_domain::cend()) {
 
-  VOM_LOG(log_level_t::INFO) << "ip-mroute-dump: ";
+    std::vector<l3_proto_t> l3s = { l3_proto_t::IPV4, l3_proto_t::IPV4 };
 
-  for (auto& record : *cmd_v4) {
-    auto& payload = record.get_payload();
+    for (auto l3 : l3s) {
+      std::shared_ptr<ip_mroute_cmds::dump_cmd> cmd =
+        std::make_shared<ip_mroute_cmds::dump_cmd>(
+          it->second.lock()->table_id(), l3);
 
-    ip_address_t gaddr = from_bytes(0, payload.grp_address);
-    ip_address_t saddr = from_bytes(0, payload.src_address);
-    mprefix_t pfx(saddr, gaddr, payload.address_length);
+      HW::enqueue(cmd);
+      HW::write();
 
-    /**
-     * populating the route domain here
-     */
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
+      VOM_LOG(log_level_t::DEBUG) << "ip-mroute-dump: ";
+
+      for (auto& record : *cmd) {
+        auto& payload = record.get_payload();
+
+        std::shared_ptr<route_domain> rd =
+          route_domain::find(payload.route.table_id);
+
+        if (!rd) {
+          continue;
+        }
+
+        mprefix_t pfx = from_api(payload.route.prefix);
+        ip_mroute ip_r(*rd, pfx);
+
+        for (unsigned int i = 0; i < payload.route.n_paths; i++) {
+          ip_r.add(from_api(payload.route.paths[i].path),
+                   from_api(payload.route.paths[i].itf_flags));
+        }
+
+        VOM_LOG(log_level_t::DEBUG) << "ip-mroute-dump: " << ip_r.to_string();
+
+        /*
+         * Write each of the discovered interfaces into the OM,
+         * but disable the HW Command q whilst we do, so that no
+         * commands are sent to VPP
+         */
+        OM::commit(key, ip_r);
+      }
     }
-    ip_mroute ip_r(rd_temp, pfx);
-
-    for (unsigned int i = 0; i < payload.count; i++) {
-      vapi_type_mfib_path& p = payload.path[i];
-      ip_r.add(from_vpp(p.path, nh_proto_t::IPV4),
-               itf_flags_t::from_vpp(p.itf_flags));
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-mroute-dump: " << ip_r.to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
-  }
-
-  for (auto& record : *cmd_v6) {
-    auto& payload = record.get_payload();
-
-    ip_address_t gaddr = from_bytes(1, payload.grp_address);
-    ip_address_t saddr = from_bytes(1, payload.src_address);
-    mprefix_t pfx(saddr, gaddr, payload.address_length);
-
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
-    }
-    ip_mroute ip_r(rd_temp, pfx);
-
-    for (unsigned int i = 0; i < payload.count; i++) {
-      vapi_type_mfib_path& p = payload.path[i];
-      ip_r.add(from_vpp(p.path, nh_proto_t::IPV6),
-               itf_flags_t::from_vpp(p.itf_flags));
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-mroute-dump: " << ip_r.to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
   }
 }
 
