@@ -8,6 +8,8 @@ from scapy.data import IP_PROTOS
 
 from framework import VppTestCase
 from util import ppp
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 """ TestLB is a subclass of  VPPTestCase classes.
 
@@ -49,10 +51,17 @@ class TestLB(VppTestCase):
                 i.disable_ipv6_ra()
                 i.resolve_arp()
                 i.resolve_ndp()
-            dst4 = socket.inet_pton(socket.AF_INET, "10.0.0.0")
-            dst6 = socket.inet_pton(socket.AF_INET6, "2002::")
-            cls.vapi.ip_add_del_route(dst4, 24, cls.pg1.remote_ip4n)
-            cls.vapi.ip_add_del_route(dst6, 16, cls.pg1.remote_ip6n, is_ipv6=1)
+
+            dst4 = VppIpRoute(cls, "10.0.0.0", 24,
+                              [VppRoutePath(cls.pg1.remote_ip4,
+                                            INVALID_INDEX)],
+                              register=False)
+            dst4.add_vpp_config()
+            dst6 = VppIpRoute(cls, "2002::", 16,
+                              [VppRoutePath(cls.pg1.remote_ip6,
+                                            INVALID_INDEX)],
+                              register=False)
+            dst6.add_vpp_config()
             cls.vapi.cli("lb conf ip4-src-address 39.40.41.42")
             cls.vapi.cli("lb conf ip6-src-address 2004::1")
         except Exception:

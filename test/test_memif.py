@@ -6,6 +6,7 @@ from scapy.layers.inet import IP, ICMP
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import *
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestMemif(VppTestCase):
@@ -238,11 +239,8 @@ class TestMemif(VppTestCase):
         self.assertTrue(remote_memif.wait_for_link_up(5))
 
         # add routing to remote vpp
-        dst_addr = socket.inet_pton(socket.AF_INET, self.pg0._local_ip4_subnet)
-        dst_addr_len = 24
-        next_hop_addr = socket.inet_pton(socket.AF_INET, memif.ip4_addr)
-        self.remote_test.vapi.ip_add_del_route(
-            dst_addr, dst_addr_len, next_hop_addr)
+        VppIpRoute(self.remote_test, self.pg0._local_ip4_subnet, 24,
+                   [VppRoutePath(memif.ip4_addr, 0xffffffff)]).add_vpp_config()
 
         # create ICMP echo-request from local pg to remote memif
         packet_num = 10
