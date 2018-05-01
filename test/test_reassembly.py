@@ -17,7 +17,7 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
@@ -1203,10 +1203,9 @@ class TestFIFReassembly(VppTestCase):
             sw_if_index=self.gre6.sw_if_index, enable_ip6=True)
 
         self.route6 = VppIpRoute(self, self.tun_ip6, 128,
-                                 [VppRoutePath(self.src_if.remote_ip6,
-                                               self.src_if.sw_if_index,
-                                               proto=DpoProto.DPO_PROTO_IP6)],
-                                 is_ip6=1)
+                                 [VppRoutePath(
+                                     self.src_if.remote_ip6,
+                                     self.src_if.sw_if_index)])
         self.route6.add_vpp_config()
 
         self.reset_packet_infos()
