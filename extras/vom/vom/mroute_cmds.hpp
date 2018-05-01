@@ -103,14 +103,13 @@ private:
 /**
  * A cmd class that Dumps ipv4 fib
  */
-class dump_v4_cmd : public VOM::dump_cmd<vapi::Ip_mfib_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Ip_mroute_dump>
 {
 public:
   /**
    * Constructor
    */
-  dump_v4_cmd();
-  dump_v4_cmd(const dump_cmd& d);
+  dump_cmd(route::table_id_t id, const l3_proto_t& proto);
 
   /**
    * Issue the command to VPP/HW
@@ -124,46 +123,15 @@ public:
   /**
    * Comparison operator - only used for UT
    */
-  bool operator==(const dump_v4_cmd& i) const;
+  bool operator==(const dump_cmd& i) const;
 
 private:
   /**
    * HW reutrn code
    */
   HW::item<bool> item;
-};
-
-/**
- * A cmd class that Dumps ipv6 fib
- */
-class dump_v6_cmd : public VOM::dump_cmd<vapi::Ip6_mfib_dump>
-{
-public:
-  /**
-   * Constructor
-   */
-  dump_v6_cmd();
-  dump_v6_cmd(const dump_cmd& d);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const dump_v6_cmd& i) const;
-
-private:
-  /**
-   * HW reutrn code
-   */
-  HW::item<bool> item;
+  route::table_id_t m_id;
+  const l3_proto_t& m_proto;
 };
 
 }; // namespace ip_mroute_cmds

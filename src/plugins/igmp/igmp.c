@@ -346,15 +346,6 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
 
   /* *INDENT-OFF* */
-  fib_route_path_t for_us_path =
-    {
-      .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
-      .frp_addr = zero_addr,
-      .frp_sw_if_index = 0xffffffff,
-      .frp_fib_index = 0,
-      .frp_weight = 1,
-      .frp_flags = FIB_ROUTE_PATH_LOCAL,
-    };
   fib_route_path_t via_itf_path =
     {
       .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
@@ -362,7 +353,18 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
       .frp_sw_if_index = sw_if_index,
       .frp_fib_index = 0,
       .frp_weight = 1,
+    .frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT,
     };
+  fib_route_path_t for_us_path = {
+    .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
+    .frp_addr = zero_addr,
+    .frp_sw_if_index = 0xffffffff,
+    .frp_fib_index = 1,
+    .frp_weight = 0,
+    .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+  };
+
   /* *INDENT-ON* */
   /* find configuration, if it doesn't exist, create new */
   config = igmp_config_lookup (sw_if_index);
@@ -405,24 +407,19 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	if (1 == im->n_configs_per_mfib_index[mfib_index])
 	  {
 	    /* first config in this FIB */
+	    mfib_table_lock (mfib_index, FIB_PROTOCOL_IP4, MFIB_SOURCE_IGMP);
 	    mfib_table_entry_path_update (mfib_index,
 					  &mpfx_general_query,
-					  MFIB_SOURCE_IGMP,
-					  &for_us_path,
-					  MFIB_ITF_FLAG_FORWARD);
+					  MFIB_SOURCE_IGMP, &for_us_path);
 	    mfib_table_entry_path_update (mfib_index,
 					  &mpfx_report,
-					  MFIB_SOURCE_IGMP,
-					  &for_us_path,
-					  MFIB_ITF_FLAG_FORWARD);
+					  MFIB_SOURCE_IGMP, &for_us_path);
 	  }
 	mfib_table_entry_path_update (mfib_index,
 				      &mpfx_general_query,
-				      MFIB_SOURCE_IGMP,
-				      &via_itf_path, MFIB_ITF_FLAG_ACCEPT);
+				      MFIB_SOURCE_IGMP, &via_itf_path);
 	mfib_table_entry_path_update (mfib_index, &mpfx_report,
-				      MFIB_SOURCE_IGMP, &via_itf_path,
-				      MFIB_ITF_FLAG_ACCEPT);
+				      MFIB_SOURCE_IGMP, &via_itf_path);
       }
     }
   else if (config && !enable)
@@ -438,6 +435,7 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	  mfib_table_entry_path_remove (mfib_index,
 					&mpfx_report,
 					MFIB_SOURCE_IGMP, &for_us_path);
+	  mfib_table_unlock (mfib_index, FIB_PROTOCOL_IP4, MFIB_SOURCE_IGMP);
 	}
 
       mfib_table_entry_path_remove (mfib_index,
@@ -486,7 +484,6 @@ igmp_init (vlib_main_t * vm)
     return error;
 
   im->igmp_api_client_by_client_index = hash_create (0, sizeof (u32));
-
   im->logger = vlib_log_register_class ("igmp", 0);
 
   IGMP_DBG ("initialized");
