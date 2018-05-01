@@ -5,7 +5,7 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
@@ -141,9 +141,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure encaps IPv6 source address
@@ -243,9 +241,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure encaps IPv6 source address
@@ -336,9 +332,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure encaps IPv6 source address
@@ -420,9 +414,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure encaps IPv6 source address
@@ -507,9 +499,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure SRv6 localSID End without PSP behavior
@@ -579,9 +569,7 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure SRv6 localSID End with PSP behavior
@@ -650,12 +638,9 @@ class TestSRv6(VppTestCase):
         # a4::/64 via pg1 and pg2
         route = VppIpRoute(self, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6),
+                                         self.pg1.sw_if_index),
                             VppRoutePath(self.pg2.remote_ip6,
-                                         self.pg2.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg2.sw_if_index)])
         route.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip6 fib"))
 
@@ -729,13 +714,11 @@ class TestSRv6(VppTestCase):
         # configure FIB entries
         # a4::/64 via pg1 and pg2
         route = VppIpRoute(self, "a4::", 64,
-                           [VppRoutePath(self.pg1.remote_ip6,
-                                         self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6),
+                           [VppRoutePath(
+                               self.pg1.remote_ip6,
+                               self.pg1.sw_if_index),
                             VppRoutePath(self.pg2.remote_ip6,
-                                         self.pg2.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                                         self.pg2.sw_if_index)])
         route.add_vpp_config()
 
         # configure SRv6 localSID End with PSP behavior
@@ -875,18 +858,14 @@ class TestSRv6(VppTestCase):
         route0 = VppIpRoute(self, "a4::", 64,
                             [VppRoutePath(self.pg1.remote_ip6,
                                           self.pg1.sw_if_index,
-                                          proto=DpoProto.DPO_PROTO_IP6,
                                           nh_table_id=0)],
-                            table_id=0,
-                            is_ip6=1)
+                            table_id=0)
         route0.add_vpp_config()
         route1 = VppIpRoute(self, "a4::", 64,
                             [VppRoutePath(self.pg2.remote_ip6,
                                           self.pg2.sw_if_index,
-                                          proto=DpoProto.DPO_PROTO_IP6,
                                           nh_table_id=vrf_1)],
-                            table_id=vrf_1,
-                            is_ip6=1)
+                            table_id=vrf_1)
         route1.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip6 fib"))
 
@@ -1033,15 +1012,13 @@ class TestSRv6(VppTestCase):
                             [VppRoutePath(self.pg1.remote_ip4,
                                           self.pg1.sw_if_index,
                                           nh_table_id=0)],
-                            table_id=0,
-                            is_ip6=0)
+                            table_id=0)
         route0.add_vpp_config()
         route1 = VppIpRoute(self, "4.1.1.0", 24,
                             [VppRoutePath(self.pg2.remote_ip4,
                                           self.pg2.sw_if_index,
                                           nh_table_id=vrf_1)],
-                            table_id=vrf_1,
-                            is_ip6=0)
+                            table_id=vrf_1)
         route1.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
 
@@ -1195,10 +1172,9 @@ class TestSRv6(VppTestCase):
 
         # configure FIB entries
         route = VppIpRoute(self, "a4::", 64,
-                           [VppRoutePath(self.pg4.remote_ip6,
-                                         self.pg4.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
-                           is_ip6=1)
+                           [VppRoutePath(
+                               self.pg4.remote_ip6,
+                               self.pg4.sw_if_index)])
         route.add_vpp_config()
 
         # configure encaps IPv6 source address
