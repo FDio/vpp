@@ -21,6 +21,12 @@
 
 namespace VOM {
 
+struct invalid_decode
+{
+    invalid_decode(const std::string reason);
+    const std::string reason;
+};
+
 typedef boost::asio::ip::address ip_address_t;
 
 vapi_type_address to_api(const ip_address_t& a);
@@ -34,7 +40,12 @@ mac_address_t from_api(const vapi_type_mac_address& v);
 route::prefix_t from_api(const vapi_type_prefix&);
 
 vapi_type_prefix to_api(const route::prefix_t&);
-};
+
+vapi_enum_fib_path_nh_proto to_api(const nh_proto_t&);
+
+const nh_proto_t& from_api(vapi_enum_fib_path_nh_proto);
+
+}; // VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

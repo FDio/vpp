@@ -38,10 +38,10 @@ def find_bier_table(test, bti):
 def find_bier_route(test, bti, bp):
     routes = test.vapi.bier_route_dump(bti)
     for r in routes:
-        if bti.set_id == r.br_tbl_id.bt_set \
-           and bti.sub_domain_id == r.br_tbl_id.bt_sub_domain \
-           and bti.hdr_len_id == r.br_tbl_id.bt_hdr_len_id \
-           and bp == r.br_bp:
+        if bti.set_id == r.br_route.br_tbl_id.bt_set \
+           and bti.sub_domain_id == r.br_route.br_tbl_id.bt_sub_domain \
+           and bti.hdr_len_id == r.br_route.br_tbl_id.bt_hdr_len_id \
+           and bp == r.br_route.br_bp:
             return True
     return False
 
@@ -119,39 +119,15 @@ class VppBierRoute(VppObject):
         self.tbl_id = tbl_id
         self.bp = bp
         self.paths = paths
-
-    def encode_path(self, p):
-        lstack = []
-        for l in p.nh_labels:
-            if type(l) == VppMplsLabel:
-                lstack.append(l.encode())
-            else:
-                lstack.append({'label': l, 'ttl': 255})
-        n_labels = len(lstack)
-        while (len(lstack) < 16):
-            lstack.append({})
-        return {'next_hop': p.nh_addr,
-                'weight': 1,
-                'afi': p.proto,
-                'sw_if_index': 0xffffffff,
-                'preference': 0,
-                'table_id': p.nh_table_id,
-                'next_hop_id': p.next_hop_id,
-                'is_udp_encap': p.is_udp_encap,
-                'n_labels': n_labels,
-                'label_stack': lstack}
-
-    def encode_paths(self):
-        br_paths = []
-        for p in self.paths:
-            br_paths.append(self.encode_path(p))
-        return br_paths
+        self.encoded_paths = []
+        for path in self.paths:
+            self.encoded_paths.append(path.encode())
 
     def add_vpp_config(self):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.encode_paths(),
+            self.encoded_paths,
             is_add=1)
         self._test.registry.register(self, self._test.logger)
 
@@ -159,7 +135,7 @@ class VppBierRoute(VppObject):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.encode_paths(),
+            self.encoded_paths,
             is_add=0)
 
     def update_paths(self, paths):

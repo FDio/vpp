@@ -74,6 +74,9 @@ class VppIpAddressUnion():
 
         return False
 
+    def __str__(self):
+        return str(self.ip_addr)
+
 
 class VppIpAddress():
     def __init__(self, addr):
@@ -156,13 +159,17 @@ class VppIpPrefix():
         self.len = len
 
     def __eq__(self, other):
-        if self.addr == other.addr and self.len == other.len:
+        if self.address == other.address and self.len == other.len:
             return True
         return False
 
     def encode(self):
         return {'address': self.addr.encode(),
                 'address_length': self.len}
+
+    @property
+    def version(self):
+        return self.addr.version
 
     @property
     def address(self):
@@ -189,12 +196,12 @@ class VppIpPrefix():
 
 
 class VppIpMPrefix():
-    def __init__(self, saddr, gaddr, len):
+    def __init__(self, saddr, gaddr, glen):
         self.saddr = saddr
         self.gaddr = gaddr
-        self.len = len
-        self.ip_saddr = ip_address(unicode(self.saddr))
-        self.ip_gaddr = ip_address(unicode(self.gaddr))
+        self.glen = glen
+        self.ip_saddr = VppIpAddressUnion(unicode(self.saddr))
+        self.ip_gaddr = VppIpAddressUnion(unicode(self.gaddr))
 
     def encode(self):
 
@@ -203,29 +210,57 @@ class VppIpMPrefix():
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 'grp_address': {
                     'ip6': {
-                        'address': self.ip_gaddr.packed
+                        'address': self.ip_gaddr.bytes
                     },
                 },
                 'src_address': {
                     'ip6': {
-                        'address': self.ip_saddr.packed
+                        'address': self.ip_saddr.bytes
                     },
                 },
-                'grp_address_length': self.len,
+                'grp_address_length': self.glen,
             }
         else:
             prefix = {
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
                 'grp_address': {
                     'ip4': {
-                        'address': self.ip_gaddr.packed
+                        'address': self.ip_gaddr.bytes
                     },
                 },
                 'src_address': {
                     'ip4': {
-                        'address': self.ip_saddr.packed
+                        'address': self.ip_saddr.bytes
                     },
                 },
-                'grp_address_length': self.len,
+                'grp_address_length': self.glen,
             }
         return prefix
+
+    @property
+    def length(self):
+        return self.glen
+
+    @property
+    def version(self):
+        return self.ip_gaddr.version
+
+    def __str__(self):
+        return "(%s,%s)/%d" % (self.ip_saddr, self.ip_gaddr, self.glen)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.glen == other.glen and
+                    self.ip_saddr == other.ip_gaddr and
+                    self.ip_saddr == other.ip_saddr)
+        elif (hasattr(other, "grp_address_length") and
+              hasattr(other, "grp_address") and
+              hasattr(other, "src_address")):
+            # vl_api_mprefix_t
+            return (self.glen == other.grp_address_length and
+                    self.ip_gaddr == other.grp_address and
+                    self.ip_saddr == other.src_address)
+        else:
+            raise Exception("Comparing VppIpPrefix:%s with unknown type: %s" %
+                            (self, other))
+        return False

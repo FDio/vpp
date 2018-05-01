@@ -2239,7 +2239,7 @@ bier_neighbor_stats_walk_cb (index_t bfmi, void *arg)
 {
   bier_neighbor_stats_walk_t *ctx = arg;
   vl_api_bier_neighbor_counter_t *stat;
-  fib_route_path_encode_t rpath;
+  fib_route_path_t rpath;
   bier_table_id_t btid;
 
   vec_add2 (ctx->stats, stat, 1);

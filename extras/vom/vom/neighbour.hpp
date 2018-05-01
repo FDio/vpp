@@ -156,7 +156,7 @@ private:
   /**
    * HW configuration for the result of creating the bridge_domain
    */
-  HW::item<bool> m_hw;
+  HW::item<handle_t> m_hw;
 
   /**
    * The bridge_domain domain the bridge_domain is in.

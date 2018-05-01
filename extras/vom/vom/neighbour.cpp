@@ -14,6 +14,7 @@
  */
 
 #include "vom/neighbour.hpp"
+#include "vom/api_types.hpp"
 #include "vom/neighbour_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -165,9 +166,8 @@ neighbour::populate_i(const client_db::key_t& key,
      */
     auto& payload = record.get_payload();
 
-    mac_address_t mac(payload.mac_address);
-    boost::asio::ip::address ip_addr =
-      from_bytes(payload.is_ipv6, payload.ip_address);
+    mac_address_t mac(payload.neighbor.mac_address);
+    boost::asio::ip::address ip_addr = from_api(payload.neighbor.ip_address);
     neighbour n(*itf, ip_addr, mac);
 
     VOM_LOG(log_level_t::DEBUG) << "neighbour-dump: " << itf->to_string()

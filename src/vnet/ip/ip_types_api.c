@@ -138,6 +138,9 @@ ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
 
   ip_address_union_decode (&in->grp_address, in->af, &out->fp_grp_addr);
   ip_address_union_decode (&in->src_address, in->af, &out->fp_src_addr);
+
+  if (!ip46_address_is_zero (&out->fp_src_addr))
+    out->fp_len = (out->fp_proto == FIB_PROTOCOL_IP6 ? 256 : 64);
 }
 
 u8 *

@@ -440,7 +440,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	}
       else if (0 < vec_len (rpaths))
 	{
-	  u32 k, j, n, incr;
+	  u32 k, n, incr;
 	  ip46_address_t dst = prefixs[i].fp_addr;
 	  f64 t[2];
 	  n = count;
@@ -450,25 +450,20 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 
 	  for (k = 0; k < n; k++)
 	    {
-	      for (j = 0; j < vec_len (rpaths); j++)
-		{
-		  fib_prefix_t rpfx = {
-		    .fp_len = prefixs[i].fp_len,
-		    .fp_proto = prefixs[i].fp_proto,
-		    .fp_addr = dst,
-		  };
+	      fib_prefix_t rpfx = {
+		.fp_len = prefixs[i].fp_len,
+		.fp_proto = prefixs[i].fp_proto,
+		.fp_addr = dst,
+	      };
 
-		  if (is_del)
-		    fib_table_entry_path_remove2 (fib_index,
-						  &rpfx,
-						  FIB_SOURCE_CLI, &rpaths[j]);
-		  else
-		    fib_table_entry_path_add2 (fib_index,
-					       &rpfx,
-					       FIB_SOURCE_CLI,
-					       FIB_ENTRY_FLAG_NONE,
-					       &rpaths[j]);
-		}
+	      if (is_del)
+		fib_table_entry_path_remove2 (fib_index,
+					      &rpfx, FIB_SOURCE_CLI, rpaths);
+	      else
+		fib_table_entry_path_add2 (fib_index,
+					   &rpfx,
+					   FIB_SOURCE_CLI,
+					   FIB_ENTRY_FLAG_NONE, rpaths);
 
 	      if (FIB_PROTOCOL_IP4 == prefixs[0].fp_proto)
 		{
@@ -484,9 +479,9 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 		    clib_host_to_net_u64 (incr +
 					  clib_net_to_host_u64 (dst.ip6.as_u64
 								[bucket]));
-
 		}
 	    }
+
 	  t[1] = vlib_time_now (vm);
 	  if (count > 1)
 	    vlib_cli_output (vm, "%.6e routes/sec", count / (t[1] - t[0]));
@@ -497,7 +492,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  goto done;
 	}
     }
-
 
 done:
   vec_free (dpos);
@@ -804,19 +798,16 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 		    unformat_input_t * main_input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  fib_route_path_t rpath, *rpaths = NULL;
   clib_error_t *error = NULL;
-  fib_route_path_t rpath;
-  u32 table_id, is_del;
-  vnet_main_t *vnm;
+  u32 table_id, is_del, payload_proto;
   mfib_prefix_t pfx;
   u32 fib_index;
-  mfib_itf_flags_t iflags = 0;
   mfib_entry_flags_t eflags = 0;
   u32 gcount, scount, ss, gg, incr;
   f64 timet[2];
 
   gcount = scount = 1;
-  vnm = vnet_get_main ();
   is_del = 0;
   table_id = 0;
   clib_memset (&pfx, 0, sizeof (pfx));
@@ -883,39 +874,13 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip4_address, &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-	{
-	  rpath.frp_weight = 1;
-	}
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip6_address, &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-	{
-	  rpath.frp_weight = 1;
-	}
       else if (unformat (line_input, "via %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
+			 unformat_fib_route_path, &rpath, &payload_proto))
 	{
-	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
-	  rpath.frp_weight = 1;
+	  vec_add1 (rpaths, rpath);
 	}
-      else if (unformat (line_input, "via local"))
-	{
-	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_weight = 1;
-	  rpath.frp_flags |= FIB_ROUTE_PATH_LOCAL;
-	  /*
-	   * set the path proto appropriately for the prefix
-	   */
-	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
-	}
-      else if (unformat (line_input, "%U", unformat_mfib_itf_flags, &iflags))
+      else if (unformat (line_input, "%U",
+			 unformat_mfib_itf_flags, &rpath.frp_mitf_flags))
 	;
       else if (unformat (line_input, "%U",
 			 unformat_mfib_entry_flags, &eflags))
@@ -960,7 +925,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
     {
       for (gg = 0; gg < gcount; gg++)
 	{
-	  if (is_del && 0 == rpath.frp_weight)
+	  if (is_del && 0 == vec_len (rpaths))
 	    {
 	      /* no path provided => route delete */
 	      mfib_table_entry_delete (fib_index, &pfx, MFIB_SOURCE_CLI);
@@ -974,11 +939,10 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	    {
 	      if (is_del)
 		mfib_table_entry_path_remove (fib_index,
-					      &pfx, MFIB_SOURCE_CLI, &rpath);
+					      &pfx, MFIB_SOURCE_CLI, rpaths);
 	      else
 		mfib_table_entry_path_update (fib_index,
-					      &pfx, MFIB_SOURCE_CLI, &rpath,
-					      iflags);
+					      &pfx, MFIB_SOURCE_CLI, rpaths);
 	    }
 
 	  if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
@@ -1023,6 +987,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 		     (scount * gcount) / (timet[1] - timet[0]));
 
 done:
+  vec_free (rpaths);
   unformat_free (line_input);
 
   return error;

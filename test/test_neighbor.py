@@ -1455,14 +1455,12 @@ class NeighborStatsTestCase(VppTestCase):
         nd1 = VppNeighbor(self,
                           self.pg0.sw_if_index,
                           self.pg0.remote_hosts[1].mac,
-                          self.pg0.remote_hosts[1].ip6,
-                          af=AF_INET6)
+                          self.pg0.remote_hosts[1].ip6)
         nd1.add_vpp_config()
         nd2 = VppNeighbor(self,
                           self.pg0.sw_if_index,
                           self.pg0.remote_hosts[2].mac,
-                          self.pg0.remote_hosts[2].ip6,
-                          af=AF_INET6)
+                          self.pg0.remote_hosts[2].ip6)
         nd2.add_vpp_config()
 
         p1 = (Ether(dst=self.pg1.local_mac,

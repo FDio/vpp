@@ -20,6 +20,8 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/fib/fib_api.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/dhcp_proxy.h>
@@ -734,62 +736,19 @@ static void *vl_api_sw_interface_slave_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ip_add_del_route_t_print
-  (vl_api_ip_add_del_route_t * mp, void *handle)
+static void *vl_api_ip_route_add_del_t_print
+  (vl_api_ip_route_add_del_t * mp, void *handle)
 {
-  u8 *s;
+  u8 *s, p;
 
-  s = format (0, "SCRIPT: ip_add_del_route ");
+  s = format (0, "SCRIPT: ip_route_add_del ");
   if (mp->is_add == 0)
     s = format (s, "del ");
 
-  if (mp->is_ipv6)
-    s = format (s, "%U/%d ", format_ip6_address, mp->dst_address,
-		mp->dst_address_length);
-  else
-    s = format (s, "%U/%d ", format_ip4_address, mp->dst_address,
-		mp->dst_address_length);
+  s = format (s, "%U", format_vl_api_prefix, &mp->route.prefix);
 
-  if (mp->table_id != 0)
-    s = format (s, "vrf %d ", ntohl (mp->table_id));
-
-  if (mp->is_local)
-    s = format (s, "local ");
-  else if (mp->is_drop)
-    s = format (s, "drop ");
-  else if (mp->is_classify)
-    s = format (s, "classify %d", ntohl (mp->classify_table_index));
-  else if (mp->next_hop_via_label != htonl (MPLS_LABEL_INVALID))
-    s = format (s, "via via_label %d ", ntohl (mp->next_hop_via_label));
-  else
-    {
-      if (mp->is_ipv6)
-	s = format (s, "via %U ", format_ip6_address, mp->next_hop_address);
-      else
-	s = format (s, "via %U ", format_ip4_address, mp->next_hop_address);
-      if (mp->next_hop_sw_if_index != ~0)
-	s = format (s, "sw_if_index %d ", ntohl (mp->next_hop_sw_if_index));
-
-    }
-
-  if (mp->next_hop_weight != 1)
-    s = format (s, "weight %d ", (u32) mp->next_hop_weight);
-
-  if (mp->is_multipath)
-    s = format (s, "multipath ");
-
-  if (mp->next_hop_table_id)
-    s = format (s, "lookup-in-vrf %d ", ntohl (mp->next_hop_table_id));
-
-  if (mp->next_hop_n_out_labels)
-    {
-      u8 i;
-      for (i = 0; i < mp->next_hop_n_out_labels; i++)
-	{
-	  s = format (s, "out-label %d ",
-		      ntohl (mp->next_hop_out_label_stack[i].label));
-	}
-    }
+  for (p = 0; p < mp->route.n_paths; p++)
+    s = format (s, " [%U]", format_vl_api_fib_path, &mp->route.paths[p]);
 
   FINISH;
 }
@@ -797,7 +756,7 @@ static void *vl_api_ip_add_del_route_t_print
 static void *vl_api_mpls_route_add_del_t_print
   (vl_api_mpls_route_add_del_t * mp, void *handle)
 {
-  u8 *s;
+  u8 *s, p;
 
   s = format (0, "SCRIPT: mpls_route_add_del ");
 
@@ -806,67 +765,21 @@ static void *vl_api_mpls_route_add_del_t_print
   else
     s = format (s, "del ");
 
-  s = format (s, "%d ", ntohl (mp->mr_label));
+  s = format (s, "table %d ", ntohl (mp->mr_route.mr_table_id));
+  s = format (s, "%d ", ntohl (mp->mr_route.mr_label));
 
-  if (mp->mr_eos)
+  if (mp->mr_route.mr_eos)
     s = format (s, "eos ");
   else
     s = format (s, "non-eos ");
 
+  if (mp->mr_route.mr_is_multicast)
+    s = format (s, "multicast ");
 
-  if (mp->mr_next_hop_proto == DPO_PROTO_IP4)
-    {
-      ip4_address_t ip4_null = {.as_u32 = 0, };
-      if (memcmp (mp->mr_next_hop, &ip4_null, sizeof (ip4_null)))
-	s = format (s, "via %U ", format_ip4_address, mp->mr_next_hop);
-      else
-	s = format (s, "via lookup-in-ip4-table %d ",
-		    ntohl (mp->mr_next_hop_table_id));
-    }
-  else if (mp->mr_next_hop_proto == DPO_PROTO_IP6)
-    {
-      ip6_address_t ip6_null = { {0}
-      };
-      if (memcmp (mp->mr_next_hop, &ip6_null, sizeof (ip6_null)))
-	s = format (s, "via %U ", format_ip6_address, mp->mr_next_hop);
-      else
-	s = format (s, "via lookup-in-ip6-table %d ",
-		    ntohl (mp->mr_next_hop_table_id));
-    }
-  else if (mp->mr_next_hop_proto == DPO_PROTO_ETHERNET)
-    {
-      s = format (s, "via l2-input-on ");
-    }
-  else if (mp->mr_next_hop_proto == DPO_PROTO_MPLS)
-    {
-      if (mp->mr_next_hop_via_label != htonl (MPLS_LABEL_INVALID))
-	s =
-	  format (s, "via via-label %d ", ntohl (mp->mr_next_hop_via_label));
-      else
-	s = format (s, "via next-hop-table %d ",
-		    ntohl (mp->mr_next_hop_table_id));
-    }
-  if (mp->mr_next_hop_sw_if_index != ~0)
-    s = format (s, "sw_if_index %d ", ntohl (mp->mr_next_hop_sw_if_index));
+  for (p = 0; p < mp->mr_route.mr_n_paths; p++)
+    s =
+      format (s, " [%U]", format_vl_api_fib_path, &mp->mr_route.mr_paths[p]);
 
-  if (mp->mr_next_hop_weight != 1)
-    s = format (s, "weight %d ", (u32) mp->mr_next_hop_weight);
-
-  if (mp->mr_is_multipath)
-    s = format (s, "multipath ");
-
-  if (mp->mr_is_classify)
-    s = format (s, "classify %d", ntohl (mp->mr_classify_table_index));
-
-  if (mp->mr_next_hop_n_out_labels)
-    {
-      u8 i;
-      for (i = 0; i < mp->mr_next_hop_n_out_labels; i++)
-	{
-	  s = format (s, "out-label %d ",
-		      ntohl (mp->mr_next_hop_out_label_stack[i].label));
-	}
-    }
 
   FINISH;
 }
@@ -881,9 +794,10 @@ static void *vl_api_ip_table_add_del_t_print
     s = format (s, "add ");
   else
     s = format (s, "del ");
-  if (mp->is_ipv6)
+  if (mp->table.is_ip6)
     s = format (s, "ip6 ");
-  s = format (s, "table %d ", ntohl (mp->table_id));
+  s = format (s, "table %d ", ntohl (mp->table.table_id));
+  s = format (s, "%s ", mp->table.name);
 
   FINISH;
 }
@@ -898,7 +812,7 @@ static void *vl_api_mpls_table_add_del_t_print
     s = format (s, "add ");
   else
     s = format (s, "del ");
-  s = format (s, "table %d ", ntohl (mp->mt_table_id));
+  s = format (s, "table %d ", ntohl (mp->mt_table.mt_table_id));
 
   FINISH;
 }
@@ -940,38 +854,27 @@ static void *vl_api_proxy_arp_intfc_enable_disable_t_print
 static void *vl_api_mpls_tunnel_add_del_t_print
   (vl_api_mpls_tunnel_add_del_t * mp, void *handle)
 {
-  u8 *s;
+  u8 *s, p;
 
   s = format (0, "SCRIPT: mpls_tunnel_add_del ");
 
   if (mp->mt_is_add == 0)
-    s = format (s, "del sw_if_index %d ", ntohl (mp->mt_sw_if_index));
-
-  mpls_label_t label = ntohl (mp->mt_next_hop_via_label);
-  if (label != MPLS_LABEL_INVALID)
-    s = format (s, "via-label %d ", label);
-  else if (mp->mt_next_hop_proto_is_ip4)
-    s = format (s, "via %U ", format_ip4_address, mp->mt_next_hop);
+    s =
+      format (s, "del sw_if_index %d ", ntohl (mp->mt_tunnel.mt_sw_if_index));
   else
-    s = format (s, "via %U ", format_ip6_address, mp->mt_next_hop);
+    s = format (s, "sw_if_index %d ", ntohl (mp->mt_tunnel.mt_sw_if_index));
 
-  if (mp->mt_next_hop_sw_if_index != ~0)
-    s = format (s, "sw_if_index %d ", ntohl (mp->mt_next_hop_sw_if_index));
-  else if (mp->mt_next_hop_table_id)
-    s = format (s, "next-hop-table %d ", ntohl (mp->mt_next_hop_table_id));
 
-  if (mp->mt_l2_only)
+  if (mp->mt_tunnel.mt_l2_only)
     s = format (s, "l2-only ");
+  if (mp->mt_tunnel.mt_is_multicast)
+    s = format (s, "multicast ");
+  if (mp->mt_tunnel.mt_tunnel_index)
+    s = format (s, "tunnel-index ");
 
-  if (mp->mt_next_hop_n_out_labels)
-    {
-      u8 i;
-      for (i = 0; i < mp->mt_next_hop_n_out_labels; i++)
-	{
-	  s = format (s, "out-label %d ",
-		      ntohl (mp->mt_next_hop_out_label_stack[i].label));
-	}
-    }
+  for (p = 0; p < mp->mt_tunnel.mt_n_paths; p++)
+    s = format (s, " [%U]", format_vl_api_fib_path,
+		&mp->mt_tunnel.mt_paths[p]);
 
   FINISH;
 }
@@ -1040,25 +943,20 @@ static void *vl_api_ip_neighbor_add_del_t_print
 
   s = format (0, "SCRIPT: ip_neighbor_add_del ");
 
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "sw_if_index %d ", ntohl (mp->neighbor.sw_if_index));
 
-  if (mp->is_static)
+  if (mp->neighbor.is_static)
     s = format (s, "is_static ");
 
-  if (mp->is_no_adj_fib)
+  if (mp->neighbor.is_no_adj_fib)
     s = format (s, "is_no_fib_entry ");
 
-  if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
+  if (memcmp (mp->neighbor.mac_address, null_mac, 6))
+    s =
+      format (s, "mac %U ", format_ethernet_address,
+	      mp->neighbor.mac_address);
 
-  if (mp->is_ipv6)
-    s =
-      format (s, "dst %U ", format_ip6_address,
-	      (ip6_address_t *) mp->dst_address);
-  else
-    s =
-      format (s, "dst %U ", format_ip4_address,
-	      (ip4_address_t *) mp->dst_address);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->neighbor.ip_address);
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -2633,38 +2531,47 @@ static void *vl_api_mpls_tunnel_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: mpls_tunnel_dump ");
-
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
   FINISH;
 }
 
-static void *vl_api_mpls_fib_dump_t_print
-  (vl_api_mpls_fib_dump_t * mp, void *handle)
+static void *vl_api_mpls_table_dump_t_print
+  (vl_api_mpls_table_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: mpls_fib_decap_dump ");
+  s = format (0, "SCRIPT: mpls_table_decap_dump ");
 
   FINISH;
 }
 
-static void *vl_api_ip_fib_dump_t_print
-  (vl_api_ip_fib_dump_t * mp, void *handle)
+static void *vl_api_mpls_route_dump_t_print
+  (vl_api_mpls_route_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: ip_fib_dump ");
+  s = format (0, "SCRIPT: mpls_route_decap_dump ");
 
   FINISH;
 }
 
-static void *vl_api_ip6_fib_dump_t_print
-  (vl_api_ip6_fib_dump_t * mp, void *handle)
+static void *vl_api_ip_table_dump_t_print
+  (vl_api_ip_table_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: ip6_fib_dump ");
+  s = format (0, "SCRIPT: ip_table_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_ip_route_dump_t_print
+  (vl_api_ip_route_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_route_dump ");
 
   FINISH;
 }
@@ -3761,10 +3668,10 @@ _(BOND_DETACH_SLAVE, bond_detach_slave)                                 \
 _(TAP_CREATE_V2, tap_create_v2)                                         \
 _(TAP_DELETE_V2, tap_delete_v2)                                         \
 _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
-_(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
 _(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                               \
+_(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
@@ -3854,7 +3761,8 @@ _(AF_PACKET_CREATE, af_packet_create)					\
 _(AF_PACKET_DELETE, af_packet_delete)					\
 _(AF_PACKET_DUMP, af_packet_dump)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
-_(MPLS_FIB_DUMP, mpls_fib_dump)                                         \
+_(MPLS_TABLE_DUMP, mpls_table_dump)                                     \
+_(MPLS_ROUTE_DUMP, mpls_route_dump)                                     \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                   \
 _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
@@ -3918,8 +3826,8 @@ _(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
 _(GET_FIRST_MSG_ID, get_first_msg_id)                                   \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
-_(IP_FIB_DUMP, ip_fib_dump)                                             \
-_(IP6_FIB_DUMP, ip6_fib_dump)                                           \
+_(IP_TABLE_DUMP, ip_table_dump)                                         \
+_(IP_ROUTE_DUMP, ip_route_dump)                                         \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
 _(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                           \

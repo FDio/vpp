@@ -219,7 +219,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg0))
 
@@ -240,14 +240,14 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
     def get_interface_addresses(fib, pg):
         lst = []
         for entry in fib:
-            if entry.address_length == 128:
-                path = entry.path[0]
+            if entry.route.prefix.address_length == 128:
+                path = entry.route.paths[0]
                 if path.sw_if_index == pg.sw_if_index:
-                    lst.append(entry.address)
+                    lst.append(entry.route.prefix.address.un.ip6.address)
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         return addresses.difference(self.initial_addresses)
 
@@ -374,7 +374,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(2)
 
         # check that the address is deleted
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -423,7 +423,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -440,7 +440,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -466,7 +466,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg1))
 
@@ -492,14 +492,14 @@ class TestDHCPv6PDControlPlane(VppTestCase):
     def get_interface_addresses(fib, pg):
         lst = []
         for entry in fib:
-            if entry.address_length == 128:
-                path = entry.path[0]
+            if entry.route.prefix.address_length == 128:
+                path = entry.route.paths[0]
                 if path.sw_if_index == pg.sw_if_index:
-                    lst.append(entry.address)
+                    lst.append(entry.route.prefix.address.un.ip6.address)
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg1))
         return addresses.difference(self.initial_addresses)
 
@@ -645,7 +645,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(1)
 
             # check FIB contains 2 addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 2)
@@ -659,7 +659,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(1)
 
             # check that the addresses are deleted
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
@@ -727,7 +727,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
@@ -760,7 +760,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)

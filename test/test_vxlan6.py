@@ -9,6 +9,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import *
 
 
 class TestVxlan6(BridgeDomain, VppTestCase):
@@ -85,11 +87,13 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         # Create 10 ucast vxlan tunnels under bd
         start = 10
         end = start + n_ucast_tunnels
-        next_hop = cls.pg0.remote_ip6n
         for dest_ip6 in cls.ip_range(start, end):
             dest_ip6n = socket.inet_pton(socket.AF_INET6, dest_ip6)
             # add host route so dest ip will not be resolved
-            cls.vapi.ip_add_del_route(dest_ip6n, 128, next_hop, is_ipv6=1)
+            rip = VppIpRoute(cls, dest_ip6, 128,
+                             [VppRoutePath(cls.pg0.remote_ip6, INVALID_INDEX)],
+                             register=False)
+            rip.add_vpp_config()
             r = cls.vapi.vxlan_add_del_tunnel(
                 is_ipv6=1,
                 src_addr=cls.pg0.local_ip6n,

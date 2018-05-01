@@ -404,7 +404,7 @@ bier_fmask_get_stats (index_t bfmi, u64 * packets, u64 * bytes)
 void
 bier_fmask_encode (index_t bfmi,
                    bier_table_id_t *btid,
-                   fib_route_path_encode_t *rpath)
+                   fib_route_path_t *rpath)
 {
     bier_fmask_t *bfm;
 
@@ -413,17 +413,17 @@ bier_fmask_encode (index_t bfmi,
 
     clib_memset(rpath, 0, sizeof(*rpath));
 
-    rpath->rpath.frp_sw_if_index = ~0;
+    rpath->frp_sw_if_index = ~0;
 
     switch (bfm->bfm_id->bfmi_nh_type)
     {
     case BIER_NH_UDP:
-        rpath->rpath.frp_flags = FIB_ROUTE_PATH_UDP_ENCAP;
-        rpath->rpath.frp_udp_encap_id = bfm->bfm_id->bfmi_id;
+        rpath->frp_flags = FIB_ROUTE_PATH_UDP_ENCAP;
+        rpath->frp_udp_encap_id = bfm->bfm_id->bfmi_id;
         break;
     case BIER_NH_IP:
-        memcpy(&rpath->rpath.frp_addr, &bfm->bfm_id->bfmi_nh,
-               sizeof(rpath->rpath.frp_addr));
+        memcpy(&rpath->frp_addr, &bfm->bfm_id->bfmi_nh,
+               sizeof(rpath->frp_addr));
         break;
     }
 }

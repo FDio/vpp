@@ -14,6 +14,7 @@
  */
 
 #include "vom/route.hpp"
+#include "vom/api_types.hpp"
 #include "vom/route_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -382,126 +383,146 @@ ip_route::event_handler::handle_replay()
   m_db.replay();
 }
 
+static route::path
+from_vpp(const vapi_type_fib_path& payload)
+{
+  switch (payload.type)
+  {
+  case FIB_API_PATH_TYPE_DVR: {
+      std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+      if (!itf)
+          throw invalid_decode("fib-path deocde no interface:" + std::to_string(payload.sw_if_index));
+
+      return (path(*itf, from_api(payload.proto),
+                   route::path::flags_t::DVR,
+                   payload.weight,
+                   payload.preference));
+  }
+  case FIB_API_PATH_TYPE_NORMAL: {
+      boost::asio::ip::address address = from_api(0, p.next_hop);
+      std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+      if (itf) {
+            if (p.is_dvr) {
+              path path_v4(*itf, nh_proto_t::IPV4, route::path::flags_t::DVR,
+                           p.weight, p.preference);
+              ip_r.add(path_v4);
+            } else {
+              path path_v4(address, *itf, p.weight, p.preference);
+              ip_r.add(path_v4);
+            }
+          } else {
+            path path_v4(rd_temp, address, p.weight, p.preference);
+            ip_r.add(path_v4);
+      return (path());
+  }
+  case FIB_API_PATH_TYPE_LOCAL:
+      return (path(route::path::special_t::LOCAL));
+  case FIB_API_PATH_TYPE_DROP:
+      return (path(route::path::special_t::DROP));
+  case FIB_API_PATH_TYPE_ICMP_UNREACH:
+      return (path(route::path::special_t::PROHIBIT));
+  case FIB_API_PATH_TYPE_ICMP_PROHIBIT:
+      return (path(route::path::special_t::UNREACH));
+      
+  case FIB_API_PATH_TYPE_UDP_ENCAP:
+  case FIB_API_PATH_TYPE_BIER_IMP:
+  case FIB_API_PATH_TYPE_SOURCE_LOOKUP:
+  case FIB_API_PATH_TYPE_INTERFACE_RX:
+  case FIB_API_PATH_TYPE_CLASSIFY:
+      // not done yet
+  }
+
+  payload.flags = FIB_API_PATH_FLAG_NONE;
+  payload.proto = to_api(p.nh_proto());
+  payload.sw_if_index = ~0;
+
+  if (route::path::flags_t::DVR & p.flags()) {
+    payload.type = FIB_API_PATH_TYPE_DVR;
+  } else if (route::path::special_t::STANDARD == p.type()) {
+    payload.nh.address = to_api(p.nh()).un;
+
+    if (p.rd()) {
+      payload.table_id = p.rd()->table_id();
+    }
+    if (p.itf()) {
+      payload.sw_if_index = p.itf()->handle().value();
+    }
+  }
+  payload.weight = p.weight();
+  payload.preference = p.preference();
+  payload.n_labels = 0;
+}
+
 void
 ip_route::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4 =
-    std::make_shared<ip_route_cmds::dump_v4_cmd>();
-  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6 =
-    std::make_shared<ip_route_cmds::dump_v6_cmd>();
+  // for each known route-domain
+  auto it = route_domain::cbegin();
 
-  HW::enqueue(cmd_v4);
-  HW::enqueue(cmd_v6);
-  HW::write();
+  while (it != route_domain::cend()) {
 
-  for (auto& record : *cmd_v4) {
-    auto& payload = record.get_payload();
+    std::shared_ptr<ip_route_cmds::dump_cmd> cmd =
+      std::make_shared<ip_route_cmds::dump_cmd>(it->second.lock()->table_id());
 
-    prefix_t pfx(0, payload.address, payload.address_length);
+    HW::enqueue(cmd);
+    HW::write();
 
-    /**
-     * populating the route domain here
-     */
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
-    }
-    ip_route ip_r(rd_temp, pfx);
+    for (auto& record : *cmd) {
+      auto& payload = record.get_payload();
 
-    for (unsigned int i = 0; i < payload.count; i++) {
-      vapi_type_fib_path p = payload.path[i];
-      if (p.is_local) {
-        path path_v4(path::special_t::LOCAL);
-        ip_r.add(path_v4);
-      } else if (p.is_drop) {
-        path path_v4(path::special_t::DROP);
-        ip_r.add(path_v4);
-      } else if (p.is_unreach) {
-        path path_v4(path::special_t::UNREACH);
-        ip_r.add(path_v4);
-      } else if (p.is_prohibit) {
-        path path_v4(path::special_t::PROHIBIT);
-        ip_r.add(path_v4);
-      } else {
-        boost::asio::ip::address address = from_bytes(0, p.next_hop);
-        std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
-        if (itf) {
-          if (p.is_dvr) {
-            path path_v4(*itf, nh_proto_t::IPV4, route::path::flags_t::DVR,
-                         p.weight, p.preference);
-            ip_r.add(path_v4);
-          } else {
-            path path_v4(address, *itf, p.weight, p.preference);
-            ip_r.add(path_v4);
-          }
-        } else {
-          path path_v4(rd_temp, address, p.weight, p.preference);
-          ip_r.add(path_v4);
-        }
+      prefix_t pfx = from_api(payload.route.prefix);
+
+      std::shared_ptr<route_domain> rd =
+        route_domain::find(payload.route.table_id);
+      if (!rd) {
+        continue;
       }
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
+      ip_route ip_r(*rd, pfx);
 
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
-  }
-
-  for (auto& record : *cmd_v6) {
-    auto& payload = record.get_payload();
-
-    prefix_t pfx(1, payload.address, payload.address_length);
-    route_domain rd_temp(payload.table_id);
-    std::shared_ptr<route_domain> rd = route_domain::find(payload.table_id);
-    if (!rd) {
-      OM::commit(key, rd_temp);
-    }
-    ip_route ip_r(rd_temp, pfx);
-
-    for (unsigned int i = 0; i < payload.count; i++) {
-      vapi_type_fib_path p = payload.path[i];
-      if (p.is_local) {
-        path path_v6(path::special_t::LOCAL);
-        ip_r.add(path_v6);
-      } else if (p.is_drop) {
-        path path_v6(path::special_t::DROP);
-        ip_r.add(path_v6);
-      } else if (p.is_unreach) {
-        path path_v6(path::special_t::UNREACH);
-        ip_r.add(path_v6);
-      } else if (p.is_prohibit) {
-        path path_v6(path::special_t::PROHIBIT);
-        ip_r.add(path_v6);
-      } else {
-        std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
-        boost::asio::ip::address address = from_bytes(1, p.next_hop);
-        if (itf) {
-          if (p.is_dvr) {
-            path path_v6(*itf, nh_proto_t::IPV6, route::path::flags_t::DVR,
-                         p.weight, p.preference);
-            ip_r.add(path_v6);
-          } else {
-            path path_v6(address, *itf, p.weight, p.preference);
-            ip_r.add(path_v6);
-          }
-        } else {
-          path path_v6(rd_temp, address, p.weight, p.preference);
-          ip_r.add(path_v6);
-        }
+      for (unsigned int i = 0; i < payload.route.n_paths; i++) {
+        // vapi_type_fib_path& p = payload.route.paths[i];
+        /* if (p.is_local) { */
+        /*   path path_v4(path::special_t::LOCAL); */
+        /*   ip_r.add(path_v4); */
+        /* } */
+        /* } else if (p.is_drop) { */
+        /*   path path_v4(path::special_t::DROP); */
+        /*   ip_r.add(path_v4); */
+        /* } else if (p.is_unreach) { */
+        /*   path path_v4(path::special_t::UNREACH); */
+        /*   ip_r.add(path_v4); */
+        /* } else if (p.is_prohibit) { */
+        /*   path path_v4(path::special_t::PROHIBIT); */
+        /*   ip_r.add(path_v4); */
+        /* } else { */
+        /*   boost::asio::ip::address address = from_bytes(0, p.next_hop); */
+        /*   std::shared_ptr<interface> itf = interface::find(p.sw_if_index); */
+        /*   if (itf) { */
+        /*     if (p.is_dvr) { */
+        /*       path path_v4(*itf, nh_proto_t::IPV4, route::path::flags_t::DVR,
+         */
+        /*                    p.weight, p.preference); */
+        /*       ip_r.add(path_v4); */
+        /*     } else { */
+        /*       path path_v4(address, *itf, p.weight, p.preference); */
+        /*       ip_r.add(path_v4); */
+        /*     } */
+        /*   } else { */
+        /*     path path_v4(rd_temp, address, p.weight, p.preference); */
+        /*     ip_r.add(path_v4); */
+        /*   } */
+        /* } */
       }
-    }
-    VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
 
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, ip_r);
+      VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
+
+      /*
+       * Write each of the discovered interfaces into the OM,
+       * but disable the HW Command q whilst we do, so that no
+       * commands are sent to VPP
+       */
+      OM::commit(key, ip_r);
+    }
   }
 }
 

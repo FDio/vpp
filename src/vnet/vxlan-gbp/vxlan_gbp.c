@@ -561,6 +561,7 @@ int vnet_vxlan_gbp_tunnel_add_del
 		.frp_fib_index = ~0,
 		.frp_weight = 0,
 		.frp_flags = FIB_ROUTE_PATH_LOCAL,
+		.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
 	      };
 	      const mfib_prefix_t mpfx = {
 		.fp_proto = fp,
@@ -575,16 +576,15 @@ int vnet_vxlan_gbp_tunnel_add_del
 	       */
 	      mfib_table_entry_path_update (t->encap_fib_index,
 					    &mpfx,
-					    MFIB_SOURCE_VXLAN_GBP,
-					    &path, MFIB_ITF_FLAG_FORWARD);
+					    MFIB_SOURCE_VXLAN_GBP, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
 	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
 						   &mpfx,
 						   MFIB_SOURCE_VXLAN_GBP,
-						   &path,
-						   MFIB_ITF_FLAG_ACCEPT);
+						   &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group

@@ -17,7 +17,7 @@
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
 
 **verify 1**
-    - check VRF data by parsing output of ip6_fib_dump API command
+    - check VRF data by parsing output of ip_route_dump API command
     - all packets received correctly in case of pg-ip6 interfaces in the same
     VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
@@ -30,7 +30,7 @@
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
 
 **verify 2**
-    - check VRF data by parsing output of ip6_fib_dump API command
+    - check VRF data by parsing output of ip_route_dump API command
     - all packets received correctly in case of pg-ip6 interfaces in the same
     VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
@@ -43,7 +43,7 @@
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
 
 **verify 3**
-    - check VRF data by parsing output of ip6_fib_dump API command
+    - check VRF data by parsing output of ip_route_dump API command
     - all packets received correctly in case of pg-ip6 interfaces in the same
     VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
@@ -56,7 +56,7 @@
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
 
 **verify 4**
-    - check VRF data by parsing output of ip6_fib_dump API command
+    - check VRF data by parsing output of ip_route_dump API command
     - all packets received correctly in case of pg-ip6 interfaces in the same
     VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
@@ -344,23 +344,20 @@ class TestIP6VrfMultiInst(VppTestCase):
         :param int vrf_id: The FIB table / VRF ID to be verified.
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
-        ip6_fib_dump = self.vapi.ip6_fib_dump()
-        vrf_exist = False
+        ip6_fib_dump = self.vapi.ip_route_dump(vrf_id, True)
+        vrf_exist = len(ip6_fib_dump)
         vrf_count = 0
         for ip6_fib_details in ip6_fib_dump:
-            if ip6_fib_details.table_id == vrf_id:
-                if not vrf_exist:
-                    vrf_exist = True
-                addr = inet_ntop(socket.AF_INET6, ip6_fib_details.address)
-                found = False
-                for pg_if in self.pg_if_by_vrf_id[vrf_id]:
-                    if found:
+            addr = ip6_fib_details.route.prefix.address.un.ip6.address
+            found = False
+            for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                if found:
+                    break
+                for host in pg_if.remote_hosts:
+                    if addr == host.ip6n:
+                        vrf_count += 1
+                        found = True
                         break
-                    for host in pg_if.remote_hosts:
-                        if str(addr) == str(host.ip6):
-                            vrf_count += 1
-                            found = True
-                            break
         if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv6 VRF ID %d is not configured" % vrf_id)
             return VRFState.not_configured

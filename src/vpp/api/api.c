@@ -525,7 +525,7 @@ vpe_api_hookup (vlib_main_t * vm)
   /*
    * Thread-safe API messages
    */
-  am->is_mp_safe[VL_API_IP_ADD_DEL_ROUTE] = 1;
+  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
   am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
 
   /*
