@@ -2,7 +2,7 @@
 
 from framework import VppTestCase, VppTestRunner
 from vpp_udp_encap import *
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -296,7 +296,7 @@ class TestAbf(VppTestCase):
         abf_1 = VppAbfPolicy(self, 10, acl_1,
                              [VppRoutePath("3001::1",
                                            0xffffffff,
-                                           proto=DpoProto.DPO_PROTO_IP6)])
+                                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         abf_1.add_vpp_config()
 
         attach_1 = VppAbfAttach(self, 10, self.pg0.sw_if_index,
@@ -324,7 +324,7 @@ class TestAbf(VppTestCase):
         route = VppIpRoute(self, "3001::1", 32,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
+                                         proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
                            is_ip6=1)
         route.add_vpp_config()
 

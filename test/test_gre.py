@@ -6,7 +6,7 @@ from logging import *
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
@@ -533,7 +533,7 @@ class TestGRE(VppTestCase):
             self, "4004::1", 128,
             [VppRoutePath("0::0",
                           gre_if.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
 
         route_via_tun.add_vpp_config()
@@ -560,7 +560,7 @@ class TestGRE(VppTestCase):
             self, "1002::1", 128,
             [VppRoutePath(self.pg2.remote_ip6,
                           self.pg2.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
         route_tun_dst.add_vpp_config()
 

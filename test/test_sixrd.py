@@ -6,7 +6,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton
 
 """ Test6rd is a subclass of  VPPTestCase classes.
@@ -234,7 +234,7 @@ class Test6RD(VppTestCase):
         default_route = VppIpRoute(
             self, "DEAD::", 16, [VppRoutePath("2002:0808:0808::",
                                               self.tunnel_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
         default_route.add_vpp_config()
 

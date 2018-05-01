@@ -196,7 +196,7 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
     vec_foreach_index(ii, brpaths)
     {
         brpath = &brpaths[ii];
-        rv = fib_path_api_parse(&mp->br_paths[ii], brpath);
+        rv = fib_api_path_decode(&mp->br_paths[ii], brpath);
 
         if (0 != rv)
         {
@@ -231,7 +231,7 @@ send_bier_route_details (const bier_table_t *bt,
                          const bier_entry_t *be,
                          void *args)
 {
-    fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
+    fib_route_path_t *rpaths = NULL, *rpath;
     bier_route_details_walk_t *ctx = args;
     vl_api_bier_route_details_t *mp;
     vl_api_fib_path_t *fp;
@@ -253,15 +253,16 @@ send_bier_route_details (const bier_table_t *bt,
     mp->br_bp = htons(be->be_bp);
     mp->br_n_paths = htonl(n_paths);
 
-    fib_path_list_walk(be->be_path_list, fib_path_encode, &api_rpaths);
+    fib_path_list_walk(be->be_path_list, fib_path_encode, &rpaths);
 
     fp = mp->br_paths;
-    vec_foreach (api_rpath, api_rpaths)
+    vec_foreach (rpath, rpaths)
     {
-        fib_api_path_encode(api_rpath, fp);
+        fib_api_path_encode(rpath, fp);
         fp++;
     }
 
+    vec_free(rpaths);
     vl_api_send_msg (ctx->reg, (u8 *) mp);
 }
 
@@ -492,16 +493,16 @@ vl_api_bier_disp_entry_add_del_t_handler (vl_api_bier_disp_entry_add_del_t * mp)
             brp->frp_rpf_id = ntohl(mp->bde_paths[ii].rpf_id);
         }
 
-        if (0 == mp->bde_paths[ii].afi)
+        if (FIB_API_PATH_NH_PROTO_IP4 == mp->bde_paths[ii].proto)
         {
             clib_memcpy (&brp->frp_addr.ip4,
-                         mp->bde_paths[ii].next_hop,
+                         &mp->bde_paths[ii].nh.address.ip4,
                          sizeof (brp->frp_addr.ip4));
         }
-        else
+        else if (FIB_API_PATH_NH_PROTO_IP6 == mp->bde_paths[ii].proto)
         {
             clib_memcpy (&brp->frp_addr.ip6,
-                         mp->bde_paths[ii].next_hop,
+                         &mp->bde_paths[ii].nh.address.ip6,
                          sizeof (brp->frp_addr.ip6));
         }
         if (ip46_address_is_zero(&brp->frp_addr))
@@ -587,7 +588,6 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
                               u16 bp,
                               void *args)
 {
-    fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
     bier_disp_entry_details_walk_t *ctx = args;
     vl_api_bier_disp_entry_details_t *mp;
     bier_hdr_proto_id_t pproto;
@@ -596,7 +596,9 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
 
     FOR_EACH_BIER_HDR_PROTO(pproto)
     {
+        fib_route_path_t *rpaths = NULL, *rpath;
         fib_node_index_t pl = bde->bde_pl[pproto];
+
         if (INDEX_INVALID != pl)
         {
             n_paths = fib_path_list_get_n_paths(pl);
@@ -614,17 +616,19 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
             mp->bde_payload_proto = pproto;
             mp->bde_bp = htons(bp);
 
-            fib_path_list_walk(pl, fib_path_encode, &api_rpaths);
+            fib_path_list_walk(pl, fib_path_encode, &rpaths);
 
             fp = mp->bde_paths;
-            vec_foreach (api_rpath, api_rpaths)
+            vec_foreach (rpath, rpaths)
             {
-                fib_api_path_encode(api_rpath, fp);
+                fib_api_path_encode(rpath, fp);
                 fp++;
             }
 
             vl_api_send_msg (ctx->reg, (u8 *) mp);
         }
+
+        vec_free(rpaths);
     }
 }
 

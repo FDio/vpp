@@ -196,7 +196,7 @@ ENABLE_ARG(dlmalloc,    [Enable dlmalloc])
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
 DISABLE_ARG(svm,	[Disable svm and dependant libs and binaries])
 DISABLE_ARG(papi,	[Disable Python API bindings])
-DISABLE_ARG(japi,	[Disable Java API bindings])
+ENABLE_ARG(japi,	[Disable Java API bindings])
 
 # --with-X
 

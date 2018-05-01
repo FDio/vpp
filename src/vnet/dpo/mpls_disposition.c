@@ -87,8 +87,12 @@ format_mpls_disp_dpo (u8 *s, va_list *args)
 
     mdd = mpls_disp_dpo_get(index);
 
-    s = format(s, "mpls-disposition:[%d]:[%U, %U]",
-               index,
+    s = format(s, "mpls-disposition:[%d]:[", index);
+
+    if (0 != mdd->mdd_rpf_id)
+        s = format(s, "rpf-id:%d ", mdd->mdd_rpf_id);
+
+    s = format(s, "%U, %U]",
                format_dpo_proto, mdd->mdd_payload_proto,
                format_fib_mpls_lsp_mode, mdd->mdd_mode);
 
@@ -130,7 +134,9 @@ mpls_disp_dpo_unlock (dpo_id_t *dpo)
  */
 typedef struct mpls_label_disposition_trace_t_
 {
-    index_t mdd;
+    dpo_proto_t mddt_payload_proto;
+    fib_rpf_id_t mddt_rpf_id;
+    fib_mpls_lsp_mode_t mddt_mode;
 } mpls_label_disposition_trace_t;
 
 extern vlib_node_registration_t ip4_mpls_label_disposition_pipe_node;
@@ -291,13 +297,17 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                 mpls_label_disposition_trace_t *tr =
                     vlib_add_trace(vm, node, b0, sizeof(*tr));
 
-                tr->mdd = mddi0;
+                tr->mddt_payload_proto = mdd0->mdd_payload_proto;
+                tr->mddt_rpf_id = mdd0->mdd_rpf_id;
+                tr->mddt_mode = mdd0->mdd_mode;
             }
             if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
                 mpls_label_disposition_trace_t *tr =
                     vlib_add_trace(vm, node, b1, sizeof(*tr));
-                tr->mdd = mddi1;
+                tr->mddt_payload_proto = mdd1->mdd_payload_proto;
+                tr->mddt_rpf_id = mdd1->mdd_rpf_id;
+                tr->mddt_mode = mdd1->mdd_mode;
             }
 
             vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
@@ -381,7 +391,9 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             {
                 mpls_label_disposition_trace_t *tr =
                     vlib_add_trace(vm, node, b0, sizeof(*tr));
-                tr->mdd = mddi0;
+                tr->mddt_payload_proto = mdd0->mdd_payload_proto;
+                tr->mddt_rpf_id = mdd0->mdd_rpf_id;
+                tr->mddt_mode = mdd0->mdd_mode;
             }
 
             vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
@@ -401,7 +413,11 @@ format_mpls_label_disposition_trace (u8 * s, va_list * args)
 
     t = va_arg(*args, mpls_label_disposition_trace_t *);
 
-    s = format(s, "disp:%d", t->mdd);
+    s = format(s, "rpf-id:%d %U, %U",
+               t->mddt_rpf_id,
+               format_dpo_proto, t->mddt_payload_proto,
+               format_fib_mpls_lsp_mode, t->mddt_mode);
+
     return (s);
 }
 

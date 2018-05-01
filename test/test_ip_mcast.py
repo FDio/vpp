@@ -4,7 +4,7 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, DpoProto
+    MRouteItfFlags, MRouteEntryFlags, VppIpTable, FibPathProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -397,16 +397,16 @@ class TestIPMcast(VppTestCase):
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg0.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg1.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg2.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg3.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6)],
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
         route_ff01_1.add_vpp_config()
 
@@ -421,13 +421,13 @@ class TestIPMcast(VppTestCase):
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg0.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg1.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg2.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6)],
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
         route_2001_ff01_1.add_vpp_config()
 
@@ -442,10 +442,10 @@ class TestIPMcast(VppTestCase):
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg0.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg1.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6)],
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             is_ip6=1)
         route_ff01.add_vpp_config()
 
@@ -787,13 +787,13 @@ class TestIPMcast(VppTestCase):
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg8.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg1.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6),
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
              VppMRoutePath(self.pg2.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                           proto=DpoProto.DPO_PROTO_IP6)],
+                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
             table_id=10,
             is_ip6=1)
         route_2001_ff01_1.add_vpp_config()

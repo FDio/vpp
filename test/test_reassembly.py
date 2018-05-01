@@ -11,7 +11,7 @@ from util import ppp, fragment_rfc791, fragment_rfc8200
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 
 test_packet_count = 257
 
@@ -913,7 +913,7 @@ class TestFIFReassembly(VppTestCase):
         self.route6 = VppIpRoute(self, self.tun_ip6, 128,
                                  [VppRoutePath(self.src_if.remote_ip6,
                                                self.src_if.sw_if_index,
-                                               proto=DpoProto.DPO_PROTO_IP6)],
+                                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
                                  is_ip6=1)
         self.route6.add_vpp_config()
 

@@ -97,13 +97,13 @@ static fib_table_walk_rc_t
 gbp_subnet_fib_table_walk (fib_node_index_t fei, void *arg)
 {
   gbp_subnet_fib_table_walk_ctx_t *ctx = arg;
+  const fib_prefix_t *pfx;
   const dpo_id_t *dpo;
-  fib_prefix_t pfx;
   u32 table_id;
 
-  fib_entry_get_prefix (fei, &pfx);
+  pfx = fib_entry_get_prefix (fei);
   table_id = fib_table_get_table_id (fib_entry_get_fib_index (fei),
-				     pfx.fp_proto);
+				     pfx->fp_proto);
   dpo = fib_entry_contribute_ip_forwarding (fei);
 
   if (DPO_LOAD_BALANCE == dpo->dpoi_type)
@@ -117,7 +117,7 @@ gbp_subnet_fib_table_walk (fib_node_index_t fei, void *arg)
 	  gpd = gbp_policy_dpo_get (dpo->dpoi_index);
 
           /* *INDENT-OFF* */
-          ctx->cb (table_id, &pfx,
+          ctx->cb (table_id, pfx,
                    gpd->gpd_sw_if_index,
                    gpd->gpd_epg,
                    0,	// is_internal
@@ -127,7 +127,7 @@ gbp_subnet_fib_table_walk (fib_node_index_t fei, void *arg)
       else if (dpo->dpoi_type == gbp_fwd_dpo_get_type ())
 	{
           /* *INDENT-OFF* */
-          ctx->cb (table_id, &pfx,
+          ctx->cb (table_id, pfx,
                    ~0,	// sw_if_index
                    ~0,  // epg
                    1,   // is_internal

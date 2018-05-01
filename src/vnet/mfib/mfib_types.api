@@ -1,4 +1,3 @@
-/* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,38 +12,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ 
+import "vnet/fib/fib_types.api";
+import "vnet/ip/ip_types.api";
 
-typedef ip4_address {
-  u8 address[4];
+enum mfib_itf_flags
+{
+    MFIB_API_ITF_FLAG_NONE = 0,
+    MFIB_API_ITF_FLAG_NEGATE_SIGNAL = 0x1,
+    MFIB_API_ITF_FLAG_ACCEPT = 0x2,
+    MFIB_API_ITF_FLAG_FORWARD = 0x4,
+    MFIB_API_ITF_FLAG_SIGNAL_PRESENT = 0x8,
+    MFIB_API_ITF_FLAG_DONT_PRESERVE = 0x10,
 };
 
-typedef ip6_address {
-  u8 address[16];
-};
-
-enum address_family {
-  ADDRESS_IP4 = 0,
-  ADDRESS_IP6,
-};
-
-typedef address_union {
-  vl_api_ip4_address_t ip4;
-  vl_api_ip6_address_t ip6;
-};
-
-typedef address {
-  vl_api_address_family_t af;
-  vl_api_address_union_t un;
-};
-
-typedef prefix {
-  vl_api_address_t address;
-  u8 address_length;
-};
-
-typedef mprefix {
-  vl_api_address_family_t af;
-  u8 grp_address_length;
-  vl_api_address_union_t grp_address;
-  vl_api_address_union_t src_address;
+/** \brief mFIB path
+*/
+typeonly define mfib_path
+{
+  vl_api_mfib_itf_flags_t itf_flags;
+  vl_api_fib_path_t path;
 };

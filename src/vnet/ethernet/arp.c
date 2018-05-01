@@ -964,12 +964,13 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_hw_interface_t *hw_if0;
 	  ethernet_arp_header_t *arp0;
 	  ethernet_header_t *eth_rx, *eth_tx;
-	  ip4_address_t *if_addr0, proxy_src;
+	  const ip4_address_t *if_addr0;
+	  ip4_address_t proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
 	  u8 is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
 	  ethernet_proxy_arp_t *pa;
 	  fib_node_index_t dst_fei, src_fei;
-	  fib_prefix_t pfx0;
+	  const fib_prefix_t *pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
 	  u8 *rewrite0, rewrite0_len;
 
@@ -1041,9 +1042,9 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	     * to reach us, they only affect how we reach the sender.
 	     */
 	    fib_entry_t *src_fib_entry;
+	    const fib_prefix_t *pfx;
 	    fib_entry_src_t *src;
 	    fib_source_t source;
-	    fib_prefix_t pfx;
 	    int attached;
 	    int mask;
 
@@ -1106,8 +1107,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		/*
 		 * shorter mask lookup for the next iteration.
 		 */
-		fib_entry_get_prefix (src_fei, &pfx);
-		mask = pfx.fp_len - 1;
+		pfx = fib_entry_get_prefix (src_fei);
+		mask = pfx->fp_len - 1;
 
 		/*
 		 * continue until we hit the default route or we find
@@ -1165,8 +1166,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    }
 
 	  dst_is_local0 = (FIB_ENTRY_FLAG_LOCAL & dst_flags);
-	  fib_entry_get_prefix (dst_fei, &pfx0);
-	  if_addr0 = &pfx0.fp_addr.ip4;
+	  pfx0 = fib_entry_get_prefix (dst_fei);
+	  if_addr0 = &pfx0->fp_addr.ip4;
 
 	  is_vrrp_reply0 =
 	    ((arp0->opcode ==

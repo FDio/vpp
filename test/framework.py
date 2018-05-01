@@ -122,7 +122,7 @@ def pump_output(testclass):
                             "VPP STDERR: %s" % line.rstrip("\n"))
         # ignoring the dummy pipe here intentionally - the flag will take care
         # of properly terminating the loop
-
+    testclass.logger.info("pump thread exited")
 
 def running_extended_tests():
     s = os.getenv("EXTENDED_TESTS", "n")

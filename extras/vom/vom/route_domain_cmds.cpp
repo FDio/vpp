@@ -39,9 +39,9 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.table_id = m_id;
+  payload.table.table_id = m_id;
+  payload.table.is_ip6 = m_proto.is_ipv6();
   payload.is_add = 1;
-  payload.is_ipv6 = m_proto.is_ipv6();
 
   VAPI_CALL(req.execute());
 
@@ -79,9 +79,9 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.table_id = m_id;
+  payload.table.table_id = m_id;
+  payload.table.is_ip6 = m_proto.is_ipv6();
   payload.is_add = 0;
-  payload.is_ipv6 = m_proto.is_ipv6();
 
   VAPI_CALL(req.execute());
 
@@ -100,6 +100,35 @@ delete_cmd::to_string() const
 
   return (s.str());
 }
+
+dump_cmd::dump_cmd()
+{
+}
+
+bool
+dump_cmd::operator==(const dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+dump_cmd::to_string() const
+{
+  return ("ip-table-dump");
+}
+
 } // namespace route_domain_cmds
 } // namespace VOM
   /*

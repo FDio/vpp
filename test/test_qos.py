@@ -6,7 +6,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_papi_provider import QOS_SOURCE
 from vpp_sub_interface import VppDot1QSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsLabel, VppMplsTable, DpoProto
+    VppMplsLabel, VppMplsTable, FibPathProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -490,13 +490,13 @@ class TestQOS(VppTestCase):
         route_2001_1 = VppIpRoute(self, "2001::1", 128,
                                   [VppRoutePath(sub_if.remote_ip6,
                                                 sub_if.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                                proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
                                   is_ip6=1)
         route_2001_1.add_vpp_config()
         route_2001_2 = VppIpRoute(self, "2001::2", 128,
                                   [VppRoutePath(self.pg1.remote_ip6,
                                                 self.pg1.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                                proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
                                   is_ip6=1)
         route_2001_2.add_vpp_config()
 
