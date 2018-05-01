@@ -788,94 +788,50 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.ip_table_add_del,
-            {'table_id': table_id,
-             'is_add': is_add,
-             'is_ipv6': is_ipv6})
+            {'table': {
+                'table_id': table_id,
+                'is_ip6': is_ipv6
+                },
+             'is_add': is_add})
 
-    def ip_add_del_route(
+    def ip_route_add_del(
             self,
             dst_address,
             dst_address_length,
-            next_hop_address,
-            next_hop_sw_if_index=0xFFFFFFFF,
+            paths,
             table_id=0,
-            next_hop_table_id=0,
-            next_hop_weight=1,
-            next_hop_n_out_labels=0,
-            next_hop_out_label_stack=[],
-            next_hop_via_label=MPLS_LABEL_INVALID,
-            next_hop_id=0xFFFFFFFF,
-            is_resolve_host=0,
-            is_resolve_attached=0,
-            classify_table_index=0xFFFFFFFF,
+            is_ip6=0,
             is_add=1,
-            is_drop=0,
-            is_unreach=0,
-            is_prohibit=0,
-            is_ipv6=0,
-            is_local=0,
-            is_classify=0,
-            is_multipath=0,
-            is_dvr=0,
-            is_udp_encap=0,
-            is_source_lookup=0):
+            is_multipath=0):
         """
 
         :param dst_address_length:
         :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
         :param dst_address:
-        :param next_hop_address:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vrf_id:  (Default value = 0)
-        :param lookup_in_vrf:  (Default value = 0)
-        :param classify_table_index:  (Default value = 0xFFFFFFFF)
+        :param paths:
         :param is_add:  (Default value = 1)
-        :param is_drop:  (Default value = 0)
-        :param is_ipv6:  (Default value = 0)
-        :param is_local:  (Default value = 0)
-        :param is_classify:  (Default value = 0)
         :param is_multipath:  (Default value = 0)
-        :param is_resolve_host:  (Default value = 0)
-        :param is_resolve_attached:  (Default value = 0)
-        :param is_dvr:  (Default value = 0)
-        :param is_source_lookup:  (Default value = 0)
-        :param next_hop_weight:  (Default value = 1)
 
         """
 
         return self.api(
             self.papi.ip_add_del_route,
-            {'next_hop_sw_if_index': next_hop_sw_if_index,
-             'table_id': table_id,
-             'classify_table_index': classify_table_index,
-             'next_hop_table_id': next_hop_table_id,
-             'is_add': is_add,
-             'is_drop': is_drop,
-             'is_unreach': is_unreach,
-             'is_prohibit': is_prohibit,
-             'is_ipv6': is_ipv6,
-             'is_local': is_local,
-             'is_classify': is_classify,
+            {'is_add': is_add,
              'is_multipath': is_multipath,
-             'is_resolve_host': is_resolve_host,
-             'is_resolve_attached': is_resolve_attached,
-             'is_dvr': is_dvr,
-             'is_source_lookup': is_source_lookup,
-             'is_udp_encap': is_udp_encap,
-             'next_hop_weight': next_hop_weight,
-             'dst_address_length': dst_address_length,
-             'dst_address': dst_address,
-             'next_hop_id': next_hop_id,
-             'next_hop_address': next_hop_address,
-             'next_hop_n_out_labels': next_hop_n_out_labels,
-             'next_hop_via_label': next_hop_via_label,
-             'next_hop_out_label_stack': next_hop_out_label_stack})
+             'route': {
+                 'table_id': table_id,
+                 'prefix': {
+                     'address_length': dst_address_length,
+                     'address': dst_address,
+                     'is_ip6': is_ip6},
+                 'paths': paths}})
 
-    def ip_fib_dump(self):
-        return self.api(self.papi.ip_fib_dump, {})
+    def ip_fib_table_dump(self):
+        return self.api(self.papi.ip_fib_table_dump, {})
 
-    def ip6_fib_dump(self):
-        return self.api(self.papi.ip6_fib_dump, {})
+    def ip_route_dump(self, table_id):
+        return self.api(self.papi.ip_route_dump,
+                        {'table': {'table_id': table_id}})
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
@@ -1115,76 +1071,34 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.mpls_table_add_del,
-            {'mt_table_id': table_id,
+            {'mt_table': {
+                'mt_table_id': table_id,
+                },
              'mt_is_add': is_add})
 
-    def mpls_route_add_del(
-            self,
-            label,
-            eos,
-            next_hop_proto,
-            next_hop_address,
-            next_hop_sw_if_index=0xFFFFFFFF,
-            table_id=0,
-            next_hop_table_id=0,
-            next_hop_weight=1,
-            next_hop_n_out_labels=0,
-            next_hop_out_label_stack=[],
-            next_hop_via_label=MPLS_LABEL_INVALID,
-            is_resolve_host=0,
-            is_resolve_attached=0,
-            is_interface_rx=0,
-            is_rpf_id=0,
-            is_multicast=0,
-            is_add=1,
-            is_drop=0,
-            is_multipath=0,
-            classify_table_index=0xFFFFFFFF,
-            is_classify=0):
-        """
-
-        :param dst_address_length:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param dst_address:
-        :param next_hop_address:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vrf_id:  (Default value = 0)
-        :param lookup_in_vrf:  (Default value = 0)
-        :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param is_add:  (Default value = 1)
-        :param is_drop:  (Default value = 0)
-        :param is_ipv6:  (Default value = 0)
-        :param is_local:  (Default value = 0)
-        :param is_classify:  (Default value = 0)
-        :param is_multipath:  (Default value = 0)
-        :param is_multicast:  (Default value = 0)
-        :param is_resolve_host:  (Default value = 0)
-        :param is_resolve_attached:  (Default value = 0)
-        :param next_hop_weight:  (Default value = 1)
-
-        """
+    def mpls_route_add_del(self,
+                           table_id,
+                           label,
+                           eos,
+                           eos_proto,
+                           is_multicast,
+                           paths,
+                           is_add,
+                           is_multipath):
+        """ MPLS Route add/del """
         return self.api(
             self.papi.mpls_route_add_del,
-            {'mr_label': label,
-             'mr_eos': eos,
-             'mr_table_id': table_id,
-             'mr_classify_table_index': classify_table_index,
+            {'mr_route': {
+                'mr_table_id': table_id,
+                'mr_label': label,
+                'mr_eos': eos,
+                'mr_eos_proto': eos_proto,
+                'mr_is_multicast': is_multicast,
+                'mr_n_paths': len(paths),
+                'mr_paths': paths,
+                },
              'mr_is_add': is_add,
-             'mr_is_classify': is_classify,
-             'mr_is_multipath': is_multipath,
-             'mr_is_multicast': is_multicast,
-             'mr_is_resolve_host': is_resolve_host,
-             'mr_is_resolve_attached': is_resolve_attached,
-             'mr_is_interface_rx': is_interface_rx,
-             'mr_is_rpf_id': is_rpf_id,
-             'mr_next_hop_proto': next_hop_proto,
-             'mr_next_hop_weight': next_hop_weight,
-             'mr_next_hop': next_hop_address,
-             'mr_next_hop_n_out_labels': next_hop_n_out_labels,
-             'mr_next_hop_sw_if_index': next_hop_sw_if_index,
-             'mr_next_hop_table_id': next_hop_table_id,
-             'mr_next_hop_via_label': next_hop_via_label,
-             'mr_next_hop_out_label_stack': next_hop_out_label_stack})
+             'mr_is_multipath': is_multipath})
 
     def mpls_ip_bind_unbind(
             self,

@@ -128,6 +128,7 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
 }
 
 static void
+>>>>>>> eda1bad... FIB API updates
 add_default_route (vlib_main_t * vm, u32 sw_if_index,
 		   ip6_address_t * next_hop_address, f64 due_time)
 {

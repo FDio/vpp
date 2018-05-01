@@ -219,8 +219,7 @@ fib_node_index_t
 mfib_table_entry_path_update (u32 fib_index,
                               const mfib_prefix_t *prefix,
                               mfib_source_t source,
-                              const fib_route_path_t *rpath,
-                              mfib_itf_flags_t itf_flags)
+                              const mfib_route_path_t *rpath)
 {
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
@@ -239,10 +238,7 @@ mfib_table_entry_path_update (u32 fib_index,
         mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
     }
 
-    mfib_entry_path_update(mfib_entry_index,
-                           source,
-                           rpath,
-                           itf_flags);
+    mfib_entry_path_update(mfib_entry_index, source, rpath);
 
     return (mfib_entry_index);
 }
@@ -251,7 +247,7 @@ void
 mfib_table_entry_path_remove (u32 fib_index,
                               const mfib_prefix_t *prefix,
                               mfib_source_t source,
-                              const fib_route_path_t *rpath)
+                              const mfib_route_path_t *rpath)
 {
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
@@ -380,12 +376,10 @@ void
 mfib_table_entry_delete_index (fib_node_index_t mfib_entry_index,
                                mfib_source_t source)
 {
-    mfib_prefix_t prefix;
-
-    mfib_entry_get_prefix(mfib_entry_index, &prefix);
-
     mfib_table_entry_delete_i(mfib_entry_get_fib_index(mfib_entry_index),
-                              mfib_entry_index, &prefix, source);
+                              mfib_entry_index,
+                              mfib_entry_get_prefix(mfib_entry_index),
+                              source);
 }
 
 u32
@@ -420,6 +414,16 @@ mfib_table_find (fib_protocol_t proto,
         break;
     }
     return (~0);
+}
+
+u32
+mfib_table_get_table_id (u32 fib_index, fib_protocol_t proto)
+{
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    return ((NULL != mfib_table ? mfib_table->mft_table_id : ~0));
 }
 
 static u32

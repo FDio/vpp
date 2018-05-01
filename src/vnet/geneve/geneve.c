@@ -507,13 +507,17 @@ int vnet_geneve_add_del_tunnel
 	    {
 	      fib_node_index_t mfei;
 	      adj_index_t ai;
-	      fib_route_path_t path = {
-		.frp_proto = fib_proto_to_dpo (fp),
-		.frp_addr = zero_addr,
-		.frp_sw_if_index = 0xffffffff,
-		.frp_fib_index = ~0,
-		.frp_weight = 0,
-		.frp_flags = FIB_ROUTE_PATH_LOCAL,
+	      mfib_route_path_t path = {
+		.rpath = {
+			  .frp_proto = fib_proto_to_dpo (fp),
+			  .frp_addr = zero_addr,
+			  .frp_sw_if_index = 0xffffffff,
+			  .frp_fib_index = ~0,
+			  .frp_weight = 0,
+			  .frp_flags = FIB_ROUTE_PATH_LOCAL,
+			  }
+		,
+		.itf_flags = MFIB_ITF_FLAG_FORWARD,
 	      };
 	      const mfib_prefix_t mpfx = {
 		.fp_proto = fp,
@@ -527,17 +531,14 @@ int vnet_geneve_add_del_tunnel
 	       *  - the accepting interface is that from the API
 	       */
 	      mfib_table_entry_path_update (t->encap_fib_index,
-					    &mpfx,
-					    MFIB_SOURCE_GENEVE,
-					    &path, MFIB_ITF_FLAG_FORWARD);
+					    &mpfx, MFIB_SOURCE_GENEVE, &path);
 
-	      path.frp_sw_if_index = a->mcast_sw_if_index;
-	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+	      path.rpath.frp_sw_if_index = a->mcast_sw_if_index;
+	      path.rpath.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+	      path.itf_flags = MFIB_ITF_FLAG_ACCEPT;
 	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
 						   &mpfx,
-						   MFIB_SOURCE_GENEVE,
-						   &path,
-						   MFIB_ITF_FLAG_ACCEPT);
+						   MFIB_SOURCE_GENEVE, &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group
