@@ -15,11 +15,11 @@ class TestAddType(unittest.TestCase):
                           [['u8', 'is_bool'],
                            ['u32', 'is_int']])
 
-        b = un.pack({'is_int': 0x1234})
+        b = un.pack({'is_int': 0x12345678})
         self.assertEqual(len(b), 4)
         nt = un.unpack(b)
-        self.assertEqual(nt.is_bool, 52)
-        self.assertEqual(nt.is_int, 0x1234)
+        self.assertEqual(nt.is_bool, 0x12)
+        self.assertEqual(nt.is_int, 0x12345678)
 
     def test_address(self):
         af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],
@@ -53,7 +53,7 @@ class TestAddType(unittest.TestCase):
         self.assertEqual(nt.un.ip4.address,
                          inet_pton(AF_INET, '2.2.2.2'))
         self.assertEqual(nt.un.ip6.address,
-                         inet_pton(AF_INET6, '::0202:0202'))
+                         inet_pton(AF_INET6, '0202:0202::'))
 
     def test_arrays(self):
         # Test cases
