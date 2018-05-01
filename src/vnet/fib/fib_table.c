@@ -481,7 +481,7 @@ fib_table_entry_special_remove (u32 fib_index,
  */
 static void
 fib_table_route_path_fixup (const fib_prefix_t *prefix,
-                            fib_entry_flag_t eflags,
+                            fib_entry_flag_t *eflags,
 			    fib_route_path_t *path)
 {
     /*
@@ -496,7 +496,8 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
         /* Prefix recurses via itse;f */
 	path->frp_flags |= FIB_ROUTE_PATH_DROP;
     }
-    if (fib_prefix_is_host(prefix) &&
+    if (!(path->frp_flags & FIB_ROUTE_PATH_LOCAL) &&
+        fib_prefix_is_host(prefix) &&
 	ip46_address_is_zero(&path->frp_addr) &&
 	path->frp_sw_if_index != ~0 &&
         path->frp_proto != DPO_PROTO_ETHERNET)
@@ -504,17 +505,26 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
 	path->frp_addr = prefix->fp_addr;
         path->frp_flags |= FIB_ROUTE_PATH_ATTACHED;
     }
-    if (eflags & FIB_ENTRY_FLAG_DROP)
+    if (*eflags & FIB_ENTRY_FLAG_DROP)
     {
 	path->frp_flags |= FIB_ROUTE_PATH_DROP;
     }
-    if (eflags & FIB_ENTRY_FLAG_LOCAL)
+    if (*eflags & FIB_ENTRY_FLAG_LOCAL)
     {
 	path->frp_flags |= FIB_ROUTE_PATH_LOCAL;
     }
-    if (eflags & FIB_ENTRY_FLAG_EXCLUSIVE)
+    if (*eflags & FIB_ENTRY_FLAG_EXCLUSIVE)
     {
 	path->frp_flags |= FIB_ROUTE_PATH_EXCLUSIVE;
+    }
+    if (path->frp_flags & FIB_ROUTE_PATH_LOCAL)
+    {
+        *eflags |= FIB_ENTRY_FLAG_LOCAL;
+
+        if (path->frp_sw_if_index != ~0)
+        {
+            *eflags |= FIB_ENTRY_FLAG_CONNECTED;
+        }
     }
 }
 
@@ -538,6 +548,7 @@ fib_table_entry_path_add (u32 fib_index,
 	.frp_fib_index = next_hop_fib_index,
 	.frp_weight = next_hop_weight,
 	.frp_flags = path_flags,
+        .frp_rpf_id = INDEX_INVALID,
 	.frp_label_stack = next_hop_labels,
     };
     fib_node_index_t fib_entry_index;
@@ -557,7 +568,7 @@ fib_table_entry_path_add2 (u32 fib_index,
 			   const fib_prefix_t *prefix,
 			   fib_source_t source,
 			   fib_entry_flag_t flags,
-			   fib_route_path_t *rpath)
+			   fib_route_path_t *rpaths)
 {
     fib_node_index_t fib_entry_index;
     fib_table_t *fib_table;
@@ -566,16 +577,16 @@ fib_table_entry_path_add2 (u32 fib_index,
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
 
-    for (ii = 0; ii < vec_len(rpath); ii++)
+    for (ii = 0; ii < vec_len(rpaths); ii++)
     {
-	fib_table_route_path_fixup(prefix, flags, &rpath[ii]);
+	fib_table_route_path_fixup(prefix, &flags, &rpaths[ii]);
     }
 
     if (FIB_NODE_INDEX_INVALID == fib_entry_index)
     {
 	fib_entry_index = fib_entry_create(fib_index, prefix,
 					   source, flags,
-					   rpath);
+					   rpaths);
 
 	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
         fib_table->ft_src_route_counts[source]++;
@@ -585,7 +596,7 @@ fib_table_entry_path_add2 (u32 fib_index,
         int was_sourced;
 
         was_sourced = fib_entry_is_sourced(fib_entry_index, source);
-	fib_entry_path_add(fib_entry_index, source, flags, rpath);;
+	fib_entry_path_add(fib_entry_index, source, flags, rpaths);;
 
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
@@ -600,7 +611,7 @@ void
 fib_table_entry_path_remove2 (u32 fib_index,
 			      const fib_prefix_t *prefix,
 			      fib_source_t source,
-			      fib_route_path_t *rpath)
+			      fib_route_path_t *rpaths)
 {
     /*
      * 1 is it present
@@ -609,8 +620,8 @@ fib_table_entry_path_remove2 (u32 fib_index,
      *      no => cover walk
      */
     fib_node_index_t fib_entry_index;
+    fib_route_path_t *rpath;
     fib_table_t *fib_table;
-    u32 ii;
 
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
@@ -640,16 +651,16 @@ fib_table_entry_path_remove2 (u32 fib_index,
 	 */
 	fib_entry_lock(fib_entry_index);
 
-        for (ii = 0; ii < vec_len(rpath); ii++)
+        vec_foreach(rpath, rpaths)
         {
-            fib_table_route_path_fixup(
-                prefix,
-                fib_entry_get_flags_for_source(fib_entry_index,
-                                               source),
-                &rpath[ii]);
+            fib_entry_flag_t eflags;
+
+            eflags = fib_entry_get_flags_for_source(fib_entry_index,
+                                                    source);
+            fib_table_route_path_fixup(prefix, &eflags, rpath);
         }
 
-	src_flag = fib_entry_path_remove(fib_entry_index, source, rpath);
+	src_flag = fib_entry_path_remove(fib_entry_index, source, rpaths);
 
 	if (!(FIB_ENTRY_SRC_FLAG_ADDED & src_flag))
 	{
@@ -735,7 +746,7 @@ fib_table_entry_update (u32 fib_index,
 
     for (ii = 0; ii < vec_len(paths); ii++)
     {
-	fib_table_route_path_fixup(prefix, flags, &paths[ii]);
+	fib_table_route_path_fixup(prefix, &flags, &paths[ii]);
     }
     /*
      * sort the paths provided by the control plane. this means

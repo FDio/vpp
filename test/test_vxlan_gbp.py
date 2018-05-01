@@ -11,6 +11,8 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import INVALID_INDEX
 
 
 class TestVxlanGbp(VppTestCase):
@@ -90,16 +92,19 @@ class TestVxlanGbp(VppTestCase):
         # Create 2 ucast vxlan tunnels under bd
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
-        next_hop_address = cls.pg0.remote_ip4n
+        next_hop_address = cls.pg0.remote_ip4
         for dest_ip4 in ip4_range(cls.pg0.remote_ip4,
                                   ip_range_start,
                                   ip_range_end):
             # add host route so dest_ip4n will not be resolved
-            vip = VppIpAddress(dest_ip4)
-            cls.vapi.ip_add_del_route(vip.bytes, 32, next_hop_address)
+            rip = VppIpRoute(cls, dest_ip4, 32,
+                             [VppRoutePath(next_hop_address,
+                                           INVALID_INDEX)],
+                             register=False)
+            rip.add_vpp_config()
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                VppIpAddress(cls.pg0.local_ip4).encode(),
-                vip.encode(),
+                cls.pg0.local_ip4,
+                dest_ip4,
                 vni=vni)
             cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
 
