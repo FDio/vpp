@@ -478,7 +478,8 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            eos_proto=DpoProto.DPO_PROTO_IP6)
         route_333_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0, [VppMplsLabel(333)])
@@ -503,7 +504,8 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            eos_proto=DpoProto.DPO_PROTO_IP6)
         route_334_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0,
@@ -519,7 +521,8 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            eos_proto=DpoProto.DPO_PROTO_IP6)
         route_335_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(
@@ -1862,7 +1865,8 @@ class TestMPLSL2(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           mpls_tun_1.sw_if_index,
                           is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          proto=DpoProto.DPO_PROTO_ETHERNET)],
+            eos_proto=DpoProto.DPO_PROTO_ETHERNET)
         route_55_eos.add_vpp_config()
 
         #
@@ -1924,7 +1928,8 @@ class TestMPLSL2(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           mpls_tun.sw_if_index,
                           is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          proto=DpoProto.DPO_PROTO_ETHERNET)],
+            eos_proto=DpoProto.DPO_PROTO_ETHERNET)
         route_55_eos.add_vpp_config()
 
         #

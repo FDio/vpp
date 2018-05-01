@@ -895,16 +895,16 @@ dhcp6_proxy_set_server (ip46_address_t * addr,
 	.frp_addr = zero_addr,
 	.frp_sw_if_index = 0xffffffff,
 	.frp_fib_index = ~0,
-	.frp_weight = 0,
+	.frp_weight = 1,
 	.frp_flags = FIB_ROUTE_PATH_LOCAL,
+	.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
       };
       if (dhcp_proxy_server_add (FIB_PROTOCOL_IP6, addr, src_addr,
 				 rx_fib_index, server_table_id))
 	{
 	  mfib_table_entry_path_update (rx_fib_index,
 					&all_dhcp_servers,
-					MFIB_SOURCE_DHCP,
-					&path_for_us, MFIB_ITF_FLAG_FORWARD);
+					MFIB_SOURCE_DHCP, &path_for_us);
 	  /*
 	   * Each interface that is enabled in this table, needs to be added
 	   * as an accepting interface, but this is not easily doable in VPP.
