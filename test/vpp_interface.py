@@ -7,6 +7,12 @@ from six import moves
 
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop
+from ipaddress import IPv4Network
+
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -406,9 +412,10 @@ class VppInterface(object):
 
     def is_ip4_entry_in_fib_dump(self, dump):
         for i in dump:
-            if i.address == self.local_ip4n and \
-                    i.address_length == self.local_ip4_prefix_len and \
-                    i.table_id == self.ip4_table_id:
+            n = IPv4Network(text_type("%s/%d" % (self.local_ip4,
+                                                 self.local_ip4_prefix_len)))
+            if i.route.prefix == n and \
+               i.route.table_id == self.ip4_table_id:
                 return True
         return False
 

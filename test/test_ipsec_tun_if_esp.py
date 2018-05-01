@@ -47,14 +47,15 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
         p.tun_if.config_ip4()
         p.tun_if.config_ip6()
 
-        VppIpRoute(self, p.remote_tun_if_host, 32,
-                   [VppRoutePath(p.tun_if.remote_ip4,
-                                 0xffffffff)]).add_vpp_config()
-        VppIpRoute(self, p.remote_tun_if_host6, 128,
-                   [VppRoutePath(p.tun_if.remote_ip6,
-                                 0xffffffff,
-                                 proto=DpoProto.DPO_PROTO_IP6)],
-                   is_ip6=1).add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host, 32,
+                       [VppRoutePath(p.tun_if.remote_ip4,
+                                     0xffffffff)])
+        r.add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host6, 128,
+                       [VppRoutePath(p.tun_if.remote_ip6,
+                                     0xffffffff,
+                                     proto=DpoProto.DPO_PROTO_IP6)])
+        r.add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -113,14 +114,15 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec):
         tun_if.config_ip6()
         tun_if.config_ip4()
 
-        VppIpRoute(self, p.remote_tun_if_host, 128,
-                   [VppRoutePath(tun_if.remote_ip6,
-                                 0xffffffff,
-                                 proto=DpoProto.DPO_PROTO_IP6)],
-                   is_ip6=1).add_vpp_config()
-        VppIpRoute(self, p.remote_tun_if_host4, 32,
-                   [VppRoutePath(tun_if.remote_ip4,
-                                 0xffffffff)]).add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host, 128,
+                       [VppRoutePath(tun_if.remote_ip6,
+                                     0xffffffff,
+                                     proto=DpoProto.DPO_PROTO_IP6)])
+        r.add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host4, 32,
+                       [VppRoutePath(tun_if.remote_ip4,
+                                     0xffffffff)])
+        r.add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -425,11 +427,11 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
             p.tun_if.admin_up()
             p.tun_if.config_ip6()
 
-            VppIpRoute(self, p.remote_tun_if_host, 128,
-                       [VppRoutePath(p.tun_if.remote_ip6,
-                                     0xffffffff,
-                                     proto=DpoProto.DPO_PROTO_IP6)],
-                       is_ip6=1).add_vpp_config()
+            r = VppIpRoute(self, p.remote_tun_if_host, 128,
+                           [VppRoutePath(p.tun_if.remote_ip6,
+                                         0xffffffff,
+                                         proto=DpoProto.DPO_PROTO_IP6)])
+            r.add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:

@@ -63,8 +63,7 @@ class IPSecNATTestCase(TemplateIpsec):
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
                    [VppRoutePath(self.tun_if.remote_addr[p.addr_type],
                                  0xffffffff,
-                                 proto=d)],
-                   is_ip6=p.is_ipv6).add_vpp_config()
+                                 proto=d)]).add_vpp_config()
 
     def tearDown(self):
         super(IPSecNATTestCase, self).tearDown()

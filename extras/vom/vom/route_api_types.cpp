@@ -13,111 +13,121 @@
  * limitations under the License.
  */
 
+#include <vom/api_types.hpp>
 #include <vom/route.hpp>
 #include <vom/route_api_types.hpp>
 
 namespace VOM {
 
-void
-to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
+const route::itf_flags_t&
+from_api(vapi_enum_mfib_itf_flags val)
 {
-  payload.is_drop = 0;
-  payload.is_unreach = 0;
-  payload.is_prohibit = 0;
-  payload.is_local = 0;
-  payload.is_classify = 0;
-  payload.is_resolve_host = 0;
-  payload.is_resolve_attached = 0;
+  if (route::itf_flags_t::ACCEPT == val)
+    return route::itf_flags_t::ACCEPT;
+  else
+    return route::itf_flags_t::FORWARD;
+}
 
-  if (route::path::flags_t::DVR & p.flags()) {
-    payload.is_dvr = 1;
-  }
+vapi_enum_mfib_itf_flags
+to_api(const route::itf_flags_t& in)
+{
+  vapi_enum_mfib_itf_flags out = MFIB_API_ITF_FLAG_NONE;
 
-  if (route::path::special_t::STANDARD == p.type()) {
-    uint8_t path_v6;
-    to_bytes(p.nh(), &path_v6, payload.next_hop_address);
-    payload.next_hop_sw_if_index = 0xffffffff;
+  if (route::itf_flags_t::ACCEPT & in)
+    out = static_cast<vapi_enum_mfib_itf_flags>(out | MFIB_API_ITF_FLAG_ACCEPT);
+  if (route::itf_flags_t::FORWARD & in)
+    out =
+      static_cast<vapi_enum_mfib_itf_flags>(out | MFIB_API_ITF_FLAG_FORWARD);
 
-    if (p.rd()) {
-      payload.next_hop_table_id = p.rd()->table_id();
-    }
-    if (p.itf()) {
-      payload.next_hop_sw_if_index = p.itf()->handle().value();
-    }
-  } else if (route::path::special_t::DROP == p.type()) {
-    payload.is_drop = 1;
-  } else if (route::path::special_t::UNREACH == p.type()) {
-    payload.is_unreach = 1;
-  } else if (route::path::special_t::PROHIBIT == p.type()) {
-    payload.is_prohibit = 1;
-  } else if (route::path::special_t::LOCAL == p.type()) {
-    payload.is_local = 1;
-  }
-  payload.next_hop_weight = p.weight();
-  payload.next_hop_preference = p.preference();
-  payload.next_hop_via_label = 0x100000;
-  payload.classify_table_index = 0;
+  return (out);
 }
 
 void
-to_vpp(const route::path& p, vapi_payload_ip_mroute_add_del& payload)
+to_api(const route::path& p, vapi_type_fib_path& payload)
 {
-  payload.next_hop_afi = p.nh_proto();
+  payload.flags = FIB_API_PATH_FLAG_NONE;
+  payload.proto = to_api(p.nh_proto());
+  payload.sw_if_index = ~0;
 
-  if (route::path::special_t::STANDARD == p.type()) {
-    uint8_t path_v6;
-    to_bytes(p.nh(), &path_v6, payload.nh_address);
+  if (route::path::flags_t::DVR & p.flags()) {
+    payload.type = FIB_API_PATH_TYPE_DVR;
+  } else if (route::path::special_t::STANDARD == p.type()) {
+    to_api(p.nh(), payload.nh.address);
 
-    if (p.itf()) {
-      payload.next_hop_sw_if_index = p.itf()->handle().value();
+    if (p.rd()) {
+      payload.table_id = p.rd()->table_id();
     }
-
-    payload.next_hop_afi = p.nh_proto();
+    if (p.itf()) {
+      payload.sw_if_index = p.itf()->handle().value();
+    }
+  } else if (route::path::special_t::DROP == p.type()) {
+    payload.type = FIB_API_PATH_TYPE_DROP;
+  } else if (route::path::special_t::UNREACH == p.type()) {
+    payload.type = FIB_API_PATH_TYPE_ICMP_UNREACH;
+  } else if (route::path::special_t::PROHIBIT == p.type()) {
+    payload.type = FIB_API_PATH_TYPE_ICMP_PROHIBIT;
   } else if (route::path::special_t::LOCAL == p.type()) {
-    payload.is_local = 1;
+    payload.type = FIB_API_PATH_TYPE_LOCAL;
   }
+
+  payload.weight = p.weight();
+  payload.preference = p.preference();
+  payload.n_labels = 0;
 }
 
 route::path
-from_vpp(const vapi_type_fib_path& p, const nh_proto_t& nhp)
+from_api(const vapi_type_fib_path& p)
 {
-  if (p.is_local) {
-    return route::path(route::path::special_t::LOCAL);
-  } else if (p.is_drop) {
-    return route::path(route::path::special_t::DROP);
-  } else if (p.is_unreach) {
-    return route::path(route::path::special_t::UNREACH);
-  } else if (p.is_prohibit) {
-    return route::path(route::path::special_t::PROHIBIT);
-  } else {
-    boost::asio::ip::address address =
-      from_bytes(nh_proto_t::IPV6 == nhp, p.next_hop);
-    std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
-    if (itf) {
-      if (p.is_dvr) {
-        return route::path(*itf, nhp, route::path::flags_t::DVR, p.weight,
-                           p.preference);
+  switch (p.type) {
+    case FIB_API_PATH_TYPE_DVR: {
+      std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
+      if (!itf)
+        throw invalid_decode("fib-path deocde no interface:" +
+                             std::to_string(p.sw_if_index));
+
+      return (route::path(*itf, from_api(p.proto), route::path::flags_t::DVR,
+                          p.weight, p.preference));
+    }
+    case FIB_API_PATH_TYPE_NORMAL: {
+      boost::asio::ip::address address = from_api(p.nh.address, p.proto);
+      std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
+      if (itf) {
+        return (route::path(address, *itf, p.weight, p.preference));
       } else {
-        return route::path(address, *itf, p.weight, p.preference);
-      }
-    } else {
-      std::shared_ptr<route_domain> rd = route_domain::find(p.table_id);
-      if (rd) {
-        return route::path(*rd, address, p.weight, p.preference);
+        std::shared_ptr<route_domain> rd = route_domain::find(p.table_id);
+
+        if (!rd)
+          throw invalid_decode("fib-path deocde no route-domain:" +
+                               std::to_string(p.table_id));
+
+        return (route::path(*rd, address, p.weight, p.preference));
       }
     }
+    case FIB_API_PATH_TYPE_LOCAL:
+      return (route::path(route::path::special_t::LOCAL));
+    case FIB_API_PATH_TYPE_DROP:
+      return (route::path(route::path::special_t::DROP));
+    case FIB_API_PATH_TYPE_ICMP_UNREACH:
+      return (route::path(route::path::special_t::PROHIBIT));
+    case FIB_API_PATH_TYPE_ICMP_PROHIBIT:
+      return (route::path(route::path::special_t::UNREACH));
+
+    case FIB_API_PATH_TYPE_UDP_ENCAP:
+    case FIB_API_PATH_TYPE_BIER_IMP:
+    case FIB_API_PATH_TYPE_SOURCE_LOOKUP:
+    case FIB_API_PATH_TYPE_INTERFACE_RX:
+    case FIB_API_PATH_TYPE_CLASSIFY:
+      // not done yet
+      break;
   }
-
-  VOM_LOG(log_level_t::ERROR) << "cannot decode: ";
-
-  return route::path(route::path::special_t::DROP);
-}
+  return (route::path(route::path::special_t::DROP));
 };
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "mozilla")
- * End:
- */
+}; // namespace VOM
+   /*
+    * fd.io coding-style-patch-verification: ON
+    *
+    * Local Variables:
+    * eval: (c-set-style "mozilla")
+    * End:
+    */

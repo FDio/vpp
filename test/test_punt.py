@@ -723,8 +723,7 @@ class TestPunt(VppTestCase):
         ip_1_2 = VppIpRoute(self, "1::2", 128,
                             [VppRoutePath(self.pg3.remote_ip6,
                                           self.pg3.sw_if_index,
-                                          proto=DpoProto.DPO_PROTO_IP6)],
-                            is_ip6=1)
+                                          proto=DpoProto.DPO_PROTO_IP6)])
         ip_1_2.add_vpp_config()
 
         p4 = (Ether(src=self.pg2.remote_mac,
