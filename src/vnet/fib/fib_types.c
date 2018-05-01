@@ -282,6 +282,40 @@ fib_proto_to_link (fib_protocol_t proto)
     return (0);
 }
 
+ip46_type_t
+fib_proto_to_ip46 (fib_protocol_t fproto)
+{
+    switch (fproto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (IP46_TYPE_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (IP46_TYPE_IP6);
+    case FIB_PROTOCOL_MPLS:
+	return (IP46_TYPE_ANY);
+    }
+    ASSERT(0);
+    return (IP46_TYPE_ANY);
+}
+
+fib_protocol_t
+fib_proto_from_ip46 (ip46_type_t iproto)
+{
+    switch (iproto)
+    {
+    case IP46_TYPE_IP4:
+        return FIB_PROTOCOL_IP4;
+    case IP46_TYPE_IP6:
+        return FIB_PROTOCOL_IP6;
+    case IP46_TYPE_ANY:
+        ASSERT(0);
+        return FIB_PROTOCOL_IP4;
+    }
+
+    ASSERT(0);
+    return FIB_PROTOCOL_IP4;
+}
+
 fib_forward_chain_type_t
 fib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
 {
@@ -539,6 +573,15 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
                            &rpath->frp_sw_if_index))
         {
             rpath->frp_proto = *payload_proto;
+        }
+        else if (unformat (input, "via"))
+        {
+            /* new path, back up and return */
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            break;
         }
         else
         {

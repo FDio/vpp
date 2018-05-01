@@ -2,7 +2,8 @@
 import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_udp_encap import VppUdpEncap
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
+    FibPathType
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -100,14 +101,12 @@ class TestUdpEncap(VppTestCase):
                                   self.pg2.local_ip6,
                                   self.pg2.remote_ip6,
                                   332, 442,
-                                  table_id=2,
-                                  is_ip6=1)
+                                  table_id=2)
         udp_encap_3 = VppUdpEncap(self, 3,
                                   self.pg3.local_ip6,
                                   self.pg3.remote_ip6,
                                   333, 443,
-                                  table_id=3,
-                                  is_ip6=1)
+                                  table_id=3)
         udp_encap_0.add_vpp_config()
         udp_encap_1.add_vpp_config()
         udp_encap_2.add_vpp_config()
@@ -116,28 +115,30 @@ class TestUdpEncap(VppTestCase):
         #
         # Routes via each UDP encap object - all combinations of v4 and v6.
         #
-        route_4o4 = VppIpRoute(self, "1.1.0.1", 32,
-                               [VppRoutePath("0.0.0.0",
-                                             0xFFFFFFFF,
-                                             is_udp_encap=1,
-                                             next_hop_id=0)])
-        route_4o6 = VppIpRoute(self, "1.1.2.1", 32,
-                               [VppRoutePath("0.0.0.0",
-                                             0xFFFFFFFF,
-                                             is_udp_encap=1,
-                                             next_hop_id=2)])
-        route_6o4 = VppIpRoute(self, "2001::1", 128,
-                               [VppRoutePath("0.0.0.0",
-                                             0xFFFFFFFF,
-                                             is_udp_encap=1,
-                                             next_hop_id=1)],
-                               is_ip6=1)
-        route_6o6 = VppIpRoute(self, "2001::3", 128,
-                               [VppRoutePath("0.0.0.0",
-                                             0xFFFFFFFF,
-                                             is_udp_encap=1,
-                                             next_hop_id=3)],
-                               is_ip6=1)
+        route_4o4 = VppIpRoute(
+            self, "1.1.0.1", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=0)])
+        route_4o6 = VppIpRoute(
+            self, "1.1.2.1", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=2)])
+        route_6o4 = VppIpRoute(
+            self, "2001::1", 128,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=1)])
+        route_6o6 = VppIpRoute(
+            self, "2001::3", 128,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=3)])
         route_4o4.add_vpp_config()
         route_4o6.add_vpp_config()
         route_6o6.add_vpp_config()
@@ -203,12 +204,13 @@ class TestUdpEncap(VppTestCase):
         # A route with an output label
         # the TTL of the inner packet is decremented on LSP ingress
         #
-        route_4oMPLSo4 = VppIpRoute(self, "1.1.2.22", 32,
-                                    [VppRoutePath("0.0.0.0",
-                                                  0xFFFFFFFF,
-                                                  is_udp_encap=1,
-                                                  next_hop_id=1,
-                                                  labels=[VppMplsLabel(66)])])
+        route_4oMPLSo4 = VppIpRoute(
+            self, "1.1.2.22", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=1,
+                          labels=[VppMplsLabel(66)])])
         route_4oMPLSo4.add_vpp_config()
 
         p_4omo4 = (Ether(src=self.pg0.remote_mac,
