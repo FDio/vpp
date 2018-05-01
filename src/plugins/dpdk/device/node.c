@@ -306,24 +306,28 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
+      vnet_buffer (b[0])->l3_hdr_offset = off + sizeof (ethernet_header_t);
       b[0]->current_data = off;
 
       off = mb[0]->data_off;
       next[1] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[1])->l2_hdr_offset = off;
+      vnet_buffer (b[1])->l3_hdr_offset = off + sizeof (ethernet_header_t);
       b[1]->current_data = off;
 
       off = mb[0]->data_off;
       next[2] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[2])->l2_hdr_offset = off;
+      vnet_buffer (b[2])->l3_hdr_offset = off + sizeof (ethernet_header_t);
       b[2]->current_data = off;
 
       off = mb[0]->data_off;
       next[3] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[3])->l2_hdr_offset = off;
+      vnet_buffer (b[3])->l3_hdr_offset = off + sizeof (ethernet_header_t);
       b[3]->current_data = off;
 
       b[0]->current_length = mb[0]->data_len;
@@ -366,6 +370,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
+      vnet_buffer (b[0])->l3_hdr_offset = off + sizeof (ethernet_header_t);
       b[0]->current_data = off;
       b[0]->current_length = mb[0]->data_len;
       n_bytes += mb[0]->data_len;
