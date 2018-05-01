@@ -25,6 +25,10 @@ typeonly define fib_mpls_label
 
 /** \brief FIB path
     @param sw_if_index - index of the interface
+    @param table_id - The table ID in which to find the next-hop address
+                      (for recursive routes, i.e. when the interface is
+		       not given)
+    @param classify_table_index - 
     @param weight - The weight, for UCMP
     @param preference - The preference of the path. lowest preference
     is prefered
@@ -33,12 +37,16 @@ typeonly define fib_mpls_label
     @param is_unreach - Drop the packet and rate limit send ICMP unreachable
     @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
     @param is_udp_encap - The path describes a UDP-o-IP encapsulation.
+    @param is_classify - 
     @param is_dvr - Does the route resolve via a DVR interface.
     @param is_source_lookup - The the path is a deaggregate path (i.e. a lookup
     	   		      in another table) is the lookup on the packet's
 			      source address or destination.
-    @param afi - dpo_proto_t protocol that describes the next-hop address
+    @param is_interface_rx - RPF-ID Receive path. The next-hop interface
+                             is used as the RPF-ID
+    @param dpo_proto - dpo_proto_t protocol that describes the next-hop address
     @param via_label - The next-hop is a resolved via a local label
+    @param rpf_id - The path's RPF ID (0 and ~0 => unset)
     @param next_hop[16] - the next hop address
     @param next_hop_id - Used when the path resolves via an object
                          that has a unique identifier. e.g. the UDP
@@ -48,10 +56,12 @@ typeonly define fib_path
 {
   u32 sw_if_index;
   u32 table_id;
+  u32 classify_table_index;
   u8 weight;
   u8 preference;
   u8 is_local;
   u8 is_drop;
+  u8 is_classify;
   u8 is_udp_encap;
   u8 is_unreach;
   u8 is_prohibit;
@@ -59,11 +69,19 @@ typeonly define fib_path
   u8 is_resolve_attached;
   u8 is_dvr;
   u8 is_source_lookup;
-  u8 afi;
+  u8 is_interface_rx;
+  u8 dpo_proto;
   u8 next_hop[16];
   u32 next_hop_id;
   u32 rpf_id;
   u32 via_label;
   u8 n_labels;
   vl_api_fib_mpls_label_t label_stack[16];
+};
+
+typeonly define fib_prefix
+{
+  u8 address_length;
+  u8 address[16];
+  u8 is_ip6;
 };

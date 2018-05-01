@@ -24,8 +24,6 @@ global_crc = 0
 def global_type_add(name):
     '''Add new type to the dictionary of types '''
     type_name = 'vl_api_' + name + '_t'
-    if type_name in global_types:
-        raise KeyError('Type is already defined: {}'.format(name))
     global_types[type_name] = True
 
 

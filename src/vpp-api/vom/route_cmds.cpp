@@ -188,33 +188,6 @@ dump_v4_cmd::to_string() const
   return ("ip-route-v4-dump");
 }
 
-dump_v6_cmd::dump_v6_cmd()
-{
-}
-
-bool
-dump_v6_cmd::operator==(const dump_v6_cmd& other) const
-{
-  return (true);
-}
-
-rc_t
-dump_v6_cmd::issue(connection& con)
-{
-  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
-
-  VAPI_CALL(m_dump->execute());
-
-  wait();
-
-  return rc_t::OK;
-}
-
-std::string
-dump_v6_cmd::to_string() const
-{
-  return ("ip-route-v6-dump");
-}
 } // namespace ip_route_cmds
 } // namespace route
 } // namespace vom

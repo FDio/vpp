@@ -158,13 +158,16 @@ ip6_create_mfib_with_table_id (u32 table_id,
     mfib_prefix_t pfx = {
         .fp_proto = FIB_PROTOCOL_IP6,
     };
-    const fib_route_path_t path_for_us = {
-        .frp_proto = DPO_PROTO_IP6,
-        .frp_addr = zero_addr,
-        .frp_sw_if_index = 0xffffffff,
-        .frp_fib_index = ~0,
-        .frp_weight = 0,
-        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    const mfib_route_path_t path_for_us = {
+        .rpath = {
+            .frp_proto = DPO_PROTO_IP6,
+            .frp_addr = zero_addr,
+            .frp_sw_if_index = 0xffffffff,
+            .frp_fib_index = ~0,
+            .frp_weight = 0,
+            .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        },
+        .itf_flags = MFIB_ITF_FLAG_FORWARD,
     };
 
     pool_get_aligned(ip6_main.mfibs, mfib_table, CLIB_CACHE_LINE_BYTES);
@@ -207,8 +210,7 @@ ip6_create_mfib_with_table_id (u32 table_id,
         mfib_table_entry_path_update(mfib_table->mft_index,
                                      &pfx,
                                      MFIB_SOURCE_SPECIAL,
-                                     &path_for_us,
-                                     MFIB_ITF_FLAG_FORWARD);
+                                     &path_for_us);
     }));
 
     return (mfib_table->mft_index);
@@ -222,13 +224,15 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
     mfib_prefix_t pfx = {
         .fp_proto = FIB_PROTOCOL_IP6,
     };
-    const fib_route_path_t path_for_us = {
-        .frp_proto = DPO_PROTO_IP6,
-        .frp_addr = zero_addr,
-        .frp_sw_if_index = 0xffffffff,
-        .frp_fib_index = ~0,
-        .frp_weight = 0,
-        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    const mfib_route_path_t path_for_us = {
+        .rpath = {
+            .frp_proto = DPO_PROTO_IP6,
+            .frp_addr = zero_addr,
+            .frp_sw_if_index = 0xffffffff,
+            .frp_fib_index = ~0,
+            .frp_weight = 0,
+            .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        },
     };
 
     /*
@@ -259,12 +263,15 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
 void
 ip6_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
 {
-    const fib_route_path_t path = {
-        .frp_proto = DPO_PROTO_IP6,
-        .frp_addr = zero_addr,
-        .frp_sw_if_index = sw_if_index,
-        .frp_fib_index = ~0,
-        .frp_weight = 0,
+    const mfib_route_path_t path = {
+        .rpath = {
+            .frp_proto = DPO_PROTO_IP6,
+            .frp_addr = zero_addr,
+            .frp_sw_if_index = sw_if_index,
+            .frp_fib_index = ~0,
+            .frp_weight = 0,
+        },
+        .itf_flags = MFIB_ITF_FLAG_ACCEPT,
     };
     mfib_prefix_t pfx = {
         .fp_proto = FIB_PROTOCOL_IP6,
@@ -281,8 +288,7 @@ ip6_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
             mfib_table_entry_path_update(mfib_index,
                                          &pfx,
                                          MFIB_SOURCE_SPECIAL,
-                                         &path,
-                                         MFIB_ITF_FLAG_ACCEPT);
+                                         &path);
         });
     }
     else

@@ -100,6 +100,39 @@ private:
   l3_proto_t m_proto;
 };
 
+/**
+ * A cmd class that Dumps IP fib tables
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Ip_fib_table_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd();
+  dump_cmd(const dump_cmd& d);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
+};
+
 }; // namespace route_domain_cmds
 }; // namespace VOM
 

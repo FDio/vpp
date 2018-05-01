@@ -80,6 +80,14 @@ typedef enum fib_path_cfg_attribute_t_ {
      */
     FIB_PATH_CFG_ATTRIBUTE_LOCAL,
     /**
+     * The path reolves via an ICMP unreachable
+     */
+    FIB_PATH_CFG_ATTRIBUTE_ICMP_UNREACH,
+    /**
+     * The path reolves via an ICMP prohibit
+     */
+    FIB_PATH_CFG_ATTRIBUTE_ICMP_PROHIBIT,
+    /**
      * The deag path does a source lookup
      */
     FIB_PATH_CFG_ATTRIBUTE_DEAG_SRC,
@@ -100,6 +108,8 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST] = "resolve-host", \
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED] = "resolve-attached", \
     [FIB_PATH_CFG_ATTRIBUTE_LOCAL] = "local",	        \
+    [FIB_PATH_CFG_ATTRIBUTE_ICMP_UNREACH] = "icmp-unreach",   \
+    [FIB_PATH_CFG_ATTRIBUTE_ICMP_PROHIBIT] = "icmp-prohibit", \
     [FIB_PATH_CFG_ATTRIBUTE_ATTACHED] = "attached",	\
     [FIB_PATH_CFG_ATTRIBUTE_INTF_RX] = "interface-rx",	\
     [FIB_PATH_CFG_ATTRIBUTE_RPF_ID] = "rpf-id",         \
@@ -121,6 +131,8 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RESOLVE_HOST = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST),
     FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED),
     FIB_PATH_CFG_FLAG_LOCAL = (1 << FIB_PATH_CFG_ATTRIBUTE_LOCAL),
+    FIB_PATH_CFG_FLAG_ICMP_UNREACH = (1 << FIB_PATH_CFG_ATTRIBUTE_ICMP_UNREACH),
+    FIB_PATH_CFG_FLAG_ICMP_PROHIBIT = (1 << FIB_PATH_CFG_ATTRIBUTE_ICMP_PROHIBIT),
     FIB_PATH_CFG_FLAG_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_ATTACHED),
     FIB_PATH_CFG_FLAG_INTF_RX = (1 << FIB_PATH_CFG_ATTRIBUTE_INTF_RX),
     FIB_PATH_CFG_FLAG_RPF_ID = (1 << FIB_PATH_CFG_ATTRIBUTE_RPF_ID),

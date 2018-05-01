@@ -762,17 +762,19 @@ bier_test_mpls_imp (void)
             .ip4.as_u32 = clib_host_to_net_u32(0x01010101),
         },
     };
-    fib_route_path_t path_via_bier_imp_1 = {
-        .frp_proto = DPO_PROTO_BIER,
-        .frp_bier_imp = bii,
-        .frp_weight = 0,
-        .frp_flags = FIB_ROUTE_PATH_BIER_IMP,
+    mfib_route_path_t path_via_bier_imp_1 = {
+        .rpath = {
+            .frp_proto = DPO_PROTO_BIER,
+            .frp_bier_imp = bii,
+            .frp_weight = 0,
+            .frp_flags = FIB_ROUTE_PATH_BIER_IMP,
+        },
+        .itf_flags = MFIB_ITF_FLAG_FORWARD,
     };
     mfib_table_entry_path_update(0, // default table
                                  &pfx_1_1_1_1_c_239_1_1_1 ,
                                  MFIB_SOURCE_API,
-                                 &path_via_bier_imp_1,
-                                 MFIB_ITF_FLAG_FORWARD);
+                                 &path_via_bier_imp_1);
     mfib_table_entry_delete(0,
                             &pfx_1_1_1_1_c_239_1_1_1 ,
                             MFIB_SOURCE_API);

@@ -23,7 +23,7 @@ _(IP6_RA_EVENT, ip6_ra_event)                                                 \
 _(IP6ND_SEND_ROUTER_SOLICITATION_REPLY, ip6nd_send_router_solicitation_reply) \
 _(WANT_IP6_RA_EVENTS_REPLY, want_ip6_ra_events_reply)                         \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply)     \
-_(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)                             \
+_(IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)                             \
 _(SW_INTERFACE_GET_MAC_ADDRESS_REPLY, sw_interface_get_mac_address_reply)     \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY, sw_interface_ip6_enable_disable_reply)
 
@@ -305,7 +305,7 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
 {
   rd_cp_main_t *rm = &rd_cp_main;
   default_route_t *default_route;
-  vl_api_ip_add_del_route_t *mp;
+  vl_api_ip_route_add_del_t *mp;
   int rv;
 
   pool_get (rm->default_route_pool, default_route);
@@ -314,15 +314,19 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
   default_route->router_address = *next_hop_address;
   default_route->due_time = due_time;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) + sizeof(vl_api_fib_path_t));
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = htons (VL_API_IP_ADD_DEL_ROUTE);
+  mp->_vl_msg_id = htons (VL_API_IP_ROUTE_ADD_DEL);
   mp->client_index = rm->my_client_index;
   mp->is_add = 1;
-  mp->is_ipv6 = 1;
-  mp->dst_address_length = 0;
-  mp->next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp->next_hop_address, default_route->router_address.as_u8, 16);
+  mp->is_multipath = 0;
+  mp->route.prefix.is_ip6 = 1;
+  mp->route.prefix.address_length = 0;
+  mp->route.n_paths = 1;
+  mp->route.paths[0].sw_if_index = htonl (default_route->sw_if_index);
+  clib_memcpy (mp->route.paths[0].next_hop,
+               default_route->router_address.as_u8,
+               16);
 
   rv = send_msg_and_wait_for_reply (mp);
 
@@ -330,7 +334,7 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
 }
 
 static void
-vl_api_ip_add_del_route_reply_t_handler (vl_api_ip_add_del_route_reply_t * mp)
+vl_api_ip_route_add_del_reply_t_handler (vl_api_ip_route_add_del_reply_t * mp)
 {
   rd_cp_main_t *rm = &rd_cp_main;
 
@@ -365,17 +369,23 @@ static int
 remove_default_route (vlib_main_t * vm, default_route_t * default_route)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  vl_api_ip_add_del_route_t *mp;
+  vl_api_ip_route_add_del_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = htons (VL_API_IP_ADD_DEL_ROUTE);
+  mp->_vl_msg_id = htons (VL_API_IP_ROUTE_ADD_DEL);
+  mp->client_index = rm->my_client_index;
+  mp->_vl_msg_id = htons (VL_API_IP_ROUTE_ADD_DEL);
   mp->client_index = rm->my_client_index;
   mp->is_add = 0;
-  mp->is_ipv6 = 1;
-  mp->dst_address_length = 0;
-  mp->next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp->next_hop_address, default_route->router_address.as_u8, 16);
+  mp->is_multipath = 0;
+  mp->route.prefix.is_ip6 = 1;
+  mp->route.prefix.address_length = 0;
+  mp->route.n_paths = 1;
+  mp->route.paths[0].sw_if_index = htonl (default_route->sw_if_index);
+  clib_memcpy (mp->route.paths[0].next_hop,
+               default_route->router_address.as_u8,
+               16);
 
   send_msg_and_wait_for_reply (mp);
 

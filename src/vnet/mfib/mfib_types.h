@@ -204,4 +204,13 @@ extern uword unformat_mfib_itf_flags(unformat_input_t * input,
 extern uword unformat_mfib_entry_flags(unformat_input_t * input,
                                        va_list * args);
 
+/**
+ * @brief 
+ * A representation of a fib path for mfib_path
+ */
+typedef struct mfib_route_path_t_ {
+    fib_route_path_t rpath;
+    u32 itf_flags;
+} mfib_route_path_t;
+
 #endif
