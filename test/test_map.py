@@ -4,7 +4,7 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP, ICMP
@@ -66,10 +66,10 @@ class TestMAP(VppTestCase):
         map_route = VppIpRoute(self,
                                map_br_pfx,
                                map_br_pfx_len,
-                               [VppRoutePath(self.pg1.remote_ip6,
-                                             self.pg1.sw_if_index,
-                                             proto=DpoProto.DPO_PROTO_IP6)],
-                               is_ip6=1)
+                               [VppRoutePath(
+                                   self.pg1.remote_ip6,
+                                   self.pg1.sw_if_index,
+                                   proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         map_route.add_vpp_config()
 
         #
@@ -135,8 +135,7 @@ class TestMAP(VppTestCase):
             self, "4001::1", 128,
             [VppRoutePath(self.pg1.remote_hosts[2].ip6,
                           self.pg1.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
-            is_ip6=1)
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, map_src,
@@ -146,9 +145,10 @@ class TestMAP(VppTestCase):
         #
         # change the route to the pre-solved next-hop
         #
-        pre_res_route.modify([VppRoutePath(self.pg1.remote_hosts[3].ip6,
-                                           self.pg1.sw_if_index,
-                                           proto=DpoProto.DPO_PROTO_IP6)])
+        pre_res_route.modify([VppRoutePath(
+            self.pg1.remote_hosts[3].ip6,
+            self.pg1.sw_if_index,
+            proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, map_src,

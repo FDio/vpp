@@ -9,7 +9,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, DpoProto, VppMplsTable
+    VppMplsRoute, FibPathProto, VppMplsTable, FibPathType
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -205,9 +205,6 @@ class TestIPv6(TestIPv6ND):
             i.config_ip6()
             i.resolve_ndp()
 
-        # config 2M FIB entries
-        self.config_fib_entries(200)
-
     def tearDown(self):
         """Run standard test teardown and log ``show ip6 neighbors``."""
         for i in self.interfaces:
@@ -221,32 +218,6 @@ class TestIPv6(TestIPv6ND):
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show ip6 neighbors"))
             # info(self.vapi.cli("show ip6 fib"))  # many entries
-
-    def config_fib_entries(self, count):
-        """For each interface add to the FIB table *count* routes to
-        "fd02::1/128" destination with interface's local address as next-hop
-        address.
-
-        :param int count: Number of FIB entries.
-
-        - *TODO:* check if the next-hop address shouldn't be remote address
-          instead of local address.
-        """
-        n_int = len(self.interfaces)
-        percent = 0
-        counter = 0.0
-        dest_addr = inet_pton(AF_INET6, "fd02::1")
-        dest_addr_len = 128
-        for i in self.interfaces:
-            next_hop_address = i.local_ip6n
-            for j in range(count / n_int):
-                self.vapi.ip_add_del_route(
-                    dest_addr, dest_addr_len, next_hop_address, is_ipv6=1)
-                counter += 1
-                if counter / count * 100 > percent:
-                    self.logger.info("Configure %d FIB entries .. %d%% done" %
-                                     (count, percent))
-                    percent += 1
 
     def modify_packet(self, src_if, packet_size, pkt):
         """Add load, set destination IP and extend packet to required packet
@@ -432,7 +403,6 @@ class TestIPv6(TestIPv6ND):
                                self.pg0.sw_if_index,
                                self.pg0.remote_hosts[2].mac,
                                self.pg0.remote_hosts[2].ip6,
-                               af=AF_INET6,
                                is_no_fib_entry=1)
         nd_entry.add_vpp_config()
 
@@ -441,12 +411,10 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[2].ip6,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[2].ip6))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[2].ip6,
-                                    128,
-                                    inet=AF_INET6))
+                                    128))
 
         #
         # send an NS from a link local address to the interface's global
@@ -468,12 +436,10 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[2].ip6_ll,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[2].ip6_ll))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[2].ip6_ll,
-                                    128,
-                                    inet=AF_INET6))
+                                    128))
 
         #
         # An NS to the router's own Link-local
@@ -494,12 +460,10 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[3].ip6_ll,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[3].ip6_ll))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[3].ip6_ll,
-                                    128,
-                                    inet=AF_INET6))
+                                    128))
 
     def test_ns_duplicates(self):
         """ ND Duplicates"""
@@ -515,14 +479,12 @@ class TestIPv6(TestIPv6ND):
         ns_pg1 = VppNeighbor(self,
                              self.pg1.sw_if_index,
                              self.pg1.remote_hosts[1].mac,
-                             self.pg1.remote_hosts[1].ip6,
-                             af=AF_INET6)
+                             self.pg1.remote_hosts[1].ip6)
         ns_pg1.add_vpp_config()
         ns_pg2 = VppNeighbor(self,
                              self.pg2.sw_if_index,
                              self.pg2.remote_mac,
-                             self.pg1.remote_hosts[1].ip6,
-                             af=AF_INET6)
+                             self.pg1.remote_hosts[1].ip6)
         ns_pg2.add_vpp_config()
 
         #
@@ -1381,8 +1343,7 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         self.assertTrue(find_nbr(self,
                                  self.pg2.sw_if_index,
-                                 self.pg0._remote_hosts[3].ip6,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[3].ip6))
 
         #
         # hosts can communicate. pg2->pg1
@@ -1420,12 +1381,10 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         self.assertFalse(find_nbr(self,
                                   self.pg2.sw_if_index,
-                                  self.pg0._remote_hosts[3].ip6,
-                                  inet=AF_INET6))
+                                  self.pg0._remote_hosts[3].ip6))
         self.assertFalse(find_nbr(self,
                                   self.pg1.sw_if_index,
-                                  self.pg0._remote_hosts[2].ip6,
-                                  inet=AF_INET6))
+                                  self.pg0._remote_hosts[2].ip6))
 
         #
         # no longer proxy-ing...
@@ -1479,7 +1438,10 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP unreachables
         #
-        ip_unreach = VppIpRoute(self, "2001::", 64, [], is_unreach=1, is_ip6=1)
+        ip_unreach = VppIpRoute(
+            self, "2001::", 64,
+            [VppRoutePath("::", 0xffffffff,
+                          type=FibPathType.FIB_PATH_TYPE_ICMP_UNREACH)])
         ip_unreach.add_vpp_config()
 
         self.pg0.add_stream(p)
@@ -1499,8 +1461,10 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP prohibited
         #
-        ip_prohibit = VppIpRoute(self, "2001::1", 128, [],
-                                 is_prohibit=1, is_ip6=1)
+        ip_prohibit = VppIpRoute(
+            self, "2001::1", 128,
+            [VppRoutePath("::", 0xffffffff,
+                          type=FibPathType.FIB_PATH_TYPE_ICMP_PROHIBIT)])
         ip_prohibit.add_vpp_config()
 
         self.pg0.add_stream(p)
@@ -1553,8 +1517,7 @@ class TestIPDisabled(VppTestCase):
             [VppMRoutePath(self.pg1.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
              VppMRoutePath(self.pg0.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
-            is_ip6=1)
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_ff_01.add_vpp_config()
 
         pu = (Ether(src=self.pg1.remote_mac,
@@ -1701,14 +1664,14 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # A route for the IP pacekts
         #
-        route_3000_1 = VppIpRoute(self, "3000::1", 128,
-                                  [VppRoutePath(self.pg1.remote_ip6,
-                                                self.pg1.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6),
-                                   VppRoutePath(self.pg2.remote_ip6,
-                                                self.pg2.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
-                                  is_ip6=1)
+        route_3000_1 = VppIpRoute(
+            self, "3000::1", 128,
+            [VppRoutePath(self.pg1.remote_ip6,
+                          self.pg1.sw_if_index,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
+             VppRoutePath(self.pg2.remote_ip6,
+                          self.pg2.sw_if_index,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_3000_1.add_vpp_config()
 
         #
@@ -1720,15 +1683,16 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # An MPLS route for the non-EOS packets
         #
-        route_67 = VppMplsRoute(self, 67, 0,
-                                [VppRoutePath(self.pg1.remote_ip6,
-                                              self.pg1.sw_if_index,
-                                              labels=[67],
-                                              proto=DpoProto.DPO_PROTO_IP6),
-                                 VppRoutePath(self.pg2.remote_ip6,
-                                              self.pg2.sw_if_index,
-                                              labels=[67],
-                                              proto=DpoProto.DPO_PROTO_IP6)])
+        route_67 = VppMplsRoute(
+            self, 67, 0,
+            [VppRoutePath(self.pg1.remote_ip6,
+                          self.pg1.sw_if_index,
+                          labels=[67],
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
+             VppRoutePath(self.pg2.remote_ip6,
+                          self.pg2.sw_if_index,
+                          labels=[67],
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_67.add_vpp_config()
 
         #
@@ -1795,24 +1759,24 @@ class TestIP6LoadBalance(VppTestCase):
                              UDP(sport=1234, dport=1234) /
                              Raw('\xa5' * 100)))
 
-        route_3000_2 = VppIpRoute(self, "3000::2", 128,
-                                  [VppRoutePath(self.pg3.remote_ip6,
-                                                self.pg3.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6),
-                                   VppRoutePath(self.pg4.remote_ip6,
-                                                self.pg4.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
-                                  is_ip6=1)
+        route_3000_2 = VppIpRoute(
+            self, "3000::2", 128,
+            [VppRoutePath(self.pg3.remote_ip6,
+                          self.pg3.sw_if_index,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
+             VppRoutePath(self.pg4.remote_ip6,
+                          self.pg4.sw_if_index,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_3000_2.add_vpp_config()
 
-        route_4000_1 = VppIpRoute(self, "4000::1", 128,
-                                  [VppRoutePath("3000::1",
-                                                0xffffffff,
-                                                proto=DpoProto.DPO_PROTO_IP6),
-                                   VppRoutePath("3000::2",
-                                                0xffffffff,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
-                                  is_ip6=1)
+        route_4000_1 = VppIpRoute(
+            self, "4000::1", 128,
+            [VppRoutePath("3000::1",
+                          0xffffffff,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
+             VppRoutePath("3000::2",
+                          0xffffffff,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_4000_1.add_vpp_config()
 
         #
@@ -1839,18 +1803,18 @@ class TestIP6LoadBalance(VppTestCase):
                               UDP(sport=1234, dport=1234 + ii) /
                               Raw('\xa5' * 100)))
 
-        route_5000_2 = VppIpRoute(self, "5000::2", 128,
-                                  [VppRoutePath(self.pg3.remote_ip6,
-                                                self.pg3.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
-                                  is_ip6=1)
+        route_5000_2 = VppIpRoute(
+            self, "5000::2", 128,
+            [VppRoutePath(self.pg3.remote_ip6,
+                          self.pg3.sw_if_index,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_5000_2.add_vpp_config()
 
-        route_6000_1 = VppIpRoute(self, "6000::1", 128,
-                                  [VppRoutePath("5000::2",
-                                                0xffffffff,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
-                                  is_ip6=1)
+        route_6000_1 = VppIpRoute(
+            self, "6000::1", 128,
+            [VppRoutePath("5000::2",
+                          0xffffffff,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_6000_1.add_vpp_config()
 
         #

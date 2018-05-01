@@ -143,6 +143,7 @@ _(BIER_BSL_UNSUP, -146, "BIER bit-string-length unsupported")		\
 _(INSTANCE_IN_USE, -147, "Instance in use")				\
 _(INVALID_SESSION_ID, -148, "session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
+_(FIB_PATH_UNSUPPORTED_NH_PROTO, -150, "Unsupported FIB Path protocol")	\
 
 typedef enum
 {

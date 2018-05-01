@@ -391,9 +391,7 @@ ip4_fib_table_fwding_dpo_remove (ip4_fib_t *fib,
 				 const dpo_id_t *dpo,
                                  u32 cover_index)
 {
-    fib_prefix_t cover_prefix = {
-        .fp_len = 0,
-    };
+    const fib_prefix_t *cover_prefix;
     const dpo_id_t *cover_dpo;
 
     /*
@@ -401,12 +399,12 @@ ip4_fib_table_fwding_dpo_remove (ip4_fib_t *fib,
      * covering prefix, so it can fill the plys with the correct replacement
      * for the entry being removed
      */
-    fib_entry_get_prefix(cover_index, &cover_prefix);
+    cover_prefix = fib_entry_get_prefix(cover_index);
     cover_dpo = fib_entry_contribute_ip_forwarding(cover_index);
 
     ip4_fib_mtrie_route_del(&fib->mtrie,
                             addr, len, dpo->dpoi_index,
-                            cover_prefix.fp_len,
+                            cover_prefix->fp_len,
                             cover_dpo->dpoi_index);
 }
 
