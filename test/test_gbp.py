@@ -5,7 +5,7 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -41,12 +41,12 @@ class VppGbpEndpoint(VppObject):
         self.floating_ip = fip
         self.is_ip6 = is_ip6
         if is_ip6:
-            self.proto = DpoProto.DPO_PROTO_IP6
+            self.proto = FibPathProto.FIB_PATH_NH_PROTO_IP6
             self.af = AF_INET6
             self.is_ip6 = True
             self.ip_len = 128
         else:
-            self.proto = DpoProto.DPO_PROTO_IP4
+            self.proto = FibPathProto.FIB_PATH_NH_PROTO_IP4
             self.af = AF_INET
             self.is_ip6 = False
             self.ip_len = 32

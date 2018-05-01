@@ -221,6 +221,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         except Exception:
             super(TestVxlan, cls).tearDownClass()
             raise
+        cls.logger.error(cls.vapi.cli("sh vxlan tun"))
 
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
