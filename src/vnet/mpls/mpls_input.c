@@ -109,11 +109,11 @@ mpls_input_inline (vlib_main_t * vm,
               p2 = vlib_get_buffer (vm, from[2]);
               p3 = vlib_get_buffer (vm, from[3]);
 
-              vlib_prefetch_buffer_header (p2, STORE);
-              vlib_prefetch_buffer_header (p3, STORE);
+              vlib_prefetch_buffer_header (p2, LOAD);
+              vlib_prefetch_buffer_header (p3, LOAD);
 
-              CLIB_PREFETCH (p2->data, sizeof (h0[0]), STORE);
-              CLIB_PREFETCH (p3->data, sizeof (h1[0]), STORE);
+              CLIB_PREFETCH (p2->data, sizeof (h0[0]), LOAD);
+              CLIB_PREFETCH (p3->data, sizeof (h1[0]), LOAD);
           }
 
           bi0 = to_next[0] = from[0];
