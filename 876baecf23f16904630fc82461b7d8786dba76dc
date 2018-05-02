@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "97b52030_c5a3e9ee",
+        "filename": "src/vnet/ethernet/arp_packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-02T10:42:36Z",
+      "side": 1,
+      "message": "will do.",
+      "parentUuid": "f984098d_571a85e5",
+      "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "71fdf036_488e5d6e",
         "filename": "src/vnet/ip/ip6_neighbor.h",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2018-05-02T08:47:44Z",
       "side": 1,
       "message": "same here",
+      "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "569cd15d_e1f564a5",
+        "filename": "src/vnet/ip/ip6_neighbor.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-02T10:42:36Z",
+      "side": 1,
+      "message": "will do.",
+      "parentUuid": "71fdf036_488e5d6e",
       "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f579516f_cb11e215",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2128,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-02T10:42:36Z",
+      "side": 1,
+      "message": "If we make this configurable, presumable we need to support both CLI/API to set them, as well as CLI/API to show/dump their configured value, right?  Then it also brings up an interesting question about where to put functions to handle these CLI/show commands.  Can they be put here in the ip_api.c file or somewhere else? See the question raised by Neale about where to put the function scan_neighbors() and my response to it.",
+      "parentUuid": "9fc95f79_d5e332d7",
+      "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a60d6d7_15e95768",
         "filename": "src/vnet/ip/ip_api.c",
         "patchSetId": 3
@@ -64,6 +118,24 @@
       "writtenOn": "2018-05-02T08:47:44Z",
       "side": 1,
       "message": "i don\u0027t think ip_api.c is the right file for this. maybe ip_neighbor.c",
+      "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73211965_019b3597",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2145,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-02T10:42:36Z",
+      "side": 1,
+      "message": "There is currently no ip_neighbor.c but only ip6_neighbor.c which has the ip6 neighbor pool while arp.c has the ip4 neighbor pool. As this function is generic for both ip4/ip6 neighbors, I do not see an ideal file in vnet/ip directory to place it.  I thought ip_api.c may be the best place (although not ideal) since the resolver process used to scan both ip4/ip6 neighbors is here anyway. What do you think?  Or, are you suggesting we should create new files ip_neighbor.h and ip_neighbor.c to place it?",
+      "parentUuid": "5a60d6d7_15e95768",
       "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -115,6 +187,24 @@
       "writtenOn": "2018-05-02T08:47:44Z",
       "side": 1,
       "message": "if (ip4_idx !\u003d ~0)\n  // more v4 neighbours to scan\n  ip4_idx \u003d scan(start, ..., v4);\nif (ip6_idx !\u003d ~0)\n  ip6_idx \u003d scan(start, ...v6);\n\nif (ip4_idx \u003d\u003d ~0 \u0026\u0026 ip6_idx \u003d\u003d ~0)\n   // both scans complete\n   ip4_idx \u003d ip6_idx \u003d 0\n   sleep_for_long_time\nelse\n   sleep_for_short_time",
+      "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "46e161de_0547747a",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2266,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-02T10:42:36Z",
+      "side": 1,
+      "message": "Agree this logic is more elegant. Will change to use something like this. I think we need to add an extra if statement to set next_scan if ip4_idx is staring from 0.",
+      "parentUuid": "17ed1c48_ddff978f",
       "revId": "876baecf23f16904630fc82461b7d8786dba76dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
