@@ -29,7 +29,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
-#include <vnet/flow/ipfix_packet.h>
+#include <vnet/ipfix-export/ipfix_packet.h>
 
 /* Used to build the rewrite */
 typedef struct

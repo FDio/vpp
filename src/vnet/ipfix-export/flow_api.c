@@ -24,8 +24,8 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/fib/fib_table.h>
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
+#include <vnet/ipfix-export/flow_report.h>
+#include <vnet/ipfix-export/flow_report_classify.h>
 
 #include <vnet/vnet_msg_enum.h>
 

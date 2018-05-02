@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
+#include <vnet/ipfix-export/flow_report.h>
+#include <vnet/ipfix-export/flow_report_classify.h>
 #include <vnet/api_errno.h>
 
 /* Common prefix of tcp and udp headers
