@@ -22,6 +22,30 @@
       "revId": "960a43cf604c260d5872e7945cd417ca6f37363b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3250afb1_2d5ee8f2",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-05-02T07:47:22Z",
+      "side": 1,
+      "message": "I have seen this particular behavior when you already had an af_packet interface in working condition. Then you put it down and delete it from VPP which put it explicitly down in host side. See af-packet admin_up_down function. If you want to recreate that particular interface, you will not able to create the socket on it. \"show unix file\" will be best command to see the sockets attached to interfaces.",
+      "parentUuid": "ec4b66ff_7624d9d1",
+      "range": {
+        "startLine": 254,
+        "startChar": 0,
+        "endLine": 256,
+        "endChar": 5
+      },
+      "revId": "960a43cf604c260d5872e7945cd417ca6f37363b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
