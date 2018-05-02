@@ -22,7 +22,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/udp/udp.h>
-#include <vnet/flow/ipfix_packet.h>
+#include <vnet/ipfix-export/ipfix_packet.h>
 
 #include <vppinfra/pool.h>
 #include <vppinfra/hash.h>

@@ -828,26 +828,26 @@ API_FILES += vnet/srmpls/sr_mpls.api
 # IPFIX / netflow v10
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/flow/flow_report.c			\
- vnet/flow/flow_api.c
+ vnet/ipfix-export/flow_report.c			\
+ vnet/ipfix-export/flow_api.c
 
 nobase_include_HEADERS +=			\
- vnet/flow/flow_report.h			\
- vnet/flow/ipfix_info_elements.h		\
- vnet/flow/ipfix_packet.h			\
- vnet/flow/flow.api.h
+ vnet/ipfix-export/flow_report.h			\
+ vnet/ipfix-export/ipfix_info_elements.h		\
+ vnet/ipfix-export/ipfix_packet.h			\
+ vnet/ipfix-export/ipfix_export.api.h
 
-API_FILES += vnet/flow/flow.api
+API_FILES += vnet/ipfix-export/ipfix_export.api
 
 ########################################
 # IPFIX classify code
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/flow/flow_report_classify.c
+  vnet/ipfix-export/flow_report_classify.c
 
 nobase_include_HEADERS +=			\
-  vnet/flow/flow_report_classify.h
+  vnet/ipfix-export/flow_report_classify.h
 
 ########################################
 # lawful intercept
