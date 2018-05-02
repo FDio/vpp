@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46994a50_2be372f7",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-05-02T15:44:34Z",
+      "side": 1,
+      "message": "memset here too please.",
+      "revId": "4314d58d3686dd245039802a014f28fe4cadd178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
