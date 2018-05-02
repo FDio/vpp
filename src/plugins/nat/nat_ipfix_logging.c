@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <vnet/flow/flow_report.h>
+#include <vnet/ipfix-export/flow_report.h>
 #include <vlibmemory/api.h>
 #include <nat/nat_ipfix_logging.h>
 

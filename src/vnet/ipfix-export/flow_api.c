@@ -24,8 +24,8 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/fib/fib_table.h>
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
+#include <vnet/ipfix-export/flow_report.h>
+#include <vnet/ipfix-export/flow_report_classify.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -358,7 +358,7 @@ static void
 setup_message_id_table (api_main_t * am)
 {
 #define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_flow;
+  foreach_vl_msg_name_crc_ipfix_export;
 #undef _
 }
 

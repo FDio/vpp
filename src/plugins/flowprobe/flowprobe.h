@@ -23,8 +23,8 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
+#include <vnet/ipfix-export/flow_report.h>
+#include <vnet/ipfix-export/flow_report_classify.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 /* Default timers in seconds */

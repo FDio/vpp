@@ -16,7 +16,7 @@
 #define __included_ip6_ioam_flow_report_h__
 
 #include <ioam/analyse/ioam_analyse.h>
-#include <vnet/flow/flow_report.h>
+#include <vnet/ipfix-export/flow_report.h>
 
 #define foreach_ioam_ipfix_info_element           \
 _(ioamPacketSent, 5239, u32)                     \
