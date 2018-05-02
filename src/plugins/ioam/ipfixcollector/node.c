@@ -18,7 +18,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <ioam/ipfixcollector/ipfixcollector.h>
-#include <vnet/flow/ipfix_packet.h>
+#include <vnet/ipfix-export/ipfix_packet.h>
 
 #define foreach_ipfix_collector_error \
 _(PROCESSED, "Number of IP-Fix packets processed") \

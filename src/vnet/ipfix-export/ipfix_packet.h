@@ -15,7 +15,7 @@
 #ifndef __included_ipfix_packet_h__
 #define __included_ipfix_packet_h__
 
-#include <vnet/flow/ipfix_info_elements.h>
+#include <vnet/ipfix-export/ipfix_info_elements.h>
 
 /* From RFC-7011:
  * https://tools.ietf.org/html/rfc7011
