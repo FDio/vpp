@@ -221,12 +221,14 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
   union {
     ip4_vxlan_header_t h4;
     ip6_vxlan_header_t h6;
-  } h = {0};
+  } h;
   int len = is_ip6 ? sizeof h.h6 : sizeof h.h4;
 
   udp_header_t * udp;
   vxlan_header_t * vxlan;
   /* Fixed portion of the (outer) ip header */
+
+  memset (&h, 0, sizeof(h));
   if (!is_ip6) 
     {
       ip4_header_t * ip = &h.h4.ip4;
@@ -385,7 +387,7 @@ int vnet_vxlan_add_del_tunnel
 	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      *t = (vxlan_tunnel_t){ 0 };
+      memset (t, 0, sizeof(*t));
       dev_instance = t - vxm->tunnels;
 
       /* copy from arg structure */
