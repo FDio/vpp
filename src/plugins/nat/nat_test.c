@@ -670,11 +670,12 @@ static void vl_api_nat44_user_session_details_t_handler
   vat_main_t *vam = sm->vat_main;
 
   fformat(vam->ofp, "%s session %U:%d to %U:%d protocol id %d "
-                    "total packets %d total bytes %d\n",
+                    "total packets %d total bytes %lld\n",
           mp->is_static ? "static" : "dynamic",
-          format_ip4_address, mp->inside_ip_address, ntohl(mp->inside_port),
-          format_ip4_address, mp->outside_ip_address, ntohl(mp->outside_port),
-          ntohl(mp->protocol), ntohl(mp->total_pkts), ntohl(mp->total_bytes));
+          format_ip4_address, mp->inside_ip_address, ntohs(mp->inside_port),
+          format_ip4_address, mp->outside_ip_address, ntohs(mp->outside_port),
+          ntohs(mp->protocol), ntohl(mp->total_pkts),
+          clib_net_to_host_u64(mp->total_bytes));
 }
 
 static int api_nat44_user_session_dump(vat_main_t * vam)
