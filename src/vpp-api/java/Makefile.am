@@ -71,9 +71,7 @@ jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h: $(jvpp_registry_src_files)
 	@echo "  JVPP GEN  $@"
 	@rm -rf jvpp-registry/target
 	@mkdir -p jvpp-registry/target
-	@$(JAVAC) -d jvpp-registry/target $^
-	@$(JAVAH) -force -classpath jvpp-registry/target -d jvpp-registry io.fd.vpp.jvpp.VppJNIConnection
-	@$(JAVAH) -force -classpath jvpp-registry/target -d jvpp-registry io.fd.vpp.jvpp.JVppRegistryImpl
+	@$(JAVAC) -source 8 -target 8 -d jvpp-registry/target -h jvpp-registry $^
 	@touch jvpp-registry.ok
 
 define japigen
@@ -83,11 +81,8 @@ define japigen
 	  -i $(jvpp_$(1)_json_files)
 	@find jvpp-$(1)/target -name \*.java > jvpp-$(1).generated.files
 	@find @srcdir@/jvpp-$(1) -name \*.java > jvpp-$(1).static.files
-	@$(JAVAC) -classpath jvpp-registry/target \
-	  -d jvpp-$(1)/target @jvpp-$(1).generated.files @jvpp-$(1).static.files
-	@$(JAVAH) -force \
-	  -classpath jvpp-registry/target:jvpp-$(1)/target \
-	  -d jvpp-$(1) io.fd.vpp.jvpp.$(1).$(2)
+	@$(JAVAC) -source 8 -target 8 -classpath jvpp-registry/target \
+	  -d jvpp-$(1)/target -h jvpp-$(1) @jvpp-$(1).generated.files @jvpp-$(1).static.files
 endef
 
 #
