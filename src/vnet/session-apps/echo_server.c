@@ -63,6 +63,8 @@ echo_server_session_accept_callback (stream_session_t * s)
     session_manager_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
   esm->byte_index = 0;
+  ASSERT (vec_len (esm->rx_retries) > s->thread_index);
+  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
   esm->rx_retries[s->thread_index][s->session_index] = 0;
   return 0;
 }
