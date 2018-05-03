@@ -187,6 +187,30 @@
       "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4c927caa_b15492eb",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-05-03T09:26:15Z",
+      "side": 1,
+      "message": "You\u0027re absolutely right, I had forgotten about dpdk plugin being part of this.\n\nStill, this does not feel like this is the right way to go: aside from being quite verbose, any new plugin added to vpp will need to be added to this list manually. I doubt people will think about it.\n\nMaybe Damjan will have a better idea.",
+      "parentUuid": "3530c338_0adf1203",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 14
+      },
+      "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
