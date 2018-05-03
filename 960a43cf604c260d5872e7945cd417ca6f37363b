@@ -46,6 +46,30 @@
       "revId": "960a43cf604c260d5872e7945cd417ca6f37363b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6c46521_ec815662",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2018-05-03T20:22:52Z",
+      "side": 1,
+      "message": "Kind of confused - if you are forcing the Linux Interface into an up state. You are back to a position where the state in VPP is disconnected with the state in the host OS?",
+      "parentUuid": "3250afb1_2d5ee8f2",
+      "range": {
+        "startLine": 254,
+        "startChar": 0,
+        "endLine": 256,
+        "endChar": 5
+      },
+      "revId": "960a43cf604c260d5872e7945cd417ca6f37363b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
