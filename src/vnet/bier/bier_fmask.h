@@ -98,6 +98,11 @@ typedef enum bier_fmask_flags_t_
  */
 typedef struct bier_fmask_t_ {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The BIER fmask is a child of a FIB entry in the FIB graph.
      */
     fib_node_t bfm_node;

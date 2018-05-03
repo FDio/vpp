@@ -65,6 +65,12 @@ typedef enum lookup_cast_t_ {
 typedef struct lookup_dpo_t
 {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The FIB, or interface from which to get a FIB, in which to perform
      * the next lookup;
      */

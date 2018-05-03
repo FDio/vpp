@@ -33,6 +33,11 @@
  */
 typedef struct bier_imp_t_ {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The DPO contirubted from the resolving BIER table.
      * One per-IP protocol. This allows us to share a BIER imposition
      * object for a IPv4 and IPv6 mfib path.

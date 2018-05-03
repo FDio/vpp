@@ -36,10 +36,15 @@ typedef u32 qos_egress_map_id_t;
  */
 typedef struct qos_egress_map_t_
 {
-    /**
-     * The array of output mapped values;
-     *   output = eq_qos[input-source][input-value]
-     */
+  /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /**
+   * The array of output mapped values;
+   *   output = eq_qos[input-source][input-value]
+   */
   qos_bits_t qem_output[QOS_N_SOURCES][256];
 } qos_egress_map_t;
 

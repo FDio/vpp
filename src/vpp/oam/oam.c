@@ -26,7 +26,7 @@ init_oam_packet_template (oam_main_t * om, oam_target_t * t)
   ip_csum_t sum;
   u16 csum;
 
-  vec_validate_aligned (t->template, 0, CLIB_CACHE_LINE_BYTES);
+  vec_validate (t->template, 0);
 
   h = t->template;
   memset (h, 0, sizeof (*h));

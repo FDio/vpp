@@ -101,6 +101,8 @@ typedef struct
  */
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   u8 tag[64];
   u32 count;
   acl_rule_t *rules;
@@ -108,6 +110,8 @@ typedef struct
 
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   u8 tag[64];
   u32 count;
   macip_acl_rule_t *rules;
@@ -127,6 +131,8 @@ typedef struct
  */
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   fa_5tuple_t mask;
   u32 refcount;
 } ace_mask_type_entry_t;

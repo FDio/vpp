@@ -242,6 +242,8 @@ typedef struct
 
 typedef struct
 {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 input_sa_index;
   u32 output_sa_index;
   u32 hw_if_index;

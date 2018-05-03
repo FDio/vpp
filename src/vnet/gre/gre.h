@@ -176,6 +176,11 @@ typedef struct
 typedef struct
 {
   /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /**
    * Linkage into the FIB object graph
    */
   fib_node_t node;

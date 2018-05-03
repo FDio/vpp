@@ -49,6 +49,8 @@ typedef enum
 */
 typedef struct
 {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   ip4_address_t tunnel_src; /**< tunnel IPv4 src address */
   ip4_address_t tunnel_dst; /**< tunnel IPv4 dst address */
   u32 local_sa;		    /**< local IPSec SA index */

@@ -49,6 +49,8 @@ typedef struct _session_lookup_table
    * byproduct of fib table ids not necessarily being the same for
    * identical fib idices of v4 and v6 fib protos */
   u8 active_fib_proto;
+  /* Required for pool_get_aligned(...) */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } session_table_t;
 
 #define SESSION_TABLE_INVALID_INDEX ((u32)~0)

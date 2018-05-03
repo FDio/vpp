@@ -57,6 +57,8 @@ typedef struct ip4_fib_t_
   u32 fwd_classify_table_index;
   u32 rev_classify_table_index;
 
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
 } ip4_fib_t;
 
 extern fib_node_index_t ip4_fib_table_lookup(const ip4_fib_t *fib,

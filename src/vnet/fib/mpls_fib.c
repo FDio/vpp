@@ -92,7 +92,7 @@ mpls_fib_create_with_table_id (u32 table_id,
     mpls_fib_t *mf;
     int i;
 
-    pool_get_aligned(mpls_main.fibs, fib_table, CLIB_CACHE_LINE_BYTES);
+    pool_get(mpls_main.fibs, fib_table);
     pool_get_aligned(mpls_main.mpls_fibs, mf, CLIB_CACHE_LINE_BYTES);
 
     ASSERT((fib_table - mpls_main.fibs) ==
