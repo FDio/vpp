@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "c2bb3689_2341ed74",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-03T09:12:13Z",
+      "side": 1,
+      "message": "In latest NXP customized toolchains these CPU flags are already in. \nBut I agree that they will not be available if we compile through Linaro default Toolchain. So, will put it back in next patch set.\n\nThanks you.",
+      "parentUuid": "d5e1876d_9c0f0773",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 1
+      },
+      "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6282913e_0e30835e",
         "filename": "build-data/platforms/dpaa.mk",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-05-03T06:42:19Z",
       "side": 1,
       "message": "the old dpaa2.mk had written arm64-dpaa2-linuxapp-gcc here.\nAre you sure both compilers are the same (by default)?",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 1
+      },
+      "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d5af05a_246f4689",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-03T09:12:13Z",
+      "side": 1,
+      "message": "Now \"arm64-dpaa-linuxapp-gcc\" compiles both DPAA1 \u0026 DPAA2 drivers.",
+      "parentUuid": "6282913e_0e30835e",
       "range": {
         "startLine": 62,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "42fa0958_522c2726",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-03T09:12:13Z",
+      "side": 1,
+      "message": "We have modified the DPDK implementation to use the 128B Headroom. So this setting is not required.",
+      "parentUuid": "d8a27d38_3f934b38",
+      "range": {
+        "startLine": 63,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 1
+      },
+      "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20e57f5e_3b69c789",
         "filename": "build-data/platforms/dpaa.mk",
         "patchSetId": 2
@@ -82,6 +154,30 @@
       "writtenOn": "2018-05-03T06:42:19Z",
       "side": 1,
       "message": "The plugins should be a part of the plugin package, which is optional.",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 14
+      },
+      "revId": "f4a7f7aed7fa92a25705b8debd7042df8574905d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3530c338_0adf1203",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-03T09:12:13Z",
+      "side": 1,
+      "message": "You are correct.\nSince dpdk is also part of plugin pacakage, so in order to reduce the overall package size and runtime memory footprint, I have compiled-out the unused plugins.\n\nIf your question was different then please suggest.",
+      "parentUuid": "20e57f5e_3b69c789",
       "range": {
         "startLine": 67,
         "startChar": 0,
