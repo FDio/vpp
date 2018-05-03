@@ -9,15 +9,6 @@ from vapi_json_parser import Field, Struct, Message, JsonParser,\
 
 
 class CField(Field):
-    def __init__(
-            self,
-            field_name,
-            field_type,
-            array_len=None,
-            nelem_field=None):
-        super(CField, self).__init__(
-            field_name, field_type, array_len, nelem_field)
-
     def get_c_def(self):
         if self.len is not None:
             return "%s %s[%d]" % (self.type.get_c_name(), self.name, self.len)
@@ -67,9 +58,6 @@ class CField(Field):
 
 
 class CStruct(Struct):
-    def __init__(self, name, fields):
-        super(CStruct, self).__init__(name, fields)
-
     def duplicate_barrier(func):
         def func_wrapper(self):
             name = self.get_c_name()
@@ -99,9 +87,6 @@ class CSimpleType (SimpleType):
         'i64': 'be64toh', 'u64': 'be64toh',
     }
 
-    def __init__(self, name):
-        super(CSimpleType, self).__init__(name)
-
     def get_c_name(self):
         return self.name
 
@@ -129,9 +114,6 @@ class CSimpleType (SimpleType):
 
 
 class CStructType (StructType, CStruct):
-    def __init__(self, definition, typedict, field_class):
-        super(CStructType, self).__init__(definition, typedict, field_class)
-
     def get_c_name(self):
         return "vapi_type_%s" % self.name
 

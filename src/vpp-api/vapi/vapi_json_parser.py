@@ -63,20 +63,20 @@ class SimpleType (Type):
         return self.name
 
 
-def get_msg_header_defs(struct_type_class, field_class, typedict):
+def get_msg_header_defs(struct_type_class, field_class, typedict, logger):
     return [
         struct_type_class(['msg_header1_t',
                            ['u16', '_vl_msg_id'],
                            ['u32', 'context'],
                            ],
-                          typedict, field_class
+                          typedict, field_class, logger
                           ),
         struct_type_class(['msg_header2_t',
                            ['u16', '_vl_msg_id'],
                            ['u32', 'client_index'],
                            ['u32', 'context'],
                            ],
-                          typedict, field_class
+                          typedict, field_class, logger
                           ),
     ]
 
@@ -107,7 +107,7 @@ class Message(object):
         self.header = None
         fields = []
         for header in get_msg_header_defs(struct_type_class, field_class,
-                                          typedict):
+                                          typedict, logger):
             logger.debug("Probing header `%s'" % header.name)
             if header.is_part_of_def(m[1:]):
                 self.header = header
@@ -137,6 +137,7 @@ class Message(object):
                             "While parsing message `%s': could not find "
                             "type by magic name `%s' nor by mundane name "
                             "`%s'" % (name, field_type, mundane_field_type))
+                logger.debug("Parsing message field `%s'" % field)
                 if len(field) == 2:
                     if self.header is not None and\
                             self.header.has_field(field[1]):
@@ -187,8 +188,9 @@ class Message(object):
 
 class StructType (Type, Struct):
 
-    def __init__(self, definition, typedict, field_class):
+    def __init__(self, definition, typedict, field_class, logger):
         t = definition
+        logger.debug("Parsing struct definition `%s'" % t)
         name = t[0]
         fields = []
         for field in t[1:]:
@@ -207,6 +209,7 @@ class StructType (Type, Struct):
                         "While parsing message `%s': could not find "
                         "type by magic name `%s' nor by mundane name "
                         "`%s'" % (name, field_type, mundane_field_type))
+            logger.debug("Parsing type field `%s'" % field)
             if len(field) == 2:
                 p = field_class(field_name=field[1],
                                 field_type=field_type)
@@ -217,10 +220,25 @@ class StructType (Type, Struct):
                 p = field_class(field_name=field[1],
                                 field_type=field_type,
                                 array_len=field[2])
+            elif len(field) == 4:
+                nelem_field = None
+                for f in fields:
+                    if f.name == field[3]:
+                        nelem_field = f
+                if nelem_field is None:
+                    raise ParseError(
+                        "While parsing message `%s': couldn't find "
+                        "variable length array `%s' member containing "
+                        "the actual length `%s'" % (
+                            name, field[1], field[3]))
+                p = field_class(field_name=field[1],
+                                field_type=field_type,
+                                array_len=field[2],
+                                nelem_field=nelem_field)
             else:
                 raise ParseError(
-                    "Don't know how to parse type definition for "
-                    "type `%s': `%s'" % (t, t[1:]))
+                    "Don't know how to parse field `%s' of type definition "
+                    "for type `%s'" % (field, t))
             fields.append(p)
         Type.__init__(self, name)
         Struct.__init__(self, name, fields)
@@ -283,7 +301,8 @@ class JsonParser(object):
             for t in j['types']:
                 try:
                     type_ = self.struct_type_class(t, self.types,
-                                                   self.field_class)
+                                                   self.field_class,
+                                                   self.logger)
                     if type_.name in self.types:
                         raise ParseError("Duplicate type `%s'" % type_.name)
                 except ParseError as e:
@@ -292,19 +311,32 @@ class JsonParser(object):
                 self.types[type_.name] = type_
                 self.types_by_json[path].append(type_)
                 self.logger.debug("Parsed type: %s" % type_)
-            for m in j['messages']:
-                try:
-                    msg = self.message_class(self.logger, m, self.types,
-                                             self.struct_type_class,
-                                             self.simple_type_class,
-                                             self.field_class)
-                    if msg.name in self.messages:
-                        raise ParseError("Duplicate message `%s'" % msg.name)
-                except ParseError as e:
-                    self.exceptions.append(e)
-                    continue
-                self.messages[msg.name] = msg
-                self.messages_by_json[path][msg.name] = msg
+            prev_length = len(self.messages)
+            processed = []
+            while True:
+                exceptions = []
+                for m in j['messages']:
+                    if m in processed:
+                        continue
+                    try:
+                        msg = self.message_class(self.logger, m, self.types,
+                                                 self.struct_type_class,
+                                                 self.simple_type_class,
+                                                 self.field_class)
+                        if msg.name in self.messages:
+                            raise ParseError(
+                                "Duplicate message `%s'" % msg.name)
+                    except ParseError as e:
+                        exceptions.append(e)
+                        continue
+                    self.messages[msg.name] = msg
+                    self.messages_by_json[path][msg.name] = msg
+                    processed.append(m)
+                if prev_length == len(self.messages):
+                    # cannot make forward progress ...
+                    self.exceptions.extend(exceptions)
+                    break
+                prev_length = len(self.messages)
 
     def get_reply(self, message):
         if self.messages[message].is_dump():
