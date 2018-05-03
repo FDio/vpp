@@ -172,11 +172,13 @@ AS_IF([test "$cc_flag_check" = yes],
   [march_skylake_avx512=no])
 AM_CONDITIONAL([CC_SUPPORTS_AVX512], [test "$march_skylake_avx512" = "yes"])
 
-AS_CASE([$build_cpu],
-	[x86_64], [CPU_FLAGS="-march=corei7 -mtune=corei7-avx"],
-	[aarch64], [CPU_FLAGS="-march=armv8-a+crc"],
-	[CPU_FLAGS=""],
+AS_IF([test "$cross_compiling" == "no"],
+	[AS_CASE([$build_cpu],
+		[x86_64], [CPU_FLAGS="-march=corei7 -mtune=corei7-avx"],
+		[aarch64], [CPU_FLAGS="-march=armv8-a+crc"],
+		[CPU_FLAGS=""],)],
 )
+
 AC_SUBST([CPU_FLAGS])
 
 AC_SUBST([CPU_AVX2_FLAGS],"-march=core-avx2 -mtune=core-avx2")
