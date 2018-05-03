@@ -1049,7 +1049,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   label_stack));
 }
 
-static int
+int
 ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 {
   fib_mpls_label_t *label_stack = NULL;
@@ -2325,6 +2325,10 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  ra_report_t *ra_events = event_data;
 	  for (i = 0; i < vec_len (ra_events); i++)
 	    {
+	      ip6_neighbor_public_main_t *npm = &ip6_neighbor_public_main;
+	      call_ip6_neighbor_callbacks (&ra_events[i],
+					   npm->ra_report_functions);
+
 	      vpe_client_registration_t *reg;
               /* *INDENT-OFF* */
               pool_foreach(reg, vpe_api_main.ip6_ra_events_registrations,
@@ -2614,8 +2618,6 @@ vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
 	  rp = pool_elt_at_index (am->ip6_ra_events_registrations, p[0]);
 	  pool_put (am->ip6_ra_events_registrations, rp);
 	  hash_unset (am->ip6_ra_events_registration_hash, mp->client_index);
-	  if (pool_elts (am->ip6_ra_events_registrations) == 0)
-	    ra_set_publisher_node (~0, REPORT_MAX);
 	  goto reply;
 	}
     }
@@ -2630,7 +2632,6 @@ vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
   rp->client_pid = ntohl (mp->pid);
   hash_set (am->ip6_ra_events_registration_hash, rp->client_index,
 	    rp - am->ip6_ra_events_registrations);
-  ra_set_publisher_node (wc_arp_process_node.index, RA_REPORT);
 
 reply:
   REPLY_MACRO (VL_API_WANT_IP6_RA_EVENTS_REPLY);
@@ -3013,6 +3014,8 @@ ip_api_hookup (vlib_main_t * vm)
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (am);
+
+  ra_set_publisher_node (wc_arp_process_node.index, RA_REPORT);
 
   return 0;
 }

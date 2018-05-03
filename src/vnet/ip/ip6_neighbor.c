@@ -230,6 +230,7 @@ typedef union
 } ip6_icmp_neighbor_discovery_event_data_t;
 
 static ip6_neighbor_main_t ip6_neighbor_main;
+ip6_neighbor_public_main_t ip6_neighbor_public_main;
 static ip6_address_t ip6a_zero;	/* ip6 address 0 */
 
 static void wc_nd_signal_report (wc_nd_report_t * r);
@@ -1417,6 +1418,23 @@ ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
   return;
 }
 
+clib_error_t *
+call_ip6_neighbor_callbacks (void *data,
+			     _vnet_ip6_neighbor_function_list_elt_t * elt)
+{
+  clib_error_t *error = 0;
+
+  while (elt)
+    {
+      error = elt->fp (data);
+      if (error)
+	return error;
+      elt = elt->next_ip6_neighbor_function;
+    }
+
+  return error;
+}
+
 /* ipv6 neighbor discovery - router advertisements */
 typedef enum
 {
@@ -2434,9 +2452,9 @@ icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index, u8 stop,
   rai = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
   ra = pool_elt_at_index (nm->if_radv_pool, rai);
 
-  if (stop)
-    stop_sending_rs (vm, ra);
-  else
+  stop_sending_rs (vm, ra);
+
+  if (!stop)
     {
       ra->keep_sending_rs = 1;
       ra->params = *params;
