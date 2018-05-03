@@ -66,6 +66,9 @@ typedef CLIB_PACKED(struct {
 }) vxlan6_tunnel_key_t;
 
 typedef struct {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 * rewrite;
 

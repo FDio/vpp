@@ -25,6 +25,11 @@
  */
 typedef struct classify_dpo_t
 {
+    /**
+     * required for pool_get_aligned.
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
     dpo_proto_t cd_proto;
 
     u32 cd_table_index;

@@ -68,6 +68,9 @@ typedef enum
  */
 typedef struct
 {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   ipip_mode_t mode;
   ipip_transport_t transport;
   ipip_tunnel_key_t *key;

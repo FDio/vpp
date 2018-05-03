@@ -33,6 +33,8 @@
 
 typedef struct ioam_export_buffer
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Allocated buffer */
   u32 buffer_index;
   u64 touched_at;

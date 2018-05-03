@@ -36,6 +36,8 @@ typedef enum
 
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   transport_connection_t connection;	      /** must be first */
   /** ersatz MTU to limit fifo pushes to test data size */
   u32 mtu;

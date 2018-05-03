@@ -53,6 +53,12 @@ extern replicate_main_t replicate_main;
  */
 typedef struct replicate_t_ {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * number of buckets in the replicate.
      */
     u16 rep_n_buckets;

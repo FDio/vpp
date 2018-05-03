@@ -80,6 +80,8 @@ typedef struct
 
 typedef struct
 {
+  /* Required for vec_validate_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   void *shm;
   memif_region_size_t region_size;
   int fd;

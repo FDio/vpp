@@ -192,6 +192,9 @@ typedef struct _sctp_user_configuration
 
 typedef struct _sctp_connection
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   sctp_sub_connection_t sub_conn[MAX_SCTP_CONNECTIONS];	/**< Common transport data. First! */
   sctp_user_configuration_t conn_config; /**< Allows tuning of some SCTP behaviors */
 

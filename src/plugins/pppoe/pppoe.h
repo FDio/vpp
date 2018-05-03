@@ -48,6 +48,9 @@ typedef struct
 
 typedef struct
 {
+  /* Required for pool_get_aligned  */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /* pppoe session_id in HOST byte order */
   u16 session_id;
 

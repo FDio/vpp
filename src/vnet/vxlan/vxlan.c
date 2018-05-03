@@ -374,7 +374,7 @@ int vnet_vxlan_add_del_tunnel
 	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      *t = (vxlan_tunnel_t){ 0 };
+      memset(t, 0, sizeof(*t));
       dev_instance = t - vxm->tunnels;
 
       /* copy from arg structure */
