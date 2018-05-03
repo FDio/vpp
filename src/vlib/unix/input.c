@@ -52,6 +52,7 @@
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int epoll_fd;
   struct epoll_event *epoll_events;
   int n_epoll_fds;

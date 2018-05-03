@@ -84,6 +84,9 @@ typedef struct
 */
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /** Local source IPv4/6 address to be used. */
   ip46_address_t src;
 

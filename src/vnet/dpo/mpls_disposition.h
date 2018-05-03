@@ -27,6 +27,12 @@
 typedef struct mpls_disp_dpo_t
 {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * Next DPO in the graph
      */
     dpo_id_t mdd_dpo;

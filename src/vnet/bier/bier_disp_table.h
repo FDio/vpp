@@ -30,6 +30,11 @@
 typedef struct bier_disp_table_t_
 {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * number of locks on the table
      */
     u16 bdt_locks;

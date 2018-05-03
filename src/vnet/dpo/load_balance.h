@@ -83,6 +83,12 @@ typedef struct load_balance_path_t_ {
  */
 typedef struct load_balance_t_ {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * number of buckets in the load-balance. always a power of 2.
      */
     u16 lb_n_buckets;
