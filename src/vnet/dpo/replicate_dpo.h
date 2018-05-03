@@ -84,6 +84,8 @@ typedef struct replicate_t_ {
      * the data-path.
      */
     dpo_id_t rep_buckets_inline[REP_NUM_INLINE_BUCKETS];
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } replicate_t;
 
 STATIC_ASSERT(sizeof(replicate_t) <= CLIB_CACHE_LINE_BYTES,

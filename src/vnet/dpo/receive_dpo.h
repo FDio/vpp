@@ -39,6 +39,8 @@ typedef struct receive_dpo_t_
      * number oflocks.
      */
     u16 rd_locks;
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } receive_dpo_t;
 
 extern void receive_dpo_add_or_lock (dpo_proto_t proto,

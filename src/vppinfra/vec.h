@@ -411,6 +411,7 @@ do {										\
 
 #define vec_validate_ha(V,I,H,A)					\
 do {									\
+  ASSERT(A==0 || ((A % sizeof(V[0]))==0) || ((sizeof(V[0]) % A) == 0)); \
   word _v(i) = (I);							\
   word _v(l) = vec_len (V);						\
   if (_v(i) >= _v(l))							\

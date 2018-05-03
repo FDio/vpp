@@ -112,6 +112,8 @@ typedef struct fib_table_t_
      * Table description
      */
     u8* ft_desc;
+    /* Required for pool_get_aligned */
+    CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } fib_table_t;
 
 /**

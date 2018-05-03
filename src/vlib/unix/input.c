@@ -59,6 +59,7 @@ typedef struct
   /* Statistics. */
   u64 epoll_files_ready;
   u64 epoll_waits;
+    CLIB_CACHE_LINE_ALIGN_MARK (align_me);
 } linux_epoll_main_t;
 
 static linux_epoll_main_t *linux_epoll_mains = 0;

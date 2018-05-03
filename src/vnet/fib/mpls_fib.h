@@ -51,6 +51,8 @@ typedef struct mpls_fib_t_
    * A flat array for maximum lookup performace.
    */
   index_t mf_lbs[MPLS_FIB_DB_SIZE];
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } mpls_fib_t;
 
 static inline mpls_fib_t*

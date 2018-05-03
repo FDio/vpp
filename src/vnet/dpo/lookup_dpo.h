@@ -95,6 +95,8 @@ typedef struct lookup_dpo_t
      * Number of locks
      */
     u16 lkd_locks;
+    /* Required for pool_get_aligned(...) */
+    CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } lookup_dpo_t;
 
 extern void lookup_dpo_add_or_lock_w_fib_index(fib_node_index_t fib_index,

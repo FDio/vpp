@@ -138,6 +138,8 @@ typedef struct bier_fmask_t_ {
      * this fmask resolves via
      */
     dpo_id_t bfm_dpo;
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(align_me);
 } bier_fmask_t;
 
 extern void bier_fmask_link(index_t bfmi, bier_bp_t bp);
