@@ -52,17 +52,17 @@ BuildRequires: check, check-devel
 %if 0%{?fedora} >= 26
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
-BuildRequires: python2-devel, python2-virtualenv
+BuildRequires: python2-devel, python2-virtualenv, python2-ply
 BuildRequires: mbedtls-devel
 %else
 %if 0%{?fedora} == 25
 BuildRequires: subunit, subunit-devel
 BuildRequires: openssl-devel
-BuildRequires: python-devel, python2-virtualenv
+BuildRequires: python-devel, python2-virtualenv, python2-ply
 BuildRequires: mbedtls-devel
 %else
 BuildREquires: openssl-devel
-BuildRequires: python-devel, python-virtualenv
+BuildRequires: python-devel, python-virtualenv, python-ply
 %endif
 %endif
 BuildRequires: libffi-devel
