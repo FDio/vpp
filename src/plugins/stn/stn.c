@@ -63,8 +63,8 @@ format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
   stn_ip46_punt_trace_t *t = va_arg (*args, stn_ip46_punt_trace_t *);
   u32 indent = format_get_indent (s);
 
-  format (s, "dst_address: %U\n", format_ip46_address,
-	  (ip46_address_t *)&t->kv.key, IP46_TYPE_ANY);
+  s = format (s, "dst_address: %U\n", format_ip46_address,
+	  (ip46_address_t *)t->kv.key, IP46_TYPE_ANY);
 
   if (t->kv.value == ~(0L))
     {
