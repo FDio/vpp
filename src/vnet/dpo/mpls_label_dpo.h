@@ -67,6 +67,12 @@ extern u8* format_mpls_label_dpo_flags(u8 *s, va_list *args);
 typedef struct mpls_label_dpo_t
 {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The MPLS label header to impose. Outer most label first.
      * Each DPO will occupy one cache line, stuff that many labels in.
      */

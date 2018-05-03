@@ -190,6 +190,8 @@ do {                                                                    \
   pool_header_t * _pool_var (p) = pool_header (P);                      \
   uword _pool_var (l);                                                  \
                                                                         \
+  STATIC_ASSERT(A==0 || ((A % sizeof(P[0]))==0) || ((sizeof(P[0]) % A) == 0), \
+                "Pool aligned alloc of incorrectly sized object");      \
   _pool_var (l) = 0;                                                    \
   if (P)                                                                \
     _pool_var (l) = vec_len (_pool_var (p)->free_indices);              \

@@ -125,6 +125,9 @@ typedef uint16_t dpdk_portid_t;
 
 typedef struct
 {
+  /* Required for vec_validate_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   struct rte_ring *swq;
 
   u64 hqos_field0_slabmask;
@@ -141,6 +144,8 @@ typedef struct
 
 typedef struct
 {
+  /* Required for vec_validate_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct rte_ring **swq;
   struct rte_mbuf **pkts_enq;
   struct rte_mbuf **pkts_deq;

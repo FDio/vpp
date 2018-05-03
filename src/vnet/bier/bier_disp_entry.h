@@ -31,6 +31,11 @@
  */
 typedef struct bier_disp_entry_t_ {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The DPO contirubted from the per-payload protocol parents
      * on cachline 1.
      */

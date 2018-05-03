@@ -102,6 +102,11 @@ typedef struct
 typedef struct protocol_port_range_dpo_t_
 {
   /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /**
    * The number of blocks from the 'block' array below
    * that have rnages configured. We keep this count so that in the data-path
    * we can limit the loop to be only over the blocks we need

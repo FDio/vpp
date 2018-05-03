@@ -37,6 +37,12 @@ struct bier_route_update_t_;
  */
 typedef struct bier_table_t_ {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * Save the MPLS local label associated with the table
      */
     mpls_label_t bt_ll;
@@ -63,11 +69,6 @@ typedef struct bier_table_t_ {
      * given the table's supported Bit-string length
      */
     index_t *bt_entries;
-
-    /**
-     * Everything before this declaration is unused in the switch path
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
 
     /**
      * The identity/key or the table. we need the hdr_len in the data-path

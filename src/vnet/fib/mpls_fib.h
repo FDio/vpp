@@ -41,6 +41,11 @@
 typedef struct mpls_fib_t_
 {
   /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+  /**
    * A hash table of entries. 21 bit key
    * Hash table for reduced memory footprint
    */
