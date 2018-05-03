@@ -122,6 +122,7 @@ typedef struct ioam_analyser_data_t_
 
   /** Lock to since we use this to export the data in other thread. */
   volatile u32 *writer_lock;
+    CLIB_CACHE_LINE_ALIGN_MARK (align_me);
 } ioam_analyser_data_t;
 
 always_inline f64

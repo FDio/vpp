@@ -123,6 +123,9 @@ typedef CLIB_PACKED
 
 typedef struct
 {
+  /* Required for pool_get_aligned  */
+  CLIB_CACHE_LINE_ALIGN_MARK (align_me);
+
   /* Rewrite string */
   u8 *rewrite;
 

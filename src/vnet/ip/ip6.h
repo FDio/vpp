@@ -66,6 +66,9 @@ typedef struct
 
 typedef struct
 {
+  /* required for pool_get_aligned. */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /* Table ID (hash key) for this FIB. */
   u32 table_id;
 

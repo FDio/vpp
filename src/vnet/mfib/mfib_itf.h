@@ -25,6 +25,11 @@
 typedef struct mfib_itf_t_
 {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(align_me);
+
+    /**
      * @brief Forwarding Flags on the entry - checked in the data-path
      */
     mfib_itf_flags_t mfi_flags;

@@ -75,6 +75,9 @@ typedef CLIB_PACKED (struct
 
 typedef struct
 {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (align_me);
+
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 *rewrite;
 
