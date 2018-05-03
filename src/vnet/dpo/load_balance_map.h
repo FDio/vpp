@@ -29,6 +29,12 @@ struct load_balance_map_path_t_;
  */
 typedef struct load_balance_map_t_ {
     /**
+     * required for pool_get_aligned.
+     *  memebers used in the switch path come first!
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * The buckets of the map that provide the index to index translation.
      * In the first cacheline.
      */

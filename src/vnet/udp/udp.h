@@ -36,6 +36,8 @@ typedef enum
 
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 is_connected;			/**< connected mode */

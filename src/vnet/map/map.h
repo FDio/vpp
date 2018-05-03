@@ -80,6 +80,8 @@ typedef enum
  */
 typedef struct
 {
+  /* Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   ip6_address_t ip6_src;
   ip6_address_t ip6_prefix;
   ip6_address_t *rules;

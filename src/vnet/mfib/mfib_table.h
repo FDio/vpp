@@ -35,6 +35,11 @@
 typedef struct mfib_table_t_
 {
     /**
+     * Required for pool_get_aligned
+     */
+    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
+    /**
      * A union of the protocol specific FIBs that provide the
      * underlying LPM mechanism.
      * This element is first in the struct so that it is in the

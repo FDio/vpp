@@ -98,6 +98,8 @@
  */
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   ip6_address_t src_address;
   ip6_address_t dst_address;
   u16 src_port;
@@ -122,6 +124,8 @@ typedef struct
  */
 typedef struct
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 pool_id;
   u32 pool_index;
   ip6_address_t src_address;
@@ -528,8 +532,7 @@ ioam_cache_ts_table_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (cm->ts_stats, no_of_threads - 1,
 			CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->timer_wheels, no_of_threads - 1,
-			CLIB_CACHE_LINE_BYTES);
+  vec_validate (cm->timer_wheels, no_of_threads - 1);
   cm->lookup_table_nbuckets = IOAM_CACHE_TABLE_DEFAULT_HASH_NUM_BUCKETS;
   cm->lookup_table_nbuckets = 1 << max_log2 (cm->lookup_table_nbuckets);
   cm->lookup_table_size = IOAM_CACHE_TABLE_DEFAULT_HASH_MEMORY_SIZE;

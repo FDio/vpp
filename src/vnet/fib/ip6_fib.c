@@ -60,7 +60,7 @@ create_fib_with_table_id (u32 table_id,
     fib_table_t *fib_table;
     ip6_fib_t *v6_fib;
 
-    pool_get_aligned(ip6_main.fibs, fib_table, CLIB_CACHE_LINE_BYTES);
+    pool_get(ip6_main.fibs, fib_table);
     pool_get_aligned(ip6_main.v6_fibs, v6_fib, CLIB_CACHE_LINE_BYTES);
 
     memset(fib_table, 0, sizeof(*fib_table));

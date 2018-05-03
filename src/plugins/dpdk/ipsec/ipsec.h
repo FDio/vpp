@@ -127,6 +127,8 @@ typedef struct
 
 typedef struct
 {
+  /* Required for vec_validate_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct rte_mempool *crypto_op;
   struct rte_mempool *session_h;
   struct rte_mempool **session_drv;

@@ -96,6 +96,8 @@ typedef struct
 */
 typedef struct ioam_analyser_data_t_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   u8 is_free;
   u8 pad[3];
 
