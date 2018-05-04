@@ -798,7 +798,8 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 			    /* length_increment */ n_data_elts,
 			    /* total size after increment */
 			    (l + n_data_elts) * n_data_elt_bytes,
-			    /* header_bytes */ 0, /* data_align */ 0);
+			    /* header_bytes */ 0,
+			    /* data_align */ MIN_ALIGN (data_vec, 0));
 
     p->pending_event_data_by_type_index[t] = data_vec;
     data_to_be_written_by_caller = data_vec + l * n_data_elt_bytes;

@@ -111,6 +111,18 @@ void *vec_resize_allocate_memory (void *v,
     @return v_prime pointer to resized vector, may or may not equal v
 */
 
+#include <stdio.h>
+always_inline uword
+_min_align (uword type_align, uword align, const char *fn)
+{
+  if (type_align > align && type_align > 4)
+    printf ("ALIGN_ISSUE %s: type align: %lu, align %lu\n", fn, type_align,
+	    align);
+  return clib_max (type_align, align);
+}
+
+#define MIN_ALIGN(T,A) _min_align (__alignof__((T)[0]), A, __func__)
+
 always_inline void *
 _vec_resize (void *v,
 	     word length_increment,
@@ -222,7 +234,7 @@ clib_mem_is_vec (void *v)
 do {										\
   word _v(n) = (N);								\
   word _v(l) = vec_len (V);							\
-  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), (A));	\
+  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), MIN_ALIGN ((V),(A)));	\
 } while (0)
 
 /** \brief Resize a vector (no header, unspecified alignment)
@@ -293,7 +305,7 @@ do {						\
 #define vec_new_ha(T,N,H,A)					\
 ({								\
   word _v(n) = (N);						\
-  _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
+  _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), MIN_ALIGN ((T*)0, A));	\
 })
 
 /** \brief Create new vector of given type and length
@@ -397,7 +409,7 @@ do {						\
 do {										\
   (NEW_V) = 0;									\
   (NEW_V) = _vec_resize ((NEW_V), vec_len (OLD_V),				\
-			 vec_len (OLD_V) * sizeof ((NEW_V)[0]), (0), (0));	\
+			 vec_len (OLD_V) * sizeof ((NEW_V)[0]), (0), MIN_ALIGN (NEW_V,0));	\
 } while (0)
 
 /** \brief Make sure vector is long enough for given index (general version).
@@ -507,7 +519,7 @@ do {								\
 #define vec_add1_ha(V,E,H,A)						\
 do {									\
   word _v(l) = vec_len (V);						\
-  V = _vec_resize ((V), 1, (_v(l) + 1) * sizeof ((V)[0]), (H), (A));	\
+  V = _vec_resize ((V), 1, (_v(l) + 1) * sizeof ((V)[0]), (H), MIN_ALIGN ((V),(A)));	\
   (V)[_v(l)] = (E);							\
 } while (0)
 
@@ -543,7 +555,7 @@ do {									\
 do {										\
   word _v(n) = (N);								\
   word _v(l) = vec_len (V);							\
-  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), (A));	\
+  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), MIN_ALIGN ((V),(A)));	\
   P = (V) + _v(l);								\
 } while (0)
 
@@ -583,7 +595,7 @@ do {										\
 do {										\
   word _v(n) = (N);								\
   word _v(l) = vec_len (V);							\
-  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), (A));	\
+  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), MIN_ALIGN ((V),(A)));	\
   clib_memcpy ((V) + _v(l), (E), _v(n) * sizeof ((V)[0]));			\
 } while (0)
 
@@ -653,7 +665,7 @@ do {							\
   V = _vec_resize ((V),					\
 		   _v(n),				\
 		   (_v(l) + _v(n))*sizeof((V)[0]),	\
-		   (H), (A));				\
+		   (H), MIN_ALIGN ((V),(A)));	\
   ASSERT (_v(m) <= _v(l));				\
   memmove ((V) + _v(m) + _v(n),				\
 	   (V) + _v(m),					\
@@ -741,7 +753,7 @@ do {							\
   V = _vec_resize ((V),					\
 		   _v(n),				\
 		   (_v(l) + _v(n))*sizeof((V)[0]),	\
-		   (H), (A));				\
+		   (H), MIN_ALIGN ((V),(A)));	\
   ASSERT (_v(m) <= _v(l));				\
   memmove ((V) + _v(m) + _v(n),				\
 	   (V) + _v(m),					\
@@ -820,7 +832,7 @@ do {									\
   uword _v(l2) = vec_len (v2);						\
 									\
   v1 = _vec_resize ((v1), _v(l2),					\
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, 0);	\
+		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, MIN_ALIGN ((v1),0));	\
   clib_memcpy ((v1) + _v(l1), (v2), _v(l2) * sizeof ((v2)[0]));		\
 } while (0)
 
@@ -836,7 +848,7 @@ do {									\
   uword _v(l2) = vec_len (v2);						\
 									\
   v1 = _vec_resize ((v1), _v(l2),					\
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, align);	\
+		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, MIN_ALIGN (v1, align));	\
   clib_memcpy ((v1) + _v(l1), (v2), _v(l2) * sizeof ((v2)[0]));		\
 } while (0)
 
@@ -851,7 +863,7 @@ do {                                                                    \
   uword _v(l2) = vec_len (v2);                                          \
                                                                         \
   v1 = _vec_resize ((v1), _v(l2),                                       \
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, 0);	\
+		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), MIN_ALIGN ((v1),0));	\
   memmove ((v1) + _v(l2), (v1), _v(l1) * sizeof ((v1)[0]));             \
   clib_memcpy ((v1), (v2), _v(l2) * sizeof ((v2)[0]));                  \
 } while (0)
@@ -868,7 +880,7 @@ do {                                                                    \
   uword _v(l2) = vec_len (v2);                                          \
                                                                         \
   v1 = _vec_resize ((v1), _v(l2),                                       \
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, align);	\
+		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, MIN_ALIGN ((v1),(align)));	\
   memmove ((v1) + _v(l2), (v1), _v(l1) * sizeof ((v1)[0]));             \
   clib_memcpy ((v1), (v2), _v(l2) * sizeof ((v2)[0]));                  \
 } while (0)
