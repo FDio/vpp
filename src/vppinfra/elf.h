@@ -971,7 +971,7 @@ elf_get_section_contents (elf_main_t * em,
 			    vec_len (s->contents) / elt_size,
 			    vec_len (s->contents),
 			    /* header_bytes */ 0,
-			    /* align */ 0);
+			    /* align */ MIN_ALIGN (result, 0));
       clib_memcpy (result, s->contents, vec_len (s->contents));
     }
 

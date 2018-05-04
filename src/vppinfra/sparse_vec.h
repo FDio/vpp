@@ -80,7 +80,7 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 		   /* length increment */ 8,
 		   /* data bytes */ 8 * elt_bytes,
 		   /* header bytes */ sizeof (h[0]),
-		   /* data align */ 0);
+		   /* data align */ MIN_ALIGN (v, 0));
 
   /* Make space for invalid entry (entry 0). */
   _vec_len (v) = 1;

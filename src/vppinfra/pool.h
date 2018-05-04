@@ -216,7 +216,7 @@ do {                                                                    \
 		       /* length_increment */ 1,                        \
 		       /* new size */ (vec_len (P) + 1) * sizeof (P[0]), \
 		       pool_aligned_header_bytes,                       \
-		       /* align */ (A));                                \
+		       /* align */ MIN_ALIGN((P),(A)));              \
       E = vec_end (P) - 1;                                              \
     }                                                                   \
 } while (0)
@@ -314,7 +314,7 @@ do {									\
                                                                         \
   (P) = _vec_resize ((P), 0, (vec_len (P) + (N)) * sizeof (P[0]),	\
 		     pool_aligned_header_bytes,				\
-		     (A));						\
+		     MIN_ALIGN((P), (A)));				\
   _p = pool_header (P);							\
   vec_resize (_p->free_indices, (N));					\
   _vec_len (_p->free_indices) -= (N);					\

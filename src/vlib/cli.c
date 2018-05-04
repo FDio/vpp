@@ -214,7 +214,7 @@ unformat_vlib_cli_sub_command (unformat_input_t * i, va_list * args)
 			    /* length increment */ 1,
 			    r->data_size,
 			    /* header_bytes */ 0,
-			    /* data align */ sizeof (uword));
+			    /* data align */ MIN_ALIGN (d, sizeof (uword)));
       if (unformat_user (i, r->unformat_function, vm, d[0]))
 	{
 	  *result = vec_elt_at_index (cm->commands, sr->command_index);
