@@ -194,7 +194,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   sa.spi = ntohl (mp->spi);
   sa.protocol = mp->protocol;
   /* check for unsupported crypto-alg */
-  if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+  if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_NONE ||
       mp->crypto_algorithm >= IPSEC_CRYPTO_N_ALG)
     {
       clib_warning ("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg,

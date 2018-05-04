@@ -15168,7 +15168,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	if (unformat
 	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
 	{
-	  if (crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	  if (crypto_alg < IPSEC_CRYPTO_ALG_NONE ||
 	      crypto_alg >= IPSEC_CRYPTO_N_ALG)
 	    {
 	      clib_warning ("unsupported crypto-alg: '%U'",
@@ -15182,7 +15182,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	if (unformat
 	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
 	{
-	  if (integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
+	  if (integ_alg < IPSEC_INTEG_ALG_NONE ||
 	      integ_alg >= IPSEC_INTEG_N_ALG)
 	    {
 	      clib_warning ("unsupported integ-alg: '%U'",
@@ -15340,7 +15340,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	if (unformat
 	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
 	{
-	  if (crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	  if (crypto_alg < IPSEC_CRYPTO_ALG_NONE ||
 	      crypto_alg >= IPSEC_CRYPTO_N_ALG)
 	    {
 	      errmsg ("unsupported crypto-alg: '%U'\n",
@@ -15352,7 +15352,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	if (unformat
 	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
 	{
-	  if (integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
+	  if (integ_alg < IPSEC_INTEG_ALG_NONE ||
 	      integ_alg >= IPSEC_INTEG_N_ALG)
 	    {
 	      errmsg ("unsupported integ-alg: '%U'\n",

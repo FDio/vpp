@@ -555,6 +555,7 @@ dpdk_ipsec_check_support (ipsec_sa_t * sa)
   if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
     switch (sa->crypto_alg)
       {
+      case IPSEC_CRYPTO_ALG_NONE:
       case IPSEC_CRYPTO_ALG_AES_GCM_128:
       case IPSEC_CRYPTO_ALG_AES_GCM_192:
       case IPSEC_CRYPTO_ALG_AES_GCM_256:
