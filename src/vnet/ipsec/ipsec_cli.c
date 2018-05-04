@@ -106,7 +106,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	    (line_input, "crypto-alg %U", unformat_ipsec_crypto_alg,
 	     &sa.crypto_alg))
 	{
-	  if (sa.crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	  if (sa.crypto_alg < IPSEC_CRYPTO_ALG_NONE ||
 	      sa.crypto_alg >= IPSEC_CRYPTO_N_ALG)
 	    {
 	      error = clib_error_return (0, "unsupported crypto-alg: '%U'",
@@ -121,7 +121,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "integ-alg %U", unformat_ipsec_integ_alg,
 			 &sa.integ_alg))
 	{
-	  if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
+	  if (sa.integ_alg < IPSEC_INTEG_ALG_NONE ||
 	      sa.integ_alg >= IPSEC_INTEG_N_ALG)
 	    {
 	      error = clib_error_return (0, "unsupported integ-alg: '%U'",
