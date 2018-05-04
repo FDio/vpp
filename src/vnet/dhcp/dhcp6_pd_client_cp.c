@@ -17,6 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/vnet_msg_enum.h>
 #include <vnet/dhcp/dhcp6_packet.h>
+#include <vnet/dhcp/dhcp6_client_dp.h>
 #include <vnet/dhcp/dhcp6_pd_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>

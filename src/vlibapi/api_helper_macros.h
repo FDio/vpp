@@ -238,7 +238,8 @@ _(bfd_events)                                   \
 _(wc_ip6_nd_events)                             \
 _(wc_ip4_arp_events)                            \
 _(ip6_ra_events)                                \
-_(dhcp6_pd_reply_events)
+_(dhcp6_pd_reply_events)                        \
+_(dhcp6_reply_events)
 
 typedef struct
 {
