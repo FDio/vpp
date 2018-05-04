@@ -25,6 +25,8 @@
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/client.h>
 #include <vnet/dhcp/dhcp6_pd_client_dp.h>
+#include <vnet/dhcp/dhcp6_ia_na_client_dp.h>
+#include <vnet/dhcp/dhcp6_client_common_dp.h>
 #include <vnet/fib/fib_table.h>
 
 #include <vnet/vnet_msg_enum.h>
@@ -53,7 +55,9 @@ _(DHCP_CLIENT_CONFIG, dhcp_client_config)         \
 _(DHCP_CLIENT_DUMP, dhcp_client_dump)             \
 _(WANT_DHCP6_PD_REPLY_EVENTS, want_dhcp6_pd_reply_events)               \
 _(DHCP6_PD_SEND_CLIENT_MESSAGE, dhcp6_pd_send_client_message)           \
-_(DHCP6_CLIENTS_ENABLE_DISABLE, dhcp6_clients_enable_disable)           \
+_(WANT_DHCP6_REPLY_EVENTS, want_dhcp6_reply_events)               \
+_(DHCP6_SEND_CLIENT_MESSAGE, dhcp6_send_client_message)           \
+_(DHCP6_CLIENTS_ENABLE_DISABLE, dhcp6_clients_enable_disable)     \
 _(DHCP6_DUID_LL_SET, dhcp6_duid_ll_set)
 
 
@@ -390,6 +394,8 @@ dhcp_api_hookup (vlib_main_t * vm)
 
   dhcp6_pd_set_publisher_node (dhcp6_pd_reply_process_node.index,
 			       DHCP6_PD_DP_REPLY_REPORT);
+  dhcp6_set_publisher_node (dhcp6_reply_process_node.index,
+			    DHCP6_DP_REPLY_REPORT);
 
   return 0;
 }

@@ -209,6 +209,18 @@ autoreply define dhcp6_clients_enable_disable
   u8 enable;
 };
 
+/** \brief Struct representing DHCPv6 address
+    @param address - address
+    @param valid_time - valid lifetime
+    @param preferred_time - preferred lifetime
+*/
+typeonly define dhcp6_address_info
+{
+  u8 address[16];
+  u32 valid_time;
+  u32 preferred_time;
+};
+
 /** \brief Struct representing DHCPv6 PD prefix
     @param prefix - prefix
     @param prefix_length - prefix length
@@ -221,6 +233,45 @@ typeonly define dhcp6_pd_prefix_info
   u8 prefix_length;
   u32 valid_time;
   u32 preferred_time;
+};
+
+/** \brief Send DHCPv6 client message of specified type
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of TX interface, also identifies IAID
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link,
+                          value obrtained from dhcp6_reply_event API message,
+                          use ~0 to send message to all DHCPv6 servers
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+                         for sending the message
+    @param stop - if non-zero then stop resending the message,
+                  otherwise start sending the message
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_NA option
+    @param T2 - value of T2 in IA_NA option
+    @param n_addresses - number of addresses in IA_NA option
+    @param addresses - list of addresses in IA_NA option
+*/
+autoreply define dhcp6_send_client_message
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 server_index;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  u8 stop;
+  u8 msg_type;
+  u32 T1;
+  u32 T2;
+  u32 n_addresses;
+  vl_api_dhcp6_address_info_t addresses[n_addresses];
 };
 
 /** \brief Send DHCPv6 PD client message of specified type
@@ -263,8 +314,27 @@ autoreply define dhcp6_pd_send_client_message
 };
 
 service {
+  rpc want_dhcp6_reply_events returns want_dhcp6_reply_events_reply
+    events dhcp6_reply_event;
+};
+
+service {
   rpc want_dhcp6_pd_reply_events returns want_dhcp6_pd_reply_events_reply
     events dhcp6_pd_reply_event;
+};
+
+/** \brief Register for DHCPv6 reply events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_dhcp6_reply_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
 };
 
 /** \brief Register for DHCPv6 PD reply events
@@ -279,6 +349,37 @@ autoreply define want_dhcp6_pd_reply_events
   u32 context;
   u8 enable_disable;
   u32 pid;
+};
+
+/** \brief Tell client about a DHCPv6 server reply event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - index of RX interface, also identifies IAID
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_NA option
+    @param T2 - value of T2 in IA_NA option
+    @param inner_status_code - value of status code inside IA_NA option
+    @param status_code - value of status code
+    @param preference - value of preference option in reply message
+    @param n_addresses - number of addresses in IA_NA option
+    @param addresses - list of addresses in IA_NA option
+*/
+define dhcp6_reply_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  u32 server_index;
+  u8 msg_type;
+  u32 T1;
+  u32 T2;
+  u16 inner_status_code;
+  u16 status_code;
+  u8 preference;
+  u32 n_addresses;
+  vl_api_dhcp6_address_info_t addresses[n_addresses];
 };
 
 /** \brief Tell client about a DHCPv6 PD server reply event

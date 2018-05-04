@@ -503,6 +503,11 @@ class VppPapiProvider(object):
                          'learn_limit': learn_limit,
                          'pid': os.getpid(), })
 
+    def want_dhcp6_reply_events(self, enable_disable=1):
+        return self.api(self.papi.want_dhcp6_reply_events,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid()})
+
     def want_dhcp6_pd_reply_events(self, enable_disable=1):
         return self.api(self.papi.want_dhcp6_pd_reply_events,
                         {'enable_disable': enable_disable,
@@ -511,6 +516,24 @@ class VppPapiProvider(object):
     def dhcp6_clients_enable_disable(self, enable=1):
         return self.api(self.papi.dhcp6_clients_enable_disable,
                         {'enable': enable})
+
+    def dhcp6_send_client_message(self, msg_type, sw_if_index, T1, T2,
+                                  addresses, server_index=0xFFFFFFFF,
+                                  irt=0, mrt=0, mrc=1, mrd=0, stop=0,
+                                  ):
+        return self.api(self.papi.dhcp6_send_client_message,
+                        {'sw_if_index': sw_if_index,
+                         'server_index': server_index,
+                         'irt': irt,
+                         'mrt': mrt,
+                         'mrc': mrc,
+                         'mrd': mrd,
+                         'stop': stop,
+                         'msg_type': msg_type,
+                         'T1': T1,
+                         'T2': T2,
+                         'n_addresses': len(addresses),
+                         'addresses': addresses})
 
     def dhcp6_pd_send_client_message(self, msg_type, sw_if_index, T1, T2,
                                      prefixes, server_index=0xFFFFFFFF,
@@ -529,6 +552,12 @@ class VppPapiProvider(object):
                          'T2': T2,
                          'n_prefixes': len(prefixes),
                          'prefixes': prefixes})
+
+    def dhcp6_client_enable_disable(self, sw_if_index, prefix_group='',
+                                    enable=1):
+        return self.api(self.papi.dhcp6_client_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})
 
     def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
                                        enable=1):
