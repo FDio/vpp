@@ -200,7 +200,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 	  clib_memcpy (client_src_mac, e_h0->src_address, 6);
 
-	  switch (h0->u.msg_type)
+	  switch (h0->msg_type)
 	    {
 	    case DHCPV6_MSG_SOLICIT:
 	    case DHCPV6_MSG_REQUEST:
@@ -270,7 +270,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 	  r1->hop_count++;
 	  r1->hop_count =
-	    (h0->u.msg_type != DHCPV6_MSG_RELAY_FORW) ? 0 : r1->hop_count;
+	    (h0->msg_type != DHCPV6_MSG_RELAY_FORW) ? 0 : r1->hop_count;
 
 	  if (PREDICT_FALSE (r1->hop_count >= HOP_COUNT_LIMIT))
 	    {
@@ -282,7 +282,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 
 	  /* If relay-fwd and src address is site or global unicast address  */
-	  if (h0->u.msg_type == DHCPV6_MSG_RELAY_FORW &&
+	  if (h0->msg_type == DHCPV6_MSG_RELAY_FORW &&
 	      ((ip0->src_address.as_u8[0] & 0xe0) == 0x20 ||
 	       (ip0->src_address.as_u8[0] & 0xfe) == 0xfc))
 	    {
@@ -336,7 +336,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	  id1->int_idx = clib_host_to_net_u32 (rx_sw_if_index);
 
 	  u1->length = 0;
-	  if (h0->u.msg_type != DHCPV6_MSG_RELAY_FORW)
+	  if (h0->msg_type != DHCPV6_MSG_RELAY_FORW)
 	    {
 	      cmac =
 		(dhcpv6_client_mac_t *) (((uword) ip1) + b0->current_length);
@@ -423,7 +423,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 	  next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP;
 
-	  is_solicit = (DHCPV6_MSG_SOLICIT == h0->u.msg_type);
+	  is_solicit = (DHCPV6_MSG_SOLICIT == h0->msg_type);
 
 	  /*
 	   * If we have multiple servers configured and this is the
@@ -840,12 +840,6 @@ dhcp6_proxy_init (vlib_main_t * vm)
   all_dhcpv6_server_relay_agent_address.as_u64[1] =
     clib_host_to_net_u64 (0x00010002);
 
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
-			 dhcpv6_proxy_to_client_node.index, 0 /* is_ip6 */ );
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_server,
-			 dhcpv6_proxy_to_server_node.index, 0 /* is_ip6 */ );
-
   return 0;
 }
 
@@ -856,6 +850,7 @@ dhcp6_proxy_set_server (ip46_address_t * addr,
 			ip46_address_t * src_addr,
 			u32 rx_table_id, u32 server_table_id, int is_del)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u32 rx_fib_index = 0;
   int rc = 0;
 
@@ -886,6 +881,11 @@ dhcp6_proxy_set_server (ip46_address_t * addr,
 				   &all_dhcp_servers, MFIB_SOURCE_DHCP);
 	  mfib_table_unlock (rx_fib_index, FIB_PROTOCOL_IP6,
 			     MFIB_SOURCE_DHCP);
+
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
+				   0 /* is_ip6 */ );
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_server,
+				   0 /* is_ip6 */ );
 	}
     }
   else
@@ -919,6 +919,13 @@ dhcp6_proxy_set_server (ip46_address_t * addr,
 				   MFIB_RPF_ID_NONE,
 				   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
 	  mfib_table_lock (rx_fib_index, FIB_PROTOCOL_IP6, MFIB_SOURCE_DHCP);
+
+	  udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
+				 dhcpv6_proxy_to_client_node.index,
+				 0 /* is_ip6 */ );
+	  udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_server,
+				 dhcpv6_proxy_to_server_node.index,
+				 0 /* is_ip6 */ );
 	}
     }
 
