@@ -220,7 +220,7 @@ uword heap_bytes (void *v);
 always_inline void *
 _heap_new (u32 len, u32 n_elt_bytes)
 {
-  void *v = _vec_resize (0, len, (uword) len * n_elt_bytes,
+  void *v = _vec_resize ((void *) 0, len, (uword) len * n_elt_bytes,
 			 sizeof (heap_header_t),
 			 HEAP_DATA_ALIGN);
   heap_header (v)->elt_bytes = n_elt_bytes;
