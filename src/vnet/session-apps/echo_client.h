@@ -64,6 +64,8 @@ typedef struct
   u32 private_segment_size;		/**< size of private fifo segs */
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
   u8 is_dgram;
+  u32 no_copy;				/**< Don't memcpy data to tx fifo */
+
   /*
    * Test state variables
    */

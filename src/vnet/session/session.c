@@ -1272,6 +1272,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
   vec_validate (smm->peekers_rw_locks, num_threads - 1);
+  vec_validate_aligned (smm->ctx, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
     {
