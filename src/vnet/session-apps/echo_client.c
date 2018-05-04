@@ -56,11 +56,60 @@ send_data_chunk (echo_client_main_t * ecm, session_t * s)
 			       s->bytes_to_send);
 
   if (!ecm->is_dgram)
-    rv = app_send_stream (&s->data, test_data + test_buf_offset,
-			  bytes_this_chunk, 0);
+    {
+      if (ecm->no_copy)
+	{
+	  svm_fifo_t *f = s->data.tx_fifo;
+	  rv = clib_min (svm_fifo_max_enqueue (f), bytes_this_chunk);
+	  svm_fifo_enqueue_nocopy (f, rv);
+	  if (svm_fifo_set_event (f))
+	    {
+	      session_fifo_event_t evt;
+	      evt.fifo = f;
+	      evt.event_type = FIFO_EVENT_APP_TX;
+	      svm_queue_add (s->data.vpp_evt_q, (u8 *) & evt, 0);
+	    }
+	}
+      else
+	rv = app_send_stream (&s->data, test_data + test_buf_offset,
+			      bytes_this_chunk, 0);
+    }
   else
-    rv = app_send_dgram (&s->data, test_data + test_buf_offset,
-			 bytes_this_chunk, 0);
+    {
+      if (ecm->no_copy)
+	{
+	  session_dgram_hdr_t hdr;
+	  svm_fifo_t *f = s->data.tx_fifo;
+	  app_session_transport_t *at = &s->data.transport;
+	  u32 max_enqueue = svm_fifo_max_enqueue (f);
+
+	  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+	    return;
+
+	  max_enqueue -= sizeof (session_dgram_hdr_t);
+	  rv = clib_min (max_enqueue, bytes_this_chunk);
+
+	  hdr.data_length = rv;
+	  hdr.data_offset = 0;
+	  clib_memcpy (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
+	  hdr.is_ip4 = at->is_ip4;
+	  hdr.rmt_port = at->rmt_port;
+	  clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
+	  hdr.lcl_port = at->lcl_port;
+	  svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
+	  svm_fifo_enqueue_nocopy (f, rv);
+	  if (svm_fifo_set_event (f))
+	    {
+	      session_fifo_event_t evt;
+	      evt.fifo = f;
+	      evt.event_type = FIFO_EVENT_APP_TX;
+	      svm_queue_add (s->data.vpp_evt_q, (u8 *) & evt, 0);
+	    }
+	}
+      else
+	rv = app_send_dgram (&s->data, test_data + test_buf_offset,
+			     bytes_this_chunk, 0);
+    }
 
   /* If we managed to enqueue data... */
   if (rv > 0)
@@ -591,6 +640,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_failed = 0;
   ecm->vlib_main = vm;
   ecm->tls_engine = TLS_ENGINE_OPENSSL;
+  ecm->no_copy = 0;
 
   if (thread_main->n_vlib_mains > 1)
     clib_spinlock_init (&ecm->sessions_lock);
