@@ -10,10 +10,19 @@ AM_CONDITIONAL([USE_CHECK],[test "$HAVE_CHECK" -eq 1])
 AC_PROG_CC
 AC_PROG_CXX
 
-AM_CONDITIONAL(ENABLE_ACL_PLUGIN, test "yes" = "yes")
-AM_CONDITIONAL(ENABLE_NAT_PLUGIN, test "yes" = "yes")
-AM_CONDITIONAL(ENABLE_L2E_PLUGIN, test "yes" = "yes")
-AM_CONDITIONAL(ENABLE_GBP_PLUGIN, test "yes" = "yes")
+AC_DEFUN([CHECK_VAPI_HDR],
+[
+  AC_CHECK_HEADERS([vapi/$1.api.vapi.hpp],
+    [enable_$1_plugin=yes],
+    [ AC_MSG_WARN([$1 disabled]) ], [])
+  AM_CONDITIONAL(m4_toupper(ENABLE_$1_PLUGIN), test "$enable_$1_plugin" = "yes")
+])
+
+AC_LANG(C++)
+CHECK_VAPI_HDR(acl)
+CHECK_VAPI_HDR(nat)
+CHECK_VAPI_HDR(l2e)
+CHECK_VAPI_HDR(gbp)
 
 AC_OUTPUT([Makefile vom/Makefile])
 
