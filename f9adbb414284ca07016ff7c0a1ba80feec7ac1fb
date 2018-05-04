@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "6291e053_11f855bf",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-04T09:19:42Z",
+      "side": 1,
+      "message": "We are also running VPP on NXP Low end platforms which have Strict memory requirements. Like Root File System should be of minimum size.\nTo meet the same, we are trying to compile out unused plugins,pther than DPDK, so that vpp-plugin package is of minium possible size.\nI tired to do same via exporting \"DISABLED_PLUGINS\" but plugins are still compiling.\nNote: We are Cross-compiling VPP so won\u0027t be able to use command like:\n\"make DISABLED_PLUGINS\u003ddpdk,acl run\"\n\nIf this is not a acceptable way then please suggest.\nThanks.",
+      "parentUuid": "4cdf6961_0d15a4bf",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 26
+      },
+      "revId": "f9adbb414284ca07016ff7c0a1ba80feec7ac1fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a15f266d_44515cd5",
         "filename": "build-data/platforms/dpaa.mk",
         "patchSetId": 5
@@ -36,6 +60,30 @@
       "writtenOn": "2018-05-04T08:26:30Z",
       "side": 1,
       "message": "this doesn\u0027t work anymore",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 14
+      },
+      "revId": "f9adbb414284ca07016ff7c0a1ba80feec7ac1fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d053fe29_15860088",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-04T09:19:42Z",
+      "side": 1,
+      "message": "Got it.",
+      "parentUuid": "a15f266d_44515cd5",
       "range": {
         "startLine": 77,
         "startChar": 0,
