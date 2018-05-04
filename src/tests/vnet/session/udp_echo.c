@@ -125,6 +125,8 @@ typedef struct
 
   uword *segments_table;
   u8 do_echo;
+  u8 have_return;
+  u64 bytes_to_send;
 } udp_echo_main_t;
 
 #if CLIB_DEBUG > 0
@@ -147,7 +149,6 @@ static void
 stats_signal (int signum)
 {
   udp_echo_main_t *um = &udp_echo_main;
-
   um->time_to_print_stats = 1;
 }
 
@@ -593,15 +594,20 @@ send_test_chunk (udp_echo_main_t * utm, app_session_t * s, u32 bytes)
   u8 *test_data = utm->connect_test_data;
   int test_buf_offset = 0;
   u64 bytes_sent = 0;
-  u32 bytes_to_snd;
+  u32 bytes_to_snd, enq_space, min_chunk;
   int rv;
 
+  min_chunk = clib_min (65536, s->tx_fifo->nitems);
   bytes_to_snd = (bytes == 0) ? vec_len (test_data) : bytes;
   if (bytes_to_snd > vec_len (test_data))
     bytes_to_snd = vec_len (test_data);
 
   while (bytes_to_snd > 0 && !utm->time_to_stop)
     {
+      enq_space = svm_fifo_max_enqueue (s->tx_fifo);
+      if (enq_space < clib_min (bytes_to_snd, min_chunk))
+	continue;
+
       rv = app_send (s, test_data + test_buf_offset, bytes_to_snd, 0);
       if (rv > 0)
 	{
@@ -621,12 +627,14 @@ recv_test_chunk (udp_echo_main_t * utm, app_session_t * s)
 void
 client_send_data (udp_echo_main_t * utm)
 {
-  u8 *test_data;
+  f64 start_time, end_time, delta;
   app_session_t *session;
+  char *transfer_type;
   u32 n_iterations;
+  u8 *test_data;
   int i;
 
-  vec_validate (utm->connect_test_data, 64 * 1024 - 1);
+  vec_validate (utm->connect_test_data, 1024 * 1024 - 1);
   for (i = 0; i < vec_len (utm->connect_test_data); i++)
     utm->connect_test_data[i] = i & 0xff;
 
@@ -635,22 +643,38 @@ client_send_data (udp_echo_main_t * utm)
   ASSERT (vec_len (test_data) > 0);
 
   vec_validate (utm->rx_buf, vec_len (test_data) - 1);
-  n_iterations = NITER;
+  n_iterations = utm->bytes_to_send / vec_len (test_data);
+  if (!n_iterations)
+    n_iterations = 1;
 
+  start_time = clib_time_now (&utm->clib_time);
   for (i = 0; i < n_iterations; i++)
     {
       send_test_chunk (utm, session, 0);
-      recv_test_chunk (utm, session);
+      if (utm->have_return)
+	recv_test_chunk (utm, session);
       if (utm->time_to_stop)
 	break;
     }
 
-  f64 timeout = clib_time_now (&utm->clib_time) + 5;
-  while (clib_time_now (&utm->clib_time) < timeout)
+  if (utm->have_return)
     {
-      recv_test_chunk (utm, session);
+      f64 timeout = clib_time_now (&utm->clib_time) + 5;
+      while (clib_time_now (&utm->clib_time) < timeout)
+	recv_test_chunk (utm, session);
     }
 
+  end_time = clib_time_now (&utm->clib_time);
+  delta = end_time - start_time;
+  transfer_type = utm->have_return ? "full-duplex" : "half-duplex";
+  clib_warning ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
+		utm->bytes_to_send, utm->bytes_to_send / (1ULL << 20),
+		utm->bytes_to_send / (1ULL << 30), delta);
+  clib_warning ("%.2f bytes/second %s", ((f64) utm->bytes_to_send) / (delta),
+		transfer_type);
+  clib_warning ("%.4f gbit/second %s",
+		(((f64) utm->bytes_to_send * 8.0) / delta / 1e9),
+		transfer_type);
 }
 
 static void
@@ -1205,7 +1229,7 @@ int
 main (int argc, char **argv)
 {
   udp_echo_main_t *utm = &udp_echo_main;
-  u8 *uri = (u8 *) "udp://0.0.0.0/1234";
+  u8 *uri = (u8 *) "udp://6.0.1.1/1234";
   unformat_input_t _argv, *a = &_argv;
   int i_am_server = 1;
   app_session_t *session;
@@ -1217,26 +1241,26 @@ main (int argc, char **argv)
   int i;
 
   clib_mem_init (0, 256 << 20);
-
   heap = clib_mem_get_per_cpu_heap ();
   h = mheap_header (heap);
-
   /* make the main heap thread-safe */
   h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  svm_fifo_segment_main_init (0x200000000ULL, 20);
 
   vec_validate (utm->rx_buf, 8192);
-
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   utm->my_pid = getpid ();
   utm->configured_segment_size = 1 << 20;
   utm->segments_table = hash_create_vec (0, sizeof (u8), sizeof (u64));
-
-  clib_time_init (&utm->clib_time);
-  init_error_string_table (utm);
-  svm_fifo_segment_main_init (0x200000000ULL, 20);
-  unformat_init_command_line (a, argv);
-
+  utm->have_return = 1;
+  utm->bytes_to_send = 1024;
   utm->fifo_size = 128 << 10;
+  utm->segment_main = &svm_fifo_segment_main;
+  utm->cut_through_session_index = ~0;
+  clib_time_init (&utm->clib_time);
+
+  init_error_string_table (utm);
+  unformat_init_command_line (a, argv);
 
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
     {
@@ -1254,6 +1278,12 @@ main (int argc, char **argv)
 	i_am_server = 1;
       else if (unformat (a, "client"))
 	i_am_server = 0;
+      else if (unformat (a, "no-return"))
+	utm->have_return = 0;
+      else if (unformat (a, "mbytes %d", &tmp))
+	utm->bytes_to_send = (u64) tmp << 20;
+      else if (unformat (a, "fifo-size %d", &tmp))
+	utm->fifo_size = tmp << 10;
       else
 	{
 	  fformat (stderr, "%s: usage [server|client]\n");
@@ -1261,9 +1291,7 @@ main (int argc, char **argv)
 	}
     }
 
-  utm->cut_through_session_index = ~0;
   utm->i_am_server = i_am_server;
-  utm->segment_main = &svm_fifo_segment_main;
 
   setup_signal_handlers ();
   tcp_echo_api_hookup (utm);
@@ -1290,7 +1318,7 @@ main (int argc, char **argv)
   if (i_am_server == 0)
     {
       client_test (utm);
-      exit (0);
+      goto done;
     }
 
   /* $$$$ hack preallocation */
@@ -1304,6 +1332,7 @@ main (int argc, char **argv)
 
   udp_server_test (utm);
 
+done:
   vl_client_disconnect_from_vlib ();
   exit (0);
 }
