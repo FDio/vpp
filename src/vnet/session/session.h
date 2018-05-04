@@ -103,14 +103,58 @@ typedef CLIB_PACKED (struct {
 }) session_fifo_event_t;
 /* *INDENT-ON* */
 
+typedef struct session_dgram_pre_hdr_
+{
+  u32 data_length;
+  u32 data_offset;
+} session_dgram_pre_hdr_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct session_dgram_header_
+{
+  u32 data_length;
+  u32 data_offset;
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+  u8 is_ip4;
+}) session_dgram_hdr_t;
+/* *INDENT-ON* */
+
+#define SESSION_CONN_ID_LEN 37
+#define SESSION_CONN_HDR_LEN 45
+
+STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
+	       "session conn id wrong length");
+
+typedef struct session_tx_context_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  stream_session_t *s;
+  transport_proto_vft_t *transport_vft;
+  transport_connection_t *tc;
+  vlib_buffer_t *b;
+  u32 max_dequeue;
+  u32 snd_space;
+  u32 left_to_snd;
+  u32 tx_offset;
+  u32 max_len_to_snd;
+  u16 deq_per_first_buf;
+  u16 deq_per_buf;
+  u16 snd_mss;
+  u8 n_bufs_per_seg;
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  session_dgram_hdr_t hdr;
+} session_tx_context_t;
+
 /* Forward definition */
 typedef struct _session_manager_main session_manager_main_t;
 
 typedef int
   (session_fifo_rx_fn) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			session_manager_main_t * smm,
 			session_fifo_event_t * e0, stream_session_t * s0,
-			u32 thread_index, int *n_tx_pkts);
+			int *n_tx_pkts);
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
@@ -143,6 +187,9 @@ struct _session_manager_main
 
   /** per-worker postponed disconnects */
   session_fifo_event_t **pending_disconnects;
+
+  /** per-worker session context */
+  session_tx_context_t *ctx;
 
   /** vpp fifo event queue */
   svm_queue_t **vpp_event_queues;
@@ -203,31 +250,6 @@ struct _session_manager_main
 #endif
 
 };
-
-typedef struct session_dgram_pre_hdr_
-{
-  u32 data_length;
-  u32 data_offset;
-} session_dgram_pre_hdr_t;
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct session_dgram_header_
-{
-  u32 data_length;
-  u32 data_offset;
-  ip46_address_t rmt_ip;
-  ip46_address_t lcl_ip;
-  u16 rmt_port;
-  u16 lcl_port;
-  u8 is_ip4;
-}) session_dgram_hdr_t;
-/* *INDENT-ON* */
-
-#define SESSION_CONN_ID_LEN 37
-#define SESSION_CONN_HDR_LEN 45
-
-STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
-	       "session conn id wrong length");
 
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;

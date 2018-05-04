@@ -204,7 +204,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   int rv;
 
   max_enqueue = svm_fifo_max_enqueue (f);
-  if (svm_fifo_max_enqueue (f) <= sizeof (session_dgram_hdr_t))
+  if (max_enqueue <= sizeof (session_dgram_hdr_t))
     return 0;
 
   max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -217,9 +217,6 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
   rv = svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
-  if (rv <= 0)
-    return 0;
-
   ASSERT (rv == sizeof (hdr));
 
   if ((rv = svm_fifo_enqueue_nowait (f, actual_write, data)) > 0)
@@ -231,6 +228,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 	  svm_queue_add (vpp_evt_q, (u8 *) & evt, noblock);
 	}
     }
+  ASSERT (rv);
   return rv;
 }
 
