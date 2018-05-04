@@ -111,10 +111,13 @@ void *vec_resize_allocate_memory (void *v,
     @return v_prime pointer to resized vector, may or may not equal v
 */
 
+#define _vec_resize(V,L,DB,HB,A) \
+  _vec_resize_inline(V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)))
+
 always_inline void *
-_vec_resize (void *v,
-	     word length_increment,
-	     uword data_bytes, uword header_bytes, uword data_align)
+_vec_resize_inline (void *v,
+		    word length_increment,
+		    uword data_bytes, uword header_bytes, uword data_align)
 {
   vec_header_t *vh = _vec_find (v);
   uword new_data_bytes, aligned_header_bytes;

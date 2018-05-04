@@ -76,7 +76,7 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 
   ASSERT (sparse_index_bits <= 16);
 
-  v = _vec_resize (0,
+  v = _vec_resize ((void *) 0,
 		   /* length increment */ 8,
 		   /* data bytes */ 8 * elt_bytes,
 		   /* header bytes */ sizeof (h[0]),
