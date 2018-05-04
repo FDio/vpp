@@ -1167,7 +1167,7 @@ session_manager_get_evt_q_segment (void)
 }
 
 /* *INDENT-OFF* */
-static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
+static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] __attribute__((aligned(16))) = {
     session_tx_fifo_peek_and_snd,
     session_tx_fifo_dequeue_and_snd,
     session_tx_fifo_dequeue_internal,
@@ -1272,6 +1272,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
   vec_validate (smm->peekers_rw_locks, num_threads - 1);
+  vec_validate_aligned (smm->ctx, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
     {
