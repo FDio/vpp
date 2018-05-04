@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9d60ab1_6c138ec0",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-04T08:24:01Z",
+      "side": 1,
+      "message": "can you simply try to change build_cpu to host_cpu?",
+      "range": {
+        "startLine": 176,
+        "startChar": 12,
+        "endLine": 176,
+        "endChar": 21
+      },
+      "revId": "a79ceff83021bc395cfd80fae3e532bfa1bc1445",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
