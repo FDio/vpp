@@ -24,6 +24,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/client.h>
+#include <vnet/dhcp/dhcp6_client_dp.h>
 #include <vnet/fib/fib_table.h>
 
 #include <vnet/vnet_msg_enum.h>
@@ -48,7 +49,9 @@
 _(DHCP_PROXY_CONFIG,dhcp_proxy_config)            \
 _(DHCP_PROXY_DUMP,dhcp_proxy_dump)                \
 _(DHCP_PROXY_SET_VSS,dhcp_proxy_set_vss)          \
-_(DHCP_CLIENT_CONFIG, dhcp_client_config)
+_(DHCP_CLIENT_CONFIG, dhcp_client_config)         \
+_(WANT_DHCP6_REPLY_EVENTS, want_dhcp6_reply_events)               \
+_(DHCP6_SEND_CLIENT_MESSAGE, dhcp6_send_client_message)
 
 
 static void
@@ -274,6 +277,13 @@ setup_message_id_table (api_main_t * am)
 #undef _
 }
 
+void
+  vl_api_want_dhcp6_reply_events_t_handler
+  (vl_api_want_dhcp6_reply_events_t * mp);
+void
+  vl_api_dhcp6_send_client_message_t_handler
+  (vl_api_dhcp6_send_client_message_t * mp);
+
 static clib_error_t *
 dhcp_api_hookup (vlib_main_t * vm)
 {
@@ -293,6 +303,8 @@ dhcp_api_hookup (vlib_main_t * vm)
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (am);
+
+  set_publisher_node (dhcp6_reply_process_node.index, DHCP6_DP_REPLY_REPORT);
 
   return 0;
 }
