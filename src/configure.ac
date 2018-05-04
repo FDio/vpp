@@ -172,7 +172,7 @@ AS_IF([test "$cc_flag_check" = yes],
   [march_skylake_avx512=no])
 AM_CONDITIONAL([CC_SUPPORTS_AVX512], [test "$march_skylake_avx512" = "yes"])
 
-AS_CASE([$build_cpu],
+AS_CASE([$host_cpu],
 	[x86_64], [CPU_FLAGS="-march=corei7 -mtune=corei7-avx"],
 	[aarch64], [CPU_FLAGS="-march=armv8-a+crc"],
 	[CPU_FLAGS=""],
@@ -182,8 +182,8 @@ AC_SUBST([CPU_FLAGS])
 AC_SUBST([CPU_AVX2_FLAGS],"-march=core-avx2 -mtune=core-avx2")
 AC_SUBST([CPU_AVX512_FLAGS],"-march=skylake-avx512 -mtune=skylake-avx512")
 
-AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
-AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
+AM_CONDITIONAL([CPU_X86_64], [test "$host_cpu" = "x86_64"])
+AM_CONDITIONAL([CPU_AARCH64], [test "$host_cpu" = "aarch64"])
 
 ###############################################################################
 # misc compiler flags
