@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.4.1";
+option version = "2.5.0";
 
 /**
  * @file nat.api
@@ -558,6 +558,7 @@ define nat44_user_session_dump {
     @param last_heard - last heard timer
     @param total_bytes - count of bytes sent through session
     @param total_pkts - count of pakets sent through session
+    @param is_closed - 1 if TCP session is closed
 */
 define nat44_user_session_details {
   u32 context;
@@ -570,6 +571,7 @@ define nat44_user_session_details {
   u64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
+  u8 is_closed;
 };
 
 /** \brief NAT44 load-balancing address and port pair
