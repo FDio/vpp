@@ -158,6 +158,38 @@ done:
 }
 
 static clib_error_t *
+nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+  int i;
+  int verbose = 0;
+
+  if (unformat (input, "detail"))
+    verbose = 1;
+  else if (unformat (input, "verbose"))
+    verbose = 2;
+
+  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->in2out_ed, verbose);
+  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed, verbose);
+  vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->static_mapping_by_local,
+		   verbose);
+  vlib_cli_output (vm, "%U",
+		   format_bihash_8_8, &sm->static_mapping_by_external,
+		   verbose);
+  vec_foreach_index (i, sm->per_thread_data)
+  {
+    tsm = vec_elt_at_index (sm->per_thread_data, i);
+    vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->in2out, verbose);
+    vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->out2in, verbose);
+    vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->user_hash, verbose);
+  }
+
+  return 0;
+}
+
+static clib_error_t *
 nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 					      unformat_input_t * input,
 					      vlib_cli_command_t * cmd)
@@ -1486,6 +1518,18 @@ VLIB_CLI_COMMAND (nat44_set_alloc_addr_and_port_alg_command, static) = {
     .path = "nat addr-port-assignment-alg",
     .short_help = "nat addr-port-assignment-alg <alg-name> [<alg-params>]",
     .function = nat44_set_alloc_addr_and_port_alg_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show nat44 hash tables}
+ * Show NAT44 hash tables
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_show_hash, static) = {
+  .path = "show nat44 hash tables",
+  .short_help = "show nat44 hash tables [detail|verbose]",
+  .function = nat44_show_hash_commnad_fn,
 };
 
 /*?

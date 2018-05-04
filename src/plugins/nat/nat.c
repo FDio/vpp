@@ -162,7 +162,8 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
       ed_key.fib_index = 0;
       ed_kv.key[0] = ed_key.as_u64[0];
       ed_kv.key[1] = ed_key.as_u64[1];
-      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &ed_kv, 0))
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &ed_kv, 0) &&
+          s->state != SNAT_SESSION_TCP_CLOSED)
         clib_warning ("in2out_ed key del failed");
       return;
     }
@@ -187,7 +188,8 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
         }
       ed_kv.key[0] = ed_key.as_u64[0];
       ed_kv.key[1] = ed_key.as_u64[1];
-      if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &ed_kv, 0))
+      if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &ed_kv, 0) &&
+          s->state != SNAT_SESSION_TCP_CLOSED)
         clib_warning ("out2in_ed key del failed");
 
       ed_key.l_addr = s->in2out.addr;
@@ -201,7 +203,8 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
         }
       ed_kv.key[0] = ed_key.as_u64[0];
       ed_kv.key[1] = ed_key.as_u64[1];
-      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &ed_kv, 0))
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &ed_kv, 0) &&
+          s->state != SNAT_SESSION_TCP_CLOSED)
         clib_warning ("in2out_ed key del failed");
     }
 
@@ -217,7 +220,7 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
                                       s->in2out.fib_index);
 
   /* Twice NAT address and port for external host */
-  if (is_twice_nat_session (s))
+  if (is_twice_nat_session (s) && s->state != SNAT_SESSION_TCP_CLOSED)
     {
       for (i = 0; i < vec_len (sm->twice_nat_addresses); i++)
         {
@@ -238,16 +241,18 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
 
   /* Session lookup tables */
   kv.key = s->in2out.as_u64;
-  if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0))
+  if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0) &&
+      s->state != SNAT_SESSION_TCP_CLOSED)
     clib_warning ("in2out key del failed");
   kv.key = s->out2in.as_u64;
-  if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0))
+  if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0) &&
+      s->state != SNAT_SESSION_TCP_CLOSED)
     clib_warning ("out2in key del failed");
 
   if (snat_is_session_static (s))
     return;
 
-  if (s->outside_address_index != ~0)
+  if (s->outside_address_index != ~0 && s->state != SNAT_SESSION_TCP_CLOSED)
     snat_free_outside_address_and_port (sm->addresses, thread_index,
                                         &s->out2in, s->outside_address_index);
 }
@@ -333,6 +338,11 @@ nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u, u32 thread_index)
       s->flags = 0;
       s->total_bytes = 0;
       s->total_pkts = 0;
+      s->state = 0;
+      s->ext_host_addr.as_u32 = 0;
+      s->ext_host_port = 0;
+      s->ext_host_nat_addr.as_u32 = 0;
+      s->ext_host_nat_port = 0;
     }
   else
     {
@@ -2696,12 +2706,18 @@ u8 * format_snat_session (u8 * s, va_list * args)
   else
     {
       if (sess->ext_host_addr.as_u32)
-          s = format (s, "       external host %U\n",
-                      format_ip4_address, &sess->ext_host_addr);
+          s = format (s, "       external host %U:%u\n",
+                      format_ip4_address, &sess->ext_host_addr,
+                      clib_net_to_host_u16 (sess->ext_host_port));
     }
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
               sess->total_pkts, sess->total_bytes);
+  if (sess->in2out.protocol == SNAT_PROTOCOL_TCP)
+    {
+      s = format (s, "       state %s\n",
+                  sess->state == SNAT_SESSION_TCP_CLOSED ? "closed" : "open");
+    }
   if (snat_is_session_static (sess))
     s = format (s, "       static translation\n");
   else

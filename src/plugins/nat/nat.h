@@ -115,8 +115,10 @@ typedef enum {
   _(3, TCP_ESTABLISHED, "tcp-established") \
   _(4, TCP_FIN_WAIT, "tcp-fin-wait")       \
   _(5, TCP_CLOSE_WAIT, "tcp-close-wait")   \
-  _(6, TCP_LAST_ACK, "tcp-last-ack")       \
-  _(7, ICMP_ACTIVE, "icmp-active")
+  _(6, TCP_CLOSING, "tcp-closing")         \
+  _(7, TCP_LAST_ACK, "tcp-last-ack")       \
+  _(8, TCP_CLOSED, "tcp-closed")           \
+  _(9, ICMP_ACTIVE, "icmp-active")
 
 typedef enum {
 #define _(v, N, s) SNAT_SESSION_##N = v,
@@ -164,6 +166,9 @@ typedef CLIB_PACKED(struct {
   /* External hos address and port after translation */
   ip4_address_t ext_host_nat_addr; /* 74-77 */
   u16 ext_host_nat_port;           /* 78-79 */
+
+  /* TCP session state */
+  u8 state;
 }) snat_session_t;
 
 
@@ -678,6 +683,27 @@ user_session_increment(snat_main_t *sm, snat_user_t *u, u8 is_static)
 	u->nstaticsessions++;
       else
 	u->nsessions++;
+    }
+}
+
+always_inline void
+nat44_set_tcp_session_state(snat_main_t * sm, snat_session_t * ses,
+                            tcp_header_t * tcp, u32 thread_index)
+{
+  if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_UNKNOWN)
+    ses->state = SNAT_SESSION_TCP_FIN_WAIT;
+  else if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_TCP_FIN_WAIT)
+    ses->state = SNAT_SESSION_TCP_CLOSING;
+  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_FIN_WAIT)
+    ses->state = SNAT_SESSION_TCP_CLOSE_WAIT;
+  else if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_TCP_CLOSE_WAIT)
+    ses->state = SNAT_SESSION_TCP_LAST_ACK;
+  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_CLOSING)
+    ses->state = SNAT_SESSION_TCP_LAST_ACK;
+  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_LAST_ACK)
+    {
+      nat_free_session_data (sm, ses, thread_index);
+      ses->state = SNAT_SESSION_TCP_CLOSED;
     }
 }
 
