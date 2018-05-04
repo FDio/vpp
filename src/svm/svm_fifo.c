@@ -622,14 +622,14 @@ void
 svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
 {
   u32 first_chunk;
+  first_chunk = f->nitems - f->head;
   ASSERT (len <= f->nitems);
-  if (len < f->nitems - f->head)
+  if (len <= first_chunk)
     clib_memcpy (&f->data[f->head], data, len);
   else
     {
-      first_chunk = len - (f->nitems - f->head);
       clib_memcpy (&f->data[f->head], data, first_chunk);
-      clib_memcpy (f->data, data + first_chunk, len - first_chunk);
+      clib_memcpy (&f->data[0], data + first_chunk, len - first_chunk);
     }
 }
 

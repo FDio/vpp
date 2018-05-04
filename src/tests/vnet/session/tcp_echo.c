@@ -85,7 +85,7 @@ typedef struct
   int i_am_master;
 
   /* drop all packets */
-  int drop_packets;
+  int no_return;
 
   /* Our event queue */
   svm_queue_t *our_event_queue;
@@ -117,6 +117,7 @@ typedef struct
   u32 client_bytes_received;
   u8 test_return_packets;
   u64 bytes_to_send;
+  u32 fifo_size;
 
   /** Flag that decides if socket, instead of svm, api is used to connect to
    * vpp. If sock api is used, shm binary api is subsequently bootstrapped
@@ -250,7 +251,6 @@ application_send_attach (echo_main_t * em)
   vl_api_application_tls_cert_add_t *cert_mp;
   vl_api_application_tls_key_add_t *key_mp;
 
-  u32 fifo_size = 4 << 20;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
@@ -260,8 +260,8 @@ application_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
-  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = em->fifo_size;
+  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = em->fifo_size;
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
@@ -757,11 +757,10 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 static void
 send_test_chunk (echo_main_t * em, svm_fifo_t * tx_fifo, int mypid, u32 bytes)
 {
+  u32 bytes_to_snd, enq_space, min_chunk = 16 << 10;
   u8 *test_data = em->connect_test_data;
   u64 bytes_sent = 0;
   int test_buf_offset = 0;
-  u32 bytes_to_snd;
-  u32 queue_max_chunk = 128 << 10, actual_write;
   session_fifo_event_t evt;
   int rv;
 
@@ -771,11 +770,12 @@ send_test_chunk (echo_main_t * em, svm_fifo_t * tx_fifo, int mypid, u32 bytes)
 
   while (bytes_to_snd > 0 && !em->time_to_stop)
     {
-      actual_write = (bytes_to_snd > queue_max_chunk) ?
-	queue_max_chunk : bytes_to_snd;
-      rv = svm_fifo_enqueue_nowait (tx_fifo, actual_write,
+      enq_space = svm_fifo_max_enqueue (tx_fifo);
+      if (enq_space < clib_min (bytes_to_snd, min_chunk))
+	continue;
+      rv = svm_fifo_enqueue_nowait (tx_fifo,
+				    clib_min (bytes_to_snd, enq_space),
 				    test_data + test_buf_offset);
-
       if (rv > 0)
 	{
 	  bytes_to_snd -= rv;
@@ -787,9 +787,8 @@ send_test_chunk (echo_main_t * em, svm_fifo_t * tx_fifo, int mypid, u32 bytes)
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
-
-	      svm_queue_add (em->vpp_event_queue,
-			     (u8 *) & evt, 0 /* do wait for mutex */ );
+	      svm_queue_add (em->vpp_event_queue, (u8 *) & evt,
+			     0 /* do wait for mutex */ );
 	    }
 	}
     }
@@ -824,7 +823,7 @@ client_send_data (echo_main_t * em)
   if (leftover)
     send_test_chunk (em, tx_fifo, mypid, leftover);
 
-  if (!em->drop_packets)
+  if (!em->no_return)
     {
       f64 timeout = clib_time_now (&em->clib_time) + 10;
 
@@ -839,6 +838,7 @@ client_send_data (echo_main_t * em)
 	    }
 	}
     }
+
   em->time_to_stop = 1;
 }
 
@@ -911,7 +911,7 @@ client_run (echo_main_t * em)
     }
 
   /* Init test data */
-  vec_validate (em->connect_test_data, 128 * 1024 - 1);
+  vec_validate (em->connect_test_data, 1024 * 1024 - 1);
   for (i = 0; i < vec_len (em->connect_test_data); i++)
     em->connect_test_data[i] = i & 0xff;
 
@@ -1130,7 +1130,7 @@ server_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
 	}
 
       /* Reflect if a non-drop session */
-      if (!em->drop_packets && n_read > 0)
+      if (!em->no_return && n_read > 0)
 	{
 	  offset = 0;
 	  do
@@ -1342,13 +1342,13 @@ tcp_echo_api_hookup (echo_main_t * em)
 int
 main (int argc, char **argv)
 {
-  int i_am_master = 1, drop_packets = 0, test_return_packets = 0;
+  int i_am_server = 1, test_return_packets = 0;
   echo_main_t *em = &echo_main;
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
   u8 *heap, *uri = 0;
   u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
-  u8 *connect_uri = (u8 *) "tcp://6.0.1.2/1234";
+  u8 *connect_uri = (u8 *) "tcp://6.0.1.1/1234";
   u64 bytes_to_send = 64 << 10, mbytes;
   char *app_name;
   u32 tmp;
@@ -1365,11 +1365,11 @@ main (int argc, char **argv)
   vec_validate (em->rx_buf, 128 << 10);
 
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-
   em->my_pid = getpid ();
   em->configured_segment_size = 1 << 20;
   em->socket_name = 0;
   em->use_sock_api = 1;
+  em->fifo_size = 64 << 10;
 
   clib_time_init (&em->clib_time);
   init_error_string_table (em);
@@ -1388,12 +1388,12 @@ main (int argc, char **argv)
 	em->configured_segment_size = tmp << 20;
       else if (unformat (a, "segment-size %dG", &tmp))
 	em->configured_segment_size = tmp << 30;
-      else if (unformat (a, "master"))
-	i_am_master = 1;
-      else if (unformat (a, "slave"))
-	i_am_master = 0;
-      else if (unformat (a, "drop"))
-	drop_packets = 1;
+      else if (unformat (a, "server"))
+	i_am_server = 1;
+      else if (unformat (a, "client"))
+	i_am_server = 0;
+      else if (unformat (a, "no-return"))
+	em->no_return = 1;
       else if (unformat (a, "test"))
 	test_return_packets = 1;
       else if (unformat (a, "mbytes %lld", &mbytes))
@@ -1408,6 +1408,8 @@ main (int argc, char **argv)
 	;
       else if (unformat (a, "use-svm-api"))
 	em->use_sock_api = 0;
+      else if (unformat (a, "fifo-size %d", &tmp))
+	em->fifo_size = tmp << 10;
       else
 	{
 	  fformat (stderr, "%s: usage [master|slave]\n");
@@ -1429,9 +1431,8 @@ main (int argc, char **argv)
       em->connect_uri = format (0, "%s%c", connect_uri, 0);
     }
 
-  em->i_am_master = i_am_master;
+  em->i_am_master = i_am_server;
   em->segment_main = &svm_fifo_segment_main;
-  em->drop_packets = drop_packets;
   em->test_return_packets = test_return_packets;
   em->bytes_to_send = bytes_to_send;
   em->time_to_stop = 0;
@@ -1439,7 +1440,7 @@ main (int argc, char **argv)
   setup_signal_handlers ();
   tcp_echo_api_hookup (em);
 
-  app_name = i_am_master ? "tcp_echo_server" : "tcp_echo_client";
+  app_name = i_am_server ? "tcp_echo_server" : "tcp_echo_client";
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
@@ -1447,7 +1448,7 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  if (i_am_master == 0)
+  if (i_am_server == 0)
     client_run (em);
   else
     server_run (em);
