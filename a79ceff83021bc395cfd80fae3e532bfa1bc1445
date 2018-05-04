@@ -22,6 +22,30 @@
       "revId": "a79ceff83021bc395cfd80fae3e532bfa1bc1445",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aee68d38_33f4bd69",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-04T09:13:10Z",
+      "side": 1,
+      "message": "Yes, this is working.\nI will update and send a new patch",
+      "parentUuid": "c9d60ab1_6c138ec0",
+      "range": {
+        "startLine": 176,
+        "startChar": 12,
+        "endLine": 176,
+        "endChar": 21
+      },
+      "revId": "a79ceff83021bc395cfd80fae3e532bfa1bc1445",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
