@@ -74,6 +74,7 @@
 #include <vnet/sctp/sctp.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/dhcp/dhcp6_pd_client_cp.api.h>
+#include <vnet/dhcp/dhcp6_ia_na_client_cp.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

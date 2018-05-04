@@ -45,7 +45,6 @@ typedef struct
 {
   u32 prefix_group_index;
   uword opaque_data;		// used by prefix publisher
-  u32 TODO;
   ip6_address_t prefix;
   u8 prefix_length;
   u32 preferred_lt;
@@ -365,7 +364,7 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
   if (!client_state->rebinding && client_state->server_index != server_index)
     {
       clib_warning ("Reply message arrived with Server ID different "
-		    "from that in Request of Renew message");
+		    "from that in Request or Renew message");
       return 0;
     }
 
@@ -433,6 +432,8 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 	  prefix_info->preferred_lt = preferred_time;
 	  prefix_info->valid_lt = valid_time;
 	  prefix_info->due_time = current_time + valid_time;
+	  if (prefix_info->due_time > rm->max_valid_due_time)
+	    rm->max_valid_due_time = prefix_info->due_time;
 	  continue;
 	}
 
@@ -448,6 +449,8 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
       prefix_info->preferred_lt = preferred_time;
       prefix_info->valid_lt = valid_time;
       prefix_info->due_time = current_time + valid_time;
+      if (prefix_info->due_time > rm->max_valid_due_time)
+	rm->max_valid_due_time = prefix_info->due_time;
       rm->client_state_by_sw_if_index[sw_if_index].prefix_count++;
 
       u32 prefix_index = prefix_info - pm->prefix_pool;

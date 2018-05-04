@@ -232,6 +232,12 @@ typedef CLIB_PACKED (struct
 
 typedef CLIB_PACKED (struct
 		     {
+		     dhcpv6_option_t opt; ip6_address_t addr; u32 preferred;
+		     u32 valid;
+		     }) dhcpv6_ia_opt_addr_t;
+
+typedef CLIB_PACKED (struct
+		     {
 		     dhcpv6_option_t opt;
 		     u16 options[0];
 		     }) dhcpv6_oro_t;
