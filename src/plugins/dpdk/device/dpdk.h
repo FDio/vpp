@@ -110,17 +110,6 @@ typedef enum
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
-/*
- * The header for the tx_vector in dpdk_device_t.
- * Head and tail are indexes into the tx_vector and are of type
- * u64 so they never overflow.
- */
-typedef struct
-{
-  u64 tx_head;
-  u64 tx_tail;
-} tx_ring_hdr_t;
-
 typedef uint16_t dpdk_portid_t;
 
 typedef struct
@@ -190,9 +179,6 @@ typedef struct
 
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
-
-  /* dpdk rte_mbuf rx and tx vectors, VLIB_FRAME_SIZE */
-  struct rte_mbuf ***tx_vectors;	/* one per worker thread */
 
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
