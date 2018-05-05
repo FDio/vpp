@@ -69,6 +69,18 @@ u32x8_extract_hi (u32x8 v)
   return (u32x4) _mm256_extracti128_si256 ((__m256i) v, 1);
 }
 
+always_inline u32x8
+u32x8_insert_lo (u32x8 v1, u32x4 v2)
+{
+  return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 0);
+}
+
+always_inline u32x8
+u32x8_insert_hi (u32x8 v1, u32x4 v2)
+{
+  return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 1);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
