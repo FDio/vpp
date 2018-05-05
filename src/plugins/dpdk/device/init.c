@@ -256,7 +256,6 @@ dpdk_lib_init (dpdk_main_t * dm)
     {
       u8 addr[6];
       u8 vlan_strip = 0;
-      int j;
       struct rte_eth_dev_info dev_info;
       struct rte_eth_link l;
       dpdk_device_config_t *devconf = 0;
@@ -535,15 +534,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
 	  dq->device = xd->device_index;
 	  dq->queue_id = 0;
-	}
-
-      vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
-			    CLIB_CACHE_LINE_BYTES);
-      for (j = 0; j < tm->n_vlib_mains; j++)
-	{
-	  vec_validate_ha (xd->tx_vectors[j], xd->nb_tx_desc,
-			   sizeof (tx_ring_hdr_t), CLIB_CACHE_LINE_BYTES);
-	  vec_reset_length (xd->tx_vectors[j]);
 	}
 
       /* count the number of descriptors used for this device */
