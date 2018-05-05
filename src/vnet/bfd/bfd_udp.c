@@ -589,7 +589,7 @@ bfd_udp_validate_api_input (u32 sw_if_index,
     {
       vlib_log_err (bum->log_class,
 		    "local address %U not found on interface with index %u",
-		    format_ip46_address, IP46_TYPE_ANY, local_addr,
+		    format_ip46_address, local_addr, IP46_TYPE_ANY,
 		    sw_if_index);
       return VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE;
     }
