@@ -52,7 +52,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  error = rte_eth_dev_default_mac_addr_set (xd->device_index,
+  error = rte_eth_dev_default_mac_addr_set (xd->device_dpdk_port_index,
 					    (struct ether_addr *) address);
 
   if (error)
@@ -124,7 +124,7 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 
   t0 = vlib_add_trace (vm, node, buffer, sizeof (t0[0]));
   t0->queue_index = queue_id;
-  t0->device_index = xd->device_index;
+  t0->device_index = xd->device_array_port_index;
   t0->buffer_index = buffer_index;
   clib_memcpy (&t0->mb, mb, sizeof (t0->mb));
   clib_memcpy (&t0->buffer, buffer,
@@ -262,7 +262,7 @@ static_always_inline
       else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  /* no wrap, transmit in one burst */
-	  rv = rte_eth_tx_burst (xd->device_index,
+	  rv = rte_eth_tx_burst (xd->device_dpdk_port_index,
 				 (uint16_t) queue_id,
 				 &tx_vector[tx_tail],
 				 (uint16_t) (tx_head - tx_tail));
@@ -287,8 +287,8 @@ static_always_inline
 					 xd->hw_if_index)->tx_node_index;
 
 	  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_BAD_RETVAL, 1);
-	  clib_warning ("rte_eth_tx_burst[%d]: error %d", xd->device_index,
-			rv);
+	  clib_warning ("rte_eth_tx_burst[%d]: error %d",
+			xd->device_dpdk_port_index, rv);
 	  return n_packets;	// untransmitted packets
 	}
       ring->tx_tail += (u16) rv;
@@ -748,25 +748,27 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
       goto done;
     }
 
-  vlan_offload = rte_eth_dev_get_vlan_offload (xd->device_index);
+  vlan_offload = rte_eth_dev_get_vlan_offload (xd->device_dpdk_port_index);
   vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
 
-  if ((r = rte_eth_dev_set_vlan_offload (xd->device_index, vlan_offload)))
+  if ((r =
+       rte_eth_dev_set_vlan_offload (xd->device_dpdk_port_index,
+				     vlan_offload)))
     {
       xd->num_subifs = prev_subifs;
       err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
-			       xd->device_index, r);
+			       xd->device_dpdk_port_index, r);
       goto done;
     }
 
 
   if ((r =
-       rte_eth_dev_vlan_filter (xd->device_index, t->sub.eth.outer_vlan_id,
-				is_add)))
+       rte_eth_dev_vlan_filter (xd->device_dpdk_port_index,
+				t->sub.eth.outer_vlan_id, is_add)))
     {
       xd->num_subifs = prev_subifs;
       err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
-			       xd->device_index, r);
+			       xd->device_dpdk_port_index, r);
       goto done;
     }
 

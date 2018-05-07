@@ -78,7 +78,8 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("net_dpaa2", DPAA2)          \
   _ ("net_virtio_user", VIRTIO_USER) \
   _ ("net_vhost", VHOST_ETHER)    \
-  _ ("net_ena", ENA)
+  _ ("net_ena", ENA)              \
+  _ ("net_failsafe", FAILSAFE)
 
 typedef enum
 {
@@ -107,6 +108,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_VF,
   VNET_DPDK_PORT_TYPE_VIRTIO_USER,
   VNET_DPDK_PORT_TYPE_VHOST_ETHER,
+  VNET_DPDK_PORT_TYPE_FAILSAFE,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
@@ -184,6 +186,15 @@ typedef struct
 
   /* Instance ID */
   dpdk_portid_t device_index;
+
+  /* Instance ID to access internal array when using dpdk plugin.
+   * When not using dpdk, this value is conceptually same as device_index,
+   * but device_index should be used.
+   */
+  dpdk_portid_t device_array_port_index;
+
+  /* Instance ID to call to dpdk APIs when using dpdk plugin. */
+  dpdk_portid_t device_dpdk_port_index;
 
   u32 hw_if_index;
   u32 sw_if_index;

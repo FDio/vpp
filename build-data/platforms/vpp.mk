@@ -29,6 +29,7 @@ vpp_uses_dpdk = yes
 vpp_root_packages = vpp vom
 
 # DPDK configuration parameters
+# vpp_uses_dpdk_mlx4_pmd = yes
 # vpp_uses_dpdk_mlx5_pmd = yes
 # vpp_uses_external_dpdk = yes
 # vpp_dpdk_inc_dir = /usr/include/dpdk
@@ -43,14 +44,16 @@ vpp_configure_args_vpp += --disable-lb-plugin
 endif
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
-	-fstack-protector-all -fPIC -Werror
+	-fstack-protector-all -fPIC -Werror -DALLOW_EXPERIMENTAL_API
 vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
-	-fstack-protector-all -fPIC -Werror
+	-fstack-protector-all -fPIC -Werror -DALLOW_EXPERIMENTAL_API
 vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror
 
-vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-vpp_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror \
+        -DALLOW_EXPERIMENTAL_API
+vpp_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror \
+        -DALLOW_EXPERIMENTAL_API
 vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 
 vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
