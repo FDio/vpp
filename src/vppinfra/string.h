@@ -138,6 +138,32 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
   _mm_storeu_si128 ((__m128i *) (d3 + 2 * 16), r2);
   _mm_storeu_si128 ((__m128i *) (d3 + 3 * 16), r3);
 
+#elif defined (__aarch64__) && defined (__ARM_NEON)
+  uint8x16_t r0 = vld1q_u8((const uint8_t *) (s + 0 * 16));
+  uint8x16_t r1 = vld1q_u8((const uint8_t *) (s + 1 * 16));
+  uint8x16_t r2 = vld1q_u8((const uint8_t *) (s + 2 * 16));
+  uint8x16_t r3 = vld1q_u8((const uint8_t *) (s + 3 * 16));
+
+  vst1q_u8((uint8_t *) (d0 + 0 * 16), r0);
+  vst1q_u8((uint8_t *) (d0 + 1 * 16), r1);
+  vst1q_u8((uint8_t *) (d0 + 2 * 16), r2);
+  vst1q_u8((uint8_t *) (d0 + 3 * 16), r3);
+
+  vst1q_u8((uint8_t *) (d0 + 0 * 16), r0);
+  vst1q_u8((uint8_t *) (d0 + 1 * 16), r1);
+  vst1q_u8((uint8_t *) (d0 + 2 * 16), r2);
+  vst1q_u8((uint8_t *) (d0 + 3 * 16), r3);
+
+  vst1q_u8((uint8_t *) (d0 + 0 * 16), r0);
+  vst1q_u8((uint8_t *) (d0 + 1 * 16), r1);
+  vst1q_u8((uint8_t *) (d0 + 2 * 16), r2);
+  vst1q_u8((uint8_t *) (d0 + 3 * 16), r3);
+
+  vst1q_u8((uint8_t *) (d0 + 0 * 16), r0);
+  vst1q_u8((uint8_t *) (d0 + 1 * 16), r1);
+  vst1q_u8((uint8_t *) (d0 + 2 * 16), r2);
+  vst1q_u8((uint8_t *) (d0 + 3 * 16), r3);
+  
 #else
   clib_memcpy (d0, s, 64);
   clib_memcpy (d1, s, 64);
