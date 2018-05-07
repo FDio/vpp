@@ -1796,7 +1796,7 @@ done:
   }
 
   if (error)
-    clib_error_report (error);
+        clib_error_report (error);
 
   return 0;
 }
