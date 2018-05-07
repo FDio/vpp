@@ -12,7 +12,7 @@ VAPI_LIBS = \
   -L$(VPP_TEST_INSTALL_PATH)/vpp/lib64 \
   -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lcheck -lrt -lm -lvapiclient
 
-ifneq ($(filter centos opensuse,$(OS_ID)),$(OS_ID))
+ifneq ($(filter centos opensuse opensuse-tumbleweed opensuse-leap,$(OS_ID)),$(OS_ID))
 VAPI_LIBS += -lsubunit
 endif
 
