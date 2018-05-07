@@ -86,7 +86,7 @@ void clib_memswap (void *_a, void *_b, uword bytes);
  */
 
 static_always_inline void
-clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
+clib_memcpy64_x4 (void *restrict d0, void *restrict d1, void *restrict d2, void *restrict d3, void *restrict s)
 {
 #if defined (__AVX512F__)
   __m512i r0 = _mm512_loadu_si512 (s);
@@ -139,10 +139,10 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
   _mm_storeu_si128 ((__m128i *) (d3 + 3 * 16), r3);
 
 #else
-  clib_memcpy (d0, s, 64);
-  clib_memcpy (d1, s, 64);
-  clib_memcpy (d2, s, 64);
-  clib_memcpy (d3, s, 64);
+  memcpy (d0, s, 64);
+  memcpy (d1, s, 64);
+  memcpy (d2, s, 64);
+  memcpy (d3, s, 64);
 #endif
 }
 
