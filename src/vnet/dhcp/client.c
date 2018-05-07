@@ -102,11 +102,17 @@ dhcp_client_addr_callback (dhcp_client_t * c)
   dhcp_client_main_t *dcm = &dhcp_client_main;
   void (*fp) (u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) = c->event_callback;
 
-  /* add the advertised subnet and disable the feature */
-  dhcp_client_acquire_address (dcm, c);
+  /* disable the feature */
   vnet_feature_enable_disable ("ip4-unicast",
 			       "ip4-dhcp-client-detect",
 			       c->sw_if_index, 0 /* disable */ , 0, 0);
+
+  /* if renewing the lease, the address and route have already been added */
+  if (c->state == DHCP_BOUND)
+    return;
+
+  /* add the address to the interface */
+  dhcp_client_acquire_address (dcm, c);
 
   /*
    * Configure default IP route:
@@ -326,9 +332,8 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  break;
 	}
       /* OK, we own the address (etc), add to the routing table(s) */
-      if (c->state == DHCP_REQUEST)
-	vl_api_rpc_call_main_thread (dhcp_client_addr_callback,
-				     (u8 *) c, sizeof (*c));
+      vl_api_rpc_call_main_thread (dhcp_client_addr_callback,
+				   (u8 *) c, sizeof (*c));
 
       c->state = DHCP_BOUND;
       c->retry_count = 0;
@@ -607,10 +612,22 @@ static int
 dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
 {
   /*
-   * State machine "BOUND" state. Send a dhcp request packet,
-   * eventually, when the lease expires, forget the dhcp data
+   * State machine "BOUND" state. Send a dhcp request packet to renew
+   * the lease.
+   * Eventually, when the lease expires, forget the dhcp data
    * and go back to the stone age.
    */
+
+  /*
+   * We disable the client detect feature when we bind a
+   * DHCP address. Turn it back on again on first renew attempt.
+   * Otherwise, if the DHCP server replies we'll never see it.
+   */
+  if (!c->retry_count)
+    vnet_feature_enable_disable ("ip4-unicast",
+				 "ip4-dhcp-client-detect",
+				 c->sw_if_index, 1 /* enable */ , 0, 0);
+
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 0 /* is_broadcast */ );
 
   c->retry_count++;
@@ -650,15 +667,6 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
       c->router_address.as_u32 = 0;
       c->lease_renewal_interval = 0;
       c->dhcp_server.as_u32 = 0;
-      /*
-       * We disable the client detect feature when we bind a
-       * DHCP address. Turn it back on again here.
-       * Otherwise, if the DHCP server replies after an outage,
-       * we'll never see it.
-       */
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "ip4-dhcp-client-detect",
-				   c->sw_if_index, 1 /* enable */ , 0, 0);
       return 1;
     }
   return 0;
