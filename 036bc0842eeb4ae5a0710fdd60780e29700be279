@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee4b764e_500c1e63",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-08T02:09:04Z",
+      "side": 1,
+      "message": "Destination should be d1?",
+      "range": {
+        "startLine": 152,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 42
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "45bead90_6b03a45b",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-08T02:09:04Z",
+      "side": 1,
+      "message": "Destination should be d2?",
+      "range": {
+        "startLine": 157,
+        "startChar": 0,
+        "endLine": 160,
+        "endChar": 42
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6c7c12a_e0bf0b23",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-08T02:09:04Z",
+      "side": 1,
+      "message": "Destination should be d3?",
+      "range": {
+        "startLine": 162,
+        "startChar": 0,
+        "endLine": 165,
+        "endChar": 42
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
