@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1efae2e1_8abbce54",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-05-08T18:08:47Z",
+      "side": 0,
+      "message": "The nports value here is still coming from rte_eth_dev_count() since the replacement API rte_eth_dev_count_avail() is not yet available in DPDK 18.02 releases.\n\nOnce the replacement API is there, I will make a follow up change to replace rte_eth_dev_count().",
+      "range": {
+        "startLine": 255,
+        "startChar": 0,
+        "endLine": 255,
+        "endChar": 30
+      },
+      "revId": "89c27818b3bba409ed8e4ccacc9be37384b46705",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
