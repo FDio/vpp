@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "02c9b05c_b94c74e0",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 592,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-05-09T06:15:05Z",
+      "side": 1,
+      "message": "please add udp_encap here too",
+      "revId": "e3d7556e94c86eed35ac2a37587b5e1b54fc3667",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
