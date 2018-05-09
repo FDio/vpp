@@ -476,7 +476,13 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 		esp_replay_advance(sa0, seq);
 	    }
 
-          ih4 = (ip4_header_t *) (b0->data + vnet_buffer(b0)->l3_hdr_offset);
+          if (b0->flags & VNET_BUFFER_F_IS_IP4)
+            ih4 =
+               (ip4_header_t *) ((u8 *) esp0 - sizeof (ip4_header_t));
+          else
+            ih4 =
+               (ip4_header_t *) ((u8 *) esp0 - sizeof (ip6_header_t));
+
 	  vlib_buffer_advance (b0, sizeof (esp_header_t) + iv_size);
 
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;

@@ -269,9 +269,13 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		{
 		  tunnel_mode = 0;
 
-		  ih4 =
-		    (ip4_header_t *) ((u8 *) i_b0->data +
-				      vnet_buffer (i_b0)->l3_hdr_offset);
+		  if (i_b0->flags & VNET_BUFFER_F_IS_IP4)
+		    ih4 =
+		      (ip4_header_t *) ((u8 *) esp0 - sizeof (ip4_header_t));
+		  else
+		    ih4 =
+		      (ip4_header_t *) ((u8 *) esp0 - sizeof (ip6_header_t));
+
 		  if (PREDICT_TRUE
 		      ((ih4->ip_version_and_header_length & 0xF0) != 0x40))
 		    {
