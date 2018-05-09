@@ -255,7 +255,7 @@ dpdk_mbufs_to_buffer_indices (vlib_main_t * vm, struct rte_mbuf **mb,
       bi[2] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[2]));
       bi[3] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[3]));
       bi[4] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[4]));
-      bi[5] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[4]));
+      bi[5] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[5]));
       bi[6] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[6]));
       bi[7] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[7]));
 #endif
@@ -333,19 +333,19 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       vnet_buffer (b[0])->l2_hdr_offset = off;
       b[0]->current_data = off;
 
-      off = mb[0]->data_off;
+      off = mb[1]->data_off;
       next[1] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[1])->l2_hdr_offset = off;
       b[1]->current_data = off;
 
-      off = mb[0]->data_off;
+      off = mb[2]->data_off;
       next[2] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[2])->l2_hdr_offset = off;
       b[2]->current_data = off;
 
-      off = mb[0]->data_off;
+      off = mb[3]->data_off;
       next[3] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[3])->l2_hdr_offset = off;
