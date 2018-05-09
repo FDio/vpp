@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "24d4fcba_16285442",
+        "filename": "src/plugins/acl/public_inlines.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 1277,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2018-05-09T18:00:40Z",
+      "side": 1,
+      "message": "Please remove any unused ones instead of putting \u0027//\u0027.",
+      "range": {
+        "startLine": 1277,
+        "startChar": 0,
+        "endLine": 1277,
+        "endChar": 10
+      },
+      "revId": "204ccc39d970ef5d22e681eefb39bd962bab0604",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
