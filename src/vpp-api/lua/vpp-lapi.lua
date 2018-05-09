@@ -422,7 +422,8 @@ end
 function vpp.init(vpp, args)
   local vac_api = args.vac_api or [[
  int cough_vac_attach(char *vac_path, char *cough_path);
- int vac_connect(char *name, char *chroot_prefix, void *cb);
+ typedef void (*vac_callback_t)(unsigned char * data, int len);
+ int vac_connect(char *name, char *chroot_prefix, vac_callback_t cb, int rx_qlen);
  int vac_disconnect(void);
  int vac_read(char **data, int *l);
  int vac_write(char *data, int len);
@@ -692,7 +693,7 @@ function vpp.connect(vpp, client_name)
     if client_name then
       name = client_name
     end
-    local ret = vpp.vac.vac_connect(vpp.c_str(client_name), nil, nil)
+    local ret = vpp.vac.vac_connect(vpp.c_str(client_name), nil, nil, 32)
     if tonumber(ret) == 0 then
       vpp.is_connected = true
     end
