@@ -542,7 +542,7 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
 			  n_left);
 
 	while (n_left--)
-	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left]);
+	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left - 1]);
       }
   }
 
