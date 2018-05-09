@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "aa810b86_59f1f367",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-05-09T03:42:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f69fa09b_eeaf3207",
+      "revId": "1f4f080e909ad180ca34654761975e21e674fed9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d237cfc2_6d997044",
         "filename": "src/plugins/lb/api.c",
         "patchSetId": 2
@@ -48,6 +66,30 @@
       "writtenOn": "2018-04-30T12:50:19Z",
       "side": 1,
       "message": "You have not defined your API call in lb.api",
+      "range": {
+        "startLine": 271,
+        "startChar": 0,
+        "endLine": 271,
+        "endChar": 35
+      },
+      "revId": "1f4f080e909ad180ca34654761975e21e674fed9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a3fec9f9_777c6f7e",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-05-09T03:42:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d237cfc2_6d997044",
       "range": {
         "startLine": 271,
         "startChar": 0,
@@ -83,6 +125,30 @@
     },
     {
       "key": {
+        "uuid": "4f857c81_a77b913b",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-05-09T03:42:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3ac612e7_3b72277e",
+      "range": {
+        "startLine": 255,
+        "startChar": 10,
+        "endLine": 255,
+        "endChar": 27
+      },
+      "revId": "1f4f080e909ad180ca34654761975e21e674fed9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "12ed008e_42d989cf",
         "filename": "src/plugins/lb/util.h",
         "patchSetId": 2
@@ -94,6 +160,30 @@
       "writtenOn": "2018-04-30T12:50:19Z",
       "side": 1,
       "message": "Why is it called \u0027get\u0027 if it also sets a value ?",
+      "range": {
+        "startLine": 48,
+        "startChar": 0,
+        "endLine": 48,
+        "endChar": 27
+      },
+      "revId": "1f4f080e909ad180ca34654761975e21e674fed9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5eb3c76c_5286200c",
+        "filename": "src/plugins/lb/util.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-05-09T03:42:13Z",
+      "side": 1,
+      "message": "It is read-only.",
+      "parentUuid": "12ed008e_42d989cf",
       "range": {
         "startLine": 48,
         "startChar": 0,
