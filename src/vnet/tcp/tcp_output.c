@@ -1747,6 +1747,38 @@ tcp_session_has_ooo_data (tcp_connection_t * tc)
   return svm_fifo_has_ooo_data (s->server_rx_fifo);
 }
 
+always_inline void
+tcp_output_set_next (tcp_connection_t *tc0, vlib_buffer_t *b0, u32 *next0)
+{
+  if (PREDICT_FALSE(tc0->c_rmt_fei == FIB_NODE_INDEX_INVALID))
+    {
+      vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
+    }
+  else
+    {
+      /* Make sure we haven't lost route to our peer */
+      if (PREDICT_FALSE(
+	  tc0->snd_opts.tsval > tc0->last_fib_check + TCP_FIB_RECHECK_PERIOD))
+	{
+	  if (PREDICT_TRUE(tc0->c_rmt_fei == tcp_lookup_rmt_in_fib (tc0)))
+	    {
+	      tc0->last_fib_check = tc0->snd_opts.tsval;
+	    }
+	  else
+	    {
+	      clib_warning("lost connection to peer");
+	      tcp_connection_reset (tc0);
+	      return;
+	    }
+	}
+
+      /* Use pre-computed dpo to set next node */
+      *next0 = tc0->c_rmt_dpo.dpoi_next_node;
+      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
+    }
+}
+
 always_inline uword
 tcp46_output_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
@@ -1866,31 +1898,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	      tc0->rto_boff = 0;
 	    }
 
-#if 0
-	  /* Make sure we haven't lost route to our peer */
-	  if (PREDICT_FALSE (tc0->last_fib_check
-			     < tc0->snd_opts.tsval + TCP_FIB_RECHECK_PERIOD))
-	    {
-	      if (PREDICT_TRUE
-		  (tc0->c_rmt_fei == tcp_lookup_rmt_in_fib (tc0)))
-		{
-		  tc0->last_fib_check = tc0->snd_opts.tsval;
-		}
-	      else
-		{
-		  clib_warning ("lost connection to peer");
-		  tcp_connection_reset (tc0);
-		  goto done;
-		}
-	    }
-
-	  /* Use pre-computed dpo to set next node */
-	  next0 = tc0->c_rmt_dpo.dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
-#endif
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
+	  tcp_output_set_next (tc0, b0, &next0);
 
 	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	done:

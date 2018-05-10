@@ -360,7 +360,6 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
     }
 }
 
-#if 0
 typedef struct ip4_tcp_hdr
 {
   ip4_header_t ip;
@@ -450,12 +449,9 @@ static void
 tcp_connection_fib_attach (tcp_connection_t * tc)
 {
   tc->c_rmt_fei = tcp_lookup_rmt_in_fib (tc);
-
   ASSERT (tc->c_rmt_fei != FIB_NODE_INDEX_INVALID);
-
   tcp_connection_stack_on_fib_entry (tc);
 }
-#endif /* 0 */
 
 /**
  * Initialize connection send variables.
@@ -494,7 +490,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
 
-  //  tcp_connection_fib_attach (tc);
+  tc->c_rmt_fei = FIB_NODE_INDEX_INVALID;
+  vl_api_rpc_call_main_thread (tcp_connection_fib_attach, (u8 *) tc,
+                               sizeof (*tc));
 }
 
 static int
