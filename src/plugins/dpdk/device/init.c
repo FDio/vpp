@@ -262,6 +262,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       vlib_pci_addr_t pci_addr;
       uword *p = 0;
 
+      rte_eth_link_get_nowait (i, &l);
       rte_eth_dev_info_get (i, &dev_info);
       if (dev_info.pci_dev)	/* bonded interface has no pci info */
 	{
@@ -433,7 +434,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
-	      rte_eth_link_get_nowait (i, &l);
 	      if (l.link_speed == 40000)
 		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 	      else
