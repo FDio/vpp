@@ -28,7 +28,7 @@
 #define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
 #define TCP_TSTAMP_RESOLUTION TCP_TICK	/**< Time stamp resolution */
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
-#define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
+#define TCP_FIB_RECHECK_PERIOD	3 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 
 #define TCP_DUPACK_THRESHOLD 	3

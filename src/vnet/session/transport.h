@@ -51,8 +51,8 @@ typedef struct _transport_connection
   u32 c_index;			/**< Connection index in transport pool */
   u32 thread_index;		/**< Worker-thread index */
 
-  /*fib_node_index_t rmt_fei;
-     dpo_id_t rmt_dpo; */
+  fib_node_index_t rmt_fei;	/**< remote fib entry */
+  dpo_id_t rmt_dpo;		/**<  */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
@@ -79,6 +79,7 @@ typedef struct _transport_connection
 #define c_rmt_fei connection.rmt_fei
 #define c_rmt_dpo connection.rmt_dpo
 #define c_opaque_id connection.opaque_conn_id
+#define c_rmt_fei connection.rmt_fei
 } transport_connection_t;
 
 typedef enum _transport_proto
