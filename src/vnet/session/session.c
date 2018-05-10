@@ -1103,6 +1103,28 @@ stream_session_cleanup (stream_session_t * s)
 						    s->thread_index);
 }
 
+transport_service_type_t
+session_transport_service_type (stream_session_t * s)
+{
+  transport_proto_t tp;
+  tp = session_get_transport_proto (s);
+  return transport_protocol_service_type (tp);
+}
+
+transport_tx_fn_type_t
+session_transport_tx_fn_type (stream_session_t * s)
+{
+  transport_proto_t tp;
+  tp = session_get_transport_proto (s);
+  return transport_protocol_tx_fn_type (tp);
+}
+
+u8
+session_tx_is_dgram (stream_session_t * s)
+{
+  return (session_transport_tx_fn_type (s) == TRANSPORT_TX_DGRAM);
+}
+
 /**
  * Allocate event queues in the shared-memory segment
  *

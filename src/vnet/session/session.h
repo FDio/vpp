@@ -143,6 +143,7 @@ typedef struct session_tx_context_
   u16 deq_per_first_buf;
   u16 deq_per_buf;
   u16 snd_mss;
+  u16 n_segs_per_evt;
   u8 n_bufs_per_seg;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
@@ -389,13 +390,9 @@ session_has_transport (stream_session_t * s)
   return (session_get_transport_proto (s) != TRANSPORT_PROTO_NONE);
 }
 
-always_inline transport_service_type_t
-session_transport_service_type (stream_session_t * s)
-{
-  transport_proto_t tp;
-  tp = session_get_transport_proto (s);
-  return transport_protocol_service_type (tp);
-}
+transport_service_type_t session_transport_service_type (stream_session_t *);
+transport_tx_fn_type_t session_transport_tx_fn_type (stream_session_t *);
+u8 session_tx_is_dgram (stream_session_t * s);
 
 /**
  * Acquires a lock that blocks a session pool from expanding.
