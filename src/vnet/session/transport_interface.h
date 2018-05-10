@@ -98,6 +98,7 @@ void transport_register_protocol (transport_proto_t transport_proto,
 				  fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
 transport_service_type_t transport_protocol_service_type (transport_proto_t);
+transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 void transport_update_time (f64 time_now, u8 thread_index);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 

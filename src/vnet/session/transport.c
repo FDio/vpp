@@ -201,6 +201,12 @@ transport_protocol_service_type (transport_proto_t tp)
   return tp_vfts[tp].service_type;
 }
 
+transport_tx_fn_type_t
+transport_protocol_tx_fn_type (transport_proto_t tp)
+{
+  return tp_vfts[tp].tx_type;
+}
+
 #define PORT_MASK ((1 << 16)- 1)
 
 void
