@@ -409,7 +409,7 @@ clib_bitmap_last_set (uword * ai)
       if (x != 0)
 	{
 	  uword first_bit;
-	  count_leading_zeros (first_bit, x);
+	  first_bit = count_leading_zeros (x);
 	  return (i) * BITS (ai[0]) - first_bit - 1;
 	}
     }

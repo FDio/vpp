@@ -168,8 +168,8 @@ int
 dpdk_hqos_validate_mask (u64 mask, u32 n)
 {
   int count = __builtin_popcountll (mask);
-  int pos_lead = sizeof (u64) * 8 - __builtin_clzll (mask);
-  int pos_trail = __builtin_ctzll (mask);
+  int pos_lead = sizeof (u64) * 8 - count_leading_zeros (mask);
+  int pos_trail = count_trailing_zeros (mask);
   int count_expected = __builtin_popcount (n - 1);
 
   /* Handle the exceptions */
@@ -363,15 +363,15 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
       xd->hqos_wt[tid].hqos_field0_slabpos = hqos->pktfield0_slabpos;
       xd->hqos_wt[tid].hqos_field0_slabmask = hqos->pktfield0_slabmask;
       xd->hqos_wt[tid].hqos_field0_slabshr =
-	__builtin_ctzll (hqos->pktfield0_slabmask);
+	count_trailing_zeros (hqos->pktfield0_slabmask);
       xd->hqos_wt[tid].hqos_field1_slabpos = hqos->pktfield1_slabpos;
       xd->hqos_wt[tid].hqos_field1_slabmask = hqos->pktfield1_slabmask;
       xd->hqos_wt[tid].hqos_field1_slabshr =
-	__builtin_ctzll (hqos->pktfield1_slabmask);
+	count_trailing_zeros (hqos->pktfield1_slabmask);
       xd->hqos_wt[tid].hqos_field2_slabpos = hqos->pktfield2_slabpos;
       xd->hqos_wt[tid].hqos_field2_slabmask = hqos->pktfield2_slabmask;
       xd->hqos_wt[tid].hqos_field2_slabshr =
-	__builtin_ctzll (hqos->pktfield2_slabmask);
+	count_trailing_zeros (hqos->pktfield2_slabmask);
       memcpy (xd->hqos_wt[tid].hqos_tc_table, hqos->tc_table,
 	      sizeof (hqos->tc_table));
     }

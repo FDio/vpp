@@ -80,7 +80,7 @@ feat_bitmap_get_next_node_index (u32 * next_nodes, u32 bitmap)
 {
   u32 first_bit;
 
-  count_leading_zeros (first_bit, bitmap);
+  first_bit = count_leading_zeros (bitmap);
   first_bit = uword_bits - 1 - first_bit;
   return next_nodes[first_bit];
 }
