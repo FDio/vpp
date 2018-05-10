@@ -175,28 +175,9 @@ define sockclnt_delete_reply {
 };
 
 /*
- * Ask vpp for a memfd shared segment
- */
-define memfd_segment_create {
-    u32 client_index;
-    u32 context;
-    u64 requested_size;
-};
-
-/*
- * Reply
- */
-define memfd_segment_create_reply 
-{
-  u32 context;
-  i32 retval;
-  u32 master_fd;
-};
-
-/*
  * Initialize shm api over socket api
  */
-define sock_init_shm {
+autoreply define sock_init_shm {
     u32 client_index;
     u32 context;
     u32 requested_size;
@@ -204,11 +185,11 @@ define sock_init_shm {
     u64 configs[nitems];
 };
 
-define sock_init_shm_reply {
+/* define sock_init_shm_reply {
     u32 client_index;
     u32 context;
     i32 retval;
-};
+}; */
 
 /*
  * Memory client ping / response

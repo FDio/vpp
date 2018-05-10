@@ -2411,127 +2411,6 @@ static void vl_api_create_vhost_user_if_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static clib_error_t *
-receive_fd_msg (int socket_fd, int *my_fd)
-{
-  char msgbuf[16];
-  char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
-  struct msghdr mh = { 0 };
-  struct iovec iov[1];
-  ssize_t size;
-  struct ucred *cr = 0;
-  struct cmsghdr *cmsg;
-  pid_t pid __attribute__ ((unused));
-  uid_t uid __attribute__ ((unused));
-  gid_t gid __attribute__ ((unused));
-
-  iov[0].iov_base = msgbuf;
-  iov[0].iov_len = 5;
-  mh.msg_iov = iov;
-  mh.msg_iovlen = 1;
-  mh.msg_control = ctl;
-  mh.msg_controllen = sizeof (ctl);
-
-  memset (ctl, 0, sizeof (ctl));
-
-  /* receive the incoming message */
-  size = recvmsg (socket_fd, &mh, 0);
-  if (size != 5)
-    {
-      return (size == 0) ? clib_error_return (0, "disconnected") :
-	clib_error_return_unix (0, "recvmsg: malformed message (fd %d)",
-				socket_fd);
-    }
-
-  cmsg = CMSG_FIRSTHDR (&mh);
-  while (cmsg)
-    {
-      if (cmsg->cmsg_level == SOL_SOCKET)
-	{
-	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
-	    {
-	      cr = (struct ucred *) CMSG_DATA (cmsg);
-	      uid = cr->uid;
-	      gid = cr->gid;
-	      pid = cr->pid;
-	    }
-	  else if (cmsg->cmsg_type == SCM_RIGHTS)
-	    {
-	      clib_memcpy (my_fd, CMSG_DATA (cmsg), sizeof (int));
-	    }
-	}
-      cmsg = CMSG_NXTHDR (&mh, cmsg);
-    }
-  return 0;
-}
-
-static void vl_api_memfd_segment_create_reply_t_handler
-  (vl_api_memfd_segment_create_reply_t * mp)
-{
-  /* Dont bother in the builtin version */
-#if VPP_API_TEST_BUILTIN == 0
-  vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
-  socket_client_main_t *scm = vam->socket_client_main;
-  int my_fd = -1;
-  clib_error_t *error;
-  ssvm_private_t memfd;
-  i32 retval = ntohl (mp->retval);
-
-  if (retval == 0)
-    {
-      error = receive_fd_msg (scm->socket_fd, &my_fd);
-      if (error)
-	{
-	  retval = -99;
-	  goto out;
-	}
-
-      memset (&memfd, 0, sizeof (memfd));
-      memfd.fd = my_fd;
-
-      vam->client_index_invalid = 1;
-
-      /* Note: this closes memfd.fd */
-      retval = ssvm_slave_init_memfd (&memfd);
-      if (retval)
-	clib_warning ("WARNING: segment map returned %d", retval);
-
-      /* Pivot to the memory client segment that vpp just created */
-
-      am->vlib_rp = (void *) (memfd.requested_va + MMAP_PAGESIZE);
-
-      am->shmem_hdr = (void *) am->vlib_rp->user_ctx;
-
-      vl_client_install_client_message_handlers ();
-
-      vl_client_connect_to_vlib_no_map ("pvt",
-					"vpp_api_test(p)",
-					32 /* input_queue_length */ );
-      vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
-
-      vl_socket_client_enable_disable (0 /* disable socket */ );
-    }
-
-out:
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-#endif
-}
-
-static void vl_api_memfd_segment_create_reply_t_handler_json
-  (vl_api_memfd_segment_create_reply_t * mp)
-{
-  clib_warning ("no");
-}
-
 static void vl_api_dns_resolve_name_reply_t_handler
   (vl_api_dns_resolve_name_reply_t * mp)
 {
@@ -6009,15 +5888,13 @@ _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)   \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
-_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)				\
-_(MEMFD_SEGMENT_CREATE_REPLY, memfd_segment_create_reply)               \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
 
 typedef struct
 {
   u8 *name;
   u32 value;
 } name_sort_t;
-
 
 #define STR_VTR_OP_CASE(op)     \
     case L2_VTR_ ## op:         \
@@ -22431,35 +22308,6 @@ api_app_namespace_add_del (vat_main_t * vam)
 }
 
 static int
-api_memfd_segment_create (vat_main_t * vam)
-{
-#if VPP_API_TEST_BUILTIN == 0
-  unformat_input_t *i = vam->input;
-  vl_api_memfd_segment_create_t *mp;
-  u64 size = 64 << 20;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "size %U", unformat_memory_size, &size))
-	;
-      else
-	break;
-    }
-
-  M (MEMFD_SEGMENT_CREATE, mp);
-  mp->requested_size = size;
-  S (mp);
-  W (ret);
-  return ret;
-
-#else
-  errmsg ("memfd_segment_create (builtin) not supported");
-  return -99;
-#endif
-}
-
-static int
 api_sock_init_shm (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -22476,20 +22324,39 @@ api_sock_init_shm (vat_main_t * vam)
 	break;
     }
 
-  /* Try customized config to see if it works */
-  vec_validate (config, 3);
+  /*
+   * Canned custom ring allocator config.
+   * Should probably parse all of this
+   */
+  vec_validate (config, 6);
   config[0].type = VL_API_VLIB_RING;
-  config[0].count = 256;
   config[0].size = 256;
-  config[1].type = VL_API_CLIENT_RING;
-  config[1].count = 256;
+  config[0].count = 32;
+
+  config[1].type = VL_API_VLIB_RING;
   config[1].size = 1024;
-  config[2].type = VL_API_CLIENT_RING;
-  config[2].count = 8;
+  config[1].count = 16;
+
+  config[2].type = VL_API_VLIB_RING;
   config[2].size = 4096;
-  config[3].type = VL_API_QUEUE;
-  config[3].count = 256;
-  config[3].size = sizeof (uword);
+  config[2].count = 2;
+
+  config[3].type = VL_API_CLIENT_RING;
+  config[3].size = 256;
+  config[3].count = 32;
+
+  config[4].type = VL_API_CLIENT_RING;
+  config[4].size = 1024;
+  config[4].count = 16;
+
+  config[5].type = VL_API_CLIENT_RING;
+  config[5].size = 4096;
+  config[5].count = 2;
+
+  config[6].type = VL_API_QUEUE;
+  config[6].count = 128;
+  config[6].size = sizeof (uword);
+
   rv = vl_socket_client_init_shm (config);
   if (!rv)
     vam->client_index_invalid = 1;
@@ -23790,7 +23657,6 @@ _(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
 _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n" \
   " [mgmt-ip4 <ip4>] [mgmt-ip6 <ip6>] [mgmt-oid <object id>] [disable]") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
-_(memfd_segment_create,"size <nnn>")					\
 _(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 _(dns_enable_disable, "[enable][disable]")				\

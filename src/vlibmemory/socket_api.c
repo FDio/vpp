@@ -487,19 +487,34 @@ vl_api_make_shm_config (vl_api_sock_init_shm_t * mp)
 
   if (!mp->nitems)
     {
-      vec_validate (config, 3);
+      vec_validate (config, 6);
       config[0].type = VL_API_VLIB_RING;
-      config[0].count = 128;
       config[0].size = 256;
-      config[1].type = VL_API_CLIENT_RING;
-      config[1].count = 128;
+      config[0].count = 32;
+
+      config[1].type = VL_API_VLIB_RING;
       config[1].size = 1024;
-      config[2].type = VL_API_CLIENT_RING;
-      config[2].count = 8;
+      config[1].count = 16;
+
+      config[2].type = VL_API_VLIB_RING;
       config[2].size = 4096;
-      config[3].type = VL_API_QUEUE;
-      config[3].count = 128;
-      config[3].size = sizeof (uword);
+      config[2].count = 2;
+
+      config[3].type = VL_API_CLIENT_RING;
+      config[3].size = 256;
+      config[3].count = 32;
+
+      config[4].type = VL_API_CLIENT_RING;
+      config[4].size = 1024;
+      config[4].count = 16;
+
+      config[5].type = VL_API_CLIENT_RING;
+      config[5].size = 4096;
+      config[5].count = 2;
+
+      config[6].type = VL_API_QUEUE;
+      config[6].count = 128;
+      config[6].size = sizeof (uword);
     }
   else
     {
@@ -617,66 +632,10 @@ reply:
   vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
-/*
- * Create a memory-fd segment.
- */
-void
-vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
-{
-  vl_api_memfd_segment_create_reply_t *rmp;
-  clib_file_t *cf;
-  ssvm_private_t _memfd_private, *memfd = &_memfd_private;
-  vl_api_registration_t *regp;
-  int rv;
-
-  regp = vl_api_client_index_to_registration (mp->client_index);
-  if (regp == 0)
-    {
-      clib_warning ("API client disconnected");
-      return;
-    }
-
-  memset (memfd, 0, sizeof (*memfd));
-  memfd->ssvm_size = mp->requested_size;
-  memfd->requested_va = 0ULL;
-  memfd->i_am_master = 1;
-  memfd->name = format (0, "%s%c", regp->name, 0);
-
-  /* Set up a memfd segment of the requested size */
-  if ((rv = ssvm_master_init_memfd (memfd)))
-    goto reply;
-
-  /* Remember to close this fd when the socket connection goes away */
-  vec_add1 (regp->additional_fds_to_close, memfd->fd);
-
-reply:
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_MEMFD_SEGMENT_CREATE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = htonl (rv);
-
-  vl_api_send_msg (regp, (u8 *) rmp);
-
-  if (rv != 0)
-    return;
-
-  /*
-   * We need the reply message to make it out the back door
-   * before we send the magic fd message.
-   */
-  cf = vl_api_registration_file (regp);
-  cf->write_function (cf);
-
-  /* send the magic "here's your sign (aka fd)" socket message */
-  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
-}
-
 #define foreach_vlib_api_msg                    	\
 _(SOCKCLNT_CREATE, sockclnt_create)             	\
 _(SOCKCLNT_DELETE, sockclnt_delete)			\
-_(SOCK_INIT_SHM, sock_init_shm) 			\
-_(MEMFD_SEGMENT_CREATE, memfd_segment_create)
+_(SOCK_INIT_SHM, sock_init_shm)
 
 clib_error_t *
 vl_sock_api_init (vlib_main_t * vm)
