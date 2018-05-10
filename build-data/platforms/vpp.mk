@@ -36,6 +36,7 @@ vpp_root_packages = vpp vom
 # vpp_dpdk_lib_dir = /usr/lib
 # vpp_dpdk_shared_lib = yes
 
+# Use '--without-libnuma' for non-numa aware architecture
 vpp_configure_args_vpp =
 
 # load balancer plugin is not portable on 32 bit platform
