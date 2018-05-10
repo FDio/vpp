@@ -681,17 +681,14 @@ typedef struct
 
   u32 link_speed;
 
-  union
-  {
-    /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
-    u32 hw_if_index;
+  /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
+  u32 hw_if_index;
 
-    /* VNET_SW_INTERFACE_TYPE_SUB. */
-    vnet_sub_interface_t sub;
+  /* VNET_SW_INTERFACE_TYPE_SUB. */
+  vnet_sub_interface_t sub;
 
-    /* VNET_SW_INTERFACE_TYPE_P2P. */
-    vnet_p2p_sub_interface_t p2p;
-  };
+  /* VNET_SW_INTERFACE_TYPE_P2P. */
+  vnet_p2p_sub_interface_t p2p;
 
   vnet_flood_class_t flood_class;
 } vnet_sw_interface_t;
