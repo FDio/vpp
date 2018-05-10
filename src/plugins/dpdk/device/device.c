@@ -522,13 +522,14 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
     }
 
   /* transmit as many packets as possible */
-  n_packets = mb - ptd->mbufs;
+  tx_pkts = n_packets = mb - ptd->mbufs;
   n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets);
 
   {
     /* If there is no callback then drop any non-transmitted packets */
     if (PREDICT_FALSE (n_left))
       {
+	tx_pkts -= n_left;
 	vlib_simple_counter_main_t *cm;
 	vnet_main_t *vnm = vnet_get_main ();
 
