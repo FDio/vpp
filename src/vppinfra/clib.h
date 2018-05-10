@@ -125,71 +125,20 @@
   decl
 
 /* Use __builtin_clz if available. */
-#ifdef __GNUC__
-#include <features.h>
-#if __GNUC_PREREQ(3, 4)
 #if uword_bits == 64
-#define count_leading_zeros(count,x) count = __builtin_clzll (x)
-#define count_trailing_zeros(count,x) count = __builtin_ctzll (x)
+#define count_leading_zeros(x) __builtin_clzll (x)
+#define count_trailing_zeros(x) __builtin_ctzll (x)
 #else
-#define count_leading_zeros(count,x) count = __builtin_clzl (x)
-#define count_trailing_zeros(count,x) count = __builtin_ctzl (x)
+#define count_leading_zeros(x) __builtin_clzl (x)
+#define count_trailing_zeros(x) __builtin_ctzl (x)
 #endif
-#endif
-#endif
-
-#ifndef count_leading_zeros
-
-/* Misc. integer arithmetic functions. */
-#if defined (i386)
-#define count_leading_zeros(count, x)		\
-  do {						\
-    word _clz;					\
-    __asm__ ("bsrl %1,%0"			\
-	     : "=r" (_clz) : "rm" ((word) (x)));\
-    (count) = _clz ^ 31;			\
-  } while (0)
-
-#define count_trailing_zeros(count, x)			\
-  __asm__ ("bsfl %1,%0" : "=r" (count) : "rm" ((word)(x)))
-#endif /* i386 */
-
-#if defined (__alpha__) && defined (HAVE_CIX)
-#define count_leading_zeros(count, x)		\
-  __asm__ ("ctlz %1,%0"				\
-	   : "=r" ((word) (count))		\
-	   : "r" ((word) (x)))
-#define count_trailing_zeros(count, x)		\
-  __asm__ ("cttz %1,%0"				\
-	   : "=r" ((word) (count))		\
-	   : "r" ((word) (x)))
-#endif /* alpha && HAVE_CIX */
-
-#if __mips >= 4
-
-/* Select between 32/64 opcodes. */
-#if uword_bits == 32
-#define count_leading_zeros(_count, _x)		\
-  __asm__ ("clz %[count],%[x]"			\
-	   : [count] "=r" ((word) (_count))	\
-	   : [x] "r" ((word) (_x)))
-#else
-#define count_leading_zeros(_count, _x)		\
-  __asm__ ("dclz %[count],%[x]"			\
-	   : [count] "=r" ((word) (_count))	\
-	   : [x] "r" ((word) (_x)))
-#endif
-
-#endif /* __mips >= 4 */
-
-#endif /* count_leading_zeros */
 
 #if defined (count_leading_zeros)
 always_inline uword
 min_log2 (uword x)
 {
   uword n;
-  count_leading_zeros (n, x);
+  n = count_leading_zeros (x);
   return BITS (uword) - n - 1;
 }
 #else
@@ -305,7 +254,7 @@ log2_first_set (uword x)
 {
   uword result;
 #ifdef count_trailing_zeros
-  count_trailing_zeros (result, x);
+  result = count_trailing_zeros (x);
 #else
   result = min_log2 (first_set (x));
 #endif

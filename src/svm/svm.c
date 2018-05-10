@@ -83,7 +83,7 @@ svm_get_global_region_base_va ()
   unformat_free (&input);
   close (fd);
 
-  count_leading_zeros (bits, end);
+  bits = count_leading_zeros (end);
   bits = 64 - bits;
   if (bits >= 36 && bits <= 48)
     return ((1ul << bits) / 4) - (2 * SVM_GLOBAL_REGION_SIZE);

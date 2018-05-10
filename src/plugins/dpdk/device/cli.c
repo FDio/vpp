@@ -1323,20 +1323,20 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 	xd->hqos_wt[worker_thread_first + i].hqos_field0_slabpos = offset;
 	xd->hqos_wt[worker_thread_first + i].hqos_field0_slabmask = mask;
 	xd->hqos_wt[worker_thread_first + i].hqos_field0_slabshr =
-	  __builtin_ctzll (mask);
+	  count_trailing_zeros (mask);
 	break;
       case 1:
 	xd->hqos_wt[worker_thread_first + i].hqos_field1_slabpos = offset;
 	xd->hqos_wt[worker_thread_first + i].hqos_field1_slabmask = mask;
 	xd->hqos_wt[worker_thread_first + i].hqos_field1_slabshr =
-	  __builtin_ctzll (mask);
+	  count_trailing_zeros (mask);
 	break;
       case 2:
       default:
 	xd->hqos_wt[worker_thread_first + i].hqos_field2_slabpos = offset;
 	xd->hqos_wt[worker_thread_first + i].hqos_field2_slabmask = mask;
 	xd->hqos_wt[worker_thread_first + i].hqos_field2_slabshr =
-	  __builtin_ctzll (mask);
+	  count_trailing_zeros (mask);
       }
 
 done:

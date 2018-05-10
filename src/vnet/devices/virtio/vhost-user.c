@@ -248,8 +248,8 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
   r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x88);
 
   r = _mm_shuffle_epi8 (r, _mm_set_epi64x (0, 0x0e060c040a020800));
-  i = __builtin_ctzll (_mm_movemask_epi8 (r) |
-		       (1 << VHOST_MEMORY_MAX_NREGIONS));
+  i = count_trailing_zeros (_mm_movemask_epi8 (r) |
+			    (1 << VHOST_MEMORY_MAX_NREGIONS));
 
   if (i < vui->nregions)
     {
@@ -275,7 +275,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 
   if (u32)
     {
-      i = __builtin_ctzll (u32);
+      i = count_trailing_zeros (u32);
       goto vhost_map_guest_mem_done;
     }
 
@@ -290,7 +290,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 
   if (u32)
     {
-      i = __builtin_ctzll (u32);
+      i = count_trailing_zeros (u32);
       goto vhost_map_guest_mem_done;
     }
 
@@ -305,7 +305,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 
   if (u32)
     {
-      i = __builtin_ctzll (u32);
+      i = count_trailing_zeros (u32);
       goto vhost_map_guest_mem_done;
     }
 
@@ -318,7 +318,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
   u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 6);
   u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 7);
 
-  i = __builtin_ctzll (u32 | (1 << VHOST_MEMORY_MAX_NREGIONS));
+  i = count_trailing_zeros (u32 | (1 << VHOST_MEMORY_MAX_NREGIONS));
 
 vhost_map_guest_mem_done:
   if (i < vui->nregions)

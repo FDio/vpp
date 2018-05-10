@@ -108,15 +108,20 @@ sparse_vec_index_internal (void *v,
 
   h = sparse_vec_header (v);
   i = sparse_index / BITS (h->is_member_bitmap[0]);
-  b = (uword) 1 << (uword) (sparse_index % BITS (h->is_member_bitmap[0]));
+  b = sparse_index % BITS (h->is_member_bitmap[0]);
 
   ASSERT (i < vec_len (h->is_member_bitmap));
   ASSERT (i < vec_len (h->member_counts));
 
   w = h->is_member_bitmap[i];
-  d = h->member_counts[i] + count_set_bits (w & (b - 1));
 
-  is_member = (w & b) != 0;
+  if (PREDICT_TRUE (maybe_range == 0 && insert == 0 &&
+		    count_trailing_zeros (w) == b))
+    return h->member_counts[i] + 1;
+
+  d = h->member_counts[i] + count_set_bits (w & ((1ULL << b) - 1));
+  is_member = (w & (1ULL << b)) != 0;
+
   if (maybe_range)
     {
       u8 r = h->range_flags[d];
@@ -134,7 +139,7 @@ sparse_vec_index_internal (void *v,
       if (!is_member)
 	{
 	  uword j;
-	  w |= b;
+	  w |= 1ULL << b;
 	  h->is_member_bitmap[i] = w;
 	  for (j = i + 1; j < vec_len (h->member_counts); j++)
 	    h->member_counts[j] += 1;
@@ -170,8 +175,8 @@ sparse_vec_index2 (void *v,
   i0 = si0 / BITS (h->is_member_bitmap[0]);
   i1 = si1 / BITS (h->is_member_bitmap[0]);
 
-  b0 = (uword) 1 << (uword) (si0 % BITS (h->is_member_bitmap[0]));
-  b1 = (uword) 1 << (uword) (si1 % BITS (h->is_member_bitmap[0]));
+  b0 = si0 % BITS (h->is_member_bitmap[0]);
+  b1 = si1 % BITS (h->is_member_bitmap[0]);
 
   ASSERT (i0 < vec_len (h->is_member_bitmap));
   ASSERT (i1 < vec_len (h->is_member_bitmap));
@@ -182,8 +187,16 @@ sparse_vec_index2 (void *v,
   w0 = h->is_member_bitmap[i0];
   w1 = h->is_member_bitmap[i1];
 
-  v0 = w0 & (b0 - 1);
-  v1 = w1 & (b1 - 1);
+  if (PREDICT_TRUE ((count_trailing_zeros (w0) == b0) +
+		    (count_trailing_zeros (w1) == b1) == 2))
+    {
+      *i0_return = h->member_counts[i0] + 1;
+      *i1_return = h->member_counts[i1] + 1;
+      return;
+    }
+
+  v0 = w0 & ((1ULL << b0) - 1);
+  v1 = w1 & ((1ULL << b1) - 1);
 
   /* Speculate that masks will have zero or one bits set. */
   d0 = h->member_counts[i0] + (v0 != 0);
@@ -196,8 +209,8 @@ sparse_vec_index2 (void *v,
       d1 += count_set_bits (v1) - (v1 != 0);
     }
 
-  is_member0 = (w0 & b0) != 0;
-  is_member1 = (w1 & b1) != 0;
+  is_member0 = (w0 & (1ULL << b0)) != 0;
+  is_member1 = (w1 & (1ULL << b1)) != 0;
 
   d0 = is_member0 ? d0 : 0;
   d1 = is_member1 ? d1 : 0;
