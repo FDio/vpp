@@ -21,6 +21,42 @@
 
 proxy_main_t proxy_main;
 
+typedef struct
+{
+  char uri[128];
+  u32 app_index;
+  u32 api_context;
+} proxy_connect_args_t;
+
+static void
+proxy_cb_fn (void *data, u32 data_len)
+{
+  proxy_connect_args_t *pa = (proxy_connect_args_t *) data;
+  vnet_connect_args_t a;
+
+  a.api_context = pa->api_context;
+  a.app_index = pa->app_index;
+  a.uri = pa->uri;
+  vnet_connect_uri (&a);
+}
+
+static void
+proxy_call_main_thread (vnet_connect_args_t * a)
+{
+  if (vlib_get_thread_index () == 0)
+    {
+      vnet_connect_uri (a);
+    }
+  else
+    {
+      proxy_connect_args_t args;
+      args.api_context = a->api_context;
+      args.app_index = a->app_index;
+      clib_memcpy (args.uri, a->uri, vec_len (a->uri));
+      vl_api_rpc_call_main_thread (proxy_cb_fn, (u8 *) & args, sizeof (args));
+    }
+}
+
 static void
 delete_proxy_session (stream_session_t * s, int is_active_open)
 {
@@ -46,7 +82,7 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
 			is_active_open ? "active open" : "server",
 			handle, handle);
 	}
-      else
+      else if (!pool_is_free_index (pm->sessions, p[0]))
 	{
 	  ps = pool_elt_at_index (pm->sessions, p[0]);
 	  if (ps->vpp_server_handle != ~0)
@@ -66,7 +102,7 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
 			is_active_open ? "active open" : "server",
 			handle, handle);
 	}
-      else
+      else if (!pool_is_free_index (pm->sessions, p[0]))
 	{
 	  ps = pool_elt_at_index (pm->sessions, p[0]);
 	  if (ps->vpp_server_handle != ~0)
@@ -175,11 +211,11 @@ proxy_rx_callback (stream_session_t * s)
        */
       if (svm_fifo_set_event (active_open_tx_fifo))
 	{
+	  u32 ao_thread_index = active_open_tx_fifo->master_thread_index;
 	  evt.fifo = active_open_tx_fifo;
 	  evt.event_type = FIFO_EVENT_APP_TX;
-	  if (svm_queue_add
-	      (pm->active_open_event_queue[thread_index], (u8 *) & evt,
-	       0 /* do wait for mutex */ ))
+	  if (svm_queue_add (pm->active_open_event_queue[ao_thread_index],
+			     (u8 *) & evt, 0 /* do wait for mutex */ ))
 	    clib_warning ("failed to enqueue tx evt");
 	}
     }
@@ -220,7 +256,7 @@ proxy_rx_callback (stream_session_t * s)
       a->uri = (char *) pm->client_uri;
       a->api_context = proxy_index;
       a->app_index = pm->active_open_app_index;
-      vnet_connect_uri (a);
+      proxy_call_main_thread (a);
     }
 
   return 0;
@@ -320,21 +356,20 @@ active_open_rx_callback (stream_session_t * s)
 {
   proxy_main_t *pm = &proxy_main;
   session_fifo_event_t evt;
-  svm_fifo_t *server_rx_fifo;
-  u32 thread_index = vlib_get_thread_index ();
+  svm_fifo_t *proxy_tx_fifo;
 
-  server_rx_fifo = s->server_rx_fifo;
+  proxy_tx_fifo = s->server_rx_fifo;
 
   /*
    * Send event for server tx fifo
    */
-  if (svm_fifo_set_event (server_rx_fifo))
+  if (svm_fifo_set_event (proxy_tx_fifo))
     {
-      evt.fifo = server_rx_fifo;
+      u32 p_thread_index = proxy_tx_fifo->master_thread_index;
+      evt.fifo = proxy_tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      if (svm_queue_add
-	  (pm->server_event_queue[thread_index], (u8 *) & evt,
-	   0 /* do wait for mutex */ ))
+      if (svm_queue_add (pm->server_event_queue[p_thread_index], (u8 *) & evt,
+			 0 /* do wait for mutex */ ))
 	clib_warning ("failed to enqueue server rx evt");
     }
 
@@ -534,7 +569,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "server-uri %s", &pm->server_uri))
 	;
       else if (unformat (input, "client-uri %s", &pm->client_uri))
-	;
+	pm->client_uri = format (0, "%s%c", pm->client_uri, 0);
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
