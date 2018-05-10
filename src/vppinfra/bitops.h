@@ -44,6 +44,13 @@
 always_inline uword
 count_set_bits (uword x)
 {
+#ifdef __POPCNT__
+#if uword_bits == 64
+  return __builtin_popcountll (x);
+#else
+  return __builtin_popcount (x);
+#endif
+#else
 #if uword_bits == 64
   const uword c1 = 0x5555555555555555;
   const uword c2 = 0x3333333333333333;
@@ -71,6 +78,7 @@ count_set_bits (uword x)
 #endif
 
   return x & (2 * BITS (uword) - 1);
+#endif
 }
 
 /* Based on "Hacker's Delight" code from GLS. */
