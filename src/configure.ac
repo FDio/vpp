@@ -135,6 +135,7 @@ DISABLE_ARG(japi,	[Disable Java API bindings])
 WITHOUT_ARG(libssl,	[Disable libssl])
 WITHOUT_ARG(apicli,	[Disable binary api CLI])
 WITHOUT_ARG(mbedtls,	[Disable mbedtls])
+WITHOUT_ARG(libnuma,	[for non numa architectures])
 
 AC_ARG_WITH(unix,
             AC_HELP_STRING([--with-unix],[Compile unix version of clib]),
@@ -203,6 +204,7 @@ AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
 AC_DEFINE_UNQUOTED(WITH_MBEDTLS,	[${n_with_mbedtls}])
+AC_DEFINE_UNQUOTED(WITH_LIBNUMA,	[${n_with_libnuma}])
 
 
 # Silence following noise:

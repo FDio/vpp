@@ -64,7 +64,7 @@ endif
 endif
 
 # Disable the unused plugins in order to decrease the VPP pacakage size.
-vpp_configure_args_dpaa = --without-ipv6sr --with-pre-data=128
+vpp_configure_args_dpaa = --without-ipv6sr --with-pre-data=128 --without-libnuma
 
 # Other optional vpp_configure_args
 ifneq ($(VPP_CFG_ARGS),)
