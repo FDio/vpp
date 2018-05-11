@@ -289,9 +289,6 @@ typedef struct
   /* pool of lacp neighbors */
   slave_if_t *neighbors;
 
-  /* rapidly find a neighbor by vlib software interface index */
-  uword *neighbor_by_sw_if_index;
-
   /* rapidly find a bond by vlib software interface index */
   uword *bond_by_sw_if_index;
 
@@ -303,6 +300,8 @@ typedef struct
   u8 lacp_plugin_loaded;
 
   lacp_enable_disable_func lacp_enable_disable;
+
+  uword *slave_by_sw_if_index;
 } bond_main_t;
 
 /* bond packet trace capture */
@@ -439,13 +438,15 @@ bond_get_slave_by_sw_if_index (u32 sw_if_index)
 {
   bond_main_t *bm = &bond_main;
   slave_if_t *sif = 0;
-  uword *p;
+  uword p;
 
-  p = hash_get (bm->neighbor_by_sw_if_index, sw_if_index);
-  if (p)
+  if (sw_if_index < vec_len (bm->slave_by_sw_if_index))
     {
-      sif = pool_elt_at_index (bm->neighbors, p[0]);
+      p = bm->slave_by_sw_if_index[sw_if_index];
+      if (p)
+	sif = pool_elt_at_index (bm->neighbors, p >> 1);
     }
+
   return sif;
 }
 
