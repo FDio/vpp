@@ -105,9 +105,9 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	{
 	  if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
-	    rte_eth_promiscuous_enable (xd->device_index);
+	    rte_eth_promiscuous_enable (xd->device_dpdk_port_index);
 	  else
-	    rte_eth_promiscuous_disable (xd->device_index);
+	    rte_eth_promiscuous_disable (xd->device_dpdk_port_index);
 	}
     }
   else if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags))
@@ -252,7 +252,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
-  for (i = 0; i < nports; i++)
+  /* *INDENT-OFF* */
+  RTE_ETH_FOREACH_DEV(i)
     {
       u8 addr[6];
       u8 vlan_strip = 0;
@@ -504,8 +505,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (xd->tx_q_used < tm->n_vlib_mains)
 	dpdk_device_lock_init (xd);
 
-      xd->device_index = xd - dm->devices;
-      ASSERT (i == xd->device_index);
+      xd->device_dpdk_port_index = i;
+      xd->device_array_port_index = xd - dm->devices;
       xd->per_interface_next_index = ~0;
 
       /* assign interface to input thread */
@@ -540,7 +541,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  dpdk_device_and_queue_t *dq;
 	  vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	  dq->device = xd->device_index;
+	  dq->device = xd->device_array_port_index;
 	  dq->queue_id = 0;
 	}
 
@@ -548,7 +549,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
 
       error = ethernet_register_interface
-	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
+	(dm->vnet_main, dpdk_device_class.index, xd->device_array_port_index,
 	 /* ethernet address */ addr,
 	 &xd->hw_if_index, dpdk_flag_change);
       if (error)
@@ -618,12 +619,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  int i;
 	  q = 0;
-	  /* *INDENT-OFF* */
 	  clib_bitmap_foreach (i, devconf->workers, ({
 	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
 					     vdm->first_worker_thread_index + i);
 	  }));
-	  /* *INDENT-ON* */
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
@@ -681,10 +680,10 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (vlan_strip)
 	{
 	  int vlan_off;
-	  vlan_off = rte_eth_dev_get_vlan_offload (xd->device_index);
+	  vlan_off = rte_eth_dev_get_vlan_offload (xd->device_dpdk_port_index);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
 	  xd->port_conf.rxmode.hw_vlan_strip = vlan_off;
-	  if (rte_eth_dev_set_vlan_offload (xd->device_index, vlan_off) == 0)
+	  if (rte_eth_dev_set_vlan_offload (xd->device_dpdk_port_index, vlan_off) == 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
 	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
@@ -696,8 +695,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	clib_warning ("hi NULL");
 
-      rte_eth_dev_set_mtu (xd->device_index, mtu);
+      rte_eth_dev_set_mtu (xd->device_dpdk_port_index, mtu);
     }
+  /* *INDENT-ON* */
 
   if (nb_desc > dm->conf->num_mbufs)
     dpdk_log_err ("%d mbufs allocated but total rx/tx ring size is %d\n",
@@ -1368,7 +1368,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
   memset (&xd->link, 0, sizeof (xd->link));
-  rte_eth_link_get_nowait (xd->device_index, &xd->link);
+  rte_eth_link_get_nowait (xd->device_dpdk_port_index, &xd->link);
 
   if (LINK_STATE_ELOGS)
     {
@@ -1500,6 +1500,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
+  int j;
 
   error = dpdk_lib_init (dm);
 
@@ -1526,10 +1527,19 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     int nports = rte_eth_dev_count ();
     if (nports > 0)
       {
-	for (i = 0; i < nports; i++)
+	/* *INDENT-OFF* */
+	RTE_ETH_FOREACH_DEV(i)
 	  {
-	    xd = &dm->devices[i];
-	    ASSERT (i == xd->device_index);
+	    xd = NULL;
+	    for (j = 0; j < nports; j++)
+	      {
+		if (dm->devices[j].device_dpdk_port_index == i)
+		  {
+		    xd = &dm->devices[j];
+		  }
+	      }
+	    ASSERT (xd != NULL);
+
 	    if (xd->pmd == VNET_DPDK_PMD_BOND)
 	      {
 		u8 addr[6];
@@ -1616,6 +1626,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		  }
 	      }
 	  }
+	/* *INDENT-ON* */
       }
   }
 
