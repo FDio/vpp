@@ -142,7 +142,7 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   bif->port_number_bitmap =
     clib_bitmap_set (bif->port_number_bitmap,
 		     ntohs (sif->actor_admin.port_number) - 1, 0);
-  hash_unset (bm->neighbor_by_sw_if_index, sif->sw_if_index);
+  bm->slave_by_sw_if_index[sif->sw_if_index] = 0;
   vec_free (sif->last_marker_pkt);
   vec_free (sif->last_rx_pkt);
   vec_foreach_index (i, bif->slaves)
@@ -451,8 +451,15 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   else
     sif->ttl_in_seconds = LACP_SHORT_TIMOUT_TIME;
 
-  hash_set (bm->neighbor_by_sw_if_index, sif->sw_if_index,
-	    sif - bm->neighbors);
+  vec_validate_aligned (bm->slave_by_sw_if_index, sif->sw_if_index,
+			CLIB_CACHE_LINE_BYTES);
+  /*
+   * sif - bm->neighbors may be 0
+   * Left shift it by 1 bit to distinguish the valid entry that we actually
+   * store from the null entries
+   */
+  bm->slave_by_sw_if_index[sif->sw_if_index] =
+    (uword) (((sif - bm->neighbors) << 1) | 1);
   vec_add1 (bif->slaves, sif->sw_if_index);
 
   sif_hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
@@ -726,7 +733,7 @@ bond_cli_init (vlib_main_t * vm)
 
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
-  bm->neighbor_by_sw_if_index = hash_create (0, sizeof (uword));
+  vec_validate_aligned (bm->slave_by_sw_if_index, 1, CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
