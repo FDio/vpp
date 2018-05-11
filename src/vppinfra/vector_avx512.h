@@ -69,6 +69,30 @@ u16x32_msb_mask (u16x32 v)
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
 
+/* _extend_to_ (128 to 512) */
+/* *INDENT-OFF* */
+#define _(fs,ts,f,t,in) \
+static_always_inline t							\
+f##_extend_to_##t (f x)							\
+{ return (t) _mm##ts##_cvt##in ((__m##fs##i) x); }
+
+_(128, 512, u8x16, u32x16, epu8_epi32)
+_(128, 512, u8x16, u64x8, epu8_epi64)
+_(128, 512, u16x8, u64x8, epu16_epi64)
+_(128, 512, i8x16, i32x16, epi8_epi32)
+_(128, 512, i8x16, i64x8, epi8_epi64)
+_(128, 512, i16x8, i64x8, epi16_epi64)
+
+_(256, 512, u8x32, u16x32, epu8_epi16)
+_(256, 512, u16x16, u32x16, epu16_epi32)
+_(256, 512, u32x8, u64x8, epu32_epi64)
+_(256, 512, i8x32, i16x32, epi8_epi16)
+_(256, 512, i16x16, i32x16, epi16_epi32)
+_(256, 512, i32x8, i64x8, epi32_epi64)
+
+#undef _
+/* *INDENT-ON* */
+
 #endif /* included_vector_avx512_h */
 /*
  * fd.io coding-style-patch-verification: ON

@@ -269,25 +269,25 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
          so we can prefetch and get it faster later */
 
       off = mb[0]->data_off;
-      next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
+      //next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
       b[0]->current_data = off;
 
       off = mb[1]->data_off;
-      next[1] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
+      //next[1] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[1])->l2_hdr_offset = off;
       b[1]->current_data = off;
 
       off = mb[2]->data_off;
-      next[2] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
+      //next[2] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[2])->l2_hdr_offset = off;
       b[2]->current_data = off;
 
       off = mb[3]->data_off;
-      next[3] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
+      //next[3] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[3])->l2_hdr_offset = off;
       b[3]->current_data = off;
@@ -329,7 +329,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       flags += 1;
 
       off = mb[0]->data_off;
-      next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
+      //next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
       off -= RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
       b[0]->current_data = off;
@@ -459,7 +459,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   struct rte_mbuf **mb;
   vlib_buffer_t *b0;
-  int known_next = 0;
+  int known_next = 1;
   u16 *next;
   u8 or_flags;
   u32 n;

@@ -129,6 +129,7 @@ libvnet_la_SOURCES +=				\
  vnet/ethernet/p2p_ethernet_api.c
 
 libvnet_multiversioning_sources +=		\
+ vnet/ethernet/node.c				\
  vnet/l2/l2_output.c
 
 nobase_include_HEADERS +=			\
