@@ -18,27 +18,27 @@ a high bandwidth transmission medium and create a fault-tolerant link.
 create bond mode lacp [hw-addr <mac-address>] [load-balance { l2 | l23 | l34 }]
 
 2. Enslave the physical interface to the bond
-enslave interface <interface> to <bond-interface-name> [passive] [long-timeout]"
+bond add <bond-interface-name> <slave-interface> [passive] [long-timeout]"
 
 3. Delete the bond interface
 delete bond {<interface> | sw_if_index <sw_idx>}
 
 4. Detach the slave interface from the bond
-detach interface <interface>
+bond del <slave-interface>
 
 ### Configuration example
 
 ```
 create bond mode lacp
 set interface state BondEthernet0 up
-enslave interface TenGigabitEthernet7/0/0 to BondEthernet1
-enslave interface TenGigabitEthernet7/0/1 to BondEthernet1
-enslave interface TenGigabitEthernet5/0/0 to BondEthernet1
-enslave interface TenGigabitEthernet5/0/1 to BondEthernet1
+bond add BondEthernet0 TenGigabitEthernet7/0/0
+bond add BondEthernet0 TenGigabitEthernet7/0/1
+bond add BondEthernet0 TenGigabitEthernet5/0/0
+bond add BondEthernet0 TenGigabitEthernet5/0/1
 ```
 
 ```
-detach interface TenGigabitEthernet5/0/1
+bond del TenGigabitEthernet5/0/1
 ```
 
 ```

@@ -30,6 +30,7 @@
 #define LB_PLUGIN_LB_LBHASH_H_
 
 #include <vnet/vnet.h>
+#include <vppinfra/lb_hash_hash.h>
 
 #if defined (__SSE4_2__)
 #include <immintrin.h>
@@ -100,27 +101,6 @@ void lb_hash_free(lb_hash_t *h)
   u8 *mem = (u8 *)h;
   vec_free(mem);
 }
-
-#if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
-static_always_inline
-u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
-{
-  u64 val = 0;
-  val = crc32_u64(val, k0);
-  val = crc32_u64(val, k1);
-  val = crc32_u64(val, k2);
-  val = crc32_u64(val, k3);
-  val = crc32_u64(val, k4);
-  return (u32) val;
-}
-#else
-static_always_inline
-u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
-{
-  u64 tmp = k0 ^ k1 ^ k2 ^ k3 ^ k4;
-  return (u32)clib_xxhash (tmp);
-}
-#endif
 
 static_always_inline
 void lb_hash_prefetch_bucket(lb_hash_t *ht, u32 hash)
