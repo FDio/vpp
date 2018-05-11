@@ -687,6 +687,33 @@ user_session_increment(snat_main_t *sm, snat_user_t *u, u8 is_static)
 }
 
 always_inline void
+nat44_delete_session(snat_main_t * sm, snat_session_t * ses, u32 thread_index)
+{
+  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
+                                                       thread_index);
+  clib_bihash_kv_8_8_t kv, value;
+  snat_user_key_t u_key;
+  snat_user_t *u;
+  u_key.addr = ses->in2out.addr;
+  u_key.fib_index = ses->in2out.fib_index;
+  kv.key = u_key.as_u64;
+  if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+    {
+      u = pool_elt_at_index (tsm->users, value.value);
+      if (snat_is_session_static(ses))
+        u->nstaticsessions--;
+      else
+        u->nsessions--;
+    }
+  clib_dlist_remove (tsm->list_pool, ses->per_user_index);
+  pool_put_index (tsm->list_pool, ses->per_user_index);
+  pool_put (tsm->sessions, ses);
+}
+
+/** \brief Set TCP session stet.
+    @return 1 if session was closed, otherwise 0
+*/
+always_inline int
 nat44_set_tcp_session_state(snat_main_t * sm, snat_session_t * ses,
                             tcp_header_t * tcp, u32 thread_index)
 {
@@ -704,7 +731,11 @@ nat44_set_tcp_session_state(snat_main_t * sm, snat_session_t * ses,
     {
       nat_free_session_data (sm, ses, thread_index);
       ses->state = SNAT_SESSION_TCP_CLOSED;
+      nat44_delete_session (sm, ses, thread_index);
+      return 1;
     }
+
+  return 0;
 }
 
 #endif /* __included_snat_h__ */
