@@ -136,19 +136,11 @@ class TestBondInterface(VppTestCase):
                 found = 1
         self.assertEqual(found, 1)
 
-        # pg0 tx bytes = 142
-        intfs = self.vapi.cli("show interface pg0").split("\n")
+        # BondEthernet0 tx bytes = 284
+        intfs = self.vapi.cli("show interface BondEthernet0").split("\n")
         found = 0
         for intf in intfs:
-            if "tx bytes" in intf and "142" in intf:
-                found = 1
-        self.assertEqual(found, 1)
-
-        # pg0 tx bytes = 142
-        intfs = self.vapi.cli("show interface pg1").split("\n")
-        found = 0
-        for intf in intfs:
-            if "tx bytes" in intf and "142" in intf:
+            if "tx bytes" in intf and "284" in intf:
                 found = 1
         self.assertEqual(found, 1)
 

@@ -23,6 +23,7 @@
 #include <x86intrin.h>
 
 #define crc32_u64 _mm_crc32_u64
+#define crc32_u32 _mm_crc32_u32
 
 static_always_inline u32
 clib_crc32c (u8 * s, int len)
@@ -56,6 +57,7 @@ clib_crc32c (u8 * s, int len)
 
 
 #define crc32_u64 __crc32cd
+#define crc32_u32 __crc32cw
 
 static_always_inline u32
 clib_crc32c (u8 * s, int len)
