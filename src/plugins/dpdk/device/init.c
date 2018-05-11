@@ -503,6 +503,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      break;
 
+	    case VNET_DPDK_PMD_FAILSAFE:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_FAILSAFE;
+	      xd->port_conf.intr_conf.lsc = 1;
+	      break;
+
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }
@@ -632,6 +637,26 @@ dpdk_lib_init (dpdk_main_t * dm)
 		}
 	    }
 	}
+
+      if (xd->pmd == VNET_DPDK_PMD_FAILSAFE)
+	{
+	  /* failsafe device numerables are reported with active device only,
+	   * need to query the mtu for current device setup to overwrite
+	   * reported value.
+	   */
+	  uint16_t dev_mtu;
+	  if (!rte_eth_dev_get_mtu (i, &dev_mtu))
+	    {
+	      mtu = dev_mtu;
+	      max_rx_frame = mtu + sizeof (ethernet_header_t);
+
+	      if (xd->port_conf.rxmode.hw_strip_crc)
+		{
+		  max_rx_frame += 4;
+		}
+	    }
+	}
+
       /*Set port rxmode config */
       xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
 

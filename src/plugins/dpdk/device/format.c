@@ -373,7 +373,7 @@ format_dpdk_device_type (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PMD_FAILSAFE:
-      dev_type = "Failsafe Ethernet";
+      dev_type = "FailsafeEthernet";
       break;
 
     case VNET_DPDK_PMD_LIOVF_ETHER:
