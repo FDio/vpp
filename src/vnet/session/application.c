@@ -1437,8 +1437,8 @@ format_application (u8 * s, va_list * args)
     {
       if (verbose)
 	s = format (s, "%-10s%-20s%-15s%-15s%-15s%-15s%-15s", "Index", "Name",
-		    "API Client", "Namespace", "Add seg size", "Rx fifo size",
-		    "Tx fifo size");
+		    "API Client", "Namespace", "Add seg size", "Rx-f size",
+		    "Tx-f size");
       else
 	s = format (s, "%-10s%-20s%-15s%-40s", "Index", "Name", "API Client",
 		    "Namespace");
@@ -1449,12 +1449,13 @@ format_application (u8 * s, va_list * args)
   app_ns_name = app_namespace_id_from_index (app->ns_index);
   props = application_segment_manager_properties (app);
   if (verbose)
-    s = format (s, "%-10d%-20s%-15d%-15d%-15d%-15d%-15d", app->index,
+    s = format (s, "%-10u%-20s%-15d%-15u%-15U%-15U%-15U", app->index,
 		app_name, app->api_client_index, app->ns_index,
-		props->add_segment_size, props->rx_fifo_size,
+		format_memory_size, props->add_segment_size,
+		format_memory_size, props->rx_fifo_size, format_memory_size,
 		props->tx_fifo_size);
   else
-    s = format (s, "%-10d%-20s%-15d%-40s", app->index, app_name,
+    s = format (s, "%-10u%-20s%-15d%-40s", app->index, app_name,
 		app->api_client_index, app_ns_name);
   return s;
 }
