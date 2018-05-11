@@ -65,7 +65,7 @@ get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   *xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  rte_eth_dev_info_get ((*xd)->device_index, &dev_info);
+  rte_eth_dev_info_get ((*xd)->port_id, &dev_info);
   if (dev_info.pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
@@ -1283,7 +1283,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  rte_eth_dev_info_get (xd->device_index, &dev_info);
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
   if (dev_info.pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
@@ -1474,7 +1474,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  rte_eth_dev_info_get (xd->device_index, &dev_info);
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
   if (dev_info.pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
@@ -1884,7 +1884,7 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  rte_eth_dev_info_get (xd->device_index, &dev_info);
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
   if (dev_info.pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;

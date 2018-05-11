@@ -474,7 +474,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* get up to DPDK_RX_BURST_SZ buffers from PMD */
   while (n_rx_packets < DPDK_RX_BURST_SZ)
     {
-      n = rte_eth_rx_burst (xd->device_index, queue_id,
+      n = rte_eth_rx_burst (xd->port_id, queue_id,
 			    ptd->mbufs + n_rx_packets,
 			    DPDK_RX_BURST_SZ - n_rx_packets);
       n_rx_packets += n;

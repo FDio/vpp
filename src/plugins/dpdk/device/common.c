@@ -31,11 +31,9 @@ void
 dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {
   dpdk_log_err ("Interface %U error %d: %s",
-		format_dpdk_device_name, xd->device_index, rv,
-		rte_strerror (rv));
+		format_dpdk_device_name, xd->port_id, rv, rte_strerror (rv));
   xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s",
-				  str, xd->device_index, rv,
-				  rte_strerror (rv));
+				  str, xd->port_id, rv, rte_strerror (rv));
 }
 
 void
@@ -68,7 +66,7 @@ dpdk_device_setup (dpdk_device_t * xd)
 	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_NONE;
     }
 
-  rv = rte_eth_dev_configure (xd->device_index, xd->rx_q_used,
+  rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used,
 			      xd->tx_q_used, &xd->port_conf);
 
   if (rv < 0)
@@ -80,13 +78,16 @@ dpdk_device_setup (dpdk_device_t * xd)
   /* Set up one TX-queue per worker thread */
   for (j = 0; j < xd->tx_q_used; j++)
     {
-      rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
-				   xd->cpu_socket, &xd->tx_conf);
+      rv =
+	rte_eth_tx_queue_setup (xd->port_id, j, xd->nb_tx_desc,
+				xd->cpu_socket, &xd->tx_conf);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
-				     SOCKET_ID_ANY, &xd->tx_conf);
+	rv =
+	  rte_eth_tx_queue_setup (xd->port_id, j,
+				  xd->nb_tx_desc, SOCKET_ID_ANY,
+				  &xd->tx_conf);
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
     }
@@ -101,15 +102,17 @@ dpdk_device_setup (dpdk_device_t * xd)
       unsigned lcore = vlib_worker_threads[tidx].lcore_id;
       u16 socket_id = rte_lcore_to_socket_id (lcore);
 
-      rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
-				   xd->cpu_socket, 0,
-				   dm->pktmbuf_pools[socket_id]);
+      rv =
+	rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
+				xd->cpu_socket, 0,
+				dm->pktmbuf_pools[socket_id]);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
-				     SOCKET_ID_ANY, 0,
-				     dm->pktmbuf_pools[socket_id]);
+	rv =
+	  rte_eth_rx_queue_setup (xd->port_id, j,
+				  xd->nb_rx_desc, SOCKET_ID_ANY, 0,
+				  dm->pktmbuf_pools[socket_id]);
 
       privp = rte_mempool_get_priv (dm->pktmbuf_pools[socket_id]);
       xd->buffer_pool_for_queue[j] = privp->buffer_pool_index;
@@ -121,7 +124,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (vec_len (xd->errors))
     goto error;
 
-  rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
+  rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     dpdk_device_start (xd);
@@ -144,7 +147,7 @@ dpdk_device_start (dpdk_device_t * xd)
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
 
-  rv = rte_eth_dev_start (xd->device_index);
+  rv = rte_eth_dev_start (xd->port_id);
 
   if (rv)
     {
@@ -154,7 +157,7 @@ dpdk_device_start (dpdk_device_t * xd)
 
   if (xd->default_mac_address)
     rv =
-      rte_eth_dev_default_mac_addr_set (xd->device_index,
+      rte_eth_dev_default_mac_addr_set (xd->port_id,
 					(struct ether_addr *)
 					xd->default_mac_address);
 
@@ -162,16 +165,16 @@ dpdk_device_start (dpdk_device_t * xd)
     dpdk_device_error (xd, "rte_eth_dev_default_mac_addr_set", rv);
 
   if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
-    rte_eth_promiscuous_enable (xd->device_index);
+    rte_eth_promiscuous_enable (xd->port_id);
   else
-    rte_eth_promiscuous_disable (xd->device_index);
+    rte_eth_promiscuous_disable (xd->port_id);
 
-  rte_eth_allmulticast_enable (xd->device_index);
+  rte_eth_allmulticast_enable (xd->port_id);
 
   if (xd->pmd == VNET_DPDK_PMD_BOND)
     {
       dpdk_portid_t slink[16];
-      int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
+      int nlink = rte_eth_bond_slaves_get (xd->port_id, slink, 16);
       while (nlink >= 1)
 	{
 	  dpdk_portid_t dpdk_port = slink[--nlink];
@@ -180,7 +183,7 @@ dpdk_device_start (dpdk_device_t * xd)
     }
 
   dpdk_log_info ("Interface %U started",
-		 format_dpdk_device_name, xd->device_index);
+		 format_dpdk_device_name, xd->port_id);
 }
 
 void
@@ -189,14 +192,14 @@ dpdk_device_stop (dpdk_device_t * xd)
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
 
-  rte_eth_allmulticast_disable (xd->device_index);
-  rte_eth_dev_stop (xd->device_index);
+  rte_eth_allmulticast_disable (xd->port_id);
+  rte_eth_dev_stop (xd->port_id);
 
   /* For bonded interface, stop slave links */
   if (xd->pmd == VNET_DPDK_PMD_BOND)
     {
       dpdk_portid_t slink[16];
-      int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
+      int nlink = rte_eth_bond_slaves_get (xd->port_id, slink, 16);
       while (nlink >= 1)
 	{
 	  dpdk_portid_t dpdk_port = slink[--nlink];
@@ -204,7 +207,7 @@ dpdk_device_stop (dpdk_device_t * xd)
 	}
     }
   dpdk_log_info ("Interface %U stopped",
-		 format_dpdk_device_name, xd->device_index);
+		 format_dpdk_device_name, xd->port_id);
 }
 
 /* Even type for send_garp_na_process */

@@ -65,14 +65,13 @@ dpdk_get_xstats (dpdk_device_t * xd)
   if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     return;
   int len;
-  if ((len = rte_eth_xstats_get (xd->device_index, NULL, 0)) > 0)
+  if ((len = rte_eth_xstats_get (xd->port_id, NULL, 0)) > 0)
     {
       vec_validate (xd->xstats, len - 1);
       vec_validate (xd->last_cleared_xstats, len - 1);
 
       len =
-	rte_eth_xstats_get (xd->device_index, xd->xstats,
-			    vec_len (xd->xstats));
+	rte_eth_xstats_get (xd->port_id, xd->xstats, vec_len (xd->xstats));
 
       ASSERT (vec_len (xd->xstats) == len);
       ASSERT (vec_len (xd->last_cleared_xstats) == len);
@@ -98,7 +97,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
   clib_memcpy (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));
-  rte_eth_stats_get (xd->device_index, &xd->stats);
+  rte_eth_stats_get (xd->port_id, &xd->stats);
 
   /* maybe bump interface rx no buffer counter */
   if (PREDICT_FALSE (xd->stats.rx_nombuf != xd->last_stats.rx_nombuf))

@@ -51,7 +51,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  error = rte_eth_dev_default_mac_addr_set (xd->device_index,
+  error = rte_eth_dev_default_mac_addr_set (xd->port_id,
 					    (struct ether_addr *) address);
 
   if (error)
@@ -226,7 +226,7 @@ static_always_inline
       else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  /* no wrap, transmit in one burst */
-	  n_sent = rte_eth_tx_burst (xd->device_index, queue_id, mb, n_left);
+	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
 	}
       else
 	{
@@ -248,8 +248,8 @@ static_always_inline
 					 xd->hw_if_index)->tx_node_index;
 
 	  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_BAD_RETVAL, 1);
-	  clib_warning ("rte_eth_tx_burst[%d]: error %d", xd->device_index,
-			n_sent);
+	  clib_warning ("rte_eth_tx_burst[%d]: error %d",
+			xd->port_id, n_sent);
 	  return n_left;	// untransmitted packets
 	}
       n_left -= n_sent;
@@ -629,25 +629,25 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
       goto done;
     }
 
-  vlan_offload = rte_eth_dev_get_vlan_offload (xd->device_index);
+  vlan_offload = rte_eth_dev_get_vlan_offload (xd->port_id);
   vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
 
-  if ((r = rte_eth_dev_set_vlan_offload (xd->device_index, vlan_offload)))
+  if ((r = rte_eth_dev_set_vlan_offload (xd->port_id, vlan_offload)))
     {
       xd->num_subifs = prev_subifs;
       err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
-			       xd->device_index, r);
+			       xd->port_id, r);
       goto done;
     }
 
 
   if ((r =
-       rte_eth_dev_vlan_filter (xd->device_index, t->sub.eth.outer_vlan_id,
-				is_add)))
+       rte_eth_dev_vlan_filter (xd->port_id,
+				t->sub.eth.outer_vlan_id, is_add)))
     {
       xd->num_subifs = prev_subifs;
       err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
-			       xd->device_index, r);
+			       xd->port_id, r);
       goto done;
     }
 
