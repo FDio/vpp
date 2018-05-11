@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59352528_505573d8",
+        "filename": "src/vlib/main.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-05-11T02:31:24Z",
+      "side": 1,
+      "message": "Maybe move this to clib_time? And perhaps call it CLIB_TIME_MAX?",
+      "range": {
+        "startLine": 227,
+        "startChar": 8,
+        "endLine": 227,
+        "endChar": 16
+      },
+      "revId": "8fae793eef5e8667400c5c76f8b9dbafa90fd1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
