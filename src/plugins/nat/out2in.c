@@ -410,7 +410,8 @@ create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
   if (ip->protocol == IP_PROTOCOL_TCP)
     {
       tcp_header_t *tcp = ip4_next_header(ip);
-      nat44_set_tcp_session_state (sm, s, tcp, thread_index);
+      if (nat44_set_tcp_session_state (sm, s, tcp, thread_index))
+        return;
     }
   /* Per-user LRU list maintenance */
   clib_dlist_remove (tsm->list_pool, s->per_user_index);
@@ -1043,6 +1044,8 @@ snat_out2in_lb (snat_main_t *sm,
                           src_address);
   ip->checksum = ip_csum_fold (sum);
 
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
+
   if (PREDICT_TRUE(proto == SNAT_PROTOCOL_TCP))
     {
       old_port = tcp->dst_port;
@@ -1063,7 +1066,8 @@ snat_out2in_lb (snat_main_t *sm,
           ip->src_address.as_u32 = s->ext_host_nat_addr.as_u32;
         }
       tcp->checksum = ip_csum_fold(sum);
-      nat44_set_tcp_session_state (sm, s, tcp, thread_index);
+      if (nat44_set_tcp_session_state (sm, s, tcp, thread_index))
+        return s;
     }
   else
     {
@@ -1075,8 +1079,6 @@ snat_out2in_lb (snat_main_t *sm,
         }
       udp->checksum = 0;
     }
-
-  vnet_buffer(b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
 
   /* Accounting */
   s->last_heard = now;
@@ -1306,7 +1308,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
               tcp0->checksum = ip_csum_fold(sum0);
-              nat44_set_tcp_session_state (sm, s0, tcp0, thread_index);
+              if (nat44_set_tcp_session_state (sm, s0, tcp0, thread_index))
+                goto trace0;
             }
           else
             {
@@ -1485,7 +1488,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
               tcp1->checksum = ip_csum_fold(sum1);
-              nat44_set_tcp_session_state (sm, s1, tcp1, thread_index);
+              if (nat44_set_tcp_session_state (sm, s1, tcp1, thread_index))
+                goto trace1;
             }
           else
             {
@@ -1700,7 +1704,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
               tcp0->checksum = ip_csum_fold(sum0);
-              nat44_set_tcp_session_state (sm, s0, tcp0, thread_index);
+              if (nat44_set_tcp_session_state (sm, s0, tcp0, thread_index))
+                goto trace00;
             }
           else
             {
@@ -1969,7 +1974,8 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                                          ip4_header_t /* cheat */,
                                          length /* changed member */);
                   tcp0->checksum = ip_csum_fold(sum0);
-                  nat44_set_tcp_session_state (sm, s0, tcp0, thread_index);
+                  if (nat44_set_tcp_session_state (sm, s0, tcp0, thread_index))
+                    goto trace0;
                 }
               else
                 {
