@@ -90,7 +90,7 @@ bond_sw_if_index_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (PREDICT_TRUE (sif != 0))
     {
-      bif = bond_get_master_by_sw_if_index (sif->group);
+      bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
       if (PREDICT_TRUE (bif != 0))
 	{
 	  if (PREDICT_TRUE (vec_len (bif->slaves) >= 1))
@@ -226,10 +226,10 @@ bond_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    b6 = vlib_get_buffer (vm, from[6]);
 	    b7 = vlib_get_buffer (vm, from[7]);
 
-	    vlib_prefetch_buffer_header (b4, STORE);
-	    vlib_prefetch_buffer_header (b5, STORE);
-	    vlib_prefetch_buffer_header (b6, STORE);
-	    vlib_prefetch_buffer_header (b7, STORE);
+	    vlib_prefetch_buffer_header (b4, LOAD);
+	    vlib_prefetch_buffer_header (b5, LOAD);
+	    vlib_prefetch_buffer_header (b6, LOAD);
+	    vlib_prefetch_buffer_header (b7, LOAD);
 
 	    CLIB_PREFETCH (b4->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	    CLIB_PREFETCH (b5->data, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -314,7 +314,7 @@ bond_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  if (PREDICT_TRUE (n_trace > 0))
 		    {
-		      vlib_trace_buffer (vm, node, next1, b2,
+		      vlib_trace_buffer (vm, node, next2, b2,
 					 0 /* follow_chain */ );
 		      vlib_set_trace_count (vm, node, --n_trace);
 		      t0 = vlib_add_trace (vm, node, b2, sizeof (*t0));
@@ -325,7 +325,7 @@ bond_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		      if (PREDICT_TRUE (n_trace > 0))
 			{
-			  vlib_trace_buffer (vm, node, next1, b2,
+			  vlib_trace_buffer (vm, node, next3, b3,
 					     0 /* follow_chain */ );
 			  vlib_set_trace_count (vm, node, --n_trace);
 			  t0 = vlib_add_trace (vm, node, b3, sizeof (*t0));
@@ -358,7 +358,7 @@ bond_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_buffer_t *p2;
 
 	      p2 = vlib_get_buffer (vm, from[1]);
-	      vlib_prefetch_buffer_header (p2, STORE);
+	      vlib_prefetch_buffer_header (p2, LOAD);
 	      CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 

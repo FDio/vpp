@@ -22,6 +22,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/bonding/node.h>
+#include <vppinfra/lb_hash_hash.h>
 
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
@@ -126,7 +127,7 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
-static inline u32
+static_always_inline u32
 bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     bond_if_t * bif, vlib_buffer_t * b0,
 			     uword slave_count)
@@ -160,29 +161,43 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
   return 0;
 }
 
-static inline u32
+static_always_inline u32
+bond_ip4_l3_hash (u64 * addr, u64 * port)
+{
+  return lb_hash_hash_2 (*addr, *port);
+}
+
+static_always_inline u32
+bond_ip6_l3_hash (u64 * src, u64 * dst, u64 * port)
+{
+  return lb_hash_hash (src[0], src[1], dst[0], dst[1], *port);
+}
+
+static_always_inline u32
+bond_l2_hash (u64 * src, u64 * dst)
+{
+  return lb_hash_hash_2 (*src, *dst);
+}
+
+static_always_inline u32
 bond_load_balance_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
-  u32 a = 0, b = 0, c = 0, t1, t2;
-  u16 t11, t22;
+  u32 c;
+  u64 a = 0, b = 0;
 
-  memcpy (&t1, eth->src_address, sizeof (t1));
-  memcpy (&t11, &eth->src_address[4], sizeof (t11));
-  a = t1 ^ t11;
+  clib_memcpy (&a, eth->src_address, 6);
+  clib_memcpy (&b, eth->dst_address, 6);
+  c = bond_l2_hash (&a, &b);
 
-  memcpy (&t2, eth->dst_address, sizeof (t2));
-  memcpy (&t22, &eth->dst_address[4], sizeof (t22));
-  b = t2 ^ t22;
-
-  hash_v3_mix32 (a, b, c);
-  hash_v3_finalize32 (a, b, c);
-
-  return c % slave_count;
+  if (BOND_MODULO_SHORTCUT (slave_count))
+    return (c & (slave_count - 1));
+  else
+    return c % slave_count;
 }
 
-static inline u16 *
+static_always_inline u16 *
 bond_locate_ethertype (ethernet_header_t * eth)
 {
   u16 *ethertype_p;
@@ -205,7 +220,7 @@ bond_locate_ethertype (ethernet_header_t * eth)
   return ethertype_p;
 }
 
-static inline u32
+static_always_inline u32
 bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
@@ -226,58 +241,52 @@ bond_load_balance_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (ip_version == 0x4)
     {
-      u16 t11, t22;
-      u32 a = 0, b = 0, c = 0, t1, t2;
+      u64 a = 0, b = 0;
+      u32 c;
 
-      memcpy (&t1, eth->src_address, sizeof (t1));
-      memcpy (&t11, &eth->src_address[4], sizeof (t11));
-      a = t1 ^ t11;
-
-      memcpy (&t2, eth->dst_address, sizeof (t2));
-      memcpy (&t22, &eth->dst_address[4], sizeof (t22));
-      b = t2 ^ t22;
-
-      c = ip4->src_address.data_u32 ^ ip4->dst_address.data_u32;
-
-      hash_v3_mix32 (a, b, c);
-      hash_v3_finalize32 (a, b, c);
-
-      return c % slave_count;
+      clib_memcpy (&a, eth->src_address, 6);
+      clib_memcpy (&b, eth->dst_address, 6);
+      a ^= b;
+      c = bond_ip4_l3_hash ((u64 *) & ip4->address_pair, &a);
+      if (BOND_MODULO_SHORTCUT (slave_count))
+	return (c & (slave_count - 1));
+      else
+	return c % slave_count;
     }
   else if (ip_version == 0x6)
     {
-      u64 a, b, c;
-      u64 t1 = 0, t2 = 0;
+      u64 a = 0, b = 0;
+      u32 c;
       ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
 
-      memcpy (&t1, eth->src_address, sizeof (eth->src_address));
-      memcpy (&t2, eth->dst_address, sizeof (eth->dst_address));
-      a = t1 ^ t2;
-
-      b = (ip6->src_address.as_u64[0] ^ ip6->src_address.as_u64[1]);
-      c = (ip6->dst_address.as_u64[0] ^ ip6->dst_address.as_u64[1]);
-
-      hash_mix64 (a, b, c);
-      return c % slave_count;
+      clib_memcpy (&a, eth->src_address, 6);
+      clib_memcpy (&b, eth->dst_address, 6);
+      a ^= b;
+      c =
+	bond_ip6_l3_hash (ip6->src_address.as_u64, ip6->dst_address.as_u64,
+			  &a);
+      if (BOND_MODULO_SHORTCUT (slave_count))
+	return (c & (slave_count - 1));
+      else
+	return c % slave_count;
     }
   return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 }
 
-static inline u32
+static_always_inline u32
 bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       bond_if_t * bif, vlib_buffer_t * b0, uword slave_count)
 {
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
   u8 ip_version;
-  uword is_tcp_udp = 0;
+  uword is_tcp_udp;
   ip4_header_t *ip4;
-  u16 ethertype, *ethertype_p;
+  u16 *ethertype_p;
 
   ethertype_p = bond_locate_ethertype (eth);
-  ethertype = *ethertype_p;
 
-  if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
-      (ethertype != htons (ETHERNET_TYPE_IP6)))
+  if ((*ethertype_p != htons (ETHERNET_TYPE_IP4)) &&
+      (*ethertype_p != htons (ETHERNET_TYPE_IP6)))
     return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 
   ip4 = (ip4_header_t *) (ethertype_p + 1);
@@ -285,29 +294,29 @@ bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (ip_version == 0x4)
     {
-      u32 a = 0, b = 0, c = 0, t1, t2;
+      u64 b;
+      u32 c, t1, t2;
       tcp_header_t *tcp = (void *) (ip4 + 1);
+
       is_tcp_udp = (ip4->protocol == IP_PROTOCOL_TCP) ||
 	(ip4->protocol == IP_PROTOCOL_UDP);
-
-      a = ip4->src_address.data_u32 ^ ip4->dst_address.data_u32;
-
       t1 = is_tcp_udp ? tcp->src : 0;
       t2 = is_tcp_udp ? tcp->dst : 0;
-      b = t1 + (t2 << 16);
-
-      hash_v3_mix32 (a, b, c);
-      hash_v3_finalize32 (a, b, c);
-
-      return c % slave_count;
+      b = t1 ^ t2;
+      c = bond_ip4_l3_hash ((u64 *) & ip4->address_pair, &b);
+      if (BOND_MODULO_SHORTCUT (slave_count))
+	return (c & (slave_count - 1));
+      else
+	return c % slave_count;
     }
   else if (ip_version == 0x6)
     {
-      u64 a, b, c;
-      u64 t1, t2;
+      u64 b;
+      u32 c, t1, t2;
       ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
       tcp_header_t *tcp = (void *) (ip6 + 1);
 
+      is_tcp_udp = 0;
       if (PREDICT_TRUE ((ip6->protocol == IP_PROTOCOL_TCP) ||
 			(ip6->protocol == IP_PROTOCOL_UDP)))
 	{
@@ -325,21 +334,22 @@ bond_load_balance_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
 	    }
 	}
-      a = (ip6->src_address.as_u64[0] ^ ip6->src_address.as_u64[1]);
-      b = (ip6->dst_address.as_u64[0] ^ ip6->dst_address.as_u64[1]);
-
       t1 = is_tcp_udp ? tcp->src : 0;
       t2 = is_tcp_udp ? tcp->dst : 0;
-      c = (t2 << 16) | t1;
-      hash_mix64 (a, b, c);
-
-      return c % slave_count;
+      b = t1 ^ t2;
+      c =
+	bond_ip6_l3_hash (ip6->src_address.as_u64, ip6->dst_address.as_u64,
+			  &b);
+      if (BOND_MODULO_SHORTCUT (slave_count))
+	return (c & (slave_count - 1));
+      else
+	return c % slave_count;
     }
 
   return (bond_load_balance_l2 (vm, node, bif, b0, slave_count));
 }
 
-static inline u32
+static_always_inline u32
 bond_load_balance_round_robin (vlib_main_t * vm,
 			       vlib_node_runtime_t * node,
 			       bond_if_t * bif, vlib_buffer_t * b0,
@@ -351,7 +361,7 @@ bond_load_balance_round_robin (vlib_main_t * vm,
   return bif->lb_rr_last_index;
 }
 
-static inline u32
+static_always_inline u32
 bond_load_balance_active_backup (vlib_main_t * vm,
 				 vlib_node_runtime_t * node,
 				 bond_if_t * bif, vlib_buffer_t * b0,
@@ -445,10 +455,10 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      p6 = vlib_get_buffer (vm, from[6]);
 	      p7 = vlib_get_buffer (vm, from[7]);
 
-	      vlib_prefetch_buffer_header (p4, STORE);
-	      vlib_prefetch_buffer_header (p5, STORE);
-	      vlib_prefetch_buffer_header (p6, STORE);
-	      vlib_prefetch_buffer_header (p7, STORE);
+	      vlib_prefetch_buffer_header (p4, LOAD);
+	      vlib_prefetch_buffer_header (p5, LOAD);
+	      vlib_prefetch_buffer_header (p6, LOAD);
+	      vlib_prefetch_buffer_header (p7, LOAD);
 
 	      CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	      CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -499,19 +509,23 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = sif_if_index2;
 	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = sif_if_index3;
 
-	  if (bif->per_thread_info[thread_index].frame[port] == 0)
+	  if (PREDICT_FALSE ((bif->per_thread_info[thread_index].frame[port]
+			      == 0)))
 	    bif->per_thread_info[thread_index].frame[port] =
 	      vnet_get_frame_to_sw_interface (vnm, sif_if_index);
 
-	  if (bif->per_thread_info[thread_index].frame[port1] == 0)
+	  if (PREDICT_FALSE ((bif->per_thread_info[thread_index].frame[port1]
+			      == 0)))
 	    bif->per_thread_info[thread_index].frame[port1] =
 	      vnet_get_frame_to_sw_interface (vnm, sif_if_index1);
 
-	  if (bif->per_thread_info[thread_index].frame[port2] == 0)
+	  if (PREDICT_FALSE ((bif->per_thread_info[thread_index].frame[port2]
+			      == 0)))
 	    bif->per_thread_info[thread_index].frame[port2] =
 	      vnet_get_frame_to_sw_interface (vnm, sif_if_index2);
 
-	  if (bif->per_thread_info[thread_index].frame[port3] == 0)
+	  if (PREDICT_FALSE ((bif->per_thread_info[thread_index].frame[port3]
+			      == 0)))
 	    bif->per_thread_info[thread_index].frame[port3] =
 	      vnet_get_frame_to_sw_interface (vnm, sif_if_index3);
 
@@ -603,7 +617,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_buffer_t *p2;
 
 	      p2 = vlib_get_buffer (vm, from[1]);
-	      vlib_prefetch_buffer_header (p2, STORE);
+	      vlib_prefetch_buffer_header (p2, LOAD);
 	      CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 
@@ -619,7 +633,8 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 							     b0, slave_count);
 	  sif_if_index = *vec_elt_at_index (bif->active_slaves, port);
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sif_if_index;
-	  if (bif->per_thread_info[thread_index].frame[port] == 0)
+	  if (PREDICT_FALSE
+	      ((bif->per_thread_info[thread_index].frame[port] == 0)))
 	    bif->per_thread_info[thread_index].frame[port] =
 	      vnet_get_frame_to_sw_interface (vnm, sif_if_index);
 	  f = bif->per_thread_info[thread_index].frame[port];
