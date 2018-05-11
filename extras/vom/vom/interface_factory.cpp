@@ -33,7 +33,7 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   std::string name = reinterpret_cast<const char*>(vd.interface_name);
   interface::type_t type = interface::type_t::from_string(name);
   interface::admin_state_t state =
-    interface::admin_state_t::from_int(vd.link_up_down);
+    interface::admin_state_t::from_int(vd.admin_up_down);
   handle_t hdl(vd.sw_if_index);
   l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
   std::string tag = "";
