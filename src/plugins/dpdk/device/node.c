@@ -533,7 +533,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* get up to DPDK_RX_BURST_SZ buffers from PMD */
   while (n_rx_packets < DPDK_RX_BURST_SZ)
     {
-      n = rte_eth_rx_burst (xd->device_index, queue_id,
+      n = rte_eth_rx_burst (xd->device_dpdk_port_index, queue_id,
 			    ptd->mbufs + n_rx_packets,
 			    DPDK_RX_BURST_SZ - n_rx_packets);
       n_rx_packets += n;
@@ -695,7 +695,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 
 	  dpdk_rx_trace_t *t0 = vlib_add_trace (vm, node, b0, sizeof t0[0]);
 	  t0->queue_index = queue_id;
-	  t0->device_index = xd->device_index;
+	  t0->device_index = xd->device_array_port_index;
 	  t0->buffer_index = vlib_get_buffer_index (vm, b0);
 
 	  clib_memcpy (&t0->mb, mb[0], sizeof t0->mb);

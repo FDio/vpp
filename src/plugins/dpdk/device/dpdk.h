@@ -191,6 +191,15 @@ typedef struct
   /* Instance ID */
   dpdk_portid_t device_index;
 
+  /* Instance ID to access internal array when using dpdk plugin.
+   * When not using dpdk, this value is conceptually same as device_index,
+   * but device_index should be used.
+   */
+  dpdk_portid_t device_array_port_index;
+
+  /* Instance ID to call to dpdk APIs when using dpdk plugin. */
+  dpdk_portid_t device_dpdk_port_index;
+
   u32 hw_if_index;
   u32 sw_if_index;
 
