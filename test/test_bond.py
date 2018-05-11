@@ -96,7 +96,7 @@ class TestBondInterface(VppTestCase):
         # generate a packet from pg2 -> BondEthernet0 -> pg1
         # BondEthernet0 TX hashes this packet to pg1
         p2 = (Ether(src=bond0_mac, dst=self.pg2.local_mac) /
-              IP(src=self.pg2.local_ip4, dst="10.10.10.12") /
+              IP(src=self.pg2.local_ip4, dst="10.10.10.13") /
               UDP(sport=1235, dport=1235) /
               Raw('\xa5' * 100))
         self.pg2.add_stream(p2)
@@ -115,7 +115,7 @@ class TestBondInterface(VppTestCase):
         # set up the static arp entries pointing to the BondEthernet0 interface
         # so that it does not try to resolve the ip address
         self.logger.info(self.vapi.cli(
-            "set ip arp static BondEthernet0 10.10.10.12 abcd.abcd.0002"))
+            "set ip arp static BondEthernet0 10.10.10.13 abcd.abcd.0002"))
         self.logger.info(self.vapi.cli(
             "set ip arp static BondEthernet0 10.10.10.11 abcd.abcd.0004"))
 
