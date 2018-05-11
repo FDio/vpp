@@ -63,7 +63,7 @@ typedef struct
   u8 packet_data[32];
 } ethernet_input_trace_t;
 
-static u8 *
+static __clib_unused u8 *
 format_ethernet_input_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
@@ -767,15 +767,355 @@ ethernet_input_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-ethernet_input (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+typedef struct
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_ETHERNET);
+  u8 mac[6];
+} __clib_packed eth_input_mac_t;
+
+typedef struct
+{
+  u16 type;
+  u32 tags[3];
+  u16 pad;
+} __clib_packed eth_input_tags_t;
+
+STATIC_ASSERT_SIZEOF (eth_input_mac_t, 6);
+STATIC_ASSERT_SIZEOF (eth_input_tags_t, 16);
+
+typedef struct
+{
+  u32 sw_if_index;
+  u32 n_packets;
+} eth_input_batch_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  eth_input_mac_t macs[VLIB_FRAME_SIZE + 1];	/* one more as we use 8-byte copy */
+  eth_input_tags_t tags[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  eth_input_batch_t batches[VLIB_FRAME_SIZE];
+  u16 n_batches;
+  u32 last_sw_if_index;
+} eth_input_tmp_data_t;
+
+#include <x86intrin.h>
+static_always_inline void
+copy_hdr_data (vlib_buffer_t ** b, eth_input_mac_t * macs,
+	       eth_input_tags_t * tags, int count)
+{
+  void *p;
+  while (count >= 4)
+    {
+      p = vlib_buffer_get_current (b[0]);
+      clib_memcpy (macs, p, 8);
+      clib_mov16 ((u8 *) tags, p + 12);
+
+      p = vlib_buffer_get_current (b[1]);
+      clib_memcpy (macs, p, 8);
+      clib_mov16 ((u8 *) tags, p + 12);
+
+      p = vlib_buffer_get_current (b[2]);
+      clib_memcpy (macs, p, 8);
+      clib_mov16 ((u8 *) tags, p + 12);
+
+      p = vlib_buffer_get_current (b[3]);
+      clib_memcpy (macs, p, 8);
+      clib_mov16 ((u8 *) tags, p + 12);
+      b += 4;
+      tags += 4;
+      macs += 4;
+      count -= 4;
+    }
+  while (count)
+    {
+      p = vlib_buffer_get_current (b[0]);
+      clib_memcpy (macs, p, 8);
+      clib_mov16 ((u8 *) tags, p + 12);
+      b += 1;
+      tags += 1;
+      macs += 1;
+      count -= 1;
+    }
 }
 
-static uword
+static_always_inline void
+eth_input_process_l2 (u16 * nexts, u32 count, u16 next)
+{
+#ifdef CLIB_HAVE_VEC256
+  u16x16 x = u16x16_splat (next);
+  while (count >= 16)
+    {
+      u16x16_store_unaligned (x, nexts);
+      nexts += 16;
+      count -= 16;
+    }
+#endif
+  while (count--)
+    nexts++[0] = next;
+}
+
+static_always_inline eth_input_batch_t *
+eth_input_batch_add (eth_input_tmp_data_t * t, vlib_buffer_t ** b,
+		     eth_input_batch_t * cb, int count)
+{
+  if (count == 4)
+    {
+      u32 x;
+      x = vnet_buffer (b[0])->sw_if_index[VLIB_RX] ^ t->last_sw_if_index;
+      x |= vnet_buffer (b[1])->sw_if_index[VLIB_RX] ^ t->last_sw_if_index;
+      x |= vnet_buffer (b[2])->sw_if_index[VLIB_RX] ^ t->last_sw_if_index;
+      x |= vnet_buffer (b[3])->sw_if_index[VLIB_RX] ^ t->last_sw_if_index;
+
+      if (PREDICT_TRUE (x == 0))
+	{
+	  cb->n_packets += 4;
+	  return cb;
+	}
+    }
+
+  while (count--)
+    {
+      u32 sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      if (PREDICT_FALSE (sw_if_index != t->last_sw_if_index))
+	{
+	  cb = t->batches + t->n_batches++;
+	  cb->sw_if_index = t->last_sw_if_index = sw_if_index;
+	  cb->n_packets = 1;
+	}
+      else
+	cb->n_packets++;
+      b++;
+    }
+  return cb;
+}
+
+#ifdef CLIB_HAVE_VEC256
+always_inline u64x4
+u32x4_to_u64x4 (u32x4 v)
+{
+  return (u64x4) _mm256_cvtepu32_epi64 ((__m128i) v);
+}
+#endif
+
+static_always_inline void
+vlib_get_buffers (vlib_main_t * vm, u32 * bi, vlib_buffer_t ** b, int count)
+{
+#ifdef CLIB_HAVE_VEC256
+  u64x4 off4 = u64x4_splat (buffer_main.buffer_mem_start);
+  /* if count is not const, compiler will not unroll while loop
+     se we maintain two-in-parallel variant */
+  while (count >= 8)
+    {
+      u64x4 b0 = u32x4_to_u64x4 (u32x4_load_unaligned (bi));
+      u64x4 b1 = u32x4_to_u64x4 (u32x4_load_unaligned (bi + 4));
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off4, b);
+      u64x4_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off4,
+			     b + 4);
+      b += 8;
+      bi += 8;
+      count -= 8;
+    }
+#endif
+  while (count >= 4)
+    {
+#ifdef CLIB_HAVE_VEC256
+      u64x4 b0 = u32x4_to_u64x4 (u32x4_load_unaligned (bi));
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off4, b);
+#else
+      b[0] = vlib_get_buffer (vm, bi[0]);
+      b[1] = vlib_get_buffer (vm, bi[1]);
+      b[2] = vlib_get_buffer (vm, bi[2]);
+      b[3] = vlib_get_buffer (vm, bi[3]);
+#endif
+      b += 4;
+      bi += 4;
+      count -= 4;
+    }
+  while (count--)
+    b++[0] = vlib_get_buffer (vm, bi++[0]);
+}
+
+static_always_inline void
+eth_input_prefetch (vlib_buffer_t ** b)
+{
+  vlib_prefetch_buffer_header (b[0], LOAD);
+  CLIB_PREFETCH (b[0]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+  vlib_prefetch_buffer_header (b[1], LOAD);
+  CLIB_PREFETCH (b[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+  vlib_prefetch_buffer_header (b[2], LOAD);
+  CLIB_PREFETCH (b[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+  vlib_prefetch_buffer_header (b[3], LOAD);
+  CLIB_PREFETCH (b[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+static_always_inline void
+vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     u32 * buffers, u16 * nexts, uword count)
+{
+  u32 next_index = node->cached_next_index;
+  while (count)
+    {
+      u32 n_left_to_next;
+      u32 *to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+#ifdef CLIB_HAVE_VEC256
+      while (count >= 16 && n_left_to_next >= 16)
+	{
+	  u16x16 next16 = u16x16_load_unaligned (nexts);
+	  if (u16x16_is_all_equal (next16, next_index))
+	    {
+	      clib_memcpy (to_next, buffers, 16 * sizeof (u32));
+	      to_next += 16;
+	      n_left_to_next -= 16;
+	      buffers += 16;
+	      count -= 16;
+	      nexts += 16;
+	    }
+	  else
+	    {
+	      clib_memcpy (to_next, buffers, 4 * sizeof (u32));
+	      to_next += 4;
+	      n_left_to_next -= 4;
+
+	      vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					       n_left_to_next, buffers[0],
+					       buffers[1], buffers[2],
+					       buffers[3], nexts[0], nexts[1],
+					       nexts[2], nexts[3]);
+	      /* next */
+	      buffers += 4;
+	      count -= 4;
+	      nexts += 4;
+	    }
+	}
+#endif
+      while (count >= 4 && n_left_to_next >= 4)
+	{
+	  clib_memcpy (to_next, buffers, 4 * sizeof (u32));
+	  to_next += 4;
+	  n_left_to_next -= 4;
+
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, buffers[0],
+					   buffers[1], buffers[2], buffers[3],
+					   nexts[0], nexts[1], nexts[2],
+					   nexts[3]);
+	  /* next */
+	  buffers += 4;
+	  count -= 4;
+	  nexts += 4;
+	}
+      while (count && n_left_to_next)
+	{
+	  clib_memcpy (to_next, buffers, 1 * sizeof (u32));
+	  to_next += 1;
+	  n_left_to_next -= 1;
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, buffers[0],
+					   nexts[0]);
+	  /* next */
+	  buffers += 1;
+	  count -= 1;
+	  nexts += 1;
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+}
+
+static eth_input_tmp_data_t tmp_data[8];
+
+#include <iacaMarks.h>
+uword CLIB_CPU_OPTIMIZED
+CLIB_MULTIARCH_FN (ethernet_input) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_main_t *em = &ethernet_main;
+  u32 n_left, *from;
+  vlib_buffer_t *b[12];
+  u32 thread_index = vlib_get_thread_index ();
+  eth_input_tmp_data_t *t = &tmp_data[thread_index];
+  eth_input_tags_t *tags = t->tags;
+  eth_input_mac_t *macs = t->macs;
+  u16 *nexts;
+
+  eth_input_batch_t *cb = 0;
+
+  n_left = from_frame->n_vectors;
+  from = vlib_frame_vector_args (from_frame);
+  t->n_batches = 0;
+  t->last_sw_if_index = ~0;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, n_left, sizeof (from[0]),
+				   sizeof (ethernet_input_trace_t));
+
+  if (n_left >= 12)
+    {
+      /* calculate buffer pointers out of indices for first 8 buffers
+         and place it at offset 4, as they are shifted at thr beggginging
+         of the quad loop */
+      vlib_get_buffers (vm, from, b + 4, 8);
+      eth_input_prefetch (b + 4);
+    }
+
+  while (n_left >= 12)
+    {
+      clib_memcpy (b, b + 4, sizeof (vlib_buffer_t *) * 8);
+      vlib_get_buffers (vm, from, b + 8, 4);
+      eth_input_prefetch (b + 8);
+
+      cb = eth_input_batch_add (t, b, cb, 4);
+      copy_hdr_data (b, macs, tags, 4);
+
+      /* next */
+      tags += 4;
+      macs += 4;
+      from += 4;
+      n_left -= 4;
+    }
+  while (n_left)
+    {
+      b[0] = vlib_get_buffer (vm, from[0]);
+      cb = eth_input_batch_add (t, b, cb, 1);
+      copy_hdr_data (b, macs, tags, 1);
+
+      /* next */
+      tags += 1;
+      macs += 1;
+      from += 1;
+      n_left -= 1;
+    }
+
+  tags = t->tags;
+  nexts = t->nexts;
+  cb = t->batches;
+  while (t->n_batches--)
+    {
+      vnet_hw_interface_t *hi;
+      main_intf_t *mi;
+      hi = vnet_get_sup_hw_interface (vnm, cb->sw_if_index);
+      mi = vec_elt_at_index (em->main_intfs, hi->hw_if_index);
+
+      if (mi->untagged_subint.flags & SUBINT_CONFIG_L2)
+	eth_input_process_l2 (nexts, cb->n_packets, em->l2_next);
+
+      /* next batch */
+      nexts += cb->n_packets;
+      cb++;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, vlib_frame_vector_args (from_frame),
+			       t->nexts, from_frame->n_vectors);
+
+  return from_frame->n_vectors;
+}
+
+static __clib_unused uword
 ethernet_input_type (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
@@ -783,7 +1123,7 @@ ethernet_input_type (vlib_main_t * vm,
 				ETHERNET_INPUT_VARIANT_ETHERNET_TYPE);
 }
 
-static uword
+static __clib_unused uword
 ethernet_input_not_l2 (vlib_main_t * vm,
 		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
@@ -792,6 +1132,7 @@ ethernet_input_not_l2 (vlib_main_t * vm,
 }
 
 
+#ifndef CLIB_MULTIARCH_VARIANT
 // Return the subinterface config struct for the given sw_if_index
 // Also return via parameter the appropriate match flags for the
 // configured number of tags.
@@ -1164,9 +1505,18 @@ VLIB_REGISTER_NODE (ethernet_input_node) = {
 };
 /* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_node, ethernet_input)
-/* *INDENT-ON* */
+#if __x86_64__
+vlib_node_function_t __clib_weak ethernet_input_avx512;
+vlib_node_function_t __clib_weak ethernet_input_avx2;
+static void __clib_constructor
+ethernet_input_multiarch_select (void)
+{
+  if (ethernet_input_avx512 && clib_cpu_supports_avx512f ())
+    ethernet_input_node.function = ethernet_input_avx512;
+  else if (ethernet_input_avx2 && clib_cpu_supports_avx2 ())
+    ethernet_input_node.function = ethernet_input_avx2;
+}
+#endif
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ethernet_input_type_node, static) = {
@@ -1409,6 +1759,7 @@ ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
 
   ASSERT (i == em->redirect_l3_next);
 }
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
