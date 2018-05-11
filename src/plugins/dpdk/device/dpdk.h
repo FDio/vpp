@@ -80,7 +80,8 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("net_dpaa2", DPAA2)          \
   _ ("net_virtio_user", VIRTIO_USER) \
   _ ("net_vhost", VHOST_ETHER)    \
-  _ ("net_ena", ENA)
+  _ ("net_ena", ENA)              \
+  _ ("net_failsafe", FAILSAFE)
 
 typedef enum
 {
@@ -109,6 +110,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_VF,
   VNET_DPDK_PORT_TYPE_VIRTIO_USER,
   VNET_DPDK_PORT_TYPE_VHOST_ETHER,
+  VNET_DPDK_PORT_TYPE_FAILSAFE,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 

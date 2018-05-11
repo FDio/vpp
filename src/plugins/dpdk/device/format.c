@@ -235,6 +235,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "VhostEthernet";
       break;
 
+    case VNET_DPDK_PORT_TYPE_FAILSAFE:
+      device_name = "FailsafeEthernet";
+      break;
+
     default:
     case VNET_DPDK_PORT_TYPE_UNKNOWN:
       device_name = "UnknownEthernet";
@@ -243,7 +247,8 @@ format_dpdk_device_name (u8 * s, va_list * args)
 
   rte_eth_dev_info_get (i, &dev_info);
 
-  if (dev_info.pci_dev)
+  if (dev_info.pci_dev &&
+      dm->devices[i].port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
     ret = format (s, devname_format, device_name, dev_info.pci_dev->addr.bus,
 		  dev_info.pci_dev->addr.devid,
 		  dev_info.pci_dev->addr.function);
@@ -361,6 +366,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_ENA:
       dev_type = "AWS ENA VF";
+      break;
+
+    case VNET_DPDK_PMD_FAILSAFE:
+      dev_type = "Failsafe Ethernet";
       break;
 
     default:
