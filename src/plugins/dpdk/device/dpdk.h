@@ -191,9 +191,12 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 **lockp;
 
-  /* Instance ID */
+  /* Instance ID to access internal device array. */
   dpdk_portid_t device_index;
 
+  /* DPDK device port number */
+  dpdk_portid_t port_id;
+  
   u32 hw_if_index;
   u32 sw_if_index;
 
