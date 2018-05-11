@@ -253,7 +253,7 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
 }
 
 /* Format c identifier: e.g. a_name -> "a name".
-   Words for both vector names and null terminated c strings. */
+   Works for both vector names and null terminated c strings. */
 u8 *
 format_c_identifier (u8 * s, va_list * va)
 {
