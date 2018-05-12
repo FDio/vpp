@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ef4cb545_878fadd1",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-12T15:58:27Z",
+      "side": 1,
+      "message": "is there a need to check against malformed packets?\ne.g. frame length too short to hold an ip header",
+      "revId": "a76eb343df3ccdd4caf5ad3b11c6aaa17ea8abe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
