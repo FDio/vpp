@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0d03d49_b9ef21d5",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-05-12T00:18:37Z",
+      "side": 1,
+      "message": "This has a separate change https://gerrit.fd.io/r/#/c/12206/ and by itself is a bug (two different values are used to set MTU during dpdk device initialization). We need this to set correct MTU for failsafe PMD.",
+      "range": {
+        "startLine": 667,
+        "startChar": 0,
+        "endLine": 667,
+        "endChar": 30
+      },
+      "revId": "45c23ad78cc75ac239f91bba2d08a445a4019d8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
