@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e02dc79_8a35f172",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-13T12:34:32Z",
+      "side": 1,
+      "message": "Now that flow_id is in the 1st cache line, do we still need this flag? Can the existence (or non-existence) of flow_id can simply be to check if it is 0 or not?",
+      "range": {
+        "startLine": 68,
+        "startChar": 34,
+        "endLine": 68,
+        "endChar": 41
+      },
+      "revId": "e42845ee51545603ba6e21cdc9a0b0fd2afa103e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
