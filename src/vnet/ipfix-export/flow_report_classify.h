@@ -116,7 +116,9 @@ u8 *ipfix_classify_template_rewrite (flow_report_main_t * frm,
 				     flow_report_t * fr,
 				     ip4_address_t * collector_address,
 				     ip4_address_t * src_address,
-				     u16 collector_port);
+				     u16 collector_port,
+				     ipfix_report_element_t * elts,
+				     u32 n_elts, u32 * stream_index);
 
 vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t * frm,
 					 flow_report_t * fr,
