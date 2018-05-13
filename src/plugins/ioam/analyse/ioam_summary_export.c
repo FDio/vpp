@@ -21,7 +21,9 @@
 u8 *
 ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
 		       ip4_address_t * collector_address,
-		       ip4_address_t * src_address, u16 collector_port)
+		       ip4_address_t * src_address, u16 collector_port,
+		       ipfix_report_element_t * elts,
+		       u32 n_elts, u32 * stream_index)
 {
   ip4_header_t *ip;
   udp_header_t *udp;

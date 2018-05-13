@@ -31,6 +31,13 @@
 
 #include <vnet/ipfix-export/ipfix_packet.h>
 
+/* ipfix field definitions for a particular report */
+typedef struct
+{
+  u32 info_element;
+  u32 size;
+} ipfix_report_element_t;
+
 /* Used to build the rewrite */
 typedef struct
 {
@@ -42,15 +49,24 @@ typedef struct
 struct flow_report_main;
 struct flow_report;
 
-typedef u8 *(vnet_flow_rewrite_callback_t) (struct flow_report_main *,
-					    struct flow_report *,
-					    ip4_address_t *,
-					    ip4_address_t *, u16);
-
 typedef vlib_frame_t *(vnet_flow_data_callback_t) (struct flow_report_main *,
 						   struct flow_report *,
 						   vlib_frame_t *, u32 *,
 						   u32);
+
+typedef u8 *(vnet_flow_rewrite_callback_t) (struct flow_report_main *,
+					    struct flow_report *,
+					    ip4_address_t *,
+					    ip4_address_t *, u16,
+					    ipfix_report_element_t * elts,
+					    u32 n_elts, u32 * stream_index);
+
+u8 *vnet_flow_rewrite_generic_callback (struct flow_report_main *,
+					struct flow_report *,
+					ip4_address_t *,
+					ip4_address_t *, u16,
+					ipfix_report_element_t * elts,
+					u32 n_elts, u32 * stream_index);
 
 typedef union
 {
@@ -82,8 +98,11 @@ typedef struct flow_report
   /* Opaque data */
   opaque_t opaque;
 
-  /* build-the-rewrite callback */
+  /* build-the-template-packet rewrite callback */
   vnet_flow_rewrite_callback_t *rewrite_callback;
+  ipfix_report_element_t *report_elements;
+  u32 n_report_elements;
+  u32 *stream_indexp;
 
   /* Send-flow-data callback */
   vnet_flow_data_callback_t *flow_data_callback;
@@ -128,10 +147,13 @@ typedef struct
 {
   vnet_flow_data_callback_t *flow_data_callback;
   vnet_flow_rewrite_callback_t *rewrite_callback;
+  ipfix_report_element_t *report_elements;
+  u32 n_report_elements;
   opaque_t opaque;
   int is_add;
   u32 domain_id;
   u16 src_port;
+  u32 *stream_indexp;
 } vnet_flow_report_add_del_args_t;
 
 int vnet_flow_report_add_del (flow_report_main_t * frm,

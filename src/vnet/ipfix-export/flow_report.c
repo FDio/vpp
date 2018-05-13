@@ -107,7 +107,10 @@ send_template_packet (flow_report_main_t * frm,
       fr->rewrite = fr->rewrite_callback (frm, fr,
 					  &frm->ipfix_collector,
 					  &frm->src_address,
-					  frm->collector_port);
+					  frm->collector_port,
+					  fr->report_elements,
+					  fr->n_report_elements,
+					  fr->stream_indexp);
       fr->update_rewrite = 0;
     }
 
@@ -162,6 +165,92 @@ send_template_packet (flow_report_main_t * frm,
   fr->last_template_sent = vlib_time_now (vm);
 
   return 0;
+}
+
+u8 *
+vnet_flow_rewrite_generic_callback (flow_report_main_t * frm,
+				    flow_report_t * fr,
+				    ip4_address_t * collector_address,
+				    ip4_address_t * src_address,
+				    u16 collector_port,
+				    ipfix_report_element_t * report_elts,
+				    u32 n_elts, u32 * stream_indexp)
+{
+  ip4_header_t *ip;
+  udp_header_t *udp;
+  ipfix_message_header_t *h;
+  ipfix_set_header_t *s;
+  ipfix_template_header_t *t;
+  ipfix_field_specifier_t *f;
+  ipfix_field_specifier_t *first_field;
+  u8 *rewrite = 0;
+  ip4_ipfix_template_packet_t *tp;
+  flow_report_stream_t *stream;
+  int i;
+  ipfix_report_element_t *ep;
+
+  ASSERT (stream_indexp);
+  ASSERT (n_elts);
+  ASSERT (report_elts);
+
+  stream = &frm->streams[fr->stream_index];
+  *stream_indexp = fr->stream_index;
+
+  /* allocate rewrite space */
+  vec_validate_aligned (rewrite,
+			sizeof (ip4_ipfix_template_packet_t)
+			+ n_elts * sizeof (ipfix_field_specifier_t) - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  /* create the packet rewrite string */
+  tp = (ip4_ipfix_template_packet_t *) rewrite;
+  ip = (ip4_header_t *) & tp->ip4;
+  udp = (udp_header_t *) (ip + 1);
+  h = (ipfix_message_header_t *) (udp + 1);
+  s = (ipfix_set_header_t *) (h + 1);
+  t = (ipfix_template_header_t *) (s + 1);
+  first_field = f = (ipfix_field_specifier_t *) (t + 1);
+
+  ip->ip_version_and_header_length = 0x45;
+  ip->ttl = 254;
+  ip->protocol = IP_PROTOCOL_UDP;
+  ip->src_address.as_u32 = src_address->as_u32;
+  ip->dst_address.as_u32 = collector_address->as_u32;
+  udp->src_port = clib_host_to_net_u16 (stream->src_port);
+  udp->dst_port = clib_host_to_net_u16 (collector_port);
+  udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip));
+
+  /* FIXUP LATER: message header export_time */
+  h->domain_id = clib_host_to_net_u32 (stream->domain_id);
+
+  ep = report_elts;
+
+  for (i = 0; i < n_elts; i++)
+    {
+      f->e_id_length = ipfix_e_id_length (0, ep->info_element, ep->size);
+      f++;
+      ep++;
+    }
+
+  /* Back to the template packet... */
+  ip = (ip4_header_t *) & tp->ip4;
+  udp = (udp_header_t *) (ip + 1);
+
+  ASSERT (f - first_field);
+  /* Field count in this template */
+  t->id_count = ipfix_id_count (fr->template_id, f - first_field);
+
+  /* set length in octets */
+  s->set_id_length =
+    ipfix_set_id_length (2 /* set_id */ , (u8 *) f - (u8 *) s);
+
+  /* message length in octets */
+  h->version_length = version_length ((u8 *) f - (u8 *) h);
+
+  ip->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip);
+  ip->checksum = ip4_header_checksum (ip);
+
+  return rewrite;
 }
 
 static uword
@@ -315,7 +404,9 @@ vnet_flow_report_add_del (flow_report_main_t * frm,
   fr->opaque = a->opaque;
   fr->rewrite_callback = a->rewrite_callback;
   fr->flow_data_callback = a->flow_data_callback;
-
+  fr->report_elements = a->report_elements;
+  fr->n_report_elements = a->n_report_elements;
+  fr->stream_indexp = a->stream_indexp;
   if (template_id)
     *template_id = fr->template_id;
 
