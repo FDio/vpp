@@ -588,6 +588,9 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      u8 *tag);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
+int nat44_del_ed_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+                          ip4_address_t *eh_addr, u16 eh_port, u8 proto,
+                          u32 vrf_id, int is_in);
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
                             u32 thread_index);
 snat_user_t * nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr,

@@ -1540,7 +1540,9 @@ class VppPapiProvider(object):
             port,
             protocol,
             vrf_id=0,
-            is_in=1):
+            is_in=1,
+            ext_host_address=None,
+            ext_host_port=0):
         """Delete NAT44 session
 
         :param addr: IPv4 address
@@ -1548,14 +1550,28 @@ class VppPapiProvider(object):
         :param protocol: IP protocol number
         :param vrf_id: VRF ID
         :param is_in: 1 if inside network addres and port pari, 0 if outside
+        :param ext_host_address: external host IPv4 address
+        :param ext_host_port: external host port
         """
-        return self.api(
-            self.papi.nat44_del_session,
-            {'address': addr,
-             'port': port,
-             'protocol': protocol,
-             'vrf_id': vrf_id,
-             'is_in': is_in})
+        if ext_host_address is None:
+            return self.api(
+                self.papi.nat44_del_session,
+                {'address': addr,
+                 'port': port,
+                 'protocol': protocol,
+                 'vrf_id': vrf_id,
+                 'is_in': is_in})
+        else:
+            return self.api(
+                self.papi.nat44_del_session,
+                {'address': addr,
+                 'port': port,
+                 'protocol': protocol,
+                 'vrf_id': vrf_id,
+                 'is_in': is_in,
+                 'ext_host_valid': 1,
+                 'ext_host_address': ext_host_address,
+                 'ext_host_port': ext_host_port})
 
     def nat44_forwarding_enable_disable(
             self,

@@ -2695,29 +2695,27 @@ u8 * format_snat_session (u8 * s, va_list * args)
       s = format (s, "  i2o %U\n", format_snat_key, &sess->in2out);
       s = format (s, "    o2i %U\n", format_snat_key, &sess->out2in);
     }
-  if (is_twice_nat_session (sess))
+  if (is_ed_session (sess))
     {
-      s = format (s, "       external host o2i %U:%d i2o %U:%d\n",
-                  format_ip4_address, &sess->ext_host_addr,
-                  clib_net_to_host_u16 (sess->ext_host_port),
-                  format_ip4_address, &sess->ext_host_nat_addr,
-                  clib_net_to_host_u16 (sess->ext_host_nat_port));
-    }
-  else
-    {
-      if (sess->ext_host_addr.as_u32)
-          s = format (s, "       external host %U:%u\n",
+      if (is_twice_nat_session (sess))
+        {
+          s = format (s, "       external host o2i %U:%d i2o %U:%d\n",
                       format_ip4_address, &sess->ext_host_addr,
-                      clib_net_to_host_u16 (sess->ext_host_port));
+                      clib_net_to_host_u16 (sess->ext_host_port),
+                      format_ip4_address, &sess->ext_host_nat_addr,
+                      clib_net_to_host_u16 (sess->ext_host_nat_port));
+        }
+      else
+        {
+          if (sess->ext_host_addr.as_u32)
+              s = format (s, "       external host %U:%u\n",
+                          format_ip4_address, &sess->ext_host_addr,
+                          clib_net_to_host_u16 (sess->ext_host_port));
+        }
     }
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
               sess->total_pkts, sess->total_bytes);
-  if (sess->in2out.protocol == SNAT_PROTOCOL_TCP)
-    {
-      s = format (s, "       state %s\n",
-                  sess->state == SNAT_SESSION_TCP_CLOSED ? "closed" : "open");
-    }
   if (snat_is_session_static (sess))
     s = format (s, "       static translation\n");
   else
@@ -3110,6 +3108,9 @@ nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
   t = is_in ? &tsm->in2out : &tsm->out2in;
   if (!clib_bihash_search_8_8 (t, &kv, &value))
     {
+      if (value.value == ~0)
+        return VNET_API_ERROR_UNSPECIFIED;
+
       s = pool_elt_at_index (tsm->sessions, value.value);
       kv.key = s->in2out.as_u64;
       clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0);
@@ -3121,7 +3122,10 @@ nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
       if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
         {
           u = pool_elt_at_index (tsm->users, value.value);
-          u->nsessions--;
+          if (snat_is_session_static (s))
+            u->nstaticsessions--;
+          else
+            u->nsessions--;
         }
       clib_dlist_remove (tsm->list_pool, s->per_user_index);
       pool_put (tsm->sessions, s);
@@ -3129,6 +3133,58 @@ nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
     }
 
   return VNET_API_ERROR_NO_SUCH_ENTRY;
+}
+
+int
+nat44_del_ed_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+                      ip4_address_t *eh_addr, u16 eh_port, u8 proto,
+                      u32 vrf_id, int is_in)
+{
+  ip4_header_t ip;
+  clib_bihash_16_8_t *t;
+  nat_ed_ses_key_t key;
+  clib_bihash_kv_16_8_t kv, value;
+  u32 thread_index;
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  snat_session_t *s;
+
+  ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
+  if (sm->num_workers > 1)
+    thread_index = sm->worker_in2out_cb (&ip, fib_index);
+  else
+    thread_index = sm->num_workers;
+
+  t = is_in ? &sm->in2out_ed : &sm->out2in_ed;
+  key.l_addr.as_u32 = addr->as_u32;
+  key.r_addr.as_u32 = eh_addr->as_u32;
+  key.l_port = clib_host_to_net_u16 (port);
+  key.r_port = clib_host_to_net_u16 (eh_port);
+  key.proto = proto;
+  key.fib_index = clib_host_to_net_u32 (fib_index);
+  kv.key[0] = key.as_u64[0];
+  kv.key[1] = key.as_u64[1];
+  if (clib_bihash_search_16_8 (t, &kv, &value))
+    {
+      if (!is_in)
+        return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      t = &sm->out2in_ed;
+      if (!clib_bihash_search_16_8 (t, &kv, &value))
+        {
+          s = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+                                 value.value);
+          if (is_fwd_bypass_session (s))
+            goto session_free;
+          else
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+        }
+    }
+
+  s = pool_elt_at_index (sm->per_thread_data[thread_index].sessions, value.value);
+session_free:
+  nat_free_session_data (sm, s, thread_index);
+  nat44_delete_session (sm, s, thread_index);
+  return 0;
 }
 
 void
