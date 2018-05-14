@@ -1424,6 +1424,19 @@ class TestNAT44(MethodHolder):
                                                    external_ip=alias_ip,
                                                    is_add=0)
 
+        user = self.pg0.remote_hosts[1]
+        sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
+        self.assertEqual(len(sessions), 3)
+        self.assertTrue(sessions[0].ext_host_valid)
+        self.vapi.nat44_del_session(
+            sessions[0].inside_ip_address,
+            sessions[0].inside_port,
+            sessions[0].protocol,
+            ext_host_address=sessions[0].ext_host_address,
+            ext_host_port=sessions[0].ext_host_port)
+        sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
+        self.assertEqual(len(sessions), 2)
+
     def test_static_in(self):
         """ 1:1 NAT initialized from inside network """
 
@@ -1862,6 +1875,18 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+        self.assertEqual(len(sessions), 1)
+        self.assertTrue(sessions[0].ext_host_valid)
+        self.vapi.nat44_del_session(
+            sessions[0].inside_ip_address,
+            sessions[0].inside_port,
+            sessions[0].protocol,
+            ext_host_address=sessions[0].ext_host_address,
+            ext_host_port=sessions[0].ext_host_port)
+        sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+        self.assertEqual(len(sessions), 0)
+
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_static_lb_multi_clients(self):
         """ NAT44 local service load balancing - multiple clients"""
@@ -2202,6 +2227,7 @@ class TestNAT44(MethodHolder):
                 self.assertTrue(session.protocol in
                                 [IP_PROTOS.tcp, IP_PROTOS.udp,
                                  IP_PROTOS.icmp])
+                self.assertFalse(session.ext_host_valid)
 
         # pg4 session dump
         sessions = self.vapi.nat44_user_session_dump(self.pg4.remote_ip4n, 10)
@@ -4057,6 +4083,33 @@ class TestNAT44(MethodHolder):
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
+
+        if eh_translate:
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 1)
+            self.assertTrue(sessions[0].ext_host_valid)
+            self.assertTrue(sessions[0].is_twicenat)
+            self.vapi.nat44_del_session(
+                sessions[0].inside_ip_address,
+                sessions[0].inside_port,
+                sessions[0].protocol,
+                ext_host_address=sessions[0].ext_host_nat_address,
+                ext_host_port=sessions[0].ext_host_nat_port)
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 0)
+        else:
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 1)
+            self.assertTrue(sessions[0].ext_host_valid)
+            self.assertFalse(sessions[0].is_twicenat)
+            self.vapi.nat44_del_session(
+                sessions[0].inside_ip_address,
+                sessions[0].inside_port,
+                sessions[0].protocol,
+                ext_host_address=sessions[0].ext_host_address,
+                ext_host_port=sessions[0].ext_host_port)
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 0)
 
     def test_twice_nat(self):
         """ Twice NAT44 """
