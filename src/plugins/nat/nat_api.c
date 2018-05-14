@@ -1157,13 +1157,17 @@ send_nat44_user_details (snat_user_t * u, vl_api_registration_t * reg,
 {
   vl_api_nat44_user_details_t *rmp;
   snat_main_t *sm = &snat_main;
-  fib_table_t *fib = fib_table_get (u->fib_index, FIB_PROTOCOL_IP4);
+  ip4_main_t *im = &ip4_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT44_USER_DETAILS + sm->msg_id_base);
 
-  rmp->vrf_id = ntohl (fib->ft_table_id);
+  if (!pool_is_free_index (im->fibs, u->fib_index))
+    {
+      fib_table_t *fib = fib_table_get (u->fib_index, FIB_PROTOCOL_IP4);
+      rmp->vrf_id = ntohl (fib->ft_table_id);
+    }
 
   clib_memcpy (rmp->ip_address, &(u->addr), 4);
   rmp->nsessions = ntohl (u->nsessions);
@@ -1218,7 +1222,10 @@ send_nat44_user_session_details (snat_session_t * s,
     ntohs (VL_API_NAT44_USER_SESSION_DETAILS + sm->msg_id_base);
   clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
   clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
-  rmp->is_static = s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING ? 1 : 0;
+  rmp->is_static = snat_is_session_static (s) ? 1 : 0;
+  rmp->is_twicenat = is_twice_nat_session (s) ? 1 : 0;
+  rmp->ext_host_valid = is_ed_session (s)
+    || is_fwd_bypass_session (s) ? 1 : 0;
   rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
@@ -1235,8 +1242,16 @@ send_nat44_user_session_details (snat_session_t * s,
       rmp->inside_port = s->in2out.port;
       rmp->protocol = ntohs (snat_proto_to_ip_proto (s->in2out.protocol));
     }
-  if (s->in2out.protocol == SNAT_PROTOCOL_TCP)
-    rmp->is_closed = s->state == SNAT_SESSION_TCP_CLOSED ? 1 : 0;
+  if (is_ed_session (s) || is_fwd_bypass_session (s))
+    {
+      clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
+      rmp->ext_host_port = s->ext_host_port;
+      if (is_twice_nat_session (s))
+	{
+	  clib_memcpy (rmp->ext_host_nat_address, &s->ext_host_nat_addr, 4);
+	  rmp->ext_host_nat_port = s->ext_host_nat_port;
+	}
+    }
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -1469,8 +1484,8 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_del_session_reply_t *rmp;
-  ip4_address_t addr;
-  u16 port;
+  ip4_address_t addr, eh_addr;
+  u16 port, eh_port;
   u32 vrf_id;
   int rv = 0;
   snat_protocol_t proto;
@@ -1485,8 +1500,15 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
   port = clib_net_to_host_u16 (mp->port);
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
   proto = ip_proto_to_snat_proto (mp->protocol);
+  memcpy (&eh_addr.as_u8, mp->ext_host_address, 4);
+  eh_port = clib_net_to_host_u16 (mp->ext_host_port);
 
-  rv = nat44_del_session (sm, &addr, port, proto, vrf_id, mp->is_in);
+  if (mp->ext_host_valid)
+    rv =
+      nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
+			    vrf_id, mp->is_in);
+  else
+    rv = nat44_del_session (sm, &addr, port, proto, vrf_id, mp->is_in);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
@@ -1503,6 +1525,10 @@ vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
 	      format_ip4_address, mp->address,
 	      clib_net_to_host_u16 (mp->port),
 	      mp->protocol, clib_net_to_host_u32 (mp->vrf_id), mp->is_in);
+  if (mp->ext_host_valid)
+    s = format (s, "ext_host_address %U ext_host_port %d",
+		format_ip4_address, mp->ext_host_address,
+		clib_net_to_host_u16 (mp->ext_host_port));
 
   FINISH;
 }
@@ -1514,8 +1540,34 @@ static void
   snat_main_t *sm = &snat_main;
   vl_api_nat44_forwarding_enable_disable_reply_t *rmp;
   int rv = 0;
+  u32 *ses_to_be_removed = 0, *ses_index;
+  snat_main_per_thread_data_t *tsm;
+  snat_session_t *s;
 
   sm->forwarding_enabled = mp->enable != 0;
+
+  if (mp->enable == 0)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+      {
+        pool_foreach (s, tsm->sessions,
+        ({
+          if (is_fwd_bypass_session(s))
+            {
+              vec_add1 (ses_to_be_removed, s - tsm->sessions);
+            }
+        }));
+        vec_foreach (ses_index, ses_to_be_removed)
+        {
+          s = pool_elt_at_index(tsm->sessions, ses_index[0]);
+          nat_free_session_data (sm, s, tsm - sm->per_thread_data);
+          nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+        }
+        vec_free (ses_to_be_removed);
+      }
+      /* *INDENT-ON* */
+    }
 
   REPLY_MACRO (VL_API_NAT44_FORWARDING_ENABLE_DISABLE_REPLY);
 }

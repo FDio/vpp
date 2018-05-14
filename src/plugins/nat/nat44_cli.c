@@ -959,10 +959,10 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  int is_in = 0;
+  int is_in = 0, is_ed = 0;
   clib_error_t *error = 0;
-  ip4_address_t addr;
-  u32 port = 0, vrf_id = sm->outside_vrf_id;
+  ip4_address_t addr, eh_addr;
+  u32 port = 0, eh_port = 0, vrf_id = sm->outside_vrf_id;
   snat_protocol_t proto;
   int rv;
 
@@ -984,8 +984,18 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 	  is_in = 1;
 	  vrf_id = sm->inside_vrf_id;
 	}
+      else if (unformat (line_input, "out"))
+	{
+	  is_in = 0;
+	  vrf_id = sm->outside_vrf_id;
+	}
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
+      else
+	if (unformat
+	    (line_input, "external-host %U:%u", unformat_ip4_address,
+	     &eh_addr, &eh_port))
+	is_ed = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -994,7 +1004,12 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
+  if (is_ed)
+    rv =
+      nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port,
+			    snat_proto_to_ip_proto (proto), vrf_id, is_in);
+  else
+    rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
 
   switch (rv)
     {
@@ -1750,7 +1765,7 @@ VLIB_CLI_COMMAND (nat44_show_sessions_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_del_session_command, static) = {
     .path = "nat44 del session",
-    .short_help = "nat44 del session in|out <addr>:<port> tcp|udp|icmp [vrf <id>]",
+    .short_help = "nat44 del session in|out <addr>:<port> tcp|udp|icmp [vrf <id>] [external-host <addr>:<port>]",
     .function = nat44_del_session_command_fn,
 };
 
