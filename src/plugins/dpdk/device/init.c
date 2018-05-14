@@ -406,7 +406,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_MLX5:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      break;
-
+	    case VNET_DPDK_PMD_MRVL:
+	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_IGNORE;
+	      xd->port_conf.rxmode.ignore_offload_bitfield = 1;
+	      xd->port_conf.rxmode.hw_strip_crc = 1;
+	      break;
 	      /* SR-IOV VFs */
 	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:

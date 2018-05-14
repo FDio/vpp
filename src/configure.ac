@@ -300,6 +300,8 @@ AM_COND_IF([ENABLE_MARVELL_PLUGIN],
     ])
 ])
 
+DPDK_IS_PMD_ENABLED(LIBRTE_MRVL_PMD, mrvl_pmd)
+
 AM_COND_IF([WITH_MBEDTLS], [],
 [
   AC_MSG_WARN([mbedtls not enabled. Disabling tlsmbedtls plugin])

@@ -29,6 +29,9 @@ dpdk_plugin_la_CFLAGS = $(AM_CFLAGS)
 if WITH_LIBNUMA
 dpdk_plugin_la_LDFLAGS += -Wl,-lnuma
 endif
+if WITH_MRVL_PMD
+dpdk_plugin_la_LDFLAGS += -Wl,-lmusdk
+endif
 
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
 dpdk_plugin_la_LIBADD =

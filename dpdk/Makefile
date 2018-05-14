@@ -22,6 +22,7 @@ DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_DEBUG            ?= n
 DPDK_MLX4_PMD         ?= n
 DPDK_MLX5_PMD         ?= n
+DPDK_MRVL_PMD         ?= n
 DPDK_TAP_PMD          ?= n
 DPDK_FAILSAFE_PMD     ?= n
 
@@ -203,9 +204,12 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_MLX5_DLOPEN_DEPS,$(DPDK_MLX5_PMD))
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
+	$(call set,RTE_LIBRTE_MRVL_PMD,$(DPDK_MRVL_PMD))
+	$(call set,RTE_LIBRTE_PMD_MRVL_CRYPTO,$(DPDK_MRVL_PMD))
+	@# needed only for Marvell PMD
+	$(call set,RTE_LIBRTE_CFGFILE,$(DPDK_MRVL_PMD))
 	@# not needed
 	$(call set,RTE_LIBRTE_TIMER,n)
-	$(call set,RTE_LIBRTE_CFGFILE,n)
 	$(call set,RTE_LIBRTE_LPM,n)
 	$(call set,RTE_LIBRTE_ACL,n)
 	$(call set,RTE_LIBRTE_POWER,n)
