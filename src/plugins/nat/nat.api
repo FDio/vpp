@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.5.0";
+option version = "2.6.0";
 
 /**
  * @file nat.api
@@ -558,7 +558,14 @@ define nat44_user_session_dump {
     @param last_heard - last heard timer
     @param total_bytes - count of bytes sent through session
     @param total_pkts - count of pakets sent through session
-    @param is_closed - 1 if TCP session is closed
+    @param is_twicenat - 1 if session is twice-nat
+    @param ext_host_valid - 1 if external host address and port are valid
+    @param ext_host_address - external host IPv4 address
+    @param ext_host_port - external host port
+    @param ext_host_nat_address - post-NAT external host IPv4 address (valid
+                                  only if twice-nat session)
+    @param ext_host_nat_port - post-NAT external host port (valid only if
+                               twice-nat session)
 */
 define nat44_user_session_details {
   u32 context;
@@ -571,7 +578,12 @@ define nat44_user_session_details {
   u64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
-  u8 is_closed;
+  u8 is_twicenat;
+  u8 ext_host_valid;
+  u8 ext_host_address[4];
+  u16 ext_host_port;
+  u8 ext_host_nat_address[4];
+  u16 ext_host_nat_port;
 };
 
 /** \brief NAT44 load-balancing address and port pair
@@ -665,6 +677,9 @@ manual_endian define nat44_lb_static_mapping_details {
     @param protocol - IP protocol
     @param port - port number
     @param vfr_id - VRF ID
+    @param ext_host_valid - 1 if external host address and port are valid
+    @param ext_host_address - external host IPv4 address
+    @param ext_host_port - external host port
 */
 autoreply define nat44_del_session {
   u32 client_index;
@@ -674,6 +689,9 @@ autoreply define nat44_del_session {
   u8 protocol;
   u16 port;
   u32 vrf_id;
+  u8 ext_host_valid;
+  u8 ext_host_address[4];
+  u16 ext_host_port;
 };
 
 /** \brief Enable/disable forwarding for NAT44

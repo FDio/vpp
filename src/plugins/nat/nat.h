@@ -126,6 +126,12 @@ typedef enum {
 #undef _
 } snat_session_state_t;
 
+#define NAT44_SES_I2O_FIN 1
+#define NAT44_SES_O2I_FIN 2
+#define NAT44_SES_I2O_FIN_ACK 4
+#define NAT44_SES_O2I_FIN_ACK 8
+
+#define nat44_is_ses_closed(s) (s->state == 0xf)
 
 #define SNAT_SESSION_FLAG_STATIC_MAPPING       1
 #define SNAT_SESSION_FLAG_UNKNOWN_PROTO        2
@@ -169,6 +175,8 @@ typedef CLIB_PACKED(struct {
 
   /* TCP session state */
   u8 state;
+  u32 i2o_fin_seq;
+  u32 o2i_fin_seq;
 }) snat_session_t;
 
 
@@ -588,6 +596,9 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      u8 *tag);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
+int nat44_del_ed_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+                          ip4_address_t *eh_addr, u16 eh_port, u8 proto,
+                          u32 vrf_id, int is_in);
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
                             u32 thread_index);
 snat_user_t * nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr,
@@ -710,31 +721,52 @@ nat44_delete_session(snat_main_t * sm, snat_session_t * ses, u32 thread_index)
   pool_put (tsm->sessions, ses);
 }
 
-/** \brief Set TCP session stet.
+/** \brief Set TCP session state.
     @return 1 if session was closed, otherwise 0
 */
 always_inline int
-nat44_set_tcp_session_state(snat_main_t * sm, snat_session_t * ses,
-                            tcp_header_t * tcp, u32 thread_index)
+nat44_set_tcp_session_state_i2o(snat_main_t * sm, snat_session_t * ses,
+                                tcp_header_t * tcp, u32 thread_index)
 {
-  if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_UNKNOWN)
-    ses->state = SNAT_SESSION_TCP_FIN_WAIT;
-  else if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_TCP_FIN_WAIT)
-    ses->state = SNAT_SESSION_TCP_CLOSING;
-  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_FIN_WAIT)
-    ses->state = SNAT_SESSION_TCP_CLOSE_WAIT;
-  else if (tcp->flags & TCP_FLAG_FIN && ses->state == SNAT_SESSION_TCP_CLOSE_WAIT)
-    ses->state = SNAT_SESSION_TCP_LAST_ACK;
-  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_CLOSING)
-    ses->state = SNAT_SESSION_TCP_LAST_ACK;
-  else if (tcp->flags & TCP_FLAG_ACK && ses->state == SNAT_SESSION_TCP_LAST_ACK)
+  if (tcp->flags & TCP_FLAG_FIN)
+    {
+      ses->i2o_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
+      ses->state |= NAT44_SES_I2O_FIN;
+    }
+  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_O2I_FIN))
+    {
+      if (clib_net_to_host_u32 (tcp->ack_number) > ses->o2i_fin_seq)
+        ses->state |= NAT44_SES_O2I_FIN_ACK;
+    }
+  if (nat44_is_ses_closed (ses))
     {
       nat_free_session_data (sm, ses, thread_index);
-      ses->state = SNAT_SESSION_TCP_CLOSED;
       nat44_delete_session (sm, ses, thread_index);
       return 1;
     }
+  return 0;
+}
 
+always_inline int
+nat44_set_tcp_session_state_o2i(snat_main_t * sm, snat_session_t * ses,
+                                tcp_header_t * tcp, u32 thread_index)
+{
+  if (tcp->flags & TCP_FLAG_FIN)
+    {
+      ses->o2i_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
+      ses->state |= NAT44_SES_O2I_FIN;
+    }
+  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_FIN))
+    {
+      if (clib_net_to_host_u32 (tcp->ack_number) > ses->i2o_fin_seq)
+        ses->state |= NAT44_SES_I2O_FIN_ACK;
+    }
+  if (nat44_is_ses_closed (ses))
+    {
+      nat_free_session_data (sm, ses, thread_index);
+      nat44_delete_session (sm, ses, thread_index);
+      return 1;
+    }
   return 0;
 }
 

@@ -1302,6 +1302,19 @@ class TestNAT44(MethodHolder):
             finally:
                 self.pg0.remote_hosts[0] = host0
 
+            user = self.pg0.remote_hosts[1]
+            sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
+            self.assertEqual(len(sessions), 3)
+            self.assertTrue(sessions[0].ext_host_valid)
+            self.vapi.nat44_del_session(
+                sessions[0].inside_ip_address,
+                sessions[0].inside_port,
+                sessions[0].protocol,
+                ext_host_address=sessions[0].ext_host_address,
+                ext_host_port=sessions[0].ext_host_port)
+            sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
+            self.assertEqual(len(sessions), 2)
+
         finally:
             self.vapi.nat44_forwarding_enable_disable(0)
             self.vapi.nat44_add_del_static_mapping(local_ip=real_ip,
@@ -1737,6 +1750,18 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+        self.assertEqual(len(sessions), 1)
+        self.assertTrue(sessions[0].ext_host_valid)
+        self.vapi.nat44_del_session(
+            sessions[0].inside_ip_address,
+            sessions[0].inside_port,
+            sessions[0].protocol,
+            ext_host_address=sessions[0].ext_host_address,
+            ext_host_port=sessions[0].ext_host_port)
+        sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+        self.assertEqual(len(sessions), 0)
+
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_static_lb_multi_clients(self):
         """ NAT44 local service load balancing - multiple clients"""
@@ -2073,6 +2098,7 @@ class TestNAT44(MethodHolder):
                 self.assertTrue(session.protocol in
                                 [IP_PROTOS.tcp, IP_PROTOS.udp,
                                  IP_PROTOS.icmp])
+                self.assertFalse(session.ext_host_valid)
 
         # pg4 session dump
         sessions = self.vapi.nat44_user_session_dump(self.pg4.remote_ip4n, 10)
@@ -3908,6 +3934,20 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        if eh_translate:
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 1)
+            self.assertTrue(sessions[0].ext_host_valid)
+            self.assertTrue(sessions[0].is_twicenat)
+            self.vapi.nat44_del_session(
+                sessions[0].inside_ip_address,
+                sessions[0].inside_port,
+                sessions[0].protocol,
+                ext_host_address=sessions[0].ext_host_nat_address,
+                ext_host_port=sessions[0].ext_host_nat_port)
+            sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
+            self.assertEqual(len(sessions), 0)
+
     def test_twice_nat(self):
         """ Twice NAT44 """
         self.twice_nat_common()
@@ -4018,7 +4058,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
                  TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="FA"))
+                     flags="FA", seq=100, ack=300))
             self.pg0.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4030,14 +4070,14 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="A"))
+                     flags="A", seq=300, ack=101))
             pkts.append(p)
 
             # FIN packet out -> in
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="FA"))
+                     flags="FA", seq=300, ack=101))
             pkts.append(p)
 
             self.pg1.add_stream(pkts)
@@ -4049,7 +4089,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
                  TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="A"))
+                     flags="A", seq=101, ack=301))
             self.pg0.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4081,38 +4121,28 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="FA"))
+                     flags="FA", seq=100, ack=300))
             self.pg1.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
             self.pg0.get_capture(1)
 
-            pkts = []
-
-            # ACK packet in -> out
+            # FIN+ACK packet in -> out
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
                  TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="A"))
-            pkts.append(p)
+                     flags="FA", seq=300, ack=101))
 
-            # ACK packet in -> out
-            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-                 TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="FA"))
-            pkts.append(p)
-
-            self.pg0.add_stream(pkts)
+            self.pg0.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.pg1.get_capture(2)
+            self.pg1.get_capture(1)
 
             # ACK packet out -> in
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="A"))
+                     flags="A", seq=101, ack=301))
             self.pg1.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4144,7 +4174,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
                  TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="FA"))
+                     flags="FA", seq=100, ack=300))
             self.pg0.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4154,7 +4184,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="FA"))
+                     flags="FA", seq=300, ack=100))
             self.pg1.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4164,7 +4194,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
                  TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                     flags="A"))
+                     flags="A", seq=101, ack=301))
             self.pg0.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4174,7 +4204,7 @@ class TestNAT44(MethodHolder):
             p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                  IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
                  TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-                     flags="A"))
+                     flags="A", seq=301, ack=101))
             self.pg1.add_stream(p)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
