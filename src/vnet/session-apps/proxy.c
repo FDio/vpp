@@ -105,9 +105,9 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
       else if (!pool_is_free_index (pm->sessions, p[0]))
 	{
 	  ps = pool_elt_at_index (pm->sessions, p[0]);
-	  if (ps->vpp_server_handle != ~0)
+	  if (ps->vpp_active_open_handle != ~0)
 	    active_open_session = session_get_from_handle
-	      (ps->vpp_server_handle);
+	      (ps->vpp_active_open_handle);
 	  else
 	    active_open_session = 0;
 	}
