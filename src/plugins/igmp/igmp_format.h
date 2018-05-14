@@ -28,6 +28,8 @@ u8 *format_igmp_report_v3 (u8 * s, va_list * args);
 
 u8 *format_igmp_query_v3 (u8 * s, va_list * args);
 
+u8 *format_igmp_config_flags (u8 * s, va_list * args);
+
 #endif /* IGMP_FORMAT_H */
 
 /*
