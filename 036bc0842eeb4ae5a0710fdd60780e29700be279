@@ -42,6 +42,47 @@
     },
     {
       "key": {
+        "uuid": "eacf94da_5907f851",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-14T11:30:38Z",
+      "side": 1,
+      "message": "This is not about being needed. This is about clarity (although that may be subjective).\nThe code is copying 64B in chunks of 16B so the code makes that explicit.\nThe compiler will optimise away any constant or unnecessary calculations.",
+      "parentUuid": "87035654_1939da82",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 56
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d6b71f4_cd1a5db2",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-14T11:30:38Z",
+      "side": 1,
+      "message": "The code is performance pointer arithmetic on void pointer. That is not defined in C (but allowed by GCC). s/d0/d1/d2/d3 should be cast to e.g. char pointer before the pointer arithmetic.",
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0e8d990c_945b3ec0",
         "filename": "src/vppinfra/string.h",
         "patchSetId": 1
@@ -53,6 +94,30 @@
       "writtenOn": "2018-05-14T10:46:34Z",
       "side": 1,
       "message": "Did you try running using uint64x2_t version. That is vld1q_u64/vst1_u64()? Any impact.",
+      "range": {
+        "startLine": 145,
+        "startChar": 2,
+        "endLine": 145,
+        "endChar": 12
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4955961e_7eb90db1",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-14T11:30:38Z",
+      "side": 1,
+      "message": "It is probably the same underlying instruction anyway.\nBut from a C language semantics perspective, using char pointers is probably safest and easiest.",
+      "parentUuid": "0e8d990c_945b3ec0",
       "range": {
         "startLine": 145,
         "startChar": 2,
@@ -99,6 +164,30 @@
       "writtenOn": "2018-05-14T10:46:34Z",
       "side": 1,
       "message": "Why is the need of * operation. Following can be written as\n\nvst1q_u8(d0 + 2*16, r2)\n\nvst1q_u8 (d0 + 32,r2), thereby decreasing number of instructions.",
+      "range": {
+        "startLine": 153,
+        "startChar": 29,
+        "endLine": 153,
+        "endChar": 35
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3dc2158c_c3f3986b",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-14T11:30:38Z",
+      "side": 1,
+      "message": "The compiler will optimise expressions that are constant. Don\u0027t worry, be happy.",
+      "parentUuid": "74f15f90_ddd09fe9",
       "range": {
         "startLine": 153,
         "startChar": 29,
