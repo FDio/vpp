@@ -150,6 +150,16 @@ format_igmp_query_v3 (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_igmp_config_flags (u8 * s, va_list * args)
+{
+  u32 flags = va_arg (*args, u32);
+#define _(a,b,c) if (flags & (1 << a)) s = format (s, " %s", c);
+  foreach_igmp_config_flag
+#undef _
+    return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
