@@ -28,7 +28,7 @@
 #define IGMP_SRC_TIMER				(3 * IGMP_QUERY_TIMER)
 #define IGMP_DEFAULT_ROBUSTNESS_VARIABLE	(2)
 
-#define ENABLE_IGMP_DBG 0
+#define ENABLE_IGMP_DBG 1
 
 #if ENABLE_IGMP_DBG == 1
 #define IGMP_DBG(...) clib_warning(__VA_ARGS__)
@@ -43,6 +43,19 @@
 
 /** helper macro to get igmp mebership group from pointer plus offset */
 #define group_ptr(p, l) ((igmp_membership_group_v3_t *)((char*)p + l))
+
+#define foreach_igmp_config_flag \
+  _(0, QUERY_RESP_RECVED, "query response received")	\
+  _(1, CAN_SEND_REPORT, "CAN_SEND_REPORT")		\
+  _(2, CLI_API_CONFIGURED, "cli/api")			\
+  _(3, PROXY_ENABLED, "proxy")				\
+
+typedef enum
+{
+#define _(a,b,c) IGMP_CONFIG_FLAG_##b = (1 << a),
+  foreach_igmp_config_flag
+#undef _
+} igmp_config_flag_t;
 
 enum
 {
@@ -142,11 +155,9 @@ typedef struct igmp_group_t_
 */
 typedef struct igmp_config_t_
 {
-  u32 sw_if_index;
+  u32 *sw_if_index;
 
   adj_index_t adj_index;
-
-  u8 cli_api_configured;
 
   create_msg_t *next_create_msg;
 
@@ -154,9 +165,9 @@ typedef struct igmp_config_t_
 
   u8 robustness_var;
 
+  ip46_address_t proxy_addr;
+
   u8 flags;
-#define IGMP_CONFIG_FLAG_QUERY_RESP_RECVED 	(1 << 0)
-#define IGMP_CONFIG_FLAG_CAN_SEND_REPORT 	(1 << 1)
 
   uword *igmp_group_by_key;
 
@@ -216,7 +227,10 @@ typedef struct igmp_main_t_
 
   igmp_config_t *configs;
 
-  u32 **buffers;
+  u32 proxy_sw_if_index;
+
+  u8 flags;
+#define IGMP_MAIN_FLAG_PROXY_ENABLED	(1 << 0)
 
   igmp_timer_t *timers;
 
@@ -265,15 +279,25 @@ extern vlib_node_registration_t igmp_parse_report_node;
     @param sw_if_index - interface sw_if_index
     @param saddr - source address
     @param gaddr - group address
-    @param cli_api_configured - if zero, an igmp report has been received on interface
+    @param flags - IGMP_CONFIG_FLAGs
 
     Add/del (S,G) on an interface. If user configured,
     send a status change report from the interface.
     If a report was received on interface notify registered api clients.
 */
 int igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
-		 ip46_address_t saddr, ip46_address_t gaddr,
-		 u8 cli_api_configured);
+		 ip46_address_t saddr, ip46_address_t gaddr, u8 flags);
+
+/** \brief igmp proxy
+    @param vm - vlib main
+    @param enable - enable/disable proxy
+    @param sw_if_index - interface sw_if_index
+    @param addr - source address
+
+    Enable/disable IGMP Proxy on interface. Only one interface supported.
+*/
+int igmp_proxy (vlib_main_t * vm, u8 enable, u32 sw_if_index,
+		ip46_address_t addr);
 
 /** \brief igmp clear config
     @param config - igmp configuration
