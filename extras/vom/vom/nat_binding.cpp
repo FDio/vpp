@@ -222,9 +222,15 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
     auto& payload = record.get_payload();
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
-    nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV4,
-                   zone_t::from_vpp(payload.is_inside));
-    OM::commit(key, nb);
+
+    if (itf) {
+      nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV4,
+                     zone_t::from_vpp(payload.is_inside));
+      OM::commit(key, nb);
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "nat-binding-input-44 no sw_if_index: "
+                                  << payload.sw_if_index;
+    }
   }
 
   std::shared_ptr<nat_binding_cmds::dump_output_44_cmd> ocmd =
@@ -237,9 +243,14 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
     auto& payload = record.get_payload();
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
-    nat_binding nb(*itf, direction_t::OUTPUT, l3_proto_t::IPV4,
-                   zone_t::from_vpp(payload.is_inside));
-    OM::commit(key, nb);
+    if (itf) {
+      nat_binding nb(*itf, direction_t::OUTPUT, l3_proto_t::IPV4,
+                     zone_t::from_vpp(payload.is_inside));
+      OM::commit(key, nb);
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "nat-binding-output-44 no sw_if_index: "
+                                  << payload.sw_if_index;
+    }
   }
 
   std::shared_ptr<nat_binding_cmds::dump_input_66_cmd> i6cmd =
@@ -252,9 +263,14 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
     auto& payload = record.get_payload();
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
-    nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV6,
-                   zone_t::from_vpp(payload.is_inside));
-    OM::commit(key, nb);
+    if (itf) {
+      nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV6,
+                     zone_t::from_vpp(payload.is_inside));
+      OM::commit(key, nb);
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "nat-binding-input-66 no sw_if_index: "
+                                  << payload.sw_if_index;
+    }
   }
 }
 
