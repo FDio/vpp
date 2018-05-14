@@ -19,7 +19,7 @@ option version = "1.0.0";
 
 /** \brief 
     Used by a 'host' to enable the recption/listening of packets for a specific
-    multicast group
+    multicast group.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable - if set, enable igmp messages on configuration
@@ -38,10 +38,28 @@ autoreply define igmp_listen
   u8 gaddr[4];
 };
 
+/** \brief
+    Specify igmp proxy interface.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - if set, enable igmp proxy
+    @param sw_if_index - interface sw index
+    @param saddr - proxy source address
+*/
+autoreply define igmp_proxy
+{
+  u32 client_index;
+  u32 context;
+
+  u8 enable;
+  u32 sw_if_index;
+  u8 addr[4];
+};
+
 /** \brief 
     Used by a 'router' to enable the recption of IGMP packets and the
     construction of group state for hosts on the link
-    multicast group
+    multicast group.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable - if set, enable igmp messages on configuration
@@ -57,12 +75,29 @@ autoreply define igmp_enable_disable
 };
 
 /** \brief dump (S,G)s from interface
+    Sends igmp_details to client
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface sw index
     @param dump_all - get (S,G)s from all interfaces
 */
 define igmp_dump
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+  u8 dump_all;
+};
+
+/** \brief dump igmp configuration on interface
+    Sends igmp_config_details to client
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface sw index
+    @param dump_all - dump all interfaces
+*/
+define igmp_config_dump
 {
   u32 client_index;
   u32 context;
@@ -86,7 +121,23 @@ define igmp_details
   u8 gaddr[4];
 };
 
+/** \brief igmp details
+    @param context - sender context, to match reply w/ request
+    @param flags - configuration flags
+    @param sw_if_index - interface sw index
+    @param proxy_addr - proxy address
+*/
+define igmp_config_details
+{
+  u32 context;
+
+  u32 sw_if_index;
+  u8 flags;
+  u8 proxy_addr[4];
+};
+
 /** \brief remove all (S,G)s from an interface
+    Warning: this call will not send notifications! Use carefully.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface sw index
