@@ -48,8 +48,10 @@
 
 #define foreach_igmp_plugin_api_msg                      \
 _(IGMP_LISTEN, igmp_listen)                              \
+_(IGMP_PROXY, igmp_proxy)				 \
 _(IGMP_ENABLE_DISABLE, igmp_enable_disable)              \
 _(IGMP_DUMP, igmp_dump)					 \
+_(IGMP_CONFIG_DUMP, igmp_config_dump)			 \
 _(IGMP_CLEAR_INTERFACE, igmp_clear_interface)		 \
 _(WANT_IGMP_EVENTS, want_igmp_events)			 \
 
@@ -79,7 +81,9 @@ vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
   clib_memcpy (&saddr.ip4.as_u8, mp->saddr, sizeof (u8) * 4);
   clib_memcpy (&gaddr.ip4.as_u8, mp->gaddr, sizeof (u8) * 4);
 
-  rv = igmp_listen (vm, mp->enable, ntohl (mp->sw_if_index), saddr, gaddr, 1);
+  rv =
+    igmp_listen (vm, mp->enable, ntohl (mp->sw_if_index), saddr, gaddr,
+		 IGMP_CONFIG_FLAG_CLI_API_CONFIGURED);
 
 done:;
   unix_shared_memory_queue_t *q =
@@ -93,6 +97,37 @@ done:;
   rmp->retval = htonl (rv);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_igmp_proxy_t_handler (vl_api_igmp_proxy_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  igmp_main_t *im = &igmp_main;
+  vl_api_igmp_listen_reply_t *rmp;
+  int rv = 0;
+  ip46_address_t addr;
+
+  if (!vnet_sw_interface_is_api_valid (vnm, ntohl (mp->sw_if_index)))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto done;
+    }
+
+  if ((vnet_sw_interface_get_flags (vnm, ntohl (mp->sw_if_index)) &&
+       VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
+    {
+      rv = VNET_API_ERROR_UNEXPECTED_INTF_STATE;
+      goto done;
+    }
+
+  clib_memcpy (&addr.ip4.as_u8, mp->addr, sizeof (u8) * 4);
+
+  rv = igmp_proxy (vm, mp->enable, ntohl (mp->sw_if_index), addr);
+
+done:;
+  REPLY_MACRO (VL_API_IGMP_PROXY_REPLY + im->msg_id_base);
 }
 
 static void
@@ -125,6 +160,24 @@ send_igmp_details (unix_shared_memory_queue_t * q, igmp_main_t * im,
 }
 
 static void
+send_igmp_config_details (unix_shared_memory_queue_t * q, igmp_main_t * im,
+			  igmp_config_t * config, u32 context)
+{
+  vl_api_igmp_config_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id = htons (VL_API_IGMP_CONFIG_DETAILS + im->msg_id_base);
+  mp->context = context;
+  mp->sw_if_index = htonl (config->sw_if_index);
+  mp->flags = config->flags;
+  clib_memcpy (mp->proxy_addr, &config->proxy_addr.ip4, sizeof (u8) * 4);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
 vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
 {
   igmp_main_t *im = &igmp_main;
@@ -142,13 +195,13 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
       /* *INDENT-OFF* */
       pool_foreach (config, im->configs, (
         {
-	    pool_foreach (group, config->groups, (
-	      {
-		pool_foreach (src, group->srcs, (
-		  {
-		    send_igmp_details (q, im, config, group, src, mp->context);
-		  }));
-	      }));
+	  pool_foreach (group, config->groups, (
+	    {
+	      pool_foreach (src, group->srcs, (
+		{
+		  send_igmp_details (q, im, config, group, src, mp->context);
+		}));
+	    }));
         }));
       /* *INDENT-ON* */
       return;
@@ -165,6 +218,34 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
 	    }));
 	}));
       /* *INDENT-ON* */
+    }
+}
+
+static void
+vl_api_igmp_config_dump_t_handler (vl_api_igmp_dump_t * mp)
+{
+  igmp_main_t *im = &igmp_main;
+  igmp_config_t *config;
+
+  unix_shared_memory_queue_t *q =
+    vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
+
+  if (mp->dump_all)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (config, im->configs, (
+        {
+	  send_igmp_config_details (q, im, config, mp->context);
+        }));
+      /* *INDENT-ON* */
+      return;
+    }
+  config = igmp_config_lookup (im, ntohl (mp->sw_if_index));
+  if (config)
+    {
+      send_igmp_config_details (q, im, config, mp->context);
     }
 }
 

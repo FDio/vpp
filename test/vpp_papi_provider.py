@@ -3466,6 +3466,18 @@ class VppPapiProvider(object):
                          'saddr': saddr,
                          'gaddr': gaddr})
 
+    def igmp_proxy(self, enable, sw_if_index, addr):
+        """ Use IGMP Proxy on specified interface
+
+        :param enable: enable/disable
+        :param sw_if_index: interface sw index
+        :param addr: proxy address
+        """
+        return self.api(self.papi.igmp_proxy,
+                        {'enable': enable,
+                         'sw_if_index': sw_if_index,
+                         'addr': addr})
+
     def igmp_dump(self, sw_if_index=None):
         """ Dump all (S,G) interface configurations """
         if sw_if_index is None:
@@ -3475,6 +3487,17 @@ class VppPapiProvider(object):
             dump_all = 0
         return self.api(self.papi.igmp_dump, {'sw_if_index': sw_if_index,
                                               'dump_all': dump_all})
+
+    def igmp_config_dump(self, sw_if_index=None):
+        """ Dump interface configurations """
+        if sw_if_index is None:
+            dump_all = 1
+            sw_if_index = 0
+        else:
+            dump_all = 0
+        return self.api(self.papi.igmp_config_dump,
+                        {'sw_if_index': sw_if_index,
+                         'dump_all': dump_all})
 
     def igmp_clear_interface(self, sw_if_index):
         """ Remove all (S,G)s from specified interface
