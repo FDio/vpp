@@ -27,6 +27,7 @@
 #include <vnet/l2/l2_output.h>
 
 
+#ifndef CLIB_MULTIARCH_VARIANT
 /* Feature graph node names */
 static char *l2output_feat_names[] = {
 #define _(sym,name) name,
@@ -64,6 +65,7 @@ format_l2_output_features (u8 * s, va_list * args)
 }
 
 l2output_main_t l2output_main;
+#endif
 
 typedef struct
 {
@@ -74,6 +76,7 @@ typedef struct
   u8 raw[12];			/* raw data */
 } l2output_trace_t;
 
+#ifndef CLIB_MULTIARCH_VARIANT
 /* packet trace format function */
 static u8 *
 format_l2output_trace (u8 * s, va_list * args)
@@ -100,6 +103,7 @@ static char *l2output_error_strings[] = {
   foreach_l2output_error
 #undef _
 };
+#endif
 
 /**
  * Check for split horizon violations.
@@ -108,395 +112,326 @@ static char *l2output_error_strings[] = {
  * split-horizon group as the input interface, except if the @c shg is 0
  * in which case the check always passes.
  */
-static_always_inline u32
-split_horizon_violation (u8 shg1, u8 shg2)
-{
-  if (PREDICT_TRUE (shg1 == 0))
-    {
-      return 0;
-    }
-  else
-    {
-      return shg1 == shg2;
-    }
-}
-
-/** Determine the next L2 node based on the output feature bitmap */
 static_always_inline void
-l2_output_dispatch (vlib_buffer_t * b0, vlib_node_runtime_t * node,
-		    u32 * cached_sw_if_index, u32 * cached_next_index,
-		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
+split_horizon_violation (vlib_node_runtime_t * node, u8 shg,
+			 vlib_buffer_t * b, u16 * next)
 {
-  /*
-   * The output feature bitmap always have at least the L2 output bit set
-   * for a normal L2 interface (or 0 if the interface is changed from L2
-   * to L3 mode). So if the feature bitmap is 0 or just have L2 output bits set,
-   * we know there is no more feature and will just output packets on interface.
-   * Otherwise, get the index of the next feature node.
-   */
-  if (PREDICT_FALSE ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
-    {
-      /* Save bitmap for the next feature graph nodes */
-      vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
-      /* Determine the next node */
-      *next0 =
-	feat_bitmap_get_next_node_index (l2output_main.l2_out_feat_next,
-					 feature_bitmap);
-    }
-  else
-    {
-      /*
-       * There are no features. Send packet to TX node for sw_if_index0
-       * This is a little tricky in that the output interface next node indexes
-       * are not precomputed at init time.
-       */
-
-      if (sw_if_index == *cached_sw_if_index)
-	{
-	  /* We hit in the one-entry cache. Use it. */
-	  *next0 = *cached_next_index;
-	}
-      else
-	{
-	  /* Look up the output TX node for the sw_if_index */
-	  *next0 = vec_elt (l2output_main.output_node_index_vec, sw_if_index);
-
-	  if (PREDICT_FALSE (*next0 == L2OUTPUT_NEXT_DROP))
-	    b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
-
-	  /* Update the one-entry cache */
-	  *cached_sw_if_index = sw_if_index;
-	  *cached_next_index = *next0;
-	}
-    }
+  if (shg != vnet_buffer (b)->l2.shg)
+    return;
+  next[0] = L2OUTPUT_NEXT_DROP;
+  b->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
 }
 
 static_always_inline void
-l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
-	      u32 feature_bitmap, vlib_buffer_t * b, u32 * next)
+l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       l2_output_config_t * config,
+			       vlib_buffer_t ** b, i16 * cdo, u16 * next,
+			       u32 n_left, int l2_efp, int l2_vtr, int l2_pbb,
+			       int shg_set, int update_feature_bitmap)
 {
-  if (PREDICT_FALSE (config->out_vtr_flag))
+  while (n_left >= 8)
     {
-      /* Perform pre-vtr EFP filter check if configured */
-      if (config->output_vtr.push_and_pop_bytes)
-	{
-	  /*
-	   * Perform output vlan tag rewrite and the pre-vtr EFP filter check.
-	   * The EFP Filter only needs to be run if there is an output VTR
-	   * configured. The flag for the post-vtr EFP Filter node is used
-	   * to trigger the pre-vtr check as well.
-	   */
-	  u32 failed1 = (feature_bitmap & L2OUTPUT_FEAT_EFP_FILTER)
-	    && (l2_efp_filter_process (b, &(config->input_vtr)));
-	  u32 failed2 = l2_vtr_process (b, &(config->output_vtr));
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
 
+      /* prefetch eth headers only if we need to touch them */
+      if (l2_vtr || l2_pbb || shg_set)
+	{
+	  CLIB_PREFETCH (b[4]->data + cdo[4], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[5]->data + cdo[5], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[6]->data + cdo[6], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[7]->data + cdo[7], CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      if (update_feature_bitmap)
+	{
+	  vnet_buffer (b[0])->l2.feature_bitmap = config->feature_bitmap;
+	  vnet_buffer (b[1])->l2.feature_bitmap = config->feature_bitmap;
+	  vnet_buffer (b[2])->l2.feature_bitmap = config->feature_bitmap;
+	  vnet_buffer (b[3])->l2.feature_bitmap = config->feature_bitmap;
+	}
+
+      if (l2_vtr)
+	{
+	  int i;
+	  for (i = 0; i < 4; i++)
+	    {
+	      u32 failed1 = l2_efp &&
+		l2_efp_filter_process (b[i], &(config->input_vtr));
+	      u32 failed2 = l2_vtr_process (b[i], &(config->output_vtr));
+	      if (PREDICT_FALSE (failed1 | failed2))
+		{
+		  next[i] = L2OUTPUT_NEXT_DROP;
+		  if (failed2)
+		    b[i]->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		  if (failed1)
+		    b[i]->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+		}
+	    }
+	}
+
+      if (l2_pbb)
+	{
+	  int i;
+	  for (i = 0; i < 4; i++)
+	    if (l2_pbb_process (b[i], &(config->output_pbb_vtr)))
+	      {
+		next[i] = L2OUTPUT_NEXT_DROP;
+		b[i]->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	      }
+	}
+
+      if (shg_set)
+	{
+	  split_horizon_violation (node, config->shg, b[0], next);
+	  split_horizon_violation (node, config->shg, b[1], next + 1);
+	  split_horizon_violation (node, config->shg, b[2], next + 2);
+	  split_horizon_violation (node, config->shg, b[3], next + 3);
+	}
+      /* next */
+      n_left -= 4;
+      b += 4;
+      next += 4;
+      cdo += 4;
+    }
+
+  while (n_left)
+    {
+      if (update_feature_bitmap)
+	vnet_buffer (b[0])->l2.feature_bitmap = config->feature_bitmap;
+
+      if (l2_vtr)
+	{
+	  u32 failed1 = l2_efp &&
+	    l2_efp_filter_process (b[0], &(config->input_vtr));
+	  u32 failed2 = l2_vtr_process (b[0], &(config->output_vtr));
 	  if (PREDICT_FALSE (failed1 | failed2))
 	    {
 	      *next = L2OUTPUT_NEXT_DROP;
 	      if (failed2)
-		{
-		  b->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
-		}
+		b[0]->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 	      if (failed1)
-		{
-		  b->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
-		}
+		b[0]->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
 	    }
 	}
-      // perform the PBB rewrite
-      else if (config->output_pbb_vtr.push_and_pop_bytes)
+
+      if (l2_pbb && l2_pbb_process (b[0], &(config->output_pbb_vtr)))
 	{
-	  u32 failed = l2_pbb_process (b, &(config->output_pbb_vtr));
-	  if (PREDICT_FALSE (failed))
-	    {
-	      *next = L2OUTPUT_NEXT_DROP;
-	      b->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
-	    }
+	  next[0] = L2OUTPUT_NEXT_DROP;
+	  b[0]->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 	}
+
+      if (shg_set)
+	split_horizon_violation (node, config->shg, b[0], next);
+
+      /* next */
+      n_left -= 1;
+      b += 1;
+      next += 1;
     }
 }
 
-
-static_always_inline uword
-l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame, int do_trace)
+static_always_inline void
+l2output_set_buffer_error (vlib_buffer_t ** b, u32 n_left, vlib_error_t error)
 {
-  u32 n_left_from, *from, *to_next;
-  l2output_next_t next_index;
-  l2output_main_t *msm = &l2output_main;
-  u32 cached_sw_if_index;
-  u32 cached_next_index;
+  while (n_left >= 8)
+    {
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+      b[0]->error = b[1]->error = b[2]->error = b[3]->error = error;
+      b += 4;
+      n_left -= 4;
+    }
+  while (n_left)
+    {
+      b[0]->error = error;
+      b += 1;
+      n_left -= 1;
+    }
+}
 
-  /* Invalidate cache */
-  cached_sw_if_index = ~0;
-  cached_next_index = ~0;	/* warning be gone */
+static_always_inline void
+l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
+			l2_output_config_t * config, vlib_buffer_t ** b,
+			i16 * cdo, u16 * next, u32 n_left, int l2_efp,
+			int l2_vtr, int l2_pbb)
+{
+  u32 feature_bitmap = config->feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT;
+  if (config->shg == 0 && feature_bitmap == 0)
+    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+				   l2_efp, l2_vtr, l2_pbb, 0, 0);
+  else if (config->shg == 0)
+    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+				   l2_efp, l2_vtr, l2_pbb, 0, 1);
+  else if (feature_bitmap == 0)
+    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+				   l2_efp, l2_vtr, l2_pbb, 1, 0);
+  else
+    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+				   l2_efp, l2_vtr, l2_pbb, 1, 1);
+}
+
+uword CLIB_CPU_OPTIMIZED
+CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
+{
+  u32 n_left, *from;
+  l2output_main_t *msm = &l2output_main;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE];
+  u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
+  i16 cur_data_offsets[VLIB_FRAME_SIZE], *cdo;
+  l2_output_config_t *config;
+  u32 feature_bitmap;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
-  next_index = node->cached_next_index;
+  n_left = frame->n_vectors;	/* number of packets to process */
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left);
+  b = bufs;
+  sw_if_index = sw_if_indices;
+  cdo = cur_data_offsets;
+
+  /* extract data from buffer metadata */
+  while (n_left >= 8)
     {
-      u32 n_left_to_next;
+      /* Prefetch the buffer header for the N+2 loop iteration */
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
 
-      /* get space to enqueue frame to graph node "next_index" */
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      cdo[0] = b[0]->current_data;
+      sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+      cdo[1] = b[1]->current_data;
+      sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+      cdo[2] = b[2]->current_data;
+      sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
+      cdo[3] = b[3]->current_data;
 
-      while (n_left_from >= 8 && n_left_to_next >= 4)
-	{
-	  u32 bi0, bi1, bi2, bi3;
-	  vlib_buffer_t *b0, *b1, *b2, *b3;
-	  u32 next0, next1, next2, next3;
-	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
-	  ethernet_header_t *h0, *h1, *h2, *h3;
-	  l2_output_config_t *config0, *config1, *config2, *config3;
-	  u32 feature_bitmap0, feature_bitmap1;
-	  u32 feature_bitmap2, feature_bitmap3;
-
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p4, *p5, *p6, *p7;
-
-	    p4 = vlib_get_buffer (vm, from[4]);
-	    p5 = vlib_get_buffer (vm, from[5]);
-	    p6 = vlib_get_buffer (vm, from[6]);
-	    p7 = vlib_get_buffer (vm, from[7]);
-
-	    /* Prefetch the buffer header for the N+2 loop iteration */
-	    vlib_prefetch_buffer_header (p4, LOAD);
-	    vlib_prefetch_buffer_header (p5, LOAD);
-	    vlib_prefetch_buffer_header (p6, LOAD);
-	    vlib_prefetch_buffer_header (p7, LOAD);
-	  }
-
-	  /* speculatively enqueue b0 and b1 to the current next frame */
-	  /* bi is "buffer index", b is pointer to the buffer */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  to_next[2] = bi2 = from[2];
-	  to_next[3] = bi3 = from[3];
-	  from += 4;
-	  to_next += 4;
-	  n_left_from -= 4;
-	  n_left_to_next -= 4;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
-
-	  /* TX interface handles */
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
-	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
-
-	  vlib_node_increment_counter (vm, l2output_node.index,
-				       L2OUTPUT_ERROR_L2OUTPUT, 4);
-
-	  /* Get config for the output interface */
-	  config0 = vec_elt_at_index (msm->configs, sw_if_index0);
-	  config1 = vec_elt_at_index (msm->configs, sw_if_index1);
-	  config2 = vec_elt_at_index (msm->configs, sw_if_index2);
-	  config3 = vec_elt_at_index (msm->configs, sw_if_index3);
-
-	  /*
-	   * Get features from the config
-	   * TODO: mask out any non-applicable features
-	   */
-	  feature_bitmap0 = config0->feature_bitmap;
-	  feature_bitmap1 = config1->feature_bitmap;
-	  feature_bitmap2 = config2->feature_bitmap;
-	  feature_bitmap3 = config3->feature_bitmap;
-
-	  /* Determine next node */
-	  l2_output_dispatch (b0, node, &cached_sw_if_index,
-			      &cached_next_index, sw_if_index0,
-			      feature_bitmap0, &next0);
-	  l2_output_dispatch (b1, node, &cached_sw_if_index,
-			      &cached_next_index, sw_if_index1,
-			      feature_bitmap1, &next1);
-	  l2_output_dispatch (b2, node, &cached_sw_if_index,
-			      &cached_next_index, sw_if_index2,
-			      feature_bitmap2, &next2);
-	  l2_output_dispatch (b3, node, &cached_sw_if_index,
-			      &cached_next_index, sw_if_index3,
-			      feature_bitmap3, &next3);
-
-	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
-	  l2output_vtr (node, config1, feature_bitmap1, b1, &next1);
-	  l2output_vtr (node, config2, feature_bitmap2, b2, &next2);
-	  l2output_vtr (node, config3, feature_bitmap3, b3, &next3);
-
-	  if (do_trace)
-	    {
-	      h0 = vlib_buffer_get_current (b0);
-	      h1 = vlib_buffer_get_current (b1);
-	      h2 = vlib_buffer_get_current (b2);
-	      h3 = vlib_buffer_get_current (b3);
-	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->sw_if_index = sw_if_index0;
-		  clib_memcpy (t->src, h0->src_address, 6);
-		  clib_memcpy (t->dst, h0->dst_address, 6);
-		  clib_memcpy (t->raw, &h0->type, sizeof (t->raw));
-		}
-	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b1, sizeof (*t));
-		  t->sw_if_index = sw_if_index1;
-		  clib_memcpy (t->src, h1->src_address, 6);
-		  clib_memcpy (t->dst, h1->dst_address, 6);
-		  clib_memcpy (t->raw, &h1->type, sizeof (t->raw));
-		}
-	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b2, sizeof (*t));
-		  t->sw_if_index = sw_if_index2;
-		  clib_memcpy (t->src, h2->src_address, 6);
-		  clib_memcpy (t->dst, h2->dst_address, 6);
-		  clib_memcpy (t->raw, &h2->type, sizeof (t->raw));
-		}
-	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b3, sizeof (*t));
-		  t->sw_if_index = sw_if_index3;
-		  clib_memcpy (t->src, h3->src_address, 6);
-		  clib_memcpy (t->dst, h3->dst_address, 6);
-		  clib_memcpy (t->raw, &h3->type, sizeof (t->raw));
-		}
-	    }
-
-	  /*
-	   * Perform the split horizon check
-	   * The check can only fail for non-zero shg's
-	   */
-	  if (PREDICT_FALSE (config0->shg + config1->shg +
-			     config2->shg + config3->shg))
-	    {
-	      /* one of the checks might fail, check both */
-	      if (split_horizon_violation
-		  (config0->shg, vnet_buffer (b0)->l2.shg))
-		{
-		  next0 = L2OUTPUT_NEXT_DROP;
-		  b0->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
-		}
-	      if (split_horizon_violation
-		  (config1->shg, vnet_buffer (b1)->l2.shg))
-		{
-		  next1 = L2OUTPUT_NEXT_DROP;
-		  b1->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
-		}
-	      if (split_horizon_violation
-		  (config2->shg, vnet_buffer (b2)->l2.shg))
-		{
-		  next2 = L2OUTPUT_NEXT_DROP;
-		  b2->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
-		}
-	      if (split_horizon_violation
-		  (config3->shg, vnet_buffer (b3)->l2.shg))
-		{
-		  next3 = L2OUTPUT_NEXT_DROP;
-		  b3->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
-		}
-	    }
-
-	  /* verify speculative enqueues, maybe switch current next frame */
-	  /* if next0==next1==next_index then nothing special needs to be done */
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
-					   next0, next1, next2, next3);
-	}
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0;
-	  u32 sw_if_index0;
-	  ethernet_header_t *h0;
-	  l2_output_config_t *config0;
-	  u32 feature_bitmap0;
-
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-	  vlib_node_increment_counter (vm, l2output_node.index,
-				       L2OUTPUT_ERROR_L2OUTPUT, 1);
-
-	  /* Get config for the output interface */
-	  config0 = vec_elt_at_index (msm->configs, sw_if_index0);
-
-	  /*
-	   * Get features from the config
-	   * TODO: mask out any non-applicable features
-	   */
-	  feature_bitmap0 = config0->feature_bitmap;
-
-	  /* Determine next node */
-	  l2_output_dispatch (b0, node, &cached_sw_if_index,
-			      &cached_next_index, sw_if_index0,
-			      feature_bitmap0, &next0);
-
-	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
-
-	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      l2output_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      h0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
-	      clib_memcpy (t->raw, &h0->type, sizeof (t->raw));
-	    }
-
-	  /* Perform the split horizon check */
-	  if (PREDICT_FALSE
-	      (split_horizon_violation
-	       (config0->shg, vnet_buffer (b0)->l2.shg)))
-	    {
-	      next0 = L2OUTPUT_NEXT_DROP;
-	      b0->error = node->errors[L2OUTPUT_ERROR_SHG_DROP];
-	    }
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      /* next */
+      sw_if_index += 4;
+      n_left -= 4;
+      b += 4;
+      cdo += 4;
     }
+  while (n_left)
+    {
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      cdo[0] = b[0]->current_data;
+
+      /* next */
+      sw_if_index += 1;
+      n_left -= 1;
+      b += 1;
+      cdo += 1;
+    }
+
+  n_left = frame->n_vectors;
+  while (n_left)
+    {
+      u16 count, new_next, *next;
+      u16 off = frame->n_vectors - n_left;
+      b = bufs + off;
+
+      if (n_left >= 4)
+	{
+	  vlib_prefetch_buffer_header (b[0], LOAD);
+	  vlib_prefetch_buffer_header (b[1], LOAD);
+	  vlib_prefetch_buffer_header (b[2], LOAD);
+	  vlib_prefetch_buffer_header (b[3], LOAD);
+	}
+
+      sw_if_index = sw_if_indices + off;
+      cdo = cur_data_offsets + off;
+      next = nexts + off;
+
+      count = clib_count_equal_u32 (sw_if_index, n_left);
+      n_left -= count;
+
+      config = vec_elt_at_index (msm->configs, sw_if_index[0]);
+      feature_bitmap = config->feature_bitmap;
+      if (PREDICT_FALSE ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
+	new_next = feat_bitmap_get_next_node_index
+	  (l2output_main.l2_out_feat_next, feature_bitmap);
+      else
+	new_next = vec_elt (l2output_main.output_node_index_vec,
+			    sw_if_index[0]);
+      clib_memset_u16 (nexts + off, new_next, count);
+
+      if (new_next == L2OUTPUT_NEXT_DROP)
+	{
+	  l2output_set_buffer_error
+	    (b, count, node->errors[L2OUTPUT_ERROR_MAPPING_DROP]);
+	  continue;
+	}
+
+      /* VTR */
+      if (config->out_vtr_flag && config->output_vtr.push_and_pop_bytes)
+	{
+	  if (feature_bitmap & L2OUTPUT_FEAT_EFP_FILTER)
+	    l2output_process_batch (vm, node, config, b, cdo, next, count,
+				    /* l2_efp */ 1,
+				    /* l2_vtr */ 1,
+				    /* l2_pbb */ 0);
+	  else
+	    l2output_process_batch (vm, node, config, b, cdo, next, count,
+				    /* l2_efp */ 0,
+				    /* l2_vtr */ 1,
+				    /* l2_pbb */ 0);
+	}
+      else if (config->out_vtr_flag &&
+	       config->output_pbb_vtr.push_and_pop_bytes)
+	l2output_process_batch (vm, node, config, b, cdo, next, count,
+				/* l2_efp */ 0,
+				/* l2_vtr */ 0,
+				/* l2_pbb */ 1);
+      else
+	l2output_process_batch (vm, node, config, b, cdo, next, count,
+				/* l2_efp */ 0,
+				/* l2_vtr */ 0,
+				/* l2_pbb */ 0);
+    }
+
+
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    {
+      n_left = frame->n_vectors;	/* number of packets to process */
+      b = bufs;
+
+      while (n_left)
+	{
+	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ethernet_header_t *h;
+	      l2output_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	      h = vlib_buffer_get_current (b[0]);
+	      clib_memcpy (t->src, h->src_address, 6);
+	      clib_memcpy (t->dst, h->dst_address, 6);
+	      clib_memcpy (t->raw, &h->type, sizeof (t->raw));
+	    }
+	  /* next */
+	  n_left--;
+	  b++;
+	}
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  vlib_node_increment_counter (vm, l2output_node.index,
+			       L2OUTPUT_ERROR_L2OUTPUT, frame->n_vectors);
 
   return frame->n_vectors;
 }
 
-static uword
-l2output_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return l2output_node_inline (vm, node, frame, 1 /* do_trace */ );
-  return l2output_node_inline (vm, node, frame, 0 /* do_trace */ );
-}
-
+#ifndef CLIB_MULTIARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node) = {
   .function = l2output_node_fn,
@@ -517,7 +452,19 @@ VLIB_REGISTER_NODE (l2output_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn);
+#if __x86_64__
+vlib_node_function_t __clib_weak l2output_node_fn_avx512;
+vlib_node_function_t __clib_weak l2output_node_fn_avx2;
+static void __clib_constructor
+l2output_multiarch_select (void)
+{
+  if (l2output_node_fn_avx512 && clib_cpu_supports_avx512f ())
+    l2output_node.function = l2output_node_fn_avx512;
+  else if (l2output_node_fn_avx2 && clib_cpu_supports_avx2 ())
+    l2output_node.function = l2output_node_fn_avx2;
+}
+#endif
+
 /* *INDENT-ON* */
 
 
@@ -700,6 +647,7 @@ l2output_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
       config->feature_bitmap &= ~feature_bitmap;
     }
 }
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
