@@ -146,6 +146,213 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
 #endif
 }
 
+static_always_inline void
+clib_memset_u16 (void *p, u16 val, uword count)
+{
+  u16 *ptr = p;
+#if defined(CLIB_HAVE_VEC512)
+  u16x32 v512 = u16x32_splat (val);
+  while (count >= 32)
+    {
+      u16x32_store_unaligned (v512, ptr);
+      ptr += 32;
+      count -= 32;
+    }
+  if (count == 0)
+    return;
+#endif
+#if defined(CLIB_HAVE_VEC256)
+  u16x16 v256 = u16x16_splat (val);
+  while (count >= 16)
+    {
+      u16x16_store_unaligned (v256, ptr);
+      ptr += 16;
+      count -= 16;
+    }
+  if (count == 0)
+    return;
+#endif
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  u16x8 v128 = u16x8_splat (val);
+  while (count >= 8)
+    {
+      u16x8_store_unaligned (v128, ptr);
+      ptr += 8;
+      count -= 8;
+    }
+#else
+  while (count >= 4)
+    {
+      ptr[0] = ptr[1] = ptr[2] = ptr[3] = val;
+      ptr += 4;
+      count -= 4;
+    }
+#endif
+  while (count--)
+    ptr++[0] = val;
+}
+
+static_always_inline void
+clib_memset_u8 (void *p, u8 val, uword count)
+{
+  u8 *ptr = p;
+#if defined(CLIB_HAVE_VEC512)
+  u8x64 v512 = u8x64_splat (val);
+  while (count >= 64)
+    {
+      u8x64_store_unaligned (v512, ptr);
+      ptr += 64;
+      count -= 64;
+    }
+  if (count == 0)
+    return;
+#endif
+#if defined(CLIB_HAVE_VEC256)
+  u8x32 v256 = u8x32_splat (val);
+  while (count >= 32)
+    {
+      u8x32_store_unaligned (v256, ptr);
+      ptr += 32;
+      count -= 32;
+    }
+  if (count == 0)
+    return;
+#endif
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  u8x16 v128 = u8x16_splat (val);
+  while (count >= 16)
+    {
+      u8x16_store_unaligned (v128, ptr);
+      ptr += 16;
+      count -= 16;
+    }
+#else
+  while (count >= 4)
+    {
+      ptr[0] = ptr[1] = ptr[2] = ptr[3] = val;
+      ptr += 4;
+      count -= 4;
+    }
+#endif
+  while (count--)
+    ptr++[0] = val;
+}
+
+static_always_inline u32
+clib_count_equal_u32 (u32 * data, uword max_count)
+{
+  u32 count = 0;
+  u32 first = data[0];
+
+#if defined(CLIB_HAVE_VEC512)
+  while (count + 16 <= max_count &&
+	 u32x16_is_all_equal (u32x16_load_unaligned (data), first))
+    {
+      data += 16;
+      count += 16;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC256)
+  while (count + 8 <= max_count &&
+	 u32x8_is_all_equal (u32x8_load_unaligned (data), first))
+    {
+      data += 8;
+      count += 8;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  while (count + 4 <= max_count &&
+	 u32x4_is_all_equal (u32x4_load_unaligned (data), first))
+    {
+      data += 4;
+      count += 4;
+    }
+#endif
+  while (count < max_count && (data[0] == first))
+    {
+      data += 1;
+      count += 1;
+    }
+  return count;
+}
+
+static_always_inline u32
+clib_count_equal_u16 (u32 * data, uword max_count)
+{
+  u32 count = 0;
+  u16 first = data[0];
+
+#if defined(CLIB_HAVE_VEC512)
+  while (count + 32 <= max_count &&
+	 u16x32_is_all_equal (u16x32_load_unaligned (data), first))
+    {
+      data += 32;
+      count += 32;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC256)
+  while (count + 16 <= max_count &&
+	 u16x16_is_all_equal (u16x16_load_unaligned (data), first))
+    {
+      data += 16;
+      count += 16;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  while (count + 8 <= max_count &&
+	 u16x8_is_all_equal (u16x8_load_unaligned (data), first))
+    {
+      data += 8;
+      count += 8;
+    }
+#endif
+  while (count < max_count && (data[0] == first))
+    {
+      data += 1;
+      count += 1;
+    }
+  return count;
+}
+
+static_always_inline u32
+clib_count_equal_u8 (u32 * data, uword max_count)
+{
+  u32 count = 0;
+  u8 first = data[0];
+
+#if defined(CLIB_HAVE_VEC512)
+  while (count + 64 <= max_count &&
+	 u8x64_is_all_equal (u8x64_load_unaligned (data), first))
+    {
+      data += 64;
+      count += 64;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC256)
+  while (count + 32 <= max_count &&
+	 u8x32_is_all_equal (u8x32_load_unaligned (data), first))
+    {
+      data += 32;
+      count += 32;
+    }
+#endif
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  while (count + 16 <= max_count &&
+	 u8x16_is_all_equal (u8x16_load_unaligned (data), first))
+    {
+      data += 4;
+      count += 4;
+    }
+#endif
+  while (count < max_count && (data[0] == first))
+    {
+      data += 1;
+      count += 1;
+    }
+  return count;
+}
+
+
 #endif /* included_clib_string_h */
 
 /*
