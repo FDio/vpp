@@ -16,6 +16,24 @@
       "revId": "a76eb343df3ccdd4caf5ad3b11c6aaa17ea8abe7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cff295c6_b0573762",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-05-15T19:35:38Z",
+      "side": 1,
+      "message": "Alec, thank you for taking the time to review. Malformed packet checks are done on the ip4 inbound path. Here we are about to transmit the packet to the device, we are just selecting the correct slave interface to push the packet to the output interface. I think there is no need for the error check.",
+      "parentUuid": "ef4cb545_878fadd1",
+      "revId": "a76eb343df3ccdd4caf5ad3b11c6aaa17ea8abe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
