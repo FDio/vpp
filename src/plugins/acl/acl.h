@@ -374,7 +374,7 @@ extern acl_main_t acl_main;
  * the inline functions from this plugin to other plugins.
  */
 
-extern acl_main_t *p_acl_main;
+// extern acl_main_t *p_acl_main;
 
 void *acl_plugin_set_heap();
 

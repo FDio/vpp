@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
+#include <plugins/acl/exported_types.h>
+
 // #define FA_NODE_VERBOSE_DEBUG 3
 
 #define TCP_FLAG_FIN    0x01
@@ -53,11 +55,6 @@ typedef union {
   };
   clib_bihash_kv_40_8_t kv;
 } fa_5tuple_t;
-
-typedef struct {
-  u8 opaque[sizeof(fa_5tuple_t)];
-} fa_5tuple_opaque_t;
-
 
 typedef struct {
   fa_5tuple_t info; /* (5+1)*8 = 48 bytes */
@@ -110,6 +107,8 @@ CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);
 
 /* Session ID MUST be the same as u64 */
 CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), sizeof(u64));
+
+CT_ASSERT_EQUAL(fa_5tuple_opaque_t_must_match_5tuple, sizeof(fa_5tuple_opaque_t), sizeof(fa_5tuple_t));
 #undef CT_ASSERT_EQUAL
 
 typedef struct {
