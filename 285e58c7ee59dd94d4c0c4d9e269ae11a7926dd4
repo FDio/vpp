@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2811a064_37742604",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-05-15T23:44:12Z",
+      "side": 1,
+      "message": "Since you\u0027re returning a u32, it seems like you could hash this as two integers XORed for fewer instructions (1 versus 7).  You\u0027d need to do something more with the result than simply a modulus but you\u0027d have cycles in hand.\n\nAlso, since you are (almost certainly) %2\u0027ing the result, and x%2 \u003d\u003d x\u00261, you are losing 7/8 of your entropy.  This applies to all your functions, though in the other cases it\u0027s 31/32 of your entropy.\n\nGiven you\u0027re doing it on a value which - here - is 0..255, you\u0027re going to find poor bond balancing at higher bond counts.  Probably we don\u0027t get high enough to care.\n\nYou should examining the ECMP code, which must also be hashing.  You should be sharing code with it if at all possible, so that hashing improvements benefit both components.\n\nConsider using something like tghe SSE4.2 CRC32 function - it has a polynomial included that spreads the entropy across all of the bits as it incorporates more data.",
+      "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ebf0b0a0_f62c77f0",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-05-15T23:44:12Z",
+      "side": 1,
+      "message": "You could skip the first two bytes of the MAC and hash the last four with an XOR.  Since the first bytes have fixed bits (most packets aren\u0027t multicast) it has less entropy in than the rest.",
+      "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
