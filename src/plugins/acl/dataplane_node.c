@@ -136,8 +136,8 @@ acl_fa_node_fn (vlib_main_t * vm,
        * Extract the L3/L4 matching info into a 5-tuple structure.
        */
 
-      acl_plugin_fill_5tuple_inline (lc_index0, b[0], is_ip6, is_input,
-				     is_l2_path,
+      acl_plugin_fill_5tuple_inline (&acl_main, lc_index0, b[0], is_ip6,
+				     is_input, is_l2_path,
 				     (fa_5tuple_opaque_t *) & fa_5tuple);
       fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
       fa_5tuple.pkt.mask_type_index_lsb = ~0;
@@ -234,7 +234,7 @@ acl_fa_node_fn (vlib_main_t * vm,
       if (acl_check_needed)
 	{
 	  action = 0;		/* deny by default */
-	  acl_plugin_match_5tuple_inline (lc_index0,
+	  acl_plugin_match_5tuple_inline (&acl_main, lc_index0,
 					  (fa_5tuple_opaque_t *) &
 					  fa_5tuple, is_ip6, &action,
 					  &match_acl_pos,
