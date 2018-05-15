@@ -47,6 +47,11 @@ static u32 *abf_alctx_per_itf[FIB_PROTOCOL_MAX];
  * ABF ACL module user id returned during the initialization
  */
 static u32 abf_acl_user_id;
+/*
+ * ACL plugin method vtable
+ */
+
+static acl_plugin_methods_t acl_plugin;
 
 /**
  * A DB of attachments; key={abf_index,sw_if_index}
@@ -152,7 +157,7 @@ abf_setup_acl_lc (fib_protocol_t fproto, u32 sw_if_index)
     aia = abf_itf_attach_get (*aiai);
     vec_add1 (acl_vec, aia->aia_acl);
   }
-  acl_plugin_set_acl_vec_for_context (abf_alctx_per_itf[fproto][sw_if_index],
+  acl_plugin.set_acl_vec_for_context (abf_alctx_per_itf[fproto][sw_if_index],
 				      acl_vec);
   vec_free (acl_vec);
 }
@@ -219,7 +224,7 @@ abf_itf_attach (fib_protocol_t fproto,
       /* if this is the first ABF policy, we need to acquire an ACL lookup context */
       vec_validate_init_empty (abf_alctx_per_itf[fproto], sw_if_index, ~0);
       abf_alctx_per_itf[fproto][sw_if_index] =
-	acl_plugin_get_lookup_context_index (abf_acl_user_id, sw_if_index, 0);
+	acl_plugin.get_lookup_context_index (abf_acl_user_id, sw_if_index, 0);
     }
   else
     {
@@ -282,7 +287,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
 				   sw_if_index, 0, NULL, 0);
 
       /* Return the lookup context, invalidate its id in our records */
-      acl_plugin_put_lookup_context_index (abf_alctx_per_itf[fproto]
+      acl_plugin.put_lookup_context_index (abf_alctx_per_itf[fproto]
 					   [sw_if_index]);
       abf_alctx_per_itf[fproto][sw_if_index] = ~0;
     }
@@ -546,13 +551,25 @@ abf_input_inline (vlib_main_t * vm,
 	   */
 	  u32 lc_index = abf_alctx_per_itf[fproto][sw_if_index0];
 
-	  acl_plugin_fill_5tuple (lc_index, b0, (FIB_PROTOCOL_IP6 == fproto),
-				  1, 0, &fa_5tuple0);
+	  /*
+	     A non-inline version looks like this:
 
-	  if (acl_plugin_match_5tuple
-	      (lc_index, &fa_5tuple0, (FIB_PROTOCOL_IP6 == fproto), &action,
-	       &match_acl_pos, &match_acl_index, &match_rule_index,
-	       &trace_bitmap))
+	     acl_plugin.fill_5tuple (lc_index, b0, (FIB_PROTOCOL_IP6 == fproto),
+	     1, 0, &fa_5tuple0);
+	     if (acl_plugin.match_5tuple
+	     (lc_index, &fa_5tuple0, (FIB_PROTOCOL_IP6 == fproto), &action,
+	     &match_acl_pos, &match_acl_index, &match_rule_index,
+	     &trace_bitmap))
+	     . . .
+	   */
+	  acl_plugin_fill_5tuple_inline (acl_plugin.p_acl_main, lc_index, b0,
+					 (FIB_PROTOCOL_IP6 == fproto), 1, 0,
+					 &fa_5tuple0);
+
+	  if (acl_plugin_match_5tuple_inline
+	      (acl_plugin.p_acl_main, lc_index, &fa_5tuple0,
+	       (FIB_PROTOCOL_IP6 == fproto), &action, &match_acl_pos,
+	       &match_acl_index, &match_rule_index, &trace_bitmap))
 	    {
 	      /*
 	       * match:
@@ -737,12 +754,12 @@ abf_itf_bond_init (vlib_main_t * vm)
 {
   abf_itf_attach_fib_node_type =
     fib_node_register_new_type (&abf_itf_attach_vft);
-  clib_error_t *acl_init_res = acl_plugin_exports_init ();
+  clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
   if (acl_init_res)
     return (acl_init_res);
 
   abf_acl_user_id =
-    acl_plugin_register_user_module ("abp plugin", "sw_if_index", NULL);
+    acl_plugin.register_user_module ("abp plugin", "sw_if_index", NULL);
 
   return (NULL);
 }

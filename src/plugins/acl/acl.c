@@ -54,7 +54,6 @@
 #include "public_inlines.h"
 
 acl_main_t acl_main;
-acl_main_t *p_acl_main = &acl_main;
 
 #define REPLY_MSG_ID_BASE am->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -95,6 +94,9 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
+/* methods exported from ACL-as-a-service */
+static acl_plugin_methods_t acl_plugin;
+
 /* Format vec16. */
 u8 *
 format_vec16 (u8 * s, va_list * va)
@@ -109,19 +111,6 @@ format_vec16 (u8 * s, va_list * va)
       s = format (s, fmt, v[i]);
     }
   return s;
-}
-
-
-
-u8
-acl_plugin_acl_exists (u32 acl_index)
-{
-  acl_main_t *am = &acl_main;
-
-  if (pool_is_free_index (am->acls, acl_index))
-    return 0;
-
-  return 1;
 }
 
 static void *
@@ -1349,20 +1338,20 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 	{
 	  if (~0 == am->interface_acl_user_id)
 	    am->interface_acl_user_id =
-	      acl_plugin_register_user_module ("interface ACL", "sw_if_index",
+	      acl_plugin.register_user_module ("interface ACL", "sw_if_index",
 					       "is_input");
 	  lc_index =
-	    acl_plugin_get_lookup_context_index (am->interface_acl_user_id,
+	    acl_plugin.get_lookup_context_index (am->interface_acl_user_id,
 						 sw_if_index, is_input);
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = lc_index;
 	}
-      acl_plugin_set_acl_vec_for_context (lc_index, vec_acl_list_index);
+      acl_plugin.set_acl_vec_for_context (lc_index, vec_acl_list_index);
     }
   else
     {
       if (~0 != (*pinout_lc_index_by_sw_if_index)[sw_if_index])
 	{
-	  acl_plugin_put_lookup_context_index ((*pinout_lc_index_by_sw_if_index)[sw_if_index]);
+	  acl_plugin.put_lookup_context_index ((*pinout_lc_index_by_sw_if_index)[sw_if_index]);
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = ~0;
 	}
     }
@@ -4163,6 +4152,14 @@ acl_init (vlib_main_t * vm)
   setup_message_id_table (am, &api_main);
 
   vec_free (name);
+
+  if (error)
+    return error;
+
+  error = acl_plugin_exports_init (&acl_plugin);
+
+  if (error)
+    return error;
 
   acl_setup_fa_nodes ();
 
