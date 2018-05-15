@@ -71,6 +71,9 @@ typedef struct
   svm_queue_t *vl_input_queue;
   u32 my_client_index;
 
+  /* logging */
+  vlib_log_class_t log_class;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -210,13 +213,19 @@ get_interface_mac_address (u32 sw_if_index, u8 mac[])
 
   if (!vnet_sw_interface_is_api_valid (rm->vnet_main, sw_if_index))
     {
-      clib_warning ("Invalid sw_if_index");
+      vlib_log_warn (rm->log_class, "Invalid sw_if_index");
       return 1;
     }
 
   si = vnet_get_sup_sw_interface (rm->vnet_main, sw_if_index);
   if (si->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
     eth_if = ethernet_get_interface (&ethernet_main, si->hw_if_index);
+
+  if (!eth_if)
+    {
+      vlib_log_warn (rm->log_class, "Failed to get hardware interface");
+      return 1;
+    }
 
   clib_memcpy (mac, eth_if->address, 6);
 
@@ -316,7 +325,7 @@ ip6_ra_report_handler (void *data)
 
   if (get_interface_mac_address (sw_if_index, mac) != 0)
     {
-      clib_warning ("Error getting MAC address");
+      vlib_log_warn (rm->log_class, "Error getting MAC address");
       return clib_error_return (0, "Error getting MAC address");
     }
 
@@ -501,7 +510,7 @@ set_address_autoconfig (u32 sw_if_index, u8 enable, u8 install_default_routes)
 
   if (!vnet_sw_interface_is_api_valid (vnm, sw_if_index))
     {
-      clib_warning ("Invalid sw_if_index");
+      vlib_log_warn (rm->log_class, "Invalid sw_if_index");
       return 1;
     }
 
@@ -651,6 +660,8 @@ rd_cp_init (vlib_main_t * vm)
   rm->vnet_main = vnet_get_main ();
   rm->api_main = am;
   rm->node_index = rd_cp_process_node.index;
+
+  rm->log_class = vlib_log_register_class ("rd_cp", 0);
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
