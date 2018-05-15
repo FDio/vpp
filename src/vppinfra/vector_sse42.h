@@ -207,6 +207,7 @@ u64x2_write_hi (u64x2 x, u64 * a)
 
 _(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)
 #undef _
+#define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define _signed_binop(n,m,f,g)                                         \
   /* Unsigned */                                                       \
   always_inline u##n##x##m                                             \
