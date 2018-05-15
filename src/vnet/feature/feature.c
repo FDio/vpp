@@ -186,7 +186,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   i16 feature_count;
-  u32 old_ci, ci;
+  u32 ci;
 
   if (arc_index == (u8) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -196,7 +196,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 
   cm = &fm->feature_config_mains[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  old_ci = ci = cm->config_index_by_sw_if_index[sw_if_index];
+  ci = cm->config_index_by_sw_if_index[sw_if_index];
 
   vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
   feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
@@ -209,7 +209,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 	: vnet_config_del_feature)
     (vlib_get_main (), &cm->config_main, ci, feature_index, feature_config,
      n_feature_config_bytes);
-  if (old_ci == ci)
+  if (ci == ~0)
     {
       return 0;
     }
