@@ -189,6 +189,12 @@ get_interface_mac_address (u32 sw_if_index, u8 mac[])
   if (si->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
     eth_if = ethernet_get_interface (&ethernet_main, si->hw_if_index);
 
+  if (!eth_if)
+    {
+      clib_warning ("Failed to get hardware interface");
+      return 1;
+    }
+
   clib_memcpy (mac, eth_if->address, 6);
 
   return 0;
