@@ -27,7 +27,8 @@ acl_plugin_la_SOURCES =				\
 	acl/lookup_context.c                    \
 	acl/sess_mgmt_node.c			\
 	acl/dataplane_node.c			\
-	acl/l2sess.h				\
+	acl/public_inlines.h			\
+	acl/exported_types.h			\
 	acl/manual_fns.h			\
 	acl/acl_plugin.api.h
 
