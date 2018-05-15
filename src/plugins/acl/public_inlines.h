@@ -18,128 +18,17 @@
 
 #include <stdint.h>
 
+#include <vlib/unix/plugin.h>
 #include <plugins/acl/acl.h>
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/hash_lookup_private.h>
 
-
-/* check if a given ACL exists */
-
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
+#include <plugins/acl/exported_types.h>
 
 /*
  * Define a pointer to the acl_main which will be filled during the initialization.
  */
-acl_main_t *p_acl_main = 0;
-
-/*
- * If the file is included more than once, the symbol collision will make the problem obvious.
- * If the include is done only once, it is just a lonely null var
- * sitting around.
- */
-void *ERROR_ACL_PLUGIN_EXPORTS_FILE_MUST_BE_INCLUDED_ONLY_IN_ONE_PLACE = 0;
-
-u8 (*acl_plugin_acl_exists) (u32 acl_index);
-#else
-u8 acl_plugin_acl_exists (u32 acl_index);
-#endif
-
-
-/*
- * If you are using ACL plugin, get this unique ID first,
- * so you can identify yourself when creating the lookup contexts.
- */
-
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-u32 (*acl_plugin_register_user_module) (char *caller_module_string, char *val1_label, char *val2_label);
-#else
-u32 acl_plugin_register_user_module (char *caller_module_string, char *val1_label, char *val2_label);
-#endif
-
-/*
- * Allocate a new lookup context index.
- * Supply the id assigned to your module during registration,
- * and two values of your choice identifying instances
- * of use within your module. They are useful for debugging.
- */
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_get_lookup_context_index) (u32 acl_user_id, u32 val1, u32 val2);
-#else
-int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2);
-#endif
-
-/*
- * Release the lookup context index and destroy
- * any asssociated data structures.
- */
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-void (*acl_plugin_put_lookup_context_index) (u32 lc_index);
-#else
-void acl_plugin_put_lookup_context_index (u32 lc_index);
-#endif
-
-/*
- * Prepare the sequential vector of ACL#s to lookup within a given context.
- * Any existing list will be overwritten. acl_list is a vector.
- */
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_set_acl_vec_for_context) (u32 lc_index, u32 *acl_list);
-#else
-int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list);
-#endif
-
-/* Fill the 5-tuple from the packet */
-
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-void (*acl_plugin_fill_5tuple) (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
-                                int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt);
-#else
-void acl_plugin_fill_5tuple (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
-                                int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt);
-#endif
-
-#ifdef ACL_PLUGIN_DEFINED_BELOW_IN_FILE
-static inline
-void acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
-                                int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt) {
-  /* FIXME: normally the inlined version of filling in the 5-tuple. But for now just call the non-inlined version */
-  acl_plugin_fill_5tuple(lc_index, b0, is_ip6, is_input, is_l2_path, p5tuple_pkt);
-}
-#endif
-
-
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
-int (*acl_plugin_match_5tuple) (u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap);
-#else
-int acl_plugin_match_5tuple (u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap);
-#endif
-
-#ifdef ACL_PLUGIN_DEFINED_BELOW_IN_FILE
-static inline int
-acl_plugin_match_5tuple_inline (u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap) {
-  return acl_plugin_match_5tuple(lc_index, pkt_5tuple, is_ip6, r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-}
-#endif
-
-#ifdef ACL_PLUGIN_EXTERNAL_EXPORTS
+static acl_main_t *p_acl_main = 0;
 
 #define LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                              \
 ({                                                                        \
@@ -151,22 +40,29 @@ acl_plugin_match_5tuple_inline (u32 lc_index,
 
 #define LOAD_SYMBOL(s) LOAD_SYMBOL_FROM_PLUGIN_TO("acl_plugin.so", s, s)
 
-static inline clib_error_t * acl_plugin_exports_init (void)
+
+static inline clib_error_t * acl_plugin_exports_init (acl_plugin_methods_t *m)
 {
+    acl_plugin_methods_vtable_init_fn_t mvi;
+
     LOAD_SYMBOL_FROM_PLUGIN_TO("acl_plugin.so", acl_main, p_acl_main);
-    LOAD_SYMBOL(acl_plugin_acl_exists);
-    LOAD_SYMBOL(acl_plugin_register_user_module);
-    LOAD_SYMBOL(acl_plugin_get_lookup_context_index);
-    LOAD_SYMBOL(acl_plugin_put_lookup_context_index);
-    LOAD_SYMBOL(acl_plugin_set_acl_vec_for_context);
-    LOAD_SYMBOL(acl_plugin_fill_5tuple);
-    LOAD_SYMBOL(acl_plugin_match_5tuple);
-    return 0;
+    LOAD_SYMBOL_FROM_PLUGIN_TO("acl_plugin.so", acl_plugin_methods_vtable_init, mvi);
+    return (mvi(m));
 }
 
-#endif
+/*
+ * Someone might want to use just the inlines.
+ * To avoid requiring them to call the initialization method, do it ourselves.
+ * Ensure that any potential failure shows early by means of assert that
+ * is in both debug and production version.
+ */
 
-
+static void __acl_plugin_init_p_acl_main (void) __attribute__((__constructor__)) ;                            \
+static void __acl_plugin_init_p_acl_main (void)
+{
+  acl_plugin_methods_t m;
+  CLIB_ERROR_ASSERT(acl_plugin_exports_init(&m) == 0);
+}
 
 always_inline void *
 get_ptr_to_offset (vlib_buffer_t * b0, int offset)
