@@ -84,29 +84,10 @@ class IPSecNATTestCase(VppTestCase):
                        ICMP(id=self.icmp_id_out, type='echo-request'))
         ]
 
-    def check_checksum(self, pkt, layer):
-        """ Check checksum of the packet on given layer """
-        new = pkt.__class__(str(pkt))
-        del new[layer].chksum
-        new = new.__class__(str(new))
-        self.assertEqual(new[layer].chksum, pkt[layer].chksum)
-
-    def check_ip_checksum(self, pkt):
-        return self.check_checksum(pkt, 'IP')
-
-    def check_tcp_checksum(self, pkt):
-        return self.check_checksum(pkt, 'TCP')
-
-    def check_udp_checksum(self, pkt):
-        return self.check_checksum(pkt, 'UDP')
-
-    def check_icmp_checksum(self, pkt):
-        return self.check_checksum(pkt, 'ICMP')
-
     def verify_capture_plain(self, capture):
         for packet in capture:
             try:
-                self.check_ip_checksum(packet)
+                self.assert_packet_checksums_valid(packet)
                 self.assert_equal(packet[IP].src, self.pg0.remote_ip4,
                                   "decrypted packet source address")
                 self.assert_equal(packet[IP].dst, self.pg1.remote_ip4,
@@ -117,7 +98,6 @@ class IPSecNATTestCase(VppTestCase):
                         "unexpected UDP header in decrypted packet")
                     self.assert_equal(packet[TCP].dport, self.tcp_port_in,
                                       "decrypted packet TCP destination port")
-                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     if packet[UDP].payload:
                         self.assertFalse(
@@ -131,7 +111,6 @@ class IPSecNATTestCase(VppTestCase):
                         "unexpected UDP header in decrypted packet")
                     self.assert_equal(packet[ICMP].id, self.icmp_id_in,
                                       "decrypted packet ICMP ID")
-                    self.check_icmp_checksum(packet)
             except Exception:
                 self.logger.error(
                     ppp("Unexpected or invalid plain packet:", packet))
