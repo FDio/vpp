@@ -1083,6 +1083,7 @@ init_replay_buffers_inline (vlib_main_t * vm,
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
       d0 = vec_elt (s->replay_packet_templates, i);
+      vnet_buffer2 (b0)->pg_replay_timestamp = s->replay_packet_timestamps[i];
 
       n0 = n_data;
       if (data_offset + n_data >= vec_len (d0))
