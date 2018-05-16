@@ -33,6 +33,24 @@
       "revId": "03b4b802a4b63c7a264f165a9817194fab03236f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0716b61b_9750c628",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1865,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-05-16T19:48:27Z",
+      "side": 1,
+      "message": "Let me see if I can come up with a solution for this. Sessions can be established in worker threads so we can\u0027t exactly do this before hand in CP. On the other hand, we can rpc to main thread to have the adj be created and drop while that\u0027s happening ...",
+      "parentUuid": "5f7bc8a0_a41098d7",
+      "revId": "03b4b802a4b63c7a264f165a9817194fab03236f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
