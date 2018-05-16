@@ -33,6 +33,24 @@
       "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02888314_4c7a6fed",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-16T20:18:27Z",
+      "side": 1,
+      "message": "People tend to put any kind of junk into mac address those days with virtual nics so better to hash everything...",
+      "parentUuid": "ebf0b0a0_f62c77f0",
+      "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
