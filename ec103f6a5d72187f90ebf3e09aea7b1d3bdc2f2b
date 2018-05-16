@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "240844a2_fb71eafd",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-16T20:22:55Z",
+      "side": 1,
+      "message": "Can you please use vlib_log() (see src/vlib/log.h) logging here? If you have some spare cycles can you also convert existing log messages?",
+      "range": {
+        "startLine": 277,
+        "startChar": 6,
+        "endLine": 277,
+        "endChar": 23
+      },
+      "revId": "ec103f6a5d72187f90ebf3e09aea7b1d3bdc2f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
