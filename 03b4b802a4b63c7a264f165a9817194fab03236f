@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83425e7c_fadd8a86",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1780,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-05-16T17:52:15Z",
+      "side": 1,
+      "message": "vec_free(nbr);\nvec_free(rewrte);",
+      "revId": "03b4b802a4b63c7a264f165a9817194fab03236f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f7bc8a0_a41098d7",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1865,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-05-16T17:52:15Z",
+      "side": 1,
+      "message": "how about;\n  adj_nbr_find_and_lock(...)\nin the CP and store the adj on the session. then ship the packet to ip6-rewrite in the DP.",
+      "revId": "03b4b802a4b63c7a264f165a9817194fab03236f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
