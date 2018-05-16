@@ -114,6 +114,11 @@ mac_address_t::mac_address_t(uint8_t b[6])
   std::copy(b, b + 6, std::begin(bytes));
 }
 
+mac_address_t::mac_address_t()
+  : bytes{ 0 }
+{
+}
+
 mac_address_t::mac_address_t(std::initializer_list<uint8_t> i)
 {
   std::copy(i.begin(), i.end(), std::begin(bytes));
