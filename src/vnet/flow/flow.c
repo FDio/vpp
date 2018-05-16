@@ -109,6 +109,14 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   if (dev_class->flow_ops_function == 0)
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
+    {
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+      f->redirect_device_input_next_index =
+	vlib_node_add_next (vnm->vlib_main, hw->input_node_index,
+			    f->redirect_node_index);
+    }
+
   rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_ADD_FLOW,
 				     hi->dev_instance, flow_index,
 				     &private_data);
