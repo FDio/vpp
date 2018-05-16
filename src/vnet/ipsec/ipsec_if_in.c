@@ -23,8 +23,9 @@
 #include <vnet/ipsec/esp.h>
 
 /* Statistics (not really errors) */
-#define foreach_ipsec_if_input_error    \
-_(RX, "good packets received")
+#define foreach_ipsec_if_input_error				  \
+_(RX, "good packets received")					  \
+_(DISABLED, "ipsec packets received on disabled interface")
 
 static char *ipsec_if_input_error_strings[] = {
 #define _(sym,string) string,
@@ -73,6 +74,12 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 icv_len;
   ipsec_tunnel_if_t *last_t = NULL;
   ipsec_sa_t *sa0;
+  vlib_combined_counter_main_t *rx_counter;
+  vlib_combined_counter_main_t *drop_counter;
+  u32 n_disabled = 0;
+
+  rx_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
+  drop_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -91,6 +98,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip0;
 	  esp_header_t *esp0;
 	  uword *p;
+	  u32 len0;
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -108,6 +116,8 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  p = hash_get (im->ipsec_if_pool_index_by_key, key);
 
+	  len0 = vlib_buffer_length_in_chain (vm, b0);
+
 	  if (p)
 	    {
 	      ipsec_tunnel_if_t *t;
@@ -122,10 +132,20 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sw_if_index0 = hi->sw_if_index;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
+		  if (PREDICT_FALSE
+		      (!(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)))
+		    {
+		      vlib_increment_combined_counter
+			(drop_counter, thread_index, sw_if_index0, 1, len0);
+		      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
+		      n_disabled++;
+		      goto trace;
+		    }
+
 		  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
 		    {
 		      n_packets++;
-		      n_bytes += vlib_buffer_length_in_chain (vm, b0);
+		      n_bytes += len0;
 		    }
 		  else
 		    {
@@ -143,15 +163,14 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      if (last_t)
 			{
 			  vlib_increment_combined_counter
-			    (vim->combined_sw_if_counters
-			     + VNET_INTERFACE_COUNTER_RX,
-			     thread_index, sw_if_index0, n_packets, n_bytes);
+			    (rx_counter, thread_index, sw_if_index0,
+			     n_packets, n_bytes);
 			}
 
 		      last_sw_if_index = sw_if_index0;
 		      last_t = t;
 		      n_packets = 1;
-		      n_bytes = vlib_buffer_length_in_chain (vm, b0);
+		      n_bytes = len0;
 		    }
 		}
 	      else
@@ -163,6 +182,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = im->esp_decrypt_next_index;
 	    }
 
+	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ipsec_if_input_trace_t *tr =
@@ -185,15 +205,17 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_bytes -= n_packets * (sizeof (ip4_header_t) + sizeof (esp_header_t) +
 			      sizeof (esp_footer_t) + 16 /* aes-cbc IV */  +
 			      icv_len);
-      vlib_increment_combined_counter (vim->combined_sw_if_counters
-				       + VNET_INTERFACE_COUNTER_RX,
+      vlib_increment_combined_counter (rx_counter,
 				       thread_index,
 				       last_sw_if_index, n_packets, n_bytes);
     }
 
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
 			       IPSEC_IF_INPUT_ERROR_RX,
-			       from_frame->n_vectors);
+			       from_frame->n_vectors - n_disabled);
+
+  vlib_node_increment_counter (vm, ipsec_if_input_node.index,
+			       IPSEC_IF_INPUT_ERROR_DISABLED, n_disabled);
 
   return from_frame->n_vectors;
 }
