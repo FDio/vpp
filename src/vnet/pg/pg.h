@@ -169,6 +169,7 @@ typedef struct pg_stream_t
   pg_buffer_index_t *buffer_indices;
 
   u8 **replay_packet_templates;
+  u64 *replay_packet_timestamps;
   u32 current_replay_packet_index;
 } pg_stream_t;
 
@@ -192,6 +193,7 @@ pg_edit_group_free (pg_edit_group_t * g)
 always_inline void
 pg_stream_free (pg_stream_t * s)
 {
+  int i;
   pg_edit_group_t *g;
   pg_edit_t *e;
   vec_foreach (e, s->non_fixed_edits) pg_edit_free (e);
@@ -201,6 +203,10 @@ pg_stream_free (pg_stream_t * s)
   vec_free (s->fixed_packet_data);
   vec_free (s->fixed_packet_data_mask);
   vec_free (s->name);
+  for (i = 0; i < vec_len (s->replay_packet_templates); i++)
+    vec_free (s->replay_packet_templates[i]);
+  vec_free (s->replay_packet_templates);
+  vec_free (s->replay_packet_timestamps);
 
   {
     pg_buffer_index_t *bi;

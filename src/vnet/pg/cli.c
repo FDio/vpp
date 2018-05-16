@@ -228,6 +228,7 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
   pm.file_name = file_name;
   error = pcap_read (&pm);
   s->replay_packet_templates = pm.packets_read;
+  s->replay_packet_timestamps = pm.timestamps;
   s->min_packet_bytes = pm.min_packet_bytes;
   s->max_packet_bytes = pm.max_packet_bytes;
   s->buffer_bytes = pm.max_packet_bytes;

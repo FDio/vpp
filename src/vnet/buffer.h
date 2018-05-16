@@ -403,6 +403,11 @@ typedef struct
       u16 *trajectory_trace;
 #endif
     };
+    struct
+    {
+      u64 pad[1];
+      u64 pg_replay_timestamp;
+    };
     u32 unused[10];
   };
 } vnet_buffer_opaque2_t;

@@ -151,6 +151,9 @@ typedef struct
   /** Packets read from file. */
   u8 **packets_read;
 
+  /** Timestamps */
+  u64 *timestamps;
+
   /** Min/Max Packet bytes */
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
