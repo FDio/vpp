@@ -30,6 +30,7 @@
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   app_session_t data;
   u64 bytes_to_send;
   u64 bytes_sent;
@@ -37,7 +38,7 @@ typedef struct
   u64 bytes_received;
   u64 vpp_session_handle;
   u8 thread_index;
-} session_t;
+} eclient_session_t;
 
 typedef struct
 {
@@ -69,7 +70,7 @@ typedef struct
   /*
    * Test state variables
    */
-  session_t *sessions;			/**< Session pool, shared */
+  eclient_session_t *sessions;		/**< Session pool, shared */
   clib_spinlock_t sessions_lock;
   u8 **rx_buf;				/**< intermediate rx buffers */
   u8 *connect_test_data;		/**< Pre-computed test data */
