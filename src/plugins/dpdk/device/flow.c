@@ -220,17 +220,22 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
       goto done;
     }
 
-
   *private_data = fe - xd->flow_entries;
 
   /* install entry in the lookup table */
-  memset (fle, ~1, sizeof (*fle));
+  memset (fle, -1, sizeof (*fle));
   if (flow->actions & VNET_FLOW_ACTION_MARK)
     fle->flow_id = flow->mark_flow_id;
-  if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
-    fle->next_index = flow->redirect_device_input_next_index;
   if (flow->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
     fle->buffer_advance = flow->buffer_advance;
+  if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
+    {
+      vnet_hw_interface_t *hw =
+	vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+      fle->next_index =
+	vlib_node_add_next (dm->vlib_main, hw->input_node_index,
+			    flow->redirect_node_index);
+    }
 
 done:
   if (rv)

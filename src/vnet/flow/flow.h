@@ -129,9 +129,8 @@ typedef struct
   /* flow id for VNET_FLOW_ACTION_MARK */
   u32 mark_flow_id;
 
-  /* node index and next index for VNET_FLOW_ACTION_REDIRECT_TO_NODE */
+  /* node index for VNET_FLOW_ACTION_REDIRECT_TO_NODE */
   u32 redirect_node_index;
-  u32 redirect_device_input_next_index;
 
   /* queue for VNET_FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
