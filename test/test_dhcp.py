@@ -1422,6 +1422,29 @@ class TestDHCP(VppTestCase):
                                       mactobinary(self.pg3.remote_mac),
                                       self.pg3.remote_ip4,
                                       is_add=0)
+
+        #
+        # read the DHCP client details from a dump
+        #
+        clients = self.vapi.dhcp_client_dump()
+
+        self.assertEqual(clients[0].client.sw_if_index,
+                         self.pg3.sw_if_index)
+        self.assertEqual(clients[0].lease.sw_if_index,
+                         self.pg3.sw_if_index)
+        self.assertEqual(clients[0].client.hostname.rstrip('\0'),
+                         hostname)
+        self.assertEqual(clients[0].lease.hostname.rstrip('\0'),
+                         hostname)
+        self.assertEqual(clients[0].lease.is_ipv6, 0)
+        # 0 = DISCOVER, 1 = REQUEST, 2 = BOUND
+        self.assertEqual(clients[0].lease.state, 2)
+        self.assertEqual(clients[0].lease.mask_width, 24)
+        self.assertEqual(clients[0].lease.router_address.rstrip('\0'),
+                         self.pg3.remote_ip4n)
+        self.assertEqual(clients[0].lease.host_address.rstrip('\0'),
+                         self.pg3.local_ip4n)
+
         #
         # remove the DHCP config
         #

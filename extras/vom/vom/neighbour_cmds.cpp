@@ -151,7 +151,11 @@ dump_cmd::issue(connection& con)
 std::string
 dump_cmd::to_string() const
 {
-  return ("neighbour-dump");
+  std::ostringstream s;
+
+  s << "neighbour-dump: " << m_itf.to_string() << " " << m_proto.to_string();
+
+  return (s.str());
 }
 } // namespace neighbour_cmds
 } // namespace vom
