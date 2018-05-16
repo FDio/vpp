@@ -87,6 +87,24 @@
       "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56527434_2e53d973",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-05-16T20:59:08Z",
+      "side": 1,
+      "message": "Looking at the code for lb_hash_hash (which takes 5x u64s) I would probably steal liberally from that.  My guess is that it will be faster than your XOR code as well.  If you look at the non-SSE version it uses a polynomial after applying the XOR, which will spread the entropy around the data in the non-SSE4.2 case (which I doubt will come up in most cases, though I guess someone should come up with a nice ARM version).\n\nIf you had an hash_apply_l[23] set of functions that added the value into a hash rather than making a separate hash you had to merge, you could use crc32 repeatedly on your multiple sources.  Its output is actually a u32 and there is also a u32 version and a u16 version (both of which still generate 32 bit outputs).\n\nhttps://software.intel.com/sites/landingpage/IntrinsicsGuide/#text\u003dcrc\u0026expand\u003d1246,1245,1244",
+      "parentUuid": "6cee3dcf_a7c546d7",
+      "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
