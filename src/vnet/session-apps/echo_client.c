@@ -43,7 +43,7 @@ signal_evt_to_cli (int code)
 }
 
 static void
-send_data_chunk (echo_client_main_t * ecm, session_t * s)
+send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 {
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, test_buf_offset, rv;
@@ -140,7 +140,7 @@ send_data_chunk (echo_client_main_t * ecm, session_t * s)
 }
 
 static void
-receive_data_chunk (echo_client_main_t * ecm, session_t * s)
+receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 {
   svm_fifo_t *rx_fifo = s->data.rx_fifo;
   u32 thread_index = vlib_get_thread_index ();
@@ -207,7 +207,7 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   echo_client_main_t *ecm = &echo_client_main;
   int my_thread_index = vlib_get_thread_index ();
-  session_t *sp;
+  eclient_session_t *sp;
   int i;
   int delete_session;
   u32 *connection_indices;
@@ -367,7 +367,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 					 stream_session_t * s, u8 is_fail)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  session_t *session;
+  eclient_session_t *session;
   u32 session_index;
   u8 thread_index = vlib_get_thread_index ();
 
@@ -453,7 +453,7 @@ static int
 echo_clients_rx_callback (stream_session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  session_t *sp;
+  eclient_session_t *sp;
 
   sp = pool_elt_at_index (ecm->sessions,
 			  s->server_rx_fifo->client_session_index);
@@ -757,13 +757,7 @@ echo_clients_command_fn (vlib_main_t * vm,
 			 VLIB_NODE_STATE_POLLING);
 
   if (preallocate_sessions)
-    {
-      session_t *sp __attribute__ ((unused));
-      for (i = 0; i < n_clients; i++)
-	pool_get (ecm->sessions, sp);
-      for (i = 0; i < n_clients; i++)
-	pool_put_index (ecm->sessions, i);
-    }
+    pool_init_fixed (ecm->sessions, 1.1 * n_clients);
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
