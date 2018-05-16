@@ -386,9 +386,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
-#if 0
-	      xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
-#endif
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
 		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE |

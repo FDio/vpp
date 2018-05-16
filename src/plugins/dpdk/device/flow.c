@@ -178,7 +178,8 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
       memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
-      return 0;
+
+      goto disable_rx_offload;
     }
 
   if (op != VNET_FLOW_DEV_OP_ADD_FLOW)
@@ -207,6 +208,12 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     }
   else
     fe->mark = 0;
+
+  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) == 0)
+    {
+      xd->flags |= DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
+      dpdk_device_setup (xd);
+    }
 
   switch (flow->type)
     {
@@ -242,6 +249,14 @@ done:
 	  pool_put (xd->flow_lookup_entries, fle);
 	}
     }
+disable_rx_offload:
+  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0
+      && pool_elts (xd->flow_entries) == 0)
+    {
+      xd->flags &= ~DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
+      dpdk_device_setup (xd);
+    }
+
   return rv;
 }
 
