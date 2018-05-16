@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "567b52aa_24c4e1b3",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "You need an atomic store with release order here.",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "119c8d1e_45dc22fc",
+        "filename": "src/plugins/ioam/analyse/ip6/node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "Need atomic store with release order",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e021f003_5e721c64",
+        "filename": "src/plugins/kubeproxy/kp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "and again",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2c2e66af_b41ccf6c",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "Do we need both atomic_add_fetch and atomic_fetch_add?\nfetch_xxx() (return old value) makes most sense as xxx_fetch() can always be computed using the value returned from fetch_xxx() but not necessarily vice versa (think operations such as atomic_fetch_and).",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a9408f8c_dc6033ae",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "Allocating a sequence number should not require sequential consistency. Relaxed memory order should be fine.",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa7b065a_2ab47f1d",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "No check of return value? Did compare succeed or fail? Should be a comment at least.",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f5f16735_72bd5d74",
+        "filename": "src/vnet/session-apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "Should use relaxed memory order when updating statistics counters. Enforcing sequential consistency can be quite costly on architectures with weak (relaxed) memory ordering such as ARM and POWER.",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e28aa20_cb547c83",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-16T22:40:02Z",
+      "side": 1,
+      "message": "something missing here?",
+      "revId": "30c54ab494f6705fc3d8e85c67050de5274b1942",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
