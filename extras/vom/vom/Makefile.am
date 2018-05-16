@@ -98,8 +98,8 @@ libvom_la_SOURCES = 			\
 	client_db.cpp			\
 	cmd.cpp				\
 	connection.cpp			\
-	dhcp_config_cmds.cpp		\
-	dhcp_config.cpp			\
+	dhcp_client_cmds.cpp		\
+	dhcp_client.cpp			\
 	hw_cmds.cpp			\
 	hw.cpp				\
 	inspect.cpp			\
@@ -192,8 +192,7 @@ vominclude_HEADERS =			\
 	client_db.hpp			\
 	cmd.hpp				\
 	connection.hpp			\
-	dhcp_config.hpp			\
-	dhcp_config_cmds.hpp		\
+	dhcp_client.hpp			\
 	dump_cmd.hpp			\
 	enum_base.hpp			\
 	event_cmd.hpp			\

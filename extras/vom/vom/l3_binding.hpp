@@ -95,11 +95,6 @@ public:
   static void dump(std::ostream& os);
 
   /**
-   * Find all bindings in the DB for the interface passed
-   */
-  static std::deque<std::shared_ptr<l3_binding>> find(const interface& i);
-
-  /**
    * Find a binding from its key
    */
   static std::shared_ptr<l3_binding> find(const key_t& k);

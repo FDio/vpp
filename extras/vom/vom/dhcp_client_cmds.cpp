@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "vom/dhcp_config_cmds.hpp"
+#include "vom/dhcp_client_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_DHCP_API_JSON;
 
 namespace VOM {
-namespace dhcp_config_cmds {
+namespace dhcp_client_cmds {
 
 bind_cmd::bind_cmd(HW::item<bool>& item,
                    const handle_t& itf,
@@ -45,21 +45,21 @@ bind_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.sw_if_index = m_itf.value();
   payload.is_add = 1;
-  payload.pid = getpid();
-  payload.want_dhcp_event = 1;
-  payload.set_broadcast_flag = m_set_broadcast_flag;
+  payload.client.sw_if_index = m_itf.value();
+  payload.client.pid = getpid();
+  payload.client.want_dhcp_event = 1;
+  payload.client.set_broadcast_flag = m_set_broadcast_flag;
 
-  memset(payload.hostname, 0, sizeof(payload.hostname));
-  memcpy(payload.hostname, m_hostname.c_str(),
-         std::min(sizeof(payload.hostname), m_hostname.length()));
+  memset(payload.client.hostname, 0, sizeof(payload.client.hostname));
+  memcpy(payload.client.hostname, m_hostname.c_str(),
+         std::min(sizeof(payload.client.hostname), m_hostname.length()));
 
-  memset(payload.client_id, 0, sizeof(payload.client_id));
-  payload.client_id[0] = 1;
+  memset(payload.client.id, 0, sizeof(payload.client.id));
+  payload.client.id[0] = 1;
   std::copy_n(begin(m_client_id.bytes),
-              std::min(sizeof(payload.client_id), m_client_id.bytes.size()),
-              payload.client_id + 1);
+              std::min(sizeof(payload.client.id), m_client_id.bytes.size()),
+              payload.client.id + 1);
 
   VAPI_CALL(req.execute());
 
@@ -72,7 +72,7 @@ std::string
 bind_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "Dhcp-config-bind: " << m_hw_item.to_string()
+  s << "Dhcp-client-bind: " << m_hw_item.to_string()
     << " itf:" << m_itf.to_string() << " hostname:" << m_hostname;
 
   return (s.str());
@@ -99,13 +99,13 @@ unbind_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.sw_if_index = m_itf.value();
   payload.is_add = 0;
-  payload.pid = getpid();
-  payload.want_dhcp_event = 0;
+  payload.client.sw_if_index = m_itf.value();
+  payload.client.pid = getpid();
+  payload.client.want_dhcp_event = 0;
 
-  memcpy(payload.hostname, m_hostname.c_str(),
-         std::min(sizeof(payload.hostname), m_hostname.length()));
+  memcpy(payload.client.hostname, m_hostname.c_str(),
+         std::min(sizeof(payload.client.hostname), m_hostname.length()));
 
   VAPI_CALL(req.execute());
 
@@ -119,16 +119,21 @@ std::string
 unbind_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "Dhcp-config-unbind: " << m_hw_item.to_string()
+  s << "Dhcp-client-unbind: " << m_hw_item.to_string()
     << " itf:" << m_itf.to_string() << " hostname:" << m_hostname;
 
   return (s.str());
 }
 
-events_cmd::events_cmd(dhcp_config::event_listener& el)
+events_cmd::events_cmd(dhcp_client::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)
 {
+}
+
+events_cmd::~events_cmd()
+{
+  VOM_LOG(log_level_t::INFO) << "DHCP events destroyed";
 }
 
 bool
@@ -159,7 +164,31 @@ events_cmd::retire(connection& con)
 void
 events_cmd::notify()
 {
-  m_listener.handle_dhcp_event(this);
+  for (auto& msg : *this) {
+    auto& payload = msg.get_payload();
+
+    const dhcp_client::state_t& s =
+      dhcp_client::state_t::from_vpp(payload.lease.state);
+    route::prefix_t pfx(payload.lease.is_ipv6, payload.lease.host_address,
+                        payload.lease.mask_width);
+    std::shared_ptr<interface> itf = interface::find(payload.lease.sw_if_index);
+
+    if (itf) {
+      std::shared_ptr<dhcp_client::lease_t> ev =
+        std::make_shared<dhcp_client::lease_t>(
+          s, itf, from_bytes(0, payload.lease.router_address), pfx,
+          reinterpret_cast<const char*>(payload.lease.hostname),
+          mac_address_t(payload.lease.host_mac));
+      m_listener.handle_dhcp_event(ev);
+
+      VOM_LOG(log_level_t::INFO) << "DHCP: " << ev->to_string();
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "DHCP: no interface: "
+                                  << payload.lease.sw_if_index;
+    }
+  }
+
+  flush();
 }
 
 std::string
@@ -167,8 +196,38 @@ events_cmd::to_string() const
 {
   return ("dhcp-events");
 }
+
+dump_cmd::dump_cmd()
+{
 }
-};
+
+bool
+dump_cmd::operator==(const dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+dump_cmd::to_string() const
+{
+  return ("dhcp-client-dump");
+}
+
+}; // namespace dhcp_client_cmds
+}; // namespace VOM
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
