@@ -105,6 +105,24 @@
       "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9d283ff5_808c3d7e",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-16T21:03:56Z",
+      "side": 1,
+      "message": "If we can assume src mac field is always 32-bit aligned...\nFor this particular function, the code uses 10 XORs.\nGiven that src and dst are always adjacent, it would be cheaper to consider the buffer starting at src offset to be an array of 3 x u32 numbers, XOR the 3 numbers (using typecast) and then xor the 4 bytes of the u32 result to get the same result for a cost of 5 XORs (half cost).",
+      "parentUuid": "56527434_2e53d973",
+      "revId": "285e58c7ee59dd94d4c0c4d9e269ae11a7926dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
