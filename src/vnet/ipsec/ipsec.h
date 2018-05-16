@@ -310,7 +310,6 @@ extern vlib_node_registration_t esp_encrypt_node;
 extern vlib_node_registration_t esp_decrypt_node;
 extern vlib_node_registration_t ah_encrypt_node;
 extern vlib_node_registration_t ah_decrypt_node;
-extern vlib_node_registration_t ipsec_if_output_node;
 extern vlib_node_registration_t ipsec_if_input_node;
 
 
@@ -328,7 +327,6 @@ int ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update);
 
 u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 u8 ipsec_is_sa_used (u32 sa_index);
-u8 *format_ipsec_if_output_trace (u8 * s, va_list * args);
 u8 *format_ipsec_policy_action (u8 * s, va_list * args);
 u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
 u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
