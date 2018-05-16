@@ -2669,10 +2669,11 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
   errmsg ("DHCP compl event: pid %d %s hostname %s host_addr %U "
 	  "router_addr %U host_mac %U",
-	  ntohl (mp->pid), mp->is_ipv6 ? "ipv6" : "ipv4", mp->hostname,
-	  format_ip4_address, &mp->host_address,
-	  format_ip4_address, &mp->router_address,
-	  format_ethernet_address, mp->host_mac);
+	  ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
+	  mp->lease.hostname,
+	  format_ip4_address, &mp->lease.host_address,
+	  format_ip4_address, &mp->lease.router_address,
+	  format_ethernet_address, mp->lease.host_mac);
 }
 
 static void vl_api_dhcp_compl_event_t_handler_json
@@ -10125,12 +10126,12 @@ api_dhcp_client_config (vat_main_t * vam)
   /* Construct the API message */
   M (DHCP_CLIENT_CONFIG, mp);
 
-  mp->sw_if_index = htonl (sw_if_index);
-  clib_memcpy (mp->hostname, hostname, vec_len (hostname));
-  vec_free (hostname);
   mp->is_add = is_add;
-  mp->want_dhcp_event = disable_event ? 0 : 1;
-  mp->pid = htonl (getpid ());
+  mp->client.sw_if_index = htonl (sw_if_index);
+  clib_memcpy (mp->client.hostname, hostname, vec_len (hostname));
+  vec_free (hostname);
+  mp->client.want_dhcp_event = disable_event ? 0 : 1;
+  mp->client.pid = htonl (getpid ());
 
   /* send it... */
   S (mp);

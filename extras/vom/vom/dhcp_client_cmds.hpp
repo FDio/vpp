@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_DHCP_CONFIG_CMDS_H__
-#define __VOM_DHCP_CONFIG_CMDS_H__
+#ifndef __VOM_DHCP_CLIENT_CMDS_H__
+#define __VOM_DHCP_CLIENT_CMDS_H__
 
-#include "vom/dhcp_config.hpp"
+#include "vom/dhcp_client.hpp"
+#include "vom/dump_cmd.hpp"
 #include "vom/event_cmd.hpp"
 
 #include <vapi/dhcp.api.vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
-namespace dhcp_config_cmds {
+namespace dhcp_client_cmds {
 
 /**
   * A command class that binds the DHCP config to the interface
@@ -125,7 +126,8 @@ public:
   /**
    * Constructor
    */
-  events_cmd(dhcp_config::event_listener& el);
+  events_cmd(dhcp_client::event_listener& el);
+  ~events_cmd();
 
   /**
    * Issue the command to VPP/HW - subscribe to DHCP events
@@ -156,10 +158,44 @@ private:
   /**
    * The listner of this command
    */
-  dhcp_config::event_listener& m_listener;
+  dhcp_client::event_listener& m_listener;
 };
+
+/**
+ * A cmd class that Dumps all the DHCP clients
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Dhcp_client_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd();
+  dump_cmd(const dump_cmd& d);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
 };
-};
+
+}; // namespace dhcp_client_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

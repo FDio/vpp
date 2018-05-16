@@ -100,7 +100,6 @@ static void
 dhcp_client_addr_callback (dhcp_client_t * c)
 {
   dhcp_client_main_t *dcm = &dhcp_client_main;
-  void (*fp) (u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) = c->event_callback;
 
   /* disable the feature */
   vnet_feature_enable_disable ("ip4-unicast",
@@ -147,12 +146,8 @@ dhcp_client_addr_callback (dhcp_client_t * c)
   /*
    * Call the user's event callback to report DHCP information
    */
-  if (fp)
-    (*fp) (c->client_index,	/* clinet index */
-	   c->pid, c->hostname, c->subnet_mask_width, 0,	/* is_ipv6 */
-	   (u8 *) & c->leased_address,	/* host IP address */
-	   (u8 *) & c->router_address,	/* router IP address */
-	   (u8 *) (c->l2_rewrite + 6));	/* host MAC address */
+  if (c->event_callback)
+    c->event_callback (c->client_index, c);
 }
 
 /*
@@ -977,13 +972,14 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 }
 
 int
-dhcp_client_config (vlib_main_t * vm,
+dhcp_client_config (u32 is_add,
+		    u32 client_index,
+		    vlib_main_t * vm,
 		    u32 sw_if_index,
 		    u8 * hostname,
 		    u8 * client_id,
-		    u32 is_add,
-		    u32 client_index,
-		    void *event_callback, u8 set_broadcast_flag, u32 pid)
+		    dhcp_event_cb_t event_callback,
+		    u8 set_broadcast_flag, u32 pid)
 {
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -1059,6 +1055,22 @@ dhcp_client_config (vlib_main_t * vm,
     }
 
   return rv;
+}
+
+void
+dhcp_client_walk (dhcp_client_walk_cb_t cb, void *ctx)
+{
+  dhcp_client_main_t *dcm = &dhcp_client_main;
+  dhcp_client_t *c;
+
+  /* *INDENT-OFF* */
+  pool_foreach (c, dcm->clients,
+  ({
+    if (!cb(c, ctx))
+      break;
+  }));
+  /* *INDENT-ON* */
+
 }
 
 static clib_error_t *

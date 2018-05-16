@@ -1011,13 +1011,13 @@ static void *vl_api_dhcp_client_config_t_print
 
   s = format (0, "SCRIPT: dhcp_client_config ");
 
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "sw_if_index %d ", ntohl (mp->client.sw_if_index));
 
-  s = format (s, "hostname %s ", mp->hostname);
+  s = format (s, "hostname %s ", mp->client.hostname);
 
-  s = format (s, "want_dhcp_event %d ", mp->want_dhcp_event);
+  s = format (s, "want_dhcp_event %d ", mp->client.want_dhcp_event);
 
-  s = format (s, "pid %d ", ntohl (mp->pid));
+  s = format (s, "pid %d ", ntohl (mp->client.pid));
 
   if (mp->is_add == 0)
     s = format (s, "del ");

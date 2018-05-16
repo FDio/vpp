@@ -34,7 +34,15 @@ typedef enum
 #undef _
 } dhcp_client_state_t;
 
-typedef struct
+struct dhcp_client_t_;
+
+/**
+ * Callback function for DHCP complete events
+ */
+typedef void (*dhcp_event_cb_t) (u32 client_index,
+				 const struct dhcp_client_t_ * client);
+
+typedef struct dhcp_client_t_
 {
   dhcp_client_state_t state;
 
@@ -78,7 +86,7 @@ typedef struct
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
 
-  void *event_callback;
+  dhcp_event_cb_t event_callback;
 } dhcp_client_t;
 
 typedef struct
@@ -109,7 +117,7 @@ typedef struct
   /* Information used for event callback */
   u32 client_index;
   u32 pid;
-  void *event_callback;
+  dhcp_event_cb_t event_callback;
 } dhcp_client_add_del_args_t;
 
 extern dhcp_client_main_t dhcp_client_main;
@@ -121,13 +129,36 @@ int dhcp_client_for_us (u32 bi0,
 			ip4_header_t * ip0,
 			udp_header_t * u0, dhcp_header_t * dh0);
 
-int dhcp_client_config (vlib_main_t * vm,
-			u32 sw_if_index,
-			u8 * hostname,
-			u8 * client_id,
-			u32 is_add,
-			u32 client_index,
-			void *event_callback, u8 set_broadcast_flag, u32 pid);
+/**
+ * Add/Delete DHCP clients
+ */
+extern int dhcp_client_config (u32 is_add,
+			       u32 client_index,
+			       vlib_main_t * vm,
+			       u32 sw_if_index,
+			       u8 * hostname,
+			       u8 * client_id,
+			       dhcp_event_cb_t event_callback,
+			       u8 set_broadcast_flag, u32 pid);
+
+/**
+ * callback function for clients walking the DHCP client configurations
+ *
+ * @param client The client being visitsed
+ * @param data   The data passed during the call to 'walk'
+ * @return !0 to continue walking 0 to stop.
+ */
+typedef int (*dhcp_client_walk_cb_t) (const dhcp_client_t * client,
+				      void *data);
+
+/**
+ * Walk (visit each) DHCP client configuration
+ *
+ * @param cb The callback function invoked as each client is visited
+ * @param ctx Context data passed back to the client in the invocation of
+ *             the callback.
+ */
+extern void dhcp_client_walk (dhcp_client_walk_cb_t cb, void *ctx);
 
 #endif /* included_dhcp_client_h */
 

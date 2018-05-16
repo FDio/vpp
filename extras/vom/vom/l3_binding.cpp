@@ -158,35 +158,6 @@ operator<<(std::ostream& os, const l3_binding::key_t& key)
   return (os);
 }
 
-std::deque<std::shared_ptr<l3_binding>>
-l3_binding::find(const interface& i)
-{
-  /*
- * Loop throught the entire map looking for matching interface.
- * not the most efficient algorithm, but it will do for now. The
- * number of L3 configs is low and this is only called during bootup
- */
-  std::deque<std::shared_ptr<l3_binding>> l3s;
-
-  auto it = m_db.begin();
-
-  while (it != m_db.end()) {
-    /*
-     * The key in the DB is a pair of the interface's name and prefix.
-     * If the keys match, save the L3-config
-     */
-    auto key = it->first;
-
-    if (i.key() == key.first) {
-      l3s.push_back(it->second.lock());
-    }
-
-    ++it;
-  }
-
-  return (l3s);
-}
-
 l3_binding::event_handler::event_handler()
 {
   OM::register_listener(this);

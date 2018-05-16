@@ -2298,6 +2298,9 @@ class VppPapiProvider(object):
                 'is_ipv6': is_ip6,
             })
 
+    def dhcp_client_dump(self):
+        return self.api(self.papi.dhcp_client_dump, {})
+
     def dhcp_client(self,
                     sw_if_index,
                     hostname,
@@ -2308,13 +2311,14 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.dhcp_client_config,
             {
-                'sw_if_index': sw_if_index,
-                'hostname': hostname,
-                'client_id': client_id,
                 'is_add': is_add,
-                'want_dhcp_event': want_dhcp_events,
-                'set_broadcast_flag': set_broadcast_flag,
-                'pid': os.getpid(),
+                'client': {
+                    'sw_if_index': sw_if_index,
+                    'hostname': hostname,
+                    'id': client_id,
+                    'want_dhcp_event': want_dhcp_events,
+                    'set_broadcast_flag': set_broadcast_flag,
+                    'pid': os.getpid()}
             })
 
     def ip_mroute_add_del(self,
