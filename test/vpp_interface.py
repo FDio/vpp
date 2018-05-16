@@ -2,7 +2,6 @@ from abc import abstractmethod, ABCMeta
 import socket
 
 from util import Host, mk_ll_addr
-from vpp_neighbor import VppNeighbor
 
 
 class VppInterface(object):
@@ -170,6 +169,9 @@ class VppInterface(object):
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
         self._hosts_by_ip6 = {}
+
+    def set_sw_if_index(self, sw_if_index):
+        self._sw_if_index = sw_if_index
 
         self.generate_remote_hosts()
 

@@ -84,10 +84,10 @@ class VppPGInterface(VppInterface):
 
     def __init__(self, test, pg_index):
         """ Create VPP packet-generator interface """
-        r = test.vapi.pg_create_interface(pg_index)
-        self._sw_if_index = r.sw_if_index
-
         super(VppPGInterface, self).__init__(test)
+
+        r = test.vapi.pg_create_interface(pg_index)
+        self.set_sw_if_index(r.sw_if_index)
 
         self._in_history_counter = 0
         self._out_history_counter = 0
