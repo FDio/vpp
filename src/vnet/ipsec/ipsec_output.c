@@ -190,6 +190,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_frame_t *f = 0;
   u32 spd_index0 = ~0;
   ipsec_spd_t *spd0 = 0;
+  int bogus;
   u64 nc_protect = 0, nc_bypass = 0, nc_discard = 0, nc_nomatch = 0;
 
   from = vlib_frame_vector_args (from_frame);
@@ -204,6 +205,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
       u32 iph_offset = 0;
+      tcp_header_t *tcp0;
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
@@ -269,6 +271,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  clib_net_to_host_u16
 					  (udp0->dst_port));
 	}
+      tcp0 = (void *) udp0;
 
       if (PREDICT_TRUE (p0 != NULL))
 	{
@@ -282,18 +285,53 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		next_node_index = im->ah_encrypt_node_index;
 	      vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-	      vlib_buffer_advance (b0, iph_offset);
 	      p0->counter.packets++;
 	      if (is_ipv6)
 		{
 		  p0->counter.bytes +=
 		    clib_net_to_host_u16 (ip6_0->payload_length);
 		  p0->counter.bytes += sizeof (ip6_header_t);
+		  if (PREDICT_FALSE
+		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
+		    {
+		      tcp0->checksum =
+			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
+							   &bogus);
+		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		    }
+		  if (PREDICT_FALSE
+		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+		    {
+		      udp0->checksum =
+			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
+							   &bogus);
+		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		    }
 		}
 	      else
 		{
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
+		  if (b0->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+		    {
+		      ip0->checksum = ip4_header_checksum (ip0);
+		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+		    }
+		  if (PREDICT_FALSE
+		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
+		    {
+		      tcp0->checksum =
+			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
+		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		    }
+		  if (PREDICT_FALSE
+		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+		    {
+		      udp0->checksum =
+			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
+		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		    }
 		}
+	      vlib_buffer_advance (b0, iph_offset);
 	    }
 	  else if (p0->policy == IPSEC_POLICY_ACTION_BYPASS)
 	    {
