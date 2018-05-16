@@ -3163,53 +3163,28 @@ class VppPapiProvider(object):
     def ipsec_sad_add_del_entry(self,
                                 sad_id,
                                 spi,
+                                integrity_algorithm,
+                                integrity_key,
+                                crypto_algorithm,
+                                crypto_key,
+                                protocol,
                                 tunnel_src_address='',
                                 tunnel_dst_address='',
-                                protocol=0,
-                                integrity_algorithm=2,
-                                integrity_key_length=0,
-                                integrity_key='C91KUR9GYMm5GfkEvNjX',
-                                crypto_algorithm=1,
-                                crypto_key_length=0,
-                                crypto_key='JPjyOWBeVEQiMe7h',
-                                is_add=1,
                                 is_tunnel=1,
+                                is_add=1,
                                 udp_encap=0):
         """ IPSEC SA add/del
-        Sample CLI : 'ipsec sa add 10 spi 1001 esp \
-            crypto-key 4a506a794f574265564551694d653768 \
-            crypto-alg aes-cbc-128 \
-            integ-key 4339314b55523947594d6d3547666b45764e6a58 \
-            integ-alg sha1-96 tunnel-src 192.168.100.3 \
-            tunnel-dst 192.168.100.2'
-        Sample CLI : 'ipsec sa add 20 spi 2001 \
-            integ-key 4339314b55523947594d6d3547666b45764e6a58 \
-            integ-alg sha1-96'
-
-        :param sad_id -  Security Association ID to be \
-            created or deleted. mandatory
-        :param spi - security param index of the SA in decimal. mandatory
-        :param tunnel_src_address - incase of tunnel mode outer src address .\
-             mandatory for tunnel mode
-        :param tunnel_dst_address - incase of transport mode \
-             outer dst address. mandatory for tunnel mode
-        :param protocol - AH(0) or ESP(1) protocol (Default 0 - AH). optional
-        :param integrity_algorithm - value range 1-6 Default(2 - SHA1_96).\
-             optional **
-        :param integrity_key - value in string \
-             (Default C91KUR9GYMm5GfkEvNjX).optional
-        :param integrity_key_length - length of the key string in bytes\
-             (Default 0 - integrity disabled). optional
-        :param crypto_algorithm - value range 1-11 Default \
-             (1- AES_CBC_128).optional **
-        :param crypto_key - value in string(Default JPjyOWBeVEQiMe7h).optional
-        :param crypto_key_length - length of the key string in bytes\
-             (Default 0 - crypto disabled). optional
-        :param is_add - add(1) or del(0) ipsec SA entry(Default 1 - add) .\
-             optional
-        :param is_tunnel - tunnel mode (1) or transport mode(0) \
-             (Default 1 - tunnel). optional
-        :returns: reply from the API
+        :param sad_id: security association ID
+        :param spi: security param index of the SA in decimal
+        :param integrity_algorithm:
+        :param integrity_key:
+        :param crypto_algorithm:
+        :param crypto_key:
+        :param protocol: AH(0) or ESP(1) protocol
+        :param tunnel_src_address: tunnel mode outer src address
+        :param tunnel_dst_address: tunnel mode outer dst address
+        :param is_add:
+        :param is_tunnel:
         :** reference /vpp/src/vnet/ipsec/ipsec.h file for enum values of
              crypto and ipsec algorithms
         """
@@ -3221,10 +3196,11 @@ class VppPapiProvider(object):
              'tunnel_dst_address': tunnel_dst_address,
              'protocol': protocol,
              'integrity_algorithm': integrity_algorithm,
-             'integrity_key_length': integrity_key_length,
+             'integrity_key_length': len(integrity_key),
              'integrity_key': integrity_key,
              'crypto_algorithm': crypto_algorithm,
-             'crypto_key_length': crypto_key_length,
+             'crypto_key_length': len(crypto_key) if crypto_key is not None
+             else 0,
              'crypto_key': crypto_key,
              'is_add': is_add,
              'is_tunnel': is_tunnel,
@@ -3232,6 +3208,7 @@ class VppPapiProvider(object):
 
     def ipsec_spd_add_del_entry(self,
                                 spd_id,
+                                sa_id,
                                 local_address_start,
                                 local_address_stop,
                                 remote_address_start,
@@ -3241,7 +3218,6 @@ class VppPapiProvider(object):
                                 remote_port_start=0,
                                 remote_port_stop=65535,
                                 protocol=0,
-                                sa_id=10,
                                 policy=0,
                                 priority=100,
                                 is_outbound=1,
@@ -3249,35 +3225,28 @@ class VppPapiProvider(object):
                                 is_ip_any=0):
         """ IPSEC policy SPD add/del   -
                     Wrapper to configure ipsec SPD policy entries in VPP
-        Sample CLI : 'ipsec policy add spd 1 inbound priority 10 action \
-                     protect sa 20 local-ip-range 192.168.4.4 - 192.168.4.4 \
-                     remote-ip-range 192.168.3.3 - 192.168.3.3'
-
-        :param spd_id -  SPD ID for the policy . mandatory
-        :param local_address_start - local-ip-range start address . mandatory
-        :param local_address_stop  - local-ip-range stop address . mandatory
-        :param remote_address_start - remote-ip-range start address . mandatory
-        :param remote_address_stop  - remote-ip-range stop address . mandatory
-        :param local_port_start - (Default 0) . optional
-        :param local_port_stop - (Default 65535). optional
-        :param remote_port_start - (Default 0). optional
-        :param remote_port_stop - (Default 65535). optional
-        :param protocol - Any(0), AH(51) & ESP(50) protocol (Default 0 - Any).
-               optional
-        :param sa_id -  Security Association ID for mapping it to SPD
-               (default 10).   optional
-        :param policy - bypass(0), discard(1), resolve(2) or protect(3)action
-               (Default 0 - bypass). optional
-        :param priotity - value for the spd action (Default 100). optional
-        :param is_outbound - flag for inbound(0) or outbound(1)
-               (Default 1 - outbound). optional
-        :param is_add flag - for addition(1) or deletion(0) of the spd
-               (Default 1 - addtion). optional
-        :returns: reply from the API
+        :param spd_id: SPD ID for the policy
+        :param local_address_start: local-ip-range start address
+        :param local_address_stop : local-ip-range stop address
+        :param remote_address_start: remote-ip-range start address
+        :param remote_address_stop : remote-ip-range stop address
+        :param local_port_start: (Default value = 0)
+        :param local_port_stop: (Default value = 65535)
+        :param remote_port_start: (Default value = 0)
+        :param remote_port_stop: (Default value = 65535)
+        :param protocol: Any(0), AH(51) & ESP(50) protocol (Default value = 0)
+        :param sa_id: Security Association ID for mapping it to SPD
+        :param policy: bypass(0), discard(1), resolve(2) or protect(3) action
+               (Default value = 0)
+        :param priority: value for the spd action (Default value = 100)
+        :param is_outbound: flag for inbound(0) or outbound(1)
+               (Default value = 1)
+        :param is_add: (Default value = 1)
         """
         return self.api(
             self.papi.ipsec_spd_add_del_entry,
             {'spd_id': spd_id,
+             'sa_id': sa_id,
              'local_address_start': local_address_start,
              'local_address_stop': local_address_stop,
              'remote_address_start': remote_address_start,
@@ -3291,8 +3260,29 @@ class VppPapiProvider(object):
              'policy': policy,
              'priority': priority,
              'is_outbound': is_outbound,
-             'sa_id': sa_id,
              'is_ip_any': is_ip_any})
+
+    def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
+                                remote_spi, crypto_alg, local_crypto_key,
+                                remote_crypto_key, integ_alg, local_integ_key,
+                                remote_integ_key, is_add=1, esn=0,
+                                anti_replay=1, renumber=0, show_instance=0):
+        return self.api(
+            self.papi.ipsec_tunnel_if_add_del,
+            {'local_ip': local_ip, 'remote_ip': remote_ip,
+             'local_spi': local_spi, 'remote_spi': remote_spi,
+             'crypto_alg': crypto_alg,
+             'local_crypto_key_len': len(local_crypto_key),
+             'local_crypto_key': local_crypto_key,
+             'remote_crypto_key_len': len(remote_crypto_key),
+             'remote_crypto_key': remote_crypto_key, 'integ_alg': integ_alg,
+             'local_integ_key_len': len(local_integ_key),
+             'local_integ_key': local_integ_key,
+             'remote_integ_key_len': len(remote_integ_key),
+             'remote_integ_key': remote_integ_key, 'is_add': is_add,
+             'esn': esn, 'anti_replay': anti_replay, 'renumber': renumber,
+             'show_instance': show_instance
+             })
 
     def app_namespace_add(self,
                           namespace_id,
