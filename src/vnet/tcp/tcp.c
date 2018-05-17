@@ -28,6 +28,47 @@
 
 tcp_main_t tcp_main;
 
+typedef struct
+{
+  fib_protocol_t nh_proto;
+  vnet_link_t link_type;
+  ip46_address_t ip;
+  u32 sw_if_index;
+  u8 is_add;
+} tcp_add_del_adj_args_t;
+
+static void
+tcp_add_del_adj_cb (tcp_add_del_adj_args_t * args)
+{
+  u32 ai;
+  if (args->is_add)
+    {
+      adj_nbr_add_or_lock (args->nh_proto, args->link_type, &args->ip,
+			   args->sw_if_index);
+    }
+  else
+    {
+      ai = adj_nbr_find (FIB_PROTOCOL_IP6, VNET_LINK_IP6, &args->ip,
+			 args->sw_if_index);
+      if (ai != ADJ_INDEX_INVALID)
+	adj_unlock (ai);
+    }
+}
+
+static void
+tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
+{
+  tcp_add_del_adj_args_t args = {
+    .nh_proto = FIB_PROTOCOL_IP6,
+    .link_type = VNET_LINK_IP6,
+    .ip = tc->c_rmt_ip,
+    .sw_if_index = tc->sw_if_index,
+    .is_add = is_add
+  };
+  vlib_rpc_call_main_thread (tcp_add_del_adj_cb, (u8 *) & args,
+			     sizeof (args));
+}
+
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
@@ -177,6 +218,9 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
+
+      if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
+	tcp_add_del_adjacency (tc, 0);
 
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
@@ -493,6 +537,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_cc_init (tc);
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
+
+  if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
+    tcp_add_del_adjacency (tc, 1);
 
   //  tcp_connection_fib_attach (tc);
 }
