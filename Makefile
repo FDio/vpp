@@ -522,7 +522,7 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	@sudo -E apt-get update
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
-	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
+	@make -C build-root CC=clang-3.8 PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
 endif
 	$(call banner,"Building sample-plugin")
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
