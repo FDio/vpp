@@ -254,6 +254,9 @@ struct _session_manager_main
 
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;
+extern vlib_node_registration_t session_process_node;
+
+#define SESSION_PROCESS_FLUSH_FRAMES	1
 
 /*
  * Session manager function
