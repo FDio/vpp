@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4e0f3b11_74a4829d",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1127,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-17T11:33:39Z",
+      "side": 1,
+      "message": "As the infra used is flow offload, the CLI path \"flow-offload vxlan\" may be more consistent.  This also allow other non flow based offload to use xxx-offload CLI syntax to be more meaningful.",
+      "range": {
+        "startLine": 1127,
+        "startChar": 13,
+        "endLine": 1127,
+        "endChar": 20
+      },
+      "revId": "30a8ba43d1d2fd143eff041eeb1918df95a12fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "484dc3aa_e253170d",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-17T11:33:39Z",
+      "side": 1,
+      "message": "It looks better for help string parameters to use \u003cinterface-name\u003e and \u003ctunnel-name\u003e without spaces.",
+      "range": {
+        "startLine": 1129,
+        "startChar": 31,
+        "endLine": 1129,
+        "endChar": 32
+      },
+      "revId": "30a8ba43d1d2fd143eff041eeb1918df95a12fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
