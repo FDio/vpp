@@ -5,7 +5,7 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
@@ -127,6 +127,8 @@ class TestSRv6(VppTestCase):
             self.logger.debug("Tear down interface %s" % (i.name))
             i.admin_down()
             i.unconfig()
+            i.set_table_ip4(0)
+            i.set_table_ip6(0)
 
     @unittest.skipUnless(0, "PC to fix")
     def test_SRv6_T_Encaps(self):
@@ -856,6 +858,8 @@ class TestSRv6(VppTestCase):
         # source interface in global FIB (0)
         # destination interfaces in global and vrf
         vrf_1 = 1
+        ipt = VppIpTable(self, vrf_1, is_ip6=True)
+        ipt.add_vpp_config()
         self.setup_interfaces(ipv6=[True, True, True],
                               ipv6_table_id=[0, 0, vrf_1])
 
@@ -1007,6 +1011,8 @@ class TestSRv6(VppTestCase):
         # source interface in global FIB (0)
         # destination interfaces in global and vrf
         vrf_1 = 1
+        ipt = VppIpTable(self, vrf_1)
+        ipt.add_vpp_config()
         self.setup_interfaces(ipv6=[True, False, False],
                               ipv4=[False, True, True],
                               ipv6_table_id=[0, 0, 0],
