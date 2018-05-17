@@ -1049,7 +1049,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   label_stack));
 }
 
-int
+static int
 ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 {
   fib_mpls_label_t *label_stack = NULL;

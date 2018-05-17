@@ -1,9 +1,25 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/vnet_msg_enum.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip6_neighbor.h>
+#include <vnet/fib/fib_table.h>
 #include <signal.h>
 #include <math.h>
 
@@ -111,16 +127,12 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
   return rv != 0;
 }
 
-int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
-
-static int
+static void
 add_default_route (vlib_main_t * vm, u32 sw_if_index,
 		   ip6_address_t * next_hop_address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   default_route_t *default_route;
-  vl_api_ip_add_del_route_t mp = { 0, };
-  int rv;
 
   pool_get (rm->default_route_pool, default_route);
 
@@ -128,48 +140,65 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
   default_route->router_address = *next_hop_address;
   default_route->due_time = due_time;
 
-  mp.is_add = 1;
-  mp.is_ipv6 = 1;
-  mp.dst_address_length = 0;
-  mp.next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp.next_hop_address, default_route->router_address.as_u8, 16);
-
-  rv = ip6_add_del_route_t_handler (&mp);
-
-  return rv;
+  {
+    u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
+							 default_route->
+							 sw_if_index);
+    fib_prefix_t pfx = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+    };
+    ip46_address_t nh = {
+      .ip6 = default_route->router_address,
+    };
+    fib_table_entry_update_one_path (fib_index, &pfx,
+				     FIB_SOURCE_API,
+				     FIB_ENTRY_FLAG_NONE,
+				     DPO_PROTO_IP6,
+				     &nh,
+				     default_route->sw_if_index,
+				     0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  }
 }
 
 static int
 remove_slaac_address (vlib_main_t * vm, slaac_address_t * slaac_address)
 {
+  rd_cp_main_t *rm = &rd_cp_main;
   clib_error_t *rv = 0;
 
   rv = ip6_add_del_interface_address (vm, slaac_address->sw_if_index,
 				      &slaac_address->address,
 				      slaac_address->address_length, 1);
 
+  pool_put (rm->slaac_address_pool, slaac_address);
+
   return rv != 0;
 }
 
-static int
+static void
 remove_default_route (vlib_main_t * vm, default_route_t * default_route)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  vl_api_ip_add_del_route_t mp = { 0, };
-  int rv;
 
-  mp.is_add = 0;
-  mp.is_ipv6 = 1;
-  mp.dst_address_length = 0;
-  mp.next_hop_sw_if_index = htonl (default_route->sw_if_index);
-  clib_memcpy (mp.next_hop_address, default_route->router_address.as_u8, 16);
+  {
+    u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
+							 default_route->
+							 sw_if_index);
+    fib_prefix_t pfx = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+    };
+    ip46_address_t nh = {
+      .ip6 = default_route->router_address,
+    };
+    fib_table_entry_path_remove (fib_index, &pfx,
+				 FIB_SOURCE_API,
+				 DPO_PROTO_IP6,
+				 &nh,
+				 default_route->sw_if_index,
+				 0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+  }
 
-  rv = ip6_add_del_route_t_handler (&mp);
-
-  if (!rv)
-    pool_put (rm->default_route_pool, default_route);
-
-  return rv;
+  pool_put (rm->default_route_pool, default_route);
 }
 
 static u32
