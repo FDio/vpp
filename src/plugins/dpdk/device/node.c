@@ -213,65 +213,6 @@ poll_rate_limit (dpdk_main_t * dm)
       <code>xd->per_interface_next_index</code>
 */
 
-static_always_inline void
-dpdk_mbufs_to_buffer_indices (vlib_main_t * vm, struct rte_mbuf **mb,
-			      u32 * bi, uword n_left)
-{
-#ifdef CLIB_HAVE_VEC256
-  u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
-  u64x4 off4 = u64x4_splat (buffer_main.buffer_mem_start -
-			    sizeof (struct rte_mbuf));
-#endif
-
-  while (n_left >= 8)
-    {
-#ifdef CLIB_HAVE_VEC256
-      /* load 4 pointers into 256-bit register */
-      u64x4 v0 = u64x4_load_unaligned (mb);
-      u64x4 v1 = u64x4_load_unaligned (mb + 4);
-      u32x8 v2, v3;
-
-      /* calculate 4 buffer indices in parallel
-         vlib_buffer_t is straight after rte_mbuf so advance all 4
-         pointers for size of rte_mbuf */
-      v0 -= off4;
-      v1 -= off4;
-
-      v0 >>= CLIB_LOG2_CACHE_LINE_BYTES;
-      v1 >>= CLIB_LOG2_CACHE_LINE_BYTES;
-
-      /* permute 256-bit register so lower u32s of each buffer index are
-       * placed into lower 128-bits */
-      v2 = u32x8_permute ((u32x8) v0, mask);
-      v3 = u32x8_permute ((u32x8) v1, mask);
-
-      /* extract lower 128-bits and save them to the array of buffer indices */
-      u32x4_store_unaligned (u32x8_extract_lo (v2), bi);
-      u32x4_store_unaligned (u32x8_extract_lo (v3), bi + 4);
-#else
-      /* equivalent non-nector implementation */
-      bi[0] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[0]));
-      bi[1] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[1]));
-      bi[2] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[2]));
-      bi[3] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[3]));
-      bi[4] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[4]));
-      bi[5] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[5]));
-      bi[6] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[6]));
-      bi[7] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[7]));
-#endif
-      bi += 8;
-      mb += 8;
-      n_left -= 8;
-    }
-  while (n_left)
-    {
-      bi[0] = vlib_get_buffer_index (vm, vlib_buffer_from_rte_mbuf (mb[0]));
-      bi += 1;
-      mb += 1;
-      n_left -= 1;
-    }
-}
-
 static_always_inline u8
 dpdk_ol_flags_extract (struct rte_mbuf **mb, u8 * flags, int count)
 {
@@ -604,7 +545,9 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       }
 
   /* enqueue buffers to the next node */
-  dpdk_mbufs_to_buffer_indices (vm, ptd->mbufs, ptd->buffers, n_rx_packets);
+  vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs, ptd->buffers,
+				       n_rx_packets,
+				       sizeof (struct rte_mbuf));
   n_left = n_rx_packets;
   next = ptd->next;
   buffers = ptd->buffers;
