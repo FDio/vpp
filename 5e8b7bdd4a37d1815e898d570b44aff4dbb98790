@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1be1e233_f7550cd0",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 548,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-17T19:17:02Z",
+      "side": 1,
+      "message": "Cute",
+      "revId": "5e8b7bdd4a37d1815e898d570b44aff4dbb98790",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd32ecba_f8688fc3",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-17T19:17:02Z",
+      "side": 1,
+      "message": "What\u0027s a \"nector?\" (;-)",
+      "revId": "5e8b7bdd4a37d1815e898d570b44aff4dbb98790",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c5582fa1_f0b6984b",
+        "filename": "src/vppinfra/vector_avx2.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-17T19:17:02Z",
+      "side": 1,
+      "message": "Nice use of \"_\" macros. I almost wonder whether a doxygen comment which lists all of the generated names would be worth the trouble. So people can find the definition, and say \"aha, this turns into _mm256_cvt_XXX\"",
+      "revId": "5e8b7bdd4a37d1815e898d570b44aff4dbb98790",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
