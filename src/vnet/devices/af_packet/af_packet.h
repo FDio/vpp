@@ -19,6 +19,8 @@
 
 #include <vppinfra/lock.h>
 
+#include <vlib/log.h>
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -54,6 +56,9 @@ typedef struct
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
+
+  /** log class */
+  vlib_log_class_t log_class;
 } af_packet_main_t;
 
 extern af_packet_main_t af_packet_main;
