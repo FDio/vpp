@@ -675,6 +675,8 @@ tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			  u8 is_ip4, u32 fib_index)
 {
   tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 0);
+  if (vm->thread_index == 0 && vlib_num_workers ())
+    session_flush_frames_main_thread (vm);
 }
 
 always_inline void

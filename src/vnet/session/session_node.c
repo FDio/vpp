@@ -869,6 +869,51 @@ session_queue_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (session_queue_exit);
 
+static uword
+session_queue_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+		       vlib_frame_t * f)
+{
+  f64 now, timeout = 1.0;
+  uword *event_data = 0;
+  uword event_type;
+
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, timeout);
+      now = vlib_time_now (vm);
+      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+
+      switch (event_type)
+	{
+	case SESSION_Q_PROCESS_FLUSH_FRAMES:
+	  /* Flush the frames by updating all transports times */
+	  transport_update_time (now, 0);
+	  break;
+	case SESSION_Q_PROCESS_STOP:
+	  timeout = 100000.0;
+	  break;
+	case ~0:
+	  /* Timed out. Update time for all transports to trigger all
+	   * outstanding retransmits. */
+	  transport_update_time (now, 0);
+	  break;
+	}
+      vec_reset_length (event_data);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (session_queue_process_node) =
+{
+  .function = session_queue_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "session-queue-process",
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

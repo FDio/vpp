@@ -1272,6 +1272,14 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
   return 0;
 }
 
+void
+session_flush_frames_main_thread (vlib_main_t * vm)
+{
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event_mt (vm, session_queue_process_node.index,
+				SESSION_Q_PROCESS_FLUSH_FRAMES, 0);
+}
+
 static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
@@ -1366,8 +1374,30 @@ void
 session_node_enable_disable (u8 is_en)
 {
   u8 state = is_en ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u8 have_workers = vtm->n_threads != 0;
+
   /* *INDENT-OFF* */
   foreach_vlib_main (({
+    if (have_workers && ii == 0)
+      {
+	vlib_node_set_state (this_vlib_main, session_queue_process_node.index,
+	                     state);
+	if (is_en)
+	  {
+	    vlib_node_t *n = vlib_get_node (this_vlib_main,
+	                                    session_queue_process_node.index);
+	    vlib_start_process (this_vlib_main, n->runtime_index);
+	  }
+	else
+	  {
+	    vlib_process_signal_event_mt (this_vlib_main,
+	                                  session_queue_process_node.index,
+	                                  SESSION_Q_PROCESS_STOP, 0);
+	  }
+
+	continue;
+      }
     vlib_node_set_state (this_vlib_main, session_queue_node.index,
                          state);
   }));
