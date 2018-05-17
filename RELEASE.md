@@ -1,6 +1,7 @@
 # Release Notes    {#release_notes}
 
 * @subpage release_notes_1804
+* @subpage release_notes_18012
 * @subpage release_notes_18011
 * @subpage release_notes_1801
 * @subpage release_notes_1710
@@ -1476,6 +1477,15 @@ Found 1036 api message signature differences
 | [9d42087](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9d42087) | VPPAPIGEN: vppapigen replacement in Python PLY. |
 | [90a6398](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=90a6398) | sock api: add infra for bootstrapping shm clients |
 
+
+
+@page release_notes_18012 Release notes for VPP 18.01.2
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1801)
 
 
 @page release_notes_18011 Release notes for VPP 18.01.1
