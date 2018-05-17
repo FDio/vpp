@@ -328,6 +328,121 @@ generic_buffer_node_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static_always_inline void
+vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     u32 * buffers, u16 * nexts, uword count)
+{
+  u32 *to_next, n_left_to_next, max;
+  u16 next_index;
+
+  next_index = nexts[0];
+  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+  max = clib_min (n_left_to_next, count);
+
+  while (count)
+    {
+      u32 n_enqueued;
+      if ((nexts[0] != next_index) || n_left_to_next == 0)
+	{
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	  next_index = nexts[0];
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  max = clib_min (n_left_to_next, count);
+	}
+#if defined(CLIB_HAVE_VEC512)
+      u16x32 next32 = u16x32_load_unaligned (nexts);
+      next32 = (next32 == u16x32_splat (next32[0]));
+      u64 bitmap = u16x32_msb_mask (next32);
+      n_enqueued = count_trailing_zeros (~bitmap);
+#elif defined(CLIB_HAVE_VEC256)
+      u16x16 next16 = u16x16_load_unaligned (nexts);
+      next16 = (next16 == u16x16_splat (next16[0]));
+      u64 bitmap = u8x32_msb_mask ((u8x32) next16);
+      n_enqueued = count_trailing_zeros (~bitmap) / 2;
+#elif defined(CLIB_HAVE_VEC128)
+      u16x8 next8 = u16x8_load_unaligned (nexts);
+      next8 = (next8 == u16x8_splat (next8[0]));
+      u64 bitmap = u8x16_msb_mask ((u8x16) next8);
+      n_enqueued = count_trailing_zeros (~bitmap) / 2;
+#else
+      u16 x = 0;
+      x |= next_index ^ nexts[1];
+      x |= next_index ^ nexts[2];
+      x |= next_index ^ nexts[3];
+      n_enqueued = (x == 0) ? 4 : 1;
+#endif
+
+      if (PREDICT_FALSE (n_enqueued > max))
+	n_enqueued = max;
+
+#ifdef CLIB_HAVE_VEC512
+      if (n_enqueued >= 32)
+	{
+	  clib_memcpy (to_next, buffers, 32 * sizeof (u32));
+	  nexts += 32;
+	  to_next += 32;
+	  buffers += 32;
+	  n_left_to_next -= 32;
+	  count -= 32;
+	  max -= 32;
+	  continue;
+	}
+#endif
+
+#ifdef CLIB_HAVE_VEC256
+      if (n_enqueued >= 16)
+	{
+	  clib_memcpy (to_next, buffers, 16 * sizeof (u32));
+	  nexts += 16;
+	  to_next += 16;
+	  buffers += 16;
+	  n_left_to_next -= 16;
+	  count -= 16;
+	  max -= 16;
+	  continue;
+	}
+#endif
+
+#ifdef CLIB_HAVE_VEC128
+      if (n_enqueued >= 8)
+	{
+	  clib_memcpy (to_next, buffers, 8 * sizeof (u32));
+	  nexts += 8;
+	  to_next += 8;
+	  buffers += 8;
+	  n_left_to_next -= 8;
+	  count -= 8;
+	  max -= 8;
+	  continue;
+	}
+#endif
+
+      if (n_enqueued >= 4)
+	{
+	  clib_memcpy (to_next, buffers, 4 * sizeof (u32));
+	  nexts += 4;
+	  to_next += 4;
+	  buffers += 4;
+	  n_left_to_next -= 4;
+	  count -= 4;
+	  max -= 4;
+	  continue;
+	}
+
+      /* copy */
+      to_next[0] = buffers[0];
+
+      /* next */
+      nexts += 1;
+      to_next += 1;
+      buffers += 1;
+      n_left_to_next -= 1;
+      count -= 1;
+      max -= 1;
+    }
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+}
+
 #endif /* included_vlib_buffer_node_h */
 
 /*
