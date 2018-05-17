@@ -53,7 +53,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora opensuse opensuse-leap,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse opensuse-leap opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
