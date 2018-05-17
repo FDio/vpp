@@ -413,6 +413,8 @@ class TestGBP(VppTestCase):
 
         nat_table = VppIpTable(self, 20)
         nat_table.add_vpp_config()
+        nat_table = VppIpTable(self, 20, is_ip6=True)
+        nat_table.add_vpp_config()
 
         #
         # Bridge Domains
