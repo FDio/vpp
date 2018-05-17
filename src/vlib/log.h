@@ -48,7 +48,7 @@ void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 #define vlib_log_alert(...) vlib_log(VLIB_LOG_LEVEL_ALERT, __VA_ARGS__)
 #define vlib_log_crit(...) vlib_log(VLIB_LOG_LEVEL_CRIT, __VA_ARGS__)
 #define vlib_log_err(...) vlib_log(VLIB_LOG_LEVEL_ERR, __VA_ARGS__)
-#define vlib_log_warn(...) vlib_log(VLIB_LOG_LEVEL_WARN, __VA_ARGS__)
+#define vlib_log_warn(...) vlib_log(VLIB_LOG_LEVEL_WARNING, __VA_ARGS__)
 #define vlib_log_notice(...) vlib_log(VLIB_LOG_LEVEL_NOTICE, __VA_ARGS__)
 #define vlib_log_info(...) vlib_log(VLIB_LOG_LEVEL_INFO, __VA_ARGS__)
 #define vlib_log_debug(...) vlib_log(VLIB_LOG_LEVEL_DEBUG, __VA_ARGS__)
