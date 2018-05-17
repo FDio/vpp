@@ -27,6 +27,7 @@
   _(f,32,8,ps) _(f,64,4,pd)
 
 /* splat, load_unaligned, store_unaligned */
+/* *INDENT-OFF* */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
 t##s##x##c##_splat (t##s x)						\
@@ -43,7 +44,15 @@ t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
 
 foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
-#endif				/* included_vector_avx512_h */
+/* *INDENT-ON* */
+
+static_always_inline u32
+u16x32_msb_mask (u16x32 v)
+{
+  return (u32) _mm512_movepi16_mask ((__m512i) v);
+}
+
+#endif /* included_vector_avx512_h */
 /*
  * fd.io coding-style-patch-verification: ON
  *
