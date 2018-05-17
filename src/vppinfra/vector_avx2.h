@@ -81,6 +81,12 @@ u32x8_insert_hi (u32x8 v1, u32x4 v2)
   return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 1);
 }
 
+static_always_inline u32
+u8x32_msb_mask (u8x32 v)
+{
+  return _mm256_movemask_epi8 ((__m256i) v);
+}
+
 /* _extend_to_ */
 /* *INDENT-OFF* */
 #define _(f,t,i) \

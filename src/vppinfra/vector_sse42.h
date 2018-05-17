@@ -574,6 +574,12 @@ i16x8_min_scalar (i16x8 x)
   return _mm_extract_epi16 ((__m128i) x, 0);
 }
 
+static_always_inline u16
+u8x16_msb_mask (u8x16 v)
+{
+  return _mm_movemask_epi8 ((__m128i) v);
+}
+
 #undef _signed_binop
 
 #endif /* included_vector_sse2_h */

@@ -548,81 +548,9 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs, ptd->buffers,
 				       n_rx_packets,
 				       sizeof (struct rte_mbuf));
-  n_left = n_rx_packets;
-  next = ptd->next;
-  buffers = ptd->buffers;
-  mb = ptd->mbufs;
-  while (n_left)
-    {
-      u32 n_left_to_next;
-      u32 *to_next;
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-#ifdef CLIB_HAVE_VEC256
-      while (n_left >= 16 && n_left_to_next >= 16)
-	{
-	  u16x16 next16 = u16x16_load_unaligned (next);
-	  if (u16x16_is_all_equal (next16, next_index))
-	    {
-	      clib_memcpy (to_next, buffers, 16 * sizeof (u32));
-	      to_next += 16;
-	      n_left_to_next -= 16;
-	      buffers += 16;
-	      n_left -= 16;
-	      next += 16;
-	      mb += 16;
-	    }
-	  else
-	    {
-	      clib_memcpy (to_next, buffers, 4 * sizeof (u32));
-	      to_next += 4;
-	      n_left_to_next -= 4;
 
-	      vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
-					       n_left_to_next, buffers[0],
-					       buffers[1], buffers[2],
-					       buffers[3], next[0], next[1],
-					       next[2], next[3]);
-	      /* next */
-	      buffers += 4;
-	      n_left -= 4;
-	      next += 4;
-	      mb += 4;
-	    }
-	}
-#endif
-      while (n_left >= 4 && n_left_to_next >= 4)
-	{
-	  clib_memcpy (to_next, buffers, 4 * sizeof (u32));
-	  to_next += 4;
-	  n_left_to_next -= 4;
-
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
-					   n_left_to_next, buffers[0],
-					   buffers[1], buffers[2], buffers[3],
-					   next[0], next[1], next[2],
-					   next[3]);
-	  /* next */
-	  buffers += 4;
-	  n_left -= 4;
-	  next += 4;
-	  mb += 4;
-	}
-      while (n_left && n_left_to_next)
-	{
-	  clib_memcpy (to_next, buffers, 1 * sizeof (u32));
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, buffers[0],
-					   next[0]);
-	  /* next */
-	  buffers += 1;
-	  n_left -= 1;
-	  next += 1;
-	  mb += 1;
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
+  vlib_buffer_enqueue_to_next (vm, node, ptd->buffers, ptd->next,
+			       n_rx_packets);
 
   /* packet trace if enabled */
   if ((n_trace = vlib_get_trace_count (vm, node)))
