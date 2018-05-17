@@ -213,8 +213,8 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   if (0 > fd)
     {
-      clib_unix_warning ("af_packet_%s could not open socket",
-			 apif->host_if_name);
+      vlib_log_warn (apm->log_class, "af_packet_%s could not open socket",
+		     apif->host_if_name);
       return 0;
     }
 
@@ -226,8 +226,9 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   ifr.ifr_ifindex = apif->host_if_index;
   if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
     {
-      clib_unix_warning ("af_packet_%s ioctl could not retrieve eth name",
-			 apif->host_if_name);
+      vlib_log_warn (apm->log_class,
+		     "af_packet_%s ioctl could not retrieve eth name",
+		     apif->host_if_name);
       goto error;
     }
 
@@ -235,8 +236,8 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   if ((rv = ioctl (fd, SIOCGIFFLAGS, &ifr)) < 0)
     {
-      clib_unix_warning ("af_packet_%s error: %d",
-			 apif->is_admin_up ? "up" : "down", rv);
+      vlib_log_warn (apm->log_class, "af_packet_%s error: %d",
+		     apif->is_admin_up ? "up" : "down", rv);
       goto error;
     }
 
@@ -253,8 +254,8 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   if ((rv = ioctl (fd, SIOCSIFFLAGS, &ifr)) < 0)
     {
-      clib_unix_warning ("af_packet_%s error: %d",
-			 apif->is_admin_up ? "up" : "down", rv);
+      vlib_log_warn (apm->log_class, "af_packet_%s error: %d",
+		     apif->is_admin_up ? "up" : "down", rv);
       goto error;
     }
 
@@ -287,8 +288,8 @@ static clib_error_t *af_packet_set_mac_address_function
 
   if (0 > fd)
     {
-      clib_unix_warning ("af_packet_%s could not open socket",
-			 apif->host_if_name);
+      vlib_log_warn (apm->log_class, "af_packet_%s could not open socket",
+		     apif->host_if_name);
       return 0;
     }
 
@@ -300,8 +301,9 @@ static clib_error_t *af_packet_set_mac_address_function
   ifr.ifr_ifindex = apif->host_if_index;
   if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
     {
-      clib_unix_warning
-	("af_packet_%s ioctl could not retrieve eth name, error: %d",
+      vlib_log_warn
+	(apm->log_class,
+	 "af_packet_%s ioctl could not retrieve eth name, error: %d",
 	 apif->host_if_name, rv);
       goto error;
     }
@@ -311,8 +313,9 @@ static clib_error_t *af_packet_set_mac_address_function
 
   if ((rv = ioctl (fd, SIOCSIFHWADDR, &ifr)) < 0)
     {
-      clib_unix_warning ("af_packet_%s ioctl could not set mac, error: %d",
-			 apif->host_if_name, rv);
+      vlib_log_warn (apm->log_class,
+		     "af_packet_%s ioctl could not set mac, error: %d",
+		     apif->host_if_name, rv);
       goto error;
     }
 
