@@ -81,6 +81,28 @@ u32x8_insert_hi (u32x8 v1, u32x4 v2)
   return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 1);
 }
 
+/* _extend_to_ */
+/* *INDENT-OFF* */
+#define _(f,t,i) \
+static_always_inline t							\
+f##_extend_to_##t (f x)							\
+{ return (t) _mm256_cvt##i ((__m128i) x); }
+
+_(u16x8, u32x8, epu16_epi32)
+_(u16x8, u64x4, epu16_epi64)
+_(u32x4, u64x4, epu32_epi64)
+_(u8x16, u16x16, epu8_epi64)
+_(u8x16, u32x8, epu8_epi32)
+_(u8x16, u64x4, epu8_epi64)
+_(i16x8, i32x8, epi16_epi32)
+_(i16x8, i64x4, epi16_epi64)
+_(i32x4, i64x4, epi32_epi64)
+_(i8x16, i16x16, epi8_epi64)
+_(i8x16, i32x8, epi8_epi32)
+_(i8x16, i64x4, epi8_epi64)
+#undef _
+/* *INDENT-ON* */
+
 #endif /* included_vector_avx2_h */
 
 /*

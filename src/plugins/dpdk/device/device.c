@@ -345,12 +345,6 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
 						  thread_index);
   struct rte_mbuf **mb;
   vlib_buffer_t *b[4];
-#ifdef CLIB_HAVE_VEC256
-  u64x4 off4 = u64x4_splat (buffer_main.buffer_mem_start -
-			    sizeof (struct rte_mbuf));
-  u32x8 permute_mask = { 0, 4, 1, 5, 2, 6, 3, 7 };
-  u32x8 zero = { 0 };
-#endif
 
   from = vlib_frame_vector_args (f);
 
@@ -373,46 +367,10 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
     }
 
   /* calculate rte_mbuf pointers out of buffer indices */
-  from = vlib_frame_vector_args (f);
-  n_left = n_packets;
-  mb = ptd->mbufs;
-  while (n_left >= 8)
-    {
-#ifdef CLIB_HAVE_VEC256
-      u32x8 bi0, bi1;
-      u64x4 mb0, mb1;
-      /* load 4 bufer indices into lower part of 256-bit register */
-      bi0 = u32x8_insert_lo (zero, u32x4_load_unaligned (from));
-      bi1 = u32x8_insert_lo (zero, u32x4_load_unaligned (from + 4));
-      /* permute 256-bit register so each buffer index is in own u64 */
-      mb0 = (u64x4) u32x8_permute (bi0, permute_mask);
-      mb1 = (u64x4) u32x8_permute (bi1, permute_mask);
-      /* shift and add to get rte_mbuf pointer */
-      mb0 <<= CLIB_LOG2_CACHE_LINE_BYTES;
-      mb1 <<= CLIB_LOG2_CACHE_LINE_BYTES;
-      u64x4_store_unaligned (mb0 + off4, mb);
-      u64x4_store_unaligned (mb1 + off4, mb + 4);
-#else
-      mb[0] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[0]));
-      mb[1] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[1]));
-      mb[2] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[2]));
-      mb[3] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[3]));
-      mb[4] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[4]));
-      mb[5] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[5]));
-      mb[6] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[6]));
-      mb[7] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[7]));
-#endif
-      from += 8;
-      mb += 8;
-      n_left -= 8;
-    }
-  while (n_left)
-    {
-      mb[0] = rte_mbuf_from_vlib_buffer (vlib_get_buffer (vm, from[0]));
-      from++;
-      mb++;
-      n_left--;
-    }
+  vlib_get_buffers_with_offset (vm, vlib_frame_vector_args (f),
+				(void **) ptd->mbufs, n_packets,
+				-(i32) sizeof (struct rte_mbuf));
+
   from = vlib_frame_vector_args (f);
   n_left = n_packets;
   mb = ptd->mbufs;
