@@ -22,6 +22,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/vxlan/vxlan.h>
 #include <dpdk/device/dpdk.h>
 
 #include <dpdk/device/dpdk_priv.h>
@@ -33,8 +34,7 @@ static const struct rte_flow_item_eth any_eth[2] = { };
 static const struct rte_flow_item_vlan any_vlan[2] = { };
 
 static int
-dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
-			dpdk_flow_entry_t * fe)
+dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
   struct rte_flow_item_ipv4 ip4[2] = { };
   struct rte_flow_item_ipv6 ip6[2] = { };
@@ -43,6 +43,19 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
+
+  enum
+  {
+    vxlan_hdr_sz = sizeof (vxlan_header_t),
+    raw_sz = sizeof (struct rte_flow_item_raw)
+  };
+
+  union
+  {
+    struct rte_flow_item_raw item;
+    u8 val[raw_sz + vxlan_hdr_sz];
+  } raw[2];
+
   u16 src_port, dst_port, src_port_mask, dst_port_mask;
   u8 protocol;
   int rv = 0;
@@ -50,6 +63,7 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
   if (f->actions & (~xd->supported_flow_actions))
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
+  /* Match items */
   /* Ethernet */
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_ETH;
@@ -57,10 +71,13 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
   item->mask = any_eth + 1;
 
   /* VLAN */
-  vec_add2 (items, item, 1);
-  item->type = RTE_FLOW_ITEM_TYPE_VLAN;
-  item->spec = any_vlan;
-  item->mask = any_vlan + 1;
+  if (f->type != VNET_FLOW_TYPE_IP4_VXLAN)
+    {
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_VLAN;
+      item->spec = any_vlan;
+      item->mask = any_vlan + 1;
+    }
 
   /* IP */
   vec_add2 (items, item, 1);
@@ -81,11 +98,10 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
       dst_port_mask = t6->dst_port.mask;
       protocol = t6->protocol;
     }
-  else
+  else if (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE)
     {
       vnet_flow_ip4_n_tuple_t *t4 = &f->ip4_n_tuple;
-      ASSERT (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE);
-      ip4[0].hdr.src_addr = t4->src_addr.mask.as_u32;
+      ip4[0].hdr.src_addr = t4->src_addr.addr.as_u32;
       ip4[1].hdr.src_addr = t4->src_addr.mask.as_u32;
       ip4[0].hdr.dst_addr = t4->dst_addr.addr.as_u32;
       ip4[1].hdr.dst_addr = t4->dst_addr.mask.as_u32;
@@ -94,10 +110,32 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
       item->mask = ip4 + 1;
 
       src_port = t4->src_port.port;
-      dst_port = t4->dst_port.mask;
+      dst_port = t4->dst_port.port;
       src_port_mask = t4->src_port.mask;
       dst_port_mask = t4->dst_port.mask;
       protocol = t4->protocol;
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP4_VXLAN)
+    {
+      vnet_flow_ip4_vxlan_t *v4 = &f->ip4_vxlan;
+      ip4[0].hdr.src_addr = v4->src_addr.as_u32;
+      ip4[1].hdr.src_addr = -1;
+      ip4[0].hdr.dst_addr = v4->dst_addr.as_u32;
+      ip4[1].hdr.dst_addr = -1;
+      item->type = RTE_FLOW_ITEM_TYPE_IPV4;
+      item->spec = ip4;
+      item->mask = ip4 + 1;
+
+      dst_port = v4->dst_port;
+      dst_port_mask = -1;
+      src_port = 0;
+      src_port_mask = 0;
+      protocol = IP_PROTOCOL_UDP;
+    }
+  else
+    {
+      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      goto done;
     }
 
   /* Layer 4 */
@@ -128,10 +166,36 @@ dpdk_flow_add_n_touple (dpdk_device_t * xd, vnet_flow_t * f,
       goto done;
     }
 
-  /* The End */
+  /* Tunnel header match */
+  if (f->type == VNET_FLOW_TYPE_IP4_VXLAN)
+    {
+      u32 vni = f->ip4_vxlan.vni;
+      vxlan_header_t spec_hdr = {
+	.flags = VXLAN_FLAGS_I,
+	.vni_reserved = clib_host_to_net_u32 (vni << 8)
+      };
+      vxlan_header_t mask_hdr = {
+	.flags = 0xff,
+	.vni_reserved = clib_host_to_net_u32 (((u32) - 1) << 8)
+      };
+
+      memset (raw, 0, sizeof raw);
+      raw[0].item.relative = 1;
+      raw[0].item.length = vxlan_hdr_sz;
+
+      clib_memcpy (raw[0].val + raw_sz, &spec_hdr, vxlan_hdr_sz);
+      clib_memcpy (raw[1].val + raw_sz, &mask_hdr, vxlan_hdr_sz);;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_RAW;
+      item->spec = raw;
+      item->mask = raw + 1;
+    }
+
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_END;
 
+  /* Actions */
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
 
@@ -219,7 +283,8 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     {
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
     case VNET_FLOW_TYPE_IP6_N_TUPLE:
-      if ((rv = dpdk_flow_add_n_touple (xd, flow, fe)))
+    case VNET_FLOW_TYPE_IP4_VXLAN:
+      if ((rv = dpdk_flow_add (xd, flow, fe)))
 	goto done;
       break;
     default:
