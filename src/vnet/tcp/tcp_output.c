@@ -1753,21 +1753,6 @@ tcp_session_has_ooo_data (tcp_connection_t * tc)
   return svm_fifo_has_ooo_data (s->server_rx_fifo);
 }
 
-typedef struct
-{
-  fib_protocol_t nh_proto;
-  vnet_link_t link_type;
-  ip46_address_t ip;
-  u32 sw_if_index;
-} tcp_adj_add_args_t;
-
-void
-tcp_output_add_adj (tcp_adj_add_args_t * args)
-{
-  adj_nbr_add_or_lock (args->nh_proto, args->link_type, &args->ip,
-		       args->sw_if_index);
-}
-
 static void
 tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
 			      u32 * next0, u32 * error0)
@@ -1775,18 +1760,12 @@ tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
   ip_adjacency_t *adj;
   adj_index_t ai;
 
+  /* Not thread safe but as long as the connection exists the adj should not
+   * be removable */
   ai = adj_nbr_find (FIB_PROTOCOL_IP6, VNET_LINK_IP6, &tc0->c_rmt_ip,
 		     tc0->sw_if_index);
   if (ai == ADJ_INDEX_INVALID)
     {
-      tcp_adj_add_args_t args = {
-	.nh_proto = FIB_PROTOCOL_IP6,
-	.link_type = VNET_LINK_IP6,
-	.ip = tc0->c_rmt_ip,
-	.sw_if_index = tc0->sw_if_index
-      };
-      vlib_rpc_call_main_thread (tcp_output_add_adj, (u8 *) & args,
-				 sizeof (args));
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
       *next0 = TCP_OUTPUT_NEXT_DROP;
       *error0 = TCP_ERROR_LINK_LOCAL_RW;
@@ -1798,6 +1777,7 @@ tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
     *next0 = TCP_OUTPUT_NEXT_IP_REWRITE;
   else if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
     *next0 = TCP_OUTPUT_NEXT_IP_ARP;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ai;
 }
 
 always_inline uword
