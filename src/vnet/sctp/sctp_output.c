@@ -406,6 +406,9 @@ sctp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			   u8 is_ip4, u32 fib_index)
 {
   sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 0);
+  if (vm->thread_index == 0 && vlib_num_workers ())
+    vlib_process_signal_event_mt (vm, session_process_node.index,
+				  SESSION_PROCESS_FLUSH_FRAMES, 0);
 }
 
 /**

@@ -1366,8 +1366,24 @@ void
 session_node_enable_disable (u8 is_en)
 {
   u8 state = is_en ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u8 have_workers = vtm->n_threads != 0;
+
   /* *INDENT-OFF* */
   foreach_vlib_main (({
+    if (have_workers && ii == 0)
+      {
+	vlib_node_set_state (this_vlib_main, session_process_node.index,
+	                     state);
+	if (is_en)
+	  {
+	    vlib_node_t *n = vlib_get_node (this_vlib_main,
+	                                    session_process_node.index);
+	    vlib_start_process (this_vlib_main, n->runtime_index);
+	  }
+
+	continue;
+      }
     vlib_node_set_state (this_vlib_main, session_queue_node.index,
                          state);
   }));
