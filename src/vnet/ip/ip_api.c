@@ -1395,8 +1395,11 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
   if (mp->is_ipv6)
     {
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm6, ia, sw_if_index,
-                                    1 /* honor unnumbered */,
+      /* Do not send subnet details of the IP-interface for
+       * unnumbered interfaces. otherwise listening clients
+       * will be confused that the subnet is applied on more
+       * than one interface */
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
       ({
         r6 = ip_interface_address_get_address (lm6, ia);
         u16 prefix_length = ia->address_length;
@@ -1408,8 +1411,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
   else
     {
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm4, ia, sw_if_index,
-                                    1 /* honor unnumbered */,
+      foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
       ({
         r4 = ip_interface_address_get_address (lm4, ia);
         u16 prefix_length = ia->address_length;
