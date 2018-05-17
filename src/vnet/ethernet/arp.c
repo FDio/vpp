@@ -628,9 +628,15 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   e->time_last_updated = vlib_time_now (vm);
   if (is_static)
-    e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC;
+    {
+      e->flags &= ~ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
+      e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC;
+    }
   else
-    e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
+    {
+      e->flags &= ~ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC;
+      e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
+    }
 
   adj_nbr_walk_nh4 (sw_if_index, &e->ip4_address, arp_mk_complete_walk, e);
 
@@ -1819,7 +1825,7 @@ vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
        */
       if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
 	{
-	  e->flags &= ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
+	  e->flags &= ~ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
 	}
       else if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC)
 	{
