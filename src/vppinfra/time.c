@@ -147,7 +147,7 @@ os_cpu_clock_frequency (void)
    * to each core which has registers for reading the current counter value
    * as well as the clock frequency. The system counter is not clocked at
    * the same frequency as the core. */
-  u32 hz;
+  u64 hz;
   asm volatile ("mrs %0, cntfrq_el0":"=r" (hz));
   return (f64) hz;
 #endif
