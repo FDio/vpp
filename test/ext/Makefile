@@ -16,7 +16,7 @@ ifneq ($(filter centos opensuse opensuse-tumbleweed opensuse-leap,$(OS_ID)),$(OS
 VAPI_LIBS += -lsubunit
 endif
 
-FLAGS = -g -Wall -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
+FLAGS = -g -Wall -lstdc++ -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
 CFLAGS = -std=gnu99 $(FLAGS)
 CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras/vom
 
@@ -36,7 +36,7 @@ $(VAPI_BINDIR)/fake.api.vapi.hpp: fake.api.json $(WS_ROOT)/src/vpp-api/vapi/vapi
 $(VAPI_CBIN): $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
 	$(CC) -o $@ $(CFLAGS) $(CSRC) $(VAPI_LIBS)
 
-$(VAPI_CBIN).d: $(CSRC) $(VAPI_BINDIR)
+$(VAPI_CBIN).d: $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
 	$(CC) -o $@ $(CFLAGS) -MM -MT '$(VAPI_CBIN)' $(CSRC) > $@
 
 
@@ -45,7 +45,7 @@ CPPSRC = vapi_cpp_test.cpp
 $(VAPI_CPPBIN): $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
 	$(CXX) -o $@ $(CPPFLAGS) $(CPPSRC) $(VAPI_LIBS)
 
-$(VAPI_CPPBIN).d: $(CPPSRC) $(VAPI_BINDIR)
+$(VAPI_CPPBIN).d: $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
 	$(CXX) -o $@ $(CPPFLAGS) -MM -MT '$(VAPI_CPPBIN)' $(CPPSRC) > $@
 
 VOM_CPPSRC = vom_test.cpp
