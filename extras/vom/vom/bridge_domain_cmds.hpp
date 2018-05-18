@@ -101,7 +101,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the IPv4 L3 configs
+ * A cmd class that Dumps all the bridge domains
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Bridge_domain_dump>
 {
