@@ -545,6 +545,195 @@ static int api_acl_add_replace (vat_main_t * vam)
     return ret;
 }
 
+
+/*
+ * Read the series of ACL entries from file in the following format:
+ *
+
+@0.0.0.0/1      131.179.121.0/24        0 : 65535       0 : 65535       0x00/0x00       0x0000/0x0000
+@128.0.0.0/1    85.54.226.0/23  0 : 65535       0 : 65535       0x00/0x00       0x0000/0x0000
+@128.0.0.0/1    85.54.48.0/23   0 : 65535       0 : 65535       0x00/0x00       0x0000/0x0000
+@128.0.0.0/1    31.237.44.0/23  0 : 65535       0 : 65535       0x00/0x00       0x0000/0x0000
+@0.0.0.0/1      255.84.184.0/23 0 : 65535       0 : 65535       0x00/0x00       0x0000/0x0000
+@132.92.0.0/16  0.0.0.0/0       0 : 65535       0 : 65535       0x01/0xFF       0x0000/0x0000
+
+ *
+ */
+
+static int
+api_acl_add_replace_from_file (vat_main_t * vam)
+{
+    int ret = -1;
+    unformat_input_t * input = vam->input;
+    acl_test_main_t * sm = &acl_test_main;
+    vl_api_acl_add_replace_t * mp;
+    u32 acl_index = ~0;
+    u32 msg_size = sizeof (*mp); /* without the rules */
+
+    vl_api_acl_rule_t *rules = 0;
+    int rule_idx = -1;
+    int n_rules = 0;
+    int n_rules_override = -1;
+    int is_permit = 0;
+    int append_default_permit = 0;
+    u32 tcpflags = 0, tcpmask = 0;
+    ip4_address_t src_v4address, dst_v4address;
+    u8 *tag = 0;
+    int fd = -1;
+
+    char *file_name = NULL;
+    unformat_input_t file_input;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+      {
+        if (unformat (input, "filename %s", &file_name))
+          {
+            /* we will use this later */
+          }
+        else if (unformat (input, "acl-index %d", &acl_index))
+	  {
+            /* we will try to replace an existing ACL */
+	  }
+        else if (unformat (input, "permit+reflect"))
+	  {
+	    is_permit = 2;
+	  }
+        else if (unformat (input, "permit"))
+	  {
+	    is_permit = 1;
+	  }
+        else if (unformat (input, "append-default-permit"))
+	  {
+	    append_default_permit = 1;
+	  }
+	else
+	  break;
+      }
+
+    fd = open(file_name, O_RDONLY);
+    if (fd < 0)
+      {
+        clib_warning("Could not open file '%s'");
+        goto done;
+      }
+
+    /* input from file */
+    input =  &file_input;
+    unformat_init_clib_file(input, fd);
+
+    unsigned sport_low, sport_high, dport_low, dport_high;
+    unsigned proto, protomask;
+    u32 src_prefix_length, dst_prefix_length;
+    u32 unused1, unused2;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+      {
+            if (!unformat(input, "@%U/%d\t%U/%d\t%d : %d\t%d : %d\t0x%x/0x%x\t0x%x/0x%x",
+                                 unformat_ip4_address, &src_v4address, &src_prefix_length,
+                                 unformat_ip4_address, &dst_v4address, &dst_prefix_length,
+                                 &sport_low, &sport_high, &dport_low, &dport_high, &proto, &protomask, &unused1, &unused2)) {
+              clib_warning("Error parsing");
+              break;
+            }
+
+	    rule_idx++;
+	    vec_validate_acl_rules(rules, rule_idx);
+
+	    rules[rule_idx].is_ipv6 = 0;
+	    rules[rule_idx].is_permit = is_permit;
+	    memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
+	    rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+	    memcpy (rules[rule_idx].dst_ip_addr, &dst_v4address, 4);
+	    rules[rule_idx].dst_ip_prefix_len = dst_prefix_length;
+	    rules[rule_idx].srcport_or_icmptype_first = htons(sport_low);
+	    rules[rule_idx].srcport_or_icmptype_last = htons(sport_high);
+	    rules[rule_idx].dstport_or_icmpcode_first = htons(dport_low);
+	    rules[rule_idx].dstport_or_icmpcode_last = htons(dport_high);
+	    rules[rule_idx].tcp_flags_value = tcpflags;
+	    rules[rule_idx].tcp_flags_mask = tcpmask;
+	    rules[rule_idx].proto = proto;
+
+      }
+    rules[rule_idx].is_permit = is_permit;
+
+    if (append_default_permit) {
+	rule_idx++;
+	vec_validate_acl_rules(rules, rule_idx);
+
+	rules[rule_idx].is_ipv6 = 0;
+	rules[rule_idx].is_permit = is_permit == 2 ? 2 : 1;
+
+	src_v4address.data[0]=0;
+	src_v4address.data[1]=0;
+	src_v4address.data[2]=0;
+	src_v4address.data[3]=0;
+	memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
+	rules[rule_idx].src_ip_prefix_len = 0;
+
+	dst_v4address.data[0]=0;
+	dst_v4address.data[1]=0;
+	dst_v4address.data[2]=0;
+	dst_v4address.data[3]=0;
+	memcpy (rules[rule_idx].dst_ip_addr, &dst_v4address, 4);
+	rules[rule_idx].dst_ip_prefix_len = 0;
+
+	rules[rule_idx].srcport_or_icmptype_first = htons(0);
+	rules[rule_idx].srcport_or_icmptype_last = htons(65535);
+	rules[rule_idx].dstport_or_icmpcode_first = htons(0);
+	rules[rule_idx].dstport_or_icmpcode_last = htons(65535);
+	rules[rule_idx].tcp_flags_value = 0;
+	rules[rule_idx].tcp_flags_mask = 0;
+	rules[rule_idx].proto = 0;
+    }
+
+    /* Construct the API message */
+
+    vam->result_ready = 0;
+
+    if(rules)
+      n_rules = vec_len(rules);
+    else
+      n_rules = 0;
+
+    if (n_rules_override >= 0)
+      n_rules = n_rules_override;
+
+    msg_size += n_rules*sizeof(rules[0]);
+
+    mp = vl_msg_api_alloc_as_if_client(msg_size);
+    memset (mp, 0, msg_size);
+    mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + sm->msg_id_base);
+    mp->client_index = vam->my_client_index;
+    mp->client_index = 0;
+    if (n_rules > 0)
+      clib_memcpy(mp->r, rules, n_rules*sizeof (vl_api_acl_rule_t));
+    if (tag)
+      {
+        if (vec_len(tag) >= sizeof(mp->tag))
+          {
+            tag[sizeof(mp->tag)-1] = 0;
+            _vec_len(tag) = sizeof(mp->tag);
+          }
+        clib_memcpy(mp->tag, tag, vec_len(tag));
+        vec_free(tag);
+      }
+    mp->acl_index = ntohl(acl_index);
+    mp->count = htonl(n_rules);
+
+    /* send it... */
+    S(mp);
+
+    /* Wait for a reply... */
+    W (ret);
+done:
+    if (fd > 0)
+      close (fd);
+    vec_free(file_name);
+
+    return ret;
+}
+
+
 static int api_acl_del (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
@@ -1273,6 +1462,7 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
 #define foreach_vpe_api_msg \
 _(acl_plugin_get_version, "") \
 _(acl_add_replace, "<acl-idx> [<ipv4|ipv6> <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...") \
+_(acl_add_replace_from_file, "filename <file> [permit] [append-default-permit]") \
 _(acl_del, "<acl-idx>") \
 _(acl_dump, "[<acl-idx>]") \
 _(acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] [input|output] acl <acl-idx>") \
