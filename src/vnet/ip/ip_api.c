@@ -74,6 +74,7 @@ _(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
 _(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
 _(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
+_(IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                               \
 _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
@@ -1420,6 +1421,74 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       }));
       /* *INDENT-ON* */
     }
+  BAD_SW_IF_INDEX_LABEL;
+}
+
+static void
+send_ip_unnumbered_details (vpe_api_main_t * am,
+			    vl_api_registration_t * reg,
+			    u32 sw_if_index, u32 ip_sw_if_index, u32 context)
+{
+  vl_api_ip_unnumbered_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_UNNUMBERED_DETAILS);
+
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->ip_sw_if_index = htonl (ip_sw_if_index);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  int rv __attribute__ ((unused)) = 0;
+  vpe_api_main_t *am = &vpe_api_main;
+  vl_api_registration_t *reg;
+  vnet_sw_interface_t *si;
+  u32 sw_if_index;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (~0 != sw_if_index)
+    {
+      VALIDATE_SW_IF_INDEX (mp);
+
+      si = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+
+      if (!(si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+	{
+	  send_ip_unnumbered_details (am, reg,
+				      sw_if_index,
+				      si->unnumbered_sw_if_index,
+				      mp->context);
+	}
+    }
+  else
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (si, im->sw_interfaces,
+      ({
+        if ((si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+          {
+            send_ip_unnumbered_details(am, reg,
+                                       si->sw_if_index,
+                                       si->unnumbered_sw_if_index,
+                                       mp->context);
+          }
+      }));
+      /* *INDENT-ON* */
+    }
+
   BAD_SW_IF_INDEX_LABEL;
 }
 

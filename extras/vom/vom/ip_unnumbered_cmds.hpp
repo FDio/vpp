@@ -16,6 +16,7 @@
 #ifndef __VOM_IP_UNNUMBERED_CMDS_H__
 #define __VOM_IP_UNNUMBERED_CMDS_H__
 
+#include "vom/dump_cmd.hpp"
 #include "vom/ip_unnumbered.hpp"
 #include "vom/rpc_cmd.hpp"
 
@@ -100,6 +101,37 @@ private:
   const handle_t& m_l3_itf;
 };
 
+/**
+ * A cmd class that Dumps all the IP unnumbered interfaces
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Ip_unnumbered_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
+};
 }; // namespace ip_unnumbered_cmds
 }; // namespace VOM
 
