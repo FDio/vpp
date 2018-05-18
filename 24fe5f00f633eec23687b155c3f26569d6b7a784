@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5c55f54f_c307fae1",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-18T12:40:18Z",
+      "side": 1,
+      "message": "This will be hidden with macro....",
+      "range": {
+        "startLine": 494,
+        "startChar": 0,
+        "endLine": 505,
+        "endChar": 6
+      },
+      "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
