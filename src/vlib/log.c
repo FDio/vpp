@@ -142,6 +142,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
   u8 *s = 0;
   bool use_formatted_log_entry = true;
 
+  vec_validate (lm->entries, lm->size);
   /* make sure we are running on the main thread to avoid use in dataplane
      code, for dataplane logging consider use of event-logger */
   ASSERT (vlib_get_thread_index () == 0);
