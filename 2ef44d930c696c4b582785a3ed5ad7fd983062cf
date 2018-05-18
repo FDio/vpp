@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b5959be3_9206923f",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-18T08:10:53Z",
+      "side": 1,
+      "message": "This is wrong:\nShould be something like:\n\nvlib_log_err (apm-\u003elog_class, \"sysfs write failed to change MTU: %U\", format_clib_error, error);\nclib_error_free (error);",
+      "range": {
+        "startLine": 79,
+        "startChar": 3,
+        "endLine": 80,
+        "endChar": 10
+      },
+      "revId": "2ef44d930c696c4b582785a3ed5ad7fd983062cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
