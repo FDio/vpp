@@ -712,7 +712,7 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	goto next_timer;
       IGMP_DBG ("time: %f", vlib_time_now (vm));
       /* timer expired */
-      if (NULL != timer)
+      if (NULL != timer && timer->func != NULL)
 	timer->func (vm, rt, im, timer);
     next_timer:
       timer = igmp_get_next_timer (im);
