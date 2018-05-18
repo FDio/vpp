@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "50996a3f_ce870f8a",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-18T13:22:27Z",
+      "side": 1,
+      "message": "Judging by the names, these inlines will be moving to vppinfra at some point...",
+      "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cfd4ab66_4ac13876",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-18T13:22:27Z",
+      "side": 1,
+      "message": "Maybe some branch prediction on these if-stmts?",
+      "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5c55f54f_c307fae1",
         "filename": "src/vnet/l2/l2_output.c",
         "patchSetId": 1
