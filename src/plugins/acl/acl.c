@@ -59,6 +59,13 @@ acl_main_t *p_acl_main = &acl_main;
 #define REPLY_MSG_ID_BASE am->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+/*
+ * The code for the bihash, used by the session management.
+ */
+#include <vppinfra/bihash_40_8.h>
+#include <vppinfra/bihash_template.h>
+#include <vppinfra/bihash_template.c>
+
 /* List of message types that this plugin understands */
 
 #define foreach_acl_plugin_api_msg		\
