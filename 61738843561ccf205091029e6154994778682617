@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7bbad220_127a18d6",
+        "filename": "src/vnet/ip/rd_cp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-18T08:07:06Z",
+      "side": 1,
+      "message": "Please use clib_log_warning (...)",
+      "range": {
+        "startLine": 194,
+        "startChar": 6,
+        "endLine": 194,
+        "endChar": 18
+      },
+      "revId": "61738843561ccf205091029e6154994778682617",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
