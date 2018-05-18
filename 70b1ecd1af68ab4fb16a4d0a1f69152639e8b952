@@ -22,6 +22,52 @@
       "revId": "70b1ecd1af68ab4fb16a4d0a1f69152639e8b952",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bfb75fd5_fbaa97e8",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-05-18T12:01:57Z",
+      "side": 1,
+      "message": "should be weight of sids list\nntohl (mp-\u003esids.weight),",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 27
+      },
+      "revId": "70b1ecd1af68ab4fb16a4d0a1f69152639e8b952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f312c4be_9c90caca",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2018-05-18T12:01:57Z",
+      "side": 1,
+      "message": "should be weight of sids list\nntohl (mp-\u003esids.weight)",
+      "range": {
+        "startLine": 149,
+        "startChar": 40,
+        "endLine": 149,
+        "endChar": 58
+      },
+      "revId": "70b1ecd1af68ab4fb16a4d0a1f69152639e8b952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
