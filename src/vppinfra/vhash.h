@@ -412,7 +412,7 @@ vhash_bucket_compare (vhash_t * h,
 {
   u32 k = vhash_get_key_word (h, key_word_index, vi);
   u32x4 x = { k, k, k, k };
-  return u32x4_is_equal (bucket[key_word_index].as_u32x4, x);
+  return (bucket[key_word_index].as_u32x4 == x);
 }
 
 #define vhash_bucket_compare_4(h,wi,vi,b0,b1,b2,b3,cmp0,cmp1,cmp2,cmp3)	\
@@ -423,10 +423,10 @@ do {									\
   u32x4 _k2 = u32x4_splat_word (_k4, 2);				\
   u32x4 _k3 = u32x4_splat_word (_k4, 3);				\
 									\
-  cmp0 = u32x4_is_equal (b0->key[wi].as_u32x4, _k0);			\
-  cmp1 = u32x4_is_equal (b1->key[wi].as_u32x4, _k1);			\
-  cmp2 = u32x4_is_equal (b2->key[wi].as_u32x4, _k2);			\
-  cmp3 = u32x4_is_equal (b3->key[wi].as_u32x4, _k3);			\
+  cmp0 = (b0->key[wi].as_u32x4 == _k0);					\
+  cmp1 = (b1->key[wi].as_u32x4 == _k1);					\
+  cmp2 = (b2->key[wi].as_u32x4 == _k2);					\
+  cmp3 = (b3->key[wi].as_u32x4 == _k3);					\
 } while (0)
 
 u32 vhash_get_overflow (vhash_t * h, u32 key_hash, u32 vi, u32 n_key_u32s);
