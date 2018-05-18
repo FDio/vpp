@@ -1963,6 +1963,29 @@ typedef enum
 #define IP4_MCAST_ADDR_MASK 0xffff7f00
 #endif
 
+always_inline void
+ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
+	       u16 adj_packet_bytes, bool df, u32 * next, u32 * error)
+{
+  if (packet_len > adj_packet_bytes)
+    {
+      *error = IP4_ERROR_MTU_EXCEEDED;
+      if (df)
+	{
+	  icmp4_error_set_vnet_buffer
+	    (b, ICMP4_destination_unreachable,
+	     ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+	     adj_packet_bytes);
+	  *next = IP4_REWRITE_NEXT_ICMP_ERROR;
+	}
+      else
+	{
+	  /* Add support for fragmentation here */
+	  *next = IP4_REWRITE_NEXT_DROP;
+	}
+    }
+}
+
 always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -2123,26 +2146,16 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
 	  /* Check MTU of outgoing interface. */
-	  if (vlib_buffer_length_in_chain (vm, p0) >
-	      adj0[0].rewrite_header.max_l3_packet_bytes)
-	    {
-	      error0 = IP4_ERROR_MTU_EXCEEDED;
-	      next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
-	      icmp4_error_set_vnet_buffer
-		(p0, ICMP4_destination_unreachable,
-		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
-	    }
-	  if (vlib_buffer_length_in_chain (vm, p1) >
-	      adj1[0].rewrite_header.max_l3_packet_bytes)
-	    {
-	      error1 = IP4_ERROR_MTU_EXCEEDED;
-	      next1 = IP4_REWRITE_NEXT_ICMP_ERROR;
-	      icmp4_error_set_vnet_buffer
-		(p1, ICMP4_destination_unreachable,
-		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
-	    }
+	  ip4_mtu_check (p0, clib_net_to_host_u16 (ip0->length),
+			 adj0[0].rewrite_header.max_l3_packet_bytes,
+			 ip0->flags_and_fragment_offset &
+			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
+			 &next0, &error0);
+	  ip4_mtu_check (p1, clib_net_to_host_u16 (ip1->length),
+			 adj1[0].rewrite_header.max_l3_packet_bytes,
+			 ip1->flags_and_fragment_offset &
+			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
+			 &next1, &error1);
 
 	  if (is_mcast)
 	    {
@@ -2326,16 +2339,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	       vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
-	  if (vlib_buffer_length_in_chain (vm, p0) >
-	      adj0[0].rewrite_header.max_l3_packet_bytes)
-	    {
-	      error0 = IP4_ERROR_MTU_EXCEEDED;
-	      next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
-	      icmp4_error_set_vnet_buffer
-		(p0, ICMP4_destination_unreachable,
-		 ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-		 0);
-	    }
+	  ip4_mtu_check (p0, clib_net_to_host_u16 (ip0->length),
+			 adj0[0].rewrite_header.max_l3_packet_bytes,
+			 ip0->flags_and_fragment_offset &
+			 clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
+			 &next0, &error0);
+
 	  if (is_mcast)
 	    {
 	      error0 = ((adj0[0].rewrite_header.sw_if_index ==
