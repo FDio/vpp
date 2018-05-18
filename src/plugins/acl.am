@@ -14,16 +14,54 @@
 vppapitestplugins_LTLIBRARIES += acl_test_plugin.la
 vppplugins_LTLIBRARIES += acl_plugin.la
 
+acl_plugin_la_LDFLAGS = $(AM_LDFLAGS)
+acl_plugin_la_LDFLAGS += -Wl,-lm,-ldl
+
+
+
+acl_plugin_la_LIBADD =
+
 acl_plugin_la_SOURCES =				\
 	acl/acl.c				\
 	acl/hash_lookup.c			\
 	acl/lookup_context.c                    \
-	acl/fa_node.c			\
+	acl/sess_mgmt_node.c			\
+	acl/dataplane_node.c			\
 	acl/l2sess.h				\
 	acl/manual_fns.h			\
 	acl/acl_plugin.api.h
 
 API_FILES += acl/acl.api
+
+if CPU_X86_64
+acl_multiversioning_files =                                    \
+        acl/dataplane_node.c
+
+
+if CC_SUPPORTS_AVX2
+###############################################################
+# AVX2
+###############################################################
+libacl_plugin_avx2_la_SOURCES = $(acl_multiversioning_files)
+libacl_plugin_avx2_la_CFLAGS =                                 \
+        $(AM_CFLAGS)  @CPU_AVX2_FLAGS@                          \
+        -DCLIB_MULTIARCH_VARIANT=avx2
+noinst_LTLIBRARIES += libacl_plugin_avx2.la
+acl_plugin_la_LIBADD += libacl_plugin_avx2.la
+endif
+
+if CC_SUPPORTS_AVX512
+###############################################################
+# AVX512
+###############################################################
+libacl_plugin_avx512_la_SOURCES = $(acl_multiversioning_files)
+libacl_plugin_avx512_la_CFLAGS =                               \
+        $(AM_CFLAGS) @CPU_AVX512_FLAGS@                         \
+        -DCLIB_MULTIARCH_VARIANT=avx512
+noinst_LTLIBRARIES += libacl_plugin_avx512.la
+acl_plugin_la_LIBADD += libacl_plugin_avx512.la
+endif
+endif
 
 nobase_apiinclude_HEADERS +=			\
   acl/acl_all_api_h.h				\
