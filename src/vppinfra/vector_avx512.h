@@ -19,6 +19,7 @@
 #include <vppinfra/clib.h>
 #include <x86intrin.h>
 
+/* *INDENT-OFF* */
 #define foreach_avx512_vec512i \
   _(i,8,64,epi8) _(i,16,32,epi16) _(i,32,16,epi32)  _(i,64,8,epi64)
 #define foreach_avx512_vec512u \
@@ -26,8 +27,8 @@
 #define foreach_avx512_vec512f \
   _(f,32,8,ps) _(f,64,4,pd)
 
-/* splat, load_unaligned, store_unaligned */
-/* *INDENT-OFF* */
+/* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
+   is_all_equal */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
 t##s##x##c##_splat (t##s x)						\
@@ -41,6 +42,17 @@ static_always_inline void						\
 t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
 { _mm512_storeu_si512 ((__m512i *) p, (__m512i) v); }			\
 \
+static_always_inline int						\
+t##s##x##c##_is_all_zero (t##s##x##c v)					\
+{ return (_mm512_test_epi64_mask ((__m512i) v, (__m512i) v) == 0); }	\
+\
+static_always_inline int						\
+t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
+{ return t##s##x##c##_is_all_zero (a ^b); }				\
+\
+static_always_inline int						\
+t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
+{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
 
 foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _

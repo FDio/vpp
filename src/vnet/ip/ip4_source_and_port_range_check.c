@@ -133,9 +133,8 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 	u16x8_sub_saturate (ppr_dpo->blocks[i].low.as_u16x8, key.as_u16x8);
       diff2.as_u16x8 =
 	u16x8_sub_saturate (ppr_dpo->blocks[i].hi.as_u16x8, key.as_u16x8);
-      sum.as_u16x8 = u16x8_add (diff1.as_u16x8, diff2.as_u16x8);
-      sum_equal_diff2.as_u16x8 =
-	u16x8_is_equal (sum.as_u16x8, diff2.as_u16x8);
+      sum.as_u16x8 = diff1.as_u16x8 + diff2.as_u16x8;
+      sum_equal_diff2.as_u16x8 = (sum.as_u16x8 == diff2.as_u16x8);
       sum_nonzero = ~u16x8_zero_byte_mask (sum.as_u16x8);
       sum_equal = ~u16x8_zero_byte_mask (sum_equal_diff2.as_u16x8);
       winner_mask = sum_nonzero & sum_equal;

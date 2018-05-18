@@ -19,6 +19,7 @@
 #include <vppinfra/clib.h>
 #include <x86intrin.h>
 
+/* *INDENT-OFF* */
 #define foreach_avx2_vec256i \
   _(i,8,32,epi8) _(i,16,16,epi16) _(i,32,8,epi32)  _(i,64,4,epi64x)
 #define foreach_avx2_vec256u \
@@ -26,7 +27,8 @@
 #define foreach_avx2_vec256f \
   _(f,32,8,ps) _(f,64,4,pd)
 
-/* splat, load_unaligned, store_unaligned, is_all_zero, is_all_equal */
+/* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
+   is_all_equal */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
 t##s##x##c##_splat (t##s x)						\
@@ -45,13 +47,18 @@ t##s##x##c##_is_all_zero (t##s##x##c x)					\
 { return _mm256_testz_si256 ((__m256i) x, (__m256i) x); }		\
 \
 static_always_inline int						\
-t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_all_zero (v != t##s##x##c##_splat (x)); };	\
+t##s##x##c##_is_equal (t##s##x##c x, t##s##x##c y)			\
+{ return _mm256_testc_si256 ((__m256i) x, (__m256i) y); }		\
 \
+static_always_inline int						\
+t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
+{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); };		\
 
 foreach_avx2_vec256i foreach_avx2_vec256u
 #undef _
-  always_inline u32x8
+/* *INDENT-ON* */
+
+always_inline u32x8
 u32x8_permute (u32x8 v, u32x8 idx)
 {
   return (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);

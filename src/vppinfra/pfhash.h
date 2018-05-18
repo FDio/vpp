@@ -249,8 +249,8 @@ pfhash_search_kv_4 (pfhash_t * p, u32 bucket_contents, u32 * key)
 
   vector_key = u32x4_splat (key[0]);
 
-  is_equal[0] = u32x4_is_equal (kv->kb.k_u32x4[0], vector_key);
-  is_equal[1] = u32x4_is_equal (kv->kb.k_u32x4[1], vector_key);
+  is_equal[0] = (kv->kb.k_u32x4[0] == vector_key);
+  is_equal[1] = (kv->kb.k_u32x4[1] == vector_key);
   zbm[0] = ~u32x4_zero_byte_mask (is_equal[0]) & 0xFFFF;
   zbm[1] = ~u32x4_zero_byte_mask (is_equal[1]) & 0xFFFF;
 
