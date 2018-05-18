@@ -157,47 +157,6 @@ typedef u64 u64x _vector_size (8);
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
 
-/* this series of macros generate _is_equal, _is_greater, _is_zero, _add
-   and _sub inline funcitons for each vector type */
-#define _(t, s, c) \
-  static_always_inline t##s##x##c			\
-t##s##x##c##_is_equal (t##s##x##c v1, t##s##x##c v2)	\
-{ return (v1 == v2); }					\
-							\
-static_always_inline t##s##x##c				\
-t##s##x##c##_is_greater (t##s##x##c v1, t##s##x##c v2)	\
-{ return (v1 > v2); }					\
-							\
-static_always_inline t##s##x##c				\
-t##s##x##c##_is_zero (t##s##x##c v1)			\
-{ t##s##x##c z = {0}; return (v1 == z); }		\
-							\
-static_always_inline t##s##x##c				\
-t##s##x##c##_add (t##s##x##c v1, t##s##x##c v2)		\
-{ return (v1 + v2); }					\
-							\
-static_always_inline t##s##x##c				\
-t##s##x##c##_sub (t##s##x##c v1, t##s##x##c v2)		\
-{ return (v1 - v2); }
-  foreach_vec
-#undef _
-
-/* this macro generate _splat inline functions for each scalar vector type */
-#define _(t, s, c) \
-  static_always_inline t##s##x##c			\
-t##s##x##c##_splat (t##s x)				\
-{							\
-    t##s##x##c r;					\
-    int i;						\
-							\
-    for (i = 0; i < c; i++)				\
-      r[i] = x;						\
-							\
-    return r;						\
-}
-  foreach_vec128i foreach_vec128u
-#undef _
-
 #if defined (__SSE4_2__) && __GNUC__ >= 4
 #include <vppinfra/vector_sse42.h>
 #endif
@@ -220,6 +179,24 @@ t##s##x##c##_splat (t##s x)				\
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
 #include <vppinfra/vector_funcs.h>
+#endif
+
+/* this macro generate _splat inline functions for each scalar vector type */
+#ifndef CLIB_VEC128_SPLAT_DEFINED
+#define _(t, s, c) \
+  static_always_inline t##s##x##c			\
+t##s##x##c##_splat (t##s x)				\
+{							\
+    t##s##x##c r;					\
+    int i;						\
+							\
+    for (i = 0; i < c; i++)				\
+      r[i] = x;						\
+							\
+    return r;						\
+}
+  foreach_vec128i foreach_vec128u
+#undef _
 #endif
 
 /* *INDENT-ON* */

@@ -311,7 +311,7 @@ mheap_small_object_cache_mask (mheap_small_object_cache_t * c, uword bin)
 
   ASSERT (bin < 256);
 
-#define _(i) ((uword) u8x16_compare_byte_mask (u8x16_is_equal (b, c->bins.as_u8x16[i])) << (uword) ((i)*16))
+#define _(i) ((uword) u8x16_compare_byte_mask ((b == c->bins.as_u8x16[i])) << (uword) ((i)*16))
   mask = _(0) | _(1);
   if (BITS (uword) > 32)
     mask |= _(2) | _(3);
