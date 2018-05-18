@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.2.3";
+option version = "1.2.4";
 import "vnet/fib/fib_types.api";
 
 /** \brief Add / del table request
@@ -523,6 +523,28 @@ define ip_address_dump
   u32 context;
   u32 sw_if_index;
   u8 is_ipv6;
+};
+
+/** \brief IP unnumbered configurations
+    @param sw_if_index The interface that has unnumbered configuration
+    @param ip_sw_if_index The IP interface that it is unnnumbered to
+*/
+define ip_unnumbered_details
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 ip_sw_if_index;
+};
+
+/** \brief Dump IP unnumbered configurations
+    @param sw_if_index ~0 for all interfaces, else the interface desired
+*/
+define ip_unnumbered_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
 };
 
 define ip_details

@@ -117,7 +117,27 @@ ip_unnumbered::event_handler::handle_replay()
 void
 ip_unnumbered::event_handler::handle_populate(const client_db::key_t& key)
 {
-  // VPP provides no dump for IP unnumbered
+  std::shared_ptr<ip_unnumbered_cmds::dump_cmd> cmd =
+    std::make_shared<ip_unnumbered_cmds::dump_cmd>();
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& ip_record : *cmd) {
+    auto& payload = ip_record.get_payload();
+
+    VOM_LOG(log_level_t::DEBUG) << "ip-unnumbered dump: "
+                                << " itf: " << payload.sw_if_index
+                                << " ip: " << payload.ip_sw_if_index;
+
+    std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+    std::shared_ptr<interface> ip_itf = interface::find(payload.ip_sw_if_index);
+
+    if (itf && ip_itf) {
+      ip_unnumbered ipun(*itf, *ip_itf);
+      OM::commit(key, ipun);
+    }
+  }
 }
 
 dependency_t
