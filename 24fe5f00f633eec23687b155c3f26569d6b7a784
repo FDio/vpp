@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "0297a4d1_0c2d53c5",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-18T13:34:55Z",
+      "side": 1,
+      "message": "Yes, that\u0027s the plan, i need to add 128-bit and 512-bit variant....",
+      "parentUuid": "50996a3f_ce870f8a",
+      "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cfd4ab66_4ac13876",
         "filename": "src/vnet/l2/l2_output.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2018-05-18T13:22:27Z",
       "side": 1,
       "message": "Maybe some branch prediction on these if-stmts?",
+      "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e1885589_60e845b7",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-18T13:34:55Z",
+      "side": 1,
+      "message": "this is always constant, optimised by compiler....",
+      "parentUuid": "cfd4ab66_4ac13876",
       "revId": "24fe5f00f633eec23687b155c3f26569d6b7a784",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
