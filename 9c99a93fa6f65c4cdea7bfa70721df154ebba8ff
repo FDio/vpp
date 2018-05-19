@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "230a59e1_48088b4b",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-19T00:14:13Z",
+      "side": 1,
+      "message": "since src/dst are always adjacent, a single memcpy of 12 should work better:\n\nbut I\u0027m not sure if we really need to do a memcpy at all?\nwhy not directly do crc32 on the src/dst fields if they are 32-bit aligned?\n\n  u32 a[3];\n  u32 *base \u003d (u32*) eth-\u003esrc_address;\n  if ((base \u0026 ~0x3) {\n      clib_memcpy(\u0026a, base, sizeof(a));\n      base \u003d a;\n  }\n      \n  c \u003d crc32_u32 (0, base[0]);\n  c \u003d crc32_u32 (c, base[1]);\n  c \u003d crc32_u64 (c, base[2]);\n\nif there is guarantee 32-bit alignment, the check on alignment and memcpy can be removed. (the crc check on mac/src 12 bytes can be moved on a static inline and reused in all other places).",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "16300662_d2866ed4",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-19T00:14:13Z",
+      "side": 1,
+      "message": "is it guaranteed to be 64-bit aligned?",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26a6cb5b_fd9c3df8",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-19T00:14:13Z",
+      "side": 1,
+      "message": "might be worth testing on slave_count \u003d\u003d 1 up front to avoid checksumming anything in degraded case?",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b5efedd_c36fa700",
+        "filename": "src/vnet/bonding/node.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2018-05-19T00:14:13Z",
+      "side": 1,
+      "message": "would place check on \u003d\u003d 2 first since that is the most likely value by far",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
