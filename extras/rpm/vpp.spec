@@ -379,6 +379,7 @@ fi
 
 %files lib
 %defattr(-,bin,bin)
+%global __requires_exclude_from %{_libdir}/librte_pmd_mlx[45]_glue\\.so.*$
 %exclude %{_libdir}/vpp_plugins
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
