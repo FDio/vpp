@@ -579,6 +579,7 @@ u8x16_msb_mask (u8x16 v)
 {
   return _mm_movemask_epi8 ((__m128i) v);
 }
+#define CLIB_HAVE_VEC128_MSB_MASK
 
 #undef _signed_binop
 
