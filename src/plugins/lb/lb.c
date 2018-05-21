@@ -645,6 +645,11 @@ next:
     pool_get(vip->as_indexes, as_index);
     *as_index = as - lbm->ass;
 
+    u32 i;
+    for (i = 0; i < LB_N_VIP_COUNTERS; i++) {
+      vlib_validate_simple_counter(&lbm->as_counters[i], *as_index);
+      vlib_zero_simple_counter(&lbm->as_counters[i], *as_index);
+    }
     /*
      * become a child of the FIB entry
      * so we are informed when its forwarding changes
@@ -1402,6 +1407,7 @@ lb_init (vlib_main_t * vm)
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);
+  vlib_refcount_init(&lbm->vip_refcount);
 
   //Allocate and init default AS.
   lbm->ass = 0;
@@ -1430,6 +1436,11 @@ lb_init (vlib_main_t * vm)
 #define _(a,b,c) lbm->vip_counters[c].name = b;
   lb_foreach_vip_counter
 #undef _
+
+#define _(a,b,c) lbm->as_counters[c].name = b;
+  lb_foreach_vip_counter
+#undef _
+
   return NULL;
 }
 
