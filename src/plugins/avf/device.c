@@ -41,9 +41,6 @@ static pci_device_id_t avf_pci_device_ids[] = {
   {0},
 };
 
-//#define avf_log_debug(fmt, ...) fformat(stderr, "%s: " fmt "\n", __func__, __VA_ARGS__)
-#define avf_log_debug(fmt, ...)
-
 static inline void
 avf_irq_0_disable (avf_device_t * ad)
 {
@@ -102,6 +99,7 @@ clib_error_t *
 avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
 		 void *data, int len)
 {
+  avf_main_t *am = &avf_main;
   clib_error_t *err = 0;
   avf_aq_desc_t *d, dc;
   int n_retry = 5;
@@ -126,7 +124,7 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
     clib_memcpy (&dc, d, sizeof (avf_aq_desc_t));
 
   CLIB_MEMORY_BARRIER ();
-  avf_log_debug ("%U", format_hexdump, data, len);
+  vlib_log_debug (am->log_class, "%U", format_hexdump, data, len);
   ad->atq_next_slot = (ad->atq_next_slot + 1) % AVF_MBOX_LEN;
   avf_reg_write (ad, AVF_ATQT, ad->atq_next_slot);
   avf_reg_flush (ad);
@@ -744,6 +742,7 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad)
 void
 avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 {
+  avf_main_t *am = &avf_main;
   vnet_main_t *vnm = vnet_get_main ();
   virtchnl_pf_event_t *e;
   u32 r;
@@ -856,12 +855,14 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 error:
   ad->flags |= AVF_DEVICE_F_ERROR;
   ASSERT (ad->error != 0);
+  vlib_log_err (am->log_class, "%U", format_clib_error, ad->error);
 }
 
 static u32
 avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
-  clib_warning ("TODO");
+  avf_main_t *am = &avf_main;
+  vlib_log_warn (am->log_class, "TODO");
   return 0;
 }
 
@@ -1152,6 +1153,7 @@ error:
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
   args->error = clib_error_return (error, "pci-addr %U",
 				   format_vlib_pci_addr, &args->addr);
+  vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
 }
 
 static clib_error_t *
@@ -1228,6 +1230,9 @@ avf_init (vlib_main_t * vm)
       p->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
     }
   /* *INDENT-ON* */
+
+  am->log_class = vlib_log_register_class ("avf_plugin", 0);
+  vlib_log_debug (am->log_class, "initialized");
 
   return 0;
 }
