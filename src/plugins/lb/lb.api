@@ -75,6 +75,93 @@ autoreply define lb_add_del_as {
   u8 is_flush;
 };
 
+/** \brief Define connection statistics structure
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4). only for vip stats.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+typeonly define lb_ip_addr
+{
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief Request all vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_get_vip_list{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply all configured vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - 0 means all ok
+    @param vip_count - all vip numbers.
+    @param vips - all vip addrs.
+*/
+define lb_get_vip_list_reply {
+  u32 context;
+  i32 retval;
+  u32 vip_count;
+  vl_api_lb_ip_addr_t vips[vip_count];
+};
+
+/** \brief Define connection statistics structure
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4). only for vip stats.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param cur_conn - current live connections.
+    @param total_conn - aggregated live connections since last statistics reset.
+*/
+typeonly define lb_conn_count
+{
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+  u64 cur_conn;
+  u64 total_conn;
+};
+
+/** \brief Request connection numbers per vip and per-as
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_prefix - VIP address (IPv4 in lower order 32 bits).
+    @param prefix_length - VIP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+define lb_get_vip_conn {
+  u32 client_index;
+  u32 context;
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief Reply connection numbers per vip and per-as
+    @param context - sender context, to match reply w/ request
+    @param retval - 0 means all ok
+    @param vip_conn - connection stats per vip
+    @param as_count - as numbers associated with this vip.
+    @param as_conns - connection stats per as
+*/
+define lb_get_vip_conn_reply {
+  u32 context;
+  i32 retval;
+  vl_api_lb_conn_count_t vip_conn;
+  u32 as_count;
+  vl_api_lb_conn_count_t as_conns[as_count];
+};
+
 /** \brief Flush a given vip
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
