@@ -77,6 +77,13 @@ void vlib_refcount_add(vlib_refcount_t *r, u32 thread_index, u32 counter_index, 
 u64 vlib_refcount_get(vlib_refcount_t *r, u32 index);
 
 static_always_inline
+u64 vlib_refcount_get_one_thread(vlib_refcount_t *r, u32 thread_index, u32 counter_index)
+{
+  vlib_refcount_per_cpu_t *per_cpu = &r->per_cpu[thread_index];
+  return per_cpu->counters[counter_index];
+}
+
+static_always_inline
 void vlib_refcount_init(vlib_refcount_t *r)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
