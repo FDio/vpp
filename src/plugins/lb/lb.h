@@ -426,6 +426,11 @@ typedef struct {
    */
   vlib_refcount_t as_refcount;
 
+  /**
+   * Each VIP has an associated reference counter.
+   */
+  vlib_refcount_t vip_refcount;
+
   /* hash lookup vip_index by key: {u16: nodeport} */
   uword * vip_index_by_nodeport;
 
@@ -463,6 +468,11 @@ typedef struct {
    * Per VIP counter
    */
   vlib_simple_counter_main_t vip_counters[LB_N_VIP_COUNTERS];
+
+  /**
+   * Per AS counter
+   */
+  vlib_simple_counter_main_t as_counters[LB_N_VIP_COUNTERS];
 
   /**
    * DPO used to send packet from IP4/6 lookup to LB node.

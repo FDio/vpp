@@ -37,4 +37,5 @@ u8 *format_ip46_prefix (u8 * s, va_list * args);
  */
 #define clib_u32_loop_gt(a, b) (((u32)(a)) - ((u32)(b)) < 0x7fffffff)
 
+
 #endif /* LB_PLUGIN_LB_UTIL_H_ */
