@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa11462c_16608586",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-21T23:49:44Z",
+      "side": 1,
+      "message": "Is this same config used for all packets in the packet loop? I don\u0027t believe this is the right assumption for l2-output node. The packets in the frame can be for different L2 interfaces, even for interfaces in different bridge domains.",
+      "range": {
+        "startLine": 306,
+        "startChar": 15,
+        "endLine": 306,
+        "endChar": 31
+      },
+      "revId": "f80dc8efc9b22b67b9384dbb1095ae2bf0ae04dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
