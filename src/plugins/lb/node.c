@@ -300,6 +300,8 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
             }
           else if (PREDICT_TRUE(available_index0 != ~0))
             {
+              u64 as_count, vip_count;
+              u32 old_as_index = 0;
               //There is an available slot for a new flow
               asindex0 =
                   vip0->new_flow_table[hash0 & vip0->new_flow_table_mask].as_index;
@@ -309,12 +311,29 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
               //TODO: There are race conditions with as0 and vip0 manipulation.
               //Configuration may be changed, vectors resized, etc...
 
-              //Dereference previously used
-              vlib_refcount_add (
-                  &lbm->as_refcount, thread_index,
-                  lb_hash_available_value (sticky_ht, hash0, available_index0),
-                  -1);
-              vlib_refcount_add (&lbm->as_refcount, thread_index, asindex0, 1);
+	          //Dereference previously used
+              old_as_index = lb_hash_available_value(sticky_ht,
+                                                     hash0, available_index0);
+              vlib_refcount_add(&lbm->as_refcount, thread_index,
+                                old_as_index, -1);
+              vlib_refcount_add(&lbm->as_refcount, thread_index,
+                                asindex0, 1);
+              /* get maximum sessions per-as */
+              as_count = vlib_refcount_get_one_thread(&lbm->as_refcount,
+                                                      thread_index, asindex0);
+              vlib_get_max_single_counter(&lbm->as_counters[LB_VIP_COUNTER_MAX_SESSION],
+                                          thread_index, asindex0, as_count);
+
+              /* Add one to vip conn if previous as_index is invalid. */
+              if (old_as_index == 0)
+                {
+                  vlib_refcount_add(&lbm->vip_refcount, thread_index, (vip0-lbm->vips), 1);
+                }
+              /* get maximum sessions per-vip */
+              vip_count = vlib_refcount_get_one_thread(&lbm->vip_refcount,
+                                                       thread_index, (vip0-lbm->vips));
+              vlib_get_max_single_counter(&lbm->vip_counters[LB_VIP_COUNTER_MAX_SESSION],
+                                          thread_index, (vip0-lbm->vips), vip_count);
 
               //Add sticky entry
               //Note that when there is no AS configured, an entry is configured anyway.
@@ -331,10 +350,14 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
               counter = LB_VIP_COUNTER_UNTRACKED_PACKET;
             }
 
-          vlib_increment_simple_counter (
-              &lbm->vip_counters[counter], thread_index,
-              vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-              1);
+          vlib_increment_simple_counter(&lbm->vip_counters[counter],
+                                        thread_index,
+                                        vnet_buffer (p0)->ip.adj_index[VLIB_TX],
+                                        1);
+          vlib_increment_simple_counter(&lbm->as_counters[counter],
+                                        thread_index,
+                                        asindex0,
+                                        1);
 
           //Now let's encap
           if ((encap_type == LB_ENCAP_TYPE_GRE4)

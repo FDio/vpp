@@ -37,4 +37,23 @@ u8 *format_ip46_prefix (u8 * s, va_list * args);
  */
 #define clib_u32_loop_gt(a, b) (((u32)(a)) - ((u32)(b)) < 0x7fffffff)
 
+
+/** Get the max value of a simple counter
+    @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
+    @param cm_max - (vlib_simple_counter_main_t *) max counter main pointer
+    @param thread_index - (u32) the current cpu index
+    @param index - (u32) index of the counter to compare
+*/
+always_inline void
+vlib_get_max_single_counter (vlib_simple_counter_main_t * cm,
+                          u32 thread_index, u32 index, u64 base_value)
+{
+  counter_t *max_counters;
+
+  max_counters = cm->counters[thread_index];
+
+  if (max_counters[index] < base_value)
+    max_counters[index] = base_value;
+}
+
 #endif /* LB_PLUGIN_LB_UTIL_H_ */
