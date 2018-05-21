@@ -17,6 +17,8 @@
 
 #include <avf/virtchnl.h>
 
+#include <vlib/log.h>
+
 #define foreach_avf_device_flags \
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error") \
@@ -161,6 +163,8 @@ typedef struct
   avf_per_thread_data_t *per_thread_data;
   vlib_physmem_region_index_t physmem_region;
   int physmem_region_alloc;
+
+  vlib_log_class_t log_class;
 
   /* 256 element array for ptype based lookup */
   avf_ptype_t *ptypes;
