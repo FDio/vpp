@@ -464,6 +464,13 @@ stream_session_rx_fifo_size (transport_connection_t * tc)
 }
 
 always_inline u32
+stream_session_tx_fifo_size (transport_connection_t * tc)
+{
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
+  return s->server_tx_fifo->nitems;
+}
+
+always_inline u32
 session_get_index (stream_session_t * s)
 {
   return (s - session_manager_main.sessions[s->thread_index]);
