@@ -331,6 +331,24 @@
       "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f9a26dd_52756b41",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-22T05:19:15Z",
+      "side": 1,
+      "message": "clib_memcpy is macro mapping directly to memcpy. So, we just need \u0027restrict\u0027 keyword to the arguments.",
+      "parentUuid": "9b9b0f95_95073043",
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
