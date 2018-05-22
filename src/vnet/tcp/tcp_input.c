@@ -949,6 +949,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
 static void
 tcp_cc_recovery_exit (tcp_connection_t * tc)
 {
+  tc->cc_algo->recovered (tc);
   /* Deflate rto */
   tc->rto_boff = 0;
   tcp_update_rto (tc);
@@ -999,6 +1000,7 @@ tcp_cc_recover (tcp_connection_t * tc)
   ASSERT (tcp_in_cong_recovery (tc));
   if (tcp_cc_is_spurious_retransmit (tc))
     {
+      clib_warning ("here");
       tcp_cc_congestion_undo (tc);
       return 1;
     }

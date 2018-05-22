@@ -1347,10 +1347,12 @@ tcp_rtx_timeout_cc (tcp_connection_t * tc)
     tcp_cc_fastrecovery_exit (tc);
 
   /* Start again from the beginning */
-  tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
+  tc->cc_algo->congestion (tc);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
   tc->rtt_ts = 0;
+  tc->cwnd_acc_bytes = 0;
+
   tcp_recovery_on (tc);
 }
 
