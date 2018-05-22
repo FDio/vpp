@@ -66,6 +66,30 @@
     },
     {
       "key": {
+        "uuid": "8e17c7dd_86ea65b4",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-22T05:05:38Z",
+      "side": 1,
+      "message": "Yes, I see this happening in the generated code.",
+      "parentUuid": "eacf94da_5907f851",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 56
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2d6b71f4_cd1a5db2",
         "filename": "src/vppinfra/string.h",
         "patchSetId": 1
@@ -118,6 +142,30 @@
       "side": 1,
       "message": "It is probably the same underlying instruction anyway.\nBut from a C language semantics perspective, using char pointers is probably safest and easiest.",
       "parentUuid": "0e8d990c_945b3ec0",
+      "range": {
+        "startLine": 145,
+        "startChar": 2,
+        "endLine": 145,
+        "endChar": 12
+      },
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d95631c1_e6acdb36",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-05-22T05:05:38Z",
+      "side": 1,
+      "message": "Currently, memcpy uses scalar versions of LDP/STP which do 128-bit accesses.\n\nThe neon intrinsics are using vector versions of LDR/STR. Currently, vector versions of LDP/STP (which should allow for using 2 128-bit registers) are not enabled in GCC as they are supposed to be not performing better than scalar versions.",
+      "parentUuid": "4955961e_7eb90db1",
       "range": {
         "startLine": 145,
         "startChar": 2,
