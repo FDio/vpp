@@ -456,7 +456,8 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
-      mrtt = tcp_time_now () - tc->rtt_ts;
+      tc->mrtt_us = tcp_time_now_us () - tc->rtt_ts;
+      mrtt = clib_max ((u32)(tc->mrtt_us * THZ), 1);
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
