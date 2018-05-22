@@ -160,7 +160,7 @@ enum
 };
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS 15	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 32	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _scoreboard_trace_elt
@@ -319,8 +319,9 @@ typedef struct _tcp_connection
   u32 rto_boff;		/**< Index for RTO backoff */
   u32 srtt;		/**< Smoothed RTT */
   u32 rttvar;		/**< Smoothed mean RTT difference. Approximates variance */
-  u32 rtt_ts;		/**< Timestamp for tracked ACK */
   u32 rtt_seq;		/**< Sequence number for tracked ACK */
+  f64 rtt_ts;		/**< Timestamp for tracked ACK */
+  f64 mrtt_us;		/**< High precision mrtt from tracked acks */
 
   u16 mss;		/**< Our max seg size that includes options */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
@@ -443,6 +444,9 @@ typedef struct _tcp_main
   u32 last_v4_address_rotor;
   u32 last_v6_address_rotor;
   ip6_address_t *ip6_src_addresses;
+
+  /** Enable tx pacing for new connections */
+  u8 tx_pacing;
 
   u8 punt_unknown4;
   u8 punt_unknown6;
@@ -692,6 +696,12 @@ tcp_time_now (void)
   return tcp_main.wrk_ctx[vlib_get_thread_index ()].time_now;
 }
 
+always_inline f64
+tcp_time_now_us (u32 thread_index)
+{
+  return transport_time_now (thread_index);
+}
+
 always_inline u32
 tcp_set_time_now (u32 thread_index)
 {
@@ -706,6 +716,15 @@ void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
 void tcp_init_snd_vars (tcp_connection_t * tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
+void tcp_update_pacer (tcp_connection_t * tc);
+
+always_inline void
+tcp_cc_rcv_ack (tcp_connection_t * tc)
+{
+  tc->cc_algo->rcv_ack (tc);
+  tcp_update_pacer (tc);
+  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+}
 
 always_inline void
 tcp_connection_force_ack (tcp_connection_t * tc, vlib_buffer_t * b)

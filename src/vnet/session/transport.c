@@ -42,6 +42,13 @@ static transport_endpoint_t *local_endpoints;
  */
 static clib_spinlock_t local_endpoints_lock;
 
+/*
+ * Period used by transport pacers. Initialized by session layer
+ */
+static double transport_pacer_period;
+
+#define TRANSPORT_PACER_MIN_MSS 1460
+
 u8 *
 format_transport_proto (u8 * s, va_list * args)
 {
@@ -374,6 +381,110 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
     }
   *lcl_port = port;
   return 0;
+}
+
+#define SPACER_CPU_TICKS_PER_PERIOD_SHIFT 10
+#define SPACER_CPU_TICKS_PER_PERIOD (1 << SPACER_CPU_TICKS_PER_PERIOD_SHIFT)
+
+u8 *
+format_transport_pacer (u8 * s, va_list * args)
+{
+  spacer_t *pacer = va_arg (*args, spacer_t *);
+
+  s = format (s, "bucket %u max_burst %u tokens/period %.3f last_update %x",
+	      pacer->bucket, pacer->max_burst_size, pacer->tokens_per_period,
+	      pacer->last_update);
+  return s;
+}
+
+static inline u32
+spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
+{
+  u64 n_periods = norm_time_now - pacer->last_update;
+
+  pacer->last_update = norm_time_now;
+  pacer->bucket += n_periods * pacer->tokens_per_period;
+  return clib_min (pacer->bucket, pacer->max_burst_size);
+}
+
+static inline void
+spacer_update_bucket (spacer_t * pacer, u32 bytes)
+{
+  ASSERT (pacer->bucket >= bytes);
+  pacer->bucket -= bytes;
+}
+
+static inline void
+spacer_update_max_burst_size (spacer_t * pacer, u32 max_burst_bytes)
+{
+  pacer->max_burst_size = clib_max (max_burst_bytes, TRANSPORT_PACER_MIN_MSS);
+}
+
+static inline void
+spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
+{
+  ASSERT (rate_bytes_per_sec != 0);
+  pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
+}
+
+void
+transport_connection_tx_pacer_init (transport_connection_t * tc,
+				    u32 rate_bytes_per_sec, u32 burst_bytes)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u64 time_now = vm->clib_time.last_cpu_time;
+  spacer_t *pacer = &tc->pacer;
+
+  tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  spacer_update_max_burst_size (&tc->pacer, burst_bytes);
+  spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec);
+  pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+  pacer->bucket = burst_bytes;
+}
+
+void
+transport_connection_tx_pacer_update (transport_connection_t * tc,
+				      u64 bytes_per_sec)
+{
+  u32 burst_size;
+
+  burst_size = bytes_per_sec * transport_dispatch_period (tc->thread_index);
+  spacer_set_pace_rate (&tc->pacer, bytes_per_sec);
+  spacer_update_max_burst_size (&tc->pacer, burst_size);
+}
+
+u32
+transport_connection_max_tx_burst (transport_connection_t * tc, u64 time_now)
+{
+  u32 snd_space, max_paced_burst;
+  u32 mss;
+
+  snd_space = tp_vfts[tc->proto].send_space (tc);
+  if (transport_connection_is_tx_paced (tc))
+    {
+      time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+      max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
+      mss = tp_vfts[tc->proto].send_mss (tc);
+      max_paced_burst = (max_paced_burst < mss) ? 0 : max_paced_burst;
+      snd_space = clib_min (snd_space, max_paced_burst);
+      snd_space = snd_space - snd_space % mss;
+    }
+  return snd_space;
+}
+
+void
+transport_connection_update_tx_stats (transport_connection_t * tc, u32 bytes)
+{
+  tc->stats.tx_bytes += bytes;
+  if (transport_connection_is_tx_paced (tc))
+    spacer_update_bucket (&tc->pacer, bytes);
+}
+
+void
+transport_init_tx_pacers_period (void)
+{
+  f64 cpu_freq = os_cpu_clock_frequency ();
+  transport_pacer_period = cpu_freq / SPACER_CPU_TICKS_PER_PERIOD;
 }
 
 void
