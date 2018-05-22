@@ -939,12 +939,13 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.proxy_arp_add_del,
-            {'vrf_id': vrf_id,
-             'is_add': is_add,
-             'low_address': low_address,
-             'hi_address': hi_address,
-             }
-        )
+            {'proxy':
+             {
+                 'vrf_id': vrf_id,
+                 'low_address': low_address,
+                 'hi_address': hi_address,
+             },
+             'is_add': is_add})
 
     def proxy_arp_intfc_enable_disable(self,
                                        sw_if_index,

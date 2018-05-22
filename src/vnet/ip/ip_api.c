@@ -45,6 +45,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip4_reassembly.h>
 #include <vnet/ip/ip6_reassembly.h>
+#include <vnet/ethernet/arp.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -84,7 +85,9 @@ _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_IP6_RA_EVENTS, want_ip6_ra_events)                               \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
+_(PROXY_ARP_DUMP, proxy_arp_dump)                                       \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
+ _(PROXY_ARP_INTFC_DUMP, proxy_arp_intfc_dump)                          \
 _(RESET_FIB, reset_fib)							\
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
@@ -2715,14 +2718,11 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
   u32 fib_index;
   int rv;
   ip4_main_t *im = &ip4_main;
-  int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
-			      ip4_address_t * hi_addr,
-			      u32 fib_index, int is_del);
   uword *p;
 
   stats_dslock_with_hint (1 /* release hint */ , 6 /* tag */ );
 
-  p = hash_get (im->fib_index_by_table_id, ntohl (mp->vrf_id));
+  p = hash_get (im->fib_index_by_table_id, ntohl (mp->proxy.vrf_id));
 
   if (!p)
     {
@@ -2732,13 +2732,101 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
 
   fib_index = p[0];
 
-  rv = vnet_proxy_arp_add_del ((ip4_address_t *) mp->low_address,
-			       (ip4_address_t *) mp->hi_address,
+  rv = vnet_proxy_arp_add_del ((ip4_address_t *) mp->proxy.low_address,
+			       (ip4_address_t *) mp->proxy.hi_address,
 			       fib_index, mp->is_add == 0);
 
 out:
   stats_dsunlock ();
   REPLY_MACRO (VL_API_PROXY_ARP_ADD_DEL_REPLY);
+}
+
+typedef struct proxy_arp_walk_ctx_t_
+{
+  vl_api_registration_t *reg;
+  u32 context;
+} proxy_arp_walk_ctx_t;
+
+static walk_rc_t
+send_proxy_arp_details (const ip4_address_t * lo_addr,
+			const ip4_address_t * hi_addr,
+			u32 fib_index, void *data)
+{
+  vl_api_proxy_arp_details_t *mp;
+  proxy_arp_walk_ctx_t *ctx;
+
+  ctx = data;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_DETAILS);
+  mp->context = ctx->context;
+  mp->proxy.vrf_id = htonl (fib_index);
+  clib_memcpy (mp->proxy.low_address, lo_addr,
+	       sizeof (mp->proxy.low_address));
+  clib_memcpy (mp->proxy.hi_address, hi_addr, sizeof (mp->proxy.hi_address));
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_proxy_arp_dump_t_handler (vl_api_proxy_arp_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  proxy_arp_walk_ctx_t wctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  proxy_arp_walk (send_proxy_arp_details, &wctx);
+}
+
+static walk_rc_t
+send_proxy_arp_intfc_details (vnet_main_t * vnm,
+			      vnet_sw_interface_t * si, void *data)
+{
+  vl_api_proxy_arp_intfc_details_t *mp;
+  proxy_arp_walk_ctx_t *ctx;
+
+  if (!(si->flags & VNET_SW_INTERFACE_FLAG_PROXY_ARP))
+    return (WALK_CONTINUE);
+
+  ctx = data;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_INTFC_DETAILS);
+  mp->context = ctx->context;
+  mp->sw_if_index = htonl (si->sw_if_index);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_proxy_arp_intfc_dump_t_handler (vl_api_proxy_arp_intfc_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  proxy_arp_walk_ctx_t wctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  vnet_sw_interface_walk (vnet_get_main (),
+			  send_proxy_arp_intfc_details, &wctx);
 }
 
 static void

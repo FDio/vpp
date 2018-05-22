@@ -19,7 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/ip/ip_neighbor.h>
-#include <vnet/ethernet/arp_packet.h>
+#include <vnet/ethernet/arp.h>
 
 /*
  * IP neighbor scan parameter defaults are as follows:
