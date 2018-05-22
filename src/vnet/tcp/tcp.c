@@ -555,6 +555,16 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_una_max = tc->snd_nxt;
 }
 
+void
+tcp_enable_pacing (tcp_connection_t * tc)
+{
+  u32 max_burst, byte_rate;
+  max_burst = 16 * tc->snd_mss;
+  byte_rate = 2 << 16;
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate, max_burst);
+  tc->mrtt_us = (u32) ~ 0;
+}
+
 /** Initialize tcp connection variables
  *
  * Should be called after having received a msg from the peer, i.e., a SYN or
@@ -572,7 +582,11 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
     tcp_add_del_adjacency (tc, 1);
 
-  //  tcp_connection_fib_attach (tc);
+  /*  tcp_connection_fib_attach (tc); */
+
+  if (transport_connection_is_tx_paced (&tc->connection)
+      || tcp_main.tx_pacing)
+    tcp_enable_pacing (tc);
 }
 
 static int
@@ -784,14 +798,19 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " limited_transmit %u\n", tc->limited_transmit - tc->iss);
   s = format (s, " tsecr %u tsecr_last_ack %u\n", tc->rcv_opts.tsecr,
 	      tc->tsecr_last_ack);
-  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
-	      tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
+  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %2.5f ",
+	      tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
   if (tc->state >= TCP_STATE_ESTABLISHED)
-    s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
-		tc);
+    {
+      s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
+		  tc);
+      if (transport_connection_is_tx_paced (&tc->connection))
+	s = format (s, " pacer: %U\n", format_transport_pacer,
+		    &tc->connection.pacer);
+    }
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
 
@@ -1090,9 +1109,10 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 static void
 tcp_update_time (f64 now, u8 thread_index)
 {
+  tcp_main_t *tm = &tcp_main;
+
   tcp_set_time_now (thread_index);
-  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.
-				       wrk_ctx[thread_index].timer_wheel,
+  tw_timer_expire_timers_16t_2w_512sl (&tm->wrk_ctx[thread_index].timer_wheel,
 				       now);
   tcp_do_fastretransmits (thread_index);
   tcp_flush_frames_to_output (thread_index);
@@ -1128,6 +1148,19 @@ const static transport_proto_vft_t tcp_proto = {
   .service_type = TRANSPORT_SERVICE_VC,
 };
 /* *INDENT-ON* */
+
+void
+tcp_update_pacer (tcp_connection_t * tc)
+{
+  f64 srtt;
+
+  if (!transport_connection_is_tx_paced (&tc->connection))
+    return;
+
+  srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
+  transport_connection_tx_pacer_update (&tc->connection,
+					((f64) tc->cwnd) / srtt);
+}
 
 static void
 tcp_timer_keep_handler (u32 conn_index)
@@ -1408,6 +1441,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
 			 &tm->max_rx_fifo))
 	;
+      else if (unformat (input, "tx-pacer"))
+	tm->tx_pacing = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
