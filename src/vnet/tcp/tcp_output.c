@@ -163,8 +163,8 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   /*
    * Figure out how much space we have available
    */
-  available_space = stream_session_max_rx_enqueue (&tc->connection);
-  max_fifo = stream_session_rx_fifo_size (&tc->connection);
+  available_space = transport_max_rx_enqueue (&tc->connection);
+  max_fifo = transport_rx_fifo_size (&tc->connection);
 
   ASSERT (tc->rcv_opts.mss < max_fifo);
   if (available_space < tc->rcv_opts.mss && available_space < max_fifo >> 3)
@@ -1347,10 +1347,12 @@ tcp_rtx_timeout_cc (tcp_connection_t * tc)
     tcp_cc_fastrecovery_exit (tc);
 
   /* Start again from the beginning */
-  tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
+  tc->cc_algo->congestion (tc);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
   tc->rtt_ts = 0;
+  tc->cwnd_acc_bytes = 0;
+
   tcp_recovery_on (tc);
 }
 
@@ -1393,7 +1395,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	}
 
       /* Shouldn't be here */
-      if (tc->snd_una == tc->snd_una_max)
+      if (seq_geq (tc->snd_una, tc->snd_congestion))
 	{
 	  tcp_recovery_off (tc);
 	  return;
@@ -1414,7 +1416,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       if (tc->rto_boff == 1)
 	tcp_rtx_timeout_cc (tc);
 
-      tc->snd_nxt = tc->snd_una;
+      tc->snd_una_max = tc->snd_nxt = tc->snd_una;
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
