@@ -626,7 +626,7 @@ if (_av > 0) 								\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "cc: %s wnd %u snd_cong %u rxt_bytes %u",			\
+    .format = "cc: %s snd_space %u snd_cong %u rxt_bytes %u",		\
     .format_args = "t4i4i4i4",						\
     .n_enum_strings = 6,						\
     .enum_strings = {                                           	\
