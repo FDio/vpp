@@ -94,8 +94,41 @@ private:
   const boost::asio::ip::address_v4 m_low;
   const boost::asio::ip::address_v4 m_high;
 };
+
+/**
+ * A cmd class that Dumps all the Proxy ARP configs
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Proxy_arp_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
 };
-};
+
+}; // namespace cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

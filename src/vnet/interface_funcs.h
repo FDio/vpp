@@ -148,10 +148,19 @@ vnet_clear_sw_interface_tag (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 /**
+ * Walk return code
+ */
+typedef enum walk_rc_t_
+{
+  WALK_STOP,
+  WALK_CONTINUE,
+} walk_rc_t;
+
+/**
  * Call back walk type for walking SW indices on a HW interface
  */
-typedef void (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
-					     u32 sw_if_index, void *ctx);
+typedef walk_rc_t (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
+						  u32 sw_if_index, void *ctx);
 
 /**
  * @brief
@@ -161,6 +170,20 @@ typedef void (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
 void vnet_hw_interface_walk_sw (vnet_main_t * vnm,
 				u32 hw_if_index,
 				vnet_hw_sw_interface_walk_t fn, void *ctx);
+
+/**
+ * Call back walk type for walking SW indices on a HW interface
+ */
+typedef walk_rc_t (*vnet_sw_interface_walk_t) (vnet_main_t * vnm,
+					       vnet_sw_interface_t * si,
+					       void *ctx);
+
+/**
+ * @brief
+ * Walk all the SW interfaces in the system.
+ */
+void vnet_sw_interface_walk (vnet_main_t * vnm,
+			     vnet_sw_interface_walk_t fn, void *ctx);
 
 /* Register a hardware interface instance. */
 u32 vnet_register_interface (vnet_main_t * vnm,

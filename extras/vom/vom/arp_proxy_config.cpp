@@ -15,6 +15,7 @@
 
 #include "vom/arp_proxy_config.hpp"
 #include "vom/arp_proxy_config_cmds.hpp"
+#include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
@@ -115,7 +116,21 @@ arp_proxy_config::event_handler::handle_replay()
 void
 arp_proxy_config::event_handler::handle_populate(const client_db::key_t& key)
 {
-  // VPP provides no dump for ARP proxy.
+  std::shared_ptr<arp_proxy_config_cmds::dump_cmd> cmd =
+    std::make_shared<arp_proxy_config_cmds::dump_cmd>();
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& record : *cmd) {
+    auto& payload = record.get_payload();
+
+    boost::asio::ip::address lo = from_bytes(0, payload.proxy.low_address);
+    boost::asio::ip::address hi = from_bytes(0, payload.proxy.hi_address);
+
+    arp_proxy_config ap(lo.to_v4(), hi.to_v4());
+    OM::commit(key, ap);
+  }
 }
 
 dependency_t

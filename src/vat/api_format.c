@@ -9287,10 +9287,10 @@ api_proxy_arp_add_del (vat_main_t * vam)
 
   M (PROXY_ARP_ADD_DEL, mp);
 
-  mp->vrf_id = ntohl (vrf_id);
+  mp->proxy.vrf_id = ntohl (vrf_id);
   mp->is_add = is_add;
-  clib_memcpy (mp->low_address, &lo, sizeof (mp->low_address));
-  clib_memcpy (mp->hi_address, &hi, sizeof (mp->hi_address));
+  clib_memcpy (mp->proxy.low_address, &lo, sizeof (mp->proxy.low_address));
+  clib_memcpy (mp->proxy.hi_address, &hi, sizeof (mp->proxy.hi_address));
 
   S (mp);
   W (ret);

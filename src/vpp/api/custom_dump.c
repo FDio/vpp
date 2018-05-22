@@ -747,11 +747,12 @@ static void *vl_api_proxy_arp_add_del_t_print
 
   s = format (0, "SCRIPT: proxy_arp_add_del ");
 
-  s = format (s, "%U - %U ", format_ip4_address, mp->low_address,
-	      format_ip4_address, mp->hi_address);
+  s = format (s, "%U - %U ",
+	      format_ip4_address, mp->proxy.low_address,
+	      format_ip4_address, mp->proxy.hi_address);
 
-  if (mp->vrf_id)
-    s = format (s, "vrf %d ", ntohl (mp->vrf_id));
+  if (mp->proxy.vrf_id)
+    s = format (s, "vrf %d ", ntohl (mp->proxy.vrf_id));
 
   if (mp->is_add == 0)
     s = format (s, "del ");

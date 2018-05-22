@@ -751,7 +751,7 @@ VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(
  * @brief Invoked on each SW interface of a HW interface when the
  * HW interface state changes
  */
-static void
+static walk_rc_t
 adj_nbr_hw_sw_interface_state_change (vnet_main_t * vnm,
                                       u32 sw_if_index,
                                       void *arg)
@@ -768,6 +768,7 @@ adj_nbr_hw_sw_interface_state_change (vnet_main_t * vnm,
 		     adj_nbr_interface_state_change_one,
 		     ctx);
     }
+    return (WALK_CONTINUE);
 }
 
 /**
