@@ -215,6 +215,12 @@ struct _session_manager_main
   /** per-worker session context */
   session_tx_context_t *ctx;
 
+  /** Our approximation of a "complete" dispatch loop period */
+  f64 *dispatch_period;
+
+  /** vlib_time_now last time around the track */
+  f64 *last_vlib_time;
+
   /** vpp fifo event queue */
   svm_msg_q_t **vpp_event_queues;
 
@@ -492,6 +498,18 @@ transport_tx_fifo_size (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return s->server_tx_fifo->nitems;
+}
+
+always_inline f64
+transport_dispatch_period (u32 thread_index)
+{
+  return session_manager_main.dispatch_period[thread_index];
+}
+
+always_inline f64
+transport_time_now (u32 thread_index)
+{
+  return session_manager_main.last_vlib_time[thread_index];
 }
 
 always_inline u32

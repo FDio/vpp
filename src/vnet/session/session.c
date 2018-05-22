@@ -1355,6 +1355,8 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
   vec_validate (smm->peekers_rw_locks, num_threads - 1);
+  vec_validate (smm->dispatch_period, num_threads - 1);
+  vec_validate (smm->last_vlib_time, num_threads - 1);
   vec_validate_aligned (smm->ctx, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
@@ -1373,6 +1375,9 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (smm->pending_event_vector[i]) = 0;
       vec_validate (smm->pending_disconnects[i], 0);
       _vec_len (smm->pending_disconnects[i]) = 0;
+
+      smm->last_vlib_time[i] = vlib_time_now (vlib_mains[i]);
+
       if (num_threads > 1)
 	clib_rwlock_init (&smm->peekers_rw_locks[i]);
     }
@@ -1419,7 +1424,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
-
+  transport_init_tx_pacers_period ();
   return 0;
 }
 
