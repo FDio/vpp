@@ -25,6 +25,7 @@ void
 newreno_recovered (tcp_connection_t * tc)
 {
   tc->cwnd = tc->ssthresh;
+  tcp_update_pace_and_burst_size (tc);
 }
 
 void
@@ -47,6 +48,7 @@ newreno_rcv_ack (tcp_connection_t * tc)
       tc->cwnd = clib_min (tc->cwnd,
 			   transport_tx_fifo_size (&tc->connection));
     }
+  tcp_update_pace_and_burst_size (tc);
 }
 
 void
