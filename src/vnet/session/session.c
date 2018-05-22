@@ -1366,7 +1366,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
-
+  transport_init_pacer_period();
   return 0;
 }
 

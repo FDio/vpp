@@ -371,7 +371,15 @@ typedef struct _tcp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
+
+  /** Time as measured by tcp that's used for timestamps */
   u32 *time_now;
+
+  /** Our approximation of a "complete" dispatch loop period */
+  f64 *dispatch_period;
+
+  /** vlib_time_now last time around the track */
+  f64 *last_vlib_time;
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -677,6 +685,7 @@ void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
 void tcp_init_snd_vars (tcp_connection_t * tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
+void tcp_update_pace_and_burst_size (tcp_connection_t *tc);
 
 always_inline void
 tcp_connection_force_ack (tcp_connection_t * tc, vlib_buffer_t * b)

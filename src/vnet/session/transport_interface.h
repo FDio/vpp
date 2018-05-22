@@ -102,6 +102,19 @@ transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 void transport_update_time (f64 time_now, u8 thread_index);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 
+void transport_connection_set_pace_rate (transport_connection_t *tc,
+					 u32 rate_bytes_per_sec);
+void transport_connection_set_max_burst_size (transport_connection_t *tc,
+					      u32 burst_bytes);
+void transport_connection_pacer_init (transport_connection_t *tc,
+				      u32 rate_bytes_per_sec,
+				      u32 burst_bytes);
+u32 transport_connection_max_burst (transport_connection_t *tc, u64 time_now);
+void transport_connection_update_stats (transport_connection_t *tc,
+					u32 bytes);
+u8 *format_transport_pacer (u8 * s, va_list * args);
+void transport_init_pacer_period (void);
+
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */
 
 /*
