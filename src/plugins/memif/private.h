@@ -16,6 +16,7 @@
  */
 
 #include <vppinfra/lock.h>
+#include <vlib/log.h>
 
 #define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
 #define MEMIF_DEFAULT_RING_SIZE 1024
@@ -28,39 +29,24 @@
 #define MEMIF_MAX_REGION		255
 #define MEMIF_MAX_LOG2_RING_SIZE	14
 
-#define MEMIF_DEBUG 0
 
-#if MEMIF_DEBUG == 1
-#define DBG(...) clib_warning(__VA_ARGS__)
-#define DBG_UNIX_LOG(...) clib_unix_warning(__VA_ARGS__)
-#else
-#define DBG(...)
-#define DBG_UNIX_LOG(...)
-#endif
-
-#if MEMIF_DEBUG == 1
 #define memif_file_add(a, b) do {					\
   *a = clib_file_add (&file_main, b);					\
-  clib_warning ("clib_file_add fd %d private_data %u idx %u",		\
+  vlib_log_warn ((&memif_main)->log_class,				\
+		"clib_file_add fd %d private_data %u idx %u",		\
 		(b)->file_descriptor, (b)->private_data, *a);		\
 } while (0)
 
 #define memif_file_del(a) do {						\
-  clib_warning ("clib_file_del idx %u",a - file_main.file_pool);	\
+  vlib_log_warn ((&memif_main)->log_class,				\
+		"clib_file_del idx %u",a - file_main.file_pool);	\
   clib_file_del (&file_main, a);					\
 } while (0)
 
 #define memif_file_del_by_index(a) do {					\
-  clib_warning ("clib_file_del idx %u", a);				\
+  vlib_log_warn ((&memif_main)->log_class, "clib_file_del idx %u", a);	\
   clib_file_del_by_index (&file_main, a);				\
 } while (0)
-#else
-#define memif_file_add(a, b) do {					\
-  *a = clib_file_add (&file_main, b);					\
-} while (0)
-#define memif_file_del(a) clib_file_del(&file_main, a)
-#define memif_file_del_by_index(a) clib_file_del_by_index(&file_main, a)
-#endif
 
 typedef struct
 {
@@ -226,6 +212,8 @@ typedef struct
 
   /* per thread data */
   memif_per_thread_data_t *per_thread_data;
+
+  vlib_log_class_t log_class;
 
 } memif_main_t;
 
