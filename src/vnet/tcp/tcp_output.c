@@ -1202,7 +1202,7 @@ tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
-      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
       tc->rtt_seq = tc->snd_nxt;
     }
   if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
