@@ -990,7 +990,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_make_syn (tc, b);
 
   /* Measure RTT with this */
-  tc->rtt_ts = tcp_time_now ();
+  tc->rtt_ts = tcp_time_now_us ();
   tc->rtt_seq = tc->snd_nxt;
   tc->rto_boff = 0;
 
@@ -1900,7 +1900,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	      tc0->snd_una_max = tc0->snd_nxt;
 	      if (tc0->rtt_ts == 0)
 		{
-		  tc0->rtt_ts = tcp_time_now ();
+		  tc0->rtt_ts = tcp_time_now_us ();
 		  tc0->rtt_seq = tc0->snd_nxt;
 		}
 	    }
@@ -2032,7 +2032,7 @@ tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
-      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_ts = tcp_time_now_us ();
       tc->rtt_seq = tc->snd_nxt;
     }
   tcp_trajectory_add_start (b, 3);

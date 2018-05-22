@@ -23,6 +23,22 @@
 /*
  * Protocol independent transport properties associated to a session
  */
+typedef struct _transport_stats
+{
+   u32 tx_pkts;
+   u32 tx_bytes;
+   u32 rx_pkts;
+   u32 rx_bytes;
+} transport_stats_t;
+
+typedef struct _spacer
+{
+  u64 bucket;
+  u32 max_burst_size;
+  f32 tokens_per_period;
+  u64 last_update;
+} spacer_t;
+
 typedef struct _transport_connection
 {
   /** Connection ID */
@@ -54,6 +70,10 @@ typedef struct _transport_connection
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
+  u8 flags;			/**< Transport specific flags */
+  transport_stats_t stats;	/**< Transport connection stats */
+  spacer_t pacer;		/**< Simple transport pacer */
+
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
@@ -79,7 +99,12 @@ typedef struct _transport_connection
 #define c_rmt_fei connection.rmt_fei
 #define c_rmt_dpo connection.rmt_dpo
 #define c_opaque_id connection.opaque_conn_id
+#define c_stats connection.stats
+#define c_pacer connection.pacer
+#define c_flags connection.flags
 } transport_connection_t;
+
+#define TRANSPORT_CONNECTION_F_IS_PACED	1 << 0
 
 typedef enum _transport_proto
 {
