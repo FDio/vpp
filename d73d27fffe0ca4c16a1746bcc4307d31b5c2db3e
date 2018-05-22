@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "850fa57f_170cb9eb",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-05-22T15:15:40Z",
+      "side": 1,
+      "message": "Why did you keep this comment ?",
+      "range": {
+        "startLine": 432,
+        "startChar": 5,
+        "endLine": 433,
+        "endChar": 64
+      },
+      "revId": "d73d27fffe0ca4c16a1746bcc4307d31b5c2db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a8fbe65f_f4f8ab3b",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-05-22T15:15:40Z",
+      "side": 1,
+      "message": "When do you decrease the VIP connexion counter ?",
+      "range": {
+        "startLine": 328,
+        "startChar": 14,
+        "endLine": 331,
+        "endChar": 17
+      },
+      "revId": "d73d27fffe0ca4c16a1746bcc4307d31b5c2db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "95aa7bdf_a96ec2cf",
+        "filename": "src/plugins/lb/util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-05-22T15:15:40Z",
+      "side": 1,
+      "message": "This function does not \u0027get\u0027 anything. It rather sets the value of the counter, for a specific thread, in case it was lower. So I would change the name to vlib_set_max_single_counter.",
+      "range": {
+        "startLine": 48,
+        "startChar": 0,
+        "endLine": 48,
+        "endChar": 27
+      },
+      "revId": "d73d27fffe0ca4c16a1746bcc4307d31b5c2db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
