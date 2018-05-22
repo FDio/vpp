@@ -95,6 +95,30 @@ unbind_cmd::to_string() const
   return (s.str());
 }
 
+bool
+dump_cmd::operator==(const dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+dump_cmd::to_string() const
+{
+  return ("ARP-proxy-binding-dump");
+}
+
 }; // namespace arp_proxy_binding_cmds
 }; // namespace VOM
 

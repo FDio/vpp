@@ -26,17 +26,14 @@ singular_db<interface::key_t, arp_proxy_binding> arp_proxy_binding::m_db;
 
 arp_proxy_binding::event_handler arp_proxy_binding::m_evh;
 
-arp_proxy_binding::arp_proxy_binding(const interface& itf,
-                                     const arp_proxy_config& proxy_cfg)
+arp_proxy_binding::arp_proxy_binding(const interface& itf)
   : m_itf(itf.singular())
-  , m_arp_proxy_cfg(proxy_cfg.singular())
   , m_binding(true)
 {
 }
 
 arp_proxy_binding::arp_proxy_binding(const arp_proxy_binding& o)
   : m_itf(o.m_itf)
-  , m_arp_proxy_cfg(o.m_arp_proxy_cfg)
   , m_binding(o.m_binding)
 {
 }
@@ -44,8 +41,6 @@ arp_proxy_binding::arp_proxy_binding(const arp_proxy_binding& o)
 arp_proxy_binding::~arp_proxy_binding()
 {
   sweep();
-
-  // not in the DB anymore.
   m_db.release(m_itf->key(), this);
 }
 
@@ -123,7 +118,25 @@ arp_proxy_binding::event_handler::handle_replay()
 void
 arp_proxy_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
-  // FIXME
+  std::shared_ptr<arp_proxy_binding_cmds::dump_cmd> cmd =
+    std::make_shared<arp_proxy_binding_cmds::dump_cmd>();
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& record : *cmd) {
+    auto& payload = record.get_payload();
+
+    std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+
+    if (itf) {
+      arp_proxy_binding ab(*itf);
+      OM::commit(key, ab);
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "arp-proxy-binding dump:"
+                                  << " itf:" << payload.sw_if_index;
+    }
+  }
 }
 
 dependency_t

@@ -998,8 +998,27 @@ vnet_hw_interface_walk_sw (vnet_main_t * vnm,
   hash_foreach (id, sw_if_index,
                 hi->sub_interface_sw_if_index_by_id,
   ({
-    fn (vnm, sw_if_index, ctx);
+    if (WALK_STOP == fn (vnm, sw_if_index, ctx))
+      break;
   }));
+  /* *INDENT-ON* */
+}
+
+void
+vnet_sw_interface_walk (vnet_main_t * vnm,
+			vnet_sw_interface_walk_t fn, void *ctx)
+{
+  vnet_interface_main_t *im;
+  vnet_sw_interface_t *si;
+
+  im = &vnm->interface_main;
+
+  /* *INDENT-OFF* */
+  pool_foreach (si, im->sw_interfaces,
+  {
+    if (WALK_STOP == fn (vnm, si, ctx))
+      break;
+  });
   /* *INDENT-ON* */
 }
 

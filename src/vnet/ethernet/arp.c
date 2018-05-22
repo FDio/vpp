@@ -18,7 +18,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/arp_packet.h>
+#include <vnet/ethernet/arp.h>
 #include <vnet/l2/l2_input.h>
 #include <vppinfra/mhash.h>
 #include <vnet/fib/ip4_fib.h>
@@ -52,8 +52,8 @@ typedef struct ethernet_arp_interface_t_
 
 typedef struct
 {
-  u32 lo_addr;
-  u32 hi_addr;
+  ip4_address_t lo_addr;
+  ip4_address_t hi_addr;
   u32 fib_index;
 } ethernet_proxy_arp_t;
 
@@ -1226,8 +1226,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	      vec_foreach (pa, am->proxy_arps)
 	      {
-		u32 lo_addr = clib_net_to_host_u32 (pa->lo_addr);
-		u32 hi_addr = clib_net_to_host_u32 (pa->hi_addr);
+		u32 lo_addr = clib_net_to_host_u32 (pa->lo_addr.as_u32);
+		u32 hi_addr = clib_net_to_host_u32 (pa->hi_addr.as_u32);
 
 		/* an ARP request hit in the proxy-arp table? */
 		if ((this_addr >= lo_addr && this_addr <= hi_addr) &&
@@ -1963,6 +1963,19 @@ vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
   return 0;
 }
 
+void
+proxy_arp_walk (proxy_arp_walk_t cb, void *data)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_proxy_arp_t *pa;
+
+  vec_foreach (pa, am->proxy_arps)
+  {
+    if (!cb (&pa->lo_addr, &pa->hi_addr, pa->fib_index, data))
+      break;
+  }
+}
+
 int
 vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 			ip4_address_t * hi_addr, u32 fib_index, int is_del)
@@ -1973,8 +1986,8 @@ vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 
   vec_foreach (pa, am->proxy_arps)
   {
-    if (pa->lo_addr == lo_addr->as_u32
-	&& pa->hi_addr == hi_addr->as_u32 && pa->fib_index == fib_index)
+    if (pa->lo_addr.as_u32 == lo_addr->as_u32 &&
+	pa->hi_addr.as_u32 == hi_addr->as_u32 && pa->fib_index == fib_index)
       {
 	found_at_index = pa - am->proxy_arps;
 	break;
@@ -1994,8 +2007,8 @@ vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 
   /* add, not in table */
   vec_add2 (am->proxy_arps, pa, 1);
-  pa->lo_addr = lo_addr->as_u32;
-  pa->hi_addr = hi_addr->as_u32;
+  pa->lo_addr.as_u32 = lo_addr->as_u32;
+  pa->hi_addr.as_u32 = hi_addr->as_u32;
   pa->fib_index = fib_index;
   return 0;
 }

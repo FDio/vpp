@@ -42,9 +42,9 @@ config_cmd::issue(connection& con)
   payload.is_add = 1;
 
   std::copy_n(std::begin(m_low.to_bytes()), m_low.to_bytes().size(),
-              payload.low_address);
+              payload.proxy.low_address);
   std::copy_n(std::begin(m_high.to_bytes()), m_high.to_bytes().size(),
-              payload.hi_address);
+              payload.proxy.hi_address);
 
   VAPI_CALL(req.execute());
 
@@ -87,9 +87,9 @@ unconfig_cmd::issue(connection& con)
   payload.is_add = 0;
 
   std::copy_n(std::begin(m_low.to_bytes()), m_low.to_bytes().size(),
-              payload.low_address);
+              payload.proxy.low_address);
   std::copy_n(std::begin(m_high.to_bytes()), m_high.to_bytes().size(),
-              payload.hi_address);
+              payload.proxy.hi_address);
 
   VAPI_CALL(req.execute());
 
@@ -108,8 +108,33 @@ unconfig_cmd::to_string() const
 
   return (s.str());
 }
+
+bool
+dump_cmd::operator==(const dump_cmd& other) const
+{
+  return (true);
 }
+
+rc_t
+dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
 }
+
+std::string
+dump_cmd::to_string() const
+{
+  return ("ARP-proxy-dump");
+}
+
+}; // namesapce cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

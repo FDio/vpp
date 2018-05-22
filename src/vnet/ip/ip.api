@@ -868,14 +868,31 @@ service {
     @param low_address[4] - Low address of the Proxy ARP range
     @param hi_address[4] - High address of the Proxy ARP range
 */
-autoreply define proxy_arp_add_del
+typeonly define proxy_arp
 {
-  u32 client_index;
-  u32 context;
   u32 vrf_id;
   u8 is_add;
   u8 low_address[4];
   u8 hi_address[4];
+};
+autoreply define proxy_arp_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_proxy_arp_t proxy;
+};
+
+define proxy_arp_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define proxy_arp_details
+{
+  u32 context;
+  vl_api_proxy_arp_t proxy;
 };
 
 /** \brief Proxy ARP add / del request
@@ -891,6 +908,17 @@ autoreply define proxy_arp_intfc_enable_disable
   u32 sw_if_index;
   /* 1 = on, 0 = off */
   u8 enable_disable;
+};
+
+define proxy_arp_intfc_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define proxy_arp_intfc_details
+{
+  u32 context;
+  u32 sw_if_index;
 };
 
 /** \brief Reset fib table request
