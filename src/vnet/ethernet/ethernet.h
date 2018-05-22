@@ -435,17 +435,6 @@ void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
 void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			       u32 enable);
 
-int
-vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-				u32 sw_if_index, void *a_arg,
-				int is_static, int is_no_fib_entry);
-
-int
-vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
-				  u32 sw_if_index, void *a_arg);
-
-int vnet_proxy_arp_fib_reset (u32 fib_id);
-
 clib_error_t *next_by_ethertype_init (next_by_ethertype_t * l3_next);
 clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 					  u32 ethertype, u32 next_index);

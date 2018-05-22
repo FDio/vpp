@@ -860,18 +860,13 @@ service {
     events ip6_nd_event;
 };
 
-/** \brief Proxy ARP add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
+/** \brief Proxy ARP configuration type
     @param vrf_id - VRF / Fib table ID
-    @param is_add - 1 if adding the Proxy ARP range, 0 if deleting
     @param low_address[4] - Low address of the Proxy ARP range
     @param hi_address[4] - High address of the Proxy ARP range
 */
-autoreply define proxy_arp_add_del
+typeonly define proxy_arp
 {
-  u32 client_index;
-  u32 context;
   u32 vrf_id;
   u8 is_add;
   u8 low_address[4];
@@ -879,6 +874,37 @@ autoreply define proxy_arp_add_del
 };
 
 /** \brief Proxy ARP add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if adding the Proxy ARP range, 0 if deleting
+    @param proxy - Proxy configuration
+*/
+autoreply define proxy_arp_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP dump request
+ */
+define proxy_arp_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP dump details reply
+ * @param proxy - Same data as used to configure
+ */
+define proxy_arp_details
+{
+  u32 context;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP add / del interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - Which interface to enable / disable Proxy Arp on
@@ -891,6 +917,23 @@ autoreply define proxy_arp_intfc_enable_disable
   u32 sw_if_index;
   /* 1 = on, 0 = off */
   u8 enable_disable;
+};
+
+/** \brief Proxy ARP interface dump request
+ */
+define proxy_arp_intfc_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP interface dump details reply
+ * @param sw_if_index The interface on which ARP proxy is enabled.
+ */
+define proxy_arp_intfc_details
+{
+  u32 context;
+  u32 sw_if_index;
 };
 
 /** \brief Reset fib table request

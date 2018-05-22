@@ -1237,7 +1237,7 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(kurt, itf3));
 
-    arp_proxy_binding *apb = new arp_proxy_binding(itf3, ap);
+    arp_proxy_binding *apb = new arp_proxy_binding(itf3);
     HW::item<bool> hw_binding(true, rc_t::OK);
     ADD_EXPECT(arp_proxy_binding_cmds::bind_cmd(hw_binding, hw_ifh.data()));
     TRY_CHECK_RC(OM::write(kurt, *apb));

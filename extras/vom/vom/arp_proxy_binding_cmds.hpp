@@ -17,6 +17,7 @@
 #define __VOM_ARP_PROXY_BINDING_CMDS_H__
 
 #include "vom/arp_proxy_binding.hpp"
+#include "vom/dump_cmd.hpp"
 
 #include <vapi/vpe.api.vapi.hpp>
 
@@ -87,8 +88,41 @@ private:
    */
   const handle_t& m_itf;
 };
+
+/**
+ * A cmd class that Dumps all the Proxy ARP configs
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Proxy_arp_intfc_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
 };
-};
+
+}; // namespace cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

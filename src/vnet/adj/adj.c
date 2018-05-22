@@ -353,7 +353,7 @@ adj_mtu_update_walk_cb (adj_index_t ai,
     return (ADJ_WALK_RC_CONTINUE);
 }
 
-static void
+static walk_rc_t
 adj_sw_mtu_update (vnet_main_t * vnm,
                    u32 sw_if_index,
                    void *ctx)
@@ -362,6 +362,8 @@ adj_sw_mtu_update (vnet_main_t * vnm,
      * Walk all the adjacencies on the interface to update the cached MTU
      */
     adj_walk (sw_if_index, adj_mtu_update_walk_cb, NULL);
+
+    return (WALK_CONTINUE);
 }
 
 void

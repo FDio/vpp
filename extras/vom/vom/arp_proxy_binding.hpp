@@ -34,7 +34,7 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  arp_proxy_binding(const interface& itf, const arp_proxy_config& proxy_cfg);
+  arp_proxy_binding(const interface& itf);
 
   /**
    * Copy Constructor
@@ -134,11 +134,6 @@ private:
    * this object will outlive the interface
    */
   const std::shared_ptr<interface> m_itf;
-
-  /**
-   * A reference counting pointer to the prxy config.
-   */
-  const std::shared_ptr<arp_proxy_config> m_arp_proxy_cfg;
 
   /**
    * HW configuration for the binding. The bool representing the
