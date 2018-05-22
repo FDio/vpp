@@ -349,6 +349,24 @@
       "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d1c13c1_6285b9d8",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-22T08:37:20Z",
+      "side": 1,
+      "message": "Even better if memcpy() was called directly, then we wouldn\u0027t be affected if someone decided to map clib_memcpy() to something else.",
+      "parentUuid": "7f9a26dd_52756b41",
+      "revId": "036bc0842eeb4ae5a0710fdd60780e29700be279",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
