@@ -69,8 +69,8 @@ t##s##x##c##_is_all_zero (t##s##x##c x)					\
 { return _mm_testz_si128 ((__m128i) x, (__m128i) x); }			\
 \
 static_always_inline int						\
-t##s##x##c##_is_equal (t##s##x##c x, t##s##x##c y)			\
-{ return _mm_testc_si128 ((__m128i) x, (__m128i) y); }			\
+t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
+{ return t##s##x##c##_is_all_zero (a ^ b); }				\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
