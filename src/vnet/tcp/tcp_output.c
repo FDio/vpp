@@ -1007,7 +1007,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_make_syn (tc, b);
 
   /* Measure RTT with this */
-  tc->rtt_ts = tcp_time_now ();
+  tc->rtt_ts = tcp_time_now_us ();
   tc->rtt_seq = tc->snd_nxt;
   tc->rto_boff = 0;
 
@@ -1202,7 +1202,7 @@ tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
-      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_ts = tcp_time_now_us ();
       tc->rtt_seq = tc->snd_nxt;
     }
   if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
