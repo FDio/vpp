@@ -316,6 +316,10 @@ tcp_connection_close (tcp_connection_t * tc)
 {
   TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
 
+//  clib_warning ("%U", format_tcp_connection, tc, 2);
+  clib_warning ("dispatch period %0.10f", tcp_main.wrk_ctx[tc->c_thread_index].dispatch_period);
+  clib_warning ("mrtt_us %0.6f", tc->mrtt_us);
+
   /* Send/Program FIN if needed and switch state */
   switch (tc->state)
     {
@@ -555,6 +559,16 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_una_max = tc->snd_nxt;
 }
 
+void
+tcp_enable_pacing (tcp_connection_t *tc)
+{
+  u32 max_burst, byte_rate;
+  max_burst = 16 * tc->snd_mss;
+  byte_rate = 2 << 16;
+  transport_connection_pacer_init (&tc->connection, byte_rate, max_burst);
+  tc->mrtt_us = (u32) ~0;
+}
+
 /** Initialize tcp connection variables
  *
  * Should be called after having received a msg from the peer, i.e., a SYN or
@@ -573,6 +587,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
     tcp_add_del_adjacency (tc, 1);
 
   //  tcp_connection_fib_attach (tc);
+  tcp_enable_pacing (tc);
 }
 
 static int
@@ -784,14 +799,18 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " limited_transmit %u\n", tc->limited_transmit - tc->iss);
   s = format (s, " tsecr %u tsecr_last_ack %u\n", tc->rcv_opts.tsecr,
 	      tc->tsecr_last_ack);
-  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
-	      tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
+  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %2.5f ",
+              tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
   if (tc->state >= TCP_STATE_ESTABLISHED)
-    s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
-		tc);
+    {
+      s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
+	          tc);
+      s = format (s, " pacer: %U\n", format_transport_pacer,
+                  &tc->connection.pacer);
+    }
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
 
@@ -1088,11 +1107,24 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 }
 
 static void
+tcp_update_dispatch_period (tcp_main_t *tm, f64 now, u32 thread_index)
+{
+  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
+  f64 sample, prev_period = wrk->dispatch_period, a = 0.8;
+
+  sample = now - wrk->last_vlib_time;
+  wrk->dispatch_period = a * sample + (1-a) * prev_period;
+  wrk->last_vlib_time = now;
+}
+
+static void
 tcp_update_time (f64 now, u8 thread_index)
 {
+  tcp_main_t *tm = &tcp_main;
+
   tcp_set_time_now (thread_index);
-  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.
-				       wrk_ctx[thread_index].timer_wheel,
+  tcp_update_dispatch_period (tm, now, thread_index);
+  tw_timer_expire_timers_16t_2w_512sl (&tm->wrk_ctx[thread_index].timer_wheel,
 				       now);
   tcp_do_fastretransmits (thread_index);
   tcp_flush_frames_to_output (thread_index);
@@ -1128,6 +1160,25 @@ const static transport_proto_vft_t tcp_proto = {
   .service_type = TRANSPORT_SERVICE_VC,
 };
 /* *INDENT-ON* */
+
+void
+tcp_update_pace_and_burst_size (tcp_connection_t *tc)
+{
+  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[tc->c_thread_index];
+  f64 srtt, avg_byte_rate;
+  u32 burst_size;
+
+  srtt = clib_min ((f64)tc->srtt * TCP_TICK, tc->mrtt_us);
+//  srtt = clib_min (srtt, 0.001);
+
+  if (tc->cwnd == 0 || srtt > 10)
+    os_panic ();
+  avg_byte_rate = ((f64) tc->cwnd) / srtt;
+  burst_size = clib_max ((u32)(avg_byte_rate * wrk->dispatch_period),
+                         tc->snd_mss);
+  transport_connection_set_pace_rate (&tc->connection, (u64) avg_byte_rate);
+  transport_connection_set_max_burst_size (&tc->connection, burst_size);
+}
 
 static void
 tcp_timer_keep_handler (u32 conn_index)
@@ -1328,6 +1379,10 @@ tcp_main_enable (vlib_main_t * vm)
 
   tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
     (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+
+  thread = num_threads == 1 ? 0 : 1;
+  for (; thread < num_threads; thread++)
+    tm->wrk_ctx[thread].last_vlib_time = vlib_time_now (vlib_mains[thread]);
 
   return error;
 }
