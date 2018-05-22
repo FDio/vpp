@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7263413a_4bb53efd",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-05-22T13:36:17Z",
+      "side": 1,
+      "message": "So still explicit use of NEON registers.\nBut why the multiple casts?\nWhat\u0027s wrong with: vld1q_u8((const uint8_t *)s + 0 * 16)",
+      "revId": "cd86848a41ce807c6c2cbee53e046be06266a4da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
