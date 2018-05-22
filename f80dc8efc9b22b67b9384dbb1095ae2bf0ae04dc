@@ -22,6 +22,30 @@
       "revId": "f80dc8efc9b22b67b9384dbb1095ae2bf0ae04dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f65b00e9_043ae255",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-22T09:45:44Z",
+      "side": 1,
+      "message": "your statement wrongly implies that packet loop is processing whole frame.",
+      "parentUuid": "fa11462c_16608586",
+      "range": {
+        "startLine": 306,
+        "startChar": 15,
+        "endLine": 306,
+        "endChar": 31
+      },
+      "revId": "f80dc8efc9b22b67b9384dbb1095ae2bf0ae04dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
