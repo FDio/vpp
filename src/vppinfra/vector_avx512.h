@@ -48,7 +48,7 @@ t##s##x##c##_is_all_zero (t##s##x##c v)					\
 \
 static_always_inline int						\
 t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^b); }				\
+{ return t##s##x##c##_is_all_zero (a ^ b); }				\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
