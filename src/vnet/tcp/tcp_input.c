@@ -462,14 +462,15 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
-      mrtt = tcp_time_now () - tc->rtt_ts;
+      tc->mrtt_us = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
+      mrtt = clib_max ((u32) (tc->mrtt_us * THZ), 1);
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
    * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
   else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
-      mrtt = tcp_time_now () - tc->rcv_opts.tsecr;
+      mrtt = clib_max (tcp_time_now () - tc->rcv_opts.tsecr, 1);
     }
 
   /* Ignore dubious measurements */
@@ -1079,12 +1080,14 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->snd_nxt = tc->snd_una_max;
   tc->snd_rxt_bytes = 0;
 
-  /* HACK: since we don't have an output pacer, force slow start */
-  tc->cwnd = 20 * tc->snd_mss;
-
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
+
+  /* Update pacer because our cwnd changed. Also makes sure
+   * that we recompute the max burst size */
+  tcp_update_pacer (tc);
+
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
@@ -1153,8 +1156,7 @@ tcp_cc_update (tcp_connection_t * tc, vlib_buffer_t * b)
   ASSERT (!tcp_in_cong_recovery (tc) || tcp_is_lost_fin (tc));
 
   /* Congestion avoidance */
-  tc->cc_algo->rcv_ack (tc);
-  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+  tcp_cc_rcv_ack (tc);
 
   /* If a cumulative ack, make sure dupacks is 0 */
   tc->rcv_dupacks = 0;
@@ -1372,8 +1374,7 @@ partial_ack:
       tc->snd_nxt = tc->snd_una_max;
 
       /* Treat as congestion avoidance ack */
-      tc->cc_algo->rcv_ack (tc);
-      tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+      tcp_cc_rcv_ack (tc);
       return;
     }
 
@@ -1391,8 +1392,7 @@ partial_ack:
   /* Post RTO timeout don't try anything fancy */
   if (tcp_in_recovery (tc))
     {
-      tc->cc_algo->rcv_ack (tc);
-      tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+      tcp_cc_rcv_ack (tc);
       transport_add_tx_event (&tc->connection);
       return;
     }

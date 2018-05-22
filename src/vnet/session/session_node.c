@@ -568,7 +568,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
-  ctx->snd_space = ctx->transport_vft->send_space (ctx->tc);
+  ctx->snd_space =
+    transport_connection_max_tx_burst (ctx->tc, vm->clib_time.last_cpu_time);
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
       vec_add1 (smm->pending_event_vector[thread_index], *e);
@@ -685,6 +686,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
   *n_tx_packets += ctx->n_segs_per_evt;
+  transport_connection_update_tx_stats (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   /* If we couldn't dequeue all bytes mark as partially read */
@@ -743,6 +745,17 @@ session_event_get_session (session_event_t * e, u8 thread_index)
   return session_get_if_valid (e->fifo->master_session_index, thread_index);
 }
 
+static void
+session_update_dispatch_period (session_manager_main_t * smm, f64 now,
+				u32 thread_index)
+{
+  f64 sample, prev_period = smm->dispatch_period[thread_index], a = 0.8;
+
+  sample = now - smm->last_vlib_time[thread_index];
+  smm->dispatch_period[thread_index] = a * sample + (1 - a) * prev_period;
+  smm->last_vlib_time[thread_index] = now;
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -764,6 +777,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /*
    *  Update transport time
    */
+  session_update_dispatch_period (smm, now, thread_index);
   transport_update_time (now, thread_index);
 
   /*
