@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "176a20fb_a6147e97",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-05-22T05:07:29Z",
+      "side": 1,
+      "message": "Changed to use clib_mem_unaligned to avoid the check for for alignment",
+      "parentUuid": "230a59e1_48088b4b",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "16300662_d2866ed4",
         "filename": "src/vnet/bonding/device.c",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2018-05-19T00:14:13Z",
       "side": 1,
       "message": "is it guaranteed to be 64-bit aligned?",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "16d4b408_eea5e130",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-05-22T05:07:29Z",
+      "side": 1,
+      "message": "Changed to use clib_mem_aligned.",
+      "parentUuid": "16300662_d2866ed4",
       "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "555b7202_dc5601fc",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-05-22T05:07:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "26a6cb5b_fd9c3df8",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5b5efedd_c36fa700",
         "filename": "src/vnet/bonding/node.h",
         "patchSetId": 5
@@ -64,6 +118,24 @@
       "writtenOn": "2018-05-19T00:14:13Z",
       "side": 1,
       "message": "would place check on \u003d\u003d 2 first since that is the most likely value by far",
+      "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "df9f2309_9c52726f",
+        "filename": "src/vnet/bonding/node.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-05-22T05:07:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b5efedd_c36fa700",
       "revId": "9c99a93fa6f65c4cdea7bfa70721df154ebba8ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
