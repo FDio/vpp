@@ -374,73 +374,6 @@ ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, u32 fib_index)
     }
 }
 
-static clib_error_t *
-ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
-				   u32 sw_if_index, u32 flags)
-{
-  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
-  ip6_neighbor_t *n;
-
-  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-    {
-      u32 i, *to_delete = 0;
-
-      /* *INDENT-OFF* */
-      pool_foreach (n, nm->neighbor_pool,
-      ({
-	if (n->key.sw_if_index == sw_if_index)
-	  vec_add1 (to_delete, n - nm->neighbor_pool);
-      }));
-      /* *INDENT-ON* */
-
-      for (i = 0; i < vec_len (to_delete); i++)
-	{
-	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
-	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
-	  ip6_neighbor_adj_fib_remove (n,
-				       ip6_fib_table_get_index_for_sw_if_index
-				       (n->key.sw_if_index));
-	  pool_put (nm->neighbor_pool, n);
-	}
-      vec_free (to_delete);
-    }
-
-  return 0;
-}
-
-VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_neighbor_sw_interface_up_down);
-
-static void
-unset_random_neighbor_entry (void)
-{
-  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vnm->vlib_main;
-  ip6_neighbor_t *e;
-  u32 index;
-
-  index = pool_next_index (nm->neighbor_pool, nm->neighbor_delete_rotor);
-  nm->neighbor_delete_rotor = index;
-
-  /* Try again from elt 0, could happen if an intfc goes down */
-  if (index == ~0)
-    {
-      index = pool_next_index (nm->neighbor_pool, nm->neighbor_delete_rotor);
-      nm->neighbor_delete_rotor = index;
-    }
-
-  /* Nothing left in the pool */
-  if (index == ~0)
-    return;
-
-  e = pool_elt_at_index (nm->neighbor_pool, index);
-
-  vnet_unset_ip6_ethernet_neighbor (vm, e->key.sw_if_index,
-				    &e->key.ip6_address,
-				    e->link_layer_address,
-				    ETHER_MAC_ADDR_LEN);
-}
-
 typedef struct
 {
   u8 is_add;
@@ -611,6 +544,54 @@ ip6_nd_mk_incomplete_walk (adj_index_t ai, void *ctx)
   return (ADJ_WALK_RC_CONTINUE);
 }
 
+static clib_error_t *
+ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
+				   u32 sw_if_index, u32 flags)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  ip6_neighbor_t *n;
+  u32 i, *to_delete = 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, nm->neighbor_pool,
+  ({
+    if (n->key.sw_if_index == sw_if_index)
+      vec_add1 (to_delete, n - nm->neighbor_pool);
+  }));
+  /* *INDENT-ON* */
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    {
+      for (i = 0; i < vec_len (to_delete); i++)
+	{
+	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
+	  adj_nbr_walk_nh6 (n->key.sw_if_index, &n->key.ip6_address,
+			    ip6_nd_mk_complete_walk, n);
+	}
+    }
+  else
+    {
+      for (i = 0; i < vec_len (to_delete); i++)
+	{
+	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
+	  adj_nbr_walk_nh6 (n->key.sw_if_index, &n->key.ip6_address,
+			    ip6_nd_mk_incomplete_walk, NULL);
+	  if (n->flags & IP6_NEIGHBOR_FLAG_STATIC)
+	    continue;
+	  ip6_neighbor_adj_fib_remove (n,
+				       ip6_fib_table_get_index_for_sw_if_index
+				       (n->key.sw_if_index));
+	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
+	  pool_put (nm->neighbor_pool, n);
+	}
+    }
+
+  vec_free (to_delete);
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_neighbor_sw_interface_up_down);
+
 void
 ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
@@ -723,6 +704,37 @@ ip6_neighbor_adj_fib_add (ip6_neighbor_t * n, u32 fib_index)
     }
 }
 
+static ip6_neighbor_t *
+force_reuse_neighbor_entry (void)
+{
+  ip6_neighbor_t *n;
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  u32 count = 0;
+  u32 index = pool_next_index (nm->neighbor_pool, nm->neighbor_delete_rotor);
+  if (index == ~0)		/* Try again from elt 0 */
+    index = pool_next_index (nm->neighbor_pool, index);
+
+  /* Find a non-static random entry to free up for reuse */
+  do
+    {
+      if ((count++ == 100) || (index == ~0))
+	return NULL;		/* give up after 100 entries */
+      n = pool_elt_at_index (nm->neighbor_pool, index);
+      nm->neighbor_delete_rotor = index;
+      index = pool_next_index (nm->neighbor_pool, index);
+    }
+  while (n->flags & IP6_NEIGHBOR_FLAG_STATIC);
+
+  /* Remove ARP entry from its interface and update fib */
+  adj_nbr_walk_nh6 (n->key.sw_if_index,
+		    &n->key.ip6_address, ip6_nd_mk_incomplete_walk, NULL);
+  ip6_neighbor_adj_fib_remove
+    (n, ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index));
+  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
+
+  return n;
+}
+
 int
 vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 				u32 sw_if_index,
@@ -763,7 +775,16 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 
   if (make_new_nd_cache_entry)
     {
-      pool_get (nm->neighbor_pool, n);
+      if (nm->limit_neighbor_cache_size &&
+	  pool_elts (nm->neighbor_pool) >= nm->limit_neighbor_cache_size)
+	{
+	  n = force_reuse_neighbor_entry ();
+	  if (NULL == n)
+	    return -2;
+	}
+      else
+	pool_get (nm->neighbor_pool, n);
+
       mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
 		 /* old value */ 0);
       n->key = k;
@@ -805,9 +826,15 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   /* Update time stamp and flags. */
   n->time_last_updated = vlib_time_now (vm);
   if (is_static)
-    n->flags |= IP6_NEIGHBOR_FLAG_STATIC;
+    {
+      n->flags |= IP6_NEIGHBOR_FLAG_STATIC;
+      n->flags &= ~IP6_NEIGHBOR_FLAG_DYNAMIC;
+    }
   else
-    n->flags |= IP6_NEIGHBOR_FLAG_DYNAMIC;
+    {
+      n->flags |= IP6_NEIGHBOR_FLAG_DYNAMIC;
+      n->flags &= ~IP6_NEIGHBOR_FLAG_STATIC;
+    }
 
   adj_nbr_walk_nh6 (sw_if_index,
 		    &n->key.ip6_address, ip6_nd_mk_complete_walk, n);
@@ -894,26 +921,13 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
     }
 
   n = pool_elt_at_index (nm->neighbor_pool, p[0]);
-  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
 
   adj_nbr_walk_nh6 (sw_if_index,
 		    &n->key.ip6_address, ip6_nd_mk_incomplete_walk, NULL);
+  ip6_neighbor_adj_fib_remove
+    (n, ip6_fib_table_get_index_for_sw_if_index (sw_if_index));
 
-
-  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
-    {
-      fib_prefix_t pfx = {
-	.fp_len = 128,
-	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr.ip6 = n->key.ip6_address,
-      };
-      fib_table_entry_path_remove
-	(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
-	 &pfx,
-	 FIB_SOURCE_ADJ,
-	 DPO_PROTO_IP6,
-	 &pfx.fp_addr, n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
-    }
+  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
   pool_put (nm->neighbor_pool, n);
 
 out:
@@ -1202,11 +1216,6 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
 			    !ip6_sadd_unspecified))
 	    {
-	      ip6_neighbor_main_t *nm = &ip6_neighbor_main;
-	      if (nm->limit_neighbor_cache_size &&
-		  pool_elts (nm->neighbor_pool) >=
-		  nm->limit_neighbor_cache_size)
-		unset_random_neighbor_entry ();
 	      vnet_set_ip6_ethernet_neighbor (vm, sw_if_index0,
 					      is_solicitation ?
 					      &ip0->src_address :
@@ -1544,12 +1553,6 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
 			    !is_unspecified && !is_link_local))
 	    {
-	      ip6_neighbor_main_t *nm = &ip6_neighbor_main;
-	      if (nm->limit_neighbor_cache_size &&
-		  pool_elts (nm->neighbor_pool) >=
-		  nm->limit_neighbor_cache_size)
-		unset_random_neighbor_entry ();
-
 	      vnet_set_ip6_ethernet_neighbor (vm, sw_if_index0,
 					      &ip0->src_address,
 					      o0->ethernet_address,

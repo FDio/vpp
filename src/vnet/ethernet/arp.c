@@ -545,6 +545,62 @@ arp_adj_fib_add (ethernet_arp_ip4_entry_t * e, u32 fib_index)
   fib_table_lock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_ADJ);
 }
 
+void
+arp_adj_fib_remove (ethernet_arp_ip4_entry_t * e, u32 fib_index)
+{
+  if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
+    {
+      fib_prefix_t pfx = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr.ip4 = e->ip4_address,
+      };
+      u32 fib_index;
+
+      fib_index = ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
+
+      fib_table_entry_path_remove (fib_index, &pfx,
+				   FIB_SOURCE_ADJ,
+				   DPO_PROTO_IP4,
+				   &pfx.fp_addr,
+				   e->sw_if_index, ~0, 1,
+				   FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_ADJ);
+    }
+}
+
+static ethernet_arp_ip4_entry_t *
+force_reuse_arp_entry (void)
+{
+  ethernet_arp_ip4_entry_t *e;
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  u32 count = 0;
+  u32 index = pool_next_index (am->ip4_entry_pool, am->arp_delete_rotor);
+  if (index == ~0)		/* Try again from elt 0 */
+    index = pool_next_index (am->ip4_entry_pool, index);
+
+  /* Find a non-static random entry to free up for reuse */
+  do
+    {
+      if ((count++ == 100) || (index == ~0))
+	return NULL;		/* give up after 100 entries */
+      e = pool_elt_at_index (am->ip4_entry_pool, index);
+      am->arp_delete_rotor = index;
+      index = pool_next_index (am->ip4_entry_pool, index);
+    }
+  while (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC);
+
+  /* Remove ARP entry from its interface and update fib */
+  hash_unset
+    (am->ethernet_arp_by_sw_if_index[e->sw_if_index].arp_entries,
+     e->ip4_address.as_u32);
+  arp_adj_fib_remove
+    (e, ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index));
+  adj_nbr_walk_nh4 (e->sw_if_index,
+		    &e->ip4_address, arp_mk_incomplete_walk, NULL);
+  return e;
+}
+
 static int
 vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 					 vnet_arp_set_ip4_over_ethernet_rpc_args_t
@@ -582,12 +638,18 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   if (make_new_arp_cache_entry)
     {
-      pool_get (am->ip4_entry_pool, e);
+      if (am->limit_arp_cache_size &&
+	  pool_elts (am->ip4_entry_pool) >= am->limit_arp_cache_size)
+	{
+	  e = force_reuse_arp_entry ();
+	  if (NULL == e)
+	    return -2;
+	}
+      else
+	pool_get (am->ip4_entry_pool, e);
 
       if (NULL == arp_int->arp_entries)
-	{
-	  arp_int->arp_entries = hash_create (0, sizeof (u32));
-	}
+	arp_int->arp_entries = hash_create (0, sizeof (u32));
 
       hash_set (arp_int->arp_entries, a->ip4.as_u32, e - am->ip4_entry_pool);
 
@@ -820,38 +882,6 @@ typedef enum
     ETHERNET_ARP_N_ERROR,
 } ethernet_arp_input_error_t;
 
-
-static void
-unset_random_arp_entry (void)
-{
-  ethernet_arp_main_t *am = &ethernet_arp_main;
-  ethernet_arp_ip4_entry_t *e;
-  vnet_main_t *vnm = vnet_get_main ();
-  ethernet_arp_ip4_over_ethernet_address_t delme;
-  u32 index;
-
-  index = pool_next_index (am->ip4_entry_pool, am->arp_delete_rotor);
-  am->arp_delete_rotor = index;
-
-  /* Try again from elt 0, could happen if an intfc goes down */
-  if (index == ~0)
-    {
-      index = pool_next_index (am->ip4_entry_pool, am->arp_delete_rotor);
-      am->arp_delete_rotor = index;
-    }
-
-  /* Nothing left in the pool */
-  if (index == ~0)
-    return;
-
-  e = pool_elt_at_index (am->ip4_entry_pool, index);
-
-  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
-  delme.ip4.as_u32 = e->ip4_address.as_u32;
-
-  vnet_arp_unset_ip4_over_ethernet (vnm, e->sw_if_index, &delme);
-}
-
 static int
 arp_unnumbered (vlib_buffer_t * p0,
 		u32 input_sw_if_index, u32 conn_sw_if_index)
@@ -881,10 +911,6 @@ static u32
 arp_learn (vnet_main_t * vnm,
 	   ethernet_arp_main_t * am, u32 sw_if_index, void *addr)
 {
-  if (am->limit_arp_cache_size &&
-      pool_elts (am->ip4_entry_pool) >= am->limit_arp_cache_size)
-    unset_random_arp_entry ();
-
   vnet_arp_set_ip4_over_ethernet (vnm, sw_if_index, addr, 0, 0);
   return (ETHERNET_ARP_ERROR_l3_src_address_learned);
 }
@@ -1641,30 +1667,6 @@ arp_add_del_interface_address (ip4_main_t * im,
     }
 }
 
-void
-arp_adj_fib_remove (ethernet_arp_ip4_entry_t * e, u32 fib_index)
-{
-  if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
-    {
-      fib_prefix_t pfx = {
-	.fp_len = 32,
-	.fp_proto = FIB_PROTOCOL_IP4,
-	.fp_addr.ip4 = e->ip4_address,
-      };
-      u32 fib_index;
-
-      fib_index = ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
-
-      fib_table_entry_path_remove (fib_index, &pfx,
-				   FIB_SOURCE_ADJ,
-				   DPO_PROTO_IP4,
-				   &pfx.fp_addr,
-				   e->sw_if_index, ~0, 1,
-				   FIB_ROUTE_PATH_FLAG_NONE);
-      fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_ADJ);
-    }
-}
-
 static void
 arp_table_bind (ip4_main_t * im,
 		uword opaque,
@@ -1761,9 +1763,8 @@ arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
-  arp_adj_fib_remove (e,
-		      ip4_fib_table_get_index_for_sw_if_index
-		      (e->sw_if_index));
+  arp_adj_fib_remove
+    (e, ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index));
   hash_unset (eai->arp_entries, e->ip4_address.as_u32);
   pool_put (am->ip4_entry_pool, e);
 }
@@ -1786,10 +1787,9 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   if (NULL != e)
     {
-      arp_entry_free (eai, e);
-
       adj_nbr_walk_nh4 (e->sw_if_index,
 			&e->ip4_address, arp_mk_incomplete_walk, NULL);
+      arp_entry_free (eai, e);
     }
 
   return 0;
