@@ -299,8 +299,9 @@ typedef struct _tcp_connection
   u32 rto_boff;		/**< Index for RTO backoff */
   u32 srtt;		/**< Smoothed RTT */
   u32 rttvar;		/**< Smoothed mean RTT difference. Approximates variance */
-  u32 rtt_ts;		/**< Timestamp for tracked ACK */
   u32 rtt_seq;		/**< Sequence number for tracked ACK */
+  f64 rtt_ts;		/**< Timestamp for tracked ACK */
+  f64 mrtt_us;		/**< High precision mrtt from tracked acks */
 
   u16 mss;		/**< Our max seg size that includes options */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
@@ -371,7 +372,15 @@ typedef struct _tcp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
+
+  /** Time as measured by tcp that's used for timestamps */
   u32 *time_now;
+
+  /** Our approximation of a "complete" dispatch loop period */
+  f64 *dispatch_period;
+
+  /** vlib_time_now last time around the track */
+  f64 *last_vlib_time;
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -659,6 +668,12 @@ tcp_time_now (void)
   return tcp_main.time_now[vlib_get_thread_index ()];
 }
 
+always_inline f64
+tcp_time_now_us (void)
+{
+  return vlib_time_now (vlib_get_main ());
+}
+
 always_inline u32
 tcp_set_time_now (u32 thread_index)
 {
@@ -677,6 +692,7 @@ void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
 void tcp_init_snd_vars (tcp_connection_t * tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
+void tcp_update_pace_and_burst_size (tcp_connection_t *tc);
 
 always_inline void
 tcp_connection_force_ack (tcp_connection_t * tc, vlib_buffer_t * b)

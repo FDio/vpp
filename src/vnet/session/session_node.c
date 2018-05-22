@@ -380,7 +380,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
-  ctx->snd_space = ctx->transport_vft->send_space (ctx->tc);
+//  ctx->snd_space = ctx->transport_vft->send_space (ctx->tc);
+  ctx->snd_space = transport_connection_max_burst (ctx->tc,
+	                                           vm->clib_time.last_cpu_time);
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
       vec_add1 (smm->pending_event_vector[thread_index], *e);
@@ -498,6 +500,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
   *n_tx_packets += ctx->n_segs_per_evt;
+  transport_connection_update_stats (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   /* If we couldn't dequeue all bytes mark as partially read */
