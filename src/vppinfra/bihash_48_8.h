@@ -69,10 +69,26 @@ format_bihash_kvp_48_8 (u8 * s, va_list * args)
 }
 
 static inline int
-clib_bihash_key_compare_48_8 (const u64 * a, const u64 * b)
+clib_bihash_key_compare_48_8 (u64 * a, u64 * b)
 {
+#if defined (CLIB_HAVE_VEC512)
+  u64x8 v = u64x8_load_unaligned (a) ^ u64x8_load_unaligned (b);
+  return (u64x8_is_zero_mask (v) & 0x3f) == 0;
+#elif defined (CLIB_HAVE_VEC256)
+  u64x4 v;
+  v = u64x4_load_unaligned (a) ^ u64x4_load_unaligned (b);
+  v |= u64x4_load_unaligned (a + 2) ^ u64x4_load_unaligned (b + 2);
+  return u64x4_is_all_zero (v);
+#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  u64x2 v;
+  v = u64x2_load_unaligned (a) ^ u64x2_load_unaligned (b);
+  v |= u64x2_load_unaligned (a + 2) ^ u64x2_load_unaligned (b + 2);
+  v |= u64x2_load_unaligned (a + 4) ^ u64x2_load_unaligned (b + 4);
+  return u64x2_is_all_zero (v);
+#else
   return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2]) | (a[3] ^ b[3])
 	  | (a[4] ^ b[4]) | (a[5] ^ b[5])) == 0;
+#endif
 }
 
 #undef __included_bihash_template_h__
