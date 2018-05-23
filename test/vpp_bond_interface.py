@@ -14,8 +14,6 @@ class VppBondInterface(VppInterface):
         self.lb = lb
         self.use_custom_mac = use_custom_mac
         self.mac_address = mac_address
-        self._sw_if_index = 0
-        super(VppBondInterface, self).__init__(test)
 
     def add_vpp_config(self):
         r = self.test.vapi.bond_create(self.mode,
@@ -23,6 +21,7 @@ class VppBondInterface(VppInterface):
                                        self.use_custom_mac,
                                        self.mac_address)
         self._sw_if_index = r.sw_if_index
+        super(VppBondInterface, self).__init__(self._test)
 
     def remove_vpp_config(self):
         self.test.vapi.bond_delete(self.sw_if_index)

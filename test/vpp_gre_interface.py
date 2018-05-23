@@ -11,8 +11,6 @@ class VppGreInterface(VppInterface):
     def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, type=0,
                  session=0):
         """ Create VPP GRE interface """
-        self._sw_if_index = 0
-        super(VppGreInterface, self).__init__(test)
         self._test = test
         self.t_src = src_ip
         self.t_dst = dst_ip
@@ -29,7 +27,8 @@ class VppGreInterface(VppInterface):
                                               session_id=self.t_session)
         self._sw_if_index = r.sw_if_index
         self.generate_remote_hosts()
-        self._test.registry.register(self, self._test.logger)
+        self.test.registry.register(self, self.test.logger)
+        super(VppGreInterface, self).__init__(self.test)
 
     def remove_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET, self.t_src)
@@ -45,7 +44,7 @@ class VppGreInterface(VppInterface):
         return self.object_id()
 
     def object_id(self):
-        return "gre-%d" % self._sw_if_index
+        return "gre-%d" % self.sw_if_index
 
 
 class VppGre6Interface(VppInterface):
@@ -56,8 +55,6 @@ class VppGre6Interface(VppInterface):
     def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, type=0,
                  session=0):
         """ Create VPP GRE interface """
-        self._sw_if_index = 0
-        super(VppGre6Interface, self).__init__(test)
         self._test = test
         self.t_src = src_ip
         self.t_dst = dst_ip
@@ -75,7 +72,8 @@ class VppGre6Interface(VppInterface):
                                               is_ip6=1)
         self._sw_if_index = r.sw_if_index
         self.generate_remote_hosts()
-        self._test.registry.register(self, self._test.logger)
+        self.test.registry.register(self, self.test.logger)
+        super(VppGre6Interface, self).__init__(self.test)
 
     def remove_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET6, self.t_src)
