@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2c6698df_8f26435a",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-05-23T09:52:18Z",
+      "side": 1,
+      "message": "In my opinion if LIBRTE_MRVL_PMD is enabled in DPDK then musk plugin has to be disabled.",
+      "range": {
+        "startLine": 303,
+        "startChar": 0,
+        "endLine": 303,
+        "endChar": 46
+      },
+      "revId": "d35a64424c96bbf51fe7c5eac02cad710e87effb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
