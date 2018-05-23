@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14735266_fb4b39e2",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-23T13:18:55Z",
+      "side": 1,
+      "message": "The output sw_if_index is not saved correctly in the trace buffer.",
+      "range": {
+        "startLine": 415,
+        "startChar": 24,
+        "endLine": 415,
+        "endChar": 35
+      },
+      "revId": "a8f98486b2bf4a72eafb3a6bb91ccbe86d06d568",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
