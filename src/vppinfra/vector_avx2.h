@@ -64,29 +64,34 @@ u32x8_permute (u32x8 v, u32x8 idx)
   return (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);
 }
 
-always_inline u32x4
-u32x8_extract_lo (u32x8 v)
-{
-  return (u32x4) _mm256_extracti128_si256 ((__m256i) v, 0);
-}
+/* _extract_lo, _extract_hi */
+/* *INDENT-OFF* */
+#define _(t1,t2) \
+always_inline t1							\
+t2##_extract_lo (t2 v)							\
+{ return (t1) _mm256_extracti128_si256 ((__m256i) v, 0); }		\
+\
+always_inline t1							\
+t2##_extract_hi (t2 v)							\
+{ return (t1) _mm256_extracti128_si256 ((__m256i) v, 1); }		\
+\
+always_inline t2							\
+t2##_insert_lo (t2 v1, t1 v2)						\
+{ return (t2) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 0); }\
+\
+always_inline t2							\
+t2##_insert_hi (t2 v1, t1 v2)						\
+{ return (t2) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 1); }\
 
-always_inline u32x4
-u32x8_extract_hi (u32x8 v)
-{
-  return (u32x4) _mm256_extracti128_si256 ((__m256i) v, 1);
-}
+_(u8x16, u8x32)
+_(u16x8, u16x16)
+_(u32x4, u32x8)
+_(u64x2, u64x4)
+#undef _
+/* *INDENT-ON* */
 
-always_inline u32x8
-u32x8_insert_lo (u32x8 v1, u32x4 v2)
-{
-  return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 0);
-}
 
-always_inline u32x8
-u32x8_insert_hi (u32x8 v1, u32x4 v2)
-{
-  return (u32x8) _mm256_inserti128_si256 ((__m256i) v1, (__m128i) v2, 1);
-}
+
 
 static_always_inline u32
 u8x32_msb_mask (u8x32 v)
