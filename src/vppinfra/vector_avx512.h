@@ -28,7 +28,7 @@
   _(f,32,8,ps) _(f,64,4,pd)
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
-   is_all_equal */
+   is_all_equal, is_zero_mask */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
 t##s##x##c##_splat (t##s x)						\
@@ -53,6 +53,11 @@ t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
 { return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
+\
+static_always_inline u##c						\
+t##s##x##c##_is_zero_mask (t##s##x##c v)				\
+{ return _mm512_test_##i##_mask ((__m512i) v, (__m512i) v); }		\
+
 
 foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
