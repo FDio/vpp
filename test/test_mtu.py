@@ -165,16 +165,22 @@ class TestMTU(VppTestCase):
         self.validate(reass_pkt, p4_reply)
         '''
         # Reset MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, current_mtu)
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       current_mtu + mtu_offset)
 
-    @unittest.skip("Enable when IPv6 fragmentation is added")
     def test_ip6_mtu(self):
         """ IP6 MTU test """
+
+        #
+        # TODO: Link MTU is 216 bytes 'off'. Fix when L3 MTU patches committed
+        #
+        mtu_offset = 216
+        current_mtu = self.get_mtu(self.pg1.sw_if_index)
+        current_mtu -= mtu_offset
 
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip6 = IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
 
-        current_mtu = self.get_mtu(self.pg1.sw_if_index)
         p_payload = UDP(sport=1234, dport=1234) / self.payload(
             current_mtu - 40 - 8)
 
@@ -186,8 +192,8 @@ class TestMTU(VppTestCase):
             self.validate(p[1], p6_reply)
 
         # MTU (only checked on encap)
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, 1280)
-        self.assertEqual(1280, self.get_mtu(self.pg1.sw_if_index))
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, 1280 + mtu_offset)
+        self.assertEqual(1280, self.get_mtu(self.pg1.sw_if_index) - mtu_offset)
 
         # Should fail. Too large MTU
         p_icmp6 = ICMPv6PacketTooBig(mtu=1280, cksum=0x4c7a)
