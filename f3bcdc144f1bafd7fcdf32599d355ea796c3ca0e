@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "206b4256_6a6441be",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-23T20:56:01Z",
+      "side": 1,
+      "message": "Typo",
+      "range": {
+        "startLine": 174,
+        "startChar": 53,
+        "endLine": 174,
+        "endChar": 57
+      },
+      "revId": "f3bcdc144f1bafd7fcdf32599d355ea796c3ca0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
