@@ -1561,6 +1561,19 @@ typedef enum
  */
 #define IP6_MCAST_ADDR_MASK 0xffffffff
 
+always_inline void
+ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
+	       u16 adj_packet_bytes, u32 * next, u32 * error)
+{
+  if (adj_packet_bytes >= 1280 && packet_bytes > adj_packet_bytes)
+    {
+      *error = IP6_ERROR_MTU_EXCEEDED;
+      icmp6_error_set_vnet_buffer (b, ICMP6_packet_too_big, 0,
+				   adj_packet_bytes);
+      *next = IP6_REWRITE_NEXT_ICMP_ERROR;
+    }
+}
+
 always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -1706,16 +1719,14 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  error0 =
-	    (vlib_buffer_length_in_chain (vm, p0) >
-	     adj0[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error0);
-	  error1 =
-	    (vlib_buffer_length_in_chain (vm, p1) >
-	     adj1[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error1);
+	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
+			 sizeof (ip6_header_t),
+			 adj0[0].rewrite_header.max_l3_packet_bytes,
+			 &next0, &error0);
+	  ip6_mtu_check (p1, clib_net_to_host_u16 (ip1->payload_length) +
+			 sizeof (ip6_header_t),
+			 adj1[0].rewrite_header.max_l3_packet_bytes,
+			 &next1, &error1);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP headerr */
@@ -1849,14 +1860,13 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  error0 =
-	    (vlib_buffer_length_in_chain (vm, p0) >
-	     adj0[0].
-	     rewrite_header.max_l3_packet_bytes ? IP6_ERROR_MTU_EXCEEDED :
-	     error0);
+	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
+			 sizeof (ip6_header_t),
+			 adj0[0].rewrite_header.max_l3_packet_bytes,
+			 &next0, &error0);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
-	   * wants to see the IP headerr */
+	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
 	      p0->current_data -= rw_len0;

@@ -292,8 +292,8 @@ gre6_fixup (vlib_main_t * vm,
   /* Fixup the payload length field in the GRE tunnel encap that was applied
    * at the midchain node */
   ip0->payload_length =
-    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0))
-    - sizeof (*ip0);
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+			  sizeof (*ip0));
 }
 
 void

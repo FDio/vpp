@@ -526,13 +526,15 @@ ip6_icmp_error (vlib_main_t * vm,
 		  b->current_length = 0;
 		}
 	    }
-	  p0->current_length =
-	    p0->current_length > 1280 ? 1280 : p0->current_length;
 
 	  /* Add IP header and ICMPv6 header including a 4 byte data field */
 	  vlib_buffer_advance (p0,
 			       -sizeof (ip6_header_t) -
 			       sizeof (icmp46_header_t) - 4);
+
+	  p0->current_length =
+	    p0->current_length > 1280 ? 1280 : p0->current_length;
+
 	  out_ip0 = vlib_buffer_get_current (p0);
 	  icmp0 = (icmp46_header_t *) & out_ip0[1];
 
