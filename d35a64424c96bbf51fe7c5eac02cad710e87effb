@@ -22,6 +22,30 @@
       "revId": "d35a64424c96bbf51fe7c5eac02cad710e87effb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6113465f_69a184e7",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 996
+      },
+      "writtenOn": "2018-05-23T10:39:04Z",
+      "side": 1,
+      "message": "I bielieve it can be done, I don\u0027t necessarily understand why? Can\u0027t one want to have Marvell DPDK and Musdk plugin compiled at the same time? They can be disabled at runtime,\nboth work on the same platform.",
+      "parentUuid": "2c6698df_8f26435a",
+      "range": {
+        "startLine": 303,
+        "startChar": 0,
+        "endLine": 303,
+        "endChar": 46
+      },
+      "revId": "d35a64424c96bbf51fe7c5eac02cad710e87effb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
