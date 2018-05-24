@@ -389,6 +389,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     {
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_CLOSED:
       return tcp_make_established_options (tc, opts);
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
@@ -1337,8 +1338,9 @@ done:
  * Reset congestion control, switch cwnd to loss window and try again.
  */
 static void
-tcp_rtx_timeout_cc (tcp_connection_t * tc)
+tcp_rxt_timeout_cc (tcp_connection_t * tc)
 {
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 6);
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
@@ -1383,6 +1385,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
 
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
+
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
       /* Lost FIN, retransmit and return */
@@ -1414,12 +1418,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
-	tcp_rtx_timeout_cc (tc);
+	tcp_rxt_timeout_cc (tc);
 
       tc->snd_una_max = tc->snd_nxt = tc->snd_una;
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
-
-      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
       /* Send one segment. Note that n_bytes may be zero due to buffer shortfall  */
       n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
@@ -1627,7 +1629,7 @@ void
 tcp_fast_retransmit_sack (tcp_connection_t * tc)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u32 n_written = 0, offset, max_bytes;
+  u32 n_written = 0, offset, max_bytes, n_segs = 0;
   vlib_buffer_t *b = 0;
   sack_scoreboard_hole_t *hole;
   sack_scoreboard_t *sb;
@@ -1636,14 +1638,17 @@ tcp_fast_retransmit_sack (tcp_connection_t * tc)
   u8 snd_limited = 0, can_rescue = 0;
 
   ASSERT (tcp_in_fastrecovery (tc));
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
 
   old_snd_nxt = tc->snd_nxt;
   sb = &tc->sack_sb;
-  snd_space = tcp_available_snd_space (tc);
+  snd_space = tcp_available_cc_snd_space (tc);
 
+  if (snd_space < tc->snd_mss)
+    goto done;
+
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
-  while (hole && snd_space > 0)
+  while (hole && snd_space > 0 && n_segs++ < VLIB_FRAME_SIZE)
     {
       hole = scoreboard_next_rxt_hole (sb, hole,
 				       tcp_fastrecovery_sent_1_smss (tc),
@@ -1717,7 +1722,7 @@ tcp_fast_retransmit_no_sack (tcp_connection_t * tc)
   /* Start resending from first un-acked segment */
   old_snd_nxt = tc->snd_nxt;
   tc->snd_nxt = tc->snd_una;
-  snd_space = tcp_available_snd_space (tc);
+  snd_space = tcp_available_cc_snd_space (tc);
 
   while (snd_space > 0)
     {
@@ -1743,8 +1748,7 @@ tcp_fast_retransmit_no_sack (tcp_connection_t * tc)
 void
 tcp_fast_retransmit (tcp_connection_t * tc)
 {
-  if (tcp_opts_sack_permitted (&tc->rcv_opts)
-      && scoreboard_first_hole (&tc->sack_sb))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_fast_retransmit_sack (tc);
   else
     tcp_fast_retransmit_no_sack (tc);

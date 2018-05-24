@@ -41,8 +41,8 @@ newreno_rcv_ack (tcp_connection_t * tc)
       if (tc->cwnd_acc_bytes >= tc->cwnd)
 	{
 	  u32 inc = tc->cwnd_acc_bytes / tc->cwnd;
-	  tc->cwnd += inc * tc->snd_mss;
 	  tc->cwnd_acc_bytes -= inc * tc->cwnd;
+	  tc->cwnd += inc * tc->snd_mss;
 	}
       tc->cwnd = clib_min (tc->cwnd,
 			   transport_tx_fifo_size (&tc->connection));
