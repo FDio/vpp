@@ -13,17 +13,46 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+/**
+ * The IPIP module implements IP{v4,v6} over IP{v4,v6} tunnelling as
+ * described in RFC2473 and to some extent the largely historical
+ * RFC1853.  The module also supports an IPv4 over IPv6 automatic
+ * tunnelling mechanism called 6RD (RFC5969).
+ *
+ * The IPIP API module supports a CRD model for adding, deleting and
+ * listing tunnels. A tunnel is represented as an interface in
+ * VPP. The "handle" representing a tunnel is the sw_if_index.  As any
+ * interface, the user must configure an IPv4 and/or IPv6 address on
+ * the interface. This is the inner or payload protocol.
+ *
+ * Tunnel MTU: The tunnel MTU (the payload MTU) is configurable per
+ * protocol. If a tunnel MTU is larger than the path MTU, the outer
+ * packet will be fragmented. Fragmentation support is configurable,
+ * as it can have severe performance issues, and might be used as an
+ * attack vector (the remote side must reassemble.)
+ *
+ * Traffic class / TOS field can either be configured to a fixed
+ * value, or can be copied from the inner to the outer header.
+ * (For now we have stolen ~0 to indicate copy).
+ *
+ * Note:
+ *
+ * - The Tunnel encapsulation limit described in RFC2473 is not
+ *   implemented.
+ *
+ * - ICMP proxying, as in a tunnel head-end receiving ICMP erors on
+ *   the outer packet is currently not relayed to the original source
+ *   of the packet.
+ *
+ * - PMTUD / MTU probing and tunnel keepalives are not yet implemented.
+ *
+ */
 
-/** \brief Create or delete an IPIP tunnel
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_ipv6 - Use 0 for IPv4, 1 for IPv6
-    @param instance - optional unique custom device instance, else ~0.
-    @param src_address - Source IP address
-    @param dst_address - Destination IP address, can be multicast
-    @param fib_index - Encap FIB table ID
-*/
+option version = "1.1.0";
+
+/**
+ * Create an IP{v4,v6} over IP{v4,v6} tunnel.
+ */
 define ipip_add_tunnel
 {
   u32 client_index;
@@ -33,6 +62,8 @@ define ipip_add_tunnel
   u8 src_address[16];
   u8 dst_address[16];
   u32 fib_index;
+  u8 tc_tos;		/* If ~0, the TOS/TC value is copied from
+			   inner packet, otherwise set to value */
 };
 
 define ipip_add_tunnel_reply
@@ -42,6 +73,9 @@ define ipip_add_tunnel_reply
   u32 sw_if_index;
 };
 
+/**
+ * Delete an IP{v4,v6} over IP{v4,v6} tunnel.
+ */
 autoreply define ipip_del_tunnel
 {
   u32 client_index;
@@ -49,6 +83,9 @@ autoreply define ipip_del_tunnel
   u32 sw_if_index;
 };
 
+/**
+ * Create an IPv4 over IPv6 automatic tunnel (6RD)
+ */
 define ipip_6rd_add_tunnel
 {
   u32 client_index;
@@ -60,6 +97,8 @@ define ipip_6rd_add_tunnel
   u8 ip6_prefix_len;
   u8 ip4_prefix_len;
   u8 security_check;
+  u8 tc_tos;		/* If ~0, the TOS/TC value is copied from
+			   inner packet, otherwise set to value */
 };
 
 define ipip_6rd_add_tunnel_reply
@@ -69,6 +108,9 @@ define ipip_6rd_add_tunnel_reply
   u32 sw_if_index;
 };
 
+/**
+ * Delete an IPv4 over IPv6 automatic tunnel (6RD)
+ */
 autoreply define ipip_6rd_del_tunnel
 {
   u32 client_index;
@@ -76,6 +118,9 @@ autoreply define ipip_6rd_del_tunnel
   u32 sw_if_index;
 };
 
+/**
+ * List all IPIP tunnels
+ */
 define ipip_tunnel_dump
 {
   u32 client_index;
@@ -92,6 +137,7 @@ define ipip_tunnel_details
   u8 src_address[16];
   u8 dst_address[16];
   u32 fib_index;
+  u8 tc_tos;
 };
 
 /*
