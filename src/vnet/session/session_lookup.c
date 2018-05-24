@@ -376,6 +376,8 @@ session_lookup_del_session (stream_session_t * s)
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *ts;
   ts = tp_vfts[tp].get_connection (s->connection_index, s->thread_index);
+  if (!ts)
+    return -1;
   return session_lookup_del_connection (ts);
 }
 
