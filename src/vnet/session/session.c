@@ -774,7 +774,7 @@ stream_session_reset_notify (transport_connection_t * tc)
   stream_session_t *s;
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
-
+  s->session_state = SESSION_STATE_CLOSED;
   app = application_get (s->app_index);
   app->cb_fns.session_reset_callback (s);
 }
