@@ -333,8 +333,8 @@ tcp_connection_close (tcp_connection_t * tc)
       tc->state = TCP_STATE_FIN_WAIT_1;
       break;
     case TCP_STATE_CLOSE_WAIT:
-      tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
+      tcp_connection_timers_reset (tc);
       tc->state = TCP_STATE_LAST_ACK;
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
       break;
