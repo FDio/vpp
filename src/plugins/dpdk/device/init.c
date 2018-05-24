@@ -37,6 +37,8 @@
 
 #include <dpdk/device/dpdk_priv.h>
 
+#define ETHER_MAX_LEN   1518  /**< Maximum frame len, including CRC. */
+
 dpdk_main_t dpdk_main;
 dpdk_config_main_t dpdk_config_main;
 
@@ -692,6 +694,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
       else
 	clib_warning ("hi NULL");
+
+      if (dm->conf->no_multi_seg)
+	mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
 
       rte_eth_dev_set_mtu (xd->device_index, mtu);
     }
