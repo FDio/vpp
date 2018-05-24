@@ -119,7 +119,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FAST_RECOVERY, "Fast Recovery")		\
   _(FR_1_SMSS, "Sent 1 SMSS")			\
   _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")
+  _(FINPNDG, "FIN pending")			\
+  _(FR_2_SMSS, "Reset last 2 SMSS")		\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -327,6 +328,7 @@ struct _tcp_cc_algorithm
 #define tcp_fastrecovery_sent_1_smss(tc) ((tc)->flags & TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_on(tc) ((tc)->flags |= TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_off(tc) ((tc)->flags &= ~TCP_CONN_FR_1_SMSS)
+#define tcp_fastrecovery_2_smss_off(tc) ((tc)->flags &= ~TCP_CONN_FR_2_SMSS)
 
 #define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
 	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
@@ -617,7 +619,7 @@ tcp_available_output_snd_space (const tcp_connection_t * tc)
  * Estimate of how many bytes we can still push into the network
  */
 always_inline u32
-tcp_available_snd_space (const tcp_connection_t * tc)
+tcp_available_cc_snd_space (const tcp_connection_t * tc)
 {
   u32 available_wnd = tcp_available_snd_wnd (tc);
   u32 flight_size = tcp_flight_size (tc);
@@ -652,6 +654,7 @@ fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+u32 tcp_sack_list_bytes (tcp_connection_t *tc);
 
 always_inline u32
 tcp_time_now (void)
@@ -791,7 +794,6 @@ tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 void
 scoreboard_remove_hole (sack_scoreboard_t * sb,
 			sack_scoreboard_hole_t * hole);
-void scoreboard_update_lost (tcp_connection_t * tc, sack_scoreboard_t * sb);
 sack_scoreboard_hole_t *scoreboard_insert_hole (sack_scoreboard_t * sb,
 						u32 prev_index, u32 start,
 						u32 end);
