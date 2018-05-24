@@ -67,72 +67,6 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
   return it_has;
 }
 
-/* Session keys match the packets received, and mirror the packets sent */
-always_inline u32
-acl_make_5tuple_session_key (acl_main_t * am, int is_input, int is_ip6,
-			     u32 sw_if_index, fa_5tuple_t * p5tuple_pkt,
-			     fa_5tuple_t * p5tuple_sess)
-{
-  int src_index = is_input ? 0 : 1;
-  int dst_index = is_input ? 1 : 0;
-  u32 valid_new_sess = 1;
-  p5tuple_sess->addr[src_index] = p5tuple_pkt->addr[0];
-  p5tuple_sess->addr[dst_index] = p5tuple_pkt->addr[1];
-  p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
-
-  if (PREDICT_TRUE (p5tuple_pkt->l4.proto != icmp_protos[is_ip6]))
-    {
-      p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
-      p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
-    }
-  else
-    {
-      static const u8 *icmp_invmap[] = { icmp4_invmap, icmp6_invmap };
-      static const u8 *icmp_valid_new[] =
-	{ icmp4_valid_new, icmp6_valid_new };
-      static const u8 icmp_invmap_size[] = { sizeof (icmp4_invmap),
-	sizeof (icmp6_invmap)
-      };
-      static const u8 icmp_valid_new_size[] = { sizeof (icmp4_valid_new),
-	sizeof (icmp6_valid_new)
-      };
-      int type =
-	is_ip6 ? p5tuple_pkt->l4.port[0] - 128 : p5tuple_pkt->l4.port[0];
-
-      p5tuple_sess->l4.port[0] = p5tuple_pkt->l4.port[0];
-      p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[1];
-
-      /*
-       * Invert ICMP type for valid icmp_invmap messages:
-       *  1) input node with outbound ACL interface
-       *  2) output node with inbound ACL interface
-       *
-       */
-      if ((is_input && acl_fa_ifc_has_out_acl (am, sw_if_index)) ||
-	  (!is_input && acl_fa_ifc_has_in_acl (am, sw_if_index)))
-	{
-	  if (type >= 0 &&
-	      type <= icmp_invmap_size[is_ip6] && icmp_invmap[is_ip6][type])
-	    {
-	      p5tuple_sess->l4.port[0] = icmp_invmap[is_ip6][type] - 1;
-	    }
-	}
-
-      /*
-       * ONLY ICMP messages defined in icmp4_valid_new/icmp6_valid_new table
-       * are allowed to create stateful ACL.
-       * The other messages will be forwarded without creating a reflexive ACL.
-       */
-      if (type < 0 ||
-	  type > icmp_valid_new_size[is_ip6] || !icmp_valid_new[is_ip6][type])
-	{
-	  valid_new_sess = 0;
-	}
-    }
-
-  return valid_new_sess;
-}
-
 always_inline int
 fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 {
@@ -316,6 +250,100 @@ acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return 3;
 }
 
+always_inline u64
+reverse_l4_u64_fastpath (u64 l4, int is_ip6)
+{
+  fa_session_l4_key_t l4i = {.as_u64 = l4 };
+  fa_session_l4_key_t l4o;
+
+  l4o.port[1] = l4i.port[0];
+  l4o.port[0] = l4i.port[1];
+
+  l4o.non_port_l4_data = l4i.non_port_l4_data;
+  l4o.is_input = 1 - l4i.is_input;
+  return l4o.as_u64;
+}
+
+always_inline u64
+reverse_l4_u64_slowpath (u64 l4, int is_ip6)
+{
+  fa_session_l4_key_t l4i = {.as_u64 = l4 };
+  fa_session_l4_key_t l4o;
+
+  if (l4i.proto == icmp_protos[is_ip6])
+    {
+      static const u8 *icmp_invmap[] = { icmp4_invmap, icmp6_invmap };
+      static const u8 *icmp_valid_new[] =
+	{ icmp4_valid_new, icmp6_valid_new };
+      static const u8 icmp_invmap_size[] = { sizeof (icmp4_invmap),
+	sizeof (icmp6_invmap)
+      };
+      static const u8 icmp_valid_new_size[] = { sizeof (icmp4_valid_new),
+	sizeof (icmp6_valid_new)
+      };
+      int type = is_ip6 ? l4i.port[0] - 128 : l4i.port[0];
+
+      l4o.non_port_l4_data = l4i.non_port_l4_data;
+      l4o.port[0] = l4i.port[0];
+      l4o.port[1] = l4i.port[1];
+
+
+      /*
+       * ONLY ICMP messages defined in icmp4_valid_new/icmp6_valid_new table
+       * are allowed to create stateful ACL.
+       * The other messages will be forwarded without creating a reverse session.
+       */
+
+      if (type >= 0 && (type <= icmp_valid_new_size[is_ip6])
+	  && (icmp_valid_new[is_ip6][type])
+	  && (type <= icmp_invmap_size[is_ip6]) && icmp_invmap[is_ip6][type])
+	{
+	  /*
+	   * we set the inverse direction and correct the port,
+	   * if it is okay to add the reverse session.
+	   * If not, then the same session will be added twice
+	   * to bihash, which is the same as adding just one session.
+	   */
+	  l4o.is_input = 1 - l4i.is_input;
+	  l4o.port[0] = icmp_invmap[is_ip6][type] - 1;
+	}
+
+      return l4o.as_u64;
+    }
+  else
+    return reverse_l4_u64_fastpath (l4, is_ip6);
+}
+
+always_inline u64
+reverse_l4_u64 (u64 l4, int is_ip6)
+{
+  fa_session_l4_key_t l4i = {.as_u64 = l4 };
+
+  if (PREDICT_FALSE (l4i.is_slowpath))
+    {
+      return reverse_l4_u64_slowpath (l4, is_ip6);
+    }
+  else
+    {
+      return reverse_l4_u64_fastpath (l4, is_ip6);
+    }
+}
+
+always_inline void
+reverse_session_add_del (acl_main_t * am, const int is_ip6,
+			 clib_bihash_kv_40_8_t * pkv, int is_add)
+{
+  clib_bihash_kv_40_8_t kv2;
+  /* the first 4xu64 is two addresses, so just swap them */
+  kv2.key[0] = pkv->key[2];
+  kv2.key[1] = pkv->key[3];
+  kv2.key[2] = pkv->key[0];
+  kv2.key[3] = pkv->key[1];
+  /* the last u64 needs special treatment (ports, etc.) */
+  kv2.key[4] = reverse_l4_u64 (pkv->key[4], is_ip6);
+  kv2.value = pkv->value;
+  clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &kv2, is_add);
+}
 
 always_inline void
 acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
@@ -326,6 +354,9 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   ASSERT (sess->thread_index == os_get_thread_index ());
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &sess->info.kv, 0);
+
+  reverse_session_add_del (am, sess->info.pkt.is_ip6, &sess->info.kv, 0);
+
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
@@ -362,9 +393,11 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
     }
 }
 
+
 always_inline fa_session_t *
-acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		    fa_5tuple_t * p5tuple, u16 current_policy_epoch)
+acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
+		    u32 sw_if_index, u64 now, fa_5tuple_t * p5tuple,
+		    u16 current_policy_epoch)
 {
   clib_bihash_kv_40_8_t *pkv = &p5tuple->kv;
   clib_bihash_kv_40_8_t kv;
@@ -396,10 +429,11 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   sess->link_prev_idx = ~0;
   sess->link_next_idx = ~0;
 
-
-
   ASSERT (am->fa_sessions_hash_is_initialized == 1);
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &kv, 1);
+
+  reverse_session_add_del (am, is_ip6, &kv, 1);
+
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);

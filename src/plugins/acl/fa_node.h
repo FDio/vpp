@@ -39,8 +39,16 @@ typedef union {
   u64 as_u64;
   struct {
     u16 port[2];
-    u16 proto;
-    u16 lsb_of_sw_if_index;
+    union {
+      struct {
+        u8 proto;
+        u8 is_input: 1;
+        u8 is_slowpath: 1;
+        u8 reserved0: 6;
+        u16 lsb_of_sw_if_index;
+      };
+      u32 non_port_l4_data;
+    };
   };
 } fa_session_l4_key_t;
 
