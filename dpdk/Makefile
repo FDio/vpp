@@ -80,7 +80,8 @@ DPDK_TUNE             ?= core-avx2
 # ARM64
 ##############################################################################
 else ifeq ($(MACHINE),aarch64)
-export CROSS=""
+CROSS :=
+export CROSS
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
