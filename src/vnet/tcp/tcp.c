@@ -734,9 +734,9 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " snd_wnd %u rcv_wnd %u snd_wl1 %u snd_wl2 %u\n",
 	      tc->snd_wnd, tc->rcv_wnd, tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
-  s = format (s, " flight size %u send space %u rcv_wnd_av %d\n",
+  s = format (s, " flight size %u out space %u cc space %u rcv_wnd_av %u\n",
 	      tcp_flight_size (tc), tcp_available_output_snd_space (tc),
-	      tcp_rcv_wnd_available (tc));
+	      tcp_available_cc_snd_space (tc), tcp_rcv_wnd_available (tc));
   s = format (s, " cong %U ", format_tcp_congestion_status, tc);
   s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
 	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
@@ -1022,7 +1022,7 @@ tcp_snd_space (tcp_connection_t * tc)
    * bytes of previously unsent data. */
   if (tcp_in_fastrecovery (tc) && !tcp_fastrecovery_sent_1_smss (tc))
     {
-      if (tcp_available_output_snd_space (tc) < tc->snd_mss)
+      if (tcp_available_cc_snd_space (tc) < tc->snd_mss)
 	return 0;
       tcp_fastrecovery_1_smss_on (tc);
       return tc->snd_mss;
