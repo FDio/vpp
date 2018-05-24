@@ -275,6 +275,14 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 		      vlib_buffer_t * b0, tcp_header_t * th0,
 		      u32 * next0, u32 * error0)
 {
+  /* We could get a burst of RSTs interleaved with acks */
+  if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
+    {
+      tcp_send_reset (tc0);
+      *error0 = TCP_ERROR_CONNECTION_CLOSED;
+      goto drop;
+    }
+
   if (PREDICT_FALSE (!tcp_ack (th0) && !tcp_rst (th0) && !tcp_syn (th0)))
     {
       *error0 = TCP_ERROR_SEGMENT_INVALID;
@@ -292,13 +300,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
     {
       *error0 = TCP_ERROR_PAWS;
       if (CLIB_DEBUG > 2)
-	{
-	  clib_warning ("paws failed\n%U", format_tcp_connection, tc0, 2);
-	  clib_warning ("seq %u seq_end %u ack %u",
-			vnet_buffer (b0)->tcp.seq_number - tc0->irs,
-			vnet_buffer (b0)->tcp.seq_end - tc0->irs,
-			vnet_buffer (b0)->tcp.ack_number - tc0->iss);
-	}
+	clib_warning ("paws failed\n%U", format_tcp_connection, tc0, 2);
       TCP_EVT_DBG (TCP_EVT_PAWS_FAIL, tc0, vnet_buffer (b0)->tcp.seq_number,
 		   vnet_buffer (b0)->tcp.seq_end);
 
@@ -317,7 +319,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 	  if (!tcp_rst (th0))
 	    {
 	      tcp_make_ack (tc0, b0);
-	      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0);
+	      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	      goto error;
 	    }
 	}
@@ -329,7 +331,6 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 			       vnet_buffer (b0)->tcp.seq_end))
     {
       *error0 = TCP_ERROR_RCV_WND;
-
       /* If our window is 0 and the packet is in sequence, let it pass
        * through for ack processing. It should be dropped later. */
       if (!(tc0->rcv_wnd == 0
@@ -339,7 +340,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 	  if (!tcp_rst (th0))
 	    {
 	      tcp_make_ack (tc0, b0);
-	      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0);
+	      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	      goto error;
 	    }
 	  goto drop;
@@ -889,13 +890,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   scoreboard_update_bytes (tc, sb);
   sb->last_sacked_bytes = sb->sacked_bytes
     - (old_sacked_bytes - sb->last_bytes_delivered);
-  ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes);
+  ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
   ASSERT (sb->sacked_bytes == 0
 	  || sb->sacked_bytes < tc->snd_una_max - seq_max (tc->snd_una, ack));
   ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_una_max
 	  - seq_max (tc->snd_una, ack));
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
 	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
+  TCP_EVT_DBG (TCP_EVT_CC_SCOREBOARD, tc);
 }
 
 /**
@@ -1063,11 +1065,18 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 {
   u32 rxt_delivered;
 
+  if (tcp_in_fastrecovery (tc) && tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      if (tc->bytes_acked)
+	goto partial_ack;
+      tcp_fast_retransmit (tc);
+      return;
+    }
   /*
    * Duplicate ACK. Check if we should enter fast recovery, or if already in
    * it account for the bytes that left the network.
    */
-  if (is_dack && !tcp_in_recovery (tc))
+  else if (is_dack && !tcp_in_recovery (tc))
     {
       TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc, 1);
       ASSERT (tc->snd_una != tc->snd_una_max
@@ -1128,7 +1137,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	    {
 	      tcp_fast_retransmit_no_sack (tc);
 	    }
-
 	  return;
 	}
       else if (!tc->bytes_acked
@@ -1237,6 +1245,16 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
     {
+      /* When we entered recovery, we reset snd_nxt to snd_una. Seems peer
+       * still has the data so accept the ack */
+      if (tcp_in_recovery (tc)
+	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion)
+	  && seq_geq (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
+	{
+	  tc->snd_una_max = tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  goto process_ack;
+	}
+
       /* If we have outstanding data and this is within the window, accept it,
        * probably retransmit has timed out. Otherwise ACK segment and then
        * drop it */
@@ -1264,9 +1282,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 1,
 		   vnet_buffer (b)->tcp.ack_number);
       if (tcp_in_fastrecovery (tc) && tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-	{
-	  tcp_cc_handle_event (tc, 1);
-	}
+	tcp_cc_handle_event (tc, 1);
       /* Don't drop yet */
       return 0;
     }
@@ -1274,7 +1290,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   /*
    * Looks okay, process feedback
    */
-
+process_ack:
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
 
@@ -1390,6 +1406,15 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
   ASSERT (tcp_sack_vector_is_sane (tc->snd_sacks));
 }
 
+u32
+tcp_sack_list_bytes (tcp_connection_t * tc)
+{
+  u32 bytes = 0, i;
+  for (i = 0; i < vec_len (tc->snd_sacks); i++)
+    bytes += tc->snd_sacks[i].end - tc->snd_sacks[i].start;
+  return bytes;
+}
+
 /** Enqueue data for delivery to application */
 always_inline int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
@@ -1416,6 +1441,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
       /* Send ACK confirming the update */
       tc->flags |= TCP_CONN_SNDACK;
+      TCP_EVT_DBG (TCP_EVT_CC_INPUT, tc, data_len, written);
     }
   else if (written > 0)
     {
@@ -1488,6 +1514,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 	  end = start + ooo_segment_length (s0->server_rx_fifo, newest);
 	  tcp_update_sack_list (tc, start, end);
 	  svm_fifo_newest_ooo_segment_reset (s0->server_rx_fifo);
+	  TCP_EVT_DBG (TCP_EVT_CC_SACKS, tc);
 	}
     }
 
@@ -1508,7 +1535,7 @@ tcp_can_delack (tcp_connection_t * tc)
       /* constrained to send ack */
       || (tc->flags & TCP_CONN_SNDACK) != 0
       /* we're almost out of tx wnd */
-      || tcp_available_snd_space (tc) < 4 * tc->snd_mss)
+      || tcp_available_cc_snd_space (tc) < 4 * tc->snd_mss)
     return 0;
 
   return 1;
@@ -1592,7 +1619,7 @@ tcp_segment_rcv (tcp_connection_t * tc, vlib_buffer_t * b, u32 * next0)
       *next0 = tcp_next_output (tc->c_is_ip4);
       tcp_make_ack (tc, b);
       vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_DUPACK;
-      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc);
+      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc, vnet_buffer (b)->tcp);
       goto done;
     }
 
@@ -1773,9 +1800,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						   &error0)))
 	    {
 	      tcp_maybe_inc_err_counter (err_counters, error0);
-	      TCP_EVT_DBG (TCP_EVT_SEG_INVALID, tc0,
-			   vnet_buffer (b0)->tcp.seq_number,
-			   vnet_buffer (b0)->tcp.seq_end);
+	      TCP_EVT_DBG (TCP_EVT_SEG_INVALID, tc0, vnet_buffer (b0)->tcp);
 	      goto done;
 	    }
 
