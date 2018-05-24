@@ -260,6 +260,8 @@ session_tx_not_ready (stream_session_t * s, u8 peek_data)
        * session is not ready or closed */
       if (s->session_state < SESSION_STATE_READY)
 	return 1;
+      if (s->session_state == SESSION_STATE_CLOSED)
+	return 2;
     }
   return 0;
 }
@@ -364,11 +366,12 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_tx_context_t *ctx = &smm->ctx[thread_index];
   transport_proto_t tp;
   vlib_buffer_t *pb;
-  u16 n_bufs;
+  u16 n_bufs, rv;
 
-  if (PREDICT_FALSE (session_tx_not_ready (s, peek_data)))
+  if (PREDICT_FALSE ((rv = session_tx_not_ready (s, peek_data))))
     {
-      vec_add1 (smm->pending_event_vector[thread_index], *e);
+      if (rv < 2)
+	vec_add1 (smm->pending_event_vector[thread_index], *e);
       return 0;
     }
 
