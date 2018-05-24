@@ -192,7 +192,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   int l3_offset;
   int l4_offset;
   u16 ports[2];
-  u16 proto;
+  u8 proto;
 
   if (is_l2_path)
     {
@@ -307,6 +307,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
     }
   p5tuple_pkt->l4.proto = proto;
+  p5tuple_pkt->l4.is_input = is_input;
+
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
       p5tuple_pkt->pkt.l4_valid = 1;
@@ -322,6 +324,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 	    *(u8 *) get_ptr_to_offset (b0,
 				       l4_offset + offsetof (icmp46_header_t,
 							     code));
+          p5tuple_pkt->l4.is_slowpath = 1;
 	}
       else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
 	{
@@ -338,21 +341,12 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 				       l4_offset + offsetof (tcp_header_t,
 							     flags));
 	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
+          p5tuple_pkt->l4.is_slowpath = 0;
 	}
-      /*
-       * FIXME: rather than the above conditional, here could
-       * be a nice generic mechanism to extract two L4 values:
-       *
-       * have a per-protocol array of 4 elements like this:
-       *   u8 offset; to take the byte from, off L4 header
-       *   u8 mask; to mask it with, before storing
-       *
-       * this way we can describe UDP, TCP and ICMP[46] semantics,
-       * and add a sort of FPM-type behavior for other protocols.
-       *
-       * Of course, is it faster ? and is it needed ?
-       *
-       */
+      else
+        {
+          p5tuple_pkt->l4.is_slowpath = 1;
+        }
     }
 }
 

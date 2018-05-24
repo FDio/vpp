@@ -82,7 +82,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   u32 pkts_restart_session_timer = 0;
   u32 trace_bitmap = 0;
   acl_main_t *am = &acl_main;
-  fa_5tuple_t fa_5tuple, kv_sess;
+  fa_5tuple_t fa_5tuple;
   clib_bihash_kv_40_8_t value_sess;
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
@@ -114,7 +114,6 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u32 match_acl_pos = ~0;
 	  u32 match_rule_index = ~0;
 	  u8 error0 = 0;
-	  u32 valid_new_sess;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -144,25 +143,15 @@ acl_fa_node_fn (vlib_main_t * vm,
 							     sw_if_index0)
 	    : (is_input * FA_POLICY_EPOCH_IS_INPUT);
 	  /*
-	   * Extract the L3/L4 matching info into a 5-tuple structure,
-	   * then create a session key whose layout is independent on forward or reverse
-	   * direction of the packet.
+	   * Extract the L3/L4 matching info into a 5-tuple structure.
 	   */
 
 	  acl_plugin_fill_5tuple_inline (lc_index0, b0, is_ip6, is_input,
 					 is_l2_path,
 					 (fa_5tuple_opaque_t *) & fa_5tuple);
 	  fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  valid_new_sess =
-	    acl_make_5tuple_session_key (am, is_input, is_ip6, sw_if_index0,
-					 &fa_5tuple, &kv_sess);
-	  // XXDEL fa_5tuple.pkt.is_input = is_input;
 	  fa_5tuple.pkt.mask_type_index_lsb = ~0;
 #ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
-	     kv_sess.kv.key[0], kv_sess.kv.key[1], kv_sess.kv.key[2],
-	     kv_sess.kv.key[3], kv_sess.kv.key[4], kv_sess.kv.value);
 	  clib_warning
 	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
 	     fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
@@ -174,7 +163,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	    {
 	      if (acl_fa_find_session
-		  (am, sw_if_index0, &kv_sess, &value_sess))
+		  (am, sw_if_index0, &fa_5tuple, &value_sess))
 		{
 		  trace_bitmap |= 0x80000000;
 		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
@@ -272,26 +261,14 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
-		      if (PREDICT_TRUE (valid_new_sess))
-			{
-			  fa_session_t *sess =
-			    acl_fa_add_session (am, is_input,
-						sw_if_index0,
-						now, &kv_sess,
-						current_policy_epoch);
-			  acl_fa_track_session (am, is_input, sw_if_index0,
-						now, sess, &fa_5tuple);
-			  pkts_new_session += 1;
-			}
-		      else
-			{
-			  /*
-			   *  ICMP packets with non-icmp_valid_new type will be
-			   *  forwared without being dropped.
-			   */
-			  action = 1;
-			  pkts_acl_permit += 1;
-			}
+		      fa_session_t *sess =
+			acl_fa_add_session (am, is_input, is_ip6,
+					    sw_if_index0,
+					    now, &fa_5tuple,
+					    current_policy_epoch);
+		      acl_fa_track_session (am, is_input, sw_if_index0,
+					    now, sess, &fa_5tuple);
+		      pkts_new_session += 1;
 		    }
 		  else
 		    {
