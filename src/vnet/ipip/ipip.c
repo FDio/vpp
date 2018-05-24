@@ -74,6 +74,8 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip4->src_address.as_u32 = t->tunnel_src.ip4.as_u32;
       ip4->dst_address.as_u32 = t->tunnel_dst.ip4.as_u32;
       ip4->checksum = ip4_header_checksum (ip4);
+      if (t->tc_tos != 0xFF)
+	ip4->tos = t->tc_tos;
       break;
 
     case IPIP_TRANSPORT_IP6:
@@ -81,6 +83,8 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip6 = (ip6_header_t *) rewrite;
       ip6->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
+      if (t->tc_tos != 0xFF)
+	ip6_set_traffic_class_network_order (ip6, t->tc_tos);
       ip6->hop_limit = 64;
       /* fixup ip6 header length and protocol after-the-fact */
       ip6->src_address.as_u64[0] = t->tunnel_src.ip6.as_u64[0];
@@ -88,6 +92,7 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip6->dst_address.as_u64[0] = t->tunnel_dst.ip6.as_u64[0];
       ip6->dst_address.as_u64[1] = t->tunnel_dst.ip6.as_u64[1];
       break;
+
     default:
       /* pass through */
       ;
@@ -100,11 +105,29 @@ ipip4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
 	     const void *data)
 {
   ip4_header_t *ip4;
+  const ipip_tunnel_t *t = data;
 
   ip4 = vlib_buffer_get_current (b);
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
-  ip4->protocol =
-    adj->ia_link == VNET_LINK_IP6 ? IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP;
+  switch (adj->ia_link)
+    {
+    case VNET_LINK_IP6:
+      ip4->protocol = IP_PROTOCOL_IPV6;
+      if (t->tc_tos == 0xFF)
+	ip4->tos =
+	  ip6_traffic_class_network_order ((const ip6_header_t *) (ip4 + 1));
+      break;
+
+    case VNET_LINK_IP4:
+      ip4->protocol = IP_PROTOCOL_IP_IN_IP;
+      if (t->tc_tos == 0xFF)
+	ip4->tos = ((ip4_header_t *) (ip4 + 1))->tos;
+      break;
+
+    default:
+      break;
+    }
+
   ip4->checksum = ip4_header_checksum (ip4);
 }
 
@@ -113,13 +136,32 @@ ipip6_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
 	     const void *data)
 {
   ip6_header_t *ip6;
+  const ipip_tunnel_t *t = data;
 
   ip6 = vlib_buffer_get_current (b);
   ip6->payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
 			  sizeof (*ip6));
-  ip6->protocol =
-    adj->ia_link == VNET_LINK_IP6 ? IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP;
+  switch (adj->ia_link)
+    {
+    case VNET_LINK_IP6:
+      ip6->protocol = IP_PROTOCOL_IPV6;
+      if (t->tc_tos == 0xFF)
+	ip6_set_traffic_class_network_order (ip6,
+					     ip6_traffic_class_network_order ((const ip6_header_t *) (ip6 + 1)));
+      break;
+
+    case VNET_LINK_IP4:
+      ip6->protocol = IP_PROTOCOL_IP_IN_IP;
+      if (t->tc_tos == 0xFF)
+	ip6_set_traffic_class_network_order (ip6,
+					     ((ip4_header_t *) (ip6 +
+								1))->tos);
+      break;
+
+    default:
+      break;
+    }
 }
 
 static void
@@ -216,7 +258,7 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   f = t->transport == IPIP_TRANSPORT_IP6 ? ipip6_fixup : ipip4_fixup;
 
-  adj_nbr_midchain_update_rewrite (ai, f, NULL,
+  adj_nbr_midchain_update_rewrite (ai, f, t,
 				   (VNET_LINK_ETHERNET ==
 				    adj_get_link_type (ai) ?
 				    ADJ_FLAG_MIDCHAIN_NO_COUNT :
@@ -420,7 +462,7 @@ ipip_fib_delete (ipip_tunnel_t * t)
 int
 ipip_add_tunnel (ipip_transport_t transport,
 		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
-		 u32 fib_index, u32 * sw_if_indexp)
+		 u32 fib_index, u8 tc_tos, u32 * sw_if_indexp)
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -467,6 +509,7 @@ ipip_add_tunnel (ipip_transport_t transport,
   t->hw_if_index = hw_if_index;
   t->fib_index = fib_index;
   t->sw_if_index = sw_if_index;
+  t->tc_tos = tc_tos;
 
   t->transport = transport;
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);

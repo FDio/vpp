@@ -69,7 +69,7 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 
   rv = ipip_add_tunnel (mp->is_ipv6 ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
 			ntohl (mp->instance), &src, &dst,
-			ntohl (mp->fib_index), &sw_if_index);
+			ntohl (mp->fib_index), mp->tc_tos, &sw_if_index);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_IPIP_ADD_TUNNEL_REPLY,
