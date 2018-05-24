@@ -72,6 +72,7 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
 		       &src,
 		       &dst,
 		       fib_index,
+		       0,
 		       &sw_if_index);
 
   switch (rv) {

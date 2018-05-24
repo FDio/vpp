@@ -81,6 +81,7 @@ typedef struct
   u32 sw_if_index;
   u32 dev_instance;		/* Real device instance in tunnel vector */
   u32 user_instance;		/* Instance name being shown to user */
+  u8 tc_tos;
 
   union
   {
@@ -148,7 +149,7 @@ sixrd_get_addr_net (const ipip_tunnel_t * t, u64 dal)
 
 int ipip_add_tunnel (ipip_transport_t transport, u32 instance,
 		     ip46_address_t * src, ip46_address_t * dst,
-		     u32 fib_index, u32 * sw_if_indexp);
+		     u32 fib_index, u8 tc_tos, u32 * sw_if_indexp);
 int ipip_del_tunnel (u32 sw_if_index);
 int sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		      ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
