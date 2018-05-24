@@ -721,6 +721,8 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
 
+      close (svm_fd);
+
       if ((uword) rp != rp->virtual_base)
 	{
 	  clib_warning ("mmap botch");
