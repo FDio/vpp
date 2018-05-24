@@ -642,6 +642,7 @@ scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 	bytes += prev->start - hole->end;
     }
   sb->sacked_bytes = bytes;
+  TCP_EVT_DBG (TCP_EVT_CC_SCOREBOARD, tc);
 }
 
 /**
@@ -1063,11 +1064,18 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 {
   u32 rxt_delivered;
 
+  if (tcp_in_fastrecovery (tc) && tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      if (tc->bytes_acked)
+	goto partial_ack;
+      tcp_fast_retransmit (tc);
+      return;
+    }
   /*
    * Duplicate ACK. Check if we should enter fast recovery, or if already in
    * it account for the bytes that left the network.
    */
-  if (is_dack && !tcp_in_recovery (tc))
+  else if (is_dack && !tcp_in_recovery (tc))
     {
       TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc, 1);
       ASSERT (tc->snd_una != tc->snd_una_max

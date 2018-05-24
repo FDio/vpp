@@ -1339,6 +1339,7 @@ done:
 static void
 tcp_rtx_timeout_cc (tcp_connection_t * tc)
 {
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 6);
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
@@ -1627,12 +1628,12 @@ void
 tcp_fast_retransmit_sack (tcp_connection_t * tc)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u32 n_written = 0, offset, max_bytes;
+  u32 n_written = 0, offset, max_bytes, n_segs = 0;
   vlib_buffer_t *b = 0;
   sack_scoreboard_hole_t *hole;
   sack_scoreboard_t *sb;
   u32 bi, old_snd_nxt;
-  int snd_space;
+  int snd_space, i;
   u8 snd_limited = 0, can_rescue = 0;
 
   ASSERT (tcp_in_fastrecovery (tc));
@@ -1642,8 +1643,40 @@ tcp_fast_retransmit_sack (tcp_connection_t * tc)
   sb = &tc->sack_sb;
   snd_space = tcp_available_snd_space (tc);
 
+  /* Probably cwnd window won't let us send more data. If we lost
+   * the upper part of a full window, we'll be waiting until RTO
+   * times out. So, try to mark the whole as lost by getting peer
+   * to ack the two segments before snd_una_max */
+  if (!snd_space)
+    {
+      if (!tc->sack_sb.lost_bytes || (tc->flags & TCP_CONN_FR_2_SMSS))
+	goto done;
+
+      offset = tc->snd_una_max - tc->snd_una;
+      if (offset < 2 * tc->snd_mss)
+	goto done;
+
+      hole = scoreboard_last_hole (sb);
+      if (!hole || seq_lt (hole->end, tc->snd_una_max - 2 * tc->snd_mss))
+	goto done;
+
+      offset -= 2 * tc->snd_mss;
+      for (i = 2; i > 0; i--)
+	{
+	  n_written = tcp_prepare_retransmit_segment (tc, offset, tc->snd_mss,
+		                                      &b);
+	  if (!n_written)
+	    goto done;
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+	  offset += tc->snd_mss;
+	}
+      tc->flags |= TCP_CONN_FR_2_SMSS;
+      goto done;
+    }
+
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
-  while (hole && snd_space > 0)
+  while (hole && snd_space > 0 && n_segs++ < VLIB_FRAME_SIZE)
     {
       hole = scoreboard_next_rxt_hole (sb, hole,
 				       tcp_fastrecovery_sent_1_smss (tc),

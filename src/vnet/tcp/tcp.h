@@ -119,7 +119,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FAST_RECOVERY, "Fast Recovery")		\
   _(FR_1_SMSS, "Sent 1 SMSS")			\
   _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")
+  _(FINPNDG, "FIN pending")			\
+  _(FR_2_SMSS, "Reset last 2 SMSS")		\
 
 typedef enum _tcp_connection_flag_bits
 {

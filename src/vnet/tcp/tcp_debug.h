@@ -20,8 +20,8 @@
 
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (0)
-#define TCP_DEBUG_CC_STAT (0)
+#define TCP_DEBUG_CC (1)
+#define TCP_DEBUG_CC_STAT (1)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
 #define foreach_tcp_dbg_evt		\
@@ -56,6 +56,7 @@
   _(CC_PACK, "cc partial ack")		\
   _(CC_STAT, "cc stats")		\
   _(CC_RTO_STAT, "cc rto stats")	\
+  _(CC_SCOREBOARD, "scoreboard stats")	\
   _(SEG_INVALID, "invalid segment")	\
   _(PAWS_FAIL, "failed paws check")	\
   _(ACK_RCV_ERR, "invalid ack")		\
@@ -626,8 +627,8 @@ if (_av > 0) 								\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "cc: %s snd_space %u snd_cong %u rxt_bytes %u",		\
-    .format_args = "t4i4i4i4",						\
+    .format = "cc: %s snd_space %u snd_cong %u rxt_bytes %u flight %u",	\
+    .format_args = "t4i4i4i4i4",					\
     .n_enum_strings = 6,						\
     .enum_strings = {                                           	\
       "fast-rxt",	                                             	\
@@ -636,13 +637,15 @@ if (_av > 0) 								\
       "recovered",							\
       "congestion",							\
       "undo",								\
+      "recovery",							\
     },  								\
   };									\
-  DECLARE_ETD(_tc, _e, 4);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _sub_evt;						\
   ed->data[1] = tcp_available_snd_space (_tc);				\
   ed->data[2] = _tc->snd_congestion - _tc->iss;				\
   ed->data[3] = _tc->snd_rxt_bytes;					\
+  ed->data[4] = tcp_flight_size (_tc);					\
 }
 
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)		\
@@ -699,6 +702,20 @@ if (_av > 0) 								\
   DECLARE_ETD(_tc, _e, 2);						\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_una_max - _tc->iss;				\
+}
+#define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "scoreboard: holes %u lost %u sacked %u high %u hirxt %u",\
+    .format_args = "i4i4i4i4i4",					\
+  };									\
+  DECLARE_ETD(_tc, _e, 4);						\
+  ed->data[0] = pool_elts(_tc->sack_sb.holes);				\
+  ed->data[1] = _tc->sack_sb.lost_bytes;				\
+  ed->data[2] = _tc->sack_sb.sacked_bytes;				\
+  ed->data[3] = _tc->sack_sb.high_sacked - _tc->iss;			\
+  ed->data[4] = _tc->sack_sb.high_rxt - _tc->iss;			\
 }
 #else
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)
