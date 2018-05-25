@@ -211,23 +211,21 @@ pcap_add_buffer (pcap_main_t * pm,
   f64 time_now = vlib_time_now (vm);
   void *d;
 
-  d = pcap_add_packet (pm, time_now, n_left, n);
-  while (1)
+  if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
     {
-      u32 copy_length = clib_min ((u32) n_left, b->current_length);
-      clib_memcpy (d, b->data + b->current_data, copy_length);
-      n_left -= b->current_length;
-      if (n_left <= 0)
-	break;
-      d += b->current_length;
-      ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-      b = vlib_get_buffer (vm, b->next_buffer);
+      d = pcap_add_packet (pm, time_now, n_left, n);
+      while (1)
+	{
+	  u32 copy_length = clib_min ((u32) n_left, b->current_length);
+	  clib_memcpy (d, b->data + b->current_data, copy_length);
+	  n_left -= b->current_length;
+	  if (n_left <= 0)
+	    break;
+	  d += b->current_length;
+	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	}
     }
-
-  /** Flush output vector. */
-  if (vec_len (pm->pcap_data) >= 64 * 1024
-      || pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_write (pm);
 }
 
 #endif /* included_vnet_pcap_h */

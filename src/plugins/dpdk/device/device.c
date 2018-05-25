@@ -351,16 +351,17 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
   ASSERT (n_packets <= VLIB_FRAME_SIZE);
 
   /* TX PCAP tracing */
-  if (PREDICT_FALSE (dm->tx_pcap_enable))
+  if (PREDICT_FALSE (dm->pcap[VLIB_TX].pcap_enable))
     {
       n_left = n_packets;
       while (n_left > 0)
 	{
 	  u32 bi0 = from[0];
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-	  if (dm->pcap_sw_if_index == 0 ||
-	      dm->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_TX])
-	    pcap_add_buffer (&dm->pcap_main, vm, bi0, 512);
+	  if (dm->pcap[VLIB_TX].pcap_sw_if_index == 0 ||
+	      dm->pcap[VLIB_TX].pcap_sw_if_index
+	      == vnet_buffer (b0)->sw_if_index[VLIB_TX])
+	    pcap_add_buffer (&dm->pcap[VLIB_TX].pcap_main, vm, bi0, 512);
 	  from++;
 	  n_left--;
 	}

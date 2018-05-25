@@ -88,9 +88,10 @@ done:
   return error;
 }
 
-static clib_error_t *
-pcap_trace_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+static inline clib_error_t *
+pcap_trace_command_internal (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd, int rx_tx)
 {
 #define PCAP_DEF_PKT_TO_CAPTURE (100)
 
@@ -111,7 +112,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "on"))
 	{
-	  if (dm->tx_pcap_enable == 0)
+	  if (dm->pcap[rx_tx].pcap_enable == 0)
 	    {
 	      enabled = 1;
 	    }
@@ -124,22 +125,24 @@ pcap_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "off"))
 	{
-	  if (dm->tx_pcap_enable)
+	  if (dm->pcap[rx_tx].pcap_enable)
 	    {
-	      vlib_cli_output (vm, "captured %d pkts...",
-			       dm->pcap_main.n_packets_captured + 1);
-	      if (dm->pcap_main.n_packets_captured)
+	      vlib_cli_output
+		(vm, "captured %d pkts...",
+		 dm->pcap[rx_tx].pcap_main.n_packets_captured);
+	      if (dm->pcap[rx_tx].pcap_main.n_packets_captured)
 		{
-		  dm->pcap_main.n_packets_to_capture =
-		    dm->pcap_main.n_packets_captured;
-		  error = pcap_write (&dm->pcap_main);
+		  dm->pcap[rx_tx].pcap_main.n_packets_to_capture =
+		    dm->pcap[rx_tx].pcap_main.n_packets_captured;
+		  error = pcap_write (&dm->pcap[rx_tx].pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else
-		    vlib_cli_output (vm, "saved to %s...", dm->pcap_filename);
+		    vlib_cli_output (vm, "saved to %s...",
+				     dm->pcap[rx_tx].pcap_filename);
 		}
 
-	      dm->tx_pcap_enable = 0;
+	      dm->pcap[rx_tx].pcap_enable = 0;
 	    }
 	  else
 	    {
@@ -150,29 +153,31 @@ pcap_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "max %d", &max))
 	{
-	  if (dm->tx_pcap_enable)
+	  if (dm->pcap[rx_tx].pcap_enable)
 	    {
-	      vlib_cli_output (vm,
-			       "can't change max value while pcap tx capture active...");
+	      vlib_cli_output
+		(vm,
+		 "can't change max value while pcap tx capture active...");
 	      errorFlag = 1;
 	      break;
 	    }
+	  dm->pcap[rx_tx].pcap_main.n_packets_to_capture = max;
 	}
       else if (unformat (line_input, "intfc %U",
 			 unformat_vnet_sw_interface, dm->vnet_main,
-			 &dm->pcap_sw_if_index))
+			 &dm->pcap[rx_tx].pcap_sw_if_index))
 	;
 
       else if (unformat (line_input, "intfc any"))
 	{
-	  dm->pcap_sw_if_index = 0;
+	  dm->pcap[rx_tx].pcap_sw_if_index = 0;
 	}
       else if (unformat (line_input, "file %s", &filename))
 	{
-	  if (dm->tx_pcap_enable)
+	  if (dm->pcap[rx_tx].pcap_enable)
 	    {
-	      vlib_cli_output (vm,
-			       "can't change file while pcap tx capture active...");
+	      vlib_cli_output
+		(vm, "can't change file while pcap tx capture active...");
 	      errorFlag = 1;
 	      break;
 	    }
@@ -183,8 +188,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
 	    {
 	      vlib_cli_output (vm, "illegal characters in filename '%s'",
 			       filename);
-	      vlib_cli_output (vm,
-			       "Hint: Only filename, do not enter directory structure.");
+	      vlib_cli_output (vm, "Hint: .. and / are not allowed.");
 	      vec_free (filename);
 	      errorFlag = 1;
 	      break;
@@ -195,38 +199,41 @@ pcap_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "status"))
 	{
-	  if (dm->pcap_sw_if_index == 0)
+	  if (dm->pcap[rx_tx].pcap_sw_if_index == 0)
 	    {
-	      vlib_cli_output (vm, "max is %d for any interface to file %s",
-			       dm->
-			       pcap_pkts_to_capture ? dm->pcap_pkts_to_capture
-			       : PCAP_DEF_PKT_TO_CAPTURE,
-			       dm->
-			       pcap_filename ? dm->pcap_filename : (u8 *)
-			       "/tmp/vpe.pcap");
+	      vlib_cli_output
+		(vm, "max is %d for any interface to file %s",
+		 dm->pcap_pkts_to_capture ?
+		 dm->pcap[rx_tx].pcap_pkts_to_capture
+		 : PCAP_DEF_PKT_TO_CAPTURE,
+		 dm->pcap_filename ?
+		 dm->pcap[rx_tx].pcap_filename : (u8 *) "/tmp/vpe.pcap");
 	    }
 	  else
 	    {
 	      vlib_cli_output (vm, "max is %d for interface %U to file %s",
-			       dm->
-			       pcap_pkts_to_capture ? dm->pcap_pkts_to_capture
+			       dm->pcap[rx_tx].pcap_pkts_to_capture
+			       ? dm->pcap_pkts_to_capture
 			       : PCAP_DEF_PKT_TO_CAPTURE,
 			       format_vnet_sw_if_index_name, dm->vnet_main,
 			       dm->pcap_sw_if_index,
-			       dm->
-			       pcap_filename ? dm->pcap_filename : (u8 *)
+			       dm->pcap[rx_tx].pcap_filename
+			       ? dm->pcap[rx_tx].pcap_filename : (u8 *)
 			       "/tmp/vpe.pcap");
 	    }
 
-	  if (dm->tx_pcap_enable == 0)
+	  if (dm->pcap[rx_tx].pcap_enable == 0)
 	    {
-	      vlib_cli_output (vm, "pcap tx capture is off...");
+	      vlib_cli_output (vm, "pcap %s capture is off...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture is on: %d of %d pkts...",
-			       dm->pcap_main.n_packets_captured,
-			       dm->pcap_main.n_packets_to_capture);
+	      vlib_cli_output (vm, "pcap %s capture is on: %d of %d pkts...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx",
+			       dm->pcap[rx_tx].pcap_main.n_packets_captured,
+			       dm->pcap[rx_tx].
+			       pcap_main.n_packets_to_capture);
 	    }
 	  break;
 	}
@@ -247,42 +254,62 @@ pcap_trace_command_fn (vlib_main_t * vm,
       /* Since no error, save configured values. */
       if (chroot_filename)
 	{
-	  if (dm->pcap_filename)
-	    vec_free (dm->pcap_filename);
+	  if (dm->pcap[rx_tx].pcap_filename)
+	    vec_free (dm->pcap[rx_tx].pcap_filename);
 	  vec_add1 (chroot_filename, 0);
-	  dm->pcap_filename = chroot_filename;
+	  dm->pcap[rx_tx].pcap_filename = chroot_filename;
 	}
 
       if (max)
-	dm->pcap_pkts_to_capture = max;
+	dm->pcap[rx_tx].pcap_pkts_to_capture = max;
 
 
       if (enabled)
 	{
-	  if (dm->pcap_filename == 0)
-	    dm->pcap_filename = format (0, "/tmp/vpe.pcap%c", 0);
+	  if (dm->pcap[rx_tx].pcap_filename == 0)
+	    dm->pcap[rx_tx].pcap_filename = format (0, "/tmp/vpe.pcap%c", 0);
 
-	  memset (&dm->pcap_main, 0, sizeof (dm->pcap_main));
-	  dm->pcap_main.file_name = (char *) dm->pcap_filename;
-	  dm->pcap_main.n_packets_to_capture = PCAP_DEF_PKT_TO_CAPTURE;
-	  if (dm->pcap_pkts_to_capture)
-	    dm->pcap_main.n_packets_to_capture = dm->pcap_pkts_to_capture;
+	  memset (&dm->pcap[rx_tx].pcap_main, 0,
+		  sizeof (dm->pcap[rx_tx].pcap_main));
+	  dm->pcap[rx_tx].pcap_main.file_name =
+	    (char *) dm->pcap[rx_tx].pcap_filename;
+	  dm->pcap[rx_tx].pcap_main.n_packets_to_capture
+	    = PCAP_DEF_PKT_TO_CAPTURE;
+	  if (dm->pcap[rx_tx].pcap_pkts_to_capture)
+	    dm->pcap[rx_tx].pcap_main.n_packets_to_capture
+	      = dm->pcap[rx_tx].pcap_pkts_to_capture;
 
-	  dm->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
-	  dm->tx_pcap_enable = 1;
+	  dm->pcap[rx_tx].pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+	  dm->pcap[rx_tx].pcap_enable = 1;
 	  vlib_cli_output (vm, "pcap tx capture on...");
 	}
     }
   else if (chroot_filename)
     vec_free (chroot_filename);
 
-
   return error;
 }
 
+static clib_error_t *
+pcap_rx_trace_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return pcap_trace_command_internal (vm, input, cmd, VLIB_RX);
+}
+
+static clib_error_t *
+pcap_tx_trace_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return pcap_trace_command_internal (vm, input, cmd, VLIB_TX);
+}
+
+
 /*?
  * This command is used to start or stop a packet capture, or show
- * the status of packet capture.
+ * the status of packet capture. Note that both "pcap rx trace" and
+ * "pcap tx trace" are implemented. The command syntax is identical,
+ * simply substitute rx for tx as needed.
  *
  * This command has the following optional parameters:
  *
@@ -334,11 +361,18 @@ pcap_trace_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pcap_trace_command, static) = {
+
+VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
     .path = "pcap tx trace",
     .short_help =
     "pcap tx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
-    .function = pcap_trace_command_fn,
+    .function = pcap_tx_trace_command_fn,
+};
+VLIB_CLI_COMMAND (pcap_rx_trace_command, static) = {
+    .path = "pcap rx trace",
+    .short_help =
+    "pcap rx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
+    .function = pcap_rx_trace_command_fn,
 };
 /* *INDENT-ON* */
 
