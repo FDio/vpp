@@ -294,6 +294,9 @@ nobase_include_HEADERS +=			\
   vnet/bonding/node.h                           \
   vnet/bonding/bond.api.h
 
+libvnet_multiversioning_files = 		\
+  vnet/bonding/node.c
+
 API_FILES += vnet/bonding/bond.api
 
 ########################################
