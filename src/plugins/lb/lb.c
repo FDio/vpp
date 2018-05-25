@@ -845,17 +845,22 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
       (type != LB_VIP_TYPE_IP4_GRE4) &&
       (type != LB_VIP_TYPE_IP4_GRE6) &&
       (type != LB_VIP_TYPE_IP4_L3DSR) &&
-      (type != LB_VIP_TYPE_IP4_NAT4))
+      (type != LB_VIP_TYPE_IP4_NAT4)) {
+    lb_put_writer_lock();
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
+  }
 
   if ((!ip46_prefix_is_ip4(&(args.prefix), args.plen)) &&
       (type != LB_VIP_TYPE_IP6_GRE4) &&
       (type != LB_VIP_TYPE_IP6_GRE6) &&
-      (type != LB_VIP_TYPE_IP6_NAT6))
+      (type != LB_VIP_TYPE_IP6_NAT6)) {
+    lb_put_writer_lock();
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
+  }
 
   if ((type == LB_VIP_TYPE_IP4_L3DSR) && (args.encap_args.dscp >= 64 ) )
     {
+      lb_put_writer_lock();
       return VNET_API_ERROR_VALUE_EXIST;
     }
 
