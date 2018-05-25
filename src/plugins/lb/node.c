@@ -70,7 +70,7 @@ format_lb_trace (u8 * s, va_list * args)
   lb_trace_t *t = va_arg (*args, lb_trace_t *);
   if (pool_is_free_index(lbm->vips, t->vip_index))
     {
-      s = format (s, "lb vip[%d]: This VIP was freed since capture\n");
+      s = format (s, "lb vip[%d]: This VIP was freed since capture\n", t->vip_index);
     }
   else
     {
@@ -79,7 +79,7 @@ format_lb_trace (u8 * s, va_list * args)
     }
   if (pool_is_free_index(lbm->ass, t->as_index))
     {
-      s = format (s, "lb as[%d]: This AS was freed since capture\n");
+      s = format (s, "lb as[%d]: This AS was freed since capture\n", t->as_index);
     }
   else
     {
@@ -101,7 +101,7 @@ format_lb_nat_trace (u8 * s, va_list * args)
 
   if (pool_is_free_index(lbm->vips, t->vip_index))
     {
-      s = format (s, "lb vip[%d]: This VIP was freed since capture\n");
+      s = format (s, "lb vip[%d]: This VIP was freed since capture\n", t->vip_index);
     }
   else
     {
@@ -110,7 +110,7 @@ format_lb_nat_trace (u8 * s, va_list * args)
     }
   if (pool_is_free_index(lbm->ass, t->as_index))
     {
-      s = format (s, "lb as[%d]: This AS was freed since capture\n");
+      s = format (s, "lb as[%d]: This AS was freed since capture\n", t->as_index);
     }
   else
     {
@@ -515,7 +515,7 @@ format_nodeport_lb_trace (u8 * s, va_list * args)
   lb_nodeport_trace_t *t = va_arg (*args, lb_nodeport_trace_t *);
   if (pool_is_free_index(lbm->vips, t->vip_index))
     {
-      s = format (s, "lb vip[%d]: This VIP was freed since capture\n");
+      s = format (s, "lb vip[%d]: This VIP was freed since capture\n", t->vip_index);
     }
   else
     {
