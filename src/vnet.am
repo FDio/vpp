@@ -783,13 +783,19 @@ API_FILES += vnet/lisp-gpe/lisp_gpe.api
 libvnet_la_SOURCES +=				\
  vnet/dhcp/client.c				\
  vnet/dhcp/dhcp_client_detect.c			\
+ vnet/dhcp/dhcp6_pd_client_dp.c			\
+ vnet/dhcp/dhcp6_pd_client_cp.c			\
  vnet/dhcp/dhcp_api.c
 
 nobase_include_HEADERS +=			\
  vnet/dhcp/client.h				\
- vnet/dhcp/dhcp.api.h
+ vnet/dhcp/dhcp6_pd_client_dp.h			\
+ vnet/dhcp/dhcp.api.h				\
+ vnet/dhcp/dhcp6_pd_client_cp.api.h
 
-API_FILES += vnet/dhcp/dhcp.api
+API_FILES +=					\
+ vnet/dhcp/dhcp.api				\
+ vnet/dhcp/dhcp6_pd_client_cp.api
 
 ########################################
 # DHCP proxy
