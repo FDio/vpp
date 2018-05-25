@@ -73,7 +73,7 @@ endif
 ##############################################################################
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
-DPDK_MACHINE          ?= nhm
+DPDK_MACHINE          ?= native
 DPDK_TUNE             ?= core-avx2
 
 ##############################################################################
@@ -144,7 +144,7 @@ JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 	$(shell grep -c ^processor /proc/cpuinfo), 2)
 
 # compiler/linker custom arguments
-DPDK_CPU_CFLAGS := -pie -fPIC
+DPDK_CPU_CFLAGS := -pie -fPIC -ftls-model=initial-exec
 
 ifeq ($(DPDK_DEBUG),n)
 DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
