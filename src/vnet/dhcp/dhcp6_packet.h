@@ -48,33 +48,42 @@ typedef enum dhcpv6_msg_type_
   DHCPV6_MSG_RELAY_REPL = 13,
 } dhcpv6_msg_type_t;
 
+/* Name, code, min payload length */
+#define dhcpv6_foreach_option \
+  _(CLIENTID         , 1  , 4 ) \
+  _(SERVERID         , 2  , 4 ) \
+  _(IA_NA            , 3  , 12) \
+  _(IA_TA            , 4  , 4 ) \
+  _(IAADDR           , 5  , 24) \
+  _(ORO              , 6  , 0 ) \
+  _(PREFERENCE       , 7  , 1 ) \
+  _(ELAPSED_TIME     , 8  , 2 ) \
+  _(RELAY_MSG        , 9  , 0 ) \
+  _(AUTH             , 11 , 11) \
+  _(UNICAST          , 12 , 16) \
+  _(STATUS_CODE      , 13 , 2 ) \
+  _(RAPID_COMMIT     , 14 , 0 ) \
+  _(USER_CLASS       , 15 , 0 ) \
+  _(VENDOR_CLASS     , 16 , 4 ) \
+  _(VENDOR_OPTS      , 17 , 4 ) \
+  _(INTERFACE_ID     , 18 , 0 ) \
+  _(RECONF_MSG       , 19 , 1 ) \
+  _(RECONF_ACCEPT    , 20 , 0 ) \
+  _(DNS_SEARCH       , 24 , 0 ) \
+  _(IA_PD            , 25 , 12) \
+  _(IAPREFIX         , 26 , 25) \
+  _(REMOTEID         , 37 , 4 ) \
+  _(VSS              , 68 , 1 ) \
+  _(CLIENT_LINK_LAYER_ADDRESS, 79 , 2 )
+
 /*
  * DHCPv6 options types
  */
 enum
 {
-  DHCPV6_OPTION_CLIENTID = 1,
-  DHCPV6_OPTION_SERVERID = 2,
-  DHCPV6_OPTION_IA_NA = 3,
-  DHCPV6_OPTION_IA_TA = 4,
-  DHCPV6_OPTION_IAADDR = 5,
-  DHCPV6_OPTION_ORO = 6,
-  DHCPV6_OPTION_PREFERENCE = 7,
-  DHCPV6_OPTION_ELAPSED_TIME = 8,
-  DHCPV6_OPTION_RELAY_MSG = 9,
-  DHCPV6_OPTION_AUTH = 11,
-  DHCPV6_OPTION_UNICAST = 12,
-  DHCPV6_OPTION_STATUS_CODE = 13,
-  DHCPV6_OPTION_RAPID_COMMIT = 14,
-  DHCPV6_OPTION_USER_CLASS = 15,
-  DHCPV6_OPTION_VENDOR_CLASS = 16,
-  DHCPV6_OPTION_VENDOR_OPTS = 17,
-  DHCPV6_OPTION_INTERFACE_ID = 18,	// relay agent fills this
-  DHCPV6_OPTION_RECONF_MSG = 19,
-  DHCPV6_OPTION_RECONF_ACCEPT = 20,
-  DHCPV6_OPTION_REMOTEID = 37,	// relay agent fills this
-  DHCPV6_OPTION_VSS = 68,	// relay agent fills this
-  DHCPV6_OPTION_CLIENT_LINK_LAYER_ADDRESS = 79,
+#define _(a,b,c) DHCPV6_OPTION_##a = b,
+  dhcpv6_foreach_option
+#undef _
   DHCPV6_OPTION_MAX
 };
 
@@ -89,6 +98,7 @@ enum
   DHCPV6_STATUS_NO_BINDING = 3,
   DHCPV6_STATUS_NOT_ONLINK = 4,
   DHCPV6_STATUS_USE_MULTICAST = 5,
+  DHCPV6_STATUS_NOPREFIX_AVAIL = 6,
 };
 
 /*
@@ -104,15 +114,10 @@ enum
 //Structure for DHCPv6 payload from client
 typedef struct dhcpv6_hdr_
 {
-  union
-  {
-    u8 msg_type;		//DHCP msg type
-    u32 xid;			// transaction id
-  } u;
+  u8 msg_type;			//DHCP msg type
+  u8 xid[3];			//Transaction id
   u8 data[0];
 } dhcpv6_header_t;
-
-
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct dhcpv6_relay_ctx_ {
@@ -164,12 +169,21 @@ typedef enum dhcpv6_stats_drop_reason_
   DHCPV6_RELAY_PKT_DROP_REPLY_FROM_CLIENT,
 } dhcpv6_stats_drop_reason_t;
 
+#define dhcpv6_optlen(opt) clib_net_to_host_u16((opt)->length)
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u16 option;
   u16 length;
   u8 data[0];
 }) dhcpv6_option_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  dhcpv6_option_t opt;
+  u16 status_code;
+}) dhcpv6_status_code_t;
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
@@ -202,6 +216,42 @@ typedef CLIB_PACKED (struct {
   u8 data[6];  // data[0]:data[5]: MAC address
 }) dhcpv6_client_mac_t;
 /* *INDENT-ON* */
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt; u32 iaid; u32 t1;
+		     u32 t2;
+		     u8 data[0];
+		     }) dhcpv6_ia_header_t;
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt; u32 preferred; u32 valid; u8 prefix;
+		     ip6_address_t addr;
+		     }) dhcpv6_ia_opt_pd_t;
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt;
+		     u16 options[0];
+		     }) dhcpv6_oro_t;
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt; u16 elapsed_10ms;
+		     }) dhcpv6_elapsed_t;
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt; u16 duid_type;
+		     u16 hardware_type;
+		     }) dhcpv6_duid_t;
+
+typedef CLIB_PACKED (struct
+		     {
+		     dhcpv6_option_t opt; u16 status_code;
+		     u8 message[0];
+		     }) dhcpv6_status_t;
 
 
 #endif /* included_vnet_dhcp6_packet_h */
