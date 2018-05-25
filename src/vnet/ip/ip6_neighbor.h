@@ -44,6 +44,8 @@ typedef struct
   fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
 
+extern ip6_address_t ip6_neighbor_get_link_local_address (u32 sw_if_index);
+
 extern ip6_neighbor_t *ip6_neighbors_pool (void);
 
 extern ip6_neighbor_t *ip6_neighbors_entries (u32 sw_if_index);
