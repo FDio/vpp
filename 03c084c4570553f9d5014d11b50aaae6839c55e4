@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ded1d514_2f3c6ccb",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2564,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-05-25T17:49:53Z",
+      "side": 1,
+      "message": "hw_flags \u003d vui-\u003eadmin_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0 ? :)",
+      "range": {
+        "startLine": 2557,
+        "startChar": 0,
+        "endLine": 2564,
+        "endChar": 5
+      },
+      "revId": "03c084c4570553f9d5014d11b50aaae6839c55e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "406ea843_516c8ef0",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-05-25T17:49:53Z",
+      "side": 1,
+      "message": "Sorry for being pedantic but could you make this a C style comment?",
+      "range": {
+        "startLine": 491,
+        "startChar": 3,
+        "endLine": 491,
+        "endChar": 28
+      },
+      "revId": "03c084c4570553f9d5014d11b50aaae6839c55e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
