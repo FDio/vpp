@@ -503,6 +503,50 @@ class VppPapiProvider(object):
                          'learn_limit': learn_limit,
                          'pid': os.getpid(), })
 
+    def want_dhcp6_pd_reply_events(self, enable_disable=1):
+        return self.api(self.papi.want_dhcp6_pd_reply_events,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid()})
+
+    def dhcp6_clients_enable_disable(self, enable=1):
+        return self.api(self.papi.dhcp6_clients_enable_disable,
+                        {'enable': enable})
+
+    def dhcp6_pd_send_client_message(self, msg_type, sw_if_index, T1, T2,
+                                     prefixes, server_index=0xFFFFFFFF,
+                                     irt=0, mrt=0, mrc=1, mrd=0, stop=0,
+                                     ):
+        return self.api(self.papi.dhcp6_pd_send_client_message,
+                        {'sw_if_index': sw_if_index,
+                         'server_index': server_index,
+                         'irt': irt,
+                         'mrt': mrt,
+                         'mrc': mrc,
+                         'mrd': mrd,
+                         'stop': stop,
+                         'msg_type': msg_type,
+                         'T1': T1,
+                         'T2': T2,
+                         'n_prefixes': len(prefixes),
+                         'prefixes': prefixes})
+
+    def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
+                                       enable=1):
+        return self.api(self.papi.dhcp6_pd_client_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'prefix_group': prefix_group,
+                         'enable': enable})
+
+    def ip6_add_del_address_using_prefix(self, sw_if_index, address,
+                                         prefix_length, prefix_group,
+                                         is_add=1):
+        return self.api(self.papi.ip6_add_del_address_using_prefix,
+                        {'sw_if_index': sw_if_index,
+                         'prefix_group': prefix_group,
+                         'address': address,
+                         'prefix_length': prefix_length,
+                         'is_add': is_add})
+
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):
         """Create/delete L2 FIB entry.

@@ -236,6 +236,29 @@ static ip6_address_t ip6a_zero;	/* ip6 address 0 */
 static void wc_nd_signal_report (wc_nd_report_t * r);
 static void ra_signal_report (ra_report_t * r);
 
+ip6_address_t
+ip6_neighbor_get_link_local_address (u32 sw_if_index)
+{
+  static ip6_address_t empty_address = { {0} };
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  ip6_radv_t *radv_info;
+  u32 ri;
+
+  ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
+  if (ri == ~0)
+    {
+      clib_warning ("IPv6 is not enabled for sw_if_index %d", sw_if_index);
+      return empty_address;
+    }
+  radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+  if (radv_info == NULL)
+    {
+      clib_warning ("Internal error");
+      return empty_address;
+    }
+  return radv_info->link_local_address;
+}
+
 /**
  * @brief publish wildcard arp event
  * @param sw_if_index The interface on which the ARP entires are acted
