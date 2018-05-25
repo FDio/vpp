@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dee11bc1_5bcc044f",
+        "filename": "src/plugins/acl/public_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-05-25T10:06:25Z",
+      "side": 1,
+      "message": "I am kind of unsure what is best to do here. One option is to not allow the inline across plugins - especially in this case from my tests it does not buy much performance at all; and maybe a non-inline which would match across a vector of packets would be a better option...\n\nBut if we need to be able to allow for inlines, I would need some infra for kind of delayed initialization, when ACL plugin is loaded...",
+      "revId": "3304e431677ec845022234b7ef99dcd25f72d14d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
