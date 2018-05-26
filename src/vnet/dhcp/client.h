@@ -76,7 +76,7 @@ typedef struct
   u8 set_broadcast_flag;
   /* Interface MAC address, so we can do an rx-packet-for-us check */
   u8 client_hardware_address[6];
-  u8 pad1;
+  u8 client_detect_feature_enabled;
 
   void *event_callback;
 } dhcp_client_t;
