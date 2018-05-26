@@ -106,6 +106,7 @@ dhcp_client_addr_callback (dhcp_client_t * c)
   vnet_feature_enable_disable ("ip4-unicast",
 			       "ip4-dhcp-client-detect",
 			       c->sw_if_index, 0 /* disable */ , 0, 0);
+  c->client_detect_feature_enabled = 0;
 
   /* if renewing the lease, the address and route have already been added */
   if (c->state == DHCP_BOUND)
@@ -220,6 +221,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  {
 	    u32 lease_time_in_seconds =
 	      clib_host_to_net_u32 (o->data_as_u32[0]);
+	    // for debug: lease_time_in_seconds = 20; /*$$$$*/
 	    c->lease_expires = now + (f64) lease_time_in_seconds;
 	    c->lease_lifetime = lease_time_in_seconds;
 	    /* Set a sensible default, in case we don't get opt 58 */
@@ -307,6 +309,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 					   "ip4-dhcp-client-detect",
 					   c->sw_if_index, 1 /* enable */ ,
 					   0, 0);
+	      c->client_detect_feature_enabled = 1;
 	    }
 	  /* Wipe out any memory of the address we had... */
 	  c->state = DHCP_DISCOVER;
@@ -577,6 +580,15 @@ dhcp_discover_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "DISCOVER" state. Send a dhcp discover packet,
    * eventually back off the retry rate.
    */
+
+  if (c->client_detect_feature_enabled == 0)
+    {
+      vnet_feature_enable_disable ("ip4-unicast",
+				   "ip4-dhcp-client-detect",
+				   c->sw_if_index, 1 /* enable */ , 0, 0);
+      c->client_detect_feature_enabled = 1;
+    }
+
   send_dhcp_pkt (dcm, c, DHCP_PACKET_DISCOVER, 1 /* is_broadcast */ );
 
   c->retry_count++;
@@ -623,10 +635,13 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * DHCP address. Turn it back on again on first renew attempt.
    * Otherwise, if the DHCP server replies we'll never see it.
    */
-  if (!c->retry_count)
-    vnet_feature_enable_disable ("ip4-unicast",
-				 "ip4-dhcp-client-detect",
-				 c->sw_if_index, 1 /* enable */ , 0, 0);
+  if (c->client_detect_feature_enabled == 0)
+    {
+      vnet_feature_enable_disable ("ip4-unicast",
+				   "ip4-dhcp-client-detect",
+				   c->sw_if_index, 1 /* enable */ , 0, 0);
+      c->client_detect_feature_enabled = 1;
+    }
 
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 0 /* is_broadcast */ );
 
@@ -928,6 +943,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       vnet_feature_enable_disable ("ip4-unicast",
 				   "ip4-dhcp-client-detect",
 				   c->sw_if_index, 1 /* enable */ , 0, 0);
+      c->client_detect_feature_enabled = 1;
 
       vlib_process_signal_event (vm, dhcp_client_process_node.index,
 				 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);

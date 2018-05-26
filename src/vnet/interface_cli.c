@@ -270,36 +270,45 @@ show_sw_interfaces (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _linput, *linput = &_linput;
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si, *sorted_sis = 0;
   u32 sw_if_index = ~(u32) 0;
   u8 show_addresses = 0;
   u8 show_features = 0;
   u8 show_tag = 0;
+  int verbose = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, linput))
+    return 0;
+
+  while (unformat_check_input (linput) != UNFORMAT_END_OF_INPUT)
     {
       /* See if user wants to show specific interface */
       if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  (linput, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	{
 	  si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
 	  vec_add1 (sorted_sis, si[0]);
 	}
-      else if (unformat (input, "address") || unformat (input, "addr"))
+      else if (unformat (linput, "address") || unformat (linput, "addr"))
 	show_addresses = 1;
-      else if (unformat (input, "features") || unformat (input, "feat"))
+      else if (unformat (linput, "features") || unformat (linput, "feat"))
 	show_features = 1;
-      else if (unformat (input, "tag"))
+      else if (unformat (linput, "tag"))
 	show_tag = 1;
+      else if (unformat (linput, "verbose"))
+	verbose = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return (0, "unknown linput `%U'",
+				     format_unformat_error, linput);
 	  goto done;
 	}
     }
 
+  unformat_free (linput);
   if (show_features || show_tag)
     {
       if (sw_if_index == ~(u32) 0)
@@ -308,7 +317,7 @@ show_sw_interfaces (vlib_main_t * vm,
 
   if (show_features)
     {
-      vnet_interface_features_show (vm, sw_if_index);
+      vnet_interface_features_show (vm, sw_if_index, verbose);
 
       l2_input_config_t *l2_input = l2input_intf_config (sw_if_index);
       u32 fb = l2_input->feature_bitmap;
@@ -456,7 +465,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
-  .short_help = "show interface [address|addr|features|feat] [<interface> [<interface> [..]]]",
+  .short_help = "show interface [address|addr|features|feat] [<interface> [<interface> [..]]] [verbose]",
   .function = show_sw_interfaces,
 };
 /* *INDENT-ON* */

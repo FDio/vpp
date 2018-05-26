@@ -397,7 +397,8 @@ clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,
 				     vnet_feature_registration_t *
 				     first_reg, char ***feature_nodes);
 
-void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index);
+void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index,
+				   int verbose);
 
 #endif /* included_feature_h */
 
