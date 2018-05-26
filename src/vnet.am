@@ -416,6 +416,9 @@ API_FILES += 					\
  vnet/ip/rd_cp.api                              \
  vnet/ip/punt.api
 
+libvnet_multiversioning_files = 		\
+ vnet/ip/ip4_input.c
+
 ########################################
 # Bidirectional Forwarding Detection
 ########################################
