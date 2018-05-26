@@ -447,7 +447,7 @@ always_inline int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
-  return (clib_bihash_search_40_8
+  return (clib_bihash_search_inline_2_40_8
 	  (&am->fa_sessions_hash, &p5tuple->kv, pvalue_sess) == 0);
 }
 

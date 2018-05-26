@@ -270,10 +270,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
   else
     {
-      p5tuple_pkt->kv.key[0] = 0;
-      p5tuple_pkt->kv.key[1] = 0;
-      p5tuple_pkt->kv.key[2] = 0;
-      p5tuple_pkt->kv.key[3] = 0;
+      ip46_address_mask_ip4(&p5tuple_pkt->addr[0]);
+      ip46_address_mask_ip4(&p5tuple_pkt->addr[1]);
       clib_memcpy (&p5tuple_pkt->addr[0].ip4,
 		   get_ptr_to_offset (b0,
 				      offsetof (ip4_header_t,
