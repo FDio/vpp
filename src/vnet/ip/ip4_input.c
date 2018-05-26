@@ -47,6 +47,7 @@ typedef struct
   u8 packet_data[64];
 } ip4_input_trace_t;
 
+#ifndef CLIB_MULTIARCH_VARIANT
 static u8 *
 format_ip4_input_trace (u8 * s, va_list * va)
 {
@@ -59,6 +60,61 @@ format_ip4_input_trace (u8 * s, va_list * va)
 
   return s;
 }
+#endif
+
+static_always_inline u32
+ip4_input_set_next (u32 sw_if_index, vlib_buffer_t * b, int arc_enabled)
+{
+  ip4_main_t *im = &ip4_main;
+  ip_lookup_main_t *lm = &im->lookup_main;
+  u32 next;
+  u8 arc;
+
+  ip4_header_t *ip = vlib_buffer_get_current (b);
+
+  if (PREDICT_FALSE (ip4_address_is_multicast (&ip->dst_address)))
+    {
+      next = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+      arc = lm->mcast_feature_arc_index;
+    }
+  else
+    {
+      next = IP4_INPUT_NEXT_LOOKUP;
+      arc = lm->ucast_feature_arc_index;
+    }
+
+  if (arc_enabled)
+    vnet_feature_arc_start (arc, sw_if_index, &next, b);
+
+  return next;
+}
+
+static_always_inline void
+ip4_input_check_sw_if_index (vlib_simple_counter_main_t * cm, u32 sw_if_index,
+			     u32 * last_sw_if_index, u32 * cnt,
+			     int *arc_enabled)
+{
+  ip4_main_t *im = &ip4_main;
+  ip_lookup_main_t *lm = &im->lookup_main;
+  u32 thread_index;
+  if (*last_sw_if_index == sw_if_index)
+    {
+      (*cnt)++;
+      return;
+    }
+
+  thread_index = vlib_get_thread_index ();
+  if (*cnt)
+    vlib_increment_simple_counter (cm, thread_index, *last_sw_if_index, *cnt);
+  *cnt = 1;
+  *last_sw_if_index = sw_if_index;
+
+  if (vnet_have_features (lm->ucast_feature_arc_index, sw_if_index) ||
+      vnet_have_features (lm->mcast_feature_arc_index, sw_if_index))
+    *arc_enabled = 1;
+  else
+    *arc_enabled = 0;
+}
 
 /* Validate IP v4 packets and pass them either to forwarding code
    or drop/punt exception packets. */
@@ -67,19 +123,22 @@ ip4_input_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, int verify_checksum)
 {
-  ip4_main_t *im = &ip4_main;
   vnet_main_t *vnm = vnet_get_main ();
-  ip_lookup_main_t *lm = &im->lookup_main;
-  u32 n_left_from, *from, *to_next;
-  ip4_input_next_t next_index;
+  u32 n_left_from, *from;
+  u32 thread_index = vlib_get_thread_index ();
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_simple_counter_main_t *cm;
-  u32 thread_index = vlib_get_thread_index ();
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  ip4_header_t *ip[4];
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 sw_if_index[4];
+  u32 last_sw_if_index = ~0;
+  u32 cnt = 0;
+  int arc_enabled = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
@@ -89,133 +148,112 @@ ip4_input_inline (vlib_main_t * vm,
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 VNET_INTERFACE_COUNTER_IP4);
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
+  next = nexts;
+  while (n_left_from >= 4)
     {
-      u32 n_left_to_next;
+      u32 x = 0;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      if (n_left_from >= 12)
 	{
-	  vlib_buffer_t *p0, *p1;
-	  ip4_header_t *ip0, *ip1;
-	  u32 sw_if_index0, pi0, next0;
-	  u32 sw_if_index1, pi1, next1;
-	  u8 arc0, arc1;
+	  vlib_prefetch_buffer_header (b[8], LOAD);
+	  vlib_prefetch_buffer_header (b[9], LOAD);
+	  vlib_prefetch_buffer_header (b[10], LOAD);
+	  vlib_prefetch_buffer_header (b[11], LOAD);
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
-
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
-	  }
-
-	  to_next[0] = pi0 = from[0];
-	  to_next[1] = pi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
-
-	  ip0 = vlib_buffer_get_current (p0);
-	  ip1 = vlib_buffer_get_current (p1);
-
-	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
-
-	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
-	    {
-	      arc0 = lm->mcast_feature_arc_index;
-	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
-	    }
-	  else
-	    {
-	      arc0 = lm->ucast_feature_arc_index;
-	      next0 = IP4_INPUT_NEXT_LOOKUP;
-	    }
-
-	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip1->dst_address)))
-	    {
-	      arc1 = lm->mcast_feature_arc_index;
-	      next1 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
-	    }
-	  else
-	    {
-	      arc1 = lm->ucast_feature_arc_index;
-	      next1 = IP4_INPUT_NEXT_LOOKUP;
-	    }
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
-
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
-	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
-
-	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
-	  vlib_increment_simple_counter (cm, thread_index, sw_if_index1, 1);
-	  ip4_input_check_x2 (vm, error_node,
-			      p0, p1, ip0, ip1,
-			      &next0, &next1, verify_checksum);
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
-	}
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  vlib_buffer_t *p0;
-	  ip4_header_t *ip0;
-	  u32 sw_if_index0, pi0, next0;
-	  u8 arc0;
-
-	  pi0 = from[0];
-	  to_next[0] = pi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  ip0 = vlib_buffer_get_current (p0);
-
-	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-
-	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
-	    {
-	      arc0 = lm->mcast_feature_arc_index;
-	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
-	    }
-	  else
-	    {
-	      arc0 = lm->ucast_feature_arc_index;
-	      next0 = IP4_INPUT_NEXT_LOOKUP;
-	    }
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
-
-	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
-	  ip4_input_check_x1 (vm, error_node, p0, ip0, &next0,
-			      verify_checksum);
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  CLIB_PREFETCH (b[4]->data, sizeof (ip4_header_t), LOAD);
+	  CLIB_PREFETCH (b[5]->data, sizeof (ip4_header_t), LOAD);
+	  CLIB_PREFETCH (b[6]->data, sizeof (ip4_header_t), LOAD);
+	  CLIB_PREFETCH (b[7]->data, sizeof (ip4_header_t), LOAD);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[2])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[3])->ip.adj_index[VLIB_RX] = ~0;
+
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
+      sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
+
+      x |= sw_if_index[0] ^ last_sw_if_index;
+      x |= sw_if_index[1] ^ last_sw_if_index;
+      x |= sw_if_index[2] ^ last_sw_if_index;
+      x |= sw_if_index[3] ^ last_sw_if_index;
+
+      if (PREDICT_TRUE (x == 0))
+	{
+	  /* we deal with 4 more packets sharing the same sw_if_index
+	     with the previous one, so we can optimize */
+	  cnt += 4;
+	  if (arc_enabled)
+	    {
+	      next[0] = ip4_input_set_next (sw_if_index[0], b[0], 1);
+	      next[1] = ip4_input_set_next (sw_if_index[1], b[1], 1);
+	      next[2] = ip4_input_set_next (sw_if_index[2], b[2], 1);
+	      next[3] = ip4_input_set_next (sw_if_index[3], b[3], 1);
+	    }
+	  else
+	    {
+	      next[0] = ip4_input_set_next (sw_if_index[0], b[0], 0);
+	      next[1] = ip4_input_set_next (sw_if_index[1], b[1], 0);
+	      next[2] = ip4_input_set_next (sw_if_index[2], b[2], 0);
+	      next[3] = ip4_input_set_next (sw_if_index[3], b[3], 0);
+	    }
+	}
+      else
+	{
+	  ip4_input_check_sw_if_index (cm, sw_if_index[0], &last_sw_if_index,
+				       &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (cm, sw_if_index[1], &last_sw_if_index,
+				       &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (cm, sw_if_index[2], &last_sw_if_index,
+				       &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (cm, sw_if_index[3], &last_sw_if_index,
+				       &cnt, &arc_enabled);
+
+	  next[0] = ip4_input_set_next (sw_if_index[0], b[0], 1);
+	  next[1] = ip4_input_set_next (sw_if_index[1], b[1], 1);
+	  next[2] = ip4_input_set_next (sw_if_index[2], b[2], 1);
+	  next[3] = ip4_input_set_next (sw_if_index[3], b[3], 1);
+	}
+
+      ip[0] = vlib_buffer_get_current (b[0]);
+      ip[1] = vlib_buffer_get_current (b[1]);
+      ip[2] = vlib_buffer_get_current (b[2]);
+      ip[3] = vlib_buffer_get_current (b[3]);
+
+      ip4_input_check_x4 (vm, error_node, b, ip, next, verify_checksum);
+
+      /* next */
+      b += 4;
+      next += 4;
+      n_left_from -= 4;
+    }
+  while (n_left_from)
+    {
+      u32 next0;
+      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      ip4_input_check_sw_if_index (cm, sw_if_index[0], &last_sw_if_index,
+				   &cnt, &arc_enabled);
+      next0 = ip4_input_set_next (sw_if_index[0], b[0], arc_enabled);
+      ip[0] = vlib_buffer_get_current (b[0]);
+      ip4_input_check_x1 (vm, error_node, b[0], ip[0], &next0,
+			  verify_checksum);
+      next[0] = next0;
+
+      /* next */
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
     }
 
+  vlib_increment_simple_counter (cm, thread_index, last_sw_if_index, cnt);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 
@@ -254,19 +292,22 @@ ip4_input_inline (vlib_main_t * vm,
       <code> vnet_get_config_data (... &next0 ...); </code>
       or @c error-drop
 */
-static uword
-ip4_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+uword CLIB_CPU_OPTIMIZED
+CLIB_MULTIARCH_FN (ip4_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 1);
 }
 
-static uword
-ip4_input_no_checksum (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+uword CLIB_CPU_OPTIMIZED
+CLIB_MULTIARCH_FN (ip4_input_no_checksum) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
+#ifndef CLIB_MULTIARCH_VARIANT
 char *ip4_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip4_error
@@ -295,11 +336,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_input_trace,
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_input_node, ip4_input);
-
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
   .function = ip4_input_no_checksum,
   .name = "ip4-input-no-checksum",
@@ -320,8 +357,25 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_input_no_checksum_node,
-			      ip4_input_no_checksum);
+#if __x86_64__
+vlib_node_function_t __clib_weak ip4_input_avx512;
+vlib_node_function_t __clib_weak ip4_input_avx2;
+vlib_node_function_t __clib_weak ip4_input_no_checksum_avx512;
+vlib_node_function_t __clib_weak ip4_input_no_checksum_avx2;
+static void __clib_constructor
+ip4_input_multiarch_select (void)
+{
+  if (ip4_input_no_checksum_avx512 && clib_cpu_supports_avx512f ())
+    ip4_input_no_checksum_node.function = ip4_input_no_checksum_avx512;
+  else if (ip4_input_no_checksum_avx2 && clib_cpu_supports_avx2 ())
+    ip4_input_no_checksum_node.function = ip4_input_no_checksum_avx2;
+
+  if (ip4_input_avx512 && clib_cpu_supports_avx512f ())
+    ip4_input_node.function = ip4_input_avx512;
+  else if (ip4_input_avx2 && clib_cpu_supports_avx2 ())
+    ip4_input_node.function = ip4_input_avx2;
+}
+#endif
 
 static clib_error_t *
 ip4_init (vlib_main_t * vm)
@@ -360,6 +414,7 @@ ip4_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip4_init);
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
