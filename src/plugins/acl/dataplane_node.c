@@ -73,8 +73,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		int is_input, int is_l2_path, u32 * l2_feat_next_node_index,
 		vlib_node_registration_t * acl_fa_node)
 {
-  u32 n_left_from, *from, *to_next;
-  acl_fa_next_t next_index;
+  u32 n_left, *from;
   u32 pkts_acl_checked = 0;
   u32 pkts_new_session = 0;
   u32 pkts_exist_session = 0;
@@ -89,244 +88,228 @@ acl_fa_node_fn (vlib_main_t * vm,
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
   error_node = vlib_node_get_runtime (vm, acl_fa_node->index);
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, frame->n_vectors);
+  /* set the initial values for the current buffer the next pointers */
+  b = bufs;
+  next = nexts;
+
+  n_left = frame->n_vectors;
+  while (n_left > 0)
     {
-      u32 n_left_to_next;
+      u32 next0 = 0;
+      u8 action = 0;
+      u32 sw_if_index0;
+      u32 lc_index0 = ~0;
+      int acl_check_needed = 1;
+      u32 match_acl_in_index = ~0;
+      u32 match_acl_pos = ~0;
+      u32 match_rule_index = ~0;
+      u8 error0 = 0;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      n_left -= 1;
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (is_input)
+	sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      else
+	sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+
+      if (is_input)
+	lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
+      else
+	lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+
+
+      u32 **p_epoch_vec =
+	is_input ? &am->input_policy_epoch_by_sw_if_index :
+	&am->output_policy_epoch_by_sw_if_index;
+      u16 current_policy_epoch =
+	sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
+							 sw_if_index0)
+	: (is_input * FA_POLICY_EPOCH_IS_INPUT);
+      /*
+       * Extract the L3/L4 matching info into a 5-tuple structure.
+       */
+
+      acl_plugin_fill_5tuple_inline (lc_index0, b[0], is_ip6, is_input,
+				     is_l2_path,
+				     (fa_5tuple_opaque_t *) & fa_5tuple);
+      fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+      fa_5tuple.pkt.mask_type_index_lsb = ~0;
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning
+	("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
+	 fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
+	 fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
+#endif
+
+      /* Try to match an existing session first */
+
+      if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0 = 0;
-	  u8 action = 0;
-	  u32 sw_if_index0;
-	  u32 lc_index0;
-	  int acl_check_needed = 1;
-	  u32 match_acl_in_index = ~0;
-	  u32 match_acl_pos = ~0;
-	  u32 match_rule_index = ~0;
-	  u8 error0 = 0;
-
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  if (is_input)
-	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  else
-	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-	  if (is_input)
-	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
-	  else
-	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
-
-	  u32 **p_epoch_vec =
-	    is_input ? &am->input_policy_epoch_by_sw_if_index :
-	    &am->output_policy_epoch_by_sw_if_index;
-	  u16 current_policy_epoch =
-	    sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
-							     sw_if_index0)
-	    : (is_input * FA_POLICY_EPOCH_IS_INPUT);
-	  /*
-	   * Extract the L3/L4 matching info into a 5-tuple structure.
-	   */
-
-	  acl_plugin_fill_5tuple_inline (lc_index0, b0, is_ip6, is_input,
-					 is_l2_path,
-					 (fa_5tuple_opaque_t *) & fa_5tuple);
-	  fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  fa_5tuple.pkt.mask_type_index_lsb = ~0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
-	     fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
-	     fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
-#endif
-
-	  /* Try to match an existing session first */
-
-	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
+	  if (acl_fa_find_session (am, sw_if_index0, &fa_5tuple, &value_sess))
 	    {
-	      if (acl_fa_find_session
-		  (am, sw_if_index0, &fa_5tuple, &value_sess))
+	      trace_bitmap |= 0x80000000;
+	      error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
+	      fa_full_session_id_t f_sess_id;
+
+	      f_sess_id.as_u64 = value_sess.value;
+	      ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
+
+	      fa_session_t *sess =
+		get_session_ptr (am, f_sess_id.thread_index,
+				 f_sess_id.session_index);
+	      int old_timeout_type = fa_session_get_timeout_type (am, sess);
+	      action =
+		acl_fa_track_session (am, is_input, sw_if_index0, now,
+				      sess, &fa_5tuple);
+	      /* expose the session id to the tracer */
+	      match_rule_index = f_sess_id.session_index;
+	      int new_timeout_type = fa_session_get_timeout_type (am, sess);
+	      acl_check_needed = 0;
+	      pkts_exist_session += 1;
+	      /* Tracking might have changed the session timeout type, e.g. from transient to established */
+	      if (PREDICT_FALSE (old_timeout_type != new_timeout_type))
 		{
-		  trace_bitmap |= 0x80000000;
-		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
-		  fa_full_session_id_t f_sess_id;
-
-		  f_sess_id.as_u64 = value_sess.value;
-		  ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
-
-		  fa_session_t *sess =
-		    get_session_ptr (am, f_sess_id.thread_index,
-				     f_sess_id.session_index);
-		  int old_timeout_type =
-		    fa_session_get_timeout_type (am, sess);
-		  action =
-		    acl_fa_track_session (am, is_input, sw_if_index0, now,
-					  sess, &fa_5tuple);
-		  /* expose the session id to the tracer */
-		  match_rule_index = f_sess_id.session_index;
-		  int new_timeout_type =
-		    fa_session_get_timeout_type (am, sess);
+		  acl_fa_restart_timer_for_session (am, now, f_sess_id);
+		  pkts_restart_session_timer++;
+		  trace_bitmap |=
+		    0x00010000 + ((0xff & old_timeout_type) << 8) +
+		    (0xff & new_timeout_type);
+		}
+	      /*
+	       * I estimate the likelihood to be very low - the VPP needs
+	       * to have >64K interfaces to start with and then on
+	       * exactly 64K indices apart needs to be exactly the same
+	       * 5-tuple... Anyway, since this probability is nonzero -
+	       * print an error and drop the unlucky packet.
+	       * If this shows up in real world, we would need to bump
+	       * the hash key length.
+	       */
+	      if (PREDICT_FALSE (sess->sw_if_index != sw_if_index0))
+		{
+		  clib_warning
+		    ("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
 		  acl_check_needed = 0;
-		  pkts_exist_session += 1;
-		  /* Tracking might have changed the session timeout type, e.g. from transient to established */
-		  if (PREDICT_FALSE (old_timeout_type != new_timeout_type))
-		    {
-		      acl_fa_restart_timer_for_session (am, now, f_sess_id);
-		      pkts_restart_session_timer++;
-		      trace_bitmap |=
-			0x00010000 + ((0xff & old_timeout_type) << 8) +
-			(0xff & new_timeout_type);
-		    }
-		  /*
-		   * I estimate the likelihood to be very low - the VPP needs
-		   * to have >64K interfaces to start with and then on
-		   * exactly 64K indices apart needs to be exactly the same
-		   * 5-tuple... Anyway, since this probability is nonzero -
-		   * print an error and drop the unlucky packet.
-		   * If this shows up in real world, we would need to bump
-		   * the hash key length.
-		   */
-		  if (PREDICT_FALSE (sess->sw_if_index != sw_if_index0))
-		    {
-		      clib_warning
-			("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
-		      acl_check_needed = 0;
-		      action = 0;
-		    }
-		  if (PREDICT_FALSE (am->reclassify_sessions))
-		    {
-		      /* if the MSB of policy epoch matches but not the LSB means it is a stale session */
-		      if ((0 ==
-			   ((current_policy_epoch ^
-			     f_sess_id.intf_policy_epoch) &
-			    FA_POLICY_EPOCH_IS_INPUT))
-			  && (current_policy_epoch !=
-			      f_sess_id.intf_policy_epoch))
-			{
-			  /* delete session and increment the counter */
-			  vec_validate
-			    (pw->fa_session_epoch_change_by_sw_if_index,
-			     sw_if_index0);
-			  vec_elt (pw->fa_session_epoch_change_by_sw_if_index,
-				   sw_if_index0)++;
-			  if (acl_fa_conn_list_delete_session (am, f_sess_id))
-			    {
-			      /* delete the session only if we were able to unlink it */
-			      acl_fa_delete_session (am, sw_if_index0,
-						     f_sess_id);
-			    }
-			  acl_check_needed = 1;
-			  trace_bitmap |= 0x40000000;
-			}
-		    }
+		  action = 0;
 		}
-	    }
-
-	  if (acl_check_needed)
-	    {
-	      action = 0;	/* deny by default */
-	      acl_plugin_match_5tuple_inline (lc_index0,
-					      (fa_5tuple_opaque_t *) &
-					      fa_5tuple, is_ip6, &action,
-					      &match_acl_pos,
-					      &match_acl_in_index,
-					      &match_rule_index,
-					      &trace_bitmap);
-	      error0 = action;
-	      if (1 == action)
-		pkts_acl_permit += 1;
-	      if (2 == action)
+	      if (PREDICT_FALSE (am->reclassify_sessions))
 		{
-		  if (!acl_fa_can_add_session (am, is_input, sw_if_index0))
-		    acl_fa_try_recycle_session (am, is_input, thread_index,
-						sw_if_index0);
-
-		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
+		  /* if the MSB of policy epoch matches but not the LSB means it is a stale session */
+		  if ((0 ==
+		       ((current_policy_epoch ^
+			 f_sess_id.intf_policy_epoch) &
+			FA_POLICY_EPOCH_IS_INPUT))
+		      && (current_policy_epoch !=
+			  f_sess_id.intf_policy_epoch))
 		    {
-		      fa_session_t *sess =
-			acl_fa_add_session (am, is_input, is_ip6,
-					    sw_if_index0,
-					    now, &fa_5tuple,
-					    current_policy_epoch);
-		      acl_fa_track_session (am, is_input, sw_if_index0,
-					    now, sess, &fa_5tuple);
-		      pkts_new_session += 1;
-		    }
-		  else
-		    {
-		      action = 0;
-		      error0 = ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS;
+		      /* delete session and increment the counter */
+		      vec_validate
+			(pw->fa_session_epoch_change_by_sw_if_index,
+			 sw_if_index0);
+		      vec_elt (pw->fa_session_epoch_change_by_sw_if_index,
+			       sw_if_index0)++;
+		      if (acl_fa_conn_list_delete_session (am, f_sess_id))
+			{
+			  /* delete the session only if we were able to unlink it */
+			  acl_fa_delete_session (am, sw_if_index0, f_sess_id);
+			}
+		      acl_check_needed = 1;
+		      trace_bitmap |= 0x40000000;
 		    }
 		}
 	    }
-
-
-
-	  if (action > 0)
-	    {
-	      if (is_l2_path)
-		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
-	      else
-		vnet_feature_next (sw_if_index0, &next0, b0);
-	    }
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: sw_if_index %d lc_index %d action %d acl_index %d rule_index %d",
-	     sw_if_index0, lc_index0, action, match_acl_in_index,
-	     match_rule_index);
-#endif
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      acl_fa_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->lc_index = lc_index0;
-	      t->next_index = next0;
-	      t->match_acl_in_index = match_acl_in_index;
-	      t->match_rule_index = match_rule_index;
-	      t->packet_info[0] = fa_5tuple.kv.key[0];
-	      t->packet_info[1] = fa_5tuple.kv.key[1];
-	      t->packet_info[2] = fa_5tuple.kv.key[2];
-	      t->packet_info[3] = fa_5tuple.kv.key[3];
-	      t->packet_info[4] = fa_5tuple.kv.key[4];
-	      t->packet_info[5] = fa_5tuple.kv.value;
-	      t->action = action;
-	      t->trace_bitmap = trace_bitmap;
-	    }
-
-	  next0 = next0 < node->n_next_nodes ? next0 : 0;
-	  if (0 == next0)
-	    b0->error = error_node->errors[error0];
-
-	  pkts_acl_checked += 1;
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next, bi0,
-					   next0);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (acl_check_needed)
+	{
+	  action = 0;		/* deny by default */
+	  acl_plugin_match_5tuple_inline (lc_index0,
+					  (fa_5tuple_opaque_t *) &
+					  fa_5tuple, is_ip6, &action,
+					  &match_acl_pos,
+					  &match_acl_in_index,
+					  &match_rule_index, &trace_bitmap);
+	  error0 = action;
+	  if (1 == action)
+	    pkts_acl_permit += 1;
+	  if (2 == action)
+	    {
+	      if (!acl_fa_can_add_session (am, is_input, sw_if_index0))
+		acl_fa_try_recycle_session (am, is_input, thread_index,
+					    sw_if_index0);
+
+	      if (acl_fa_can_add_session (am, is_input, sw_if_index0))
+		{
+		  fa_session_t *sess =
+		    acl_fa_add_session (am, is_input, is_ip6,
+					sw_if_index0,
+					now, &fa_5tuple,
+					current_policy_epoch);
+		  acl_fa_track_session (am, is_input, sw_if_index0,
+					now, sess, &fa_5tuple);
+		  pkts_new_session += 1;
+		}
+	      else
+		{
+		  action = 0;
+		  error0 = ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS;
+		}
+	    }
+	}
+
+
+
+      if (action > 0)
+	{
+	  if (is_l2_path)
+	    next0 = vnet_l2_feature_next (b[0], l2_feat_next_node_index, 0);
+	  else
+	    vnet_feature_next (sw_if_index0, &next0, b[0]);
+	}
+#ifdef FA_NODE_VERBOSE_DEBUG
+      clib_warning
+	("ACL_FA_NODE_DBG: sw_if_index %d lc_index %d action %d acl_index %d rule_index %d",
+	 sw_if_index0, lc_index0, action, match_acl_in_index,
+	 match_rule_index);
+#endif
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  acl_fa_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->lc_index = lc_index0;
+	  t->next_index = next0;
+	  t->match_acl_in_index = match_acl_in_index;
+	  t->match_rule_index = match_rule_index;
+	  t->packet_info[0] = fa_5tuple.kv.key[0];
+	  t->packet_info[1] = fa_5tuple.kv.key[1];
+	  t->packet_info[2] = fa_5tuple.kv.key[2];
+	  t->packet_info[3] = fa_5tuple.kv.key[3];
+	  t->packet_info[4] = fa_5tuple.kv.key[4];
+	  t->packet_info[5] = fa_5tuple.kv.value;
+	  t->action = action;
+	  t->trace_bitmap = trace_bitmap;
+	}
+
+      next0 = next0 < node->n_next_nodes ? next0 : 0;
+      if (0 == next0)
+	b[0]->error = error_node->errors[error0];
+      next[0] = next0;
+
+      next++;
+      b++;
+      pkts_acl_checked += 1;
     }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   vlib_node_increment_counter (vm, acl_fa_node->index,
 			       ACL_FA_ERROR_ACL_CHECK, pkts_acl_checked);
