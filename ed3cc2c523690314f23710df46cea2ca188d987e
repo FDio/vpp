@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3577f5b_9a3c1765",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-26T19:16:01Z",
+      "side": 1,
+      "message": "if I got it right, native will pass -march\u003dnative to cc and that is exactly what we don\u0027t want to happen...",
+      "range": {
+        "startLine": 76,
+        "startChar": 25,
+        "endLine": 76,
+        "endChar": 31
+      },
+      "revId": "ed3cc2c523690314f23710df46cea2ca188d987e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
