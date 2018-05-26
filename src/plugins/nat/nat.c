@@ -44,7 +44,8 @@ VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
 VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa", 
+                               "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat_classify, static) = {
   .arc_name = "ip4-unicast",

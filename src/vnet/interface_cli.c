@@ -270,36 +270,47 @@ show_sw_interfaces (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _linput, *linput = &_linput;
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si, *sorted_sis = 0;
   u32 sw_if_index = ~(u32) 0;
   u8 show_addresses = 0;
   u8 show_features = 0;
   u8 show_tag = 0;
+  int verbose = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /*
+   * Get a line of input. Won't work if the user typed
+   * "show interface" and nothing more.
+   */
+  if (unformat_user (input, unformat_line_input, linput))
     {
-      /* See if user wants to show specific interface */
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      while (unformat_check_input (linput) != UNFORMAT_END_OF_INPUT)
 	{
-	  si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
-	  vec_add1 (sorted_sis, si[0]);
+	  /* See if user wants to show specific interface */
+	  if (unformat
+	      (linput, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	    {
+	      si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
+	      vec_add1 (sorted_sis, si[0]);
+	    }
+	  else if (unformat (linput, "address") || unformat (linput, "addr"))
+	    show_addresses = 1;
+	  else if (unformat (linput, "features") || unformat (linput, "feat"))
+	    show_features = 1;
+	  else if (unformat (linput, "tag"))
+	    show_tag = 1;
+	  else if (unformat (linput, "verbose"))
+	    verbose = 1;
+	  else
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, linput);
+	      goto done;
+	    }
 	}
-      else if (unformat (input, "address") || unformat (input, "addr"))
-	show_addresses = 1;
-      else if (unformat (input, "features") || unformat (input, "feat"))
-	show_features = 1;
-      else if (unformat (input, "tag"))
-	show_tag = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
+      unformat_free (linput);
     }
-
   if (show_features || show_tag)
     {
       if (sw_if_index == ~(u32) 0)
@@ -308,7 +319,7 @@ show_sw_interfaces (vlib_main_t * vm,
 
   if (show_features)
     {
-      vnet_interface_features_show (vm, sw_if_index);
+      vnet_interface_features_show (vm, sw_if_index, verbose);
 
       l2_input_config_t *l2_input = l2input_intf_config (sw_if_index);
       u32 fb = l2_input->feature_bitmap;
@@ -344,14 +355,14 @@ show_sw_interfaces (vlib_main_t * vm,
       sorted_sis =
 	vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
       _vec_len (sorted_sis) = 0;
-      pool_foreach (si, im->sw_interfaces, (
-					     {
-					     int visible =
-					     vnet_swif_is_api_visible (si);
-					     if (visible)
-					     vec_add1 (sorted_sis, si[0]);}
-		    ));
-
+      /* *INDENT-OFF* */
+      pool_foreach (si, im->sw_interfaces,
+      ({
+        int visible = vnet_swif_is_api_visible (si);
+        if (visible)
+          vec_add1 (sorted_sis, si[0]);}
+        ));
+      /* *INDENT-OFF* */
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
     }
@@ -438,25 +449,26 @@ show_sw_interfaces (vlib_main_t * vm,
 			     format_ip6_address, r6, ia->address_length);
         }));
 	/* *INDENT-ON* */
-      }
     }
-  else
-    {
-      vec_foreach (si, sorted_sis)
-      {
-	vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, si);
-      }
-    }
+}
+
+else
+{
+  vec_foreach (si, sorted_sis)
+  {
+    vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, si);
+  }
+}
 
 done:
-  vec_free (sorted_sis);
-  return error;
+vec_free (sorted_sis);
+return error;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
-  .short_help = "show interface [address|addr|features|feat] [<interface> [<interface> [..]]]",
+  .short_help = "show interface [address|addr|features|feat] [<interface> [<interface> [..]]] [verbose]",
   .function = show_sw_interfaces,
 };
 /* *INDENT-ON* */
