@@ -15,6 +15,7 @@
 
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/fib/fib_node.h>
+#include <vnet/l2/l2_input.h>
 
 /*
  * The 'DB' of interface DPOs.
@@ -234,7 +235,8 @@ typedef enum interface_rx_dpo_next_t_
 always_inline uword
 interface_rx_dpo_inline (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
-                         vlib_frame_t * from_frame)
+                         vlib_frame_t * from_frame,
+			 u8 is_l2)
 {
     u32 n_left_from, next_index, * from, * to_next;
     u32 thread_index = vlib_get_thread_index ();
@@ -277,6 +279,12 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 
             vnet_buffer(b0)->sw_if_index[VLIB_RX] = ido0->ido_sw_if_index;
             vnet_buffer(b1)->sw_if_index[VLIB_RX] = ido1->ido_sw_if_index;
+
+	    if (is_l2)
+	    {
+		vnet_update_l2_len (b0);
+		vnet_update_l2_len (b1);
+	    }
 
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
@@ -329,6 +337,10 @@ interface_rx_dpo_inline (vlib_main_t * vm,
              * interface DPR represents */
             vnet_buffer(b0)->sw_if_index[VLIB_RX] = ido0->ido_sw_if_index;
 
+	    /* Update l2_len to make l2 tag rewrite work */
+	    if (is_l2)
+		vnet_update_l2_len (b0);
+
             /* Bump the interface's RX coutners */
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
@@ -368,7 +380,7 @@ interface_rx_dpo_ip4 (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 0));
 }
 
 static uword
@@ -376,7 +388,7 @@ interface_rx_dpo_ip6 (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 0));
 }
 
 static uword
@@ -384,7 +396,7 @@ interface_rx_dpo_l2 (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 1));
 }
 
 VLIB_REGISTER_NODE (interface_rx_dpo_ip4_node) = {
