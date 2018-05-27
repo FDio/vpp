@@ -284,9 +284,9 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
   l2output_main_t *msm = &l2output_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE];
-  u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
+  u32 sw_if_indices[VLIB_FRAME_SIZE + 1], *sw_if_index;
+  u16 run_count[VLIB_FRAME_SIZE + 1], *rcount;
   i16 cur_data_offsets[VLIB_FRAME_SIZE], *cdo;
-  l2_output_config_t *config;
   u32 feature_bitmap;
 
   from = vlib_frame_vector_args (frame);
@@ -295,8 +295,14 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left);
   b = bufs;
   sw_if_index = sw_if_indices;
+  memset (run_count, 0, sizeof run_count);
+  rcount = run_count;
   cdo = cur_data_offsets;
 
+  if (n_left)
+    sw_if_index[0] = ~0;
+  u8 adv;
+  u32 rx_sw_if;
   /* extract data from buffer metadata */
   while (n_left >= 8)
     {
@@ -306,39 +312,70 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
 
-      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
       cdo[0] = b[0]->current_data;
-      sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
       cdo[1] = b[1]->current_data;
-      sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
       cdo[2] = b[2]->current_data;
-      sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
       cdo[3] = b[3]->current_data;
 
+      rx_sw_if = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      adv = (sw_if_index[0] != rx_sw_if) ? 1 : 0;
+      sw_if_index[adv] = rx_sw_if;
+      rcount[adv]++;
+      sw_if_index += adv;
+      rcount += adv;
+      rx_sw_if = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+      adv = (sw_if_index[0] != rx_sw_if) ? 1 : 0;
+      sw_if_index[adv] = rx_sw_if;
+      rcount[adv]++;
+      sw_if_index += adv;
+      rcount += adv;
+      rx_sw_if = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+      adv = (sw_if_index[0] != rx_sw_if) ? 1 : 0;
+      sw_if_index[adv] = rx_sw_if;
+      rcount[adv]++;
+      sw_if_index += adv;
+      rcount += adv;
+      rx_sw_if = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
+      adv = (sw_if_index[0] != rx_sw_if) ? 1 : 0;
+      sw_if_index[adv] = rx_sw_if;
+      rcount[adv]++;
+      sw_if_index += adv;
+      rcount += adv;
+
       /* next */
-      sw_if_index += 4;
       n_left -= 4;
       b += 4;
       cdo += 4;
     }
   while (n_left)
     {
-      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
       cdo[0] = b[0]->current_data;
+      rx_sw_if = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      adv = (sw_if_index[0] != rx_sw_if) ? 1 : 0;
+      sw_if_index[adv] = rx_sw_if;
+      rcount[adv]++;
+      sw_if_index += adv;
+      rcount += adv;
 
       /* next */
-      sw_if_index += 1;
       n_left -= 1;
       b += 1;
       cdo += 1;
     }
 
   n_left = frame->n_vectors;
+  sw_if_index = sw_if_indices;
+  rcount = run_count;
   while (n_left)
     {
-      u16 count, new_next, *next;
+      u16 new_next, *next;
       u16 off = frame->n_vectors - n_left;
       b = bufs + off;
+      rcount++;
+      sw_if_index++;
+      u16 count = *rcount;
+      n_left -= count;
+
 
       if (n_left >= 4)
 	{
@@ -348,14 +385,11 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[3], LOAD);
 	}
 
-      sw_if_index = sw_if_indices + off;
       cdo = cur_data_offsets + off;
       next = nexts + off;
 
-      count = clib_count_equal_u32 (sw_if_index, n_left);
-      n_left -= count;
-
-      config = vec_elt_at_index (msm->configs, sw_if_index[0]);
+      l2_output_config_t *config =
+	vec_elt_at_index (msm->configs, sw_if_index[0]);
       feature_bitmap = config->feature_bitmap;
       if (PREDICT_FALSE ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
 	new_next = feat_bitmap_get_next_node_index
@@ -363,12 +397,12 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
       else
 	new_next = vec_elt (l2output_main.output_node_index_vec,
 			    sw_if_index[0]);
-      clib_memset_u16 (nexts + off, new_next, count);
+      clib_memset_u16 (nexts + off, new_next, *rcount);
 
       if (new_next == L2OUTPUT_NEXT_DROP)
 	{
 	  l2output_set_buffer_error
-	    (b, count, node->errors[L2OUTPUT_ERROR_MAPPING_DROP]);
+	    (b, *rcount, node->errors[L2OUTPUT_ERROR_MAPPING_DROP]);
 	  continue;
 	}
 
