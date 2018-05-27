@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d2d9adf4_3e4354c1",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-05-27T13:06:27Z",
+      "side": 1,
+      "message": "I think we should also maintain which hw-if-index the flow is enabled and display its interface name. Thus, there may be multiple interfaces, right?  Because of this, I think we should put flow-index and he interface name on separate line indented so the output line won\u0027t get too long.",
+      "range": {
+        "startLine": 78,
+        "startChar": 25,
+        "endLine": 78,
+        "endChar": 30
+      },
+      "revId": "5c3c4551bfc7d24ba611eaefcceda796dafce713",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
