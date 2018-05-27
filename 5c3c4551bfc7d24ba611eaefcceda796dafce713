@@ -22,6 +22,30 @@
       "revId": "5c3c4551bfc7d24ba611eaefcceda796dafce713",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7c7ff01f_765561b5",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-05-27T13:13:14Z",
+      "side": 1,
+      "message": "\"sh flow ...\" command can be used to view the hardware interfaces that  have the flow enabled",
+      "parentUuid": "d2d9adf4_3e4354c1",
+      "range": {
+        "startLine": 78,
+        "startChar": 25,
+        "endLine": 78,
+        "endChar": 30
+      },
+      "revId": "5c3c4551bfc7d24ba611eaefcceda796dafce713",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
