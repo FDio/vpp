@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df19101d_7b8c40f7",
+        "filename": "src/vnet/vnet_all_api_h.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-27T12:12:34Z",
+      "side": 1,
+      "message": "Please read and heed this comment. Causing an API \"flag day\" to add new APIs is not to be taken lightly.",
+      "revId": "fb9105b2fd0e860f2227d125f30c1aef173d320b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
