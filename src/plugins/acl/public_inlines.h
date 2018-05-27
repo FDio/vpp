@@ -182,36 +182,11 @@ offset_within_packet (vlib_buffer_t * b0, int offset)
   return (offset <= (b0->current_length - 8));
 }
 
+
 always_inline void
-acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
+		 int l3_offset, fa_5tuple_t * p5tuple_pkt)
 {
-  /* IP4 and IP6 protocol numbers of ICMP */
-  static u8 icmp_protos_v4v6[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
-
-  int l3_offset;
-  int l4_offset;
-  u16 ports[2];
-  u8 proto;
-
-  if (is_l2_path)
-    {
-      l3_offset = ethernet_buffer_header_size(b0);
-    }
-  else
-    {
-      if (is_input)
-        l3_offset = 0;
-      else
-        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
-    }
-
-  /* key[0..3] contains src/dst address and is cleared/set below */
-  /* Remainder of the key and per-packet non-key data */
-  p5tuple_pkt->kv_40_8.key[4] = 0;
-  p5tuple_pkt->kv_40_8.value = 0;
-  p5tuple_pkt->pkt.is_ip6 = is_ip6;
-
   if (is_ip6)
     {
       clib_memcpy (&p5tuple_pkt->ip6_addr,
@@ -219,6 +194,34 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 				      offsetof (ip6_header_t,
 						src_address) + l3_offset),
 		   sizeof (p5tuple_pkt->ip6_addr));
+    }
+  else
+    {
+      memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
+      clib_memcpy (&p5tuple_pkt->ip4_addr,
+		   get_ptr_to_offset (b0,
+				      offsetof (ip4_header_t,
+						src_address) + l3_offset),
+		   sizeof (p5tuple_pkt->ip4_addr));
+    }
+}
+
+always_inline void
+acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_ip6, int is_input,
+		 int l3_offset, fa_session_l4_key_t *p5tuple_l4, fa_packet_info_t *p5tuple_pkt)
+{
+  /* IP4 and IP6 protocol numbers of ICMP */
+  static u8 icmp_protos_v4v6[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
+
+  int l4_offset;
+  u16 ports[2];
+  u8 proto;
+
+  fa_session_l4_key_t tmp_l4 = { .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
+  fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
+
+  if (is_ip6)
+    {
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip6_header_t,
@@ -243,7 +246,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 		  frag_offset = clib_net_to_host_u16(frag_offset) >> 3;
 		  if (frag_offset)
 		    {
-                      p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+                      tmp_pkt.is_nonfirst_fragment = 1;
                       /* invalidate L4 offset so we don't try to find L4 info */
                       l4_offset += b0->current_length;
 		    }
@@ -270,12 +273,6 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
   else
     {
-      memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
-      clib_memcpy (&p5tuple_pkt->ip4_addr,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->ip4_addr));
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip4_header_t,
@@ -292,31 +289,31 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
       /* non-initial fragments have non-zero offset */
       if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
         {
-          p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+          tmp_pkt.is_nonfirst_fragment = 1;
           /* invalidate L4 offset so we don't try to find L4 info */
           l4_offset += b0->current_length;
         }
 
     }
-  p5tuple_pkt->l4.proto = proto;
-  p5tuple_pkt->l4.is_input = is_input;
+  tmp_l4.proto = proto;
+  tmp_l4.is_input = is_input;
 
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
-      p5tuple_pkt->pkt.l4_valid = 1;
+      tmp_pkt.l4_valid = 1;
       if (icmp_protos_v4v6[is_ip6] == proto)
 	{
 	  /* type */
-	  p5tuple_pkt->l4.port[0] =
+	  tmp_l4.port[0] =
 	    *(u8 *) get_ptr_to_offset (b0,
 				       l4_offset + offsetof (icmp46_header_t,
 							     type));
 	  /* code */
-	  p5tuple_pkt->l4.port[1] =
+	  tmp_l4.port[1] =
 	    *(u8 *) get_ptr_to_offset (b0,
 				       l4_offset + offsetof (icmp46_header_t,
 							     code));
-          p5tuple_pkt->l4.is_slowpath = 1;
+          tmp_l4.is_slowpath = 1;
 	}
       else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
 	{
@@ -325,21 +322,48 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 					  l4_offset + offsetof (tcp_header_t,
 								src_port)),
 		       sizeof (ports));
-	  p5tuple_pkt->l4.port[0] = clib_net_to_host_u16 (ports[0]);
-	  p5tuple_pkt->l4.port[1] = clib_net_to_host_u16 (ports[1]);
+	  tmp_l4.port[0] = clib_net_to_host_u16 (ports[0]);
+	  tmp_l4.port[1] = clib_net_to_host_u16 (ports[1]);
 
-	  p5tuple_pkt->pkt.tcp_flags =
+	  tmp_pkt.tcp_flags =
 	    *(u8 *) get_ptr_to_offset (b0,
 				       l4_offset + offsetof (tcp_header_t,
 							     flags));
-	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
-          p5tuple_pkt->l4.is_slowpath = 0;
+	  tmp_pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
+          tmp_l4.is_slowpath = 0;
 	}
       else
         {
-          p5tuple_pkt->l4.is_slowpath = 1;
+          tmp_l4.is_slowpath = 1;
         }
     }
+
+  p5tuple_pkt->as_u64 = tmp_pkt.as_u64;
+  p5tuple_l4->as_u64 = tmp_l4.as_u64;
+}
+
+always_inline void
+acl_fill_5tuple (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_ip6,
+		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+{
+  int l3_offset;
+
+  if (is_l2_path)
+    {
+      l3_offset = ethernet_buffer_header_size(b0);
+    }
+  else
+    {
+      if (is_input)
+        l3_offset = 0;
+      else
+        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
+    }
+
+  /* key[0..3] contains src/dst address and is cleared/set below */
+  /* Remainder of the key and per-packet non-key data */
+  acl_fill_5tuple_l3_data(am, b0, is_ip6, l3_offset, p5tuple_pkt);
+  acl_fill_5tuple_l4_and_pkt_data(am, sw_if_index0, b0, is_ip6, is_input, l3_offset, &p5tuple_pkt->l4, &p5tuple_pkt->pkt);
 }
 
 always_inline void
@@ -347,7 +371,7 @@ acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6,
 		 int is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
 {
   acl_main_t *am = p_acl_main;
-  acl_fill_5tuple(am, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
+  acl_fill_5tuple(am, 0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
 }
 
 
