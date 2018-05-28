@@ -47,7 +47,7 @@ typedef struct
   u8 packet_data[64];
 } ip4_input_trace_t;
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_ip4_input_trace (u8 * s, va_list * va)
 {
@@ -292,22 +292,20 @@ ip4_input_inline (vlib_main_t * vm,
       <code> vnet_get_config_data (... &next0 ...); </code>
       or @c error-drop
 */
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (ip4_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
+VLIB_NODE_FN (ip4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 1);
 }
 
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (ip4_input_no_checksum) (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_input_no_checksum_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 char *ip4_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip4_error
@@ -316,7 +314,6 @@ char *ip4_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_node) = {
-  .function = ip4_input,
   .name = "ip4-input",
   .vector_size = sizeof (u32),
 
@@ -337,8 +334,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
   .format_trace = format_ip4_input_trace,
 };
 
-VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
-  .function = ip4_input_no_checksum,
+VLIB_REGISTER_NODE (ip4_input_no_checksum_node) = {
   .name = "ip4-input-no-checksum",
   .vector_size = sizeof (u32),
 
@@ -356,26 +352,6 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
   .format_trace = format_ip4_input_trace,
 };
 /* *INDENT-ON* */
-
-#if __x86_64__
-vlib_node_function_t __clib_weak ip4_input_avx512;
-vlib_node_function_t __clib_weak ip4_input_avx2;
-vlib_node_function_t __clib_weak ip4_input_no_checksum_avx512;
-vlib_node_function_t __clib_weak ip4_input_no_checksum_avx2;
-static void __clib_constructor
-ip4_input_multiarch_select (void)
-{
-  if (ip4_input_no_checksum_avx512 && clib_cpu_supports_avx512f ())
-    ip4_input_no_checksum_node.function = ip4_input_no_checksum_avx512;
-  else if (ip4_input_no_checksum_avx2 && clib_cpu_supports_avx2 ())
-    ip4_input_no_checksum_node.function = ip4_input_no_checksum_avx2;
-
-  if (ip4_input_avx512 && clib_cpu_supports_avx512f ())
-    ip4_input_node.function = ip4_input_avx512;
-  else if (ip4_input_avx2 && clib_cpu_supports_avx2 ())
-    ip4_input_node.function = ip4_input_avx2;
-}
-#endif
 
 static clib_error_t *
 ip4_init (vlib_main_t * vm)

@@ -75,10 +75,20 @@ typedef enum
   VLIB_N_NODE_TYPE,
 } vlib_node_type_t;
 
+typedef struct _vlib_node_fn_registration
+{
+  vlib_node_function_t *function;
+  int priority;
+  struct _vlib_node_fn_registration *next_registration;
+} vlib_node_fn_registration_t;
+
 typedef struct _vlib_node_registration
 {
   /* Vector processing function for this node. */
   vlib_node_function_t *function;
+
+  /* Node function candidate registration with priority */
+  vlib_node_fn_registration_t *node_fn_registrations;
 
   /* Node name. */
   char *name;
@@ -159,6 +169,24 @@ static void __vlib_rm_node_registration_##x (void)                      \
                                   &x, next_registration);               \
 }                                                                       \
 __VA_ARGS__ vlib_node_registration_t x
+
+#define VLIB_NODE_FN(node)						\
+uword CLIB_MARCH_SFX (node##_fn)();					\
+static vlib_node_fn_registration_t					\
+  CLIB_MARCH_SFX(node##_fn_registration) =				\
+  { .function = &CLIB_MARCH_SFX (node##_fn), };				\
+									\
+static void __clib_constructor						\
+CLIB_MARCH_SFX (node##_multiarch_register) (void)			\
+{									\
+  extern vlib_node_registration_t node;					\
+  vlib_node_fn_registration_t *r;					\
+  r = & CLIB_MARCH_SFX (node##_fn_registration);			\
+  r->priority = CLIB_MARCH_FN_PRIORITY();				\
+  r->next_registration = node.node_fn_registrations;			\
+  node.node_fn_registrations = r;					\
+}									\
+uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
 #if CLIB_DEBUG > 0
 #define VLIB_NODE_FUNCTION_CLONE_TEMPLATE(arch, fn)

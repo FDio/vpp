@@ -46,7 +46,7 @@ static __clib_unused char *memif_tx_func_error_strings[] = {
 #undef _
 };
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_memif_device_name (u8 * s, va_list * args)
 {
@@ -500,7 +500,7 @@ memif_subif_add_del_function (vnet_main_t * vnm,
   return 0;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",

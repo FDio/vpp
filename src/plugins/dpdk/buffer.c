@@ -146,7 +146,7 @@ next:
     }
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static void
 del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 {
@@ -436,7 +436,7 @@ CLIB_MULTIARCH_FN (dpdk_buffer_free_no_next) (vlib_main_t * vm, u32 * buffers,
 			   0);
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static void
 dpdk_packet_template_init (vlib_main_t * vm,
 			   void *vt,

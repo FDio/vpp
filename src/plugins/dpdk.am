@@ -57,7 +57,7 @@ dpdk_plugin_la_SOURCES =					\
 API_FILES += dpdk/api/dpdk.api
 
 if CPU_X86_64
-dpdk_multiversioning_files = 					\
+dpdk_multiversioning_sources = 					\
 	dpdk/buffer.c						\
 	dpdk/device/node.c					\
 	dpdk/device/device.c
@@ -66,10 +66,10 @@ if CC_SUPPORTS_AVX2
 ###############################################################
 # AVX2
 ###############################################################
-libdpdk_plugin_avx2_la_SOURCES = $(dpdk_multiversioning_files)
+libdpdk_plugin_avx2_la_SOURCES = $(dpdk_multiversioning_sources)
 libdpdk_plugin_avx2_la_CFLAGS =					\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
-	-DCLIB_MULTIARCH_VARIANT=avx2
+	-DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libdpdk_plugin_avx2.la
 dpdk_plugin_la_LIBADD += libdpdk_plugin_avx2.la
 endif
@@ -78,10 +78,10 @@ if CC_SUPPORTS_AVX512
 ###############################################################
 # AVX512
 ###############################################################
-libdpdk_plugin_avx512_la_SOURCES = $(dpdk_multiversioning_files)
+libdpdk_plugin_avx512_la_SOURCES = $(dpdk_multiversioning_sources)
 libdpdk_plugin_avx512_la_CFLAGS =				\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
-	-DCLIB_MULTIARCH_VARIANT=avx512
+	-DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libdpdk_plugin_avx512.la
 dpdk_plugin_la_LIBADD += libdpdk_plugin_avx512.la
 endif

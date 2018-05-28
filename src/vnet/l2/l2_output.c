@@ -27,7 +27,7 @@
 #include <vnet/l2/l2_output.h>
 
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* Feature graph node names */
 static char *l2output_feat_names[] = {
 #define _(sym,name) name,
@@ -76,7 +76,7 @@ typedef struct
   u8 raw[12];			/* raw data */
 } l2output_trace_t;
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* packet trace format function */
 static u8 *
 format_l2output_trace (u8 * s, va_list * args)
@@ -275,10 +275,9 @@ l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   l2_efp, l2_vtr, l2_pbb, 1, 1);
 }
 
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
+			      vlib_node_runtime_t * node,
+			      vlib_frame_t * frame)
 {
   u32 n_left, *from;
   l2output_main_t *msm = &l2output_main;
@@ -431,10 +430,9 @@ CLIB_MULTIARCH_FN (l2output_node_fn) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node) = {
-  .function = l2output_node_fn,
   .name = "l2-output",
   .vector_size = sizeof (u32),
   .format_trace = format_l2output_trace,
@@ -451,20 +449,6 @@ VLIB_REGISTER_NODE (l2output_node) = {
         [L2OUTPUT_NEXT_BAD_INTF] = "l2-output-bad-intf",
   },
 };
-
-#if __x86_64__
-vlib_node_function_t __clib_weak l2output_node_fn_avx512;
-vlib_node_function_t __clib_weak l2output_node_fn_avx2;
-static void __clib_constructor
-l2output_multiarch_select (void)
-{
-  if (l2output_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    l2output_node.function = l2output_node_fn_avx512;
-  else if (l2output_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    l2output_node.function = l2output_node_fn_avx2;
-}
-#endif
-
 /* *INDENT-ON* */
 
 
