@@ -294,7 +294,7 @@ nobase_include_HEADERS +=			\
   vnet/bonding/node.h                           \
   vnet/bonding/bond.api.h
 
-libvnet_multiversioning_files = 		\
+libvnet_multiversioning_files +=		\
   vnet/bonding/node.c
 
 API_FILES += vnet/bonding/bond.api
@@ -416,7 +416,7 @@ API_FILES += 					\
  vnet/ip/rd_cp.api                              \
  vnet/ip/punt.api
 
-libvnet_multiversioning_files = 		\
+libvnet_multiversioning_files +=		\
  vnet/ip/ip4_input.c
 
 ########################################

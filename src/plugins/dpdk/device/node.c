@@ -636,8 +636,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   return n_rx_packets;
 }
 
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (dpdk_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
+VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * f)
 {
   dpdk_main_t *dm = &dpdk_main;
@@ -669,7 +668,6 @@ CLIB_MULTIARCH_FN (dpdk_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifndef CLIB_MULTIARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_input_node) = {
-  .function = dpdk_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "dpdk-input",
   .sibling_of = "device-input",
@@ -684,20 +682,6 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .error_strings = dpdk_error_strings,
 };
 /* *INDENT-ON* */
-
-vlib_node_function_t __clib_weak dpdk_input_avx512;
-vlib_node_function_t __clib_weak dpdk_input_avx2;
-
-#if __x86_64__
-static void __clib_constructor
-dpdk_input_multiarch_select (void)
-{
-  if (dpdk_input_avx512 && clib_cpu_supports_avx512f ())
-    dpdk_input_node.function = dpdk_input_avx512;
-  else if (dpdk_input_avx2 && clib_cpu_supports_avx2 ())
-    dpdk_input_node.function = dpdk_input_avx2;
-}
-#endif
 #endif
 
 /*
