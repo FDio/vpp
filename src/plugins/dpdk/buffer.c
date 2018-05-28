@@ -488,6 +488,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   struct rte_mempool *mp;
   vlib_physmem_region_t *pr;
+  dpdk_mempool_private_t priv;
   clib_error_t *error = 0;
   u32 size, obj_size;
   i32 ret;
@@ -511,6 +512,12 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
     return clib_error_return (0, "failed to create %s", pool_name);
 
   rte_mempool_set_ops_byname (mp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
+
+  /* Call the mempool priv initializer */
+  priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
+    VLIB_BUFFER_DATA_SIZE;
+  priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
+  rte_pktmbuf_pool_init (mp, &priv);
 
   ret =
     rte_mempool_populate_iova_tab (mp, pr->mem, pr->page_table, pr->n_pages,
@@ -562,7 +569,6 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 {
   dpdk_main_t *dm = &dpdk_main;
   struct rte_mempool *rmp;
-  dpdk_mempool_private_t priv;
   vlib_physmem_region_index_t pri;
   clib_error_t *error = 0;
   u8 *pool_name;
@@ -589,13 +595,6 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 
   if (!error)
     {
-      priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
-	VLIB_BUFFER_DATA_SIZE;
-      priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
-
-      /* call the mempool priv initializer */
-      rte_pktmbuf_pool_init (rmp, &priv);
-
       /* call the object initializers */
       rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
 
