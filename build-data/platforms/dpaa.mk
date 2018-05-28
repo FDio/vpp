@@ -72,7 +72,7 @@ vpp_configure_args_dpaa += $(VPP_CFG_ARGS)
 endif
 
 
-dpaa_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -fstack-protector-all -DFORTIFY_SOURCE=2 \
+dpaa_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -fstack-protector-all -DFORTIFY_SOURCE=2 -mtls-dialect=trad \
 			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6 -I$(OPENSSL_PATH)/include
 dpaa_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fstack-protector-all -DFORTIFY_SOURCE=2 \
 			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6 -L$(OPENSSL_PATH)/lib
@@ -80,7 +80,7 @@ dpaa_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fstack-protector-all -DFORTIFY_SOU
 
 # Use -rdynamic is for stack tracing, O0 for debugging....default is O2
 # Use -DCLIB_LOG2_CACHE_LINE_BYTES to change cache line size
-dpaa_TAG_CFLAGS = -g -Ofast -fPIC -march=$(MARCH) -mcpu=$(dpaa_mtune) \
+dpaa_TAG_CFLAGS = -g -Ofast -fPIC -march=$(MARCH) -mcpu=$(dpaa_mtune) -mtls-dialect=trad \
 		-mtune=$(dpaa_mtune) -funroll-all-loops -DCLIB_LOG2_CACHE_LINE_BYTES=6 -I$(OPENSSL_PATH)/include
 dpaa_TAG_LDFLAGS = -g -Ofast -fPIC -march=$(MARCH) -mcpu=$(dpaa_mtune) \
 		-mtune=$(dpaa_mtune) -funroll-all-loops -DCLIB_LOG2_CACHE_LINE_BYTES=6 -L$(OPENSSL_PATH)/lib
