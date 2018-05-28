@@ -172,10 +172,9 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_feature_next ( /* not used */ 0, next_index, b);
 }
 
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (bond_input_fn) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   u16 thread_index = vlib_get_thread_index ();
   u32 *from, n_left;
@@ -376,7 +375,6 @@ bond_input_init (vlib_main_t * vm)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_input_node) = {
-  .function = bond_input_fn,
   .name = "bond-input",
   .vector_size = sizeof (u32),
   .format_buffer = format_ethernet_header_with_length,
@@ -390,20 +388,6 @@ VLIB_REGISTER_NODE (bond_input_node) = {
     [BOND_INPUT_NEXT_DROP] = "error-drop"
   }
 };
-
-#if __x86_64__
-vlib_node_function_t __clib_weak bond_input_fn_avx512;
-vlib_node_function_t __clib_weak bond_input_fn_avx2;
-static void __clib_constructor
-bond_input_multiarch_select (void)
-{
-  if (bond_input_fn_avx512 && clib_cpu_supports_avx512f ())
-    bond_input_node.function = bond_input_fn_avx512;
-  else if (bond_input_fn_avx2 && clib_cpu_supports_avx2 ())
-    bond_input_node.function = bond_input_fn_avx2;
-}
-#endif
-
 
 VLIB_INIT_FUNCTION (bond_input_init);
 

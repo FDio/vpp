@@ -324,6 +324,26 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       ASSERT (VLIB_NODE_TYPE_INTERNAL == zero.type);
     }
 
+  if (r->node_fn_registrations)
+    {
+      vlib_node_fn_registration_t *fnr = r->node_fn_registrations;
+      int priority = -1;
+
+      /* to avoid confusion, please remove ".function " statiement from
+         CLIB_NODE_REGISTRATION() if using function function candidates */
+      ASSERT (r->function == 0);
+
+      while (fnr)
+	{
+	  if (fnr->priority > priority)
+	    {
+	      priority = fnr->priority;
+	      r->function = fnr->function;
+	    }
+	  fnr = fnr->next_registration;
+	}
+    }
+
   ASSERT (r->function != 0);
 
   n = clib_mem_alloc_no_fail (sizeof (n[0]));
