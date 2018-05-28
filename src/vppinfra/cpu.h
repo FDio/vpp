@@ -34,7 +34,7 @@
 
 
 #if __GNUC__ > 4  && !__clang__
-#define CLIB_CPU_OPTIMIZED __attribute__ ((optimize ("tree-vectorize")))
+#define CLIB_CPU_OPTIMIZED __attribute__ ((optimize ("O3")))
 #else
 #define CLIB_CPU_OPTIMIZED
 #endif
