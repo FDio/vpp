@@ -69,6 +69,24 @@ autoreply define af_packet_set_l4_cksum_offload
   u8 set;
 };
 
+/** \brief Dump af_packet interfaces request */
+define af_packet_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for af_packet dump request
+    @param sw_if_index - software index of af_packet interface
+    @param host_if_name - interface name
+*/
+define af_packet_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 host_if_name[64];
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
