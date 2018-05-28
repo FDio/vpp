@@ -45,7 +45,8 @@
 #define foreach_vpe_api_msg                                          \
 _(AF_PACKET_CREATE, af_packet_create)                                \
 _(AF_PACKET_DELETE, af_packet_delete)                                \
-_(AF_PACKET_SET_L4_CKSUM_OFFLOAD, af_packet_set_l4_cksum_offload)
+_(AF_PACKET_SET_L4_CKSUM_OFFLOAD, af_packet_set_l4_cksum_offload)    \
+_(AF_PACKET_DUMP, af_packet_dump)
 
 static void
 vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
@@ -101,6 +102,50 @@ static void
 
   rv = af_packet_set_l4_cksum_offload (vm, mp->sw_if_index, mp->set);
   REPLY_MACRO (VL_API_AF_PACKET_SET_L4_CKSUM_OFFLOAD_REPLY);
+}
+
+static void
+af_packet_send_details (vpe_api_main_t * am,
+			vl_api_registration_t * reg,
+			af_packet_if_detail_t * af_packet_if, u32 context)
+{
+  vl_api_af_packet_details_t *mp;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = htons (VL_API_AF_PACKET_DETAILS);
+  mp->sw_if_index = htonl (af_packet_if->sw_if_index);
+  clib_memcpy (mp->host_if_name, af_packet_if->host_if_name,
+	       MIN (ARRAY_LEN (mp->host_if_name) - 1,
+		    strlen ((const char *) af_packet_if->host_if_name)));
+
+  mp->context = context;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+
+static void
+vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t * mp)
+{
+  int rv;
+  vpe_api_main_t *am = &vpe_api_main;
+  vl_api_registration_t *reg;
+  af_packet_if_detail_t *out_af_packet_ifs = NULL;
+  af_packet_if_detail_t *af_packet_if = NULL;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rv = af_packet_dump_ifs (&out_af_packet_ifs);
+  if (rv)
+    return;
+
+  vec_foreach (af_packet_if, out_af_packet_ifs)
+  {
+    af_packet_send_details (am, reg, af_packet_if, mp->context);
+  }
+
+  vec_free (out_af_packet_ifs);
 }
 
 /*

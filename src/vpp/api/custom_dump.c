@@ -2205,6 +2205,16 @@ static void *vl_api_af_packet_delete_t_print
   FINISH;
 }
 
+static void *vl_api_af_packet_dump_t_print
+  (vl_api_af_packet_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: af_packet_dump ");
+
+  FINISH;
+}
+
 static u8 *
 format_policer_action (u8 * s, va_list * va)
 {
@@ -3591,6 +3601,7 @@ _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
 _(AF_PACKET_CREATE, af_packet_create)					\
 _(AF_PACKET_DELETE, af_packet_delete)					\
+_(AF_PACKET_DUMP, af_packet_dump)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
 _(MPLS_FIB_DUMP, mpls_fib_dump)                                         \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                   \

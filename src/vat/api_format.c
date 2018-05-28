@@ -5825,6 +5825,7 @@ _(SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY,                       \
   show_one_map_register_fallback_threshold_reply)                       \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
+_(AF_PACKET_DETAILS, af_packet_details)					\
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
 _(POLICER_CLASSIFY_SET_INTERFACE_REPLY, policer_classify_set_interface_reply) \
@@ -19815,6 +19816,53 @@ api_af_packet_delete (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_af_packet_details_t_handler
+  (vl_api_af_packet_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%-16s %d",
+	 mp->host_if_name, clib_net_to_host_u32 (mp->sw_if_index));
+}
+
+static void vl_api_af_packet_details_t_handler_json
+  (vl_api_af_packet_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_string_copy (node, "dev_name", mp->host_if_name);
+}
+
+static int
+api_af_packet_dump (vat_main_t * vam)
+{
+  vl_api_af_packet_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
+  /* Get list of tap interfaces */
+  M (AF_PACKET_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 static int
 api_policer_add_del (vat_main_t * vam)
 {
@@ -23670,6 +23718,7 @@ _(show_lisp_use_petr, "")                                               \
 _(show_lisp_map_request_mode, "")                                       \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
+_(af_packet_dump, "")							\
 _(policer_add_del, "name <policer name> <params> [del]")                \
 _(policer_dump, "[name <policer name>]")                                \
 _(policer_classify_set_interface,                                       \

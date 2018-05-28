@@ -471,6 +471,31 @@ af_packet_set_l4_cksum_offload (vlib_main_t * vm, u32 sw_if_index, u8 set)
   return 0;
 }
 
+int
+af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
+  af_packet_if_detail_t *r_af_packet_ifs = NULL;
+  af_packet_if_detail_t *af_packet_if = NULL;
+
+  vec_foreach (apif, apm->interfaces)
+  {
+    vec_add2 (r_af_packet_ifs, af_packet_if, 1);
+    af_packet_if->sw_if_index = apif->sw_if_index;
+    if (apif->host_if_name)
+      {
+	clib_memcpy (af_packet_if->host_if_name, apif->host_if_name,
+		     MIN (ARRAY_LEN (af_packet_if->host_if_name) - 1,
+			  strlen ((const char *) apif->host_if_name)));
+      }
+  }
+
+  *out_af_packet_ifs = r_af_packet_ifs;
+
+  return 0;
+}
+
 static clib_error_t *
 af_packet_init (vlib_main_t * vm)
 {
