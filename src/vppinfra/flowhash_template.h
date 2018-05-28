@@ -357,7 +357,7 @@ static_always_inline
 FVT(flowhash) *FV(flowhash_alloc)(u32 fixed_entries, u32 collision_buckets)
 {
   FVT(flowhash) *h;
-  u32 size;
+  uword size;
   void *mem;
   u32 entries;
 
