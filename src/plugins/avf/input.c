@@ -375,8 +375,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-uword
-CLIB_MULTIARCH_FN (avf_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
+VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   u32 n_rx = 0;
@@ -399,10 +398,9 @@ CLIB_MULTIARCH_FN (avf_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (avf_input_node) = {
-  .function = avf_input,
   .name = "avf-input",
   .sibling_of = "device-input",
   .format_trace = format_avf_input_trace,
@@ -411,20 +409,6 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .n_errors = AVF_INPUT_N_ERROR,
   .error_strings = avf_input_error_strings,
 };
-
-#if __x86_64__
-vlib_node_function_t __clib_weak avf_input_avx512;
-vlib_node_function_t __clib_weak avf_input_avx2;
-static void __clib_constructor
-avf_input_multiarch_select (void)
-{
-  if (avf_input_avx512 && clib_cpu_supports_avx512f ())
-    avf_input_node.function = avf_input_avx512;
-  else if (avf_input_avx2 && clib_cpu_supports_avx2 ())
-    avf_input_node.function = avf_input_avx2;
-}
-
-#endif
 #endif
 
 /* *INDENT-ON* */

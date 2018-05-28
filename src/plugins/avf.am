@@ -25,7 +25,7 @@ avf_plugin_la_SOURCES = \
 noinst_HEADERS += avf/avf.h
 
 if CPU_X86_64
-avf_multiversioning_files = 					\
+avf_multiversioning_sources = 					\
 	avf/input.c						\
 	avf/output.c
 
@@ -33,10 +33,10 @@ if CC_SUPPORTS_AVX2
 ###############################################################
 # AVX2
 ###############################################################
-libavf_plugin_avx2_la_SOURCES = $(avf_multiversioning_files)
+libavf_plugin_avx2_la_SOURCES = $(avf_multiversioning_sources)
 libavf_plugin_avx2_la_CFLAGS =				\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
-	-DCLIB_MULTIARCH_VARIANT=avx2
+	-DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libavf_plugin_avx2.la
 avf_plugin_la_LIBADD += libavf_plugin_avx2.la
 endif
@@ -45,10 +45,10 @@ if CC_SUPPORTS_AVX512
 ###############################################################
 # AVX512
 ###############################################################
-libavf_plugin_avx512_la_SOURCES = $(avf_multiversioning_files)
+libavf_plugin_avx512_la_SOURCES = $(avf_multiversioning_sources)
 libavf_plugin_avx512_la_CFLAGS =				\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
-	-DCLIB_MULTIARCH_VARIANT=avx512
+	-DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libavf_plugin_avx512.la
 avf_plugin_la_LIBADD += libavf_plugin_avx512.la
 endif

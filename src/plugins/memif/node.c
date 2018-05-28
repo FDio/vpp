@@ -854,10 +854,10 @@ done:
   return n_rx_packets;
 }
 
-uword
-CLIB_MULTIARCH_FN (memif_input_fn) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+
+VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   u32 n_rx = 0;
   memif_main_t *mm = &memif_main;
@@ -910,10 +910,9 @@ CLIB_MULTIARCH_FN (memif_input_fn) (vlib_main_t * vm,
   return n_rx;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
-  .function = memif_input_fn,
   .name = "memif-input",
   .sibling_of = "device-input",
   .format_trace = format_memif_input_trace,
@@ -922,20 +921,6 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .n_errors = MEMIF_INPUT_N_ERROR,
   .error_strings = memif_input_error_strings,
 };
-
-vlib_node_function_t __clib_weak memif_input_fn_avx512;
-vlib_node_function_t __clib_weak memif_input_fn_avx2;
-
-#if __x86_64__
-static void __clib_constructor
-memif_input_multiarch_select (void)
-{
-  if (memif_input_fn_avx512 && clib_cpu_supports_avx512f ())
-    memif_input_node.function = memif_input_fn_avx512;
-  else if (memif_input_fn_avx2 && clib_cpu_supports_avx2 ())
-    memif_input_node.function = memif_input_fn_avx2;
-}
-#endif
 #endif
 
 /* *INDENT-ON* */

@@ -159,7 +159,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
   return frame->n_vectors - n_left;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 #if __x86_64__
 vlib_node_function_t __clib_weak avf_interface_tx_avx512;
 vlib_node_function_t __clib_weak avf_interface_tx_avx2;

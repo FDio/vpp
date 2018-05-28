@@ -37,7 +37,7 @@ typedef enum
     DPDK_TX_FUNC_N_ERROR,
 } dpdk_tx_func_error_t;
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static char *dpdk_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_tx_func_error
@@ -517,7 +517,7 @@ CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
   return tx_pkts;
 }
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static void
 dpdk_clear_hw_interface_counters (u32 instance)
 {
@@ -695,7 +695,7 @@ dpdk_interface_tx_multiarch_select (void)
 
 #define UP_DOWN_FLAG_EVENT 1
 
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 uword
 admin_up_down_process (vlib_main_t * vm,
 		       vlib_node_runtime_t * rt, vlib_frame_t * f)

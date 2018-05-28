@@ -327,36 +327,10 @@ acl_fa_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-vlib_node_function_t __clib_weak acl_in_ip4_l2_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_in_ip4_l2_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_out_ip4_l2_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_out_ip4_l2_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_in_ip6_l2_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_in_ip6_l2_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_out_ip6_l2_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_out_ip6_l2_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_in_ip4_fa_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_in_ip4_fa_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_out_ip4_fa_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_out_ip4_fa_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_in_ip6_fa_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_in_ip6_fa_node_fn_avx2;
-
-vlib_node_function_t __clib_weak acl_out_ip6_fa_node_fn_avx512;
-vlib_node_function_t __clib_weak acl_out_ip6_fa_node_fn_avx2;
-
-
 vlib_node_registration_t acl_in_l2_ip6_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_in_ip6_l2_node_fn) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (acl_in_l2_ip6_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   acl_main_t *am = &acl_main;
   return acl_fa_node_fn (vm, node, frame, 1, 1, 1,
@@ -365,10 +339,9 @@ CLIB_MULTIARCH_FN (acl_in_ip6_l2_node_fn) (vlib_main_t * vm,
 }
 
 vlib_node_registration_t acl_in_l2_ip4_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_in_ip4_l2_node_fn) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (acl_in_l2_ip4_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   acl_main_t *am = &acl_main;
   return acl_fa_node_fn (vm, node, frame, 0, 1, 1,
@@ -377,10 +350,9 @@ CLIB_MULTIARCH_FN (acl_in_ip4_l2_node_fn) (vlib_main_t * vm,
 }
 
 vlib_node_registration_t acl_out_l2_ip6_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_out_ip6_l2_node_fn) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (acl_out_l2_ip6_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   acl_main_t *am = &acl_main;
   return acl_fa_node_fn (vm, node, frame, 1, 0, 1,
@@ -389,10 +361,9 @@ CLIB_MULTIARCH_FN (acl_out_ip6_l2_node_fn) (vlib_main_t * vm,
 }
 
 vlib_node_registration_t acl_out_l2_ip4_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_out_ip4_l2_node_fn) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (acl_out_l2_ip4_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   acl_main_t *am = &acl_main;
   return acl_fa_node_fn (vm, node, frame, 0, 0, 1,
@@ -403,93 +374,38 @@ CLIB_MULTIARCH_FN (acl_out_ip4_l2_node_fn) (vlib_main_t * vm,
 /**** L3 processing path nodes ****/
 
 vlib_node_registration_t acl_in_fa_ip6_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_in_ip6_fa_node_fn) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (acl_in_fa_ip6_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return acl_fa_node_fn (vm, node, frame, 1, 1, 0, 0, &acl_in_fa_ip6_node);
 }
 
 vlib_node_registration_t acl_in_fa_ip4_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_in_ip4_fa_node_fn) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (acl_in_fa_ip4_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return acl_fa_node_fn (vm, node, frame, 0, 1, 0, 0, &acl_in_fa_ip4_node);
 }
 
 vlib_node_registration_t acl_out_fa_ip6_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_out_ip6_fa_node_fn) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (acl_out_fa_ip6_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   return acl_fa_node_fn (vm, node, frame, 1, 0, 0, 0, &acl_out_fa_ip6_node);
 }
 
 vlib_node_registration_t acl_out_fa_ip4_node;
-uword CLIB_CPU_OPTIMIZED
-CLIB_MULTIARCH_FN (acl_out_ip4_fa_node_fn) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (acl_out_fa_ip4_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   return acl_fa_node_fn (vm, node, frame, 0, 0, 0, 0, &acl_out_fa_ip4_node);
 }
 
-
-
-#if __x86_64__
-static void __clib_constructor
-acl_plugin_multiarch_select (void)
-{
-  if (acl_in_ip4_l2_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_in_l2_ip4_node.function = acl_in_ip4_l2_node_fn_avx512;
-  else if (acl_in_ip4_l2_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_in_l2_ip4_node.function = acl_in_ip4_l2_node_fn_avx2;
-
-  if (acl_out_ip4_l2_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_out_l2_ip4_node.function = acl_out_ip4_l2_node_fn_avx512;
-  else if (acl_out_ip4_l2_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_out_l2_ip4_node.function = acl_out_ip4_l2_node_fn_avx2;
-
-  if (acl_in_ip6_l2_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_in_l2_ip6_node.function = acl_in_ip6_l2_node_fn_avx512;
-  else if (acl_in_ip6_l2_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_in_l2_ip6_node.function = acl_in_ip6_l2_node_fn_avx2;
-
-  if (acl_out_ip6_l2_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_out_l2_ip6_node.function = acl_out_ip6_l2_node_fn_avx512;
-  else if (acl_out_ip6_l2_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_out_l2_ip6_node.function = acl_out_ip6_l2_node_fn_avx2;
-
-  if (acl_in_ip4_fa_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_in_fa_ip4_node.function = acl_in_ip4_fa_node_fn_avx512;
-  else if (acl_in_ip4_fa_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_in_fa_ip4_node.function = acl_in_ip4_fa_node_fn_avx2;
-
-  if (acl_out_ip4_fa_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_out_fa_ip4_node.function = acl_out_ip4_fa_node_fn_avx512;
-  else if (acl_out_ip4_fa_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_out_fa_ip4_node.function = acl_out_ip4_fa_node_fn_avx2;
-
-  if (acl_in_ip6_fa_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_in_fa_ip6_node.function = acl_in_ip6_fa_node_fn_avx512;
-  else if (acl_in_ip6_fa_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_in_fa_ip6_node.function = acl_in_ip6_fa_node_fn_avx2;
-
-  if (acl_out_ip6_fa_node_fn_avx512 && clib_cpu_supports_avx512f ())
-    acl_out_fa_ip6_node.function = acl_out_ip6_fa_node_fn_avx512;
-  else if (acl_out_ip6_fa_node_fn_avx2 && clib_cpu_supports_avx2 ())
-    acl_out_fa_ip6_node.function = acl_out_ip6_fa_node_fn_avx2;
-
-}
-#endif
-
-
-
-#ifndef CLIB_MULTIARCH_VARIANT
+#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_fa_5tuple (u8 * s, va_list * args)
 {
@@ -549,7 +465,6 @@ static char *acl_fa_error_strings[] = {
 
 VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
 {
-  .function = acl_in_ip6_l2_node_fn,
   .name = "acl-plugin-in-ip6-l2",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -565,7 +480,6 @@ VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
 
 VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
 {
-  .function = acl_in_ip4_l2_node_fn,
   .name = "acl-plugin-in-ip4-l2",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -581,7 +495,6 @@ VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
 
 VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
 {
-  .function = acl_out_ip6_l2_node_fn,
   .name = "acl-plugin-out-ip6-l2",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -597,7 +510,6 @@ VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
 
 VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
 {
-  .function = acl_out_ip4_l2_node_fn,
   .name = "acl-plugin-out-ip4-l2",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -614,7 +526,6 @@ VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
 
 VLIB_REGISTER_NODE (acl_in_fa_ip6_node) =
 {
-  .function = acl_in_ip6_fa_node_fn,
   .name = "acl-plugin-in-ip6-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -637,7 +548,6 @@ VNET_FEATURE_INIT (acl_in_ip6_fa_feature, static) =
 
 VLIB_REGISTER_NODE (acl_in_fa_ip4_node) =
 {
-  .function = acl_in_ip4_fa_node_fn,
   .name = "acl-plugin-in-ip4-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -661,7 +571,6 @@ VNET_FEATURE_INIT (acl_in_ip4_fa_feature, static) =
 
 VLIB_REGISTER_NODE (acl_out_fa_ip6_node) =
 {
-  .function = acl_out_ip6_fa_node_fn,
   .name = "acl-plugin-out-ip6-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,
@@ -684,7 +593,6 @@ VNET_FEATURE_INIT (acl_out_ip6_fa_feature, static) =
 
 VLIB_REGISTER_NODE (acl_out_fa_ip4_node) =
 {
-  .function = acl_out_ip4_fa_node_fn,
   .name = "acl-plugin-out-ip4-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_plugin_trace,

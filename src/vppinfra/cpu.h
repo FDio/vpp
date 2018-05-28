@@ -51,13 +51,15 @@
   return & fn;                                                         \
 }
 
-#ifdef CLIB_MULTIARCH_VARIANT
+#ifdef CLIB_MARCH_VARIANT
 #define __CLIB_MULTIARCH_FN(a,b) a##_##b
 #define _CLIB_MULTIARCH_FN(a,b) __CLIB_MULTIARCH_FN(a,b)
-#define CLIB_MULTIARCH_FN(fn) _CLIB_MULTIARCH_FN(fn,CLIB_MULTIARCH_VARIANT)
+#define CLIB_MULTIARCH_FN(fn) _CLIB_MULTIARCH_FN(fn,CLIB_MARCH_VARIANT)
 #else
 #define CLIB_MULTIARCH_FN(fn) fn
 #endif
+
+#define CLIB_MARCH_SFX CLIB_MULTIARCH_FN
 
 #define foreach_x86_64_flags \
 _ (sse3,     1, ecx, 0)   \
@@ -165,6 +167,27 @@ clib_cpu_supports_aes ()
 #endif
 }
 
+static inline int
+clib_cpu_march_priority_avx512 ()
+{
+  if (clib_cpu_supports_avx512f ())
+    return 20;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_avx2 ()
+{
+  if (clib_cpu_supports_avx2 ())
+    return 10;
+  return -1;
+}
+
+#ifdef CLIB_MARCH_VARIANT
+#define CLIB_MARCH_FN_PRIORITY() CLIB_MARCH_SFX(clib_cpu_march_priority)()
+#else
+#define CLIB_MARCH_FN_PRIORITY() 0
+#endif
 #endif /* included_clib_cpu_h */
 
 format_function_t format_cpu_uarch;

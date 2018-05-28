@@ -21,7 +21,7 @@ libvnet_la_DEPENDENCIES = \
 	libsvmdb.la		\
 	libsvm.la 		\
 	libvlibmemory.la
-libvnet_multiversioning_files =
+libvnet_multiversioning_sources =
 
 libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt
 
@@ -128,7 +128,7 @@ libvnet_la_SOURCES +=				\
  vnet/ethernet/p2p_ethernet_input.c		\
  vnet/ethernet/p2p_ethernet_api.c
 
-libvnet_multiversioning_files +=		\
+libvnet_multiversioning_sources +=		\
  vnet/l2/l2_output.c
 
 nobase_include_HEADERS +=			\
@@ -294,7 +294,7 @@ nobase_include_HEADERS +=			\
   vnet/bonding/node.h                           \
   vnet/bonding/bond.api.h
 
-libvnet_multiversioning_files = 		\
+libvnet_multiversioning_sources +=		\
   vnet/bonding/node.c
 
 API_FILES += vnet/bonding/bond.api
@@ -416,7 +416,7 @@ API_FILES += 					\
  vnet/ip/rd_cp.api                              \
  vnet/ip/punt.api
 
-libvnet_multiversioning_files = 		\
+libvnet_multiversioning_sources +=		\
  vnet/ip/ip4_input.c
 
 ########################################
@@ -1286,10 +1286,10 @@ if CC_SUPPORTS_AVX2
 ###############################################################
 # AVX2
 ###############################################################
-libvnet_avx2_la_SOURCES = $(libvnet_multiversioning_files)
+libvnet_avx2_la_SOURCES = $(libvnet_multiversioning_sources)
 libvnet_avx2_la_CFLAGS =			\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@		\
-	-DCLIB_MULTIARCH_VARIANT=avx2
+	-DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libvnet_avx2.la
 libvnet_la_LIBADD += libvnet_avx2.la
 endif
@@ -1298,10 +1298,10 @@ if CC_SUPPORTS_AVX512
 ###############################################################
 # AVX512
 ###############################################################
-libvnet_avx512_la_SOURCES = $(libvnet_multiversioning_files)
+libvnet_avx512_la_SOURCES = $(libvnet_multiversioning_sources)
 libvnet_avx512_la_CFLAGS =			\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@		\
-	-DCLIB_MULTIARCH_VARIANT=avx512
+	-DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libvnet_avx512.la
 libvnet_la_LIBADD += libvnet_avx512.la
 endif
