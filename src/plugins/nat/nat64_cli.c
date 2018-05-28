@@ -19,6 +19,7 @@
 
 #include <nat/nat64.h>
 #include <nat/nat.h>
+#include <nat/nat_inlines.h>
 #include <vnet/fib/fib_table.h>
 
 static clib_error_t *

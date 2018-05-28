@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <nat/dslite.h>
+#include <nat/nat_inlines.h>
 
 vlib_node_registration_t dslite_ce_encap_node;
 

@@ -17,6 +17,7 @@
 
 #include <vnet/ipfix-export/flow_report.h>
 #include <vlibmemory/api.h>
+#include <nat/nat_inlines.h>
 #include <nat/nat_ipfix_logging.h>
 
 snat_ipfix_logging_main_t snat_ipfix_logging_main;

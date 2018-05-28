@@ -19,6 +19,7 @@
 
 #include <nat/nat64.h>
 #include <nat/nat_reass.h>
+#include <nat/nat_inlines.h>
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
 
