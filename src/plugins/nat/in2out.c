@@ -25,6 +25,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
 #include <nat/nat_reass.h>
+#include <nat/nat_inlines.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -127,7 +128,8 @@ _(NO_TRANSLATION, "No translation")                     \
 _(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
 _(DROP_FRAGMENT, "Drop fragment")                       \
 _(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(MAX_FRAG, "Maximum fragments per reassembly exceeded")\
+_(FQ_CONGESTED, "Handoff frame queue congested")
 
 typedef enum {
 #define _(sym,str) SNAT_IN2OUT_ERROR_##sym,
@@ -316,6 +318,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_ipfix_logging_max_sessions(sm->max_translations);
+      nat_log_notice ("maximum sessions exceeded");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -333,7 +336,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                               thread_index);
   if (!u)
     {
-      clib_warning ("create NAT user failed");
+      nat_log_warn ("create NAT user failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -357,7 +360,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
     {
-      clib_warning ("create NAT session failed");
+      nat_log_warn ("create NAT session failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -378,14 +381,14 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
   if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
                                1 /* is_add */))
-      clib_warning ("in2out key add failed");
+      nat_log_notice ("in2out key add failed");
 
   kv0.key = s->out2in.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
 
   if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
                                1 /* is_add */))
-      clib_warning ("out2in key add failed");
+      nat_log_notice ("out2in key add failed");
 
   /* log NAT event */
   snat_ipfix_logging_nat44_ses_create(s->in2out.addr.as_u32,
@@ -497,7 +500,6 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
   clib_bihash_kv_16_8_t kv, value;
   udp_header_t *udp;
   snat_session_t *s = 0;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   f64 now = vlib_time_now (sm->vlib_main);
 
   if (!sm->forwarding_enabled)
@@ -540,12 +542,9 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
                 return 1;
             }
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (tsm->list_pool, s->per_user_index);
-          clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                              s->per_user_index);
+          nat44_session_update_lru (sm, s, thread_index);
           /* Accounting */
-          s->last_heard = now;
-          s->total_pkts++;
+          nat44_session_update_counters (s, now, 0);
           return 1;
         }
       else
@@ -1083,15 +1082,10 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
       if (vnet_buffer(b0)->sw_if_index[VLIB_TX] == 0)
         snat_icmp_hairpinning(sm, b0, ip0, icmp0);
       /* Accounting */
-      s0->last_heard = now;
-      s0->total_pkts++;
-      s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
+      nat44_session_update_counters (s0, now,
+                                     vlib_buffer_length_in_chain (sm->vlib_main, b0));
       /* Per-user LRU list maintenance */
-      clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                         s0->per_user_index);
-      clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                          s0->per_user_list_head_index,
-                          s0->per_user_index);
+      nat44_session_update_lru (sm, s0, thread_index);
     }
   return next0;
 }
@@ -1198,6 +1192,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
         {
           b->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
           nat_ipfix_logging_max_sessions(sm->max_translations);
+          nat_log_notice ("maximum sessions exceeded");
           return 0;
         }
 
@@ -1205,7 +1200,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
                                   thread_index);
       if (!u)
         {
-          clib_warning ("create NAT user failed");
+          nat_log_warn ("create NAT user failed");
           return 0;
         }
 
@@ -1280,7 +1275,7 @@ create_ses:
       s = nat_session_alloc_or_recycle (sm, u, thread_index);
       if (!s)
         {
-          clib_warning ("create NAT session failed");
+          nat_log_warn ("create NAT session failed");
           return 0;
         }
 
@@ -1306,14 +1301,14 @@ create_ses:
       s_kv.key[1] = key.as_u64[1];
       s_kv.value = s - tsm->sessions;
       if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 1))
-        clib_warning ("in2out key add failed");
+        nat_log_notice ("in2out key add failed");
 
       key.l_addr.as_u32 = new_addr;
       key.fib_index = sm->outside_fib_index;
       s_kv.key[0] = key.as_u64[0];
       s_kv.key[1] = key.as_u64[1];
       if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
-        clib_warning ("out2in key add failed");
+        nat_log_notice ("out2in key add failed");
   }
 
   /* Update IP checksum */
@@ -1322,13 +1317,9 @@ create_ses:
   ip->checksum = ip_csum_fold (sum);
 
   /* Accounting */
-  s->last_heard = now;
-  s->total_pkts++;
-  s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b));
   /* Per-user LRU list maintenance */
-  clib_dlist_remove (tsm->list_pool, s->per_user_index);
-  clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                      s->per_user_index);
+  nat44_session_update_lru (sm, s, thread_index);
 
   /* Hairpinning */
   if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
@@ -1386,9 +1377,7 @@ snat_in2out_lb (snat_main_t *sm,
                 return 0;
             }
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (tsm->list_pool, s->per_user_index);
-          clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                              s->per_user_index);
+          nat44_session_update_lru (sm, s, thread_index);
           return 0;
         }
     }
@@ -1398,6 +1387,7 @@ snat_in2out_lb (snat_main_t *sm,
         {
           b->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
           nat_ipfix_logging_max_sessions(sm->max_translations);
+          nat_log_notice ("maximum sessions exceeded");
           return 0;
         }
 
@@ -1412,18 +1402,19 @@ snat_in2out_lb (snat_main_t *sm,
                                   thread_index);
       if (!u)
         {
-          clib_warning ("create NAT user failed");
+          nat_log_warn ("create NAT user failed");
           return 0;
         }
 
       s = nat_session_alloc_or_recycle (sm, u, thread_index);
       if (!s)
         {
-          clib_warning ("create NAT session failed");
+          nat_log_warn ("create NAT session failed");
           return 0;
         }
 
       s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
+      s->ext_host_port = udp->dst_port;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
       if (lb)
         s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
@@ -1437,7 +1428,7 @@ snat_in2out_lb (snat_main_t *sm,
       /* Add to lookup tables */
       s_kv.value = s - tsm->sessions;
       if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 1))
-        clib_warning ("in2out-ed key add failed");
+        nat_log_notice ("in2out-ed key add failed");
 
       key.l_addr = e_key.addr;
       key.fib_index = e_key.fib_index;
@@ -1445,7 +1436,7 @@ snat_in2out_lb (snat_main_t *sm,
       s_kv.key[0] = key.as_u64[0];
       s_kv.key[1] = key.as_u64[1];
       if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
-        clib_warning ("out2in-ed key add failed");
+        nat_log_notice ("out2in-ed key add failed");
     }
 
   new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
@@ -1496,13 +1487,10 @@ snat_in2out_lb (snat_main_t *sm,
     }
 
   /* Accounting */
-  s->last_heard = now;
-  s->total_pkts++;
-  s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b));
   /* Per-user LRU list maintenance */
-  clib_dlist_remove (tsm->list_pool, s->per_user_index);
-  clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                      s->per_user_index);
+  nat44_session_update_lru (sm, s, thread_index);
+
   return s;
 }
 
@@ -1747,15 +1735,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
-          s0->last_heard = now;
-          s0->total_pkts++;
-          s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          nat44_session_update_counters (s0, now,
+                                         vlib_buffer_length_in_chain (vm, b0));
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                             s0->per_user_index);
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              s0->per_user_list_head_index,
-                              s0->per_user_index);
+          nat44_session_update_lru (sm, s0, thread_index);
         trace00:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1939,15 +1922,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
-          s1->last_heard = now;
-          s1->total_pkts++;
-          s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
+          nat44_session_update_counters (s1, now,
+                                         vlib_buffer_length_in_chain (vm, b1));
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                             s1->per_user_index);
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              s1->per_user_list_head_index,
-                              s1->per_user_index);
+          nat44_session_update_lru (sm, s1, thread_index);
         trace01:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -2168,15 +2146,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
-          s0->last_heard = now;
-          s0->total_pkts++;
-          s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          nat44_session_update_counters (s0, now,
+                                         vlib_buffer_length_in_chain (vm, b0));
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                             s0->per_user_index);
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              s0->per_user_list_head_index,
-                              s0->per_user_index);
+          nat44_session_update_lru (sm, s0, thread_index);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -2614,6 +2587,7 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
             {
               next0 = SNAT_IN2OUT_NEXT_DROP;
               b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS];
+              nat_log_notice ("maximum reassemblies exceeded");
               goto trace0;
             }
 
@@ -2654,6 +2628,7 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
                   if (nat_ip4_reass_add_fragment (reass0, bi0))
                     {
                       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_FRAG];
+                      nat_log_notice ("maximum fragments per reassembly exceeded");
                       next0 = SNAT_IN2OUT_NEXT_DROP;
                       goto trace0;
                     }
@@ -2705,15 +2680,10 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
                                    s0->ext_host_port, proto0);
 
           /* Accounting */
-          s0->last_heard = now;
-          s0->total_pkts++;
-          s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          nat44_session_update_counters (s0, now,
+                                         vlib_buffer_length_in_chain (vm, b0));
           /* Per-user LRU list maintenance */
-          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                             s0->per_user_index);
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              s0->per_user_list_head_index,
-                              s0->per_user_index);
+          nat44_session_update_lru (sm, s0, thread_index);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -2907,8 +2877,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           dm0 = snat_det_map_by_user(sm, &ip0->src_address);
           if (PREDICT_FALSE(!dm0))
             {
-              clib_warning("no match for internal host %U",
-                           format_ip4_address, &ip0->src_address);
+              nat_log_info ("no match for internal host %U",
+                            format_ip4_address, &ip0->src_address);
               next0 = SNAT_IN2OUT_NEXT_DROP;
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace0;
@@ -3057,8 +3027,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           dm1 = snat_det_map_by_user(sm, &ip1->src_address);
           if (PREDICT_FALSE(!dm1))
             {
-              clib_warning("no match for internal host %U",
-                           format_ip4_address, &ip0->src_address);
+              nat_log_info ("no match for internal host %U",
+                            format_ip4_address, &ip0->src_address);
               next1 = SNAT_IN2OUT_NEXT_DROP;
               b1->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace1;
@@ -3243,8 +3213,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           dm0 = snat_det_map_by_user(sm, &ip0->src_address);
           if (PREDICT_FALSE(!dm0))
             {
-              clib_warning("no match for internal host %U",
-                           format_ip4_address, &ip0->src_address);
+              nat_log_info ("no match for internal host %U",
+                            format_ip4_address, &ip0->src_address);
               next0 = SNAT_IN2OUT_NEXT_DROP;
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace00;
@@ -3476,8 +3446,8 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
   dm0 = snat_det_map_by_user(sm, &in_addr);
   if (PREDICT_FALSE(!dm0))
     {
-      clib_warning("no match for internal host %U",
-                   format_ip4_address, &in_addr);
+      nat_log_info ("no match for internal host %U",
+                    format_ip4_address, &in_addr);
       if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
         {
@@ -3568,11 +3538,12 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 n_left_from, *from, *to_next = 0;
+  u32 n_left_from, *from, *to_next = 0, *to_next_drop = 0;
   static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index;
   static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index
     = 0;
   vlib_frame_queue_elt_t *hf = 0;
+  vlib_frame_queue_t *fq;
   vlib_frame_t *f = 0;
   int i;
   u32 n_left_to_next_worker = 0, *to_next_worker = 0;
@@ -3581,6 +3552,7 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
   u32 thread_index = vlib_get_thread_index ();
   u32 fq_index;
   u32 to_node_index;
+  vlib_frame_t *d = 0;
 
   ASSERT (vec_len (sm->workers));
 
@@ -3600,7 +3572,7 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
       vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
 
       vec_validate_init_empty (congested_handoff_queue_by_worker_index,
-			       sm->first_worker_index + sm->num_workers - 1,
+			       tm->n_vlib_mains - 1,
 			       (vlib_frame_queue_t *) (~0));
     }
 
@@ -3635,6 +3607,26 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
 
           if (next_worker_index != current_worker_index)
             {
+              fq = is_vlib_frame_queue_congested (
+                fq_index, next_worker_index, NAT_FQ_NELTS - 2,
+                congested_handoff_queue_by_worker_index);
+
+              if (fq)
+                {
+                  /* if this is 1st frame */
+                  if (!d)
+                    {
+                      d = vlib_get_frame_to_node (vm, sm->error_node_index);
+                      to_next_drop = vlib_frame_vector_args (d);
+                    }
+
+                  to_next_drop[0] = bi0;
+                  to_next_drop += 1;
+                  d->n_vectors++;
+                  b0->error = node->errors[SNAT_IN2OUT_ERROR_FQ_CONGESTED];
+                  goto trace0;
+                }
+
               if (hf)
                 hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
 
@@ -3676,6 +3668,7 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
           f->n_vectors++;
         }
 
+trace0:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
@@ -3688,6 +3681,9 @@ snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
 
   if (f)
     vlib_put_frame_to_node (vm, to_node_index, f);
+
+  if (d)
+    vlib_put_frame_to_node (vm, sm->error_node_index, d);
 
   if (hf)
     hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
@@ -3732,6 +3728,9 @@ VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_worker_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
 
   .n_next_nodes = 1,
 

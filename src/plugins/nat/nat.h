@@ -28,6 +28,7 @@
 #include <vppinfra/dlist.h>
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
+#include <vlib/log.h>
 
 
 #define SNAT_UDP_TIMEOUT 300
@@ -36,6 +37,8 @@
 #define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
 #define SNAT_TCP_INCOMING_SYN 6
 #define SNAT_ICMP_TIMEOUT 60
+
+#define NAT_FQ_NELTS 64
 
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
@@ -131,7 +134,7 @@ typedef enum {
 #define NAT44_SES_I2O_FIN_ACK 4
 #define NAT44_SES_O2I_FIN_ACK 8
 
-#define nat44_is_ses_closed(s) (s->state == 0xf)
+#define nat44_is_ses_closed(s) s->state == 0xf
 
 #define SNAT_SESSION_FLAG_STATIC_MAPPING       1
 #define SNAT_SESSION_FLAG_UNKNOWN_PROTO        2
@@ -370,6 +373,7 @@ typedef struct snat_main_s {
   u32 in2out_node_index;
   u32 in2out_output_node_index;
   u32 out2in_node_index;
+  u32 error_node_index;
 
   /* Deterministic NAT */
   snat_det_map_t * det_maps;
@@ -401,6 +405,9 @@ typedef struct snat_main_s {
 
   /* API message ID base */
   u16 msg_id_base;
+
+  /* log class */
+  vlib_log_class_t log_class;
 
   /* convenience */
   vlib_main_t * vlib_main;
@@ -453,6 +460,7 @@ void snat_add_del_addr_to_fib (ip4_address_t * addr,
 format_function_t format_snat_user;
 format_function_t format_snat_static_mapping;
 format_function_t format_snat_static_map_to_resolve;
+format_function_t format_snat_session;
 format_function_t format_det_map_ses;
 
 typedef struct {
@@ -499,6 +507,17 @@ typedef struct {
 #define nat_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
 #define nat_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
 
+#define nat_log_err(...) \
+  vlib_log(VLIB_LOG_LEVEL_ERR, snat_main.log_class, __VA_ARGS__)
+#define nat_log_warn(...) \
+  vlib_log(VLIB_LOG_LEVEL_WARNING, snat_main.log_class, __VA_ARGS__)
+#define nat_log_notice(...) \
+  vlib_log(VLIB_LOG_LEVEL_NOTICE, snat_main.log_class, __VA_ARGS__)
+#define nat_log_info(...) \
+  vlib_log(VLIB_LOG_LEVEL_INFO, snat_main.log_class, __VA_ARGS__)
+#define nat_log_debug(...)\
+  vlib_log(VLIB_LOG_LEVEL_DEBUG, snat_main.log_class, __VA_ARGS__)
+
 /*
  * Why is this here? Because we don't need to touch this layer to
  * simply reply to an icmp. We need to change id to a unique
@@ -509,31 +528,6 @@ typedef struct {
   u16 identifier;
   u16 sequence;
 } icmp_echo_header_t;
-
-always_inline u32
-ip_proto_to_snat_proto (u8 ip_proto)
-{
-  u32 snat_proto = ~0;
-
-  snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
-
-  return snat_proto;
-}
-
-always_inline u8
-snat_proto_to_ip_proto (snat_protocol_t snat_proto)
-{
-  u8 ip_proto = ~0;
-
-  ip_proto = (snat_proto == SNAT_PROTOCOL_UDP) ? IP_PROTOCOL_UDP : ip_proto;
-  ip_proto = (snat_proto == SNAT_PROTOCOL_TCP) ? IP_PROTOCOL_TCP : ip_proto;
-  ip_proto = (snat_proto == SNAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : ip_proto;
-
-  return ip_proto;
-}
 
 typedef struct {
   u16 src_port, dst_port;
@@ -608,166 +602,5 @@ snat_session_t * nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u,
 void nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset,
                                        u16 psid_length);
 void nat_set_alloc_addr_and_port_default (void);
-
-static_always_inline u8
-icmp_is_error_message (icmp46_header_t * icmp)
-{
-  switch(icmp->type)
-    {
-    case ICMP4_destination_unreachable:
-    case ICMP4_time_exceeded:
-    case ICMP4_parameter_problem:
-    case ICMP4_source_quench:
-    case ICMP4_redirect:
-    case ICMP4_alternate_host_address:
-      return 1;
-    }
-  return 0;
-}
-
-static_always_inline u8
-is_interface_addr(snat_main_t *sm, vlib_node_runtime_t *node, u32 sw_if_index0,
-                  u32 ip4_addr)
-{
-  snat_runtime_t *rt = (snat_runtime_t *) node->runtime_data;
-  ip4_address_t * first_int_addr;
-
-  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-    {
-      first_int_addr =
-        ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                     0 /* just want the address */);
-      rt->cached_sw_if_index = sw_if_index0;
-      if (first_int_addr)
-        rt->cached_ip4_address = first_int_addr->as_u32;
-      else
-        rt->cached_ip4_address = 0;
-    }
-
-  if (PREDICT_FALSE(ip4_addr == rt->cached_ip4_address))
-    return 1;
-  else
-    return 0;
-}
-
-always_inline u8
-maximum_sessions_exceeded (snat_main_t *sm, u32 thread_index)
-{
-  if (pool_elts (sm->per_thread_data[thread_index].sessions) >= sm->max_translations)
-    return 1;
-
-  return 0;
-}
-
-static_always_inline void
-nat_send_all_to_node(vlib_main_t *vm, u32 *bi_vector,
-                     vlib_node_runtime_t *node, vlib_error_t *error, u32 next)
-{
-  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-
-  from = bi_vector;
-  n_left_from = vec_len(bi_vector);
-  next_index = node->cached_next_index;
-  while (n_left_from > 0) {
-    vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
-    while (n_left_from > 0 && n_left_to_next > 0) {
-      u32 bi0 = to_next[0] = from[0];
-      from += 1;
-      n_left_from -= 1;
-      to_next += 1;
-      n_left_to_next -= 1;
-      vlib_buffer_t *p0 = vlib_get_buffer(vm, bi0);
-      p0->error = *error;
-      vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                      n_left_to_next, bi0, next);
-    }
-    vlib_put_next_frame(vm, node, next_index, n_left_to_next);
-  }
-}
-
-always_inline void
-user_session_increment(snat_main_t *sm, snat_user_t *u, u8 is_static)
-{
-  if (u->nsessions + u->nstaticsessions < sm->max_translations_per_user)
-    {
-      if (is_static)
-	u->nstaticsessions++;
-      else
-	u->nsessions++;
-    }
-}
-
-always_inline void
-nat44_delete_session(snat_main_t * sm, snat_session_t * ses, u32 thread_index)
-{
-  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
-                                                       thread_index);
-  clib_bihash_kv_8_8_t kv, value;
-  snat_user_key_t u_key;
-  snat_user_t *u;
-  u_key.addr = ses->in2out.addr;
-  u_key.fib_index = ses->in2out.fib_index;
-  kv.key = u_key.as_u64;
-  if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
-    {
-      u = pool_elt_at_index (tsm->users, value.value);
-      if (snat_is_session_static(ses))
-        u->nstaticsessions--;
-      else
-        u->nsessions--;
-    }
-  clib_dlist_remove (tsm->list_pool, ses->per_user_index);
-  pool_put_index (tsm->list_pool, ses->per_user_index);
-  pool_put (tsm->sessions, ses);
-}
-
-/** \brief Set TCP session state.
-    @return 1 if session was closed, otherwise 0
-*/
-always_inline int
-nat44_set_tcp_session_state_i2o(snat_main_t * sm, snat_session_t * ses,
-                                tcp_header_t * tcp, u32 thread_index)
-{
-  if (tcp->flags & TCP_FLAG_FIN)
-    {
-      ses->i2o_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
-      ses->state |= NAT44_SES_I2O_FIN;
-    }
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_O2I_FIN))
-    {
-      if (clib_net_to_host_u32 (tcp->ack_number) > ses->o2i_fin_seq)
-        ses->state |= NAT44_SES_O2I_FIN_ACK;
-    }
-  if (nat44_is_ses_closed (ses))
-    {
-      nat_free_session_data (sm, ses, thread_index);
-      nat44_delete_session (sm, ses, thread_index);
-      return 1;
-    }
-  return 0;
-}
-
-always_inline int
-nat44_set_tcp_session_state_o2i(snat_main_t * sm, snat_session_t * ses,
-                                tcp_header_t * tcp, u32 thread_index)
-{
-  if (tcp->flags & TCP_FLAG_FIN)
-    {
-      ses->o2i_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
-      ses->state |= NAT44_SES_O2I_FIN;
-    }
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_FIN))
-    {
-      if (clib_net_to_host_u32 (tcp->ack_number) > ses->i2o_fin_seq)
-        ses->state |= NAT44_SES_I2O_FIN_ACK;
-    }
-  if (nat44_is_ses_closed (ses))
-    {
-      nat_free_session_data (sm, ses, thread_index);
-      nat44_delete_session (sm, ses, thread_index);
-      return 1;
-    }
-  return 0;
-}
 
 #endif /* __included_snat_h__ */
