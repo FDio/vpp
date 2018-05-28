@@ -80,7 +80,8 @@ typedef struct {
   u32 link_prev_idx;      /* +4 bytes = 12 */
   u32 link_next_idx;      /* +4 bytes = 16 */
   u8 link_list_id;        /* +1 bytes = 17 */
-  u8 reserved1[7];        /* +7 bytes = 24 */
+  u8 deleted;             /* +1 bytes = 18 */
+  u8 reserved1[6];        /* 67 bytes = 24 */
   u64 reserved2[5];       /* +5*8 bytes = 64 */
 } fa_session_t;
 

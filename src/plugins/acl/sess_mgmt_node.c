@@ -38,11 +38,11 @@ fa_session_get_shortest_timeout (acl_main_t * am)
 {
   int timeout_type;
   u64 timeout = ~0LL;
-  for (timeout_type = 0; timeout_type < ACL_N_TIMEOUTS; timeout_type++)
+  for (timeout_type = 0; timeout_type <= ACL_N_USER_TIMEOUTS; timeout_type++)
     {
-      if (timeout > am->session_timeout_sec[timeout_type])
+      if (timeout > am->session_timeout_msec[timeout_type])
 	{
-	  timeout = am->session_timeout_sec[timeout_type];
+	  timeout = am->session_timeout_msec[timeout_type];
 	}
     }
   return timeout;
@@ -107,12 +107,15 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 static u64
 fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 {
-  u64 timeout = am->vlib_main->clib_time.clocks_per_second;
+  u64 timeout = am->vlib_main->clib_time.clocks_per_second / 1000;
   /*
    * we have the shortest possible timeout type in all the lists
    * (see README-multicore for the rationale)
    */
-  timeout *= fa_session_get_shortest_timeout (am);
+  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY)
+    timeout *= am->session_timeout_msec[ACL_TIMEOUT_PURGATORY];
+  else
+    timeout *= fa_session_get_shortest_timeout (am);
   return timeout;
 }
 
@@ -219,8 +222,16 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 	      ("ACL_FA_NODE_CLEAN: Deleting session %d, sw_if_index %d",
 	       (int) fsid.session_index, sess->sw_if_index);
 #endif
-	    acl_fa_delete_session (am, sw_if_index, fsid);
-	    pw->cnt_deleted_sessions++;
+	    if(acl_fa_delete_session (am, sw_if_index, fsid))
+              {
+                /* the session has been put */
+	        pw->cnt_deleted_sessions++;
+              }
+            else
+              {
+                /* the session has been marked deleted, add it to purgatory list */
+	        acl_fa_conn_list_add_session (am, fsid, now);
+              }
 	  }
       }
     else

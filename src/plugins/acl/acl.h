@@ -38,6 +38,8 @@
 #define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
+#define SESSION_PURGATORY_TIMEOUT_MSEC 1
+
 #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
@@ -52,6 +54,8 @@ enum acl_timeout_e {
   ACL_TIMEOUT_UDP_IDLE = 0,
   ACL_TIMEOUT_TCP_IDLE,
   ACL_TIMEOUT_TCP_TRANSIENT,
+  ACL_N_USER_TIMEOUTS,
+  ACL_TIMEOUT_PURGATORY = ACL_N_USER_TIMEOUTS, /* a special-case queue for deletion-in-progress sessions */
   ACL_N_TIMEOUTS
 };
 
@@ -244,8 +248,8 @@ typedef struct {
   clib_bihash_40_8_t fa_sessions_hash;
   /* The process node which orcherstrates the cleanup */
   u32 fa_cleaner_node_index;
-  /* FA session timeouts, in seconds */
-  u32 session_timeout_sec[ACL_N_TIMEOUTS];
+  /* FA session timeouts, in milliseconds */
+  u32 session_timeout_msec[ACL_N_TIMEOUTS];
   /* total session adds/dels */
   u64 fa_session_total_adds;
   u64 fa_session_total_dels;

@@ -101,9 +101,13 @@ fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 always_inline u64
 fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
 {
-  u64 timeout = am->vlib_main->clib_time.clocks_per_second;
-  int timeout_type = fa_session_get_timeout_type (am, sess);
-  timeout *= am->session_timeout_sec[timeout_type];
+  u64 timeout = (am->vlib_main->clib_time.clocks_per_second) / 1000;
+  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY) {
+    timeout *= SESSION_PURGATORY_TIMEOUT_MSEC;
+  } else {
+    int timeout_type = fa_session_get_timeout_type (am, sess);
+    timeout *= am->session_timeout_msec[timeout_type];
+  }
   return timeout;
 }
 
@@ -135,7 +139,7 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
 {
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
-  u8 list_id = fa_session_get_timeout_type (am, sess);
+  u8 list_id = sess->deleted ? ACL_TIMEOUT_PURGATORY : fa_session_get_timeout_type (am, sess);
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   /* the retrieved session thread index must be necessarily the same as the one in the key */
@@ -346,17 +350,22 @@ reverse_session_add_del (acl_main_t * am, const int is_ip6,
 }
 
 always_inline void
-acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
+acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
 		       fa_full_session_id_t sess_id)
 {
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   ASSERT (sess->thread_index == os_get_thread_index ());
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &sess->info.kv, 0);
 
   reverse_session_add_del (am, sess->info.pkt.is_ip6, &sess->info.kv, 0);
+}
 
+always_inline void
+acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
+		       fa_full_session_id_t sess_id)
+{
+  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
@@ -365,6 +374,22 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
   clib_mem_set_heap (oldheap);
   pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add (&am->fa_session_total_dels, 1);
+}
+
+always_inline int
+acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
+		       fa_full_session_id_t sess_id)
+{
+  fa_session_t *sess =
+    get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
+  if (sess->deleted) {
+    acl_fa_put_session(am, sw_if_index, sess_id);
+    return 1;
+  } else {
+    acl_fa_deactivate_session(am, sw_if_index, sess_id);
+    sess->deleted = 1;
+    return 0;
+  }
 }
 
 always_inline int
@@ -428,6 +453,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   sess->link_list_id = ~0;
   sess->link_prev_idx = ~0;
   sess->link_next_idx = ~0;
+  sess->deleted = 0;
 
   ASSERT (am->fa_sessions_hash_is_initialized == 1);
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &kv, 1);

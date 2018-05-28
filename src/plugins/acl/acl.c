@@ -3172,7 +3172,7 @@ acl_set_timeout_sec (int timeout_type, u32 value)
 
   if (timeout_type < ACL_N_TIMEOUTS)
     {
-      am->session_timeout_sec[timeout_type] = value;
+      am->session_timeout_msec[timeout_type] = 1000*value;
     }
   else
     {
@@ -4162,12 +4162,14 @@ acl_init (vlib_main_t * vm)
   am->hash_lookup_hash_buckets = ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS;
   am->hash_lookup_hash_memory = ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY;
 
-  am->session_timeout_sec[ACL_TIMEOUT_TCP_TRANSIENT] =
-    TCP_SESSION_TRANSIENT_TIMEOUT_SEC;
-  am->session_timeout_sec[ACL_TIMEOUT_TCP_IDLE] =
-    TCP_SESSION_IDLE_TIMEOUT_SEC;
-  am->session_timeout_sec[ACL_TIMEOUT_UDP_IDLE] =
-    UDP_SESSION_IDLE_TIMEOUT_SEC;
+  am->session_timeout_msec[ACL_TIMEOUT_TCP_TRANSIENT] =
+    1000*TCP_SESSION_TRANSIENT_TIMEOUT_SEC;
+  am->session_timeout_msec[ACL_TIMEOUT_TCP_IDLE] =
+    1000*TCP_SESSION_IDLE_TIMEOUT_SEC;
+  am->session_timeout_msec[ACL_TIMEOUT_UDP_IDLE] =
+    1000*UDP_SESSION_IDLE_TIMEOUT_SEC;
+  am->session_timeout_msec[ACL_TIMEOUT_PURGATORY] =
+    SESSION_PURGATORY_TIMEOUT_MSEC;
 
   am->fa_conn_table_hash_num_buckets =
     ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS;
