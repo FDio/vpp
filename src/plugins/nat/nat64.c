@@ -20,6 +20,7 @@
 #include <nat/nat64.h>
 #include <nat/nat64_db.h>
 #include <nat/nat_reass.h>
+#include <nat/nat_inlines.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/crc32.h>
 

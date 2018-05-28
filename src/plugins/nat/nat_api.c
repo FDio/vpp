@@ -24,6 +24,7 @@
 #include <nat/nat66.h>
 #include <nat/dslite.h>
 #include <nat/nat_reass.h>
+#include <nat/nat_inlines.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -444,7 +445,7 @@ static void
   vrf_id = clib_host_to_net_u32 (mp->vrf_id);
 
   if (count > 1024)
-    clib_warning ("%U - %U, %d addresses...",
+    nat_log_info ("%U - %U, %d addresses...",
 		  format_ip4_address, mp->first_ip_address,
 		  format_ip4_address, mp->last_ip_address, count);
 

@@ -20,6 +20,7 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
+#include <nat/nat_inlines.h>
 #include <vnet/fib/fib_table.h>
 
 #define UNSUPPORTED_IN_DET_MODE_STR \
@@ -181,6 +182,8 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
   vec_foreach_index (i, sm->per_thread_data)
   {
     tsm = vec_elt_at_index (sm->per_thread_data, i);
+    vlib_cli_output (vm, "-------- thread %d %s --------\n",
+		     i, vlib_worker_threads[i].name);
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->in2out, verbose);
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->out2in, verbose);
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->user_hash, verbose);
@@ -292,7 +295,7 @@ add_address_command_fn (vlib_main_t * vm,
   count = (end_host_order - start_host_order) + 1;
 
   if (count > 1024)
-    clib_warning ("%U - %U, %d addresses...",
+    nat_log_info ("%U - %U, %d addresses...",
 		  format_ip4_address, &start_addr,
 		  format_ip4_address, &end_addr, count);
 
@@ -942,6 +945,8 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       tsm = vec_elt_at_index (sm->per_thread_data, i);
 
+      vlib_cli_output (vm, "-------- thread %d %s --------\n",
+                       i, vlib_worker_threads[i].name);
       pool_foreach (u, tsm->users,
       ({
         vlib_cli_output (vm, "  %U", format_snat_user, tsm, u, verbose);
