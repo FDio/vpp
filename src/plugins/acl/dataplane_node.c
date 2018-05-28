@@ -66,6 +66,114 @@ typedef enum
 
 /* *INDENT-ON* */
 
+always_inline void
+fill_pipeline_at_index (acl_main_t * am, int is_ip6, int is_input,
+			int is_l2_path, u16 pipeline_write_index,
+			vlib_buffer_t ** b, u32 * sw_if_indices,
+			u32 * current_policy_epochs, fa_5tuple_t * fa_5tuples,
+			u64 * bihash_hashes)
+{
+  u32 sw_if_index0;
+  fa_5tuple_t *fa_5tuple = &fa_5tuples[pipeline_write_index];
+
+  if (is_input)
+    sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+  else
+    sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+
+
+  u32 **p_epoch_vec =
+    is_input ? &am->input_policy_epoch_by_sw_if_index :
+    &am->output_policy_epoch_by_sw_if_index;
+  u16 current_policy_epoch =
+    sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
+						     sw_if_index0)
+    : (is_input * FA_POLICY_EPOCH_IS_INPUT);
+
+  /*
+   * Extract the L3/L4 matching info into a 5-tuple structure.
+   */
+
+  acl_fill_5tuple (am, sw_if_index0, b[0], is_ip6, is_input, is_l2_path,
+		   fa_5tuple);
+
+  sw_if_indices[pipeline_write_index] = sw_if_index0;
+  current_policy_epochs[pipeline_write_index] = current_policy_epoch;
+
+  u64 hash0;
+  if (is_ip6)
+    bihash_hashes[pipeline_write_index] = hash0 =
+      clib_bihash_hash_40_8 (&fa_5tuple->kv_40_8);
+  else
+    bihash_hashes[pipeline_write_index] = hash0 =
+      clib_bihash_hash_16_8 (&fa_5tuple->kv_16_8);
+
+}
+
+always_inline void
+warmup_pipeline_hash_bucket_at_index (acl_main_t * am, int is_ip6,
+				      u16 pipeline_warmup_index,
+				      u64 * bihash_hashes)
+{
+  u64 hash0 = bihash_hashes[pipeline_warmup_index];
+  if (is_ip6)
+    clib_bihash_prefetch_bucket_40_8 (&am->fa_ip6_sessions_hash, hash0);
+  else
+    clib_bihash_prefetch_bucket_16_8 (&am->fa_ip4_sessions_hash, hash0);
+
+}
+
+always_inline void
+warmup_pipeline_at_index (acl_main_t * am, int is_ip6,
+			  u16 pipeline_warmup_index, u64 * bihash_hashes)
+{
+  u64 hash0 = bihash_hashes[pipeline_warmup_index];
+  if (is_ip6)
+    clib_bihash_prefetch_data_40_8 (&am->fa_ip6_sessions_hash, hash0);
+  else
+    clib_bihash_prefetch_data_16_8 (&am->fa_ip4_sessions_hash, hash0);
+}
+
+always_inline void
+lookup_session_for_pipeline_at_index (acl_main_t * am, int is_ip6,
+				      u16 pipeline_index, u32 * sw_if_indices,
+				      fa_5tuple_t * fa_5tuples,
+				      u64 * bihash_hashes,
+				      u8 * session_found_flags,
+				      fa_full_session_id_t * full_session_ids,
+				      fa_session_t ** session_ptrs)
+{
+  u64 value_sess;
+  u8 found =
+    acl_fa_find_session_with_hash (am, bihash_hashes[pipeline_index], is_ip6,
+				   sw_if_indices[pipeline_index],
+				   &fa_5tuples[pipeline_index], &value_sess);
+  session_found_flags[pipeline_index] = found;
+  if (found)
+    {
+      fa_full_session_id_t f_sess_id;
+
+      f_sess_id.as_u64 = value_sess;
+      ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
+
+      fa_session_t *sess = get_session_ptr (am, f_sess_id.thread_index,
+					    f_sess_id.session_index);
+      full_session_ids[pipeline_index].as_u64 = value_sess;
+      session_ptrs[pipeline_index] = sess;
+      CLIB_PREFETCH (sess, CLIB_CACHE_LINE_BYTES * 2, STORE);
+    }
+}
+
+enum
+{
+  ACL_PIPELINE_LEN = 16,
+};
+
+always_inline u8
+mod_pipeline (u8 idx)
+{
+  return (idx & (ACL_PIPELINE_LEN - 1));
+}
 
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
@@ -73,7 +181,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		int is_input, int is_l2_path, u32 * l2_feat_next_node_index,
 		vlib_node_registration_t * acl_fa_node)
 {
-  u32 n_left, *from;
+  u32 n_left, n_left_pipeline, *from;
   u32 pkts_acl_checked = 0;
   u32 pkts_new_session = 0;
   u32 pkts_exist_session = 0;
@@ -81,14 +189,25 @@ acl_fa_node_fn (vlib_main_t * vm,
   u32 pkts_restart_session_timer = 0;
   u32 trace_bitmap = 0;
   acl_main_t *am = &acl_main;
-  fa_5tuple_t fa_5tuple;
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b, **b_prefill;
+
+  fa_5tuple_t fa_5tuples[ACL_PIPELINE_LEN], *fa_5tuple;
+  u32 sw_if_indices[ACL_PIPELINE_LEN];
+  u32 current_policy_epochs[ACL_PIPELINE_LEN];
+  u64 bihash_hashes[ACL_PIPELINE_LEN];
+
+  u8 session_found_flags[ACL_PIPELINE_LEN];
+  fa_full_session_id_t full_session_ids[ACL_PIPELINE_LEN];
+  fa_session_t *session_ptrs[ACL_PIPELINE_LEN];
+
+  u8 pipe_read_idx = 0, pipe_write_idx = 0,
+    pipe_old_write_idx[ACL_PIPELINE_LEN] = { 0 };
 
   from = vlib_frame_vector_args (frame);
 
@@ -96,9 +215,34 @@ acl_fa_node_fn (vlib_main_t * vm,
 
   vlib_get_buffers (vm, from, bufs, frame->n_vectors);
   /* set the initial values for the current buffer the next pointers */
+  b_prefill = bufs;
+
+  /* prefill the pipeline */
+  n_left_pipeline =
+    frame->n_vectors > ACL_PIPELINE_LEN ? ACL_PIPELINE_LEN : frame->n_vectors;
+  while (n_left_pipeline > 0)
+    {
+      fill_pipeline_at_index (am, is_ip6, is_input, is_l2_path,
+			      pipe_write_idx, b_prefill, sw_if_indices,
+			      current_policy_epochs, fa_5tuples,
+			      bihash_hashes);
+      lookup_session_for_pipeline_at_index (am, is_ip6, pipe_write_idx,
+					    sw_if_indices, fa_5tuples,
+					    bihash_hashes,
+					    session_found_flags,
+					    full_session_ids, session_ptrs);
+      pipe_old_write_idx[pipe_write_idx] = pipe_write_idx;
+      pipe_write_idx = mod_pipeline (pipe_write_idx + 1);
+      n_left_pipeline--;
+      b_prefill += 1;
+    }
+
+
   b = bufs;
   next = nexts;
-
+  n_left_pipeline =
+    frame->n_vectors >
+    ACL_PIPELINE_LEN ? frame->n_vectors - ACL_PIPELINE_LEN : 0;
   n_left = frame->n_vectors;
   while (n_left > 0)
     {
@@ -114,63 +258,27 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       n_left -= 1;
 
-      if (is_input)
-	sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      else
-	sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-
-      if (is_input)
-	lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
-      else
-	lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
-
-
-      u32 **p_epoch_vec =
-	is_input ? &am->input_policy_epoch_by_sw_if_index :
-	&am->output_policy_epoch_by_sw_if_index;
-      u16 current_policy_epoch =
-	sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
-							 sw_if_index0)
-	: (is_input * FA_POLICY_EPOCH_IS_INPUT);
-      /*
-       * Extract the L3/L4 matching info into a 5-tuple structure.
-       */
-
-      acl_plugin_fill_5tuple_inline (lc_index0, b[0], is_ip6, is_input,
-				     is_l2_path,
-				     (fa_5tuple_opaque_t *) & fa_5tuple);
-      fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-      fa_5tuple.pkt.mask_type_index_lsb = ~0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning
-	("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
-	 fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
-	 fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
-#endif
+      sw_if_index0 = sw_if_indices[pipe_read_idx];
+      fa_5tuple = &fa_5tuples[pipe_read_idx];
+      u32 current_policy_epoch = current_policy_epochs[pipe_read_idx];
 
       /* Try to match an existing session first */
 
       if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	{
-	  u64 value_sess = ~0ULL;
-	  if (acl_fa_find_session
-	      (am, is_ip6, sw_if_index0, &fa_5tuple, &value_sess)
-	      && (value_sess != ~0ULL))
+	  if (session_found_flags[pipe_read_idx])
 	    {
 	      trace_bitmap |= 0x80000000;
 	      error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
+
 	      fa_full_session_id_t f_sess_id;
 
-	      f_sess_id.as_u64 = value_sess;
-	      ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
+	      f_sess_id.as_u64 = full_session_ids[pipe_read_idx].as_u64;
+	      fa_session_t *sess = session_ptrs[pipe_read_idx];
 
-	      fa_session_t *sess =
-		get_session_ptr (am, f_sess_id.thread_index,
-				 f_sess_id.session_index);
 	      int old_timeout_type = fa_session_get_timeout_type (am, sess);
-	      action =
-		acl_fa_track_session (am, is_input, sw_if_index0, now,
-				      sess, &fa_5tuple);
+	      action = acl_fa_track_session (am, is_input, sw_if_index0, now,
+					     sess, fa_5tuple);
 	      /* expose the session id to the tracer */
 	      match_rule_index = f_sess_id.session_index;
 	      int new_timeout_type = fa_session_get_timeout_type (am, sess);
@@ -233,9 +341,14 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       if (acl_check_needed)
 	{
+	  if (is_input)
+	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
+	  else
+	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
+
 	  action = 0;		/* deny by default */
 	  acl_plugin_match_5tuple_inline (lc_index0,
-					  (fa_5tuple_opaque_t *) &
+					  (fa_5tuple_opaque_t *)
 					  fa_5tuple, is_ip6, &action,
 					  &match_acl_pos,
 					  &match_acl_in_index,
@@ -254,10 +367,10 @@ acl_fa_node_fn (vlib_main_t * vm,
 		  fa_session_t *sess =
 		    acl_fa_add_session (am, is_input, is_ip6,
 					sw_if_index0,
-					now, &fa_5tuple,
+					now, fa_5tuple,
 					current_policy_epoch);
 		  acl_fa_track_session (am, is_input, sw_if_index0,
-					now, sess, &fa_5tuple);
+					now, sess, fa_5tuple);
 		  pkts_new_session += 1;
 		}
 	      else
@@ -270,13 +383,13 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 
 
-      if (action > 0)
-	{
-	  if (is_l2_path)
-	    next0 = vnet_l2_feature_next (b[0], l2_feat_next_node_index, 0);
-	  else
-	    vnet_feature_next (sw_if_index0, &next0, b[0]);
-	}
+      if (is_l2_path)
+	next0 = vnet_l2_feature_next (b[0], l2_feat_next_node_index, 0);
+      else
+	vnet_feature_next (sw_if_index0, &next0, b[0]);
+
+      next0 = action > 0 ? next0 : 0;
+
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning
 	("ACL_FA_NODE_DBG: sw_if_index %d lc_index %d action %d acl_index %d rule_index %d",
@@ -293,24 +406,57 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  t->next_index = next0;
 	  t->match_acl_in_index = match_acl_in_index;
 	  t->match_rule_index = match_rule_index;
-	  t->packet_info[0] = fa_5tuple.kv_40_8.key[0];
-	  t->packet_info[1] = fa_5tuple.kv_40_8.key[1];
-	  t->packet_info[2] = fa_5tuple.kv_40_8.key[2];
-	  t->packet_info[3] = fa_5tuple.kv_40_8.key[3];
-	  t->packet_info[4] = fa_5tuple.kv_40_8.key[4];
-	  t->packet_info[5] = fa_5tuple.kv_40_8.value;
+	  t->packet_info[0] = fa_5tuple->kv_40_8.key[0];
+	  t->packet_info[1] = fa_5tuple->kv_40_8.key[1];
+	  t->packet_info[2] = fa_5tuple->kv_40_8.key[2];
+	  t->packet_info[3] = fa_5tuple->kv_40_8.key[3];
+	  t->packet_info[4] = fa_5tuple->kv_40_8.key[4];
+	  t->packet_info[5] = fa_5tuple->kv_40_8.value;
 	  t->action = action;
 	  t->trace_bitmap = trace_bitmap;
 	}
 
       next0 = next0 < node->n_next_nodes ? next0 : 0;
-      if (0 == next0)
-	b[0]->error = error_node->errors[error0];
+      b[0]->error = error_node->errors[error0];
       next[0] = next0;
 
       next++;
       b++;
       pkts_acl_checked += 1;
+
+      /* start overwriting the newly used element */
+      pipe_write_idx = pipe_read_idx;
+      /* advance to next element in the pipeline */
+      pipe_read_idx = mod_pipeline (pipe_read_idx + 1);
+
+
+      warmup_pipeline_hash_bucket_at_index (am, is_ip6,
+					    pipe_old_write_idx[mod_pipeline
+							       (pipe_write_idx
+								- 4)],
+					    bihash_hashes);
+      warmup_pipeline_at_index (am, is_ip6,
+				pipe_old_write_idx[mod_pipeline
+						   (pipe_write_idx - 8)],
+				bihash_hashes);
+      lookup_session_for_pipeline_at_index (am, is_ip6,
+					    pipe_old_write_idx[mod_pipeline
+							       (pipe_write_idx
+								- 10)],
+					    sw_if_indices, fa_5tuples,
+					    bihash_hashes,
+					    session_found_flags,
+					    full_session_ids, session_ptrs);
+
+      if (PREDICT_TRUE (n_left_pipeline > 0))
+	{
+	  fill_pipeline_at_index (am, is_ip6, is_input, is_l2_path,
+				  pipe_write_idx, b_prefill, sw_if_indices,
+				  current_policy_epochs, fa_5tuples,
+				  bihash_hashes);
+	  n_left_pipeline--;
+	  b_prefill += 1;
+	}
     }
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);

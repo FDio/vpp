@@ -74,7 +74,10 @@ fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
   u16 masked_flags =
     sess->tcp_flags_seen.as_u16 & ((TCP_FLAGS_RSTFINACKSYN << 8) +
 				   TCP_FLAGS_RSTFINACKSYN);
-  switch (sess->info.l4.proto)
+
+  fa_session_l4_key_t l4 = sess->info.l4;
+
+  switch (l4.proto)
     {
     case IPPROTO_TCP:
       if (((TCP_FLAGS_ACKSYN << 8) + TCP_FLAGS_ACKSYN) == masked_flags)
@@ -278,9 +281,12 @@ acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
 {
   sess->last_active_time = now;
-  if (pkt_5tuple->pkt.tcp_flags_valid)
+  u8 old_flags = sess->tcp_flags_seen.as_u8[is_input];
+  u8 new_flags = old_flags | pkt_5tuple->pkt.tcp_flags;
+  if (PREDICT_FALSE
+      (pkt_5tuple->pkt.tcp_flags_valid && (old_flags != new_flags)))
     {
-      sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
+      sess->tcp_flags_seen.as_u8[is_input] = new_flags;
     }
   return 3;
 }
@@ -578,22 +584,25 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 }
 
 always_inline int
-acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
-		     fa_5tuple_t * p5tuple, u64 * pvalue_sess)
+acl_fa_find_session_with_hash (acl_main_t * am, u64 hash0, int is_ip6,
+			       u32 sw_if_index0, fa_5tuple_t * p5tuple,
+			       u64 * pvalue_sess)
 {
   int res = 0;
   if (is_ip6)
     {
       clib_bihash_kv_40_8_t kv_result;
-      res = (clib_bihash_search_inline_2_40_8
-	     (&am->fa_ip6_sessions_hash, &p5tuple->kv_40_8, &kv_result) == 0);
+      res = (clib_bihash_search_inline_2_with_hash_40_8
+	     (&am->fa_ip6_sessions_hash, hash0, &p5tuple->kv_40_8,
+	      &kv_result) == 0);
       *pvalue_sess = kv_result.value;
     }
   else
     {
       clib_bihash_kv_16_8_t kv_result;
-      res = (clib_bihash_search_inline_2_16_8
-	     (&am->fa_ip4_sessions_hash, &p5tuple->kv_16_8, &kv_result) == 0);
+      res = (clib_bihash_search_inline_2_with_hash_16_8
+	     (&am->fa_ip4_sessions_hash, hash0, &p5tuple->kv_16_8,
+	      &kv_result) == 0);
       *pvalue_sess = kv_result.value;
     }
   return res;
