@@ -45,9 +45,9 @@ session_table_index (session_table_t * slt)
 session_table_t *
 session_table_get (u32 table_index)
 {
-  if (vec_len (lookup_tables) <= table_index)
+  if (pool_is_free_index (lookup_tables, table_index))
     return 0;
-  return vec_elt_at_index (lookup_tables, table_index);
+  return pool_elt_at_index (lookup_tables, table_index);
 }
 
 #define foreach_hash_table_parameter            \
