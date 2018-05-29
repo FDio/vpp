@@ -46,6 +46,30 @@
       "revId": "4f7fe7b1e5c747070158b2a368193032ad439566",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77acc420_53682dab",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-29T22:19:02Z",
+      "side": 1,
+      "message": "\u003e If clib_memcpy() is \"just\" (always) an alias to memcpy(), why do we\n \u003e need it? Isn\u0027t \"memcpy\" clearer?\n\nTo allow per-platform selection of optimal memcpy function. As on some platforms default one its not the best one, like on x86.\n\n \u003e \n \u003e If someone modifies clib_memcpy() to call e.g. rte_memcpy() because\n \u003e they think the compiler provided memcpy() implementation is not\n \u003e good enough, then that change will also prevent the compiler from\n \u003e optimising a fixed-size memory copy.\n\nCompletely wrong, x86 implementation of clib_memcpy is actually a copy of rte_memcpy code, and it is inline function, so it is always optimised.\n\n \u003e \n \u003e \n \u003e Fixed-size memcpy\u0027s should always call memcpy() directly. \n\nWe *never* want to call memcpy, we always want to inline them.\n\n \u003e No need\n \u003e for abstraction/confusion layers.\n \u003e \n \u003e If you lie to the compiler, it will get its revenge.\n\nLOL, looks like you are just confused with inline functions and how they work.",
+      "parentUuid": "ffd103aa_1b893097",
+      "range": {
+        "startLine": 143,
+        "startChar": 0,
+        "endLine": 146,
+        "endChar": 21
+      },
+      "revId": "4f7fe7b1e5c747070158b2a368193032ad439566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
