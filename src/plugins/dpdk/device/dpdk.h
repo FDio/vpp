@@ -82,7 +82,7 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("net_vhost", VHOST_ETHER)    \
   _ ("net_ena", ENA)              \
   _ ("net_failsafe", FAILSAFE)    \
-  _ ("net_liovf", LIOVF_ETHER)    
+  _ ("net_liovf", LIOVF_ETHER)
 
 typedef enum
 {
