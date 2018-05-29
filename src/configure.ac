@@ -113,6 +113,42 @@ AC_DEFUN([CC_CHECK_FLAG],
   AC_LANG_POP([C])
 ])
 
+as_fn_log2_cache_line_size_p()
+{
+  export cache_line_size=`cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size`
+  export log2_cache_line_size="AUTODETECT_ERROR"
+  export cpuid
+
+  # Some kernels make it easy...
+
+  if test $cache_line_size = "32"  ; then
+      log2_cache_line_size="5";
+  elif test $cache_line_size = "64"  ; then
+      log2_cache_line_size="6";
+  elif test $cache_line_size = "128"  ; then
+      log2_cache_line_size="7";
+  fi
+
+  # the aarch64 kernel does not make it easy
+  # extract the cpuid and map it to the cache line size
+
+  if [ $log2_cache_line_size = "AUTODETECT_ERROR" ] ; then
+      cpuid=`awk -F: '/CPU part/ { print $2 }' /proc/cpuinfo | head -1`;
+      # Please add cpuid to log2_cache_line_size mappings here
+      if test $cpuid = "0xd03"  ; then
+          log2_cache_line_size=6;
+      elif test $cpuid = "0x0a1" ; then
+          log2_cache_line_size=7;
+      elif test $cpuid = "0x0a2" ; then
+           log2_cache_line_size=7;
+      elif test $cpuid = "0x0a3" ; then
+          log2_cache_line_size=7;
+      fi
+  fi
+
+  echo $log2_cache_line_size
+}    
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -136,6 +172,15 @@ WITHOUT_ARG(libssl,	[Disable libssl])
 WITHOUT_ARG(apicli,	[Disable binary api CLI])
 WITHOUT_ARG(mbedtls,	[Disable mbedtls])
 WITHOUT_ARG(libnuma,	[for non numa architectures])
+
+AC_ARG_WITH(log2-cache-line-bytes,
+            AC_HELP_STRING([--with-log2-cache-line-bytes],[Set the cache line size, --with-log2-cache-line-bytes=5|6|7|auto]),
+	    [case $with_log2_cache_line_bytes in
+	      5 | 6 | 7);;
+	      auto) with_log2_cache_line_bytes=`as_fn_log2_cache_line_size_p`;;
+              *) with_log2_cache_line_bytes="CONFIG_ERROR";;
+	      esac],
+              [with_log2_cache_line_bytes=`as_fn_log2_cache_line_size_p`])
 
 AC_ARG_WITH(unix,
             AC_HELP_STRING([--with-unix],[Compile unix version of clib]),
@@ -193,6 +238,8 @@ AM_CONDITIONAL([CPU_AARCH64], [test "$host_cpu" = "aarch64"])
 CC_CHECK_FLAG("-Wno-address-of-packed-member")
 AS_IF([test "$cc_flag_check" = yes],
 	[CFLAGS="${CFLAGS} -Wno-address-of-packed-member"], [])
+AS_IF([test "x$with_log2_cache_line_bytes" != x ],
+        [CFLAGS="${CFLAGS} -DCLIB_LOG2_CACHE_LINE_BYTES=$with_log2_cache_line_bytes"], [])
 
 ###############################################################################
 # Substitutions and defines
@@ -360,6 +407,7 @@ PRINT_VAL([includedir], ${includedir})
 PRINT_VAL([CFLAGS], ${CFLAGS})
 PRINT_VAL([CPPFLAGS], ${CPPFLAGS})
 PRINT_VAL([LDFLAGS], ${LDFLAGS})
+PRINT_VAL([LOG2_CACHE_LINE_BYTES], ${with_log2_cache_line_bytes})
 AM_COND_IF([ENABLE_JAPI],
 [
   PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})
