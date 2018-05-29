@@ -822,9 +822,14 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       d->current_length = head_end_offset;
       vlib_buffer_set_free_list_index (d,
 				       vlib_buffer_get_free_list_index (s));
-      d->total_length_not_including_first_buffer =
-	s->total_length_not_including_first_buffer + s->current_length -
+
+      d->total_length_not_including_first_buffer = s->current_length -
 	head_end_offset;
+      if (PREDICT_FALSE (s->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  d->total_length_not_including_first_buffer +=
+	    s->total_length_not_including_first_buffer;
+	}
       d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
       d->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
       clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
