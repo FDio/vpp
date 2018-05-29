@@ -148,7 +148,7 @@ JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 DPDK_CPU_CFLAGS := -pie -fPIC
 
 ifeq ($(DPDK_DEBUG),n)
-DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
+DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE) -ftls-model=initial-exec
 else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif
