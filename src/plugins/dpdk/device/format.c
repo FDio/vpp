@@ -372,6 +372,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
       dev_type = "Failsafe Ethernet";
       break;
 
+    case VNET_DPDK_PMD_LIOVF_ETHER:
+      dev_type = "Cavium Lio VF";
+      break;
+
     default:
     case VNET_DPDK_PMD_UNKNOWN:
       dev_type = "### UNKNOWN ###";
