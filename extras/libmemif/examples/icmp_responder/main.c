@@ -48,7 +48,7 @@
 #include <icmp_proto.h>
 
 #define APP_NAME "ICMP_Responder"
-#define IF_NAME  "memif_connection"
+#define IFACE_NAME  "memif_connection"
 
 
 #ifdef ICMP_DBG
@@ -345,7 +345,7 @@ icmpr_memif_create (int is_master)
   args.buffer_size = 2048;
   args.num_s2m_rings = 2;
   args.num_m2s_rings = 2;
-  strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
+  strncpy ((char *) args.interface_name, IFACE_NAME, strlen (IFACE_NAME));
   args.mode = 0;
   /* socket filename is not specified, because this app is supposed to
      connect to VPP over memif. so default socket filename will be used */

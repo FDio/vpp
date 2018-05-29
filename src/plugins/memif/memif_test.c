@@ -407,7 +407,7 @@ api_memif_socket_filename_dump (vat_main_t * vam)
 
   /* Use a control ping for synchronization */
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
-  mp_ping->_vl_msg_id = htons (mm->ping_id);
+  mp_ping->_vl_msg_id = ntohs (mm->ping_id);
   mp_ping->client_index = vam->my_client_index;
 
   fformat (vam->ofp, "Sending ping id=%d\n", mm->ping_id);
