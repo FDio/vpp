@@ -13,6 +13,11 @@
 
 lib_LTLIBRARIES += libvppinfra.la
 
+BUILT_SOURCES += vppinfra/config.h
+
+vppinfra/config.h:
+	@echo "#define CLIB_LOG2_CACHE_LINE_BYTES " @LOG2_CACHE_LINE_BYTES@ > $@
+
 TESTS = 
 
 if ENABLE_TESTS
