@@ -331,15 +331,11 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       sw_if_index = sw_if_indices;
       next = nexts;
       bond_packet_trace_t *t0;
-      uword n_trace = vlib_get_trace_count (vm, node);
 
-      while (n_left && n_trace)
+      while (n_left)
 	{
 	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vlib_trace_buffer (vm, node, next[0], b[0],
-				 0 /* follow_chain */ );
-	      vlib_set_trace_count (vm, node, --n_trace);
 	      t0 = vlib_add_trace (vm, node, b[0], sizeof (*t0));
 	      t0->sw_if_index = sw_if_index[0];
 	      clib_memcpy (&t0->ethernet, vlib_buffer_get_current (b[0]),
