@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa9d27e6_066fdeeb",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-05-29T15:36:17Z",
+      "side": 1,
+      "message": "Please leave clib_memcpy here, as \"#else\" can be something different than arm64. Also, clib_memcpy anyway on arm64 is just alias to memcpy.",
+      "range": {
+        "startLine": 143,
+        "startChar": 0,
+        "endLine": 146,
+        "endChar": 21
+      },
+      "revId": "4f7fe7b1e5c747070158b2a368193032ad439566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
