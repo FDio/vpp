@@ -149,6 +149,9 @@ DPDK_CPU_CFLAGS := -pie -fPIC
 
 ifeq ($(DPDK_DEBUG),n)
 DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
+DPDK_EXTRA_CFLAGS += -ftls-model=initial-exec
+endif
 else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif
