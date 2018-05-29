@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "938c8fe7_7cc8c64e",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2018-05-29T09:37:56Z",
+      "side": 1,
+      "message": "Why we are introducing this, please explain?\n\nAs per my understanding, this model is a static one, means that a variable address is known and it\u0027s accessed directly, like a normal variable, as opposed to dynamic\nTLS models where a variable address is first queried with\n__tls_get_addr().\n\nSince, DPDK is dynamic plugin introducing this option should show any effect. The default TLS model for shared object is global-dynamics.",
+      "revId": "9e5b57ba1b790c990f7ae2975ebd1c9043c687c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
