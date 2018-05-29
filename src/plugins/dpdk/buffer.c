@@ -548,10 +548,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 	{
 	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
 	  dm.size = 1 << pr->log2_page_size;
-	  if (rte_eal_iova_mode() == RTE_IOVA_PA)
-		  dm.iova = pr->page_table[i];
-	  else
-		  dm.iova = dm.vaddr;
+	  dm.iova = pr->page_table[i];
 	  if ((rv = ioctl (dbm->vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dm)))
 	    break;
 	}
