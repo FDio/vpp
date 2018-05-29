@@ -1691,6 +1691,8 @@ dpdk_init (vlib_main_t * vm)
 		 "Data in cache line 0 is bigger than cache line size");
   STATIC_ASSERT (offsetof (frame_queue_trace_t, cacheline0) == 0,
 		 "Cache line marker must be 1st element in frame_queue_trace_t");
+  STATIC_ASSERT (RTE_CACHE_LINE_SIZE == 1 << CLIB_LOG2_CACHE_LINE_BYTES,
+		 "DPDK RTE CACHE LINE SIZE does not match with 1<<CLIB_LOG2_CACHE_LINE_BYTES");
 
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();

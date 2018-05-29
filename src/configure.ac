@@ -120,6 +120,67 @@ AC_DEFUN([CC_CHECK_FLAG],
   AC_LANG_POP([C])
 ])
 
+# This function deduces the BUILD HOST cache-line size by
+# inspecting /sys and/or /proc depending on the kernel / arch in use
+as_fn_log2_cache_line_size_p()
+{
+  sysfs_cache_path="/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size"
+  m4_define([read_cache_line_size_from_sysfs], [`head -n 1 $1`])
+  m4_define([read_midr_implementer],
+            [`awk '/implementer/ {print $[]4;exit}' /proc/cpuinfo`])
+  m4_define([read_midr_cpuid],
+            [`awk '/part/ {print $[]4;exit}' /proc/cpuinfo`])
+
+  #Check if sysfs path exists,to ignore warning, else do manual mapping
+  AC_CHECK_FILE($sysfs_cache_path,
+    [
+      cache_line_size=read_cache_line_size_from_sysfs($sysfs_cache_path);
+      if test $cache_line_size = "32"  ; then
+          log2_cache_line_size="5";
+      elif test $cache_line_size = "64"  ; then
+          log2_cache_line_size="6";
+      elif test $cache_line_size = "128"  ; then
+          log2_cache_line_size="7";
+      fi
+      AC_MSG_NOTICE([cache_line_size/log2_cache_line_size deduced as $cache_line_size/$log2_cache_line_size])
+    ],
+    [
+        #Define Implementer Ids here
+        implementer_id_cavium=0x43
+
+        #Define CPU Ids here
+        cpu_id_cavium_thunderx_cn88xx=0x0a1
+        cpu_id_cavium_thunderx2_cn99xx=0x0af
+
+        implementer=read_midr_implementer()
+        cpuid=read_midr_cpuid()
+
+        AC_MSG_CHECKING([for implementerid/cpuid to set log2_cache_line_size])
+
+        # Switch case to map log2_cache_line_size for implementer/cpuid combination.
+        # Default case of Switch sets log2_cache_line_size to 6
+        AS_CASE($implementer,
+              #Switch Case for Cavium SoC's
+              [$implementer_id_cavium],
+                  [AS_CASE($cpuid,
+                      #Only ThunderX2 is 64B. Remaining chips are 128B
+                      [$cpu_id_cavium_thunderx2_cn99xx],
+                            [AC_MSG_RESULT([Cavium/ThunderX2]);log2_cache_line_size=6],
+                      [$cpu_id_cavium_thunderx_cn88xx],
+                            [AC_MSG_RESULT([Cavium/ThunderX]);log2_cache_line_size=7],
+                      [log2_cache_line_size=7;AC_MSG_RESULT([Cavium/OCTEONTx($cpuid)])]
+                   )],
+              #Add implementer specific case here:
+
+              #Default case: 64B for all SoC's
+              [log2_cache_line_size=6;AC_MSG_RESULT([$implementer/$cpuid])]
+        )
+      AC_MSG_NOTICE([log2_cache_line_size deduced as $log2_cache_line_size])
+    ]
+  )
+  echo $log2_cache_line_size
+}
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -143,6 +204,15 @@ WITHOUT_ARG(libssl,	[Disable libssl])
 WITHOUT_ARG(apicli,	[Disable binary api CLI])
 WITHOUT_ARG(mbedtls,	[Disable mbedtls])
 WITHOUT_ARG(libnuma,	[for non numa architectures])
+
+AC_ARG_WITH(log2-cache-line-bytes,
+            AC_HELP_STRING([--with-log2-cache-line-bytes],[Set the cache line size, --with-log2-cache-line-bytes=5|6|7|auto]),
+	    [case $with_log2_cache_line_bytes in
+	      5 | 6 | 7);;
+	      auto) with_log2_cache_line_bytes=`as_fn_log2_cache_line_size_p`;;
+              *) with_log2_cache_line_bytes="CONFIG_ERROR";;
+	      esac],
+              [with_log2_cache_line_bytes=`as_fn_log2_cache_line_size_p`])
 
 AC_ARG_WITH(unix,
             AC_HELP_STRING([--with-unix],[Compile unix version of clib]),
@@ -206,6 +276,7 @@ AS_IF([test "$cc_flag_check" = yes],
 ###############################################################################
 
 AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
+AC_SUBST(LOG2_CACHE_LINE_BYTES, [$with_log2_cache_line_bytes])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
@@ -367,6 +438,7 @@ PRINT_VAL([includedir], ${includedir})
 PRINT_VAL([CFLAGS], ${CFLAGS})
 PRINT_VAL([CPPFLAGS], ${CPPFLAGS})
 PRINT_VAL([LDFLAGS], ${LDFLAGS})
+PRINT_VAL([LOG2_CACHE_LINE_BYTES], ${with_log2_cache_line_bytes})
 AM_COND_IF([ENABLE_JAPI],
 [
   PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})

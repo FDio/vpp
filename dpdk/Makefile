@@ -124,6 +124,7 @@ ifneq (,$(findstring $(MIDR_PARTNUM),$(CPU_PART_CAVIUM_THUNDERX) \
 	$(CPU_PART_CAVIUM_THUNDERX_81XX) $(CPU_PART_CAVIUM_THUNDERX_83XX)))
 DPDK_TARGET           = arm64-thunderx-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          = thunderx
+DPDK_CACHE_LINE_SIZE := 128
 else
 $(warning Unknown Cavium CPU)
 endif
