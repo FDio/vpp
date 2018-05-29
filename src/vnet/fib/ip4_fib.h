@@ -38,7 +38,6 @@
 
 typedef struct ip4_fib_t_
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /**
    * Mtrie for fast lookups. Hash is used to maintain overlapping prefixes.
    * First member so it's in the first cacheline.
