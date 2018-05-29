@@ -673,6 +673,7 @@ ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
   EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
 #else
   EVP_MD_CTX md_ctx;
+  EVP_MD_CTX_init (&md_ctx);
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
