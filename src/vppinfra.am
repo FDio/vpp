@@ -13,6 +13,11 @@
 
 lib_LTLIBRARIES += libvppinfra.la
 
+BUILT_SOURCES += vppinfra/config.h
+
+vppinfra/config.h:
+	@echo "#define CLIB_LOG2_CACHE_LINE_BYTES " @LOG2_CACHE_LINE_BYTES@ > $@
+
 TESTS = 
 
 if ENABLE_TESTS
@@ -197,6 +202,7 @@ nobase_include_HEADERS = \
   vppinfra/bitops.h \
   vppinfra/byte_order.h \
   vppinfra/cache.h \
+  vppinfra/config.h \
   vppinfra/clib.h \
   vppinfra/clib_error.h \
   vppinfra/cpu.h \
