@@ -139,6 +139,10 @@ if ENABLE_TLSOPENSSL_PLUGIN
 include tlsopenssl.am
 endif
 
+if ENABLE_SNORT_PLUGIN
+include snort.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
