@@ -476,6 +476,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_VHOST_ETHER;
 	      break;
 
+	    case VNET_DPDK_PMD_LIOVF_ETHER:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      break;
+
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }
@@ -772,6 +776,9 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* Amazen Elastic Network Adapter */
     else if (d->vendor_id == 0x1d0f && d->device_id >= 0xec20 && d->device_id <= 0xec21)
+      ;
+    /* Cavium Network Adapter */
+    else if (d->vendor_id == 0x177d && d->device_id == 0x9712)
       ;
     /* Mellanox  */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
