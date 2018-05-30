@@ -38,7 +38,7 @@ fa_session_get_shortest_timeout (acl_main_t * am)
 {
   int timeout_type;
   u64 timeout = ~0LL;
-  for (timeout_type = 0; timeout_type < ACL_N_TIMEOUTS; timeout_type++)
+  for (timeout_type = 0; timeout_type <= ACL_N_USER_TIMEOUTS; timeout_type++)
     {
       if (timeout > am->session_timeout_sec[timeout_type])
 	{
@@ -107,12 +107,15 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 static u64
 fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 {
-  u64 timeout = am->vlib_main->clib_time.clocks_per_second;
+  u64 timeout = am->vlib_main->clib_time.clocks_per_second / 1000;
   /*
    * we have the shortest possible timeout type in all the lists
    * (see README-multicore for the rationale)
    */
-  timeout *= fa_session_get_shortest_timeout (am);
+  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY)
+    timeout = fa_session_get_timeout (am, sess);
+  else
+    timeout *= fa_session_get_shortest_timeout (am);
   return timeout;
 }
 
@@ -121,28 +124,15 @@ acl_fa_get_list_head_expiry_time (acl_main_t * am,
 				  acl_fa_per_worker_data_t * pw, u64 now,
 				  u16 thread_index, int timeout_type)
 {
-  fa_session_t *sess =
-    get_session_ptr (am, thread_index, pw->fa_conn_list_head[timeout_type]);
-  /*
-   * We can not check just the index here because inbetween the worker thread might
-   * dequeue the connection from the head just as we are about to check it.
-   */
-  if (!is_valid_session_ptr (am, thread_index, sess))
-    {
-      return ~0LL;		// infinity.
-    }
-  else
-    {
-      u64 timeout_time =
-	sess->link_enqueue_time + fa_session_get_list_timeout (am, sess);
-      return timeout_time;
-    }
+  return pw->fa_conn_list_head_expiry_time[timeout_type];
 }
 
 static int
 acl_fa_conn_time_to_check (acl_main_t * am, acl_fa_per_worker_data_t * pw,
 			   u64 now, u16 thread_index, u32 session_index)
 {
+  if (session_index == FA_SESSION_BOGUS_INDEX)
+    return 0;
   fa_session_t *sess = get_session_ptr (am, thread_index, session_index);
   u64 timeout_time =
     sess->link_enqueue_time + fa_session_get_list_timeout (am, sess);
@@ -167,20 +157,22 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
     u8 tt = 0;
     for (tt = 0; tt < ACL_N_TIMEOUTS; tt++)
       {
-	while ((vec_len (pw->expired) <
-		am->fa_max_deleted_sessions_per_interval)
-	       && (~0 != pw->fa_conn_list_head[tt])
-	       &&
-	       (acl_fa_conn_time_to_check
-		(am, pw, now, thread_index, pw->fa_conn_list_head[tt])))
+	int n_expired = 0;
+	while (n_expired < am->fa_max_deleted_sessions_per_interval)
 	  {
 	    fsid.session_index = pw->fa_conn_list_head[tt];
+	    if (!acl_fa_conn_time_to_check
+		(am, pw, now, thread_index, pw->fa_conn_list_head[tt]))
+	      {
+		break;
+	      }
 	    elog_acl_maybe_trace_X2 (am,
 				     "acl_fa_check_idle_sessions: expire session %d on thread %d",
 				     "i4i4", (u32) fsid.session_index,
 				     (u32) thread_index);
 	    vec_add1 (pw->expired, fsid.session_index);
-	    acl_fa_conn_list_delete_session (am, fsid);
+	    n_expired++;
+	    acl_fa_conn_list_delete_session (am, fsid, now);
 	  }
       }
   }
@@ -219,8 +211,11 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 	      ("ACL_FA_NODE_CLEAN: Deleting session %d, sw_if_index %d",
 	       (int) fsid.session_index, sess->sw_if_index);
 #endif
-	    acl_fa_delete_session (am, sw_if_index, fsid);
-	    pw->cnt_deleted_sessions++;
+	    if (acl_fa_two_stage_delete_session (am, sw_if_index, fsid, now))
+	      {
+		/* the session has been put */
+		pw->cnt_deleted_sessions++;
+	      }
 	  }
       }
     else
@@ -489,7 +484,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					   "i8i8", head_expiry, next_expire);
 		  next_expire = head_expiry;
 		}
-	      if (~0 != pw->fa_conn_list_head[tt])
+	      if (FA_SESSION_BOGUS_INDEX != pw->fa_conn_list_head[tt])
 		{
 		  has_pending_conns = 1;
 		}
