@@ -1669,7 +1669,7 @@ send (int fd, const void *buf, size_t n, int flags)
 		      getpid (), fd, fd, func_str, sid, sid, buf, n, flags);
 
       size = vppcom_session_sendto (sid, (void *) buf, n, flags, NULL);
-      if (size != VPPCOM_OK)
+      if (size < VPPCOM_OK)
 	{
 	  errno = -size;
 	  size = -1;
