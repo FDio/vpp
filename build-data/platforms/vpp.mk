@@ -24,7 +24,10 @@ vpp_native_tools = vppapigen
 vpp_uses_dpdk = yes
 
 # Uncoment to enable building unit tests
-# vpp_enable_tests = yes
+#vpp_enable_tests = yes
+
+# Uncoment to enable openssl async
+#vpp_enable_openssl_async = yes
 
 vpp_root_packages = vpp vom
 

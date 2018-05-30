@@ -49,3 +49,7 @@ endif
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
 endif
+
+ifeq ($($(PLATFORM)_enable_openssl_async),yes)
+vpp_configure_args += --enable-openssl_async
+endif
