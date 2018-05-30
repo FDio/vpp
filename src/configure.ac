@@ -122,6 +122,7 @@ ENABLE_ARG(tests,	[Enable unit tests])
 ENABLE_ARG(dpdk_shared,	[Enable unit tests])
 ENABLE_ARG(perftool,	[Enable perftool])
 ENABLE_ARG(g2,		[Enable g2])
+ENABLE_ARG(openssl_async,  [Enable openssl async])
 
 # --disable-X
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
@@ -202,6 +203,7 @@ AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
+AC_DEFINE_UNQUOTED(OPENSSL_ASYNC,	[${n_enable_openssl_async}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
 AC_DEFINE_UNQUOTED(WITH_MBEDTLS,	[${n_with_mbedtls}])
 AC_DEFINE_UNQUOTED(WITH_LIBNUMA,	[${n_with_libnuma}])
@@ -317,7 +319,13 @@ AM_COND_IF([ENABLE_TLSMBEDTLS_PLUGIN],
     ], [])
 ])
 
-AM_COND_IF([WITH_LIBSSL], [],
+AM_COND_IF([WITH_LIBSSL],
+[
+  AC_CHECK_LIB([ssl -lcrypto], [SSL_set_async_callback],
+    [
+      AC_DEFINE([HAVE_OPENSSL_ASYNC], [1], [Define if new openssl interface exists])
+    ])
+],
 [
   AC_MSG_WARN([openssl not enabled. Disabling tlsopenssl plugin])
   enable_tlsopenssl_plugin=no
