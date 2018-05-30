@@ -96,7 +96,6 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(shell if [ "$(OS_ID)" = "fedora" ]; then test $(OS_VERSION_ID) -gt 25; echo $$?; fi),0)
 	RPM_DEPENDS += subunit subunit-devel
-	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python2-devel python2-ply
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS += mbedtls-devel

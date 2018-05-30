@@ -27,8 +27,9 @@
 #define MAX_CRYPTO_LEN 16
 
 static openssl_main_t openssl_main;
-static int vpp_ssl_async_process_event(tls_ctx_t * ctx, stream_session_t * tls_session,
-		openssl_resume_handler *handler);
+static int vpp_ssl_async_process_event (tls_ctx_t * ctx,
+					stream_session_t * tls_session,
+					openssl_resume_handler * handler);
 
 static u32
 openssl_ctx_alloc (void)
@@ -155,24 +156,28 @@ openssl_try_handshake_write (openssl_ctx_t * oc,
   return read;
 }
 
-static int vpp_ssl_async_process_event(tls_ctx_t * ctx, stream_session_t * tls_session,
-		openssl_resume_handler *handler)
+static int
+vpp_ssl_async_process_event (tls_ctx_t * ctx, stream_session_t * tls_session,
+			     openssl_resume_handler * handler)
 {
-    openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-    openssl_tls_callback_t *engine_cb;
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  openssl_tls_callback_t *engine_cb;
 
-    engine_cb = vpp_add_async_pending_event(ctx, tls_session, handler);
-    if (engine_cb) {
-         SSL_set_async_callback(oc->ssl, (void*)engine_cb->callback, (void*)engine_cb->arg);
-printf("set callback to engine %p\n", engine_cb->callback);
+  engine_cb = vpp_add_async_pending_event (ctx, tls_session, handler);
+  if (engine_cb)
+    {
+      SSL_set_async_callback (oc->ssl, (void *) engine_cb->callback,
+			      (void *) engine_cb->arg);
+      printf ("set callback to engine %p\n", engine_cb->callback);
     }
-	/* associated fd with context for return */
-    printf("completed assoicated fd with tls session\n");
-    return 0;
+  /* associated fd with context for return */
+  printf ("completed assoicated fd with tls session\n");
+  return 0;
 
 }
 
-int openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
+int
+openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
@@ -180,19 +185,23 @@ int openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
 
   while (SSL_in_init (oc->ssl))
     {
-      if (ctx->resume) {
-          ctx->resume = 0;
-      } else if (!openssl_try_handshake_read (oc, tls_session)) {
+      if (ctx->resume)
+	{
+	  ctx->resume = 0;
+	}
+      else if (!openssl_try_handshake_read (oc, tls_session))
+	{
 	  break;
-      }
+	}
 
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
       openssl_try_handshake_write (oc, tls_session);
-      if (err == SSL_ERROR_WANT_ASYNC){
-	      myself = openssl_ctx_handshake_rx;
-	      vpp_ssl_async_process_event(ctx, tls_session, myself);
-      }
+      if (err == SSL_ERROR_WANT_ASYNC)
+	{
+	  myself = openssl_ctx_handshake_rx;
+	  vpp_ssl_async_process_event (ctx, tls_session, myself);
+	}
 
       if (err != SSL_ERROR_WANT_WRITE)
 	{
@@ -485,14 +494,15 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   return 0;
 }
 
-BIO *dup_bio_err()
+BIO *
+dup_bio_err ()
 {
-    BIO *b = BIO_new_fp(stderr,
-                        BIO_NOCLOSE | BIO_FP_TEXT );
+  BIO *b = BIO_new_fp (stderr,
+		       BIO_NOCLOSE | BIO_FP_TEXT);
 #ifdef OPENSSL_SYS_VMS
-        b = BIO_push(BIO_new(BIO_f_linebuffer()), b);
+  b = BIO_push (BIO_new (BIO_f_linebuffer ()), b);
 #endif
-    return b;
+  return b;
 }
 
 
@@ -510,7 +520,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
   BIO *cert_bio;
   openssl_resume_handler *handler;
 
-  printf("openssl_ctx_init_server is openned ctx=%p\n", ctx);
+  printf ("openssl_ctx_init_server is openned ctx=%p\n", ctx);
 
   app = application_get (ctx->parent_app_index);
   if (!app->tls_cert || !app->tls_key)
@@ -530,7 +540,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 
   SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   if (om->async)
-      SSL_CTX_set_mode(oc->ssl_ctx, SSL_MODE_ASYNC);
+    SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ASYNC);
   SSL_CTX_set_options (oc->ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (oc->ssl_ctx, 1);
 
@@ -552,7 +562,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       clib_warning ("unable to parse certificate");
       return -1;
     }
-  SSL_CTX_use_certificate(oc->ssl_ctx, oc->srvcert);
+  SSL_CTX_use_certificate (oc->ssl_ctx, oc->srvcert);
   BIO_free (cert_bio);
 
 
@@ -564,15 +574,16 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       clib_warning ("unable to parse pkey");
       return -1;
     }
-  SSL_CTX_use_PrivateKey(oc->ssl_ctx, oc->pkey);
+  SSL_CTX_use_PrivateKey (oc->ssl_ctx, oc->pkey);
 
   BIO_free (cert_bio);
 
-  if (!SSL_CTX_check_private_key(oc->ssl_ctx)) {
-	  printf("SSL check private key failed\n");
-  }
+  if (!SSL_CTX_check_private_key (oc->ssl_ctx))
+    {
+      printf ("SSL check private key failed\n");
+    }
 
-   /* Start a new connection */
+  /* Start a new connection */
 
   oc->ssl = SSL_new (oc->ssl_ctx);
   if (oc->ssl == NULL)
@@ -599,11 +610,12 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
       openssl_try_handshake_write (oc, tls_session);
-      if (err == SSL_ERROR_WANT_ASYNC){
-	      handler = (openssl_resume_handler*)openssl_ctx_handshake_rx;
-	      vpp_ssl_async_process_event(ctx, tls_session, handler);
-	      break;
-      }
+      if (err == SSL_ERROR_WANT_ASYNC)
+	{
+	  handler = (openssl_resume_handler *) openssl_ctx_handshake_rx;
+	  vpp_ssl_async_process_event (ctx, tls_session, handler);
+	  break;
+	}
       if (err != SSL_ERROR_WANT_WRITE)
 	break;
     }
@@ -687,7 +699,7 @@ tls_openssl_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-printf("call tls_openssl_init thread = %d\n", num_threads);
+  printf ("call tls_openssl_init thread = %d\n", num_threads);
 
   if ((error = vlib_call_init_function (vm, tls_init)))
     return error;
@@ -712,48 +724,59 @@ printf("call tls_openssl_init thread = %d\n", num_threads);
 
 static clib_error_t *
 tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
-                            vlib_cli_command_t * cmd)
+			    vlib_cli_command_t * cmd)
 {
-   openssl_main_t *tm = &openssl_main;
-   char *engine_name = NULL;
-   char *engine_alg = NULL;
-   u8 engine_name_set = 0;
-   int i;
+  openssl_main_t *tm = &openssl_main;
+  char *engine_name = NULL;
+  char *engine_alg = NULL;
+  u8 engine_name_set = 0;
+  int i;
 
-   /* By present, it is not allowed to configure engine again after running */
-   if (tm->engine_init) {
-        clib_warning ("engine has started!\n");
-        return clib_error_return
-           (0, "engine has started, and no config is accepted");
-   }
-
-   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
+  /* By present, it is not allowed to configure engine again after running */
+  if (tm->engine_init)
     {
-      if (unformat (input, "engine %s", &engine_name)) {
-          engine_name_set = 1;
-      } else if (unformat (input, "async")) {
-          tm->async = 1;
-          openssl_async_node_enable_disable(1);
-      } else if (unformat (input, "alg %s", &engine_alg)) {
-          for (i=0; i<strnlen(engine_alg, MAX_CRYPTO_LEN); i++)
-              engine_alg[i] = toupper(engine_alg[i]);
-      } else
-          return clib_error_return (0, "failed: unknown input `%U'",
-                                    format_unformat_error, input);
+      clib_warning ("engine has started!\n");
+      return clib_error_return
+	(0, "engine has started, and no config is accepted");
     }
 
-    /* reset parameters if engine is not configured */
-    if (!engine_name_set) {
-        clib_warning ("No engine provided! \n");
-        tm->async = 0;
-    } else {
-        if (!register_openssl_engine(engine_name, engine_alg)) {
-             return clib_error_return (0, "failed to register %s polling",
-                                engine_name);
-       }
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "engine %s", &engine_name))
+	{
+	  engine_name_set = 1;
+	}
+      else if (unformat (input, "async"))
+	{
+	  tm->async = 1;
+	  openssl_async_node_enable_disable (1);
+	}
+      else if (unformat (input, "alg %s", &engine_alg))
+	{
+	  for (i = 0; i < strnlen (engine_alg, MAX_CRYPTO_LEN); i++)
+	    engine_alg[i] = toupper (engine_alg[i]);
+	}
+      else
+	return clib_error_return (0, "failed: unknown input `%U'",
+				  format_unformat_error, input);
     }
 
-   return 0;
+  /* reset parameters if engine is not configured */
+  if (!engine_name_set)
+    {
+      clib_warning ("No engine provided! \n");
+      tm->async = 0;
+    }
+  else
+    {
+      if (!register_openssl_engine (engine_name, engine_alg))
+	{
+	  return clib_error_return (0, "failed to register %s polling",
+				    engine_name);
+	}
+    }
+
+  return 0;
 }
 
 /* *INDENT-OFF* */
