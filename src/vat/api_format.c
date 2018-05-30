@@ -23298,7 +23298,7 @@ script (vat_main_t * vam)
   vam->current_file = s;
   do_one_file (vam);
 
-  clib_memcpy (&vam->input, &save_input, sizeof (vam->input));
+  clib_memcpy (&vam->input, &save_input, sizeof (save_input));
   clib_memcpy (&vam->jump_buf, &save_jump_buf, sizeof (save_jump_buf));
   vam->ifp = save_ifp;
   vam->input_line_number = save_line_number;
