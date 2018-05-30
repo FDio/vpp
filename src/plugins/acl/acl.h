@@ -38,6 +38,8 @@
 #define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
+#define SESSION_PURGATORY_TIMEOUT_USEC 10
+
 #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
@@ -49,9 +51,12 @@ void input_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32
 void output_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32 *acl_match_p, u32 *rule_match_p, u32 *trace_bitmap);
 
 enum acl_timeout_e {
-  ACL_TIMEOUT_UDP_IDLE = 0,
+  ACL_TIMEOUT_UNUSED = 0,
+  ACL_TIMEOUT_UDP_IDLE,
   ACL_TIMEOUT_TCP_IDLE,
   ACL_TIMEOUT_TCP_TRANSIENT,
+  ACL_N_USER_TIMEOUTS,
+  ACL_TIMEOUT_PURGATORY = ACL_N_USER_TIMEOUTS, /* a special-case queue for deletion-in-progress sessions */
   ACL_N_TIMEOUTS
 };
 
@@ -249,6 +254,8 @@ typedef struct {
   /* total session adds/dels */
   u64 fa_session_total_adds;
   u64 fa_session_total_dels;
+  /* how many sessions went into purgatory */
+  u64 fa_session_total_deactivations;
 
   /* L2 datapath glue */
 
@@ -325,7 +332,20 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+  /* logging */
+  vlib_log_class_t log_default;
 } acl_main_t;
+
+#define acl_log_err(...) \
+  vlib_log(VLIB_LOG_LEVEL_ERR, acl_main.log_default, __VA_ARGS__)
+#define acl_log_warn(...) \
+  vlib_log(VLIB_LOG_LEVEL_WARNING, acl_main.log_default, __VA_ARGS__)
+#define acl_log_notice(...) \
+  vlib_log(VLIB_LOG_LEVEL_NOTICE, acl_main.log_default, __VA_ARGS__)
+#define acl_log_info(...) \
+  vlib_log(VLIB_LOG_LEVEL_INFO, acl_main.log_default, __VA_ARGS__)
+
+
 
 #define foreach_acl_eh                                          \
    _(HOPBYHOP , 0  , "IPv6ExtHdrHopByHop")                      \
