@@ -101,9 +101,16 @@ fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 always_inline u64
 fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
 {
-  u64 timeout = am->vlib_main->clib_time.clocks_per_second;
-  int timeout_type = fa_session_get_timeout_type (am, sess);
-  timeout *= am->session_timeout_sec[timeout_type];
+  u64 timeout = (am->vlib_main->clib_time.clocks_per_second);
+  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY)
+    {
+      timeout /= (1000000 / SESSION_PURGATORY_TIMEOUT_USEC);
+    }
+  else
+    {
+      int timeout_type = fa_session_get_timeout_type (am, sess);
+      timeout *= am->session_timeout_sec[timeout_type];
+    }
   return timeout;
 }
 
@@ -113,8 +120,12 @@ always_inline fa_session_t *
 get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  fa_session_t *sess = pool_is_free_index (pw->fa_sessions_pool,
-					   session_index) ? 0 :
+  if (session_index > vec_len (pw->fa_sessions_pool))
+    {
+      return 0;
+    }
+
+  fa_session_t *sess = (session_index > vec_len (pw->fa_sessions_pool)) ? 0 :
     pool_elt_at_index (pw->fa_sessions_pool,
 		       session_index);
   return sess;
@@ -135,7 +146,9 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
 {
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
-  u8 list_id = fa_session_get_timeout_type (am, sess);
+  u8 list_id =
+    sess->deleted ? ACL_TIMEOUT_PURGATORY : fa_session_get_timeout_type (am,
+									 sess);
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   /* the retrieved session thread index must be necessarily the same as the one in the key */
@@ -144,9 +157,9 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
   ASSERT (sess->thread_index == thread_index);
   sess->link_enqueue_time = now;
   sess->link_list_id = list_id;
-  sess->link_next_idx = ~0;
+  sess->link_next_idx = FA_SESSION_BOGUS_INDEX;
   sess->link_prev_idx = pw->fa_conn_list_tail[list_id];
-  if (~0 != pw->fa_conn_list_tail[list_id])
+  if (FA_SESSION_BOGUS_INDEX != pw->fa_conn_list_tail[list_id])
     {
       fa_session_t *prev_sess =
 	get_session_ptr (am, thread_index, pw->fa_conn_list_tail[list_id]);
@@ -164,15 +177,18 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
   pw->serviced_sw_if_index_bitmap =
     clib_bitmap_set (pw->serviced_sw_if_index_bitmap, sess->sw_if_index, 1);
 
-  if (~0 == pw->fa_conn_list_head[list_id])
+  if (FA_SESSION_BOGUS_INDEX == pw->fa_conn_list_head[list_id])
     {
       pw->fa_conn_list_head[list_id] = sess_id.session_index;
+      /* set the head expiry time because it is the first element */
+      pw->fa_conn_list_head_expiry_time[list_id] =
+	now + fa_session_get_timeout (am, sess);
     }
 }
 
 static int
 acl_fa_conn_list_delete_session (acl_main_t * am,
-				 fa_full_session_id_t sess_id)
+				 fa_full_session_id_t sess_id, u64 now)
 {
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
@@ -186,9 +202,15 @@ acl_fa_conn_list_delete_session (acl_main_t * am,
     }
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
+  u64 next_expiry_time = ~0ULL;
   /* we should never try to delete the session with another thread index */
-  ASSERT (sess->thread_index == thread_index);
-  if (~0 != sess->link_prev_idx)
+  if (sess->thread_index != os_get_thread_index ())
+    {
+      clib_error
+	("Attempting to delete session belonging to thread %d by thread %d",
+	 sess->thread_index, thread_index);
+    }
+  if (FA_SESSION_BOGUS_INDEX != sess->link_prev_idx)
     {
       fa_session_t *prev_sess =
 	get_session_ptr (am, thread_index, sess->link_prev_idx);
@@ -196,17 +218,20 @@ acl_fa_conn_list_delete_session (acl_main_t * am,
       ASSERT (prev_sess->link_list_id == sess->link_list_id);
       prev_sess->link_next_idx = sess->link_next_idx;
     }
-  if (~0 != sess->link_next_idx)
+  if (FA_SESSION_BOGUS_INDEX != sess->link_next_idx)
     {
       fa_session_t *next_sess =
 	get_session_ptr (am, thread_index, sess->link_next_idx);
       /* The next session must be in the same list as the one we are deleting */
       ASSERT (next_sess->link_list_id == sess->link_list_id);
       next_sess->link_prev_idx = sess->link_prev_idx;
+      next_expiry_time = now + fa_session_get_timeout (am, next_sess);
     }
   if (pw->fa_conn_list_head[sess->link_list_id] == sess_id.session_index)
     {
       pw->fa_conn_list_head[sess->link_list_id] = sess->link_next_idx;
+      pw->fa_conn_list_head_expiry_time[sess->link_list_id] =
+	next_expiry_time;
     }
   if (pw->fa_conn_list_tail[sess->link_list_id] == sess_id.session_index)
     {
@@ -219,7 +244,7 @@ always_inline int
 acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
 				  fa_full_session_id_t sess_id)
 {
-  if (acl_fa_conn_list_delete_session (am, sess_id))
+  if (acl_fa_conn_list_delete_session (am, sess_id, now))
     {
       acl_fa_conn_list_add_session (am, sess_id, now);
       return 1;
@@ -346,25 +371,57 @@ reverse_session_add_del (acl_main_t * am, const int is_ip6,
 }
 
 always_inline void
-acl_fa_delete_session (acl_main_t * am, u32 sw_if_index,
-		       fa_full_session_id_t sess_id)
+acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
+			   fa_full_session_id_t sess_id)
 {
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   ASSERT (sess->thread_index == os_get_thread_index ());
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &sess->info.kv, 0);
 
   reverse_session_add_del (am, sess->info.pkt.is_ip6, &sess->info.kv, 0);
+  sess->deleted = 1;
+  clib_smp_atomic_add (&am->fa_session_total_deactivations, 1);
+}
 
+always_inline void
+acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
+		    fa_full_session_id_t sess_id)
+{
+  if (sess_id.thread_index != os_get_thread_index ())
+    {
+      clib_error
+	("Attempting to delete session belonging to thread %d by thread %d",
+	 sess_id.thread_index, os_get_thread_index ());
+    }
+  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
-  pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
+  clib_smp_atomic_add (&pw->fa_session_dels_by_sw_if_index[sw_if_index], 1);
   clib_smp_atomic_add (&am->fa_session_total_dels, 1);
+}
+
+always_inline int
+acl_fa_two_stage_delete_session (acl_main_t * am, u32 sw_if_index,
+				 fa_full_session_id_t sess_id, u64 now)
+{
+  fa_session_t *sess =
+    get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
+  if (sess->deleted)
+    {
+      acl_fa_put_session (am, sw_if_index, sess_id);
+      return 1;
+    }
+  else
+    {
+      acl_fa_deactivate_session (am, sw_if_index, sess_id);
+      acl_fa_conn_list_add_session (am, sess_id, now);
+      return 0;
+    }
 }
 
 always_inline int
@@ -372,24 +429,47 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 {
   u64 curr_sess_count;
   curr_sess_count = am->fa_session_total_adds - am->fa_session_total_dels;
-  return (curr_sess_count < am->fa_conn_table_max_entries);
+  return (curr_sess_count + vec_len (vlib_mains) <
+	  am->fa_conn_table_max_entries);
 }
 
 
 always_inline void
 acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
-			    u32 sw_if_index)
+			    u32 sw_if_index, u64 now)
 {
   /* try to recycle a TCP transient session */
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  u8 timeout_type = ACL_TIMEOUT_TCP_TRANSIENT;
-  fa_full_session_id_t sess_id;
-  sess_id.session_index = pw->fa_conn_list_head[timeout_type];
-  if (~0 != sess_id.session_index)
+  fa_full_session_id_t volatile sess_id;
+  int n_recycled = 0;
+
+  /* clean up sessions from purgatory, if we can */
+  sess_id.session_index = pw->fa_conn_list_head[ACL_TIMEOUT_PURGATORY];
+  while ((FA_SESSION_BOGUS_INDEX != sess_id.session_index)
+	 && n_recycled < am->fa_max_deleted_sessions_per_interval)
     {
       sess_id.thread_index = thread_index;
-      acl_fa_conn_list_delete_session (am, sess_id);
-      acl_fa_delete_session (am, sw_if_index, sess_id);
+      fa_session_t *sess =
+	get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
+      if (sess->link_enqueue_time + fa_session_get_timeout (am, sess) < now)
+	{
+	  acl_fa_conn_list_delete_session (am, sess_id, now);
+	  /* interface that needs the sessions may not be the interface of the session. */
+	  acl_fa_put_session (am, sess->sw_if_index, sess_id);
+	  n_recycled++;
+	}
+      else
+	break;			/* too early to try to recycle from here, bail out */
+      sess_id.session_index = pw->fa_conn_list_head[ACL_TIMEOUT_PURGATORY];
+    }
+  sess_id.session_index = pw->fa_conn_list_head[ACL_TIMEOUT_TCP_TRANSIENT];
+  if (FA_SESSION_BOGUS_INDEX != sess_id.session_index)
+    {
+      sess_id.thread_index = thread_index;
+      acl_fa_conn_list_delete_session (am, sess_id, now);
+      acl_fa_deactivate_session (am, sw_if_index, sess_id);
+      /* this goes to purgatory list */
+      acl_fa_conn_list_add_session (am, sess_id, now);
     }
 }
 
@@ -419,26 +499,31 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   kv.key[3] = pkv->key[3];
   kv.key[4] = pkv->key[4];
   kv.value = f_sess_id.as_u64;
+  if (kv.value == ~0)
+    {
+      clib_error ("Adding session with invalid value");
+    }
 
   memcpy (sess, pkv, sizeof (pkv->key));
   sess->last_active_time = now;
   sess->sw_if_index = sw_if_index;
   sess->tcp_flags_seen.as_u16 = 0;
   sess->thread_index = thread_index;
-  sess->link_list_id = ~0;
-  sess->link_prev_idx = ~0;
-  sess->link_next_idx = ~0;
-
-  ASSERT (am->fa_sessions_hash_is_initialized == 1);
-  clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &kv, 1);
-
-  reverse_session_add_del (am, is_ip6, &kv, 1);
+  sess->link_list_id = ACL_TIMEOUT_UNUSED;
+  sess->link_prev_idx = FA_SESSION_BOGUS_INDEX;
+  sess->link_next_idx = FA_SESSION_BOGUS_INDEX;
+  sess->deleted = 0;
 
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 
+  ASSERT (am->fa_sessions_hash_is_initialized == 1);
+
+  reverse_session_add_del (am, is_ip6, &kv, 1);
+  clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &kv, 1);
+
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
-  pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
+  clib_smp_atomic_add (&pw->fa_session_adds_by_sw_if_index[sw_if_index], 1);
   clib_smp_atomic_add (&am->fa_session_total_adds, 1);
   return sess;
 }

@@ -18,8 +18,8 @@
 #define TCP_FLAGS_ACKSYN (TCP_FLAG_SYN + TCP_FLAG_ACK)
 
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE (1<<30)
-#define ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES 1000000
+#define ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE (1ULL<<30)
+#define ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES 500000
 
 typedef union {
   u64 as_u64;
@@ -80,7 +80,8 @@ typedef struct {
   u32 link_prev_idx;      /* +4 bytes = 12 */
   u32 link_next_idx;      /* +4 bytes = 16 */
   u8 link_list_id;        /* +1 bytes = 17 */
-  u8 reserved1[7];        /* +7 bytes = 24 */
+  u8 deleted;             /* +1 bytes = 18 */
+  u8 reserved1[6];        /* +6 bytes = 24 */
   u64 reserved2[5];       /* +5*8 bytes = 64 */
 } fa_session_t;
 
@@ -120,12 +121,16 @@ CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);
 CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), sizeof(u64));
 #undef CT_ASSERT_EQUAL
 
+#define FA_SESSION_BOGUS_INDEX ~0
+
 typedef struct {
   /* The pool of sessions managed by this worker */
   fa_session_t *fa_sessions_pool;
   /* per-worker ACL_N_TIMEOUTS of conn lists */
   u32 *fa_conn_list_head;
   u32 *fa_conn_list_tail;
+  /* expiry time set whenever an element is enqueued */
+  u64 *fa_conn_list_head_expiry_time;
   /* adds and deletes per-worker-per-interface */
   u64 *fa_session_dels_by_sw_if_index;
   u64 *fa_session_adds_by_sw_if_index;
