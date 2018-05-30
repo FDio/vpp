@@ -16,11 +16,6 @@ lib_LTLIBRARIES += libvlib.la
 libvlib_la_LIBADD = libvppinfra.la -ldl -lpthread
 libvlib_la_DEPENDENCIES = libvppinfra.la
 
-BUILT_SOURCES += vlib/config.h
-
-vlib/config.h:
-	@echo "#define __PRE_DATA_SIZE" @PRE_DATA_SIZE@ > $@
-
 libvlib_la_SOURCES =				\
   vlib/buffer.c					\
   vlib/buffer_serialize.c			\
