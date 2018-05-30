@@ -163,7 +163,8 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	    {
 	      if (acl_fa_find_session
-		  (am, sw_if_index0, &fa_5tuple, &value_sess))
+		  (am, sw_if_index0, &fa_5tuple, &value_sess) &&
+		  (value_sess.value != ~0ULL))
 		{
 		  trace_bitmap |= 0x80000000;
 		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
@@ -227,11 +228,14 @@ acl_fa_node_fn (vlib_main_t * vm,
 			     sw_if_index0);
 			  vec_elt (pw->fa_session_epoch_change_by_sw_if_index,
 				   sw_if_index0)++;
-			  if (acl_fa_conn_list_delete_session (am, f_sess_id))
+			  if (acl_fa_conn_list_delete_session
+			      (am, f_sess_id, now))
 			    {
 			      /* delete the session only if we were able to unlink it */
-			      acl_fa_delete_session (am, sw_if_index0,
-						     f_sess_id);
+			      acl_fa_two_stage_delete_session (am,
+							       sw_if_index0,
+							       f_sess_id,
+							       now);
 			    }
 			  acl_check_needed = 1;
 			  trace_bitmap |= 0x40000000;
@@ -257,7 +261,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		{
 		  if (!acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    acl_fa_try_recycle_session (am, is_input, thread_index,
-						sw_if_index0);
+						sw_if_index0, now);
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
