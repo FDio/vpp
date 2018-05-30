@@ -36,7 +36,6 @@ aclocal.m4
 app.info
 compile
 config.h
-config.h.in
 config.log
 config.guess
 config.sub
