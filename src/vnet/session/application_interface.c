@@ -528,14 +528,19 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 {
   session_endpoint_extended_t sep = SESSION_ENDPOINT_EXT_NULL;
   stream_session_t *listener;
+  u32 table_index;
+  u8 fib_proto;
   int rv;
 
   rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
 
-  /* NOTE: only default table supported for uri */
-  listener = session_lookup_listener (0, (session_endpoint_t *) & sep);
+  /* NOTE: only default fib tables supported for uri apis */
+  fib_proto = sep.is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  table_index = session_lookup_get_index_for_fib (fib_proto, 0);
+  listener = session_lookup_listener (table_index,
+				      (session_endpoint_t *) & sep);
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
