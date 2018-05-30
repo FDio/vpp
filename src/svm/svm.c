@@ -652,6 +652,10 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
 
+      /* Reset ownership in case the client started first */
+      if (fchown (svm_fd, a->uid, a->gid) < 0)
+	clib_unix_warning ("segment chown [ok if client starts first]");
+
       time_left = 20;
       while (1)
 	{
