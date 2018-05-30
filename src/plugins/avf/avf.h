@@ -122,15 +122,13 @@ typedef struct
 
 typedef struct
 {
-  u32 bi;
   u32 status;
   u16 length;
-  u16 tail_length;
   u8 ptype;
   u8 error;
 } avf_rx_vector_entry_t;
 
-STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 16);
+STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
 
 #define AVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
@@ -146,6 +144,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   avf_rx_vector_entry_t rx_vector[AVF_RX_VECTOR_SZ];
   u32 *to_free;
+  vlib_buffer_t buffer_template;
 } avf_per_thread_data_t;
 
 typedef struct
