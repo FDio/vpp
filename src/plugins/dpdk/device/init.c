@@ -207,8 +207,8 @@ dpdk_lib_init (dpdk_main_t * dm)
   uword *p_hqos;
 
   u32 next_hqos_cpu = 0;
-  u8 af_packet_port_id = 0;
-  u8 bond_ether_port_id = 0;
+  u8 af_packet_instance_num = 0;
+  u8 bond_ether_instance_num = 0;
   last_pci_addr.as_u32 = ~0;
 
   dm->hqos_cpu_first_index = 0;
@@ -460,12 +460,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_AF_PACKET:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_AF_PACKET;
-	      xd->port_id = af_packet_port_id++;
+	      xd->af_packet_instance_num = af_packet_instance_num++;
 	      break;
 
 	    case VNET_DPDK_PMD_BOND:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
-	      xd->port_id = bond_ether_port_id++;
+	      xd->bond_instance_num = bond_ether_instance_num++;
 	      break;
 
 	    case VNET_DPDK_PMD_VIRTIO_USER:
@@ -1556,7 +1556,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 		    /* Set MAC of bounded interface to that of 1st slave link */
 		    dpdk_log_info ("Set MAC for bond port %d BondEthernet%d",
-				   i, xd->port_id);
+				   i, xd->bond_instance_num);
 		    rv = rte_eth_bond_mac_address_set
 		      (i, (struct ether_addr *) addr);
 		    if (rv)

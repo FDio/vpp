@@ -289,7 +289,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
       dpdk_log_info ("Port %d state to %s, "
 		     "slave of port %d BondEthernet%d in mode %d",
 		     port_id, (link_up) ? "UP" : "DOWN",
-		     bd_port, xd->port_id, bd_mode);
+		     bd_port, xd->bond_instance_num, bd_mode);
       if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
 	{
 	  vl_api_force_rpc_call_main_thread

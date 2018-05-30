@@ -233,7 +233,8 @@ typedef struct
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
   /* af_packet or BondEthernet instance number */
-  dpdk_portid_t port_id;
+  u16 af_packet_instance_num;
+  u16 bond_instance_num;
 
   /* Bonded interface port# of a slave -
      only valid if DPDK_DEVICE_FLAG_BOND_SLAVE bit is set */
