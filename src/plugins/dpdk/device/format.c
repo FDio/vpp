@@ -213,7 +213,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PORT_TYPE_ETH_BOND:
-      return format (s, "BondEthernet%d", dm->devices[i].port_id);
+      return format (s, "BondEthernet%d", dm->devices[i].bond_instance_num);
 
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
@@ -225,7 +225,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
 
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
       rte_eth_dev_info_get (i, &dev_info);
-      return format (s, "af_packet%d", dm->devices[i].port_id);
+      return format (s, "af_packet%d", dm->devices[i].af_packet_instance_num);
 
     case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
       device_name = "VirtioUser";
