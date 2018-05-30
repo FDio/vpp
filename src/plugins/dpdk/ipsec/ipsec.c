@@ -633,7 +633,7 @@ crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
   struct rte_cryptodev_qp_conf qp_conf;
   i32 ret;
   u16 qp;
-  i8 *error_str;
+  char *error_str;
 
   dev_conf.socket_id = numa;
   dev_conf.nb_queue_pairs = n_qp;

@@ -144,7 +144,7 @@ clib_macro_eval (macro_main_t * mm, i8 * s, i32 complain)
 	      /* Look in value table */
 	      if (!varvalue)
 		{
-		  char *tmp = clib_macro_get_value (mm, varname);
+		  i8 *tmp = clib_macro_get_value (mm, (char *) varname);
 		  if (tmp)
 		    varvalue = (i8 *) format (0, "%s%c", tmp, 0);
 		}
@@ -152,7 +152,7 @@ clib_macro_eval (macro_main_t * mm, i8 * s, i32 complain)
 	      /* Look in environment. */
 	      if (!varvalue)
 		{
-		  char *tmp = getenv (varname);
+		  char *tmp = getenv ((char *) varname);
 		  if (tmp)
 		    varvalue = (i8 *) format (0, "%s%c", tmp, 0);
 		}

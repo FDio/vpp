@@ -93,14 +93,14 @@ typedef struct
   u8 drv_id;
   u8 numa;
   u16 id;
-  const i8 *name;
+  const char *name;
   u32 max_qp;
   u64 features;
 } crypto_dev_t;
 
 typedef struct
 {
-  const i8 *name;
+  const char *name;
   u16 *devs;
 } crypto_drv_t;
 
