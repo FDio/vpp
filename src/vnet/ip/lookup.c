@@ -926,6 +926,10 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  rpath.frp_sw_if_index = ~0;
 	  rpath.frp_weight = 1;
 	  rpath.frp_flags |= FIB_ROUTE_PATH_LOCAL;
+	  /*
+	   * set the path proto appropriately for the prefix
+	   */
+	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
 	}
       else if (unformat (line_input, "%U", unformat_mfib_itf_flags, &iflags))
 	;
