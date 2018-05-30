@@ -3779,13 +3779,22 @@ acl_plugin_show_sessions (acl_main_t * am,
   u16 wk;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
   vnet_sw_interface_t *swif;
+  u64 now = clib_cpu_time_now ();
+  u64 clocks_per_second = am->vlib_main->clib_time.clocks_per_second;
 
   {
     u64 n_adds = am->fa_session_total_adds;
     u64 n_dels = am->fa_session_total_dels;
+    u64 n_deact = am->fa_session_total_deactivations;
     vlib_cli_output (vm, "Sessions total: add %lu - del %lu = %lu", n_adds,
 		     n_dels, n_adds - n_dels);
+    vlib_cli_output (vm, "Sessions active: add %lu - deact %lu = %lu", n_adds,
+		     n_deact, n_adds - n_deact);
+    vlib_cli_output (vm, "Sessions being purged: deact %lu - del %lu = %lu",
+		     n_deact, n_dels, n_deact - n_dels);
   }
+  vlib_cli_output (vm, "now: %lu clocks per second: %lu", now,
+		   clocks_per_second);
   vlib_cli_output (vm, "\n\nPer-thread data:");
   for (wk = 0; wk < vec_len (am->per_worker_data); wk++)
     {
@@ -4140,6 +4149,7 @@ acl_init (vlib_main_t * vm)
   memset (am, 0, sizeof (*am));
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
+  am->log_default = vlib_log_register_class ("acl_plugin", 0);
 
   u8 *name = format (0, "acl_%08x%c", api_version, 0);
 
@@ -4176,22 +4186,6 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
   am->reclassify_sessions = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vec_validate (am->per_worker_data, tm->n_vlib_mains - 1);
-  {
-    u16 wk;
-    u8 tt;
-    for (wk = 0; wk < vec_len (am->per_worker_data); wk++)
-      {
-	acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
-	vec_validate (pw->fa_conn_list_head, ACL_N_TIMEOUTS - 1);
-	vec_validate (pw->fa_conn_list_tail, ACL_N_TIMEOUTS - 1);
-	for (tt = 0; tt < ACL_N_TIMEOUTS; tt++)
-	  {
-	    pw->fa_conn_list_head[tt] = ~0;
-	    pw->fa_conn_list_tail[tt] = ~0;
-	  }
-      }
-  }
 
   am->fa_min_deleted_sessions_per_interval =
     ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
@@ -4199,6 +4193,25 @@ acl_init (vlib_main_t * vm)
     ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_cleaner_wait_time_increment =
     ACL_FA_DEFAULT_CLEANER_WAIT_TIME_INCREMENT;
+
+  vec_validate (am->per_worker_data, tm->n_vlib_mains - 1);
+  {
+    u16 wk;
+    for (wk = 0; wk < vec_len (am->per_worker_data); wk++)
+      {
+	acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+	vec_validate (pw->expired,
+		      ACL_N_TIMEOUTS *
+		      am->fa_max_deleted_sessions_per_interval);
+	_vec_len (pw->expired) = 0;
+	vec_validate_init_empty (pw->fa_conn_list_head, ACL_N_TIMEOUTS - 1,
+				 FA_SESSION_BOGUS_INDEX);
+	vec_validate_init_empty (pw->fa_conn_list_tail, ACL_N_TIMEOUTS - 1,
+				 FA_SESSION_BOGUS_INDEX);
+	vec_validate_init_empty (pw->fa_conn_list_head_expiry_time,
+				 ACL_N_TIMEOUTS - 1, ~0ULL);
+      }
+  }
 
   am->fa_cleaner_cnt_delete_by_sw_index = 0;
   am->fa_cleaner_cnt_delete_by_sw_index_ok = 0;
