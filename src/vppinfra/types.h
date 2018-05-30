@@ -42,8 +42,8 @@
 
 /* Define signed and unsigned 8, 16, 32, and 64 bit types
    and machine signed/unsigned word for all architectures. */
-typedef char i8;
-typedef short i16;
+typedef signed char i8;
+typedef signed short i16;
 
 /* Avoid conflicts with Linux asm/types.h when __KERNEL__ */
 #if defined(CLIB_LINUX_KERNEL)
@@ -59,14 +59,14 @@ typedef unsigned short u16;
 
 #if defined (__x86_64__)
 #ifndef __COVERITY__
-typedef int i128 __attribute__ ((mode (TI)));
+typedef signed int i128 __attribute__ ((mode (TI)));
 typedef unsigned int u128 __attribute__ ((mode (TI)));
 #endif
 #endif
 
 #if (defined(i386) || defined(_mips) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__) || defined(__TMS320C6X__))
-typedef int i32;
-typedef long long i64;
+typedef signed int i32;
+typedef signed long long i64;
 
 #ifndef CLIB_AVOID_CLASH_WITH_LINUX_TYPES
 typedef unsigned int u32;
@@ -78,8 +78,8 @@ typedef unsigned long long u64;
 #define clib_address_bits _MIPS_SZPTR
 
 #elif defined(alpha) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
-typedef int i32;
-typedef long i64;
+typedef signed int i32;
+typedef signed long i64;
 
 #define log2_uword_bits 6
 #define clib_address_bits 64

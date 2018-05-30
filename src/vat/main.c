@@ -117,7 +117,7 @@ do_one_file (vat_main_t * vam)
       vec_free (this_cmd);
 
       this_cmd =
-	(u8 *) clib_macro_eval (&vam->macro_main, (char *) vam->inbuf,
+	(u8 *) clib_macro_eval (&vam->macro_main, (i8 *) vam->inbuf,
 				1 /* complain */ );
 
       if (vam->exec_mode == 0)

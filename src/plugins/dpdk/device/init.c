@@ -134,7 +134,7 @@ dpdk_device_lock_init (dpdk_device_t * xd)
 }
 
 static struct rte_mempool_ops *
-get_ops_by_name (i8 * ops_name)
+get_ops_by_name (char *ops_name)
 {
   u32 i;
 
@@ -152,7 +152,7 @@ dpdk_ring_alloc (struct rte_mempool *mp)
 {
   u32 rg_flags = 0, count;
   i32 ret;
-  i8 rg_name[RTE_RING_NAMESIZE];
+  char rg_name[RTE_RING_NAMESIZE];
   struct rte_ring *r;
 
   ret = snprintf (rg_name, sizeof (rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);

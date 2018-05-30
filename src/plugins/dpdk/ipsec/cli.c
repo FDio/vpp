@@ -25,7 +25,7 @@ format_crypto (u8 * s, va_list * args)
   crypto_drv_t *drv = vec_elt_at_index (dcm->drv, dev->drv_id);
   u64 feat, mask;
   u32 i;
-  i8 *pre = "  ";
+  char *pre = "  ";
 
   s = format (s, "%-25s%-20s%-10s\n", dev->name, drv->name,
 	      rte_cryptodevs[dev->id].data->dev_started ? "up" : "down");
@@ -128,7 +128,7 @@ format_crypto_worker (u8 * s, va_list * args)
   crypto_worker_main_t *cwm;
   crypto_resource_t *res;
   u16 *res_idx;
-  i8 *pre, *ind;
+  char *pre, *ind;
   u32 i;
 
   cwm = vec_elt_at_index (dcm->workers_main, thread_idx);

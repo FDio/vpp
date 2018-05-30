@@ -63,7 +63,7 @@ static u8 *
 format_cryptodev_status (u8 * s, va_list * args)
 {
   u32 status = va_arg (*args, u32);
-  i8 *str = 0;
+  char *str = 0;
 
   switch (status)
     {
