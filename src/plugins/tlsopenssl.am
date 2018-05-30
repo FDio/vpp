@@ -14,7 +14,10 @@
 
 vppplugins_LTLIBRARIES += tlsopenssl_plugin.la
 
-tlsopenssl_plugin_la_SOURCES = tlsopenssl/tls_openssl.c
+tlsopenssl_plugin_la_SOURCES = \
+                    tlsopenssl/tls_openssl.c      \
+                    tlsopenssl/tls_async.c        \
+                    tlsopenssl/tls_openssl.h
 tlsopenssl_plugin_la_LDFLAGS = $(AM_LDFLAGS) -lssl -lcrypto
 tlsopenssl_plugin_la_CFLAGS = $(AM_CFLAGS)
 

@@ -395,7 +395,13 @@ AM_COND_IF([ENABLE_TLSMBEDTLS_PLUGIN],
     ], [])
 ])
 
-AM_COND_IF([WITH_LIBSSL], [],
+AM_COND_IF([WITH_LIBSSL],
+[
+  AC_CHECK_LIB([ssl -lcrypto], [SSL_set_async_callback],
+    [
+      AC_DEFINE([HAVE_OPENSSL_ASYNC], [1], [Define if new openssl interface exists])
+    ])
+],
 [
   AC_MSG_WARN([openssl not enabled. Disabling tlsopenssl plugin])
   enable_tlsopenssl_plugin=no
