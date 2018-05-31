@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "31d653e5_4308f0d4",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-31T23:27:56Z",
+      "side": 1,
+      "message": "How about: a static ASSERT in the code? \n\nvpp needs to be independent of the dpdk at this level. \n\nWe don\u0027t always load the dpdk plugin, and there\u0027s no real need to build the dpdk to run a simulator/packet-generator/native vpp driver image.\n\nBy the way, Damjan was  against the CFLAGS story. I decided he was right.",
+      "parentUuid": "85813c5b_7aff0ea0",
+      "range": {
+        "startLine": 119,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 1
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d442ed33_b8a1f7d5",
         "filename": "src/configure.ac",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "b129ff53_51289c79",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-31T23:27:56Z",
+      "side": 1,
+      "message": "How long will it be before all kernels that might try to run vpp will have the indicated patch? Three years?",
+      "parentUuid": "d442ed33_b8a1f7d5",
+      "range": {
+        "startLine": 135,
+        "startChar": 2,
+        "endLine": 136,
+        "endChar": 21
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "048033ee_d1105c3a",
         "filename": "src/configure.ac",
         "patchSetId": 2
@@ -59,6 +107,30 @@
       "writtenOn": "2018-05-31T17:32:07Z",
       "side": 1,
       "message": "In addition to cpuid, implementer id should also be referred from /proc/cpuinfo. The way done in dpdk/Makefile as well.",
+      "range": {
+        "startLine": 139,
+        "startChar": 6,
+        "endLine": 139,
+        "endChar": 11
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0cf5cba5_e0d3e18c",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-05-31T23:27:56Z",
+      "side": 1,
+      "message": "Is the arm community likely to use the same cpuid, different vendor id with different cache line size?\n\nFeel free to update / improve this patch in this regard, if you feel strongly about it.",
+      "parentUuid": "048033ee_d1105c3a",
       "range": {
         "startLine": 139,
         "startChar": 6,
