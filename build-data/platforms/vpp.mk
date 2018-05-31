@@ -36,6 +36,17 @@ vpp_root_packages = vpp vom
 # vpp_dpdk_lib_dir = /usr/lib
 # vpp_dpdk_shared_lib = yes
 
+# AArch64 configuration parameters
+# vpp_uses_aarch64_pmu = yes
+# This configuration enables user space access to PMU on Arm.
+# Access to PMU cycle counter is disabled by default in arm64 Linux kernel
+# Hence the need of a kernel module similar to the one below
+# Steps to enable the kernel module:
+# git clone https://github.com/jerinjacobk/armv8_pmu_cycle_counter_el0
+# cd armv8_pmu_cycle_counter_el0
+# make
+# sudo insmod pmu_el0_cycle_counter.ko
+
 # Use '--without-libnuma' for non-numa aware architecture
 vpp_configure_args_vpp =
 
