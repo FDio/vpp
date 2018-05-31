@@ -203,7 +203,7 @@ vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
     }
   while (count)
     {
-      bi[0] = vlib_get_buffer_index (vm, b[0] + offset);
+      bi[0] = vlib_get_buffer_index (vm, ((u8 *) b[0]) + offset);
       bi += 1;
       b += 1;
       count -= 1;
