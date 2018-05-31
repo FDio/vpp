@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "85813c5b_7aff0ea0",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-05-31T17:32:07Z",
+      "side": 1,
+      "message": "One of the point came out as part of code review comments on patch (https://gerrit.fd.io/r/#/c/10148), the point on which I also agree, dpdk RTE_CACHE_LINE_SIZE  has to be consulted here as if RTE_CACHE_LINE_SIZE !\u003d (1\u003c\u003clog2_cache_line_size)) then autoconf should throw error @compile time instead the runtime assert() detects the problem",
+      "range": {
+        "startLine": 119,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 1
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d442ed33_b8a1f7d5",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-05-31T17:32:07Z",
+      "side": 1,
+      "message": "FYI: cache hierarchy patch (ACPI) is under review by kernel maintainers for aarch64. Hopefully this functionality will be available soon.",
+      "range": {
+        "startLine": 135,
+        "startChar": 2,
+        "endLine": 136,
+        "endChar": 21
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "048033ee_d1105c3a",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-05-31T17:32:07Z",
+      "side": 1,
+      "message": "In addition to cpuid, implementer id should also be referred from /proc/cpuinfo. The way done in dpdk/Makefile as well.",
+      "range": {
+        "startLine": 139,
+        "startChar": 6,
+        "endLine": 139,
+        "endChar": 11
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
