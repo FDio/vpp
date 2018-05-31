@@ -90,6 +90,30 @@ format_flow_actions (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_flow_enabled_hw (u8 * s, va_list * args)
+{
+  u32 flow_index = va_arg (*args, u32);
+  vnet_flow_t *f = vnet_get_flow (flow_index);
+  if (f == 0)
+    return format (s, "not found");
+
+  u8 *t = 0;
+  u32 hw_if_index;
+  uword private_data;
+  vnet_main_t *vnm = vnet_get_main ();
+  /* *INDENT-OFF* */
+  hash_foreach (hw_if_index, private_data, f->private_data,
+    ({
+     t = format (t, "%s%U", t ? ", " : "",
+                 format_vnet_hw_if_index_name, vnm, hw_if_index);
+     }));
+  /* *INDENT-ON* */
+  s = format (s, "%v", t);
+  vec_free (t);
+  return s;
+}
+
 static const char *flow_type_strings[] = { 0,
 #define _(a,b,c) c,
   foreach_flow_type

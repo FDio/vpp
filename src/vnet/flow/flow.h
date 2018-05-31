@@ -181,6 +181,7 @@ typedef struct
 extern vnet_flow_main_t flow_main;
 
 format_function_t format_flow_actions;
+format_function_t format_flow_enabled_hw;
 
 #endif /* included_vnet_flow_flow_h */
 
