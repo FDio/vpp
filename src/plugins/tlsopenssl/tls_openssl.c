@@ -519,6 +519,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       clib_warning ("unable to parse certificate");
       return -1;
     }
+  SSL_CTX_use_certificate (oc->ssl_ctx, oc->srvcert);
   BIO_free (cert_bio);
   cert_bio = BIO_new (BIO_s_mem ());
   BIO_write (cert_bio, app->tls_key, vec_len (app->tls_key));
@@ -529,6 +530,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       return -1;
     }
 
+  SSL_CTX_use_PrivateKey (oc->ssl_ctx, oc->pkey);
   BIO_free (cert_bio);
 
   oc->ssl = SSL_new (oc->ssl_ctx);
