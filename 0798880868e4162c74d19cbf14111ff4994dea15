@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "29275302_b4bb06ab",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-05-31T00:31:43Z",
+      "side": 1,
+      "message": "We need this to compile with the RTE_ETH_FOREACH_DEV since that macro is still marked as experimental.",
+      "parentUuid": "08945a19_4b0ab3d6",
+      "range": {
+        "startLine": 46,
+        "startChar": 38,
+        "endLine": 46,
+        "endChar": 61
+      },
+      "revId": "0798880868e4162c74d19cbf14111ff4994dea15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a821ff94_13960a20",
         "filename": "src/plugins/dpdk/device/dpdk.h",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-05-16T20:45:14Z",
       "side": 1,
       "message": "move it to 1st cacheline and make sure that there is enough space",
+      "range": {
+        "startLine": 242,
+        "startChar": 0,
+        "endLine": 242,
+        "endChar": 24
+      },
+      "revId": "0798880868e4162c74d19cbf14111ff4994dea15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5e211e62_217675e7",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-05-31T00:31:43Z",
+      "side": 1,
+      "message": "I saw your change that split this for af packet and bondEthernet, I added port_id next to device_index, which puts us at 53 bytes on 64-bit platform for 1st cacheline, still within the limit.",
+      "parentUuid": "a821ff94_13960a20",
       "range": {
         "startLine": 242,
         "startChar": 0,
