@@ -239,7 +239,9 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
     }
   else
     {
-      l2fib_del_entry (mac, bd_index);
+      u32 sw_if_index = ntohl (mp->sw_if_index);
+      if (l2fib_del_entry (mac, bd_index, sw_if_index))
+	rv = VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
   BAD_SW_IF_INDEX_LABEL;

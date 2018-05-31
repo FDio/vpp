@@ -587,7 +587,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->bvi = 0;
 
 	  /* delete the l2fib entry for the bvi interface */
-	  l2fib_del_entry (hi->hw_address, config->bd_index);
+	  l2fib_del_entry (hi->hw_address, config->bd_index, sw_if_index);
 
 	  /* Make loop output node send packet back to ethernet-input node */
 	  slot =
