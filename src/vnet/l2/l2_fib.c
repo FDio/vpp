@@ -140,35 +140,52 @@ show_l2fib (vlib_main_t * vm,
   u8 verbose = 0;
   u8 raw = 0;
   u8 learn = 0;
+  u8 add = 0;
   u32 bd_id, bd_index = ~0;
   u8 now = (u8) (vlib_time_now (vm) / 60);
   u8 *s = 0;
 
-  if (unformat (input, "raw"))
-    raw = 1;
-  else if (unformat (input, "verbose"))
-    verbose = 1;
-  else if (unformat (input, "bd_index %d", &bd_index))
-    verbose = 1;
-  else if (unformat (input, "learn"))
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      learn = 1;
-      verbose = 0;
-    }
-  else if (unformat (input, "bd_id %d", &bd_id))
-    {
-      uword *p = hash_get (bdm->bd_index_by_bd_id, bd_id);
-      if (p)
+      if (unformat (input, "raw"))
 	{
-	  if (learn == 0)
-	    verbose = 1;
-	  bd_index = p[0];
+	  raw = 1;
+	  verbose = 0;
+	  break;
+	}
+      else if (unformat (input, "verbose"))
+	verbose = 1;
+      else if (unformat (input, "all"))
+	verbose = 1;
+      else if (unformat (input, "bd_index %d", &bd_index))
+	verbose = 1;
+      else if (unformat (input, "learn"))
+	{
+	  add = 0;
+	  learn = 1;
+	  verbose = 1;
+	}
+      else if (unformat (input, "add"))
+	{
+	  learn = 0;
+	  add = 1;
+	  verbose = 1;
+	}
+      else if (unformat (input, "bd_id %d", &bd_id))
+	{
+	  uword *p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+	  if (p)
+	    {
+	      verbose = 1;
+	      bd_index = p[0];
+	    }
+	  else
+	    return clib_error_return (0,
+				      "bridge domain id %d doesn't exist\n",
+				      bd_id);
 	}
       else
-	{
-	  vlib_cli_output (vm, "no such bridge domain id");
-	  return 0;
-	}
+	break;
     }
 
   for (i = 0; i < h->nbuckets; i++)
@@ -184,7 +201,7 @@ show_l2fib (vlib_main_t * vm,
 	      if (v->kvp[k].key == ~0ULL && v->kvp[k].value == ~0ULL)
 		continue;
 
-	      if ((verbose || learn) && first_entry)
+	      if (verbose && first_entry)
 		{
 		  first_entry = 0;
 		  vlib_cli_output (vm,
@@ -196,27 +213,30 @@ show_l2fib (vlib_main_t * vm,
 
 	      key.raw = v->kvp[k].key;
 	      result.raw = v->kvp[k].value;
+	      total_entries++;
 
-	      if ((verbose || learn)
-		  & ((bd_index >> 31) || (bd_index == key.fields.bd_index)))
+	      if (verbose &&
+		  ((bd_index >> 31) || (bd_index == key.fields.bd_index)))
 		{
 		  if (learn && result.fields.age_not)
-		    {
-		      total_entries++;
-		      continue;	/* skip provisioned macs */
-		    }
+		    continue;	/* skip provisioned macs */
+
+		  if (add && !result.fields.age_not)
+		    continue;	/* skip learned macs */
 
 		  bd_config = vec_elt_at_index (l2input_main.bd_configs,
 						key.fields.bd_index);
 
-		  if (bd_config->mac_age && !result.fields.age_not)
+		  if (result.fields.age_not)
+		    s = format (s, "no");
+		  else if (bd_config->mac_age == 0)
+		    s = format (s, "-");
+		  else
 		    {
 		      i16 delta = now - result.fields.timestamp;
 		      delta += delta < 0 ? 256 : 0;
 		      s = format (s, "%d", delta);
 		    }
-		  else
-		    s = format (s, "-");
 
 		  vlib_cli_output (vm,
 				   "%=19U%=7d%=7d %3d/%-3d%=9v%=7s%=7s%=5s%=30U",
@@ -232,7 +252,6 @@ show_l2fib (vlib_main_t * vm,
 				   msm->vnet_main, result.fields.sw_if_index);
 		  vec_reset_length (s);
 		}
-	      total_entries++;
 	    }
 	  v++;
 	}
@@ -276,7 +295,7 @@ show_l2fib (vlib_main_t * vm,
  * @cliexend
  * Example of how to display all the MAC Address entries in the L2
  * FIB table:
- * @cliexstart{show l2fib verbose}
+ * @cliexstart{show l2fib all}
  *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
  *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0     0      0         0
  *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0     0      0         0
@@ -287,7 +306,7 @@ show_l2fib (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
   .path = "show l2fib",
-  .short_help = "show l2fib [verbose | learn | bd_id <nn> | bd_index <nn> | raw",
+  .short_help = "show l2fib [all] | [bd_id <nn> | bd_index <nn>] [learn | add] | [raw]",
   .function = show_l2fib,
 };
 /* *INDENT-ON* */
@@ -580,7 +599,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
 
       for (i = 0; i < count; i++)
 	{
-	  l2fib_del_entry (mac, bd_index);
+	  l2fib_del_entry (mac, bd_index, 0);
 	  incr_mac_address (mac);
 	}
     }
@@ -636,23 +655,27 @@ VLIB_CLI_COMMAND (l2fib_test_command, static) = {
 
 /**
  * Delete an entry from the l2fib.
- * Return 0 if the entry was deleted, or 1 if it was not found
+ * Return 0 if the entry was deleted, or 1 it was not found or if
+ * sw_if_index is non-zero and does not match that in the entry.
  */
-static u32
-l2fib_del_entry_by_key (u64 raw_key)
+u32
+l2fib_del_entry (u8 * mac, u32 bd_index, u32 sw_if_index)
 {
-
   l2fib_entry_result_t result;
   l2fib_main_t *mp = &l2fib_main;
   BVT (clib_bihash_kv) kv;
 
   /* set up key */
-  kv.key = raw_key;
+  kv.key = l2fib_make_key (mac, bd_index);
 
   if (BV (clib_bihash_search) (&mp->mac_table, &kv, &kv))
     return 1;
 
   result.raw = kv.value;
+
+  /*  check if sw_if_index of entry match */
+  if ((sw_if_index != 0) && (sw_if_index != result.fields.sw_if_index))
+    return 1;
 
   /* decrement counter if dynamically learned mac */
   if ((result.fields.age_not == 0) && (l2learn_main.global_learn_count))
@@ -661,16 +684,6 @@ l2fib_del_entry_by_key (u64 raw_key)
   /* Remove entry from hash table */
   BV (clib_bihash_add_del) (&mp->mac_table, &kv, 0 /* is_add */ );
   return 0;
-}
-
-/**
- * Delete an entry from the l2fib.
- * Return 0 if the entry was deleted, or 1 if it was not found
- */
-u32
-l2fib_del_entry (u8 * mac, u32 bd_index)
-{
-  return l2fib_del_entry_by_key (l2fib_make_key (mac, bd_index));
 }
 
 /**
@@ -712,7 +725,7 @@ l2fib_del (vlib_main_t * vm,
   bd_index = p[0];
 
   /* Delete the entry */
-  if (l2fib_del_entry (mac, bd_index))
+  if (l2fib_del_entry (mac, bd_index, 0))
     {
       error = clib_error_return (0, "mac entry not found");
       goto done;
@@ -733,7 +746,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_del_cli, static) = {
   .path = "l2fib del",
-  .short_help = "l2fib del <mac> <bridge-domain-id>",
+  .short_help = "l2fib del <mac> <bridge-domain-id> []",
   .function = l2fib_del,
 };
 /* *INDENT-ON* */

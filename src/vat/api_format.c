@@ -7354,7 +7354,7 @@ api_l2fib_add_del (vat_main_t * vam)
   u8 mac_set = 0;
   u32 bd_id;
   u8 bd_id_set = 0;
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
   u8 static_mac = 0;
@@ -7437,10 +7437,10 @@ api_l2fib_add_del (vat_main_t * vam)
       clib_memcpy (mp->mac, mac, 6);
       mp->bd_id = ntohl (bd_id);
       mp->is_add = is_add;
+      mp->sw_if_index = ntohl (sw_if_index);
 
       if (is_add)
 	{
-	  mp->sw_if_index = ntohl (sw_if_index);
 	  mp->static_mac = static_mac;
 	  mp->filter_mac = filter_mac;
 	  mp->bvi_mac = bvi_mac;
