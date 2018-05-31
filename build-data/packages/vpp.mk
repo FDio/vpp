@@ -49,3 +49,7 @@ endif
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
 endif
+
+ifeq ($($(PLATFORM)_uses_aarch64_pmu),yes)
+vpp_CFLAGS += -DUSE_AARCH64_PMU
+endif

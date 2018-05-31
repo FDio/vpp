@@ -139,10 +139,30 @@ done:
   return cpu_freq;
 }
 
+#if defined (__aarch64__) && defined (USE_AARCH64_PMU)
+static void
+clib_time_arm_enable_pmu (void)
+{
+  u64 pm_reg;
+
+  /* Enable Userspace Access to PMU Cycle Counter, this needs
+   * additional setting of registers via kernel mode, further details
+   * in build-data/platforms/vpp.mk. */
+
+  asm volatile ("mrs %0, pmcr_el0":"=r" (pm_reg));
+  pm_reg |= 1 << 0;
+  asm volatile ("msr pmcr_el0, %0"::"r" (pm_reg));
+
+  asm volatile ("mrs %0, pmcntenset_el0":"=r" (pm_reg));
+  pm_reg |= 1 << 31;
+  asm volatile ("msr pmcntenset_el0, %0"::"r" (pm_reg));
+}
+#endif
+
 f64
 os_cpu_clock_frequency (void)
 {
-#if defined (__aarch64__)
+#if defined (__aarch64__) && !defined (USE_AARCH64_PMU)
   /* The system counter increments at a fixed frequency. It is distributed
    * to each core which has registers for reading the current counter value
    * as well as the clock frequency. The system counter is not clocked at
@@ -177,6 +197,9 @@ os_cpu_clock_frequency (void)
 void
 clib_time_init (clib_time_t * c)
 {
+#if defined (USE_AARCH64_PMU)
+  clib_time_arm_enable_pmu ();
+#endif
   memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
   c->seconds_per_clock = 1 / c->clocks_per_second;

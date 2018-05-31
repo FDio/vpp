@@ -115,6 +115,16 @@ clib_cpu_time_now (void)
 }
 
 #elif defined (__aarch64__)
+#if defined (USE_AARCH64_PMU)
+always_inline u64
+clib_cpu_time_now (void)
+{
+  u64 ccntr;
+
+  asm volatile ("mrs %0, pmccntr_el0":"=r" (ccntr));
+  return ccntr;
+}
+#else
 always_inline u64
 clib_cpu_time_now (void)
 {
@@ -123,7 +133,7 @@ clib_cpu_time_now (void)
   asm volatile ("mrs %0, cntvct_el0":"=r" (vct));
   return vct;
 }
-
+#endif
 #elif defined (__arm__)
 #if defined(__ARM_ARCH_8A__)
 always_inline u64
