@@ -692,7 +692,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_fifo_event_t *my_pending_event_vector, *pending_disconnects, *e;
+  session_fifo_event_t *my_pending_event_vector, *e;
   session_fifo_event_t *my_fifo_events;
   u32 n_to_dequeue, n_events;
   svm_queue_t *q;
@@ -722,10 +722,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* min number of events we can dequeue without blocking */
   n_to_dequeue = q->cursize;
   my_pending_event_vector = smm->pending_event_vector[thread_index];
-  pending_disconnects = smm->pending_disconnects[thread_index];
 
   if (!n_to_dequeue && !vec_len (my_pending_event_vector)
-      && !vec_len (pending_disconnects))
+      && !vec_len (smm->pending_disconnects[thread_index]))
     return 0;
 
   SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
@@ -802,9 +801,17 @@ skip_dequeue:
 	case FIFO_EVENT_DISCONNECT:
 	  /* Make sure stream disconnects run after the pending list is drained */
 	  s0 = session_get_from_handle (e0->session_handle);
-	  if (!e0->postponed || svm_fifo_max_dequeue (s0->server_tx_fifo))
+	  if (!e0->postponed)
 	    {
 	      e0->postponed = 1;
+	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
+	      continue;
+	    }
+	  /* If tx queue is still not empty, wait a bit */
+	  if (svm_fifo_max_dequeue (s0->server_tx_fifo)
+	      && e0->postponed < 200)
+	    {
+	      e0->postponed += 1;
 	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
 	      continue;
 	    }
