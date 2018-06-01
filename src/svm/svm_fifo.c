@@ -174,7 +174,8 @@ format_svm_fifo (u8 * s, va_list * args)
 
   s = format (s, "cursize %u nitems %u has_event %d\n",
 	      f->cursize, f->nitems, f->has_event);
-  s = format (s, " head %d tail %d\n", f->head, f->tail);
+  s = format (s, " head %d tail %d segment manager %u\n", f->head, f->tail,
+	      f->segment_manager);
 
   if (verbose > 1)
     s = format

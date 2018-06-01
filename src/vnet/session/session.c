@@ -31,9 +31,9 @@ static void
 session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
 			    u32 thread_index, void *fp, void *rpc_args)
 {
-  u32 tries = 0;
   session_fifo_event_t evt = { {0}, };
   svm_queue_t *q;
+  u32 tries = 0, max_tries;
 
   evt.event_type = evt_type;
   if (evt_type == FIFO_EVENT_RPC)
@@ -47,7 +47,8 @@ session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
   q = session_manager_get_vpp_event_queue (thread_index);
   while (svm_queue_add (q, (u8 *) & evt, 1))
     {
-      if (tries++ == 3)
+      max_tries = vlib_get_current_process (vlib_get_main ())? 1e6 : 3;
+      if (tries++ == max_tries)
 	{
 	  SESSION_DBG ("failed to enqueue evt");
 	  break;
@@ -450,7 +451,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
   session_fifo_event_t evt;
   svm_queue_t *q;
 
-  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
+  if (PREDICT_FALSE (s->session_state >= SESSION_STATE_CLOSING))
     {
       /* Session is closed so app will never clean up. Flush rx fifo */
       u32 to_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
@@ -1059,11 +1060,28 @@ stream_session_stop_listen (stream_session_t * s)
 void
 stream_session_disconnect (stream_session_t * s)
 {
-  if (!s || s->session_state == SESSION_STATE_CLOSED)
+  u32 thread_index = vlib_get_thread_index ();
+  session_manager_main_t *smm = &session_manager_main;
+  session_fifo_event_t *evt;
+
+  if (!s || s->session_state >= SESSION_STATE_CLOSING)
     return;
-  s->session_state = SESSION_STATE_CLOSED;
-  session_send_session_evt_to_thread (session_handle (s),
-				      FIFO_EVENT_DISCONNECT, s->thread_index);
+  s->session_state = SESSION_STATE_CLOSING;
+
+  /* If we are in the handler thread, or being called with the worker barrier
+   * held (api/cli), just append a new event pending disconnects vector. */
+  if (thread_index > 0 || !vlib_get_current_process (vlib_get_main ()))
+    {
+      ASSERT (s->thread_index == thread_index || thread_index == 0);
+      vec_add2 (smm->pending_disconnects[s->thread_index], evt, 1);
+      memset (evt, 0, sizeof (*evt));
+      evt->session_handle = session_handle (s);
+      evt->event_type = FIFO_EVENT_DISCONNECT;
+    }
+  else
+    session_send_session_evt_to_thread (session_handle (s),
+					FIFO_EVENT_DISCONNECT,
+					s->thread_index);
 }
 
 /**
