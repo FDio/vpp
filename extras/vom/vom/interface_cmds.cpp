@@ -723,6 +723,7 @@ set_tag::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.sw_if_index = m_hw_item.data().value();
+  memset(payload.tag, 0, sizeof(payload.tag));
   memcpy(payload.tag, m_name.c_str(), m_name.length());
 
   VAPI_CALL(req.execute());
