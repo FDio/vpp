@@ -182,7 +182,7 @@ application_del (application_t * app)
    * The app event queue allocated in first segment is cleared with
    * the segment manager. No need to explicitly free it.
    */
-  if (CLIB_DEBUG > 1)
+  if (CLIB_DEBUG > 0)
     clib_warning ("[%d] Delete app (%d)", getpid (), app->index);
 
   if (application_is_proxy (app))
