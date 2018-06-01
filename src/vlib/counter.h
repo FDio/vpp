@@ -63,6 +63,7 @@ typedef struct
                                            serialized incrementally. */
 
   char *name;			/**< The counter collection's name. */
+  char *stat_segment_name;    /**< Name in stat segment directory */
 } vlib_simple_counter_main_t;
 
 /** The number of counters (not the number of per-thread counters) */
@@ -183,6 +184,7 @@ typedef struct
   vlib_counter_t *value_at_last_serialize; /**< Counter values as of last serialize. */
   u32 last_incremental_serialize_index;	/**< Last counter index serialized incrementally. */
   char *name; /**< The counter collection's name. */
+  char *stat_segment_name;	/**< Name in stat segment directory */
 } vlib_combined_counter_main_t;
 
 /** The number of counters (not the number of per-thread counters) */

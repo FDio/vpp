@@ -459,6 +459,22 @@ vl_mem_api_init (const char *region_name)
   return 0;
 }
 
+static clib_error_t *
+map_api_segment_init (vlib_main_t * vm)
+{
+  api_main_t *am = &api_main;
+  int rv;
+
+  if ((rv = vl_mem_api_init (am->region_name)) < 0)
+    {
+      return clib_error_return (0, "vl_mem_api_init (%s) failed",
+				am->region_name);
+    }
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (map_api_segment_init);
+
 static void
 send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
 {

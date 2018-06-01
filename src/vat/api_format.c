@@ -5884,7 +5884,8 @@ _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
 _(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
-_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)
+_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)	\
+_(MAP_STATS_SEGMENT_REPLY, map_stats_segment_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -22431,6 +22432,92 @@ api_app_namespace_add_del (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_map_stats_segment_reply_t_handler
+  (vl_api_map_stats_segment_reply_t * mp)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  vat_main_t *vam = &vat_main;
+  ssvm_private_t *ssvmp = &vam->stat_segment;
+  ssvm_shared_header_t *shared_header;
+  socket_client_main_t *scm = vam->socket_client_main;
+  int rv = ntohl (mp->retval);
+  int my_fd, retval;
+  clib_error_t *error;
+
+  vam->retval = rv;
+
+  if (rv != 0)
+    {
+      vam->result_ready = 1;
+      return;
+    }
+
+  /*
+   * Check the socket for the magic fd
+   */
+  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 5);
+  if (error)
+    {
+      clib_error_report (error);
+      vam->retval = -99;
+      vam->result_ready = 1;
+      return;
+    }
+
+  memset (ssvmp, 0, sizeof (*ssvmp));
+  ssvmp->fd = my_fd;
+
+  /* Note: this closes memfd.fd */
+  retval = ssvm_slave_init_memfd (ssvmp);
+  if (retval)
+    {
+      clib_warning ("WARNING: segment map returned %d", retval);
+      vam->retval = -99;
+      vam->result_ready = 1;
+      return;
+    }
+  else
+    errmsg ("stat segment mapped OK...");
+
+  ASSERT (ssvmp && ssvmp->sh);
+
+  /* Pick up the segment lock from the shared memory header */
+  shared_header = ssvmp->sh;
+  vam->stat_segment_lockp = (clib_spinlock_t *) (shared_header->opaque[0]);
+  vam->retval = 0;
+  vam->result_ready = 1;
+#endif
+}
+
+static void vl_api_map_stats_segment_reply_t_handler_json
+  (vl_api_map_stats_segment_reply_t * mp)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  vat_main_t *vam = &vat_main;
+  clib_warning ("not implemented");
+  vam->retval = -99;
+  vam->result_ready = 1;
+#endif
+}
+
+static int
+api_map_stats_segment (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  vl_api_map_stats_segment_t *mp;
+  int ret;
+
+  M (MAP_STATS_SEGMENT, mp);
+  S (mp);
+  W (ret);
+
+  return ret;
+#else
+  errmsg ("api unavailable");
+  return -99;
+#endif
+}
+
 static int
 api_sock_init_shm (vat_main_t * vam)
 {
@@ -22956,6 +23043,7 @@ api_qos_record_enable_disable (vat_main_t * vam)
   return ret;
 }
 
+
 static int
 q_or_quit (vat_main_t * vam)
 {
@@ -22980,6 +23068,80 @@ quit (vat_main_t * vam)
 static int
 comment (vat_main_t * vam)
 {
+  return 0;
+}
+
+static int
+statseg (vat_main_t * vam)
+{
+  ssvm_private_t *ssvmp = &vam->stat_segment;
+  ssvm_shared_header_t *shared_header = ssvmp->sh;
+  vlib_counter_t **counters;
+  u64 thread0_index1_packets;
+  u64 thread0_index1_bytes;
+  f64 vector_rate, input_rate;
+  uword *p;
+
+  uword *counter_vector_by_name;
+  if (vam->stat_segment_lockp == 0)
+    {
+      errmsg ("Stat segment not mapped...");
+      return -99;
+    }
+
+  /* look up "/if/rx for sw_if_index 1 as a test */
+
+  clib_spinlock_lock (vam->stat_segment_lockp);
+
+  counter_vector_by_name = (uword *) shared_header->opaque[1];
+
+  p = hash_get_mem (counter_vector_by_name, "/if/rx");
+  if (p == 0)
+    {
+      clib_spinlock_unlock (vam->stat_segment_lockp);
+      errmsg ("/if/tx not found?");
+      return -99;
+    }
+
+  /* Fish per-thread vector of combined counters from shared memory */
+  counters = (vlib_counter_t **) p[0];
+
+  if (vec_len (counters[0]) < 2)
+    {
+      clib_spinlock_unlock (vam->stat_segment_lockp);
+      errmsg ("/if/tx vector length %d", vec_len (counters[0]));
+      return -99;
+    }
+
+  /* Read thread 0 sw_if_index 1 counter */
+  thread0_index1_packets = counters[0][1].packets;
+  thread0_index1_bytes = counters[0][1].bytes;
+
+  p = hash_get_mem (counter_vector_by_name, "vector_rate");
+  if (p == 0)
+    {
+      clib_spinlock_unlock (vam->stat_segment_lockp);
+      errmsg ("vector_rate not found?");
+      return -99;
+    }
+
+  vector_rate = *(f64 *) (p[0]);
+  p = hash_get_mem (counter_vector_by_name, "input_rate");
+  if (p == 0)
+    {
+      clib_spinlock_unlock (vam->stat_segment_lockp);
+      errmsg ("input_rate not found?");
+      return -99;
+    }
+  input_rate = *(f64 *) (p[0]);
+
+  clib_spinlock_unlock (vam->stat_segment_lockp);
+
+  print (vam->ofp, "vector_rate %.2f input_rate %.2f",
+	 vector_rate, input_rate);
+  print (vam->ofp, "thread 0 sw_if_index 1 rx pkts %lld, bytes %lld",
+	 thread0_index1_packets, thread0_index1_bytes);
+
   return 0;
 }
 
@@ -23799,7 +23961,8 @@ _(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
 _(output_acl_set_interface,                                             \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
-_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]")
+_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]") \
+_(map_stats_segment, "<no-args>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
@@ -23822,7 +23985,9 @@ _(quit, "usage: quit")                                          \
 _(search_node_table, "usage: search_node_table <name>...")	\
 _(set, "usage: set <variable-name> <value>")                    \
 _(script, "usage: script <file-name>")                          \
+_(statseg, "usage: statseg");                                   \
 _(unset, "usage: unset <variable-name>")
+
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \
     (vl_api_##n##_t * mp)                       \

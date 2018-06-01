@@ -48,24 +48,25 @@ stats_main_t stats_main;
 #define foreach_stats_msg						\
 _(WANT_STATS, want_stats)						\
 _(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)	\
-_(WANT_INTERFACE_SIMPLE_STATS, want_interface_simple_stats)	\
+_(WANT_INTERFACE_SIMPLE_STATS, want_interface_simple_stats)             \
 _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)	\
-_(WANT_INTERFACE_COMBINED_STATS, want_interface_combined_stats)	\
+_(WANT_INTERFACE_COMBINED_STATS, want_interface_combined_stats)         \
 _(WANT_PER_INTERFACE_COMBINED_STATS, want_per_interface_combined_stats)	\
-_(WANT_PER_INTERFACE_SIMPLE_STATS, want_per_interface_simple_stats) \
+_(WANT_PER_INTERFACE_SIMPLE_STATS, want_per_interface_simple_stats)     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)				\
-_(WANT_IP4_FIB_STATS, want_ip4_fib_stats)            \
+_(WANT_IP4_FIB_STATS, want_ip4_fib_stats)                               \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)				\
-_(WANT_IP6_FIB_STATS, want_ip6_fib_stats)        \
+_(WANT_IP6_FIB_STATS, want_ip6_fib_stats)                               \
 _(WANT_IP4_MFIB_STATS, want_ip4_mfib_stats)                             \
 _(WANT_IP6_MFIB_STATS, want_ip6_mfib_stats)                             \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)				\
-_(WANT_IP4_NBR_STATS, want_ip4_nbr_stats)            \
-_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters) \
-_(WANT_IP6_NBR_STATS, want_ip6_nbr_stats) \
-_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats) \
-_(STATS_GET_POLLER_DELAY, stats_get_poller_delay) \
-_(WANT_UDP_ENCAP_STATS, want_udp_encap_stats)
+_(WANT_IP4_NBR_STATS, want_ip4_nbr_stats)                               \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)                         \
+_(WANT_IP6_NBR_STATS, want_ip6_nbr_stats)                               \
+_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)                       \
+_(STATS_GET_POLLER_DELAY, stats_get_poller_delay)                       \
+_(WANT_UDP_ENCAP_STATS, want_udp_encap_stats)                           \
+_(MAP_STATS_SEGMENT, map_stats_segment)
 
 #define vl_msg_name_crc_list
 #include <vpp/stats/stats.api.h>
@@ -2934,6 +2935,50 @@ stats_memclnt_delete_callback (u32 client_index)
 #define vl_api_vnet_ip4_nbr_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_nbr_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_nbr_counters_t_print vl_noop_handler
+#define vl_api_map_stats_segment_t_print vl_noop_handler
+
+static void
+vl_api_map_stats_segment_t_handler (vl_api_map_stats_segment_t * mp)
+{
+  vl_api_map_stats_segment_reply_t *rmp;
+  stats_main_t *sm = &stats_main;
+  ssvm_private_t *ssvmp = &sm->stat_segment;
+  vl_api_registration_t *regp;
+  api_main_t *am = &api_main;
+  clib_file_t *cf;
+  vl_api_shm_elem_config_t *config = 0;
+  vl_shmem_hdr_t *shmem_hdr;
+  int rv = 0;
+
+  regp = vl_api_client_index_to_registration (mp->client_index);
+  if (regp == 0)
+    {
+      clib_warning ("API client disconnected");
+      return;
+    }
+  if (regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
+    rv = VNET_API_ERROR_INVALID_REGISTRATION;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_MAP_STATS_SEGMENT_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = htonl (rv);
+
+  vl_api_send_msg (regp, (u8 *) rmp);
+
+  if (rv != 0)
+    return;
+
+  /*
+   * We need the reply message to make it out the back door
+   * before we send the magic fd message so force a flush
+   */
+  cf = vl_api_registration_file (regp);
+  cf->write_function (cf);
+
+  /* Send the magic "here's your sign (aka fd)" socket message */
+  vl_sock_api_send_fd_msg (cf->file_descriptor, ssvmp->fd);
+}
 
 static clib_error_t *
 stats_init (vlib_main_t * vm)

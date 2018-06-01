@@ -209,6 +209,9 @@ typedef struct
   ip4_nbr_counter_t **ip4_nbr_counters;
   ip6_nbr_counter_t **ip6_nbr_counters;
 
+  ssvm_private_t stat_segment;
+  clib_spinlock_t *stat_segment_lockp;
+
   socket_client_main_t *socket_client_main;
   u8 *socket_name;
 

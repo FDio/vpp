@@ -87,13 +87,4 @@ nobase_include_HEADERS +=			\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
 
-noinst_PROGRAMS += vlib_unix
-
-vlib_unix_SOURCES =				\
-  examples/vlib/main_stub.c			\
-  examples/vlib/mc_test.c
-
-vlib_unix_LDADD = libvlib.la \
-	          libvppinfra.la -lpthread -lm -ldl -lrt
-
 # vi:syntax=automake

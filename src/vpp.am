@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-bin_PROGRAMS += bin/vpp
+bin_PROGRAMS += bin/vpp 
 
 bin_vpp_SOURCES =				\
   vpp/vnet/main.c				\
@@ -19,7 +19,8 @@ bin_vpp_SOURCES =				\
   vpp/app/version.c				\
   vpp/oam/oam.c					\
   vpp/oam/oam_api.c				\
-  vpp/stats/stats.c
+  vpp/stats/stats.c				\
+  vpp/stats/stat_segment.c
 
 bin_vpp_SOURCES +=				\
   vpp/api/api.c					\
@@ -129,6 +130,20 @@ bin_summary_stats_client_LDADD = \
    libsvm.la \
    libvppinfra.la \
    -lpthread -lm -lrt
+
+noinst_PROGRAMS += bin/stat_client
+
+bin_stat_client_SOURCES = \
+  vpp/app/stat_client.c \
+  vpp/app/stat_client.h
+
+bin_stat_client_LDADD = \
+  libvlibmemoryclient.la \
+  libsvm.la \
+  libvppinfra.la \
+  -lpthread -lm -lrt
+
+
 
 bin_PROGRAMS += bin/vpp_get_metrics
 
