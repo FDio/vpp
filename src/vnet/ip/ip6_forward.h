@@ -76,7 +76,6 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip_lookup_next_t next0, next1;
 	  ip6_header_t *ip0, *ip1;
 	  ip6_address_t *dst_addr0, *dst_addr1;
-	  u32 fib_index0, fib_index1;
 	  u32 flow_hash_config0, flow_hash_config1;
 	  const dpo_id_t *dpo0, *dpo1;
 	  const load_balance_t *lb0, *lb1;
@@ -106,20 +105,15 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  dst_addr0 = &ip0->dst_address;
 	  dst_addr1 = &ip1->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
+	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p1);
 
-	  fib_index0 = (vnet_buffer (p0)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	    fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-	  fib_index1 = (vnet_buffer (p1)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	    fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-
-	  lbi0 = ip6_fib_table_fwding_lookup (im, fib_index0, dst_addr0);
-	  lbi1 = ip6_fib_table_fwding_lookup (im, fib_index1, dst_addr1);
+	  lbi0 = ip6_fib_table_fwding_lookup (im,
+					      vnet_buffer (p0)->ip.fib_index,
+					      dst_addr0);
+	  lbi1 = ip6_fib_table_fwding_lookup (im,
+					      vnet_buffer (p1)->ip.fib_index,
+					      dst_addr1);
 
 	  lb0 = load_balance_get (lbi0);
 	  lb1 = load_balance_get (lbi1);
@@ -233,26 +227,19 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip_lookup_next_t next0;
 	  load_balance_t *lb0;
 	  ip6_address_t *dst_addr0;
-	  u32 fib_index0, flow_hash_config0;
+	  u32 flow_hash_config0;
 	  const dpo_id_t *dpo0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
 
 	  p0 = vlib_get_buffer (vm, pi0);
-
 	  ip0 = vlib_buffer_get_current (p0);
-
 	  dst_addr0 = &ip0->dst_address;
-
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-
-	  lbi0 = ip6_fib_table_fwding_lookup (im, fib_index0, dst_addr0);
+	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
+	  lbi0 = ip6_fib_table_fwding_lookup (im,
+					      vnet_buffer (p0)->ip.fib_index,
+					      dst_addr0);
 
 	  lb0 = load_balance_get (lbi0);
 	  flow_hash_config0 = lb0->lb_hash_config;
