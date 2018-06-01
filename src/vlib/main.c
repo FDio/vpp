@@ -1717,6 +1717,12 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  if ((error = vlib_call_init_function (vm, map_stat_segment_init)))
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
   /* Register static nodes so that init functions may use them. */
   vlib_register_all_static_nodes (vm);
 
@@ -1734,6 +1740,24 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 	clib_error_report (error);
       else
 	goto done;
+    }
+
+  if ((error = vlib_call_init_function (vm, vpe_api_init)))
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
+  if ((error = vlib_call_init_function (vm, vlibmemory_init)))
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
+  if ((error = vlib_call_init_function (vm, map_api_segment_init)))
+    {
+      clib_error_report (error);
+      goto done;
     }
 
   /* See unix/main.c; most likely already set up */

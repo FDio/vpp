@@ -27,6 +27,7 @@
 #include <vlibmemory/api.h>
 #include <vlibapi/api_helper_macros.h>
 #include <svm/queue.h>
+#include <svm/ssvm.h>
 
 typedef struct
 {
@@ -157,6 +158,15 @@ typedef struct
   vpe_client_stats_registration_t **regs_tmp;
   vpe_client_registration_t **clients_tmp;
 
+  /* statistics segment */
+  ssvm_private_t stat_segment;
+  uword *counter_vector_by_name;
+  clib_spinlock_t *stat_segment_lockp;
+
+  /* Pointers to scalar stats maintained by the stat segment process */
+  f64 *input_rate_ptr;
+  f64 *vector_rate_ptr;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -165,6 +175,25 @@ typedef struct
 } stats_main_t;
 
 extern stats_main_t stats_main;
+
+#define STAT_SEGMENT_OPAQUE_LOCK	0
+#define STAT_SEGMENT_OPAQUE_DIR		1
+#define STAT_SEGMENT_OPAQUE_EPOCH	2
+
+typedef enum
+{
+  STAT_DIR_TYPE_ILLEGAL = 0,
+  STAT_DIR_TYPE_SCALAR_POINTER,
+  STAT_DIR_TYPE_VECTOR_POINTER,
+  STAT_DIR_TYPE_COUNTER_VECTOR,
+  STAT_DIR_TYPE_ERROR_INDEX,
+} stat_directory_type_t;
+
+typedef struct
+{
+  stat_directory_type_t type;
+  void *value;
+} stat_segment_directory_entry_t;
 
 #endif /* __included_stats_h__ */
 
