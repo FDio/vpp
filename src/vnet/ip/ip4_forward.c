@@ -1202,8 +1202,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
 	  const dpo_id_t *dpo0, *dpo1;
 	  const load_balance_t *lb0, *lb1;
-	  u32 pi0, next0, fib_index0, lbi0;
-	  u32 pi1, next1, fib_index1, lbi1;
+	  u32 pi0, next0, lbi0;
+	  u32 pi1, next1, lbi1;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
 	  u32 sw_if_index0, sw_if_index1;
@@ -1268,22 +1268,19 @@ ip4_local_inline (vlib_main_t * vm,
 	  error1 = (is_tcp_udp1 && !good_tcp_udp1
 		    ? IP4_ERROR_TCP_CHECKSUM + is_udp1 : error1);
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  vnet_buffer (p0)->ip.fib_index =
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p0)->ip.fib_index;
 
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
-	  fib_index1 =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
+	  vnet_buffer (p1)->ip.fib_index =
+	    vnet_buffer (p1)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p1)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p1)->ip.fib_index;
 
-	  /* TODO maybe move to lookup? */
-	  vnet_buffer (p0)->ip.fib_index = fib_index0;
-	  vnet_buffer (p1)->ip.fib_index = fib_index1;
 
-	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
-	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
+	  mtrie0 = &ip4_fib_get (vnet_buffer (p0)->ip.fib_index)->mtrie;
+	  mtrie1 = &ip4_fib_get (vnet_buffer (p1)->ip.fib_index)->mtrie;
 
 	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 	  leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, &ip1->src_address);
@@ -1374,7 +1371,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  ip4_header_t *ip0;
 	  ip4_fib_mtrie_t *mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
-	  u32 pi0, next0, fib_index0, lbi0;
+	  u32 pi0, next0, lbi0;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  load_balance_t *lb0;
 	  const dpo_id_t *dpo0;
@@ -1417,12 +1414,12 @@ ip4_local_inline (vlib_main_t * vm,
 	  error0 = (is_tcp_udp0 && !good_tcp_udp0
 		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-	  vnet_buffer (p0)->ip.fib_index = fib_index0;
-	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
+	  vnet_buffer (p0)->ip.fib_index =
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p0)->ip.fib_index;
+
+	  mtrie0 = &ip4_fib_get (vnet_buffer (p0)->ip.fib_index)->mtrie;
 	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
 					     2);

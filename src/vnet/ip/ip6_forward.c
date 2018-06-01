@@ -1213,23 +1213,15 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			? IP6_ERROR_SRC_LOOKUP_MISS : error1);
 	    }
 
-	  /* TODO maybe move to lookup? */
 	  vnet_buffer (p0)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->ip.fib_index =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p0)->ip.
-	    fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p0)->ip.fib_index;
 
 	  vnet_buffer (p1)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p1)->ip.fib_index =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p1)->ip.
-	    fib_index : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-
+	    vnet_buffer (p1)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p1)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p1)->ip.fib_index;
 
 	skip_checks:
 
@@ -1343,14 +1335,10 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
 	    }
-
 	  vnet_buffer (p0)->ip.fib_index =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->ip.fib_index =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? vnet_buffer (p0)->ip.
-	    fib_index : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
+	    vnet_buffer (p0)->ip.fib_index;
 
 	skip_check:
 
