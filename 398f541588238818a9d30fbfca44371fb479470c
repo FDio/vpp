@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "2a4dd76a_e696a41c",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-06-01T15:26:36Z",
+      "side": 1,
+      "message": "\u003e\u003eHow about: a static ASSERT in the code? \nAutoconf would have thrown error sooner than dpdk plugin compilation but STATIC_ASSERT() is also fine for me. Is following change fine?\n\n--- a/src/plugins/dpdk/device/init.c\n+++ b/src/plugins/dpdk/device/init.c\n@@ -1680,6 +1680,8 @@ dpdk_init (vlib_main_t * vm)\n                 \"Data in cache line 0 is bigger than cache line size\");\n   STATIC_ASSERT (offsetof (frame_queue_trace_t, cacheline0) \u003d\u003d 0,\n                 \"Cache line marker must be 1st element in frame_queue_trace_t\");\n+  STATIC_ASSERT (RTE_CACHE_LINE_SIZE \u003d\u003d 1\u003c\u003cCLIB_LOG2_CACHE_LINE_BYTES,\n+        \"DPDK RTE CACHE LINE SIZE does not match with 1\u003c\u003cCLIB_LOG2_CACHE_LINE_BYTES\");\n \n   dm-\u003evlib_main \u003d vm;\n   dm-\u003evnet_main \u003d vnet_get_main ();",
+      "parentUuid": "31d653e5_4308f0d4",
+      "range": {
+        "startLine": 119,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 1
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d442ed33_b8a1f7d5",
         "filename": "src/configure.ac",
         "patchSetId": 2
@@ -96,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "da1ccda4_22354aaf",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-06-01T15:26:36Z",
+      "side": 1,
+      "message": "Patch should be out soon as Cavium is weekly following that kernel patch with ARM. Its completely up to kernel maintainers now. I am expecting within next 2-3 stable kernel releases it should be out.",
+      "parentUuid": "b129ff53_51289c79",
+      "range": {
+        "startLine": 135,
+        "startChar": 2,
+        "endLine": 136,
+        "endChar": 21
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "048033ee_d1105c3a",
         "filename": "src/configure.ac",
         "patchSetId": 2
@@ -131,6 +179,30 @@
       "side": 1,
       "message": "Is the arm community likely to use the same cpuid, different vendor id with different cache line size?\n\nFeel free to update / improve this patch in this regard, if you feel strongly about it.",
       "parentUuid": "048033ee_d1105c3a",
+      "range": {
+        "startLine": 139,
+        "startChar": 6,
+        "endLine": 139,
+        "endChar": 11
+      },
+      "revId": "398f541588238818a9d30fbfca44371fb479470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "967d3c02_aa60fa90",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-06-01T15:26:36Z",
+      "side": 1,
+      "message": "Yes. Among two Cavium\u0027s product line: ThunderX2 and OCTEONTx2 cache line size are 64B and 128B respectively.\n\n\u003e\u003eFeel free to update / improve this patch in this regard, if you feel strongly about it.\nVendorId check is must and I can push this change. How can I pull this patch? git review -d \u003cid\u003e?",
+      "parentUuid": "0cf5cba5_e0d3e18c",
       "range": {
         "startLine": 139,
         "startChar": 6,
