@@ -211,6 +211,18 @@ do {                                                                    \
 } while (0)
 /* *INDENT-ON* */
 
+always_inline void
+ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,
+				vlib_buffer_t * b)
+{
+  vnet_buffer (b)->ip.fib_index =
+    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
+  vnet_buffer (b)->ip.fib_index =
+    (vnet_buffer (b)->sw_if_index[VLIB_TX] ==
+     (u32) ~ 0) ? vnet_buffer (b)->ip.
+    fib_index : vnet_buffer (b)->sw_if_index[VLIB_TX];
+}
+
 typedef struct _vnet_ip_container_proxy_args
 {
   fib_prefix_t prefix;
