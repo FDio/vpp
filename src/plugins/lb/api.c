@@ -139,7 +139,7 @@ vl_api_lb_add_del_vip_t_handler
 
     args.plen = mp->prefix_length;
     args.type = type;
-    args.new_length = mp->new_flows_table_length;
+    args.new_length = ntohl(mp->new_flows_table_length);
 
     if (mp->encap == LB_ENCAP_TYPE_L3DSR) {
         args.encap_args.dscp = (u8)(mp->dscp & 0x3F);
