@@ -287,12 +287,6 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword *event_data = 0;
   f64 now;
 
-  if ((rv = vl_mem_api_init (am->region_name)) < 0)
-    {
-      clib_warning ("memory_api_init returned %d, quitting...", rv);
-      return 0;
-    }
-
   if ((error = vl_sock_api_init (vm)))
     {
       clib_error_report (error);

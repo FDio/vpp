@@ -1250,6 +1250,10 @@ vnet_interface_init (vlib_main_t * vm)
 						   CLIB_CACHE_LINE_BYTES);
   im->sw_if_counter_lock[0] = 1;	/* should be no need */
 
+  /*
+   * $$$$ add stat segment name(s) if desired
+   * set xxx.stat_segment_name = "whatever"...
+   */
   vec_validate (im->sw_if_counters, VNET_N_SIMPLE_INTERFACE_COUNTER - 1);
   im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP].name = "drops";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_PUNT].name = "punts";

@@ -140,6 +140,19 @@ VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
 };
 /* *INDENT-ON* */
 
+void vlib_stats_register_error_index (u8 *, u64) __attribute__ ((weak));
+void
+vlib_stats_register_error_index (u8 * notused, u64 notused2)
+{
+};
+
+void vlib_stats_pop_heap2 (void *, u32, void *) __attribute__ ((weak));
+void
+vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3)
+{
+};
+
+
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t * vm,
@@ -148,6 +161,8 @@ vlib_register_errors (vlib_main_t * vm,
   vlib_error_main_t *em = &vm->error_main;
   vlib_node_t *n = vlib_get_node (vm, node_index);
   uword l;
+  void *oldheap;
+  void *vlib_stats_push_heap (void) __attribute__ ((weak));
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -169,9 +184,13 @@ vlib_register_errors (vlib_main_t * vm,
   clib_memcpy (vec_elt_at_index (em->error_strings_heap, n->error_heap_index),
 	       error_strings, n_errors * sizeof (error_strings[0]));
 
+  vec_validate (vm->error_elog_event_types, l - 1);
+
+  /* Switch to the stats segment ... */
+  oldheap = vlib_stats_push_heap ();
+
   /* Allocate a counter/elog type for each error. */
   vec_validate (em->counters, l - 1);
-  vec_validate (vm->error_elog_event_types, l - 1);
 
   /* Zero counters for re-registrations of errors. */
   if (n->error_heap_index + n_errors <= vec_len (em->counters_last_clear))
@@ -181,6 +200,22 @@ vlib_register_errors (vlib_main_t * vm,
   else
     memset (em->counters + n->error_heap_index,
 	    0, n_errors * sizeof (em->counters[0]));
+
+  /* Register counter indices in the stat segment directory */
+  {
+    int i;
+    u8 *error_name;
+
+    for (i = 0; i < n_errors; i++)
+      {
+	error_name = format (0, "/err/%s%c", error_strings[i], 0);
+	/* Note: error_name consumed by the following call */
+	vlib_stats_register_error_index (error_name, n->error_heap_index + i);
+      }
+  }
+
+  /* (re)register the em->counters base address, switch back to main heap */
+  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap);
 
   {
     elog_event_type_t t;
