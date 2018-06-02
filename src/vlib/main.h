@@ -175,8 +175,6 @@ typedef struct vlib_main_t
   /* to compare with node runtime */
   u32 thread_index;
 
-  void **mbuf_alloc_list;
-
   /* List of init functions to call, setup by constructors */
   _vlib_init_function_list_elt_t *init_function_registrations;
   _vlib_init_function_list_elt_t *worker_init_function_registrations;

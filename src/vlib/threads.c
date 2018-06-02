@@ -827,7 +827,6 @@ start_workers (vlib_main_t * vm)
 
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
-	      vm_clone->mbuf_alloc_list = 0;
 	      vm_clone->init_functions_called =
 		hash_create (0, /* value bytes */ 0);
 	      vm_clone->pending_rpc_requests = 0;
