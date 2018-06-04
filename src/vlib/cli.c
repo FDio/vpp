@@ -699,11 +699,14 @@ vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
   vec_free (s);
 }
 
+void *vl_msg_push_heap (void) __attribute__ ((weak));
+void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
+
 static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  int verbose = 0;
+  int verbose = 0, api_segment = 0;
   clib_error_t *error;
   u32 index = 0;
 
@@ -711,12 +714,31 @@ show_memory_usage (vlib_main_t * vm,
     {
       if (unformat (input, "verbose"))
 	verbose = 1;
+      else if (unformat (input, "api-segment"))
+	api_segment = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, input);
 	  return error;
 	}
+    }
+
+  if (api_segment)
+    {
+      void *oldheap = vl_msg_push_heap ();
+      u8 *s_in_svm =
+	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+      vl_msg_pop_heap (oldheap);
+      u8 *s = vec_dup (s_in_svm);
+
+      oldheap = vl_msg_push_heap ();
+      vec_free (s_in_svm);
+      vl_msg_pop_heap (oldheap);
+      vlib_cli_output (vm, "API segment start:");
+      vlib_cli_output (vm, "%v", s);
+      vlib_cli_output (vm, "API segment end:");
+      vec_free (s);
     }
 
   /* *INDENT-OFF* */
@@ -733,7 +755,7 @@ show_memory_usage (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
-  .short_help = "Show current memory usage",
+  .short_help = "[verbose | api-segment] Show current memory usage",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
@@ -771,30 +793,48 @@ VLIB_CLI_COMMAND (show_cpu_command, static) = {
 };
 
 /* *INDENT-ON* */
+
 static clib_error_t *
 enable_disable_memory_trace (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
-  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
   int enable;
+  int api_segment = 0;
+  void *oldheap;
 
-  if (!unformat_user (input, unformat_vlib_enable_disable, &enable))
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      error = clib_error_return (0, "expecting enable/on or disable/off");
-      goto done;
+      if (!unformat (line_input, "%U", unformat_vlib_enable_disable, &enable))
+	;
+      else if (unformat (line_input, "api-segment"))
+	api_segment = 1;
+      else
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "invalid input");
+	}
     }
+  unformat_free (line_input);
 
+  if (api_segment)
+    oldheap = vl_msg_push_heap ();
   clib_mem_trace (enable);
+  if (api_segment)
+    vl_msg_pop_heap (oldheap);
 
-done:
-  return error;
+  return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
-  .short_help = "Enable/disable memory allocation trace",
+  .short_help = "on|off [api-segment] Enable/disable memory allocation trace",
   .function = enable_disable_memory_trace,
 };
 /* *INDENT-ON* */
