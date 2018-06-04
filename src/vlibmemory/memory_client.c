@@ -105,6 +105,29 @@ vl_api_rx_thread_exit_t_handler (vl_api_rx_thread_exit_t * mp)
 }
 
 static void
+vl_api_name_and_crc_free (void)
+{
+  api_main_t *am = &api_main;
+  int i;
+  u8 **keys = 0;
+  hash_pair_t *hp;
+
+  if (!am->msg_index_by_name_and_crc)
+    return;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+      ({
+        vec_add1 (keys, (u8 *) hp->key);
+      }));
+  /* *INDENT-ON* */
+  for (i = 0; i < vec_len (keys); i++)
+    vec_free (keys[i]);
+  vec_free (keys);
+  hash_free (am->msg_index_by_name_and_crc);
+}
+
+static void
 vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 {
   serialize_main_t _sm, *sm = &_sm;
@@ -119,21 +142,7 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
   am->my_registration = (vl_api_registration_t *) (uword) mp->handle;
 
   /* Clean out any previous hash table (unlikely) */
-  if (am->msg_index_by_name_and_crc)
-    {
-      int i;
-      u8 **keys = 0;
-      hash_pair_t *hp;
-      /* *INDENT-OFF* */
-      hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
-      ({
-        vec_add1 (keys, (u8 *) hp->key);
-      }));
-      /* *INDENT-ON* */
-      for (i = 0; i < vec_len (keys); i++)
-	vec_free (keys[i]);
-      vec_free (keys);
-    }
+  vl_api_name_and_crc_free ();
 
   am->msg_index_by_name_and_crc = hash_create_string (0, sizeof (uword));
 
@@ -192,8 +201,8 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   oldheap = svm_push_data_heap (svm);
   vl_input_queue = svm_queue_init (input_queue_size, sizeof (uword),
 				   getpid (), 0);
-  pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
+  pthread_mutex_unlock (&svm->mutex);
 
   am->my_client_index = ~0;
   am->my_registration = 0;
@@ -317,6 +326,8 @@ vl_client_disconnect (void)
       vl_msg_api_handler ((void *) rp);
       break;
     }
+
+  vl_api_name_and_crc_free ();
   return 0;
 }
 

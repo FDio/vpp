@@ -1512,7 +1512,7 @@ mheap_get_trace (void *v, uword offset, uword size)
 
   if (!tm->trace_by_callers)
     tm->trace_by_callers =
-      hash_create_mem (0, sizeof (trace.callers), sizeof (uword));
+      hash_create_shmem (0, sizeof (trace.callers), sizeof (uword));
 
   p = hash_get_mem (tm->trace_by_callers, &trace.callers);
   if (p)
