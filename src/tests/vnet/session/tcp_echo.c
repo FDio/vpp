@@ -1439,7 +1439,7 @@ main (int argc, char **argv)
 	;
       else
 	{
-	  fformat (stderr, "%s: usage [master|slave]\n");
+	  fformat (stderr, "%s: usage [master|slave]\n", argv[0]);
 	  exit (1);
 	}
     }
