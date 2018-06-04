@@ -339,6 +339,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 			  regp->vl_api_registration_pool_index);
 	  pthread_mutex_lock (&svm->mutex);
 	  oldheap = svm_push_data_heap (svm);
+	  vec_free (regp->name);
 	  /* Poison the old registration */
 	  memset (regp, 0xF1, sizeof (*regp));
 	  clib_mem_free (regp);

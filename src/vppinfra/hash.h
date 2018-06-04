@@ -77,6 +77,7 @@ typedef struct hash_header
 #define KEY_FUNC_POINTER_UWORD	(1)	/*< sum = *(uword *) key */
 #define KEY_FUNC_POINTER_U32	(2)	/*< sum = *(u32 *) key */
 #define KEY_FUNC_STRING         (3)	/*< sum = string_key_sum, etc. */
+#define KEY_FUNC_MEM		(4)	/*< sum = mem_key_sum */
 
   /* key comparison function */
   hash_key_equal_function_t *key_equal;
@@ -671,6 +672,20 @@ extern u8 *vec_key_format_pair (u8 * s, va_list * args);
 extern uword string_key_sum (hash_t * h, uword key);
 extern uword string_key_equal (hash_t * h, uword key1, uword key2);
 extern u8 *string_key_format_pair (u8 * s, va_list * args);
+
+/*
+ * Note: if you plan to put a hash into shared memory,
+ * the key sum and key equal functions MUST be set to magic constants!
+ * PIC means that whichever process sets up the hash won't have
+ * the actual key sum functions at the same place, leading to
+ * very hard-to-find bugs...
+ */
+
+#define hash_create_shmem(elts,key_bytes,value_bytes)           \
+  hash_create2((elts),(key_bytes),(value_bytes),                \
+               (hash_key_sum_function_t *) KEY_FUNC_MEM,        \
+               (hash_key_equal_function_t *)KEY_FUNC_MEM,       \
+               0, 0)
 
 #define hash_create_string(elts,value_bytes)                    \
   hash_create2((elts),0,(value_bytes),                          \
