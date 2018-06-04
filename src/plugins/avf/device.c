@@ -277,6 +277,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
 					   txq->size * sizeof (avf_tx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (txq->last_descs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
   return 0;
 }
@@ -532,7 +533,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 
       rxq->vsi_id = ad->vsi_id;
       rxq->queue_id = i;
-      rxq->max_pkt_size = 1518;
+      rxq->max_pkt_size = 9000; //1518;
       if (i < vec_len (ad->rxqs))
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);

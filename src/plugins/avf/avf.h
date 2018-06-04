@@ -74,6 +74,7 @@ typedef struct
   avf_tx_desc_t *descs;
   u32 *bufs;
   u16 n_bufs;
+  u16 *last_descs;
 } avf_txq_t;
 
 typedef struct

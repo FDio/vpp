@@ -618,7 +618,7 @@ vlib_buffer_free_from_ring_no_next (vlib_main_t * vm, u32 * ring, u32 start,
 
   if (PREDICT_TRUE (start + n_buffers <= ring_size))
     {
-      vlib_buffer_free (vm, ring + start, n_buffers);
+      vlib_buffer_free_no_next (vm, ring + start, n_buffers);
     }
   else
     {
