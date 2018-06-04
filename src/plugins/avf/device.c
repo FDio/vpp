@@ -273,11 +273,12 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
-  txq->next = 0;
+  txq->tail = 0;
   txq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
 					   txq->size * sizeof (avf_tx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (txq->n_tail_bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
   return 0;
 }
@@ -546,7 +547,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 
       rxq->vsi_id = ad->vsi_id;
       rxq->queue_id = i;
-      rxq->max_pkt_size = 1518;
+      rxq->max_pkt_size = ETHERNET_MAX_PACKET_BYTES;
       if (i < vec_len (ad->rxqs))
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);
@@ -1048,7 +1049,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
       vlib_physmem_free (vm, am->physmem_region, (void *) txq->descs);
       if (txq->n_enqueued)
 	{
-	  u16 first = (txq->next - txq->n_enqueued) & (txq->size -1);
+	  u16 first = (txq->tail - txq->n_enqueued) & (txq->size -1);
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
 				      txq->n_enqueued);
 	}

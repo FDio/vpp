@@ -85,17 +85,20 @@ typedef struct
   avf_rx_desc_t *descs;
   u32 *bufs;
   u16 n_enqueued;
+  u32 last_qrx_tail;
 } avf_rxq_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 *qtx_tail;
-  u16 next;
+  u16 tail;
+  u16 mask;
   u16 size;
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;
+  u8 *n_tail_bufs;
   u16 n_enqueued;
 } avf_txq_t;
 

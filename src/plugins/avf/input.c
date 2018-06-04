@@ -25,7 +25,8 @@
 
 #define foreach_avf_input_error \
   _(BUFFER_ALLOC, "buffer alloc error") \
-  _(RX_PACKET_ERROR, "Rx packet errors")
+  _(RX_PACKET_ERROR, "Rx packet errors") \
+  _(DUMMY_DESC, "dummy descriptor")
 
 typedef enum
 {
@@ -45,14 +46,86 @@ static __clib_unused char *avf_input_error_strings[] = {
 #define AVF_RX_DESC_STATUS_DD		AVF_RX_DESC_STATUS(0)
 #define AVF_RX_DESC_STATUS_EOP		AVF_RX_DESC_STATUS(1)
 
+static __clib_unused u8 *
+format_avf_rx_desc (u8 * s, va_list * args)
+{
+  avf_rx_desc_t *d = va_arg (*args, avf_rx_desc_t *);
+
+  s = format (s, "status 0x%llx length %u error 0x%x ptype 0x%x",
+	      avf_get_u64_bits ((void *) d, 8, 18, 0),
+	      avf_get_u64_bits ((void *) d, 8, 63, 38),
+	      avf_get_u64_bits ((void *) d, 8, 26, 19),
+	      avf_get_u64_bits ((void *) d, 8, 37, 30));
+  return s;
+}
+
+static_always_inline uword
+avf_get_rx_buffer_dma_addr (vlib_main_t * vm, u32 bi, int use_iova)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_pool_t *pool;
+  if (use_iova)
+    return pointer_to_uword (b->data);
+
+  pool = vec_elt_at_index (bm->buffer_pools, b->buffer_pool_index);
+  return vlib_physmem_virtual_to_physical (vm, pool->physmem_region, b->data);
+}
+
+static_always_inline void
+avf_enq_rx_buffer (vlib_main_t * vm, avf_rx_desc_t * d, u32 * bi, int count,
+		   int use_iova)
+{
+  if (count == 4)
+    {
+      u64 addr0 = avf_get_rx_buffer_dma_addr (vm, bi[0], use_iova);
+      u64 addr1 = avf_get_rx_buffer_dma_addr (vm, bi[1], use_iova);
+      u64 addr2 = avf_get_rx_buffer_dma_addr (vm, bi[2], use_iova);
+      u64 addr3 = avf_get_rx_buffer_dma_addr (vm, bi[3], use_iova);
+      d[0].qword[0] = addr0;
+      d[0].qword[1] = 0;
+      d[1].qword[0] = addr1;
+      d[1].qword[1] = 0;
+      d[2].qword[0] = addr2;
+      d[2].qword[1] = 0;
+      d[3].qword[0] = addr3;
+      d[3].qword[1] = 0;
+    }
+  else
+    {
+      u64 addr0 = avf_get_rx_buffer_dma_addr (vm, bi[0], use_iova);
+      d[0].qword[0] = addr0;
+      d[0].qword[1] = 0;
+    }
+}
+
+static_always_inline int
+avf_rx_desc_is_eop (avf_rx_desc_t * d)
+{
+  return (d->qword[1] & AVF_RX_DESC_STATUS_EOP) != 0;
+}
+
+static_always_inline int
+avf_rx_desc_is_dd (avf_rx_desc_t * d)
+{
+  return (d->qword[1] & AVF_RX_DESC_STATUS_DD) != 0;
+}
+
+static_always_inline avf_rx_desc_t *
+avf_get_rx_desc (avf_rxq_t * rxq, u16 n)
+{
+  return rxq->descs + n;
+}
+
+
+u64 last_qrx_tail;
 #define AVF_INPUT_REFILL_TRESHOLD 32
 static_always_inline void
 avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 		int use_iova)
 {
   u16 n_refill, mask, n_alloc, slot;
-  u32 s0, s1, s2, s3;
-  avf_rx_desc_t *d[4];
+  avf_rx_desc_t *d;
 
   n_refill = rxq->size - 1 - rxq->n_enqueued;
   if (PREDICT_TRUE (n_refill <= AVF_INPUT_REFILL_TRESHOLD))
@@ -70,87 +143,41 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       vlib_error_count (vm, node->node_index,
 			AVF_INPUT_ERROR_BUFFER_ALLOC, 1);
       if (n_alloc)
-	vlib_buffer_free (vm, rxq->bufs + slot, n_alloc);
+	vlib_buffer_free_from_ring_no_next (vm, rxq->bufs, slot, rxq->size,
+					    n_alloc);
       return;
     }
+  //clib_warning ("%u %u", n_alloc, slot);
 
   rxq->n_enqueued += n_alloc;
 
-  while (n_alloc >= 4)
-    {
-      if (PREDICT_TRUE (slot + 3 < rxq->size))
-	{
-	  s0 = slot;
-	  s1 = slot + 1;
-	  s2 = slot + 2;
-	  s3 = slot + 3;
-	}
-      else
-	{
-	  s0 = slot;
-	  s1 = (slot + 1) & mask;
-	  s2 = (slot + 2) & mask;
-	  s3 = (slot + 3) & mask;
-	}
-
-      d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
-      d[1] = ((avf_rx_desc_t *) rxq->descs) + s1;
-      d[2] = ((avf_rx_desc_t *) rxq->descs) + s2;
-      d[3] = ((avf_rx_desc_t *) rxq->descs) + s3;
-      if (use_iova)
-	{
-	  vlib_buffer_t *b;
-	  b = vlib_get_buffer (vm, rxq->bufs[s0]);
-	  d[0]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s1]);
-	  d[1]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s2]);
-	  d[2]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s3]);
-	  d[3]->qword[0] = pointer_to_uword (b->data);
-	}
-      else
-	{
-	  d[0]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
-	  d[1]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s1]);
-	  d[2]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s2]);
-	  d[3]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s3]);
-	}
-
-      d[0]->qword[1] = 0;
-      d[1]->qword[1] = 0;
-      d[2]->qword[1] = 0;
-      d[3]->qword[1] = 0;
-
-      /* next */
-      slot = (slot + 4) & mask;
-      n_alloc -= 4;
-    }
   while (n_alloc)
     {
-      s0 = slot;
-      d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
-      if (use_iova)
-	{
-	  vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[s0]);
-	  d[0]->qword[0] = pointer_to_uword (b->data);
-	}
-      else
-	d[0]->qword[0] =
-	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
-      d[0]->qword[1] = 0;
+      d = ((avf_rx_desc_t *) rxq->descs) + slot;
+
+      if (n_alloc < 4 || slot > rxq->size - 4)
+	goto one_by_one;
+
+      avf_enq_rx_buffer (vm, d, rxq->bufs + slot, 4, use_iova);
+
+      /* next */
+      slot += 4;
+      n_alloc -= 4;
+      continue;
+
+    one_by_one:
+      avf_enq_rx_buffer (vm, d, rxq->bufs + slot, 1, use_iova);
 
       /* next */
       slot = (slot + 1) & mask;
       n_alloc -= 1;
     }
 
+  //clib_warning ("%u", slot);
+
   CLIB_MEMORY_BARRIER ();
-  *(rxq->qrx_tail) = slot;
+  *(rxq->qrx_tail) = (u32) slot;
+  rxq->last_qrx_tail = slot;
 }
 
 static_always_inline void
@@ -189,26 +216,29 @@ static_always_inline uword
 avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_buffer_t * bt, avf_rx_vector_entry_t * rxve,
 		      vlib_buffer_t ** b, u16 * next, u32 n_rxv,
-		      u8 maybe_error, int known_next)
+		      u8 maybe_err, int known_next)
 {
   uword n_rx_bytes = 0;
 
   while (n_rxv >= 4)
     {
-      if (n_rxv >= 12)
+      if (n_rxv < 16)
+	goto no_prefetch;
+
+      vlib_prefetch_buffer_header (b[12], LOAD);
+      vlib_prefetch_buffer_header (b[13], LOAD);
+      vlib_prefetch_buffer_header (b[14], LOAD);
+      vlib_prefetch_buffer_header (b[15], LOAD);
+      if (!known_next)
 	{
-	  vlib_prefetch_buffer_header (b[8], LOAD);
-	  vlib_prefetch_buffer_header (b[9], LOAD);
-	  vlib_prefetch_buffer_header (b[10], LOAD);
-	  vlib_prefetch_buffer_header (b[11], LOAD);
-	  if (!known_next)
-	    {
-	      CLIB_PREFETCH (b[8]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (b[9]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (b[10]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (b[11]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    }
+	  CLIB_PREFETCH (b[12]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[13]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[14]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[15]->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
+    no_prefetch:
+
+      clib_memcpy64_x4 (b[0], b[1], b[2], b[3], bt);
 
       n_rx_bytes += b[0]->current_length = rxve[0].length;
       n_rx_bytes += b[1]->current_length = rxve[1].length;
@@ -240,38 +270,14 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next[3] = avf_find_next (rxve + 3, b[3], 0);
 	    }
 
-	  if (PREDICT_FALSE (maybe_error))
+	  if (maybe_err)
 	    {
-	      avf_check_for_error (node, rxve + 0, b[0], next);
+	      avf_check_for_error (node, rxve + 0, b[0], next + 0);
 	      avf_check_for_error (node, rxve + 1, b[1], next + 1);
 	      avf_check_for_error (node, rxve + 2, b[2], next + 2);
 	      avf_check_for_error (node, rxve + 3, b[3], next + 3);
 	    }
 	}
-      else if (bt->current_config_index)
-	{
-	  b[0]->current_config_index = bt->current_config_index;
-	  b[1]->current_config_index = bt->current_config_index;
-	  b[2]->current_config_index = bt->current_config_index;
-	  b[3]->current_config_index = bt->current_config_index;
-	  vnet_buffer (b[0])->feature_arc_index =
-	    vnet_buffer (bt)->feature_arc_index;
-	  vnet_buffer (b[1])->feature_arc_index =
-	    vnet_buffer (bt)->feature_arc_index;
-	  vnet_buffer (b[2])->feature_arc_index =
-	    vnet_buffer (bt)->feature_arc_index;
-	  vnet_buffer (b[3])->feature_arc_index =
-	    vnet_buffer (bt)->feature_arc_index;
-	}
-
-      clib_memcpy (vnet_buffer (b[0])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[1])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[2])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[3])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
@@ -286,6 +292,8 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   while (n_rxv)
     {
+
+      clib_memcpy (b[0], bt, 64);
       b[0]->current_length = rxve->length;
       n_rx_bytes += b[0]->current_length;
 
@@ -294,15 +302,6 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next[0] = avf_find_next (rxve, b[0], 1);
 	  avf_check_for_error (node, rxve + 0, b[0], next);
 	}
-      else if (bt->current_config_index)
-	{
-	  b[0]->current_config_index = bt->current_config_index;
-	  vnet_buffer (b[0])->feature_arc_index =
-	    vnet_buffer (bt)->feature_arc_index;
-	}
-
-      clib_memcpy (vnet_buffer (b[0])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
@@ -316,39 +315,41 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_bytes;
 }
 
+/* vector ops expect specific ffsets */
+STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
+STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, status, 0);
+STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, length, 4);
+STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, ptype, 6);
+STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, error, 7);
+
 static_always_inline uword
 avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 vlib_frame_t * frame, avf_device_t * ad, u16 qid)
 {
   avf_main_t *am = &avf_main;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thr_idx = vlib_get_thread_index ();
   avf_per_thread_data_t *ptd =
-    vec_elt_at_index (am->per_thread_data, thr_idx);
+    vec_elt_at_index (am->per_thread_data, vm->thread_index);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
   avf_rx_vector_entry_t *rxve = 0;
   uword n_trace;
-  avf_rx_desc_t *d;
+  avf_rx_desc_t *d, *d2;
   u32 n_rx_packets = 0, n_rx_bytes = 0;
   u16 mask = rxq->size - 1;
-  u16 n_rxv = 0;
-  u8 maybe_error = 0;
+  u16 n_rxv = 0, n_chained = 0, i;
+  u8 or_error = 0;
   u32 buffer_indices[AVF_RX_VECTOR_SZ], *bi;
+  u32 tails[AVF_RX_VECTOR_SZ];
   u16 nexts[AVF_RX_VECTOR_SZ], *next;
   vlib_buffer_t *bufs[AVF_RX_VECTOR_SZ];
   vlib_buffer_t *bt = &ptd->buffer_template;
   int known_next = 0;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 
-  STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
-  STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, status, 0);
-  STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, length, 4);
-  STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, ptype, 6);
-  STATIC_ASSERT_OFFSET_OF (avf_rx_vector_entry_t, error, 7);
-
+  clib_memset_u32 (tails, ~0, AVF_RX_VECTOR_SZ);
   /* fetch up to AVF_RX_VECTOR_SZ from the rx ring, unflatten them and
      copy needed data from descriptor to rx vector */
-  d = rxq->descs + rxq->next;
+  d = avf_get_rx_desc (rxq, rxq->next);
   bi = buffer_indices;
   while (n_rxv < AVF_RX_VECTOR_SZ)
     {
@@ -365,7 +366,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-#ifdef CLIB_HAVE_VEC256
+#ifdef xCLIB_HAVE_VEC256
       u64x4 q1x4, v, err4;
       u64x4 status_dd_eop_mask = u64x4_splat (0x3);
 
@@ -390,19 +391,26 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	goto one_by_one;
 
       /* shift and mask status, length, ptype and err */
-      v = q1x4 & u64x4_splat ((u64) 0x3FFFFULL);
-      v |= (q1x4 >> 6) & u64x4_splat ((u64) 0xFFFF << 32);
-      v |= (q1x4 << 18) & u64x4_splat ((u64) 0xFF << 48);
-      v |= err4 = (q1x4 << 37) & u64x4_splat ((u64) 0xFF << 56);
+      v = q1x4 & u64x4_splat ((u64) 0x3FFFFULL);	/* status */
+      v |= (q1x4 >> 6) & u64x4_splat ((u64) 0xFFFF << 32);	/* length */
+      v |= (q1x4 << 18) & u64x4_splat ((u64) 0xFF << 48);	/* ptype */
+      v |= err4 = (q1x4 << 37) & u64x4_splat ((u64) 0xFF << 56);	/* err */
 
       u64x4_store_unaligned (v, ptd->rx_vector + n_rxv);
-      maybe_error |= !u64x4_is_all_zero (err4);
+
+      if (!u64x4_is_all_zero (err4))
+	{
+	  or_error |= ptd->rx_vector[n_rxv].error;
+	  or_error |= ptd->rx_vector[n_rxv + 1].error;
+	  or_error |= ptd->rx_vector[n_rxv + 2].error;
+	  or_error |= ptd->rx_vector[n_rxv + 3].error;
+	}
 
       clib_memcpy (bi, rxq->bufs + rxq->next, 4 * sizeof (u32));
 
       /* next */
       rxq->next = (rxq->next + 4) & mask;
-      d = rxq->descs + rxq->next;
+      d = avf_get_rx_desc (rxq, rxq->next);
       n_rxv += 4;
       rxq->n_enqueued -= 4;
       bi += 4;
@@ -411,32 +419,129 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 #endif
       CLIB_PREFETCH ((void *) (rxq->descs + ((rxq->next + 8) & mask)),
 		     CLIB_CACHE_LINE_BYTES, LOAD);
-      if ((d->qword[1] & AVF_RX_DESC_STATUS_DD) == 0)
-	break;
-      rxve = ptd->rx_vector + n_rxv;
-      bi[0] = rxq->bufs[rxq->next];
-      rxve->status = avf_get_u64_bits ((void *) d, 8, 18, 0);
-      rxve->error = avf_get_u64_bits ((void *) d, 8, 26, 19);
-      rxve->ptype = avf_get_u64_bits ((void *) d, 8, 37, 30);
-      rxve->length = avf_get_u64_bits ((void *) d, 8, 63, 38);
-      maybe_error |= rxve->error;
 
-      /* deal with chained buffers */
-      while (PREDICT_FALSE ((d->qword[1] & AVF_RX_DESC_STATUS_EOP) == 0))
+      if (PREDICT_FALSE (!avf_rx_desc_is_dd (d)))
+	goto no_dd;
+
+      bi[0] = rxq->bufs[rxq->next];
+      rxve = ptd->rx_vector + n_rxv;
+      rxve->status = d->status;
+      rxve->error = d->error;
+      rxve->ptype = d->ptype;
+      rxve->length = d->length;
+      or_error |= rxve->error;
+
+      if (PREDICT_TRUE (avf_rx_desc_is_eop (d)))
 	{
-	  clib_error ("fixme");
+	  /* non chained packet */
+	  rxq->next = (rxq->next + 1) & mask;
+	  rxq->n_enqueued -= 1;
+	}
+      else
+	{
+	  u32 first_tail_buffer_index;
+	  u64 qw1;
+	  u16 n, count = 2;
+	  vlib_buffer_t *b, *prev_b = 0;
+	  u64 save[10];
+	  u64 t1;
+	  u32 rx_bytes = d->length;
+
+	  for (int x = 0; x < 8; x++)
+	    save[x] = avf_get_rx_desc(rxq, (rxq->next - 4 + x) & mask)->qword[1];
+	  t1 = clib_cpu_time_now();
+
+	  n = (rxq->next + 1) & mask;
+	  first_tail_buffer_index = rxq->bufs[n];
+	  d = avf_get_rx_desc (rxq, n);
+	  qw1 = d->qword[1];
+	  rx_bytes += d->length;
+
+	  if (qw1 == 0)
+	    goto no_dd;
+
+	  b = vlib_get_buffer (vm, first_tail_buffer_index);
+	  b->flags = 0;
+	  b->current_data = 0;
+	  b->current_length = d->length;
+
+	  if (PREDICT_FALSE (b->current_length == 0))
+	    {
+	      /* dummy desc */
+	      vlib_buffer_free (vm, &first_tail_buffer_index, 1);
+	      first_tail_buffer_index = ~0;
+	      count = 1;
+	      vlib_error_count (vm, node->node_index,
+				AVF_INPUT_ERROR_DUMMY_DESC, 1);
+	    }
+
+	  while ((qw1 & AVF_RX_DESC_STATUS_EOP) == 0)
+	    {
+	      n = (n + 1) & mask;
+	      d2 = avf_get_rx_desc (rxq, n);
+	      qw1 = d2->qword[1];
+	      rx_bytes += d2->length;
+	      //asm volatile ("" : : : "memory");
+
+	      if (qw1 == 0)
+		goto no_dd;
+
+	      b->next_buffer = rxq->bufs[n];
+	      b->flags = VLIB_BUFFER_NEXT_PRESENT;
+	      prev_b = b;
+	      b = vlib_get_buffer (vm, b->next_buffer);
+	      b->flags = 0;
+	      b->current_data = 0;
+	      b->current_length = d2->length;
+	      ASSERT (qw1 == d2->qword[1]);
+	      count++;
+	    }
+	  if (rx_bytes != 7819)
+	    {
+	      u64 t2 = clib_cpu_time_now();
+	      u64 save2[10];
+	      fformat (stderr, "next %u tsc_diff %llu last_qrx_tail %u rx_bytes %u\n",
+		       rxq->next, t2 - t1, rxq->last_qrx_tail, rx_bytes);
+	      for (int x = 0; x < 8; x++)
+	        save2[x] = avf_get_rx_desc(rxq, (rxq->next - 4 + x) & mask)->qword[1];
+
+	      for (int x = 0; x < 8; x++)
+		fformat (stderr, "%3u: qw1 %016llx %016llx\n",
+			 (rxq->next - 4 +x) & mask, save[x], save2[x]);
+	    }
+
+	  /* dummy descrpitor */
+	  if (prev_b && b->current_length == 0)
+	    {
+	      vlib_buffer_free (vm, &prev_b->next_buffer, 1);
+	      prev_b->flags = 0;
+	      prev_b->next_buffer = 0;
+	      count--;
+	      vlib_error_count (vm, node->node_index,
+				AVF_INPUT_ERROR_DUMMY_DESC, 1);
+	    }
+
+	  /* done */
+	  ASSERT (count <= rxq->n_enqueued);
+
+	  n_chained++;
+	  rxq->n_enqueued -= count;
+	  rxq->next = (rxq->next + count) & mask;
+	  tails[bi - buffer_indices] = first_tail_buffer_index;
 	}
 
-      /* next */
-      rxq->next = (rxq->next + 1) & mask;
-      d = rxq->descs + rxq->next;
+      d = avf_get_rx_desc (rxq, rxq->next);
       n_rxv++;
-      rxq->n_enqueued--;
       bi++;
     }
 
+no_dd:
+
   if (n_rxv == 0)
     goto done;
+
+  ///if (ad->dev_instance ==0)
+  //clib_warning ("%u %u %u %u", n_rxv, n_chained, rxq->next, rxq->n_enqueued);
 
   /* refill rx ring */
   if (ad->flags & AVF_DEVICE_F_IOVA)
@@ -464,18 +569,29 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_feature_start_device_input_x1 (ad->sw_if_index, &next_index, bt);
       known_next = 1;
     }
+  else
+    {
+      bt->current_config_index = 0;
+      vnet_buffer (bt)->feature_arc_index = 0;
+    }
 
   if (known_next)
     {
       clib_memset_u16 (nexts, next_index, n_rxv);
-      n_rx_bytes = avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs,
-					 nexts, n_rxv, maybe_error, 1);
+      n_rx_bytes = or_error ?
+	avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs, nexts,
+			      n_rxv, /* maybe_err */ 1, /* known_next */ 1) :
+	avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs, nexts,
+			      n_rxv, /* maybe_err */ 0, /* known_next */ 1);
       vnet_buffer (bt)->feature_arc_index = 0;
       bt->current_config_index = 0;
     }
   else
-    n_rx_bytes = avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs,
-				       nexts, n_rxv, maybe_error, 0);
+    n_rx_bytes = or_error ?
+      avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs, nexts,
+			    n_rxv, /* maybe_err */ 1, /* known_next */ 0) :
+      avf_process_rx_burst (vm, node, bt, ptd->rx_vector, bufs, nexts,
+			    n_rxv, /* maybe_err */ 0, /* known_next */ 0);
 
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
@@ -502,10 +618,27 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vlib_set_trace_count (vm, node, n_trace);
     }
+
+  i = 0;
+  while (n_chained)
+    {
+      vlib_buffer_t *head;
+      if (tails[i] != ~0)
+	{
+	  head = vlib_get_buffer (vm, buffer_indices[i]);
+	  head->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  head->next_buffer = tails[i];
+	  vlib_buffer_length_in_chain_slow_path (vm, head);
+	  n_chained--;
+	}
+      i++;
+    }
+
   vlib_buffer_enqueue_to_next (vm, node, buffer_indices, nexts, n_rx_packets);
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_RX, thr_idx,
-				   ad->hw_if_index, n_rx_packets, n_rx_bytes);
+				   + VNET_INTERFACE_COUNTER_RX,
+				   vm->thread_index, ad->hw_if_index,
+				   n_rx_packets, n_rx_bytes);
 
 done:
   return n_rx_packets;
