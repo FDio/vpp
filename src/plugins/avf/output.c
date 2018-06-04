@@ -34,6 +34,267 @@ avf_tx_desc_get_dtyp (avf_tx_desc_t * d)
   return d->qword[1] & 0x0f;
 }
 
+static_always_inline uword
+avf_get_tx_buffer_dma_addr (vlib_main_t * vm, vlib_buffer_t * b, int use_iova)
+{
+  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_pool_t *pool;
+  if (use_iova)
+    return pointer_to_uword (vlib_buffer_get_current (b));
+
+  pool = vec_elt_at_index (bm->buffer_pools, b->buffer_pool_index);
+  return b->current_data +
+    vlib_physmem_virtual_to_physical (vm, pool->physmem_region, b->data);
+}
+
+static_always_inline void
+avf_wr_txd (vlib_main_t * vm, avf_tx_desc_t * d, vlib_buffer_t * b,
+	    int is_eop, int use_iova)
+{
+  u64 bits = AVF_TXQ_DESC_CMD_RS | AVF_TXQ_DESC_CMD_RSV |
+    (is_eop ? AVF_TXQ_DESC_CMD_EOP : 0);
+  d[0].qword[0] = avf_get_tx_buffer_dma_addr (vm, b, use_iova);
+  d[0].qword[1] = ((u64) b->current_length) << 34 | bits;
+}
+
+#ifdef CLIB_HAVE_VEC256
+static_always_inline u64x4
+u64x4_unpack_lo (u64x4 v1, u64x4 v2)
+{
+  return (u64x4) _mm256_unpacklo_epi64 ((__m256i) v1, (__m256i) v2);
+}
+
+static_always_inline u64x4
+u64x4_unpack_hi (u64x4 v1, u64x4 v2)
+{
+  return (u64x4) _mm256_unpackhi_epi64 ((__m256i) v1, (__m256i) v2);
+}
+#endif
+
+static_always_inline void
+avf_wr_txd_x8 (vlib_main_t * vm, avf_tx_desc_t * d, vlib_buffer_t ** b,
+	       int is_eop, int use_iova)
+{
+#ifdef CLIB_HAVE_VEC256
+  u64 bits = AVF_TXQ_DESC_CMD_RS | AVF_TXQ_DESC_CMD_RSV |
+    (is_eop ? AVF_TXQ_DESC_CMD_EOP : 0);
+
+  u64x4 qw0x4a = {
+    avf_get_tx_buffer_dma_addr (vm, b[0], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[2], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[1], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[3], use_iova)
+  };
+  u64x4 qw0x4b = {
+    avf_get_tx_buffer_dma_addr (vm, b[4], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[6], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[5], use_iova),
+    avf_get_tx_buffer_dma_addr (vm, b[7], use_iova)
+  };
+
+  u64x4 qw1x4a = {
+    b[0]->current_length,
+    b[2]->current_length,
+    b[1]->current_length,
+    b[3]->current_length,
+  };
+
+  u64x4 qw1x4b = {
+    b[4]->current_length,
+    b[6]->current_length,
+    b[5]->current_length,
+    b[7]->current_length,
+  };
+
+  qw1x4a = (qw1x4a << 34) | u64x4_splat (bits);
+  qw1x4b = (qw1x4b << 34) | u64x4_splat (bits);
+
+  u64x4_store_unaligned (u64x4_unpack_lo (qw0x4a, qw1x4a), ((u64 *) d) + 0);
+  u64x4_store_unaligned (u64x4_unpack_hi (qw0x4a, qw1x4a), ((u64 *) d) + 4);
+  u64x4_store_unaligned (u64x4_unpack_lo (qw0x4b, qw1x4b), ((u64 *) d) + 8);
+  u64x4_store_unaligned (u64x4_unpack_hi (qw0x4b, qw1x4b), ((u64 *) d) + 12);
+#else
+  avf_wr_txd (vm, d + 0, b[0], is_eop, use_iova);
+  avf_wr_txd (vm, d + 1, b[1], is_eop, use_iova);
+  avf_wr_txd (vm, d + 2, b[2], is_eop, use_iova);
+  avf_wr_txd (vm, d + 3, b[3], is_eop, use_iova);
+  avf_wr_txd (vm, d + 4, b[4], is_eop, use_iova);
+  avf_wr_txd (vm, d + 5, b[5], is_eop, use_iova);
+  avf_wr_txd (vm, d + 6, b[6], is_eop, use_iova);
+  avf_wr_txd (vm, d + 7, b[7], is_eop, use_iova);
+#endif
+}
+
+static_always_inline void
+avf_txq_advance (avf_txq_t * txq, u8 n_slots)
+{
+  int i;
+  for (i = 0; i < n_slots; i++)
+    txq->n_tail_bufs[(txq->tail + i) & txq->mask] = n_slots - 1 - i;
+  txq->tail = (txq->tail + n_slots) & txq->mask;
+}
+
+static_always_inline avf_tx_desc_t *
+avf_txq_get_desc (avf_txq_t * txq, u16 slot)
+{
+  return txq->descs + (slot & txq->mask);
+}
+
+static_always_inline int
+avf_txq_desc_complete (avf_txq_t * txq, u16 slot)
+{
+  avf_tx_desc_t *d;
+  d = avf_txq_get_desc (txq, slot + txq->n_tail_bufs[slot]);
+  return avf_tx_desc_get_dtyp (d) == 0x0F;
+}
+
+static_always_inline uword
+avf_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			 avf_device_t * ad, vlib_frame_t * frame,
+			 int use_iova)
+{
+  u8 qid = vm->thread_index;
+  avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
+  avf_tx_desc_t *d;
+  u32 *bi, *from = vlib_frame_args (frame);
+  u16 n_left = frame->n_vectors;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 n_free_desc, mask = txq->size - 1;
+  u16 tail;
+
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  clib_spinlock_lock_if_init (&txq->lock);
+
+  /* release cosumed bufs */
+  if (txq->n_enqueued)
+    {
+      u16 first, slot, n_free = 0;
+      first = slot = (txq->tail - txq->n_enqueued) & mask;
+      while (n_free < txq->n_enqueued && avf_txq_desc_complete (txq, slot))
+	{
+	  u8 n_tail_bufs = txq->n_tail_bufs[slot];
+	  n_free += 1 + n_tail_bufs;
+	  slot = (slot + 1 + n_tail_bufs) & mask;
+	}
+
+      if (n_free)
+	{
+	  txq->n_enqueued -= n_free;
+	  vlib_buffer_free_from_ring_no_next (vm, txq->bufs, first, txq->size,
+					      n_free);
+	}
+    }
+
+  n_free_desc = txq->size - txq->n_enqueued - 8;
+  b = bufs;
+  bi = from;
+  tail = txq->tail;
+
+  while (n_left && n_free_desc)
+    {
+      u32 or_flags;
+      vlib_buffer_t **pb;
+
+      d = txq->descs + tail;
+
+      if (PREDICT_FALSE ((n_left < 8) || (n_free_desc < 8) ||
+			 (txq->size - tail <= 8)))
+	goto one_by_one;
+
+      if (n_left < 24)
+	goto no_prefetch;
+      pb = b + 16;
+      vlib_prefetch_buffer_header (pb[0], LOAD);
+      vlib_prefetch_buffer_header (pb[1], LOAD);
+      vlib_prefetch_buffer_header (pb[2], LOAD);
+      vlib_prefetch_buffer_header (pb[3], LOAD);
+      vlib_prefetch_buffer_header (pb[4], LOAD);
+      vlib_prefetch_buffer_header (pb[5], LOAD);
+      vlib_prefetch_buffer_header (pb[6], LOAD);
+      vlib_prefetch_buffer_header (pb[7], LOAD);
+    no_prefetch:
+
+      or_flags = (b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags |
+		  b[4]->flags | b[5]->flags | b[6]->flags | b[7]->flags);
+      if (PREDICT_FALSE (or_flags & VLIB_BUFFER_NEXT_PRESENT))
+	goto one_by_one;
+
+      clib_memcpy (txq->bufs + tail, bi, 8 * sizeof (u32));
+
+      avf_wr_txd_x8 (vm, d, b, /* is_eop */ 1, use_iova);
+
+      tail += 8;
+      bi += 8;
+      b += 8;
+      n_left -= 8;
+      n_free_desc -= 8;
+      continue;
+
+    one_by_one:
+      txq->bufs[tail] = bi[0];
+
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  /* chained buffers */
+	  vlib_buffer_t *nb = b[0];
+	  u16 count = 2;
+	  u16 t = tail;
+	  u32 nbi;
+
+	  /* write head desc */
+	  avf_wr_txd (vm, d, b[0], /* is_eop */ 0, use_iova);
+
+	next_tail:
+	  if (count > n_free_desc)
+	    goto no_free_desc;
+
+	  t = (t + 1) & mask;
+	  nbi = nb->next_buffer;
+	  nb = vlib_get_buffer (vm, nbi);
+	  txq->bufs[t] = nbi;
+	  if (nb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      avf_wr_txd (vm, txq->descs + t, nb, /* is_eop */ 0, use_iova);
+	      count++;
+	      goto next_tail;
+	    }
+	  avf_wr_txd (vm, txq->descs + t, nb, /* is_eop */ 1, use_iova);
+	  txq->n_tail_bufs[tail] = count - 1;
+
+	  /* next */
+	  n_free_desc -= count;
+	  tail = (tail + count) & mask;
+	}
+      else
+	{
+	  avf_wr_txd (vm, d, b[0], /* is_eop */ 1, use_iova);
+	  txq->n_tail_bufs[tail] = 0;
+
+	  /* next */
+	  n_free_desc -= 1;
+	  tail = (tail + 1) & mask;
+	}
+
+      bi += 1;
+      b += 1;
+      n_left -= 1;
+    }
+
+no_free_desc:
+  txq->n_enqueued = txq->size - 8 - n_free_desc;
+
+  CLIB_MEMORY_BARRIER ();
+  *(txq->qtx_tail) = txq->tail = tail;
+
+  clib_spinlock_unlock_if_init (&txq->lock);
+
+  if (n_left)
+    vlib_buffer_free (vm, from + frame->n_vectors - n_left, n_left);
+
+  return frame->n_vectors - n_left;
+}
+
 uword
 CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
@@ -42,121 +303,11 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
   avf_main_t *am = &avf_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   avf_device_t *ad = pool_elt_at_index (am->devices, rd->dev_instance);
-  u32 thread_index = vm->thread_index;
-  u8 qid = thread_index;
-  avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
-  avf_tx_desc_t *d0, *d1, *d2, *d3;
-  u32 *buffers = vlib_frame_args (frame);
-  u32 bi0, bi1, bi2, bi3;
-  u16 n_left = frame->n_vectors;
-  vlib_buffer_t *b0, *b1, *b2, *b3;
-  u16 mask = txq->size - 1;
-  u64 bits = (AVF_TXQ_DESC_CMD_EOP | AVF_TXQ_DESC_CMD_RS |
-	      AVF_TXQ_DESC_CMD_RSV);
 
-  clib_spinlock_lock_if_init (&txq->lock);
-
-  /* release cosumed bufs */
-  if (txq->n_enqueued)
-    {
-      u16 first, slot, n_free = 0;
-      first = slot = (txq->next - txq->n_enqueued) & mask;
-      d0 = txq->descs + slot;
-      while (n_free < txq->n_enqueued && avf_tx_desc_get_dtyp (d0) == 0x0F)
-	{
-	  n_free++;
-	  slot = (slot + 1) & mask;
-	  d0 = txq->descs + slot;
-	}
-
-      if (n_free)
-	{
-	  txq->n_enqueued -= n_free;
-	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
-				      n_free);
-	}
-    }
-
-  while (n_left >= 7)
-    {
-      u16 slot0, slot1, slot2, slot3;
-
-      vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
-
-      slot0 = txq->next;
-      slot1 = (txq->next + 1) & mask;
-      slot2 = (txq->next + 2) & mask;
-      slot3 = (txq->next + 3) & mask;
-
-      d0 = txq->descs + slot0;
-      d1 = txq->descs + slot1;
-      d2 = txq->descs + slot2;
-      d3 = txq->descs + slot3;
-
-      bi0 = buffers[0];
-      bi1 = buffers[1];
-      bi2 = buffers[2];
-      bi3 = buffers[3];
-
-      txq->bufs[slot0] = bi0;
-      txq->bufs[slot1] = bi1;
-      txq->bufs[slot2] = bi2;
-      txq->bufs[slot3] = bi3;
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-      b2 = vlib_get_buffer (vm, bi2);
-      b3 = vlib_get_buffer (vm, bi3);
-
-#if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
-#else
-      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
-      d1->qword[0] = pointer_to_uword (b1->data) + b1->current_data;
-      d2->qword[0] = pointer_to_uword (b2->data) + b2->current_data;
-      d3->qword[0] = pointer_to_uword (b3->data) + b3->current_data;
-
-#endif
-      d0->qword[1] = ((u64) b0->current_length) << 34 | bits;
-      d1->qword[1] = ((u64) b1->current_length) << 34 | bits;
-      d2->qword[1] = ((u64) b2->current_length) << 34 | bits;
-      d3->qword[1] = ((u64) b3->current_length) << 34 | bits;
-
-      txq->next = (txq->next + 4) & mask;
-      txq->n_enqueued += 4;
-      buffers += 4;
-      n_left -= 4;
-    }
-
-  while (n_left)
-    {
-      d0 = txq->descs + txq->next;
-      bi0 = buffers[0];
-      txq->bufs[txq->next] = bi0;
-      b0 = vlib_get_buffer (vm, bi0);
-
-#if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
-#else
-      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
-#endif
-      d0->qword[1] = (((u64) b0->current_length) << 34) | bits;
-
-      txq->next = (txq->next + 1) & mask;
-      txq->n_enqueued++;
-      buffers++;
-      n_left--;
-    }
-  CLIB_MEMORY_BARRIER ();
-  *(txq->qtx_tail) = txq->next;
-
-  clib_spinlock_unlock_if_init (&txq->lock);
-
-  return frame->n_vectors - n_left;
+  if (ad->flags & AVF_DEVICE_F_IOVA)
+    return avf_interface_tx_inline (vm, node, ad, frame, 1);
+  else
+    return avf_interface_tx_inline (vm, node, ad, frame, 0);
 }
 
 #ifndef CLIB_MARCH_VARIANT
