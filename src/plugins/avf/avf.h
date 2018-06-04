@@ -37,7 +37,13 @@ enum
 
 typedef struct
 {
-  u64 qword[4];
+  union
+  {
+    u64 qword[4];
+#ifdef CLIB_HAVE_VEC256
+    u64x4 as_u64x4;
+#endif
+  };
 } avf_rx_desc_t;
 
 STATIC_ASSERT_SIZEOF (avf_rx_desc_t, 32);
@@ -69,11 +75,13 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 *qtx_tail;
   u16 next;
+  u16 mask;
   u16 size;
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;
   u16 n_bufs;
+  u8 *n_tail_bufs;
 } avf_txq_t;
 
 typedef struct
