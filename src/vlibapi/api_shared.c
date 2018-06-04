@@ -955,6 +955,23 @@ vl_msg_api_get_msg_index (u8 * name_and_crc)
   return ~0;
 }
 
+void *
+vl_msg_push_heap (void)
+{
+  api_main_t *am = &api_main;
+  pthread_mutex_lock (&am->vlib_rp->mutex);
+  return svm_push_data_heap (am->vlib_rp);
+}
+
+void
+vl_msg_pop_heap (void *oldheap)
+{
+  api_main_t *am = &api_main;
+  svm_pop_heap (oldheap);
+  pthread_mutex_unlock (&am->vlib_rp->mutex);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

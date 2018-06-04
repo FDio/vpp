@@ -72,6 +72,35 @@ vac_callback_t vac_callback;
 u16 read_timeout = 0;
 bool rx_is_running = false;
 
+/* Set to true to enable memory tracing */
+bool mem_trace = false;
+
+__attribute__((constructor))
+static void
+vac_client_constructor (void)
+{
+  u8 *heap;
+  mheap_t *h;
+  clib_mem_init (0, 1 << 30);
+  heap = clib_mem_get_per_cpu_heap ();
+  h = mheap_header (heap);
+  /* make the main heap thread-safe */
+  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  if (mem_trace)
+    clib_mem_trace (1);
+}
+
+__attribute__((destructor))
+static void
+vac_client_destructor (void)
+{
+  if (mem_trace)
+    fformat(stderr, "TRACE: %s",
+	    format (0, "%U\n",
+		    format_mheap, clib_mem_get_heap (), 1));
+}
+
+
 static void
 init (void)
 {
@@ -90,14 +119,14 @@ static void
 cleanup (void)
 {
   vac_main_t *pm = &vac_main;
+  pthread_mutex_destroy(&pm->queue_lock);
   pthread_cond_destroy(&pm->suspend_cv);
   pthread_cond_destroy(&pm->resume_cv);
+  pthread_mutex_destroy(&pm->timeout_lock);
   pthread_cond_destroy(&pm->timeout_cv);
   pthread_cond_destroy(&pm->timeout_cancel_cv);
   pthread_cond_destroy(&pm->terminate_cv);
-  pthread_mutex_destroy(&pm->queue_lock);
-  pthread_mutex_destroy(&pm->timeout_lock);
-  memset (pm, 0, sizeof (*pm));
+  memset(pm, 0, sizeof(*pm));
 }
 
 /*
@@ -415,6 +444,7 @@ vac_read (char **p, int *l, u16 timeout)
     switch (msg_id) {
     case VL_API_RX_THREAD_EXIT:
       printf("Received thread exit\n");
+      vl_msg_api_free((void *) msg);
       return -1;
     case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
       printf("Received thread suspend\n");

@@ -339,9 +339,13 @@ svm_data_region_create (svm_map_region_args_t * a, svm_region_t * rp)
 
   if (a->flags & SVM_FLAGS_MHEAP)
     {
+      mheap_t *heap_header;
       rp->data_heap =
 	mheap_alloc_with_flags ((void *) (rp->data_base), map_size,
 				MHEAP_FLAG_DISABLE_VM);
+      heap_header = mheap_header (rp->data_heap);
+      heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+
       rp->flags |= SVM_FLAGS_MHEAP;
     }
   return 0;
