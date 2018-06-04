@@ -88,7 +88,6 @@ _(ip)                                           \
 _(swt)                                          \
 _(l2)                                           \
 _(l2t)                                          \
-_(gre)                                          \
 _(l2_classify)                                  \
 _(handoff)                                      \
 _(policer)                                      \
@@ -235,11 +234,6 @@ typedef struct
       u8 next_index;
       u32 session_index;
     } l2t;
-
-    struct
-    {
-      u32 src, dst;
-    } gre;
 
     /* L2 classify */
     struct
