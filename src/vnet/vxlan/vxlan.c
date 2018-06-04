@@ -383,9 +383,16 @@ int vnet_vxlan_add_del_tunnel
     }
   else
     {
-      key6.src = a->dst.ip6;
-      key6.vni = clib_host_to_net_u32 (a->vni << 8);
-      p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
+      key6.key[0] = a->dst.ip6.as_u64[0];
+      key6.key[1] = a->dst.ip6.as_u64[1];
+      key6.key[2] = (((u64) a->encap_fib_index) << 32)
+	| clib_host_to_net_u32 (a->vni << 8);
+      int rv =
+	BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
+      if (PREDICT_FALSE (rv != 0))
+	p = 0;
+      else
+	p = &key6.value;
     }
 
   if (a->is_add)
@@ -433,7 +440,15 @@ int vnet_vxlan_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-	hash_set_mem_alloc (&vxm->vxlan6_tunnel_by_key, &key6, dev_instance);
+	{
+	  key6.value = (u64) dev_instance;
+	  if (BV (clib_bihash_add_del) (&vxm->vxlan6_tunnel_by_key,
+					&key6, 1 /*add */ ))
+	    {
+	      pool_put (vxm->tunnels, t);
+	      return VNET_API_ERROR_INVALID_REGISTRATION;
+	    }
+	}
       else
 	hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, dev_instance);
 
@@ -574,7 +589,8 @@ int vnet_vxlan_add_del_tunnel
       if (!is_ip6)
 	hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
       else
-	hash_unset_mem_free (&vxm->vxlan6_tunnel_by_key, &key6);
+	BV (clib_bihash_add_del) (&vxm->vxlan6_tunnel_by_key, &key6,
+				  0 /*del */ );
 
       if (!ip46_address_is_multicast (&t->dst))
 	{
@@ -655,7 +671,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
   u32 table_id;
-  clib_error_t *error = NULL;
+  clib_error_t *parse_error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -693,13 +709,6 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	{
 	  encap_fib_index =
 	    fib_table_find (fib_ip_proto (ipv6_set), table_id);
-	  if (encap_fib_index == ~0)
-	    {
-	      error =
-		clib_error_return (0, "nonexistent encap-vrf-id %d",
-				   table_id);
-	      break;
-	    }
 	}
       else if (unformat (line_input, "decap-next %U", unformat_decap_next,
 			 &decap_next_index, ipv4_set))
@@ -708,16 +717,19 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  parse_error = clib_error_return (0, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  break;
 	}
     }
 
   unformat_free (line_input);
 
-  if (error)
-    return error;
+  if (parse_error)
+    return parse_error;
+
+  if (encap_fib_index == ~0)
+    return clib_error_return (0, "nonexistent encap-vrf-id %d", table_id);
 
   if (src_set == 0)
     return clib_error_return (0, "tunnel src address not specified");
@@ -783,7 +795,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	(0, "vnet_vxlan_add_del_tunnel returned %d", rv);
     }
 
-  return error;
+  return 0;
 }
 
 /*?
@@ -1157,9 +1169,7 @@ vxlan_init (vlib_main_t * vm)
 		       &vxm->flow_id_start);
 
   /* initialize the ip6 hash */
-  vxm->vxlan6_tunnel_by_key = hash_create_mem (0,
-					       sizeof (vxlan6_tunnel_key_t),
-					       sizeof (uword));
+  BV (clib_bihash_init) (&vxm->vxlan6_tunnel_by_key, "vxlan6", 2000, 1 << 20);
   vxm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
