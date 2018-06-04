@@ -317,17 +317,36 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
   return (0);
 }
 
+static void
+set_timeout (unsigned short timeout)
+{
+  vac_main_t *pm = &vac_main;
+  pthread_mutex_lock(&pm->timeout_lock);
+  read_timeout = timeout;
+  pthread_cond_signal(&pm->timeout_cv);
+  pthread_mutex_unlock(&pm->timeout_lock);
+}
+
+static void
+unset_timeout (void)
+{
+  vac_main_t *pm = &vac_main;
+  pthread_mutex_lock(&pm->timeout_lock);
+  pthread_cond_signal(&pm->timeout_cancel_cv);
+  pthread_mutex_unlock(&pm->timeout_lock);
+}
+
 int
 vac_disconnect (void)
 {
   api_main_t *am = &api_main;
   vac_main_t *pm = &vac_main;
+  uword junk;
 
   if (!pm->connected_to_vlib) return 0;
 
   if (pm->rx_thread_handle) {
     vl_api_rx_thread_exit_t *ep;
-    uword junk;
     ep = vl_msg_api_alloc (sizeof (*ep));
     ep->_vl_msg_id = ntohs(VL_API_RX_THREAD_EXIT);
     vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
@@ -347,8 +366,12 @@ vac_disconnect (void)
     else
       pthread_join(pm->rx_thread_handle, (void **) &junk);
   }
-  if (pm->timeout_thread_handle)
+  if (pm->timeout_thread_handle) {
+    /* cancel, wake then join the timeout thread */
     pthread_cancel(pm->timeout_thread_handle);
+    set_timeout(0);
+    pthread_join(pm->timeout_thread_handle, (void **) &junk);
+  }
 
   vl_client_disconnect();
   vl_client_api_unmap();
@@ -357,25 +380,6 @@ vac_disconnect (void)
   cleanup();
 
   return (0);
-}
-
-static void
-set_timeout (unsigned short timeout)
-{
-  vac_main_t *pm = &vac_main;
-  pthread_mutex_lock(&pm->timeout_lock);
-  read_timeout = timeout;
-  pthread_cond_signal(&pm->timeout_cv);
-  pthread_mutex_unlock(&pm->timeout_lock);
-}
-
-static void
-unset_timeout (void)
-{
-  vac_main_t *pm = &vac_main;
-  pthread_mutex_lock(&pm->timeout_lock);
-  pthread_cond_signal(&pm->timeout_cancel_cv);
-  pthread_mutex_unlock(&pm->timeout_lock);
 }
 
 int
