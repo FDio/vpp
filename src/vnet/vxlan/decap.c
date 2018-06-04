@@ -49,17 +49,17 @@ static u8 * format_vxlan_rx_trace (u8 * s, va_list * args)
 }
 
 always_inline u32
-validate_vxlan_fib (vlib_buffer_t *b, vxlan_tunnel_t *t, u32 is_ip4)
+buf_fib_index (vlib_buffer_t *b, u32 is_ip4)
 {
-  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  if (sw_if_index != (u32) ~ 0)
+    return sw_if_index;
 
   u32 * fib_index_by_sw_if_index = is_ip4 ?
     ip4_main.fib_index_by_sw_if_index : ip6_main.fib_index_by_sw_if_index;
-  u32 tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
-  u32 fib_index = (tx_sw_if_index == (u32) ~ 0) ?
-    vec_elt (fib_index_by_sw_if_index, sw_if_index) : tx_sw_if_index;
+  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-  return (fib_index == t->encap_fib_index);
+  return vec_elt (fib_index_by_sw_if_index, sw_if_index);
 }
 
 typedef struct
@@ -68,15 +68,9 @@ typedef struct
   u32 tunnel_index;
 }last_tunnel_cache4;
 
-typedef struct
-{
-  vxlan6_tunnel_key_t key6;
-  u32 tunnel_index;
-}last_tunnel_cache6;
-
 always_inline vxlan_tunnel_t *
 vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
-                    ip4_header_t * ip4_0, vxlan_header_t * vxlan0,
+                    u32 fib_index, ip4_header_t * ip4_0, vxlan_header_t * vxlan0,
                     vxlan_tunnel_t ** stats_t0)
 {
   /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
@@ -95,6 +89,9 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
     cache->tunnel_index = p[0];
   }
   vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->tunnel_index);
+
+  if (PREDICT_FALSE (fib_index != t0->encap_fib_index))
+    return 0;
 
   /* Validate VXLAN tunnel SIP against packet DIP */
   if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
@@ -116,27 +113,32 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
   return t0;
 }
 
+typedef vxlan6_tunnel_key_t last_tunnel_cache6;
+
 always_inline vxlan_tunnel_t *
 vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
-                    ip6_header_t * ip6_0, vxlan_header_t * vxlan0,
+                    u32 fib_index, ip6_header_t * ip6_0, vxlan_header_t * vxlan0,
                     vxlan_tunnel_t ** stats_t0)
 {
   /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-  vxlan6_tunnel_key_t key6_0 = {
-    .src = ip6_0->src_address,
-    .vni = vxlan0->vni_reserved,
+
+  vxlan6_tunnel_key_t key6 = {
+    .key = {
+      [0] = ip6_0->src_address.as_u64[0],
+      [1] = ip6_0->src_address.as_u64[1],
+      [2] = (((u64) fib_index) << 32) | vxlan0->vni_reserved
+    }
   };
 
-  if (PREDICT_FALSE (memcmp(&key6_0, &cache->key6, sizeof key6_0) != 0))
+  if (PREDICT_FALSE (BV (clib_bihash_key_compare) (key6.key, cache->key) == 0))
   {
-    uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-    if (PREDICT_FALSE (p == NULL))
+    int rv = BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
+    if (PREDICT_FALSE (rv != 0))
       return 0;
 
-    cache->key6 = key6_0;
-    cache->tunnel_index = p[0];
+    *cache = key6;
   }
-  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->tunnel_index);
+  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->value);
 
   /* Validate VXLAN tunnel SIP against packet DIP */
   if (PREDICT_TRUE (ip6_address_is_equal (&ip6_0->dst_address, &t0->src.ip6)))
@@ -147,12 +149,14 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
     if (PREDICT_TRUE (!ip6_address_is_multicast (&ip6_0->dst_address)))
       return 0;
 
-    key6_0.src = ip6_0->dst_address;
     /* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
-    uword * p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
-    if (PREDICT_FALSE (p == NULL))
+    key6.key[0] = ip6_0->dst_address.as_u64[0];
+    key6.key[1] = ip6_0->dst_address.as_u64[1];
+    int rv = BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
+    if (PREDICT_FALSE (rv != 0))
       return 0;
-    *stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
+
+    *stats_t0 = pool_elt_at_index (vxm->tunnels, key6.value);
   }
 
   return t0;
@@ -170,14 +174,14 @@ vxlan_input (vlib_main_t * vm,
   vlib_combined_counter_main_t * rx_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
   vlib_combined_counter_main_t * drop_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
   last_tunnel_cache4 last4 = { .tunnel_index = ~0 };
-  last_tunnel_cache6 last6 = { .tunnel_index = ~0 };
+  last_tunnel_cache6 last6;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
 
   if (is_ip4)
     last4.key4.as_u64 = ~0;
   else
-    memset (&last6.key6, 0xff, sizeof last6.key6);
+    memset (&last6, 0xff, sizeof last6);
 
   u32 next_index = node->cached_next_index;
 
@@ -236,17 +240,20 @@ vxlan_input (vlib_main_t * vm,
           vlib_buffer_advance (b0, sizeof *vxlan0);
 	  vlib_buffer_advance (b1, sizeof *vxlan1);
 
+          u32 fi0 = buf_fib_index(b0, is_ip4);
+          u32 fi1 = buf_fib_index(b1, is_ip4);
+
           vxlan_tunnel_t * t0, * stats_t0;
           vxlan_tunnel_t * t1, * stats_t1;
           if (is_ip4)
           {
-            t0 = vxlan4_find_tunnel (vxm, &last4, ip4_0, vxlan0, &stats_t0);
-            t1 = vxlan4_find_tunnel (vxm, &last4, ip4_1, vxlan1, &stats_t1);
+            t0 = vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_t0);
+            t1 = vxlan4_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan1, &stats_t1);
           }
           else
           {
-            t0 = vxlan6_find_tunnel (vxm, &last6, ip6_0, vxlan0, &stats_t0);
-            t1 = vxlan6_find_tunnel (vxm, &last6, ip6_1, vxlan1, &stats_t1);
+            t0 = vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_t0);
+            t1 = vxlan6_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan1, &stats_t1);
           }
 
           u32 len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -255,8 +262,7 @@ vxlan_input (vlib_main_t * vm,
 	  u32 next0, next1;
           u8 error0 = 0, error1 = 0;
           /* Validate VXLAN tunnel encap-fib index agaist packet */
-          if (PREDICT_FALSE (t0 == 0 || validate_vxlan_fib (b0, t0, is_ip4) == 0 ||
-                vxlan0->flags != VXLAN_FLAGS_I))
+          if (PREDICT_FALSE (t0 == 0 || vxlan0->flags != VXLAN_FLAGS_I))
             {
               next0 = VXLAN_INPUT_NEXT_DROP;
 
@@ -286,8 +292,7 @@ vxlan_input (vlib_main_t * vm,
             }
 
           /* Validate VXLAN tunnel encap-fib index agaist packet */
-          if (PREDICT_FALSE (t1 == 0 || validate_vxlan_fib (b1, t1, is_ip4) == 0 ||
-                vxlan1->flags != VXLAN_FLAGS_I))
+          if (PREDICT_FALSE (t1 == 0 || vxlan1->flags != VXLAN_FLAGS_I))
             {
               next1 = VXLAN_INPUT_NEXT_DROP;
 
@@ -362,19 +367,20 @@ vxlan_input (vlib_main_t * vm,
           /* pop (ip, udp, vxlan) */
           vlib_buffer_advance (b0, sizeof(*vxlan0));
 
+          u32 fi0 = buf_fib_index(b0, is_ip4);
+
           vxlan_tunnel_t * t0, * stats_t0;
           if (is_ip4)
-            t0 = vxlan4_find_tunnel (vxm, &last4, ip4_0, vxlan0, &stats_t0);
+            t0 = vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_t0);
           else
-            t0 = vxlan6_find_tunnel (vxm, &last6, ip6_0, vxlan0, &stats_t0);
+            t0 = vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_t0);
 
           uword len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  u32 next0;
           u8 error0 = 0;
           /* Validate VXLAN tunnel encap-fib index agaist packet */
-          if (PREDICT_FALSE (t0 == 0 || validate_vxlan_fib (b0, t0, is_ip4) == 0 ||
-                vxlan0->flags != VXLAN_FLAGS_I))
+          if (PREDICT_FALSE (t0 == 0 || vxlan0->flags != VXLAN_FLAGS_I))
             {
               next0 = VXLAN_INPUT_NEXT_DROP;
 
