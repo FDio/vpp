@@ -75,6 +75,7 @@ define tap_create_v2
   u8 host_ip4_gw[4];
   u8 host_ip6_gw_set;
   u8 host_ip6_gw[16];
+  u8 tag[64];
 };
 
 /** \brief Reply for tap create reply

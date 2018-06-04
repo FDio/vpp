@@ -52,6 +52,7 @@ _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)
 static void
 vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   vl_api_tap_create_v2_reply_t *rmp;
   vl_api_registration_t *reg;
@@ -114,6 +115,16 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   if (!reg)
     return;;
 
+  /* If a tag was supplied... */
+  if (mp->tag[0])
+    {
+      /* Make sure it's a proper C-string */
+      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+      u8 *tag = format (0, "%s%c", mp->tag, 0);
+      vnet_set_sw_interface_tag (vnm, tag, ap->sw_if_index);
+    }
+
+
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_CREATE_V2_REPLY);
   rmp->context = mp->context;
@@ -144,6 +155,7 @@ tap_send_sw_interface_event_deleted (vpe_api_main_t * am,
 static void
 vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   int rv;
   vpe_api_main_t *vam = &vpe_api_main;
@@ -165,7 +177,10 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 
   if (!rv)
-    tap_send_sw_interface_event_deleted (vam, reg, sw_if_index);
+    {
+      vnet_clear_sw_interface_tag (vnm, sw_if_index);
+      tap_send_sw_interface_event_deleted (vam, reg, sw_if_index);
+    }
 }
 
 static void
