@@ -35,12 +35,12 @@ nobase_include_HEADERS += vpp-api/client/vppapiclient.h
 #
 # Test client
 #
-if ENABLE_TESTS
+#if ENABLE_TESTS
 noinst_PROGRAMS += vac_test
 vac_test_SOURCES = vpp-api/client/test.c
 vac_test_LDADD = \
   $(builddir)/libvppapiclient.la \
   -lpthread -lm -lrt
-endif
+#endif
 
 # vi:syntax=automake
