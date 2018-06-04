@@ -58,6 +58,9 @@ typedef volatile struct
 #ifdef CLIB_HAVE_VEC256
     u64x4 as_u64x4;
 #endif
+#ifdef CLIB_HAVE_VEC128
+    u64x2 as_u64x2[2];
+#endif
   };
 } avf_rx_desc_t;
 
@@ -146,17 +149,22 @@ typedef struct
   clib_error_t *error;
 } avf_device_t;
 
-typedef struct
+typedef union
 {
-  u32 status;
-  u16 length;
-  u8 ptype;
-  u8 error;
+  struct
+  {
+    u32 status;
+    u16 length;
+    u8 ptype;
+    u8 error;
+  };
+  u64 as_u64;
 } avf_rx_vector_entry_t;
 
 STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
 
 #define AVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
+#define AVF_MAX_RX_VEC_LEN (AVF_RX_VECTOR_SZ * 5 + 8)
 
 enum
 {
@@ -168,9 +176,14 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  avf_rx_vector_entry_t rx_vector[AVF_RX_VECTOR_SZ];
+  avf_rx_vector_entry_t rx_vector[AVF_MAX_RX_VEC_LEN];
+  u32 buffer_indices[AVF_MAX_RX_VEC_LEN];
+  vlib_buffer_t *buffer_pointers[AVF_MAX_RX_VEC_LEN];
   u32 *to_free;
   vlib_buffer_t buffer_template;
+  u16 nexts[VLIB_FRAME_SIZE];
+  u32 to_next[VLIB_FRAME_SIZE];
+  u8 skip;
 } avf_per_thread_data_t;
 
 typedef struct
@@ -285,7 +298,8 @@ typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
-  avf_rx_vector_entry_t rxve;
+  avf_rx_vector_entry_t descs[5];
+  u8 n_desc;
 } avf_input_trace_t;
 
 #endif /* AVF_H */

@@ -1,0 +1,15 @@
+ip route  5.5.5.5/32 via null
+create interface avf 0000:3b:02.0
+create interface avf 0000:3b:0a.0
+set int ip address AVF0/3b/2/0 172.16.0.1/24
+set int ip address AVF0/3b/a/0 172.16.1.1/24
+set int state AVF0/3b/2/0 up
+set int state AVF0/3b/a/0 up
+----
+create interface avf 0000:60:02.0
+set int ip address AVF0/60/2/0 192.168.123.222/24
+set int state AVF0/60/2/0 up
+set int ip address AVF0/af/2/0 172.16.0.1/24
+set int ip address AVF0/af/6/0 172.16.1.1/24
+set int state AVF0/af/2/0 up
+set int state AVF0/af/6/0 up
