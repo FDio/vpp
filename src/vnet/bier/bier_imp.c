@@ -275,8 +275,15 @@ show_bier_imp (vlib_main_t * vm,
     }
     else
     {
-        vlib_cli_output(vm, "%U", format_bier_imp, bii, 1,
-                        BIER_SHOW_DETAIL);
+        if (pool_is_free_index(bier_imp_pool, bii))
+        {
+            vlib_cli_output(vm, "No such BIER imposition: %d", bii);
+        }
+        else
+        {
+            vlib_cli_output(vm, "%U", format_bier_imp, bii, 1,
+                            BIER_SHOW_DETAIL);
+        }
     }
     return (NULL);
 }
