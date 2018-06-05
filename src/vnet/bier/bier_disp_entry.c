@@ -375,8 +375,15 @@ show_bier_disp_entry (vlib_main_t * vm,
     }
     else
     {
-        vlib_cli_output(vm, "%U", format_bier_disp_entry, bdei, 1,
-                        BIER_SHOW_DETAIL);
+        if (pool_is_free_index(bier_disp_entry_pool, bdei))
+        {
+            vlib_cli_output(vm, "No such BIER disp entry: %d", bdei);
+        }
+        else
+        {
+            vlib_cli_output(vm, "%U", format_bier_disp_entry, bdei, 1,
+                            BIER_SHOW_DETAIL);
+        }
     }
     return (NULL);
 }
