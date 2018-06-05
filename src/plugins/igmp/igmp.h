@@ -20,6 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#include <vlibapi/api_helper_macros.h>
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/adj/adj_mcast.h>
 #include <igmp/igmp_format.h>
@@ -167,16 +168,6 @@ struct igmp_timer_t_;
 
 typedef struct igmp_timer_t_ igmp_timer_t;
 
-/** \brief igmp api client
-    @param client_index - client index
-    @param pid - pid
-*/
-typedef struct igmp_api_client_t_
-{
-  u32 client_index;
-  u32 pid;
-} igmp_api_client_t;
-
 typedef struct
 {
   u8 *name;
@@ -210,7 +201,7 @@ typedef struct igmp_main_t_
 
   uword *igmp_api_client_by_client_index;
 
-  igmp_api_client_t *api_clients;
+  vpe_client_registration_t *api_clients;
 
   uword *igmp_config_by_sw_if_index;
 
@@ -457,23 +448,6 @@ igmp_src_lookup (igmp_group_t * group, igmp_key_t * key)
     src = vec_elt_at_index (group->srcs, p[0]);
 
   return src;
-}
-
-/** \brief igmp group lookup
-    @param im - igmp main
-    @param client_index - client index
-*/
-always_inline igmp_api_client_t *
-igmp_api_client_lookup (igmp_main_t * im, u32 client_index)
-{
-  uword *p;
-  igmp_api_client_t *api_client = NULL;
-
-  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
-  if (p)
-    api_client = vec_elt_at_index (im->api_clients, p[0]);
-
-  return api_client;
 }
 
 #endif /* _IGMP_H_ */

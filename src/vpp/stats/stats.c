@@ -298,6 +298,8 @@ set_client_for_stat (u32 reg, u32 item, vpe_client_registration_t * client)
     {
       pool_get (sm->stats_registrations[reg], registration);
       registration->item = item;
+      registration->client_hash = NULL;
+      registration->clients = NULL;
       hash_set (sm->stats_registration_hash[reg], item,
 		registration - sm->stats_registrations[reg]);
     }
@@ -320,12 +322,38 @@ set_client_for_stat (u32 reg, u32 item, vpe_client_registration_t * client)
   return 1;			//At least one client is doing something ... poll
 }
 
-int
-clear_client_for_stat (u32 reg, u32 item, u32 client_index)
+static void
+clear_one_client (u32 reg_index, u32 reg, u32 item, u32 client_index)
 {
   stats_main_t *sm = &stats_main;
   vpe_client_stats_registration_t *registration;
   vpe_client_registration_t *client;
+  uword *p;
+
+  registration = pool_elt_at_index (sm->stats_registrations[reg], reg_index);
+  p = hash_get (registration->client_hash, client_index);
+
+  if (p)
+    {
+      client = pool_elt_at_index (registration->clients, p[0]);
+      hash_unset (registration->client_hash, client->client_index);
+      pool_put (registration->clients, client);
+
+      /* Now check if that was the last client for that item */
+      if (0 == pool_elts (registration->clients))
+	{
+	  hash_unset (sm->stats_registration_hash[reg], item);
+	  hash_free (registration->client_hash);
+	  pool_free (registration->clients);
+	  pool_put (sm->stats_registrations[reg], registration);
+	}
+    }
+}
+
+int
+clear_client_for_stat (u32 reg, u32 item, u32 client_index)
+{
+  stats_main_t *sm = &stats_main;
   uword *p;
   int i, elts;
 
@@ -337,22 +365,7 @@ clear_client_for_stat (u32 reg, u32 item, u32 client_index)
     goto exit;
 
   /* If there is, is our client_index one of them */
-  registration = pool_elt_at_index (sm->stats_registrations[reg], p[0]);
-  p = hash_get (registration->client_hash, client_index);
-
-  if (!p)
-    goto exit;
-
-  client = pool_elt_at_index (registration->clients, p[0]);
-  hash_unset (registration->client_hash, client->client_index);
-  pool_put (registration->clients, client);
-
-  /* Now check if that was the last client for that item */
-  if (0 == pool_elts (registration->clients))
-    {
-      hash_unset (sm->stats_registration_hash[reg], item);
-      pool_put (sm->stats_registrations[reg], registration);
-    }
+  clear_one_client (p[0], reg, item, client_index);
 
 exit:
   elts = 0;
@@ -363,6 +376,45 @@ exit:
     }
   return elts;
 }
+
+static int
+clear_client_for_all_stats (u32 client_index)
+{
+  stats_main_t *sm = &stats_main;
+  u32 reg_index, item, reg;
+  int i, elts;
+
+  /* *INDENT-OFF* */
+  vec_foreach_index(reg, sm->stats_registration_hash)
+    {
+      hash_foreach(item, reg_index, sm->stats_registration_hash[reg],
+      ({
+        clear_one_client(reg_index, reg, item, client_index);
+      }));
+    }
+  /* *INDENT-OFF* */
+
+  elts = 0;
+  /* Now check if that was the last item in any of the listened to stats */
+  for (i = 0; i < STATS_REG_N_IDX; i++)
+    {
+      elts += pool_elts (sm->stats_registrations[i]);
+    }
+  return elts;
+}
+
+static clib_error_t *
+want_stats_reaper (u32 client_index)
+{
+  stats_main_t *sm = &stats_main;
+
+  sm->enable_poller = clear_client_for_all_stats (client_index);
+
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_stats_reaper);
+
 
 /*
  * Return a copy of the clients list.

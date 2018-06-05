@@ -4780,11 +4780,17 @@ vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
 	return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
       pool_get (nm->mac_changes, mc);
+      /* *INDENT-OFF* */
       *mc = (pending_resolution_t)
       {
-      .next_index = ~0,.node_index = node_index,.type_opaque =
-	  type_opaque,.data = data,.data_callback = data_callback,.pid =
-	  pid,};
+        .next_index = ~0,
+        .node_index = node_index,
+        .type_opaque = type_opaque,
+        .data = data,
+        .data_callback = data_callback,
+        .pid = pid,
+      };
+      /* *INDENT-ON* */
 
       /* Insert new resolution at the end of the list */
       u32 new_idx = mc - nm->mac_changes;

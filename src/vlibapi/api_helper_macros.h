@@ -207,7 +207,25 @@ static void vl_api_want_##lca##_t_handler (                             \
                                                                         \
 reply:                                                                  \
     REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                            \
-}
+}                                                                       \
+                                                                        \
+static clib_error_t * vl_api_want_##lca##_t_reaper (u32 client_index)   \
+{                                                                       \
+    vpe_api_main_t *vam = &vpe_api_main;                                \
+    vpe_client_registration_t *rp;                                      \
+    uword *p;                                                           \
+                                                                        \
+    p = hash_get (vam->lca##_registrations, client_index);              \
+    if (p)                                                              \
+      {                                                                 \
+        rp = pool_elt_at_index (vam->lca##_registrations, p[0]);        \
+        pool_put (vam->lca##_registrations, rp);                        \
+        hash_unset (vam->lca##_registration_hash, client_index);        \
+      }                                                                 \
+    return (NULL);                                                      \
+}                                                                       \
+                                                                        \
+VL_MSG_API_REAPER_FUNCTION (vl_api_want_##lca##_t_reaper);              \
 
 #define foreach_registration_hash               \
 _(interface_events)                             \
