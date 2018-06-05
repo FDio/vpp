@@ -414,7 +414,7 @@ igmp_config_lookup (igmp_main_t * im, u32 sw_if_index)
   uword *p;
   igmp_config_t *config = NULL;
 
-  p = hash_get_mem (im->igmp_config_by_sw_if_index, &sw_if_index);
+  p = hash_get (im->igmp_config_by_sw_if_index, sw_if_index);
   if (p)
     config = vec_elt_at_index (im->configs, p[0]);
 
@@ -469,7 +469,7 @@ igmp_api_client_lookup (igmp_main_t * im, u32 client_index)
   uword *p;
   igmp_api_client_t *api_client = NULL;
 
-  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
+  p = hash_get (im->igmp_api_client_by_client_index, client_index);
   if (p)
     api_client = vec_elt_at_index (im->api_clients, p[0]);
 

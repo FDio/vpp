@@ -210,8 +210,8 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
 	  rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  goto done;
 	}
-      hash_unset_mem (im->igmp_api_client_by_client_index,
-		      &api_client->client_index);
+      hash_unset (im->igmp_api_client_by_client_index,
+		  api_client->client_index);
       pool_put (im->api_clients, api_client);
       goto done;
     }
@@ -221,8 +221,8 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
       memset (api_client, 0, sizeof (igmp_api_client_t));
       api_client->client_index = mp->client_index;
       api_client->pid = mp->pid;
-      hash_set_mem (im->igmp_api_client_by_client_index,
-		    &mp->client_index, api_client - im->api_clients);
+      hash_set (im->igmp_api_client_by_client_index,
+		mp->client_index, api_client - im->api_clients);
       goto done;
     }
   rv = VNET_API_ERROR_INVALID_REGISTRATION;
@@ -279,8 +279,7 @@ igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
       igmp_clear_group (config, group);
       if (pool_elts (config->groups) == 0)
 	{
-	  hash_unset_mem (im->igmp_config_by_sw_if_index,
-			  &config->sw_if_index);
+	  hash_unset (im->igmp_config_by_sw_if_index, config->sw_if_index);
 	  pool_put (im->configs, config);
 	}
     }
