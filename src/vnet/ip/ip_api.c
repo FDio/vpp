@@ -2587,6 +2587,26 @@ reply:
   REPLY_MACRO (VL_API_WANT_IP4_ARP_EVENTS_REPLY);
 }
 
+static clib_error_t *
+want_ip4_arp_events_reaper (u32 client_index)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vpe_client_registration_t *rp;
+  uword *p;
+
+  p = hash_get (am->wc_ip4_arp_events_registration_hash, client_index);
+
+  if (p)
+    {
+      rp = pool_elt_at_index (am->wc_ip4_arp_events_registrations, p[0]);
+      pool_put (am->wc_ip4_arp_events_registrations, rp);
+      hash_unset (am->wc_ip4_arp_events_registration_hash, client_index);
+    }
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_ip4_arp_events_reaper);
+
 static void
 vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 {
@@ -2670,6 +2690,26 @@ reply:
   REPLY_MACRO (VL_API_WANT_IP6_ND_EVENTS_REPLY);
 }
 
+static clib_error_t *
+want_ip6_nd_events_reaper (u32 client_index)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vpe_client_registration_t *rp;
+  uword *p;
+
+  p = hash_get (am->wc_ip6_nd_events_registration_hash, client_index);
+
+  if (p)
+    {
+      rp = pool_elt_at_index (am->wc_ip6_nd_events_registrations, p[0]);
+      pool_put (am->wc_ip6_nd_events_registrations, rp);
+      hash_unset (am->wc_ip6_nd_events_registration_hash, client_index);
+    }
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_ip6_nd_events_reaper);
+
 static void
 vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
 {
@@ -2710,6 +2750,26 @@ vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
 reply:
   REPLY_MACRO (VL_API_WANT_IP6_RA_EVENTS_REPLY);
 }
+
+static clib_error_t *
+want_ip6_ra_events_reaper (u32 client_index)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vpe_client_registration_t *rp;
+  uword *p;
+
+  p = hash_get (am->ip6_ra_events_registration_hash, client_index);
+
+  if (p)
+    {
+      rp = pool_elt_at_index (am->ip6_ra_events_registrations, p[0]);
+      pool_put (am->ip6_ra_events_registrations, rp);
+      hash_unset (am->ip6_ra_events_registration_hash, client_index);
+    }
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_ip6_ra_events_reaper);
 
 static void
 vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
