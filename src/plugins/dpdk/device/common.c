@@ -222,7 +222,6 @@ static uword
 send_garp_na_process (vlib_main_t * vm,
 		      vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   uword event_type, *event_data = 0;
 
   while (1)
@@ -238,11 +237,9 @@ send_garp_na_process (vlib_main_t * vm,
 	  if (i < 5)		/* wait 0.2 sec for link to settle, max total 1 sec */
 	    vlib_process_suspend (vm, 0.2);
 	  dpdk_device_t *xd = &dpdk_main.devices[dpdk_port];
-	  u32 hw_if_index = xd->hw_if_index;
-	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  dpdk_update_link_state (xd, vlib_time_now (vm));
-	  send_ip4_garp (vm, hi);
-	  send_ip6_na (vm, hi);
+	  send_ip4_garp (vm, xd->sw_if_index);
+	  send_ip6_na (vm, xd->sw_if_index);
 	}
       vec_reset_length (event_data);
     }

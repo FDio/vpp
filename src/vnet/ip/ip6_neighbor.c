@@ -4980,22 +4980,23 @@ ethernet_ndp_change_mac (u32 sw_if_index)
 }
 
 void
-send_ip6_na (vlib_main_t * vm, const vnet_hw_interface_t * hi)
+send_ip6_na (vlib_main_t * vm, u32 sw_if_index)
 {
   ip6_main_t *i6m = &ip6_main;
-  u32 sw_if_index = hi->sw_if_index;
   ip6_address_t *ip6_addr = ip6_interface_first_address (i6m, sw_if_index);
 
-  send_ip6_na_w_addr (vm, ip6_addr, hi);
+  send_ip6_na_w_addr (vm, ip6_addr, sw_if_index);
 }
 
 void
 send_ip6_na_w_addr (vlib_main_t * vm,
-		    const ip6_address_t * ip6_addr,
-		    const vnet_hw_interface_t * hi)
+		    const ip6_address_t * ip6_addr, u32 sw_if_index)
 {
   ip6_main_t *i6m = &ip6_main;
-  u32 sw_if_index = hi->sw_if_index;
+  vnet_main_t *vnm = vnet_get_main ();
+  u8 *rewrite, rewrite_len;
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  u8 dst_address[6];
 
   if (ip6_addr)
     {
@@ -5026,12 +5027,15 @@ send_ip6_na_w_addr (vlib_main_t * vm,
 
       /* Setup MAC header with IP6 Etype and mcast DMAC */
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-      vlib_buffer_advance (b, -sizeof (ethernet_header_t));
-      ethernet_header_t *e = vlib_buffer_get_current (b);
-      e->type = clib_host_to_net_u16 (ETHERNET_TYPE_IP6);
-      clib_memcpy (e->src_address, hi->hw_address, sizeof (e->src_address));
-      ip6_multicast_ethernet_address (e->dst_address,
+      ip6_multicast_ethernet_address (dst_address,
 				      IP6_MULTICAST_GROUP_ID_all_hosts);
+      rewrite =
+	ethernet_build_rewrite (vnm, sw_if_index, VNET_LINK_IP6, dst_address);
+      rewrite_len = vec_len (rewrite);
+      vlib_buffer_advance (b, -rewrite_len);
+      ethernet_header_t *e = vlib_buffer_get_current (b);
+      clib_memcpy (e->dst_address, rewrite, rewrite_len);
+      vec_free (rewrite);
 
       /* Send unsolicited ND advertisement packet out the specified interface */
       vnet_buffer (b)->sw_if_index[VLIB_RX] =

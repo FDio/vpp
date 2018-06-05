@@ -179,13 +179,11 @@ gbp_endpoint_update (u32 sw_if_index,
   if (ip46_address_is_ip4 (&gbpe->ge_key->gek_ip))
     send_ip4_garp_w_addr (vlib_get_main (),
 			  &gbpe->ge_key->gek_ip.ip4,
-			  vnet_get_sup_hw_interface
-			  (vnet_get_main (), gepg->gepg_uplink_sw_if_index));
+			  gepg->gepg_uplink_sw_if_index);
   else
     send_ip6_na_w_addr (vlib_get_main (),
 			&gbpe->ge_key->gek_ip.ip6,
-			vnet_get_sup_hw_interface
-			(vnet_get_main (), gepg->gepg_uplink_sw_if_index));
+			gepg->gepg_uplink_sw_if_index);
 
   return (0);
 }

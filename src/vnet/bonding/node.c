@@ -67,7 +67,7 @@ typedef enum
 {
   BOND_INPUT_NEXT_DROP,
   BOND_INPUT_N_NEXT,
-} l2output_next_t;
+} bond_output_next_t;
 
 static_always_inline u8
 packet_is_cdp (ethernet_header_t * eth)
@@ -329,7 +329,6 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       n_left = frame->n_vectors;	/* number of packets to process */
       b = bufs;
       sw_if_index = sw_if_indices;
-      next = nexts;
       bond_packet_trace_t *t0;
 
       while (n_left)
@@ -346,7 +345,6 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	  n_left--;
 	  b++;
 	  sw_if_index++;
-	  next++;
 	}
     }
 

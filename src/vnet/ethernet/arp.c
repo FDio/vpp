@@ -2526,22 +2526,22 @@ ethernet_arp_change_mac (u32 sw_if_index)
 }
 
 void
-send_ip4_garp (vlib_main_t * vm, const vnet_hw_interface_t * hi)
+send_ip4_garp (vlib_main_t * vm, u32 sw_if_index)
 {
   ip4_main_t *i4m = &ip4_main;
-  ip4_address_t *ip4_addr =
-    ip4_interface_first_address (i4m, hi->sw_if_index, 0);
+  ip4_address_t *ip4_addr = ip4_interface_first_address (i4m, sw_if_index, 0);
 
-  send_ip4_garp_w_addr (vm, ip4_addr, hi);
+  send_ip4_garp_w_addr (vm, ip4_addr, sw_if_index);
 }
 
 void
 send_ip4_garp_w_addr (vlib_main_t * vm,
-		      const ip4_address_t * ip4_addr,
-		      const vnet_hw_interface_t * hi)
+		      const ip4_address_t * ip4_addr, u32 sw_if_index)
 {
   ip4_main_t *i4m = &ip4_main;
-  u32 sw_if_index = hi->sw_if_index;
+  vnet_main_t *vnm = vnet_get_main ();
+  u8 *rewrite, rewrite_len;
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   if (ip4_addr)
     {
@@ -2563,11 +2563,14 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
 
       /* Setup MAC header with ARP Etype and broadcast DMAC */
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-      vlib_buffer_advance (b, -sizeof (ethernet_header_t));
+      rewrite =
+	ethernet_build_rewrite (vnm, sw_if_index, VNET_LINK_ARP,
+				VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST);
+      rewrite_len = vec_len (rewrite);
+      vlib_buffer_advance (b, -rewrite_len);
       ethernet_header_t *e = vlib_buffer_get_current (b);
-      e->type = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
-      clib_memcpy (e->src_address, hi->hw_address, sizeof (e->src_address));
-      memset (e->dst_address, 0xff, sizeof (e->dst_address));
+      clib_memcpy (e->dst_address, rewrite, rewrite_len);
+      vec_free (rewrite);
 
       /* Send GARP packet out the specified interface */
       vnet_buffer (b)->sw_if_index[VLIB_RX] =

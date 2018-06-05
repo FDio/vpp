@@ -70,6 +70,11 @@ typedef enum
 #undef _
 } bond_load_balance_t;
 
+enum
+{
+  BOND_SEND_GARP_NA = 1,
+} bond_send_garp_na_process_event_t;
+
 typedef struct
 {
   u8 hw_addr_set;
@@ -325,6 +330,7 @@ typedef struct
 } bond_load_balance_func_t;
 
 extern vlib_node_registration_t bond_input_node;
+extern vlib_node_registration_t bond_process_node;
 extern vnet_device_class_t bond_dev_class;
 extern bond_main_t bond_main;
 

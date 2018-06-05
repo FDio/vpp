@@ -23,6 +23,8 @@
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/bonding/node.h>
 #include <vppinfra/lb_hash_hash.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ethernet/arp_packet.h>
 
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
@@ -699,6 +701,52 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   clib_spinlock_unlock_if_init (&bif->lockp);
   return frame->n_vectors;
 }
+
+static walk_rc_t
+bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
+				 void *arg)
+{
+  bond_main_t *bm = &bond_main;
+
+  send_ip4_garp (bm->vlib_main, sw_if_index);
+  send_ip6_na (bm->vlib_main, sw_if_index);
+
+  return (WALK_CONTINUE);
+}
+
+static uword
+bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  uword event_type, *event_data = 0;
+
+  while (1)
+    {
+      u32 i;
+      u32 hw_if_index;
+
+      vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, &event_data);
+      ASSERT (event_type == BOND_SEND_GARP_NA);
+      for (i = 0; i < vec_len (event_data); i++)
+	{
+	  hw_if_index = event_data[i];
+	  /* walk hw interface to process all subinterfaces */
+	  vnet_hw_interface_walk_sw (vnm, hw_if_index,
+				     bond_active_interface_switch_cb, 0);
+	}
+      vec_reset_length (event_data);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (bond_process_node) = {
+  .function = bond_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "bond-process",
+};
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bond_dev_class) = {

@@ -24,9 +24,11 @@
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 {
+  bond_main_t *bm = &bond_main;
   bond_if_t *bif;
   int i;
   uword p;
+  u8 switching_active = 0;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -35,8 +37,18 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     p = *vec_elt_at_index (bif->active_slaves, i);
     if (p == sif->sw_if_index)
       {
+	/* Are we disabling the very 1st slave? */
+	if (sif->sw_if_index == *vec_elt_at_index (bif->active_slaves, 0))
+	  switching_active = 1;
+
 	vec_del1 (bif->active_slaves, i);
 	hash_unset (bif->active_slave_by_sw_if_index, sif->sw_if_index);
+
+	/* We got a new slave just becoming active? */
+	if ((vec_len (bif->active_slaves) >= 1) &&
+	    (bif->mode == BOND_MODE_ACTIVE_BACKUP) && switching_active)
+	  vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				     BOND_SEND_GARP_NA, bif->hw_if_index);
 	break;
       }
   }
@@ -47,6 +59,7 @@ void
 bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 {
   bond_if_t *bif;
+  bond_main_t *bm = &bond_main;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -55,6 +68,12 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
       hash_set (bif->active_slave_by_sw_if_index, sif->sw_if_index,
 		sif->sw_if_index);
       vec_add1 (bif->active_slaves, sif->sw_if_index);
+
+      /* First slave becomes active? */
+      if ((vec_len (bif->active_slaves) == 1) &&
+	  (bif->mode == BOND_MODE_ACTIVE_BACKUP))
+	vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				   BOND_SEND_GARP_NA, bif->hw_if_index);
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
 }
