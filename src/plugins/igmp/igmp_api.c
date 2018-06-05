@@ -194,11 +194,28 @@ vl_api_igmp_clear_interface_t_handler (vl_api_igmp_clear_interface_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
+/** \brief igmp group lookup
+    @param im - igmp main
+    @param client_index - client index
+*/
+static vpe_client_registration_t *
+igmp_api_client_lookup (igmp_main_t * im, u32 client_index)
+{
+  uword *p;
+  vpe_client_registration_t *api_client = NULL;
+
+  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
+  if (p)
+    api_client = vec_elt_at_index (im->api_clients, p[0]);
+
+  return api_client;
+}
+
 static void
 vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
 {
   igmp_main_t *im = &igmp_main;
-  igmp_api_client_t *api_client;
+  vpe_client_registration_t *api_client;
   vl_api_want_igmp_events_reply_t *rmp;
   int rv = 0;
 
@@ -218,9 +235,9 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
   if (mp->enable)
     {
       pool_get (im->api_clients, api_client);
-      memset (api_client, 0, sizeof (igmp_api_client_t));
+      memset (api_client, 0, sizeof (vpe_client_registration_t));
       api_client->client_index = mp->client_index;
-      api_client->pid = mp->pid;
+      api_client->client_pid = mp->pid;
       hash_set_mem (im->igmp_api_client_by_client_index,
 		    &mp->client_index, api_client - im->api_clients);
       goto done;
@@ -240,6 +257,26 @@ done:;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
+
+static clib_error_t *
+want_igmp_events_reaper (u32 client_index)
+{
+  igmp_main_t *im = &igmp_main;
+  vpe_client_registration_t *api_client;
+  uword *p;
+
+  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
+
+  if (p)
+    {
+      api_client = pool_elt_at_index (im->api_clients, p[0]);
+      pool_put (im->api_clients, api_client);
+      hash_unset_mem (im->igmp_api_client_by_client_index, &client_index);
+    }
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_igmp_events_reaper);
 
 void
 send_igmp_event (unix_shared_memory_queue_t * q, u32 context,
@@ -264,7 +301,7 @@ void
 igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
 	    igmp_src_t * src)
 {
-  igmp_api_client_t *api_client;
+  vpe_client_registration_t *api_client;
   unix_shared_memory_queue_t *q;
   /* *INDENT-OFF* */
   pool_foreach (api_client, im->api_clients,
