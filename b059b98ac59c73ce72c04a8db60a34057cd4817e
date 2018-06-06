@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e7365cd_90304e0e",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2694,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-06-06T15:33:47Z",
+      "side": 1,
+      "message": "The want_ip4_arp_events and want_ip6_nd_events APIs supports two modes of client registration. One mode is when a specific IP address is specified for IP address resolution events while the other mode is when address is 0, for MAC/IP bindings via neighbor discovery packets in BDs.  The reaper here cleanup client registration for wc (wild card) case when address is 0.  There client registration for specific IP addresses resolutions events are not cleaned up, AFAICT. Do you think the current code handle these already?",
+      "range": {
+        "startLine": 2694,
+        "startChar": 0,
+        "endLine": 2694,
+        "endChar": 25
+      },
+      "revId": "b059b98ac59c73ce72c04a8db60a34057cd4817e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
