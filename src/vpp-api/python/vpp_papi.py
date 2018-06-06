@@ -116,7 +116,7 @@ class VPP():
     these messages in a background thread.
     """
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=logging.getLogger('vpp_papi'), loglevel='debug',
+                 logger=None, loglevel=None,
                  read_timeout=0):
         """Create a VPP API object.
 
@@ -125,11 +125,20 @@ class VPP():
         dynamically created reflecting these APIs.  If not
         provided this will load the API files from VPP's
         default install location.
+
+        logger, if supplied, is the logging logger object to log to.
+        loglevel, if supplied, is the log level this logger is set
+        to report at (from the loglevels in the logging module).
         """
         global vpp_object
         vpp_object = self
+
+        if logger is None:
+            logger = logging.getLogger(__name__)
+            if loglevel is not None:
+                logger.setLevel(loglevel)
+
         self.logger = logger
-        logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
         self.messages = {}
         self.id_names = []
