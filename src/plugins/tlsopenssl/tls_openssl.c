@@ -22,15 +22,11 @@
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
 #include <ctype.h>
-#include "tls_openssl.h"
+#include <tlsopenssl/tls_openssl.h>
 
 #define MAX_CRYPTO_LEN 16
 
 static openssl_main_t openssl_main;
-static int vpp_ssl_async_process_event (tls_ctx_t * ctx,
-					stream_session_t * tls_session,
-					openssl_resume_handler * handler);
-
 static u32
 openssl_ctx_alloc (void)
 {
@@ -69,7 +65,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 		  oc->openssl_ctx_index);
 }
 
-static tls_ctx_t *
+tls_ctx_t *
 openssl_ctx_get (u32 ctx_index)
 {
   openssl_ctx_t **ctx;
@@ -78,7 +74,7 @@ openssl_ctx_get (u32 ctx_index)
   return &(*ctx)->ctx;
 }
 
-static tls_ctx_t *
+tls_ctx_t *
 openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index)
 {
   openssl_ctx_t **ctx;
@@ -157,21 +153,24 @@ openssl_try_handshake_write (openssl_ctx_t * oc,
 }
 
 static int
-vpp_ssl_async_process_event (tls_ctx_t * ctx, stream_session_t * tls_session,
-			     openssl_resume_handler * handler)
+vpp_ssl_async_process_event (tls_ctx_t * ctx, openssl_resume_handler * handler)
 {
+#ifdef NEW_OPENSSL
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+#endif
   openssl_tls_callback_t *engine_cb;
 
-  engine_cb = vpp_add_async_pending_event (ctx, tls_session, handler);
+  engine_cb = vpp_add_async_pending_event (ctx, handler);
   if (engine_cb)
     {
+#ifdef NEW_OPENSSL
       SSL_set_async_callback (oc->ssl, (void *) engine_cb->callback,
 			      (void *) engine_cb->arg);
-      printf ("set callback to engine %p\n", engine_cb->callback);
+#endif
+      TLS_DBG("set callback to engine %p\n", engine_cb->callback);
     }
   /* associated fd with context for return */
-  printf ("completed assoicated fd with tls session\n");
+  TLS_DBG ("completed assoicated fd with tls session\n");
   return 0;
 
 }
@@ -200,7 +199,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
       if (err == SSL_ERROR_WANT_ASYNC)
 	{
 	  myself = openssl_ctx_handshake_rx;
-	  vpp_ssl_async_process_event (ctx, tls_session, myself);
+	  vpp_ssl_async_process_event (ctx, myself);
 	}
 
       if (err != SSL_ERROR_WANT_WRITE)
@@ -520,8 +519,6 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
   BIO *cert_bio;
   openssl_resume_handler *handler;
 
-  printf ("openssl_ctx_init_server is openned ctx=%p\n", ctx);
-
   app = application_get (ctx->parent_app_index);
   if (!app->tls_cert || !app->tls_key)
     {
@@ -578,11 +575,6 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 
   BIO_free (cert_bio);
 
-  if (!SSL_CTX_check_private_key (oc->ssl_ctx))
-    {
-      printf ("SSL check private key failed\n");
-    }
-
   /* Start a new connection */
 
   oc->ssl = SSL_new (oc->ssl_ctx);
@@ -613,7 +605,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       if (err == SSL_ERROR_WANT_ASYNC)
 	{
 	  handler = (openssl_resume_handler *) openssl_ctx_handshake_rx;
-	  vpp_ssl_async_process_event (ctx, tls_session, handler);
+	  vpp_ssl_async_process_event (ctx, handler);
 	  break;
 	}
       if (err != SSL_ERROR_WANT_WRITE)
@@ -699,8 +691,6 @@ tls_openssl_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  printf ("call tls_openssl_init thread = %d\n", num_threads);
-
   if ((error = vlib_call_init_function (vm, tls_init)))
     return error;
 
@@ -726,14 +716,14 @@ static clib_error_t *
 tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  openssl_main_t *tm = &openssl_main;
+  openssl_main_t *om = &openssl_main;
   char *engine_name = NULL;
   char *engine_alg = NULL;
   u8 engine_name_set = 0;
   int i;
 
   /* By present, it is not allowed to configure engine again after running */
-  if (tm->engine_init)
+  if (om->engine_init)
     {
       clib_warning ("engine has started!\n");
       return clib_error_return
@@ -748,7 +738,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (unformat (input, "async"))
 	{
-	  tm->async = 1;
+	  om->async = 1;
 	  openssl_async_node_enable_disable (1);
 	}
       else if (unformat (input, "alg %s", &engine_alg))
@@ -765,11 +755,11 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!engine_name_set)
     {
       clib_warning ("No engine provided! \n");
-      tm->async = 0;
+      om->async = 0;
     }
   else
     {
-      if (!register_openssl_engine (engine_name, engine_alg))
+      if (!openssl_engine_register (engine_name, engine_alg))
 	{
 	  return clib_error_return (0, "failed to register %s polling",
 				    engine_name);

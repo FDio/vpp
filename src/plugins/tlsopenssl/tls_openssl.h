@@ -36,9 +36,16 @@ typedef struct openssl_tls_callback_
 
 typedef int openssl_resume_handler(tls_ctx_t *ctx, stream_session_t * tls_session);
 
-openssl_tls_callback_t *vpp_add_async_pending_event(tls_ctx_t *ctx, stream_session_t * tls_session, openssl_resume_handler *myfunc);
-openssl_tls_callback_t *vpp_add_async_pending_event2(tls_ctx_t *ctx, stream_session_t * tls_session, openssl_resume_handler *myfunc);
+tls_ctx_t * openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index);
+openssl_tls_callback_t * vpp_add_async_pending_event (tls_ctx_t * ctx, openssl_resume_handler * handler);
 void openssl_polling_start(ENGINE *engine);
-int register_openssl_engine(char *engine, char *alg);
+int openssl_engine_register(char *engine, char *alg);
 void openssl_async_node_enable_disable (u8 is_en);
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -18,7 +18,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
 #include <openssl/engine.h>
-#include "tls_openssl.h"
+#include <tlsopenssl/tls_openssl.h>
 
 #define MAX_SESSION	    4096
 #define MAX_VECTOR_ASYNC    256
@@ -35,15 +35,13 @@ typedef struct openssl_tls_callback_arg_
   int event_index;
 } openssl_tls_callback_arg_t;
 
-
 typedef struct openssl_event_
 {
   int status;
   u32 event_index;
   u8 thread_index;
+  u32 ctx_index;
 
-  tls_ctx_t *ctx;
-  stream_session_t *tls_session;
   openssl_resume_handler *handler;
   openssl_tls_callback_t engine_callback;
   openssl_tls_callback_arg_t cb_args;
@@ -51,13 +49,18 @@ typedef struct openssl_event_
   int next;
 } openssl_evt_t;
 
+typedef struct openssl_async_status_
+{ 
+  int evt_run_head;
+  int evt_run_tail;
+  int evt_pending_head;
+  int poll_config;
+} openssl_async_status_t;
+
 typedef struct openssl_async_
 {
   openssl_evt_t ***evt_pool;
-  int *evt_run_head;
-  int *evt_run_tail;
-  int *evt_pending_head;
-  int *poll_config;
+  openssl_async_status_t *status;
   void (*polling) (void);
   u8 start_polling;
   ENGINE *engine;
@@ -92,46 +95,41 @@ evt_pool_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_async_t *om = &openssl_async_main;
-  int i, index_size, num_threads;
+  int i, num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  printf ("Totally there is %d thread\n", num_threads);
+  TLS_DBG ("Totally there is %d thread\n", num_threads);
 
   vec_validate (om->evt_pool, num_threads - 1);
+  vec_validate (om->status, num_threads - 1);
 
-  index_size = sizeof (int *) * (num_threads - 1);
-  om->evt_run_head = clib_mem_alloc (index_size);
-  om->evt_run_tail = clib_mem_alloc (index_size);
-  om->evt_pending_head = clib_mem_alloc (index_size);
-  om->poll_config = clib_mem_alloc (index_size);
   om->start_polling = 0;
   om->engine = 0;
 
   for (i = 0; i < num_threads; i++)
     {
-      *(om->evt_run_head + i) = -1;
-      *(om->evt_run_tail + i) = -1;
-      *(om->evt_pending_head + i) = -1;
-      *(om->poll_config + i) = 0;
+      om->status[i].evt_run_head = -1;
+      om->status[i].evt_run_tail = -1;
+      om->status[i].evt_pending_head = -1;
     }
   om->polling = NULL;
 
-  printf ("Node disabled\n");
+  TLS_DBG ("Node disabled\n");
   openssl_async_node_enable_disable (0);
 
   return;
 }
 
 int
-register_openssl_engine (char *engine_name, char *algorithm)
+openssl_engine_register (char *engine_name, char *algorithm)
 {
   int i, registered = -1;
   openssl_async_t *om = &openssl_async_main;
   void (*p) (void);
   ENGINE *engine;
 
-  for (i = 0; i < sizeof (engine_list) / sizeof (struct engine_polling); i++)
+  for (i = 0; i < ARRAY_LEN(engine_list); i++)
     {
       if (!strcmp (engine_list[i].engine, engine_name))
 	{
@@ -164,7 +162,7 @@ register_openssl_engine (char *engine_name, char *algorithm)
     {
       if (!ENGINE_set_default_string (engine, algorithm))
 	{
-	  printf ("Failed to set engine %s algorithm %s\n",
+	  clib_warning("Failed to set engine %s algorithm %s\n",
 		  engine_name, algorithm);
 	  return 0;
 	}
@@ -173,7 +171,7 @@ register_openssl_engine (char *engine_name, char *algorithm)
     {
       if (!ENGINE_set_default (engine, ENGINE_METHOD_ALL))
 	{
-	  printf ("Failed to set engine %s to all algorithm", engine_name);
+	  clib_warning ("Failed to set engine %s to all algorithm", engine_name);
 	  return 0;
 	}
     }
@@ -209,7 +207,7 @@ openssl_evt_free (int event_idx, u8 thread_index)
 {
   openssl_evt_t *evt;
   openssl_async_t *om = &openssl_async_main;
-  int *evt_run_tail = om->evt_run_tail + thread_index;
+  int *evt_run_tail = &om->status[thread_index].evt_run_tail;
 
   if (event_idx < 0)
     return 0;
@@ -251,10 +249,10 @@ openssl_async_run (void *evt)
   openssl_tls_callback_arg_t *args = (openssl_tls_callback_arg_t *) evt;
   int thread_index = args->thread_index;
   int event_index = args->event_index;
-  int *evt_run_tail = om->evt_run_tail + thread_index;
-  int *evt_run_head = om->evt_run_head + thread_index;
+  int *evt_run_tail = &om->status[thread_index].evt_run_tail;
+  int *evt_run_head = &om->status[thread_index].evt_run_head;
 
-  printf ("Set event %d to run\n", event_index);
+  TLS_DBG ("Set event %d to run\n", event_index);
 
   event = openssl_evt_get_w_thread (event_index, thread_index);
 
@@ -278,21 +276,20 @@ openssl_async_run (void *evt)
 }
 
 openssl_tls_callback_t *
-vpp_add_async_pending_event (tls_ctx_t * ctx, stream_session_t * tls_session,
-			     openssl_resume_handler * handler)
+vpp_add_async_pending_event (tls_ctx_t * ctx, openssl_resume_handler * handler)
 {
   u32 eidx;
   openssl_evt_t *event;
   openssl_async_t *om = &openssl_async_main;
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int *evt_pending_head;
   u32 thread_id = ctx->c_thread_index;
 
   eidx = openssl_evt_alloc ();
   event = openssl_evt_get (eidx);
 
-  event->ctx = ctx;
+  event->ctx_index = oc->openssl_ctx_index;
   event->status = SSL_ASYNC_PENDING;
-  event->tls_session = tls_session;
   event->handler = handler;
   event->cb_args.event_index = eidx;
   event->cb_args.thread_index = thread_id;
@@ -300,7 +297,7 @@ vpp_add_async_pending_event (tls_ctx_t * ctx, stream_session_t * tls_session,
   event->engine_callback.arg = &event->cb_args;
 
   /* add to pending list */
-  evt_pending_head = om->evt_pending_head + thread_id;
+  evt_pending_head = &om->status[thread_id].evt_pending_head;
   event->next = *evt_pending_head;
   *evt_pending_head = eidx;
 
@@ -315,22 +312,23 @@ event_handler (void *tls_async)
   openssl_resume_handler *handler;
   openssl_evt_t *callback;
   stream_session_t *tls_session;
+  int thread_index;
   tls_ctx_t *ctx;
 
   callback = (openssl_evt_t *) tls_async;
+  thread_index = callback->cb_args.thread_index;
+  ctx = openssl_ctx_get_w_thread(callback->ctx_index, thread_index);
   handler = callback->handler;
-  tls_session = callback->tls_session;
-  ctx = callback->ctx;
+  tls_session = session_get_from_handle (ctx->tls_session_handle);
 
   if (handler)
     {
-      printf ("relaunch...\n");
+      TLS_DBG ("relaunch...\n");
       (*handler) (ctx, tls_session);
     }
 
   /* Need to free the event */
-  openssl_evt_free (callback->cb_args.event_index,
-		    callback->cb_args.thread_index);
+  openssl_evt_free (callback->cb_args.event_index, thread_index);
 
   return;
 }
@@ -346,17 +344,16 @@ dasync_polling ()
   u8 thread_index = vlib_get_thread_index ();
 
   /* POC code here to simulate the engine to call callback */
-  evt_pending = om->evt_pending_head + thread_index;
+  evt_pending = &om->status[thread_index].evt_pending_head;
   while (*evt_pending >= 0)
     {
-      printf ("polling... current head = %d\n", *evt_pending);
+      TLS_DBG ("polling... current head = %d\n", *evt_pending);
       event = openssl_evt_get_w_thread (*evt_pending, thread_index);
       *evt_pending = event->next;
       if (event->status == SSL_ASYNC_PENDING)
 	{
 	  engine_cb = &event->engine_callback;
 	  (*engine_cb->callback) (engine_cb->arg);
-	  printf ("dasync_polling: callback is called\n");
 	}
     }
 
@@ -379,7 +376,7 @@ qat_polling_config ()
   u8 thread_index = vlib_get_thread_index ();
   int *config;
 
-  config = om->poll_config + thread_index;
+  config = &om->status[thread_index].poll_config;
   if (*config)
     return;
 
@@ -389,7 +386,7 @@ qat_polling_config ()
 	       NULL, NULL);
   *config = 1;
 
-  printf ("set thread %d and instance %d mapping\n", thread_index,
+  TLS_DBG ("set thread %d and instance %d mapping\n", thread_index,
 	  thread_index);
 
 }
@@ -439,7 +436,8 @@ tls_async_do_job (int eidx, u32 thread_index)
 
   /* do the real job */
   event = openssl_evt_get_w_thread (eidx, thread_index);
-  ctx = event->ctx;
+  ctx = openssl_ctx_get_w_thread(event->ctx_index, thread_index);
+  
   if (ctx)
     {
       ctx->resume = 1;
@@ -455,7 +453,7 @@ tls_resume_from_crypto (int thread_index)
 
   openssl_async_t *om = &openssl_async_main;
   openssl_evt_t *event;
-  int *evt_run_head = om->evt_run_head + thread_index;
+  int *evt_run_head = &om->status[thread_index].evt_run_head;
 
   if (*evt_run_head < 0)
     return 0;
@@ -465,7 +463,7 @@ tls_resume_from_crypto (int thread_index)
       if (*evt_run_head >= 0)
 	{
 	  event = openssl_evt_get_w_thread (*evt_run_head, thread_index);
-	  printf ("event run = %d\n", *evt_run_head);
+	  TLS_DBG ("event run = %d\n", *evt_run_head);
 	  tls_async_do_job (*evt_run_head, thread_index);
 
 	  *evt_run_head = event->next;
@@ -485,7 +483,7 @@ static clib_error_t *
 tls_async_init (vlib_main_t * vm)
 {
 
-  printf ("Start to call tls_async_init\n");
+  TLS_DBG("Start to call tls_async_init\n");
   evt_pool_init (vm);
   return 0;
 
