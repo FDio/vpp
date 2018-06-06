@@ -226,6 +226,20 @@ typedef struct
 
   /** Process node identifier */
   u32 process_node_index;
+
+  /** The current direction of cursor travel.
+   *  This is important since when advancing left-to-right, at the
+   *  right hand edge of the console the terminal typically defers
+   *  wrapping the cursor to the next line until a character is
+   *  actually displayed.
+   *  This messes up our heuristic for whether to use ANSI to return
+   *  the cursor to the end of the line and instead we have to
+   *  nudge the cursor to the next line.
+   *  A Value of @c 0 means we're advancing left-to-right; @c 1 means
+   *  the opposite.
+   */
+  u8 cursor_direction;
+
 } unix_cli_file_t;
 
 /** Resets the pager buffer and other data.
@@ -681,6 +695,69 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
 	  start = end;
 	}
     }
+
+  /* Use the last character to determine the last direction of the cursor. */
+  if (buffer_bytes > 0)
+    cf->cursor_direction = (buffer[buffer_bytes - 1] == (u8) '\b');
+}
+
+/** @brief Moves the terminal cursor one character to the left, with
+ * special handling when it reaches the left edge of the terminal window.
+ *
+ * Ordinarily we can simply send a '\b' to move the cursor left, however
+ * most terminals will not reverse-wrap to the end of the previous line
+ * if the cursor is in the left-most column. To counter this we must
+ * check the cursor position + prompt length modulo terminal width and
+ * if available use some other means, such as ANSI terminal escape
+ * sequences, to move the cursor.
+ *
+ * @param cf Unix CLI session of the desired stream to write to.
+ * @param uf The Unix file structure of the desired stream to write to.
+ */
+static void
+unix_vlib_cli_output_cursor_left (unix_cli_file_t * cf, clib_file_t * uf)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  static u8 *ansi = 0;		/* assumes no reentry */
+  u32 position;
+
+  if (!cf->is_interactive || !cf->ansi_capable || !cf->width)
+    {
+      /* No special handling for dumb terminals */
+      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      return;
+    }
+
+  position = ((u32) vec_len (cm->cli_prompt) + cf->cursor) % cf->width;
+
+  if (position != 0)
+    {
+      /* No special handling required if we're not at the left edge */
+      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      return;
+    }
+
+  if (!cf->cursor_direction)
+    {
+      /* Special handling for when we are at the left edge but
+       * the cursor was going left-to-right, but in this situation
+       * xterm-like terminals actually hide the cursor off the right
+       * edge. A \b here seems to jump one char too many, so let's
+       * force the cursor onto the next line instead.
+       */
+      if (cf->cursor < vec_len (cf->current_command))
+	unix_vlib_cli_output_cooked (cf, uf, &cf->current_command[cf->cursor],
+				     1);
+      else
+	unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\r", 1);
+    }
+
+  /* Relocate the cursor at the right hand edge one line above */
+  ansi = format (ansi, CSI "A" CSI "%dC", cf->width - 1);
+  unix_vlib_cli_output_cooked (cf, uf, ansi, vec_len (ansi));
+  vec_reset_length (ansi);	/* keep the vec around for next time */
+  cf->cursor_direction = 1;	/* going backwards now */
 }
 
 /** @brief Output the CLI prompt */
@@ -1359,16 +1436,20 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       if (cf->search_mode == 0)
 	{
 	  /* Erase the current command (if any) */
-	  for (j = 0; j < (vec_len (cf->current_command)); j++)
-	    unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
+	  for (; cf->cursor > 0; cf->cursor--)
+	    {
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	    }
 
 	  vec_reset_length (cf->search_key);
 	  vec_reset_length (cf->current_command);
+
 	  if (action == UNIX_CLI_PARSE_ACTION_REVSEARCH)
 	    cf->search_mode = -1;
 	  else
 	    cf->search_mode = 1;
-	  cf->cursor = 0;
 	}
       else
 	{
@@ -1385,27 +1466,29 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_ERASELINELEFT:
       /* Erase the command from the cursor to the start */
 
-      /* Shimmy forwards to the new end of line position */
+      j = cf->cursor;
+      /* Shimmy backwards to the new end of line position */
       delta = vec_len (cf->current_command) - cf->cursor;
-      for (j = cf->cursor; j > delta; j--)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      for (; cf->cursor > delta; cf->cursor--)
+	unix_vlib_cli_output_cursor_left (cf, uf);
       /* Zap from here to the end of what is currently displayed */
-      for (; j < (vec_len (cf->current_command)); j++)
+      for (; cf->cursor < vec_len (cf->current_command); cf->cursor++)
 	unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
       /* Get back to the start of the line */
-      for (j = 0; j < (vec_len (cf->current_command)); j++)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      for (; cf->cursor > 0; cf->cursor--)
+	unix_vlib_cli_output_cursor_left (cf, uf);
 
-      j = vec_len (cf->current_command) - cf->cursor;
-      memmove (cf->current_command, cf->current_command + cf->cursor, j);
-      _vec_len (cf->current_command) = j;
+      /* Delete the desired text from the command */
+      memmove (cf->current_command, cf->current_command + j, delta);
+      _vec_len (cf->current_command) = delta;
 
       /* Print the new contents */
-      unix_vlib_cli_output_cooked (cf, uf, cf->current_command, j);
+      unix_vlib_cli_output_cooked (cf, uf, cf->current_command, delta);
+      cf->cursor = delta;	/* for backspace tracking */
+
       /* Shimmy back to the start */
-      for (j = 0; j < (vec_len (cf->current_command)); j++)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
-      cf->cursor = 0;
+      for (; cf->cursor > 0; cf->cursor--)
+	unix_vlib_cli_output_cursor_left (cf, uf);
 
       cf->search_mode = 0;
       break;
@@ -1413,12 +1496,13 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_ERASELINERIGHT:
       /* Erase the command from the cursor to the end */
 
+      j = cf->cursor;
       /* Zap from cursor to end of what is currently displayed */
-      for (j = cf->cursor; j < (vec_len (cf->current_command)); j++)
+      for (; cf->cursor < (vec_len (cf->current_command)); cf->cursor++)
 	unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
       /* Get back to where we were */
-      for (j = cf->cursor; j < (vec_len (cf->current_command)); j++)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      for (; cf->cursor > j; cf->cursor--)
+	unix_vlib_cli_output_cursor_left (cf, uf);
 
       /* Truncate the line at the cursor */
       _vec_len (cf->current_command) = cf->cursor;
@@ -1429,7 +1513,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_LEFT:
       if (cf->cursor > 0)
 	{
-	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+	  unix_vlib_cli_output_cursor_left (cf, uf);
 	  cf->cursor--;
 	}
 
@@ -1454,10 +1538,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	break;
       cf->search_mode = 0;
       /* Erase the command */
-      for (j = cf->cursor; j < (vec_len (cf->current_command)); j++)
+      for (; cf->cursor < vec_len (cf->current_command); cf->cursor++)
 	unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
-      for (j = 0; j < (vec_len (cf->current_command)); j++)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
+      for (; cf->cursor > 0; cf->cursor--)
+	{
+	  unix_vlib_cli_output_cursor_left (cf, uf);
+	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	  unix_vlib_cli_output_cursor_left (cf, uf);
+	}
       vec_reset_length (cf->current_command);
       if (vec_len (cf->command_history))
 	{
@@ -1501,11 +1589,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_HOME:
       if (vec_len (cf->current_command) && cf->cursor > 0)
 	{
-	  while (cf->cursor)
-	    {
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
-	      cf->cursor--;
-	    }
+	  for (; cf->cursor > 0; cf->cursor--)
+	    unix_vlib_cli_output_cursor_left (cf, uf);
 	}
 
       cf->search_mode = 0;
@@ -1528,25 +1613,22 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_WORDLEFT:
       if (vec_len (cf->current_command) && cf->cursor > 0)
 	{
-	  j = cf->cursor;
+	  unix_vlib_cli_output_cursor_left (cf, uf);
+	  cf->cursor--;
 
-	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
-	  j--;
-
-	  while (j && isspace (cf->current_command[j]))
+	  while (cf->cursor && isspace (cf->current_command[cf->cursor]))
 	    {
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
-	      j--;
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
 	    }
-	  while (j && !isspace (cf->current_command[j]))
+	  while (cf->cursor && !isspace (cf->current_command[cf->cursor]))
 	    {
-	      if (isspace (cf->current_command[j - 1]))
+	      if (isspace (cf->current_command[cf->cursor - 1]))
 		break;
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
-	      j--;
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
 	    }
 
-	  cf->cursor = j;
 	}
 
       cf->search_mode = 0;
@@ -1577,9 +1659,13 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	{
 	  if (cf->cursor == vec_len (cf->current_command))
 	    {
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
-	      _vec_len (cf->current_command)--;
+	      unix_vlib_cli_output_cursor_left (cf, uf);
 	      cf->cursor--;
+	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      cf->cursor++;
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
+	      _vec_len (cf->current_command)--;
 	    }
 	  else if (cf->cursor > 0)
 	    {
@@ -1588,16 +1674,25 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      memmove (cf->current_command + cf->cursor - 1,
 		       cf->current_command + cf->cursor, j);
 	      _vec_len (cf->current_command)--;
-	      cf->cursor--;
+
 	      /* redraw the rest of the line */
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
 	      unix_vlib_cli_output_cooked (cf, uf,
 					   cf->current_command + cf->cursor,
 					   j);
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " \b\b", 3);
+	      cf->cursor += j;
+	      /* erase last char */
+	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      cf->cursor++;
+
 	      /* and shift the terminal cursor back where it should be */
+	      j += 2;		/* account for old string length and offset position */
 	      while (--j)
-		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+		{
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  cf->cursor--;
+		}
 	    }
 	}
       cf->search_mode = 0;
@@ -1619,13 +1714,21 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      unix_vlib_cli_output_cooked (cf, uf,
 					   cf->current_command + cf->cursor,
 					   j);
-	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " \b", 2);
+	      cf->cursor += j;
+	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      cf->cursor++;
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
 	      /* and shift the terminal cursor back where it should be */
 	      if (j)
 		{
-		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  cf->cursor--;
 		  while (--j)
-		    unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+		    {
+		      unix_vlib_cli_output_cursor_left (cf, uf);
+		      cf->cursor--;
+		    }
 		}
 	    }
 	}
@@ -1657,11 +1760,13 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
       unix_vlib_cli_output_raw (cf, uf,
 				cm->cli_prompt, vec_len (cm->cli_prompt));
-      unix_vlib_cli_output_raw (cf, uf,
-				cf->current_command,
-				vec_len (cf->current_command));
-      for (j = cf->cursor; j < vec_len (cf->current_command); j++)
-	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b", 1);
+      unix_vlib_cli_output_cooked (cf, uf,
+				   cf->current_command,
+				   vec_len (cf->current_command));
+      j = cf->cursor;
+      cf->cursor = vec_len (cf->current_command);
+      for (; cf->cursor > j; cf->cursor--)
+	unix_vlib_cli_output_cursor_left (cf, uf);
 
       break;
 
@@ -1688,14 +1793,15 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	vlib_cli_get_possible_completions (cf->current_command);
       if (vec_len (possible_commands) == 1)
 	{
-	  u32 j = cf->cursor;
 	  u8 *completed = possible_commands[0];
+	  j = cf->cursor;
 
 	  /* find the last word of current_command */
 	  while (j >= 1 && !isspace (cf->current_command[j - 1]))
 	    {
+	      unix_vlib_cli_output_cursor_left (cf, uf);
+	      cf->cursor--;
 	      j--;
-	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\b", 1);
 	    }
 	  _vec_len (cf->current_command) = j;
 
@@ -1703,13 +1809,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  vec_append (cf->current_command, completed);
 
 	  /* echo to the terminal */
-	  unix_vlib_cli_output_raw (cf, uf, completed, vec_len (completed));
+	  unix_vlib_cli_output_cooked (cf, uf, completed,
+				       vec_len (completed));
 
 	  /* add one trailing space if needed */
 	  if (vec_len (save) == 0)
 	    {
 	      vec_add1 (cf->current_command, ' ');
-	      unix_vlib_cli_output_raw (cf, uf, (u8 *) " ", 1);
+	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	    }
 
 	  cf->cursor = vec_len (cf->current_command);
@@ -1719,18 +1826,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	{
 	  u8 **possible_command;
 	  uword max_command_len = 0, min_command_len = ~0;
-	  u32 i, j;
+	  u32 i;
 
 	  vec_foreach (possible_command, possible_commands)
 	  {
 	    if (vec_len (*possible_command) > max_command_len)
-	      {
-		max_command_len = vec_len (*possible_command);
-	      }
+	      max_command_len = vec_len (*possible_command);
 	    if (vec_len (*possible_command) < min_command_len)
-	      {
-		min_command_len = vec_len (*possible_command);
-	      }
+	      min_command_len = vec_len (*possible_command);
 	  }
 
 	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
@@ -1743,12 +1846,12 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 		i = 0;
 	      }
-	    unix_vlib_cli_output_raw (cf, uf, *possible_command,
-				      vec_len (*possible_command));
+	    unix_vlib_cli_output_cooked (cf, uf, *possible_command,
+					 vec_len (*possible_command));
 	    for (j = vec_len (*possible_command); j < max_command_len + 2;
 		 j++)
 	      {
-		unix_vlib_cli_output_raw (cf, uf, (u8 *) " ", 1);
+		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	      }
 	    i += max_command_len + 2;
 	  }
@@ -1757,8 +1860,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
 	  /* rewrite prompt */
 	  unix_cli_cli_prompt (cf, uf);
-	  unix_vlib_cli_output_raw (cf, uf, cf->current_command,
-				    vec_len (cf->current_command));
+	  unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
+				       vec_len (cf->current_command));
 
 	  /* count length of last word */
 	  j = cf->cursor;
@@ -1774,6 +1877,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	    {
 	      u8 common = '\0';
 	      int stop = 0;
+
 	      vec_foreach (possible_command, possible_commands)
 	      {
 		if (common == '\0')
@@ -1786,11 +1890,12 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 		    break;
 		  }
 	      }
+
 	      if (!stop)
 		{
 		  vec_add1 (cf->current_command, common);
 		  cf->cursor++;
-		  unix_vlib_cli_output_raw (cf, uf, (u8 *) & common, 1);
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) & common, 1);
 		}
 	      else
 		{
@@ -1806,11 +1911,10 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       if (vec_len (save) > 0)
 	{
 	  /* restore remaining input if tab was hit in the middle of a line */
-	  unix_vlib_cli_output_raw (cf, uf, save, vec_len (save));
-	  for (j = 0; j < vec_len (save); j++)
-	    {
-	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\b", 1);
-	    }
+	  unix_vlib_cli_output_cooked (cf, uf, save, vec_len (save));
+	  cf->cursor += vec_len (save);
+	  for (j = 0; j < vec_len (save); j++, cf->cursor--)
+	    unix_vlib_cli_output_cursor_left (cf, uf);
 	  vec_append (cf->current_command, save);
 	  vec_free (save);
 	}
@@ -2062,7 +2166,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	{
 	  /* no-op for now */
 	}
-      else if (cf->has_history && cf->search_mode && isprint (input))
+      else if (cf->has_history && cf->search_mode != 0 && isprint (input))
 	{
 	  int k, limit, offset;
 	  u8 *item;
@@ -2097,8 +2201,12 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      goto next;
 
 	    found_at_offset:
-	      for (j = 0; j < vec_len (cf->current_command); j++)
-		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
+	      for (; cf->cursor > 0; cf->cursor--)
+		{
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		}
 
 	      vec_validate (cf->current_command, vec_len (item) - 1);
 	      clib_memcpy (cf->current_command, item, vec_len (item));
@@ -2129,7 +2237,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      cf->cursor++;
 
 	      /* Echo the character back to the client */
-	      unix_vlib_cli_output_raw (cf, uf, &input, 1);
+	      unix_vlib_cli_output_cooked (cf, uf, &input, 1);
 	    }
 	  else
 	    {
@@ -2141,12 +2249,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      cf->current_command[cf->cursor] = input;
 	      /* Redraw the line */
 	      j++;
-	      unix_vlib_cli_output_raw (cf, uf,
-					cf->current_command + cf->cursor, j);
+	      unix_vlib_cli_output_cooked (cf, uf,
+					   cf->current_command + cf->cursor,
+					   j);
+	      cf->cursor += j;
+	      j--;
 	      /* Put terminal cursor back */
-	      while (--j)
-		unix_vlib_cli_output_raw (cf, uf, (u8 *) "\b", 1);
-	      cf->cursor++;
+	      for (; j > 0; j--, cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
 	    }
 	}
       else
@@ -3289,7 +3399,6 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  //unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
   unix_cli_file_t *cf;
