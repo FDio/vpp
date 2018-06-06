@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa1b3bcb_64dec078",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-06-06T23:52:19Z",
+      "side": 1,
+      "message": "These were added in a different patch https://gerrit.fd.io/r/#/c/12547/, sorry for the confusion.",
+      "range": {
+        "startLine": 238,
+        "startChar": 9,
+        "endLine": 238,
+        "endChar": 37
+      },
+      "revId": "e5e011951140996d63aa69b809879c95690e0859",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "99c595b4_a01b135f",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 1340
+      },
+      "writtenOn": "2018-06-06T23:52:19Z",
+      "side": 1,
+      "message": "These were added in a different patch https://gerrit.fd.io/r/#/c/12547/, sorry for the confusion.",
+      "range": {
+        "startLine": 371,
+        "startChar": 9,
+        "endLine": 371,
+        "endChar": 31
+      },
+      "revId": "e5e011951140996d63aa69b809879c95690e0859",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
