@@ -32,10 +32,16 @@ PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_17.11_TARBALL_MD5_CKSUM := 53ee9e054a8797c9e67ffa0eb5d0c701
 DPDK_18.02.1_TARBALL_MD5_CKSUM := 3bbb5468f662e1f7472d4abc5c4cf08e
-DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
+DPDK_18.05_TARBALL_MD5_CKSUM := 9fc86367cd9407ff6a8dfea56c4eddc4
 MACHINE=$(shell uname -m)
+
+# replace dot with space, and if 3rd word exists we deal with stable dpdk rel
+ifeq ($(word 3,$(subst ., ,$(DPDK_VERSION))),)
+DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
+else
+DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
+endif
 
 NASM_BASE_URL := http://www.nasm.us/pub/nasm/releasebuilds
 NASM_VER := 2.13.01
@@ -43,10 +49,10 @@ NASM_TARBALL := nasm-$(NASM_VER).tar.xz
 NASM_TAR_URL := $(NASM_BASE_URL)/$(NASM_VER)/$(NASM_TARBALL)
 NASM_SOURCE := $(B)/nasm-$(NASM_VER)
 
-ifeq ($(DPDK_VERSION),17.11)
-IPSEC_MB_VER ?= 0.47
-else
+ifneq (,$(findstring 18.02,$(DPDK_VERSION)))
 IPSEC_MB_VER ?= 0.48
+else
+IPSEC_MB_VER ?= 0.49
 endif
 
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
@@ -158,6 +164,11 @@ else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif
 
+ifeq ($(AESNI),y)
+IPSEC_MB_BUILD_PATH := $(B)/intel-ipsec-mb-$(IPSEC_MB_VER)
+DPDK_EXTRA_CFLAGS += -L$(IPSEC_MB_BUILD_PATH) -I$(IPSEC_MB_BUILD_PATH)
+endif
+
 DPDK_MAKE_EXTRA_ARGS += AESNI_MULTI_BUFFER_LIB_PATH=$(AESNIMB_LIB_SOURCE)
 
 # assemble DPDK make arguments
@@ -210,7 +221,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
 	@# not needed
-	$(call set,RTE_LIBRTE_TIMER,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)
 	$(call set,RTE_LIBRTE_LPM,n)
 	$(call set,RTE_LIBRTE_ACL,n)
@@ -308,7 +318,7 @@ build-nasm:
 build-ipsec-mb:
 	mkdir -p $(I)/lib/
 	# Do not build GCM stuff if we are building ISA_L
-	make -C $(AESNIMB_LIB_SOURCE) -j \
+	make -C $(AESNIMB_LIB_SOURCE) -j SHARED=n \
 	  EXTRA_CFLAGS=-fPIC NASM=$(NASM_SOURCE)/nasm
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
 

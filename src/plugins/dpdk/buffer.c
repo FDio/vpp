@@ -463,22 +463,26 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   clib_error_t *error = 0;
   u32 size, obj_size;
   i32 ret;
+  uword i;
 
   obj_size = rte_mempool_calc_obj_size (elt_size, 0, 0);
-  size = rte_mempool_xmem_size (num_elts, obj_size, 21, 0);
 
-  error =
-    vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
-			       VLIB_PHYSMEM_F_HUGETLB | VLIB_PHYSMEM_F_SHARED,
-			       pri);
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+  size = rte_mempool_xmem_size (num_elts, obj_size, 21, 0);
+#else
+  size = rte_mempool_calc_mem_size_helper (num_elts, obj_size, 21);
+#endif
+
+  error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
+				     VLIB_PHYSMEM_F_HUGETLB |
+				     VLIB_PHYSMEM_F_SHARED, pri);
   if (error)
     return error;
 
   pr = vlib_physmem_get_region (vm, pri[0]);
 
-  mp =
-    rte_mempool_create_empty ((char *) pool_name, num_elts, elt_size,
-			      512, pool_priv_size, numa, 0);
+  mp = rte_mempool_create_empty ((char *) pool_name, num_elts, elt_size,
+				 512, pool_priv_size, numa, 0);
   if (!mp)
     return clib_error_return (0, "failed to create %s", pool_name);
 
@@ -490,13 +494,16 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
 
-  ret =
-    rte_mempool_populate_iova_tab (mp, pr->mem, pr->page_table, pr->n_pages,
-				   pr->log2_page_size, NULL, NULL);
-  if (ret != (i32) mp->size)
+  for (i = 0; i < pr->n_pages; i++)
     {
-      rte_mempool_free (mp);
-      return clib_error_return (0, "failed to populate %s", pool_name);
+      size_t page_size = 1 << pr->log2_page_size;
+      ret = rte_mempool_populate_iova (mp, ((char *) pr->mem) + i * page_size,
+				       pr->page_table[i], page_size, 0, 0);
+      if (ret < 0)
+	{
+	  rte_mempool_free (mp);
+	  return clib_error_return (0, "failed to populate %s", pool_name);
+	}
     }
 
   _mp[0] = mp;
