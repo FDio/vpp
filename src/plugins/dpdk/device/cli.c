@@ -46,6 +46,7 @@ get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
   dpdk_main_t *dm = &dpdk_main;
   vnet_hw_interface_t *hw;
   struct rte_eth_dev_info dev_info;
+  struct rte_pci_device *pci_dev;
   uword *p = 0;
   clib_error_t *error = NULL;
 
@@ -66,14 +67,21 @@ get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
   *xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   rte_eth_dev_info_get ((*xd)->port_id, &dev_info);
-  if (dev_info.pci_dev)
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+  pci_dev = dev_info.pci_dev;
+#else
+  pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+#endif
+
+  if (pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
 
-      pci_addr.domain = dev_info.pci_dev->addr.domain;
-      pci_addr.bus = dev_info.pci_dev->addr.bus;
-      pci_addr.slot = dev_info.pci_dev->addr.devid;
-      pci_addr.function = dev_info.pci_dev->addr.function;
+      pci_addr.domain = pci_dev->addr.domain;
+      pci_addr.bus = pci_dev->addr.bus;
+      pci_addr.slot = pci_dev->addr.devid;
+      pci_addr.function = pci_dev->addr.function;
 
       p =
 	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
@@ -1218,6 +1226,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 
   /* Device specific data */
   struct rte_eth_dev_info dev_info;
+  struct rte_pci_device *pci_dev;
   dpdk_device_config_t *devconf = 0;
   vnet_hw_interface_t *hw;
   dpdk_device_t *xd;
@@ -1284,14 +1293,21 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
-  if (dev_info.pci_dev)
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+  pci_dev = dev_info.pci_dev;
+#else
+  pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+#endif
+
+  if (pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
 
-      pci_addr.domain = dev_info.pci_dev->addr.domain;
-      pci_addr.bus = dev_info.pci_dev->addr.bus;
-      pci_addr.slot = dev_info.pci_dev->addr.devid;
-      pci_addr.function = dev_info.pci_dev->addr.function;
+      pci_addr.domain = pci_dev->addr.domain;
+      pci_addr.bus = pci_dev->addr.bus;
+      pci_addr.slot = pci_dev->addr.devid;
+      pci_addr.function = pci_dev->addr.function;
 
       p =
 	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
@@ -1443,6 +1459,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = (u32) ~ 0;
   u32 profile_id, subport_id, i;
   struct rte_eth_dev_info dev_info;
+  struct rte_pci_device *pci_dev;
   dpdk_device_config_t *devconf = 0;
   vlib_thread_registration_t *tr;
   uword *p = 0;
@@ -1475,14 +1492,21 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
-  if (dev_info.pci_dev)
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+  pci_dev = dev_info.pci_dev;
+#else
+  pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+#endif
+
+  if (pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
 
-      pci_addr.domain = dev_info.pci_dev->addr.domain;
-      pci_addr.bus = dev_info.pci_dev->addr.bus;
-      pci_addr.slot = dev_info.pci_dev->addr.devid;
-      pci_addr.function = dev_info.pci_dev->addr.function;
+      pci_addr.domain = pci_dev->addr.domain;
+      pci_addr.bus = pci_dev->addr.bus;
+      pci_addr.slot = pci_dev->addr.devid;
+      pci_addr.function = pci_dev->addr.function;
 
       p =
 	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
