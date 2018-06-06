@@ -1,0 +1,245 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vppinfra/time_range.h>
+
+void clib_timebase_init (clib_timebase_t *tb, i32 timezone_offset_in_hours)
+{
+  memset (tb, 0, sizeof (*tb));
+  
+  clib_time_init (&tb->clib_time);
+  tb->time_zero = unix_time_now();
+
+  tb->timezone_offset = ((f64) (timezone_offset_in_hours)) *3600.0;
+}
+
+const static u32 days_per_month [] =
+  {
+    31,  /* Jan */
+    28,  /* Feb */
+    31,  /* Mar */
+    30,  /* Apr */
+    31,  /* May */
+    30,  /* Jun */
+    31,  /* Jul */
+    31,  /* Aug */
+    30,  /* Sep */
+    31,  /* Oct */
+    30,  /* Nov */
+    31,  /* Dec */
+  };
+
+const static char *month_short_names [] =
+  {
+    "Jan", 
+    "Feb", 
+    "Mar", 
+    "Apr", 
+    "May", 
+    "Jun", 
+    "Jul", 
+    "Aug", 
+    "Sep", 
+    "Oct", 
+    "Nov", 
+    "Dec", 
+  };
+
+const static char *day_names_epoch_order [] =
+  {
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+  };
+
+void clib_timebase_time_to_components (f64 now, clib_timebase_component_t *cp)
+{
+  u32 year, month, hours, minutes, seconds, nanoseconds;
+  u32 days_in_year, days_in_month, day_of_month;
+  u32 days_since_epoch;
+  u32 day_name_index;
+
+  /* Unix epoch is 1/1/1970 00:00:00.00, a Thursday */
+
+  year = 1970;
+  days_since_epoch = 0;
+
+  do
+    {
+      days_in_year = clib_timebase_is_leap_year (year) ? 366 : 365;
+      days_since_epoch += days_in_year;
+      now = now - ((f64) days_in_year) * 86400.0;
+      year++;
+    } while (now > 0.0);
+  
+  days_since_epoch -= days_in_year;
+  now += ((f64) days_in_year) * 86400;
+  year--;
+
+  month = 0;
+
+  do 
+    {
+      days_in_month = days_per_month[month];
+      if (month == 1 && clib_timebase_is_leap_year (year))
+        days_in_month++;
+
+      days_since_epoch += days_in_month;
+      now = now - ((f64) days_in_month) * 86400.0;
+      month++;
+    } while (now > 0.0);
+
+  days_since_epoch -= days_in_month;
+  now += ((f64) days_in_month) * 86400;
+  month--;
+  
+  day_of_month = 1;
+  do {
+    now = now - 86400;
+    day_of_month ++;
+    days_since_epoch ++;
+  } while (now > 0.0);
+
+  day_of_month --;
+  days_since_epoch --;
+  now += 86400.0;
+
+  day_name_index = days_since_epoch % 7;
+
+  hours = (u32)(now / (3600.0));
+  now -= (f64)(hours * 3600);
+
+  minutes = (u32)(now / 60.0);
+  now -= (f64)(minutes * 60);
+
+  seconds = (u32)(now);
+  now -= (f64)(seconds);
+  
+  nanoseconds = (f64)(now * 1e9);
+
+  cp->year = year;
+  cp->month = month;
+  cp->day = day_of_month;
+  cp->day_name_index = day_name_index;
+  cp->hour = hours;
+  cp->minute = minutes;
+  cp->second = seconds;
+  cp->nanosecond = nanoseconds;
+  cp->fractional_seconds = now;
+}
+
+f64 clib_timebase_components_to_time (clib_timebase_component_t *cp)
+{
+  f64 now = 0;
+  u32 year, days_in_year, month, days_in_month;
+
+  year = 1970;
+
+  while (year < cp->year)
+    {
+      days_in_year = clib_timebase_is_leap_year (year) ? 366 : 365;
+      now += ((f64) days_in_year) * 86400.0;
+      year++;
+    }
+
+  month = 0;
+
+  while (month < cp->month)
+    {
+      days_in_month = days_per_month[month];
+      if (month == 1 && clib_timebase_is_leap_year (year))
+        days_in_month++;
+      
+      now += ((f64) days_in_month)*86400.0;
+      month++;
+    }
+
+  now += ((f64)cp->day -1)*86400.0;
+  now += ((f64)cp->hour)*3600.0;
+  now += ((f64)cp->minute)*60.0;
+  now += ((f64)cp->second);
+  now += ((f64)cp->nanosecond) * 1e-9;
+
+  return (now);
+}
+
+
+u8 *
+format_clib_timebase_time (u8 * s, va_list * args)
+{
+  f64 now = va_arg (*args, f64);
+  clib_timebase_component_t _c, *cp = &_c;
+
+  clib_timebase_time_to_components (now, cp);
+
+  s = format (s, "%s, %u %s %u %u:%02u:%02u%.2f",
+              day_names_epoch_order[cp->day_name_index],
+              cp->day, 
+              month_short_names[cp->month],
+              cp->year,
+              cp->hour,
+              cp->minute,
+              cp->second,
+              cp->fractional_seconds);
+  return (s);
+}
+
+uword
+unformat_clib_timebase_range_hms (unformat_input_t * input, va_list * args)
+{
+  clib_timebase_range_t *rp = va_arg (*args, clib_timebase_range_t *);
+  u32 start_hour, start_minute, start_second;
+  u32 end_hour, end_minute, end_second;
+
+  start_hour = start_minute = start_second
+    = end_hour = end_minute = end_second = 0;
+
+  if (unformat (input, "%u:%u:%u - %u:%u:%u",
+                &start_hour, &start_minute, &start_second,
+                &end_hour, &end_minute, &end_second))
+    ;
+  else if (unformat (input, "%u:%u - %u:%u",
+                     &start_hour, &start_minute,
+                     &end_hour, &end_minute))
+    ;
+  else if (unformat (input, "%u - %u", &start_hour, &end_hour))
+    ;
+  else 
+    return 0;
+    
+  memset (rp, 0, sizeof (*rp));
+  rp->start.hour = start_hour;
+  rp->start.minute = start_minute;
+  rp->start.second = start_second;
+  rp->end.hour = end_hour;
+  rp->end.minute = end_minute;
+  rp->end.second = end_second;
+
+  return 1;
+}
+
+
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
