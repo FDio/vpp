@@ -52,6 +52,7 @@ TESTS  +=  test_bihash_template \
 	   test_slist \
 	   test_socket \
 	   test_time \
+	   test_time_range \
 	   test_timing_wheel \
 	   test_tw_timer \
 	   test_valloc \
@@ -87,6 +88,7 @@ test_serialize_SOURCES = vppinfra/test_serialize.c
 test_slist_SOURCES = vppinfra/test_slist.c
 test_socket_SOURCES = vppinfra/test_socket.c
 test_time_SOURCES = vppinfra/test_time.c
+test_time_range_SOURCES = vppinfra/test_time_range.c
 test_timing_wheel_SOURCES = vppinfra/test_timing_wheel.c
 test_tw_timer_SOURCES = vppinfra/test_tw_timer.c
 test_valloc_SOURCES = vppinfra/test_valloc.c
@@ -151,6 +153,7 @@ test_serialize_LDADD =	libvppinfra.la
 test_slist_LDADD =	libvppinfra.la
 test_socket_LDADD =	libvppinfra.la
 test_time_LDADD =	libvppinfra.la -lm
+test_time_range_LDADD =	libvppinfra.la -lm
 test_timing_wheel_LDADD =	libvppinfra.la -lm
 test_tw_timer_LDADD =	libvppinfra.la
 test_valloc_LDADD =	libvppinfra.la
@@ -182,6 +185,7 @@ test_serialize_LDFLAGS = -static
 test_slist_LDFLAGS = -static
 test_socket_LDFLAGS = -static
 test_time_LDFLAGS = -static
+test_time_range_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_tw_timer_LDFLAGS = -static
 test_valloc_LDFLAGS = -static
@@ -258,6 +262,7 @@ nobase_include_HEADERS = \
   vppinfra/sparse_vec.h \
   vppinfra/string.h \
   vppinfra/time.h \
+  vppinfra/time_range.h \
   vppinfra/timing_wheel.h \
   vppinfra/timer.h \
   vppinfra/tw_timer_2t_1w_2048sl.h \
@@ -319,6 +324,7 @@ CLIB_CORE = \
   vppinfra/std-formats.c \
   vppinfra/string.c \
   vppinfra/time.c \
+  vppinfra/time_range.c \
   vppinfra/timing_wheel.c \
   vppinfra/tw_timer_template.h \
   vppinfra/tw_timer_2t_1w_2048sl.h \
