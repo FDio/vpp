@@ -873,7 +873,12 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 
   pool_name = format (0, "session_h_pool_numa%u%c", numa, 0);
 
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
   elt_size = rte_cryptodev_get_header_session_size ();
+#else
+  elt_size = rte_cryptodev_sym_get_header_session_size ();
+#endif
 
   error =
     dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,
@@ -912,7 +917,12 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
     return NULL;
 
   pool_name = format (0, "session_drv%u_pool_numa%u%c", dev->drv_id, numa, 0);
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
   elt_size = rte_cryptodev_get_private_session_size (dev->id);
+#else
+  elt_size = rte_cryptodev_sym_get_private_session_size (dev->id);
+#endif
 
   error =
     dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,

@@ -28,8 +28,10 @@ override_dh_install:
 	dh_install -p$(PKG)-dkms \
 	  $(SRC)/lib/librte_eal/common/include/rte_pci_dev_feature_defs.h \
 	  $(SRC)/lib/librte_eal/common/include/rte_pci_dev_features.h     \
-	  $(SRC)/lib/librte_eal/linuxapp/igb_uio/igb_uio.c                \
-	  $(SRC)/lib/librte_eal/linuxapp/igb_uio/compat.h                 \
+	  $(wildcard $(SRC)/*/*/*/igb_uio/igb_uio.c)                      \
+	  $(wildcard $(SRC)/*/*/*/igb_uio/compat.h)                       \
+	  $(wildcard $(SRC)/*/*/igb_uio/igb_uio.c)                        \
+	  $(wildcard $(SRC)/*/*/igb_uio/compat.h)                         \
 	  debian/dkms/Makefile                                            \
 	  /usr/src/$(PKG)-dkms-$(VERSION)
 	dh_install -p$(PKG)-dev --autodest /usr

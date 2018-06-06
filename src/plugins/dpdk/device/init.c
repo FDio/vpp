@@ -227,7 +227,12 @@ dpdk_lib_init (dpdk_main_t * dm)
   vec_validate_aligned (dm->devices_by_hqos_cpu, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
   nports = rte_eth_dev_count ();
+#else
+  nports = rte_eth_dev_count_avail ();
+#endif
+
   if (nports < 1)
     {
       dpdk_log_notice ("DPDK drivers found no ports...");
@@ -260,19 +265,36 @@ dpdk_lib_init (dpdk_main_t * dm)
       u8 addr[6];
       u8 vlan_strip = 0;
       struct rte_eth_dev_info dev_info;
+      struct rte_pci_device *pci_dev;
       struct rte_eth_link l;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
       uword *p = 0;
 
+      if (!rte_eth_dev_is_valid_port(i))
+	continue;
+
       rte_eth_link_get_nowait (i, &l);
       rte_eth_dev_info_get (i, &dev_info);
-      if (dev_info.pci_dev)	/* bonded interface has no pci info */
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+      pci_dev = dev_info.pci_dev;
+#else
+      if (dev_info.device == 0)
 	{
-	  pci_addr.domain = dev_info.pci_dev->addr.domain;
-	  pci_addr.bus = dev_info.pci_dev->addr.bus;
-	  pci_addr.slot = dev_info.pci_dev->addr.devid;
-	  pci_addr.function = dev_info.pci_dev->addr.function;
+	  clib_warning ("DPDK bug: missing device info. Skipping  %s device",
+			dev_info.driver_name);
+	  continue;
+	}
+      pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+#endif
+
+      if (pci_dev)	/* bonded interface has no pci info */
+	{
+	  pci_addr.domain = pci_dev->addr.domain;
+	  pci_addr.bus = pci_dev->addr.bus;
+	  pci_addr.slot = pci_dev->addr.devid;
+	  pci_addr.function = pci_dev->addr.function;
 	  p =
 	    hash_get (dm->conf->device_config_index_by_pci_addr,
 		      pci_addr.as_u32);
@@ -290,12 +312,12 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->cpu_socket = (i8) rte_eth_dev_socket_id (i);
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
-      if (dev_info.pci_dev)
+      if (pci_dev)
 	{
 	  struct rte_eth_dev_info di = { 0 };
 	  rte_eth_dev_info_get (i + 1, &di);
-	  if (di.pci_dev && pci_addr.as_u32 != last_pci_addr.as_u32 &&
-	      memcmp (&dev_info.pci_dev->addr, &di.pci_dev->addr,
+	  if (pci_dev && pci_addr.as_u32 != last_pci_addr.as_u32 &&
+	      memcmp (&pci_dev->addr, &pci_dev->addr,
 		      sizeof (struct rte_pci_addr)) == 0)
 	    {
 	      xd->interface_name_suffix = format (0, "0");
@@ -358,8 +380,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->flags |= DPDK_DEVICE_FLAG_PMD;
 
       /* workaround for drivers not setting driver_name */
-      if ((!dev_info.driver_name) && (dev_info.pci_dev))
-	dev_info.driver_name = dev_info.pci_dev->driver->driver.name;
+      if ((!dev_info.driver_name) && (pci_dev))
+	dev_info.driver_name = pci_dev->driver->driver.name;
 
       ASSERT (dev_info.driver_name);
 
@@ -1533,7 +1555,11 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
      *  2. Set up info and register slave link state change callback handling.
      *  3. Set up info for bond interface related CLI support.
      */
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
     int nports = rte_eth_dev_count ();
+#else
+    int nports = rte_eth_dev_count_avail ();
+#endif
     if (nports > 0)
       {
 	/* *INDENT-OFF* */

@@ -1,0 +1,28 @@
+From 65a8641604212d58defd71491c900d84d662a086 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Wed, 6 Jun 2018 21:57:58 +0200
+Subject: [PATCH] i40evf: don't reset device_info data
+
+At this point valid data is already set by rte_eth_get_device_info.
+device field becomes zero and consumer is not able retrieve pci data.
+
+Signed-off-by: Damjan Marion <damarion@cisco.com>
+---
+ drivers/net/i40e/i40e_ethdev_vf.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/i40e/i40e_ethdev_vf.c b/drivers/net/i40e/i40e_ethdev_vf.c
+index 804e44530..86b38d202 100644
+--- a/drivers/net/i40e/i40e_ethdev_vf.c
++++ b/drivers/net/i40e/i40e_ethdev_vf.c
+@@ -2182,7 +2182,6 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+ {
+ 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+ 
+-	memset(dev_info, 0, sizeof(*dev_info));
+ 	dev_info->max_rx_queues = vf->vsi_res->num_queue_pairs;
+ 	dev_info->max_tx_queues = vf->vsi_res->num_queue_pairs;
+ 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;
+-- 
+2.17.1
+
