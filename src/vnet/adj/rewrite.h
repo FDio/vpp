@@ -70,7 +70,7 @@ typedef CLIB_PACKED (struct {
 
   /* Max packet size layer 3 (MTU) for output interface.
      Used for MTU check after packet rewrite. */
-  u16 max_l3_packet_bytes;
+  u32 max_l3_packet_bytes;
 
   /* Data-plane flags on the adjacency/rewrite */
   vnet_rewrite_flags_t flags;
@@ -314,6 +314,7 @@ u32 vnet_tx_node_index_for_sw_interface (struct vnet_main_t *vnm,
 
 void vnet_rewrite_init (struct vnet_main_t *vnm,
 			u32 sw_if_index,
+			vnet_link_t linkt,
 			u32 this_node,
 			u32 next_node, vnet_rewrite_header_t * rw);
 
