@@ -27,7 +27,7 @@ DPDK_FAILSAFE_PMD     ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
-DPDK_VERSION ?= 18.02.2
+DPDK_VERSION ?= 18.05
 PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
