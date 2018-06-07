@@ -432,7 +432,7 @@ create_simulated_srp_interfaces (vlib_main_t * vm,
   hi->min_packet_bytes = 40 + 16;
 
   /* Standard default ethernet MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 1500;
+  vnet_sw_interface_set_mtu (vnm, sw_if_index, 1500);
 
   vec_free (hi->hw_address);
   vec_add (hi->hw_address, address, sizeof (address));

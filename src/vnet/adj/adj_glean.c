@@ -77,8 +77,8 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 	adj->rewrite_header.sw_if_index = sw_if_index;
 	adj->rewrite_header.data_bytes = 0;
         adj->rewrite_header.max_l3_packet_bytes =
-            vnet_sw_interface_get_mtu(vnet_get_main(), sw_if_index, VLIB_TX);
-
+	  vnet_sw_interface_get_mtu(vnet_get_main(), sw_if_index,
+                                    vnet_link_to_mtu(linkt));
         adj_lock(adj_get_index(adj));
 
 	vnet_update_adjacency_for_sw_interface(vnet_get_main(),
