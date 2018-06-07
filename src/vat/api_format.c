@@ -5535,7 +5535,7 @@ _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(punt_reply)                                           \
 _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
-_(sw_interface_set_mtu_reply)                           \
+_(hw_interface_set_mtu_reply)                           \
 _(p2p_ethernet_add_reply)                               \
 _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
@@ -5867,7 +5867,7 @@ _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
 _(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
-_(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
+_(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
 _(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
@@ -22036,10 +22036,10 @@ api_l2_xconnect_dump (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_set_mtu (vat_main_t * vam)
+api_hw_interface_set_mtu (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_mtu_t *mp;
+  vl_api_hw_interface_set_mtu_t *mp;
   u32 sw_if_index = ~0;
   u32 mtu = 0;
   int ret;
@@ -22069,7 +22069,7 @@ api_sw_interface_set_mtu (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_MTU, mp);
+  M (HW_INTERFACE_SET_MTU, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->mtu = ntohs ((u16) mtu);
 
@@ -23937,7 +23937,7 @@ _(feature_enable_disable, "arc_name <arc_name> "                        \
 _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
 _(l2_xconnect_dump, "")                                             	\
-_(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
+_(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \

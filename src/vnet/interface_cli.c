@@ -362,7 +362,7 @@ show_sw_interfaces (vlib_main_t * vm,
         if (visible)
           vec_add1 (sorted_sis, si[0]);}
         ));
-      /* *INDENT-OFF* */
+      /* *INDENT-ON* */
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
     }
@@ -449,20 +449,19 @@ show_sw_interfaces (vlib_main_t * vm,
 			     format_ip6_address, r6, ia->address_length);
         }));
 	/* *INDENT-ON* */
+      }
     }
-}
-
-else
-{
-  vec_foreach (si, sorted_sis)
-  {
-    vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, si);
-  }
-}
+  else
+    {
+      vec_foreach (si, sorted_sis)
+      {
+	vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, si);
+      }
+    }
 
 done:
-vec_free (sorted_sis);
-return error;
+  vec_free (sorted_sis);
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1115,12 +1114,17 @@ static clib_error_t *
 mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index, mtu;
+  u32 hw_if_index, sw_if_index, mtu;
   ethernet_main_t *em = &ethernet_main;
+  u32 mtus[VNET_N_MTU] = { 0, 0, 0, 0 };
 
   if (unformat (input, "%d %U", &mtu,
 		unformat_vnet_hw_interface, vnm, &hw_if_index))
     {
+      /*
+       * Change physical MTU on interface. Only supported for Ethernet
+       * interfaces
+       */
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
       ethernet_interface_t *eif = ethernet_get_interface (em, hw_if_index);
 
@@ -1137,17 +1141,35 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 				  hi->max_supported_packet_bytes);
 
       vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
+      goto done;
     }
+  else if (unformat (input, "packet %d %U", &mtu,
+		     unformat_vnet_sw_interface, vnm, &sw_if_index))
+    /* Set default packet MTU (including L3 header */
+    mtus[VNET_MTU_L3] = mtu;
+  else if (unformat (input, "ip4 %d %U", &mtu,
+		     unformat_vnet_sw_interface, vnm, &sw_if_index))
+    mtus[VNET_MTU_IP4] = mtu;
+  else if (unformat (input, "ip6 %d %U", &mtu,
+		     unformat_vnet_sw_interface, vnm, &sw_if_index))
+    mtus[VNET_MTU_IP6] = mtu;
+  else if (unformat (input, "mpls %d %U", &mtu,
+		     unformat_vnet_sw_interface, vnm, &sw_if_index))
+    mtus[VNET_MTU_MPLS] = mtu;
   else
     return clib_error_return (0, "unknown input `%U'",
 			      format_unformat_error, input);
+
+  vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, mtus);
+
+done:
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
   .path = "set interface mtu",
-  .short_help = "set interface mtu <value> <interface>",
+  .short_help = "set interface mtu [packet|ip4|ip6|mpls] <value> <interface>",
   .function = mtu_cmd,
 };
 /* *INDENT-ON* */

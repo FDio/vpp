@@ -348,11 +348,8 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
 	64 + sizeof (gre_header_t) + sizeof (ip6_header_t);
     }
 
-  hi->per_packet_overhead_bytes =
-    /* preamble */ 8 + /* inter frame gap */ 12;
-
   /* Standard default gre MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
+  vnet_sw_interface_set_mtu (vnm, sw_if_index, 9000);
 
   /*
    * source the FIB entry for the tunnel's destination

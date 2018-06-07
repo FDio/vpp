@@ -154,8 +154,10 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
   _VNET_INTERFACE_FUNCTION_DECL(f,hw_interface_add_del)
 #define VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION(f)		\
   _VNET_INTERFACE_FUNCTION_DECL(f,hw_interface_link_up_down)
-#define VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION_PRIO(f,p)        \
+#define VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION_PRIO(f,p)       \
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,hw_interface_link_up_down,p)
+#define VNET_SW_INTERFACE_MTU_CHANGE_FUNCTION(f)                \
+  _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_mtu_change)
 #define VNET_SW_INTERFACE_ADD_DEL_FUNCTION(f)			\
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_add_del)
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(f)		\
@@ -537,14 +539,6 @@ typedef struct vnet_hw_interface_t
   /* Largest packet size for this interface. */
   u32 max_packet_bytes;
 
-  /* Number of extra bytes that go on the wire.
-     Packet length on wire
-     = max (length + per_packet_overhead_bytes, min_packet_bytes). */
-  u32 per_packet_overhead_bytes;
-
-  /* Receive and transmit layer 3 packet size limits (MRU/MTU). */
-  u32 max_l3_packet_bytes[VLIB_N_RX_TX];
-
   /* Hash table mapping sub interface id to sw_if_index. */
   uword *sub_interface_sw_if_index_by_id;
 
@@ -641,6 +635,18 @@ typedef enum
   VNET_FLOOD_CLASS_NO_FLOOD,
 } vnet_flood_class_t;
 
+/* Per protocol MTU */
+typedef enum
+{
+  VNET_MTU_L3,			/* Default payload MTU (without L2 headers) */
+  VNET_MTU_IP4,			/* Per-protocol MTUs overriding default */
+  VNET_MTU_IP6,
+  VNET_MTU_MPLS,
+  VNET_N_MTU
+} vnet_mtu_t;
+
+extern vnet_mtu_t vnet_link_to_mtu (vnet_link_t link);
+
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
    software interface. */
@@ -683,6 +689,9 @@ typedef struct
 
   /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
   u32 hw_if_index;
+
+  /* MTU for network layer (not including L2 headers) */
+  u32 mtu[VNET_N_MTU];
 
   /* VNET_SW_INTERFACE_TYPE_SUB. */
   vnet_sub_interface_t sub;

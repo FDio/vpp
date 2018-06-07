@@ -526,10 +526,8 @@ ipip_add_tunnel (ipip_transport_t transport,
       hi->min_packet_bytes = 64 + sizeof (ip6_header_t);
     }
 
-  hi->per_packet_overhead_bytes = /* preamble */ 8 + /* inter frame gap */ 12;
-
   /* Standard default ipip MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
+  vnet_sw_interface_set_mtu (vnm, sw_if_index, 9000);
 
   t->tunnel_src = *src;
   t->tunnel_dst = *dst;

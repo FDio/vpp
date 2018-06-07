@@ -702,7 +702,7 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'admin_up_down': admin_up_down})
 
-    def sw_interface_set_mtu(self, sw_if_index, mtu):
+    def sw_interface_set_mtu(self, sw_if_index, mtu=[0, 0, 0, 0]):
         """
         :param sw_if_index:
         :param mtu:

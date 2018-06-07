@@ -643,6 +643,9 @@ vnet_mpls_tunnel_create (u8 l2_only,
         hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
     }
 
+    /* Standard default MPLS tunnel MTU. */
+    vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
+
     /*
      * Add the new tunnel to the tunnel DB - key:SW if index
      */

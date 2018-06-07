@@ -69,7 +69,7 @@ adj_mcast_add_or_lock (fib_protocol_t proto,
 	adj_mcasts[proto][sw_if_index] = adj_get_index(adj);
         adj_lock(adj_get_index(adj));
 
-	vnet_rewrite_init(vnm, sw_if_index,
+	vnet_rewrite_init(vnm, sw_if_index, link_type,
 			  adj_get_mcast_node(proto),
 			  vnet_tx_node_index_for_sw_interface(vnm, sw_if_index),
 			  &adj->rewrite_header);

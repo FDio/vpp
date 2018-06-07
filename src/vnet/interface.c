@@ -122,22 +122,6 @@ unserialize_vnet_sw_interface_set_flags (serialize_main_t * m, va_list * va)
      /* helper_flags no redistribution */ 0);
 }
 
-void
-vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu)
-{
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-
-  if (hi->max_packet_bytes != mtu)
-    {
-      u16 l3_pad = hi->max_packet_bytes - hi->max_l3_packet_bytes[VLIB_TX];
-      hi->max_packet_bytes = mtu;
-      hi->max_l3_packet_bytes[VLIB_TX] =
-	hi->max_l3_packet_bytes[VLIB_RX] = mtu - l3_pad;
-      ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_MTU);
-      adj_mtu_update (hw_if_index);
-    }
-}
-
 static void
 unserialize_vnet_hw_interface_set_flags (serialize_main_t * m, va_list * va)
 {
@@ -681,6 +665,71 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
   pool_put (im->sw_interfaces, sw);
 }
 
+static clib_error_t *
+call_sw_interface_mtu_change_callbacks (vnet_main_t * vnm, u32 sw_if_index)
+{
+  return call_elf_section_interface_callbacks
+    (vnm, sw_if_index, 0, vnm->sw_interface_mtu_change_functions);
+}
+
+void
+vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu)
+{
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+
+  if (si->mtu[VNET_MTU_L3] != mtu)
+    {
+      si->mtu[VNET_MTU_L3] = mtu;
+      call_sw_interface_mtu_change_callbacks (vnm, sw_if_index);
+    }
+}
+
+void
+vnet_sw_interface_set_protocol_mtu (vnet_main_t * vnm, u32 sw_if_index,
+				    u32 mtu[])
+{
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  bool changed = false;
+  int i;
+
+  for (i = 0; i < VNET_N_MTU; i++)
+    {
+      if (si->mtu[i] != mtu[i])
+	{
+	  si->mtu[i] = mtu[i];
+	  changed = true;
+	}
+    }
+  /* Notify interested parties */
+  if (changed)
+    call_sw_interface_mtu_change_callbacks (vnm, sw_if_index);
+}
+
+/*
+ * Reflect a change in hardware MTU on protocol MTUs
+ */
+static walk_rc_t
+sw_interface_walk_callback (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
+{
+  u32 *link_mtu = ctx;
+  vnet_sw_interface_set_mtu (vnm, sw_if_index, *link_mtu);
+  return WALK_CONTINUE;
+}
+
+void
+vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu)
+{
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hi->max_packet_bytes != mtu)
+    {
+      hi->max_packet_bytes = mtu;
+      ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_MTU);
+      vnet_hw_interface_walk_sw (vnm, hw_if_index, sw_interface_walk_callback,
+				 &mtu);
+    }
+}
+
 static void
 setup_tx_node (vlib_main_t * vm,
 	       u32 node_index, vnet_device_class_t * dev_class)
@@ -762,9 +811,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   hw->max_rate_bits_per_sec = 0;
   hw->min_packet_bytes = 0;
-  hw->per_packet_overhead_bytes = 0;
-  hw->max_l3_packet_bytes[VLIB_RX] = ~0;
-  hw->max_l3_packet_bytes[VLIB_TX] = ~0;
+  vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, 0);
 
   if (dev_class->tx_function == 0)
     goto no_output_nodes;	/* No output/tx nodes to create */
@@ -1521,6 +1568,22 @@ vnet_link_to_l3_proto (vnet_link_t link)
     }
   ASSERT (0);
   return (0);
+}
+
+vnet_mtu_t
+vnet_link_to_mtu (vnet_link_t link)
+{
+  switch (link)
+    {
+    case VNET_LINK_IP4:
+      return (VNET_MTU_IP4);
+    case VNET_LINK_IP6:
+      return (VNET_MTU_IP6);
+    case VNET_LINK_MPLS:
+      return (VNET_MTU_MPLS);
+    default:
+      return (VNET_MTU_L3);
+    }
 }
 
 u8 *

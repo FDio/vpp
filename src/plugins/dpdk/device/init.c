@@ -747,8 +747,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       if (hi)
-	hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
-	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
+	hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
+	  - sizeof (ethernet_header_t);
       else
 	clib_warning ("hi NULL");
 
@@ -1640,9 +1640,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 		    /* Init l3 packet size allowed on bonded interface */
 		    bhi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
-		    bhi->max_l3_packet_bytes[VLIB_RX] =
-		      bhi->max_l3_packet_bytes[VLIB_TX] =
-		      ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
 		    while (nlink >= 1)
 		      {		/* for all slave links */
 			int slave = slink[--nlink];
@@ -1681,11 +1678,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			clib_memcpy (shi->hw_address, addr, 6);
 			clib_memcpy (sei->address, addr, 6);
 			/* Set l3 packet size allowed as the lowest of slave */
-			if (bhi->max_l3_packet_bytes[VLIB_RX] >
-			    shi->max_l3_packet_bytes[VLIB_RX])
-			  bhi->max_l3_packet_bytes[VLIB_RX] =
-			    bhi->max_l3_packet_bytes[VLIB_TX] =
-			    shi->max_l3_packet_bytes[VLIB_RX];
+			if (bhi->max_packet_bytes > shi->max_packet_bytes)
+			  bhi->max_packet_bytes = bhi->max_packet_bytes;
+
 			/* Set max packet size allowed as the lowest of slave */
 			if (bhi->max_packet_bytes > shi->max_packet_bytes)
 			  bhi->max_packet_bytes = shi->max_packet_bytes;

@@ -3256,8 +3256,8 @@ static void *vl_api_sw_interface_tag_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_mtu_t_print
-  (vl_api_sw_interface_set_mtu_t * mp, void *handle)
+static void *vl_api_hw_interface_set_mtu_t_print
+  (vl_api_hw_interface_set_mtu_t * mp, void *handle)
 {
   u8 *s;
 
@@ -3671,7 +3671,7 @@ _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
-_(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
+_(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \
 _(P2P_ETHERNET_DEL, p2p_ethernet_del)					\
 _(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)		\
