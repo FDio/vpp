@@ -163,6 +163,7 @@ typedef struct
 	/* reassembly */
 	union
 	{
+	  u32 pad[2];		/* do not overlay w/ ip.adj_index[0,1] */
 	  /* in/out variables */
 	  struct
 	  {
