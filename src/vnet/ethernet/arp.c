@@ -1163,6 +1163,11 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		   clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request) &&
 		   (dst_is_local0 == 0))
 	    {
+	      /* learn from GARP packet */
+	      if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+		  arp0->ip4_over_ethernet[1].ip4.as_u32)
+		error0 = arp_learn (vnm, am, sw_if_index0,
+				    &arp0->ip4_over_ethernet[0]);
 	      goto drop1;
 	    }
 
