@@ -799,7 +799,8 @@ skip_dequeue:
 	    }
 	  break;
 	case FIFO_EVENT_DISCONNECT:
-	  /* Make sure stream disconnects run after the pending list is drained */
+	  /* Make sure stream disconnects run after the pending list is
+	   * drained */
 	  s0 = session_get_from_handle (e0->session_handle);
 	  if (!e0->postponed)
 	    {
@@ -807,11 +808,9 @@ skip_dequeue:
 	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
 	      continue;
 	    }
-	  /* If tx queue is still not empty, wait a bit */
-	  if (svm_fifo_max_dequeue (s0->server_tx_fifo)
-	      && e0->postponed < 200)
+	  /* If tx queue is still not empty, wait */
+	  if (svm_fifo_max_dequeue (s0->server_tx_fifo))
 	    {
-	      e0->postponed += 1;
 	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
 	      continue;
 	    }
