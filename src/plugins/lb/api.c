@@ -139,7 +139,7 @@ vl_api_lb_add_del_vip_t_handler
 
     args.plen = mp->prefix_length;
     args.type = type;
-    args.new_length = mp->new_flows_table_length;
+    args.new_length = ntohl(mp->new_flows_table_length);
 
     if (mp->encap == LB_ENCAP_TYPE_L3DSR) {
         args.encap_args.dscp = (u8)(mp->dscp & 0x3F);
@@ -154,7 +154,7 @@ vl_api_lb_add_del_vip_t_handler
 
     rv = lb_vip_add(args, &vip_index);
   }
- REPLY_MACRO (VL_API_LB_CONF_REPLY);
+ REPLY_MACRO (VL_API_LB_ADD_DEL_VIP_REPLY);
 }
 
 static void *vl_api_lb_add_del_vip_t_print
@@ -217,7 +217,7 @@ vl_api_lb_add_del_as_t_handler
     rv = lb_vip_add_ass(vip_index, &as_address, 1);
 
 done:
- REPLY_MACRO (VL_API_LB_CONF_REPLY);
+ REPLY_MACRO (VL_API_LB_ADD_DEL_AS_REPLY);
 }
 
 static void *vl_api_lb_add_del_as_t_print
