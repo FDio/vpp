@@ -16,6 +16,24 @@
       "revId": "1aace8f0d95fd5d3457ad4ae1840fe51639f273b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b0fd8eee_02a2e117",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-06-07T20:35:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "231c7607_984b867a",
+      "revId": "1aace8f0d95fd5d3457ad4ae1840fe51639f273b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
