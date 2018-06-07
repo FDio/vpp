@@ -57,13 +57,13 @@ ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg)
   if (arg->mode)
     {
       cfg->scan_interval = arg->scan_interval ?
-	arg->scan_interval * 1.0 : IP_NEIGHBOR_DEF_SCAN_INTERVAL;
+	arg->scan_interval * 60.0 : IP_NEIGHBOR_DEF_SCAN_INTERVAL;
       cfg->max_proc_time = arg->max_proc_time ?
 	arg->max_proc_time * 1e-6 : IP_NEIGHBOR_DEF_MAX_PROC_TIME;
       cfg->scan_int_delay = arg->scan_int_delay ?
 	arg->scan_int_delay * 1e-3 : IP_NEIGHBOR_DEF_SCAN_INT_DELAY;
       cfg->stale_threshold = arg->stale_threshold ?
-	arg->stale_threshold * 1.0 : cfg->scan_interval * 4;
+	arg->stale_threshold * 60.0 : cfg->scan_interval * 4;
       cfg->max_update = arg->max_update ?
 	cfg->max_update : IP_NEIGHBOR_DEF_MAX_UPDATE;
     }
