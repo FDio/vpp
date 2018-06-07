@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0660964_13fbf58e",
+        "filename": "src/vnet/adj/adj_glean.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-07T08:59:37Z",
+      "side": 1,
+      "message": "convert the link type to the MTU type rather than use L3?",
+      "revId": "31c13ff61acbc8ff2557b5082cbba3d17c4ef04f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eb7d45e8_ec7fb365",
+        "filename": "src/vnet/adj/rewrite.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-07T08:59:37Z",
+      "side": 1,
+      "message": ".. same here, using adj link type",
+      "revId": "31c13ff61acbc8ff2557b5082cbba3d17c4ef04f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44ff7d29_af1056c0",
+        "filename": "src/vnet/adj/rewrite.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-07T08:59:37Z",
+      "side": 1,
+      "message": "why does this need to be u32?",
+      "revId": "31c13ff61acbc8ff2557b5082cbba3d17c4ef04f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
