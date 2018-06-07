@@ -22,6 +22,30 @@
       "revId": "b059b98ac59c73ce72c04a8db60a34057cd4817e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "458573e8_32bd2fb5",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2694,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-07T02:22:19Z",
+      "side": 1,
+      "message": "good spot, thank you. fixed in patchset 7. I used VAT connections and show commands to test the code.",
+      "parentUuid": "2e7365cd_90304e0e",
+      "range": {
+        "startLine": 2694,
+        "startChar": 0,
+        "endLine": 2694,
+        "endChar": 25
+      },
+      "revId": "b059b98ac59c73ce72c04a8db60a34057cd4817e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
