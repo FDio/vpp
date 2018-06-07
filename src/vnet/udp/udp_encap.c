@@ -599,7 +599,7 @@ udp_encap_walk (udp_encap_walk_cb_t cb, void *ctx)
   /* *INDENT-OFF* */
   pool_foreach_index(uei, udp_encap_pool,
   ({
-    if (!cb(uei, ctx))
+    if (WALK_STOP == cb(uei, ctx))
       break;
   }));
   /* *INDENT-ON* */

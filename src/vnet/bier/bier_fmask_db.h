@@ -36,23 +36,28 @@ typedef enum bier_hdr_type_t_ {
      * BIER header in non-MPLS networks
      */
     BIER_HDR_O_OTHER,
-} bier_hdr_type_t;
+} __attribute__((packed)) bier_hdr_type_t;
+
+/**
+ * BIER next-hop type
+ */
+typedef enum bier_nh_type_t_ {
+    /**
+     * BIER Header in MPLS networks
+     */
+    BIER_NH_IP,
+
+    /**
+     * BIER header in non-MPLS networks
+     */
+    BIER_NH_UDP,
+} __attribute__((packed)) bier_nh_type_t;
 
 /**
  * A key/ID for a BIER forwarding Mas (FMask).
  * This is a simplified version of a fib_route_path_t.
  */
 typedef struct bier_fmask_id_t_ {
-    /**
-     * Type of BIER header this fmask supports
-     */
-    bier_hdr_type_t bfmi_hdr_type;
-
-    /**
-     * The BIER table this fmask is in
-     */
-    index_t bfmi_bti;
-
     union {
         /**
          * next-hop of the peer
@@ -64,11 +69,20 @@ typedef struct bier_fmask_id_t_ {
          */
         u32 bfmi_id;
     };
+    /**
+     * The BIER table this fmask is in
+     */
+    index_t bfmi_bti;
 
     /**
-     * Software interface index
+     * Type of BIER header this fmask supports
      */
-    u32 bfmi_sw_if_index;
+    bier_hdr_type_t bfmi_hdr_type;
+
+    /**
+     * Union discriminatrr
+     */
+    bier_nh_type_t bfmi_nh_type;
 } __attribute__((packed)) bier_fmask_id_t;
 
 extern index_t
@@ -79,5 +93,11 @@ extern index_t bier_fmask_db_find (index_t bti,
 
 extern void bier_fmask_db_remove (const bier_fmask_id_t *fmid);
 
+/**
+ * Walk all the BIER fmasks
+ */
+typedef walk_rc_t (*bier_fmask_walk_fn_t) (index_t bfmi, void *ctx);
+
+extern void bier_fmask_db_walk(bier_fmask_walk_fn_t fn, void *ctx);
 
 #endif

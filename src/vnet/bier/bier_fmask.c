@@ -37,6 +37,11 @@ static const char *const bier_fmask_attr_names[] = BIER_FMASK_ATTR_NAMES;
  */
 bier_fmask_t *bier_fmask_pool;
 
+/**
+ * Stats for each BIER fmask object
+ */
+vlib_combined_counter_main_t bier_fmask_counters;
+
 static inline index_t
 bier_fmask_get_index (const bier_fmask_t *bfm)
 {
@@ -165,6 +170,12 @@ bier_fmask_init (bier_fmask_t *bfm,
     const bier_table_id_t *btid;
     mpls_label_t olabel;
 
+    ASSERT(1 == vec_len(rpaths));
+    memset(bfm, 0, sizeof(*bfm));
+
+    bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
+
+    fib_node_init(&bfm->bfm_node, FIB_NODE_TYPE_BIER_FMASK);
     *bfm->bfm_id = *fmid;
     dpo_reset(&bfm->bfm_dpo);
     btid = bier_table_get_id(bfm->bfm_id->bfmi_bti);
@@ -268,20 +279,19 @@ bier_fmask_create_and_lock (const bier_fmask_id_t *fmid,
                             const fib_route_path_t *rpaths)
 {
     bier_fmask_t *bfm;
+    index_t bfmi;
 
     pool_get_aligned(bier_fmask_pool, bfm, CLIB_CACHE_LINE_BYTES);
+    bfmi = bier_fmask_get_index(bfm);
 
-    memset(bfm, 0, sizeof(*bfm));
+    vlib_validate_combined_counter (&(bier_fmask_counters), bfmi);
+    vlib_zero_combined_counter (&(bier_fmask_counters), bfmi);
 
-    bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
-
-    ASSERT(1 == vec_len(rpaths));
-    fib_node_init(&bfm->bfm_node, FIB_NODE_TYPE_BIER_FMASK);
     bier_fmask_init(bfm, fmid, rpaths);
 
-    bier_fmask_lock(bier_fmask_get_index(bfm));
+    bier_fmask_lock(bfmi);
 
-    return (bier_fmask_get_index(bfm));
+    return (bfmi);
 }
 
 void
@@ -331,6 +341,7 @@ format_bier_fmask (u8 *s, va_list *ap)
     u32 indent = va_arg(*ap, u32);
     bier_fmask_attributes_t attr;
     bier_fmask_t *bfm;
+    vlib_counter_t to;
 
     if (pool_is_free_index(bier_fmask_pool, bfmi))
     {
@@ -349,6 +360,8 @@ format_bier_fmask (u8 *s, va_list *ap)
             s = format (s, "%s,", bier_fmask_attr_names[attr]);
         }
     }
+    vlib_get_combined_counter (&(bier_fmask_counters), bfmi, &to);
+    s = format (s, " to:[%Ld:%Ld]]", to.packets, to.bytes);
     s = format(s, "\n");
     s = fib_path_list_format(bfm->bfm_pl, s);
 
@@ -371,6 +384,43 @@ format_bier_fmask (u8 *s, va_list *ap)
     return (s);
 }
 
+void
+bier_fmask_get_stats (index_t bfmi, u64 * packets, u64 * bytes)
+{
+  vlib_counter_t to;
+
+  vlib_get_combined_counter (&(bier_fmask_counters), bfmi, &to);
+
+  *packets = to.packets;
+  *bytes = to.bytes;
+}
+
+void
+bier_fmask_encode (index_t bfmi,
+                   bier_table_id_t *btid,
+                   fib_route_path_encode_t *rpath)
+{
+    bier_fmask_t *bfm;
+
+    bfm = bier_fmask_get(bfmi);
+    *btid = *bier_table_get_id(bfm->bfm_id->bfmi_bti);
+
+    memset(rpath, 0, sizeof(*rpath));
+
+    rpath->rpath.frp_sw_if_index = ~0;
+
+    switch (bfm->bfm_id->bfmi_nh_type)
+    {
+    case BIER_NH_UDP:
+        rpath->rpath.frp_flags = FIB_ROUTE_PATH_UDP_ENCAP;
+        rpath->rpath.frp_udp_encap_id = bfm->bfm_id->bfmi_id;
+        break;
+    case BIER_NH_IP:
+        memcpy(&rpath->rpath.frp_addr, &bfm->bfm_id->bfmi_nh,
+               sizeof(rpath->rpath.frp_addr));
+        break;
+    }
+}
 
 static fib_node_t *
 bier_fmask_get_node (fib_node_index_t index)
