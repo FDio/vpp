@@ -787,7 +787,7 @@ tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 
 #define tcp_validate_txf_size(_tc, _a) 					\
   ASSERT(_tc->state != TCP_STATE_ESTABLISHED 				\
-	 || stream_session_tx_fifo_max_dequeue (&_tc->connection) >= _a)
+	 || session_tx_fifo_max_dequeue (&_tc->connection) >= _a)
 
 void
 scoreboard_remove_hole (sack_scoreboard_t * sb,
