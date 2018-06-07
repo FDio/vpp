@@ -31,7 +31,7 @@ typedef struct bier_fmask_db_t_ {
     /**
      * hash table for underlying storage
      */
-    mhash_t bfdb_hash;
+    uword *bfdb_hash;
 
     /**
      * Pool for memory
@@ -68,11 +68,12 @@ bier_fmask_db_mk_key (index_t bti,
     if (FIB_ROUTE_PATH_UDP_ENCAP & rpath->frp_flags)
     {
         key->bfmi_id = rpath->frp_udp_encap_id;
+        key->bfmi_nh_type = BIER_NH_UDP;
     }
     else
     {
-        key->bfmi_sw_if_index = rpath->frp_sw_if_index;
         memcpy(&key->bfmi_nh, &rpath->frp_addr, sizeof(rpath->frp_addr));
+        key->bfmi_nh_type = BIER_NH_IP;
     }
     if (NULL == rpath->frp_label_stack)
     {
@@ -82,6 +83,7 @@ bier_fmask_db_mk_key (index_t bti,
     {
         key->bfmi_hdr_type = BIER_HDR_O_MPLS;
     }
+    key->bfmi_bti = bti;
 }
 
 u32
@@ -92,7 +94,7 @@ bier_fmask_db_find (index_t bti,
     uword *p;
 
     bier_fmask_db_mk_key(bti, rpath, &fmid);
-    p = mhash_get(&bier_fmask_db.bfdb_hash, &fmid);
+    p = hash_get_mem(bier_fmask_db.bfdb_hash, &fmid);
 
     if (NULL != p)
     {
@@ -111,7 +113,7 @@ bier_fmask_db_find_or_create_and_lock (index_t bti,
     uword *p;
 
     bier_fmask_db_mk_key(bti, rpath, &fmid);
-    p = mhash_get(&bier_fmask_db.bfdb_hash, &fmid);
+    p = hash_get_mem(bier_fmask_db.bfdb_hash, &fmid);
 
     if (NULL == p)
     {
@@ -121,7 +123,7 @@ bier_fmask_db_find_or_create_and_lock (index_t bti,
          */
         index = bier_fmask_create_and_lock(&fmid, rpath);
         bfm = bier_fmask_get(index);
-        mhash_set(&bier_fmask_db.bfdb_hash, bfm->bfm_id, index, 0);
+        hash_set_mem(bier_fmask_db.bfdb_hash, bfm->bfm_id, index);
     }
     else
     {
@@ -137,7 +139,7 @@ bier_fmask_db_remove (const bier_fmask_id_t *fmid)
 {
     uword *p;
 
-    p = mhash_get(&bier_fmask_db.bfdb_hash, fmid);
+    p = hash_get_mem(bier_fmask_db.bfdb_hash, fmid);
 
     if (NULL == p) {
         /*
@@ -145,16 +147,29 @@ bier_fmask_db_remove (const bier_fmask_id_t *fmid)
          */
         ASSERT (!"remove non-existant fmask");
     } else {
-        mhash_unset(&(bier_fmask_db.bfdb_hash), (void*)fmid, 0);
+        hash_unset(bier_fmask_db.bfdb_hash, fmid);
     }
+}
+
+void
+bier_fmask_db_walk (bier_fmask_walk_fn_t fn, void *ctx)
+{
+    CLIB_UNUSED (bier_fmask_id_t *fmid);
+    uword *bfmi;
+
+    hash_foreach(fmid, bfmi, bier_fmask_db.bfdb_hash,
+    ({
+        if (WALK_STOP == fn(*bfmi, ctx))
+            break;
+    }));
 }
 
 clib_error_t *
 bier_fmask_db_module_init (vlib_main_t *vm)
 {
-    mhash_init(&bier_fmask_db.bfdb_hash,
-               sizeof(index_t),
-               sizeof(bier_fmask_id_t));
+    bier_fmask_db.bfdb_hash = hash_create_mem(0,
+                                              sizeof(bier_fmask_id_t),
+                                              sizeof(index_t));
 
     return (NULL);
 }

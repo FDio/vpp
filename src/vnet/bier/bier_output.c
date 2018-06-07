@@ -49,6 +49,7 @@ typedef enum {
  * Forward declaration
  */
 vlib_node_registration_t bier_output_node;
+extern vlib_combined_counter_main_t bier_fmask_counters;
 
 /**
  * @brief Packet trace recoed for a BIER output
@@ -64,12 +65,13 @@ bier_output (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
+  vlib_combined_counter_main_t *cm = &bier_fmask_counters;
     u32 n_left_from, next_index, * from, * to_next;
+    u32 thread_index;
 
+    thread_index = vlib_get_thread_index ();
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
-
-    // vnet_buffer(b0)->sw_if_index[VLIB_TX] = d0->tx_fib_index;
 
     /*
      * objection your honour! speculation!
@@ -111,6 +113,10 @@ bier_output (vlib_main_t * vm,
              */
             bfmi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
             bfm0 = bier_fmask_get(bfmi0);
+
+            vlib_increment_combined_counter(
+                cm, thread_index, bfmi0, 1,
+                vlib_buffer_length_in_chain (vm, b0));
 
             /*
              * perform the logical AND of the packet's mask with

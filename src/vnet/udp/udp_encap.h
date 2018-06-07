@@ -131,7 +131,7 @@ extern void udp_encap_get_stats (index_t uei, u64 * packets, u64 * bytes);
  * Callback function invoked when walking all encap objects.
  * Return non-zero to continue the walk.
  */
-typedef int (*udp_encap_walk_cb_t) (index_t uei, void *ctx);
+typedef walk_rc_t (*udp_encap_walk_cb_t) (index_t uei, void *ctx);
 
 /**
  * Walk each of the encap objects

@@ -163,6 +163,10 @@ extern u32 bier_fmask_child_add (fib_node_index_t fib_entry_index,
                                  fib_node_index_t child_index);
 extern void bier_fmask_child_remove (fib_node_index_t fib_entry_index,
                                      u32 sibling_index);
+extern void bier_fmask_get_stats (index_t bfmi, u64 * packets, u64 * bytes);
+extern void bier_fmask_encode (index_t bfmi,
+                               bier_table_id_t *btid,
+                               fib_route_path_encode_t *rpath);
 
 /*
  * provided for fast data-path access
