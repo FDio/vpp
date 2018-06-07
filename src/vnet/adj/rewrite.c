@@ -107,15 +107,13 @@ vnet_rewrite_init (vnet_main_t * vnm,
 {
   rw->sw_if_index = sw_if_index;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, this_node, next_node);
-  rw->max_l3_packet_bytes =
-    vnet_sw_interface_get_mtu (vnm, sw_if_index, VLIB_TX);
+  rw->max_l3_packet_bytes = vnet_sw_interface_get_mtu (vnm, sw_if_index, VNET_MTU_L3);	/* $$$ Per-protocol MTU */
 }
 
 void
 vnet_rewrite_update_mtu (vnet_main_t * vnm, vnet_rewrite_header_t * rw)
 {
-  rw->max_l3_packet_bytes =
-    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index, VLIB_TX);
+  rw->max_l3_packet_bytes = vnet_sw_interface_get_mtu (vnm, rw->sw_if_index, VNET_MTU_L3);	/* $$$ Per-protocol MTU */
 }
 
 void

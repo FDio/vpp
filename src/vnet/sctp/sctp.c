@@ -43,8 +43,12 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   ip_copy (&listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.lcl_ip,
 	   &tep->ip, tep->is_ip4);
 
-  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU =
-    vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index, VLIB_TX);
+  u32 mtu = tep->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
+						     tep->sw_if_index,
+						     VNET_MTU_IP4) :
+    vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index,
+			       VNET_MTU_IP6);
+  listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU = mtu;
   listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.is_ip4 = tep->is_ip4;
   listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.proto =
     TRANSPORT_PROTO_SCTP;
@@ -480,8 +484,12 @@ sctp_connection_open (transport_endpoint_t * rmt)
 
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   sctp_conn = sctp_half_open_connection_new (thread_id);
-  sctp_conn->sub_conn[idx].PMTU =
-    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->sw_if_index, VLIB_TX);
+  u32 mtu = rmt->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
+						     rmt->sw_if_index,
+						     VNET_MTU_IP4) :
+    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->sw_if_index,
+			       VNET_MTU_IP6);
+  sctp_conn->sub_conn[idx].PMTU = mtu;
 
   transport_connection_t *trans_conn = &sctp_conn->sub_conn[idx].connection;
   ip_copy (&trans_conn->rmt_ip, &rmt->ip, rmt->is_ip4);

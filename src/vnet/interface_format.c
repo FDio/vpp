@@ -291,6 +291,16 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
   return s;
 }
 
+static u8 *
+format_vnet_sw_interface_mtu (u8 * s, va_list * args)
+{
+  vnet_sw_interface_t *si = va_arg (*args, vnet_sw_interface_t *);
+
+  return format (s, "%d/%d/%d/%d", si->mtu[VNET_MTU_L3],
+		 si->mtu[VNET_MTU_IP4],
+		 si->mtu[VNET_MTU_IP6], si->mtu[VNET_MTU_MPLS]);
+}
+
 u8 *
 format_vnet_sw_interface (u8 * s, va_list * args)
 {
@@ -299,12 +309,14 @@ format_vnet_sw_interface (u8 * s, va_list * args)
   vnet_interface_main_t *im = &vnm->interface_main;
 
   if (!si)
-    return format (s, "%=32s%=5s%=16s%=16s%=16s",
-		   "Name", "Idx", "State", "Counter", "Count");
+    return format (s, "%=32s%=5s%=10s%=21s%=16s%=16s",
+		   "Name", "Idx", "State", "MTU (L3/IP4/IP6/MPLS)", "Counter",
+		   "Count");
 
-  s = format (s, "%-32U%=5d%=16U",
+  s = format (s, "%-32U%=5d%=10U%=21U",
 	      format_vnet_sw_interface_name, vnm, si, si->sw_if_index,
-	      format_vnet_sw_interface_flags, si->flags);
+	      format_vnet_sw_interface_flags, si->flags,
+	      format_vnet_sw_interface_mtu, si);
 
   s = format_vnet_sw_interface_cntrs (s, im, si);
 

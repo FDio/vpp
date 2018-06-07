@@ -50,6 +50,7 @@ vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)               \
+_(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                   \
 _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                   \
 _(WANT_INTERFACE_EVENTS, want_interface_events)                 \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
@@ -96,9 +97,9 @@ vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 }
 
 static void
-vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
+vl_api_hw_interface_set_mtu_t_handler (vl_api_hw_interface_set_mtu_t * mp)
 {
-  vl_api_sw_interface_set_mtu_reply_t *rmp;
+  vl_api_hw_interface_set_mtu_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u16 mtu = ntohs (mp->mtu);
@@ -138,6 +139,27 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
   vnet_hw_interface_set_mtu (vnm, si->hw_if_index, mtu);
 
   BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_HW_INTERFACE_SET_MTU_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
+{
+  vl_api_sw_interface_set_mtu_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  int rv = 0;
+  int i;
+  u32 per_protocol_mtu[VNET_N_MTU];
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  for (i = 0; i < VNET_N_MTU; i++)
+    per_protocol_mtu[i] = ntohl (mp->mtu[i]);
+
+  vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, per_protocol_mtu);
+
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
 }
 
@@ -162,6 +184,11 @@ send_sw_interface_details (vpe_api_main_t * am,
   mp->link_speed = ((hi->flags & VNET_HW_INTERFACE_FLAG_SPEED_MASK) >>
 		    VNET_HW_INTERFACE_FLAG_SPEED_SHIFT);
   mp->link_mtu = ntohs (hi->max_packet_bytes);
+  mp->mtu[VNET_MTU_L3] = ntohl (swif->mtu[VNET_MTU_L3]);
+  mp->mtu[VNET_MTU_IP4] = ntohl (swif->mtu[VNET_MTU_IP4]);
+  mp->mtu[VNET_MTU_IP6] = ntohl (swif->mtu[VNET_MTU_IP6]);
+  mp->mtu[VNET_MTU_MPLS] = ntohl (swif->mtu[VNET_MTU_MPLS]);
+
   mp->context = context;
 
   strncpy ((char *) mp->interface_name,
