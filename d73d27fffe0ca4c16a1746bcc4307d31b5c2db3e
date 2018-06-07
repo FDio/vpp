@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "42570f45_e3e90f40",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-06-07T15:13:32Z",
+      "side": 1,
+      "message": "But the flow table is shared between all the VIPs. Here you increase the value for a given VIP, but after the timeout it may be a different VIP that uses the same slot in the hash table. And even if we assume that there is a single VIP, the number of measured connexions will just slowly increase to the size of the hash table.",
+      "parentUuid": "20004349_80f2b0cb",
+      "range": {
+        "startLine": 328,
+        "startChar": 14,
+        "endLine": 331,
+        "endChar": 17
+      },
+      "revId": "d73d27fffe0ca4c16a1746bcc4307d31b5c2db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "95aa7bdf_a96ec2cf",
         "filename": "src/plugins/lb/util.h",
         "patchSetId": 1
