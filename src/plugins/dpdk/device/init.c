@@ -315,9 +315,16 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (pci_dev)
 	{
 	  struct rte_eth_dev_info di = { 0 };
+	  struct rte_pci_device *next_pci_dev;
 	  rte_eth_dev_info_get (i + 1, &di);
-	  if (pci_dev && pci_addr.as_u32 != last_pci_addr.as_u32 &&
-	      memcmp (&pci_dev->addr, &pci_dev->addr,
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+	  next_pci_dev = di.pci_dev;
+#else
+	  next_pci_dev = di.device ? RTE_DEV_TO_PCI (di.device) : 0;
+#endif
+	  if (pci_dev && next_pci_dev &&
+	      pci_addr.as_u32 != last_pci_addr.as_u32 &&
+	      memcmp (&pci_dev->addr, &next_pci_dev->addr,
 		      sizeof (struct rte_pci_addr)) == 0)
 	    {
 	      xd->interface_name_suffix = format (0, "0");
