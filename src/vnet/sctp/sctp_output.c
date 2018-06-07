@@ -1478,7 +1478,7 @@ sctp_prepare_data_retransmit (sctp_connection_t * sctp_conn,
    * Make sure we can retransmit something
    */
   available_bytes =
-    stream_session_tx_fifo_max_dequeue (&sctp_conn->sub_conn[idx].connection);
+    session_tx_fifo_max_dequeue (&sctp_conn->sub_conn[idx].connection);
   ASSERT (available_bytes >= offset);
   available_bytes -= offset;
   if (!available_bytes)
