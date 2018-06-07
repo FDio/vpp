@@ -4,6 +4,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
+from scapy.data import IP_PROTOS
 
 from framework import VppTestCase
 from util import ppp
@@ -145,6 +146,11 @@ class TestLB(VppTestCase):
                     self.assertEqual(ip.dst, "10.0.0.%u" % asid)
                     self.assertEqual(ip.tos, 0x1c)
                     self.assertEqual(len(ip.options), 0)
+                    self.assert_ip_checksum_valid(p)
+                    if ip.proto == IP_PROTOS.tcp:
+                        self.assert_tcp_checksum_valid(p)
+                    elif ip.proto == IP_PROTOS.udp:
+                        self.assert_udp_checksum_valid(p)
                 elif (encap == 'nat4'):
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
