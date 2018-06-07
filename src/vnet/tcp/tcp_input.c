@@ -2546,13 +2546,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      tc0->state = TCP_STATE_CLOSED;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
-	      tcp_connection_timers_reset (tc0);
-
-	      /* Don't delete the connection/session yet. Instead, wait a
-	       * reasonable amount of time until the pipes are cleared. In
-	       * particular, this makes sure that we won't have dead sessions
-	       * when processing events on the tx path */
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	      /* Delete the connection/session since the pipes should be
+	       * clear by now */
+	      tcp_connection_del (tc0);
 
 	      goto drop;
 

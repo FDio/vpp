@@ -454,9 +454,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_CLOSING))
     {
       /* Session is closed so app will never clean up. Flush rx fifo */
-      u32 to_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
-      if (to_dequeue)
-	svm_fifo_dequeue_drop (s->server_rx_fifo, to_dequeue);
+      svm_fifo_dequeue_drop_all (s->server_rx_fifo);
       return 0;
     }
 
@@ -726,6 +724,7 @@ stream_session_disconnect_notify (transport_connection_t * tc)
   s = session_get (tc->s_index, tc->thread_index);
   server = application_get (s->app_index);
   server->cb_fns.session_disconnect_callback (s);
+  s->session_state = SESSION_STATE_CLOSED;
 }
 
 /**
@@ -1064,8 +1063,17 @@ stream_session_disconnect (stream_session_t * s)
   session_manager_main_t *smm = &session_manager_main;
   session_fifo_event_t *evt;
 
-  if (!s || s->session_state >= SESSION_STATE_CLOSING)
+  if (!s)
     return;
+
+  if (s->session_state >= SESSION_STATE_CLOSING)
+    {
+      /* Session already closed. Clear the tx fifo */
+      if (s->session_state == SESSION_STATE_CLOSED)
+	svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+      return;
+    }
+
   s->session_state = SESSION_STATE_CLOSING;
 
   /* If we are in the handler thread, or being called with the worker barrier

@@ -152,6 +152,7 @@ int svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here);
 
 int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 max_bytes, u8 * copy_here);
 int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
+void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
