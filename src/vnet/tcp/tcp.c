@@ -277,19 +277,19 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
+      tcp_connection_timers_reset (tc);
+      /* Set the cleanup timer, in case the session layer/app don't
+       * cleanly close the connection */
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       stream_session_reset_notify (&tc->connection);
-      /* fall through */
+      break;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_CLOSING:
       tc->state = TCP_STATE_CLOSED;
       TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
-
-      /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
-
-      /* Wait for cleanup from session layer but not forever */
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       break;
     case TCP_STATE_CLOSED:
@@ -371,7 +371,8 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
   /* Wait for the session tx events to clear */
   tc->state = TCP_STATE_CLOSED;
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
-  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+//  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+  tcp_connection_cleanup (tc);
 }
 
 /**
