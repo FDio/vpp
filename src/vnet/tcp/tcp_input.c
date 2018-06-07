@@ -2474,7 +2474,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (tc0->flags & TCP_CONN_FINPNDG)
 		{
 		  /* TX fifo finally drained */
-		  if (!stream_session_tx_fifo_max_dequeue (&tc0->connection))
+		  if (!session_tx_fifo_max_dequeue (&tc0->connection))
 		    tcp_send_fin (tc0);
 		}
 	      /* If FIN is ACKed */
@@ -2506,6 +2506,18 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
+		}
+	      if (tc0->flags & TCP_CONN_FINPNDG)
+		{
+		  /* TX fifo finally drained */
+		  if (!session_tx_fifo_max_dequeue (&tc0->connection))
+		    {
+		      tcp_send_fin (tc0);
+		      tcp_connection_timers_reset (tc0);
+		      tc0->state = TCP_STATE_LAST_ACK;
+		      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE,
+					TCP_2MSL_TIME);
+		    }
 		}
 	      break;
 	    case TCP_STATE_CLOSING:
@@ -2545,13 +2557,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      tc0->state = TCP_STATE_CLOSED;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
-	      tcp_connection_timers_reset (tc0);
-
-	      /* Don't delete the connection/session yet. Instead, wait a
-	       * reasonable amount of time until the pipes are cleared. In
-	       * particular, this makes sure that we won't have dead sessions
-	       * when processing events on the tx path */
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	      /* Delete the connection/session since the pipes should be
+	       * clear by now */
+	      tcp_connection_del (tc0);
 
 	      goto drop;
 

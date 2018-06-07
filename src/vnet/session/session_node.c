@@ -807,11 +807,10 @@ skip_dequeue:
 	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
 	      continue;
 	    }
-	  /* If tx queue is still not empty, wait a bit */
-	  if (svm_fifo_max_dequeue (s0->server_tx_fifo)
-	      && e0->postponed < 200)
+	  /* If tx queue is still not empty, wait for session layer to
+	   * flush the fifo. */
+	  if (svm_fifo_max_dequeue (s0->server_tx_fifo))
 	    {
-	      e0->postponed += 1;
 	      vec_add1 (smm->pending_disconnects[thread_index], *e0);
 	      continue;
 	    }
