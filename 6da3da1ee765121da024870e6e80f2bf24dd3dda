@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6467c720_1727cbdf",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-07T10:04:21Z",
+      "side": 1,
+      "message": "i\u0027d suggest writing/copying/changing some of the LB unit-tests to use the API rather than the CLI. then you would have caught this much sooner.",
+      "revId": "6da3da1ee765121da024870e6e80f2bf24dd3dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
