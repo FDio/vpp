@@ -103,19 +103,22 @@ vnet_tx_node_index_for_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 void
 vnet_rewrite_init (vnet_main_t * vnm,
 		   u32 sw_if_index,
+		   vnet_link_t linkt,
 		   u32 this_node, u32 next_node, vnet_rewrite_header_t * rw)
 {
   rw->sw_if_index = sw_if_index;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, this_node, next_node);
   rw->max_l3_packet_bytes =
-    vnet_sw_interface_get_mtu (vnm, sw_if_index, VLIB_TX);
+    vnet_sw_interface_get_mtu (vnm, sw_if_index, vnet_link_to_mtu (linkt));
 }
 
 void
-vnet_rewrite_update_mtu (vnet_main_t * vnm, vnet_rewrite_header_t * rw)
+vnet_rewrite_update_mtu (vnet_main_t * vnm, vnet_link_t linkt,
+			 vnet_rewrite_header_t * rw)
 {
   rw->max_l3_packet_bytes =
-    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index, VLIB_TX);
+    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index,
+			       vnet_link_to_mtu (linkt));
 }
 
 void
@@ -133,7 +136,7 @@ vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
     vnet_get_hw_interface_class (vnm, hw->hw_class_index);
   u8 *rewrite = NULL;
 
-  vnet_rewrite_init (vnm, sw_if_index, node_index,
+  vnet_rewrite_init (vnm, sw_if_index, link_type, node_index,
 		     vnet_tx_node_index_for_sw_interface (vnm, sw_if_index),
 		     rw);
 

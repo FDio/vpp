@@ -66,6 +66,8 @@ typedef struct vnet_main_t
     * sw_interface_add_del_functions[VNET_ITF_FUNC_N_PRIO];
     _vnet_interface_function_list_elt_t
     * sw_interface_admin_up_down_functions[VNET_ITF_FUNC_N_PRIO];
+    _vnet_interface_function_list_elt_t
+    * sw_interface_mtu_change_functions[VNET_ITF_FUNC_N_PRIO];
 
   uword *interface_tag_by_sw_if_index;
 
