@@ -499,7 +499,7 @@ session_clone_safe (u32 session_index, u32 thread_index)
 
 transport_connection_t *session_get_transport (stream_session_t * s);
 
-u32 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc);
+u32 session_tx_fifo_max_dequeue (transport_connection_t * tc);
 
 int
 session_enqueue_stream_connection (transport_connection_t * tc,
