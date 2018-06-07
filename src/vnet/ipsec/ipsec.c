@@ -132,23 +132,23 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
   return 0;
 }
 
+/* contains per-thread slots holding pointers to spd being currently sorted
+ * so that ipsec_spd_entry_sort() knows which spd is being sorted when called
+ * by qsort() */
+static ipsec_spd_t **ipsec_spd_entry_sort_helper;
+
 static int
 ipsec_spd_entry_sort (void *a1, void *a2)
 {
-  ipsec_main_t *im = &ipsec_main;
   u32 *id1 = a1;
   u32 *id2 = a2;
-  ipsec_spd_t *spd;
+  ipsec_spd_t *spd = ipsec_spd_entry_sort_helper[vlib_get_thread_index ()];
   ipsec_policy_t *p1, *p2;
 
-  /* *INDENT-OFF* */
-  pool_foreach (spd, im->spds, ({
-    p1 = pool_elt_at_index(spd->policies, *id1);
-    p2 = pool_elt_at_index(spd->policies, *id2);
-    if (p1 && p2)
-      return p2->priority - p1->priority;
-  }));
-  /* *INDENT-ON* */
+  p1 = pool_elt_at_index (spd->policies, *id1);
+  p2 = pool_elt_at_index (spd->policies, *id2);
+  if (p1 && p2)
+    return p2->priority - p1->priority;
 
   return 0;
 }
@@ -190,6 +190,8 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
       pool_get (spd->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
       policy_index = vp - spd->policies;
+
+      ipsec_spd_entry_sort_helper[vlib_get_thread_index ()] = spd;
 
       if (policy->is_outbound)
 	{
@@ -545,6 +547,8 @@ ipsec_init (vlib_main_t * vm)
   ipsec_main_t *im = &ipsec_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_node_t *node;
+
+  vec_validate (ipsec_spd_entry_sort_helper, vec_len (vlib_worker_threads));
 
   ipsec_rand_seed ();
 
