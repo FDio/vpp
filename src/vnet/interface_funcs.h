@@ -262,20 +262,22 @@ vnet_hw_interface_get_flags (vnet_main_t * vnm, u32 hw_if_index)
   return hw->flags;
 }
 
-always_inline uword
-vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index,
-			   vlib_rx_or_tx_t dir)
+always_inline u32
+vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  return hw->max_l3_packet_bytes[dir];
+  return hw->max_packet_bytes;
 }
 
-always_inline uword
-vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index,
-			   vlib_rx_or_tx_t dir)
+always_inline u32
+vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index, vnet_mtu_t af)
 {
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  return (hw->max_l3_packet_bytes[dir]);
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+  u32 mtu;
+  mtu = sw->mtu[af] > 0 ? sw->mtu[af] : sw->mtu[VNET_MTU_L3];
+  if (mtu == 0)
+    return 9000;		/* $$$ Deal with interface-types not setting MTU */
+  return mtu;
 }
 
 always_inline uword
@@ -338,6 +340,11 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 
 /* Set the MTU on the HW interface */
 void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
+
+/* Set the MTU on the SW interface */
+void vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu);
+void vnet_sw_interface_set_protocol_mtu (vnet_main_t * vnm, u32 sw_if_index,
+					 u32 mtu[]);
 
 /* update the unnumbered state of an interface */
 void vnet_sw_interface_update_unnumbered (u32 sw_if_index,

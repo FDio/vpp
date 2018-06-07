@@ -2867,8 +2867,7 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
   if (error)
     clib_error_report (error);
 
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, vui->hw_if_index);
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
+  vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
 }
 
 /*

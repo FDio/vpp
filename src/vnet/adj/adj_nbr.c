@@ -230,7 +230,7 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 	adj_index = adj_get_index(adj);
 	adj_lock(adj_index);
 
-	vnet_rewrite_init(vnm, sw_if_index,
+	vnet_rewrite_init(vnm, sw_if_index, link_type,
 			  adj_get_nd_node(nh_proto),
 			  vnet_tx_node_index_for_sw_interface(vnm, sw_if_index),
 			  &adj->rewrite_header);
