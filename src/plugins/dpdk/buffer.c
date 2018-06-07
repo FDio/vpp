@@ -462,6 +462,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   dpdk_mempool_private_t priv;
   clib_error_t *error = 0;
   u32 size, obj_size;
+  rte_iova_t *iova_tab;
   i32 ret;
   uword i;
 
@@ -494,14 +495,30 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
 
+  /* Create IOVA table with number of entries equal to number of pages
+     in phymem region, which should contain Virtual address or
+     Physical address according to platform eal iova mode
+   */
+
+  iova_tab =
+    (rte_iova_t *) clib_mem_alloc (sizeof (rte_iova_t) * pr->n_pages);
+  if (NULL == iova_tab)
+    return clib_error_return (0, "failed to allocate IOVA table");
+
+
   for (i = 0; i < pr->n_pages; i++)
     {
       size_t page_size = 1 << pr->log2_page_size;
+
+      /* Fill IOVA according to eal iova mode, i.e PA or VA */
+      iova_tab[i] =
+	rte_mem_virt2iova ((const void *) (pr->mem + (i * page_size)));
       ret = rte_mempool_populate_iova (mp, ((char *) pr->mem) + i * page_size,
-				       pr->page_table[i], page_size, 0, 0);
+				       iova_tab[i], page_size, 0, 0);
       if (ret < 0)
 	{
 	  rte_mempool_free (mp);
+	  clib_mem_free ((void *) iova_tab);
 	  return clib_error_return (0, "failed to populate %s", pool_name);
 	}
     }
@@ -526,7 +543,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 	{
 	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
 	  dm.size = 1 << pr->log2_page_size;
-	  dm.iova = pr->page_table[i];
+	  dm.iova = iova_tab[i];
 	  if ((rv = ioctl (dbm->vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dm)))
 	    break;
 	}
@@ -534,6 +551,8 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
       if (rv != 0 && errno != EINVAL)
 	clib_unix_warning ("ioctl(VFIO_IOMMU_MAP_DMA) pool '%s'", pool_name);
     }
+
+  clib_mem_free ((void *) iova_tab);
 
   return 0;
 }
