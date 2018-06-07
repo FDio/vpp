@@ -828,6 +828,13 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
   return total_drop_bytes;
 }
 
+void
+svm_fifo_dequeue_drop_all (svm_fifo_t * f)
+{
+  f->head = f->tail;
+  __sync_fetch_and_sub (&f->cursize, f->cursize);
+}
+
 u32
 svm_fifo_number_ooo_segments (svm_fifo_t * f)
 {
