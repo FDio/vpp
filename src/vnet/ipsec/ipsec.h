@@ -299,6 +299,9 @@ typedef struct
 
   /* callbacks */
   ipsec_main_callbacks_t cb;
+
+  /* helper for sort function */
+  ipsec_spd_t *spd_to_sort;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;
