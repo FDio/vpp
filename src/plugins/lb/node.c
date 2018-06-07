@@ -398,11 +398,12 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
               ip40->tos = (u8) ((vip0->encap_args.dscp & 0x3F) << 2);
 
               csum = ip40->checksum;
-              csum = ip_csum_sub_even (csum, old_dst);
-              csum = ip_csum_sub_even (csum, old_dscp);
-              csum = ip_csum_add_even (csum,
-                                       lbm->ass[asindex0].address.ip4.as_u32);
-              csum = ip_csum_add_even (csum, ip40->tos);
+              csum = ip_csum_update (csum, old_dscp, ip40->tos,
+                                     ip4_header_t,
+                                     tos /* changed member */);
+              csum = ip_csum_update (csum, old_dst, ip40->dst_address.as_u32,
+                                     ip4_header_t,
+                                     dst_address /* changed member */);
               ip40->checksum = ip_csum_fold (csum);
 
               /* Recomputing L4 checksum after dst-IP modifying */
