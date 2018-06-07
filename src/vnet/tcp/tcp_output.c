@@ -390,6 +390,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_CLOSED:
+    case TCP_STATE_CLOSE_WAIT:
       return tcp_make_established_options (tc, opts);
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
@@ -1213,7 +1214,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
   /*
    * Make sure we can retransmit something
    */
-  available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
+  available_bytes = session_tx_fifo_max_dequeue (&tc->connection);
   ASSERT (available_bytes >= offset);
   available_bytes -= offset;
   if (!available_bytes)
@@ -1554,7 +1555,7 @@ tcp_timer_persist_handler (u32 index)
       || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
     return;
 
-  available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
+  available_bytes = session_tx_fifo_max_dequeue (&tc->connection);
   offset = tc->snd_una_max - tc->snd_una;
 
   /* Reprogram persist if no new bytes available to send. We may have data

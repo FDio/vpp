@@ -423,7 +423,7 @@ proxy_server_attach ()
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
-    pm->prealloc_fifos ? pm->prealloc_fifos : 1;
+    pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
 
@@ -456,7 +456,7 @@ active_open_attach (void)
   options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
-    pm->prealloc_fifos ? pm->prealloc_fifos : 1;
+    pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN
     | APP_OPTIONS_FLAGS_IS_PROXY;
