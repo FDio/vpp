@@ -37,7 +37,6 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
 
-  igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -61,7 +60,7 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  config = igmp_config_lookup (im, sw_if_index);
+  config = igmp_config_lookup (sw_if_index);
   if (config)
     igmp_clear_config (config);
 
@@ -128,8 +127,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  rv = igmp_listen (vm, enable, sw_if_index, saddr, gaddr,
-		    /* cli_api_listen */ 1);
+  rv = igmp_listen (vm, enable, sw_if_index, &saddr, &gaddr);
+
   if (rv == -1)
     {
       if (enable)
@@ -170,18 +169,19 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   igmp_src_t *src;
 
   /* *INDENT-OFF* */
-  pool_foreach (config, im->configs, (
-    {
+  pool_foreach (config, im->configs,
+    ({
       vlib_cli_output (vm, "interface: %U", format_vnet_sw_if_index_name,
-		       vnm, config->sw_if_index);
-	pool_foreach (group, config->groups, (
-	  {
-	    vlib_cli_output (vm, "\t%U:%U", format_igmp_report_type, group->type, format_ip46_address, &group->addr, ip46_address_is_ip4 (&group->addr));
-	    pool_foreach (src, group->srcs, (
-	      {
-		vlib_cli_output (vm, "\t\t%U", format_ip46_address, &src->addr, ip46_address_is_ip4 (&src->addr));
-	      }));
-	  }));
+                     vnm, config->sw_if_index);
+
+      FOR_EACH_GROUP (group, config,
+        ({
+          vlib_cli_output (vm, "\t%U", format_igmp_key, group->key);
+          FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
+          ({
+              vlib_cli_output (vm, "\t\t%U", format_igmp_key, &src->key);
+            }));
+        }));
     }));
   /* *INDENT-ON* */
 

@@ -206,6 +206,24 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
   p->next_frame_index = VLIB_PENDING_FRAME_NO_NEXT_FRAME;
 }
 
+void
+vlib_put_buffer_to_node (vlib_main_t * vm,
+			 u32 to_node_index, vlib_buffer_t * b)
+{
+  vlib_frame_t *f;
+  u32 *to_next;
+  u32 bi;
+
+  bi = vlib_get_buffer_index (vm, b);
+  f = vlib_get_frame_to_node (vm, to_node_index);
+
+  to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
+  f->n_vectors = 1;
+
+  vlib_put_frame_to_node (vm, to_node_index, f);
+}
+
 /* Free given frame. */
 void
 vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)

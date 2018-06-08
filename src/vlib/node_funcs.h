@@ -406,6 +406,8 @@ vlib_set_next_frame_buffer (vlib_main_t * vm,
 vlib_frame_t *vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index);
 void vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index,
 			     vlib_frame_t * f);
+void vlib_put_buffer_to_node (vlib_main_t * vm, u32 to_node_index,
+			      vlib_buffer_t * b);
 
 always_inline uword
 vlib_in_process_context (vlib_main_t * vm)

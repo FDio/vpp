@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  *------------------------------------------------------------------
  * Copyright (c) 2017 Cisco and/or its affiliates.
@@ -18,33 +19,66 @@
 option version = "1.0.0";
 
 /** \brief 
-    Used by a 'host' to enable the recption/listening of packets for a specific
+    Used by a 'host' to enable the reception/listening of packets for a specific
     multicast group
+
+   For each socket on which IPMulticastListen has been invoked, the
+   system records the desired multicast reception state for that socket.
+   That state conceptually consists of a set of records of the form:
+
+      (interface, multicast-address, filter-mode, source-list)
+
+   The socket state evolves in response to each invocation of
+   IPMulticastListen on the socket, as follows:
+
+   o If the requested filter mode is INCLUDE *and* the requested source
+     list is empty, then the entry corresponding to the requested
+     interface and multicast address is deleted if present.  If no such
+     entry is present, the request is ignored.
+
+   o If the requested filter mode is EXCLUDE *or* the requested source
+     list is non-empty, then the entry corresponding to the requested
+     interface and multicast address, if present, is changed to contain
+     the requested filter mode and source list.  If no such entry is
+     present, a new entry is created, using the parameters specified in
+     the request.
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param enable - if set, enable igmp messages on configuration
     @param sw_if_index - interface sw index
+    @param filter - filter mode INCLUDE=1, EXCLUDE=0
     @param saddr - source address
     @param gaddr - group address
 */
+
+typeonly define ip4_address
+{
+  u8 address[4];
+};
+typeonly define igmp_group
+{
+  u8 filter;
+  u8 n_srcs;
+  u32 sw_if_index;
+  vl_api_ip4_address_t gaddr;
+  vl_api_ip4_address_t saddrs[n_srcs];
+};
 autoreply define igmp_listen
 {
   u32 client_index;
   u32 context;
 
-  u8 enable;
-  u32 sw_if_index;
-  u8 saddr[4];
-  u8 gaddr[4];
+  vl_api_igmp_group_t group;
 };
 
 /** \brief 
-    Used by a 'router' to enable the recption of IGMP packets and the
-    construction of group state for hosts on the link
-    multicast group
+    Used by a 'router' and 'host' to enable the recption of IGMP packets.
+    For hosts this must be called once before igmp_listen.
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable - if set, enable igmp messages on configuration
+    @param mode - Host (1) or router (0) mode
     @param sw_if_index - interface sw index
 */
 autoreply define igmp_enable_disable
@@ -53,14 +87,14 @@ autoreply define igmp_enable_disable
   u32 context;
 
   u8 enable;
+  u8 mode;
   u32 sw_if_index;
 };
 
 /** \brief dump (S,G)s from interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface sw index
-    @param dump_all - get (S,G)s from all interfaces
+    @param sw_if_index - interface sw index (~0 for all)
 */
 define igmp_dump
 {
@@ -68,7 +102,6 @@ define igmp_dump
   u32 context;
 
   u32 sw_if_index;
-  u8 dump_all;
 };
 
 /** \brief igmp details

@@ -17,8 +17,10 @@ igmp_plugin_la_SOURCES =		\
 	igmp/igmp.c			\
 	igmp/cli.c			\
 	igmp/igmp_api.c			\
-	igmp/igmp_plugin.api.h		\
 	igmp/input.c			\
+	igmp/igmp_plugin.api.h		\
+	igmp/igmp_timer.c		\
+	igmp/igmp_pkt.c			\
 	igmp/igmp_format.c
 
 nobase_apiinclude_HEADERS += 		\

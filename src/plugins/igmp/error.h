@@ -24,7 +24,7 @@
   _ (INVALID_PROTOCOL, "invalid ip4 protocol")			\
   _ (BAD_CHECKSUM, "bad checksum")				\
   _ (UNKNOWN_TYPE, "unknown igmp message type")			\
-  _ (CLI_API_CONFIG, "CLI/API configured (S,G)s on interface")	\
+  _ (NOT_ENABLED, "IGMP not enabled on this interface")         \
 
 typedef enum
 {
