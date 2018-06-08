@@ -15,26 +15,18 @@
  *------------------------------------------------------------------
  */
 
-#ifndef _IGMP_FORMAT_H_
-#define _IGMP_FORMAT_H_
+#include <igmp/igmp.h>
 
-extern u8 *format_igmp_type (u8 * s, va_list * args);
+/**
+ * A copy of the report message sent from the worker to the main thread
+ */
+typedef struct igmp_report_args_t_
+{
+  u32 sw_if_index;
+  igmp_membership_report_v3_t report[0];
+} igmp_report_args_t;
 
-extern u8 *format_igmp_membership_group_type (u8 * s, va_list * args);
-
-extern u8 *format_igmp_header (u8 * s, va_list * args);
-
-extern u8 *format_igmp_report_v3 (u8 * s, va_list * args);
-
-extern u8 *format_igmp_query_v3 (u8 * s, va_list * args);
-
-extern u8 *format_igmp_filter_mode (u8 * s, va_list * args);
-
-extern u8 *format_igmp_src_addr_list (u8 * s, va_list * args);
-
-extern u8 *format_igmp_key (u8 * s, va_list * args);
-
-#endif /* IGMP_FORMAT_H */
+extern void igmp_handle_report (const igmp_report_args_t * args);
 
 /*
  * fd.io coding-style-patch-verification: ON

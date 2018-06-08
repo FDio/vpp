@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,26 +15,26 @@
  *------------------------------------------------------------------
  */
 
-#ifndef _IGMP_FORMAT_H_
-#define _IGMP_FORMAT_H_
+#ifndef _IGMP_ERROR_H_
+#define _IGMP_ERROR_H_
 
-extern u8 *format_igmp_type (u8 * s, va_list * args);
+#define foreach_igmp_error					\
+  _ (NONE, "valid igmp packets")				\
+  _ (UNSPECIFIED, "unspecified error")				\
+  _ (INVALID_PROTOCOL, "invalid ip4 protocol")			\
+  _ (BAD_CHECKSUM, "bad checksum")				\
+  _ (UNKNOWN_TYPE, "unknown igmp message type")			\
+  _ (NOT_ENABLED, "IGMP not enabled on this interface")         \
 
-extern u8 *format_igmp_membership_group_type (u8 * s, va_list * args);
+typedef enum
+{
+#define _(sym,str) IGMP_ERROR_##sym,
+  foreach_igmp_error
+#undef _
+    IGMP_N_ERROR,
+} igmp_error_t;
 
-extern u8 *format_igmp_header (u8 * s, va_list * args);
-
-extern u8 *format_igmp_report_v3 (u8 * s, va_list * args);
-
-extern u8 *format_igmp_query_v3 (u8 * s, va_list * args);
-
-extern u8 *format_igmp_filter_mode (u8 * s, va_list * args);
-
-extern u8 *format_igmp_src_addr_list (u8 * s, va_list * args);
-
-extern u8 *format_igmp_key (u8 * s, va_list * args);
-
-#endif /* IGMP_FORMAT_H */
+#endif /* IGMP_ERROR_H */
 
 /*
  * fd.io coding-style-patch-verification: ON
