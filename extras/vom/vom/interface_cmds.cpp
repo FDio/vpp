@@ -709,6 +709,30 @@ vhost_dump_cmd::to_string() const
   return ("vhost-itf-dump");
 }
 
+bool
+af_packet_dump_cmd::operator==(const af_packet_dump_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+af_packet_dump_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+af_packet_dump_cmd::to_string() const
+{
+  return ("af-packet-itf-dump");
+}
+
 set_tag::set_tag(HW::item<handle_t>& item, const std::string& name)
   : rpc_cmd(item)
   , m_name(name)
