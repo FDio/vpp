@@ -15,10 +15,18 @@ vppplugins_LTLIBRARIES += igmp_plugin.la
 
 igmp_plugin_la_SOURCES =		\
 	igmp/igmp.c			\
-	igmp/cli.c			\
+	igmp/igmp_query.c		\
+	igmp/igmp_report.c		\
+	igmp/igmp_group.c		\
+	igmp/igmp_src.c			\
+	igmp/igmp_config.c		\
+	igmp/igmp_cli.c			\
 	igmp/igmp_api.c			\
+	igmp/igmp_input.c		\
 	igmp/igmp_plugin.api.h		\
-	igmp/input.c			\
+	igmp/igmp_timer.c		\
+	igmp/igmp_pkt.c			\
+	igmp/igmp_ssm_range.c		\
 	igmp/igmp_format.c
 
 nobase_apiinclude_HEADERS += 		\
