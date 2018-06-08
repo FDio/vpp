@@ -864,6 +864,7 @@ typedef enum
   _ (l3_type_not_ip4, "L3 type not IP4")				\
   _ (l3_src_address_not_local, "IP4 source address not local to subnet") \
   _ (l3_dst_address_not_local, "IP4 destination address not local to subnet") \
+  _ (l3_dst_address_unset, "IP4 destination address is unset")          \
   _ (l3_src_address_is_local, "IP4 source address matches local interface") \
   _ (l3_src_address_learned, "ARP request IP4 source address learned")  \
   _ (replies_received, "ARP replies received")				\
@@ -980,6 +981,9 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    (arp0->l3_type !=
 	     clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
 	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
+	  error0 =
+	    (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ?
+	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
@@ -1110,7 +1114,23 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      }
 	  }
 
-	  if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
+	  if (fib_entry_is_sourced (dst_fei, FIB_SOURCE_ADJ))
+	    {
+	      /*
+	       * We matched an adj-fib on ths source subnet (a /32 previously
+	       * added as a result of ARP). If this request is a gratuitous
+	       * ARP, then learn from it.
+	       * The check for matching an adj-fib, is to prevent hosts
+	       * from spamming us with gratuitous ARPS that might otherwise
+	       * blow our ARP cache
+	       */
+	      if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+		  arp0->ip4_over_ethernet[1].ip4.as_u32)
+		error0 = arp_learn (vnm, am, sw_if_index0,
+				    &arp0->ip4_over_ethernet[0]);
+	      goto drop2;
+	    }
+	  else if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
 	      goto drop1;
@@ -1152,11 +1172,17 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Learn or update sender's mapping only for replies to addresses
 	   * that are local to the subnet */
 	  if (arp0->opcode ==
-	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply) &&
-	      dst_is_local0)
+	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
 	    {
-	      error0 = arp_learn (vnm, am, sw_if_index0,
-				  &arp0->ip4_over_ethernet[0]);
+	      if (dst_is_local0)
+		error0 = arp_learn (vnm, am, sw_if_index0,
+				    &arp0->ip4_over_ethernet[0]);
+	      else
+		/* a reply for a non-local destination could be a GARP.
+		 * GARPs for hosts we know were handled above, so this one
+		 * we drop */
+		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+
 	      goto drop1;
 	    }
 	  else if (arp0->opcode ==
@@ -1227,9 +1253,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  continue;
 
 	drop1:
-	  if (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ||
-	      (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
-	       arp0->ip4_over_ethernet[1].ip4.as_u32))
+	  if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+	      arp0->ip4_over_ethernet[1].ip4.as_u32)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_gratuitous_arp;
 	      goto drop2;

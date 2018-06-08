@@ -9,7 +9,7 @@ from vpp_object import *
 from util import mactobinary
 
 
-def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET):
+def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET, mac=None):
     nbrs = test.vapi.ip_neighbor_dump(sw_if_index,
                                       is_ipv6=1 if AF_INET6 == inet else 0)
     if inet == AF_INET:
@@ -21,7 +21,11 @@ def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET):
     for n in nbrs:
         if nbr_addr == n.ip_address[:s] \
            and is_static == n.is_static:
-            return True
+            if mac:
+                if n.mac_address == mactobinary(mac):
+                    return True
+            else:
+                return True
     return False
 
 
