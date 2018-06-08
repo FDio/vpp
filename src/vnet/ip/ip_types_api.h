@@ -1,5 +1,4 @@
 /*
- *------------------------------------------------------------------
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,29 +11,35 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *------------------------------------------------------------------
  */
 
-#ifndef _IGMP_FORMAT_H_
-#define _IGMP_FORMAT_H_
+#ifndef __IP_TYPES_API_H__
+#define __IP_TYPES_API_H__
 
-extern u8 *format_igmp_type (u8 * s, va_list * args);
+/**
+ * Conversion functions to/from (decode/encode) API types to VPP internal types
+ */
 
-extern u8 *format_igmp_membership_group_type (u8 * s, va_list * args);
+#include <vnet/ip/ip.h>
+#include <vnet/fib/fib_types.h>
 
-extern u8 *format_igmp_header (u8 * s, va_list * args);
+/**
+ * Forward declarations so we need not #include the API definitions here
+ */
+struct _vl_api_address;
+struct _vl_api_prefix;
 
-extern u8 *format_igmp_report_v3 (u8 * s, va_list * args);
+extern void ip_address_decode (const struct _vl_api_address *in,
+			       ip46_address_t * out);
+extern void ip_address_encode (const ip46_address_t * in,
+			       struct _vl_api_address *out);
 
-extern u8 *format_igmp_query_v3 (u8 * s, va_list * args);
+extern void ip_prefix_decode (const struct _vl_api_prefix *in,
+			      fib_prefix_t * out);
+extern void ip_prefix_encode (const fib_prefix_t * in,
+			      struct _vl_api_prefix *out);
 
-extern u8 *format_igmp_filter_mode (u8 * s, va_list * args);
-
-extern u8 *format_igmp_src_addr_list (u8 * s, va_list * args);
-
-extern u8 *format_igmp_key (u8 * s, va_list * args);
-
-#endif /* IGMP_FORMAT_H */
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

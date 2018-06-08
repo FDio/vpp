@@ -37,7 +37,6 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
 
-  igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -61,7 +60,7 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  config = igmp_config_lookup (im, sw_if_index);
+  config = igmp_config_lookup (sw_if_index);
   if (config)
     igmp_clear_config (config);
 
@@ -128,8 +127,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  rv = igmp_listen (vm, enable, sw_if_index, saddr, gaddr,
-		    IGMP_CONFIG_FLAG_CLI_API_CONFIGURED);
+  rv = igmp_listen (vm, enable, sw_if_index, &saddr, &gaddr);
+
   if (rv == -1)
     {
       if (enable)
@@ -170,18 +169,19 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   igmp_src_t *src;
 
   /* *INDENT-OFF* */
-  pool_foreach (config, im->configs, (
-    {
+  pool_foreach (config, im->configs,
+    ({
       vlib_cli_output (vm, "interface: %U", format_vnet_sw_if_index_name,
-		       vnm, config->sw_if_index);
-	pool_foreach (group, config->groups, (
-	  {
-	    vlib_cli_output (vm, "\t%U:%U", format_igmp_report_type, group->type, format_ip46_address, &group->addr, ip46_address_is_ip4 (&group->addr));
-	    pool_foreach (src, group->srcs, (
-	      {
-		vlib_cli_output (vm, "\t\t%U", format_ip46_address, &src->addr, ip46_address_is_ip4 (&src->addr));
-	      }));
-	  }));
+                     vnm, config->sw_if_index);
+
+      FOR_EACH_GROUP (group, config,
+        ({
+          vlib_cli_output (vm, "\t%U", format_igmp_key, group->key);
+          FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
+          ({
+              vlib_cli_output (vm, "\t\t%U", format_igmp_key, src->key);
+            }));
+        }));
     }));
   /* *INDENT-ON* */
 
@@ -195,6 +195,56 @@ VLIB_CLI_COMMAND (igmp_show_command, static) = {
   .function = igmp_show_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+igmp_show_timers_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+#define _(n,f) vlib_cli_output (vm, "%s: %d", #f, igmp_timer_type_get(n));
+  foreach_igmp_timer_type
+#undef _
+    return (NULL);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (igmp_show_timers_command, static) = {
+  .path = "show igmp timers",
+  .short_help = "show igmp timers",
+  .function = igmp_show_timers_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+test_igmp_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = NULL;
+  u32 value;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "query %d", &value))
+	igmp_timer_type_set (IGMP_TIMER_QUERY, value);
+      else if (unformat (input, "src %d", &value))
+	igmp_timer_type_set (IGMP_TIMER_SRC, value);
+      else if (unformat (input, "leave %d", &value))
+	igmp_timer_type_set (IGMP_TIMER_LEAVE, value);
+      else
+	error = clib_error_return (0, "query or src timers only");
+    }
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_igmp_command, static) = {
+  .path = "test igmp timers",
+  .short_help = "Change the default values for IGMP timers - only sensible during unit tests",
+  .function = test_igmp_command_fn,
+};
+/* *INDENT-ON* */
+
 
 clib_error_t *
 igmp_cli_init (vlib_main_t * vm)
