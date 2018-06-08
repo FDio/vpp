@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf47cdc0_375f145e",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-06-08T09:28:11Z",
+      "side": 0,
+      "message": "Do those really need to be changed to functions ? I thought the warning was only for simple comparisons, not for more complex expressions.",
+      "range": {
+        "startLine": 304,
+        "startChar": 0,
+        "endLine": 313,
+        "endChar": 68
+      },
+      "revId": "3c22affe8b1c60b4d34a387331251f44c3db4fd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
