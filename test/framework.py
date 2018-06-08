@@ -837,12 +837,13 @@ class VppTestCase(unittest.TestCase):
                 "Finished sleep (%s) - slept %ss (wanted %ss)" % (
                     remark, after - before, timeout))
 
-    def send_and_assert_no_replies(self, intf, pkts, remark=""):
+    def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
         self.vapi.cli("clear trace")
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        timeout = 1
+        if not timeout:
+            timeout = 1
         for i in self.pg_interfaces:
             i.get_capture(0, timeout=timeout)
             i.assert_nothing_captured(remark=remark)

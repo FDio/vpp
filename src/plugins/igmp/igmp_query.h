@@ -1,5 +1,5 @@
-/* Hey Emacs use -*- mode: C -*- */
 /*
+ *------------------------------------------------------------------
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,32 +12,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *------------------------------------------------------------------
  */
 
-typedef ip4_address {
-  u8 address[4];
-};
+#include <igmp/igmp.h>
 
-typedef ip6_address {
-  u8 address[16];
-};
+/**
+ * A copy of the query message sent from the worker to the main thread
+ */
+typedef struct igmp_query_args_t_
+{
+  u32 sw_if_index;
+  igmp_membership_query_v3_t query[0];
+} igmp_query_args_t;
 
-enum address_family {
-  ADDRESS_IP4 = 0,
-  ADDRESS_IP6,
-};
+extern void igmp_handle_query (const igmp_query_args_t * args);
 
-union address_union {
-  vl_api_ip4_address_t ip4;
-  vl_api_ip6_address_t ip6;
-};
-
-typedef address {
-  vl_api_address_family_t af;
-  vl_api_address_union_t un;
-};
-
-typedef prefix {
-  vl_api_address_t address;
-  u8 address_length;
-};
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
