@@ -1,39 +1,80 @@
 
 from vpp_object import VppObject
+import socket
+
+
+class IGMP_MODE:
+    ROUTER = 0
+    HOST = 1
+
+
+class IGMP_FILTER:
+    INCLUDE = 1
+    EXCLUDE = 0
+
+
+def find_igmp_state(states, itf, gaddr, saddr):
+    for s in states:
+        if s.sw_if_index == itf.sw_if_index and \
+           s.gaddr.address == socket.inet_pton(socket.AF_INET, gaddr) and \
+           s.saddr.address == socket.inet_pton(socket.AF_INET, saddr):
+            return True
+    return False
+
+
+def wait_for_igmp_event(test, timeout, itf, gaddr, saddr, ff):
+    ev = test.vapi.wait_for_event(timeout, "igmp_event")
+    if ev.sw_if_index == itf.sw_if_index and \
+       ev.gaddr.address == socket.inet_pton(socket.AF_INET, gaddr) and \
+       ev.saddr.address == socket.inet_pton(socket.AF_INET, saddr) and \
+       ev.filter == ff:
+        return True
+    return False
 
 
 class IgmpSG():
-    def __init__(self, saddr, gaddr):
-        self.saddr = saddr
+    def __init__(self, gaddr, saddrs):
         self.gaddr = gaddr
+        self.gaddr_p = socket.inet_pton(socket.AF_INET, gaddr)
+        self.saddrs = saddrs
+        self.saddrs_p = []
+        self.saddrs_encoded = []
+        for s in saddrs:
+            ss = socket.inet_pton(socket.AF_INET, s)
+            self.saddrs_p.append(ss)
+            self.saddrs_encoded.append({'address': ss})
 
 
-class VppIgmpConfig(VppObject):
-    def __init__(self, test, sw_if_index, sg=None):
+class IgmpRecord():
+    def __init__(self, sg, type):
+        self.sg = sg
+        self.type = type
+
+
+class VppHostState(VppObject):
+    def __init__(self, test, filter, sw_if_index, sg):
         self._test = test
         self.sw_if_index = sw_if_index
-        if isinstance(sg, list):
-            self.sg_list = sg
-        else:
-            self.sg_list = []
-            self.sg_list.append(sg)
-
-    def add_sg(self, sg):
-        self.sg.append(sg)
+        self.filter = filter
+        self.sg = sg
 
     def add_vpp_config(self):
-        for e in self.sg_list:
-            self._test.vapi.igmp_listen(
-                1, self.sw_if_index, e.saddr, e.gaddr)
+        self._test.vapi.igmp_listen(
+            self.filter, self.sw_if_index,
+            self.sg.saddrs_encoded, self.sg.gaddr_p)
 
     def remove_vpp_config(self):
-        self._test.vapi.igmp_clear_interface(self.sw_if_index)
+        self._test.vapi.igmp_listen(
+            self.filter,
+            self.sw_if_index,
+            [],
+            self.sg.gaddr_p)
 
     def __str__(self):
         return self.object_id()
 
     def object_id(self):
-        return "%s:%d" % (self.sg_list, self.sw_if_index)
+        return "%s:%d" % (self.sg, self.sw_if_index)
 
     def query_vpp_config(self):
         return self._test.vapi.igmp_dump()

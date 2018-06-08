@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,26 +15,18 @@
  *------------------------------------------------------------------
  */
 
-#ifndef _IGMP_ERROR_H_
-#define _IGMP_ERROR_H_
+#include <igmp/igmp.h>
 
-#define foreach_igmp_error					\
-  _ (NONE, "valid igmp packets")				\
-  _ (UNSPECIFIED, "unspecified error")				\
-  _ (INVALID_PROTOCOL, "invalid ip4 protocol")			\
-  _ (BAD_CHECKSUM, "bad checksum")				\
-  _ (UNKNOWN_TYPE, "unknown igmp message type")			\
-  _ (CLI_API_CONFIG, "CLI/API configured (S,G)s on interface")	\
-
-typedef enum
+/**
+ * A copy of the query message sent from the worker to the main thread
+ */
+typedef struct igmp_query_args_t_
 {
-#define _(sym,str) IGMP_ERROR_##sym,
-  foreach_igmp_error
-#undef _
-    IGMP_N_ERROR,
-} igmp_error_t;
+  u32 sw_if_index;
+  igmp_membership_query_v3_t query[0];
+} igmp_query_args_t;
 
-#endif /* IGMP_ERROR_H */
+extern void igmp_handle_query (const igmp_query_args_t * args);
 
 /*
  * fd.io coding-style-patch-verification: ON
