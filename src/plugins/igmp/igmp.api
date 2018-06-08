@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  *------------------------------------------------------------------
  * Copyright (c) 2017 Cisco and/or its affiliates.
@@ -16,51 +17,92 @@
  */
 
 option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 
-/** \brief 
-    Used by a 'host' to enable the recption/listening of packets for a specific
-    multicast group
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param enable - if set, enable igmp messages on configuration
-    @param sw_if_index - interface sw index
-    @param saddr - source address
-    @param gaddr - group address
-*/
+/**
+ * @brief Filter mode
+ */
+enum filter_mode {
+  EXCLUDE = 0,
+  INCLUDE = 1,
+};
+
+
+/**
+ * @brief
+ *   Used by a 'host' to enable the reception/listening of packets for a specific
+ *   multicast group
+ *
+ *  For each socket on which IPMulticastListen has been invoked, the
+ *  system records the desired multicast reception state for that socket.
+ *  That state conceptually consists of a set of records of the form:
+ *
+ *     (interface, multicast-address, filter-mode, source-list)
+ *
+ *  The socket state evolves in response to each invocation of
+ *  IPMulticastListen on the socket, as follows:
+ *
+ *  o If the requested filter mode is INCLUDE *and* the requested source
+ *    list is empty, then the entry corresponding to the requested
+ *    interface and multicast address is deleted if present.  If no such
+ *    entry is present, the request is ignored.
+ *
+ *  o If the requested filter mode is EXCLUDE *or* the requested source
+ *    list is non-empty, then the entry corresponding to the requested
+ *    interface and multicast address, if present, is changed to contain
+ *    the requested filter mode and source list.  If no such entry is
+ *    present, a new entry is created, using the parameters specified in
+ *    the request.
+ *
+ *   @param client_index - opaque cookie to identify the sender
+ *   @param context - sender context, to match reply w/ request
+ *   @param sw_if_index - interface sw index
+ *   @param filter - filter mode
+ *   @param saddr - source address
+ *   @param gaddr - group address
+ */
+typeonly define igmp_group
+{
+  vl_api_filter_mode_t filter;
+  u8 n_srcs;
+  u32 sw_if_index;
+  vl_api_ip4_address_t gaddr;
+  vl_api_ip4_address_t saddrs[n_srcs];
+};
 autoreply define igmp_listen
 {
   u32 client_index;
   u32 context;
 
-  u8 enable;
-  u32 sw_if_index;
-  u8 saddr[4];
-  u8 gaddr[4];
+  vl_api_igmp_group_t group;
 };
 
-/** \brief 
-    Used by a 'router' to enable the recption of IGMP packets and the
-    construction of group state for hosts on the link
-    multicast group
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param enable - if set, enable igmp messages on configuration
-    @param sw_if_index - interface sw index
-*/
+/**
+ * @brief
+ *   Used by a 'router' and 'host' to enable the recption of IGMP packets.
+ *   For hosts this must be called once before igmp_listen.
+ *
+ *   @param client_index - opaque cookie to identify the sender
+ *   @param context - sender context, to match reply w/ request
+ *   @param enable - if set, enable igmp messages on configuration
+ *   @param mode - Host (1) or router (0) mode
+ *   @param sw_if_index - interface sw index
+ */
 autoreply define igmp_enable_disable
 {
   u32 client_index;
   u32 context;
 
   u8 enable;
+  u8 mode;
   u32 sw_if_index;
 };
 
-/** \brief dump (S,G)s from interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface sw index
-    @param dump_all - get (S,G)s from all interfaces
+/**
+ * @brief dump (S,G)s from interface
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param sw_if_index - interface sw index (~0 for all)
 */
 define igmp_dump
 {
@@ -68,22 +110,22 @@ define igmp_dump
   u32 context;
 
   u32 sw_if_index;
-  u8 dump_all;
 };
 
-/** \brief igmp details
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface sw index
-    @param saddr - source address
-    @param gaddr - group address
-*/
+/**
+ * @brief igmp details
+ * @param context - sender context, to match reply w/ request
+ * @param sw_if_index - interface sw index
+ * @param saddr - source address
+ * @param gaddr - group address
+ */
 define igmp_details
 {
   u32 context;
 
   u32 sw_if_index;
-  u8 saddr[4];
-  u8 gaddr[4];
+  vl_api_ip4_address_t saddr;
+  vl_api_ip4_address_t gaddr;
 };
 
 /** \brief remove all (S,G)s from an interface
@@ -99,12 +141,13 @@ autoreply define igmp_clear_interface
   u32 sw_if_index;
 };
 
-/** \brief register for igmp events
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param pid - sender's pid
-    @param enable - 1 enable, 0 disable igmp events
-*/
+/**
+ * @brief register for igmp events
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param pid - sender's pid
+ * @param enable - 1 enable, 0 disable igmp events
+ */
 autoreply define want_igmp_events
 {
   u32 client_index;
@@ -119,23 +162,69 @@ service {
     events igmp_event;
 };
 
-/** \brief igmp event details
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface sw index
-    @param saddr - source address
-    @param gaddr - group address
-    @param is_join - if set source is joining the group, else leaving
-*/
+/**
+ * @brief igmp event details
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param sw_if_index - interface sw index
+ * @param saddr - source address
+ * @param gaddr - group address
+ *@param filter - filter mode
+ */
 define igmp_event
 {
   u32 context;
 
   u32 sw_if_index;
-  u8 saddr[4];
-  u8 gaddr[4];
-  u8 is_join;
+  vl_api_filter_mode_t filter;
+  vl_api_ip4_address_t saddr;
+  vl_api_ip4_address_t gaddr;
 };
+
+/**
+ * @brief enum to specify either ASM or SSM semantics
+ */
+enum group_prefix_type
+{
+  ASM = 0,
+  SSM = 1,
+};
+
+/**
+ * @brief Definition of a Group prefix and its type
+ */
+typedef group_prefix
+{
+  vl_api_group_prefix_type_t type;
+  vl_api_prefix_t prefix;
+};
+
+/**
+ * @brief Configure a prefix for SSM or ASM semantics
+ * @param address - Prefix address
+ * @param address_length - Prefix length
+ */
+autoreply define igmp_group_prefix_set
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_group_prefix_t gp;
+};
+
+define igmp_group_prefix_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define igmp_group_prefix_details
+{
+  u32 context;
+
+  vl_api_group_prefix_t gp;
+};
+
 
 /*
  * Local Variables:

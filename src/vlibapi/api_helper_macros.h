@@ -115,7 +115,7 @@ vnet_sw_if_index_is_api_valid (u32 sw_if_index)
 }
 
 #define VALIDATE_SW_IF_INDEX(mp)				\
- do { u32 __sw_if_index = ntohl(mp->sw_if_index);		\
+ do { u32 __sw_if_index = ntohl((mp)->sw_if_index);		\
     if (!vnet_sw_if_index_is_api_valid(__sw_if_index)) {        \
         rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
         goto bad_sw_if_index;                                   \
@@ -129,7 +129,7 @@ bad_sw_if_index:                                \
 } while (0);
 
 #define VALIDATE_RX_SW_IF_INDEX(mp)				\
- do { u32 __rx_sw_if_index = ntohl(mp->rx_sw_if_index);		\
+ do { u32 __rx_sw_if_index = ntohl((mp)->rx_sw_if_index);       \
     if (!vnet_sw_if_index_is_api_valid(__rx_sw_if_index)) {     \
         rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
         goto bad_rx_sw_if_index;				\
