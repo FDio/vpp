@@ -80,19 +80,18 @@ session_tx_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 always_inline void
 session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
-			    vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)
+			    vlib_buffer_t ** b, u8 peek_data)
 {
-  session_manager_main_t *smm = &session_manager_main;
   vlib_buffer_t *chain_b, *prev_b;
-  u32 chain_bi0, to_deq, left_from_seg;
+  u32 to_deq, left_from_seg;
   u16 len_to_deq, n_bytes_read;
-  u8 *data, j;
+  u8 *data, j, chain_idx = 1;
 
-  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-  b->total_length_not_including_first_buffer = 0;
+  b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b[0]->total_length_not_including_first_buffer = 0;
 
-  chain_b = b;
-  left_from_seg = clib_min (ctx->snd_mss - b->current_length,
+  chain_b = b[0];
+  left_from_seg = clib_min (ctx->snd_mss - b[0]->current_length,
 			    ctx->left_to_snd);
   to_deq = left_from_seg;
   for (j = 1; j < ctx->n_bufs_per_seg; j++)
@@ -100,11 +99,8 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
       prev_b = chain_b;
       len_to_deq = clib_min (to_deq, ctx->deq_per_buf);
 
-      *n_bufs -= 1;
-      chain_bi0 = smm->tx_buffers[ctx->s->thread_index][*n_bufs];
-      _vec_len (smm->tx_buffers[ctx->s->thread_index]) = *n_bufs;
-
-      chain_b = vlib_get_buffer (vm, chain_bi0);
+      chain_b = b[chain_idx];
+      chain_idx += 1;
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
       if (peek_data)
@@ -136,10 +132,10 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 	}
       ASSERT (n_bytes_read == len_to_deq);
       chain_b->current_length = n_bytes_read;
-      b->total_length_not_including_first_buffer += chain_b->current_length;
+      b[0]->total_length_not_including_first_buffer += chain_b->current_length;
 
       /* update previous buffer */
-      prev_b->next_buffer = chain_bi0;
+      prev_b->next_buffer = vlib_get_buffer_index (vm, chain_b);
       prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
 
       /* update current buffer */
@@ -150,7 +146,7 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 	break;
     }
   ASSERT (to_deq == 0
-	  && b->total_length_not_including_first_buffer == left_from_seg);
+	  && b[0]->total_length_not_including_first_buffer == left_from_seg);
   ctx->left_to_snd -= left_from_seg;
 }
 
@@ -171,27 +167,27 @@ session_output_try_get_buffers (vlib_main_t * vm,
 
 always_inline void
 session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
-			vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)
+			vlib_buffer_t ** b, u8 peek_data)
 {
   u32 len_to_deq;
-  u8 *data0;
+  u8 *data;
   int n_bytes_read;
 
   /*
    * Start with the first buffer in chain
    */
-  b->error = 0;
-  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
-  b->current_data = 0;
-  b->total_length_not_including_first_buffer = 0;
+  b[0]->error = 0;
+  b[0]->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b[0]->current_data = 0;
+  b[0]->total_length_not_including_first_buffer = 0;
 
-  data0 = vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  data = vlib_buffer_make_headroom (b[0], MAX_HDRS_LEN);
   len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
 
   if (peek_data)
     {
       n_bytes_read = svm_fifo_peek (ctx->s->server_tx_fifo, ctx->tx_offset,
-				    len_to_deq, data0);
+				    len_to_deq, data);
       ASSERT (n_bytes_read > 0);
       /* Keep track of progress locally, transport is also supposed to
        * increment it independently when pushing the header */
@@ -210,7 +206,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  deq_now = clib_min (hdr->data_length - hdr->data_offset,
 			      len_to_deq);
 	  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
-	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
+	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data);
 	  ASSERT (n_bytes_read > 0);
 
 	  if (ctx->s->session_state == SESSION_STATE_LISTENING)
@@ -228,18 +224,18 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
       else
 	{
 	  n_bytes_read = svm_fifo_dequeue_nowait (ctx->s->server_tx_fifo,
-						  len_to_deq, data0);
+						  len_to_deq, data);
 	  ASSERT (n_bytes_read > 0);
 	}
     }
-  b->current_length = n_bytes_read;
+  b[0]->current_length = n_bytes_read;
   ctx->left_to_snd -= n_bytes_read;
 
   /*
    * Fill in the remaining buffers in the chain, if any
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
-    session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
+    session_tx_fifo_chain_tail (vm, ctx, b, peek_data);
 
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_DEQ, s, ({
@@ -359,14 +355,16 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 				stream_session_t * s, int *n_tx_packets,
 				u8 peek_data)
 {
-  u32 next_index, next0, next1, next2, next3, *to_next, n_left_to_next;
+  u32 next_index, *to_next, n_left_to_next, *from;
   u32 n_trace = vlib_get_trace_count (vm, node), n_bufs_needed = 0;
-  u32 thread_index = s->thread_index, n_left, pbi;
+  u32 thread_index = s->thread_index, n_left;
   session_manager_main_t *smm = &session_manager_main;
   session_tx_context_t *ctx = &smm->ctx[thread_index];
   transport_proto_t tp;
-  vlib_buffer_t *pb;
-  u16 n_bufs, rv;
+  u16 n_bufs, rv, i;
+
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE];
 
   if (PREDICT_FALSE ((rv = session_tx_not_ready (s, peek_data))))
     {
@@ -376,7 +374,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   next_index = smm->session_type_to_next[s->session_type];
-  next0 = next1 = next2 = next3 = next_index;
 
   tp = session_get_transport_proto (s);
   ctx->s = s;
@@ -426,82 +423,61 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       ctx->n_segs_per_evt = n_left_to_next;
       ctx->max_len_to_snd = ctx->snd_mss * n_left_to_next;
     }
+
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
+  from = &smm->tx_buffers[thread_index][n_bufs - n_left];
+  vlib_get_buffers (vm, from, bufs, n_left);
+  b = bufs;
+  while (n_left >= 6)
+    {
+      vlib_prefetch_buffer_header(b[3], STORE);
+//      CLIB_PREFETCH (b[2]->data + CLIB_CACHE_LINE_BYTES,
+//                     CLIB_CACHE_LINE_BYTES, STORE);
+      vlib_prefetch_buffer_header(b[4], STORE);
+//      CLIB_PREFETCH (b[3]->data + CLIB_CACHE_LINE_BYTES,
+//                     CLIB_CACHE_LINE_BYTES, STORE);
+
+      session_tx_fill_buffer (vm, ctx, b, peek_data);
+      session_tx_fill_buffer (vm, ctx, &b[ctx->n_bufs_per_seg], peek_data);
+
+      ctx->transport_vft->push_header (ctx->tc, b[0]);
+      ctx->transport_vft->push_header (ctx->tc, b[ctx->n_bufs_per_seg]);
+
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[ctx->n_bufs_per_seg]);
+
+      n_left -= 2;
+      b += 2;
+    }
   while (n_left)
     {
-      while (n_left >= 4)
-	{
-	  vlib_buffer_t *b0, *b1;
-	  u32 bi0, bi1;
+      session_tx_fill_buffer (vm, ctx, b, peek_data);
 
-	  pbi = smm->tx_buffers[thread_index][n_bufs - 3];
-	  pb = vlib_get_buffer (vm, pbi);
-	  vlib_prefetch_buffer_header (pb, STORE);
-	  pbi = smm->tx_buffers[thread_index][n_bufs - 4];
-	  pb = vlib_get_buffer (vm, pbi);
-	  vlib_prefetch_buffer_header (pb, STORE);
+      /* Ask transport to push header after current_length and
+       * total_length_not_including_first_buffer are updated */
+      ctx->transport_vft->push_header (ctx->tc, b[0]);
 
-	  to_next[0] = bi0 = smm->tx_buffers[thread_index][--n_bufs];
-	  to_next[1] = bi1 = smm->tx_buffers[thread_index][--n_bufs];
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
-	  session_tx_fill_buffer (vm, ctx, b1, &n_bufs, peek_data);
-
-	  ctx->transport_vft->push_header (ctx->tc, b0);
-	  ctx->transport_vft->push_header (ctx->tc, b1);
-
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left -= 2;
-
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
-
-	  if (PREDICT_FALSE (n_trace > 0))
-	    {
-	      session_tx_trace_buffer (vm, node, next_index, b0, s, &n_trace);
-	      if (n_trace)
-		session_tx_trace_buffer (vm, node, next_index, b1, s,
-					 &n_trace);
-	    }
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, bi1,
-					   next0, next1);
-	}
-      while (n_left)
-	{
-	  vlib_buffer_t *b0;
-	  u32 bi0;
-
-	  ASSERT (n_bufs >= 1);
-	  to_next[0] = bi0 = smm->tx_buffers[thread_index][--n_bufs];
-	  b0 = vlib_get_buffer (vm, bi0);
-	  session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
-
-	  /* Ask transport to push header after current_length and
-	   * total_length_not_including_first_buffer are updated */
-	  ctx->transport_vft->push_header (ctx->tc, b0);
-
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  n_left -= 1;
-
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  if (PREDICT_FALSE (n_trace > 0))
-	    session_tx_trace_buffer (vm, node, next_index, b0, s, &n_trace);
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
-	}
+      n_left -= 1;
+      b += 1;
     }
-  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
+
+  if (PREDICT_FALSE (n_trace > 0))
+    {
+      for (i = 0; i < clib_min (n_trace, ctx->n_segs_per_evt); i++)
+  	session_tx_trace_buffer (vm, node,
+  	                         next_index, b[i - ctx->n_segs_per_evt],
+  	                         s, &n_trace);
+    }
+
+  for (i = 0; i < ctx->n_segs_per_evt; i++)
+    nexts[i] = next_index;
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, ctx->n_segs_per_evt);
+
+  _vec_len (smm->tx_buffers[thread_index]) = n_bufs - ctx->n_segs_per_evt;
   *n_tx_packets += ctx->n_segs_per_evt;
-  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   /* If we couldn't dequeue all bytes mark as partially read */
   ASSERT (ctx->left_to_snd == 0);
