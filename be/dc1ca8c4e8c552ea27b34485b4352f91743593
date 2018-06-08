@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Yusuke Tatsumi <ytatsumi@yahoo-corp.jp>
+Code-Review+2: Neale Ranns <nranns@cisco.com>
+Submitted-by: Neale Ranns <nranns@cisco.com>
+Submitted-at: Fri, 08 Jun 2018 07:27:25 +0000
+Reviewed-on: https://gerrit.fd.io/r/12933
+Project: vpp
+Branch: refs/heads/master
