@@ -851,9 +851,6 @@ fib_test_v4 (void)
     /*
      * if the IGMP plugin is loaded this adds two more entries to the v4 MFIB
      */
-    if (vlib_get_plugin_symbol("igmp_plugin.so", "igmp_listen"))
-        PNBR += 2;
-
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
     FIB_TEST((PNBR == fib_path_list_pool_size()), "path list pool size is %d",
              fib_path_list_pool_size());
@@ -4375,9 +4372,6 @@ fib_test_v6 (void)
     /*
      * if the IGMP plugin is loaded this adds two more entries to the v4 MFIB
      */
-    if (vlib_get_plugin_symbol("igmp_plugin.so", "igmp_listen"))
-        PNPS += 2;
-
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
     FIB_TEST((PNPS == fib_path_list_pool_size()), "path list pool size is %d",
              fib_path_list_pool_size());

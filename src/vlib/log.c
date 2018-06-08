@@ -166,11 +166,11 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
       if (sc->last_sec_count > sc->rate_limit)
 	return;
       else if (sc->last_sec_count == sc->rate_limit)
-	{
-	  vec_reset_length (s);
-	  s = format (0, "--- message(s) throttled ---");
-	  sc->is_throttling = 1;
-	}
+        {
+          vec_reset_length (s);
+          s = format (0, "--- message(s) throttled ---");
+          sc->is_throttling = 1;
+        }
     }
 
   if (s == 0)

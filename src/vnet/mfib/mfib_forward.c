@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/mfib/mfib_forward.h>
 #include <vnet/mfib/mfib_itf.h>
 #include <vnet/mfib/mfib_entry.h>
 #include <vnet/dpo/replicate_dpo.h>
@@ -24,6 +25,19 @@
 
 #include <vnet/ip/ip4.h>
 #include <vnet/vnet.h>
+
+typedef enum mfib_forward_rpf_next_t_ {
+    MFIB_FORWARD_RPF_NEXT_DROP,
+    MFIB_FORWARD_RPF_N_NEXT,
+} mfib_forward_rpf_next_t;
+
+/**
+ * Edges out of the RPF nodes to use for IGMP/MLD packets
+ */
+static u32 mfib_rpf_cp_edge[FIB_PROTOCOL_IP_MAX] = {
+    [FIB_PROTOCOL_IP4] = MFIB_FORWARD_RPF_NEXT_DROP,
+    [FIB_PROTOCOL_IP6] = MFIB_FORWARD_RPF_NEXT_DROP,
+};
 
 typedef struct mfib_forward_lookup_trace_t_ {
     u32 entry_index;
@@ -239,11 +253,6 @@ typedef struct mfib_forward_rpf_trace_t_ {
     mfib_itf_flags_t itf_flags;
 } mfib_forward_rpf_trace_t;
 
-typedef enum mfib_forward_rpf_next_t_ {
-    MFIB_FORWARD_RPF_NEXT_DROP,
-    MFIB_FORWARD_RPF_N_NEXT,
-} mfib_forward_rpf_next_t;
-
 static u8 *
 format_mfib_forward_rpf_trace (u8 * s, va_list * args)
 {
@@ -447,6 +456,18 @@ mfib_forward_rpf (vlib_main_t * vm,
 
                 vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
                     mfe0->mfe_rep.dpoi_index;
+
+                if (is_v4)
+                {
+                    ip4_header_t * ip0;
+
+                    ip0 = vlib_buffer_get_current (b0);
+
+                    if (PREDICT_FALSE(IP_PROTOCOL_IGMP == ip0->protocol))
+                    {
+                        next0 = mfib_rpf_cp_edge[FIB_PROTOCOL_IP4];
+                    }
+                }
             }
             else
             {
@@ -529,6 +550,37 @@ VLIB_REGISTER_NODE (ip6_mfib_forward_rpf_node, static) = {
         [MFIB_FORWARD_RPF_NEXT_DROP] = "ip6-drop",
     },
 };
+
+clib_error_t*
+mfib_register_igmp_node (fib_protocol_t fproto,
+                         const char *node_name)
+{
+    vlib_node_t *next_node;
+    vlib_main_t *vm;
+
+    vm = vlib_get_main();
+    next_node = vlib_get_node_by_name(vm, (u8*) node_name);
+
+    if (NULL == next_node)
+        return (clib_error_return(0, "IGMP/MLD node %s not found", node_name));
+    
+    switch (fproto)
+    {
+    case FIB_PROTOCOL_IP4:
+        mfib_rpf_cp_edge[FIB_PROTOCOL_IP4]
+            = vlib_node_add_next(vm,
+                                 ip4_mfib_forward_rpf_node.index,
+                                 next_node->index);
+        break;
+    case FIB_PROTOCOL_IP6:
+        break;
+    default:
+        ASSERT(0);
+    }
+
+    return (NULL);
+}
+
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_mfib_forward_rpf_node,
                               ip6_mfib_forward_rpf)

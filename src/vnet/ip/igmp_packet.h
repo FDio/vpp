@@ -63,16 +63,39 @@ typedef enum
 #define _(n,f) IGMP_TYPE_##f = n,
   foreach_igmp_type
 #undef _
-} igmp_type_t;
+} __attribute__((packed)) igmp_type_t;
 
 typedef struct
 {
-  igmp_type_t type:8;
+  igmp_type_t type;
 
   u8 code;
 
   u16 checksum;
 } igmp_header_t;
+
+/**
+ * Calculate the maximum response time allowed from the header.
+ *  - RFC 3367 Section 4.1.1
+ */
+always_inline f64
+igmp_header_get_max_resp_time (const igmp_header_t * header)
+{
+  f64 qqi;
+
+  if (header->code < 128)
+    qqi = header->code;
+  else
+    {
+      u8 mant = header->code << 4;
+      u8 exp = (header->code & 0x7) << 1;
+
+      qqi = ((mant | 0x10) << (exp + 3));
+    }
+
+  /* Querier's Query Interval (QQI), is represented in units of seconds */
+  return (qqi / 10);
+}
 
 typedef struct
 {
@@ -88,7 +111,7 @@ typedef struct
   /* type 0x11 (IGMPv3) */
   igmp_header_t header;
 
-  ip4_address_t dst;
+  ip4_address_t group_address;
 
   /* Reserved, Suppress Router-Side Processing flag and
      Querier's Robustness Variable RRRRSQQQ. */
@@ -101,11 +124,23 @@ typedef struct
   ip4_address_t src_addresses[0];
 } igmp_membership_query_v3_t;
 
+always_inline u32
+igmp_membership_query_v3_length (const igmp_membership_query_v3_t * q)
+{
+  return (sizeof (*q) + (sizeof (ip4_address_t) * clib_net_to_host_u16(q->n_src_addresses)));
+}
+
+always_inline int
+igmp_membership_query_v3_is_geeral (const igmp_membership_query_v3_t * q)
+{
+  return (0 == q->group_address.as_u32);
+}
+
 #define foreach_igmp_membership_group_v3_type	\
-  _ (1, mode_is_filter_include)			\
-  _ (2, mode_is_filter_exclude)			\
-  _ (3, change_to_filter_include)		\
-  _ (4, change_to_filter_exclude)		\
+  _ (1, mode_is_include)			\
+  _ (2, mode_is_exclude)			\
+  _ (3, change_to_include)                      \
+  _ (4, change_to_exclude)                      \
   _ (5, allow_new_sources)			\
   _ (6, block_old_sources)
 
@@ -126,11 +161,17 @@ typedef struct
   /* Number of source addresses that follow. */
   u16 n_src_addresses;
 
-  /* Destination multicast address. */
-  ip4_address_t dst_address;
+  /* Destination multicast group address. */
+  ip4_address_t group_address;
 
   ip4_address_t src_addresses[0];
 } igmp_membership_group_v3_t;
+
+always_inline u32
+igmp_membership_group_v3_length (const igmp_membership_group_v3_t * r)
+{
+  return (sizeof (*r) + (sizeof (ip4_address_t) * r->n_src_addresses));
+}
 
 always_inline igmp_membership_group_v3_t *
 igmp_membership_group_v3_next (igmp_membership_group_v3_t * g)
