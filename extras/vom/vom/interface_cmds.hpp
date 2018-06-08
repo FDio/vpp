@@ -603,6 +603,32 @@ public:
    */
   bool operator==(const vhost_dump_cmd& i) const;
 };
+
+/**
+ * A cmd class that Dumps all the Vpp interfaces
+ */
+class af_packet_dump_cmd : public VOM::dump_cmd<vapi::Af_packet_dump>
+{
+public:
+  /**
+   * Default Constructor
+   */
+  af_packet_dump_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const af_packet_dump_cmd& i) const;
+};
 };
 };
 /*

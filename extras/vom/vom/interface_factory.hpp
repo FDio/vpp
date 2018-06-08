@@ -21,6 +21,7 @@
 #include "vom/bond_member.hpp"
 #include "vom/interface.hpp"
 
+#include <vapi/af_packet.api.vapi.hpp>
 #include <vapi/bond.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
@@ -38,6 +39,9 @@ public:
 
   static std::shared_ptr<interface> new_vhost_user_interface(
     const vapi_payload_sw_interface_vhost_user_details& vd);
+
+  static std::shared_ptr<interface> new_af_packet_interface(
+    const vapi_payload_af_packet_details& vd);
 
   static std::shared_ptr<bond_interface> new_bond_interface(
     const vapi_payload_sw_interface_bond_details& vd);

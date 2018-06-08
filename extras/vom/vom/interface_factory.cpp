@@ -38,6 +38,18 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
   std::string tag = "";
 
+  sp = interface::find(hdl);
+  if (sp) {
+    sp->set(state);
+    sp->set(l2_address);
+    if (!tag.empty())
+      sp->set(tag);
+    return sp;
+  }
+
+  /*
+   * If here, Fall back to old routine
+   */
   if (interface::type_t::AFPACKET == type) {
     /*
      * need to strip VPP's "host-" prefix from the interface name
@@ -73,10 +85,15 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      *   split the name into the parent and VLAN
      */
     std::vector<std::string> parts;
+    std::shared_ptr<interface> parent;
     boost::split(parts, name, boost::is_any_of("."));
 
-    interface parent(parts[0], type, state, tag);
-    sp = sub_interface(parent, state, vd.sub_id).singular();
+    if ((parent = interface::find(parts[0])))
+      sp = sub_interface(*parent, state, vd.sub_id).singular();
+    else {
+      interface parent_itf(parts[0], type, state, tag);
+      sp = sub_interface(parent_itf, state, vd.sub_id).singular();
+    }
   } else if (interface::type_t::VXLAN == type) {
     /*
      * there's not enough information in a SW interface record to
@@ -88,13 +105,6 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      * vhost interface already exist in db, look for it using
      * sw_if_index
      */
-    sp = interface::find(hdl);
-    if (sp) {
-      sp->set(state);
-      sp->set(l2_address);
-      if (!tag.empty())
-        sp->set(tag);
-    }
   } else if (interface::type_t::BOND == type) {
     sp = bond_interface(name, state, l2_address,
                         bond_interface::mode_t::UNSPECIFIED)
@@ -124,6 +134,21 @@ interface_factory::new_vhost_user_interface(
   handle_t hdl(vd.sw_if_index);
 
   sp = interface(name, type, interface::admin_state_t::DOWN).singular();
+  sp->set(hdl);
+  return (sp);
+}
+
+std::shared_ptr<interface>
+interface_factory::new_af_packet_interface(
+  const vapi_payload_af_packet_details& vd)
+{
+  std::shared_ptr<interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.host_if_name);
+  handle_t hdl(vd.sw_if_index);
+
+  sp =
+    interface(name, interface::type_t::AFPACKET, interface::admin_state_t::DOWN)
+      .singular();
   sp->set(hdl);
   return (sp);
 }
