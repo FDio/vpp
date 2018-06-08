@@ -759,14 +759,14 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       for (i = 0; i < vec_len (sm->to_resolve); i++)
         {
           rp = sm->to_resolve + i;
-          if (rp->sw_if_index != sw_if_index &&
-              rp->l_addr.as_u32 != l_addr.as_u32 &&
-              rp->vrf_id != vrf_id && rp->addr_only != addr_only)
+          if (rp->sw_if_index != sw_if_index ||
+              rp->l_addr.as_u32 != l_addr.as_u32 ||
+              rp->vrf_id != vrf_id || rp->addr_only != addr_only)
             continue;
 
           if (!addr_only)
             {
-              if (rp->l_port != l_port && rp->e_port != e_port && rp->proto != proto)
+              if (rp->l_port != l_port || rp->e_port != e_port || rp->proto != proto)
                 continue;
             }
 
