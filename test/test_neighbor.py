@@ -1214,6 +1214,104 @@ class ARPTestCase(VppTestCase):
         self.vapi.sw_interface_set_mac_address(self.pg2.sw_if_index,
                                                mac_string)
 
+    def test_garp(self):
+        """ GARP """
+
+        #
+        # Generate some hosts on the LAN
+        #
+        self.pg1.generate_remote_hosts(4)
+
+        #
+        # And an ARP entry
+        #
+        arp = VppNeighbor(self,
+                          self.pg1.sw_if_index,
+                          self.pg1.remote_hosts[1].mac,
+                          self.pg1.remote_hosts[1].ip4)
+        arp.add_vpp_config()
+
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[1].ip4,
+                                 mac=self.pg1.remote_hosts[1].mac))
+
+        #
+        # Send a GARP (request) to swap the host 1's address to that of host 2
+        #
+        p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                    src=self.pg1.remote_hosts[2].mac) /
+              ARP(op="who-has",
+                  hwdst=self.pg1.local_mac,
+                  hwsrc=self.pg1.remote_hosts[2].mac,
+                  pdst=self.pg1.remote_hosts[1].ip4,
+                  psrc=self.pg1.remote_hosts[1].ip4))
+
+        self.pg1.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[1].ip4,
+                                 mac=self.pg1.remote_hosts[2].mac))
+
+        #
+        # Send a GARP (reply) to swap the host 1's address to that of host 3
+        #
+        p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                    src=self.pg1.remote_hosts[3].mac) /
+              ARP(op="is-at",
+                  hwdst=self.pg1.local_mac,
+                  hwsrc=self.pg1.remote_hosts[3].mac,
+                  pdst=self.pg1.remote_hosts[1].ip4,
+                  psrc=self.pg1.remote_hosts[1].ip4))
+
+        self.pg1.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[1].ip4,
+                                 mac=self.pg1.remote_hosts[3].mac))
+
+        #
+        # GARPs (requets nor replies) for host we don't know yet
+        # don't result in new neighbour entries
+        #
+        p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                    src=self.pg1.remote_hosts[3].mac) /
+              ARP(op="who-has",
+                  hwdst=self.pg1.local_mac,
+                  hwsrc=self.pg1.remote_hosts[3].mac,
+                  pdst=self.pg1.remote_hosts[2].ip4,
+                  psrc=self.pg1.remote_hosts[2].ip4))
+
+        self.pg1.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.assertFalse(find_nbr(self,
+                                  self.pg1.sw_if_index,
+                                  self.pg1.remote_hosts[2].ip4))
+
+        p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                    src=self.pg1.remote_hosts[3].mac) /
+              ARP(op="is-at",
+                  hwdst=self.pg1.local_mac,
+                  hwsrc=self.pg1.remote_hosts[3].mac,
+                  pdst=self.pg1.remote_hosts[2].ip4,
+                  psrc=self.pg1.remote_hosts[2].ip4))
+
+        self.pg1.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.assertFalse(find_nbr(self,
+                                  self.pg1.sw_if_index,
+                                  self.pg1.remote_hosts[2].ip4))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
