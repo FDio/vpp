@@ -15,26 +15,39 @@
  *------------------------------------------------------------------
  */
 
-#ifndef _IGMP_ERROR_H_
-#define _IGMP_ERROR_H_
+#ifndef __IGMP_SSM_RANGE_H__
+#define __IGMP_SSM_RANGE_H__
 
-#define foreach_igmp_error					\
-  _ (NONE, "valid igmp packets")				\
-  _ (UNSPECIFIED, "unspecified error")				\
-  _ (INVALID_PROTOCOL, "invalid ip4 protocol")			\
-  _ (BAD_CHECKSUM, "bad checksum")				\
-  _ (UNKNOWN_TYPE, "unknown igmp message type")			\
-  _ (CLI_API_CONFIG, "CLI/API configured (S,G)s on interface")	\
+#include <igmp/igmp.h>
 
-typedef enum
+/**
+ * Make sure this remains in-sync with the .api enum definition
+ */
+#define foreach_igmp_group_prefix_type                  \
+  _ (0x0, ASM)                                          \
+  _ (0x1, SSM)
+
+typedef enum igmp_group_prefix_type_t_
 {
-#define _(sym,str) IGMP_ERROR_##sym,
-  foreach_igmp_error
+#define _(n,f) IGMP_GROUP_PREFIX_TYPE_##f = n,
+  foreach_igmp_group_prefix_type
 #undef _
-    IGMP_N_ERROR,
-} igmp_error_t;
+} igmp_group_prefix_type_t;
 
-#endif /* IGMP_ERROR_H */
+extern igmp_group_prefix_type_t igmp_group_prefix_get_type (const
+							    ip46_address_t *
+							    gaddr);
+
+extern void igmp_group_prefix_set (const fib_prefix_t * pfx,
+				   igmp_group_prefix_type_t type);
+
+typedef walk_rc_t (*igmp_ssm_range_walk_t) (const fib_prefix_t * pfx,
+					    igmp_group_prefix_type_t type,
+					    void *ctx);
+
+extern void igmp_ssm_range_walk (igmp_ssm_range_walk_t fn, void *ctx);
+
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

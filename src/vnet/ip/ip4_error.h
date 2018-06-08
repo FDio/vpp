@@ -59,7 +59,7 @@
   _ (SRC_LOOKUP_MISS, "ip4 source lookup miss")				\
   _ (DROP, "ip4 drop")                                                  \
   _ (PUNT, "ip4 punt")                                                  \
-  _ (SAME_INTERFACE, "ip4 egrees interface same as ingress")            \
+  _ (SAME_INTERFACE, "ip4 egress interface same as ingress")            \
 									\
   /* Errors signalled by ip4-local. */					\
   _ (UNKNOWN_PROTOCOL, "unknown ip protocol")				\
