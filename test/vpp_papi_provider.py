@@ -3474,7 +3474,14 @@ class VppPapiProvider(object):
                          'input_source': input_source,
                          'enable': enable})
 
-    def igmp_listen(self, enable, sw_if_index, saddr, gaddr):
+    def igmp_enable_disable(self, sw_if_index, enable, host):
+        """ Enable/disable IGMP on a given interface """
+        return self.api(self.papi.igmp_enable_disable,
+                        {'enable': enable,
+                         'mode': host,
+                         'sw_if_index': sw_if_index})
+
+    def igmp_listen(self, filter, sw_if_index, saddrs, gaddr):
         """ Listen for new (S,G) on specified interface
 
         :param enable: add/del
@@ -3483,20 +3490,26 @@ class VppPapiProvider(object):
         :param gaddr: group ip4 addr
         """
         return self.api(self.papi.igmp_listen,
-                        {'enable': enable,
-                         'sw_if_index': sw_if_index,
-                         'saddr': saddr,
-                         'gaddr': gaddr})
+                        {
+                            'group':
+                            {
+                                'filter': filter,
+                                'sw_if_index': sw_if_index,
+                                'n_srcs': len(saddrs),
+                                'saddrs': saddrs,
+                                'gaddr':
+                                {
+                                    'address': gaddr
+                                }
+                            }
+                        })
 
     def igmp_dump(self, sw_if_index=None):
         """ Dump all (S,G) interface configurations """
         if sw_if_index is None:
-            dump_all = 1
-            sw_if_index = 0
-        else:
-            dump_all = 0
-        return self.api(self.papi.igmp_dump, {'sw_if_index': sw_if_index,
-                                              'dump_all': dump_all})
+            sw_if_index = 0xffffffff
+        return self.api(self.papi.igmp_dump,
+                        {'sw_if_index': sw_if_index})
 
     def igmp_clear_interface(self, sw_if_index):
         """ Remove all (S,G)s from specified interface

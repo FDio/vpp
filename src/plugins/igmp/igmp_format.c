@@ -21,28 +21,44 @@
 u8 *
 format_igmp_type (u8 * s, va_list * args)
 {
-  igmp_type_t type = va_arg (*args, igmp_type_t);
-  igmp_main_t *im = &igmp_main;
-  igmp_type_info_t *ti = igmp_get_type_info (im, type);
+  igmp_type_t type = va_arg (*args, int);
 
-  if (ti)
-    return format (s, "%s", ti->name);
-  else
-    return format (s, "unknown %d", type);
+  switch (type)
+    {
+#define _(n,f) case IGMP_TYPE_##f: return (format (s, "%s", #f));
+      foreach_igmp_type
+#undef _
+    }
+  return format (s, "unknown:%d", type);
 }
 
 u8 *
-format_igmp_report_type (u8 * s, va_list * args)
+format_igmp_membership_group_type (u8 * s, va_list * args)
 {
-  igmp_membership_group_v3_type_t report_type =
-    va_arg (*args, igmp_membership_group_v3_type_t);
-  igmp_main_t *im = &igmp_main;
-  igmp_report_type_info_t *rti = igmp_get_report_type_info (im, report_type);
+  igmp_membership_group_v3_type_t type = va_arg (*args, int);
 
-  if (rti)
-    return format (s, "%s", rti->name);
-  else
-    return format (s, "unknown %d", report_type);
+  switch (type)
+    {
+#define _(n,f)  case IGMP_MEMBERSHIP_GROUP_##f: return (format (s, "%s", #f));
+      foreach_igmp_membership_group_v3_type
+#undef _
+    }
+  return (format (s, "unknown:%d", type));
+}
+
+u8 *
+format_igmp_filter_mode (u8 * s, va_list * args)
+{
+  igmp_filter_mode_t mode = va_arg (*args, igmp_filter_mode_t);
+
+  switch (mode)
+    {
+#define _(n,f)  case IGMP_FILTER_MODE_##f: return (format (s, "%s", #f));
+      foreach_igmp_filter_mode
+#undef _
+    }
+  return (format (s, "unknown:%d", mode));
+
 }
 
 u8 *
@@ -92,8 +108,8 @@ format_igmp_report_v3 (u8 * s, va_list * args)
       group = group_ptr (igmp, len);
       s =
 	format (s, "\n%U%U: %U, sources %u", format_white_space, indent,
-		format_igmp_report_type, group->type, format_ip4_address,
-		&group->dst_address,
+		format_igmp_membership_group_type, group->type,
+		format_ip4_address, &group->group_address,
 		clib_net_to_host_u16 (group->n_src_addresses));
       indent += 2;
       for (j = 0; j < clib_net_to_host_u16 (group->n_src_addresses); j++)
@@ -129,17 +145,18 @@ format_igmp_query_v3 (u8 * s, va_list * args)
   ip4_address_t tmp;
   tmp.as_u32 = 0;
 
-  if ((!ip4_address_compare (&igmp->dst, &tmp))
+  if ((!ip4_address_compare (&igmp->group_address, &tmp))
       && (igmp->n_src_addresses == 0))
     s = format (s, "%UGeneral Query", format_white_space, indent);
   else if (igmp->n_src_addresses == 0)
     s = format (s, "%UGroup-Specific Query: %U", format_white_space, indent,
-		format_ip4_address, &igmp->dst);
+		format_ip4_address, &igmp->group_address);
   else
     {
       s =
 	format (s, "%UGroup-and-Source-Specific Query: %U",
-		format_white_space, indent, format_ip4_address, &igmp->dst);
+		format_white_space, indent, format_ip4_address,
+		&igmp->group_address);
       indent += 2;
       for (i = 0; i < clib_net_to_host_u16 (igmp->n_src_addresses); i++)
 	{
@@ -148,6 +165,33 @@ format_igmp_query_v3 (u8 * s, va_list * args)
 	}
     }
   return s;
+}
+
+u8 *
+format_igmp_src_addr_list (u8 * s, va_list * args)
+{
+  ip46_address_t *ss, *srcs;
+
+  srcs = va_arg (*args, ip46_address_t *);
+
+  s = format (s, "[");
+  vec_foreach (ss, srcs)
+  {
+    s = format (s, "%U ", format_ip46_address, ss, IP46_TYPE_ANY);
+  }
+  s = format (s, "]");
+
+  return (s);
+}
+
+u8 *
+format_igmp_key (u8 * s, va_list * args)
+{
+  const igmp_key_t *key = va_arg (*args, const igmp_key_t *);
+
+  s = format (s, "%U", format_ip46_address, key, IP46_TYPE_ANY);
+
+  return (s);
 }
 
 /*
