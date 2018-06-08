@@ -507,6 +507,20 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     OM::commit(key, *vitf);
   }
 
+  std::shared_ptr<interface_cmds::af_packet_dump_cmd> afcmd =
+    std::make_shared<interface_cmds::af_packet_dump_cmd>();
+
+  HW::enqueue(afcmd);
+  HW::write();
+
+  for (auto& af_packet_itf_record : *afcmd) {
+    std::shared_ptr<interface> afitf =
+      interface_factory::new_af_packet_interface(
+        af_packet_itf_record.get_payload());
+    VOM_LOG(log_level_t::DEBUG) << " af_packet-dump: " << afitf->to_string();
+    OM::commit(key, *afitf);
+  }
+
   std::shared_ptr<interface_cmds::dump_cmd> cmd =
     std::make_shared<interface_cmds::dump_cmd>();
 
