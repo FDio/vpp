@@ -27,8 +27,7 @@
 #define SESSION_PROXY_LISTENER_INDEX ((u32)~0 - 1)
 #define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
 
-/* TODO decide how much since we have pre-data as well */
-#define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
+#define MAX_HDRS_LEN    128	/*< Max number of bytes for headers. */
 
 typedef enum
 {
