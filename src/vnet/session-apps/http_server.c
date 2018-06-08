@@ -87,30 +87,37 @@ free_http_process (http_server_args * args)
   vec_add1 (hsm->free_http_cli_process_node_indices, node_index);
 }
 
-static const char
-  *http_response = "HTTP/1.1 200 OK\r\n"
-  "Content-Type: text/html\r\n"
-  "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-  "Connection: close\r\n"
-  "Pragma: no-cache\r\n" "Content-Length: %d\r\n\r\n%s";
+/* *INDENT-OFF* */
+static const char *http_response =
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+    "Connection: keep-alive \r\n"
+    "Pragma: no-cache\r\n"
+    "Content-Length: %d\r\n\r\n%s";
 
-static const char
-  *http_error_template = "HTTP/1.1 %s\r\n"
-  "Content-Type: text/html\r\n"
-  "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-  "Connection: close\r\n" "Pragma: no-cache\r\n" "Content-Length: 0\r\n\r\n";
+static const char *http_error_template =
+    "HTTP/1.1 %s\r\n"
+    "Content-Type: text/html\r\n"
+    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+    "Connection: close\r\n"
+    "Pragma: no-cache\r\n"
+    "Content-Length: 0\r\n\r\n";
 
 /* Header, including incantation to suppress favicon.ico requests */
-static const char
-  *html_header_template = "<html><head><title>%v</title>"
-  "</head><link rel=\"icon\" href=\"data:,\"><body><pre>";
+static const char *html_header_template =
+    "<html><head><title>%v</title></head>"
+    "<link rel=\"icon\" href=\"data:,\">"
+    "<body><pre>";
 
-static const char *html_footer = "</pre></body></html>\r\n";
+static const char *html_footer =
+    "</pre></body></html>\r\n";
 
-static const char
-  *html_header_static = "<html><head><title>static reply</title></head>"
-  "<link rel=\"icon\" href=\"data:,\"><body><pre>hello</pre></body>"
-  "</html>\r\n";
+static const char *html_header_static =
+    "<html><head><title>static reply</title></head>"
+    "<link rel=\"icon\" href=\"data:,\">"
+    "<body><pre>hello</pre></body></html>\r\n";
+/* *INDENT-ON* */
 
 static u8 *static_http;
 
