@@ -1006,7 +1006,6 @@ tcp_cc_recover (tcp_connection_t * tc)
   ASSERT (tcp_in_cong_recovery (tc));
   if (tcp_cc_is_spurious_retransmit (tc))
     {
-      clib_warning ("here");
       tcp_cc_congestion_undo (tc);
       return 1;
     }
