@@ -1399,7 +1399,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	}
 
       /* Shouldn't be here */
-      if (seq_geq (tc->snd_una, tc->snd_congestion))
+      if ((tc->rto_boff == 0 && tc->snd_una == tc->snd_una_max)
+	  || (tc->rto_boff > 0 && seq_geq (tc->snd_una, tc->snd_congestion)))
 	{
 	  tcp_recovery_off (tc);
 	  return;
