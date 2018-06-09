@@ -38,6 +38,7 @@ avf_main_t avf_main;
 static pci_device_id_t avf_pci_device_ids[] = {
   {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_AVF},
   {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_X710_VF},
+  {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_X722_VF},
   {0},
 };
 
