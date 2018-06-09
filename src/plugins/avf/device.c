@@ -478,18 +478,28 @@ clib_error_t *
 avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
 			 virtchnl_vf_resource_t * res)
 {
-  clib_error_t *err = 0;
-  u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_AQ |
-		VIRTCHNL_VF_OFFLOAD_RSS_REG | VIRTCHNL_VF_OFFLOAD_WB_ON_ITR |
-		VIRTCHNL_VF_OFFLOAD_VLAN | VIRTCHNL_VF_OFFLOAD_RX_POLLING);
+  u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
+		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
+		VIRTCHNL_VF_OFFLOAD_RX_POLLING);
 
-  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
-			sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
+			 sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
+}
 
-  if (err)
-    return err;
+clib_error_t *
+avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
+{
+  int msg_len = sizeof (virtchnl_rss_lut_t) + ad->rss_lut_size - 1;
+  u8 msg[msg_len];
+  virtchnl_rss_lut_t *rl;
 
-  return err;
+  memset (msg, 0, msg_len);
+  rl = (virtchnl_rss_lut_t *) msg;
+  rl->vsi_id = ad->vsi_id;
+  rl->lut_entries = ad->rss_lut_size;
+
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
+			 0);
 }
 
 clib_error_t *
@@ -702,10 +712,8 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad)
   if ((error = avf_config_promisc_mode (vm, ad)))
     return error;
 
-  if ((error = avf_cmd_rx_ctl_reg_write (vm, ad, 0xc400, 0)))
-    return error;
-
-  if ((error = avf_cmd_rx_ctl_reg_write (vm, ad, 0xc404, 0)))
+  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
+      (error = avf_op_config_rss_lut (vm, ad)))
     return error;
 
   /*
