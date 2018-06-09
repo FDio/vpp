@@ -371,6 +371,7 @@ stat_segment_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   f64 last_runtime, dt, now;
   vlib_main_t *this_vlib_main;
   stats_main_t *sm = &stats_main;
+  int i;
 
   last_runtime = 0.0;
   last_input_packets = 0;
@@ -388,10 +389,13 @@ stat_segment_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       vector_rate = 0.0;
 
       /* *INDENT-OFF* */
-      foreach_vlib_main
-      ({
-        vector_rate += vlib_last_vector_length_per_node (vm);
-      });
+      for (i = 0; i < vec_len (vlib_mains); i++)
+        {
+          this_vlib_main = vlib_mains[i];
+          vector_rate += vlib_last_vector_length_per_node (vm);
+        }
+      vector_rate /= (f64) i;
+
       /* *INDENT-ON* */
 
       *sm->vector_rate_ptr = vector_rate / ((f64) vec_len (vlib_mains));
