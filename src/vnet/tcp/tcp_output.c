@@ -1399,7 +1399,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	}
 
       /* Shouldn't be here */
-      if (seq_geq (tc->snd_una, tc->snd_congestion))
+      if (tc->snd_una == tc->snd_una_max)
 	{
 	  tcp_recovery_off (tc);
 	  return;
