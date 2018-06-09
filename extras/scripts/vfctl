@@ -1,0 +1,132 @@
+#!/bin/bash
+
+function die() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
+function show_vfs() {
+	path=$1
+	netdev=$2
+	printf "\nVirtual Functions:\n%-2s %-12s %-9s %-12s %-17s %s\n" \
+	  "ID" "PCI Addr" "PCI ID" "Driver" "MAC Addr" "Config"
+	for vf_path in ${path}/virtfn*; do
+		vf=$(basename $(readlink ${vf_path}))
+		vfid=$(basename ${vf_path//virtfn/})
+		line=$(ip link show dev ${netdev} | grep "vf ${vfid}")
+		driver=$(basename $(readlink ${vf_path}/driver))
+		pciid="$(cat ${vf_path}/vendor | cut -dx -f2):$(cat ${vf_path}/device | cut -dx -f2)"
+		mac=$(echo $line | sed -n -E -e 's/.*MAC ([0-9a-f:]+),.*/\1/p')
+		cfg=$(echo $line | cut -d, -f2-)
+
+		printf "%-2s %-12s %-9s %-12s %-17s%s\n" \
+		  $vfid $vf $pciid $driver $mac "$cfg"
+	done
+}
+function get_pci_addr() {
+	local addr
+	if [ -d /sys/class/net/$2/device ]; then
+		addr=$(basename $(readlink /sys/class/net/${2}/device))
+	else
+		addr=$2
+	fi
+	if [ ! -d /sys/bus/pci/devices/${pci_addr} ]; then
+		die "PCI device $2 doesn't exist"
+	fi
+	eval "$1=${addr}"
+}
+
+function show () {
+	get_pci_addr pci_addr $1
+	path="/sys/bus/pci/devices/${pci_addr}"
+
+	if [ ! -f ${path}/sriov_numvfs ]; then
+		die "PCI device $1 is not SR-IOV device"
+	fi
+
+	printf "%-20s: %s\n" "PCI Address" ${pci_addr}
+	printf "%-20s: %s\n" "PCI ID" \
+		"$(cat ${path}/vendor | cut -dx -f2):$(cat ${path}/device | cut -dx -f2)"
+	printf "%-20s: %s\n" "Driver name" $(basename $(readlink ${path}/driver))
+	printf "%-20s: %s\n" "Driver Version" $(cat ${path}/driver/module/version)
+	printf "%-20s: %s\n" "PCI Link Speed (max)" "$(cat ${path}/current_link_speed) ($(cat ${path}/max_link_speed))"
+	printf "%-20s: %s\n" "PCI Link Width (max)" "$(cat ${path}/current_link_width) ($(cat ${path}/max_link_width))"
+	printf "%-20s: %s\n" "NUMA Node" $(cat ${path}/numa_node)
+	printf "%-20s: %s\n" "Number of VFs" $(cat ${path}/sriov_numvfs)
+	printf "%-20s: %s\n" "Total VFs" $(cat ${path}/sriov_totalvfs)
+	if [ -d ${path}/net/* ] ; then
+		netdev=$(basename ${path}/net/*)
+		netdev_path=${path}/net/${netdev}
+		printf "%-20s: %s\n" "Interface" ${netdev}
+		printf "%-20s: %s\n" "MAC Address" $(cat ${netdev_path}/address)
+		printf "%-20s: %s\n" "Speed" $(cat ${netdev_path}/speed)
+		printf "%-20s: %s\n" "State" $(cat ${netdev_path}/operstate)
+	fi
+
+	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && show_vfs ${path} ${netdev}
+}
+
+function remove_all () {
+	get_pci_addr pci_addr $1
+	path="/sys/bus/pci/devices/${pci_addr}"
+	[ $(cat ${path}/sriov_numvfs) -gt 0 ] || die "No VFs configured on $1"
+	echo 0 | sudo tee ${path}/sriov_numvfs > /dev/null
+	echo "VFs removed..."
+}
+
+function create () {
+	get_pci_addr pci_addr $1
+	path="/sys/bus/pci/devices/${pci_addr}"
+	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && die "VFs already configured on $1"
+	[ "0$2" -gt 0 ] || die "Please specify number of VFs to create"
+	echo $2 | sudo tee ${path}/sriov_numvfs > /dev/null
+	[ -d ${path}/net/* ] || die "No net device for $1"
+	netdev=$(basename ${path}/net/*)
+	netdev_path=${path}/net/${netdev}
+
+	mac_prefix=$(cat ${netdev_path}/address | cut -d: -f1,3,4,5,6 )
+	for vf_path in ${path}/virtfn*; do
+		vf=$(basename $(readlink ${vf_path}))
+		vfid=$(basename ${vf_path//virtfn/})
+		mac="${mac_prefix}:$(printf "%02x" ${vfid})"
+		sudo ip link set dev ${netdev} vf ${vfid} mac ${mac}
+	done
+
+	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && show_vfs ${path} ${netdev}
+}
+
+function help() {
+
+cat << __EOF__
+
+$0 show <dev>
+  Displays information about <dev> where <dev> is PCI address
+  or linux interface name.
+
+$0 remove-all <dev>
+  Remove all virtual functions from device <dev>.
+
+$0 remove-all <dev> <num>
+  Create <num> virtual functions on device<dev>.
+__EOF__
+}
+
+case $1 in
+	show)
+		show $2
+		;;
+	create)
+		create $2 $3
+		;;
+	remove-all)
+		remove_all $2
+		;;
+	help)
+		help $2
+		;;
+	*)
+		echo "Please specify command (show, create, remove-all)"
+		help
+		;;
+esac
+
