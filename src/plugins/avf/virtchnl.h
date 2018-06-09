@@ -333,6 +333,25 @@ typedef struct
   foreach_virtchnl_eth_stats
 #undef _
 } virtchnl_eth_stats_t;
+
+typedef struct
+{
+  u16 vsi_id;
+  u16 key_len;
+  u8 key[1];
+} virtchnl_rss_key_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_rss_key_t, 6);
+
+typedef struct
+{
+  u16 vsi_id;
+  u16 lut_entries;
+  u8 lut[1];
+} virtchnl_rss_lut_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_rss_lut_t, 6);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
