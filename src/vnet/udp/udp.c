@@ -288,6 +288,10 @@ udp_open_connection (transport_endpoint_t * rmt)
   node_index = rmt->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
   udp_register_dst_port (vm, lcl_port, node_index, 1 /* is_ipv4 */ );
 
+  /* We don't poll main thread if we have workers */
+  if (vlib_num_workers ())
+    thread_index = 1;
+
   uc = udp_connection_alloc (thread_index);
   ip_copy (&uc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&uc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
@@ -301,10 +305,14 @@ udp_open_connection (transport_endpoint_t * rmt)
 }
 
 transport_connection_t *
-udp_half_open_session_get_transport (u32 conn_index)
+udp_session_get_half_open (u32 conn_index)
 {
   udp_connection_t *uc;
-  uc = udp_connection_get (conn_index, vlib_get_thread_index ());
+  u32 thread_index;
+
+  /* We don't poll main thread if we have workers */
+  thread_index = vlib_num_workers ()? 1 : 0;
+  uc = udp_connection_get (conn_index, thread_index);
   return &uc->connection;
 }
 
@@ -316,7 +324,7 @@ const static transport_proto_vft_t udp_proto = {
   .push_header = udp_push_header,
   .get_connection = udp_session_get,
   .get_listener = udp_session_get_listener,
-  .get_half_open = udp_half_open_session_get_transport,
+  .get_half_open = udp_session_get_half_open,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
   .send_mss = udp_send_mss,
@@ -360,7 +368,7 @@ const static transport_proto_vft_t udpc_proto = {
   .push_header = udp_push_header,
   .get_connection = udp_session_get,
   .get_listener = udp_session_get_listener,
-  .get_half_open = udp_half_open_session_get_transport,
+  .get_half_open = udp_session_get_half_open,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
   .send_mss = udp_send_mss,

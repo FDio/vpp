@@ -142,7 +142,8 @@ session_alloc_for_connection (transport_connection_t * tc)
   stream_session_t *s;
   u32 thread_index = tc->thread_index;
 
-  ASSERT (thread_index == vlib_get_thread_index ());
+  ASSERT (thread_index == vlib_get_thread_index ()
+	  || transport_protocol_is_cl (tc->proto));
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
