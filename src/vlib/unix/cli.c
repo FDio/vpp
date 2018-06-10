@@ -2817,6 +2817,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  tio = um->tio_stdin;
 	  /* echo off, canonical mode off, ext'd input processing off */
 	  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+	  /* Disable XON/XOFF, so ^S invokes the history search */
+	  tio.c_iflag &= ~(IXON);
 	  tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
 	  tio.c_cc[VTIME] = 0;	/* no timer */
 	  tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio);
