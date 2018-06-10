@@ -369,7 +369,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
   u32 session_index;
-  u8 thread_index = vlib_get_thread_index ();
+  u8 thread_index = s->thread_index;
 
   if (is_fail)
     {
@@ -378,7 +378,8 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
       return 0;
     }
 
-  ASSERT (s->thread_index == thread_index);
+  ASSERT (thread_index == vlib_get_thread_index ()
+	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
 
   if (!ecm->vpp_event_queue[thread_index])
     ecm->vpp_event_queue[thread_index] =
