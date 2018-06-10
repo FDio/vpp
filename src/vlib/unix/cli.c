@@ -2927,8 +2927,12 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  tio = um->tio_stdin;
 	  /* echo off, canonical mode off, ext'd input processing off */
 	  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+	  /* disable XON/XOFF, so ^S invokes the history search */
+	  tio.c_iflag &= ~(IXON | IXOFF);
 	  tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
 	  tio.c_cc[VTIME] = 0;	/* no timer */
+	  tio.c_cc[VSTOP] = _POSIX_VDISABLE;	/* not ^S */
+	  tio.c_cc[VSTART] = _POSIX_VDISABLE;	/* not ^Q */
 	  tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio);
 
 	  /* See if we can do ANSI/VT100 output */
