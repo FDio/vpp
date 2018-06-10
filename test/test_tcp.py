@@ -6,15 +6,15 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestTCP(VppTestCase):
+class TestUDP(VppTestCase):
     """ TCP Test Case """
 
     @classmethod
     def setUpClass(cls):
-        super(TestTCP, cls).setUpClass()
+        super(TestUDP, cls).setUpClass()
 
     def setUp(self):
-        super(TestTCP, self).setUp()
+        super(TestUDP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(range(2))
 
@@ -43,7 +43,7 @@ class TestTCP(VppTestCase):
             i.set_table_ip4(0)
             i.admin_down()
         self.vapi.session_enable_disable(is_enabled=0)
-        super(TestTCP, self).tearDown()
+        super(TestUDP, self).tearDown()
 
     def test_tcp_unittest(self):
         """ TCP Unit Tests """

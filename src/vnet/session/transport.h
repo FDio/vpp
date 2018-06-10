@@ -131,6 +131,7 @@ int transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
 				    ip46_address_t * lcl_addr,
 				    u16 * lcl_port);
 void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
+u8 transport_protocol_is_cl (transport_proto_t tp);
 void transport_init (void);
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
