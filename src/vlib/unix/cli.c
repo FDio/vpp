@@ -1832,7 +1832,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_PAGER_NEXT:
     case UNIX_CLI_PARSE_ACTION_PAGER_PGDN:
       /* show next page of the buffer */
-      if (cf->height + cf->pager_start < vec_len (cf->pager_index))
+      if (cf->height + cf->pager_start <= vec_len (cf->pager_index))
 	{
 	  u8 *line = NULL;
 	  unix_cli_pager_index_t *pi = NULL;
@@ -1863,7 +1863,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_PAGER_DN:
     case UNIX_CLI_PARSE_ACTION_PAGER_CRLF:
       /* display the next line of the buffer */
-      if (cf->pager_start < vec_len (cf->pager_index) - (cf->height - 1))
+      if (cf->height + cf->pager_start <= vec_len (cf->pager_index))
 	{
 	  u8 *line;
 	  unix_cli_pager_index_t *pi;
