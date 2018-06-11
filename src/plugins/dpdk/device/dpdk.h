@@ -230,7 +230,9 @@ typedef struct
   /* flow related */
   u32 supported_flow_actions;
   dpdk_flow_entry_t *flow_entries;	/* pool */
-  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* vector */
+  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
+  u32 *parked_lookup_indexes;	/* vector */
+  u32 parked_loop_count;
   struct rte_flow_error last_flow_error;
 
   /* HQoS related */
