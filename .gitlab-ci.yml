@@ -1,0 +1,26 @@
+stages:
+  - build
+
+variables:
+  CONTAINER_IMAGE: ergw/vpp-test
+  CONTAINER_IMAGE_BUILT: ${CONTAINER_IMAGE}:${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA}
+  CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
+  CI_REGISTRY: index.docker.io  # container registry URL
+  CI_REGESTRY_IMAGE: https://index.docker.io/v1/
+
+
+# build container image
+build:
+  stage: build
+  #tags: 
+  #  - docker
+  image: docker:latest
+  services:
+  - docker:dind
+  script:
+    - export DOCKER_HOST="tcp://localhost:2375"
+    - echo "Building Dockerfile-based application..."
+    - docker build -t ${CONTAINER_IMAGE_BUILT} -f extras/docker/Dockerfile .
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD}
+    - echo "Pushing to the Container Registry..."
+    - docker push ${CONTAINER_IMAGE_BUILT}
