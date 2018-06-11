@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba8e6128_91c700fb",
+        "filename": "extras/vom/vom/interface_cmds.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 616,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-11T00:11:19Z",
+      "side": 1,
+      "message": "no member variables to initialise so:\n \u003d default\n?",
+      "revId": "6981ee707177146d55d28694eff3f1ecad978dab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9126f323_fb2dc886",
+        "filename": "extras/vom/vom/interface_factory.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-11T00:11:19Z",
+      "side": 1,
+      "message": "what extra information do we get in the af_packet dump that we don\u0027t get via a normal interface dump? I wonder why this is required.",
+      "revId": "6981ee707177146d55d28694eff3f1ecad978dab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
