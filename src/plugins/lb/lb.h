@@ -312,16 +312,26 @@ typedef struct {
 #define lb_vip_is_gre6(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE6)
 
-#define lb_vip_is_l3dsr(vip) ((vip)->type == LB_VIP_TYPE_IP4_L3DSR)
-
-#define lb_vip_is_nat4(vip) ((vip)->type == LB_VIP_TYPE_IP4_NAT4)
-
-#define lb_vip_is_nat6(vip) ((vip)->type == LB_VIP_TYPE_IP6_NAT6)
-
 #define lb_encap_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
                              || (vip)->type == LB_VIP_TYPE_IP4_NAT4 )
+
+always_inline bool
+lb_vip_is_l3dsr(const lb_vip_t *vip)
+{
+  return vip->type == LB_VIP_TYPE_IP4_L3DSR;
+}
+always_inline bool
+lb_vip_is_nat4(const lb_vip_t *vip)
+{
+  return vip->type == LB_VIP_TYPE_IP4_NAT4;
+}
+always_inline bool
+lb_vip_is_nat6(const lb_vip_t *vip)
+{
+  return vip->type == LB_VIP_TYPE_IP6_NAT6;
+}
 
 format_function_t format_lb_vip;
 format_function_t format_lb_vip_detailed;
