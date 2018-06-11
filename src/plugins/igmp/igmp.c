@@ -50,7 +50,7 @@ igmp_clear_config (igmp_config_t * config)
   pool_free (config->sg);
   hash_free (config->igmp_sg_by_key);
 
-  hash_unset_mem (im->igmp_config_by_sw_if_index, &config->sw_if_index);
+  hash_unset (im->igmp_config_by_sw_if_index, config->sw_if_index);
   pool_put (im->configs, config);
 }
 
@@ -503,12 +503,10 @@ igmp_send_state_changed (vlib_main_t * vm, vlib_node_runtime_t * rt,
       pool_put (config->sg, sg);
       if (pool_elts (config->sg) == 0)
 	{
-	  hash_unset_mem (im->igmp_config_by_sw_if_index,
-			  &config->sw_if_index);
+	  hash_unset (im->igmp_config_by_sw_if_index, config->sw_if_index);
 	  pool_put (im->configs, config);
 	}
     }
-
 }
 
 void
@@ -631,8 +629,8 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 	  config->adj_index =
 	    adj_mcast_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
 				   config->sw_if_index);
-	  hash_set_mem (im->igmp_config_by_sw_if_index, &config->sw_if_index,
-			config - im->configs);
+	  hash_set (im->igmp_config_by_sw_if_index,
+		    config->sw_if_index, config - im->configs);
 	}
       else if (config->cli_api_configured != cli_api_configured)
 	{
@@ -742,11 +740,8 @@ igmp_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
     return error;
 
-  im->igmp_config_by_sw_if_index =
-    hash_create_mem (0, sizeof (u32), sizeof (uword));
-  im->igmp_api_client_by_client_index =
-    hash_create_mem (0, sizeof (u32), sizeof (uword));
-
+  im->igmp_config_by_sw_if_index = hash_create (0, sizeof (u32));
+  im->igmp_api_client_by_client_index = hash_create (0, sizeof (u32));
   vec_validate_aligned (im->buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
