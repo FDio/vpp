@@ -230,6 +230,18 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
   dpdk_flow_lookup_entry_t *fle = 0;
   int rv;
 
+  /* recycle old flow lookup entries only after the main loop counter
+     increases - i.e. previously DMA'ed packets were handled */
+  if (vec_len (xd->parked_lookup_indexes) > 0 &&
+      xd->parked_loop_count != dm->vlib_main->main_loop_count)
+    {
+      u32 *fl_index;
+
+      vec_foreach (fl_index, xd->parked_lookup_indexes)
+	pool_put_index (xd->flow_lookup_entries, *fl_index);
+      vec_reset_length (xd->flow_lookup_entries);
+    }
+
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
       ASSERT (*private_data >= vec_len (xd->flow_entries));
@@ -239,6 +251,15 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
       if ((rv = rte_flow_destroy (xd->device_index, fe->handle,
 				  &xd->last_flow_error)))
 	return VNET_FLOW_ERROR_INTERNAL;
+
+      if (fe->mark)
+	{
+	  /* make sure no action is taken for in-flight (marked) packets */
+	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
+	  memset (fle, -1, sizeof (*fle));
+	  vec_add1 (xd->parked_lookup_indexes, fe->mark);
+	  xd->parked_loop_count = dm->vlib_main->main_loop_count;
+	}
 
       memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
@@ -269,6 +290,15 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 			  CLIB_CACHE_LINE_BYTES);
       pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
       fe->mark = fle - xd->flow_lookup_entries;
+
+      /* install entry in the lookup table */
+      memset (fle, -1, sizeof (*fle));
+      if (flow->actions & VNET_FLOW_ACTION_MARK)
+	fle->flow_id = flow->mark_flow_id;
+      if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
+	fle->next_index = flow->redirect_device_input_next_index;
+      if (flow->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
+	fle->buffer_advance = flow->buffer_advance;
     }
   else
     fe->mark = 0;
@@ -294,15 +324,6 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
   *private_data = fe - xd->flow_entries;
 
-  /* install entry in the lookup table */
-  memset (fle, -1, sizeof (*fle));
-  if (flow->actions & VNET_FLOW_ACTION_MARK)
-    fle->flow_id = flow->mark_flow_id;
-  if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
-    fle->next_index = flow->redirect_device_input_next_index;
-  if (flow->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
-    fle->buffer_advance = flow->buffer_advance;
-
 done:
   if (rv)
     {
@@ -310,7 +331,7 @@ done:
       pool_put (xd->flow_entries, fe);
       if (fle)
 	{
-	  memset (fle, 0, sizeof (*fle));
+	  memset (fle, -1, sizeof (*fle));
 	  pool_put (xd->flow_lookup_entries, fle);
 	}
     }

@@ -429,8 +429,8 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
       if ((ptd->flags[n] & (1 << DPDK_RX_F_FDIR)) == 0)
 	continue;
 
-      fle = vec_elt_at_index (xd->flow_lookup_entries,
-			      ptd->mbufs[n]->hash.fdir.hi);
+      fle = pool_elt_at_index (xd->flow_lookup_entries,
+			       ptd->mbufs[n]->hash.fdir.hi);
 
       if (fle->next_index != (u16) ~ 0)
 	ptd->next[n] = fle->next_index;
