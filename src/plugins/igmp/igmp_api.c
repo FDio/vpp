@@ -204,7 +204,7 @@ igmp_api_client_lookup (igmp_main_t * im, u32 client_index)
   uword *p;
   vpe_client_registration_t *api_client = NULL;
 
-  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
+  p = hash_get (im->igmp_api_client_by_client_index, client_index);
   if (p)
     api_client = vec_elt_at_index (im->api_clients, p[0]);
 
@@ -227,8 +227,8 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
 	  rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  goto done;
 	}
-      hash_unset_mem (im->igmp_api_client_by_client_index,
-		      &api_client->client_index);
+      hash_unset (im->igmp_api_client_by_client_index,
+		  api_client->client_index);
       pool_put (im->api_clients, api_client);
       goto done;
     }
@@ -238,8 +238,8 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
       memset (api_client, 0, sizeof (vpe_client_registration_t));
       api_client->client_index = mp->client_index;
       api_client->client_pid = mp->pid;
-      hash_set_mem (im->igmp_api_client_by_client_index,
-		    &mp->client_index, api_client - im->api_clients);
+      hash_set (im->igmp_api_client_by_client_index,
+		mp->client_index, api_client - im->api_clients);
       goto done;
     }
   rv = VNET_API_ERROR_INVALID_REGISTRATION;
@@ -265,13 +265,13 @@ want_igmp_events_reaper (u32 client_index)
   vpe_client_registration_t *api_client;
   uword *p;
 
-  p = hash_get_mem (im->igmp_api_client_by_client_index, &client_index);
+  p = hash_get (im->igmp_api_client_by_client_index, client_index);
 
   if (p)
     {
       api_client = pool_elt_at_index (im->api_clients, p[0]);
       pool_put (im->api_clients, api_client);
-      hash_unset_mem (im->igmp_api_client_by_client_index, &client_index);
+      hash_unset (im->igmp_api_client_by_client_index, client_index);
     }
   return (NULL);
 }
@@ -316,8 +316,7 @@ igmp_event (igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
       igmp_clear_group (config, group);
       if (pool_elts (config->groups) == 0)
 	{
-	  hash_unset_mem (im->igmp_config_by_sw_if_index,
-			  &config->sw_if_index);
+	  hash_unset (im->igmp_config_by_sw_if_index, config->sw_if_index);
 	  pool_put (im->configs, config);
 	}
     }

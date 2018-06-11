@@ -405,7 +405,7 @@ igmp_config_lookup (igmp_main_t * im, u32 sw_if_index)
   uword *p;
   igmp_config_t *config = NULL;
 
-  p = hash_get_mem (im->igmp_config_by_sw_if_index, &sw_if_index);
+  p = hash_get (im->igmp_config_by_sw_if_index, sw_if_index);
   if (p)
     config = vec_elt_at_index (im->configs, p[0]);
 
