@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a69bb4ae_36b86577",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-06-11T03:09:34Z",
+      "side": 1,
+      "message": "Instead of this, could you detect in configure.ac if we have async support? See mbedtls example.",
+      "range": {
+        "startLine": 30,
+        "startChar": 1,
+        "endLine": 30,
+        "endChar": 25
+      },
+      "revId": "3fcfe351d1016a3577f6eabd5c6f3755a1af2493",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
