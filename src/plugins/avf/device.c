@@ -1075,7 +1075,14 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     ad->flags |= AVF_DEVICE_F_ELOG;
 
   if ((error = vlib_pci_device_open (&args->addr, avf_pci_device_ids, &h)))
-    goto error;
+    {
+      pool_put (am->devices, ad);
+      args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+      args->error =
+	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
+			   &args->addr);
+      return;
+    }
   ad->pci_dev_handle = h;
 
   vlib_pci_set_private_data (h, ad->dev_instance);
