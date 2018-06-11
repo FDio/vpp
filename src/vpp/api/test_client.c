@@ -22,6 +22,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <semaphore.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <pthread.h>
@@ -80,9 +82,16 @@ typedef struct
   /* convenience */
   svm_queue_t *vl_input_queue;
   u32 my_client_index;
+  volatile u32 context_id_sent;
 } test_main_t;
 
 test_main_t test_main;
+
+/* globals used for api performance test */
+int total = 0; // total number of requests
+struct timeval tval_before;
+sem_t permit_to_send; // limits number of concurrent messages
+int debug = 0;
 
 /*
  * Satisfy external references when -lvlib is not available.
@@ -103,6 +112,32 @@ format_ethernet_address (u8 * s, va_list * args)
 
   return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
 		 a[0], a[1], a[2], a[3], a[4], a[5]);
+}
+
+static long int get_elapsed_microseconds() {
+    struct timeval tval_after, tval_result;
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+    long int t = 1000000*(long int)tval_result.tv_sec + (long int)tval_result.tv_usec;
+    return t;
+}
+
+/* VL_API_GET_NODE_INDEX_REPLY handler used for api performance test */
+static void vl_api_get_node_index_reply_t_handler
+(vl_api_get_node_index_reply_t *mp)
+{
+    int context_id = ntohl(mp->context);
+    if (debug == 1 && (context_id % 100 == 0)) {
+        fformat (stdout, "get_node_index reply %d (context_id: %d)\n", ntohl(mp->retval), context_id);
+    }
+
+    sem_post(&permit_to_send);
+
+    // This comparison is not thread-safe => can make results better for concurrent setting.
+    // The difference should be negligible if total >> max_requests.
+    if (context_id == total) {
+        printf("Requests per second: %f\n", total/(get_elapsed_microseconds()/1000000.0));
+    }
 }
 
 static void
@@ -589,6 +624,7 @@ noop_handler (void *notused)
 
 #define foreach_api_msg                                                 \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
+_(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
@@ -1284,12 +1320,53 @@ l2_bridge (test_main_t * tm)
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
 }
 
+
+static inline u32 increment_context_id (test_main_t * tm)
+{
+  u32 my_context_id;
+  my_context_id = __sync_add_and_fetch (&tm->context_id_sent, 1);
+  return my_context_id;
+}
+
+void get_node_index (test_main_t *tm)
+{
+    vl_api_get_node_index_t * mp;
+    char node_name[] = "1";
+    u32 my_context_id;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_GET_NODE_INDEX);
+    mp->client_index = tm->my_client_index;
+
+    my_context_id = increment_context_id (tm);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+
+    memcpy (mp->node_name, node_name, sizeof (mp->node_name));
+
+    vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
+}
+
+void get_node_index_test (test_main_t *tm)
+{
+    int i = 0;
+
+    gettimeofday(&tval_before, NULL);
+
+    for (; i<total; ++i) {
+        sem_wait(&permit_to_send);
+        get_node_index(tm);
+    }
+
+    printf("Requests per second (SEND): %f\n", total/(get_elapsed_microseconds()/1000000.0));
+}
+
 int
 main (int argc, char **argv)
 {
   api_main_t *am = &api_main;
   test_main_t *tm = &test_main;
-  int ch;
+  int ch, max_requests;
 
   connect_to_vpe ("test_client");
 
@@ -1298,6 +1375,16 @@ main (int argc, char **argv)
 
   fformat (stdout, "Type 'h' for help, 'q' to quit...\n");
 
+  total = atoi(argv[1]);
+  max_requests = atoi(argv[2]);
+  debug = atoi(argv[3]);
+
+  // Semaphore limits number of concurrent messages sent to VPP.
+  // Set max_requests=1 for synchronous setting.
+  // It's enough to increase max_requests to 2 to slow execution down by a couple orders.
+  // We observed the same behavior for Java clients.
+  sem_init(&permit_to_send, 0, max_requests);
+
   while (1)
     {
       ch = getchar ();
@@ -1305,6 +1392,9 @@ main (int argc, char **argv)
 	{
 	case 'q':
 	  goto done;
+    case 'C':
+        get_node_index_test(tm);
+        break;
 	case 'd':
 	  dump (tm);
 	  break;
@@ -1475,6 +1565,7 @@ main (int argc, char **argv)
 
 	case 'h':
 	  fformat (stdout, "q=quit,d=dump,L=link evts on,l=link evts off\n");
+      fformat (stdout, "C=starts performance test\n");
 	  fformat (stdout, "S=stats on,s=stats off\n");
 	  fformat (stdout, "4=add v4 route, 3=del v4 route\n");
 	  fformat (stdout, "6=add v6 route, 5=del v6 route\n");
