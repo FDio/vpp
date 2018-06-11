@@ -1090,6 +1090,7 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
   switch (next_state)
     {
     case TCP_STATE_ESTABLISHED:
+    case TCP_STATE_CLOSE_WAIT:
       return TCP_FLAG_ACK;
     case TCP_STATE_SYN_RCVD:
       return TCP_FLAG_SYN | TCP_FLAG_ACK;
