@@ -46,6 +46,30 @@
       "revId": "3c22affe8b1c60b4d34a387331251f44c3db4fd3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63db75f3_9505c797",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-06-11T06:40:41Z",
+      "side": 0,
+      "message": "Please only change the simple comparisons to reduce additional work for gcc optimization.\nThanks.",
+      "parentUuid": "71199105_11d08fa2",
+      "range": {
+        "startLine": 304,
+        "startChar": 0,
+        "endLine": 313,
+        "endChar": 68
+      },
+      "revId": "3c22affe8b1c60b4d34a387331251f44c3db4fd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
