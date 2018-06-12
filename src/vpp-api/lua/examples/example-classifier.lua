@@ -40,6 +40,7 @@ reply = vpp:api_call("classify_add_del_table", {
   nbuckets = 32,
   skip_n_vectors = 0,
   match_n_vectors = 1,
+  mask_len = 16,
   mask = "\255\255\255\255\255\255\255\255" .. "\255\255\255\255\255\255\255\255"
 })
 print(vpp.dump(reply))
