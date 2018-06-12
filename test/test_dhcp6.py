@@ -1,7 +1,7 @@
 from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
     DHCP6OptStatusCode, DHCP6OptPref, DHCP6OptIA_PD, DHCP6OptIAPrefix, \
     DHCP6OptServerId, DHCP6_Solicit, DHCP6_Reply, DHCP6_Request, DHCP6_Renew, \
-    DHCP6_Rebind, DUID_LLT, DHCP6_Release, DHCP6OptElapsedTime
+    DHCP6_Rebind, DUID_LL, DHCP6_Release, DHCP6OptElapsedTime
 from scapy.layers.inet6 import IPv6, Ether, UDP
 from scapy.utils6 import in6_mactoifaceid
 from scapy.utils import inet_ntop, inet_pton
@@ -36,9 +36,7 @@ class TestDHCPv6PD(VppTestCase):
             i.admin_up()
             i.config_ip6()
 
-        time_since_2000 = int(time()) - 946684800
-        self.server_duid = DUID_LLT(timeval=time_since_2000,
-                                    lladdr=self.pg0.remote_mac)
+        self.server_duid = DUID_LL(lladdr=self.pg0.remote_mac)
 
     def tearDown(self):
         for i in self.interfaces:
@@ -48,6 +46,8 @@ class TestDHCPv6PD(VppTestCase):
 
     def test_dhcp_send_solicit_receive_advertise(self):
         """ Verify DHCPv6 PD Solicit packet and received Advertise envent """
+
+        self.vapi.dhcp6_clients_enable_disable()
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -85,7 +85,6 @@ class TestDHCPv6PD(VppTestCase):
         self.assert_equal(prefix.validlft, 120)
 
         self.vapi.want_dhcp6_pd_reply_events()
-        self.vapi.dhcp6_clients_enable_disable()
 
         ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=60,
                                       validlft=120)
@@ -103,7 +102,7 @@ class TestDHCPv6PD(VppTestCase):
         self.pg0.add_stream([p])
         self.pg_start()
 
-        ev = self.vapi.wait_for_event(10, "dhcp6_pd_reply_event")
+        ev = self.vapi.wait_for_event(1, "dhcp6_pd_reply_event")
 
         self.assert_equal(ev.preference, 7)
         self.assert_equal(ev.status_code, 1)
@@ -136,9 +135,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         for i in self.interfaces:
             i.admin_up()
 
-        time_since_2000 = int(time()) - 946684800
-        self.server_duid = DUID_LLT(timeval=time_since_2000,
-                                    lladdr=self.pg0.remote_mac)
+        self.server_duid = DUID_LL(lladdr=self.pg0.remote_mac)
         self.client_duid = None
         self.T1 = 1
         self.T2 = 2
@@ -180,8 +177,8 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         addresses = set(self.get_interface_addresses(fib, self.pg1))
         return addresses.difference(self.initial_addresses)
 
-    def validate_duid_llt(self, duid):
-        DUID_LLT(duid)
+    def validate_duid_ll(self, duid):
+        DUID_LL(duid)
 
     def validate_packet(self, packet, msg_type, is_resend=False):
         try:
@@ -189,7 +186,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             client_duid = packet[DHCP6OptClientId].duid
             if self.client_duid is None:
                 self.client_duid = client_duid
-                self.validate_duid_llt(client_duid)
+                self.validate_duid_ll(client_duid)
             else:
                 self.assertEqual(self.client_duid, client_duid)
             if msg_type != DHCP6_Solicit and msg_type != DHCP6_Rebind:

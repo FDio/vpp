@@ -186,6 +186,18 @@ manual_endian manual_print define dhcp_proxy_details
   vl_api_dhcp_server_t servers[count];
 };
 
+/** \brief Set DHCPv6 DUID-LL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param duid_ll - DUID-LL binary string
+*/
+autoreply define dhcp6_duid_ll_set
+{
+  u32 client_index;
+  u32 context;
+  u8 duid_ll[10];
+};
+
 /** \brief Enable/disable listening on DHCPv6 client port
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

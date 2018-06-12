@@ -658,7 +658,7 @@ cp_ip6_construct_address (ip6_address_info_t * address_info, u32 prefix_index,
       clib_warning ("Prefix length is bigger that 64 bits");
       return 1;
     }
-  mask = (1 << (64 - prefix->prefix_length)) - 1;
+  mask = ((u64) 1 << (64 - prefix->prefix_length)) - 1;
   addr0 &= mask;
   pref = clib_host_to_net_u64 (prefix->prefix.as_u64[0]);
   pref &= ~mask;
@@ -871,9 +871,16 @@ cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
 {
 
   ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;
+  vnet_main_t *vnm = vnet_get_main ();
   ip6_address_info_t *address_info;
   u32 prefix_group_index;
   u32 n;
+
+  if (!vnet_sw_interface_is_api_valid (vnm, sw_if_index))
+    {
+      clib_warning ("Invalid sw_if_index");
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
 
   if (prefix_group != 0 && prefix_group[0] != '\0')
     {
@@ -927,12 +934,9 @@ static void
   u8 prefix_length;
   int rv = 0;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   sw_if_index = ntohl (mp->sw_if_index);
-  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto bad_sw_if_index;
-    }
 
   memcpy (address.as_u8, mp->address, 16);
   prefix_length = mp->prefix_length;

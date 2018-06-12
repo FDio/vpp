@@ -112,13 +112,12 @@ typedef union
 	       {
 	       u16 duid_type;
 	       u16 hardware_type;
-	       u32 time;
 	       u8 lla[6];
 	       });
-  char bin_string[14];
-} dhcpv6_duid_string_t;
+  char bin_string[10];
+} dhcpv6_duid_ll_string_t;
 
-static dhcpv6_duid_string_t client_duid;
+static dhcpv6_duid_ll_string_t client_duid;
 #define CLIENT_DUID_LENGTH sizeof (client_duid)
 #define DHCPV6_CLIENT_IAID 1
 
@@ -409,9 +408,20 @@ dhcpv6_pd_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  discard = 1;
 			}
 		      else
-			report.server_index =
-			  server_index_get_or_create (option->data,
-						      ntohs (option->length));
+			{
+			  u16 ol = ntohs (option->length);
+			  if (ol - 2 /* 2 byte DUID type code */  > 128)
+			    {
+			      clib_warning
+				("Server DUID (without type code) is longer than 128 octets");
+			      discard = 1;
+			    }
+			  else
+			    {
+			      report.server_index =
+				server_index_get_or_create (option->data, ol);
+			    }
+			}
 		    }
 		  else if (oo == DHCPV6_OPTION_PREFERENCE)
 		    {
@@ -1049,37 +1059,29 @@ reply:
 }
 
 void
-dhcp6_clients_enable_disable (u8 enable)
+vl_api_dhcp6_duid_ll_set_t_handler (vl_api_dhcp6_duid_ll_set_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
-
-  if (enable)
-    udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
-			   dhcpv6_pd_client_node.index, 0 /* is_ip6 */ );
-  else
-    udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
-			     0 /* is_ip6 */ );
-}
-
-void
-  vl_api_dhcp6_clients_enable_disable_t_handler
-  (vl_api_dhcp6_clients_enable_disable_t * mp)
-{
-  vl_api_dhcp6_clients_enable_disable_reply_t *rmp;
+  vl_api_dhcp6_duid_ll_set_reply_t *rmp;
+  dhcpv6_duid_ll_string_t *duid;
   int rv = 0;
 
-  dhcp6_clients_enable_disable (mp->enable);
+  duid = (dhcpv6_duid_ll_string_t *) mp->duid_ll;
+  if (duid->duid_type != htonl (DHCPV6_DUID_LL))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto reply;
+    }
+  clib_memcpy (&client_duid, &duid, sizeof (client_duid));
 
-  REPLY_MACRO (VL_API_WANT_DHCP6_PD_REPLY_EVENTS_REPLY);
+reply:
+  REPLY_MACRO (VL_API_DHCP6_DUID_LL_SET_REPLY);
 }
 
 static void
-genereate_client_duid (void)
+generate_client_duid (void)
 {
-  client_duid.duid_type = htons (DHCPV6_DUID_LLT);
+  client_duid.duid_type = htons (DHCPV6_DUID_LL);
   client_duid.hardware_type = htons (1);
-  u32 time_since_2000 = (u32) time (0) - 946684800;
-  client_duid.time = htonl (time_since_2000);
 
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -1112,6 +1114,35 @@ genereate_client_duid (void)
     }
 }
 
+void
+dhcp6_clients_enable_disable (u8 enable)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  if (enable)
+    {
+      if (client_duid.duid_type == 0)
+	generate_client_duid ();
+      udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
+			     dhcpv6_pd_client_node.index, 0 /* is_ip6 */ );
+    }
+  else
+    udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
+			     0 /* is_ip6 */ );
+}
+
+void
+  vl_api_dhcp6_clients_enable_disable_t_handler
+  (vl_api_dhcp6_clients_enable_disable_t * mp)
+{
+  vl_api_dhcp6_clients_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  dhcp6_clients_enable_disable (mp->enable);
+
+  REPLY_MACRO (VL_API_WANT_DHCP6_PD_REPLY_EVENTS_REPLY);
+}
+
 static clib_error_t *
 dhcp6_pd_client_init (vlib_main_t * vm)
 {
@@ -1123,9 +1154,6 @@ dhcp6_pd_client_init (vlib_main_t * vm)
   cm->publisher_node = ~0;
 
   cm->seed = 0xdeaddabe;
-
-  // TODO: should be stored in non-volatile memory
-  genereate_client_duid ();
 
   return 0;
 }
