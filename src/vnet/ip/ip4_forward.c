@@ -1918,7 +1918,8 @@ VLIB_INIT_FUNCTION (arp_notrace_init);
 
 /* Send an ARP request to see if given destination is reachable on given interface. */
 clib_error_t *
-ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
+ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
+		    u8 refresh)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
@@ -1931,6 +1932,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
   vlib_buffer_t *b;
   adj_index_t ai;
   u32 bi = 0;
+  u8 unicast_rewrite = 0;
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
 
@@ -1988,14 +1990,24 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
   /* Peer has been previously resolved, retrieve glean adj instead */
   if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
     {
-      adj_unlock (ai);
-      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4,
-				  VNET_LINK_IP4, sw_if_index, &nh);
-      adj = adj_get (ai);
+      if (refresh)
+	unicast_rewrite = 1;
+      else
+	{
+	  adj_unlock (ai);
+	  ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4,
+				      VNET_LINK_IP4, sw_if_index, &nh);
+	  adj = adj_get (ai);
+	}
     }
 
   /* Add encapsulation string for software interface (e.g. ethernet header). */
   vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
+  if (unicast_rewrite)
+    {
+      u16 *etype = vlib_buffer_get_current (b) - 2;
+      etype[0] = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
+    }
   vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
 
   {

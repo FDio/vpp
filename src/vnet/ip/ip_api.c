@@ -2993,10 +2993,10 @@ vl_api_ip_probe_neighbor_t_handler (vl_api_ip_probe_neighbor_t * mp)
 
   if (mp->is_ipv6)
     error = ip6_probe_neighbor (vm, (ip6_address_t *) mp->dst_address,
-				sw_if_index);
+				sw_if_index, 0);
   else
     error = ip4_probe_neighbor (vm, (ip4_address_t *) mp->dst_address,
-				sw_if_index);
+				sw_if_index, 0);
 
   if (error)
     {

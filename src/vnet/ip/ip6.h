@@ -354,7 +354,7 @@ ip6_address_t *ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index);
 int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
 
 clib_error_t *ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst,
-				  u32 sw_if_index);
+				  u32 sw_if_index, u8 refresh);
 
 uword
 ip6_udp_register_listener (vlib_main_t * vm,

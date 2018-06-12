@@ -1101,7 +1101,7 @@ ip6_probe_neighbor_wait (vlib_main_t * vm, ip6_address_t * a, u32 sw_if_index,
   for (i = 0; i < retry_count; i++)
     {
       /* The interface may be down, etc. */
-      e = ip6_probe_neighbor (vm, a, sw_if_index);
+      e = ip6_probe_neighbor (vm, a, sw_if_index, 0);
 
       if (e)
 	return e;
@@ -1153,7 +1153,7 @@ ip4_probe_neighbor_wait (vlib_main_t * vm, ip4_address_t * a, u32 sw_if_index,
   for (i = 0; i < retry_count; i++)
     {
       /* The interface may be down, etc. */
-      e = ip4_probe_neighbor (vm, a, sw_if_index);
+      e = ip4_probe_neighbor (vm, a, sw_if_index, 0);
 
       if (e)
 	return e;

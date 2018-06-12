@@ -1435,7 +1435,8 @@ ip6_register_protocol (u32 protocol, u32 node_index)
 }
 
 clib_error_t *
-ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
+ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
+		    u8 refresh)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
@@ -1516,7 +1517,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
   adj = adj_get (ai);
 
   /* Peer has been previously resolved, retrieve glean adj instead */
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
+  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE && refresh == 0)
     {
       adj_unlock (ai);
       ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP6,

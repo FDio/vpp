@@ -251,7 +251,7 @@ int ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2);
 
 /* Send an ARP request to see if given destination is reachable on given interface. */
 clib_error_t *ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst,
-				  u32 sw_if_index);
+				  u32 sw_if_index, u8 refresh);
 
 clib_error_t *ip4_set_arp_limit (u32 arp_limit);
 

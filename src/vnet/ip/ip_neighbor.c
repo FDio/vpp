@@ -143,10 +143,10 @@ ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
 	  update_count[0]++;
 	  /* probe neighbor */
 	  if (!is_ip6)
-	    ip4_probe_neighbor (vm, &n4->ip4_address, n4->sw_if_index);
+	    ip4_probe_neighbor (vm, &n4->ip4_address, n4->sw_if_index, 1);
 	  else
 	    ip6_probe_neighbor (vm, &n6->key.ip6_address,
-				n6->key.sw_if_index);
+				n6->key.sw_if_index, 1);
 	}
 
     next_neighbor:
