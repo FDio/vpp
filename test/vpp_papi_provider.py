@@ -2220,6 +2220,8 @@ class VppPapiProvider(object):
         :param current_data_offset:  (Default value = 0)
         """
 
+        mask_len = ((len(mask) - 1) / 16 + 1) * 16
+        mask = mask + '\0' * (mask_len - len(mask))
         return self.api(
             self.papi.classify_add_del_table,
             {'is_add': is_add,
@@ -2232,6 +2234,7 @@ class VppPapiProvider(object):
              'miss_next_index': miss_next_index,
              'current_data_flag': current_data_flag,
              'current_data_offset': current_data_offset,
+             'mask_len': mask_len,
              'mask': mask})
 
     def classify_add_del_session(
@@ -2255,6 +2258,8 @@ class VppPapiProvider(object):
         :param metadata:  (Default value = 0)
         """
 
+        match_len = ((len(match) - 1) / 16 + 1) * 16
+        match = match + '\0' * (match_len - len(match))
         return self.api(
             self.papi.classify_add_del_session,
             {'is_add': is_add,
@@ -2264,6 +2269,7 @@ class VppPapiProvider(object):
              'advance': advance,
              'action': action,
              'metadata': metadata,
+             'match_len': match_len,
              'match': match})
 
     def input_acl_set_interface(

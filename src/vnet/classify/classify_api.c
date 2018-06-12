@@ -72,7 +72,8 @@ _(match_n_vectors)                              \
 _(next_table_index)                             \
 _(miss_next_index)                              \
 _(current_data_flag)                            \
-_(current_data_offset)
+_(current_data_offset)                          \
+_(mask_len)
 
 static void vl_api_classify_add_del_table_t_handler
   (vl_api_classify_add_del_table_t * mp)
@@ -89,6 +90,12 @@ static void vl_api_classify_add_del_table_t_handler
 #define _(a) a = ntohl(mp->a);
   foreach_classify_add_del_table_field;
 #undef _
+
+  if (mask_len != match_n_vectors * sizeof (u32x4))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
 
   /* The underlying API fails silently, on purpose, so check here */
   if (mp->is_add == 0)		/* delete */
@@ -138,9 +145,10 @@ static void vl_api_classify_add_del_session_t_handler
   vnet_classify_main_t *cm = &vnet_classify_main;
   vl_api_classify_add_del_session_reply_t *rmp;
   int rv;
-  u32 table_index, hit_next_index, opaque_index, metadata;
+  u32 table_index, hit_next_index, opaque_index, metadata, match_len;
   i32 advance;
   u8 action;
+  vnet_classify_table_t *t;
 
   table_index = ntohl (mp->table_index);
   hit_next_index = ntohl (mp->hit_next_index);
@@ -148,11 +156,27 @@ static void vl_api_classify_add_del_session_t_handler
   advance = ntohl (mp->advance);
   action = mp->action;
   metadata = ntohl (mp->metadata);
+  match_len = ntohl (mp->match_len);
+
+  if (pool_is_free_index (cm->tables, table_index))
+    {
+      rv = VNET_API_ERROR_NO_SUCH_TABLE;
+      goto out;
+    }
+
+  t = pool_elt_at_index (cm->tables, table_index);
+
+  if (match_len != (t->skip_n_vectors + t->match_n_vectors) * sizeof (u32x4))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
 
   rv = vnet_classify_add_del_session
     (cm, table_index, mp->match, hit_next_index, opaque_index,
      advance, action, metadata, mp->is_add);
 
+out:
   REPLY_MACRO (VL_API_CLASSIFY_ADD_DEL_SESSION_REPLY);
 }
 

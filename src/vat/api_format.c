@@ -11460,6 +11460,7 @@ api_classify_add_del_table (vat_main_t * vam)
   mp->miss_next_index = ntohl (miss_next_index);
   mp->current_data_flag = ntohl (current_data_flag);
   mp->current_data_offset = ntohl (current_data_offset);
+  mp->mask_len = ntohl (vec_len (mask));
   clib_memcpy (mp->mask, mask, vec_len (mask));
 
   vec_free (mask);
@@ -12011,6 +12012,7 @@ api_classify_add_del_session (vat_main_t * vam)
   mp->advance = ntohl (advance);
   mp->action = action;
   mp->metadata = ntohl (metadata);
+  mp->match_len = ntohl (vec_len (match));
   clib_memcpy (mp->match, match, vec_len (match));
   vec_free (match);
 
