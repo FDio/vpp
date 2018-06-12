@@ -13,21 +13,20 @@
 # limitations under the License.
 
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, find_packages
 
 setup (name = 'vpp_papi',
-       version = '1.4',
+       version = '1.5',
        description = 'VPP Python binding',
        author = 'Ole Troan',
        author_email = 'ot@cisco.com',
        url = 'https://wiki.fd.io/view/VPP/Python_API',
-       python_requires='>=2.7, >=3.3',
        license = 'Apache-2.0',
        test_suite = 'tests',
-       install_requires=['cffi >= 1.6'],
-       py_modules=['vpp_papi'],
+       install_requires=['cffi >= 1.6', 'enum34'],
+       packages=find_packages(),
        long_description = '''VPP Python language binding.''',
        zip_safe = True,
 )

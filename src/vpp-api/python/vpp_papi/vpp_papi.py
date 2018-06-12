@@ -27,6 +27,7 @@ import weakref
 import atexit
 from cffi import FFI
 import cffi
+from vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -103,6 +104,9 @@ class FuncWrapper(object):
         return self._func(**kwargs)
 
 
+class VPPMessage(VPPType):
+    pass
+
 class VPP():
     """VPP interface.
 
@@ -115,8 +119,56 @@ class VPP():
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
+
+    def process_json_file(self, apidef_file):
+        api = json.load(apidef_file)
+        types = {}
+        for t in api['enums']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'enum', 'data': t}
+        for t in api['unions']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'union', 'data': t}
+        for t in api['types']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'type', 'data': t}
+
+        i = 0
+        while True:
+            unresolved = {}
+            for k, v in types.items():
+                t = v['data']
+                if v['type'] == 'enum':
+                    try:
+                        VPPEnumType(t[0], t[1:])
+                    except ValueError:
+                        unresolved[k] = v
+                elif v['type'] == 'union':
+                    try:
+                        VPPUnionType(t[0], t[1:])
+                    except ValueError:
+                        unresolved[k] = v
+                elif v['type'] == 'type':
+                    try:
+                        VPPType(t[0], t[1:])
+                    except ValueError:
+                        unresolved[k] = v
+            if len(unresolved) == 0:
+                break
+            if i > 3:
+                raise ValueError('Unresolved type definitions {}'
+                                 .format(unresolved))
+            types = unresolved
+            i += 1
+
+        for m in api['messages']:
+            try:
+                self.messages[m[0]] = VPPMessage(m[0], m[1:])
+            except NotImplementedError:
+                self.logger.error('Not implemented error for {}'.format(m[0]))
+
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=None, loglevel=None,
+                 logger=logging.getLogger('vpp_papi'), loglevel='debug',
                  read_timeout=0):
         """Create a VPP API object.
 
@@ -137,14 +189,14 @@ class VPP():
             logger = logging.getLogger(__name__)
             if loglevel is not None:
                 logger.setLevel(loglevel)
-
         self.logger = logger
 
         self.messages = {}
         self.id_names = []
         self.id_msgdef = []
         self.connected = False
-        self.header = struct.Struct('>HI')
+        self.header = VPPType('header', [['u16', 'msgid'],
+                                         ['u32', 'client_index']])
         self.apifiles = []
         self.event_callback = None
         self.message_queue = queue.Queue()
@@ -165,12 +217,8 @@ class VPP():
 
         for file in apifiles:
             with open(file) as apidef_file:
-                api = json.load(apidef_file)
-                for t in api['types']:
-                    self.add_type(t[0], t[1:])
+                self.process_json_file(apidef_file)
 
-                for m in api['messages']:
-                    self.add_message(m[0], m[1:])
         self.apifiles = apifiles
 
         # Basic sanity check
@@ -181,7 +229,8 @@ class VPP():
         atexit.register(vpp_atexit, weakref.ref(self))
 
         # Register error handler
-        vpp_api.vac_set_error_handler(vac_error_handler)
+        if not testmode:
+            vpp_api.vac_set_error_handler(vac_error_handler)
 
         # Support legacy CFFI
         # from_buffer supported from 1.8.0
@@ -334,305 +383,38 @@ class VPP():
         print('Connected') if self.connected else print('Not Connected')
         print('Read API definitions from', ', '.join(self.apifiles))
 
-    def __struct(self, t, n=None, e=-1, vl=None):
-        """Create a packing structure for a message."""
-        base_types = {'u8': 'B',
-                      'u16': 'H',
-                      'u32': 'I',
-                      'i32': 'i',
-                      'u64': 'Q',
-                      'f64': 'd', }
-
-        if t in base_types:
-            if not vl:
-                if e > 0 and t == 'u8':
-                    # Fixed byte array
-                    s = struct.Struct('>' + str(e) + 's')
-                    return s.size, s
-                if e > 0:
-                    # Fixed array of base type
-                    s = struct.Struct('>' + base_types[t])
-                    return s.size, [e, s]
-                elif e == 0:
-                    # Old style variable array
-                    s = struct.Struct('>' + base_types[t])
-                    return s.size, [-1, s]
-            else:
-                # Variable length array
-                if t == 'u8':
-                    s = struct.Struct('>s')
-                    return s.size, [vl, s]
-                else:
-                    s = struct.Struct('>' + base_types[t])
-                return s.size, [vl, s]
-
-            s = struct.Struct('>' + base_types[t])
-            return s.size, s
-
-        if t in self.messages:
-            size = self.messages[t]['sizes'][0]
-
-            # Return a list in case of array
-            if e > 0 and not vl:
-                return size, [e, lambda self, encode, buf, offset, args: (
-                    self.__struct_type(encode, self.messages[t], buf, offset,
-                                       args))]
-            if vl:
-                return size, [vl, lambda self, encode, buf, offset, args: (
-                    self.__struct_type(encode, self.messages[t], buf, offset,
-                                       args))]
-            elif e == 0:
-                # Old style VLA
-                raise NotImplementedError(1,
-                                          'No support for compound types ' + t)
-            return size, lambda self, encode, buf, offset, args: (
-                self.__struct_type(encode, self.messages[t], buf, offset, args)
-            )
-
-        raise ValueError(1, 'Invalid message type: ' + t)
-
-    def __struct_type(self, encode, msgdef, buf, offset, kwargs):
-        """Get a message packer or unpacker."""
-        if encode:
-            return self.__struct_type_encode(msgdef, buf, offset, kwargs)
-        else:
-            return self.__struct_type_decode(msgdef, buf, offset)
-
-    def __struct_type_encode(self, msgdef, buf, offset, kwargs):
-        off = offset
-        size = 0
-
-        for k in kwargs:
-            if k not in msgdef['args']:
-                raise ValueError(1, 'Non existing argument [' + k + ']' +
-                                    ' used in call to: ' +
-                                 self.id_names[kwargs['_vl_msg_id']] + '()')
-
-        for k, v in vpp_iterator(msgdef['args']):
-            off += size
-            if k in kwargs:
-                if type(v) is list:
-                    if callable(v[1]):
-                        e = kwargs[v[0]] if v[0] in kwargs else v[0]
-                        if e != len(kwargs[k]):
-                            raise (ValueError(1,
-                                              'Input list length mismatch: '
-                                              '%s (%s != %s)' %
-                                              (k, e, len(kwargs[k]))))
-                        size = 0
-                        for i in range(e):
-                            size += v[1](self, True, buf, off + size,
-                                         kwargs[k][i])
-                    else:
-                        if v[0] in kwargs:
-                            kwargslen = kwargs[v[0]]
-                            if kwargslen != len(kwargs[k]):
-                                raise ValueError(1,
-                                                 'Input list length mismatch:'
-                                                 ' %s (%s != %s)' %
-                                                 (k, kwargslen,
-                                                  len(kwargs[k])))
-                        else:
-                            kwargslen = len(kwargs[k])
-                        if v[1].size == 1:
-                            buf[off:off + kwargslen] = bytearray(kwargs[k])
-                            size = kwargslen
-                        else:
-                            size = 0
-                            for i in kwargs[k]:
-                                v[1].pack_into(buf, off + size, i)
-                                size += v[1].size
-                else:
-                    if callable(v):
-                        size = v(self, True, buf, off, kwargs[k])
-                    else:
-                        if type(kwargs[k]) is str and v.size < len(kwargs[k]):
-                            raise ValueError(1,
-                                             'Input list length mismatch: '
-                                             '%s (%s < %s)' %
-                                             (k, v.size, len(kwargs[k])))
-                        v.pack_into(buf, off, kwargs[k])
-                        size = v.size
-            else:
-                size = v.size if not type(v) is list else 0
-
-        return off + size - offset
-
-    def __getitem__(self, name):
-        if name in self.messages:
-            return self.messages[name]
-        return None
-
-    def get_size(self, sizes, kwargs):
-        total_size = sizes[0]
-        for e in sizes[1]:
-            if e in kwargs and type(kwargs[e]) is list:
-                total_size += len(kwargs[e]) * sizes[1][e]
-        return total_size
-
-    def encode(self, msgdef, kwargs):
-        # Make suitably large buffer
-        size = self.get_size(msgdef['sizes'], kwargs)
-        buf = bytearray(size)
-        offset = 0
-        size = self.__struct_type(True, msgdef, buf, offset, kwargs)
-        return buf[:offset + size]
-
-    def decode(self, msgdef, buf):
-        return self.__struct_type(False, msgdef, buf, 0, None)[1]
-
-    def __struct_type_decode(self, msgdef, buf, offset):
-        res = []
-        off = offset
-        size = 0
-        for k, v in vpp_iterator(msgdef['args']):
-            off += size
-            if type(v) is list:
-                lst = []
-                if callable(v[1]):  # compound type
-                    size = 0
-                    if v[0] in msgdef['args']:  # vla
-                        e = res[v[2]]
-                    else:  # fixed array
-                        e = v[0]
-                    res.append(lst)
-                    for i in range(e):
-                        (s, l) = v[1](self, False, buf, off + size, None)
-                        lst.append(l)
-                        size += s
-                    continue
-                if v[1].size == 1:
-                    if type(v[0]) is int:
-                        size = len(buf) - off
-                    else:
-                        size = res[v[2]]
-                    res.append(buf[off:off + size])
-                else:
-                    e = v[0] if type(v[0]) is int else res[v[2]]
-                    if e == -1:
-                        e = (len(buf) - off) / v[1].size
-                    lst = []
-                    res.append(lst)
-                    size = 0
-                    for i in range(e):
-                        lst.append(v[1].unpack_from(buf, off + size)[0])
-                        size += v[1].size
-            else:
-                if callable(v):
-                    size = 0
-                    (s, l) = v(self, False, buf, off, None)
-                    res.append(l)
-                    size += s
-                else:
-                    res.append(v.unpack_from(buf, off)[0])
-                    size = v.size
-
-        return off + size - offset, msgdef['return_tuple']._make(res)
-
-    def ret_tup(self, name):
-        if name in self.messages and 'return_tuple' in self.messages[name]:
-            return self.messages[name]['return_tuple']
-        return None
-
-    def duplicate_check_ok(self, name, msgdef):
-        crc = None
-        for c in msgdef:
-            if type(c) is dict and 'crc' in c:
-                crc = c['crc']
-                break
-        if crc:
-            # We can get duplicates because of imports
-            if crc == self.messages[name]['crc']:
-                return True
-        return False
-
-    def add_message(self, name, msgdef, typeonly=False):
-        if name in self.messages:
-            if typeonly:
-                if self.duplicate_check_ok(name, msgdef):
-                    return
-            raise ValueError('Duplicate message name: ' + name)
-
-        args = collections.OrderedDict()
-        argtypes = collections.OrderedDict()
-        fields = []
-        msg = {}
-        total_size = 0
-        sizes = {}
-        for i, f in enumerate(msgdef):
-            if type(f) is dict and 'crc' in f:
-                msg['crc'] = f['crc']
-                continue
-            field_type = f[0]
-            field_name = f[1]
-            if len(f) == 3 and f[2] == 0 and i != len(msgdef) - 2:
-                raise ValueError('Variable Length Array must be last: ' + name)
-            size, s = self.__struct(*f)
-            args[field_name] = s
-            if type(s) == list and type(s[0]) == int and \
-               type(s[1]) == struct.Struct:
-                if s[0] < 0:
-                    sizes[field_name] = size
-                else:
-                    sizes[field_name] = size
-                    total_size += s[0] * size
-            else:
-                sizes[field_name] = size
-                total_size += size
-
-            argtypes[field_name] = field_type
-            if len(f) == 4:  # Find offset to # elements field
-                idx = list(args.keys()).index(f[3]) - i
-                args[field_name].append(idx)
-            fields.append(field_name)
-        msg['return_tuple'] = collections.namedtuple(name, fields,
-                                                     rename=True)
-        self.messages[name] = msg
-        self.messages[name]['args'] = args
-        self.messages[name]['argtypes'] = argtypes
-        self.messages[name]['typeonly'] = typeonly
-        self.messages[name]['sizes'] = [total_size, sizes]
-        return self.messages[name]
-
-    def add_type(self, name, typedef):
-        return self.add_message('vl_api_' + name + '_t', typedef,
-                                typeonly=True)
-
-    def make_function(self, name, i, msgdef, multipart, async):
-        if (async):
-            def f(**kwargs):
-                return self._call_vpp_async(i, msgdef, **kwargs)
-        else:
-            def f(**kwargs):
-                return self._call_vpp(i, msgdef, multipart, **kwargs)
-        args = self.messages[name]['args']
-        argtypes = self.messages[name]['argtypes']
-        f.__name__ = str(name)
-        f.__doc__ = ", ".join(["%s %s" %
-                               (argtypes[k], k) for k in args.keys()])
-        return f
-
     @property
     def api(self):
         if not hasattr(self, "_api"):
             raise Exception("Not connected, api definitions not available")
         return self._api
 
+    def make_function(self, msg, i, multipart, async):
+        if (async):
+            def f(**kwargs):
+                return self._call_vpp_async(i, msg, **kwargs)
+        else:
+            def f(**kwargs):
+                return self._call_vpp(i, msg, multipart, **kwargs)
+
+        f.__name__ = str(msg.name)
+        f.__doc__ = ", ".join(["%s %s" %
+                               (msg.fieldtypes[j], k) for j, k in enumerate(msg.fields)])
+        return f
+
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         self._api = Empty()
-        for name, msgdef in vpp_iterator(self.messages):
-            if self.messages[name]['typeonly']:
-                continue
-            crc = self.messages[name]['crc']
-            n = name + '_' + crc[2:]
+        for name, msg in vpp_iterator(self.messages):
+            n = name + '_' + msg.crc[2:]
             i = vpp_api.vac_get_msg_index(n.encode())
             if i > 0:
-                self.id_msgdef[i] = msgdef
+                self.id_msgdef[i] = msg
                 self.id_names[i] = name
+                # TODO: Fix multipart (use services)
                 multipart = True if name.find('_dump') > 0 else False
-                f = self.make_function(name, i, msgdef, multipart, async)
+                f = self.make_function(msg, i, multipart, async)
                 setattr(self._api, name, FuncWrapper(f))
             else:
                 self.logger.debug(
@@ -669,12 +451,11 @@ class VPP():
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
-
         self.vpp_dictionary_maxid = vpp_api.vac_msg_table_max_index()
         self._register_functions(async=async)
 
         # Initialise control ping
-        crc = self.messages['control_ping']['crc']
+        crc = self.messages['control_ping'].crc
         self.control_ping_index = vpp_api.vac_get_msg_index(
             ('control_ping' + '_' + crc[2:]).encode())
         self.control_ping_msgdef = self.messages['control_ping']
@@ -743,18 +524,18 @@ class VPP():
             self.logger.warning('vpp_api.read failed')
             return
 
-        i, ci = self.header.unpack_from(msg, 0)
+        i, ci = self.header.unpack(msg, 0)
         if self.id_names[i] == 'rx_thread_exit':
             return
 
         #
         # Decode message and returns a tuple.
         #
-        msgdef = self.id_msgdef[i]
-        if not msgdef:
+        msgobj = self.id_msgdef[i]
+        if not msgobj:
             raise IOError(2, 'Reply message undefined')
 
-        r = self.decode(msgdef, msg)
+        r = msgobj.unpack(msg)
 
         return r
 
@@ -778,7 +559,12 @@ class VPP():
                              self.control_ping_msgdef,
                              context=context)
 
-    def _call_vpp(self, i, msgdef, multipart, **kwargs):
+    def validate_args(self, msg, kwargs):
+        d = set(kwargs.keys()) - set(msg.field_by_name.keys())
+        if d:
+            raise ValueError('Invalid argument {} to {}'.format(list(d), msg.name))
+
+    def _call_vpp(self, i, msg, multipart, **kwargs):
         """Given a message, send the message and await a reply.
 
         msgdef - the message packing definition
@@ -800,8 +586,9 @@ class VPP():
         else:
             context = kwargs['context']
         kwargs['_vl_msg_id'] = i
-        b = self.encode(msgdef, kwargs)
 
+        self.validate_args(msg, kwargs)
+        b = msg.pack(kwargs)
         vpp_api.vac_rx_suspend()
         self._write(b)
 
@@ -816,7 +603,6 @@ class VPP():
             msg = self._read()
             if not msg:
                 raise IOError(2, 'VPP API client: read failed')
-
             r = self.decode_incoming_msg(msg)
             msgname = type(r).__name__
             if context not in r or r.context == 0 or context != r.context:
@@ -835,7 +621,7 @@ class VPP():
 
         return rl
 
-    def _call_vpp_async(self, i, msgdef, **kwargs):
+    def _call_vpp_async(self, i, msg, **kwargs):
         """Given a message, send the message and await a reply.
 
         msgdef - the message packing definition
@@ -849,8 +635,9 @@ class VPP():
             kwargs['context'] = context
         else:
             context = kwargs['context']
+        kwargs['client_index'] = 0
         kwargs['_vl_msg_id'] = i
-        b = self.encode(msgdef, kwargs)
+        b = msg.pack(kwargs)
 
         self._write(b)
 
