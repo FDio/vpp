@@ -330,7 +330,7 @@ export NO_BRP_CHECK_RPATH=true
 
 %files api-python
 %dir %{python_sitelib}/vpp_papi*
-%{python_sitelib}/vpp_papi*
+%{python_sitelib}/vpp_*
 
 %files devel
 %dir %{python_sitelib}/jvppgen
