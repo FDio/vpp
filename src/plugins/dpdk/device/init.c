@@ -1679,10 +1679,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			clib_memcpy (sei->address, addr, 6);
 			/* Set l3 packet size allowed as the lowest of slave */
 			if (bhi->max_packet_bytes > shi->max_packet_bytes)
-			  bhi->max_packet_bytes = bhi->max_packet_bytes;
-
-			/* Set max packet size allowed as the lowest of slave */
-			if (bhi->max_packet_bytes > shi->max_packet_bytes)
 			  bhi->max_packet_bytes = shi->max_packet_bytes;
 		      }
 		  }
