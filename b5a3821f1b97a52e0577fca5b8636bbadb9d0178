@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6c86194_dbdddef2",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-06-12T14:42:53Z",
+      "side": 1,
+      "message": "Shouldn\u0027t that be u8 mask[mask_len];",
+      "range": {
+        "startLine": 59,
+        "startChar": 1,
+        "endLine": 59,
+        "endChar": 13
+      },
+      "revId": "b5a3821f1b97a52e0577fca5b8636bbadb9d0178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "32bfef1b_49274cad",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2195,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-06-12T14:42:53Z",
+      "side": 1,
+      "message": "Not sure I understand why you change the mask itself?\nOr was this broken previously?",
+      "range": {
+        "startLine": 2195,
+        "startChar": 8,
+        "endLine": 2195,
+        "endChar": 51
+      },
+      "revId": "b5a3821f1b97a52e0577fca5b8636bbadb9d0178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
