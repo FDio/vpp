@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
 /** \brief Add/Delete classification table request
     @param client_index - opaque cookie to identify the sender
@@ -37,7 +37,8 @@ option version = "1.0.0";
             can be accessible by configuring current_data_offset to -14
             if there is no vlan tag.
             This is valid only if current_data_flag is set to 1.
-    @param mask[] - match mask
+    @param mask_len - length of match mask, should be equal to match_n_vectors * sizeof (u32x4)
+    @param mask - match mask
 */
 define classify_add_del_table
 {
@@ -54,7 +55,8 @@ define classify_add_del_table
   u32 miss_next_index;
   u32 current_data_flag;
   i32 current_data_offset;
-  u8 mask[0];
+  u32 mask_len;
+  u8 mask[mask_len];
 };
 
 /** \brief Add/Delete classification table response
@@ -97,7 +99,9 @@ define classify_add_del_table_reply
     @param metadata - valid only if action != 0
            VRF id if action is 1 or 2.
            sr policy index if action is 3.
-    @param match[] - for add, match value for session, required
+    @param match_len - length of match, should be equal to skip_n_vectors plus match_n_vectors
+                       of target table times sizeof (u32x4)
+    @param match - for add, match value for session, required
 */
 autoreply define classify_add_del_session
 {
@@ -110,7 +114,8 @@ autoreply define classify_add_del_session
   i32 advance;
   u8 action;
   u32 metadata;
-  u8 match[0];
+  u32 match_len;
+  u8 match[match_len];
 };
 
 /** \brief Set/unset policer classify interface
