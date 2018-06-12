@@ -214,11 +214,11 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
   if (is_ip6)
     {
-      clib_memcpy (&p5tuple_pkt->addr,
+      clib_memcpy (&p5tuple_pkt->ip6_addr,
 		   get_ptr_to_offset (b0,
 				      offsetof (ip6_header_t,
 						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr));
+		   sizeof (p5tuple_pkt->ip6_addr));
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip6_header_t,
@@ -270,18 +270,12 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
   else
     {
-      ip46_address_mask_ip4(&p5tuple_pkt->addr[0]);
-      ip46_address_mask_ip4(&p5tuple_pkt->addr[1]);
-      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
+      memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
+      clib_memcpy (&p5tuple_pkt->ip4_addr,
 		   get_ptr_to_offset (b0,
 				      offsetof (ip4_header_t,
 						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[0].ip4));
-      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						dst_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[1].ip4));
+		   sizeof (p5tuple_pkt->ip4_addr));
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip4_header_t,
@@ -359,16 +353,29 @@ acl_plugin_fill_5tuple_inline (u32 lc_index, vlib_buffer_t * b0, int is_ip6,
 
 
 always_inline int
-fa_acl_match_addr (ip46_address_t * addr1, ip46_address_t * addr2,
-		   int prefixlen, int is_ip6)
+fa_acl_match_ip4_addr (ip4_address_t * addr1, ip4_address_t * addr2,
+		   int prefixlen)
 {
   if (prefixlen == 0)
     {
       /* match any always succeeds */
       return 1;
     }
-  if (is_ip6)
+      uint32_t a1 = clib_net_to_host_u32 (addr1->as_u32);
+      uint32_t a2 = clib_net_to_host_u32 (addr2->as_u32);
+      uint32_t mask0 = 0xffffffff - ((1 << (32 - prefixlen)) - 1);
+      return (a1 & mask0) == a2;
+}
+
+always_inline int
+fa_acl_match_ip6_addr (ip6_address_t * addr1, ip6_address_t * addr2,
+		   int prefixlen)
+{
+  if (prefixlen == 0)
     {
+      /* match any always succeeds */
+      return 1;
+    }
       if (memcmp (addr1, addr2, prefixlen / 8))
 	{
 	  /* If the starting full bytes do not match, no point in bittwidling the thumbs further */
@@ -386,14 +393,6 @@ fa_acl_match_addr (ip46_address_t * addr1, ip46_address_t * addr2,
 	  /* The prefix fits into integer number of bytes, so nothing left to do */
 	  return 1;
 	}
-    }
-  else
-    {
-      uint32_t a1 = clib_net_to_host_u32 (addr1->ip4.as_u32);
-      uint32_t a2 = clib_net_to_host_u32 (addr2->ip4.as_u32);
-      uint32_t mask0 = 0xffffffff - ((1 << (32 - prefixlen)) - 1);
-      return (a1 & mask0) == a2;
-    }
 }
 
 always_inline int
@@ -424,41 +423,26 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
   for (i = 0; i < a->count; i++)
     {
       r = a->rules + i;
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning("ACL_FA_NODE_DBG acl %d rule %d tag %s", acl_index, i, a->tag);
-#endif
       if (is_ip6 != r->is_ipv6)
 	{
 	  continue;
 	}
-      if (!fa_acl_match_addr
-	  (&pkt_5tuple->addr[1], &r->dst, r->dst_prefixlen, is_ip6))
+      if (is_ip6) {
+        if (!fa_acl_match_ip6_addr
+	  (&pkt_5tuple->ip6_addr[1], &r->dst.ip6, r->dst_prefixlen))
 	continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d pkt dst addr %U match rule addr %U/%d",
-	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[1],
-	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
-         &r->dst, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
-	 r->dst_prefixlen);
-#endif
-
-      if (!fa_acl_match_addr
-	  (&pkt_5tuple->addr[0], &r->src, r->src_prefixlen, is_ip6))
+        if (!fa_acl_match_ip6_addr
+	  (&pkt_5tuple->ip6_addr[0], &r->src.ip6, r->src_prefixlen))
 	continue;
+      } else {
+        if (!fa_acl_match_ip4_addr
+	  (&pkt_5tuple->ip4_addr[1], &r->dst.ip4, r->dst_prefixlen))
+	continue;
+        if (!fa_acl_match_ip4_addr
+	  (&pkt_5tuple->ip4_addr[0], &r->src.ip4, r->src_prefixlen))
+	continue;
+      }
 
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d pkt src addr %U match rule addr %U/%d",
-	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[0],
-	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
-         &r->src, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
-	 r->src_prefixlen);
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d trying to match pkt proto %d with rule %d",
-	 acl_index, i, pkt_5tuple->l4.proto, r->proto);
-#endif
       if (r->proto)
 	{
 	  if (pkt_5tuple->l4.proto != r->proto)
