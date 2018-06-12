@@ -1,46 +1,19 @@
-import binascii
-from framework import VppTestCase
-from vpp_papi import VPP
+#!/usr/bin/env python3
+
+import unittest
 from vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from socket import inet_pton, AF_INET, AF_INET6
+import logging
 
-import json
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+es_logger = logging.getLogger('vpp_serializer')
+es_logger.setLevel(logging.DEBUG)
 
-""" TestPAPI is a subclass of  VPPTestCase classes.
-
-Basic test for sanity check of the Python API binding.
-
-"""
-
-
-class TestPAPI(VppTestCase):
-    """ PAPI Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestPAPI, cls).setUpClass()
-        cls.v = cls.vapi.papi
-
-    def test_show_version(self):
-        """ show version """
-        rv = self.v.show_version()
-        self.assertEqual(rv.retval, 0)
-
-    def test_show_version_invalid_param(self):
-        """ show version - invalid parameters"""
-        self.assertRaises(ValueError, self.v.show_version, foobar='foo')
-
-    def test_u8_array(self):
-        """ u8 array """
-        rv = self.v.get_node_index(node_name='ip4-lookup')
-        self.assertEqual(rv.retval, 0)
-        node_name = 'X' * 100
-        self.assertRaises(ValueError, self.v.get_node_index,
-                          node_name=node_name)
+class VPPMessage(VPPType):
+    pass
 
 
-class TestPAPIMessageParsing(VppTestCase):
-    """ PAPI Message parsing Test Case """
+class TestAddType(unittest.TestCase):
 
     def test_union(self):
         un = VPPUnionType('test_union',
@@ -81,6 +54,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(len(b), 20)
 
         nt = address.unpack(b)
+        print('NT union', nt)
         self.assertEqual(nt.af, af.ADDRESS_IP4)
         self.assertEqual(nt.un.ip4.address,
                          inet_pton(AF_INET, '2.2.2.2'))
@@ -102,7 +76,7 @@ class TestPAPIMessageParsing(VppTestCase):
         valistip4_legacy = VPPType('list_ip4_t',
                                    [['u8', 'foo'],
                                     ['ip4_address', 'addresses', 0]])
-
+        
         addresses = []
         for i in range(4):
             addresses.append({'address': inet_pton(AF_INET, '2.2.2.2')})
@@ -117,17 +91,24 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(len(b), 17)
 
         nt = valistip4.unpack(b)
+        print('NT', nt)
 
         b = valistip4_legacy.pack({'foo': 1, 'addresses': addresses})
         self.assertEqual(len(b), 17)
         nt = valistip4_legacy.unpack(b)
+        print('NT', nt)
 
+        
     def test_message(self):
-        foo = VPPType('foo', [['u16', '_vl_msg_id'],
-                              ['u8', 'client_index'],
-                              ['u8', 'something'],
-                              {"crc": "0x559b9f3c"}])
+        foo = VPPMessage('foo', [['u16', '_vl_msg_id'],
+                                 ['u8', 'client_index'],
+                                 ['u8', 'something'],
+                                 {"crc": "0x559b9f3c"}])
         b = foo.pack({'_vl_msg_id': 1, 'client_index': 5,
                       'something': 200})
         self.assertEqual(len(b), 4)
         nt = foo.unpack(b)
+        print('NT', nt)
+
+if __name__ == '__main__':
+    unittest.main()
