@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3fafcf32_0abdbe91",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2018-06-12T18:17:42Z",
+      "side": 1,
+      "message": "Yes, by mistake I edited it in documentation instead.",
+      "parentUuid": "f6c86194_dbdddef2",
+      "range": {
+        "startLine": 59,
+        "startChar": 1,
+        "endLine": 59,
+        "endChar": 13
+      },
+      "revId": "b5a3821f1b97a52e0577fca5b8636bbadb9d0178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "32bfef1b_49274cad",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-06-12T14:42:53Z",
       "side": 1,
       "message": "Not sure I understand why you change the mask itself?\nOr was this broken previously?",
+      "range": {
+        "startLine": 2195,
+        "startChar": 8,
+        "endLine": 2195,
+        "endChar": 51
+      },
+      "revId": "b5a3821f1b97a52e0577fca5b8636bbadb9d0178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5e3bbce5_40e2c4e9",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2195,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2018-06-12T18:17:42Z",
+      "side": 1,
+      "message": "The mask that some tests pass to this function does not always have a length divisible by 16.\nSo I pad the mask with zeros and call the API with new length.\nIf I only fix the length variable I get exceptions like this:\n\nFile \"build/bdist.linux-x86_64/egg/vpp_papi.py\", line 434, in __struct_type_encode\n    len(kwargs[k])))\nValueError: (1, u\u0027Input list length mismatch: mask (16 !\u003d 12)\u0027)",
+      "parentUuid": "32bfef1b_49274cad",
       "range": {
         "startLine": 2195,
         "startChar": 8,
