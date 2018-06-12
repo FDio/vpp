@@ -59,6 +59,7 @@ void
 void
   vl_api_dhcp6_clients_enable_disable_t_handler
   (vl_api_dhcp6_clients_enable_disable_t * mp);
+void vl_api_dhcp6_duid_ll_set_t_handler (vl_api_dhcp6_duid_ll_set_t * mp);
 
 extern vlib_node_registration_t dhcp6_pd_reply_process_node;
 

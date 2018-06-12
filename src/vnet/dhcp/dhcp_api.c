@@ -53,7 +53,8 @@ _(DHCP_CLIENT_CONFIG, dhcp_client_config)         \
 _(DHCP_CLIENT_DUMP, dhcp_client_dump)             \
 _(WANT_DHCP6_PD_REPLY_EVENTS, want_dhcp6_pd_reply_events)               \
 _(DHCP6_PD_SEND_CLIENT_MESSAGE, dhcp6_pd_send_client_message)           \
-_(DHCP6_CLIENTS_ENABLE_DISABLE, dhcp6_clients_enable_disable)
+_(DHCP6_CLIENTS_ENABLE_DISABLE, dhcp6_clients_enable_disable)           \
+_(DHCP6_DUID_LL_SET, dhcp6_duid_ll_set)
 
 
 static void
