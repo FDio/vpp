@@ -54,7 +54,17 @@ typedef union {
 
 typedef union {
   struct {
-    ip46_address_t addr[2];
+    union {
+      struct {
+        /* we put the IPv4 addresses
+           after padding so we can still
+           use them as (shorter) key together with
+           L4 info */
+        u32 l3_zero_pad[6];
+        ip4_address_t ip4_addr[2];
+      };
+      ip6_address_t ip6_addr[2];
+    };
     fa_session_l4_key_t l4;
     /* This field should align with u64 value in bihash_40_8 keyvalue struct */
     fa_packet_info_t pkt;
@@ -81,7 +91,8 @@ typedef struct {
   u32 link_next_idx;      /* +4 bytes = 16 */
   u8 link_list_id;        /* +1 bytes = 17 */
   u8 deleted;             /* +1 bytes = 18 */
-  u8 reserved1[6];        /* +6 bytes = 24 */
+  u8 is_ip6;              /* +1 bytes = 19 */
+  u8 reserved1[5];        /* +5 bytes = 24 */
   u64 reserved2[5];       /* +5*8 bytes = 64 */
 } fa_session_t;
 

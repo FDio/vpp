@@ -262,6 +262,16 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
     }
 }
 
+always_inline int
+is_ip6_5tuple (fa_5tuple_t * p5t)
+{
+  return (p5t->l3_zero_pad[0] | p5t->
+	  l3_zero_pad[1] | p5t->l3_zero_pad[2] | p5t->l3_zero_pad[3] | p5t->
+	  l3_zero_pad[4] | p5t->l3_zero_pad[5]) != 0;
+}
+
+
+
 
 always_inline u8
 acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
@@ -355,15 +365,24 @@ reverse_l4_u64 (u64 l4, int is_ip6)
 }
 
 always_inline void
-reverse_session_add_del (acl_main_t * am, const int is_ip6,
+reverse_session_add_del (acl_main_t * am, int is_ip6,
 			 clib_bihash_kv_40_8_t * pkv, int is_add)
 {
   clib_bihash_kv_40_8_t kv2;
-  /* the first 4xu64 is two addresses, so just swap them */
-  kv2.key[0] = pkv->key[2];
-  kv2.key[1] = pkv->key[3];
-  kv2.key[2] = pkv->key[0];
-  kv2.key[3] = pkv->key[1];
+  if (is_ip6)
+    {
+      kv2.key[0] = pkv->key[2];
+      kv2.key[1] = pkv->key[3];
+      kv2.key[2] = pkv->key[0];
+      kv2.key[3] = pkv->key[1];
+    }
+  else
+    {
+      kv2.key[0] = kv2.key[1] = kv2.key[2] = 0;
+      kv2.key[3] =
+	((pkv->key[3] & 0xffffffff) << 32) | ((pkv->key[3] >> 32) &
+					      0xffffffff);
+    }
   /* the last u64 needs special treatment (ports, etc.) */
   kv2.key[4] = reverse_l4_u64 (pkv->key[4], is_ip6);
   kv2.value = pkv->value;
@@ -379,7 +398,7 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
   ASSERT (sess->thread_index == os_get_thread_index ());
   clib_bihash_add_del_40_8 (&am->fa_sessions_hash, &sess->info.kv, 0);
 
-  reverse_session_add_del (am, sess->info.pkt.is_ip6, &sess->info.kv, 0);
+  reverse_session_add_del (am, sess->is_ip6, &sess->info.kv, 0);
   sess->deleted = 1;
   clib_smp_atomic_add (&am->fa_session_total_deactivations, 1);
 }
@@ -513,6 +532,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   sess->link_prev_idx = FA_SESSION_BOGUS_INDEX;
   sess->link_next_idx = FA_SESSION_BOGUS_INDEX;
   sess->deleted = 0;
+  sess->is_ip6 = is_ip6;
 
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 

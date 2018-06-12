@@ -414,19 +414,30 @@ format_fa_5tuple (u8 * s, va_list * args)
 {
   fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
 
-  return format (s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
-		 " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
-		 p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index,
-		 p5t->pkt.is_ip6 ? "ip6" : "ip4",
-		 p5t->pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
-		 format_ip46_address, &p5t->addr[0],
-		 p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
-		 format_ip46_address, &p5t->addr[1],
-		 p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
-		 p5t->l4.proto, p5t->pkt.l4_valid, p5t->l4.port[0],
-		 p5t->l4.port[1],
-		 p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
-		 p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
+  if (p5t->pkt.is_ip6)
+    return format (s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
+		   " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
+		   p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index,
+		   "ip6",
+		   p5t->
+		   pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
+		   format_ip6_address, &p5t->ip6_addr[0], format_ip6_address,
+		   &p5t->ip6_addr[1], p5t->l4.proto, p5t->pkt.l4_valid,
+		   p5t->l4.port[0], p5t->l4.port[1],
+		   p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
+		   p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
+  else
+    return format (s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
+		   " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
+		   p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index,
+		   "ip4",
+		   p5t->
+		   pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
+		   format_ip4_address, &p5t->ip4_addr[0], format_ip4_address,
+		   &p5t->ip4_addr[1], p5t->l4.proto, p5t->pkt.l4_valid,
+		   p5t->l4.port[0], p5t->l4.port[1],
+		   p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
+		   p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
 }
 
 u8 *

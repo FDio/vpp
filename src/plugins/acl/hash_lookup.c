@@ -514,15 +514,33 @@ hash_acl_reapply(acl_main_t *am, u32 lc_index, int acl_index)
 }
 
 static void
-make_address_mask(ip46_address_t *addr, u8 is_ipv6, u8 prefix_len)
+make_ip6_address_mask(ip6_address_t *addr, u8 prefix_len)
 {
-  if (is_ipv6) {
-    ip6_address_mask_from_width(&addr->ip6, prefix_len);
-  } else {
-    /* FIXME: this may not be correct way */
-    ip6_address_mask_from_width(&addr->ip6, prefix_len + 3*32);
-    ip46_address_mask_ip4(addr);
-  }
+  ip6_address_mask_from_width(addr, prefix_len);
+}
+
+
+/* Maybe should be moved into the core somewhere */
+always_inline void
+ip4_address_mask_from_width (ip4_address_t * a, u32 width)
+{
+  int i, byte, bit, bitnum;
+  ASSERT (width <= 32);
+  memset (a, 0, sizeof (a[0]));
+  for (i = 0; i < width; i++)
+    {
+      bitnum = (7 - (i & 7));
+      byte = i / 8;
+      bit = 1 << bitnum;
+      a->as_u8[byte] |= bit;
+    }
+}
+
+
+static void
+make_ip4_address_mask(ip4_address_t *addr, u8 prefix_len)
+{
+  ip4_address_mask_from_width(addr, prefix_len);
 }
 
 static u8
@@ -566,11 +584,18 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
 
   mask->pkt.is_ip6 = 1;
   hi->match.pkt.is_ip6 = r->is_ipv6;
-
-  make_address_mask(&mask->addr[0], r->is_ipv6, r->src_prefixlen);
-  hi->match.addr[0] = r->src;
-  make_address_mask(&mask->addr[1], r->is_ipv6, r->dst_prefixlen);
-  hi->match.addr[1] = r->dst;
+  if (r->is_ipv6) {
+    make_ip6_address_mask(&mask->ip6_addr[0], r->src_prefixlen);
+    hi->match.ip6_addr[0] = r->src.ip6;
+    make_ip6_address_mask(&mask->ip6_addr[1], r->dst_prefixlen);
+    hi->match.ip6_addr[1] = r->dst.ip6;
+  } else {
+    memset(hi->match.l3_zero_pad, 0, sizeof(hi->match.l3_zero_pad));
+    make_ip4_address_mask(&mask->ip4_addr[0], r->src_prefixlen);
+    hi->match.ip4_addr[0] = r->src.ip4;
+    make_ip4_address_mask(&mask->ip4_addr[1], r->dst_prefixlen);
+    hi->match.ip4_addr[1] = r->dst.ip4;
+  }
 
   if (r->proto != 0) {
     mask->l4.proto = ~0; /* L4 proto needs to be matched */

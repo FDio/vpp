@@ -53,18 +53,26 @@ format_session_bihash_5tuple (u8 * s, va_list * args)
 {
   fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
   fa_full_session_id_t *sess = (void *) &p5t->pkt;
-
-  return format (s, "l3 %U -> %U"
-		 " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
-		 format_ip46_address, &p5t->addr[0],
-		 IP46_TYPE_ANY,
-		 format_ip46_address, &p5t->addr[1],
-		 IP46_TYPE_ANY,
-		 p5t->l4.lsb_of_sw_if_index,
-		 p5t->l4.proto, p5t->l4.is_input, p5t->l4.is_slowpath,
-		 p5t->l4.reserved0, p5t->l4.port[0], p5t->l4.port[1],
-		 sess->session_index, sess->thread_index,
-		 sess->intf_policy_epoch);
+  if (is_ip6_5tuple (p5t))
+    return (format (s, "l3 %U -> %U"
+		    " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
+		    format_ip6_address, &p5t->ip6_addr[0],
+		    format_ip6_address, &p5t->ip6_addr[1],
+		    p5t->l4.lsb_of_sw_if_index,
+		    p5t->l4.proto, p5t->l4.is_input, p5t->l4.is_slowpath,
+		    p5t->l4.reserved0, p5t->l4.port[0], p5t->l4.port[1],
+		    sess->session_index, sess->thread_index,
+		    sess->intf_policy_epoch));
+  else
+    return (format (s, "l3 %U -> %U"
+		    " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
+		    format_ip4_address, &p5t->ip4_addr[0],
+		    format_ip4_address, &p5t->ip4_addr[1],
+		    p5t->l4.lsb_of_sw_if_index,
+		    p5t->l4.proto, p5t->l4.is_input, p5t->l4.is_slowpath,
+		    p5t->l4.reserved0, p5t->l4.port[0], p5t->l4.port[1],
+		    sess->session_index, sess->thread_index,
+		    sess->intf_policy_epoch));
 }
 
 
