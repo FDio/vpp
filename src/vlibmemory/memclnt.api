@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
 /*
  * Define services not following the normal convetions here
@@ -91,7 +91,8 @@ autoreply define rpc_call {
     u8 multicast;
     u8 need_barrier_sync;
     u8 send_reply;
-    u8 data[0];
+    u32 data_len;
+    u8 data[data_len];
 };
 
 /*
