@@ -255,6 +255,7 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
   ip6_sr_main_t *srm = &sr_main;
   srv6_as_main_t *sm = &srv6_as_main;
   u32 n_left_from, next_index, *from, *to_next;
+  u32 thread_index = vlib_get_thread_index ();
   u32 cnt_packets = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -344,6 +345,15 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 		}
 	    }
 
+	  /* Increment per-SID AS rewrite counters */
+	  vlib_increment_combined_counter (((next0 ==
+					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
+					    &(sm->invalid_counters) :
+					    &(sm->valid_counters)),
+					   thread_index, ls0_mem->index, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b0));
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 
@@ -389,6 +399,7 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
   ip6_sr_main_t *srm = &sr_main;
   srv6_as_main_t *sm = &srv6_as_main;
   u32 n_left_from, next_index, *from, *to_next;
+  u32 thread_index = vlib_get_thread_index ();
   u32 cnt_packets = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -472,6 +483,15 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 			       sizeof tr->dst.as_u8);
 		}
 	    }
+
+	  /* Increment per-SID AS rewrite counters */
+	  vlib_increment_combined_counter (((next0 ==
+					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
+					    &(sm->invalid_counters) :
+					    &(sm->valid_counters)),
+					   thread_index, ls0_mem->index, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
