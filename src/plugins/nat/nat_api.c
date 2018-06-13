@@ -454,7 +454,7 @@ static void
   for (i = 0; i < count; i++)
     {
       if (mp->is_add)
-	snat_add_address (sm, &this_addr, vrf_id, mp->twice_nat);
+	rv = snat_add_address (sm, &this_addr, vrf_id, mp->twice_nat);
       else
 	rv = snat_del_address (sm, this_addr, 0, mp->twice_nat);
 

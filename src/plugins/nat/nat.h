@@ -245,7 +245,7 @@ typedef struct {
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
-  u32 worker_index;
+  u32 *workers;
   u8 *tag;
   nat44_lb_addr_port_t *locals;
 } snat_static_mapping_t;
@@ -272,6 +272,10 @@ typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
+
+  /* Endpoint dependent sessions lookup tables */
+  clib_bihash_16_8_t out2in_ed;
+  clib_bihash_16_8_t in2out_ed;
 
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
@@ -312,16 +316,11 @@ typedef int nat_alloc_out_addr_and_port_function_t (snat_address_t * addresses,
                                                     u32 snat_thread_index);
 
 typedef struct snat_main_s {
-  /* Endpoint address dependent sessions lookup tables */
-  clib_bihash_16_8_t out2in_ed;
-  clib_bihash_16_8_t in2out_ed;
-
   snat_icmp_match_function_t * icmp_match_in2out_cb;
   snat_icmp_match_function_t * icmp_match_out2in_cb;
 
   u32 num_workers;
   u32 first_worker_index;
-  u32 next_worker;
   u32 * workers;
   snat_get_worker_function_t * worker_in2out_cb;
   snat_get_worker_function_t * worker_out2in_cb;
@@ -386,6 +385,7 @@ typedef struct snat_main_s {
   u8 static_mapping_connection_tracking;
   u8 deterministic;
   u8 out2in_dpo;
+  u8 endpoint_dependent;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 max_translations;
@@ -430,6 +430,14 @@ extern vlib_node_registration_t snat_det_in2out_node;
 extern vlib_node_registration_t snat_det_out2in_node;
 extern vlib_node_registration_t snat_hairpin_dst_node;
 extern vlib_node_registration_t snat_hairpin_src_node;
+extern vlib_node_registration_t nat44_ed_in2out_node;
+extern vlib_node_registration_t nat44_ed_in2out_output_node;
+extern vlib_node_registration_t nat44_ed_out2in_node;
+extern vlib_node_registration_t nat44_ed_hairpin_dst_node;
+extern vlib_node_registration_t nat44_ed_hairpin_src_node;
+extern vlib_node_registration_t nat44_ed_in2out_worker_handoff_node;
+extern vlib_node_registration_t nat44_ed_in2out_output_worker_handoff_node;
+extern vlib_node_registration_t nat44_ed_out2in_worker_handoff_node;
 
 void snat_free_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
@@ -548,6 +556,11 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
+u32 icmp_match_in2out_ed(snat_main_t *sm, vlib_node_runtime_t *node,
+                         u32 thread_index, vlib_buffer_t *b0,
+                         ip4_header_t *ip0, u8 *p_proto,
+                         snat_session_key_t *p_value,
+                         u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0,
                            ip4_header_t *ip0, u8 *p_proto,
@@ -563,9 +576,14 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
+u32 icmp_match_out2in_ed(snat_main_t *sm, vlib_node_runtime_t *node,
+                         u32 thread_index, vlib_buffer_t *b0,
+                         ip4_header_t *ip0, u8 *p_proto,
+                         snat_session_key_t *p_value,
+                         u8 *p_dont_translate, void *d, void *e);
 void increment_v4_address(ip4_address_t * a);
-void snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
-                      u8 twice_nat);
+int snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
+                     u8 twice_nat);
 int snat_del_address(snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
                      u8 twice_nat);
 void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);

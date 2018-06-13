@@ -8,10 +8,10 @@ packet-generator new {
   size 64-64
   no-recycle
   worker 0
-  interface pg0
+  interface pg1
   data {
-    UDP: 10.0.0.3 -> 172.16.1.2
-    UDP: 3000 -> 3001
+    UDP: 172.16.1.11 -> 172.16.1.3
+    UDP: 3001 -> 3000
     length 128 checksum 0 incrementing 1
   }
 }
@@ -26,19 +26,23 @@ packet-generator new {
   worker 1
   interface pg1
   data {
-    UDP: 172.16.1.2 -> 172.16.1.3
+    UDP: 172.16.1.10 -> 172.16.1.3
     UDP: 3001 -> 3000
     length 128 checksum 0 incrementing 1
   }
 }
 
 nat44 add address 172.16.1.3
-nat44 add static mapping udp local 10.0.0.3 3000 external 172.16.1.3 3000
+nat44 add load-balancing static mapping protocol udp external 172.16.1.3:3000 local 10.0.0.10:30000 probability 25 local 10.0.0.11:30000 probability 25 local 10.0.0.12:30000 probability 25 local 10.0.0.13:30000 probability 25
 set int ip address pg0 10.0.0.1/24
 set int ip address pg1 172.16.1.1/24
 set int state pg0 up
 set int state pg1 up
-set ip arp static pg0 10.0.0.3 abcd.abcd.abcd
-set ip arp static pg1 172.16.1.2 cdef.abcd.abcd
+set ip arp static pg0 10.0.0.10 abcd.abcd.abcd
+set ip arp static pg0 10.0.0.11 abcd.abcd.abce
+set ip arp static pg0 10.0.0.12 abce.abcd.abcd
+set ip arp static pg0 10.0.0.13 abce.abcd.abce
+set ip arp static pg1 172.16.1.10 cdef.abcd.abcd
+set ip arp static pg1 172.16.1.11 cdef.abcd.abce
 set int nat44 in pg0 out pg1
 trace add pg-input 10
