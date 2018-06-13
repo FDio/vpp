@@ -26,21 +26,6 @@
 #define DA_IP4 4
 #define DA_IP6 6
 
-typedef struct
-{
-  u16 msg_id_base;			/**< API message ID base */
-
-  vlib_main_t *vlib_main;		/**< [convenience] vlib main */
-  vnet_main_t *vnet_main;		/**< [convenience] vnet main */
-
-  dpo_type_t srv6_as_dpo_type;		/**< DPO type */
-
-  u32 srv6_localsid_behavior_id;	/**< SRv6 LocalSID behavior number */
-
-  u32 *sw_iface_localsid4;		/**< Retrieve local SID from iface */
-  u32 *sw_iface_localsid6;		/**< Retrieve local SID from iface */
-} srv6_as_main_t;
-
 /*
  * This is the memory that will be stored per each localsid
  * the user instantiates
@@ -57,7 +42,29 @@ typedef struct
   ip6_address_t src_addr;		/**< Source address to be restored */
   ip6_address_t *sid_list;		/**< SID list to be restored */
   char *sid_list_str;
+
+  u32 index;
 } srv6_as_localsid_t;
+
+typedef struct
+{
+  u16 msg_id_base;			/**< API message ID base */
+
+  vlib_main_t *vlib_main;		/**< [convenience] vlib main */
+  vnet_main_t *vnet_main;		/**< [convenience] vnet main */
+
+  dpo_type_t srv6_as_dpo_type;		/**< DPO type */
+
+  u32 srv6_localsid_behavior_id;	/**< SRv6 LocalSID behavior number */
+
+  u32 *sw_iface_localsid4;		/**< Retrieve local SID from iface */
+  u32 *sw_iface_localsid6;		/**< Retrieve local SID from iface */
+
+  srv6_as_localsid_t **sids;	/**< Pool of AS SID pointers */
+
+  vlib_combined_counter_main_t valid_counters;	/**< Valid rewrite counters */
+  vlib_combined_counter_main_t invalid_counters;/**< Invalid rewrite counters */
+} srv6_as_main_t;
 
 srv6_as_main_t srv6_as_main;
 
