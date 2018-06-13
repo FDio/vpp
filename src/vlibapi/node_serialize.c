@@ -124,6 +124,7 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 
 	  serialize_likely_small_unsigned_integer (sm, (u64) state_code);
 	  serialize_likely_small_unsigned_integer (sm, n->type);
+	  serialize_likely_small_unsigned_integer (sm, n->flags);
 
 	  if (include_nexts)
 	    {
@@ -152,7 +153,6 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	  else			/* no stats */
 	    serialize_likely_small_unsigned_integer (sm, 0);
 	}
-      vec_free (nodes);
     }
   return (serialize_close_vector (sm));
 }
@@ -197,6 +197,7 @@ vlib_node_unserialize (u8 * vector)
 	  node->state_string = (u8 *) state_strings[state_code];
 
 	  node->type = unserialize_likely_small_unsigned_integer (sm);
+	  node->flags = unserialize_likely_small_unsigned_integer (sm);
 	  nnexts = unserialize_likely_small_unsigned_integer (sm);
 	  if (nnexts > 0)
 	    vec_validate (node->next_nodes, nnexts - 1);

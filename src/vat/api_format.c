@@ -3088,13 +3088,14 @@ static void vl_api_get_node_graph_reply_t_handler
     {
       hash_free (vam->graph_node_index_by_name);
 
-      for (i = 0; i < vec_len (vam->graph_nodes); i++)
+      for (i = 0; i < vec_len (vam->graph_nodes[0]); i++)
 	{
-	  node = vam->graph_nodes[i];
+	  node = vam->graph_nodes[0][i];
 	  vec_free (node->name);
 	  vec_free (node->next_nodes);
 	  vec_free (node);
 	}
+      vec_free (vam->graph_nodes[0]);
       vec_free (vam->graph_nodes);
     }
 
@@ -3102,9 +3103,9 @@ static void vl_api_get_node_graph_reply_t_handler
   vam->graph_nodes = vlib_node_unserialize (pvt_copy);
   vec_free (pvt_copy);
 
-  for (i = 0; i < vec_len (vam->graph_nodes); i++)
+  for (i = 0; i < vec_len (vam->graph_nodes[0]); i++)
     {
-      node = vam->graph_nodes[i];
+      node = vam->graph_nodes[0][i];
       hash_set_mem (vam->graph_node_index_by_name, node->name, i);
     }
 }
@@ -23389,15 +23390,15 @@ dump_node_table (vat_main_t * vam)
       return 0;
     }
 
-  for (i = 0; i < vec_len (vam->graph_nodes); i++)
+  for (i = 0; i < vec_len (vam->graph_nodes[0]); i++)
     {
-      node = vam->graph_nodes[i];
+      node = vam->graph_nodes[0][i];
       print (vam->ofp, "[%d] %s", i, node->name);
       for (j = 0; j < vec_len (node->next_nodes); j++)
 	{
 	  if (node->next_nodes[j] != ~0)
 	    {
-	      next_node = vam->graph_nodes[node->next_nodes[j]];
+	      next_node = vam->graph_nodes[0][node->next_nodes[j]];
 	      print (vam->ofp, "  [%d] %s", j, next_node->name);
 	    }
 	}
@@ -23492,13 +23493,13 @@ search_node_table (vat_main_t * vam)
 	      print (vam->ofp, "%s not found...", node_to_find);
 	      goto out;
 	    }
-	  node = vam->graph_nodes[p[0]];
+	  node = vam->graph_nodes[0][p[0]];
 	  print (vam->ofp, "[%d] %s", p[0], node->name);
 	  for (j = 0; j < vec_len (node->next_nodes); j++)
 	    {
 	      if (node->next_nodes[j] != ~0)
 		{
-		  next_node = vam->graph_nodes[node->next_nodes[j]];
+		  next_node = vam->graph_nodes[0][node->next_nodes[j]];
 		  print (vam->ofp, "  [%d] %s", j, next_node->name);
 		}
 	    }

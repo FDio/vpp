@@ -129,7 +129,7 @@ typedef struct
 
   /* Graph node table */
   uword *graph_node_index_by_name;
-  vlib_node_t **graph_nodes;
+  vlib_node_t ***graph_nodes;
 
   /* ip tables */
   ip_details_t *ip_details_by_sw_if_index[2];

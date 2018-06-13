@@ -163,9 +163,23 @@ typedef struct
   uword *counter_vector_by_name;
   clib_spinlock_t *stat_segment_lockp;
 
-  /* Pointers to scalar stats maintained by the stat segment process */
+  /* Pointers to scalar stats maintained by the stat thread */
   f64 *input_rate_ptr;
+  f64 *last_runtime_ptr;
+  f64 *last_runtime_stats_clear_ptr;
   f64 *vector_rate_ptr;
+  u64 last_input_packets;
+
+  /* Pointers to vector stats maintained by the stat thread */
+  u8 *serialized_nodes;
+  vlib_main_t **stat_vms;
+  vlib_node_t ***node_dups;
+
+  f64 *vectors_per_node;
+  f64 *vector_rate_in;
+  f64 *vector_rate_out;
+  f64 *vector_rate_drop;
+  f64 *vector_rate_punt;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -187,6 +201,7 @@ typedef enum
   STAT_DIR_TYPE_VECTOR_POINTER,
   STAT_DIR_TYPE_COUNTER_VECTOR,
   STAT_DIR_TYPE_ERROR_INDEX,
+  STAT_DIR_TYPE_SERIALIZED_NODES,
 } stat_directory_type_t;
 
 typedef struct
@@ -194,6 +209,8 @@ typedef struct
   stat_directory_type_t type;
   void *value;
 } stat_segment_directory_entry_t;
+
+void do_stat_segment_updates (stats_main_t * sm);
 
 #endif /* __included_stats_h__ */
 

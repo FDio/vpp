@@ -563,19 +563,19 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
     }
 }
 
-vlib_node_t ***
-vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats)
+void
+vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
+		     int barrier_sync, vlib_node_t **** node_dupsp,
+		     vlib_main_t *** stat_vmsp)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
-  static vlib_node_t ***node_dups;
+  vlib_node_t ***node_dups = *node_dupsp;
   vlib_node_t **nodes;
-  static vlib_main_t **stat_vms;
+  vlib_main_t **stat_vms = *stat_vmsp;
   vlib_main_t *stat_vm;
   uword i, j;
   u32 threads_to_serialize;
-
-  vec_reset_length (node_dups);
 
   if (vec_len (stat_vms) == 0)
     {
@@ -589,11 +589,14 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats)
 
   threads_to_serialize = clib_min (max_threads, vec_len (stat_vms));
 
+  vec_validate (node_dups, threads_to_serialize - 1);
+
   /*
    * Barrier sync across stats scraping.
    * Otherwise, the counts will be grossly inaccurate.
    */
-  vlib_worker_thread_barrier_sync (vm);
+  if (barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
 
   for (j = 0; j < threads_to_serialize; j++)
     {
@@ -609,12 +612,17 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats)
 	    }
 	}
 
-      nodes = vec_dup (nm->nodes);
-      vec_add1 (node_dups, nodes);
+      nodes = node_dups[j];
+      vec_validate (nodes, vec_len (nm->nodes) - 1);
+      clib_memcpy (nodes, nm->nodes, vec_len (nm->nodes) * sizeof (nodes[0]));
+      node_dups[j] = nodes;
     }
-  vlib_worker_thread_barrier_release (vm);
 
-  return node_dups;
+  if (barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
+  *node_dupsp = node_dups;
+  *stat_vmsp = stat_vms;
 }
 
 clib_error_t *

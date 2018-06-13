@@ -31,6 +31,8 @@ typedef struct
   /* Cached pointers to scalar quantities, these wont change */
   f64 *vector_rate_ptr;
   f64 *input_rate_ptr;
+  f64 *last_runtime_ptr;
+  f64 *last_runtime_stats_clear_ptr;
 
   volatile int segment_ready;
 
@@ -40,6 +42,7 @@ typedef struct
    */
   vlib_counter_t **intfc_rx_counters;
   vlib_counter_t **intfc_tx_counters;
+  u8 *serialized_nodes;
 
   u64 *thread_0_error_counts;
   u64 source_address_match_error_index;

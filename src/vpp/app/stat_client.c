@@ -144,12 +144,17 @@ connect_to_vpp (stat_client_main_t * sm)
 #define foreach_cached_pointer                                          \
 _(vector_rate, SCALAR_POINTER, &stat_client_main.vector_rate_ptr)       \
 _(input_rate, SCALAR_POINTER, &stat_client_main.input_rate_ptr)         \
+_(last_update, SCALAR_POINTER, &stat_client_main.last_runtime_ptr)      \
+_(last_stats_clear, SCALAR_POINTER,                                     \
+  &stat_client_main.last_runtime_stats_clear_ptr)                       \
 _(rx, COUNTER_VECTOR, &stat_client_main.intfc_rx_counters)              \
 _(tx, COUNTER_VECTOR, &stat_client_main.intfc_tx_counters)              \
 _(/err/0/counter_vector, VECTOR_POINTER,                                \
   &stat_client_main.thread_0_error_counts)                              \
 _(/err/IP4 source address matches local interface, ERROR_INDEX,         \
-  &stat_client_main.source_address_match_error_index)
+  &stat_client_main.source_address_match_error_index)                   \
+_(serialized_nodes, SERIALIZED_NODES,                                   \
+  &stat_client_main.serialized_nodes)
 
 typedef struct
 {
@@ -213,9 +218,12 @@ stat_poll_loop (stat_client_main_t * sm)
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
   vlib_counter_t *thread0_rx_counters = 0, *thread0_tx_counters = 0;
+  vlib_node_t ***nodes_by_thread;
+  vlib_node_t **nodes;
+  vlib_node_t *n;
   f64 vector_rate, input_rate;
   u32 len;
-  int i;
+  int i, j;
   u32 source_address_match_errors;
 
   /* Wait until the stats segment is mapped */
@@ -290,6 +298,106 @@ stat_poll_loop (stat_client_main_t * sm)
 
       fformat (stdout, "%lld source address match errors\n",
 	       source_address_match_errors);
+
+      if (sm->serialized_nodes)
+	{
+	  nodes_by_thread = vlib_node_unserialize (sm->serialized_nodes);
+
+	  /* Across all threads... */
+	  for (i = 0; i < vec_len (nodes_by_thread); i++)
+	    {
+	      u64 n_input, n_output, n_drop, n_punt;
+	      u64 n_internal_vectors, n_internal_calls;
+	      u64 n_clocks, l, v, c;
+	      f64 dt;
+
+	      nodes = nodes_by_thread[i];
+
+	      fformat (stdout, "Thread %d -------------------------\n", i);
+
+	      n_input = n_output = n_drop = n_punt = n_clocks = 0;
+	      n_internal_vectors = n_internal_calls = 0;
+
+	      /* Across all nodes */
+	      for (j = 0; j < vec_len (nodes); j++)
+		{
+		  n = nodes[j];
+
+		  /* Exactly stolen from node_cli.c... */
+		  l = n->stats_total.clocks - n->stats_last_clear.clocks;
+		  n_clocks += l;
+
+		  v = n->stats_total.vectors - n->stats_last_clear.vectors;
+		  c = n->stats_total.calls - n->stats_last_clear.calls;
+
+		  switch (n->type)
+		    {
+		    default:
+		      continue;
+
+		    case VLIB_NODE_TYPE_INTERNAL:
+		      n_output +=
+			(n->flags & VLIB_NODE_FLAG_IS_OUTPUT) ? v : 0;
+		      n_drop += (n->flags & VLIB_NODE_FLAG_IS_DROP) ? v : 0;
+		      n_punt += (n->flags & VLIB_NODE_FLAG_IS_PUNT) ? v : 0;
+		      if (!(n->flags & VLIB_NODE_FLAG_IS_OUTPUT))
+			{
+			  n_internal_vectors += v;
+			  n_internal_calls += c;
+			}
+		      if (n->flags & VLIB_NODE_FLAG_IS_HANDOFF)
+			n_input += v;
+		      break;
+
+		    case VLIB_NODE_TYPE_INPUT:
+		      n_input += v;
+		      break;
+		    }
+
+		  if (n->stats_total.calls)
+		    {
+		      fformat (stdout,
+			       "%s (%s): clocks %lld calls %lld vectors %lld ",
+			       n->name,
+			       n->state_string,
+			       n->stats_total.clocks,
+			       n->stats_total.calls, n->stats_total.vectors);
+		      if (n->stats_total.vectors)
+			fformat (stdout, "clocks/pkt %.2f\n",
+				 (f64) n->stats_total.clocks /
+				 (f64) n->stats_total.vectors);
+		      else
+			fformat (stdout, "\n");
+		    }
+		  vec_free (n->name);
+		  vec_free (n->next_nodes);
+		  vec_free (n);
+		}
+
+	      fformat (stdout, "average vectors/node %.2f\n",
+		       (n_internal_calls > 0
+			? (f64) n_internal_vectors / (f64) n_internal_calls
+			: 0));
+
+
+	      dt = *sm->last_runtime_ptr - *sm->last_runtime_stats_clear_ptr;
+
+	      fformat (stdout,
+		       " vectors rates in %.4e, out %.4e, drop %.4e, "
+		       "punt %.4e\n",
+		       (f64) n_input / dt,
+		       (f64) n_output / dt, (f64) n_drop / dt,
+		       (f64) n_punt / dt);
+
+	      vec_free (nodes);
+	    }
+	  vec_free (nodes_by_thread);
+	}
+      else
+	{
+	  fformat (stdout, "serialized nodes NULL?\n");
+	}
+
     }
 }
 

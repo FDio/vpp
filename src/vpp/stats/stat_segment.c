@@ -14,6 +14,20 @@
  */
 #include <vpp/stats/stats.h>
 
+void
+vlib_stat_segment_lock (void)
+{
+  stats_main_t *sm = &stats_main;
+  clib_spinlock_lock (sm->stat_segment_lockp);
+}
+
+void
+vlib_stat_segment_unlock (void)
+{
+  stats_main_t *sm = &stats_main;
+  clib_spinlock_unlock (sm->stat_segment_lockp);
+}
+
 void *
 vlib_stats_push_heap (void)
 {
@@ -215,6 +229,8 @@ map_stat_segment_init (vlib_main_t * vm)
 					CLIB_CACHE_LINE_BYTES);
   sm->vector_rate_ptr = (scalar_data + 0);
   sm->input_rate_ptr = (scalar_data + 1);
+  sm->last_runtime_ptr = (scalar_data + 2);
+  sm->last_runtime_stats_clear_ptr = (scalar_data + 3);
 
   name = format (0, "vector_rate%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
@@ -229,6 +245,21 @@ map_stat_segment_init (vlib_main_t * vm)
   ep->value = sm->input_rate_ptr;
 
   hash_set_mem (sm->counter_vector_by_name, name, ep);
+
+  name = format (0, "last_update%c", 0);
+  ep = clib_mem_alloc (sizeof (*ep));
+  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
+  ep->value = sm->last_runtime_ptr;
+
+  hash_set_mem (sm->counter_vector_by_name, name, ep);
+
+  name = format (0, "last_stats_clear%c", 0);
+  ep = clib_mem_alloc (sizeof (*ep));
+  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
+  ep->value = sm->last_runtime_stats_clear_ptr;
+
+  hash_set_mem (sm->counter_vector_by_name, name, ep);
+
 
   /* Publish the hash table */
   shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR] = sm->counter_vector_by_name;
@@ -279,6 +310,10 @@ format_stat_dir_entry (u8 * s, va_list * args)
       type_name = "CMainPtr";
       break;
 
+    case STAT_DIR_TYPE_SERIALIZED_NODES:
+      type_name = "SerNodesPtr";
+      break;
+
     case STAT_DIR_TYPE_ERROR_INDEX:
       type_name = "ErrIndex";
       format_string = "%-10s %20lld";
@@ -291,8 +326,6 @@ format_stat_dir_entry (u8 * s, va_list * args)
 
   return format (s, format_string, type_name, ep->value);
 }
-
-
 
 static clib_error_t *
 show_stat_segment_command_fn (vlib_main_t * vm,
@@ -362,62 +395,120 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 };
 /* *INDENT-ON* */
 
-static uword
-stat_segment_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		      vlib_frame_t * f)
+static inline void
+update_serialized_nodes (stats_main_t * sm)
 {
-  f64 vector_rate;
-  u64 input_packets, last_input_packets;
-  f64 last_runtime, dt, now;
-  vlib_main_t *this_vlib_main;
-  stats_main_t *sm = &stats_main;
   int i;
+  vlib_main_t *vm = vlib_mains[0];
+  ssvm_private_t *ssvmp = &sm->stat_segment;
+  ssvm_shared_header_t *shared_header;
+  void *oldheap;
+  stat_segment_directory_entry_t *ep;
+  hash_pair_t *hp;
+  u8 *name_copy;
 
-  last_runtime = 0.0;
-  last_input_packets = 0;
+  ASSERT (ssvmp && ssvmp->sh);
 
-  last_runtime = 0.0;
-  last_input_packets = 0;
+  vec_reset_length (sm->serialized_nodes);
 
-  while (1)
+  shared_header = ssvmp->sh;
+
+  oldheap = ssvm_push_heap (shared_header);
+
+  clib_spinlock_lock (sm->stat_segment_lockp);
+
+  vlib_node_get_nodes (0 /* vm, for barrier sync */ ,
+		       (u32) ~ 0 /* all threads */ ,
+		       1 /* include stats */ ,
+		       0 /* barrier sync */ ,
+		       &sm->node_dups, &sm->stat_vms);
+
+  sm->serialized_nodes = vlib_node_serialize (vm, sm->node_dups,
+					      sm->serialized_nodes,
+					      0 /* include nexts */ ,
+					      1 /* include stats */ );
+
+  hp = hash_get_pair (sm->counter_vector_by_name, "serialized_nodes");
+  if (hp)
     {
-      vlib_process_suspend (vm, 5.0);
+      name_copy = (u8 *) hp->key;
+      ep = (stat_segment_directory_entry_t *) (hp->value[0]);
 
-      /*
-       * Compute the average vector rate across all workers
-       */
-      vector_rate = 0.0;
+      if (ep->value != sm->serialized_nodes)
+	{
+	  ep->value = sm->serialized_nodes;
+	  /* Warn clients to refresh any pointers they might be holding */
+	  shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
+	    ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+	}
+    }
+  else
+    {
+      name_copy = format (0, "%s%c", "serialized_nodes", 0);
+      ep = clib_mem_alloc (sizeof (*ep));
+      ep->type = STAT_DIR_TYPE_SERIALIZED_NODES;
+      ep->value = sm->serialized_nodes;
+      hash_set_mem (sm->counter_vector_by_name, name_copy, ep);
 
-      /* *INDENT-OFF* */
-      for (i = 0; i < vec_len (vlib_mains); i++)
-        {
-          this_vlib_main = vlib_mains[i];
-          vector_rate += vlib_last_vector_length_per_node (vm);
-        }
-      vector_rate /= (f64) i;
+      /* Reset the client hash table pointer */
+      shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR]
+	= sm->counter_vector_by_name;
 
-      /* *INDENT-ON* */
-
-      *sm->vector_rate_ptr = vector_rate / ((f64) vec_len (vlib_mains));
-      now = vlib_time_now (vm);
-      dt = now - last_runtime;
-      input_packets = vnet_get_aggregate_rx_packets ();
-      *sm->input_rate_ptr = (f64) (input_packets - last_input_packets) / dt;
-      last_runtime = now;
-      last_input_packets = input_packets;
+      /* Warn clients to refresh any pointers they might be holding */
+      shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
+	((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
     }
 
-  return 0;			/* not so much */
+  clib_spinlock_unlock (sm->stat_segment_lockp);
+  ssvm_pop_heap (oldheap);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (stat_segment_node,static) =
+/*
+ * Called by stats_thread_fn, in stats.c, which runs in a
+ * separate pthread, which won't halt the parade
+ * in single-forwarding-core cases.
+ */
+
+void
+do_stat_segment_updates (stats_main_t * sm)
 {
-  .function = stat_segment_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "stat-segment-process",
-};
-/* *INDENT-ON* */
+  vlib_main_t *vm = vlib_mains[0];
+  f64 vector_rate;
+  u64 input_packets, last_input_packets;
+  f64 dt, now;
+  vlib_main_t *this_vlib_main;
+  int i, start;
+
+  /*
+   * Compute the average vector rate across all workers
+   */
+  vector_rate = 0.0;
+
+  start = vec_len (vlib_mains) > 1 ? 1 : 0;
+
+  for (i = start; i < vec_len (vlib_mains); i++)
+    {
+      this_vlib_main = vlib_mains[i];
+      vector_rate += vlib_last_vector_length_per_node (this_vlib_main);
+    }
+  vector_rate /= (f64) (i - start);
+
+  *sm->vector_rate_ptr = vector_rate / ((f64) (vec_len (vlib_mains) - start));
+
+  /*
+   * Compute the aggregate input rate
+   */
+  now = vlib_time_now (vm);
+  dt = now - sm->last_runtime_ptr[0];
+  input_packets = vnet_get_aggregate_rx_packets ();
+  *sm->input_rate_ptr = (f64) (input_packets - sm->last_input_packets) / dt;
+  sm->last_runtime_ptr[0] = now;
+  sm->last_input_packets = input_packets;
+  sm->last_runtime_stats_clear_ptr[0] =
+    vm->node_main.time_last_runtime_stats_clear;
+
+  update_serialized_nodes (sm);
+}
 
 
 /*

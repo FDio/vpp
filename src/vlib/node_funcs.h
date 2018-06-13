@@ -1127,8 +1127,10 @@ vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
 /**
  * Get list of nodes
  */
-vlib_node_t ***vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads,
-				    int include_stats);
+void
+vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
+		     int barrier_sync, vlib_node_t **** node_dupsp,
+		     vlib_main_t *** stat_vmsp);
 
 /* Query node given name. */
 vlib_node_t *vlib_get_node_by_name (vlib_main_t * vm, u8 * name);

@@ -1492,6 +1492,18 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
 
 }
 
+void vlib_stat_segment_lock (void) __attribute__ ((weak));
+void
+vlib_stat_segment_lock (void)
+{
+}
+
+void vlib_stat_segment_unlock (void) __attribute__ ((weak));
+void
+vlib_stat_segment_unlock (void)
+{
+}
+
 void
 vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
@@ -1521,6 +1533,13 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   /* Update (all) node runtimes before releasing the barrier, if needed */
   if (vm->need_vlib_worker_thread_node_runtime_update)
     {
+      /*
+       * Lock stat segment here, so we's safe when
+       * rebuilding the stat segment node clones from the
+       * stat thread...
+       */
+      vlib_stat_segment_lock ();
+
       /* Do stats elements on main thread */
       worker_thread_node_runtime_update_internal ();
       vm->need_vlib_worker_thread_node_runtime_update = 0;
@@ -1562,6 +1581,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	      os_panic ();
 	    }
 	}
+      vlib_stat_segment_unlock ();
     }
 
   t_closed_total = now - vm->barrier_epoch;

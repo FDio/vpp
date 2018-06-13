@@ -811,7 +811,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (!unformat (line_input, "%U", unformat_vlib_enable_disable, &enable))
+      if (unformat (line_input, "%U", unformat_vlib_enable_disable, &enable))
 	;
       else if (unformat (line_input, "api-segment"))
 	api_segment = 1;

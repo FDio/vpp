@@ -367,7 +367,8 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   void *oldheap;
   vl_api_get_node_graph_reply_t *rmp;
-  vlib_node_t ***node_dups;
+  static vlib_node_t ***node_dups;
+  static vlib_main_t **stat_vms;
 
   pthread_mutex_lock (&am->vlib_rp->mutex);
   oldheap = svm_push_data_heap (am->vlib_rp);
@@ -378,9 +379,10 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vec_validate (vector, 16384);
   vec_reset_length (vector);
 
-  /* $$$$ FIXME */
-  node_dups = vlib_node_get_nodes (vm, (u32) ~ 0 /* all threads */ ,
-				   1 /* include stats */ );
+  vlib_node_get_nodes (vm, 0 /* main threads */ ,
+		       0 /* include stats */ ,
+		       1 /* barrier sync */ ,
+		       &node_dups, &stat_vms);
   vector = vlib_node_serialize (vm, node_dups, vector, 1 /* include nexts */ ,
 				1 /* include stats */ );
 

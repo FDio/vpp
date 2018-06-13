@@ -2340,10 +2340,12 @@ stats_thread_fn (void *arg)
       ip46_fib_stats_delay (sm, sm->stats_poll_interval_in_seconds,
 			    0 /* nsec */ );
 
+      /* Always update stats segment data */
+      do_stat_segment_updates (sm);
+
       if (!(sm->enable_poller))
-	{
-	  continue;
-	}
+	continue;
+
       if (pool_elts
 	  (sm->stats_registrations[IDX_PER_INTERFACE_COMBINED_COUNTERS]))
 	do_combined_per_interface_counters (sm);
