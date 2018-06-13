@@ -48,6 +48,10 @@ ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
   sum0 = 0;
   sum1 = sum;
 
+  /* If the address of input data is odd, we should compute the checksum as a common way */
+  if (PREDICT_FALSE (data % (2 * sizeof (u8))))
+    goto do_compute;
+
   /* Align data pointer to 64 bits. */
 #define _(t)					\
 do {						\
@@ -68,6 +72,7 @@ do {						\
 
 #undef _
 
+do_compute:
   {
     ip_csum_t *d = uword_to_pointer (data, ip_csum_t *);
 
