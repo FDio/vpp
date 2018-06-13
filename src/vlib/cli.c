@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
 #include <vppinfra/cpu.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -905,9 +906,23 @@ static clib_error_t *
 restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
 		vlib_cli_command_t * cmd)
 {
-  char *newenviron[] = { NULL };
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *f;
 
-  execve (vm->name, (char **) vm->argv, newenviron);
+  /* environ(7) does not indicate a header for this */
+  extern char **environ;
+
+  /* Close all known open files */
+  /* *INDENT-OFF* */
+  pool_foreach(f, fm->file_pool,
+    ({
+      if (f->file_descriptor > 2)
+        close(f->file_descriptor);
+    }));
+  /* *INDENT-ON* */
+
+  /* Exec ourself */
+  execve (vm->name, (char **) vm->argv, environ);
 
   return 0;
 }
