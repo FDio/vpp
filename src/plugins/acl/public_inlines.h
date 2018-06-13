@@ -208,8 +208,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
   /* key[0..3] contains src/dst address and is cleared/set below */
   /* Remainder of the key and per-packet non-key data */
-  p5tuple_pkt->kv.key[4] = 0;
-  p5tuple_pkt->kv.value = 0;
+  p5tuple_pkt->kv_40_8.key[4] = 0;
+  p5tuple_pkt->kv_40_8.value = 0;
   p5tuple_pkt->pkt.is_ip6 = is_ip6;
 
   if (is_ip6)

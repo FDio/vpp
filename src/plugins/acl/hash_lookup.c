@@ -804,8 +804,8 @@ acl_plugin_show_tables_mask_type (void)
     ({
       vlib_cli_output(vm, "     %3d: %016llx %016llx %016llx %016llx %016llx %016llx  refcount %d",
 		    mte - am->ace_mask_type_pool,
-		    mte->mask.kv.key[0], mte->mask.kv.key[1], mte->mask.kv.key[2],
-		    mte->mask.kv.key[3], mte->mask.kv.key[4], mte->mask.kv.value, mte->refcount);
+		    mte->mask.kv_40_8.key[0], mte->mask.kv_40_8.key[1], mte->mask.kv_40_8.key[2],
+		    mte->mask.kv_40_8.key[3], mte->mask.kv_40_8.key[4], mte->mask.kv_40_8.value, mte->refcount);
     }));
     /* *INDENT-ON* */
 }

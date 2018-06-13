@@ -49,30 +49,43 @@ fa_session_get_shortest_timeout (acl_main_t * am)
 }
 
 static u8 *
-format_session_bihash_5tuple (u8 * s, va_list * args)
+format_ip6_session_bihash_kv (u8 * s, va_list * args)
 {
-  fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
-  fa_full_session_id_t *sess = (void *) &p5t->pkt;
-  if (is_ip6_5tuple (p5t))
-    return (format (s, "l3 %U -> %U"
-		    " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
-		    format_ip6_address, &p5t->ip6_addr[0],
-		    format_ip6_address, &p5t->ip6_addr[1],
-		    p5t->l4.lsb_of_sw_if_index,
-		    p5t->l4.proto, p5t->l4.is_input, p5t->l4.is_slowpath,
-		    p5t->l4.reserved0, p5t->l4.port[0], p5t->l4.port[1],
-		    sess->session_index, sess->thread_index,
-		    sess->intf_policy_epoch));
-  else
-    return (format (s, "l3 %U -> %U"
-		    " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
-		    format_ip4_address, &p5t->ip4_addr[0],
-		    format_ip4_address, &p5t->ip4_addr[1],
-		    p5t->l4.lsb_of_sw_if_index,
-		    p5t->l4.proto, p5t->l4.is_input, p5t->l4.is_slowpath,
-		    p5t->l4.reserved0, p5t->l4.port[0], p5t->l4.port[1],
-		    sess->session_index, sess->thread_index,
-		    sess->intf_policy_epoch));
+  clib_bihash_kv_40_8_t *kv_40_8 = va_arg (*args, clib_bihash_kv_40_8_t *);
+  fa_5tuple_t a5t;
+
+  a5t.kv_40_8 = *kv_40_8;
+  fa_full_session_id_t *sess = (fa_full_session_id_t *) & a5t.pkt;
+
+  return (format (s, "l3 %U -> %U"
+		  " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
+		  format_ip6_address, &a5t.ip6_addr[0],
+		  format_ip6_address, &a5t.ip6_addr[1],
+		  a5t.l4.lsb_of_sw_if_index,
+		  a5t.l4.proto, a5t.l4.is_input, a5t.l4.is_slowpath,
+		  a5t.l4.reserved0, a5t.l4.port[0], a5t.l4.port[1],
+		  sess->session_index, sess->thread_index,
+		  sess->intf_policy_epoch));
+}
+
+static u8 *
+format_ip4_session_bihash_kv (u8 * s, va_list * args)
+{
+  clib_bihash_kv_16_8_t *kv_16_8 = va_arg (*args, clib_bihash_kv_16_8_t *);
+  fa_5tuple_t a5t;
+
+  a5t.kv_16_8 = *kv_16_8;
+  fa_full_session_id_t *sess = (fa_full_session_id_t *) & a5t.pkt;
+
+  return (format (s, "l3 %U -> %U"
+		  " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
+		  format_ip4_address, &a5t.ip4_addr[0],
+		  format_ip4_address, &a5t.ip4_addr[1],
+		  a5t.l4.lsb_of_sw_if_index,
+		  a5t.l4.proto, a5t.l4.is_input, a5t.l4.is_slowpath,
+		  a5t.l4.reserved0, a5t.l4.port[0], a5t.l4.port[1],
+		  sess->session_index, sess->thread_index,
+		  sess->intf_policy_epoch));
 }
 
 
@@ -97,12 +110,20 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 	}
 
       /* ... and the interface session hash table */
-      clib_bihash_init_40_8 (&am->fa_sessions_hash,
-			     "ACL plugin FA session bihash",
+      clib_bihash_init_40_8 (&am->fa_ip6_sessions_hash,
+			     "ACL plugin FA IPv6 session bihash",
 			     am->fa_conn_table_hash_num_buckets,
 			     am->fa_conn_table_hash_memory_size);
-      clib_bihash_set_kvp_format_fn_40_8 (&am->fa_sessions_hash,
-					  format_session_bihash_5tuple);
+      clib_bihash_set_kvp_format_fn_40_8 (&am->fa_ip6_sessions_hash,
+					  format_ip6_session_bihash_kv);
+
+      clib_bihash_init_16_8 (&am->fa_ip4_sessions_hash,
+			     "ACL plugin FA IPv4 session bihash",
+			     am->fa_conn_table_hash_num_buckets,
+			     am->fa_conn_table_hash_memory_size);
+      clib_bihash_set_kvp_format_fn_16_8 (&am->fa_ip4_sessions_hash,
+					  format_ip4_session_bihash_kv);
+
       am->fa_sessions_hash_is_initialized = 1;
     }
 }
@@ -849,8 +870,13 @@ show_fa_sessions_hash (vlib_main_t * vm, u32 verbose)
   acl_main_t *am = &acl_main;
   if (am->fa_sessions_hash_is_initialized)
     {
-      vlib_cli_output (vm, "\nSession lookup hash table:\n%U\n\n",
-		       format_bihash_40_8, &am->fa_sessions_hash, verbose);
+      vlib_cli_output (vm, "\nIPv6 Session lookup hash table:\n%U\n\n",
+		       format_bihash_40_8, &am->fa_ip6_sessions_hash,
+		       verbose);
+
+      vlib_cli_output (vm, "\nIPv4 Session lookup hash table:\n%U\n\n",
+		       format_bihash_16_8, &am->fa_ip4_sessions_hash,
+		       verbose);
     }
   else
     {
