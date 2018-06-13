@@ -159,7 +159,7 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       vec_foreach (n, ns)
       {
         send_ip_neighbor_details
-          (sw_if_index, mp->is_ipv6,
+          (n->key.sw_if_index, mp->is_ipv6,
 	   ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
            (u8 *) n->link_layer_address,
            (u8 *) & (n->key.ip6_address.as_u8),
@@ -176,7 +176,7 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
-        send_ip_neighbor_details (sw_if_index, mp->is_ipv6,
+        send_ip_neighbor_details (n->sw_if_index, mp->is_ipv6,
           ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
           (u8*) n->ethernet_address,
           (u8*) & (n->ip4_address.as_u8),
