@@ -82,7 +82,6 @@ acl_fa_node_fn (vlib_main_t * vm,
   u32 trace_bitmap = 0;
   acl_main_t *am = &acl_main;
   fa_5tuple_t fa_5tuple;
-  clib_bihash_kv_40_8_t value_sess;
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
@@ -153,14 +152,16 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	{
-	  if (acl_fa_find_session (am, sw_if_index0, &fa_5tuple, &value_sess)
-	      && (value_sess.value != ~0ULL))
+	  u64 value_sess = ~0ULL;
+	  if (acl_fa_find_session
+	      (am, is_ip6, sw_if_index0, &fa_5tuple, &value_sess)
+	      && (value_sess != ~0ULL))
 	    {
 	      trace_bitmap |= 0x80000000;
 	      error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
 	      fa_full_session_id_t f_sess_id;
 
-	      f_sess_id.as_u64 = value_sess.value;
+	      f_sess_id.as_u64 = value_sess;
 	      ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
 
 	      fa_session_t *sess =
@@ -292,12 +293,12 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  t->next_index = next0;
 	  t->match_acl_in_index = match_acl_in_index;
 	  t->match_rule_index = match_rule_index;
-	  t->packet_info[0] = fa_5tuple.kv.key[0];
-	  t->packet_info[1] = fa_5tuple.kv.key[1];
-	  t->packet_info[2] = fa_5tuple.kv.key[2];
-	  t->packet_info[3] = fa_5tuple.kv.key[3];
-	  t->packet_info[4] = fa_5tuple.kv.key[4];
-	  t->packet_info[5] = fa_5tuple.kv.value;
+	  t->packet_info[0] = fa_5tuple.kv_40_8.key[0];
+	  t->packet_info[1] = fa_5tuple.kv_40_8.key[1];
+	  t->packet_info[2] = fa_5tuple.kv_40_8.key[2];
+	  t->packet_info[3] = fa_5tuple.kv_40_8.key[3];
+	  t->packet_info[4] = fa_5tuple.kv_40_8.key[4];
+	  t->packet_info[5] = fa_5tuple.kv_40_8.value;
 	  t->action = action;
 	  t->trace_bitmap = trace_bitmap;
 	}

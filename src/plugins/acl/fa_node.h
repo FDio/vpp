@@ -2,6 +2,7 @@
 #define _FA_NODE_H_
 
 #include <stddef.h>
+#include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_40_8.h>
 
 // #define FA_NODE_VERBOSE_DEBUG 3
@@ -66,10 +67,14 @@ typedef union {
       ip6_address_t ip6_addr[2];
     };
     fa_session_l4_key_t l4;
-    /* This field should align with u64 value in bihash_40_8 keyvalue struct */
+    /* This field should align with u64 value in bihash_40_8 and bihash_16_8 keyvalue struct */
     fa_packet_info_t pkt;
   };
-  clib_bihash_kv_40_8_t kv;
+  clib_bihash_kv_40_8_t kv_40_8;
+  struct {
+    u64 padding_for_kv_16_8[3];
+    clib_bihash_kv_16_8_t kv_16_8;
+  };
 } fa_5tuple_t;
 
 typedef struct {
@@ -121,9 +126,13 @@ typedef struct {
 
 #define CT_ASSERT_EQUAL(name, x,y) typedef int assert_ ## name ## _compile_time_assertion_failed[((x) == (y))-1]
 CT_ASSERT_EQUAL(fa_l3_key_size_is_40, offsetof(fa_5tuple_t, pkt), offsetof(clib_bihash_kv_40_8_t, value));
+CT_ASSERT_EQUAL(fa_ip6_kv_val_at_pkt, offsetof(fa_5tuple_t, pkt), offsetof(fa_5tuple_t, kv_40_8.value));
+CT_ASSERT_EQUAL(fa_ip4_kv_val_at_pkt, offsetof(fa_5tuple_t, pkt), offsetof(fa_5tuple_t, kv_16_8.value));
 CT_ASSERT_EQUAL(fa_l4_key_t_is_8, sizeof(fa_session_l4_key_t), sizeof(u64));
 CT_ASSERT_EQUAL(fa_packet_info_t_is_8, sizeof(fa_packet_info_t), sizeof(u64));
 CT_ASSERT_EQUAL(fa_l3_kv_size_is_48, sizeof(fa_5tuple_t), sizeof(clib_bihash_kv_40_8_t));
+CT_ASSERT_EQUAL(fa_ip4_starts_at_kv16_key, offsetof(fa_5tuple_t, ip4_addr), offsetof(fa_5tuple_t, kv_16_8));
+CT_ASSERT_EQUAL(fa_ip4_and_ip6_kv_value_match, offsetof(fa_5tuple_t, kv_16_8.value), offsetof(fa_5tuple_t, kv_40_8.value));
 
 /* Let's try to fit within two cachelines */
 CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);

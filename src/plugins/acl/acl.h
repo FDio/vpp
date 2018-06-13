@@ -26,6 +26,7 @@
 #include <vppinfra/elog.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vppinfra/bihash_40_8.h>
+#include <vppinfra/bihash_16_8.h>
 
 #include "fa_node.h"
 #include "hash_lookup_types.h"
@@ -246,7 +247,8 @@ typedef struct {
   uword *fa_out_acl_on_sw_if_index;
   /* bihash holding all of the sessions */
   int fa_sessions_hash_is_initialized;
-  clib_bihash_40_8_t fa_sessions_hash;
+  clib_bihash_40_8_t fa_ip6_sessions_hash;
+  clib_bihash_16_8_t fa_ip4_sessions_hash;
   /* The process node which orcherstrates the cleanup */
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
