@@ -57,6 +57,9 @@ typedef struct
   ip6_address_t src_addr;		/**< Source address to be restored */
   ip6_address_t *sid_list;		/**< SID list to be restored */
   char *sid_list_str;
+
+  vlib_counter_t valid_counter;
+  vlib_counter_t invalid_counter;
 } srv6_as_localsid_t;
 
 srv6_as_main_t srv6_as_main;

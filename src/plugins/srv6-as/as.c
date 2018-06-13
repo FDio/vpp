@@ -212,6 +212,12 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
       sm->sw_iface_localsid6[ls_mem->sw_if_index_in] = localsid_index;
     }
 
+  /* Step 3: Initialize rewrite counters */
+  ls_mem->valid_counter.packets = 0;
+  ls_mem->valid_counter.bytes = 0;
+  ls_mem->invalid_counter.packets = 0;
+  ls_mem->invalid_counter.bytes = 0;
+
   return 0;
 }
 
@@ -295,7 +301,12 @@ format_srv6_as_localsid (u8 * s, va_list * args)
   {
     s = format (s, "%U, ", format_ip6_address, addr);
   }
-  s = format (s, "\b\b > ");
+  s = format (s, "\b\b >\n");
+
+  s = format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	      ls_mem->valid_counter.packets, ls_mem->valid_counter.bytes);
+  s = format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	      ls_mem->invalid_counter.packets, ls_mem->invalid_counter.bytes);
 
   return s;
 }

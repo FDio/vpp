@@ -245,6 +245,13 @@ VLIB_REGISTER_NODE (srv6_as_localsid_node) = {
 
 /******************************* Rewriting node *******************************/
 
+static_always_inline void
+increment_counter (vlib_counter_t * c, u64 n_packets, u64 n_bytes)
+{
+  c->packets += n_packets;
+  c->bytes += n_bytes;
+}
+
 /**
  * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation
  */
@@ -343,6 +350,12 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 			       sizeof tr->dst.as_u8);
 		}
 	    }
+
+	  /* Increment per-SID AS rewrite counters */
+	  increment_counter (((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ?
+			      &(ls0_mem->
+				invalid_counter) : &(ls0_mem->valid_counter)),
+			     1, vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -472,6 +485,12 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 			       sizeof tr->dst.as_u8);
 		}
 	    }
+
+	  /* Increment per-SID AS rewrite counters */
+	  increment_counter (((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ?
+			      &(ls0_mem->
+				invalid_counter) : &(ls0_mem->valid_counter)),
+			     1, vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
