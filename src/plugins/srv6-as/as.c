@@ -212,6 +212,18 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
       sm->sw_iface_localsid6[ls_mem->sw_if_index_in] = localsid_index;
     }
 
+  /* Step 3: Initialize rewrite counters */
+  srv6_as_localsid_t **ls_p;
+  pool_get (sm->sids, ls_p);
+  *ls_p = ls_mem;
+  ls_mem->index = ls_p - sm->sids;
+
+  vlib_validate_combined_counter (&(sm->valid_counters), ls_mem->index);
+  vlib_validate_combined_counter (&(sm->invalid_counters), ls_mem->index);
+
+  vlib_zero_combined_counter (&(sm->valid_counters), ls_mem->index);
+  vlib_zero_combined_counter (&(sm->invalid_counters), ls_mem->index);
+
   return 0;
 }
 
@@ -250,6 +262,9 @@ srv6_as_localsid_removal_fn (ip6_sr_localsid_t * localsid)
   /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
   adj_unlock (ls_mem->nh_adj);
 
+  /* Delete SID entry */
+  pool_put (sm->sids, pool_elt_at_index (sm->sids, ls_mem->index));
+
   /* Clean up local SID memory */
   free_ls_mem (ls_mem);
 
@@ -268,6 +283,7 @@ format_srv6_as_localsid (u8 * s, va_list * args)
   srv6_as_localsid_t *ls_mem = va_arg (*args, void *);
 
   vnet_main_t *vnm = vnet_get_main ();
+  srv6_as_main_t *sm = &srv6_as_main;
 
   if (ls_mem->ip_version == DA_IP4)
     {
@@ -295,7 +311,18 @@ format_srv6_as_localsid (u8 * s, va_list * args)
   {
     s = format (s, "%U, ", format_ip6_address, addr);
   }
-  s = format (s, "\b\b > ");
+  s = format (s, "\b\b >\n");
+
+  vlib_counter_t valid, invalid;
+  vlib_get_combined_counter (&(sm->valid_counters), ls_mem->index, &valid);
+  vlib_get_combined_counter (&(sm->invalid_counters), ls_mem->index,
+			     &invalid);
+  s =
+    format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	    valid.packets, valid.bytes);
+  s =
+    format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	    invalid.packets, invalid.bytes);
 
   return s;
 }
