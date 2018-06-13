@@ -239,6 +239,38 @@ nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
 		      s->per_user_list_head_index, s->per_user_index);
 }
 
+always_inline void
+make_ed_kv (clib_bihash_kv_16_8_t * kv, ip4_address_t * l_addr,
+	    ip4_address_t * r_addr, u8 proto, u32 fib_index, u16 l_port,
+	    u16 r_port)
+{
+  nat_ed_ses_key_t *key = (nat_ed_ses_key_t *) kv->key;
+
+  key->l_addr.as_u32 = l_addr->as_u32;
+  key->r_addr.as_u32 = r_addr->as_u32;
+  key->fib_index = fib_index;
+  key->proto = proto;
+  key->l_port = l_port;
+  key->r_port = r_port;
+
+  kv->value = ~0ULL;
+}
+
+always_inline void
+make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
+	    u32 fib_index, u16 port)
+{
+  snat_session_key_t key;
+
+  key.addr.as_u32 = addr->as_u32;
+  key.port = port;
+  key.protocol = proto;
+  key.fib_index = fib_index;
+
+  kv->key = key.as_u64;
+  kv->value = ~0ULL;
+}
+
 #endif /* __included_nat_inlines_h__ */
 
 /*

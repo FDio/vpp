@@ -172,8 +172,6 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
   else if (unformat (input, "verbose"))
     verbose = 2;
 
-  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->in2out_ed, verbose);
-  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed, verbose);
   vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->static_mapping_by_local,
 		   verbose);
   vlib_cli_output (vm, "%U",
@@ -184,8 +182,18 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     tsm = vec_elt_at_index (sm->per_thread_data, i);
     vlib_cli_output (vm, "-------- thread %d %s --------\n",
 		     i, vlib_worker_threads[i].name);
-    vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->in2out, verbose);
-    vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->out2in, verbose);
+    if (sm->endpoint_dependent)
+      {
+	vlib_cli_output (vm, "%U", format_bihash_16_8, &tsm->in2out_ed,
+			 verbose);
+	vlib_cli_output (vm, "%U", format_bihash_16_8, &tsm->out2in_ed,
+			 verbose);
+      }
+    else
+      {
+	vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->in2out, verbose);
+	vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->out2in, verbose);
+      }
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->user_hash, verbose);
   }
 
@@ -304,18 +312,26 @@ add_address_command_fn (vlib_main_t * vm,
   for (i = 0; i < count; i++)
     {
       if (is_add)
-	snat_add_address (sm, &this_addr, vrf_id, twice_nat);
+	rv = snat_add_address (sm, &this_addr, vrf_id, twice_nat);
       else
 	rv = snat_del_address (sm, this_addr, 0, twice_nat);
 
       switch (rv)
 	{
+	case VNET_API_ERROR_VALUE_EXIST:
+	  error = clib_error_return (0, "NAT address already in use.");
+	  goto done;
 	case VNET_API_ERROR_NO_SUCH_ENTRY:
-	  error = clib_error_return (0, "S-NAT address not exist.");
+	  error = clib_error_return (0, "NAT address not exist.");
 	  goto done;
 	case VNET_API_ERROR_UNSPECIFIED:
 	  error =
-	    clib_error_return (0, "S-NAT address used in static mapping.");
+	    clib_error_return (0, "NAT address used in static mapping.");
+	  goto done;
+	case VNET_API_ERROR_FEATURE_DISABLED:
+	  error =
+	    clib_error_return (0,
+			       "twice NAT available only for endpoint-dependent mode.");
 	  goto done;
 	default:
 	  break;
@@ -621,6 +637,11 @@ add_static_mapping_command_fn (vlib_main_t * vm,
     case VNET_API_ERROR_VALUE_EXIST:
       error = clib_error_return (0, "Mapping already exist.");
       goto done;
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      error =
+	clib_error_return (0,
+			   "twice-nat/out2in-only available only for endpoint-dependent mode.");
+      goto done;
     default:
       break;
     }
@@ -799,6 +820,10 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     case VNET_API_ERROR_VALUE_EXIST:
       error = clib_error_return (0, "Mapping already exist.");
+      goto done;
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      error =
+	clib_error_return (0, "Available only for endpoint-dependent mode.");
       goto done;
     default:
       break;
