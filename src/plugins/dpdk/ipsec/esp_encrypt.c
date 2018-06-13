@@ -21,6 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
+#include <vnet/udp/udp.h>
 #include <dpdk/ipsec/ipsec.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
@@ -152,6 +153,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u32 sa_index0;
 	  ip4_and_esp_header_t *ih0, *oh0 = 0;
 	  ip6_and_esp_header_t *ih6_0, *oh6_0 = 0;
+	  ip4_and_udp_and_esp_header_t *ouh0 = 0;
 	  esp_header_t *esp0;
 	  esp_footer_t *f0;
 	  u8 is_ipv6, next_hdr_type;
@@ -159,6 +161,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u16 orig_sz;
 	  u8 trunc_size;
 	  u16 rewrite_len;
+	  u16 udp_encap_adv = 0;
 	  struct rte_mbuf *mb0 = 0;
 	  struct rte_crypto_op *op;
 	  u16 res_idx;
@@ -266,6 +269,10 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  iv_size = cipher_alg->iv_len;
 	  trunc_size = auth_alg->trunc_size;
 
+	  /* if UDP encapsulation is used adjust the address of the IP header */
+	  if (sa0->udp_encap && !is_ipv6)
+	    udp_encap_adv = sizeof (udp_header_t);
+
 	  if (sa0->is_tunnel)
 	    {
 	      rewrite_len = 0;
@@ -273,10 +280,11 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		{
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP4_LOOKUP;
-		  u8 adv =
-		    sizeof (ip4_header_t) + sizeof (esp_header_t) + iv_size;
+		  u8 adv = sizeof (ip4_header_t) + udp_encap_adv +
+		    sizeof (esp_header_t) + iv_size;
 		  vlib_buffer_advance (b0, -adv);
 		  oh0 = vlib_buffer_get_current (b0);
+		  ouh0 = vlib_buffer_get_current (b0);
 		  next_hdr_type = IP_PROTOCOL_IP_IN_IP;
 		  /*
 		   * oh0->ip4.ip_version_and_header_length = 0x45;
@@ -297,9 +305,16 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		    sa0->tunnel_src_addr.ip4.as_u32;
 		  oh0->ip4.dst_address.as_u32 =
 		    sa0->tunnel_dst_addr.ip4.as_u32;
-		  esp0 = &oh0->esp;
-		  oh0->esp.spi = clib_host_to_net_u32 (sa0->spi);
-		  oh0->esp.seq = clib_host_to_net_u32 (sa0->seq);
+
+		  if (sa0->udp_encap)
+		    {
+		      oh0->ip4.protocol = IP_PROTOCOL_UDP;
+		      esp0 = &ouh0->esp;
+		    }
+		  else
+		    esp0 = &oh0->esp;
+		  esp0->spi = clib_host_to_net_u32 (sa0->spi);
+		  esp0->seq = clib_host_to_net_u32 (sa0->seq);
 		}
 	      else if (is_ipv6 && sa0->is_tunnel_ip6)	/* ip6inip6 */
 		{
@@ -347,7 +362,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	    {
 	      priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
 	      rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
-	      u16 adv = sizeof (esp_header_t) + iv_size;
+	      u16 adv = sizeof (esp_header_t) + iv_size + udp_encap_adv;
 	      vlib_buffer_advance (b0, -adv - rewrite_len);
 	      u8 *src = ((u8 *) ih0) - rewrite_len;
 	      u8 *dst = vlib_buffer_get_current (b0);
@@ -371,11 +386,28 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  memmove (dst, src, rewrite_len + ip_size);
 		  oh0->ip4.protocol = IP_PROTOCOL_IPSEC_ESP;
 		  esp0 = (esp_header_t *) (((u8 *) oh0) + ip_size);
+		  if (sa0->udp_encap)
+		    {
+		      oh0->ip4.protocol = IP_PROTOCOL_UDP;
+		      esp0 = (esp_header_t *)
+			(((u8 *) oh0) + ip_size + udp_encap_adv);
+		    }
+		  else
+		    {
+		      oh0->ip4.protocol = IP_PROTOCOL_IPSEC_ESP;
+		      esp0 = (esp_header_t *) (((u8 *) oh0) + ip_size);
+		    }
 		}
 	      esp0->spi = clib_host_to_net_u32 (sa0->spi);
 	      esp0->seq = clib_host_to_net_u32 (sa0->seq);
 	    }
 
+	  if (sa0->udp_encap && ouh0)
+	    {
+	      ouh0->udp.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	      ouh0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	      ouh0->udp.checksum = 0;
+	    }
 	  ASSERT (is_pow2 (cipher_alg->boundary));
 	  u16 mask = cipher_alg->boundary - 1;
 	  u16 pad_payload_len = ((orig_sz + 2) + mask) & ~mask;
@@ -403,6 +435,13 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->ip4.length =
 		clib_host_to_net_u16 (b0->current_length - rewrite_len);
 	      oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
+	      if (sa0->udp_encap && ouh0)
+		{
+		  ouh0->udp.length =
+		    clib_host_to_net_u16 (clib_net_to_host_u16
+					  (ouh0->ip4.length) -
+					  ip4_header_bytes (&ouh0->ip4));
+		}
 	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
