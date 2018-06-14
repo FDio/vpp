@@ -1042,8 +1042,7 @@ vxlan_err_code (u8 ip_err0, u8 udp_err0, u8 csum_err0)
   return error0;
 }
 
-uword
-CLIB_MULTIARCH_FN (vxlan_flow_input) (vlib_main_t * vm,
+VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 					      vlib_node_runtime_t * node,
 					      vlib_frame_t * f)
 {
@@ -1287,7 +1286,6 @@ CLIB_MULTIARCH_FN (vxlan_flow_input) (vlib_main_t * vm,
 #ifndef CLIB_MULTIARCH_VARIANT
 VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
   .name = "vxlan-flow-input",
-  .function = vxlan_flow_input,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .vector_size = sizeof (u32),
 
@@ -1305,17 +1303,3 @@ VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
 };
 #endif
 /* *INDENT-ON* */
-
-vlib_node_function_t __clib_weak vxlan_flow_input_avx512;
-vlib_node_function_t __clib_weak vxlan_flow_input_avx2;
-
-#if __x86_64__
-static void __clib_constructor
-vxlan_flow_input_multiarch_select (void)
-{
-  if (vxlan_flow_input_avx512 && clib_cpu_supports_avx512f ())
-    vxlan4_flow_input_node.function = vxlan_flow_input_avx512;
-  else if (vxlan_flow_input_avx2 && clib_cpu_supports_avx2 ())
-    vxlan4_flow_input_node.function = vxlan_flow_input_avx2;
-}
-#endif
