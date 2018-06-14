@@ -249,11 +249,11 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
     session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
 
   /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_DEQ, s, ({
-	ed->data[0] = e->event_type;
-	ed->data[1] = max_dequeue;
+  SESSION_EVT_DBG(SESSION_EVT_DEQ, ctx->s, ({
+	ed->data[0] = FIFO_EVENT_APP_TX;
+	ed->data[1] = ctx->max_dequeue;
 	ed->data[2] = len_to_deq;
-	ed->data[3] = left_to_snd;
+	ed->data[3] = ctx->left_to_snd;
   }));
   /* *INDENT-ON* */
 }
@@ -841,7 +841,7 @@ skip_dequeue:
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
 
-  SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 1);
+  SESSION_EVT_DBG (SESSION_EVT_DISPATCH_END, smm, thread_index);
 
   return n_tx_packets;
 }
