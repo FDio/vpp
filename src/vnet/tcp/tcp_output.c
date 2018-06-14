@@ -1796,41 +1796,197 @@ tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
   vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
 }
 
-always_inline uword
-tcp46_output_inline (vlib_main_t * vm,
-		     vlib_node_runtime_t * node,
-		     vlib_frame_t * from_frame, int is_ip4)
+static void
+tcp46_output_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
+                          u32 * to_next, u32 n_bufs, u32 n_trace)
 {
+  tcp_connection_t *tc;
+  tcp_tx_trace_t *t;
+  vlib_buffer_t *b;
+  tcp_header_t *th;
+  int i;
+
+  for (i = 0; i < clib_min (n_trace, n_bufs); i++)
+    {
+      b = vlib_get_buffer (vm, to_next[i]);
+      th = vlib_buffer_get_current (b);
+      tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
+	                       vm->thread_index);
+      t = vlib_add_trace (vm, node, b, sizeof(*t));
+      clib_memcpy (&t->tcp_header, th, sizeof(t->tcp_header));
+      clib_memcpy (&t->tcp_connection, tc, sizeof(t->tcp_connection));
+    }
+}
+
+static inline void
+tcp_output_push_ip (vlib_main_t *vm, vlib_buffer_t *b0, tcp_connection_t *tc0, u8 is_ip4)
+{
+  tcp_header_t *th0 = 0;
+
+  th0 = vlib_buffer_get_current (b0);
+  TCP_EVT_DBG (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
+  if (is_ip4)
+    {
+      vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
+			    IP_PROTOCOL_TCP, 1);
+      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+      th0->checksum = 0;
+    }
+  else
+    {
+      ip6_header_t *ih0;
+      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
+				  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
+      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
+      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+      th0->checksum = 0;
+    }
+}
+
+static inline void
+tcp_output_handle_packet (tcp_connection_t *tc0, vlib_buffer_t *b0, u32 *error0,
+                          u32 *next0, u8 is_ip4)
+{
+
+  if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
+    {
+      *error0 = TCP_ERROR_INVALID_CONNECTION;
+      *next0 = TCP_OUTPUT_NEXT_DROP;
+      return;
+    }
+
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+
+  if (!is_ip4)
+    {
+      if (PREDICT_FALSE (ip6_address_is_link_local_unicast (&tc0->c_rmt_ip6)))
+	tcp_output_handle_link_local (tc0, b0, next0, error0);
+    }
+
+  /* Filter out DUPACKs if there are no OOO segments left */
+  if (PREDICT_FALSE (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
+    {
+      /* N.B. Should not filter burst of dupacks. Two issues:
+       * 1) dupacks open cwnd on remote peer when congested
+       * 2) acks leaving should have the latest rcv_wnd since the
+       *    burst may have eaten up all of it, so only the old ones
+       *     could be filtered.
+       */
+      if (!tcp_session_has_ooo_data (tc0))
+	{
+	  *error0 = TCP_ERROR_FILTERED_DUPACKS;
+	  *next0 = TCP_OUTPUT_NEXT_DROP;
+	  return;
+	}
+    }
+
+  /* Stop DELACK timer and fix flags */
+  tc0->flags &= ~(TCP_CONN_SNDACK);
+  tcp_timer_reset (tc0, TCP_TIMER_DELACK);
+
+  /* If not retransmitting
+   * 1) update snd_una_max (SYN, SYNACK, FIN)
+   * 2) If we're not tracking an ACK, start tracking */
+  if (seq_lt (tc0->snd_una_max, tc0->snd_nxt))
+    {
+      tc0->snd_una_max = tc0->snd_nxt;
+      if (tc0->rtt_ts == 0)
+	{
+	  tc0->rtt_ts = tcp_time_now ();
+	  tc0->rtt_seq = tc0->snd_nxt;
+	}
+    }
+
+  /* Set the retransmit timer if not set already and not
+   * doing a pure ACK */
+  if (!tcp_timer_is_active (tc0, TCP_TIMER_RETRANSMIT)
+      && tc0->snd_nxt != tc0->snd_una)
+    {
+      tcp_retransmit_timer_set (tc0);
+      tc0->rto_boff = 0;
+    }
+
+}
+
+always_inline uword
+tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+                     vlib_frame_t * from_frame, int is_ip4)
+{
+  u32 n_trace = vlib_get_trace_count (vm, node), n_left_to_next;
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->thread_index;
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   next_index = node->cached_next_index;
-  tcp_set_time_now (my_thread_index);
+  tcp_set_time_now (thread_index);
+
+  if (PREDICT_FALSE (n_trace))
+    tcp46_output_trace_frame (vm, node, from, n_left_from, n_trace);
 
   while (n_left_from > 0)
     {
-      u32 n_left_to_next;
-
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      while (n_left_from > 4 && n_left_to_next > 2)
+	{
+	  u32 bi0, bi1;
+	  vlib_buffer_t *b0, *b1;
+	  tcp_connection_t *tc0, *tc1;
+	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
+	  u32 error1 = TCP_ERROR_PKTS_SENT, next1 = TCP_OUTPUT_NEXT_IP_LOOKUP;
 
+	    {
+	      vlib_buffer_t *pb;
+
+	      pb = vlib_get_buffer (vm, from[2]);
+	      vlib_prefetch_buffer_header (pb, STORE);
+	      CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+
+	      pb = vlib_get_buffer (vm, from[3]);
+	      vlib_prefetch_buffer_header (pb, STORE);
+	      CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+	    }
+
+	  bi0 = from[0];
+	  bi1 = from[1];
+	  to_next[0] = bi0;
+	  to_next[1] = bi1;
+	  from += 2;
+	  to_next += 2;
+	  n_left_from -= 2;
+	  n_left_to_next -= 2;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+
+	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
+		                    thread_index);
+	  tc1 = tcp_connection_get (vnet_buffer (b1)->tcp.connection_index,
+		                    thread_index);
+
+	  tcp_output_push_ip (vm, b0, tc0, is_ip4);
+	  tcp_output_push_ip (vm, b1, tc1, is_ip4);
+
+	  tcp_output_handle_packet (tc0, b0, &error0, &next0, is_ip4);
+	  tcp_output_handle_packet (tc1, b1, &error1, &next1, is_ip4);
+
+	  b0->error = node->errors[error0];
+	  b1->error = node->errors[error1];
+
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+		                           n_left_to_next, bi0, bi1, next0,
+		                           next1);
+
+	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  tcp_connection_t *tc0;
-	  tcp_tx_trace_t *t0;
-	  tcp_header_t *th0 = 0;
 	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
-
-	  if (n_left_from > 1)
-	    {
-	      vlib_buffer_t *pb;
-	      pb = vlib_get_buffer (vm, from[1]);
-	      vlib_prefetch_buffer_header (pb, STORE);
-	      CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
-	    }
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1841,126 +1997,18 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				    my_thread_index);
-	  if (PREDICT_FALSE (tc0 == 0 || tc0->state == TCP_STATE_CLOSED))
-	    {
-	      error0 = TCP_ERROR_INVALID_CONNECTION;
-	      next0 = TCP_OUTPUT_NEXT_DROP;
-	      goto done;
-	    }
+				    thread_index);
+//	  if (PREDICT_FALSE (tc0 == 0 || tc0->state == TCP_STATE_CLOSED))
+//	    {
+//	      error0 = TCP_ERROR_INVALID_CONNECTION;
+//	      next0 = TCP_OUTPUT_NEXT_DROP;
+//	      goto done;
+//	    }
 
-	  th0 = vlib_buffer_get_current (b0);
-	  TCP_EVT_DBG (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+	  tcp_output_push_ip (vm, b0, tc0, is_ip4);
+	  tcp_output_handle_packet (tc0, b0, &error0, &next0, is_ip4);
 
-	  if (is_ip4)
-	    {
-	      vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-				    IP_PROTOCOL_TCP, 1);
-	      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-	      th0->checksum = 0;
-	    }
-	  else
-	    {
-	      ip6_header_t *ih0;
-	      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
-					  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
-	      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
-	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-	      th0->checksum = 0;
-
-	      if (PREDICT_FALSE
-		  (ip6_address_is_link_local_unicast (&tc0->c_rmt_ip6)))
-		tcp_output_handle_link_local (tc0, b0, &next0, &error0);
-	    }
-
-	  /* Filter out DUPACKs if there are no OOO segments left */
-	  if (PREDICT_FALSE
-	      (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
-	    {
-	      /* N.B. Should not filter burst of dupacks. Two issues:
-	       * 1) dupacks open cwnd on remote peer when congested
-	       * 2) acks leaving should have the latest rcv_wnd since the
-	       *    burst may have eaten up all of it, so only the old ones
-	       *     could be filtered.
-	       */
-	      if (!tcp_session_has_ooo_data (tc0))
-		{
-		  error0 = TCP_ERROR_FILTERED_DUPACKS;
-		  next0 = TCP_OUTPUT_NEXT_DROP;
-		  goto done;
-		}
-	    }
-
-	  /* Stop DELACK timer and fix flags */
-	  tc0->flags &= ~(TCP_CONN_SNDACK);
-	  tcp_timer_reset (tc0, TCP_TIMER_DELACK);
-
-	  /* If not retransmitting
-	   * 1) update snd_una_max (SYN, SYNACK, FIN)
-	   * 2) If we're not tracking an ACK, start tracking */
-	  if (seq_lt (tc0->snd_una_max, tc0->snd_nxt))
-	    {
-	      tc0->snd_una_max = tc0->snd_nxt;
-	      if (tc0->rtt_ts == 0)
-		{
-		  tc0->rtt_ts = tcp_time_now ();
-		  tc0->rtt_seq = tc0->snd_nxt;
-		}
-	    }
-
-	  /* Set the retransmit timer if not set already and not
-	   * doing a pure ACK */
-	  if (!tcp_timer_is_active (tc0, TCP_TIMER_RETRANSMIT)
-	      && tc0->snd_nxt != tc0->snd_una)
-	    {
-	      tcp_retransmit_timer_set (tc0);
-	      tc0->rto_boff = 0;
-	    }
-
-#if 0
-	  /* Make sure we haven't lost route to our peer */
-	  if (PREDICT_FALSE (tc0->last_fib_check
-			     < tc0->snd_opts.tsval + TCP_FIB_RECHECK_PERIOD))
-	    {
-	      if (PREDICT_TRUE
-		  (tc0->c_rmt_fei == tcp_lookup_rmt_in_fib (tc0)))
-		{
-		  tc0->last_fib_check = tc0->snd_opts.tsval;
-		}
-	      else
-		{
-		  clib_warning ("lost connection to peer");
-		  tcp_connection_reset (tc0);
-		  goto done;
-		}
-	    }
-
-	  /* Use pre-computed dpo to set next node */
-	  next0 = tc0->c_rmt_dpo.dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
-#endif
-
-	done:
 	  b0->error = node->errors[error0];
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      if (th0)
-		{
-		  clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
-		}
-	      else
-		{
-		  memset (&t0->tcp_header, 0, sizeof (t0->tcp_header));
-		}
-	      clib_memcpy (&t0->tcp_connection, tc0,
-			   sizeof (t0->tcp_connection));
-	    }
-
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
