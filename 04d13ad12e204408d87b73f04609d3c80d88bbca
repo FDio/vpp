@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7ff1b88c_0a13940e",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-06-14T04:07:13Z",
+      "side": 1,
+      "message": "Could you update the minor version since you\u0027ve update some messages?",
+      "range": {
+        "startLine": 16,
+        "startChar": 22,
+        "endLine": 16,
+        "endChar": 23
+      },
+      "revId": "04d13ad12e204408d87b73f04609d3c80d88bbca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
