@@ -26,6 +26,7 @@
 #define AVF_TXQ_DESC_CMD(x)             (1 << (x + 4))
 #define AVF_TXQ_DESC_CMD_EOP		AVF_TXQ_DESC_CMD(0)
 #define AVF_TXQ_DESC_CMD_RS		AVF_TXQ_DESC_CMD(1)
+#define AVF_TXQ_DESC_CMD_RSV		AVF_TXQ_DESC_CMD(2)
 
 static_always_inline u8
 avf_tx_desc_get_dtyp (avf_tx_desc_t * d)
@@ -50,6 +51,8 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
   u16 n_left = frame->n_vectors;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u16 mask = txq->size - 1;
+  u64 bits = (AVF_TXQ_DESC_CMD_EOP | AVF_TXQ_DESC_CMD_RS |
+	      AVF_TXQ_DESC_CMD_RSV);
 
   clib_spinlock_lock_if_init (&txq->lock);
 
@@ -111,13 +114,12 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
       d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
 	b0->current_data;
 #else
-      d0->qword[0] = pointer_to_uword (b0->data);
-      d1->qword[0] = pointer_to_uword (b1->data);
-      d2->qword[0] = pointer_to_uword (b2->data);
-      d3->qword[0] = pointer_to_uword (b3->data);
+      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
+      d1->qword[0] = pointer_to_uword (b1->data) + b1->current_data;
+      d2->qword[0] = pointer_to_uword (b2->data) + b2->current_data;
+      d3->qword[0] = pointer_to_uword (b3->data) + b3->current_data;
 
 #endif
-      u64 bits = AVF_TXQ_DESC_CMD_EOP | AVF_TXQ_DESC_CMD_RS;
       d0->qword[1] = ((u64) b0->current_length) << 34 | bits;
       d1->qword[1] = ((u64) b1->current_length) << 34 | bits;
       d2->qword[1] = ((u64) b2->current_length) << 34 | bits;
@@ -140,11 +142,9 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
       d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
 	b0->current_data;
 #else
-      d0->qword[0] = pointer_to_uword (b0->data);
-
+      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
 #endif
-      d0->qword[1] = ((u64) b0->current_length) << 34;
-      d0->qword[1] |= AVF_TXQ_DESC_CMD_EOP | AVF_TXQ_DESC_CMD_RS;
+      d0->qword[1] = (((u64) b0->current_length) << 34) | bits;
 
       txq->next = (txq->next + 1) & mask;
       txq->n_bufs++;
