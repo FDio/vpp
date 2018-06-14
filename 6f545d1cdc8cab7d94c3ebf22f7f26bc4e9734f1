@@ -22,6 +22,30 @@
       "revId": "6f545d1cdc8cab7d94c3ebf22f7f26bc4e9734f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e448f046_c329eecc",
+        "filename": "src/plugins/dpdk/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2018-06-14T10:38:54Z",
+      "side": 1,
+      "message": "Yes, it does need proper offset for the IP header, I will send an updated patch.",
+      "parentUuid": "4a32e390_5f30ed2f",
+      "range": {
+        "startLine": 480,
+        "startChar": 14,
+        "endLine": 480,
+        "endChar": 15
+      },
+      "revId": "6f545d1cdc8cab7d94c3ebf22f7f26bc4e9734f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
