@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "70b10c01_97e15830",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-06-14T04:43:34Z",
+      "side": 1,
+      "message": "These are all arp entries for the same interface, i.e., same sw_if_index. Under what conditions have you seen this not working properly?",
+      "range": {
+        "startLine": 179,
+        "startChar": 34,
+        "endLine": 179,
+        "endChar": 37
+      },
+      "revId": "3eafa33b8ac8e3cddc7256e13bdd8f1cd60d7eb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
