@@ -107,7 +107,8 @@ ip_csum_add_even (ip_csum_t c, ip_csum_t x)
   /* Fold in carry from high bit. */
   d -= d > c;
 
-  ASSERT (ip_csum_with_carry (d, x) == c);
+  ip_csum_t t = ip_csum_with_carry (d, x);
+  ASSERT ((t - c == 0) || (t - c == ~0));
 
   return d;
 }
