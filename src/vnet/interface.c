@@ -1303,30 +1303,66 @@ vnet_interface_init (vlib_main_t * vm)
    */
   vec_validate (im->sw_if_counters, VNET_N_SIMPLE_INTERFACE_COUNTER - 1);
   im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP].name = "drops";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP].stat_segment_name =
+    "/if/drops";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_PUNT].name = "punts";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_PUNT].stat_segment_name =
+    "/if/punts";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_IP4].name = "ip4";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_IP4].stat_segment_name =
+    "/if/ip4";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_IP6].name = "ip6";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_IP6].stat_segment_name =
+    "/if/ip6";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_NO_BUF].name = "rx-no-buf";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_NO_BUF].stat_segment_name =
+    "/if/rx-no-buf";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_MISS].name = "rx-miss";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_MISS].stat_segment_name =
+    "/if/rx-miss";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_ERROR].name = "rx-error";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_RX_ERROR].stat_segment_name =
+    "/if/rx-error";
   im->sw_if_counters[VNET_INTERFACE_COUNTER_TX_ERROR].name = "tx-error";
+  im->sw_if_counters[VNET_INTERFACE_COUNTER_TX_ERROR].stat_segment_name =
+    "/if/tx-error";
 
   vec_validate (im->combined_sw_if_counters,
 		VNET_N_COMBINED_INTERFACE_COUNTER - 1);
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX].name = "rx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX].stat_segment_name =
+    "/if/rx";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_UNICAST].name =
     "rx-unicast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_RX_UNICAST].stat_segment_name = "/if/rx-unicast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_MULTICAST].name =
     "rx-multicast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_RX_MULTICAST].stat_segment_name =
+    "/if/rx-multicast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_BROADCAST].name =
     "rx-broadcast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_RX_BROADCAST].stat_segment_name =
+    "/if/rx-broadcast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX].name = "tx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX].stat_segment_name =
+    "/if/tx";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_UNICAST].name =
     "tx-unicast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_TX_UNICAST].stat_segment_name = "/if/tx-unicast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_MULTICAST].name =
     "tx-multicast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_TX_MULTICAST].stat_segment_name =
+    "/if/tx-multicast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_BROADCAST].name =
     "tx-broadcast";
+  im->combined_sw_if_counters
+    [VNET_INTERFACE_COUNTER_TX_BROADCAST].stat_segment_name =
+    "/if/tx-broadcast";
 
   im->sw_if_counter_lock[0] = 0;
 

@@ -142,17 +142,15 @@ connect_to_vpp (stat_client_main_t * sm)
 }
 
 #define foreach_cached_pointer                                          \
-_(vector_rate, SCALAR_POINTER, &stat_client_main.vector_rate_ptr)       \
-_(input_rate, SCALAR_POINTER, &stat_client_main.input_rate_ptr)         \
-_(last_update, SCALAR_POINTER, &stat_client_main.last_runtime_ptr)      \
-_(last_stats_clear, SCALAR_POINTER,                                     \
+_(/sys/vector_rate, SCALAR_POINTER, &stat_client_main.vector_rate_ptr)	\
+_(/sys/input_rate, SCALAR_POINTER, &stat_client_main.input_rate_ptr)	\
+_(/sys/last_update, SCALAR_POINTER, &stat_client_main.last_runtime_ptr)	\
+_(/sys/last_stats_clear, SCALAR_POINTER,				\
   &stat_client_main.last_runtime_stats_clear_ptr)                       \
-_(rx, COUNTER_VECTOR, &stat_client_main.intfc_rx_counters)              \
-_(tx, COUNTER_VECTOR, &stat_client_main.intfc_tx_counters)              \
+_(/if/rx, COUNTER_VECTOR, &stat_client_main.intfc_rx_counters)		\
+_(/if/tx, COUNTER_VECTOR, &stat_client_main.intfc_tx_counters)		\
 _(/err/0/counter_vector, VECTOR_POINTER,                                \
   &stat_client_main.thread_0_error_counts)                              \
-_(/err/IP4 source address matches local interface, ERROR_INDEX,         \
-  &stat_client_main.source_address_match_error_index)                   \
 _(serialized_nodes, SERIALIZED_NODES,                                   \
   &stat_client_main.serialized_nodes)
 
