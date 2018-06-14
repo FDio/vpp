@@ -2620,8 +2620,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_SYN_RCVD:
 	      /* Send FIN-ACK notify app and enter CLOSE-WAIT */
 	      tcp_connection_timers_reset (tc0);
+	      tcp_retransmit_timer_set (tc0);
 	      tcp_make_fin (tc0, b0);
 	      tc0->snd_nxt += 1;
+	      tc0->snd_una_max = tc0->snd_nxt;
 	      next0 = tcp_next_output (tc0->c_is_ip4);
 	      stream_session_disconnect_notify (&tc0->connection);
 	      tc0->state = TCP_STATE_CLOSE_WAIT;

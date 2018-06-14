@@ -668,7 +668,8 @@ tcp_set_time_now (u32 thread_index)
   return tcp_main.time_now[thread_index];
 }
 
-u32 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
+u32 tcp_session_push_header (transport_connection_t * tconn,
+			     vlib_buffer_t * b);
 
 u32
 tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
