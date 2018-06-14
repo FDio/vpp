@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "23a7296c_b8ebe33f",
+        "filename": "src/vnet/ip/ip_checksum.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-06-14T04:37:58Z",
+      "side": 1,
+      "message": "This can\u0027t be possibly right, as we want to align to 64 bits lower. So what corner case are you trying to solve here? Also please avoid using your name in the comments.",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 52,
+        "endChar": 47
+      },
+      "revId": "8c61a9ef2e9087703618b3889fd19866de15048b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
