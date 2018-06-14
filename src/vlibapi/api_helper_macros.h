@@ -215,7 +215,7 @@ static clib_error_t * vl_api_want_##lca##_t_reaper (u32 client_index)   \
     vpe_client_registration_t *rp;                                      \
     uword *p;                                                           \
                                                                         \
-    p = hash_get (vam->lca##_registrations, client_index);              \
+    p = hash_get (vam->lca##_registration_hash, client_index);          \
     if (p)                                                              \
       {                                                                 \
         rp = pool_elt_at_index (vam->lca##_registrations, p[0]);        \
