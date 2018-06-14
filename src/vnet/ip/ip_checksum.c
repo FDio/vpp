@@ -44,6 +44,111 @@ ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
   uword data = pointer_to_uword (_data);
   ip_csum_t sum0, sum1;
+  uword b0;
+
+  sum0 = 0;
+  sum1 = sum;
+
+  /* Align data pointer to 64 bits. */
+  if (n_bytes >= sizeof (u8)
+      && sizeof (u8) < sizeof (ip_csum_t)
+      && (data % (2 * sizeof (u8))) != 0)
+    {
+      if (0)
+        goto unaligned;
+
+      b0 = * uword_to_pointer (data, u8 *);
+      sum0 = ip_csum_with_carry (sum0, b0);
+      data += sizeof (u8);
+      n_bytes -= sizeof (u8);
+    }
+
+  if (n_bytes >= sizeof (u16)
+      && sizeof (u16) < sizeof (ip_csum_t)
+      && (data % (2 * sizeof (u16))) != 0)
+    {
+      b0 = * uword_to_pointer (data, u16 *);
+      sum0 = ip_csum_with_carry (sum0, b0);
+      data += sizeof (u16);
+      n_bytes -= sizeof (u16);
+    }
+  if (BITS (ip_csum_t) > 32)
+    {
+      if (n_bytes >= sizeof (u32)
+          && sizeof (u32) < sizeof (ip_csum_t)
+          && (data % (2 * sizeof (u32))) != 0)
+        {
+          b0 = * uword_to_pointer (data, u32 *);
+          sum0 = ip_csum_with_carry (sum0, b0);
+          data += sizeof (u32);
+          n_bytes -= sizeof (u32);
+        }
+    }
+
+ unaligned:
+  {
+    ip_csum_t *d = uword_to_pointer (data, ip_csum_t *);
+
+    while (n_bytes >= 2 * sizeof (d[0]))
+      {
+	sum0 = ip_csum_with_carry (sum0, d[0]);
+	sum1 = ip_csum_with_carry (sum1, d[1]);
+	d += 2;
+	n_bytes -= 2 * sizeof (d[0]);
+      }
+
+    data = pointer_to_uword (d);
+  }
+
+  if (BITS (ip_csum_t) > 32)
+    {
+      if (n_bytes >= sizeof (u64) && sizeof (u64) <= sizeof (ip_csum_t))
+        {
+          sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, u32 *));
+          data += sizeof (u32);
+          sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, u32 *));
+          data += sizeof (u32);
+          n_bytes -= 2*sizeof (u32);
+        }
+    }
+
+  if (n_bytes >= sizeof (u32) && sizeof (u32) <= sizeof (ip_csum_t))
+    {
+      sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, u32 *));
+      data += sizeof (u32);
+      n_bytes -= sizeof (u32);
+    }
+
+  if (n_bytes >= sizeof (u16) && sizeof (u16) <= sizeof (ip_csum_t))
+    {
+      sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, u16 *));
+      data += sizeof (u16);
+      n_bytes -= sizeof (u16);
+    }
+
+  if (n_bytes >= sizeof (u8) && sizeof (u8) <= sizeof (ip_csum_t))
+    {
+      uword b0;
+
+      b0 = * uword_to_pointer (data, u8 *);
+
+      sum0 = ip_csum_with_carry (sum0, (b0 << 8));
+      data += sizeof (u8);
+      n_bytes -= sizeof (u8);
+    }
+
+  /* Combine even and odd sums. */
+  sum0 = ip_csum_with_carry (sum0, sum1);
+
+  return sum0;
+}
+
+#if 0
+ip_csum_t
+ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
+{
+  uword data = pointer_to_uword (_data);
+  ip_csum_t sum0, sum1;
 
   sum0 = 0;
   sum1 = sum;
@@ -61,10 +166,12 @@ do {						\
     }						\
 } while (0)
 
-  _(u8);
-  _(u16);
-  if (BITS (ip_csum_t) > 32)
-    _(u32);
+  if (PREDICT_TRUE ((data & 1) == 0))
+    {
+      _(u16);
+      if (BITS (ip_csum_t) > 32)
+        _(u32);
+    }
 
 #undef _
 
@@ -105,6 +212,7 @@ do {									\
 
   return sum0;
 }
+#endif
 
 ip_csum_t
 ip_csum_and_memcpy (ip_csum_t sum, void *dst, void *src, uword n_bytes)

@@ -2990,6 +2990,52 @@ ip4_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (ip4_config, "ip");
 
+#define CKSUM_ALIGN_TEST 1
+#if CKSUM_ALIGN_TEST > 0
+
+static const char test_pkt [] =
+  {
+    0x45, 0x00, 0x00, 0x3c, 0x5d, 0x6f, 0x40, 0x00, 
+    0x40, 0x06, 0x3f, 0x6b, 0x0a, 0x76, 0x72, 0x44, 
+    0x0a, 0x56, 0x16, 0xd2, 
+  };
+
+static clib_error_t *
+test_ip_checksum_fn (vlib_main_t * vm,
+                     unformat_input_t * input,
+                     vlib_cli_command_t * cmd)
+{
+  u16 csum;
+  ip4_header_t *hp;
+  u8 * align_test = 0;
+  int offset;
+
+  vec_validate (align_test, ARRAY_LEN(test_pkt) + 7);
+
+  for (offset = 0; offset < 8; offset++)
+    {
+      memcpy (align_test + offset, test_pkt, ARRAY_LEN(test_pkt));
+
+      hp = (ip4_header_t *) (align_test + offset);
+      csum = ip4_header_checksum (hp);
+
+      vlib_cli_output (vm, "offset %d checksum %u", offset, (u32) csum);
+    }
+  
+  return 0;
+}
+
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_checksum, static) =
+{
+  .path = "test ip checksum",
+  .short_help = "test ip checksum",
+  .function = test_ip_checksum_fn,
+};
+/* *INDENT-ON* */
+#endif /* TEST_CHECKSUM */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
