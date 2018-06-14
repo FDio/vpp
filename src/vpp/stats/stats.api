@@ -58,8 +58,6 @@ service {
   rpc want_udp_encap_stats
     returns want_udp_encap_stats_reply
     events vnet_udp_encap_counters;
-  rpc map_stats_segment
-    returns map_stats_segment_reply;
 };
 
 /** \brief Want Stats, enable/disable ALL stats updates
@@ -473,12 +471,6 @@ manual_print manual_endian define vnet_udp_encap_counters
   u32 count;
   vl_api_udp_encap_counter_t c[count];
 };
-
-autoreply define map_stats_segment
-{
-  u32 client_index;
-  u32 context;
-}; 
 
 
 /*

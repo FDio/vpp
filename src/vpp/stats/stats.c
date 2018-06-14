@@ -65,8 +65,7 @@ _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)                         \
 _(WANT_IP6_NBR_STATS, want_ip6_nbr_stats)                               \
 _(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)                       \
 _(STATS_GET_POLLER_DELAY, stats_get_poller_delay)                       \
-_(WANT_UDP_ENCAP_STATS, want_udp_encap_stats)                           \
-_(MAP_STATS_SEGMENT, map_stats_segment)
+_(WANT_UDP_ENCAP_STATS, want_udp_encap_stats)
 
 #define vl_msg_name_crc_list
 #include <vpp/stats/stats.api.h>
@@ -2258,14 +2257,74 @@ stats_set_poller_delay (u32 poller_delay_sec)
     }
 }
 
+/*
+ * Accept connection on the socket and exchange the fd for the shared
+ * memory segment.
+ */
+static clib_error_t *
+stats_socket_accept_ready (clib_file_t * uf)
+{
+  stats_main_t *sm = &stats_main;
+  ssvm_private_t *ssvmp = &sm->stat_segment;
+  clib_error_t *err;
+  clib_socket_t client = { 0 };
+
+  err = clib_socket_accept (sm->socket, &client);
+  if (err)
+    {
+      clib_error_report (err);
+      return err;
+    }
+
+  /* Send the fd across and close */
+  err = clib_socket_sendmsg (&client, 0, 0, &ssvmp->fd, 1);
+  if (err)
+    clib_error_report (err);
+  clib_socket_close (&client);
+
+  return 0;
+}
+
+static void
+stats_segment_socket_init (void)
+{
+  stats_main_t *sm = &stats_main;
+  clib_error_t *error;
+  clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
+
+  s->config = (char *) sm->socket_name;
+  s->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
+    CLIB_SOCKET_F_ALLOW_GROUP_WRITE | CLIB_SOCKET_F_PASSCRED;
+  if ((error = clib_socket_init (s)))
+    {
+      clib_error_report (error);
+      return;
+    }
+
+  clib_file_t template = { 0 };
+  clib_file_main_t *fm = &file_main;
+  template.read_function = stats_socket_accept_ready;
+  template.file_descriptor = s->fd;
+  template.description =
+    format (0, "stats segment listener %s", STAT_SEGMENT_SOCKET_FILE);
+  clib_file_add (fm, &template);
+
+  sm->socket = s;
+}
+
 static clib_error_t *
 stats_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  stats_main_t *sm = &stats_main;
   u32 sec;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "interval %u", &sec))
+      if (unformat (input, "socket-name %s", &sm->socket_name))
+	;
+      else if (unformat (input, "default"))
+	sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
+      else if (unformat (input, "interval %u", &sec))
 	{
 	  int rv = stats_set_poller_delay (sec);
 	  if (rv)
@@ -2274,7 +2333,6 @@ stats_config (vlib_main_t * vm, unformat_input_t * input)
 					"`stats_set_poller_delay' API call failed, rv=%d:%U",
 					(int) rv, format_vnet_api_errno, rv);
 	    }
-	  return 0;
 	}
       else
 	{
@@ -2282,6 +2340,10 @@ stats_config (vlib_main_t * vm, unformat_input_t * input)
 				    format_unformat_error, input);
 	}
     }
+
+  if (sm->socket_name)
+    stats_segment_socket_init ();
+
   return 0;
 }
 
@@ -2989,50 +3051,6 @@ stats_memclnt_delete_callback (u32 client_index)
 #define vl_api_vnet_ip4_nbr_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_nbr_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_nbr_counters_t_print vl_noop_handler
-#define vl_api_map_stats_segment_t_print vl_noop_handler
-
-static void
-vl_api_map_stats_segment_t_handler (vl_api_map_stats_segment_t * mp)
-{
-  vl_api_map_stats_segment_reply_t *rmp;
-  stats_main_t *sm = &stats_main;
-  ssvm_private_t *ssvmp = &sm->stat_segment;
-  vl_api_registration_t *regp;
-  api_main_t *am = &api_main;
-  clib_file_t *cf;
-  vl_api_shm_elem_config_t *config = 0;
-  vl_shmem_hdr_t *shmem_hdr;
-  int rv = 0;
-
-  regp = vl_api_client_index_to_registration (mp->client_index);
-  if (regp == 0)
-    {
-      clib_warning ("API client disconnected");
-      return;
-    }
-  if (regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
-    rv = VNET_API_ERROR_INVALID_REGISTRATION;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_MAP_STATS_SEGMENT_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = htonl (rv);
-
-  vl_api_send_msg (regp, (u8 *) rmp);
-
-  if (rv != 0)
-    return;
-
-  /*
-   * We need the reply message to make it out the back door
-   * before we send the magic fd message so force a flush
-   */
-  cf = vl_api_registration_file (regp);
-  cf->write_function (cf);
-
-  /* Send the magic "here's your sign (aka fd)" socket message */
-  vl_sock_api_send_fd_msg (cf->file_descriptor, ssvmp->fd);
-}
 
 static clib_error_t *
 stats_init (vlib_main_t * vm)
