@@ -18,10 +18,6 @@
 #include <vlib/vlib.h>
 #include <vppinfra/socket.h>
 #include <svm/ssvm.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibmemory/socket_api.h>
-#include <vlibmemory/socket_client.h>
 #include <vpp/stats/stats.h>
 
 typedef struct
@@ -49,9 +45,6 @@ typedef struct
 
   /* mapped stats segment object */
   ssvm_private_t stat_segment;
-
-  /* Socket client object */
-  socket_client_main_t *socket_client_main;
 
   /* Spinlock for the stats segment */
   clib_spinlock_t *stat_segment_lockp;
