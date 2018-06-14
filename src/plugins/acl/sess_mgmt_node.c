@@ -38,7 +38,8 @@ fa_session_get_shortest_timeout (acl_main_t * am)
 {
   int timeout_type;
   u64 timeout = ~0LL;
-  for (timeout_type = 0; timeout_type <= ACL_N_USER_TIMEOUTS; timeout_type++)
+  for (timeout_type = ACL_TIMEOUT_UDP_IDLE;
+       timeout_type < ACL_N_USER_TIMEOUTS; timeout_type++)
     {
       if (timeout > am->session_timeout_sec[timeout_type])
 	{
