@@ -433,9 +433,6 @@ typedef struct
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
 
-  /* Sleep for this many usec after each device poll */
-  u32 poll_sleep_usec;
-
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
