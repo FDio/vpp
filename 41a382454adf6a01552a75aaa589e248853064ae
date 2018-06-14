@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "08de5de2_32ce4be8",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-06-14T12:09:55Z",
+      "side": 1,
+      "message": "A stat segment client can use the serialized node graph to build a reverse map from node-index to node-name, but wouldn\u0027t it be simpler to add \"/err/ip4-lookup/adjacency drop\" here?\n\nNode-names have to be unique, so we won\u0027t have key collisions.",
+      "revId": "41a382454adf6a01552a75aaa589e248853064ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15332ed2_4e241146",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1306,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-06-14T12:09:55Z",
+      "side": 1,
+      "message": "You\u0027re not being lazy enough!\n\n#define foreach_mumble \\\n_(punts, if)\n\n#define _(name,pfx) .. .name \u003d #name, .stat_segment_name \u003d \"/\" #pfx \"/\" #name;\nforeach_mumble\n\nor some such?",
+      "revId": "41a382454adf6a01552a75aaa589e248853064ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2964c5e0_24efe8f6",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-06-14T12:09:55Z",
+      "side": 1,
+      "message": "Good idea",
+      "revId": "41a382454adf6a01552a75aaa589e248853064ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
