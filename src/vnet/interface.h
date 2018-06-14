@@ -737,6 +737,26 @@ typedef enum
        _x <= VNET_INTERFACE_COUNTER_TX_BROADCAST;               \
        _x++)
 
+#define foreach_simple_interface_counter_name	\
+  _(DROP, drops, if)				\
+  _(PUNT, punt, if)				\
+  _(IP4, ip4, if)				\
+  _(IP6, ip6, if)				\
+  _(RX_NO_BUF, rx-no-buf, if)			\
+  _(RX_MISS, rx-miss, if)			\
+  _(RX_ERROR, rx-error, if)			\
+  _(TX_ERROR, tx-error, if)
+
+#define foreach_combined_interface_counter_name	\
+  _(RX, rx, if)					\
+  _(RX_UNICAST, rx-unicast, if)			\
+  _(RX_MULTICAST, rx-multicast, if)		\
+  _(RX_BROADCAST, rx-broadcast, if)		\
+  _(TX, tx, if)					\
+  _(TX_UNICAST, tx-unicast-miss, if)		\
+  _(TX_MULTICAST, tx-multicast, if)		\
+  _(TX_BROADCAST, tx-broadcast, if)
+
 typedef enum
 {
   COLLECT_SIMPLE_STATS = 0,
