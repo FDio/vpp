@@ -186,8 +186,8 @@ vlib_stats_pop_heap2 (u64 * counter_vector, u32 thread_index, void *oldheap)
   ssvm_pop_heap (oldheap);
 }
 
-static clib_error_t *
-map_stat_segment_init (vlib_main_t * vm)
+clib_error_t *
+vlib_map_stat_segment_init (void)
 {
   stats_main_t *sm = &stats_main;
   ssvm_private_t *ssvmp = &sm->stat_segment;
@@ -268,8 +268,6 @@ map_stat_segment_init (vlib_main_t * vm)
 
   return 0;
 }
-
-VLIB_INIT_FUNCTION (map_stat_segment_init);
 
 typedef struct
 {
