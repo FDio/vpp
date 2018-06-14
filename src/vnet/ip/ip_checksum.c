@@ -39,8 +39,8 @@
 
 #include <vnet/ip/ip.h>
 
-ip_csum_t
-ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
+static ip_csum_t
+_ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
   uword data = pointer_to_uword (_data);
   ip_csum_t sum0, sum1;
@@ -48,7 +48,11 @@ ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
   sum0 = 0;
   sum1 = sum;
 
-  /* Align data pointer to 64 bits. */
+  /*
+   * Align pointer to 64 bits. The ip checksum is a 16-bit
+   * one's complememt sum. It's impractical to optimize
+   * the calculation if the incoming address is odd.
+   */
 #define _(t)					\
 do {						\
   if (n_bytes >= sizeof (t)			\
@@ -61,11 +65,12 @@ do {						\
     }						\
 } while (0)
 
-  _(u8);
-  _(u16);
-  if (BITS (ip_csum_t) > 32)
-    _(u32);
-
+  if (PREDICT_TRUE ((data & 1) == 0))
+    {
+      _(u16);
+      if (BITS (ip_csum_t) > 32)
+	_(u32);
+    }
 #undef _
 
   {
@@ -106,118 +111,91 @@ do {									\
   return sum0;
 }
 
-ip_csum_t
-ip_csum_and_memcpy (ip_csum_t sum, void *dst, void *src, uword n_bytes)
+/*
+ * Note: the tcp / udp checksum calculation is performance critical
+ * [e.g. when NIC h/w offload is not available],
+ * so it's worth producing architecture-dependent code.
+ *
+ * ip_incremental_checksum() is an always-inlined static
+ * function which uses the function pointer we set up in
+ * ip_checksum_init().
+ */
+#if CLIB_DEBUG > 0
+#define IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE(arch, fn)
+#define IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE(fn)
+#else
+#define IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE(arch, fn, tgt)   \
+  uword                                                         \
+  __attribute__ ((flatten))                                     \
+  __attribute__ ((target (tgt)))                                \
+  CLIB_CPU_OPTIMIZED                                            \
+  fn ## _ ## arch (ip_csum_t sum,                               \
+                   void *_data,                                 \
+                   uword n_bytes)                               \
+  { return fn (sum, _data, n_bytes); }
+
+#define IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE(fn) \
+  foreach_march_variant(IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE,fn)
+#endif
+
+IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE (_ip_incremental_checksum);
+
+CLIB_MULTIARCH_SELECT_FN (_ip_incremental_checksum, static inline);
+
+ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
+
+static clib_error_t *
+ip_checksum_init (vlib_main_t * vm)
 {
-  uword n_left;
-  ip_csum_t sum0 = sum, sum1;
-  n_left = n_bytes;
-
-  if (n_left && (pointer_to_uword (dst) & sizeof (u8)))
-    {
-      u8 *d8, val;
-
-      d8 = dst;
-      val = ((u8 *) src)[0];
-      d8[0] = val;
-      dst += 1;
-      src += 1;
-      n_left -= 1;
-      sum0 =
-	ip_csum_with_carry (sum0, val << (8 * CLIB_ARCH_IS_LITTLE_ENDIAN));
-    }
-
-  while ((n_left >= sizeof (u16))
-	 && (pointer_to_uword (dst) & (sizeof (sum) - sizeof (u16))))
-    {
-      u16 *d16, *s16;
-
-      d16 = dst;
-      s16 = src;
-
-      d16[0] = clib_mem_unaligned (&s16[0], u16);
-
-      sum0 = ip_csum_with_carry (sum0, d16[0]);
-      dst += sizeof (u16);
-      src += sizeof (u16);
-      n_left -= sizeof (u16);
-    }
-
-  sum1 = 0;
-  while (n_left >= 2 * sizeof (sum))
-    {
-      ip_csum_t dst0, dst1;
-      ip_csum_t *dst_even, *src_even;
-
-      dst_even = dst;
-      src_even = src;
-      dst0 = clib_mem_unaligned (&src_even[0], ip_csum_t);
-      dst1 = clib_mem_unaligned (&src_even[1], ip_csum_t);
-
-      dst_even[0] = dst0;
-      dst_even[1] = dst1;
-
-      dst += 2 * sizeof (dst_even[0]);
-      src += 2 * sizeof (dst_even[0]);
-      n_left -= 2 * sizeof (dst_even[0]);
-
-      sum0 = ip_csum_with_carry (sum0, dst0);
-      sum1 = ip_csum_with_carry (sum1, dst1);
-    }
-
-  sum0 = ip_csum_with_carry (sum0, sum1);
-  while (n_left >= 1 * sizeof (sum))
-    {
-      ip_csum_t dst0, *dst_even, *src_even;
-
-      dst_even = dst;
-      src_even = src;
-
-      dst0 = clib_mem_unaligned (&src_even[0], ip_csum_t);
-
-      dst_even[0] = dst0;
-
-      dst += 1 * sizeof (sum);
-      src += 1 * sizeof (sum);
-      n_left -= 1 * sizeof (sum);
-
-      sum0 = ip_csum_with_carry (sum0, dst0);
-    }
-
-  while (n_left >= sizeof (u16))
-    {
-      u16 dst0, *dst_short, *src_short;
-
-      dst_short = dst;
-      src_short = src;
-
-      dst0 = clib_mem_unaligned (&src_short[0], u16);
-
-      dst_short[0] = dst0;
-
-      sum0 = ip_csum_with_carry (sum0, dst_short[0]);
-      dst += 1 * sizeof (dst0);
-      src += 1 * sizeof (dst0);
-      n_left -= 1 * sizeof (dst0);
-
-    }
-
-  if (n_left == 1)
-    {
-      u8 *d8, *s8, val;
-
-      d8 = dst;
-      s8 = src;
-
-      d8[0] = val = s8[0];
-      d8 += 1;
-      s8 += 1;
-      n_left -= 1;
-      sum0 = ip_csum_with_carry (sum0, val << (8 * CLIB_ARCH_IS_BIG_ENDIAN));
-    }
-
-  return sum0;
+  vnet_incremental_checksum_fp = _ip_incremental_checksum_multiarch_select ();
+  return 0;
 }
+
+VLIB_INIT_FUNCTION (ip_checksum_init);
+
+#if CLIB_DEBUG > 0
+
+static const char test_pkt[] = {
+  0x45, 0x00, 0x00, 0x3c, 0x5d, 0x6f, 0x40, 0x00,
+  0x40, 0x06, 0x3f, 0x6b, 0x0a, 0x76, 0x72, 0x44,
+  0x0a, 0x56, 0x16, 0xd2,
+};
+
+static clib_error_t *
+test_ip_checksum_fn (vlib_main_t * vm,
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u16 csum;
+  ip4_header_t *hp;
+  u8 *align_test = 0;
+  int offset;
+
+  vec_validate (align_test, ARRAY_LEN (test_pkt) + 7);
+
+  for (offset = 0; offset < 8; offset++)
+    {
+      memcpy (align_test + offset, test_pkt, ARRAY_LEN (test_pkt));
+
+      hp = (ip4_header_t *) (align_test + offset);
+      csum = ip4_header_checksum (hp);
+
+      vlib_cli_output (vm, "offset %d checksum %u expected result 27455",
+		       offset, (u32) csum);
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_checksum, static) =
+{
+  .path = "test ip checksum",
+  .short_help = "test ip checksum",
+  .function = test_ip_checksum_fn,
+};
+/* *INDENT-ON* */
+
+#endif /* CLIB_DEBUG */
 
 /*
  * fd.io coding-style-patch-verification: ON
