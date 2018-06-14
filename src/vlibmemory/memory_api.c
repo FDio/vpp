@@ -459,7 +459,7 @@ vl_mem_api_init (const char *region_name)
   return 0;
 }
 
-static clib_error_t *
+clib_error_t *
 map_api_segment_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
@@ -472,8 +472,6 @@ map_api_segment_init (vlib_main_t * vm)
     }
   return 0;
 }
-
-VLIB_INIT_FUNCTION (map_api_segment_init);
 
 static void
 send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
@@ -915,8 +913,6 @@ vlibmemory_init (vlib_main_t * vm)
 
   return error;
 }
-
-VLIB_INIT_FUNCTION (vlibmemory_init);
 
 void
 vl_set_memory_region_name (const char *name)

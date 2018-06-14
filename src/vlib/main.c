@@ -1678,6 +1678,18 @@ dummy_queue_signal_callback (vlib_main_t * vm)
 {
 }
 
+#define foreach_weak_reference_stub             \
+_(vlib_map_stat_segment_init)                   \
+_(vpe_api_init)                                 \
+_(vlibmemory_init)                              \
+_(map_api_segment_init)
+
+#define _(name)                                                 \
+clib_error_t *name (vlib_main_t *vm) __attribute__((weak));     \
+clib_error_t *name (vlib_main_t *vm) { return 0; }
+foreach_weak_reference_stub;
+#undef _
+
 /* Main function. */
 int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
@@ -1717,7 +1729,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
-  if ((error = vlib_call_init_function (vm, map_stat_segment_init)))
+  if ((error = vlib_map_stat_segment_init (vm)))
     {
       clib_error_report (error);
       goto done;
@@ -1742,19 +1754,20 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 	goto done;
     }
 
-  if ((error = vlib_call_init_function (vm, vpe_api_init)))
+  /* Direct call / weak reference, for vlib standalone use-cases */
+  if ((error = vpe_api_init (vm)))
     {
       clib_error_report (error);
       goto done;
     }
 
-  if ((error = vlib_call_init_function (vm, vlibmemory_init)))
+  if ((error = vlibmemory_init (vm)))
     {
       clib_error_report (error);
       goto done;
     }
 
-  if ((error = vlib_call_init_function (vm, map_api_segment_init)))
+  if ((error = map_api_segment_init (vm)))
     {
       clib_error_report (error);
       goto done;

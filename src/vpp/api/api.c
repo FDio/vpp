@@ -474,7 +474,7 @@ vpe_api_hookup (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (vpe_api_hookup);
 
-static clib_error_t *
+clib_error_t *
 vpe_api_init (vlib_main_t * vm)
 {
   vpe_api_main_t *am = &vpe_api_main;
@@ -491,9 +491,6 @@ vpe_api_init (vlib_main_t * vm)
 
   return 0;
 }
-
-VLIB_INIT_FUNCTION (vpe_api_init);
-
 
 static clib_error_t *
 api_segment_config (vlib_main_t * vm, unformat_input_t * input)
