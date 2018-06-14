@@ -29,6 +29,9 @@
 #include <svm/queue.h>
 #include <svm/ssvm.h>
 
+/* Default socket to exchange segment fd */
+#define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
+
 typedef struct
 {
   volatile u32 lock;
@@ -162,6 +165,8 @@ typedef struct
   ssvm_private_t stat_segment;
   uword *counter_vector_by_name;
   clib_spinlock_t *stat_segment_lockp;
+  clib_socket_t *socket;
+  u8 *socket_name;
 
   /* Pointers to scalar stats maintained by the stat thread */
   f64 *input_rate_ptr;

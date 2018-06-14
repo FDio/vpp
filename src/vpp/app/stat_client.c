@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * api_format.c
+ * stat_client.c
  *
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,60 +19,42 @@
 
 #include <vpp/app/stat_client.h>
 
-#include <vpp/api/vpe_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define endian fcns */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) fformat (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
-
 stat_client_main_t stat_client_main;
 
-static void vl_api_map_stats_segment_reply_t_handler
-  (vl_api_map_stats_segment_reply_t * mp)
+static int
+stat_segment_connect (stat_client_main_t * sm)
 {
-  stat_client_main_t *sm = &stat_client_main;
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
-  socket_client_main_t *scm = sm->socket_client_main;
-  int rv = ntohl (mp->retval);
-  int my_fd, retval;
-  clib_error_t *error;
+  clib_socket_t s = { 0 };
+  clib_error_t *err;
+  int fd = -1, retval;
 
-  if (rv != 0)
+  s.config = (char *) sm->socket_name;
+  s.flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
+  err = clib_socket_init (&s);
+  if (err)
     {
-      fformat (stderr, "ERROR mapping stats segment: %d", rv);
+      clib_error_report (err);
       exit (1);
     }
-
-  /*
-   * Check the socket for the magic fd
-   */
-  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 5);
-  if (error)
+  err = clib_socket_recvmsg (&s, 0, 0, &fd, 1);
+  if (err)
     {
-      clib_error_report (error);
-      exit (1);
+      clib_error_report (err);
+      return -1;
     }
+  clib_socket_close (&s);
 
   memset (ssvmp, 0, sizeof (*ssvmp));
-  ssvmp->fd = my_fd;
+  ssvmp->fd = fd;
 
   /* Note: this closes memfd.fd */
   retval = ssvm_slave_init_memfd (ssvmp);
   if (retval)
     {
       clib_warning ("WARNING: segment map returned %d", retval);
-      exit (1);
+      return -1;
     }
 
   fformat (stdout, "Stat segment mapped OK...\n");
@@ -83,60 +65,6 @@ static void vl_api_map_stats_segment_reply_t_handler
   shared_header = ssvmp->sh;
   sm->stat_segment_lockp = (clib_spinlock_t *) (shared_header->opaque[0]);
   sm->segment_ready = 1;
-
-  /* No need to keep the socket API connection open */
-  close (sm->socket_client_main->socket_fd);
-}
-
-#define foreach_api_reply_msg \
-_(MAP_STATS_SEGMENT_REPLY, map_stats_segment_reply)
-
-static void
-vpp_api_hookup (void)
-{
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,	        \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_api_reply_msg;
-#undef _
-}
-
-static int
-connect_to_vpp (stat_client_main_t * sm)
-{
-  int rv;
-  vl_api_map_stats_segment_t *mp;
-  api_main_t *am = &api_main;
-
-  sm->socket_client_main = &socket_client_main;
-
-  rv = vl_socket_client_connect ((char *) sm->socket_name,
-				 "stat_client",
-				 0 /* default socket rx, tx buffer */ );
-  if (rv)
-    {
-      fformat (stderr, "Error connecting to vpp...\n");
-      exit (1);
-    }
-
-  /* Hook up reply handler */
-  vpp_api_hookup ();
-
-  /* Map the stats segment */
-  mp = vl_socket_client_msg_alloc (sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_MAP_STATS_SEGMENT);
-  mp->client_index = am->my_client_index;
-  mp->context = 0xdeaddabe;
-
-  /* Send the message */
-  vl_socket_client_write ();
-
-  /* Wait for a reply, process it.. */
-  vl_socket_client_read (5 /* timeout in seconds */ );
 
   return 0;
 }
@@ -399,24 +327,23 @@ stat_poll_loop (stat_client_main_t * sm)
     }
 }
 
-
 int
 main (int argc, char **argv)
 {
   unformat_input_t _argv, *a = &_argv;
   stat_client_main_t *sm = &stat_client_main;
-  u8 *socket_name;
+  u8 *stat_segment_name;
   int rv;
 
   clib_mem_init (0, 128 << 20);
 
   unformat_init_command_line (a, argv);
 
-  socket_name = (u8 *) API_SOCKET_FILE;
+  stat_segment_name = (u8 *) STAT_SEGMENT_SOCKET_FILE;
 
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (a, "socket-name %s", &socket_name))
+      if (unformat (a, "socket-name %s", &stat_segment_name))
 	;
       else
 	{
@@ -425,14 +352,13 @@ main (int argc, char **argv)
 	}
     }
 
-  sm->socket_name = socket_name;
+  sm->socket_name = stat_segment_name;
 
-  rv = connect_to_vpp (sm);
-
+  rv = stat_segment_connect (sm);
   if (rv)
     {
       fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
-	       socket_name);
+	       stat_segment_name);
       exit (1);
     }
 
