@@ -1005,7 +1005,6 @@ static clib_error_t *
 dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t *error = 0;
-  dpdk_main_t *dm = &dpdk_main;
   dpdk_config_main_t *conf = &dpdk_config_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   dpdk_device_config_t *devconf;
@@ -1097,8 +1096,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  tmp = format (0, "--no-pci%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
-      else if (unformat (input, "poll-sleep %d", &dm->poll_sleep_usec))
-	;
 
 #define _(a)                                    \
       else if (unformat(input, #a))             \
