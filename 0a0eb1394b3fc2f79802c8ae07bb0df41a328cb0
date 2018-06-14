@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eac026d8_b2efbe0e",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-06-14T18:46:23Z",
+      "side": 1,
+      "message": "Isn\u0027t ipsec_add_del_policy always called from main thread? That is, you don\u0027t need to keep per thread state. Are planning to change that?  If you do, then if the spd pool grows (is moved) when you sort, you\u0027ll end up with dangling references here unless you start do do some locking.",
+      "range": {
+        "startLine": 138,
+        "startChar": 21,
+        "endLine": 138,
+        "endChar": 48
+      },
+      "revId": "0a0eb1394b3fc2f79802c8ae07bb0df41a328cb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
