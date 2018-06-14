@@ -156,24 +156,6 @@ dpdk_prefetch_buffer_data_x4 (struct rte_mbuf *mb[])
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
-static inline void
-poll_rate_limit (dpdk_main_t * dm)
-{
-  /* Limit the poll rate by sleeping for N msec between polls */
-  if (PREDICT_FALSE (dm->poll_sleep_usec != 0))
-    {
-      struct timespec ts, tsrem;
-
-      ts.tv_sec = 0;
-      ts.tv_nsec = 1000 * dm->poll_sleep_usec;
-
-      while (nanosleep (&ts, &tsrem) < 0)
-	{
-	  ts = tsrem;
-	}
-    }
-}
-
 /** \brief Main DPDK input node
     @node dpdk-input
 
@@ -659,9 +641,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 					 dq->queue_id);
     }
   /* *INDENT-ON* */
-
-  poll_rate_limit (dm);
-
   return n_rx_packets;
 }
 

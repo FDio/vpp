@@ -148,9 +148,27 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
 
+    /*
+     * If we've been asked for a fixed-sleep between main loop polls,
+     * do so right away.
+     */
+    if (PREDICT_FALSE (is_main && um->poll_sleep_usec))
+      {
+	struct timespec ts, tsrem;
+	timeout = 0;
+	timeout_ms = 0;
+	node->input_main_loops_per_call = 0;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 1000 * um->poll_sleep_usec;
+
+	while (nanosleep (&ts, &tsrem) < 0)
+	  {
+	    ts = tsrem;
+	  }
+      }
     /* If we're not working very hard, decide how long to sleep */
-    if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
-	&& nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
+	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks)
 	  ((TWT (tw_timer_wheel) *) nm->timing_wheel);
