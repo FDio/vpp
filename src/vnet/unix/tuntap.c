@@ -490,10 +490,13 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   int flags = IFF_TUN | IFF_NO_PI;
   int is_enabled = 0, is_ether = 0, have_normal_interface = 0;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
+  u32 qlen = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "mtu %d", &tm->mtu_bytes))
+	;
+      else if (unformat (input, "qlen %d", &qlen))
 	;
       else if (unformat (input, "enable"))
 	is_enabled = 1;
@@ -601,6 +604,17 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
     {
       error = clib_error_return_unix (0, "ioctl SIOCSIFMTU");
       goto done;
+    }
+
+  /* Allow operators to customize the txqueuelen of TUN device, by Jordy */
+  if (qlen != ~0)
+    {
+      ifr.ifr_qlen = qlen;
+      if (ioctl (tm->dev_tap_fd, SIOCSIFTXQLEN, &ifr) < 0)
+	{
+	  error = clib_error_return_unix (0, "ioctl SIOCSIFTXQLEN");
+	  goto done;
+	}
     }
 
   /* get flags, modify to bring up interface... */
