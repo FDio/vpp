@@ -156,9 +156,13 @@ ip_csum_fold (ip_csum_t c)
   return c;
 }
 
-/* Copy data and checksum at the same time. */
-ip_csum_t ip_csum_and_memcpy (ip_csum_t sum, void *dst, void *src,
-			      uword n_bytes);
+extern ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
+
+always_inline ip_csum_t
+ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
+{
+  return (*vnet_incremental_checksum_fp) (sum, _data, n_bytes);
+}
 
 always_inline u16
 ip_csum_and_memcpy_fold (ip_csum_t sum, void *dst)
