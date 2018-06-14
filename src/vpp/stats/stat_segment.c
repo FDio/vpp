@@ -232,28 +232,28 @@ vlib_map_stat_segment_init (void)
   sm->last_runtime_ptr = (scalar_data + 2);
   sm->last_runtime_stats_clear_ptr = (scalar_data + 3);
 
-  name = format (0, "vector_rate%c", 0);
+  name = format (0, "/sys/vector_rate%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
   ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
   ep->value = sm->vector_rate_ptr;
 
   hash_set_mem (sm->counter_vector_by_name, name, ep);
 
-  name = format (0, "input_rate%c", 0);
+  name = format (0, "/sys/input_rate%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
   ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
   ep->value = sm->input_rate_ptr;
 
   hash_set_mem (sm->counter_vector_by_name, name, ep);
 
-  name = format (0, "last_update%c", 0);
+  name = format (0, "/sys/last_update%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
   ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
   ep->value = sm->last_runtime_ptr;
 
   hash_set_mem (sm->counter_vector_by_name, name, ep);
 
-  name = format (0, "last_stats_clear%c", 0);
+  name = format (0, "/sys/last_stats_clear%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
   ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
   ep->value = sm->last_runtime_stats_clear_ptr;
