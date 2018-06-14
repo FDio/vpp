@@ -918,7 +918,8 @@ clients_run (echo_main_t * em)
   start_time = clib_time_now (&em->clib_time);
   em->state = STATE_READY;
   while (em->n_active_clients)
-    svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_NOWAIT, 0);
+    if (em->our_event_queue->cursize)
+      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_NOWAIT, 0);
 
 
   for (i = 0; i < em->n_clients; i++)
