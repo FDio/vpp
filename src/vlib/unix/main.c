@@ -344,6 +344,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->cli_no_banner = 1;
       else if (unformat (input, "cli-no-pager"))
 	um->cli_no_pager = 1;
+      else if (unformat (input, "poll-sleep-usec %d", &um->poll_sleep_usec))
+	;
       else if (unformat (input, "cli-pager-buffer-limit %d",
 			 &um->cli_pager_buffer_limit))
 	;
