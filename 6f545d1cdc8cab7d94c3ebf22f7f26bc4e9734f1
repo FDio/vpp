@@ -46,6 +46,23 @@
       "revId": "6f545d1cdc8cab7d94c3ebf22f7f26bc4e9734f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62a83d39_83b2a71b",
+        "filename": "src/plugins/dpdk/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 522,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-06-14T14:39:43Z",
+      "side": 1,
+      "message": "Then a bit of explanation will be helpful in form of single line comment...",
+      "revId": "6f545d1cdc8cab7d94c3ebf22f7f26bc4e9734f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
