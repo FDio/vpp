@@ -73,17 +73,33 @@ unix_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (unix_main_init);
 
+static int
+unsetup_signal_handlers (int sig)
+{
+  struct sigaction sa;
+
+  sa.sa_handler = SIG_DFL;
+  sa.sa_flags = 0;
+  sigemptyset (&sa.sa_mask);
+  return sigaction (sig, &sa, 0);
+}
+
+
+/* allocate this buffer from mheap when setting up the signal handler.
+    dangerous to vec_resize it when crashing, mheap itself might have been
+    corruptted already */
+static u8 *syslog_msg = 0;
+
 static void
 unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 {
   uword fatal = 0;
-  u8 *msg = 0;
 
-  msg = format (msg, "received signal %U, PC %U",
-		format_signal, signum, format_ucontext_pc, uc);
+  syslog_msg = format (syslog_msg, "received signal %U, PC %U",
+		       format_signal, signum, format_ucontext_pc, uc);
 
   if (signum == SIGSEGV)
-    msg = format (msg, ", faulting address %p", si->si_addr);
+    syslog_msg = format (syslog_msg, ", faulting address %p", si->si_addr);
 
   switch (signum)
     {
@@ -103,6 +119,7 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     case SIGSEGV:
     case SIGHUP:
     case SIGFPE:
+    case SIGABRT:
       fatal = 1;
       break;
 
@@ -113,17 +130,35 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     }
 
   /* Null terminate. */
-  vec_add1 (msg, 0);
+  vec_add1 (syslog_msg, 0);
 
   if (fatal)
     {
-      syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
+      syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
+
+      /* Address of callers: outer first, inner last. */
+      uword callers[15];
+      uword n_callers = clib_backtrace (callers, ARRAY_LEN (callers), 0);
+      int i;
+      for (i = 0; i < n_callers; i++)
+	{
+	  vec_reset_length (syslog_msg);
+
+	  syslog_msg =
+	    format (syslog_msg, "#%-2d 0x%016lx %U%c", i, callers[i],
+		    format_clib_elf_symbol_with_address, callers[i], 0);
+
+	  syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
+	}
+
+      /* have to remove SIGABRT to avoid recusive - os_exit calling abort() */
+      unsetup_signal_handlers (SIGABRT);
+
       os_exit (1);
     }
   else
-    clib_warning ("%s", msg);
+    clib_warning ("%s", syslog_msg);
 
-  vec_free (msg);
 }
 
 static clib_error_t *
@@ -131,6 +166,9 @@ setup_signal_handlers (unix_main_t * um)
 {
   uword i;
   struct sigaction sa;
+
+  /* give a big enough buffer for msg, most likely it can avoid vec_resize  */
+  vec_alloc (syslog_msg, 2048);
 
   for (i = 1; i < 32; i++)
     {
@@ -141,7 +179,6 @@ setup_signal_handlers (unix_main_t * um)
       switch (i)
 	{
 	  /* these signals take the default action */
-	case SIGABRT:
 	case SIGKILL:
 	case SIGSTOP:
 	case SIGUSR1:
@@ -625,6 +662,9 @@ vlib_unix_main (int argc, char *argv[])
       return 1;
     }
   unformat_free (&input);
+
+  /* always load symbols, for signal handler and mheap memory get/put backtrace */
+  clib_elf_main_init (vm->name);
 
   vlib_thread_stack_init (0);
 
