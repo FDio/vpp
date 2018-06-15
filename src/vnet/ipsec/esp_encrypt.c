@@ -393,7 +393,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      if (sa0->udp_encap)
 		{
 		  ouh0->udp.length =
-		    clib_host_to_net_u16 (oh0->ip4.length -
+		    clib_host_to_net_u16 (clib_net_to_host_u16
+					  (oh0->ip4.length) -
 					  ip4_header_bytes (&oh0->ip4));
 		}
 	    }
