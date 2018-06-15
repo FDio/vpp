@@ -2541,7 +2541,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
                                        u32 thread_index, u32 sw_if_index)
 {
   clib_bihash_kv_16_8_t kv, value;
-  snat_main_per_thread_data_t *tsm = tsm = &sm->per_thread_data[thread_index];
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_interface_t *i;
 
   /* src NAT check */
