@@ -73,6 +73,67 @@ unix_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (unix_main_init);
 
+static int
+get_time_string (char *str, size_t len)
+{
+  time_t t = time (NULL);
+  struct tm *tm = localtime (&t);
+
+  return strftime (str, len, "%Y-%m-%d-%H-%M-%S", tm);
+}
+
+static int
+unsetup_signal_handlers (int sig)
+{
+  struct sigaction sa;
+
+  sa.sa_handler = SIG_DFL;
+  sa.sa_flags = 0;
+  sigemptyset (&sa.sa_mask);
+  return sigaction (sig, &sa, 0);
+}
+
+static void
+generate_crash_backtrace ()
+{
+  FILE *crash_file;
+  char filename[256] = { 0 };
+  char timestamp[64] = { 0 };
+
+  if (get_time_string (timestamp, sizeof (timestamp) - 1))
+    {
+      snprintf (filename, sizeof (filename), "%s/crashdump-%s.log",
+		".", timestamp);
+      fformat (stderr, "Writing crashdump to %s ...\n", filename);
+
+      crash_file = fopen (filename, "w");
+      if (crash_file)
+	{
+	  /* Address of callers: outer first, inner last. */
+	  uword callers[15];
+	  uword n_callers = clib_backtrace (callers, ARRAY_LEN (callers), 0);
+	  int i;
+	  for (i = 0; i < n_callers; i++)
+	    {
+#ifdef CLIB_UNIX
+	      fformat (crash_file, "#%-2d 0x%016lx %U\n", i, callers[i],
+		       format_clib_elf_symbol_with_address, callers[i]);
+	      fformat (stderr, "#%-2d 0x%016lx %U\n", i, callers[i],
+		       format_clib_elf_symbol_with_address, callers[i]);
+
+#else
+	      fformat (crash_file, "#%-2d 0x%016lx\n", i, callers[i]);
+	      fformat (stderr, "#%-2d 0x%016lx\n", i, callers[i]);
+#endif
+	    }
+
+	  fclose (crash_file);
+	}
+    }
+}
+
+
+
 static void
 unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 {
@@ -103,6 +164,7 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     case SIGSEGV:
     case SIGHUP:
     case SIGFPE:
+    case SIGABRT:
       fatal = 1;
       break;
 
@@ -118,6 +180,13 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
   if (fatal)
     {
       syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
+
+      /* fatal error, generate backtrace */
+      generate_crash_backtrace ();
+
+      /* have to remove SIGABRT to avoid recusive - os_exit calling abort() */
+      unsetup_signal_handlers (SIGABRT);
+
       os_exit (1);
     }
   else
@@ -141,7 +210,6 @@ setup_signal_handlers (unix_main_t * um)
       switch (i)
 	{
 	  /* these signals take the default action */
-	case SIGABRT:
 	case SIGKILL:
 	case SIGSTOP:
 	case SIGUSR1:
@@ -623,6 +691,11 @@ vlib_unix_main (int argc, char *argv[])
       return 1;
     }
   unformat_free (&input);
+
+#ifdef CLIB_UNIX
+  /* always load symbols, for signal handler and mheap memory get/put backtrace */
+  clib_elf_main_init (vm->name);
+#endif
 
   vlib_thread_stack_init (0);
 
