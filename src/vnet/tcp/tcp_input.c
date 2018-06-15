@@ -3003,168 +3003,238 @@ typedef enum _tcp_input_next
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
-always_inline uword
-tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame, int is_ip4)
+static void
+tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
+		       vlib_buffer_t ** bufs, u32 n_bufs, u8 is_ip4)
 {
-  u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->thread_index;
-  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc;
+  tcp_header_t *tcp;
+  tcp_rx_trace_t *t;
+  u32 n_trace;
+  int i;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-  next_index = node->cached_next_index;
-  tcp_set_time_now (my_thread_index);
-
-  while (n_left_from > 0)
+  n_trace = vlib_get_trace_count (vm, node);
+  for (i = 0; i < clib_min (n_trace, n_bufs); i++)
     {
-      u32 n_left_to_next;
+      t = vlib_add_trace (vm, node, bufs[i], sizeof (*t));
+      tc = tcp_connection_get (vnet_buffer (bufs[i])->tcp.connection_index,
+			       vm->thread_index);
+      tcp = vlib_buffer_get_current (bufs[i]);
+      tcp_set_rx_trace_data (t, tc, tcp, bufs[i], is_ip4);
+    }
+}
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+static void
+tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
+{
+  if (*error == TCP_ERROR_FILTERED)
+    {
+      *next = TCP_INPUT_NEXT_DROP;
+    }
+  else if ((is_ip4 && tm->punt_unknown4) || (!is_ip4 && tm->punt_unknown6))
+    {
+      *next = TCP_INPUT_NEXT_PUNT;
+      *error = TCP_ERROR_PUNT;
+    }
+  else
+    {
+      *next = TCP_INPUT_NEXT_RESET;
+      *error = TCP_ERROR_NO_LISTENER;
+    }
+}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+static inline tcp_connection_t *
+tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
+			 u8 is_ip4)
+{
+  u32 fib_index = vnet_buffer (b)->ip.fib_index;
+  int n_advance_bytes, n_data_bytes;
+  transport_connection_t *tc;
+  tcp_header_t *tcp;
+  u8 is_filtered = 0;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      tcp = ip4_next_header (ip4);
+      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip4;
+      n_advance_bytes = (ip4_header_bytes (ip4) + tcp_header_bytes (tcp));
+      n_data_bytes = clib_net_to_host_u16 (ip4->length) - n_advance_bytes;
+
+      /* Length check. Checksum computed by ipx_local no need to compute again */
+      if (PREDICT_FALSE (n_advance_bytes < 0))
 	{
-	  int n_advance_bytes0, n_data_bytes0;
-	  u32 bi0, fib_index0;
-	  vlib_buffer_t *b0;
-	  tcp_header_t *tcp0 = 0;
-	  tcp_connection_t *tc0;
-	  transport_connection_t *tconn;
-	  ip4_header_t *ip40;
-	  ip6_header_t *ip60;
-	  u32 error0 = TCP_ERROR_NO_LISTENER, next0 = TCP_INPUT_NEXT_DROP;
-	  u8 flags0, is_filtered = 0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  vnet_buffer (b0)->tcp.flags = 0;
-	  fib_index0 = vnet_buffer (b0)->ip.fib_index;
-
-	  /* Checksum computed by ipx_local no need to compute again */
-
-	  if (is_ip4)
-	    {
-	      ip40 = vlib_buffer_get_current (b0);
-	      tcp0 = ip4_next_header (ip40);
-	      n_advance_bytes0 = (ip4_header_bytes (ip40)
-				  + tcp_header_bytes (tcp0));
-	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
-		- n_advance_bytes0;
-	      tconn = session_lookup_connection_wt4 (fib_index0,
-						     &ip40->dst_address,
-						     &ip40->src_address,
-						     tcp0->dst_port,
-						     tcp0->src_port,
-						     TRANSPORT_PROTO_TCP,
-						     my_thread_index,
-						     &is_filtered);
-	    }
-	  else
-	    {
-	      ip60 = vlib_buffer_get_current (b0);
-	      tcp0 = ip6_next_header (ip60);
-	      n_advance_bytes0 = tcp_header_bytes (tcp0);
-	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
-		- n_advance_bytes0;
-	      n_advance_bytes0 += sizeof (ip60[0]);
-	      tconn = session_lookup_connection_wt6 (fib_index0,
-						     &ip60->dst_address,
-						     &ip60->src_address,
-						     tcp0->dst_port,
-						     tcp0->src_port,
-						     TRANSPORT_PROTO_TCP,
-						     my_thread_index,
-						     &is_filtered);
-	    }
-
-	  /* Length check */
-	  if (PREDICT_FALSE (n_advance_bytes0 < 0))
-	    {
-	      error0 = TCP_ERROR_LENGTH;
-	      goto done;
-	    }
-
-	  vnet_buffer (b0)->tcp.hdr_offset = (u8 *) tcp0
-	    - (u8 *) vlib_buffer_get_current (b0);
-
-	  /* Session exists */
-	  if (PREDICT_TRUE (0 != tconn))
-	    {
-	      tc0 = tcp_get_connection_from_transport (tconn);
-	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
-
-	      /* Save connection index */
-	      vnet_buffer (b0)->tcp.connection_index = tc0->c_c_index;
-	      vnet_buffer (b0)->tcp.seq_number =
-		clib_net_to_host_u32 (tcp0->seq_number);
-	      vnet_buffer (b0)->tcp.ack_number =
-		clib_net_to_host_u32 (tcp0->ack_number);
-
-	      vnet_buffer (b0)->tcp.data_offset = n_advance_bytes0;
-	      vnet_buffer (b0)->tcp.data_len = n_data_bytes0;
-
-	      flags0 = tcp0->flags & filter_flags;
-	      next0 = tm->dispatch_table[tc0->state][flags0].next;
-	      error0 = tm->dispatch_table[tc0->state][flags0].error;
-
-	      if (PREDICT_FALSE (error0 == TCP_ERROR_DISPATCH
-				 || next0 == TCP_INPUT_NEXT_RESET))
-		{
-		  /* Overload tcp flags to store state */
-		  tcp_state_t state0 = tc0->state;
-		  vnet_buffer (b0)->tcp.flags = tc0->state;
-
-		  if (error0 == TCP_ERROR_DISPATCH)
-		    clib_warning ("disp error state %U flags %U",
-				  format_tcp_state, state0, format_tcp_flags,
-				  (int) flags0);
-		}
-	    }
-	  else
-	    {
-	      if (is_filtered)
-		{
-		  next0 = TCP_INPUT_NEXT_DROP;
-		  error0 = TCP_ERROR_FILTERED;
-		}
-	      else if ((is_ip4 && tm->punt_unknown4) ||
-		       (!is_ip4 && tm->punt_unknown6))
-		{
-		  next0 = TCP_INPUT_NEXT_PUNT;
-		  error0 = TCP_ERROR_PUNT;
-		}
-	      else
-		{
-		  /* Send reset */
-		  next0 = TCP_INPUT_NEXT_RESET;
-		  error0 = TCP_ERROR_NO_LISTENER;
-		}
-	      tc0 = 0;
-	    }
-
-	done:
-	  b0->error = error0 ? node->errors[error0] : 0;
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      tcp_rx_trace_t *t0;
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      tcp_set_rx_trace_data (t0, tc0, tcp0, b0, is_ip4);
-	    }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+	  *error = TCP_ERROR_LENGTH;
+	  return 0;
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
+					  &ip4->src_address, tcp->dst_port,
+					  tcp->src_port, TRANSPORT_PROTO_TCP,
+					  thread_index, &is_filtered);
+    }
+  else
+    {
+      ip6_header_t *ip6 = vlib_buffer_get_current (b);
+      tcp = ip6_next_header (ip6);
+      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip6;
+      n_advance_bytes = tcp_header_bytes (tcp);
+      n_data_bytes = clib_net_to_host_u16 (ip6->payload_length)
+	- n_advance_bytes;
+      n_advance_bytes += sizeof (ip6[0]);
+
+      if (PREDICT_FALSE (n_advance_bytes < 0))
+	{
+	  *error = TCP_ERROR_LENGTH;
+	  return 0;
+	}
+
+      tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
+					  &ip6->src_address, tcp->dst_port,
+					  tcp->src_port, TRANSPORT_PROTO_TCP,
+					  thread_index, &is_filtered);
     }
 
-  return from_frame->n_vectors;
+  vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
+  vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
+  vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
+  vnet_buffer (b)->tcp.data_len = n_data_bytes;
+  vnet_buffer (b)->tcp.flags = 0;
+
+  *error = is_filtered ? TCP_ERROR_FILTERED : *error;
+
+  return tcp_get_connection_from_transport (tc);
+}
+
+static inline void
+tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
+			   vlib_buffer_t * b, u16 * next, u32 * error)
+{
+  tcp_header_t *tcp;
+  u8 flags;
+
+  tcp = tcp_buffer_hdr (b);
+  flags = tcp->flags & filter_flags;
+  *next = tm->dispatch_table[tc->state][flags].next;
+  *error = tm->dispatch_table[tc->state][flags].error;
+
+  if (PREDICT_FALSE (*error == TCP_ERROR_DISPATCH
+		     || *next == TCP_INPUT_NEXT_RESET))
+    {
+      /* Overload tcp flags to store state */
+      tcp_state_t state = tc->state;
+      vnet_buffer (b)->tcp.flags = tc->state;
+
+      if (*error == TCP_ERROR_DISPATCH)
+	clib_warning ("disp error state %U flags %U", format_tcp_state,
+		      state, format_tcp_flags, (int) flags);
+    }
+}
+
+always_inline uword
+tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		    vlib_frame_t * frame, int is_ip4)
+{
+  u32 n_left_from, *from, thread_index = vm->thread_index;
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+
+  tcp_set_time_now (thread_index);
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  next = nexts;
+
+  while (n_left_from >= 4)
+    {
+      u32 error0 = TCP_ERROR_NO_LISTENER, error1 = TCP_ERROR_NO_LISTENER;
+      tcp_connection_t *tc0, *tc1;
+
+      {
+	vlib_prefetch_buffer_header (b[2], STORE);
+	CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+
+	vlib_prefetch_buffer_header (b[3], STORE);
+	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+      }
+
+      next[0] = next[1] = TCP_INPUT_NEXT_DROP;
+
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
+      tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4);
+
+      if (PREDICT_TRUE (!tc0 + !tc1 == 0))
+	{
+	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
+	  ASSERT (tcp_lookup_is_valid (tc1, tcp_buffer_hdr (b[1])));
+
+	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
+	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
+
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
+	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], &error1);
+	}
+      else
+	{
+	  if (PREDICT_TRUE (tc0 != 0))
+	    {
+	      ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
+	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
+	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
+	    }
+	  else
+	    tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+
+	  if (PREDICT_TRUE (tc1 != 0))
+	    {
+	      ASSERT (tcp_lookup_is_valid (tc1, tcp_buffer_hdr (b[1])));
+	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
+	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], &error1);
+	    }
+	  else
+	    tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
+	}
+
+      b += 2;
+      next += 2;
+      n_left_from -= 2;
+    }
+  while (n_left_from > 0)
+    {
+      tcp_connection_t *tc0;
+      u32 error0 = TCP_ERROR_NO_LISTENER;
+
+      if (n_left_from > 1)
+	{
+	  vlib_prefetch_buffer_header (b[1], STORE);
+	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      next[0] = TCP_INPUT_NEXT_DROP;
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
+      if (PREDICT_TRUE (tc0 != 0))
+	{
+	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
+	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
+	}
+      else
+	tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
+    }
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    tcp_input_trace_frame (vm, node, bufs, frame->n_vectors, is_ip4);
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  return frame->n_vectors;
 }
 
 static uword
