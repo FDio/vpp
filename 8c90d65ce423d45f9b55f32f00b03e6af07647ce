@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5dc8e75c_b0aaedb8",
+        "filename": "src/vpp/stats/stats.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-06-15T12:16:28Z",
+      "side": 1,
+      "message": "FWIW, /run/vpp-stats.sock is more likely to work non-privileged, without \"sudo chmod 777 /run\". Otherwise, mkdir (\"/run/vpp\") fails, etc.",
+      "revId": "8c90d65ce423d45f9b55f32f00b03e6af07647ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
