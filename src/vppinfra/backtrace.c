@@ -229,7 +229,7 @@ typedef struct clib_generic_stack_frame_t
    Without a frame pointer we have to parse the machine code to
    parse the stack frames. */
 uword
-clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
+clib_backtrace_no_good (uword * callers, uword max_callers, uword n_frames_to_skip)
 {
   clib_generic_stack_frame_t *f;
   uword i;
@@ -251,11 +251,43 @@ clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
     }
 
 backtrace_done:
+
   if (i < n_frames_to_skip)
     return 0;
   else
     return i - n_frames_to_skip;
 }
+
+/* use glibc backtrace for stack trace */
+#include <execinfo.h>
+
+uword
+clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
+{
+  int size;
+  void *array[20];
+  /* Also skip current frame. */
+  n_frames_to_skip += 1;
+
+  size = clib_min (ARRAY_LEN (array), max_callers + n_frames_to_skip);
+
+  size = backtrace (array, size);
+
+  uword i;
+
+  for (i = 0; i < max_callers + n_frames_to_skip && i < size; i++)
+    {
+      if (i >= n_frames_to_skip)
+	callers[i - n_frames_to_skip] = pointer_to_uword (array[i]);
+    }
+
+  if (i < n_frames_to_skip)
+    return 0;
+  else
+    return i - n_frames_to_skip;
+}
+
+
 #endif /* clib_backtrace_defined */
 
 /*
