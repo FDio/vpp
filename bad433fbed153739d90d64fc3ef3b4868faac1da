@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "8a62649f_42007d54",
+        "filename": "src/plugins/tlsopenssl.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8719ebd6_0171c443",
+      "range": {
+        "startLine": 17,
+        "startChar": 1,
+        "endLine": 18,
+        "endChar": 55
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a6705aa2_a3d9f1e8",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "\u003copenssl/tls_openssl.h\u003e",
+      "range": {
+        "startLine": 21,
+        "startChar": 10,
+        "endLine": 21,
+        "endChar": 21
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "912ce2ae_3728f758",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "seemly needs to use \u003ctlsopenssl/tls_openssl.h\u003e",
+      "parentUuid": "a6705aa2_a3d9f1e8",
       "range": {
         "startLine": 21,
         "startChar": 10,
@@ -71,6 +119,23 @@
     },
     {
       "key": {
+        "uuid": "ddf29698_e779298e",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "These two here are to store the parameter and ready for next call. Since one call just handles one \"ctx/tls_session\" pair, it might be better to keep singular form.",
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bc8e0156_20d5a869",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
@@ -82,6 +147,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Are you using these to keep for each thread a \"head\" and a \"tail\" event? As far as I can tell, those are the head/tail of a linked list. \n\nWouldn\u0027t it be \"easier\" to use a vector here? For instance, vec_validate (om-\u003eevt_run_head, num_threads - 1); gives you a vector with num_threads entries. I\u0027m assuming here om-\u003eevt_run_head was memset to 0 at one point (since it\u0027s part of om, I guess you get that for free, since om is a global static).",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 49
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d70b9f1a_4a53bece",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "yes, good suggestion. Considering that I need several info, I\u0027d like to combine them together to be one data structure.",
+      "parentUuid": "bc8e0156_20d5a869",
       "range": {
         "startLine": 104,
         "startChar": 0,
@@ -117,6 +206,30 @@
     },
     {
       "key": {
+        "uuid": "ced03e8d_36c0e8d7",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a3d6c91c_21a4e815",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 127,
+        "endChar": 23
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58cc3090_172b1ecc",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
@@ -128,6 +241,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "ARRAY_LEN (engine_list)",
+      "range": {
+        "startLine": 134,
+        "startChar": 17,
+        "endLine": 134,
+        "endChar": 71
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a78c3802_73e17661",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "58cc3090_172b1ecc",
       "range": {
         "startLine": 134,
         "startChar": 17,
@@ -163,6 +300,30 @@
     },
     {
       "key": {
+        "uuid": "c65d41f8_f6d4d92d",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aebab508_b9fbbff5",
+      "range": {
+        "startLine": 293,
+        "startChar": 15,
+        "endLine": 293,
+        "endChar": 18
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cbd034f6_cda2e053",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
@@ -174,6 +335,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Store index, not a pointer to the sessions. The session is allocated out of a pool, if the pool grows, which often times involves reallocation, you\u0027re left with a dangling/invalid reference.",
+      "range": {
+        "startLine": 295,
+        "startChar": 23,
+        "endLine": 295,
+        "endChar": 34
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92db33ce_7c015381",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cbd034f6_cda2e053",
       "range": {
         "startLine": 295,
         "startChar": 23,
@@ -209,6 +394,30 @@
     },
     {
       "key": {
+        "uuid": "3d40a050_dcebda04",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "see the reply above",
+      "parentUuid": "3672ac80_cbdba1b6",
+      "range": {
+        "startLine": 322,
+        "startChar": 0,
+        "endLine": 323,
+        "endChar": 22
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "53c59750_9cf575dc",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
@@ -220,6 +429,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Remember to use indices here.",
+      "range": {
+        "startLine": 442,
+        "startChar": 2,
+        "endLine": 442,
+        "endChar": 5
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b8df55e_2a67744a",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "see reply above",
+      "parentUuid": "53c59750_9cf575dc",
       "range": {
         "startLine": 442,
         "startChar": 2,
@@ -278,6 +511,30 @@
     },
     {
       "key": {
+        "uuid": "054d2c9b_1fe4f43e",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "can be \u003ctlsopenssl/tls_openssl.h\u003e.",
+      "parentUuid": "7a36b9e6_37c42956",
+      "range": {
+        "startLine": 25,
+        "startChar": 9,
+        "endLine": 25,
+        "endChar": 24
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "47029e2f_bb113b95",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -289,6 +546,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Is this really needed? It seems both callers are \"lower\" in the file.",
+      "range": {
+        "startLine": 30,
+        "startChar": 11,
+        "endLine": 30,
+        "endChar": 38
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d797f0d9_abef87ac",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "removed",
+      "parentUuid": "47029e2f_bb113b95",
       "range": {
         "startLine": 30,
         "startChar": 11,
@@ -324,6 +605,30 @@
     },
     {
       "key": {
+        "uuid": "8b610535_19e014f1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "yes, will do. As I mentioned earlier, I am now working to add a new \"condition build\" which will fetch openssl source code and patch it. Some \"#ifdef\" will definitely add, which will include the whole feature of \"async\" instead of just this function call.",
+      "parentUuid": "950ff551_e58b94e7",
+      "range": {
+        "startLine": 169,
+        "startChar": 6,
+        "endLine": 169,
+        "endChar": 28
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b221676c_c8a8a191",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -335,6 +640,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Please replace all printfs with \"clib_warnings\" or TLS_DBG calls",
+      "range": {
+        "startLine": 171,
+        "startChar": 6,
+        "endLine": 171,
+        "endChar": 12
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f50a6e21_e547d287",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b221676c_c8a8a191",
       "range": {
         "startLine": 171,
         "startChar": 6,
@@ -370,6 +699,30 @@
     },
     {
       "key": {
+        "uuid": "a890c7eb_fc8057d4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "Done. \nBTW, I just refer to Line#37. Looks full file should uniform the naming. :)",
+      "parentUuid": "673c0577_b0a4387a",
+      "range": {
+        "startLine": 729,
+        "startChar": 18,
+        "endLine": 729,
+        "endChar": 20
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "60d2e716_463b23c8",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -381,6 +734,30 @@
       "writtenOn": "2018-06-02T19:26:13Z",
       "side": 1,
       "message": "Since this is part of the async file, is it a fair assumption that all of them are async? If yes, I\u0027d try to clarify the cli and replace \"engine\" with \"async-engine\" and then the \"async\" parameter rename it to \"async-input-node\" or something like that.",
+      "range": {
+        "startLine": 772,
+        "startChar": 11,
+        "endLine": 772,
+        "endChar": 34
+      },
+      "revId": "bad433fbed153739d90d64fc3ef3b4868faac1da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "05c21577_8e52cf86",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 772,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-06-15T01:23:35Z",
+      "side": 1,
+      "message": "For one engine, such as QAT, it can support both \"async\" and \"sync\" mode, so here I use \"async\" to differentiate which mode this engine want to use. If we use \"async-engine\", it is also okay, but we might introduce a new cli to \"engine, which is \"sync\". Both ways are okay to me.",
+      "parentUuid": "60d2e716_463b23c8",
       "range": {
         "startLine": 772,
         "startChar": 11,
