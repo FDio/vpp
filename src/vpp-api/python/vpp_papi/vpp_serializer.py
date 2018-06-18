@@ -131,8 +131,7 @@ class VLAList():
 
         # u8 array
         if self.packer.size == 1:
-            p = BaseTypes('u8', len(list))
-            return p.pack(list)
+            return bytearray(list)
 
         for e in list:
             b += self.packer.pack(e)
@@ -167,6 +166,9 @@ class VLAList_legacy():
     def pack(self, list, kwargs=None):
         logger.debug("Data: {}".format(list))
         b = bytes()
+        if self.packer.size == 1:
+            return bytearray(list)
+
         for e in list:
             b += self.packer.pack(e)
         return b
@@ -317,7 +319,11 @@ class VPPType():
                              .format(a))
                 b += b'\x00' * self.packers[i].size
                 continue
-            b += self.packers[i].pack(data[a], kwargs)
+            if isinstance(self.packers[i], VPPType):
+                b += self.packers[i].pack(data[a], kwargs[a])
+            else:
+                b += self.packers[i].pack(data[a], kwargs)
+
         return b
 
     def unpack(self, data, offset=0, result=None):
