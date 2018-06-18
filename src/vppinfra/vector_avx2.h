@@ -121,6 +121,22 @@ _(i8x16, i64x4, epi8_epi64)
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u16x16
+u16x16_byte_swap (u16x16 v)
+{
+  u8x32 swap = {
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14
+  };
+  return (u16x16) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) swap);
+}
+
+static_always_inline u32x8
+u32x8_hadd (u32x8 v1, u32x8 v2)
+{
+  return (u32x8) _mm256_hadd_epi32 ((__m256i) v1, (__m256i) v2);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
