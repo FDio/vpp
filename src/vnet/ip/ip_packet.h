@@ -86,6 +86,110 @@ typedef enum
 
 /* IP checksum support. */
 
+static_always_inline u16
+ip_csum (void *data, u16 n_left)
+{
+  u32 sum = 0;
+#ifdef CLIB_HAVE_VEC256
+  u16x16 v1, v2;
+  u32x8 zero = { 0 };
+  u32x8 sum8 = { 0 };
+  u32x4 sum4;
+  const u16x16 masks[16] = {
+    {0},
+    {-1},
+    {-1, -1},
+    {-1, -1, -1},
+    {-1, -1, -1, -1},
+    {-1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+  };
+
+  ASSERT ((n_left & 1) == 0);
+  n_left >>= 1;
+
+  while (n_left >= 32)
+    {
+      v1 = u16x16_load_unaligned (data);
+      v2 = u16x16_load_unaligned (data + 32);
+
+#ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
+      v1 = u16x16_byte_swap (v1);
+      v2 = u16x16_byte_swap (v2);
+#endif
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v2));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v2));
+      n_left -= 32;
+      data += 64;
+    }
+
+  if (n_left >= 16)
+    {
+      v1 = u16x16_load_unaligned (data);
+#ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
+      v1 = u16x16_byte_swap (v1);
+#endif
+      v1 = u16x16_byte_swap (u16x16_load_unaligned (data));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
+      n_left -= 16;
+      data += 32;
+    }
+
+  if (n_left)
+    {
+      v1 = u16x16_load_unaligned (data);
+#ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
+      v1 = u16x16_byte_swap (v1);
+#endif
+      v1 &= masks[n_left];
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
+      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
+    }
+
+  sum8 = u32x8_hadd (sum8, zero);
+  sum4 = u32x8_extract_lo (sum8) + u32x8_extract_hi (sum8);
+  sum = sum4[0] + sum4[1];
+
+#else
+  /* scalar version */
+  while (n_left >= 8)
+    {
+      sum += clib_net_to_host_u16 (*((u16 *) data + 0));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 1));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 2));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 3));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 4));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 5));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 6));
+      sum += clib_net_to_host_u16 (*((u16 *) data + 7));
+      n_left -= 8;
+      data += 16;
+    }
+  while (n_left)
+    {
+      sum += clib_net_to_host_u16 (*(u16 *) data);
+      n_left -= 1;
+      data += 2;
+    }
+#endif
+
+  sum = (sum & 0xffff) + (sum >> 16);
+  sum = (sum & 0xffff) + (sum >> 16);
+  return ~((u16) sum);
+}
+
 /* Incremental checksum update. */
 typedef uword ip_csum_t;
 

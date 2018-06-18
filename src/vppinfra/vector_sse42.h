@@ -592,6 +592,12 @@ u8x16_msb_mask (u8x16 v)
 
 #undef _signed_binop
 
+static_always_inline u32x4
+u32x4_hadd (u32x4 v1, u32x4 v2)
+{
+  return (u32x4) _mm_hadd_epi32 ((__m128i) v1, (__m128i) v2);
+}
+
 #endif /* included_vector_sse2_h */
 
 /*
