@@ -56,6 +56,26 @@ typedef enum
   IP4_INPUT_N_NEXT,
 } ip4_input_next_t;
 
+static_always_inline void
+check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
+{
+  if (PREDICT_FALSE (ip->ip_version_and_header_length != 0x45))
+    {
+      if ((ip->ip_version_and_header_length & 0xf) != 5)
+	{
+	  *error = IP4_ERROR_OPTIONS;
+	  if (verify_checksum && ip_csum (ip, ip4_header_bytes (ip)) != 0)
+	    *error = IP4_ERROR_BAD_CHECKSUM;
+	}
+      else
+	*error = IP4_ERROR_VERSION;
+    }
+  else
+    if (PREDICT_FALSE (verify_checksum &&
+		       ip_csum (ip, sizeof (ip4_header_t)) != 0))
+    *error = IP4_ERROR_BAD_CHECKSUM;
+}
+
 always_inline void
 ip4_input_check_x4 (vlib_main_t * vm,
 		    vlib_node_runtime_t * error_node,
@@ -71,22 +91,10 @@ ip4_input_check_x4 (vlib_main_t * vm,
 
   error0 = error1 = error2 = error3 = IP4_ERROR_NONE;
 
-  /* Punt packets with options or wrong version. */
-  if (PREDICT_FALSE (ip[0]->ip_version_and_header_length != 0x45))
-    error0 = (ip[0]->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
-
-  if (PREDICT_FALSE (ip[1]->ip_version_and_header_length != 0x45))
-    error1 = (ip[1]->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
-
-  if (PREDICT_FALSE (ip[2]->ip_version_and_header_length != 0x45))
-    error2 = (ip[2]->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
-
-  if (PREDICT_FALSE (ip[3]->ip_version_and_header_length != 0x45))
-    error3 = (ip[3]->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
+  check_ver_opt_csum (ip[0], &error0, verify_checksum);
+  check_ver_opt_csum (ip[1], &error1, verify_checksum);
+  check_ver_opt_csum (ip[2], &error2, verify_checksum);
+  check_ver_opt_csum (ip[3], &error3, verify_checksum);
 
   if (PREDICT_FALSE (ip[0]->ttl < 1))
     error0 = IP4_ERROR_TIME_EXPIRED;
@@ -96,26 +104,6 @@ ip4_input_check_x4 (vlib_main_t * vm,
     error2 = IP4_ERROR_TIME_EXPIRED;
   if (PREDICT_FALSE (ip[3]->ttl < 1))
     error3 = IP4_ERROR_TIME_EXPIRED;
-
-  /* Verify header checksum. */
-  if (verify_checksum)
-    {
-      ip_csum_t sum0, sum1, sum2, sum3;
-
-      ip4_partial_header_checksum_x1 (ip[0], sum0);
-      ip4_partial_header_checksum_x1 (ip[1], sum1);
-      ip4_partial_header_checksum_x1 (ip[2], sum2);
-      ip4_partial_header_checksum_x1 (ip[3], sum3);
-
-      error0 = 0xffff != ip_csum_fold (sum0) ?
-	IP4_ERROR_BAD_CHECKSUM : error0;
-      error1 = 0xffff != ip_csum_fold (sum1) ?
-	IP4_ERROR_BAD_CHECKSUM : error1;
-      error2 = 0xffff != ip_csum_fold (sum2) ?
-	IP4_ERROR_BAD_CHECKSUM : error2;
-      error3 = 0xffff != ip_csum_fold (sum3) ?
-	IP4_ERROR_BAD_CHECKSUM : error3;
-    }
 
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip[0]) == 1 ?
@@ -226,33 +214,13 @@ ip4_input_check_x2 (vlib_main_t * vm,
 
   error0 = error1 = IP4_ERROR_NONE;
 
-  /* Punt packets with options or wrong version. */
-  if (PREDICT_FALSE (ip0->ip_version_and_header_length != 0x45))
-    error0 = (ip0->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
-
-  if (PREDICT_FALSE (ip1->ip_version_and_header_length != 0x45))
-    error1 = (ip1->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
+  check_ver_opt_csum (ip0, &error0, verify_checksum);
+  check_ver_opt_csum (ip1, &error1, verify_checksum);
 
   if (PREDICT_FALSE (ip0->ttl < 1))
     error0 = IP4_ERROR_TIME_EXPIRED;
   if (PREDICT_FALSE (ip1->ttl < 1))
     error1 = IP4_ERROR_TIME_EXPIRED;
-
-  /* Verify header checksum. */
-  if (verify_checksum)
-    {
-      ip_csum_t sum0, sum1;
-
-      ip4_partial_header_checksum_x1 (ip0, sum0);
-      ip4_partial_header_checksum_x1 (ip1, sum1);
-
-      error0 = 0xffff != ip_csum_fold (sum0) ?
-	IP4_ERROR_BAD_CHECKSUM : error0;
-      error1 = 0xffff != ip_csum_fold (sum1) ?
-	IP4_ERROR_BAD_CHECKSUM : error1;
-    }
 
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip0) == 1 ?
@@ -320,21 +288,12 @@ ip4_input_check_x1 (vlib_main_t * vm,
 
   error0 = IP4_ERROR_NONE;
 
+  check_ver_opt_csum (ip0, &error0, verify_checksum);
+
   /* Punt packets with options or wrong version. */
   if (PREDICT_FALSE (ip0->ip_version_and_header_length != 0x45))
     error0 = (ip0->ip_version_and_header_length & 0xf) != 5 ?
       IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
-
-  /* Verify header checksum. */
-  if (verify_checksum)
-    {
-      ip_csum_t sum0;
-
-      ip4_partial_header_checksum_x1 (ip0, sum0);
-
-      error0 = 0xffff != ip_csum_fold (sum0) ?
-	IP4_ERROR_BAD_CHECKSUM : error0;
-    }
 
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip0) == 1 ?
