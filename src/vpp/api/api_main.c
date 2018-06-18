@@ -276,6 +276,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 uword
 unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
+  void *vam_unused = va_arg (*args, void *);
   u32 *result = va_arg (*args, u32 *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
