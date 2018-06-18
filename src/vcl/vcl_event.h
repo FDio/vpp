@@ -16,6 +16,23 @@
 #ifndef VPP_VCL_EVENT_H
 #define VPP_VCL_EVENT_H
 
+#include <vppinfra/cache.h>
+#include <vppinfra/mem.h>
+
+#define VCE_EVENTS_LOCK() clib_spinlock_lock (&(evt->events_lockp))
+#define VCE_EVENTS_UNLOCK() clib_spinlock_unlock (&(evt->events_lockp))
+#define VCE_HANDLERS_LOCK() clib_spinlock_lock (&(evt->handlers_lockp))
+#define VCE_HANDLERS_UNLOCK() clib_spinlock_unlock (&(evt->handlers_lockp))
+#define VCE_IO_SESSIONS_LOCK() clib_spinlock_lock (&(evt->io_sessions_lockp))
+#define VCE_IO_SESSIONS_UNLOCK() \
+  clib_spinlock_unlock (&(evt->io_sessions_lockp))
+
+typedef struct vppcom_ioevent_
+{
+  uint32_t session_index;
+  size_t bytes;
+} vppcom_ioevent_t;
+
 /**
  * @file
  * @brief VPP Communications Library (VCL) event handler.
@@ -26,6 +43,69 @@
 #include <vppinfra/types.h>
 #include <vppinfra/lock.h>
 #include <pthread.h>
+
+/**
+ * User registered callback for when connection arrives on listener created
+ * with vppcom_session_register_listener()
+ * @param uint32_t - newly accepted session_index
+ * @param vppcom_endpt_t* - ip/port information of remote
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_listener_cb) (uint32_t, vppcom_endpt_t *,
+					    void *);
+
+/**
+ * User registered callback for IO events (rx/tx)
+ * @param vppcom_ioevent_t* -
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_ioevent_cb) (vppcom_ioevent_t *, void *);
+
+/**
+ * User registered ERROR callback for any errors associated with
+ * handling vppcom_session_register_listener() and connections
+ * @param void* - user passed arg to pass back
+ */
+typedef void (*vppcom_session_listener_errcb) (void *);
+
+
+typedef enum vcl_event_id_
+{
+  VCL_EVENT_INVALID_EVENT,
+  VCL_EVENT_CONNECT_REQ_ACCEPTED,
+  VCL_EVENT_IOEVENT_RX_FIFO,
+  VCL_EVENT_IOEVENT_TX_FIFO,
+  VCL_EVENT_N_EVENTS
+} vcl_event_id_t;
+
+/* VPPCOM Event typedefs */
+typedef struct vppcom_session_listener
+{
+  vppcom_session_listener_cb user_cb;
+  vppcom_session_listener_errcb user_errcb;
+  void *user_cb_data;
+} vppcom_session_listener_t;
+
+typedef struct vppcom_session_ioevent_
+{
+  vppcom_session_ioevent_cb user_cb;
+  void *user_cb_data;
+} vppcom_session_ioevent_t;
+
+typedef struct vppcom_session_io_thread_
+{
+  pthread_t thread;
+  pthread_mutex_t vce_io_lock;
+  pthread_cond_t vce_io_cond;
+  u32 *active_session_indexes;	//pool
+  vppcom_session_ioevent_t *ioevents;	//pool
+  clib_spinlock_t io_sessions_lockp;
+} vppcom_session_io_thread_t;
+
+typedef struct vce_event_connect_request_
+{
+  u32 accepted_session_index;
+} vce_event_connect_request_t;
 
 typedef union vce_event_key_
 {
@@ -69,6 +149,51 @@ typedef struct vce_event_thread_
   vce_event_handler_reg_t *vce_event_handlers; //pool
   uword *handlers_index_by_event_key; //hash
 } vce_event_thread_t;
+
+
+/**
+ * @brief vppcom_session_register_listener accepts a bound session_index, and
+ * listens for connections.
+ *
+ * On successful connection, calls registered callback (cb) with new
+ * session_index.
+ *
+ * On error, calls registered error callback (errcb).
+ *
+ * @param session_index - bound session_index to create listener on
+ * @param cb  - on new accepted session callback
+ * @param errcb  - on failure callback
+ * @param flags - placeholder for future use. Must be ZERO
+ * @param q_len - max listener connection backlog
+ * @param ptr - user data
+ * @return
+ */
+extern int vppcom_session_register_ioevent_cb (uint32_t session_index,
+					       vppcom_session_ioevent_cb cb,
+					       uint8_t rx, void *ptr);
+
+/**
+ * @brief vppcom_session_register_listener accepts a bound session_index, and
+ * listens for connections.
+ *
+ * On successful connection, calls registered callback (cb) with new
+ * session_index.
+ *
+ * On error, calls registered error callback (errcb).
+ *
+ * @param session_index - bound session_index to create listener on
+ * @param cb  - on new accepted session callback
+ * @param errcb  - on failure callback
+ * @param flags - placeholder for future use. Must be ZERO
+ * @param q_len - max listener connection backlog
+ * @param ptr - user data
+ * @return
+ */
+extern int vppcom_session_register_listener (uint32_t session_index,
+					     vppcom_session_listener_cb cb,
+					     vppcom_session_listener_errcb
+					     errcb, uint8_t flags, int q_len,
+					     void *ptr);
 
 /**
  * @brief vce_generate_event
@@ -179,5 +304,24 @@ extern void * vce_event_thread_fn (void *arg);
  * @return succes/failure
  */
 int vce_start_event_thread (vce_event_thread_t *evt, u8 max_events);
+
+/**
+ *  * @brief vce_connect_request_handler_fn
+ * - used for listener sessions
+ * - when a vl_api_accept_session_t_handler() generates an event
+ *   this callback is alerted and sets fields that consumers such as
+ *   vppcom_session_accept() expect to see, ie. accepted_client_index
+ *
+ * @param arg - void* to be cast to vce_event_handler_reg_t*
+ */
+always_inline void
+vce_connect_request_handler_fn (void *arg)
+{
+  vce_event_handler_reg_t *reg = (vce_event_handler_reg_t *) arg;
+
+  pthread_mutex_lock (&reg->handler_lock);
+  pthread_cond_signal (&reg->handler_cond);
+  pthread_mutex_unlock (&reg->handler_lock);
+}
 
 #endif //VPP_VCL_EVENT_H

@@ -25,6 +25,7 @@
 
 
 #include <vcl/vppcom.h>
+#include <vcl/vcl_event.h>
 #include <unistd.h>
 
 char MESSAGE[] = "Hello, World!\n";

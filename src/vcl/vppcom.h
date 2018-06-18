@@ -144,13 +144,6 @@ typedef struct _vcl_poll
   short *revents;
 } vcl_poll_t;
 
-typedef struct vppcom_ioevent_
-{
-  uint32_t session_index;
-  size_t bytes;
-} vppcom_ioevent_t;
-
-
 /*
  * VPPCOM Public API Functions
  */
@@ -217,74 +210,6 @@ vppcom_retval_str (int retval)
   return st;
 }
 
-/**
- * User registered callback for when connection arrives on listener created
- * with vppcom_session_register_listener()
- * @param uint32_t - newly accepted session_index
- * @param vppcom_endpt_t* - ip/port information of remote
- * @param void* - user passed arg to pass back
- */
-typedef void (*vppcom_session_listener_cb) (uint32_t, vppcom_endpt_t *,
-					    void *);
-
-/**
- * User registered callback for IO events (rx/tx)
- * @param vppcom_ioevent_t* -
- * @param void* - user passed arg to pass back
- */
-typedef void (*vppcom_session_ioevent_cb) (vppcom_ioevent_t *, void *);
-
-/**
- * @brief vppcom_session_register_listener accepts a bound session_index, and
- * listens for connections.
- *
- * On successful connection, calls registered callback (cb) with new
- * session_index.
- *
- * On error, calls registered error callback (errcb).
- *
- * @param session_index - bound session_index to create listener on
- * @param cb  - on new accepted session callback
- * @param errcb  - on failure callback
- * @param flags - placeholder for future use. Must be ZERO
- * @param q_len - max listener connection backlog
- * @param ptr - user data
- * @return
- */
-extern int vppcom_session_register_ioevent_cb (uint32_t session_index,
-					       vppcom_session_ioevent_cb cb,
-					       uint8_t rx, void *ptr);
-
-/**
- * User registered ERROR callback for any errors associated with
- * handling vppcom_session_register_listener() and connections
- * @param void* - user passed arg to pass back
- */
-typedef void (*vppcom_session_listener_errcb) (void *);
-
-/**
- * @brief vppcom_session_register_listener accepts a bound session_index, and
- * listens for connections.
- *
- * On successful connection, calls registered callback (cb) with new
- * session_index.
- *
- * On error, calls registered error callback (errcb).
- *
- * @param session_index - bound session_index to create listener on
- * @param cb  - on new accepted session callback
- * @param errcb  - on failure callback
- * @param flags - placeholder for future use. Must be ZERO
- * @param q_len - max listener connection backlog
- * @param ptr - user data
- * @return
- */
-extern int vppcom_session_register_listener (uint32_t session_index,
-					     vppcom_session_listener_cb cb,
-					     vppcom_session_listener_errcb
-					     errcb, uint8_t flags, int q_len,
-					     void *ptr);
-
 /* TBD: make these constructor/destructor function */
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
@@ -324,6 +249,11 @@ extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
 				  vppcom_endpt_t * ep);
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
+
+/*
+ * VPPCOM Event Functions
+ */
+extern void vce_poll_wait_connect_request_handler_fn (void *arg);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

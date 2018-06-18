@@ -18,7 +18,9 @@
 #include <vppinfra/hash.h>
 #include <vnet/api_errno.h>
 
+#include <vcl/vppcom.h>
 #include <vcl/vcl_event.h>
+
 /**
  * @file
  * @brief VPP Communications Library (VCL) event handler.
@@ -36,7 +38,7 @@ vce_generate_event (vce_event_thread_t *evt, u32 ev_idx)
 
   /* Check there is event data for this event */
 
-  clib_spinlock_lock (&(evt->events_lockp));
+  VCE_EVENTS_LOCK();
   p =  pool_elt_at_index (evt->vce_events, ev_idx);
   ASSERT(p);
 
@@ -52,7 +54,7 @@ vce_generate_event (vce_event_thread_t *evt, u32 ev_idx)
       rv = VNET_API_ERROR_QUEUE_FULL;
     }
 
-  clib_spinlock_unlock (&(evt->events_lockp));
+  VCE_EVENTS_UNLOCK ();
   pthread_mutex_unlock (&(evt->generator_lock));
 
   return rv;
@@ -61,9 +63,9 @@ vce_generate_event (vce_event_thread_t *evt, u32 ev_idx)
 void
 vce_clear_event (vce_event_thread_t *evt, u32 ev_idx)
 {
-  clib_spinlock_lock (&(evt->events_lockp));
+  VCE_EVENTS_LOCK ();
   pool_put_index (evt->vce_events, ev_idx);
-  clib_spinlock_unlock (&(evt->events_lockp));
+  VCE_EVENTS_UNLOCK ();
 }
 
 vce_event_t *
@@ -84,11 +86,11 @@ vce_get_event_handler (vce_event_thread_t *evt, vce_event_key_t *evk)
   vce_event_handler_reg_t *handler = 0;
   uword *p;
 
-  clib_spinlock_lock (&evt->handlers_lockp);
+  VCE_HANDLERS_LOCK ();
   p = hash_get (evt->handlers_index_by_event_key, evk->as_u64);
   if (p)
     handler = pool_elt_at_index (evt->vce_event_handlers, p[0]);
-  clib_spinlock_unlock (&evt->handlers_lockp);
+  VCE_HANDLERS_UNLOCK ();
 
   return handler;
 }
@@ -105,7 +107,7 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
   /* TODO - multiple handler support. For now we can replace
    * and re-instate, which is useful for event recycling */
 
-  clib_spinlock_lock (&evt->handlers_lockp);
+  VCE_HANDLERS_LOCK ();
 
   p = hash_get (evt->handlers_index_by_event_key, evk->as_u64);
   if (p)
@@ -116,7 +118,7 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
       if (old_handler->handler_fn == cb)
         {
 
-          clib_spinlock_unlock (&evt->handlers_lockp);
+          VCE_HANDLERS_UNLOCK ();
 
           /* Signal event thread that a handler exists in case any
            * recycled events requiring this handler are pending */
@@ -141,7 +143,7 @@ vce_register_handler (vce_event_thread_t *evt, vce_event_key_t *evk,
   pthread_cond_init (&(handler->handler_cond), NULL);
   pthread_mutex_init (&(handler->handler_lock), NULL);
 
-  clib_spinlock_unlock (&evt->handlers_lockp);
+  VCE_HANDLERS_UNLOCK ();
 
   /* Signal event thread that a new handler exists in case any
    * recycled events requiring this handler are pending */
@@ -160,12 +162,12 @@ vce_unregister_handler (vce_event_thread_t *evt,
   u64 evk = handler->evk;
   u8 generate_signal = 0;
 
-  clib_spinlock_lock (&evt->handlers_lockp);
+  VCE_HANDLERS_LOCK ();
 
   p = hash_get (evt->handlers_index_by_event_key, evk);
   if (!p)
     {
-      clib_spinlock_unlock (&evt->handlers_lockp);
+      VCE_HANDLERS_UNLOCK ();
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
@@ -187,7 +189,7 @@ vce_unregister_handler (vce_event_thread_t *evt,
   pthread_cond_destroy (&(handler->handler_cond));
   pool_put (evt->vce_event_handlers, handler);
 
-  clib_spinlock_unlock (&evt->handlers_lockp);
+  VCE_HANDLERS_UNLOCK ();
 
   if (generate_signal)
     {
@@ -223,17 +225,17 @@ vce_event_thread_fn (void *arg)
         }
 
       /* Remove event */
-      clib_spinlock_lock (&(evt->events_lockp));
+      VCE_EVENTS_LOCK ();
       clib_fifo_sub1 (evt->event_index_fifo, ev_idx);
       ev = vce_get_event_from_index (evt, ev_idx);
       ASSERT(ev);
       if (recycle_count && ev->recycle)
         {
           clib_fifo_add1 (evt->event_index_fifo, ev_idx);
-          clib_spinlock_unlock (&(evt->events_lockp));
+          VCE_EVENTS_UNLOCK ();
           continue;
         }
-      clib_spinlock_lock (&evt->handlers_lockp);
+      VCE_HANDLERS_LOCK ();
 
       p = hash_get (evt->handlers_index_by_event_key, ev->evk.as_u64);
       if (!p)
@@ -242,8 +244,8 @@ vce_event_thread_fn (void *arg)
            * does it make any sound?
            * I don't know either, so lets biff the event */
           pool_put(evt->vce_events, ev);
-          clib_spinlock_unlock (&(evt->events_lockp));
-          clib_spinlock_unlock (&evt->handlers_lockp);
+          VCE_EVENTS_UNLOCK ();
+          VCE_HANDLERS_UNLOCK ();
           pthread_mutex_unlock (&(evt->generator_lock));
         }
       else
@@ -253,16 +255,16 @@ vce_event_thread_fn (void *arg)
           handler->ev_idx = ev_idx;
           ev->recycle = 0;
 
-          clib_spinlock_unlock (&(evt->events_lockp));
-          clib_spinlock_unlock (&evt->handlers_lockp);
+          VCE_EVENTS_UNLOCK ();
+          VCE_HANDLERS_UNLOCK ();
           pthread_mutex_unlock (&(evt->generator_lock));
 
           (handler->handler_fn)(handler);
 
-          clib_spinlock_lock (&(evt->events_lockp));
+          VCE_EVENTS_LOCK ();
           ev = vce_get_event_from_index (evt, ev_idx);
           recycle_count += (!evt_recycle && ev && ev->recycle) ? 1 : 0;
-          clib_spinlock_unlock(&(evt->events_lockp));
+          VCE_EVENTS_UNLOCK ();
         }
 
       pthread_mutex_lock (&(evt->generator_lock));
