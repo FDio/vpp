@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket
-from util import ip4n_range
+from util import ip4n_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -29,6 +29,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 UDP(sport=self.dport, dport=self.dport, chksum=0) /
                 GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
                 pkt)
+
+    def ip_range(self, start, end):
+        """ range of remote ip's """
+        return ip4_range(self.pg0.remote_ip4, start, end)
 
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
         """
