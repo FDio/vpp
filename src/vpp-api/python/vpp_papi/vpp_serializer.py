@@ -131,8 +131,7 @@ class VLAList():
 
         # u8 array
         if self.packer.size == 1:
-            p = BaseTypes('u8', len(list))
-            return p.pack(list)
+            return bytearray(list)
 
         for e in list:
             b += self.packer.pack(e)
