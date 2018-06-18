@@ -110,5 +110,93 @@ class TestAddType(unittest.TestCase):
         nt = foo.unpack(b)
         print('NT', nt)
 
+    def test_abf(self):
+
+        fib_mpls_label = VPPType('vl_api_fib_mpls_label_t',
+                                 [['u8', 'is_uniform'],
+                                  ['u32', 'label'],
+                                  ['u8', 'ttl'],
+                                  ['u8', 'exp']])
+
+        label_stack = {'is_uniform': 0,
+                       'label': 0,
+                       'ttl': 0,
+                       'exp': 0 }
+
+        b = fib_mpls_label.pack(label_stack)
+        self.assertEqual(len(b), 7)
+
+        fib_path = VPPType('vl_api_fib_path_t',
+                           [['u32', 'sw_if_index'],
+                            ['u32', 'table_id'],
+                            ['u8', 'weight'],
+                            ['u8', 'preference'],
+                            ['u8', 'is_local'],
+                            ['u8', 'is_drop'],
+                            ['u8', 'is_udp_encap'],
+                            ['u8', 'is_unreach'],
+                            ['u8', 'is_prohibit'],
+                            ['u8', 'is_resolve_host'],
+                            ['u8', 'is_resolve_attached'],
+                            ['u8', 'is_dvr'],
+                            ['u8', 'is_source_lookup'],
+                            ['u8', 'afi'],
+                            ['u8', 'next_hop', 16],
+                            ['u32', 'next_hop_id'],
+                            ['u32', 'rpf_id'],
+                            ['u32', 'via_label'],
+                            ['u8', 'n_labels'],
+                            ['vl_api_fib_mpls_label_t', 'label_stack',16]])
+        label_stack_list = []
+        for i in range(16):
+            label_stack_list.append(label_stack)
+
+        paths = {'is_udp_encap': 0,
+                 'next_hop': '\x10\x02\x02\xac',
+                 #'next_hop': b'\xac\x10\x02\x02\xac\x10\x02\x02\xac\x10\x02\x02\xac\x10\x02\x02',
+                 'table_id': 0,
+                 'afi': 0,
+                 'weight': 1,
+                 'next_hop_id': 4294967295,
+                 'label_stack': label_stack_list,
+                 'n_labels': 0,
+                 'sw_if_index': 4294967295,
+                 'preference': 0}
+
+        b = fib_path.pack(paths)
+        self.assertEqual(len(b), (7*16) + 49)
+
+        abf_policy = VPPType('vl_api_abf_policy_t',
+                             [['u32', 'policy_id'],
+                              ['u32', 'acl_index'],
+                              ['u8', 'n_paths'],
+                              ['vl_api_fib_path_t', 'paths', 0, 'n_paths']])
+
+
+        policy = {
+            'n_paths': 1,
+            'paths': [paths],
+            'acl_index': 0,
+            'policy_id': 10}
+
+        b = abf_policy.pack(policy)
+        self.assertEqual(len(b), (7*16) + 49 + 9)
+
+        abf_policy_add_del = VPPMessage('abf_policy_add_del',
+                                        [['u16', '_vl_msg_id'],
+                                         ['u32', 'client_index'],
+                                         ['u32', 'context'],
+                                         ['u8', 'is_add'],
+                                         ['vl_api_abf_policy_t', 'policy']])
+
+
+        b = abf_policy_add_del.pack({'is_add': 1,
+                                     'context': 66,
+                                     '_vl_msg_id': 1066,
+                                     'policy': policy})
+
+        nt = abf_policy_add_del.unpack(b)
+        print('NT', nt)
+
 if __name__ == '__main__':
     unittest.main()
