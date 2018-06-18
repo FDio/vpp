@@ -30,6 +30,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
                 pkt)
 
+    def ip_range(self, start, end):
+        """ range of remote ip's """
+        return ip4_range(self.pg0.remote_ip4, start, end)
+
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
         """
         Encapsulate the original payload frame by adding GTPU header with its
