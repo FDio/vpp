@@ -571,7 +571,7 @@ make_port_mask(u16 *portmask, u16 port_first, u16 port_last)
 }
 
 static void
-make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi, int match_nonfirst_fragment)
+make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi)
 {
   memset(mask, 0, sizeof(*mask));
   memset(&hi->match, 0, sizeof(hi->match));
@@ -600,30 +600,25 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
   if (r->proto != 0) {
     mask->l4.proto = ~0; /* L4 proto needs to be matched */
     hi->match.l4.proto = r->proto;
-    if (match_nonfirst_fragment) {
-      /* match the non-first fragments only */
-      mask->pkt.is_nonfirst_fragment = 1;
-      hi->match.pkt.is_nonfirst_fragment = 1;
-    } else {
-      /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
-      hi->src_portrange_not_powerof2 = make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
-      hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
-      hi->dst_portrange_not_powerof2 = make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
-      hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
-      /* L4 info must be valid in order to match */
-      mask->pkt.l4_valid = 1;
-      hi->match.pkt.l4_valid = 1;
-      /* And we must set the mask to check that it is an initial fragment */
-      mask->pkt.is_nonfirst_fragment = 1;
-      hi->match.pkt.is_nonfirst_fragment = 0;
-      if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0)) {
-	/* if we want to match on TCP flags, they must be masked off as well */
-	mask->pkt.tcp_flags = r->tcp_flags_mask;
-	hi->match.pkt.tcp_flags = r->tcp_flags_value;
-	/* and the flags need to be present within the packet being matched */
-	mask->pkt.tcp_flags_valid = 1;
-	hi->match.pkt.tcp_flags_valid = 1;
-      }
+
+    /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
+    hi->src_portrange_not_powerof2 = make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
+    hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
+    hi->dst_portrange_not_powerof2 = make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
+    hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
+    /* L4 info must be valid in order to match */
+    mask->pkt.l4_valid = 1;
+    hi->match.pkt.l4_valid = 1;
+    /* And we must set the mask to check that it is an initial fragment */
+    mask->pkt.is_nonfirst_fragment = 1;
+    hi->match.pkt.is_nonfirst_fragment = 0;
+    if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0)) {
+      /* if we want to match on TCP flags, they must be masked off as well */
+      mask->pkt.tcp_flags = r->tcp_flags_mask;
+      hi->match.pkt.tcp_flags = r->tcp_flags_value;
+      /* and the flags need to be present within the packet being matched */
+      mask->pkt.tcp_flags_valid = 1;
+      hi->match.pkt.tcp_flags_valid = 1;
     }
   }
   /* Sanitize the mask and the match */
@@ -711,7 +706,7 @@ void hash_acl_add(acl_main_t *am, int acl_index)
     ace_info.acl_index = acl_index;
     ace_info.ace_index = i;
 
-    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info, 0);
+    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info);
     ace_info.mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
     ace_info.match.pkt.mask_type_index_lsb = ace_info.mask_type_index;
@@ -719,16 +714,6 @@ void hash_acl_add(acl_main_t *am, int acl_index)
     /* Ensure a given index is set in the mask type index bitmap for this ACL */
     ha->mask_type_index_bitmap = clib_bitmap_set(ha->mask_type_index_bitmap, ace_info.mask_type_index, 1);
     vec_add1(ha->rules, ace_info);
-    if (am->l4_match_nonfirst_fragment) {
-      /* add the second rule which matches the noninitial fragments with the respective mask */
-      make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info, 1);
-      ace_info.mask_type_index = assign_mask_type_index(am, &mask);
-      ace_info.match.pkt.mask_type_index_lsb = ace_info.mask_type_index;
-      DBG("ACE: %d (non-initial frags) mask_type_index: %d", i, ace_info.mask_type_index);
-      /* Ensure a given index is set in the mask type index bitmap for this ACL */
-      ha->mask_type_index_bitmap = clib_bitmap_set(ha->mask_type_index_bitmap, ace_info.mask_type_index, 1);
-      vec_add1(ha->rules, ace_info);
-    }
   }
   /*
    * if an ACL is applied somewhere, fill the corresponding lookup data structures.
