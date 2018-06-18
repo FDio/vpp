@@ -24,7 +24,7 @@ option version = "2.0.0";
 /** \brief Initialize a new tap interface with the given paramters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param id - interface id, 0xffff means auto
+    @param id - interface id, 0xffffffff means auto
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_radom not set
     @param tx_ring_sz - the number of entries of TX ring
