@@ -29,6 +29,11 @@ class BridgeDomain(object):
                 Raw('\xa5' * 100))
 
     @abstractmethod
+    def ip_range(self, start, end):
+        """ range of remote ip's """
+        pass
+
+    @abstractmethod
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
         """ Encapsulate mcast packet """
         pass
@@ -148,8 +153,7 @@ class BridgeDomain(object):
         ip_range_end = 30
         mcast_stream = [
             self.encap_mcast(self.frame_request, ip, mac, self.mcast_flood_bd)
-            for ip in ip4_range(self.pg0.remote_ip4,
-                                ip_range_start, ip_range_end)]
+            for ip in self.ip_range(ip_range_start, ip_range_end)]
         self.pg0.add_stream(mcast_stream)
         self.pg2.enable_capture()
         self.pg_start()
