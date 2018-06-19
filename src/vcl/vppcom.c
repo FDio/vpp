@@ -1119,7 +1119,8 @@ done:
 
   session->vpp_handle = mp->handle;
   session->lcl_addr.is_ip4 = mp->lcl_is_ip4;
-  session->lcl_addr.ip46 = to_ip46 (!mp->lcl_is_ip4, mp->lcl_ip);
+  session->lcl_addr.ip46 = to_ip46 (mp->lcl_is_ip4 ? IP46_TYPE_IP4 :
+				    IP46_TYPE_IP6, mp->lcl_ip);
   session->lcl_port = mp->lcl_port;
   vppcom_session_table_add_listener (mp->handle, session_index);
   session->state = STATE_LISTEN;
@@ -1288,7 +1289,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->state = STATE_ACCEPT;
   session->peer_port = mp->port;
   session->peer_addr.is_ip4 = mp->is_ip4;
-  session->peer_addr.ip46 = to_ip46 (!mp->is_ip4, mp->ip);
+  session->peer_addr.ip46 = to_ip46 (mp->is_ip4 ? IP46_TYPE_IP4 :
+				     IP46_TYPE_IP6, mp->ip);
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -2534,7 +2536,8 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
     }
 
   session->lcl_addr.is_ip4 = ep->is_ip4;
-  session->lcl_addr.ip46 = to_ip46 (!ep->is_ip4, ep->ip);
+  session->lcl_addr.ip46 = to_ip46 (ep->is_ip4 ? IP46_TYPE_IP4 :
+				    IP46_TYPE_IP6, ep->ip);
   session->lcl_port = ep->port;
 
   if (VPPCOM_DEBUG > 0)
@@ -2798,10 +2801,16 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
   if (VPPCOM_DEBUG > 0)
     clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: accepted vpp handle "
-		  "0x%llx, sid %u connection to local %s address "
-		  "%U port %u", getpid (), listen_vpp_handle,
+		  "0x%llx, sid %u connection from peer %s address %U port %u "
+		  "to local %s address %U port %u",
+		  getpid (), listen_vpp_handle,
 		  listen_session_index, client_session->vpp_handle,
 		  client_session_index,
+		  client_session->peer_addr.is_ip4 ? "IPv4" : "IPv6",
+		  format_ip46_address, &client_session->peer_addr.ip46,
+		  client_session->peer_addr.is_ip4 ?
+		  IP46_TYPE_IP4 : IP46_TYPE_IP6,
+		  clib_net_to_host_u16 (client_session->peer_port),
 		  client_session->lcl_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address, &client_session->lcl_addr.ip46,
 		  client_session->lcl_addr.is_ip4 ?
@@ -2919,7 +2928,12 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
     }
 
   session->peer_addr.is_ip4 = server_ep->is_ip4;
-  session->peer_addr.ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
+  if (session->peer_addr.is_ip4)
+    clib_memcpy (&session->peer_addr.ip46.ip4, server_ep->ip,
+		 sizeof (ip4_address_t));
+  else
+    clib_memcpy (&session->peer_addr.ip46.ip6, server_ep->ip,
+		 sizeof (ip6_address_t));
   session->peer_port = server_ep->port;
 
   if (VPPCOM_DEBUG > 0)
