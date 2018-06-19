@@ -26,7 +26,7 @@ FORCE_FOREGROUND=0
 endif
 
 verify-no-running-vpp:
-	@if [ "$(VPP_PIDS)" != "" ]; then \
+	if [ "$(VPP_PIDS)" != "" ]; then \
 		echo; \
 		echo "*** Existing vpp processes detected (PID(s): $(VPP_PIDS)). Running tests under these conditions is not supported. ***"; \
 		echo; \
@@ -71,31 +71,37 @@ else
 PYTHON_INTERP=$(PYTHON)
 endif
 
+.PHONY: debugls
+debugls:
+	echo "vpp python prefix is $(VPP_PYTHON_PREFIX)"
+	find $(VPP_PYTHON_PREFIX)
+	echo "************"
+
 $(GET_PIP_SCRIPT):
-	@mkdir -p $(VPP_PYTHON_PREFIX)
-	@bash -c "cd $(VPP_PYTHON_PREFIX) && curl -O https://bootstrap.pypa.io/get-pip.py"
+	mkdir -p $(VPP_PYTHON_PREFIX)
+	bash -c "cd $(VPP_PYTHON_PREFIX) && curl -O https://bootstrap.pypa.io/get-pip.py"
 
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
-	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python $(GET_PIP_SCRIPT)"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
-	@touch $@
+	virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python $(GET_PIP_SCRIPT)"
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
+	touch $
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
-	@echo --- patching ---
-	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
+	echo --- patching ---
+	sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
 	for f in $(CURDIR)/patches/scapy-2.4/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
 	done
-	@touch $@
+	touch $
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && python setup.py install"
-	@touch $@
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && python setup.py install"
+	touch $
 
 define retest-func
-@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -109,8 +115,8 @@ SANITY_RUN_VPP_CMD=source $(PYTHON_VENV_PATH)/bin/activate && python sanity_run_
 endif
 
 sanity: verify-no-running-vpp
-	@sys_req/dev_shm_size.sh
-	@bash -c "$(SANITY_IMPORT_VPP_PAPI_CMD) ||\
+	sys_req/dev_shm_size.sh
+	bash -c "$(SANITY_IMPORT_VPP_PAPI_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot import vpp_papi\" &&\
 		 echo \"* to debug: \" &&\
@@ -118,7 +124,7 @@ sanity: verify-no-running-vpp
 		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
-	@bash -c "$(SANITY_RUN_VPP_CMD) ||\
+	bash -c "$(SANITY_RUN_VPP_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot run vpp\" &&\
 	         echo \"*******************************************************************\" &&\
@@ -130,14 +136,14 @@ ext:
 
 test-dep: verify-python-path $(PAPI_INSTALL_DONE)
 
-test: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
+test: debugls verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
 	$(call retest-func)
 
-retest: verify-python-path sanity reset
+retest: debugls verify-python-path sanity reset
 	$(call retest-func)
 
 shell: verify-python-path $(PAPI_INSTALL_DONE)
-	@echo "source $(PYTHON_VENV_PATH)/bin/activate;\
+	echo "source $(PYTHON_VENV_PATH)/bin/activate;\
 		echo '***';\
 		echo VPP_TEST_BUILD_DIR=$(VPP_TEST_BUILD_DIR);\
 		echo VPP_TEST_BIN=$(VPP_TEST_BIN);\
@@ -153,115 +159,115 @@ shell: verify-python-path $(PAPI_INSTALL_DONE)
 .PHONY: wipe doc
 
 reset:
-	@rm -f /dev/shm/vpp-unittest-*
-	@rm -rf /tmp/vpp-unittest-*
-	@rm -rf $(VPP_TEST_FAILED_DIR)
-	@mkdir $(VPP_TEST_FAILED_DIR)
+	rm -f /dev/shm/vpp-unittest-*
+	rm -rf /tmp/vpp-unittest-*
+	rm -rf $(VPP_TEST_FAILED_DIR)
+	mkdir $(VPP_TEST_FAILED_DIR)
 
 wipe: reset
-	@make -C ext clean
-	@rm -rf $(PYTHON_VENV_PATH)
-	@rm -f $(PAPI_INSTALL_FLAGS)
+	make -C ext clean
+	rm -rf $(PYTHON_VENV_PATH)
+	rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-python-path $(PIP_PATCH_DONE)
-	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
+	virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 .PHONY: wipe-doc
 
 wipe-doc:
-	@make -C doc wipe BR=$(BR)
+	make -C doc wipe BR=$(BR)
 
 cov: wipe-cov reset ext verify-python-path $(PAPI_INSTALL_DONE)
-	@lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
-	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
+	lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
+	test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 	$(call retest-func)
-	@mkdir $(BUILD_COV_DIR)
-	@lcov --capture --directory $(VPP_TEST_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
-	@test -z "$(EXTERN_COV_DIR)" || lcov --capture --directory $(EXTERN_COV_DIR) --output-file $(BUILD_COV_DIR)/extern-coverage.info
-	@genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
-	@test -z "$(EXTERN_COV_DIR)" || genhtml $(BUILD_COV_DIR)/extern-coverage.info --output-directory $(BUILD_COV_DIR)/extern-html
-	@echo
-	@echo "Build finished. Code coverage report is in $(BUILD_COV_DIR)/html/index.html"
-	@test -z "$(EXTERN_COV_DIR)" || echo "Code coverage report for out-of-tree objects is in $(BUILD_COV_DIR)/extern-html/index.html"
+	mkdir $(BUILD_COV_DIR)
+	lcov --capture --directory $(VPP_TEST_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
+	test -z "$(EXTERN_COV_DIR)" || lcov --capture --directory $(EXTERN_COV_DIR) --output-file $(BUILD_COV_DIR)/extern-coverage.info
+	genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
+	test -z "$(EXTERN_COV_DIR)" || genhtml $(BUILD_COV_DIR)/extern-coverage.info --output-directory $(BUILD_COV_DIR)/extern-html
+	echo
+	echo "Build finished. Code coverage report is in $(BUILD_COV_DIR)/html/index.html"
+	test -z "$(EXTERN_COV_DIR)" || echo "Code coverage report for out-of-tree objects is in $(BUILD_COV_DIR)/extern-html/index.html"
 
 .PHONY: wipe-cov
 
 wipe-cov: wipe
-	@rm -rf $(BUILD_COV_DIR)
+	rm -rf $(BUILD_COV_DIR)
 
 .PHONY: checkstyle
 checkstyle: verify-python-path
-	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
+	virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle"
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
-	@echo "*******************************************************************"
-	@echo "* Test framework PEP8 compliance check passed"
-	@echo "*******************************************************************"
+	echo "*******************************************************************"
+	echo "* Test framework PEP8 compliance check passed"
+	echo "*******************************************************************"
 
 help:
-	@echo "Running tests:"
-	@echo ""
-	@echo " test                - build and run (basic) functional tests"
-	@echo " test-debug          - build and run (basic) functional tests (debug build)"
-	@echo " test-all            - build and run (all) functional tests"
-	@echo " test-all-debug      - build and run (all) functional tests (debug build)"
-	@echo " retest              - run functional tests"
-	@echo " retest-debug        - run functional tests (debug build)"
-	@echo " test-wipe           - wipe (temporary) files generated by unit tests"
-	@echo " test-shell          - enter shell with test environment"
-	@echo " test-shell-debug    - enter shell with test environment (debug build)"
-	@echo ""
-	@echo "Arguments controlling test runs:"
-	@echo " V=[0|1|2]            - set test verbosity level"
-	@echo " CACHE_OUTPUT=[0|1]   - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
-	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
-	@echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> (in seconds) to finish"
-	@echo " RETRIES=<n>          - retry failed tests <n> times"
-	@echo " DEBUG=<type>         - set VPP debugging kind"
-	@echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
-	@echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "
-	@echo "                        and waiting for user input before running "
-	@echo "                        and tearing down a testcase"
-	@echo "    DEBUG=gdbserver   - run gdb inside a gdb server, otherwise "
-	@echo "                        same as above"
-	@echo " STEP=[yes|no]        - ease debugging by stepping through a testcase "
-	@echo " SANITY=[yes|no]      - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)"
-	@echo " EXTENDED_TESTS=[1|y] - run extended tests"
-	@echo " TEST=<filter>        - filter the set of tests:"
-	@echo "    by file-name      - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
-	@echo "    by file-suffix    - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
-	@echo "    by wildcard       - wildcard filter is <file>.<class>.<test function>, each can be replaced by '*'"
-	@echo "                        e.g. TEST='test_bfd.*.*' is equivalent to above example of filter by file-name"
-	@echo "                             TEST='bfd.*.*' is equivalent to above example of filter by file-suffix"
-	@echo "                             TEST='bfd.BFDAPITestCase.*' selects all tests from test_bfd.py which are part of BFDAPITestCase class"
-	@echo "                             TEST='bfd.BFDAPITestCase.test_add_bfd' selects a single test named test_add_bfd from test_bfd.py/BFDAPITestCase"
-	@echo "                             TEST='*.*.test_add_bfd' selects all test functions named test_add_bfd from all files/classes"
-	@echo ""
-	@echo " VPP_ZOMBIE_NOCHECK=1 - skip checking for vpp (zombie) processes (CAUTION)"
-	@echo " COREDUMP_SIZE=<size> - pass <size> as unix { coredump-size <size> } argument to vpp"
-	@echo "                        e.g. COREDUMP_SIZE=4g"
-	@echo "                             COREDUMP_SIZE=unlimited"
-	@echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
-	@echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
-	@echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
-	@echo ""
-	@echo " TEST_DEBUG=1         - turn on debugging of the test framework itself (expert)"
-	@echo ""
-	@echo "Creating test documentation"
-	@echo " test-doc            - generate documentation for test framework"
-	@echo " test-wipe-doc       - wipe documentation for test framework"
-	@echo ""
-	@echo "Creating test code coverage report"
-	@echo " test-cov            - generate code coverage report for test framework"
-	@echo " test-wipe-cov       - wipe code coverage report for test framework"
-	@echo ""
-	@echo "Verifying code-style"
-	@echo " test-checkstyle     - check PEP8 compliance"
-	@echo ""
+	echo "Running tests:"
+	echo ""
+	echo " test                - build and run (basic) functional tests"
+	echo " test-debug          - build and run (basic) functional tests (debug build)"
+	echo " test-all            - build and run (all) functional tests"
+	echo " test-all-debug      - build and run (all) functional tests (debug build)"
+	echo " retest              - run functional tests"
+	echo " retest-debug        - run functional tests (debug build)"
+	echo " test-wipe           - wipe (temporary) files generated by unit tests"
+	echo " test-shell          - enter shell with test environment"
+	echo " test-shell-debug    - enter shell with test environment (debug build)"
+	echo ""
+	echo "Arguments controlling test runs:"
+	echo " V=[0|1|2]            - set test verbosity level"
+	echo " CACHE_OUTPUT=[0|1]   - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
+	echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
+	echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> (in seconds) to finish"
+	echo " RETRIES=<n>          - retry failed tests <n> times"
+	echo " DEBUG=<type>         - set VPP debugging kind"
+	echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
+	echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "
+	echo "                        and waiting for user input before running "
+	echo "                        and tearing down a testcase"
+	echo "    DEBUG=gdbserver   - run gdb inside a gdb server, otherwise "
+	echo "                        same as above"
+	echo " STEP=[yes|no]        - ease debugging by stepping through a testcase "
+	echo " SANITY=[yes|no]      - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)"
+	echo " EXTENDED_TESTS=[1|y] - run extended tests"
+	echo " TEST=<filter>        - filter the set of tests:"
+	echo "    by file-name      - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
+	echo "    by file-suffix    - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
+	echo "    by wildcard       - wildcard filter is <file>.<class>.<test function>, each can be replaced by '*'"
+	echo "                        e.g. TEST='test_bfd.*.*' is equivalent to above example of filter by file-name"
+	echo "                             TEST='bfd.*.*' is equivalent to above example of filter by file-suffix"
+	echo "                             TEST='bfd.BFDAPITestCase.*' selects all tests from test_bfd.py which are part of BFDAPITestCase class"
+	echo "                             TEST='bfd.BFDAPITestCase.test_add_bfd' selects a single test named test_add_bfd from test_bfd.py/BFDAPITestCase"
+	echo "                             TEST='*.*.test_add_bfd' selects all test functions named test_add_bfd from all files/classes"
+	echo ""
+	echo " VPP_ZOMBIE_NOCHECK=1 - skip checking for vpp (zombie) processes (CAUTION)"
+	echo " COREDUMP_SIZE=<size> - pass <size> as unix { coredump-size <size> } argument to vpp"
+	echo "                        e.g. COREDUMP_SIZE=4g"
+	echo "                             COREDUMP_SIZE=unlimited"
+	echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
+	echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
+	echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
+	echo ""
+	echo " TEST_DEBUG=1         - turn on debugging of the test framework itself (expert)"
+	echo ""
+	echo "Creating test documentation"
+	echo " test-doc            - generate documentation for test framework"
+	echo " test-wipe-doc       - wipe documentation for test framework"
+	echo ""
+	echo "Creating test code coverage report"
+	echo " test-cov            - generate code coverage report for test framework"
+	echo " test-wipe-cov       - wipe code coverage report for test framework"
+	echo ""
+	echo "Verifying code-style"
+	echo " test-checkstyle     - check PEP8 compliance"
+	echo ""
