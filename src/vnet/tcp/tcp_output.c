@@ -448,16 +448,16 @@ always_inline int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u16 * n_bufs,
 		      u32 wanted)
 {
+  tcp_worker_ctx_t *ctx = &tm->wrk_ctx[thread_index];
   vlib_main_t *vm = vlib_get_main ();
   u32 n_alloc;
 
   ASSERT (wanted > *n_bufs);
-  vec_validate_aligned (tm->tx_buffers[thread_index], wanted - 1,
-			CLIB_CACHE_LINE_BYTES);
-  n_alloc = vlib_buffer_alloc (vm, &tm->tx_buffers[thread_index][*n_bufs],
+  vec_validate_aligned (ctx->tx_buffers, wanted - 1, CLIB_CACHE_LINE_BYTES);
+  n_alloc = vlib_buffer_alloc (vm, &ctx->tx_buffers[*n_bufs],
 			       wanted - *n_bufs);
   *n_bufs += n_alloc;
-  _vec_len (tm->tx_buffers[thread_index]) = *n_bufs;
+  _vec_len (ctx->tx_buffers) = *n_bufs;
   return n_alloc;
 }
 
@@ -465,7 +465,8 @@ always_inline int
 tcp_get_free_buffer_index (tcp_main_t * tm, u32 * bidx)
 {
   u32 thread_index = vlib_get_thread_index ();
-  u16 n_bufs = vec_len (tm->tx_buffers[thread_index]);
+  tcp_worker_ctx_t *ctx = &tm->wrk_ctx[thread_index];
+  u16 n_bufs = vec_len (ctx->tx_buffers);
 
   TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL (thread_index);
 
@@ -477,8 +478,8 @@ tcp_get_free_buffer_index (tcp_main_t * tm, u32 * bidx)
 	  return -1;
 	}
     }
-  *bidx = tm->tx_buffers[thread_index][--n_bufs];
-  _vec_len (tm->tx_buffers[thread_index]) = n_bufs;
+  *bidx = ctx->tx_buffers[--n_bufs];
+  _vec_len (ctx->tx_buffers) = n_bufs;
   return 0;
 }
 
@@ -647,12 +648,12 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
   tcp_trajectory_add_start (b, 1);
 
-  f = tm->ip_lookup_tx_frames[!is_ip4][thread_index];
+  f = tm->wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4];
   if (!f)
     {
       f = vlib_get_frame_to_node (vm, next_index);
       ASSERT (f);
-      tm->ip_lookup_tx_frames[!is_ip4][thread_index] = f;
+      tm->wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4] = f;
     }
 
   to_next = vlib_frame_vector_args (f);
@@ -661,7 +662,7 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   if (flush || f->n_vectors == VLIB_FRAME_SIZE)
     {
       vlib_put_frame_to_node (vm, next_index, f);
-      tm->ip_lookup_tx_frames[!is_ip4][thread_index] = 0;
+      tm->wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4] = 0;
     }
 }
 
@@ -698,12 +699,12 @@ tcp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   tcp_trajectory_add_start (b, 2);
 
   /* Get frame to v4/6 output node */
-  f = tm->tx_frames[!is_ip4][thread_index];
+  f = tm->wrk_ctx[thread_index].tx_frames[!is_ip4];
   if (!f)
     {
       f = vlib_get_frame_to_node (vm, next_index);
       ASSERT (f);
-      tm->tx_frames[!is_ip4][thread_index] = f;
+      tm->wrk_ctx[thread_index].tx_frames[!is_ip4] = f;
     }
   to_next = vlib_frame_vector_args (f);
   to_next[f->n_vectors] = bi;
@@ -711,7 +712,7 @@ tcp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   if (flush || f->n_vectors == VLIB_FRAME_SIZE)
     {
       vlib_put_frame_to_node (vm, next_index, f);
-      tm->tx_frames[!is_ip4][thread_index] = 0;
+      tm->wrk_ctx[thread_index].tx_frames[!is_ip4] = 0;
     }
 }
 
@@ -1007,13 +1008,14 @@ tcp_send_syn (tcp_connection_t * tc)
 void
 tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 {
-  if (tcp_main.tx_frames[!is_ip4][thread_index])
+  if (tcp_main.wrk_ctx[thread_index].tx_frames[!is_ip4])
     {
       u32 next_index;
       next_index = is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
       vlib_put_frame_to_node (vm, next_index,
-			      tcp_main.tx_frames[!is_ip4][thread_index]);
-      tcp_main.tx_frames[!is_ip4][thread_index] = 0;
+			      tcp_main.
+			      wrk_ctx[thread_index].tx_frames[!is_ip4]);
+      tcp_main.wrk_ctx[thread_index].tx_frames[!is_ip4] = 0;
     }
 }
 
@@ -1023,14 +1025,15 @@ tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 always_inline void
 tcp_flush_frame_to_ip_lookup (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 {
-  if (tcp_main.ip_lookup_tx_frames[!is_ip4][thread_index])
+  if (tcp_main.wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4])
     {
       u32 next_index;
       next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
       vlib_put_frame_to_node (vm, next_index,
-			      tcp_main.ip_lookup_tx_frames[!is_ip4]
-			      [thread_index]);
-      tcp_main.ip_lookup_tx_frames[!is_ip4][thread_index] = 0;
+			      tcp_main.
+			      wrk_ctx[thread_index].ip_lookup_tx_frames
+			      [!is_ip4]);
+      tcp_main.wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4] = 0;
     }
 }
 
@@ -1264,7 +1267,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 
       /* Make sure we have enough buffers */
       n_bufs_per_seg = ceil ((double) seg_size / tm->bytes_per_buffer);
-      available_bufs = vec_len (tm->tx_buffers[thread_index]);
+      available_bufs = vec_len (tm->wrk_ctx[thread_index].tx_buffers);
       if (n_bufs_per_seg > available_bufs)
 	{
 	  tcp_alloc_tx_buffers (tm, thread_index, &available_bufs,
