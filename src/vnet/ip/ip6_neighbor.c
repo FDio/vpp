@@ -466,6 +466,8 @@ ip6_nbr_probe (ip_adjacency_t * adj)
   h = vlib_packet_template_get_packet (vm,
 				       &im->discover_neighbor_packet_template,
 				       &bi);
+  if (!h)
+    return;
 
   hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
 
@@ -5037,6 +5039,9 @@ send_ip6_na_w_addr (vlib_main_t * vm,
 	vlib_packet_template_get_packet (vm,
 					 &i6m->discover_neighbor_packet_template,
 					 &bi);
+      if (!h)
+	return;
+
       ip6_set_reserved_multicast_address (&h->ip.dst_address,
 					  IP6_MULTICAST_SCOPE_link_local,
 					  IP6_MULTICAST_GROUP_ID_all_hosts);

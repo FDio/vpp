@@ -195,6 +195,9 @@ send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
       h0 = vlib_packet_template_get_packet
 	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
 
+      if (!h0)
+	break;
+
       hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
       t0 = (u8 *) & h0->cdp.data;
@@ -250,6 +253,9 @@ send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
        */
       h0 = vlib_packet_template_get_packet
 	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
+
+      if (!h0)
+	break;
 
       hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
