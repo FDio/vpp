@@ -1960,6 +1960,9 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
 				       &im->ip4_arp_request_packet_template,
 				       &bi);
 
+  if (!h)
+    return clib_error_return (0, "ARP request packet allocation failed");
+
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (PREDICT_FALSE (!hi->hw_address))
     {

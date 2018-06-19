@@ -352,6 +352,8 @@ arp_nbr_probe (ip_adjacency_t * adj)
   h =
     vlib_packet_template_get_packet (vm, &im->ip4_arp_request_packet_template,
 				     &bi);
+  if (!h)
+    return;
 
   hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
 
@@ -2579,6 +2581,10 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
       u32 bi = 0;
       ethernet_arp_header_t *h = vlib_packet_template_get_packet
 	(vm, &i4m->ip4_arp_request_packet_template, &bi);
+
+      if (!h)
+	return;
+
       clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
 		   sizeof (h->ip4_over_ethernet[0].ethernet));
       clib_memcpy (h->ip4_over_ethernet[1].ethernet, hi->hw_address,
