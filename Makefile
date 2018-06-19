@@ -532,7 +532,7 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
-	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	@make FAILFAST=1 COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif
 
 
