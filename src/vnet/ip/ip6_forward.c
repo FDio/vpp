@@ -1476,6 +1476,8 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
     vlib_packet_template_get_packet (vm,
 				     &im->discover_neighbor_packet_template,
 				     &bi);
+  if (!h)
+    return clib_error_return (0, "ICMP6 NS packet allocation failed");
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
