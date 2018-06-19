@@ -2667,9 +2667,10 @@ class VppPapiProvider(object):
                          'client_mac': client_mac})
 
     def sr_localsid_add_del(self,
-                            localsid_addr,
+                            localsid,
                             behavior,
-                            nh_addr,
+                            nh_addr4,
+                            nh_addr6,
                             is_del=0,
                             end_psp=0,
                             sw_if_index=0xFFFFFFFF,
@@ -2678,10 +2679,11 @@ class VppPapiProvider(object):
                             ):
         """ Add/del IPv6 SR local-SID.
 
-        :param localsid_addr:
+        :param localsid:
         :param behavior: END=1; END.X=2; END.DX2=4; END.DX6=5;
         :param behavior: END.DX4=6; END.DT6=7; END.DT4=8
-        :param nh_addr:
+        :param nh_addr4:
+        :param nh_addr6:
         :param is_del:  (Default value = 0)
         :param end_psp: (Default value = 0)
         :param sw_if_index: (Default value = 0xFFFFFFFF)
@@ -2691,13 +2693,14 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.sr_localsid_add_del,
             {'is_del': is_del,
-             'localsid_addr': localsid_addr,
+             'localsid': localsid,
              'end_psp': end_psp,
              'behavior': behavior,
              'sw_if_index': sw_if_index,
              'vlan_index': vlan_index,
              'fib_table': fib_table,
-             'nh_addr': nh_addr
+             'nh_addr4': nh_addr4,
+             'nh_addr6': nh_addr6
              }
         )
 
