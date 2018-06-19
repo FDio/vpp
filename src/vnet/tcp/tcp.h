@@ -358,6 +358,17 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
+typedef struct tcp_worker_ctx_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  u32 time_now;					/**< tcp worker time */
+  u32 *tx_buffers;				/**< tx buffer free list */
+  vlib_frame_t *tx_frames[2];			/**< tx frames for tcp 4/6
+						     output nodes */
+  vlib_frame_t *ip_lookup_tx_frames[2];	/**< tx frames for ip 4/6
+						     lookup nodes */
+} tcp_worker_ctx_t;
+
 typedef struct _tcp_main
 {
   /* Per-worker thread tcp connection pools */
@@ -371,14 +382,13 @@ typedef struct _tcp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
-  u32 *time_now;
 
-  /** per-worker tx buffer free lists */
-  u32 **tx_buffers;
-  /** per-worker tx frames to tcp 4/6 output nodes */
-  vlib_frame_t **tx_frames[2];
-  /** per-worker tx frames to ip 4/6 lookup nodes */
-  vlib_frame_t **ip_lookup_tx_frames[2];
+  /** per-worker context */
+  tcp_worker_ctx_t *thread_ctx;
+
+
+
+
 
   /* Per worker-thread timer wheel for connections timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheels;
@@ -657,15 +667,15 @@ u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 always_inline u32
 tcp_time_now (void)
 {
-  return tcp_main.time_now[vlib_get_thread_index ()];
+  return tcp_main.thread_ctx[vlib_get_thread_index ()].time_now;
 }
 
 always_inline u32
 tcp_set_time_now (u32 thread_index)
 {
-  tcp_main.time_now[thread_index] = clib_cpu_time_now ()
+  tcp_main.thread_ctx[thread_index].time_now = clib_cpu_time_now ()
     * tcp_main.tstamp_ticks_per_clock;
-  return tcp_main.time_now[thread_index];
+  return tcp_main.thread_ctx[thread_index].time_now;
 }
 
 u32 tcp_session_push_header (transport_connection_t * tconn,
