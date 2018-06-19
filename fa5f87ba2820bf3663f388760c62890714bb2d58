@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "232f1d96_ca912ae0",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-06-19T21:35:55Z",
+      "side": 1,
+      "message": "Does this actually work w/ production images compiled w/ -pie?",
+      "revId": "fa5f87ba2820bf3663f388760c62890714bb2d58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
