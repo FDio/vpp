@@ -358,6 +358,18 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
+typedef struct tcp_worker_ctx_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 time_now;					/**< worker time */
+  tw_timer_wheel_16t_2w_512sl_t timer_wheel;	/**< worker timer wheel */
+  u32 *tx_buffers;				/**< tx buffer free list */
+  vlib_frame_t *tx_frames[2];			/**< tx frames for tcp 4/6
+						     output nodes */
+  vlib_frame_t *ip_lookup_tx_frames[2];		/**< tx frames for ip 4/6
+						     lookup nodes */
+} tcp_worker_ctx_t;
+
 typedef struct _tcp_main
 {
   /* Per-worker thread tcp connection pools */
@@ -371,17 +383,9 @@ typedef struct _tcp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
-  u32 *time_now;
 
-  /** per-worker tx buffer free lists */
-  u32 **tx_buffers;
-  /** per-worker tx frames to tcp 4/6 output nodes */
-  vlib_frame_t **tx_frames[2];
-  /** per-worker tx frames to ip 4/6 lookup nodes */
-  vlib_frame_t **ip_lookup_tx_frames[2];
-
-  /* Per worker-thread timer wheel for connections timers */
-  tw_timer_wheel_16t_2w_512sl_t *timer_wheels;
+  /** per-worker context */
+  tcp_worker_ctx_t *wrk_ctx;
 
   /* Pool of half-open connections on which we've sent a SYN */
   tcp_connection_t *half_open_connections;
@@ -657,15 +661,15 @@ u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 always_inline u32
 tcp_time_now (void)
 {
-  return tcp_main.time_now[vlib_get_thread_index ()];
+  return tcp_main.wrk_ctx[vlib_get_thread_index ()].time_now;
 }
 
 always_inline u32
 tcp_set_time_now (u32 thread_index)
 {
-  tcp_main.time_now[thread_index] = clib_cpu_time_now ()
+  tcp_main.wrk_ctx[thread_index].time_now = clib_cpu_time_now ()
     * tcp_main.tstamp_ticks_per_clock;
-  return tcp_main.time_now[thread_index];
+  return tcp_main.wrk_ctx[thread_index].time_now;
 }
 
 u32 tcp_session_push_header (transport_connection_t * tconn,
@@ -693,9 +697,10 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   ASSERT (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID);
-  tc->timers[timer_id]
-    = tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
-				   tc->c_c_index, timer_id, interval);
+  tc->timers[timer_id] =
+    tw_timer_start_16t_2w_512sl (&tcp_main.
+				 wrk_ctx[tc->c_thread_index].timer_wheel,
+				 tc->c_c_index, timer_id, interval);
 }
 
 always_inline void
@@ -705,7 +710,8 @@ tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
     return;
 
-  tw_timer_stop_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
+  tw_timer_stop_16t_2w_512sl (&tcp_main.
+			      wrk_ctx[tc->c_thread_index].timer_wheel,
 			      tc->timers[timer_id]);
   tc->timers[timer_id] = TCP_TIMER_HANDLE_INVALID;
 }
@@ -715,10 +721,12 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
-    tw_timer_stop_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
+    tw_timer_stop_16t_2w_512sl (&tcp_main.
+				wrk_ctx[tc->c_thread_index].timer_wheel,
 				tc->timers[timer_id]);
   tc->timers[timer_id] =
-    tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
+    tw_timer_start_16t_2w_512sl (&tcp_main.
+				 wrk_ctx[tc->c_thread_index].timer_wheel,
 				 tc->c_c_index, timer_id, interval);
 }
 

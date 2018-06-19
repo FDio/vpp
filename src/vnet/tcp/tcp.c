@@ -1063,7 +1063,8 @@ void
 tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_set_time_now (thread_index);
-  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
+  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.
+				       wrk_ctx[thread_index].timer_wheel,
 				       now);
   tcp_flush_frames_to_output (thread_index);
 }
@@ -1203,7 +1204,7 @@ tcp_initialize_timer_wheels (tcp_main_t * tm)
   tw_timer_wheel_16t_2w_512sl_t *tw;
   /* *INDENT-OFF* */
   foreach_vlib_main (({
-    tw = &tm->timer_wheels[ii];
+    tw = &tm->wrk_ctx[ii].timer_wheel;
     tw_timer_wheel_init_16t_2w_512sl (tw, tcp_expired_timers_dispatch,
 				      100e-3 /* timer period 100ms */ , ~0);
     tw->last_run_time = vlib_time_now (this_vlib_main);
@@ -1272,13 +1273,6 @@ tcp_main_enable (vlib_main_t * vm)
     pool_init_fixed (tm->half_open_connections,
 		     tm->preallocated_half_open_connections);
 
-  /* Initialize per worker thread tx buffers (used for control messages) */
-  vec_validate (tm->tx_buffers, num_threads - 1);
-
-  /* Initialize timer wheels */
-  vec_validate (tm->timer_wheels, num_threads - 1);
-  tcp_initialize_timer_wheels (tm);
-
   /* Initialize clocks per tick for TCP timestamp. Used to compute
    * monotonically increasing timestamps. */
   tm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
@@ -1289,15 +1283,12 @@ tcp_main_enable (vlib_main_t * vm)
       clib_spinlock_init (&tm->half_open_lock);
     }
 
-  vec_validate (tm->tx_frames[0], num_threads - 1);
-  vec_validate (tm->tx_frames[1], num_threads - 1);
-  vec_validate (tm->ip_lookup_tx_frames[0], num_threads - 1);
-  vec_validate (tm->ip_lookup_tx_frames[1], num_threads - 1);
+  vec_validate (tm->wrk_ctx, num_threads - 1);
+  tcp_initialize_timer_wheels (tm);
 
   tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
     (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
-  vec_validate (tm->time_now, num_threads - 1);
   return error;
 }
 
