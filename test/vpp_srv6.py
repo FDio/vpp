@@ -40,24 +40,15 @@ class VppSRv6LocalSID(VppObject):
     SRv6 LocalSID
     """
 
-    def __init__(self, test, localsid_addr, behavior, nh_addr, end_psp,
-                 sw_if_index, vlan_index, fib_table):
+    def __init__(self, test, localsid, behavior, nh_addr4, nh_addr6,
+                 end_psp, sw_if_index, vlan_index, fib_table):
         self._test = test
-        self.localsid_addr = localsid_addr
-        # keep binary format in _localsid_addr
-        self._localsid_addr = inet_pton(AF_INET6, self.localsid_addr)
+        self.localsid = localsid
+        # keep binary format in _localsid
+        self.localsid["addr"] = inet_pton(AF_INET6, self.localsid["addr"])
         self.behavior = behavior
-        self.nh_addr = nh_addr
-        # keep binary format in _nh_addr
-        if ':' in nh_addr:
-            # IPv6
-            self._nh_addr = inet_pton(AF_INET6, nh_addr)
-        else:
-            # IPv4
-            # API expects 16 octets (128 bits)
-            # last 4 octets are used for IPv4
-            # --> prepend 12 octets
-            self._nh_addr = ('\x00' * 12) + inet_pton(AF_INET, nh_addr)
+        self.nh_addr4 = inet_pton(AF_INET, nh_addr4)
+        self.nh_addr6 = inet_pton(AF_INET6, nh_addr6)
         self.end_psp = end_psp
         self.sw_if_index = sw_if_index
         self.vlan_index = vlan_index
@@ -66,9 +57,10 @@ class VppSRv6LocalSID(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
-            self._localsid_addr,
+            self.localsid,
             self.behavior,
-            self._nh_addr,
+            self.nh_addr4,
+            self.nh_addr6,
             is_del=0,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
@@ -78,9 +70,10 @@ class VppSRv6LocalSID(VppObject):
 
     def remove_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
-            self._localsid_addr,
+            self.localsid,
             self.behavior,
-            self._nh_addr,
+            self.nh_addr4,
+            self.nh_addr6,
             is_del=1,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
@@ -99,7 +92,7 @@ class VppSRv6LocalSID(VppObject):
     def object_id(self):
         return ("%d;%s,%d"
                 % (self.fib_table,
-                   self.localsid_addr,
+                   self.localsid,
                    self.behavior))
 
 
