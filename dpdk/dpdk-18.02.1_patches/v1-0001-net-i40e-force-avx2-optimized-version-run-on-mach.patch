@@ -1,0 +1,45 @@
+From f6484dda255f653393cf79c6bcaafe788a41fe72 Mon Sep 17 00:00:00 2001
+From: Zhiyong Yang <zhiyong.yang@intel.com>
+Date: Tue, 19 Jun 2018 22:17:45 -0400
+Subject: [PATCH v1] net/i40e: force avx2 optimized version run on machine
+ supporting avx2
+
+Signed-off-by: Zhiyong Yang <zhiyong.yang@intel.com>
+---
+ drivers/net/i40e/i40e_rxtx.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/i40e/i40e_rxtx.c b/drivers/net/i40e/i40e_rxtx.c
+index 1217e5a..d023b46 100644
+--- a/drivers/net/i40e/i40e_rxtx.c
++++ b/drivers/net/i40e/i40e_rxtx.c
+@@ -2817,7 +2817,7 @@ void __attribute__((cold))
+ 			 * plaforms, not all those that could theoretically
+ 			 * run it.
+ 			 */
+-			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
++			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+ 				dev->rx_pkt_burst =
+ 					i40e_recv_scattered_pkts_vec_avx2;
+ #endif
+@@ -2847,7 +2847,7 @@ void __attribute__((cold))
+ 		 * plaforms, not all those that could theoretically
+ 		 * run it.
+ 		 */
+-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
++		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+ 			dev->rx_pkt_burst = i40e_recv_pkts_vec_avx2;
+ #endif
+ 	} else if (ad->rx_bulk_alloc_allowed) {
+@@ -2936,7 +2936,7 @@ void __attribute__((cold))
+ 			 * plaforms, not all those that could theoretically
+ 			 * run it.
+ 			 */
+-			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
++			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+ 				dev->tx_pkt_burst = i40e_xmit_pkts_vec_avx2;
+ #endif
+ 		} else {
+-- 
+1.8.3.1
+
