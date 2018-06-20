@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49ac44ef_83306cd7",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2018-06-20T16:17:02Z",
+      "side": 1,
+      "message": "this is wrong, you need send the echo response back to the source port of the request (see 3GPP TS 29.281, section 4.4.2.2)",
+      "revId": "706c9875add50e5d40b265344ec6234b82a75f02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "69f08e13_aba44af3",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2018-06-20T16:17:02Z",
+      "side": 1,
+      "message": "same as for IPv6, need to send back to original the source port",
+      "revId": "706c9875add50e5d40b265344ec6234b82a75f02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ee9a9ba_cd8fc6a1",
+        "filename": "src/plugins/gtpu/gtpu_process.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2018-06-20T16:17:02Z",
+      "side": 1,
+      "message": "shouldn\u0027t that be `clib_host_to_net_u16 (UDP_DST_PORT_GTPU)` instead of 2152 ???",
+      "revId": "706c9875add50e5d40b265344ec6234b82a75f02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
