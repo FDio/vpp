@@ -64,6 +64,7 @@ test-driver
 .idea/
 .project
 .cproject
+.pydevproject
 .vscode/
 CMakeLists.txt
 cmake-build*/
