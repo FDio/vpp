@@ -64,15 +64,25 @@ fill_applied_hash_ace_kv(acl_main_t *am,
   applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
-  memcpy(kv_key, &(vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->match), sizeof(*kv_key));
-  /* initialize the sw_if_index and direction */
+  /* apply the mask to ace key */
+  hash_ace_info_t *ace_info = vec_elt_at_index(ha->rules, pae->hash_ace_info_index);
+  ace_mask_type_entry_t *mte = vec_elt_at_index(am->ace_mask_type_pool, pae->mask_type_index);
+
+  u64 *pmatch = (u64 *) &ace_info->match;
+  u64 *pmask = (u64 *)&mte->mask;
+  u64 *pkey = (u64 *)kv->key;
+
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+
+  kv_key->pkt.mask_type_index_lsb = pae->mask_type_index;
   kv_key->pkt.lc_index = lc_index;
   kv_val->as_u64 = 0;
   kv_val->applied_entry_index = new_index;
-  kv_val->need_portrange_check = vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->src_portrange_not_powerof2 ||
-				   vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->dst_portrange_not_powerof2;
-  /* by default assume all values are shadowed -> check all mask types */
-  kv_val->shadowed = 1;
 }
 
 static void
@@ -88,6 +98,149 @@ add_del_hashtable_entry(acl_main_t *am,
 }
 
 
+static u32
+find_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
+{
+  ace_mask_type_entry_t *mte;
+  /* *INDENT-OFF* */
+  pool_foreach(mte, am->ace_mask_type_pool,
+  ({
+    if(memcmp(&mte->mask, mask, sizeof(*mask)) == 0)
+      return (mte - am->ace_mask_type_pool);
+  }));
+  /* *INDENT-ON* */
+  return ~0;
+}
+
+static u32
+assign_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
+{
+  u32 mask_type_index = find_mask_type_index(am, mask);
+  ace_mask_type_entry_t *mte;
+  if(~0 == mask_type_index) {
+    pool_get_aligned (am->ace_mask_type_pool, mte, CLIB_CACHE_LINE_BYTES);
+    mask_type_index = mte - am->ace_mask_type_pool;
+    clib_memcpy(&mte->mask, mask, sizeof(mte->mask));
+    mte->refcount = 0;
+    /*
+     * We can use only 16 bits, since in the match there is only u16 field.
+     * Realistically, once you go to 64K of mask types, it is a huge
+     * problem anyway, so we might as well stop half way.
+     */
+    ASSERT(mask_type_index < 32768);
+  }
+  mte = am->ace_mask_type_pool + mask_type_index;
+  mte->refcount++;
+  return mask_type_index;
+}
+
+static void
+release_mask_type_index(acl_main_t *am, u32 mask_type_index)
+{
+  ace_mask_type_entry_t *mte = pool_elt_at_index(am->ace_mask_type_pool, mask_type_index);
+  mte->refcount--;
+  if (mte->refcount == 0) {
+    /* we are not using this entry anymore */
+    pool_put(am->ace_mask_type_pool, mte);
+  }
+}
+
+static void
+remake_hash_applied_mask_info_vec (acl_main_t * am,
+                                   applied_hash_ace_entry_t **
+                                   applied_hash_aces, u32 lc_index)
+{
+  hash_applied_mask_info_t *new_hash_applied_mask_info_vec =
+    vec_new (hash_applied_mask_info_t, 0);
+
+  hash_applied_mask_info_t *minfo;
+  for (int i = 0; i < vec_len ((*applied_hash_aces)); i++)
+    {
+      applied_hash_ace_entry_t *pae =
+        vec_elt_at_index ((*applied_hash_aces), i);
+
+      u32 new_index = i;
+      u32 new_pointer = vec_len (new_hash_applied_mask_info_vec);
+
+      /* check if mask_type_index is already there */
+      int search;
+      for (search = 0; search < vec_len (new_hash_applied_mask_info_vec);
+           search++)
+        {
+          minfo = vec_elt_at_index (new_hash_applied_mask_info_vec, search);
+          if (minfo->mask_type_index == pae->mask_type_index)
+            break;
+        }
+
+      vec_validate ((new_hash_applied_mask_info_vec), search);
+      minfo = vec_elt_at_index ((new_hash_applied_mask_info_vec), search);
+      if (search == new_pointer)
+        {
+          minfo->mask_type_index = pae->mask_type_index;
+          minfo->num_entries = 0;
+          minfo->max_collisions = 0;
+          minfo->first_rule_index = ~0;
+        }
+
+      minfo->num_entries = minfo->num_entries + 1;
+
+      if (vec_len (pae->colliding_rules) > minfo->max_collisions)
+        minfo->max_collisions = vec_len (pae->colliding_rules);
+
+      if (minfo->first_rule_index > new_index)
+        minfo->first_rule_index = new_index;
+    }
+
+  hash_applied_mask_info_t **hash_applied_mask_info_vec =
+    vec_elt_at_index (am->hash_applied_mask_info_vec_by_lc_index, lc_index);
+
+  vec_free ((*hash_applied_mask_info_vec));
+  (*hash_applied_mask_info_vec) = new_hash_applied_mask_info_vec;
+}
+
+static void
+vec_del_collision_rule (collision_match_rule_t ** pvec,
+                        u32 applied_entry_index)
+{
+  u32 i;
+  for (i = 0; i < vec_len ((*pvec)); i++)
+    {
+      collision_match_rule_t *cr = vec_elt_at_index ((*pvec), i);
+      if (cr->applied_entry_index == applied_entry_index)
+        {
+          vec_del1 ((*pvec), i);
+        }
+    }
+}
+
+static void
+del_colliding_rule (applied_hash_ace_entry_t ** applied_hash_aces,
+                    u32 head_index, u32 applied_entry_index)
+{
+  applied_hash_ace_entry_t *head_pae =
+    vec_elt_at_index ((*applied_hash_aces), head_index);
+  vec_del_collision_rule (&head_pae->colliding_rules, applied_entry_index);
+}
+
+static void
+add_colliding_rule (acl_main_t * am,
+                    applied_hash_ace_entry_t ** applied_hash_aces,
+                    u32 head_index, u32 applied_entry_index)
+{
+  applied_hash_ace_entry_t *head_pae =
+    vec_elt_at_index ((*applied_hash_aces), head_index);
+  applied_hash_ace_entry_t *pae =
+    vec_elt_at_index ((*applied_hash_aces), applied_entry_index);
+
+  collision_match_rule_t cr;
+
+  cr.acl_index = pae->acl_index;
+  cr.ace_index = pae->ace_index;
+  cr.acl_position = pae->acl_position;
+  cr.applied_entry_index = applied_entry_index;
+  cr.rule = am->acls[pae->acl_index].rules[pae->ace_index];
+  vec_add1 (head_pae->colliding_rules, cr);
+}
 
 static void
 activate_applied_ace_hash_entry(acl_main_t *am,
@@ -126,28 +279,16 @@ activate_applied_ace_hash_entry(acl_main_t *am,
     pae->prev_applied_entry_index = last_index;
     /* adjust the pointer to the new tail */
     first_pae->tail_applied_entry_index = new_index;
+    add_colliding_rule(am, applied_hash_aces, first_index, new_index);
   } else {
     /* It's the very first entry */
     hashtable_add_del(am, &kv, 1);
     ASSERT(new_index != ~0);
     pae->tail_applied_entry_index = new_index;
+    add_colliding_rule(am, applied_hash_aces, new_index, new_index);
   }
 }
 
-static void
-applied_hash_entries_analyze(acl_main_t *am, applied_hash_ace_entry_t **applied_hash_aces)
-{
-  /*
-   * Go over the rules and check which ones are shadowed and which aren't.
-   * Naive approach: try to match the match value from every ACE as if it
-   * was a live packet, and see if the resulting match happens earlier in the list.
-   * if it does not match or it is later in the ACL - then the entry is not shadowed.
-   *
-   * This approach fails, an example:
-   *   deny tcp 2001:db8::/32 2001:db8::/32
-   *   permit ip 2001:db8::1/128 2001:db8::2/128
-   */
-}
 
 static void *
 hash_acl_set_heap(acl_main_t *am)
@@ -191,6 +332,23 @@ acl_plugin_hash_acl_set_trace_heap(int on)
   } else {
     h->flags &= ~MHEAP_FLAG_TRACE;
   }
+}
+
+static void
+assign_mask_type_index_to_pae(acl_main_t *am, applied_hash_ace_entry_t *pae)
+{
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
+  hash_ace_info_t *ace_info = vec_elt_at_index(ha->rules, pae->hash_ace_info_index);
+
+  ace_mask_type_entry_t *mte;
+  fa_5tuple_t *mask;
+  /*
+   * Start taking base_mask associated to ace, and essentially copy it.
+   * With TupleMerge we will assign a relaxed mask here.
+   */
+  mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
+  mask = &mte->mask;
+  pae->mask_type_index = assign_mask_type_index(am, mask);
 }
 
 void
@@ -237,8 +395,6 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   }
   vec_add1((*hash_acl_applied_lc_index), lc_index);
 
-  pal->mask_type_index_bitmap = clib_bitmap_or(pal->mask_type_index_bitmap,
-                                     ha->mask_type_index_bitmap);
   /*
    * if the applied ACL is empty, the current code will cause a
    * different behavior compared to current linear search: an empty ACL will
@@ -252,6 +408,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   /* expand the applied aces vector by the necessary amount */
   vec_resize((*applied_hash_aces), vec_len(ha->rules));
 
+  vec_validate(am->hash_applied_mask_info_vec_by_lc_index, lc_index);
   /* add the rules from the ACL to the hash table for lookup and append to the vector*/
   for(i=0; i < vec_len(ha->rules); i++) {
     u32 new_index = base_offset + i;
@@ -266,9 +423,12 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
     pae->next_applied_entry_index = ~0;
     pae->prev_applied_entry_index = ~0;
     pae->tail_applied_entry_index = ~0;
+    pae->colliding_rules = NULL;
+    pae->mask_type_index = ~0;
+    assign_mask_type_index_to_pae(am, pae);
     activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, new_index);
   }
-  applied_hash_entries_analyze(am, applied_hash_aces);
+  remake_hash_applied_mask_info_vec(am, applied_hash_aces, lc_index);
 done:
   clib_mem_set_heap (oldheap);
 }
@@ -350,13 +510,14 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
     applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
+
+    u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
+    ASSERT(head_index != ~0);
+    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+    del_colliding_rule(applied_hash_aces, head_index, old_index);
+
     if (pae->next_applied_entry_index == ~0) {
       /* it was a last entry we removed, update the pointer on the first one */
-      u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
-      DBG("UNAPPLY = index %d head index to update %d", old_index, head_index);
-      ASSERT(head_index != ~0);
-      applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
-
       ASSERT(head_pae->tail_applied_entry_index == old_index);
       head_pae->tail_applied_entry_index = pae->prev_applied_entry_index;
     } else {
@@ -370,7 +531,9 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
       applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
       ASSERT(pae->tail_applied_entry_index != ~0);
       next_pae->tail_applied_entry_index = pae->tail_applied_entry_index;
-      DBG("Resetting the hash table entry from %d to %d, setting tail index to %d", old_index, pae->next_applied_entry_index, pae->tail_applied_entry_index);
+      /* Remove ourselves and transfer the ownership of the colliding rules vector */
+      del_colliding_rule(applied_hash_aces, old_index, old_index);
+      next_pae->colliding_rules = pae->colliding_rules;
       /* unlink from the next element */
       next_pae->prev_applied_entry_index = ~0;
       add_del_hashtable_entry(am, lc_index,
@@ -381,35 +544,17 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
                               applied_hash_aces, old_index, 0);
     }
   }
+
+  release_mask_type_index(am, pae->mask_type_index);
   /* invalidate the old entry */
+  pae->mask_type_index = ~0;
   pae->prev_applied_entry_index = ~0;
   pae->next_applied_entry_index = ~0;
   pae->tail_applied_entry_index = ~0;
+  /* always has to be 0 */
+  pae->colliding_rules = NULL;
 }
 
-
-static void
-hash_acl_build_applied_lookup_bitmap(acl_main_t *am, u32 lc_index)
-{
-  int i;
-  uword *new_lookup_bitmap = 0;
-
-  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
-  vec_validate((*applied_hash_acls), lc_index);
-  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), lc_index);
-
-  for(i=0; i < vec_len(pal->applied_acls); i++) {
-    u32 a_acl_index = *vec_elt_at_index((pal->applied_acls), i);
-    hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, a_acl_index);
-    DBG("Update bitmask = %U or %U (acl_index %d)\n", format_bitmap_hex, new_lookup_bitmap,
-          format_bitmap_hex, ha->mask_type_index_bitmap, a_acl_index);
-    new_lookup_bitmap = clib_bitmap_or(new_lookup_bitmap,
-                                       ha->mask_type_index_bitmap);
-  }
-  uword *old_lookup_bitmap = pal->mask_type_index_bitmap;
-  pal->mask_type_index_bitmap = new_lookup_bitmap;
-  clib_bitmap_free(old_lookup_bitmap);
-}
 
 void
 hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
@@ -473,10 +618,8 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
   /* trim the end of the vector */
   _vec_len((*applied_hash_aces)) -= vec_len(ha->rules);
 
-  applied_hash_entries_analyze(am, applied_hash_aces);
+  remake_hash_applied_mask_info_vec(am, applied_hash_aces, lc_index);
 
-  /* After deletion we might not need some of the mask-types anymore... */
-  hash_acl_build_applied_lookup_bitmap(am, lc_index);
   clib_mem_set_heap (oldheap);
 }
 
@@ -499,8 +642,8 @@ hash_acl_reapply(acl_main_t *am, u32 lc_index, int acl_index)
 
   DBG0("Start index for acl %d in lc_index %d is %d", acl_index, lc_index, start_index);
   /*
-   * This function is called after we find out the sw_if_index where ACL is applied.
-   * If the by-sw_if_index vector does not have the ACL#, then it's a bug.
+   * This function is called after we find out the lc_index where ACL is applied.
+   * If the by-lc_index vector does not have the ACL#, then it's a bug.
    */
   ASSERT(start_index < vec_len(*applied_acls));
 
@@ -543,31 +686,17 @@ make_ip4_address_mask(ip4_address_t *addr, u8 prefix_len)
   ip4_address_mask_from_width(addr, prefix_len);
 }
 
-static u8
+static void
 make_port_mask(u16 *portmask, u16 port_first, u16 port_last)
 {
   if (port_first == port_last) {
     *portmask = 0xffff;
     /* single port is representable by masked value */
-    return 0;
-  }
-  if ((port_first == 0) && (port_last == 65535)) {
-    *portmask = 0;
-    /* wildcard port is representable by a masked value */
-    return 0;
+    return;
   }
 
-  /*
-   * For now match all the ports, later
-   * here might be a better optimization which would
-   * pick out bitmaskable portranges.
-   *
-   * However, adding a new mask type potentially
-   * adds a per-packet extra lookup, so the benefit is not clear.
-   */
   *portmask = 0;
-  /* This port range can't be represented via bitmask exactly. */
-  return 1;
+  return;
 }
 
 static void
@@ -602,9 +731,10 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
     hi->match.l4.proto = r->proto;
 
     /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
-    hi->src_portrange_not_powerof2 = make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
+    make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
     hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
-    hi->dst_portrange_not_powerof2 = make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
+
+    make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
     hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
     /* L4 info must be valid in order to match */
     mask->pkt.l4_valid = 1;
@@ -630,52 +760,6 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
   }
 }
 
-static u32
-find_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
-{
-  ace_mask_type_entry_t *mte;
-  /* *INDENT-OFF* */
-  pool_foreach(mte, am->ace_mask_type_pool,
-  ({
-    if(memcmp(&mte->mask, mask, sizeof(*mask)) == 0)
-      return (mte - am->ace_mask_type_pool);
-  }));
-  /* *INDENT-ON* */
-  return ~0;
-}
-
-static u32
-assign_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
-{
-  u32 mask_type_index = find_mask_type_index(am, mask);
-  ace_mask_type_entry_t *mte;
-  if(~0 == mask_type_index) {
-    pool_get_aligned (am->ace_mask_type_pool, mte, CLIB_CACHE_LINE_BYTES);
-    mask_type_index = mte - am->ace_mask_type_pool;
-    clib_memcpy(&mte->mask, mask, sizeof(mte->mask));
-    mte->refcount = 0;
-    /*
-     * We can use only 16 bits, since in the match there is only u16 field.
-     * Realistically, once you go to 64K of mask types, it is a huge
-     * problem anyway, so we might as well stop half way.
-     */
-    ASSERT(mask_type_index < 32768);
-  }
-  mte = am->ace_mask_type_pool + mask_type_index;
-  mte->refcount++;
-  return mask_type_index;
-}
-
-static void
-release_mask_type_index(acl_main_t *am, u32 mask_type_index)
-{
-  ace_mask_type_entry_t *mte = pool_elt_at_index(am->ace_mask_type_pool, mask_type_index);
-  mte->refcount--;
-  if (mte->refcount == 0) {
-    /* we are not using this entry anymore */
-    pool_put(am->ace_mask_type_pool, mte);
-  }
-}
 
 int hash_acl_exists(acl_main_t *am, int acl_index)
 {
@@ -707,12 +791,11 @@ void hash_acl_add(acl_main_t *am, int acl_index)
     ace_info.ace_index = i;
 
     make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info);
-    ace_info.mask_type_index = assign_mask_type_index(am, &mask);
+    mask.pkt.flags_reserved = 0b000;
+    ace_info.base_mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
-    ace_info.match.pkt.mask_type_index_lsb = ace_info.mask_type_index;
-    DBG("ACE: %d mask_type_index: %d", i, ace_info.mask_type_index);
-    /* Ensure a given index is set in the mask type index bitmap for this ACL */
-    ha->mask_type_index_bitmap = clib_bitmap_set(ha->mask_type_index_bitmap, ace_info.mask_type_index, 1);
+    ace_info.match.pkt.mask_type_index_lsb = ace_info.base_mask_type_index;
+    DBG("ACE: %d mask_type_index: %d", i, ace_info.base_mask_type_index);
     vec_add1(ha->rules, ace_info);
   }
   /*
@@ -760,9 +843,8 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
    * the reference count, possibly freeing up some of them */
   int i;
   for(i=0; i < vec_len(ha->rules); i++) {
-    release_mask_type_index(am, ha->rules[i].mask_type_index);
+    release_mask_type_index(am, ha->rules[i].base_mask_type_index);
   }
-  clib_bitmap_free(ha->mask_type_index_bitmap);
   ha->hash_acl_exists = 0;
   vec_free(ha->rules);
   clib_mem_set_heap (oldheap);
@@ -813,18 +895,15 @@ acl_plugin_show_tables_acl_hash_info (u32 acl_index)
       vlib_cli_output (vm, "acl-index %u bitmask-ready layout\n", i);
       vlib_cli_output (vm, "  applied lc_index list: %U\n",
 		       format_vec32, ha->lc_index_list, "%d");
-      vlib_cli_output (vm, "  mask type index bitmap: %U\n",
-		       format_bitmap_hex, ha->mask_type_index_bitmap);
       for (j = 0; j < vec_len (ha->rules); j++)
 	{
 	  hash_ace_info_t *pa = &ha->rules[j];
 	  m = (u64 *) & pa->match;
 	  vlib_cli_output (vm,
-			   "    %4d: %016llx %016llx %016llx %016llx %016llx %016llx mask index %d acl %d rule %d action %d src/dst portrange not ^2: %d,%d\n",
+			   "    %4d: %016llx %016llx %016llx %016llx %016llx %016llx base mask index %d acl %d rule %d action %d\n",
 			   j, m[0], m[1], m[2], m[3], m[4], m[5],
-			   pa->mask_type_index, pa->acl_index, pa->ace_index,
-			   pa->action, pa->src_portrange_not_powerof2,
-			   pa->dst_portrange_not_powerof2);
+			   pa->base_mask_type_index, pa->acl_index, pa->ace_index,
+			   pa->action);
 	}
     }
 }
@@ -860,8 +939,6 @@ acl_plugin_show_tables_applied_info (u32 lc_index)
 	{
 	  applied_hash_acl_info_t *pal =
 	    &am->applied_hash_acl_info_by_lc_index[lci];
-	  vlib_cli_output (vm, "  lookup mask_type_index_bitmap: %U",
-			   format_bitmap_hex, pal->mask_type_index_bitmap);
 	  vlib_cli_output (vm, "  applied acls: %U", format_vec32,
 			   pal->applied_acls, "%d");
 	}
