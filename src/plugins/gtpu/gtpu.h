@@ -72,7 +72,22 @@ typedef struct
 #define GTPU_V1_VER   (1<<5)
 
 #define GTPU_PT_GTP    (1<<4)
+
+#define	GTPU_TYPE_ECHO_REQUEST			        1
+#define	GTPU_TYPE_ECHO_RESPONSE				    2
+#define GTPU_TYPE_VERSION_NOT_SUPPORTED         3
+#define	GTPU_TYPE_ERROR_INDICATION				26
+#define	GTPU_TYPE_EXTENSION_HEADERS_NOTIFICATION 31
 #define GTPU_TYPE_GTPU  255
+
+enum
+{
+  GTPU_EVENT_PATH_ERROR,
+  GTPU_EVENT_NO_SUCH_TUNNEL,
+  GTPU_EVENT_VERSION_NOT_SUPPORTED,
+  GTPU_EVENT_RECEIVE_ERROR_INDICATION,
+};
+
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
@@ -132,8 +147,11 @@ typedef struct
   /* FIB DPO for IP forwarding of gtpu encap packet */
   dpo_id_t next_dpo;
 
-  /* gtpu teid in HOST byte order */
-  u32 teid;
+  /* gtpu in teid in HOST byte order */
+  u32 teid_in;
+
+  /* gtpu out teid in HOST byte order */
+  u32 teid_out;
 
   /* tunnel src and dst addresses */
   ip46_address_t src;
@@ -195,14 +213,69 @@ typedef enum
   GTPU_N_ERROR,
 } gtpu_input_error_t;
 
+/* move from gtpu_api.c */
+#define REPLY_MSG_ID_BASE gtm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
+
+typedef struct
+{
+  /* if has no one client , disable polling? */
+  u32 enable_poller;
+
+  uword *client_hash;
+  vpe_client_registration_t *clients;
+} gtpu_client_registration_t;
+
+
+extern vlib_node_registration_t gtpu_process_node;
+
+enum
+{
+  GTPU_EVENT_TYPE_FAST_POLLING_START,
+  GTPU_EVENT_TYPE_ECHO_RESPONSE_IP4,
+  GTPU_EVENT_TYPE_ECHO_RESPONSE_IP6,
+  GTPU_EVENT_TYPE_VERSION_NOT_SUPPORTED_IP4,
+  GTPU_EVENT_TYPE_VERSION_NOT_SUPPORTED_IP6,
+  GTPU_EVENT_TYPE_NO_SUCH_TUNNEL_IP4,
+  GTPU_EVENT_TYPE_NO_SUCH_TUNNEL_IP6,
+  GTPU_EVENT_TYPE_ERROR_INDICATE_IP4,
+  GTPU_EVENT_TYPE_ERROR_INDICATE_IP6
+};
+
+typedef struct
+{
+  u64 echo_request_count;	/* record the count about echo request packets send */
+  u64 re_echo_request_count;	/* record the count that go into retransmission status */
+} gtpu_path_counter_t;
+
+typedef struct
+{
+  ip46_address_t src;
+  ip46_address_t dst;
+  f64 last_send_request_time;	/* the last time of send echo request packet */
+  f64 last_receive_response_time;	/* the last time of receive echo response packet */
+  u32 tunnel_count;		/* how many tunnel on this path */
+  u8 re_echo_request;		/* flag to retransmit echo request packet and retransmit count */
+  u8 echo_request;		/* flag to transmit echo request packet */
+  u8 path_error;		/* path error flag */
+  gtpu_path_counter_t counter;	/* path counter info */
+} gtpu_path_t;
+
+typedef struct
+{
+  uword *gtpu4_path_by_key;	/* keyed on ipv4.dst + 0 */
+  uword *gtpu6_path_by_key;	/* keyed on ipv6.dst + 0 */
+  gtpu_path_t *paths;
+} gtpu_path_manage_t;
+
 typedef struct
 {
   /* vector of encap tunnel instances */
   gtpu_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword *gtpu4_tunnel_by_key;	/* keyed on ipv4.dst + teid */
-  uword *gtpu6_tunnel_by_key;	/* keyed on ipv6.dst + teid */
+  uword *gtpu4_tunnel_by_key;	/* keyed on ipv4.dst + teid_in */
+  uword *gtpu6_tunnel_by_key;	/* keyed on ipv6.dst + teid_in */
 
   /* local VTEP IPs ref count used by gtpu-bypass node to check if
      received gtpu packet DIP matches any local VTEP address */
@@ -229,6 +302,12 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  /* gtpu api client registrations */
+  gtpu_client_registration_t registrations;
+
+  /* path management */
+  gtpu_path_manage_t path_manage;
 } gtpu_main_t;
 
 extern gtpu_main_t gtpu_main;
@@ -248,7 +327,8 @@ typedef struct
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;
-  u32 teid;
+  u32 teid_in;
+  u32 teid_out;
 } vnet_gtpu_add_del_tunnel_args_t;
 
 int vnet_gtpu_add_del_tunnel
