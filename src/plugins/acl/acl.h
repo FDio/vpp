@@ -194,6 +194,13 @@ typedef struct {
   /* Do we use hash-based ACL matching or linear */
   int use_hash_acl_matching;
 
+  /* Do we use the TupleMerge for hash ACLs or not */
+  int use_tuple_merge;
+
+  /* Max collision vector length before splitting the tuple */
+#define TM_SPLIT_THRESHOLD 39
+  int tuple_merge_split_threshold;
+
   /* a pool of all mask types present in all ACEs */
   ace_mask_type_entry_t *ace_mask_type_pool;
 
