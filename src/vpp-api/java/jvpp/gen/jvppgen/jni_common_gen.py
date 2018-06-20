@@ -15,7 +15,7 @@
 #
 from string import Template
 
-from jvpp_model import is_array, is_retval, Class
+from jvpp_model import is_array, is_retval, Class, Enum
 
 
 def generate_j2c_identifiers(element, class_ref_name, object_ref_name):
@@ -53,7 +53,7 @@ def generate_j2c_swap(element, struct_ref_name):
 def _generate_j2c_array_swap(field, struct_ref_name):
     # TODO(VPP-1186): move the logic to JNI generators
     base_type = field.type.base_type
-    if isinstance(base_type, Class):
+    if isinstance(base_type, Class) or isinstance(base_type, Enum):
         return _generate_j2c_object_array_swap(field, struct_ref_name)
     elif base_type.is_swap_needed:
         return _generate_j2c_primitive_type_array_swap(field, struct_ref_name)
@@ -183,6 +183,8 @@ def _generate_c2j_array_swap(msg_java_name, field, object_ref_name, struct_ref_n
     base_type = field.type.base_type
     if isinstance(base_type, Class):
         return _generate_c2j_class_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
+    elif isinstance(base_type, Enum):
+        return _generate_c2j_enum_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     elif base_type.is_swap_needed:
         return _generate_c2j_primitive_type_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     else:
@@ -213,6 +215,40 @@ _C2J_CLASS_ARRAY_SWAP_TEMPLATE = Template("""
         for (_i = 0; _i < ${field_length}; _i++) {
             jobject ${field_reference_name}ArrayElement = (*env)->NewObject(env, ${field_reference_name}Class,  ${field_reference_name}Constructor);
             ${net_to_host_function}(env, &(${struct_ref_name}->${c_name}[_i]), ${field_reference_name}ArrayElement);
+            (*env)->SetObjectArrayElement(env, ${field_reference_name}, _i, ${field_reference_name}ArrayElement);
+            (*env)->DeleteLocalRef(env, ${field_reference_name}ArrayElement);
+        }
+        (*env)->SetObjectField(env, ${object_ref_name}, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
+    }
+""")
+
+
+def _generate_c2j_enum_array_swap(msg_java_name, field, object_ref_name, struct_ref_name):
+    field_type = field.type
+    base_type = field_type.base_type
+    return _C2J_ENUM_ARRAY_SWAP_TEMPLATE.substitute(
+        field_reference_name=field.java_name,
+        class_ref_name=msg_java_name,
+        jni_signature=field_type.jni_signature,
+        jni_name=base_type.jni_name,
+        field_length=_generate_array_length(field, struct_ref_name),
+        net_to_host_function=field_type.net_to_host_function,
+        jni_signature_enum_value=base_type.value.type.jni_signature,
+        struct_ref_name=struct_ref_name,
+        object_ref_name=object_ref_name,
+        c_name=field.name
+    )
+
+_C2J_ENUM_ARRAY_SWAP_TEMPLATE = Template("""
+    jfieldID ${field_reference_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${field_reference_name}", "${jni_signature}");
+    {
+        jclass ${field_reference_name}Class = (*env)->FindClass(env, "${jni_name}");
+        jobjectArray ${field_reference_name} = (*env)->NewObjectArray(env, ${field_length}, ${field_reference_name}Class, 0);
+        jmethodID ${field_reference_name}Constructor = (*env)->GetStaticMethodID(env, ${field_reference_name}Class, "forValue", "(${jni_signature_enum_value})${jni_signature}");
+        unsigned int _i;
+        for (_i = 0; _i < ${field_length}; _i++) {
+            jobject ${field_reference_name}ArrayElement = (*env)->CallStaticObjectMethod(env, ${field_reference_name}Class, ${field_reference_name}Constructor, ${net_to_host_function}(${struct_ref_name}->${c_name}[_i]));
             (*env)->SetObjectArrayElement(env, ${field_reference_name}, _i, ${field_reference_name}ArrayElement);
             (*env)->DeleteLocalRef(env, ${field_reference_name}ArrayElement);
         }
@@ -295,6 +331,8 @@ def _generate_c2j_scalar_swap(msg_java_name, field, object_ref_name, struct_ref_
         # TODO(VPP-1186): move the logic to JNI generators
         if isinstance(field_type, Class):
             return _generate_c2j_class_swap(msg_java_name, field, object_ref_name, struct_ref_name)
+        elif isinstance(field_type, Enum):
+            return _generate_c2j_enum_swap(msg_java_name, field, object_ref_name, struct_ref_name)
         else:
             return _generate_c2j_primitive_type_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     else:
@@ -321,6 +359,30 @@ _C2J_CLASS_SWAP_TEMPLATE = Template("""
     jobject ${java_name} = (*env)->NewObject(env, ${java_name}Class,  ${java_name}Constructor);
     ${net_to_host_function}(env, &(${struct_ref_name}->${c_name}), ${java_name});
     (*env)->Set${jni_accessor}Field(env, ${object_ref_name}, ${java_name}FieldId, ${java_name});
+    (*env)->DeleteLocalRef(env, ${java_name});
+""")
+
+
+def _generate_c2j_enum_swap(msg_java_name, field, object_ref_name, struct_ref_name):
+    field_type = field.type
+    return _C2J_ENUM_SWAP_TEMPLATE.substitute(
+        java_name=field.java_name,
+        class_ref_name=msg_java_name,
+        jni_signature=field_type.jni_signature,
+        jni_signature_enum_value=field_type.value.type.jni_signature,
+        jni_name=field_type.jni_name,
+        jni_accessor=field_type.jni_accessor,
+        object_ref_name=object_ref_name,
+        struct_ref_name=struct_ref_name,
+        net_to_host_function=field_type.net_to_host_function,
+        c_name=field.name)
+
+_C2J_ENUM_SWAP_TEMPLATE = Template("""
+    jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${java_name}", "${jni_signature}");
+    jclass ${java_name}Class = (*env)->FindClass(env, "${jni_name}");
+    jmethodID ${java_name}Constructor = (*env)->GetStaticMethodID(env, ${java_name}Class, "forValue", "(${jni_signature_enum_value})${jni_signature}");
+    jobject ${java_name} = (*env)->CallStaticObjectMethod(env, ${java_name}Class, ${java_name}Constructor, ${net_to_host_function}(${struct_ref_name}->${c_name}));
+    (*env)->SetObjectField(env, ${object_ref_name}, ${java_name}FieldId, ${java_name});
     (*env)->DeleteLocalRef(env, ${java_name});
 """)
 
