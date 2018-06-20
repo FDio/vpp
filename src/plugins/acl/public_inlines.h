@@ -489,91 +489,148 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
            ((r->dst_port_or_code_first <= match->l4.port[1]) && r->dst_port_or_code_last >= match->l4.port[1]) );
 }
 
+always_inline int
+single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple)
+{
+  if (is_ip6 != r->is_ipv6)
+    {
+      return 0;
+    }
+
+  if (is_ip6)
+    {
+      if (!fa_acl_match_ip6_addr
+	  (&pkt_5tuple->ip6_addr[1], &r->dst.ip6, r->dst_prefixlen))
+	return 0;
+      if (!fa_acl_match_ip6_addr
+	  (&pkt_5tuple->ip6_addr[0], &r->src.ip6, r->src_prefixlen))
+	return 0;
+    }
+  else
+    {
+      if (!fa_acl_match_ip4_addr
+	  (&pkt_5tuple->ip4_addr[1], &r->dst.ip4, r->dst_prefixlen))
+	return 0;
+      if (!fa_acl_match_ip4_addr
+	  (&pkt_5tuple->ip4_addr[0], &r->src.ip4, r->src_prefixlen))
+	return 0;
+    }
+
+  if (r->proto)
+    {
+      if (pkt_5tuple->l4.proto != r->proto)
+	return 0;
+
+      /* A sanity check just to ensure we are about to match the ports extracted from the packet */
+      if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
+	return 0;
+
+
+      if (!fa_acl_match_port
+	  (pkt_5tuple->l4.port[0], r->src_port_or_type_first,
+	   r->src_port_or_type_last, pkt_5tuple->pkt.is_ip6))
+	return 0;
+
+
+      if (!fa_acl_match_port
+	  (pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
+	   r->dst_port_or_code_last, pkt_5tuple->pkt.is_ip6))
+	return 0;
+
+      if (pkt_5tuple->pkt.tcp_flags_valid
+	  && ((pkt_5tuple->pkt.tcp_flags & r->tcp_flags_mask) !=
+	      r->tcp_flags_value))
+	return 0;
+    }
+  /* everything matches! */
+  return 1;
+}
+
 always_inline u32
-multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
+multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t * match)
 {
   clib_bihash_kv_48_8_t kv;
   clib_bihash_kv_48_8_t result;
-  fa_5tuple_t *kv_key = (fa_5tuple_t *)kv.key;
-  hash_acl_lookup_value_t *result_val = (hash_acl_lookup_value_t *)&result.value;
-  u64 *pmatch = (u64 *)match;
+  fa_5tuple_t *kv_key = (fa_5tuple_t *) kv.key;
+  hash_acl_lookup_value_t *result_val =
+    (hash_acl_lookup_value_t *) & result.value;
+  u64 *pmatch = (u64 *) match;
   u64 *pmask;
   u64 *pkey;
-  int mask_type_index;
-  u32 curr_match_index = ~0;
+  int mask_type_index, order_index;
+  u32 curr_match_index = (~0 - 1);
+
+
 
   u32 lc_index = match->pkt.lc_index;
-  applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, match->pkt.lc_index);
-  applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
+  applied_hash_ace_entry_t **applied_hash_aces =
+    vec_elt_at_index (am->hash_entry_vec_by_lc_index, lc_index);
 
-  DBG("TRYING TO MATCH: %016llx %016llx %016llx %016llx %016llx %016llx",
-	       pmatch[0], pmatch[1], pmatch[2], pmatch[3], pmatch[4], pmatch[5]);
+  hash_applied_mask_info_t **hash_applied_mask_info_vec =
+    vec_elt_at_index (am->hash_applied_mask_info_vec_by_lc_index, lc_index);
 
-  for(mask_type_index=0; mask_type_index < pool_len(am->ace_mask_type_pool); mask_type_index++) {
-    if (!clib_bitmap_get(vec_elt_at_index((*applied_hash_acls), lc_index)->mask_type_index_bitmap, mask_type_index)) {
-      /* This bit is not set. Avoid trying to match */
-      continue;
+  hash_applied_mask_info_t *minfo;
+
+  DBG ("TRYING TO MATCH: %016llx %016llx %016llx %016llx %016llx %016llx",
+       pmatch[0], pmatch[1], pmatch[2], pmatch[3], pmatch[4], pmatch[5]);
+
+  for (order_index = 0; order_index < vec_len ((*hash_applied_mask_info_vec));
+       order_index++)
+    {
+      minfo = vec_elt_at_index ((*hash_applied_mask_info_vec), order_index);
+      if (minfo->first_rule_index > curr_match_index)
+	{
+	  /* Index in this and following (by construction) partitions are greater than our candidate, Avoid trying to match! */
+	  break;
+	}
+
+      mask_type_index = minfo->mask_type_index;
+      ace_mask_type_entry_t *mte =
+	vec_elt_at_index (am->ace_mask_type_pool, mask_type_index);
+      pmatch = (u64 *) match;
+      pmask = (u64 *) & mte->mask;
+      pkey = (u64 *) kv.key;
+      /*
+       * unrolling the below loop results in a noticeable performance increase.
+       int i;
+       for(i=0; i<6; i++) {
+       kv.key[i] = pmatch[i] & pmask[i];
+       }
+       */
+
+      *pkey++ = *pmatch++ & *pmask++;
+      *pkey++ = *pmatch++ & *pmask++;
+      *pkey++ = *pmatch++ & *pmask++;
+      *pkey++ = *pmatch++ & *pmask++;
+      *pkey++ = *pmatch++ & *pmask++;
+      *pkey++ = *pmatch++ & *pmask++;
+
+      kv_key->pkt.mask_type_index_lsb = mask_type_index;
+      int res =
+	clib_bihash_search_inline_2_48_8 (&am->acl_lookup_hash, &kv, &result);
+
+      if (res == 0)
+	{
+	  /* There is a hit in the hash, so check the collision vector */
+	  u32 curr_index = result_val->applied_entry_index;
+	  applied_hash_ace_entry_t *pae =
+	    vec_elt_at_index ((*applied_hash_aces), curr_index);
+	  collision_match_rule_t *crs = pae->colliding_rules;
+	  int i;
+	  for (i = 0; i < vec_len (crs); i++)
+	    {
+	      if (crs[i].applied_entry_index >= curr_match_index)
+		{
+		  continue;
+		}
+	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match))
+		{
+		  curr_match_index = crs[i].applied_entry_index;
+		}
+	    }
+	}
     }
-    ace_mask_type_entry_t *mte = vec_elt_at_index(am->ace_mask_type_pool, mask_type_index);
-    pmatch = (u64 *)match;
-    pmask = (u64 *)&mte->mask;
-    pkey = (u64 *)kv.key;
-    /*
-    * unrolling the below loop results in a noticeable performance increase.
-    int i;
-    for(i=0; i<6; i++) {
-      kv.key[i] = pmatch[i] & pmask[i];
-    }
-    */
-
-    *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
-    *pkey++ = *pmatch++ & *pmask++;
-
-    kv_key->pkt.mask_type_index_lsb = mask_type_index;
-    DBG("        KEY %3d: %016llx %016llx %016llx %016llx %016llx %016llx", mask_type_index,
-		kv.key[0], kv.key[1], kv.key[2], kv.key[3], kv.key[4], kv.key[5]);
-    int res = clib_bihash_search_48_8 (&am->acl_lookup_hash, &kv, &result);
-    if (res == 0) {
-      DBG("ACL-MATCH! result_val: %016llx", result_val->as_u64);
-      if (result_val->applied_entry_index < curr_match_index) {
-	if (PREDICT_FALSE(result_val->need_portrange_check)) {
-          /*
-           * This is going to be slow, since we can have multiple superset
-           * entries for narrow-ish portranges, e.g.:
-           * 0..42 100..400, 230..60000,
-           * so we need to walk linearly and check if they match.
-           */
-
-          u32 curr_index = result_val->applied_entry_index;
-          while ((curr_index != ~0) && !match_portranges(am, match, curr_index)) {
-            /* while no match and there are more entries, walk... */
-            applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces),curr_index);
-            DBG("entry %d did not portmatch, advancing to %d", curr_index, pae->next_applied_entry_index);
-            curr_index = pae->next_applied_entry_index;
-          }
-          if (curr_index < curr_match_index) {
-            DBG("The index %d is the new candidate in portrange matches.", curr_index);
-            curr_match_index = curr_index;
-          } else {
-            DBG("Curr portmatch index %d is too big vs. current matched one %d", curr_index, curr_match_index);
-          }
-        } else {
-          /* The usual path is here. Found an entry in front of the current candiate - so it's a new one */
-          DBG("This match is the new candidate");
-          curr_match_index = result_val->applied_entry_index;
-	  if (!result_val->shadowed) {
-          /* new result is known to not be shadowed, so no point to look up further */
-            break;
-	  }
-        }
-      }
-    }
-  }
-  DBG("MATCH-RESULT: %d", curr_match_index);
+  DBG ("MATCH-RESULT: %d", curr_match_index);
   return curr_match_index;
 }
 
@@ -584,7 +641,7 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
 {
   acl_main_t *am = p_acl_main;
   applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
-  u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
+  u32 match_index = multi_acl_match_get_applied_ace_index(am, is_ip6, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
     pae->hitcount++;
