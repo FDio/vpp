@@ -44,4 +44,10 @@ void hash_acl_delete(acl_main_t *am, int acl_index);
 /* return if there is already a filled-in hash acl info */
 int hash_acl_exists(acl_main_t *am, int acl_index);
 
+
+#define TM_SPLIT_THRESHOLD 39
+/*
+ * #define TM_SPLIT_THRESHOLD 9
+ */
+
 #endif
