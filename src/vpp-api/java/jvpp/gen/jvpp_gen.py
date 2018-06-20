@@ -19,6 +19,7 @@ import os
 import sys
 
 from jvppgen.types_gen import generate_types
+from jvppgen.enums_gen import generate_enums
 from jvppgen.dto_gen import generate_dtos
 from jvppgen.jvpp_ifc_gen import generate_java_ifc
 from jvppgen.jvpp_impl_gen import generate_java_impl
@@ -33,6 +34,7 @@ from jvppgen.jvpp_model import JVppModel
 def generate_jvpp(root_dir, model, logger):
     base_dir = "%s/target/%s" % (root_dir, model.plugin_package.replace(".", "/"))
     generate_types(_work_dir(base_dir, "types"), model, logger)
+    generate_enums(_work_dir(base_dir, "types"), model, logger)
     generate_dtos(_work_dir(base_dir, "dto"), model, logger)
     generate_java_ifc(_work_dir(base_dir), model, logger)
     generate_java_impl(_work_dir(base_dir), model, logger)
