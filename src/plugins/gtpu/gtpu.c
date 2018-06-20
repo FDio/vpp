@@ -75,17 +75,34 @@ format_gtpu_tunnel (u8 * s, va_list * args)
   gtpu_tunnel_t *t = va_arg (*args, gtpu_tunnel_t *);
   gtpu_main_t *ngm = &gtpu_main;
 
-  s = format (s, "[%d] src %U dst %U teid %d fib-idx %d sw-if-idx %d ",
+  s = format (s, "[%d] src %U dst %U teid-in %d teid-out %d fib-idx %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->src, IP46_TYPE_ANY,
 	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->teid,  t->encap_fib_index, t->sw_if_index);
+	      t->teid_in, t->teid_out, t->encap_fib_index, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
   s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+
+  return s;
+}
+
+u8 *
+format_gtpu_path (u8 * s, va_list * args)
+{
+  gtpu_path_t *p = va_arg (*args, gtpu_path_t *);
+  gtpu_path_t *paths = gtpu_main.path_manage.paths;
+
+  s = format (s, "[%d] src %U dst %U tunnel-count %d status %s echo-request-counter %d re-echo-request-counter %d",
+	      p - paths,
+	      format_ip46_address, &p->src, IP46_TYPE_ANY,
+	      format_ip46_address, &p->dst, IP46_TYPE_ANY,
+	      p->tunnel_count, p->path_error ? "unpassable" : "passable",
+	      p->counter.echo_request_count,
+	      p->counter.re_echo_request_count);
 
   return s;
 }
@@ -203,9 +220,9 @@ const static fib_node_vft_t gtpu_vft = {
   .fnv_back_walk = gtpu_tunnel_back_walk,
 };
 
-
 #define foreach_copy_field                      \
-_(teid)                                          \
+_(teid_in)                                      \
+_(teid_out) 									\
 _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
 _(decap_next_index)                             \
@@ -260,13 +277,14 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
     }
 
   /* UDP header, randomize src port on something, maybe? */
-  udp->src_port = clib_host_to_net_u16 (2152);
+  udp->src_port = 2152;
   udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_GTPU);
 
   /* GTPU header */
   gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
   gtpu->type = GTPU_TYPE_GTPU;
-  gtpu->teid = clib_host_to_net_u32 (t->teid);
+  /* for the rewrite use the teid_out */
+  gtpu->teid = clib_host_to_net_u32 (t->teid_out);
 
   t->rewrite = r.rw;
   /* Now only support 8-byte gtpu header. TBD */
@@ -362,24 +380,36 @@ int vnet_gtpu_add_del_tunnel
   gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t = 0;
   vnet_main_t *vnm = gtm->vnet_main;
-  uword *p;
+  uword *p, *p_path;
   u32 hw_if_index = ~0;
   u32 sw_if_index = ~0;
-  gtpu4_tunnel_key_t key4;
-  gtpu6_tunnel_key_t key6;
+  gtpu4_tunnel_key_t key4, key4_path;
+  gtpu6_tunnel_key_t key6, key6_path;
   u32 is_ip6 = a->is_ip6;
+  gtpu_path_t *path;
 
   if (!is_ip6)
     {
       key4.src = a->dst.ip4.as_u32;	/* decap src in key is encap dst in config */
-      key4.teid = clib_host_to_net_u32 (a->teid);
+      key4.teid = clib_host_to_net_u32 (a->teid_in);
       p = hash_get (gtm->gtpu4_tunnel_by_key, key4.as_u64);
+
+      /* is or not this path existed */
+      key4_path.src = a->dst.ip4.as_u32;
+      key4_path.teid = 0;
+      p_path =
+	hash_get (gtm->path_manage.gtpu4_path_by_key, key4_path.as_u64);
     }
   else
     {
       key6.src = a->dst.ip6;
-      key6.teid = clib_host_to_net_u32 (a->teid);
+      key6.teid = clib_host_to_net_u32 (a->teid_in);
       p = hash_get_mem (gtm->gtpu6_tunnel_by_key, &key6);
+
+      /* is or not this path existed */
+      key6_path.src = a->dst.ip6;
+      key6_path.teid = 0;
+      p_path = hash_get_mem (gtm->path_manage.gtpu6_path_by_key, &key6_path);
     }
 
   if (a->is_add)
@@ -393,6 +423,7 @@ int vnet_gtpu_add_del_tunnel
       /*if not set explicitly, default to l2 */
       if (a->decap_next_index == ~0)
 	a->decap_next_index = GTPU_INPUT_NEXT_L2_INPUT;
+
       if (!gtpu_decap_next_is_valid (gtm, is_ip6, a->decap_next_index))
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
@@ -412,6 +443,38 @@ int vnet_gtpu_add_del_tunnel
 			    t - gtm->tunnels);
       else
 	hash_set (gtm->gtpu4_tunnel_by_key, key4.as_u64, t - gtm->tunnels);
+
+      /* add path to paths pool */
+      if (p_path)
+	{
+	  path = pool_elt_at_index (gtm->path_manage.paths, p_path[0]);
+	  path->tunnel_count += 1;
+	}
+      else
+	{
+	  pool_get (gtm->path_manage.paths, path);
+	  memset (path, 0, sizeof (*path));
+	  path->src = a->src;
+	  path->dst = a->dst;
+	  path->tunnel_count = 1;
+	  path->echo_request = 1;
+
+	  if (is_ip6)
+	    hash_set_mem_alloc (&gtm->path_manage.gtpu6_path_by_key,
+				&key6_path, path - gtm->path_manage.paths);
+	  else
+	    hash_set (gtm->path_manage.gtpu4_path_by_key, key4_path.as_u64,
+		      path - gtm->path_manage.paths);
+
+	  /* start fast polling of gtpu process */
+	  if (1 == pool_elts (gtm->path_manage.paths))
+	    {
+	      vlib_process_signal_event (gtm->vlib_main,
+					 gtpu_process_node.index,
+					 GTPU_EVENT_TYPE_FAST_POLLING_START,
+					 0);
+	    }
+	}
 
       vnet_hw_interface_t *hi;
       if (vec_len (gtm->free_gtpu_tunnel_hw_if_indices) > 0)
@@ -603,6 +666,23 @@ int vnet_gtpu_add_del_tunnel
       fib_node_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (gtm->tunnels, t);
+      /* remove path */
+      if (p_path)
+	{
+	  path = pool_elt_at_index (gtm->path_manage.paths, p_path[0]);
+	  path->tunnel_count -= 1;
+	  if (0 == path->tunnel_count)
+	    {
+	      pool_put (gtm->path_manage.paths, path);
+
+	      if (!is_ip6)
+		hash_unset (gtm->path_manage.gtpu4_path_by_key,
+			    key4_path.as_u64);
+	      else
+		hash_unset_mem_free (&gtm->path_manage.gtpu6_path_by_key,
+				     &key6_path);
+	    }
+	}
     }
 
   if (sw_if_indexp)
@@ -664,7 +744,8 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = GTPU_INPUT_NEXT_L2_INPUT;
-  u32 teid = 0;
+  u32 teid_in = 0;
+  u32 teid_out = 0;
   u32 tmp;
   int rv;
   vnet_gtpu_add_del_tunnel_args_t _a, *a = &_a;
@@ -738,7 +819,9 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "decap-next %U", unformat_decap_next,
 			 &decap_next_index, ipv4_set))
 	;
-      else if (unformat (line_input, "teid %d", &teid))
+      else if (unformat (line_input, "teid-in %d", &teid_in))
+	;
+      else if (unformat (line_input, "teid-out %d", &teid_out))
 	;
       else
 	{
@@ -851,16 +934,16 @@ done:
  *
  * @cliexpar
  * Example of how to create a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 encap-vrf-id 7}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid-in 13 teid-out 14 encap-vrf-id 7}
  * Example of how to delete a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 del}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid-in 13 teid-out 14 del}
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
   .path = "create gtpu tunnel",
   .short_help =
   "create gtpu tunnel src <local-vtep-addr>"
-  " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} teid <nn>"
+  " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} teid-in <nn> teid-out <nn>"
   " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6|node <name>]] [del]",
   .function = gtpu_add_del_tunnel_command_fn,
 };
@@ -873,16 +956,34 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
 {
   gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t;
+  int verbose = 0;
+  clib_error_t *error;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose++;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  return error;
+	}
+    }
 
   if (pool_elts (gtm->tunnels) == 0)
     vlib_cli_output (vm, "No gtpu tunnels configured...");
+  else
+    vlib_cli_output (vm, "%d gtpu tunnels configured!",
+		     pool_elts (gtm->tunnels));
 
-  pool_foreach (t, gtm->tunnels, (
-				   {
-				   vlib_cli_output (vm, "%U",
-						    format_gtpu_tunnel, t);
-				   }
-		));
+  if (verbose > 0)
+    pool_foreach (t, gtm->tunnels, (
+				     {
+				     vlib_cli_output (vm, "%U",
+						      format_gtpu_tunnel, t);
+				     }
+		  ));
 
   return 0;
 }
@@ -893,7 +994,7 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the GTPU Tunnel entries:
  * @cliexstart{show gtpu tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 teid 13 encap_fib_index 0 sw_if_index 5 decap_next l2
+ * [0] src 10.0.3.1 dst 10.0.3.3 teid-in 13 teid-out 14 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
@@ -901,6 +1002,59 @@ VLIB_CLI_COMMAND (show_gtpu_tunnel_command, static) = {
     .path = "show gtpu tunnel",
     .short_help = "show gtpu tunnel",
     .function = show_gtpu_tunnel_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_gtpu_path_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  gtpu_path_t *paths = gtpu_main.path_manage.paths;
+  gtpu_path_t *p = NULL;
+  int verbose = 0;
+  clib_error_t *error;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose++;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  return error;
+	}
+    }
+
+  if (pool_elts (paths) == 0)
+    vlib_cli_output (vm, "No gtpu paths existed...");
+  else
+    vlib_cli_output (vm, "%d gtpu paths existed!", pool_elts (paths));
+
+  if (verbose > 0)
+    pool_foreach (p, paths, (
+			      {
+			      vlib_cli_output (vm, "%U", format_gtpu_path, p);
+			      }
+		  ));
+
+  return 0;
+}
+
+/*?
+ * Display all the GTPU Path entries.
+ *
+ * @cliexpar
+ * Example of how to display the GTPU Path entries:
+ * @cliexstart{show gtpu path}
+ * [0] src 10.0.3.1 dst 10.0.3.3 tunnel-count 1 status passable echo-request-counter 4 re-echo-request-counter 0
+ * @cliexend
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_gtpu_path_command, static) = {
+    .path = "show gtpu path",
+    .short_help = "show gtpu path [verbose]",
+    .function = show_gtpu_path_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -1085,6 +1239,12 @@ gtpu_init (vlib_main_t * vm)
   gtm->gtpu6_tunnel_by_key = hash_create_mem (0,
 					      sizeof (gtpu6_tunnel_key_t),
 					      sizeof (uword));
+
+  /* initialize the ip6 path hash */
+  gtm->path_manage.gtpu6_path_by_key = hash_create_mem (0,
+							sizeof
+							(gtpu6_tunnel_key_t),
+							sizeof (uword));
   gtm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
   gtm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
