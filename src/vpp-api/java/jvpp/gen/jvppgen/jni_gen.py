@@ -31,7 +31,7 @@ def generate_jni(work_dir, model, logger):
             json_filename=model.json_api_files,
             class_cache=_generate_class_cache(plugin_name, messages),
             api_verification=_generate_api_verification(messages),
-            type_handlers=generate_type_handlers(model),
+            type_handlers=generate_type_handlers(model, logger),
             jni_implementations=generate_jni_impl(model),
             msg_handlers=generate_jni_handlers(model),
             handler_registration=_generate_handler_registration(messages)))
