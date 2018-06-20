@@ -243,7 +243,7 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   u32 mcast_sw_if_index = ~0;
   u32 encap_vrf_id = 0;
   u32 decap_next_index = ~0;
-  u32 teid = 0;
+  u32 teid_in = 0, teid_out = 0;
   int ret;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
@@ -312,8 +312,10 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
       else if (unformat (line_input, "decap-next %U",
 		       unformat_gtpu_decap_next, &decap_next_index))
       ;
-      else if (unformat (line_input, "teid %d", &teid))
+      else if (unformat (line_input, "teid-in %d", &teid_in))
       ;
+      else if (unformat (line_input, "teid-out %d", &teid_out))
+	  ;
       else
       {
 	errmsg ("parse error '%U'", format_unformat_error, line_input);
@@ -370,7 +372,8 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_next_index = ntohl (decap_next_index);
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
-  mp->teid = ntohl (teid);
+  mp->teid_in = ntohl (teid_in);
+  mp->teid_out = ntohl (teid_out);
   mp->is_add = is_add;
   mp->is_ipv6 = ipv6_set;
 
@@ -386,12 +389,12 @@ static void vl_api_gtpu_tunnel_details_t_handler
   ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
   ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
 
-  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
+  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%13d%19d",
        ntohl (mp->sw_if_index),
        format_ip46_address, &src, IP46_TYPE_ANY,
        format_ip46_address, &dst, IP46_TYPE_ANY,
        ntohl (mp->encap_vrf_id),
-       ntohl (mp->decap_next_index), ntohl (mp->teid),
+       ntohl (mp->decap_next_index), ntohl (mp->teid_in), ntohl (mp->teid_out),
        ntohl (mp->mcast_sw_if_index));
 }
 
@@ -420,9 +423,9 @@ api_gtpu_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%19s",
+      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%13s%19s",
 	   "sw_if_index", "src_address", "dst_address",
-	   "encap_vrf_id", "decap_next_index", "teid", "mcast_sw_if_index");
+	   "encap_vrf_id", "decap_next_index", "teid_in", "teid_out", "mcast_sw_if_index");
     }
 
   /* Get list of gtpu-tunnel interfaces */
@@ -446,7 +449,7 @@ _(sw_interface_set_gtpu_bypass,                                        \
 _(gtpu_add_del_tunnel,                                                 \
         "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"      \
         "{ <intfc> | mcast_sw_if_index <nn> } }\n"                     \
-        "teid <teid> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")  \
+        "teid-in <teid> teid-out <teid> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")  \
 _(gtpu_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 
 static void
