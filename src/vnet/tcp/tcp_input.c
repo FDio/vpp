@@ -1672,14 +1672,14 @@ format_tcp_rx_trace_short (u8 * s, va_list * args)
   tcp_rx_trace_t *t = va_arg (*args, tcp_rx_trace_t *);
 
   s = format (s, "%d -> %d (%U)",
-	      clib_net_to_host_u16 (t->tcp_header.src_port),
-	      clib_net_to_host_u16 (t->tcp_header.dst_port), format_tcp_state,
+	      clib_net_to_host_u16 (t->tcp_header.dst_port),
+	      clib_net_to_host_u16 (t->tcp_header.src_port), format_tcp_state,
 	      t->tcp_connection.state);
 
   return s;
 }
 
-void
+static void
 tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
 		       tcp_header_t * th0, vlib_buffer_t * b0, u8 is_ip4)
 {
@@ -1692,6 +1692,40 @@ tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
       th0 = tcp_buffer_hdr (b0);
     }
   clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+}
+
+static void
+tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vlib_frame_t * frame, u8 is_ip4)
+{
+  u32 *from, n_left;
+
+  n_left = frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+
+  while (n_left >= 1)
+    {
+      tcp_connection_t *tc0;
+      tcp_rx_trace_t *t0;
+      tcp_header_t *th0;
+      vlib_buffer_t *b0;
+      u32 bi0;
+
+      bi0 = from[0];
+      b0 = vlib_get_buffer (vm, bi0);
+
+      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
+				    vm->thread_index);
+	  th0 = tcp_buffer_hdr (b0);
+	  tcp_set_rx_trace_data (t0, tc0, th0, b0, is_ip4);
+	}
+
+      from += 1;
+      n_left -= 1;
+    }
 }
 
 always_inline void
@@ -1734,15 +1768,18 @@ tcp_node_inc_counter_i (vlib_main_t * vm, u32 tcp4_node, u32 tcp6_node,
 
 always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame, int is_ip4)
+			  vlib_frame_t * frame, int is_ip4)
 {
-  u32 my_thread_index = vm->thread_index, errors = 0;
+  u32 thread_index = vm->thread_index, errors = 0;
   u32 n_left_from, next_index, *from, *to_next;
   u16 err_counters[TCP_N_ERROR] = { 0 };
   u8 is_fin = 0;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    tcp_established_trace_frame (vm, node, frame, is_ip4);
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
@@ -1775,7 +1812,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				    my_thread_index);
+				    thread_index);
 
 	  if (PREDICT_FALSE (tc0 == 0))
 	    {
@@ -1838,13 +1875,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	done:
 	  b0->error = node->errors[error0];
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      tcp_rx_trace_t *t0 = vlib_add_trace (vm, node, b0,
-						   sizeof (*t0));
-	      tcp_set_rx_trace_data (t0, tc0, th0, b0, is_ip4);
-	    }
-
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -1853,11 +1883,12 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-						 my_thread_index);
+						 thread_index);
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
-  tcp_flush_frame_to_output (vm, my_thread_index, is_ip4);
-  return from_frame->n_vectors;
+  tcp_flush_frame_to_output (vm, thread_index, is_ip4);
+
+  return frame->n_vectors;
 }
 
 static uword
@@ -3007,22 +3038,23 @@ typedef enum _tcp_input_next
 
 static void
 tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_buffer_t ** bufs, u32 n_bufs, u8 is_ip4)
+		       vlib_buffer_t ** bs, u32 n_bufs, u8 is_ip4)
 {
   tcp_connection_t *tc;
   tcp_header_t *tcp;
   tcp_rx_trace_t *t;
-  u32 n_trace;
   int i;
 
-  n_trace = vlib_get_trace_count (vm, node);
-  for (i = 0; i < clib_min (n_trace, n_bufs); i++)
+  for (i = 0; i < n_bufs; i++)
     {
-      t = vlib_add_trace (vm, node, bufs[i], sizeof (*t));
-      tc = tcp_connection_get (vnet_buffer (bufs[i])->tcp.connection_index,
-			       vm->thread_index);
-      tcp = vlib_buffer_get_current (bufs[i]);
-      tcp_set_rx_trace_data (t, tc, tcp, bufs[i], is_ip4);
+      if (bs[i]->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
+	  tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
+				   vm->thread_index);
+	  tcp = vlib_buffer_get_current (bs[i]);
+	  tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
+	}
     }
 }
 
