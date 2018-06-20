@@ -406,7 +406,7 @@ show_mactime_command_fn (vlib_main_t * vm,
   u32 *pool_indices = 0;
   int verbose = 0;
   int current_status = 99;
-  int i;
+  int i, j;
   f64 now;
   u64 allow, drop;
 
@@ -440,15 +440,15 @@ show_mactime_command_fn (vlib_main_t * vm,
       dp = pool_elt_at_index (mm->devices, pool_indices[i]);
 
       /* Check dynamic ranges */
-      for (i = 0; i < vec_len (dp->ranges); i++)
+      for (j = 0; j < vec_len (dp->ranges); j++)
 	{
-	  clib_timebase_range_t *r = dp->ranges + i;
+	  clib_timebase_range_t *r = dp->ranges + j;
 	  f64 start0, end0;
 
 	  start0 = r->start + mm->sunday_midnight;
 	  end0 = r->end + mm->sunday_midnight;
 	  if (verbose > 1)
-	    vlib_cli_output (vm, "  Range %d: %U - %U", i,
+	    vlib_cli_output (vm, "  Range %d: %U - %U", j,
 			     format_clib_timebase_time, start0,
 			     format_clib_timebase_time, end0);
 
@@ -460,7 +460,7 @@ show_mactime_command_fn (vlib_main_t * vm,
 		current_status = 2;
 	      if (verbose)
 		{
-		  vlib_cli_output (vm, "  Time in range %d:", i);
+		  vlib_cli_output (vm, "  Time in range %d:", j);
 		  vlib_cli_output (vm, "     %U - %U",
 				   format_clib_timebase_time, start0,
 				   format_clib_timebase_time, end0);
@@ -468,7 +468,7 @@ show_mactime_command_fn (vlib_main_t * vm,
 	      goto print;
 	    }
 	}
-      if (verbose && i)
+      if (verbose && j)
 	vlib_cli_output (vm, "  No range match.");
       if (dp->flags & MACTIME_DEVICE_FLAG_STATIC_DROP)
 	current_status = 0;
