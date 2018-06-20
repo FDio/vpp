@@ -25,13 +25,3 @@ enum address_family {
   ADDRESS_IP4 = 0,
   ADDRESS_IP6,
 };
-
-union address_union {
-  vl_api_ip4_address_t ip4;
-  vl_api_ip6_address_t ip6;
-};
-
-typedef address {
-  vl_api_address_family_t af;
-  vl_api_address_union_t un;
-};
