@@ -28,6 +28,7 @@
 #include <vppinfra/bihash_40_8.h>
 #include <vppinfra/bihash_16_8.h>
 
+#include "types.h"
 #include "fa_node.h"
 #include "hash_lookup_types.h"
 #include "lookup_context.h"
@@ -71,26 +72,6 @@ typedef struct
     ip4_address_t ip4;
   } addr;
 } address_t;
-
-/*
- * ACL rules
- */
-typedef struct
-{
-  u8 is_permit;
-  u8 is_ipv6;
-  ip46_address_t src;
-  u8 src_prefixlen;
-  ip46_address_t dst;
-  u8 dst_prefixlen;
-  u8 proto;
-  u16 src_port_or_type_first;
-  u16 src_port_or_type_last;
-  u16 dst_port_or_code_first;
-  u16 dst_port_or_code_last;
-  u8 tcp_flags_value;
-  u8 tcp_flags_mask;
-} acl_rule_t;
 
 typedef struct
 {
@@ -215,6 +196,9 @@ typedef struct {
 
   /* a pool of all mask types present in all ACEs */
   ace_mask_type_entry_t *ace_mask_type_pool;
+
+  /* vec of vectors of all info of all mask types present in ACEs contained in each lc_index */
+  hash_applied_mask_info_t **hash_applied_mask_info_vec_by_lc_index;
 
   /*
    * Classify tables used to grab the packets for the ACL check,
