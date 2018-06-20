@@ -3045,9 +3045,30 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
     }
 }
 
+static void
+tcp_input_lookup_prefetch (vlib_buffer_t * b, u8 is_ip4, u64 *hash, clib_bihash_kv_16_8_t *kv4)
+{
+  u32 fib_index = vnet_buffer (b)->ip.fib_index;
+  tcp_header_t *tcp;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      tcp = ip4_next_header (ip4);
+      *hash = session_lookup_prefetch_bucket4 (fib_index, &ip4->dst_address,
+	                                       &ip4->src_address, tcp->dst_port,
+	                                       tcp->src_port,
+	                                       TRANSPORT_PROTO_TCP, kv4);
+    }
+  else
+    {
+      /* TBD */
+    }
+}
+
 static inline tcp_connection_t *
 tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
-			 u8 is_ip4)
+			 u8 is_ip4, u64 hash, clib_bihash_kv_16_8_t *kv)
 {
   u32 fib_index = vnet_buffer (b)->ip.fib_index;
   int n_advance_bytes, n_data_bytes;
@@ -3070,10 +3091,16 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	  return 0;
 	}
 
-      tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
-					  &ip4->src_address, tcp->dst_port,
-					  tcp->src_port, TRANSPORT_PROTO_TCP,
-					  thread_index, &is_filtered);
+      if (hash == (u64)~0)
+	tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
+	                                    &ip4->src_address, tcp->dst_port,
+	                                    tcp->src_port, TRANSPORT_PROTO_TCP,
+	                                    thread_index, &is_filtered);
+      else
+	tc = session_lookup_connection_wh4 (fib_index, &ip4->dst_address,
+	                                    &ip4->src_address, tcp->dst_port,
+	                                    tcp->src_port, TRANSPORT_PROTO_TCP,
+	                                    thread_index, hash, kv, &is_filtered);
     }
   else
     {
@@ -3141,6 +3168,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
+  u64 hashes[4];
+  clib_bihash_kv_16_8_t kvs[4];
+  u8 slot = 1, pos;
 
   tcp_set_time_now (thread_index);
 
@@ -3151,23 +3181,34 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   b = bufs;
   next = nexts;
 
-  while (n_left_from >= 4)
+  if (n_left_from >= 6)
+    {
+      tcp_input_lookup_prefetch (b[0], is_ip4, &hashes[0], &kvs[0]);
+      tcp_input_lookup_prefetch (b[1], is_ip4, &hashes[1], &kvs[1]);
+    }
+
+  while (n_left_from >= 6)
     {
       u32 error0 = TCP_ERROR_NO_LISTENER, error1 = TCP_ERROR_NO_LISTENER;
       tcp_connection_t *tc0, *tc1;
 
-      {
-	vlib_prefetch_buffer_header (b[2], STORE);
-	CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	{
+	  vlib_prefetch_buffer_header(b[4], STORE);
+	  CLIB_PREFETCH(b[4]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	  vlib_prefetch_buffer_header(b[5], STORE);
+	  CLIB_PREFETCH(b[5]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 
-	vlib_prefetch_buffer_header (b[3], STORE);
-	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-      }
+	  pos = 2 * slot;
+	  tcp_input_lookup_prefetch (b[2], is_ip4, &hashes[pos], &kvs[pos]);
+	  tcp_input_lookup_prefetch (b[3], is_ip4, &hashes[pos + 1], &kvs[pos + 1]);
+	}
+
+      pos = 2 * !slot;
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4, hashes[pos], &kvs[pos]);
+      tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4, hashes[pos + 1], &kvs[pos + 1]);
+      slot = !slot;
 
       next[0] = next[1] = TCP_INPUT_NEXT_DROP;
-
-      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
-      tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4);
 
       if (PREDICT_TRUE (!tc0 + !tc1 == 0))
 	{
@@ -3217,7 +3258,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       next[0] = TCP_INPUT_NEXT_DROP;
-      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4, (u64)~0, 0);
       if (PREDICT_TRUE (tc0 != 0))
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));

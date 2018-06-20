@@ -1073,6 +1073,85 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
   return 0;
 }
 
+u64
+session_lookup_prefetch_bucket4 (u32 fib_index, ip4_address_t * lcl,
+                                 ip4_address_t * rmt, u16 lcl_port,
+                                 u16 rmt_port, u8 proto, clib_bihash_kv_16_8_t *kv4)
+{
+  session_table_t *st;
+  u64 hash;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+  if (PREDICT_FALSE (!st))
+    return 0;
+
+  /*
+   * Lookup session amongst established ones
+   */
+  make_v4_ss_kv (kv4, lcl, rmt, lcl_port, rmt_port, proto);
+  hash = clib_bihash_hash_16_8 (kv4);
+  clib_bihash_prefetch_bucket_16_8(&st->v4_session_hash, hash);
+  return hash;
+}
+
+transport_connection_t *
+session_lookup_connection_wh4 (u32 fib_index, ip4_address_t * lcl,
+			       ip4_address_t * rmt, u16 lcl_port,
+			       u16 rmt_port, u8 proto, u32 thread_index,
+			       u64 hash, clib_bihash_kv_16_8_t *kv4, u8 * is_filtered)
+{
+  session_table_t *st;
+  stream_session_t *s;
+  u32 action_index;
+  int rv;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+  if (PREDICT_FALSE (!st))
+    return 0;
+
+  /*
+   * Lookup session amongst established ones
+   */
+  rv = clib_bihash_search_inline_with_hash_16_8 (&st->v4_session_hash, hash, kv4);
+  if (rv == 0)
+    {
+      s = session_get_from_handle (kv4->value);
+      return tp_vfts[proto].get_connection (s->connection_index,
+					    s->thread_index);
+    }
+
+  /*
+   * Try half-open connections
+   */
+  rv = clib_bihash_search_inline_with_hash_16_8 (&st->v4_half_open_hash, hash, kv4);
+  if (rv == 0)
+    return tp_vfts[proto].get_half_open (kv4->value & 0xFFFFFFFF);
+
+  /*
+   * Check the session rules table
+   */
+  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (session_lookup_action_index_is_valid (action_index))
+    {
+      if ((*is_filtered = (action_index == SESSION_RULES_TABLE_ACTION_DROP)))
+	return 0;
+      if ((s = session_lookup_action_to_session (action_index,
+						 FIB_PROTOCOL_IP4, proto)))
+	return tp_vfts[proto].get_listener (s->connection_index);
+      return 0;
+    }
+
+  /*
+   * If nothing is found, check if any listener is available
+   */
+  s = session_lookup_listener4_i (st, lcl, lcl_port, proto, 1);
+  if (s)
+    return tp_vfts[proto].get_listener (s->connection_index);
+
+  return 0;
+}
+
 /**
  * Lookup connection with ip6 and transport layer information
  *

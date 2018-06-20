@@ -51,6 +51,15 @@ transport_connection_t *session_lookup_connection6 (u32 fib_index,
 						    ip6_address_t * rmt,
 						    u16 lcl_port,
 						    u16 rmt_port, u8 proto);
+u64
+session_lookup_prefetch_bucket4 (u32 fib_index, ip4_address_t * lcl,
+                                 ip4_address_t * rmt, u16 lcl_port,
+                                 u16 rmt_port, u8 proto, clib_bihash_kv_16_8_t *kv);
+transport_connection_t *
+session_lookup_connection_wh4 (u32 fib_index, ip4_address_t * lcl,
+			       ip4_address_t * rmt, u16 lcl_port,
+			       u16 rmt_port, u8 proto, u32 thread_index,
+			       u64 hash, clib_bihash_kv_16_8_t *kv4, u8 * is_filtered);
 stream_session_t *session_lookup_listener4 (u32 fib_index,
 					    ip4_address_t * lcl, u16 lcl_port,
 					    u8 proto);
