@@ -16,7 +16,7 @@
 from string import Template
 
 from jni_common_gen import generate_j2c_swap, generate_j2c_identifiers, generate_c2j_swap
-from jvpp_model import Class
+from jvpp_model import Class, Enum
 
 
 def generate_type_handlers(model, logger):
@@ -30,6 +30,8 @@ def generate_type_handlers(model, logger):
         #TODO(VPP-1186): move the logic to JNI generators
         if isinstance(t, Class):
             _generate_class(model, t, type_handlers)
+        elif isinstance(t, Enum):
+            _generate_enum(model, t, type_handlers)
         else:
             logger.debug("Skipping custom JNI type handler generation for %s", t)
 
@@ -82,6 +84,54 @@ static inline void _net_to_host_${c_name}(JNIEnv * env, vl_api_${c_name}_t * _ne
 {
     jclass ${type_reference_name}Class = (*env)->FindClass(env, "${class_FQN}");
 $type_swap
+}""")
+
+
+def _generate_enum(model, t, type_handlers):
+    value_type = t.value.type
+    type_handlers.append(_ENUM_NET_TO_HOST_TEMPLATE.substitute(
+        c_name=t.name,
+        json_filename=model.json_api_files,
+        json_definition=t.doc,
+        class_FQN=t.jni_name,
+        jni_signature=value_type.jni_signature,
+        jni_type=value_type.jni_type,
+        jni_accessor=value_type.jni_accessor,
+        swap=_generate_scalar_host_to_net_swap(t.value)
+    ))
+
+    type_handlers.append(_ENUM_HOST_TO_NET_TEMPLATE.substitute(
+        c_name=t.name,
+        json_filename=model.json_api_files,
+        json_definition=t.doc,
+        class_FQN=t.jni_name,
+        jni_type=value_type.jni_type,
+        type_swap=_generate_scalar_net_to_host_swap(t.value)
+    ))
+
+_ENUM_NET_TO_HOST_TEMPLATE = Template("""
+/**
+ * Host to network byte order conversion for ${c_name} enum.
+ * Generated based on $json_filename:
+$json_definition
+ */
+static inline void _host_to_net_${c_name}(JNIEnv * env, jobject _host, vl_api_${c_name}_t * _net)
+{
+    jclass enumClass = (*env)->FindClass(env, "${class_FQN}");
+    jfieldID valueFieldId = (*env)->GetStaticFieldID(env, enumClass, "value", "${jni_signature}");
+    ${jni_type} value = (*env)->GetStatic${jni_accessor}Field(env, enumClass, valueFieldId);
+    ${swap};
+}""")
+
+_ENUM_HOST_TO_NET_TEMPLATE = Template("""
+/**
+ * Network to host byte order conversion for ${c_name} type.
+ * Generated based on $json_filename:
+$json_definition
+ */
+static inline ${jni_type} _net_to_host_${c_name}(vl_api_${c_name}_t _net)
+{
+    return (${jni_type}) $type_swap
 }""")
 
 

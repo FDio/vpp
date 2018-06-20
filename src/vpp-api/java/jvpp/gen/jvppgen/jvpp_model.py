@@ -110,6 +110,34 @@ class Array(Type):
         return "Array{name:%s, java_name:%s}" % (self.name, self.java_name)
 
 
+class Enum(Type):
+    def __init__(self, name, value, constants, definition, plugin_name):
+        _java_name = _underscore_to_camelcase_upper(name)
+
+        super(Enum, self).__init__(
+            name=name,
+            java_name=_java_name,
+            java_name_fqn="io.fd.vpp.jvpp.%s.types.%s" % (plugin_name, _java_name),
+            jni_signature="Lio/fd/vpp/jvpp/%s/types/%s;" % (plugin_name, _java_name),
+            jni_type="jobject",
+            jni_accessor="Object",
+            host_to_net_function="_host_to_net_%s" % name,
+            net_to_host_function="_net_to_host_%s" % name
+        )
+
+        self.value = value
+        self.constants = constants
+        self.doc = _message_to_javadoc(definition)
+        self.java_name_lower = _underscore_to_camelcase_lower(name)
+        self.vpp_name = "%s%s%s" % (_VPP_TYPE_PREFIX, name, _VPP_TYPE_SUFFIX)
+        # Fully qualified class name used by FindClass function, see:
+        # https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
+        self.jni_name = "io/fd/vpp/jvpp/%s/types/%s" % (plugin_name, _java_name)
+
+    def get_host_to_net_function(self, host_ref_name, net_ref_name):
+        return "_host_to_net_%s(env, %s, &(%s))" % (self.name, host_ref_name, net_ref_name)
+
+
 class Class(Type):
     def __init__(self, name, crc, fields, definition, plugin_name):
         _java_name = _underscore_to_camelcase_upper(name)
@@ -255,6 +283,8 @@ class JVppModel(object):
         self.plugin_name = plugin_name
         self.plugin_java_name = _underscore_to_camelcase_upper(plugin_name)
         self._load_json_files(json_api_files)
+        self._parse_simple_types()
+        self._parse_enums()
         self._parse_types()
         self._parse_services()
         self._parse_messages()
@@ -273,7 +303,7 @@ class JVppModel(object):
                 self._messages.extend(j['messages'])
                 self._services.update(j['services'])
 
-    def _parse_types(self):
+    def _parse_simple_types(self):
         # Mapping according to:
         # http://docs.oracle.com/javase/7/do+'[]'cs/technotes/guides/jni/spec/types.html
         # and
@@ -309,6 +339,28 @@ class JVppModel(object):
         for n, t in self._types_by_name.items():
             self._types_by_name[n + _ARRAY_SUFFIX] = Array(t)
 
+    def _parse_enums(self):
+        for json_type in self._enums:
+            name = json_type[0]
+            definition = json_type[1:]
+            _type = self._parse_enum(name, definition)
+            self._types_by_name[name] = _type
+            self._types_by_name[name + _ARRAY_SUFFIX] = Array(_type)
+
+    def _parse_enum(self, name, definition):
+        self.logger.debug("Parsing enum %s: %s", name, definition)
+        constants = []
+        type_name = None
+        for item in definition:
+            if type(item) is dict and 'enumtype' in item:
+                type_name = item['enumtype']
+                continue
+            constants.append({'name': item[0], 'value': item[1]})
+        if not type_name:
+            raise ParseException("'enumtype' was not defined for %s" % definition)
+        return Enum(name, Field('value', self._types_by_name[type_name]), constants, definition, self.plugin_name)
+
+    def _parse_types(self):
         for json_type in self._types:
             try:
                 name = json_type[0]
