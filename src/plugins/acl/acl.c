@@ -4089,6 +4089,8 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
   u32 hash_lookup_hash_buckets;
   u32 hash_lookup_hash_memory;
   u32 reclassify_sessions;
+  u32 use_tuple_merge;
+  u32 tuple_merge_split_threshold;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -4117,6 +4119,14 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "hash lookup hash memory %d",
 			 &hash_lookup_hash_memory))
 	am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+      else if (unformat (input, "use tuple merge %d", &use_tuple_merge))
+	am->use_tuple_merge = use_tuple_merge;
+      else
+	if (unformat
+	    (input, "tuple merge split threshold %d",
+	     &tuple_merge_split_threshold))
+	am->tuple_merge_split_threshold = tuple_merge_split_threshold;
+
       else if (unformat (input, "reclassify sessions %d",
 			 &reclassify_sessions))
 	am->reclassify_sessions = reclassify_sessions;
@@ -4224,6 +4234,10 @@ acl_init (vlib_main_t * vm)
 
   /* use the new fancy hash-based matching */
   am->use_hash_acl_matching = 1;
+  /* use tuplemerge by default */
+  am->use_tuple_merge = 1;
+  /* Set the default threshold */
+  am->tuple_merge_split_threshold = TM_SPLIT_THRESHOLD;
 
   am->interface_acl_user_id = ~0;	/* defer till the first use */
 
