@@ -18,17 +18,17 @@
 #ifndef _ACL_HASH_LOOKUP_TYPES_H_
 #define _ACL_HASH_LOOKUP_TYPES_H_
 
+#include "types.h"
+
 /* The structure representing the single entry with hash representation */
 typedef struct {
+  fa_5tuple_t match;
   /* these two entries refer to the original ACL# and rule# within that ACL */
   u32 acl_index;
   u32 ace_index;
 
-  u32 mask_type_index;
-  u8 src_portrange_not_powerof2;
-  u8 dst_portrange_not_powerof2;
+  u32 base_mask_type_index;
 
-  fa_5tuple_t match;
   u8 action;
 } hash_ace_info_t;
 
@@ -36,8 +36,6 @@ typedef struct {
  * The structure holding the information necessary for the hash-based ACL operation
  */
 typedef struct {
-  /* The mask types present in this ACL */
-  uword *mask_type_index_bitmap;
   /* hash ACL applied on these lookup contexts */
   u32 *lc_index_list;
   hash_ace_info_t *rules;
@@ -45,12 +43,23 @@ typedef struct {
   int hash_acl_exists;
 } hash_acl_info_t;
 
+
+typedef struct {
+  acl_rule_t rule;
+  u32 acl_index;
+  u32 ace_index;
+  u32 acl_position;
+  u32 applied_entry_index;
+} collision_match_rule_t;
+
 typedef struct {
   /* original non-compiled ACL */
   u32 acl_index;
   u32 ace_index;
   /* the index of the hash_ace_info_t */
   u32 hash_ace_info_index;
+  /* applied mask type index */
+  u32 mask_type_index;
   /*
    * in case of the same key having multiple entries,
    * this holds the index of the next entry.
@@ -66,6 +75,10 @@ typedef struct {
    */
   u32 tail_applied_entry_index;
   /*
+   * Collision rule vector for matching - set only on head entry
+   */
+  collision_match_rule_t *colliding_rules;
+  /*
    * number of hits on this entry
    */
   u64 hitcount;
@@ -80,11 +93,7 @@ typedef struct {
 } applied_hash_ace_entry_t;
 
 typedef struct {
-   /*
-    * A logical OR of all the applied_ace_hash_entry_t=>
-    *                            hash_ace_info_t=>mask_type_index bits set
-    */
-   uword *mask_type_index_bitmap;
+
    /* applied ACLs so we can track them independently from main ACL module */
    u32 *applied_acls;
 } applied_hash_acl_info_t;
@@ -96,12 +105,20 @@ typedef union {
     u32 applied_entry_index;
     u16 reserved_u16;
     u8 reserved_u8;
-    /* means there is some other entry in front intersecting with this one */
-    u8 shadowed:1;
-    u8 need_portrange_check:1;
-    u8 reserved_flags:6;
+    u8 reserved_flags:8;
   };
 } hash_acl_lookup_value_t;
+
+
+typedef struct {
+   u32 mask_type_index;
+   /* first rule # for this mask */
+   u32 first_rule_index;
+   /* Debug Information */
+   u32 num_entries;
+   u32 max_collisions;
+} hash_applied_mask_info_t;
+
 
 #define CT_ASSERT_EQUAL(name, x,y) typedef int assert_ ## name ## _compile_time_assertion_failed[((x) == (y))-1]
 
