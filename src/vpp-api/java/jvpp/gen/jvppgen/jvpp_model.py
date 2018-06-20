@@ -310,11 +310,14 @@ class JVppModel(object):
             self._types_by_name[n + _ARRAY_SUFFIX] = Array(t)
 
         for json_type in self._types:
-            name = json_type[0]
-            definition = json_type[1:]
-            _type = self._parse_type(name, definition)
-            self._types_by_name[name] = _type
-            self._types_by_name[name + _ARRAY_SUFFIX] = Array(_type)
+            try:
+                name = json_type[0]
+                definition = json_type[1:]
+                _type = self._parse_type(name, definition)
+                self._types_by_name[name] = _type
+                self._types_by_name[name + _ARRAY_SUFFIX] = Array(_type)
+            except ParseException as e:
+                self.logger.warning("Failed to parse %s type: %s. Skipping type definition.", name, e)
 
         self.types = self._types_by_name.values()
 
