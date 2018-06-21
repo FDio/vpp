@@ -18,8 +18,10 @@
 
 **verify 1**
     - check VRF data by parsing output of ip6_fib_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the same
+    VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
+    - no packet received in case of pg-ip6 interfaces in different VRFs
 
 **config 2**
     - reset 2 VRFs
@@ -29,8 +31,10 @@
 
 **verify 2**
     - check VRF data by parsing output of ip6_fib_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the same
+    VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
+    - no packet received in case of pg-ip6 interfaces in different VRFs
 
 **config 3**
     - add 1 of reset VRFs and 1 new VRF
@@ -40,8 +44,10 @@
 
 **verify 3**
     - check VRF data by parsing output of ip6_fib_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the same
+    VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
+    - no packet received in case of pg-ip6 interfaces in different VRFs
 
 **config 4**
     - reset all VRFs (i.e. no VRF except VRF=0 created)
@@ -51,8 +57,10 @@
 
 **verify 4**
     - check VRF data by parsing output of ip6_fib_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the same
+    VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
+    - no packet received in case of pg-ip6 interfaces in different VRFs
 """
 
 import unittest
@@ -136,7 +144,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             # Create list of pg_interfaces in VRFs
             cls.pg_in_vrf = list()
 
-            # Create list of pg_interfaces not in BDs
+            # Create list of pg_interfaces not in VRFs
             cls.pg_not_in_vrf = [pg_if for pg_if in cls.pg_interfaces]
 
             # Create mapping of pg_interfaces to VRF IDs
@@ -170,7 +178,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
-        Create required number of FIB tables / VRFs, put 3 l2-pg interfaces
+        Create required number of FIB tables / VRFs, put 3 pg-ip6 interfaces
         to every FIB table / VRF.
 
         :param int count: Number of FIB tables / VRFs to be created.
@@ -257,6 +265,38 @@ class TestIP6VrfMultiInst(VppTestCase):
                           % (src_if.name, len(pkts)))
         return pkts
 
+    def create_stream_crosswise_vrf(self, src_if, vrf_id, packet_sizes):
+        """
+        Create input packet stream for negative test for leaking across
+        different VRFs for defined interface using hosts list.
+
+        :param object src_if: Interface to create packet stream for.
+        :param int vrf_id: The FIB table / VRF ID where src_if is assigned.
+        :param list packet_sizes: List of required packet sizes.
+        :return: Stream of packets.
+        """
+        pkts = []
+        src_hosts = src_if.remote_hosts
+        vrf_lst = list(self.vrf_list)
+        vrf_lst.remove(vrf_id)
+        for vrf in vrf_lst:
+            for dst_if in self.pg_if_by_vrf_id[vrf]:
+                for dst_host in dst_if.remote_hosts:
+                    src_host = random.choice(src_hosts)
+                    pkt_info = self.create_packet_info(src_if, dst_if)
+                    payload = self.info_to_payload(pkt_info)
+                    p = (Ether(dst=src_if.local_mac, src=src_host.mac) /
+                         IPv6(src=src_host.ip6, dst=dst_host.ip6) /
+                         UDP(sport=1234, dport=1234) /
+                         Raw(payload))
+                    pkt_info.data = p.copy()
+                    size = random.choice(packet_sizes)
+                    self.extend_packet(p, size)
+                    pkts.append(p)
+        self.logger.debug("Input stream created for port %s. Length: %u pkt(s)"
+                          % (src_if.name, len(pkts)))
+        return pkts
+
     def verify_capture(self, pg_if, capture):
         """
         Verify captured input packet stream for defined interface.
@@ -336,16 +376,15 @@ class TestIP6VrfMultiInst(VppTestCase):
 
     def run_verify_test(self):
         """
-        Create packet streams for all configured l2-pg interfaces, send all \
+        Create packet streams for all configured pg interfaces, send all \
         prepared packet streams and verify that:
-            - all packets received correctly on all pg-l2 interfaces assigned
-              to bridge domains
-            - no packet received on all pg-l2 interfaces not assigned to bridge
-              domains
+            - all packets received correctly on all pg-ip6 interfaces assigned
+              to VRFs
+            - no packet received on all pg-ip6 interfaces not assigned to VRFs
 
-        :raise RuntimeError: If no packet captured on l2-pg interface assigned
-            to the bridge domain or if any packet is captured on l2-pg
-            interface not assigned to the bridge domain.
+        :raise RuntimeError: If no packet captured on pg-ip6 interface assigned
+            to VRF or if any packet is captured on pg-ip6 interface not
+            assigned to VRF.
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces
@@ -370,6 +409,34 @@ class TestIP6VrfMultiInst(VppTestCase):
             else:
                 raise Exception("Unknown interface: %s" % pg_if.name)
 
+    def run_crosswise_vrf_test(self):
+        """
+        Create packet streams for every pg-ip6 interface in VRF towards all
+        pg-ip6 interfaces in other VRFs, send all prepared packet streams and \
+        verify that:
+             - no packet received on all configured pg-ip6 interfaces
+
+        :raise RuntimeError: If any packet is captured on any pg-ip6 interface.
+        """
+        # Test
+        # Create incoming packet streams for packet-generator interfaces
+        for vrf_id in self.vrf_list:
+            for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                pkts = self.create_stream_crosswise_vrf(
+                    pg_if, vrf_id, self.pg_if_packet_sizes)
+                pg_if.add_stream(pkts)
+
+        # Enable packet capture and start packet sending
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify
+        # Verify outgoing packet streams per packet-generator interface
+        for pg_if in self.pg_interfaces:
+            pg_if.assert_nothing_captured(remark="interface is in other VRF",
+                                          filter_out_fn=is_ipv6_misc_ext)
+            self.logger.debug("No capture for interface %s" % pg_if.name)
+
     def test_ip6_vrf_01(self):
         """ IP6 VRF  Multi-instance test 1 - create 4 VRFs
         """
@@ -384,6 +451,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Test 1
         self.run_verify_test()
+        self.run_crosswise_vrf_test()
 
     def test_ip6_vrf_02(self):
         """ IP6 VRF  Multi-instance test 2 - reset 2 VRFs
@@ -403,6 +471,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Test 2
         self.run_verify_test()
+        self.run_crosswise_vrf_test()
 
         # Reset routes learned from ICMPv6 Neighbor Discovery
         for vrf_id in self.vrf_reset_list:
@@ -426,6 +495,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Test 3
         self.run_verify_test()
+        self.run_crosswise_vrf_test()
 
         # Reset routes learned from ICMPv6 Neighbor Discovery
         for vrf_id in self.vrf_reset_list:
@@ -450,6 +520,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Test 4
         self.run_verify_test()
+        self.run_crosswise_vrf_test()
 
 
 if __name__ == '__main__':
