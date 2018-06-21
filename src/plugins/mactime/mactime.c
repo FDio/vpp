@@ -218,7 +218,7 @@ static void vl_api_mactime_add_del_range_t_handler
 	  vlib_validate_simple_counter (&mm->drop_counters, dp - mm->devices);
 	  vlib_zero_simple_counter (&mm->drop_counters, dp - mm->devices);
 	  mp->device_name[ARRAY_LEN (mp->device_name) - 1] = 0;
-	  dp->device_name = format (0, "%s", mp->device_name);
+	  dp->device_name = format (0, "%s%c", mp->device_name, 0);
 	  memcpy (dp->mac_address, mp->mac_address, sizeof (mp->mac_address));
 	  for (i = 0; i < clib_net_to_host_u32 (mp->count); i++)
 	    {
