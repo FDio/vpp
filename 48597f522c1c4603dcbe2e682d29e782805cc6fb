@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "916a3796_5bebc885",
+        "filename": "src/vnet/dhcp/dhcp6_client_cp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-06-21T10:03:02Z",
+      "side": 1,
+      "message": "Please put these constants from RFC3315 into a header file.",
+      "range": {
+        "startLine": 95,
+        "startChar": 2,
+        "endLine": 119,
+        "endChar": 28
+      },
+      "revId": "48597f522c1c4603dcbe2e682d29e782805cc6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
