@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "55b50a89_84e7e29e",
+        "filename": "src/plugins/igmp/igmp.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-21T02:04:08Z",
+      "side": 1,
+      "message": "re the comment on the tests, I don\u0027t understand what this is for.",
+      "revId": "ca79aa417e0685163bd29542241f91a80a8030e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81cacbce_9366c22e",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-21T02:04:08Z",
+      "side": 1,
+      "message": "i would prefer you #define IMGP_DBG to vlib_log_debug",
+      "revId": "ca79aa417e0685163bd29542241f91a80a8030e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f1f6b0ee_c6f6838d",
+        "filename": "test/test_igmp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-21T02:04:08Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be 10.1.1.1? i.e. the join sent by VPP proxy is for the same address as the join from the host?",
+      "revId": "ca79aa417e0685163bd29542241f91a80a8030e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c94dbf3_b389d070",
+        "filename": "test/test_igmp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-21T02:04:08Z",
+      "side": 1,
+      "message": "all packets are sent on pg1",
+      "revId": "ca79aa417e0685163bd29542241f91a80a8030e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
