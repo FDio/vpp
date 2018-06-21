@@ -605,7 +605,15 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
       *pkey++ = *pmatch++ & *pmask++;
       *pkey++ = *pmatch++ & *pmask++;
 
-      kv_key->pkt.mask_type_index_lsb = mask_type_index;
+      /*
+       * The use of temporary variable convinces the compiler
+       * to make a u64 write, avoiding the stall on crc32 operation
+       * just a bit later.
+       */
+      fa_packet_info_t tmp_pkt = kv_key->pkt;
+      tmp_pkt.mask_type_index_lsb = mask_type_index;
+      kv_key->pkt.as_u64 = tmp_pkt.as_u64;
+
       int res =
 	clib_bihash_search_inline_2_48_8 (&am->acl_lookup_hash, &kv, &result);
 
