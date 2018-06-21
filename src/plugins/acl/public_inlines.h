@@ -605,7 +605,85 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
       *pkey++ = *pmatch++ & *pmask++;
       *pkey++ = *pmatch++ & *pmask++;
 
-      kv_key->pkt.mask_type_index_lsb = mask_type_index;
+      /*
+       * The below odd-looking snippet of the code warrants a comment,
+       * rather than just a long commit message.
+       *
+       * Once upon a time it just looked like this:
+       *
+       *   kv_key->pkt.mask_type_index_lsb = mask_type_index;
+       *
+       * The thinking was "we will just ovewrite the piece of
+       * the newly created key with a tweak, let compiler optimize it and be good".
+       *
+       * The resulting perf top data showed this:
+       *
+       *
+       *	       │            kv_key->pkt.mask_type_index_lsb = mask_type_index;
+       *	       │        mov    %r10w,-0xa44(%rbp)
+       *	       │      _mm_crc32_u64():
+       *	  0.02 │        crc32q %rcx,%raxg
+       *	  0.58 │        mov    %eax,%eaxg
+       *	  9.93 │        crc32q -0xa48(%rbp),%rax
+       *	^^^^^^^^^^ this costs cycles even though we have just prepared the key.
+       *
+       * The Intel performance manual talks about the fact that a small store
+       * inside a larger load causes latency, which is what I believed was
+       * happening. So I replaced the code with the one below, to try to coerce
+       * the compiler to use only u64 stores, so they could coalesce with the loads.
+       *
+       * The resulting perf top no longer shows the same place as bottleneck,
+       * with the assembly looking like this:
+       *
+       *	  0.00 │        mov    %rdx,%rax
+       *	       │
+       *	       │            fa_packet_info_t tmp_pkt = kv_key->pkt;
+       *	       │            tmp_pkt.mask_type_index_lsb = mask_type_index;
+       *	       │        movabs $0xffff0000ffffffff,%rdx
+       *	  0.01 │        and    %rdx,%rax
+       *	  0.65 │        or     %rcx,%rax
+       *                                    ^^^^ tmp_pkt is now in %rax
+       *	       │      _mm_crc32_u64():
+       *	  0.00 │        mov    %r11,%rcx
+       *	       │        crc32q %r10,%rcx
+       *	  0.00 │        mov    %ecx,%ecx
+       *	       │      multi_acl_match_get_applied_ace_index():
+       *	       │            kv_key->pkt.as_u64 = tmp_pkt.as_u64;
+       *	  0.61 │        mov    %rax,-0xa48(%rbp)
+                  ^^^^^^^^^ the store to memory happens here
+       *	       │      _mm_crc32_u64():
+       *	       │        crc32q %r9,%rcx
+       *	       │        mov    %ecx,%ecx
+       *	  0.00 │        crc32q %r8,%rcx
+       *	  0.59 │        mov    %ecx,%ecx
+       *	  0.02 │        crc32q %rdi,%rcx
+       *	       │      clib_bihash_search_inline_2_with_hash_48_8():
+       *	       │        int i, limit;
+       *	       │
+       *	       │        ASSERT (valuep);
+       *	       │
+       *	       │        bucket_index = hash & (h->nbuckets - 1);
+       *	       │        b = &h->buckets[bucket_index];
+       *	       │        mov    0x68(%r12),%edi
+       *	       │      _mm_crc32_u64():
+       *	  0.00 │        mov    %ecx,%ecx
+       *	  0.60 │        crc32q %rsi,%rcx
+       *	       │      clib_bihash_search_inline_2_with_hash_48_8():
+       *	       │        mov    0x40(%r12),%rsi
+       *	       │      _mm_crc32_u64():
+       *	  0.01 │        mov    %ecx,%ecx
+       *	  0.01 │        crc32q %rax,%rcx
+                 ^^^^^^^^^^ crc32q with the result. No stall anymore.
+       *	  0.74 │        mov    %rcx,%rax
+       *
+       * The crc32 operation is not dependent on the store anymore, so the perf top
+       * does not show the stall.
+       *
+       */
+      fa_packet_info_t tmp_pkt = kv_key->pkt;
+      tmp_pkt.mask_type_index_lsb = mask_type_index;
+      kv_key->pkt.as_u64 = tmp_pkt.as_u64;
+
       int res =
 	clib_bihash_search_inline_2_48_8 (&am->acl_lookup_hash, &kv, &result);
 
