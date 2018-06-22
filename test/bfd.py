@@ -35,6 +35,9 @@ class BFDDiagCode(NumericConstant):
         reverse_concatenated_path_down: "Reverse Concatenated Path Down",
     }
 
+    def __init__(self, value):
+        NumericConstant.__init__(self, value)
+
 
 class BFDState(NumericConstant):
     """ BFD State """
@@ -49,6 +52,9 @@ class BFDState(NumericConstant):
         init: "Init",
         up: "Up",
     }
+
+    def __init__(self, value):
+        NumericConstant.__init__(self, value)
 
 
 class BFDAuthType(NumericConstant):
@@ -68,6 +74,9 @@ class BFDAuthType(NumericConstant):
         keyed_sha1: "Keyed SHA1",
         meticulous_keyed_sha1: "Meticulous Keyed SHA1",
     }
+
+    def __init__(self, value):
+        NumericConstant.__init__(self, value)
 
 
 def bfd_is_auth_used(pkt):
@@ -139,7 +148,6 @@ class BFD(Packet):
         return self.sprintf("BFD(my_disc=%BFD.my_discriminator%,"
                             "your_disc=%BFD.your_discriminator%)")
 
-
 # glue the BFD packet class to scapy parser
 bind_layers(UDP, BFD, dport=BFD.udp_dport)
 
@@ -160,7 +168,6 @@ class BFD_vpp_echo(Packet):
         return self.sprintf(
             "BFD_VPP_ECHO(disc=%BFD_VPP_ECHO.discriminator%,"
             "expire_time_clocks=%BFD_VPP_ECHO.expire_time_clocks%)")
-
 
 # glue the BFD echo packet class to scapy parser
 bind_layers(UDP, BFD_vpp_echo, dport=BFD_vpp_echo.udp_dport)

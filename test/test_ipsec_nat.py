@@ -141,17 +141,17 @@ class IPSecNATTestCase(VppTestCase):
         spd_id = 1
         remote_sa_id = 10
         local_sa_id = 20
-        scapy_tun_spi = 1001
-        vpp_tun_spi = 1000
+        remote_tun_spi = 1001
+        local_tun_spi = 1000
         client = socket.inet_pton(socket.AF_INET, cls.remote_pg0_client_addr)
         cls.vapi.ip_add_del_route(client, 32, cls.pg0.remote_ip4n)
-        cls.vapi.ipsec_sad_add_del_entry(remote_sa_id, scapy_tun_spi,
+        cls.vapi.ipsec_sad_add_del_entry(remote_sa_id, remote_tun_spi,
                                          cls.pg1.remote_ip4n,
                                          cls.pg0.remote_ip4n,
                                          integrity_key_length=20,
                                          crypto_key_length=16,
                                          protocol=1, udp_encap=1)
-        cls.vapi.ipsec_sad_add_del_entry(local_sa_id, vpp_tun_spi,
+        cls.vapi.ipsec_sad_add_del_entry(local_sa_id, local_tun_spi,
                                          cls.pg0.remote_ip4n,
                                          cls.pg1.remote_ip4n,
                                          integrity_key_length=20,

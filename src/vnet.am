@@ -451,6 +451,7 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec_input.c			\
  vnet/ipsec/ipsec_if.c				\
  vnet/ipsec/ipsec_if_in.c			\
+ vnet/ipsec/ipsec_if_out.c			\
  vnet/ipsec/esp_format.c			\
  vnet/ipsec/esp_encrypt.c			\
  vnet/ipsec/esp_decrypt.c			\
