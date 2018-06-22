@@ -85,7 +85,6 @@ enum
 
 #define foreach_buffer_opaque_union_subtype     \
 _(ip)                                           \
-_(swt)                                          \
 _(l2)                                           \
 _(l2t)                                          \
 _(l2_classify)                                  \
@@ -209,13 +208,6 @@ typedef struct
 	u8 n_bytes;
       } bier;
     } mpls;
-
-    /* ip4-in-ip6 softwire termination, only valid there */
-    struct
-    {
-      u8 swt_disable;
-      u32 mapping_index;
-    } swt;
 
     /* l2 bridging path, only valid there */
     struct opaque_l2
