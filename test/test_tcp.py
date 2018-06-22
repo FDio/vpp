@@ -16,7 +16,7 @@ class TestTCP(VppTestCase):
     def setUp(self):
         super(TestTCP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
-        self.create_loopback_interfaces(range(2))
+        self.create_loopback_interfaces(2)
 
         table_id = 0
 
