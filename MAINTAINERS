@@ -101,9 +101,9 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
-VNET MAP
+Plugin - MAP
 M:	Ole Troan <ot@cisco.com>
-F:	src/vnet/map
+F:	src/plugins/map
 
 VNET MPLS
 M:	Neale Ranns <nranns@cisco.com>
