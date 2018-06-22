@@ -17,42 +17,38 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
-
-#include "map.h"
-#include <vnet/api_errno.h>
+#include <map/map.h>
+#include <map/map_msg_enum.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/vnet_msg_enum.h>
+#include <vlibmemory/api.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <map/map_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <map/map_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include <map/map_all_api_h.h>
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+/* Get the API version number */
+#define vl_api_version(n,v) static u32 api_version=(v);
+#include <map/map_all_api_h.h>
+#undef vl_api_version
 
-#define foreach_vpe_api_msg			\
-_(MAP_ADD_DOMAIN, map_add_domain)		\
-_(MAP_DEL_DOMAIN, map_del_domain)		\
-_(MAP_ADD_DEL_RULE, map_add_del_rule)		\
-_(MAP_DOMAIN_DUMP, map_domain_dump)		\
-_(MAP_RULE_DUMP, map_rule_dump)			\
-_(MAP_SUMMARY_STATS, map_summary_stats)
+#define REPLY_MSG_ID_BASE mm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
 
 static void
 vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 {
+  map_main_t *mm = &map_main;
   vl_api_map_add_domain_reply_t *rmp;
   int rv = 0;
   u32 index;
@@ -83,6 +79,7 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 static void
 vl_api_map_del_domain_t_handler (vl_api_map_del_domain_t * mp)
 {
+  map_main_t *mm = &map_main;
   vl_api_map_del_domain_reply_t *rmp;
   int rv = 0;
 
@@ -94,6 +91,7 @@ vl_api_map_del_domain_t_handler (vl_api_map_del_domain_t * mp)
 static void
 vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t * mp)
 {
+  map_main_t *mm = &map_main;
   vl_api_map_del_domain_reply_t *rmp;
   int rv = 0;
 
@@ -252,49 +250,67 @@ out:
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-/*
- * vpe_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
+#define foreach_map_plugin_api_msg		\
+_(MAP_ADD_DOMAIN, map_add_domain)		\
+_(MAP_DEL_DOMAIN, map_del_domain)		\
+_(MAP_ADD_DEL_RULE, map_add_del_rule)		\
+_(MAP_DOMAIN_DUMP, map_domain_dump)		\
+_(MAP_RULE_DUMP, map_rule_dump)			\
+_(MAP_SUMMARY_STATS, map_summary_stats)
 
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_map;
-#undef _
-}
-
+/* Set up the API message handling tables */
 static clib_error_t *
-map_api_hookup (vlib_main_t * vm)
+map_plugin_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
-
+  map_main_t *mm __attribute__ ((unused)) = &map_main;
 #define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+    vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),     \
+                           #n,					\
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
+  foreach_map_plugin_api_msg;
 #undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
 
   return 0;
 }
 
-VLIB_API_INIT_FUNCTION (map_api_hookup);
+#define vl_msg_name_crc_list
+#include <map/map_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (map_main_t * mm, api_main_t * am)
+{
+#define _(id,n,crc)							\
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mm->msg_id_base);
+  foreach_vl_msg_name_crc_map;
+#undef _
+}
+
+clib_error_t *
+map_api_init (vlib_main_t * vm, map_main_t * mm)
+{
+  clib_error_t *error = 0;
+  u8 *name = format (0, "map_%08x%c", api_version, 0);
+
+  /* Ask for a correctly-sized block of API message decode slots */
+  mm->msg_id_base =
+    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  error = map_plugin_api_hookup (vm);
+
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  setup_message_id_table (mm, &api_main);
+
+  vec_free (name);
+
+  return error;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

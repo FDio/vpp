@@ -14,7 +14,7 @@
  */
 
 #include <vnet/ip/ip.h>
-#include <vnet/map/map_dpo.h>
+#include <map/map_dpo.h>
 
 /**
  * The register MAP DPO type
