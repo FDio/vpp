@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import unittest
+import socket
+import struct
 
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
@@ -11,12 +13,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS,  ICMPv6NDOptSrcLLAddr, \
-    ICMPv6ND_NA
+    ICMPv6NDOptDstLLAddr, ICMPv6ND_NA
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
-from util import mactobinary
+from util import Host, mactobinary
 
 
 class VppGbpEndpoint(VppObject):
@@ -298,7 +300,7 @@ class TestGBP(VppTestCase):
         super(TestGBP, self).setUp()
 
         self.create_pg_interfaces(range(9))
-        self.create_loopback_interfaces(9)
+        self.create_loopback_interfaces(range(9))
 
         self.router_mac = "00:11:22:33:44:55"
 

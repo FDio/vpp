@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-import unittest
+
 from framework import VppTestCase, VppTestRunner
-from vpp_udp_encap import VppUdpEncap
+from vpp_udp_encap import *
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
@@ -233,7 +233,7 @@ class TestUDP(VppTestCase):
     def setUp(self):
         super(TestUDP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
-        self.create_loopback_interfaces(2)
+        self.create_loopback_interfaces(range(2))
 
         table_id = 0
 

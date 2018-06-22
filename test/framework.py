@@ -558,16 +558,18 @@ class VppTestCase(unittest.TestCase):
         return result
 
     @classmethod
-    def create_loopback_interfaces(cls, count):
+    def create_loopback_interfaces(cls, interfaces):
         """
         Create loopback interfaces.
 
-        :param count: number of interfaces created.
+        :param interfaces: iterable indexes of the interfaces.
         :returns: List of created interfaces.
         """
-        result = [VppLoInterface(cls) for i in range(count)]
-        for intf in result:
+        result = []
+        for i in interfaces:
+            intf = VppLoInterface(cls, i)
             setattr(cls, intf.name, intf)
+            result.append(intf)
         cls.lo_interfaces = result
         return result
 

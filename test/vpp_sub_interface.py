@@ -35,12 +35,9 @@ class VppSubInterface(VppPGInterface):
         self._parent = parent
         self._parent.add_sub_if(self)
         self._sub_id = sub_id
+        self.set_vtr(L2_VTR_OP.L2_DISABLED)
         self.DOT1AD_TYPE = 0x88A8
         self.DOT1Q_TYPE = 0x8100
-
-    def set_sw_if_index(self, sw_if_index):
-        super(VppSubInterface, self).set_sw_if_index(sw_if_index)
-        self.set_vtr(L2_VTR_OP.L2_DISABLED)
 
     @abstractmethod
     def create_arp_req(self):
@@ -50,12 +47,18 @@ class VppSubInterface(VppPGInterface):
     def create_ndp_req(self):
         pass
 
+    def resolve_arp(self):
+        super(VppSubInterface, self).resolve_arp(self.parent)
+
+    def resolve_ndp(self):
+        super(VppSubInterface, self).resolve_ndp(self.parent)
+
     @abstractmethod
     def add_dot1_layer(self, pkt):
         pass
 
     def remove_vpp_config(self):
-        self.test.vapi.delete_subif(self.sw_if_index)
+        self.test.vapi.delete_subif(self._sw_if_index)
 
     def _add_tag(self, packet, vlan, tag_type):
         payload = packet.payload
@@ -126,12 +129,12 @@ class VppDot1QSubint(VppSubInterface):
         return self._vlan
 
     def __init__(self, test, parent, sub_id, vlan=None):
-        super(VppDot1QSubint, self).__init__(test, parent, sub_id)
         if vlan is None:
             vlan = sub_id
         self._vlan = vlan
         r = test.vapi.create_vlan_subif(parent.sw_if_index, vlan)
-        self.set_sw_if_index(r.sw_if_index)
+        self._sw_if_index = r.sw_if_index
+        super(VppDot1QSubint, self).__init__(test, parent, sub_id)
 
     def create_arp_req(self):
         packet = VppPGInterface.create_arp_req(self)
@@ -163,13 +166,13 @@ class VppDot1ADSubint(VppSubInterface):
         return self._inner_vlan
 
     def __init__(self, test, parent, sub_id, outer_vlan, inner_vlan):
-        super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
         r = test.vapi.create_subif(parent.sw_if_index, sub_id, outer_vlan,
                                    inner_vlan, dot1ad=1, two_tags=1,
                                    exact_match=1)
-        self.set_sw_if_index(r.sw_if_index)
+        self._sw_if_index = r.sw_if_index
         self._outer_vlan = outer_vlan
         self._inner_vlan = inner_vlan
+        super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
 
     def create_arp_req(self):
         packet = VppPGInterface.create_arp_req(self)
@@ -190,12 +193,12 @@ class VppDot1ADSubint(VppSubInterface):
 class VppP2PSubint(VppSubInterface):
 
     def __init__(self, test, parent, sub_id, remote_mac):
-        super(VppP2PSubint, self).__init__(test, parent, sub_id)
         r = test.vapi.create_p2pethernet_subif(parent.sw_if_index,
                                                remote_mac, sub_id)
-        self.set_sw_if_index(r.sw_if_index)
+        self._sw_if_index = r.sw_if_index
         self.parent_sw_if_index = parent.sw_if_index
         self.p2p_remote_mac = remote_mac
+        super(VppP2PSubint, self).__init__(test, parent, sub_id)
 
     def add_dot1_layer(self, packet):
         return packet

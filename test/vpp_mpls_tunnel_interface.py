@@ -9,7 +9,7 @@ class VppMPLSTunnelInterface(VppInterface):
 
     def __init__(self, test, paths, is_multicast=0, is_l2=0):
         """ Create MPLS Tunnel interface """
-        super(VppMPLSTunnelInterface, self).__init__(test)
+        self._test = test
         self.t_paths = paths
         self.is_multicast = is_multicast
         self.is_l2 = is_l2
@@ -31,7 +31,8 @@ class VppMPLSTunnelInterface(VppInterface):
                 is_multicast=self.is_multicast,
                 l2_only=self.is_l2)
             sw_if_index = reply.sw_if_index
-        self.set_sw_if_index(sw_if_index)
+        self._sw_if_index = sw_if_index
+        super(VppMPLSTunnelInterface, self).__init__(self.test)
 
     def remove_vpp_config(self):
         for path in self.t_paths:

@@ -3,13 +3,15 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, DpoProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, getmacbyip
+from scapy.layers.inet import IP, UDP, getmacbyip, ICMP
 from scapy.layers.inet6 import IPv6, getmacbyip6
+from util import ppp
 
 #
 # The number of packets sent is set to 91 so that when we replicate more than 3

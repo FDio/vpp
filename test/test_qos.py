@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 
 import unittest
+import socket
+import struct
 
 from framework import VppTestCase, VppTestRunner
+from vpp_object import VppObject
 from vpp_papi_provider import QOS_SOURCE
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS

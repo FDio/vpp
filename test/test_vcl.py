@@ -68,12 +68,12 @@ class VCLTestCase(VppTestCase):
         worker_client.join(self.timeout)
         try:
             self.validateResults(worker_client, worker_server, self.timeout)
-        except Exception as error:
+        except Exception, error:
             self.fail("Failed with %s" % error)
 
     def thru_host_stack_setup(self):
         self.vapi.session_enable_disable(is_enabled=1)
-        self.create_loopback_interfaces(2)
+        self.create_loopback_interfaces(range(2))
 
         table_id = 1
 
@@ -117,7 +117,7 @@ class VCLTestCase(VppTestCase):
 
     def thru_host_stack_ipv6_setup(self):
         self.vapi.session_enable_disable(is_enabled=1)
-        self.create_loopback_interfaces(2)
+        self.create_loopback_interfaces(range(2))
 
         table_id = 1
 
@@ -182,7 +182,7 @@ class VCLTestCase(VppTestCase):
 
         try:
             self.validateResults(worker_client, worker_server, self.timeout)
-        except Exception as error:
+        except Exception, error:
             self.fail("Failed with %s" % error)
 
     def validateResults(self, worker_client, worker_server, timeout):

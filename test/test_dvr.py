@@ -1,14 +1,18 @@
 #!/usr/bin/env python
+import random
+import socket
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppDot1QSubint
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpMRoute, \
+    VppMRoutePath, MRouteEntryFlags, MRouteItfFlags
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.layers.l2 import Ether, Dot1Q, ARP
 from scapy.layers.inet import IP, UDP
+from util import ppp
 from socket import AF_INET, inet_pton
 
 
@@ -19,7 +23,7 @@ class TestDVR(VppTestCase):
         super(TestDVR, self).setUp()
 
         self.create_pg_interfaces(range(4))
-        self.create_loopback_interfaces(1)
+        self.create_loopback_interfaces(range(1))
 
         for i in self.pg_interfaces:
             i.admin_up()

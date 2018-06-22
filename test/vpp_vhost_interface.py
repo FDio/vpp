@@ -9,7 +9,7 @@ class VppVhostInterface(VppInterface):
                  tag=''):
 
         """ Create VPP Vhost interface """
-        super(VppVhostInterface, self).__init__(test)
+        self._test = test
         self.is_server = is_server
         self.sock_filename = sock_filename
         self.renumber = renumber
@@ -26,7 +26,8 @@ class VppVhostInterface(VppInterface):
                                                 self.use_custom_mac,
                                                 self.mac_address,
                                                 self.tag)
-        self.set_sw_if_index(r.sw_if_index)
+        self._sw_if_index = r.sw_if_index
+        super(VppVhostInterface, self).__init__(self._test)
 
     def remove_vpp_config(self):
         self.test.vapi.delete_vhost_user_if(self.sw_if_index)
