@@ -21,6 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/arp_packet.h>
 #include <vlib/counter.h>
 
 #include <vppinfra/hash.h>
@@ -72,8 +73,8 @@ typedef struct
   mactime_device_t *devices;
 
   /* Counters */
-  vlib_simple_counter_main_t allow_counters;
-  vlib_simple_counter_main_t drop_counters;
+  vlib_combined_counter_main_t allow_counters;
+  vlib_combined_counter_main_t drop_counters;
 
   /* config parameters */
   u32 lookup_table_num_buckets;
@@ -82,6 +83,9 @@ typedef struct
 
   /* Once-only data structure create flag */
   int feature_initialized;
+
+  /* arp cache copy, for "show mactime" */
+  ethernet_arp_ip4_entry_t *arp_cache_copy;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -96,6 +100,7 @@ typedef struct
 extern mactime_main_t mactime_main;
 
 extern vlib_node_registration_t mactime_node;
+extern vlib_node_registration_t mactime_tx_node;
 
 /* Periodic function events */
 #define MACTIME_EVENT1 1
