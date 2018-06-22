@@ -482,6 +482,117 @@ test2_double (tw_timer_test_main_t * tm)
   return 0;
 }
 
+static u32
+get_expiration_time (tw_timer_test_main_t * tm)
+{
+  u32 expiration_time;
+  do
+    {
+      expiration_time = random_u64 (&tm->seed) & ((1 << 17) - 1);
+    }
+  while (expiration_time == 0);
+  return expiration_time;
+}
+
+static clib_error_t *
+test2_double_updates (tw_timer_test_main_t * tm)
+{
+  u32 i, j;
+  tw_timer_test_elt_t *e;
+  u32 initial_wheel_offset;
+  u32 expiration_time;
+  u32 max_expiration_time = 0, updates = 0;
+  f64 before, after;
+
+  clib_time_init (&tm->clib_time);
+  tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
+				    expired_timer_double_callback,
+				    1.0 /* timer interval */ , ~0);
+
+  /* Prime offset */
+  initial_wheel_offset = 7577;
+  run_double_wheel (&tm->double_wheel, initial_wheel_offset);
+  fformat (stdout, "initial wheel time %d, fast index %d slow index %d\n",
+	   tm->double_wheel.current_tick,
+	   tm->double_wheel.current_index[TW_TIMER_RING_FAST],
+	   tm->double_wheel.current_index[TW_TIMER_RING_SLOW]);
+
+  initial_wheel_offset = tm->double_wheel.current_tick;
+  fformat (stdout,
+	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
+
+  before = clib_time_now (&tm->clib_time);
+
+  /* Prime the pump */
+  for (i = 0; i < tm->ntimers; i++)
+    {
+      pool_get (tm->test_elts, e);
+      memset (e, 0, sizeof (*e));
+
+      expiration_time = get_expiration_time (tm);
+      max_expiration_time = clib_max (expiration_time, max_expiration_time);
+
+      e->expected_to_expire = expiration_time + initial_wheel_offset;
+      e->stop_timer_handle = tw_timer_start_16t_2w_512sl (&tm->double_wheel,
+							  e - tm->test_elts,
+							  14 /* timer id */ ,
+							  expiration_time);
+    }
+
+  for (i = 0; i < tm->niter; i++)
+    {
+      run_double_wheel (&tm->double_wheel, tm->ticks_per_iter);
+
+      j = 0;
+
+      /* *INDENT-OFF* */
+      pool_foreach (e, tm->test_elts,
+      ({
+        expiration_time = get_expiration_time (tm);
+        max_expiration_time = clib_max (expiration_time, max_expiration_time);
+	e->expected_to_expire = expiration_time
+				+ tm->double_wheel.current_tick;
+        tw_timer_update_16t_2w_512sl (&tm->double_wheel, e->stop_timer_handle,
+                                      expiration_time);
+        if (++j >= tm->ntimers / 4)
+          goto done;
+      }));
+      /* *INDENT-ON* */
+
+    done:
+      updates += j;
+    }
+
+  run_double_wheel (&tm->double_wheel, max_expiration_time + 1);
+
+  after = clib_time_now (&tm->clib_time);
+
+  fformat (stdout, "%d updates, %d ticks\n", updates,
+	   tm->double_wheel.current_tick);
+  fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
+	   (after - before),
+	   ((f64) updates + (f64) tm->double_wheel.current_tick) / (after -
+								    before));
+
+  if (pool_elts (tm->test_elts))
+    fformat (stdout, "Note: %d elements remain in pool\n",
+	     pool_elts (tm->test_elts));
+
+  /* *INDENT-OFF* */
+  pool_foreach (e, tm->test_elts,
+  ({
+    fformat (stdout, "[%d] expected to expire %d\n",
+             e - tm->test_elts,
+             e->expected_to_expire);
+  }));
+  /* *INDENT-ON* */
+
+  pool_free (tm->test_elts);
+  tw_timer_wheel_free_16t_2w_512sl (&tm->double_wheel);
+  return 0;
+}
+
 static clib_error_t *
 test2_triple (tw_timer_test_main_t * tm)
 {
@@ -1141,7 +1252,7 @@ static clib_error_t *
 timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 {
 
-  int is_test1 = 0;
+  int is_test1 = 0, is_updates = 0;
   int num_wheels = 1;
   int is_test2 = 0;
   int is_test3 = 0;
@@ -1172,6 +1283,8 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 	is_test4 = 1;
       else if (unformat (input, "linear"))
 	is_test5 = 1;
+      else if (unformat (input, "updates"))
+	is_updates = 1;
       else if (unformat (input, "wheels %d", &num_wheels))
 	;
       else if (unformat (input, "ntimers %d", &tm->ntimers))
@@ -1202,7 +1315,10 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
       if (num_wheels == 1)
 	return test2_single (tm);
       else if (num_wheels == 2)
-	return test2_double (tm);
+	if (is_updates)
+	  return test2_double_updates (tm);
+	else
+	  return test2_double (tm);
       else if (num_wheels == 3)
 	{
 	  if (overflow == 0)

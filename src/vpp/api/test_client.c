@@ -918,15 +918,15 @@ add_del_proxy_arp (test_main_t * tm, int is_add)
   mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_ADD_DEL);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  mp->vrf_id = ntohl (11);
+  mp->proxy.vrf_id = ntohl (11);
   mp->is_add = is_add;
 
   /* proxy fib 11, 1.1.1.1 -> 1.1.1.10 */
   tmp = ntohl (0x01010101);
-  clib_memcpy (mp->low_address, &tmp, 4);
+  clib_memcpy (mp->proxy.low_address, &tmp, 4);
 
   tmp = ntohl (0x0101010a);
-  clib_memcpy (mp->hi_address, &tmp, 4);
+  clib_memcpy (mp->proxy.hi_address, &tmp, 4);
 
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
 }
