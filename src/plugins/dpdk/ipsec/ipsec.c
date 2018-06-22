@@ -652,6 +652,10 @@ crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
 	return clib_error_return (0, error_str, dev, qp);
     }
 
+  error_str = "failed to start crypto device %u";
+  if (rte_cryptodev_start (dev))
+    return clib_error_return (0, error_str, dev);
+
   return 0;
 }
 
