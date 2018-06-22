@@ -361,7 +361,7 @@ acl_plugin_get_p_acl_main(void)
 clib_error_t *acl_plugin_methods_vtable_init(acl_plugin_methods_t *m)
 {
   m->p_acl_main = &acl_main;
-#define _(name) m->name = acl_plugin_ ## name; clib_warning("Setting method " #name " to %p\n", acl_plugin_ ## name);
+#define _(name) m->name = acl_plugin_ ## name;
   foreach_acl_plugin_exported_method_name
 #undef _
   return 0;
