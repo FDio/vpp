@@ -115,6 +115,10 @@ if ENABLE_NAT_PLUGIN
 include nat.am
 endif
 
+if ENABLE_MAP_PLUGIN
+include map.am
+endif
+
 if ENABLE_STN_PLUGIN
 include stn.am
 endif
