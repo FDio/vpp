@@ -14,7 +14,7 @@
  */
 #include "map.h"
 
-#include "../ip/ip_frag.h"
+#include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip4_to_ip6.h>
 
 #define IP4_MAP_T_DUAL_LOOP 1

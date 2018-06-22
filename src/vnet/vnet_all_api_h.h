@@ -37,7 +37,6 @@
 #include <vnet/gre/gre.api.h>
 #include <vnet/ipip/ipip.api.h>
 #include <vnet/interface.api.h>
-#include <vnet/map/map.api.h>
 #include <vnet/l2/l2.api.h>
 #include <vnet/l2tp/l2tp.api.h>
 #include <vnet/span/span.api.h>
