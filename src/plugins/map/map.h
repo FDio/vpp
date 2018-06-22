@@ -20,7 +20,7 @@
 #include <vnet/fib/fib_types.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/adj/adj.h>
-#include <vnet/map/map_dpo.h>
+#include <map/map_dpo.h>
 #include <vnet/dpo/load_balance.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
@@ -235,6 +235,9 @@ typedef struct {
   vlib_simple_counter_main_t *simple_domain_counters;
   vlib_combined_counter_main_t *domain_counters;
   volatile u32 *counter_lock;
+
+  /* API message id base */
+  u16 msg_id_base;
 
   /* Traffic class: zero, copy (~0) or fixed value */
   u8 tc;
@@ -485,6 +488,8 @@ map_ip4_reass_get_fragments(map_ip4_reass_t *r, u32 **pi)
       map_main.ip4_reass_buffered_counter--;
     }
 }
+
+clib_error_t * map_plugin_api_hookup (vlib_main_t * vm);
 
 int map_ip4_reass_add_fragment(map_ip4_reass_t *r, u32 pi);
 
