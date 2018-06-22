@@ -154,6 +154,8 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /** reduced hashes corresponding to elements */
   u8 reduced_hashes[CLIB_CUCKOO_KVP_PER_BUCKET];
 

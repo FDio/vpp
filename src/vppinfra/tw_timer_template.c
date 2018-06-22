@@ -158,17 +158,8 @@ timer_remove (TWT (tw_timer) * pool, u32 index)
   elt->prev = elt->next = ~0;
 }
 
-/**
- * @brief Start a Tw Timer
- * @param tw_timer_wheel_t * tw timer wheel object pointer
- * @param u32 pool_index user pool index, presumably for a tw session
- * @param u32 timer_id app-specific timer ID. 4 bits.
- * @param u64 interval timer interval in ticks
- * @returns handle needed to cancel the timer
- */
-u32
-TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
-		     u64 interval)
+static void
+timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
 {
 #if TW_TIMER_WHEELS > 1
   u16 slow_ring_offset;
@@ -182,14 +173,6 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 #endif
   u16 fast_ring_offset;
   tw_timer_wheel_slot_t *ts;
-  TWT (tw_timer) * t;
-
-  ASSERT (interval);
-
-  pool_get (tw->timers, t);
-  memset (t, 0xff, sizeof (*t));
-
-  t->user_handle = TW (make_internal_timer_handle) (pool_index, timer_id);
 
   /* Factor interval into 1..3 wheel offsets */
 #if TW_TIMER_WHEELS > 2
@@ -209,9 +192,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
       ts = &tw->overflow;
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_START_STOP_TRACE_SIZE > 0
-      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+      TW (tw_timer_trace) (tw, timer_id, user_id, t - tw->timers);
 #endif
-      return t - tw->timers;
+      return;
     }
 #endif
 
@@ -262,9 +245,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_START_STOP_TRACE_SIZE > 0
-      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+      TW (tw_timer_trace) (tw, timer_id, user_id, t - tw->timers);
 #endif
-      return t - tw->timers;
+      return;
     }
 #endif
 
@@ -280,9 +263,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_START_STOP_TRACE_SIZE > 0
-      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+      TW (tw_timer_trace) (tw, timer_id, user_id, t - tw->timers);
 #endif
-      return t - tw->timers;
+      return;
     }
 #else
   fast_ring_offset %= TW_SLOTS_PER_RING;
@@ -298,8 +281,32 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 					  fast_ring_offset, 1);
 #endif
 #if TW_START_STOP_TRACE_SIZE > 0
-  TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+  TW (tw_timer_trace) (tw, timer_id, user_id, t - tw->timers);
 #endif
+}
+
+/**
+ * @brief Start a Tw Timer
+ * @param tw_timer_wheel_t * tw timer wheel object pointer
+ * @param u32 user_id user defined timer id, presumably for a tw session
+ * @param u32 timer_id app-specific timer ID. 4 bits.
+ * @param u64 interval timer interval in ticks
+ * @returns handle needed to cancel the timer
+ */
+u32
+TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
+		     u64 interval)
+{
+  TWT (tw_timer) * t;
+
+  ASSERT (interval);
+
+  pool_get (tw->timers, t);
+  memset (t, 0xff, sizeof (*t));
+
+  t->user_handle = TW (make_internal_timer_handle) (user_id, timer_id);
+
+  timer_add (tw, t, interval);
   return t - tw->timers;
 }
 
@@ -368,6 +375,21 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   timer_remove (tw->timers, handle);
 
   pool_put_index (tw->timers, handle);
+}
+
+/**
+ * @brief Update a tw timer
+ * @param tw_timer_wheel_t * tw timer wheel object pointer
+ * @param u32 handle timer returned by tw_timer_start
+ * @param u32 interval timer interval in ticks
+ */
+void TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle,
+			   u64 interval)
+{
+  TWT (tw_timer) * t;
+  t = pool_elt_at_index (tw->timers, handle);
+  timer_remove (tw->timers, handle);
+  timer_add (tw, t, interval);
 }
 
 /**
