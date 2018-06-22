@@ -721,13 +721,14 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
-    tw_timer_stop_16t_2w_512sl (&tcp_main.
-				wrk_ctx[tc->c_thread_index].timer_wheel,
-				tc->timers[timer_id]);
-  tc->timers[timer_id] =
-    tw_timer_start_16t_2w_512sl (&tcp_main.
-				 wrk_ctx[tc->c_thread_index].timer_wheel,
-				 tc->c_c_index, timer_id, interval);
+    tw_timer_update_16t_2w_512sl (&tcp_main.
+				  wrk_ctx[tc->c_thread_index].timer_wheel,
+				  tc->timers[timer_id], interval);
+  else
+    tc->timers[timer_id] =
+      tw_timer_start_16t_2w_512sl (&tcp_main.
+				   wrk_ctx[tc->c_thread_index].timer_wheel,
+				   tc->c_c_index, timer_id, interval);
 }
 
 always_inline void
