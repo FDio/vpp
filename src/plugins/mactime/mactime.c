@@ -103,6 +103,8 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
 
   vnet_feature_enable_disable ("device-input", "mactime",
 			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("interface-output", "mactime-tx",
+			       sw_if_index, enable_disable, 0, 0);
   return rv;
 }
 
@@ -181,6 +183,32 @@ static void vl_api_mactime_enable_disable_t_handler
   REPLY_MACRO (VL_API_MACTIME_ENABLE_DISABLE_REPLY);
 }
 
+/** Create a lookup table entry for the indicated mac address
+ */
+void
+mactime_send_create_entry_message (u8 * mac_address)
+{
+  mactime_main_t *mm = &mactime_main;
+  api_main_t *am;
+  vl_shmem_hdr_t *shmem_hdr;
+  u8 *name;
+  vl_api_mactime_add_del_range_t *mp;
+
+  am = &api_main;
+  shmem_hdr = am->shmem_hdr;
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MACTIME_ADD_DEL_RANGE + mm->msg_id_base);
+  name = format (0, "mac-%U", format_mac_address, mac_address);
+
+  memcpy (mp->device_name, name, vec_len (name));
+  memcpy (mp->mac_address, mac_address, sizeof (mp->mac_address));
+  /* $$$ config: create allow / drop / range */
+  mp->allow = 1;
+  mp->is_add = 1;
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+}
+
 /** Add or delete static / dynamic accept/drop configuration for a src mac
  */
 
@@ -212,11 +240,12 @@ static void vl_api_mactime_add_del_range_t_handler
 	{
 	  pool_get (mm->devices, dp);
 	  memset (dp, 0, sizeof (*dp));
-	  vlib_validate_simple_counter (&mm->allow_counters,
-					dp - mm->devices);
-	  vlib_zero_simple_counter (&mm->allow_counters, dp - mm->devices);
-	  vlib_validate_simple_counter (&mm->drop_counters, dp - mm->devices);
-	  vlib_zero_simple_counter (&mm->drop_counters, dp - mm->devices);
+	  vlib_validate_combined_counter (&mm->allow_counters,
+					  dp - mm->devices);
+	  vlib_zero_combined_counter (&mm->allow_counters, dp - mm->devices);
+	  vlib_validate_combined_counter (&mm->drop_counters,
+					  dp - mm->devices);
+	  vlib_zero_combined_counter (&mm->drop_counters, dp - mm->devices);
 	  mp->device_name[ARRAY_LEN (mp->device_name) - 1] = 0;
 	  dp->device_name = format (0, "%s%c", mp->device_name, 0);
 	  memcpy (dp->mac_address, mp->mac_address, sizeof (mp->mac_address));
@@ -380,20 +409,21 @@ VNET_FEATURE_INIT (mactime, static) =
 /* *INDENT-ON */
 
 /* *INDENT-OFF* */
+VNET_FEATURE_INIT (mactime_tx, static) =
+{
+  .arc_name = "interface-output",
+  .node_name = "mactime-tx",
+  .runs_before = VNET_FEATURES ("interface-tx"),
+};
+/* *INDENT-ON */
+
+/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Time-based MAC source-address filter",
 };
 /* *INDENT-ON* */
-
-static u8 *
-format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
 
 static clib_error_t *
 show_mactime_command_fn (vlib_main_t * vm,
@@ -408,7 +438,18 @@ show_mactime_command_fn (vlib_main_t * vm,
   int current_status = 99;
   int i, j;
   f64 now;
-  u64 allow, drop;
+  vlib_counter_t allow, drop;
+  ethernet_arp_ip4_entry_t *n, *pool;
+
+  vec_reset_length (mm->arp_cache_copy);
+  pool = ip4_neighbors_pool ();
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, pool,
+  ({
+    vec_add1 (mm->arp_cache_copy, n[0]);
+  }));
+  /* *INDENT-ON* */
 
   now = clib_timebase_now (&mm->timebase);
 
@@ -431,9 +472,9 @@ show_mactime_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  vlib_cli_output (vm, "%-15s %20s %16s %10s %10s",
-		   "Device Name", "MAC address", "Current Status", "Allow",
-		   "Drop");
+  vlib_cli_output (vm, "%-15s %18s %14s %10s %10s %10s",
+		   "Device Name", "Addresses", "Status",
+		   "AllowPkt", "AllowByte", "DropPkt");
 
   for (i = 0; i < vec_len (pool_indices); i++)
     {
@@ -500,13 +541,24 @@ show_mactime_command_fn (vlib_main_t * vm,
 	  status_string = "code bug!";
 	  break;
 	}
-      allow = vlib_get_simple_counter (&mm->allow_counters, dp - mm->devices);
-      drop = vlib_get_simple_counter (&mm->drop_counters, dp - mm->devices);
-      vlib_cli_output (vm, "%-15s %20s %16s %10lld %10lld",
+      vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
+				 &allow);
+      vlib_get_combined_counter (&mm->drop_counters, dp - mm->devices, &drop);
+      vlib_cli_output (vm, "%-15s %18s %14s %10lld %10lld %10lld",
 		       dp->device_name, macstring, status_string,
-		       allow, drop);
+		       allow.packets, allow.bytes, drop.packets);
+      /* This is really only good for small N... */
+      for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
+	{
+	  n = mm->arp_cache_copy + j;
+	  if (!memcmp (dp->mac_address, n->ethernet_address,
+		       sizeof (n->ethernet_address)))
+	    {
+	      vlib_cli_output (vm, "%17s%U", " ", format_ip4_address,
+			       &n->ip4_address);
+	    }
+	}
     }
-
   vec_free (macstring);
   vec_free (pool_indices);
 
@@ -519,6 +571,30 @@ VLIB_CLI_COMMAND (show_mactime_command, static) =
   .path = "show mactime",
   .short_help = "show mactime [verbose]",
   .function = show_mactime_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+clear_mactime_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  mactime_main_t *mm = &mactime_main;
+
+  if (mm->feature_initialized == 0)
+    return clib_error_return (0, "feature not enabled");
+
+  vlib_clear_combined_counters (&mm->allow_counters);
+  vlib_clear_combined_counters (&mm->drop_counters);
+  vlib_cli_output (vm, "Mactime counters cleared...");
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_mactime_command, static) =
+{
+  .path = "clear mactime",
+  .short_help = "clear mactime counters",
+  .function = clear_mactime_command_fn,
 };
 /* *INDENT-ON* */
 
