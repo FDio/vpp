@@ -31,7 +31,7 @@ class VppSubInterface(VppPGInterface):
         return self._vtr
 
     def __init__(self, test, parent, sub_id):
-        VppInterface.__init__(self, test)
+        super(VppSubInterface, self).__init__(test, sub_id)
         self._parent = parent
         self._parent.add_sub_if(self)
         self._sub_id = sub_id
