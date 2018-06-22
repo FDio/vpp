@@ -18,7 +18,7 @@
 #define MAP_ENCAP_DUAL 0
 
 #include "map.h"
-#include "../ip/ip_frag.h"
+#include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip4_to_ip6.h>
 
 vlib_node_registration_t ip4_map_reass_node;

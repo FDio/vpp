@@ -489,37 +489,6 @@ nobase_include_HEADERS +=			\
  vnet/osi/osi.h
 
 ########################################
-# Layer 3 protocol: MAP
-########################################
-libvnet_la_SOURCES +=				\
- vnet/map/map.c					\
- vnet/map/map_dpo.c				\
- vnet/map/ip4_map.c				\
- vnet/map/ip6_map.c				\
- vnet/map/ip4_map_t.c				\
- vnet/map/ip6_map_t.c				\
- vnet/map/map_api.c
-
-nobase_include_HEADERS +=			\
- vnet/map/map.h					\
- vnet/map/map_dpo.h				\
- vnet/map/map.api.h
-
-API_FILES += vnet/map/map.api
-
-if ENABLE_TESTS
-TESTS += test_map
-test_map_SOURCES =                             \
- vnet/map/test.c
-test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
-
-test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
-  -lpthread -lvlibmemory -ldl -lsvm -lrt
-
-test_map_LDFLAGS = -static
-endif
-
-########################################
 # Layer 4 protocol: tcp
 ########################################
 libvnet_la_SOURCES +=				\
