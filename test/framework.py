@@ -957,7 +957,25 @@ class VppTestResult(unittest.TestResult):
         if hasattr(self, 'test_framework_failed_pipe'):
             pipe = self.test_framework_failed_pipe
             if pipe:
-                pipe.send(test.__class__)
+                if test.__class__.__name__ == "_ErrorHolder":
+                    x = str(test)
+                    if x.startswith("setUpClass"):
+                        # x looks like setUpClass (test_function.test_class)
+                        cls = x.split(".")[1].split(")")[0]
+                        for t in self.test_suite:
+                            if t.__class__.__name__ == cls:
+                                pipe.send(t.__class__)
+                                break
+                        else:
+                            raise Exception("Can't find class name `%s' "
+                                            "(from ErrorHolder) in test suite "
+                                            "`%s'" % (cls, self.test_suite))
+                    else:
+                        raise Exception("FIXME: unexpected special case - "
+                                        "ErrorHolder description is `%s'" %
+                                        str(test))
+                else:
+                    pipe.send(test.__class__)
 
     def addFailure(self, test, err):
         """
@@ -1192,6 +1210,8 @@ class VppTestRunner(unittest.TextTestRunner):
             filtered.countTestCases(), test.countTestCases()))
         if not running_extended_tests():
             print("Not running extended tests (some tests will be skipped)")
+        # super-ugly hack #2
+        VppTestResult.test_suite = filtered
         return super(VppTestRunner, self).run(filtered)
 
 
