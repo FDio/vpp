@@ -63,7 +63,7 @@ class MethodHolder(VppTestCase):
         try:
             # create 4 pg interfaces, 1 loopback interface
             cls.create_pg_interfaces(range(4))
-            cls.create_loopback_interfaces(range(1))
+            cls.create_loopback_interfaces(1)
 
             # create 2 subinterfaces
             cls.subifs = [

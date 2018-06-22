@@ -73,7 +73,7 @@ class ContainerIntegrationTestCase(VppTestCase):
 
     def test_0050_loopback_prepare_test(self):
         """ Create loopbacks overlapping with remote addresses """
-        self.create_loopback_interfaces(range(2))
+        self.create_loopback_interfaces(2)
         for i in range(2):
             intf = self.lo_interfaces[i]
             intf.admin_up()
