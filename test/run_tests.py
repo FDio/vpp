@@ -52,7 +52,10 @@ class Filter_by_class_list:
 
 def suite_from_failed(suite, failed):
     filter_cb = Filter_by_class_list(failed)
-    return VppTestRunner.filter_tests(suite, filter_cb)
+    suite = VppTestRunner.filter_tests(suite, filter_cb)
+    if 0 == suite.countTestCases():
+        raise Exception("Suite is empty after filtering out the failed tests!")
+    return suite
 
 
 def run_forked(suite):
