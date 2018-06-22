@@ -363,6 +363,9 @@ AM_CONDITIONAL(WITH_AESNI_MB_LIB, test "$with_aesni_mb_lib" = "yes")
 m4_append([list_of_with], [isa_l_crypto_lib], [, ])
 AM_CONDITIONAL(WITH_ISA_L_CRYPTO_LIB, test "$with_isa_l_crypto_lib" = "yes")
 
+m4_append([list_of_with], [armv8_crypto_lib], [, ])
+AM_CONDITIONAL(WITH_ARMV8_CRYPTO_LIB, test "$with_armv8_crypto_lib" = "yes")
+
 AM_COND_IF([ENABLE_G2],
 [
   PKG_CHECK_MODULES(g2, gtk+-2.0)

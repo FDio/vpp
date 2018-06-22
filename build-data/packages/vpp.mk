@@ -36,6 +36,10 @@ vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)/dpdk
 vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
 vpp_CPPFLAGS += -I/usr/include/dpdk
 endif
+ifeq ($($(PLATFORM)_uses_armv8_crypto_lib),yes)
+vpp_configure_args += --with-armv8-crypto-lib
+vpp_LDFLAGS += -L$(ARMV8_CRYPTO_LIB_PATH)
+endif
 ifeq ($($(PLATFORM)_uses_dpdk_mlx5_pmd),yes)
 vpp_configure_args += --with-dpdk-mlx5-pmd
 endif
