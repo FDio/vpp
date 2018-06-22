@@ -72,8 +72,8 @@ typedef struct
   mactime_device_t *devices;
 
   /* Counters */
-  vlib_simple_counter_main_t allow_counters;
-  vlib_simple_counter_main_t drop_counters;
+  vlib_combined_counter_main_t allow_counters;
+  vlib_combined_counter_main_t drop_counters;
 
   /* config parameters */
   u32 lookup_table_num_buckets;
@@ -96,6 +96,7 @@ typedef struct
 extern mactime_main_t mactime_main;
 
 extern vlib_node_registration_t mactime_node;
+extern vlib_node_registration_t mactime_tx_node;
 
 /* Periodic function events */
 #define MACTIME_EVENT1 1
