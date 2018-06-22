@@ -63,6 +63,11 @@ dpaa_dpdk_make_extra_args = "CONFIG_RTE_KNI_KMOD=n"
 endif
 endif
 
+ifneq ($(ARMV8_CRYPTO_LIB_PATH),)
+dpaa_uses_armv8_crypto_lib = yes
+dpaa_armv8_crypto_lib_dir = $(ARMV8_CRYPTO_LIB_PATH)
+endif
+
 # Disable the unused plugins in order to decrease the VPP pacakage size.
 vpp_configure_args_dpaa = --without-ipv6sr --with-pre-data=128 --without-libnuma
 

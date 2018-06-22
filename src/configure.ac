@@ -198,6 +198,7 @@ DISABLE_ARG(papi,	[Disable Python API bindings])
 DISABLE_ARG(japi,	[Disable Java API bindings])
 
 # --with-X
+WITH_ARG(armv8_crypto_lib,	[With arm crypto library])
 
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
