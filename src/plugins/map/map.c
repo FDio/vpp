@@ -18,9 +18,10 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
-#include <vnet/map/map_dpo.h>
+#include <map/map_dpo.h>
 #include <vppinfra/crc32.h>
-
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 #include "map.h"
 
 map_main_t map_main;
@@ -2245,6 +2246,12 @@ VLIB_CLI_COMMAND(show_map_fragments_command, static) = {
   .short_help = "show map fragments",
   .function = show_map_fragments_command_fn,
 };
+
+VLIB_PLUGIN_REGISTER() = {
+  .version = VPP_BUILD_VER,
+  .description = "Mapping of address and port (MAP)",
+};
+
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -2276,6 +2283,7 @@ clib_error_t *
 map_init (vlib_main_t * vm)
 {
   map_main_t *mm = &map_main;
+  clib_error_t *error = 0;
   mm->vnet_main = vnet_get_main ();
   mm->vlib_main = vm;
 
@@ -2349,7 +2357,9 @@ map_init (vlib_main_t * vm)
 #endif
   map_dpo_module_init ();
 
-  return 0;
+  error = map_plugin_api_hookup (vm);
+
+  return error;
 }
 
 VLIB_INIT_FUNCTION (map_init);

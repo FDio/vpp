@@ -41,7 +41,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #include <inttypes.h>
-#include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
@@ -2613,99 +2612,6 @@ vl_api_ip_details_t_handler_json (vl_api_ip_details_t * mp)
     }
   vat_json_array_add_uint (&vam->json_tree,
 			   clib_net_to_host_u32 (mp->sw_if_index));
-}
-
-static void vl_api_map_domain_details_t_handler_json
-  (vl_api_map_domain_details_t * mp)
-{
-  vat_json_node_t *node = NULL;
-  vat_main_t *vam = &vat_main;
-  struct in6_addr ip6;
-  struct in_addr ip4;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-
-  node = vat_json_array_add (&vam->json_tree);
-  vat_json_init_object (node);
-
-  vat_json_object_add_uint (node, "domain_index",
-			    clib_net_to_host_u32 (mp->domain_index));
-  clib_memcpy (&ip6, mp->ip6_prefix, sizeof (ip6));
-  vat_json_object_add_ip6 (node, "ip6_prefix", ip6);
-  clib_memcpy (&ip4, mp->ip4_prefix, sizeof (ip4));
-  vat_json_object_add_ip4 (node, "ip4_prefix", ip4);
-  clib_memcpy (&ip6, mp->ip6_src, sizeof (ip6));
-  vat_json_object_add_ip6 (node, "ip6_src", ip6);
-  vat_json_object_add_int (node, "ip6_prefix_len", mp->ip6_prefix_len);
-  vat_json_object_add_int (node, "ip4_prefix_len", mp->ip4_prefix_len);
-  vat_json_object_add_int (node, "ip6_src_len", mp->ip6_src_len);
-  vat_json_object_add_int (node, "ea_bits_len", mp->ea_bits_len);
-  vat_json_object_add_int (node, "psid_offset", mp->psid_offset);
-  vat_json_object_add_int (node, "psid_length", mp->psid_length);
-  vat_json_object_add_uint (node, "flags", mp->flags);
-  vat_json_object_add_uint (node, "mtu", clib_net_to_host_u16 (mp->mtu));
-  vat_json_object_add_int (node, "is_translation", mp->is_translation);
-}
-
-static void vl_api_map_domain_details_t_handler
-  (vl_api_map_domain_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  if (mp->is_translation)
-    {
-      print (vam->ofp,
-	     "* %U/%d (ipv4-prefix) %U/%d (ipv6-prefix) %U/%d (ip6-src) index: %u",
-	     format_ip4_address, mp->ip4_prefix, mp->ip4_prefix_len,
-	     format_ip6_address, mp->ip6_prefix, mp->ip6_prefix_len,
-	     format_ip6_address, mp->ip6_src, mp->ip6_src_len,
-	     clib_net_to_host_u32 (mp->domain_index));
-    }
-  else
-    {
-      print (vam->ofp,
-	     "* %U/%d (ipv4-prefix) %U/%d (ipv6-prefix) %U (ip6-src) index: %u",
-	     format_ip4_address, mp->ip4_prefix, mp->ip4_prefix_len,
-	     format_ip6_address, mp->ip6_prefix, mp->ip6_prefix_len,
-	     format_ip6_address, mp->ip6_src,
-	     clib_net_to_host_u32 (mp->domain_index));
-    }
-  print (vam->ofp, "  ea-len %d psid-offset %d psid-len %d mtu %d %s",
-	 mp->ea_bits_len, mp->psid_offset, mp->psid_length, mp->mtu,
-	 mp->is_translation ? "map-t" : "");
-}
-
-static void vl_api_map_rule_details_t_handler_json
-  (vl_api_map_rule_details_t * mp)
-{
-  struct in6_addr ip6;
-  vat_json_node_t *node = NULL;
-  vat_main_t *vam = &vat_main;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-
-  node = vat_json_array_add (&vam->json_tree);
-  vat_json_init_object (node);
-
-  vat_json_object_add_uint (node, "psid", clib_net_to_host_u16 (mp->psid));
-  clib_memcpy (&ip6, mp->ip6_dst, sizeof (ip6));
-  vat_json_object_add_ip6 (node, "ip6_dst", ip6);
-}
-
-static void
-vl_api_map_rule_details_t_handler (vl_api_map_rule_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  print (vam->ofp, " %d (psid) %U (ip6-dst)",
-	 clib_net_to_host_u16 (mp->psid), format_ip6_address, mp->ip6_dst);
 }
 
 static void
@@ -5525,8 +5431,6 @@ _(ikev2_initiate_del_child_sa_reply)                    \
 _(ikev2_initiate_rekey_child_sa_reply)                  \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
-_(map_del_domain_reply)                                 \
-_(map_add_del_rule_reply)                               \
 _(want_interface_events_reply)                          \
 _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
@@ -5781,11 +5685,6 @@ _(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply) \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
-_(MAP_ADD_DOMAIN_REPLY, map_add_domain_reply)                           \
-_(MAP_DEL_DOMAIN_REPLY, map_del_domain_reply)                           \
-_(MAP_ADD_DEL_RULE_REPLY, map_add_del_rule_reply)	                \
-_(MAP_DOMAIN_DETAILS, map_domain_details)                               \
-_(MAP_RULE_DETAILS, map_rule_details)                                   \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)					\
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
@@ -16368,269 +16267,6 @@ api_ikev2_initiate_rekey_child_sa (vat_main_t * vam)
   return ret;
 }
 
-/*
- * MAP
- */
-static int
-api_map_add_domain (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_map_add_domain_t *mp;
-
-  ip4_address_t ip4_prefix;
-  ip6_address_t ip6_prefix;
-  ip6_address_t ip6_src;
-  u32 num_m_args = 0;
-  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, ea_bits_len = 0, psid_offset =
-    0, psid_length = 0;
-  u8 is_translation = 0;
-  u32 mtu = 0;
-  u32 ip6_src_len = 128;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "ip4-pfx %U/%d", unformat_ip4_address,
-		    &ip4_prefix, &ip4_prefix_len))
-	num_m_args++;
-      else if (unformat (i, "ip6-pfx %U/%d", unformat_ip6_address,
-			 &ip6_prefix, &ip6_prefix_len))
-	num_m_args++;
-      else
-	if (unformat
-	    (i, "ip6-src %U/%d", unformat_ip6_address, &ip6_src,
-	     &ip6_src_len))
-	num_m_args++;
-      else if (unformat (i, "ip6-src %U", unformat_ip6_address, &ip6_src))
-	num_m_args++;
-      else if (unformat (i, "ea-bits-len %d", &ea_bits_len))
-	num_m_args++;
-      else if (unformat (i, "psid-offset %d", &psid_offset))
-	num_m_args++;
-      else if (unformat (i, "psid-len %d", &psid_length))
-	num_m_args++;
-      else if (unformat (i, "mtu %d", &mtu))
-	num_m_args++;
-      else if (unformat (i, "map-t"))
-	is_translation = 1;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (num_m_args < 3)
-    {
-      errmsg ("mandatory argument(s) missing");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (MAP_ADD_DOMAIN, mp);
-
-  clib_memcpy (mp->ip4_prefix, &ip4_prefix, sizeof (ip4_prefix));
-  mp->ip4_prefix_len = ip4_prefix_len;
-
-  clib_memcpy (mp->ip6_prefix, &ip6_prefix, sizeof (ip6_prefix));
-  mp->ip6_prefix_len = ip6_prefix_len;
-
-  clib_memcpy (mp->ip6_src, &ip6_src, sizeof (ip6_src));
-  mp->ip6_src_prefix_len = ip6_src_len;
-
-  mp->ea_bits_len = ea_bits_len;
-  mp->psid_offset = psid_offset;
-  mp->psid_length = psid_length;
-  mp->is_translation = is_translation;
-  mp->mtu = htons (mtu);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
-static int
-api_map_del_domain (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_map_del_domain_t *mp;
-
-  u32 num_m_args = 0;
-  u32 index;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "index %d", &index))
-	num_m_args++;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (num_m_args != 1)
-    {
-      errmsg ("mandatory argument(s) missing");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (MAP_DEL_DOMAIN, mp);
-
-  mp->index = ntohl (index);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
-static int
-api_map_add_del_rule (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_map_add_del_rule_t *mp;
-  u8 is_add = 1;
-  ip6_address_t ip6_dst;
-  u32 num_m_args = 0, index, psid = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "index %d", &index))
-	num_m_args++;
-      else if (unformat (i, "psid %d", &psid))
-	num_m_args++;
-      else if (unformat (i, "dst %U", unformat_ip6_address, &ip6_dst))
-	num_m_args++;
-      else if (unformat (i, "del"))
-	{
-	  is_add = 0;
-	}
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  /* Construct the API message */
-  M (MAP_ADD_DEL_RULE, mp);
-
-  mp->index = ntohl (index);
-  mp->is_add = is_add;
-  clib_memcpy (mp->ip6_dst, &ip6_dst, sizeof (ip6_dst));
-  mp->psid = ntohs (psid);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
-static int
-api_map_domain_dump (vat_main_t * vam)
-{
-  vl_api_map_domain_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  /* Construct the API message */
-  M (MAP_DOMAIN_DUMP, mp);
-
-  /* send it... */
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-static int
-api_map_rule_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_map_rule_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 domain_index = ~0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "index %u", &domain_index))
-	;
-      else
-	break;
-    }
-
-  if (domain_index == ~0)
-    {
-      clib_warning ("parse error: domain index expected");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (MAP_RULE_DUMP, mp);
-
-  mp->domain_index = htonl (domain_index);
-
-  /* send it... */
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-static void vl_api_map_add_domain_reply_t_handler
-  (vl_api_map_add_domain_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_map_add_domain_reply_t_handler_json
-  (vl_api_map_add_domain_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "index", ntohl (mp->index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static int
 api_get_first_msg_id (vat_main_t * vam)
 {
@@ -23761,15 +23397,6 @@ _(ikev2_initiate_del_child_sa, "<ispi>")                                \
 _(ikev2_initiate_rekey_child_sa, "<ispi>")                              \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
-_(map_add_domain,                                                       \
-  "ip4-pfx <ip4pfx> ip6-pfx <ip6pfx> "					\
-  "ip6-src <ip6addr> "							\
-  "ea-bits-len <n> psid-offset <n> psid-len <n>")			\
-_(map_del_domain, "index <n>")                                          \
-_(map_add_del_rule,                                                     \
-  "index <n> psid <n> dst <ip6addr> [del]")                             \
-_(map_domain_dump, "")                                                  \
-_(map_rule_dump, "index <map-domain>")                                  \
 _(want_interface_events,  "enable|disable")                             \
 _(want_stats,"enable|disable")                                          \
 _(get_first_msg_id, "client <name>")					\
