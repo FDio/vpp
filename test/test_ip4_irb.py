@@ -54,7 +54,7 @@ class TestIpIrb(VppTestCase):
 
         # create 3 pg interfaces, 1 loopback interface
         cls.create_pg_interfaces(range(3))
-        cls.create_loopback_interfaces(range(1))
+        cls.create_loopback_interfaces(1)
 
         cls.interfaces = list(cls.pg_interfaces)
         cls.interfaces.extend(cls.lo_interfaces)

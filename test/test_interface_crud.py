@@ -79,7 +79,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
 
     def test_crud(self):
         # create
-        loopbacks = self.create_loopback_interfaces(range(20))
+        loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32
             i.config_ip4()
@@ -121,7 +121,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
 
     def test_down(self):
         # create
-        loopbacks = self.create_loopback_interfaces(range(20))
+        loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32
             i.config_ip4()
