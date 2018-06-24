@@ -1423,7 +1423,7 @@ class TestACLplugin(VppTestCase):
 
         # create an interface
         intf = []
-        intf.append(VppLoInterface(self, 0))
+        intf.append(VppLoInterface(self))
 
         # Apply rules
         self.apply_rules_to(rules, "permit ipv4 tcp", intf[0].sw_if_index)

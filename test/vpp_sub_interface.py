@@ -1,8 +1,8 @@
 from scapy.layers.l2 import Dot1Q
 from abc import abstractmethod, ABCMeta
-from vpp_interface import VppInterface
 from vpp_pg_interface import VppPGInterface
 from vpp_papi_provider import L2_VTR_OP
+from vpp_interface import VppInterface
 
 
 class VppSubInterface(VppPGInterface):
@@ -49,6 +49,12 @@ class VppSubInterface(VppPGInterface):
     @abstractmethod
     def create_ndp_req(self):
         pass
+
+    def resolve_arp(self):
+        super(VppSubInterface, self).resolve_arp(self.parent)
+
+    def resolve_ndp(self):
+        super(VppSubInterface, self).resolve_ndp(self.parent)
 
     @abstractmethod
     def add_dot1_layer(self, pkt):
