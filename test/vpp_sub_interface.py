@@ -50,6 +50,12 @@ class VppSubInterface(VppPGInterface):
     def create_ndp_req(self):
         pass
 
+    def resolve_arp(self):
+        super(VppSubInterface, self).resolve_arp(self.parent)
+
+    def resolve_ndp(self):
+        super(VppSubInterface, self).resolve_ndp(self.parent)
+
     @abstractmethod
     def add_dot1_layer(self, pkt):
         pass
