@@ -30,7 +30,7 @@ def discover_tests(directory, callback):
                 continue
             if not issubclass(cls, unittest.TestCase):
                 continue
-            if name == "VppTestCase":
+            if name == "VppTestCase" or name.startswith("Template"):
                 continue
             for method in dir(cls):
                 if not callable(getattr(cls, method)):

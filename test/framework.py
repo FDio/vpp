@@ -25,6 +25,7 @@ from vpp_papi_provider import VppPapiProvider
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     getLogger, colorize
 from vpp_object import VppObjectRegistry
+from util import ppp
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
@@ -735,11 +736,14 @@ class VppTestCase(unittest.TestCase):
 
     def assert_packet_checksums_valid(self, packet,
                                       ignore_zero_udp_checksums=True):
+        received = packet.__class__(str(packet))
+        self.logger.debug(
+            ppp("Verifying packet checksums for packet:", received))
         udp_layers = ['UDP', 'UDPerror']
         checksum_fields = ['cksum', 'chksum']
         checksums = []
         counter = 0
-        temp = packet.__class__(str(packet))
+        temp = received.__class__(str(received))
         while True:
             layer = temp.getlayer(counter)
             if layer:
@@ -754,12 +758,17 @@ class VppTestCase(unittest.TestCase):
             else:
                 break
             counter = counter + 1
+        if 0 == len(checksums):
+            return
         temp = temp.__class__(str(temp))
         for layer, cf in checksums:
-            self.assert_equal(getattr(packet[layer], cf),
-                              getattr(temp[layer], cf),
-                              "packet checksum on layer #%d: %s" % (
-                                  layer, temp[layer].name))
+            calc_sum = getattr(temp[layer], cf)
+            self.assert_equal(
+                getattr(received[layer], cf), calc_sum,
+                "packet checksum on layer #%d: %s" % (layer, temp[layer].name))
+            self.logger.debug(
+                "Checksum field `%s` on `%s` layer has correct value `%s`" %
+                (cf, temp[layer].name, calc_sum))
 
     def assert_checksum_valid(self, received_packet, layer,
                               field_name='chksum',

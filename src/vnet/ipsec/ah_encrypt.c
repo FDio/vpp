@@ -263,19 +263,17 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	  u8 sig[64];
 	  memset (sig, 0, sizeof (sig));
-	  u8 *digest = NULL;
-	  {
-	    digest = vlib_buffer_get_current (i_b0) + ip_hdr_size + icv_size;
-	    memset (digest, 0, icv_size);
-	  }
+	  u8 *digest =
+	    vlib_buffer_get_current (i_b0) + ip_hdr_size + icv_size;
+	  memset (digest, 0, icv_size);
 
-	  hmac_calc (sa0->integ_alg, sa0->integ_key,
-		     sa0->integ_key_len,
-		     (u8 *) vlib_buffer_get_current (i_b0),
-		     i_b0->current_length, sig, sa0->use_esn, sa0->seq_hi);
+	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key,
+				     sa0->integ_key_len,
+				     vlib_buffer_get_current (i_b0),
+				     i_b0->current_length, sig, sa0->use_esn,
+				     sa0->seq_hi);
 
-	  memcpy (digest, (char *) &sig[0], 12);
-
+	  memcpy (digest, sig, size);
 	  if (PREDICT_FALSE (is_ipv6))
 	    {
 	    }
@@ -287,7 +285,7 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	    }
 
 	  if (transport_mode)
-	    vlib_buffer_advance (i_b0, -sizeof (ethernet_header_t));;
+	    vlib_buffer_advance (i_b0, -sizeof (ethernet_header_t));
 
 	trace:
 	  if (PREDICT_FALSE (i_b0->flags & VLIB_BUFFER_IS_TRACED))
