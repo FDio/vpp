@@ -1080,8 +1080,8 @@ class TestMACIP(MethodHolder):
         self.apply_macip_rules(self.create_rules(acl_count=3,
                                                  rules_count=[3, 5, 4]))
 
-        intf.append(VppLoInterface(self, 0))
-        intf.append(VppLoInterface(self, 1))
+        intf.append(VppLoInterface(self))
+        intf.append(VppLoInterface(self))
 
         sw_if_index0 = intf[0].sw_if_index
         self.vapi.macip_acl_interface_add_del(sw_if_index0, 1)
@@ -1103,8 +1103,8 @@ class TestMACIP(MethodHolder):
         self.assertEqual(reply.acls[sw_if_index0], 4294967295)
         self.assertEqual(reply.acls[sw_if_index1], 0)
 
-        intf.append(VppLoInterface(self, 2))
-        intf.append(VppLoInterface(self, 3))
+        intf.append(VppLoInterface(self))
+        intf.append(VppLoInterface(self))
         sw_if_index2 = intf[2].sw_if_index
         sw_if_index3 = intf[3].sw_if_index
         self.vapi.macip_acl_interface_add_del(sw_if_index2, 1)
