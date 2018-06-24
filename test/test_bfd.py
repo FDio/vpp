@@ -1407,7 +1407,7 @@ class BFD4TestCase(VppTestCase):
 
     def test_intf_deleted(self):
         """ interface with bfd session deleted """
-        intf = VppLoInterface(self, 0)
+        intf = VppLoInterface(self)
         intf.config_ip4()
         intf.admin_up()
         sw_if_index = intf.sw_if_index
@@ -1616,7 +1616,7 @@ class BFD6TestCase(VppTestCase):
 
     def test_intf_deleted(self):
         """ interface with bfd session deleted """
-        intf = VppLoInterface(self, 0)
+        intf = VppLoInterface(self)
         intf.config_ip6()
         intf.admin_up()
         sw_if_index = intf.sw_if_index
