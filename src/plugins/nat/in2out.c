@@ -2543,6 +2543,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_interface_t *i;
+  snat_session_t *s;
 
   /* src NAT check */
   make_ed_kv (&kv, &ip->src_address, &ip->dst_address, proto,
@@ -2555,6 +2556,10 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
               sm->inside_fib_index, dst_port, src_port);
   if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &kv, &value))
   {
+    s = pool_elt_at_index (tsm->sessions, value.value);
+    if (is_fwd_bypass_session (s))
+      return 0;
+
     /* hairpinning */
     pool_foreach (i, sm->output_feature_interfaces,
     ({

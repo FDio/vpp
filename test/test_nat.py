@@ -4396,6 +4396,31 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_output_feature(self):
+        """ NAT44 interface output feature (in2out postrouting) """
+        self.vapi.nat44_forwarding_enable_disable(1)
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index,
+                                                         is_inside=0)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg1)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg0)
+
     def tearDown(self):
         super(TestNAT44EndpointDependent, self).tearDown()
         if not self.vpp_dead:
