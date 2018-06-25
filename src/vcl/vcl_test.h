@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,22 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef __sock_test_h__
-#define __sock_test_h__
+#ifndef __vcl_test_h__
+#define __vcl_test_h__
 
 #include <netdb.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vcl/vppcom.h>
 #include <vcl/sock_test_common.h>
 
-#define SOCK_TEST_AF_UNIX_FILENAME    "/tmp/ldp_server_af_unix_socket"
-#define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
-#define SOCK_TEST_AF_UNIX_ACCEPT_DATA 0xaf0000af
-#define SOCK_TEST_AF_UNIX_FD_MASK     0x00af0000
-
 static inline int
-sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
+vcl_test_read (int fd, uint8_t *buf, uint32_t nbytes,
                 sock_test_stats_t *stats)
 {
   int rx_bytes, errno_val;
@@ -37,7 +33,13 @@ sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
     {
       if (stats)
         stats->rx_xacts++;
-      rx_bytes = read (fd, buf, nbytes);
+      rx_bytes = vppcom_session_read (fd, buf, nbytes);
+
+      if (rx_bytes < 0)
+        {
+          errno = -rx_bytes;
+          rx_bytes = -1;
+        }
       if (stats)
         {
           if ((rx_bytes == 0) ||
@@ -65,7 +67,7 @@ sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
 }
 
 static inline int
-sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
+vcl_test_write (int fd, uint8_t *buf, uint32_t nbytes,
                  sock_test_stats_t *stats, uint32_t verbose)
 {
   int tx_bytes = 0;
@@ -76,7 +78,12 @@ sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
     {
       if (stats)
         stats->tx_xacts++;
-      rv = write (fd, buf, nbytes_left);
+      rv = vppcom_session_write (fd, buf, nbytes_left);
+      if (rv < 0)
+        {
+          errno = -rv;
+          rv = -1;
+        }
       if (rv < 0)
         {
           if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -117,4 +124,4 @@ sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
   return (tx_bytes);
 }
 
-#endif /* __sock_test_h__ */
+#endif /* __vcl_test_h__ */
