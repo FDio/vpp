@@ -103,7 +103,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   return listener->c_c_index;
 }
 
-u32
+static u32
 tcp_session_bind (u32 session_index, transport_endpoint_t * tep)
 {
   return tcp_connection_bind (session_index, tep);
@@ -126,14 +126,14 @@ tcp_connection_unbind (u32 listener_index)
   pool_put_index (tm->listener_pool, listener_index);
 }
 
-u32
+static u32
 tcp_session_unbind (u32 listener_index)
 {
   tcp_connection_unbind (listener_index);
   return 0;
 }
 
-transport_connection_t *
+static transport_connection_t *
 tcp_session_get_listener (u32 listener_index)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -146,7 +146,7 @@ tcp_session_get_listener (u32 listener_index)
  * Cleanup half-open connection
  *
  */
-void
+static void
 tcp_half_open_connection_del (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -178,7 +178,7 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   return 0;
 }
 
-tcp_connection_t *
+static tcp_connection_t *
 tcp_half_open_connection_new (void)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -358,7 +358,7 @@ tcp_connection_close (tcp_connection_t * tc)
     tcp_connection_del (tc);
 }
 
-void
+static void
 tcp_session_close (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
@@ -366,7 +366,7 @@ tcp_session_close (u32 conn_index, u32 thread_index)
   tcp_connection_close (tc);
 }
 
-void
+static void
 tcp_session_cleanup (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
@@ -504,6 +504,31 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
 }
 #endif /* 0 */
 
+static void
+tcp_cc_init (tcp_connection_t * tc)
+{
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cc_algo->init (tc);
+}
+
+void
+tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
+		      const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vec_validate (tm->cc_algos, type);
+
+  tm->cc_algos[type] = *vft;
+}
+
+tcp_cc_algorithm_t *
+tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  return &tm->cc_algos[type];
+}
+
+
 /**
  * Initialize connection send variables.
  */
@@ -577,7 +602,7 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
   return 0;
 }
 
-int
+static int
 tcp_connection_open (transport_endpoint_t * rmt)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -624,7 +649,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   return tc->c_c_index;
 }
 
-int
+static int
 tcp_session_open (transport_endpoint_t * tep)
 {
   return tcp_connection_open (tep);
@@ -660,7 +685,7 @@ const char *tcp_connection_flags_str[] = {
 #undef _
 };
 
-u8 *
+static u8 *
 format_tcp_connection_flags (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -685,7 +710,7 @@ const char *tcp_conn_timers[] = {
 #undef _
 };
 
-u8 *
+static u8 *
 format_tcp_timers (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -710,7 +735,7 @@ format_tcp_timers (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_congestion_status (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -723,7 +748,13 @@ format_tcp_congestion_status (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static i32
+tcp_rcv_wnd_available (tcp_connection_t * tc)
+{
+  return (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
+}
+
+static u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -763,7 +794,7 @@ format_tcp_vars (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_connection_id (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -806,7 +837,7 @@ format_tcp_connection (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
@@ -822,7 +853,7 @@ format_tcp_session (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
@@ -830,7 +861,7 @@ format_tcp_listener_session (u8 * s, va_list * args)
   return format (s, "%U", format_tcp_connection_id, tc);
 }
 
-u8 *
+static u8 *
 format_tcp_half_open_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
@@ -886,7 +917,7 @@ format_tcp_rcv_sacks (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_sack_hole (u8 * s, va_list * args)
 {
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
@@ -924,14 +955,14 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   return s;
 }
 
-transport_connection_t *
+static transport_connection_t *
 tcp_session_get_transport (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc = tcp_connection_get (conn_index, thread_index);
   return &tc->connection;
 }
 
-transport_connection_t *
+static transport_connection_t *
 tcp_half_open_session_get_transport (u32 conn_index)
 {
   tcp_connection_t *tc = tcp_half_open_connection_get (conn_index);
@@ -945,7 +976,7 @@ tcp_half_open_session_get_transport (u32 conn_index)
  * the tcp options to be used in the next burst and subtracts their
  * length from the connection's snd_mss.
  */
-u16
+static u16
 tcp_session_send_mss (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
@@ -985,7 +1016,7 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
  * @param tc tcp connection
  * @return number of bytes session is allowed to write
  */
-u32
+static u32
 tcp_snd_space (tcp_connection_t * tc)
 {
   int snd_space, snt_limited;
@@ -1034,7 +1065,7 @@ tcp_snd_space (tcp_connection_t * tc)
   return 0;
 }
 
-u32
+static u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
@@ -1042,13 +1073,7 @@ tcp_session_send_space (transport_connection_t * trans_conn)
 		   tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
 }
 
-i32
-tcp_rcv_wnd_available (tcp_connection_t * tc)
-{
-  return (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
-}
-
-u32
+static u32
 tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
@@ -1059,7 +1084,7 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
   return (tc->snd_nxt - tc->snd_una);
 }
 
-void
+static void
 tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_set_time_now (thread_index);
@@ -1067,6 +1092,13 @@ tcp_update_time (f64 now, u8 thread_index)
 				       wrk_ctx[thread_index].timer_wheel,
 				       now);
   tcp_flush_frames_to_output (thread_index);
+}
+
+static u32
+tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) tconn;
+  return tcp_push_header (tc, b);
 }
 
 /* *INDENT-OFF* */
@@ -1093,7 +1125,7 @@ const static transport_proto_vft_t tcp_proto = {
 };
 /* *INDENT-ON* */
 
-void
+static void
 tcp_timer_keep_handler (u32 conn_index)
 {
   u32 thread_index = vlib_get_thread_index ();
@@ -1105,7 +1137,7 @@ tcp_timer_keep_handler (u32 conn_index)
   tcp_connection_close (tc);
 }
 
-void
+static void
 tcp_timer_establish_handler (u32 conn_index)
 {
   tcp_connection_t *tc;
@@ -1133,7 +1165,7 @@ tcp_timer_establish_handler (u32 conn_index)
   tcp_connection_cleanup (tc);
 }
 
-void
+static void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
   u32 thread_index = vlib_get_thread_index ();
@@ -1198,7 +1230,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
     }
 }
 
-void
+static void
 tcp_initialize_timer_wheels (tcp_main_t * tm)
 {
   tw_timer_wheel_16t_2w_512sl_t *tw;
@@ -1212,7 +1244,7 @@ tcp_initialize_timer_wheels (tcp_main_t * tm)
   /* *INDENT-ON* */
 }
 
-clib_error_t *
+static clib_error_t *
 tcp_main_enable (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -1320,7 +1352,7 @@ tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
     tm->punt_unknown6 = is_add;
 }
 
-clib_error_t *
+static clib_error_t *
 tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
