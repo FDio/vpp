@@ -384,8 +384,19 @@ do {									\
 always_inline uword
 clib_bitmap_first_set (uword * ai)
 {
-  uword i;
-  for (i = 0; i < vec_len (ai); i++)
+  uword i = 0;
+#ifdef CLIB_HAVE_VEC256
+  while (i + 7 < vec_len (ai))
+    {
+      u64x4 v = 0;
+      v |= u64x4_load_unaligned (ai + i);
+      v |= u64x4_load_unaligned (ai + i + 4);
+      if (!u64x4_is_all_zero (v))
+	break;
+      i += 8;
+    }
+#endif
+  for (; i < vec_len (ai); i++)
     {
       uword x = ai[i];
       if (x != 0)
