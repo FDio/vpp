@@ -66,7 +66,6 @@ typedef enum
 
 /* *INDENT-ON* */
 
-
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
 		vlib_node_runtime_t * node, vlib_frame_t * frame, int is_ip6,
@@ -234,12 +233,18 @@ acl_fa_node_fn (vlib_main_t * vm,
       if (acl_check_needed)
 	{
 	  action = 0;		/* deny by default */
+#if defined (__AVX2__)
+  if (is_input && is_l2_path && !is_ip6) { IACA_START; }
+#endif
 	  acl_plugin_match_5tuple_inline (&acl_main, lc_index0,
 					  (fa_5tuple_opaque_t *) &
 					  fa_5tuple, is_ip6, &action,
 					  &match_acl_pos,
 					  &match_acl_in_index,
 					  &match_rule_index, &trace_bitmap);
+#if defined (__AVX2__)
+  if (is_input && is_l2_path && !is_ip6) { IACA_END; }
+#endif
 	  error0 = action;
 	  if (1 == action)
 	    pkts_acl_permit += 1;
