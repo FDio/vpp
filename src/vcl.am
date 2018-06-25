@@ -15,21 +15,21 @@ lib_LTLIBRARIES += libvppcom.la libvcl_ldpreload.la
 
 libvppcom_la_SOURCES =
 libvcl_ldpreload_la_SOURCES =
-libvppcom_la_DEPENDENCIES = 	\
-	libsvm.la 		\
+libvppcom_la_DEPENDENCIES =			\
+	libsvm.la				\
 	libvlibmemoryclient.la
 
 libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
 
 libvppcom_la_SOURCES +=				\
-  vcl/vcl_event.c               \
+  vcl/vcl_event.c				\
   vcl/vppcom.c					\
   $(libvppinfra_la_SOURCES)			\
   $(libsvm_la_SOURCES)				\
   $(libvlibmemoryclient_la_SOURCES)
 
 nobase_include_HEADERS +=			\
-  vcl/vcl_event.h 					\
+  vcl/vcl_event.h				\
   vcl/vppcom.h
 
 libvcl_ldpreload_la_LIBADD =  $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
@@ -48,8 +48,8 @@ noinst_PROGRAMS +=				\
 	vcl_test_server				\
 	vcl_test_client				\
 	sock_test_server			\
-	sock_test_client            \
-	test_vcl_listener_server    \
+	sock_test_client			\
+	test_vcl_listener_server		\
 	test_vcl_listener_client
 
 
@@ -64,20 +64,14 @@ vcl_test_server_LDADD = libvppcom.la
 
 
 vcl_test_client_SOURCES = vcl/vcl_test_client.c
-
-# Link libvcl_ldpreload.la instead of vppcom.la
-# to validate that all symbols are included in
-# libvcl_ldpreload.la at build time.
-#
-# Not recommended for production VCL apps as
-# it includes extraneous code which will never
-# be executed.
-vcl_test_client_LDADD = libvcl_ldpreload.la
+vcl_test_client_LDADD = libvppcom.la
 
 sock_test_server_SOURCES = vcl/sock_test_server.c
 sock_test_client_SOURCES = vcl/sock_test_client.c
 
 nobase_include_HEADERS +=			\
-  vcl/sock_test.h
+  vcl/sock_test_common.h			\
+  vcl/sock_test.h				\
+  vcl/vcl_test.h
 
 # vi:syntax=automake
