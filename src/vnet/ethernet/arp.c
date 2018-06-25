@@ -2324,7 +2324,6 @@ arp_term_l2bd (vlib_main_t * vm,
 	  u16 bd_index0;
 	  u32 ip0;
 	  u8 *macp0;
-	  u8 is_vrrp_reply0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -2373,22 +2372,20 @@ arp_term_l2bd (vlib_main_t * vm,
 	  if (error0)
 	    goto drop;
 
-	  is_vrrp_reply0 =
-	    ((arp0->opcode ==
-	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
-	     &&
-	     (!memcmp
-	      (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
-	       sizeof (vrrp_prefix))));
-
 	  /* Trash ARP packets whose ARP-level source addresses do not
-	     match their L2-frame-level source addresses, unless it's
-	     a reply from a VRRP virtual router */
+	     match, or if requester address is mcast */
 	  if (PREDICT_FALSE
 	      (memcmp (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
-		       sizeof (eth0->src_address)) && !is_vrrp_reply0))
+		       sizeof (eth0->src_address)) ||
+	       ethernet_address_cast (arp0->ip4_over_ethernet[0].ethernet)))
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
+	      goto drop;
+	    }
+	  if (PREDICT_FALSE
+	      (ip4_address_is_multicast (&arp0->ip4_over_ethernet[0].ip4)))
+	    {
+	      error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
 	      goto drop;
 	    }
 
