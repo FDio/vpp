@@ -131,30 +131,7 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
   return clib_min (tc->rcv_wnd, TCP_WND_MAX);
 }
 
-/**
- * Compute and return window to advertise, scaled as per RFC1323
- */
-u32
-tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
-{
-  if (state < TCP_STATE_ESTABLISHED)
-    return tcp_initial_window_to_advertise (tc);
-
-  tcp_update_rcv_wnd (tc);
-
-  if (tc->rcv_wnd == 0)
-    {
-      tc->flags |= TCP_CONN_SENT_RCV_WND0;
-    }
-  else
-    {
-      tc->flags &= ~TCP_CONN_SENT_RCV_WND0;
-    }
-
-  return tc->rcv_wnd >> tc->rcv_wscale;
-}
-
-void
+static void
 tcp_update_rcv_wnd (tcp_connection_t * tc)
 {
   i32 observed_wnd;
@@ -201,9 +178,32 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
 }
 
 /**
+ * Compute and return window to advertise, scaled as per RFC1323
+ */
+static u32
+tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
+{
+  if (state < TCP_STATE_ESTABLISHED)
+    return tcp_initial_window_to_advertise (tc);
+
+  tcp_update_rcv_wnd (tc);
+
+  if (tc->rcv_wnd == 0)
+    {
+      tc->flags |= TCP_CONN_SENT_RCV_WND0;
+    }
+  else
+    {
+      tc->flags &= ~TCP_CONN_SENT_RCV_WND0;
+    }
+
+  return tc->rcv_wnd >> tc->rcv_wscale;
+}
+
+/**
  * Write TCP options to segment.
  */
-u32
+static u32
 tcp_options_write (u8 * data, tcp_options_t * opts)
 {
   u32 opts_len = 0;
@@ -286,7 +286,7 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
   return opts_len;
 }
 
-always_inline int
+static int
 tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
 {
   u8 len = 0;
@@ -315,7 +315,7 @@ tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
   return len;
 }
 
-always_inline int
+static int
 tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
 {
   u8 len = 0;
@@ -350,7 +350,7 @@ tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
   return len;
 }
 
-always_inline int
+static int
 tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
 {
   u8 len = 0;
@@ -444,7 +444,7 @@ tcp_init_mss (tcp_connection_t * tc)
     tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
 }
 
-always_inline int
+static int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u16 * n_bufs,
 		      u32 wanted)
 {
@@ -483,7 +483,7 @@ tcp_get_free_buffer_index (tcp_main_t * tm, u32 * bidx)
   return 0;
 }
 
-always_inline void *
+static void *
 tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
   if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -499,7 +499,7 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 }
 
-always_inline void *
+static void *
 tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
   ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
@@ -516,7 +516,7 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 /**
  * Prepare ACK
  */
-void
+static void
 tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 		u8 flags)
 {
@@ -666,14 +666,14 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
     }
 }
 
-always_inline void
+static void
 tcp_enqueue_to_ip_lookup_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			      u8 is_ip4, u32 fib_index)
 {
   tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 1);
 }
 
-always_inline void
+static void
 tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			  u8 is_ip4, u32 fib_index)
 {
@@ -716,20 +716,20 @@ tcp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
     }
 }
 
-always_inline void
+static void
 tcp_enqueue_to_output (vlib_main_t * vm, vlib_buffer_t * b, u32 bi, u8 is_ip4)
 {
   tcp_enqueue_to_output_i (vm, b, bi, is_ip4, 0);
 }
 
-always_inline void
+static void
 tcp_enqueue_to_output_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 			   u8 is_ip4)
 {
   tcp_enqueue_to_output_i (vm, b, bi, is_ip4, 1);
 }
 
-int
+static int
 tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
 			 tcp_state_t state, u8 thread_index, u8 is_ip4)
 {
@@ -938,7 +938,7 @@ tcp_send_reset (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
-void
+static void
 tcp_push_ip_hdr (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_header_t *th = vlib_buffer_get_current (b);
@@ -1022,7 +1022,7 @@ tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 /**
  * Flush ip lookup tx frames populated by timer pops
  */
-always_inline void
+static void
 tcp_flush_frame_to_ip_lookup (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 {
   if (tcp_main.wrk_ctx[thread_index].ip_lookup_tx_frames[!is_ip4])
@@ -1114,7 +1114,7 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
 /**
  * Push TCP header and update connection variables
  */
-static void
+always_inline void
 tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 		tcp_state_t next_state, u8 compute_opts)
 {
@@ -1151,6 +1151,28 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   tc->rcv_las = tc->rcv_nxt;
 
   TCP_EVT_DBG (TCP_EVT_PKTIZE, tc);
+}
+
+u32
+tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
+{
+  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
+  tc->snd_una_max = tc->snd_nxt;
+  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd));
+  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+  /* If not tracking an ACK, start tracking */
+  if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
+    {
+      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_seq = tc->snd_nxt;
+    }
+  if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
+    {
+      tcp_retransmit_timer_set (tc);
+      tc->rto_boff = 0;
+    }
+  tcp_trajectory_add_start (b, 3);
+  return 0;
 }
 
 void
@@ -1195,7 +1217,7 @@ tcp_timer_delack_handler (u32 index)
  * @return the number of bytes in the segment or 0 if there's nothing to
  *         retransmit
  */
-u32
+static u32
 tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 				u32 max_deq_bytes, vlib_buffer_t ** b)
 {
@@ -1356,7 +1378,7 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   tcp_recovery_on (tc);
 }
 
-static void
+static inline void
 tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -1755,7 +1777,7 @@ tcp_fast_retransmit (tcp_connection_t * tc)
     tcp_fast_retransmit_no_sack (tc);
 }
 
-always_inline u32
+static u32
 tcp_session_has_ooo_data (tcp_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->c_s_index, tc->c_thread_index);
@@ -1817,7 +1839,7 @@ tcp46_output_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
-static inline void
+always_inline void
 tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 		    tcp_connection_t * tc0, u8 is_ip4)
 {
@@ -1845,7 +1867,7 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
     }
 }
 
-static inline void
+always_inline void
 tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
 			  u32 * error0, u16 * next0, u8 is_ip4)
 {
@@ -2021,29 +2043,6 @@ VLIB_REGISTER_NODE (tcp6_output_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (tcp6_output_node, tcp6_output);
-
-u32
-tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
-  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
-  tc->snd_una_max = tc->snd_nxt;
-  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd));
-  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
-  /* If not tracking an ACK, start tracking */
-  if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
-    {
-      tc->rtt_ts = tcp_time_now ();
-      tc->rtt_seq = tc->snd_nxt;
-    }
-  if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
-    {
-      tcp_retransmit_timer_set (tc);
-      tc->rto_boff = 0;
-    }
-  tcp_trajectory_add_start (b, 3);
-  return 0;
-}
 
 typedef enum _tcp_reset_next
 {

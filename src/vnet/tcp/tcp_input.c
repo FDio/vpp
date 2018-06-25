@@ -123,7 +123,7 @@ tcp_segment_in_rcv_wnd (tcp_connection_t * tc, u32 seq, u32 end_seq)
  * @param to TCP options data structure to be populated
  * @return -1 if parsing failed
  */
-int
+static int
 tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 {
   const u8 *data;
@@ -534,7 +534,60 @@ tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
   return ((*is_dack || tcp_in_cong_recovery (tc)) && !tcp_is_lost_fin (tc));
 }
 
-void
+static u32
+scoreboard_hole_index (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
+{
+  ASSERT (!pool_is_free_index (sb->holes, hole - sb->holes));
+  return hole - sb->holes;
+}
+
+static u32
+scoreboard_hole_bytes (sack_scoreboard_hole_t * hole)
+{
+  return hole->end - hole->start;
+}
+
+sack_scoreboard_hole_t *
+scoreboard_get_hole (sack_scoreboard_t * sb, u32 index)
+{
+  if (index != TCP_INVALID_SACK_HOLE_INDEX)
+    return pool_elt_at_index (sb->holes, index);
+  return 0;
+}
+
+sack_scoreboard_hole_t *
+scoreboard_next_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
+{
+  if (hole->next != TCP_INVALID_SACK_HOLE_INDEX)
+    return pool_elt_at_index (sb->holes, hole->next);
+  return 0;
+}
+
+sack_scoreboard_hole_t *
+scoreboard_prev_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
+{
+  if (hole->prev != TCP_INVALID_SACK_HOLE_INDEX)
+    return pool_elt_at_index (sb->holes, hole->prev);
+  return 0;
+}
+
+sack_scoreboard_hole_t *
+scoreboard_first_hole (sack_scoreboard_t * sb)
+{
+  if (sb->head != TCP_INVALID_SACK_HOLE_INDEX)
+    return pool_elt_at_index (sb->holes, sb->head);
+  return 0;
+}
+
+sack_scoreboard_hole_t *
+scoreboard_last_hole (sack_scoreboard_t * sb)
+{
+  if (sb->tail != TCP_INVALID_SACK_HOLE_INDEX)
+    return pool_elt_at_index (sb->holes, sb->tail);
+  return 0;
+}
+
+static void
 scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 {
   sack_scoreboard_hole_t *next, *prev;
@@ -569,7 +622,7 @@ scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
   pool_put (sb->holes, hole);
 }
 
-sack_scoreboard_hole_t *
+static sack_scoreboard_hole_t *
 scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 			u32 start, u32 end)
 {
@@ -606,7 +659,7 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
   return hole;
 }
 
-void
+static void
 scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 {
   sack_scoreboard_hole_t *hole, *prev;
@@ -705,7 +758,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
   return hole;
 }
 
-void
+static void
 scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq)
 {
   sack_scoreboard_hole_t *hole;
@@ -718,13 +771,41 @@ scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq)
   sb->high_rxt = seq;
 }
 
+void
+scoreboard_init (sack_scoreboard_t * sb)
+{
+  sb->head = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->tail = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+}
+
+void
+scoreboard_clear (sack_scoreboard_t * sb)
+{
+  sack_scoreboard_hole_t *hole;
+  while ((hole = scoreboard_first_hole (sb)))
+    {
+      scoreboard_remove_hole (sb, hole);
+    }
+  ASSERT (sb->head == sb->tail && sb->head == TCP_INVALID_SACK_HOLE_INDEX);
+  ASSERT (pool_elts (sb->holes) == 0);
+  sb->sacked_bytes = 0;
+  sb->last_sacked_bytes = 0;
+  sb->last_bytes_delivered = 0;
+  sb->snd_una_adv = 0;
+  sb->high_sacked = 0;
+  sb->high_rxt = 0;
+  sb->lost_bytes = 0;
+  sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+}
+
 /**
  * Test that scoreboard is sane after recovery
  *
  * Returns 1 if scoreboard is empty or if first hole beyond
  * snd_una.
  */
-u8
+static u8
 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
 {
   sack_scoreboard_hole_t *hole;
@@ -1000,7 +1081,7 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
 
-int
+static int
 tcp_cc_recover (tcp_connection_t * tc)
 {
   ASSERT (tcp_in_cong_recovery (tc));
@@ -1222,13 +1303,6 @@ partial_ack:
   tcp_fast_retransmit (tc);
 }
 
-void
-tcp_cc_init (tcp_connection_t * tc)
-{
-  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
-  tc->cc_algo->init (tc);
-}
-
 /**
  * Process incoming ACK
  */
@@ -1415,7 +1489,7 @@ tcp_sack_list_bytes (tcp_connection_t * tc)
 }
 
 /** Enqueue data for delivery to application */
-always_inline int
+static int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 			  u16 data_len)
 {
@@ -1470,7 +1544,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 }
 
 /** Enqueue out-of-order data */
-always_inline int
+static int
 tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
@@ -1648,7 +1722,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_rx_trace_t;
 
-u8 *
+static u8 *
 format_tcp_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -1664,7 +1738,7 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_tcp_rx_trace_short (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -3410,7 +3484,7 @@ do {                                                       	\
 #undef _
 }
 
-clib_error_t *
+static clib_error_t *
 tcp_input_init (vlib_main_t * vm)
 {
   clib_error_t *error = 0;
