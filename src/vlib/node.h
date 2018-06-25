@@ -194,7 +194,7 @@ uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 #define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)
 #else
 #define VLIB_NODE_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
-  uword									\
+  static inline uword							\
   __attribute__ ((flatten))						\
   __attribute__ ((target (tgt)))					\
   CLIB_CPU_OPTIMIZED							\
