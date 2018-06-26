@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6435b524_e385733c",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-06-26T09:41:24Z",
+      "side": 1,
+      "message": "It would be nice if ARMV8_CRYPTO_LIB_PATH is checked in src/configure.ac and any *.mk changes are not required.",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 5
+      },
+      "revId": "ec806c2fd263a2b9179dc84e6532b21fc9b650ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
