@@ -22,6 +22,30 @@
       "revId": "ea00f0b009531762e80c9ad897fef92d371e69a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9db1c897_7821c5d0",
+        "filename": "src/plugins/acl/public_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-06-26T16:04:15Z",
+      "side": 1,
+      "message": "The idea was to have it at the same place.... should I just put a conclusion \"it was like that .... and that caused a dependent write which slowed things down, now the write is independent and thus does not slow things down anymore\" ?",
+      "parentUuid": "48927390_6ff24c8a",
+      "range": {
+        "startLine": 609,
+        "startChar": 0,
+        "endLine": 682,
+        "endChar": 9
+      },
+      "revId": "ea00f0b009531762e80c9ad897fef92d371e69a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
