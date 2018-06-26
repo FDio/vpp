@@ -443,7 +443,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
   return n_buffers;
 }
 
-static_always_inline uword
+static uword
 vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame)
 {
