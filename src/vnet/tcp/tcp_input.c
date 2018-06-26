@@ -823,13 +823,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   int i, j;
 
   sb->last_sacked_bytes = 0;
-  sb->snd_una_adv = 0;
-  old_sacked_bytes = sb->sacked_bytes;
   sb->last_bytes_delivered = 0;
+  sb->snd_una_adv = 0;
 
   if (!tcp_opts_sack (&tc->rcv_opts)
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
+
+  old_sacked_bytes = sb->sacked_bytes;
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
