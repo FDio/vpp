@@ -213,7 +213,7 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 }
 
 clib_error_t *
-avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
+avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 {
   avf_main_t *am = &avf_main;
   avf_rxq_t *rxq;
@@ -222,7 +222,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
 
   vec_validate_aligned (ad->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (ad->rxqs, qid);
-  rxq->size = AVF_RXQ_SZ;
+  rxq->size = rxq_size;
   rxq->next = 0;
   rxq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
 					   rxq->size * sizeof (avf_rx_desc_t),
@@ -254,7 +254,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
 }
 
 clib_error_t *
-avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
+avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 {
   avf_main_t *am = &avf_main;
   avf_txq_t *txq;
@@ -272,7 +272,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid)
 
   vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (ad->txqs, qid);
-  txq->size = AVF_TXQ_SZ;
+  txq->size = txq_size;
   txq->next = 0;
   txq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
 					   txq->size * sizeof (avf_tx_desc_t),
@@ -398,8 +398,11 @@ retry:
 
   if (d->v_opcode != op)
     {
-      err = clib_error_return (0, "unexpected message receiver [v_opcode = %u"
-			       "expected %u]", d->v_opcode, op);
+      err =
+	clib_error_return (0,
+			   "unexpected message receiver [v_opcode = %u, "
+			   "expected %u, v_retval %d]", d->v_opcode, op,
+			   d->v_retval);
       goto done;
     }
 
@@ -658,7 +661,8 @@ retry:
 }
 
 clib_error_t *
-avf_device_init (vlib_main_t * vm, avf_device_t * ad)
+avf_device_init (vlib_main_t * vm, avf_device_t * ad,
+		 avf_create_if_args_t * args)
 {
   virtchnl_version_info_t ver = { 0 };
   virtchnl_vf_resource_t res = { 0 };
@@ -719,11 +723,11 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad)
   /*
    * Init Queues
    */
-  if ((error = avf_rxq_init (vm, ad, 0)))
+  if ((error = avf_rxq_init (vm, ad, 0, args->rxq_size)))
     return error;
 
   for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((error = avf_txq_init (vm, ad, i)))
+    if ((error = avf_txq_init (vm, ad, i, args->txq_size)))
       return error;
 
   if ((error = avf_op_config_vsi_queues (vm, ad)))
@@ -1067,6 +1071,19 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
 
+  /* check input args */
+  args->rxq_size = (args->rxq_size == 0) ? AVF_RXQ_SZ : args->rxq_size;
+  args->txq_size = (args->txq_size == 0) ? AVF_TXQ_SZ : args->txq_size;
+
+  if ((args->rxq_size & (args->rxq_size - 1))
+      || (args->txq_size & (args->txq_size - 1)))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (error, "queue size must be a power of two");
+      return;
+    }
+
   pool_get (am->devices, ad);
   ad->dev_instance = ad - am->devices;
   ad->per_interface_next_index = ~0;
@@ -1141,7 +1158,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   /* FIXME detect */
   ad->flags |= AVF_DEVICE_F_IOVA;
 
-  if ((error = avf_device_init (vm, ad)))
+  if ((error = avf_device_init (vm, ad, args)))
     goto error;
 
   /* create interface */

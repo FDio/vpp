@@ -15,6 +15,9 @@
  *------------------------------------------------------------------
  */
 
+#ifndef _AVF_H_
+#define _AVF_H_
+
 #include <avf/virtchnl.h>
 
 #include <vlib/log.h>
@@ -158,6 +161,8 @@ STATIC_ASSERT (VNET_DEVICE_INPUT_N_NEXT_NODES < 256, "too many next nodes");
 
 typedef struct
 {
+  u16 msg_id_base;
+
   avf_device_t *devices;
   avf_per_thread_data_t *per_thread_data;
   vlib_physmem_region_index_t physmem_region;
@@ -175,6 +180,8 @@ typedef struct
 {
   vlib_pci_addr_t addr;
   int enable_elog;
+  u16 rxq_size;
+  u16 txq_size;
   /* return */
   int rv;
   clib_error_t *error;
@@ -258,6 +265,8 @@ typedef struct
   u32 hw_if_index;
   avf_rx_vector_entry_t rxve;
 } avf_input_trace_t;
+
+#endif /* AVF_H */
 
 /*
  * fd.io coding-style-patch-verification: ON
