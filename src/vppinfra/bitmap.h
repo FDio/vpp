@@ -386,7 +386,7 @@ clib_bitmap_first_set (uword * ai)
 {
   uword i = 0;
 #if uword_bits == 64
-#if defined (CLIB_HAVE_VEC256)
+#if defined(CLIB_HAVE_VEC256)
   while (i + 7 < vec_len (ai))
     {
       u64x4 v;
@@ -395,7 +395,7 @@ clib_bitmap_first_set (uword * ai)
 	break;
       i += 8;
     }
-#elif defined (CLIB_HAVE_VEC128)
+#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
   while (i + 3 < vec_len (ai))
     {
       u64x2 v;
