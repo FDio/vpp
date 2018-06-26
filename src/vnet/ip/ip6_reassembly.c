@@ -1026,7 +1026,7 @@ static char *ip6_reassembly_error_strings[] = {
 #undef _
 };
 
-always_inline uword
+static uword
 ip6_reassembly (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
@@ -1053,7 +1053,7 @@ VLIB_REGISTER_NODE (ip6_reass_node, static) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_reass_node, ip6_reassembly);
 
-always_inline uword
+static uword
 ip6_reassembly_feature (vlib_main_t * vm,
 			vlib_node_runtime_t * node, vlib_frame_t * frame)
 {

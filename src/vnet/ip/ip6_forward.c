@@ -522,7 +522,7 @@ VLIB_REGISTER_NODE (ip6_lookup_node) =
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_lookup_node, ip6_lookup);
 
-always_inline uword
+static uword
 ip6_load_balance (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
