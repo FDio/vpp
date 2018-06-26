@@ -45,6 +45,40 @@
 #define VRING_USED_F_NO_NOTIFY  1
 #define VRING_AVAIL_F_NO_INTERRUPT 1
 
+#define DBG_SOCK(args...)                       \
+  {                                             \
+    vhost_user_main_t *_vum = &vhost_user_main; \
+    if (_vum->debug)                            \
+      clib_warning(args);                       \
+  };
+
+#define VHOST_DEBUG_VQ 0
+
+#if VHOST_DEBUG_VQ == 1
+#define DBG_VQ(args...) clib_warning(args);
+#else
+#define DBG_VQ(args...)
+#endif
+
+#define UNIX_GET_FD(unixfd_idx) ({ \
+    typeof(unixfd_idx) __unixfd_idx = (unixfd_idx); \
+    (__unixfd_idx != ~0) ? \
+        pool_elt_at_index (file_main.file_pool, \
+                           __unixfd_idx)->file_descriptor : -1; })
+
+#define foreach_virtio_trace_flags \
+  _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining") \
+  _ (SINGLE_DESC,  1, "Single descriptor packet") \
+  _ (INDIRECT, 2, "Indirect descriptor") \
+  _ (MAP_ERROR, 4, "Memory mapping error")
+
+typedef enum
+{
+#define _(n,i,s) VIRTIO_TRACE_F_##n,
+  foreach_virtio_trace_flags
+#undef _
+} virtio_trace_flag_t;
+
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
  _ (VIRTIO_NET_F_CTRL_VQ, 17)           \
@@ -55,7 +89,6 @@
  _ (VIRTIO_F_INDIRECT_DESC, 28)         \
  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
  _ (VIRTIO_F_VERSION_1, 32)
-
 
 typedef enum
 {
@@ -330,6 +363,11 @@ typedef struct
 
 int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 			 vhost_user_intf_details_t ** out_vuids);
+
+extern vlib_node_registration_t vhost_user_send_interrupt_node;
+extern vnet_device_class_t vhost_user_device_class;
+extern vlib_node_registration_t vhost_user_input_node;
+extern vhost_user_main_t vhost_user_main;
 
 #endif
 

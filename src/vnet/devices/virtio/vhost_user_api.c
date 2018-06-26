@@ -22,7 +22,7 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/devices/virtio/vhost-user.h>
+#include <vnet/devices/virtio/vhost_user.h>
 
 #include <vnet/vnet_msg_enum.h>
 
