@@ -926,6 +926,9 @@ nobase_include_HEADERS +=			\
   vnet/devices/virtio/vhost-user.h		\
   vnet/devices/virtio/vhost_user.api.h
 
+libvnet_multiversioning_sources +=              \
+  vnet/devices/virtio/vhost-user.c
+
 API_FILES += vnet/devices/virtio/vhost_user.api
 
 ########################################

@@ -117,7 +117,8 @@ typedef enum
 } virtio_trace_flag_t;
 
 vlib_node_registration_t vhost_user_input_node;
-
+static vlib_node_registration_t vhost_user_send_interrupt_node;
+extern vnet_device_class_t vhost_user_device_class;
 #define foreach_vhost_user_tx_func_error      \
   _(NONE, "no error")  \
   _(NOT_READY, "vhost vring not ready")  \
@@ -135,7 +136,7 @@ typedef enum
     VHOST_USER_TX_FUNC_N_ERROR,
 } vhost_user_tx_func_error_t;
 
-static char *vhost_user_tx_func_error_strings[] = {
+static __clib_unused char *vhost_user_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vhost_user_tx_func_error
 #undef _
@@ -157,14 +158,14 @@ typedef enum
     VHOST_USER_INPUT_FUNC_N_ERROR,
 } vhost_user_input_func_error_t;
 
-static char *vhost_user_input_func_error_strings[] = {
+static __clib_unused char *vhost_user_input_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vhost_user_input_func_error
 #undef _
 };
 
 /* *INDENT-OFF* */
-static vhost_user_main_t vhost_user_main = {
+static __clib_unused vhost_user_main_t vhost_user_main = {
   .mtu_bytes = 1518,
 };
 
@@ -173,7 +174,7 @@ VNET_HW_INTERFACE_CLASS (vhost_interface_class, static) = {
 };
 /* *INDENT-ON* */
 
-static u8 *
+static __clib_unused u8 *
 format_vhost_user_interface_name (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
@@ -190,7 +191,7 @@ format_vhost_user_interface_name (u8 * s, va_list * args)
   return s;
 }
 
-static int
+static __clib_unused int
 vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
 {
   // FIXME: check if the new dev instance is already used
@@ -345,7 +346,7 @@ vhost_map_guest_mem_done:
   return 0;
 }
 
-static inline void *
+static_always_inline void *
 map_user_mem (vhost_user_intf_t * vui, uword addr)
 {
   int i;
@@ -362,7 +363,7 @@ map_user_mem (vhost_user_intf_t * vui, uword addr)
   return 0;
 }
 
-static long
+static __clib_unused long
 get_huge_page_size (int fd)
 {
   struct statfs s;
@@ -370,7 +371,7 @@ get_huge_page_size (int fd)
   return s.f_bsize;
 }
 
-static void
+static __clib_unused void
 unmap_all_mem_regions (vhost_user_intf_t * vui)
 {
   int i, r;
@@ -406,7 +407,7 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
   vui->nregions = 0;
 }
 
-static void
+static __clib_unused void
 vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
 {
   //Let's try to assign one queue to each thread
@@ -446,7 +447,7 @@ vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
  * @brief Unassign existing interface/queue to thread mappings and re-assign
  * new interface/queue to thread mappings
  */
-static void
+static __clib_unused void
 vhost_user_rx_thread_placement ()
 {
   vhost_user_main_t *vum = &vhost_user_main;
@@ -510,7 +511,7 @@ vhost_user_rx_thread_placement ()
 }
 
 /** @brief Returns whether at least one TX and one RX vring are enabled */
-int
+static_always_inline int
 vhost_user_intf_ready (vhost_user_intf_t * vui)
 {
   int i, found[2] = { };	//RX + TX
@@ -522,7 +523,7 @@ vhost_user_intf_ready (vhost_user_intf_t * vui)
   return found[0] && found[1];
 }
 
-static void
+static __clib_unused void
 vhost_user_update_iface_state (vhost_user_intf_t * vui)
 {
   /* if we have pointers to descriptor table, go up */
@@ -540,7 +541,7 @@ vhost_user_update_iface_state (vhost_user_intf_t * vui)
   vhost_user_tx_thread_placement (vui);
 }
 
-static void
+static __clib_unused void
 vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 {
   u32 qid;
@@ -556,7 +557,7 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
     vnet_device_input_set_interrupt_pending (vnm, vui->hw_if_index, qid >> 1);
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_callfd_read_ready (clib_file_t * uf)
 {
   __attribute__ ((unused)) int n;
@@ -567,7 +568,7 @@ vhost_user_callfd_read_ready (clib_file_t * uf)
   return 0;
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_kickfd_read_ready (clib_file_t * uf)
 {
   __attribute__ ((unused)) int n;
@@ -596,7 +597,7 @@ vhost_user_kickfd_read_ready (clib_file_t * uf)
  * @brief Try once to lock the vring
  * @return 0 on success, non-zero on failure.
  */
-static inline int
+static_always_inline int
 vhost_user_vring_try_lock (vhost_user_intf_t * vui, u32 qid)
 {
   return __sync_lock_test_and_set (vui->vring_locks[qid], 1);
@@ -605,7 +606,7 @@ vhost_user_vring_try_lock (vhost_user_intf_t * vui, u32 qid)
 /**
  * @brief Spin until the vring is successfully locked
  */
-static inline void
+static_always_inline void
 vhost_user_vring_lock (vhost_user_intf_t * vui, u32 qid)
 {
   while (vhost_user_vring_try_lock (vui, qid))
@@ -615,13 +616,13 @@ vhost_user_vring_lock (vhost_user_intf_t * vui, u32 qid)
 /**
  * @brief Unlock the vring lock
  */
-static inline void
+static_always_inline void
 vhost_user_vring_unlock (vhost_user_intf_t * vui, u32 qid)
 {
   *vui->vring_locks[qid] = 0;
 }
 
-static inline void
+static_always_inline void
 vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
 {
   vhost_user_vring_t *vring = &vui->vrings[qid];
@@ -643,7 +644,7 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
     vring->enabled = 1;
 }
 
-static inline void
+static_always_inline void
 vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 {
   vhost_user_vring_t *vring = &vui->vrings[qid];
@@ -669,7 +670,7 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
   vhost_user_vring_init (vui, qid);
 }
 
-static inline void
+static_always_inline void
 vhost_user_if_disconnect (vhost_user_intf_t * vui)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -733,7 +734,7 @@ vhost_user_log_dirty_pages (vhost_user_intf_t * vui, u64 addr, u64 len)
                              sizeof(vq->used->member)); \
   }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_socket_read (clib_file_t * uf)
 {
   int n, i;
@@ -1248,7 +1249,7 @@ close_socket:
   return 0;
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_socket_error (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -1264,7 +1265,7 @@ vhost_user_socket_error (clib_file_t * uf)
   return 0;
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_socksvr_accept_ready (clib_file_t * uf)
 {
   int client_fd, client_len;
@@ -1300,7 +1301,7 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
   return 0;
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_init (vlib_main_t * vm)
 {
   clib_error_t *error;
@@ -1331,9 +1332,13 @@ vhost_user_init (vlib_main_t * vm)
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
+
 VLIB_INIT_FUNCTION (vhost_user_init);
 
-static u8 *
+#endif
+
+static __clib_unused u8 *
 format_vhost_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
@@ -1371,7 +1376,7 @@ format_vhost_trace (u8 * s, va_list * va)
   return s;
 }
 
-void
+static_always_inline void
 vhost_user_rx_trace (vhost_trace_t * t,
 		     vhost_user_intf_t * vui, u16 qid,
 		     vlib_buffer_t * b, vhost_user_vring_t * txvq)
@@ -1417,7 +1422,7 @@ vhost_user_rx_trace (vhost_trace_t * t,
     }
 }
 
-static inline void
+static_always_inline void
 vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
@@ -1485,7 +1490,7 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
  * Try to discard packets from the tx ring (VPP RX path).
  * Returns the number of discarded packets.
  */
-u32
+static_always_inline u32
 vhost_user_rx_discard_packet (vlib_main_t * vm,
 			      vhost_user_intf_t * vui,
 			      vhost_user_vring_t * txvq, u32 discard_max)
@@ -1524,7 +1529,7 @@ out:
 /*
  * In case of overflow, we need to rewind the array of allocated buffers.
  */
-static void
+static __clib_unused void
 vhost_user_input_rewind_buffers (vlib_main_t * vm,
 				 vhost_cpu_t * cpu, vlib_buffer_t * b_head)
 {
@@ -1543,7 +1548,7 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
   cpu->rx_buffers_len++;
 }
 
-static u32
+static __clib_unused u32
 vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
 		     vhost_user_intf_t * vui,
@@ -1926,9 +1931,9 @@ vhost_user_if_input (vlib_main_t * vm,
   return n_rx_packets;
 }
 
-static uword
-vhost_user_input (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * f)
+VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   uword n_rx_packets = 0;
@@ -1952,9 +1957,9 @@ vhost_user_input (vlib_main_t * vm,
   return n_rx_packets;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_input_node) = {
-  .function = vhost_user_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "vhost-user-input",
   .sibling_of = "device-input",
@@ -1968,12 +1973,10 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .n_errors = VHOST_USER_INPUT_FUNC_N_ERROR,
   .error_strings = vhost_user_input_func_error_strings,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (vhost_user_input_node, vhost_user_input)
 /* *INDENT-ON* */
+#endif
 
-
-void
+static_always_inline void
 vhost_user_tx_trace (vhost_trace_t * t,
 		     vhost_user_intf_t * vui, u16 qid,
 		     vlib_buffer_t * b, vhost_user_vring_t * rxvq)
@@ -2056,9 +2059,10 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 }
 
 
-static uword
-vhost_user_tx (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+uword
+CLIB_MULTIARCH_FN (vhost_user_tx) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
@@ -2383,7 +2387,7 @@ done3:
   return frame->n_vectors;
 }
 
-static uword
+static __clib_unused uword
 vhost_user_send_interrupt_process (vlib_main_t * vm,
 				   vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
@@ -2472,6 +2476,7 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_send_interrupt_node,static) = {
     .function = vhost_user_send_interrupt_process,
@@ -2479,8 +2484,9 @@ VLIB_REGISTER_NODE (vhost_user_send_interrupt_node,static) = {
     .name = "vhost-user-send-interrupt-process",
 };
 /* *INDENT-ON* */
+#endif
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 				     u32 qid, vnet_hw_interface_rx_mode mode)
 {
@@ -2543,7 +2549,7 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
   return 0;
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 				    u32 flags)
 {
@@ -2560,8 +2566,9 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return /* no error */ 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
+VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .name = "vhost-user",
   .tx_function = vhost_user_tx,
   .tx_function_n_errors = VHOST_USER_TX_FUNC_N_ERROR,
@@ -2573,11 +2580,23 @@ VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
   .format_tx_trace = format_vhost_trace,
 };
 
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (vhost_user_dev_class,
-				   vhost_user_tx)
+#if __x86_64__
+vlib_node_function_t __clib_weak vhost_user_tx_avx512;
+vlib_node_function_t __clib_weak vhost_user_tx_avx2;
+static void __clib_constructor
+vhost_user_tx_multiarch_select (void)
+{
+  if (vhost_user_tx_avx512 && clib_cpu_supports_avx512f ())
+    vhost_user_device_class.tx_function = vhost_user_tx_avx512;
+  else if (vhost_user_tx_avx2 && clib_cpu_supports_avx2 ())
+    vhost_user_device_class.tx_function = vhost_user_tx_avx2;
+}
+#endif
+#endif
+
 /* *INDENT-ON* */
 
-static uword
+static __clib_unused uword
 vhost_user_process (vlib_main_t * vm,
 		    vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
@@ -2676,6 +2695,7 @@ vhost_user_process (vlib_main_t * vm,
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
     .function = vhost_user_process,
@@ -2683,12 +2703,13 @@ VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
     .name = "vhost-user-process",
 };
 /* *INDENT-ON* */
+#endif
 
 /**
  * Disables and reset interface structure.
  * It can then be either init again, or removed from used interfaces.
  */
-static void
+static __clib_unused void
 vhost_user_term_if (vhost_user_intf_t * vui)
 {
   int q;
@@ -2717,6 +2738,7 @@ vhost_user_term_if (vhost_user_intf_t * vui)
 	       &vui->if_index);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 {
@@ -2727,7 +2749,7 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   u16 *queue;
 
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_dev_class.index)
+      hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   DBG_SOCK ("Deleting vhost-user interface %s (instance %d)",
@@ -2773,8 +2795,9 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 
   return rv;
 }
+#endif
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 vhost_user_exit (vlib_main_t * vm)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -2791,12 +2814,16 @@ vhost_user_exit (vlib_main_t * vm)
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
+
 VLIB_MAIN_LOOP_EXIT_FUNCTION (vhost_user_exit);
+
+#endif
 
 /**
  * Open server unix socket on specified sock_filename.
  */
-static int
+static __clib_unused int
 vhost_user_init_server_sock (const char *sock_filename, int *sock_fd)
 {
   int rv = 0;
@@ -2836,7 +2863,7 @@ error:
 /**
  * Create ethernet interface for vhost user interface.
  */
-static void
+static __clib_unused void
 vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 			    vhost_user_intf_t * vui, u8 * hwaddress)
 {
@@ -2859,7 +2886,7 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 
   error = ethernet_register_interface
     (vnm,
-     vhost_user_dev_class.index,
+     vhost_user_device_class.index,
      vui - vum->vhost_user_interfaces /* device instance */ ,
      hwaddr /* ethernet address */ ,
      &vui->hw_if_index, 0 /* flag change */ );
@@ -2873,7 +2900,7 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 /*
  *  Initialize vui with specified attributes
  */
-static void
+static __clib_unused void
 vhost_user_vui_init (vnet_main_t * vnm,
 		     vhost_user_intf_t * vui,
 		     int server_sock_fd,
@@ -2933,6 +2960,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vhost_user_tx_thread_placement (vui);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
@@ -3007,7 +3035,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   uword *if_index;
 
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_dev_class.index)
+      hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
@@ -3132,7 +3160,7 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 	  vnet_hw_interface_t *hwif =
 	    vnet_get_sup_hw_interface (vnm, sw_if_index);
 	  if (hwif == NULL ||
-	      vhost_user_dev_class.index != hwif->dev_class_index)
+	      vhost_user_device_class.index != hwif->dev_class_index)
 	    {
 	      error = clib_error_return (0, "Not a vhost interface");
 	      goto done;
@@ -3251,7 +3279,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	{
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  if (vhost_user_dev_class.index != hi->dev_class_index)
+	  if (vhost_user_device_class.index != hi->dev_class_index)
 	    {
 	      error = clib_error_return (0, "unknown input `%U'",
 					 format_unformat_error, input);
@@ -3711,7 +3739,9 @@ VLIB_CLI_COMMAND (debug_vhost_user_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
+#endif
+
+static __clib_unused clib_error_t *
 vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
 {
   vhost_user_main_t *vum = &vhost_user_main;
@@ -3732,6 +3762,8 @@ vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+
+#ifndef CLIB_MARCH_VARIANT
 /* vhost-user { ... } configuration. */
 VLIB_CONFIG_FUNCTION (vhost_user_config, "vhost-user");
 
@@ -3748,6 +3780,8 @@ vhost_user_unmap_all (void)
 	);
     }
 }
+
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
