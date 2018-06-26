@@ -604,7 +604,7 @@ format_lookup_trace (u8 * s, va_list * args)
     return s;
 }
 
-always_inline uword
+static uword
 lookup_ip4_dst (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
@@ -621,7 +621,7 @@ VLIB_REGISTER_NODE (lookup_ip4_dst_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip4_dst_node, lookup_ip4_dst)
 
-always_inline uword
+static uword
 lookup_ip4_dst_itf (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
                     vlib_frame_t * from_frame)
@@ -638,7 +638,7 @@ VLIB_REGISTER_NODE (lookup_ip4_dst_itf_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip4_dst_itf_node, lookup_ip4_dst_itf)
 
-always_inline uword
+static uword
 lookup_ip4_src (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
@@ -930,7 +930,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
     return from_frame->n_vectors;
 }
 
-always_inline uword
+static uword
 lookup_ip6_dst (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
@@ -947,7 +947,7 @@ VLIB_REGISTER_NODE (lookup_ip6_dst_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip6_dst_node, lookup_ip6_dst)
 
-always_inline uword
+static uword
 lookup_ip6_dst_itf (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * from_frame)
@@ -964,7 +964,7 @@ VLIB_REGISTER_NODE (lookup_ip6_dst_itf_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip6_dst_itf_node, lookup_ip6_dst_itf)
 
-always_inline uword
+static uword
 lookup_ip6_src (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
@@ -1126,7 +1126,7 @@ format_lookup_mpls_trace (u8 * s, va_list * args)
     return s;
 }
 
-always_inline uword
+static uword
 lookup_mpls_dst (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
@@ -1144,7 +1144,7 @@ VLIB_REGISTER_NODE (lookup_mpls_dst_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_mpls_dst_node, lookup_mpls_dst)
 
-always_inline uword
+static uword
 lookup_mpls_dst_itf (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
                     vlib_frame_t * from_frame)
@@ -1257,7 +1257,7 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
     return from_frame->n_vectors;
 }
 
-always_inline uword
+static uword
 lookup_ip4_dst_mcast (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
@@ -1279,7 +1279,7 @@ VLIB_REGISTER_NODE (lookup_ip4_dst_mcast_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip4_dst_mcast_node,
                               lookup_ip4_dst_mcast)
 
-always_inline uword
+static uword
 lookup_ip6_dst_mcast (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)

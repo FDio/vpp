@@ -500,7 +500,7 @@ format_mpls_load_balance_trace (u8 * s, va_list * args)
   return s;
 }
 
-always_inline uword
+static uword
 mpls_load_balance (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
