@@ -621,13 +621,13 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
 	      am->msg_print_handlers[msg_id] && cfgp->replay_enable)
 	    {
-	      void (*handler) (void *);
+	      void (*handler) (void *, vlib_main_t *);
 
 	      handler = (void *) am->msg_handlers[msg_id];
 
 	      if (!am->is_mp_safe[msg_id])
 		vl_msg_api_barrier_sync ();
-	      (*handler) (tmpbuf + sizeof (uword));
+	      (*handler) (tmpbuf + sizeof (uword), vm);
 	      if (!am->is_mp_safe[msg_id])
 		vl_msg_api_barrier_release ();
 	    }
