@@ -190,7 +190,6 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
   b->error = 0;
   b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->current_data = 0;
-  b->total_length_not_including_first_buffer = 0;
 
   data0 = vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
   len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);

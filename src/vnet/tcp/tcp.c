@@ -984,7 +984,7 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
   /* Ensure snd_mss does accurately reflect the amount of data we can push
    * in a segment. This also makes sure that options are updated according to
    * the current state of the connection. */
-  tcp_update_snd_mss (tc);
+  tcp_update_burst_snd_vars (tc);
 
   return tc->snd_mss;
 }

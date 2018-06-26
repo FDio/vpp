@@ -403,20 +403,33 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 }
 
 /**
- * Update snd_mss to reflect the effective segment size that we can send
- * by taking into account all TCP options, including SACKs
+ * Update burst send vars
+ *
+ * - Updates snd_mss to reflect the effective segment size that we can send
+ * by taking into account all TCP options, including SACKs.
+ * - Cache 'on the wire' options for reuse
+ * - Updates receive window which can be reused for a burst.
+ *
+ * This should *only* be called when doing bursts
  */
 void
-tcp_update_snd_mss (tcp_connection_t * tc)
+tcp_update_burst_snd_vars (tcp_connection_t * tc)
 {
+  tcp_main_t *tm = &tcp_main;
+
   /* Compute options to be used for connection. These may be reused when
    * sending data or to compute the effective mss (snd_mss) */
-  tc->snd_opts_len =
-    tcp_make_options (tc, &tc->snd_opts, TCP_STATE_ESTABLISHED);
+  tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts,
+				       TCP_STATE_ESTABLISHED);
 
   /* XXX check if MTU has been updated */
   tc->snd_mss = clib_min (tc->mss, tc->rcv_opts.mss) - tc->snd_opts_len;
   ASSERT (tc->snd_mss > 0);
+
+  tcp_options_write (tm->wrk_ctx[tc->c_thread_index].cached_opts,
+		     &tc->snd_opts);
+
+  tcp_update_rcv_wnd (tc);
 }
 
 void
@@ -1116,32 +1129,47 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
  */
 always_inline void
 tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
-		tcp_state_t next_state, u8 compute_opts)
+		tcp_state_t next_state, u8 compute_opts, u8 maybe_burst)
 {
   u32 advertise_wnd, data_len;
-  u8 tcp_hdr_opts_len, opts_write_len, flags;
+  u8 tcp_hdr_opts_len, flags;
+  tcp_main_t *tm = &tcp_main;
   tcp_header_t *th;
 
-  data_len = b->current_length + b->total_length_not_including_first_buffer;
-  ASSERT (!b->total_length_not_including_first_buffer
-	  || (b->flags & VLIB_BUFFER_NEXT_PRESENT));
+  data_len = b->current_length;
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+    data_len += b->total_length_not_including_first_buffer;
+
   vnet_buffer (b)->tcp.flags = 0;
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   if (compute_opts)
     tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
 
   tcp_hdr_opts_len = tc->snd_opts_len + sizeof (tcp_header_t);
-  advertise_wnd = tcp_window_to_advertise (tc, next_state);
+
+  if (maybe_burst)
+    advertise_wnd = tc->rcv_wnd >> tc->rcv_wscale;
+  else
+    advertise_wnd = tcp_window_to_advertise (tc, next_state);
+
   flags = tcp_make_state_flags (tc, next_state);
 
-  /* Push header and options */
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
-  opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
 
-  ASSERT (opts_write_len == tc->snd_opts_len);
-  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+  if (maybe_burst)
+    {
+      clib_memcpy ((u8 *) (th + 1),
+		   tm->wrk_ctx[tc->c_thread_index].cached_opts,
+		   tc->snd_opts_len);
+    }
+  else
+    {
+      u8 len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
+      ASSERT (len == tc->snd_opts_len);
+    }
 
   /*
    * Update connection variables
@@ -1156,7 +1184,8 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 u32
 tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
+  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, /* compute opts */ 0,
+		  /* burst */ 1);
   tc->snd_una_max = tc->snd_nxt;
   ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd));
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
@@ -1276,7 +1305,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 					   max_deq_bytes);
       ASSERT (n_bytes == max_deq_bytes);
       b[0]->current_length = n_bytes;
-      tcp_push_hdr_i (tc, *b, tc->state, 0);
+      tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
     }
   /* Split mss into multiple buffers */
   else
@@ -1339,7 +1368,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 	  b[0]->total_length_not_including_first_buffer += n_peeked;
 	}
 
-      tcp_push_hdr_i (tc, *b, tc->state, 0);
+      tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
     }
 
   ASSERT (n_bytes > 0);
@@ -1613,7 +1642,7 @@ tcp_timer_persist_handler (u32 index)
 			   || tc->snd_nxt == tc->snd_una_max
 			   || tc->rto_boff > 1));
 
-  tcp_push_hdr_i (tc, b, tc->state, 0);
+  tcp_push_hdr_i (tc, b, tc->state, /* compute opts */ 0, /* burst */ 0);
   tc->snd_una_max = tc->snd_nxt;
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
