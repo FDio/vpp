@@ -18,6 +18,9 @@
 #include <vlib/unix/cj.h>
 #include <assert.h>
 
+#define __USE_GNU
+#include <dlfcn.h>
+
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
 
@@ -478,6 +481,17 @@ format_dpdk_device_errors (u8 * s, va_list * args)
   return s;
 }
 
+static const char *
+ptr2sname (void *p)
+{
+  Dl_info info = { 0 };
+
+  if (dladdr (p, &info) == 0)
+    return 0;
+
+  return info.dli_sname;
+}
+
 u8 *
 format_dpdk_device (u8 * s, va_list * args)
 {
@@ -557,6 +571,12 @@ format_dpdk_device (u8 * s, va_list * args)
 		  format_dpdk_rss_hf_name, rss_conf.rss_hf,
 		  format_white_space, indent + 2,
 		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads);
+      s = format (s, "%Utx burst function: %s\n",
+		  format_white_space, indent + 2,
+		  ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
+      s = format (s, "%Urx burst function: %s\n",
+		  format_white_space, indent + 2,
+		  ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
     }
 
   s = format (s, "%Urx queues %d, rx desc %d, tx queues %d, tx desc %d\n",
