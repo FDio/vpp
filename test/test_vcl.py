@@ -225,11 +225,15 @@ class VCLCutThruTestCase(VCLTestCase):
         self.client_iperf3_args = ["-V4d", "-t 5", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
         self.client_uni_dir_nsock_timeout = 60
-        self.client_uni_dir_nsock_test_args = ["-I", "5", "-U", "-X",
+        self.client_uni_dir_nsock_test_args = ["-N", "1000",
+                                               "-I", "5",
+                                               "-U", "-X",
                                                self.server_addr,
                                                self.server_port]
         self.client_bi_dir_nsock_timeout = 120
-        self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+        self.client_bi_dir_nsock_test_args = ["-N", "1000",
+                                              "-I", "5",
+                                              "-B", "-X",
                                               self.server_addr,
                                               self.server_port]
 
@@ -350,7 +354,9 @@ class VCLThruHostStackNSessionBidirTestCase(VCLTestCase):
         self.thru_host_stack_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
-            self.client_bi_dir_nsock_test_args = ["-B", "-X", "-N 10000",
+            self.client_bi_dir_nsock_test_args = ["-N", "1000",
+                                                  "-I", "5",
+                                                  "-B", "-X",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
         else:
@@ -525,11 +531,13 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         self.client_ipv6_iperf3_args = ["-V6d", "-t 5", "-c",
                                         self.server_ipv6_addr]
         self.server_ipv6_iperf3_args = ["-V6d", "-s"]
-        self.client_ipv6_uni_dir_nsock_test_args = ["-6", "-I", "5",
+        self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000",
+                                                    "-6", "-I", "5",
                                                     "-U", "-X",
                                                     self.server_ipv6_addr,
                                                     self.server_port]
-        self.client_ipv6_bi_dir_nsock_test_args = ["-6", "-I", "2",
+        self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
+                                                   "-6", "-I", "5",
                                                    "-B", "-X",
                                                    self.server_ipv6_addr,
                                                    self.server_port]
@@ -658,13 +666,16 @@ class VCLIpv6ThruHostStackExtendedATestCase(VCLTestCase):
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
-            self.client_ipv6_bi_dir_nsock_test_args = ["-6", "-B", "-X",
+            self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
+                                                       "-6", "-I", "5",
+                                                       "-B", "-X",
                                                        self.loop0.local_ip6,
                                                        self.server_port]
         else:
             self.client_bi_dir_nsock_timeout = 90
-            self.client_ipv6_bi_dir_nsock_test_args = ["-6", "-I",
-                                                       "2", "-B", "-X",
+            self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
+                                                       "-6", "-I", "5",
+                                                       "-B", "-X",
                                                        self.loop0.local_ip6,
                                                        self.server_port]
 
@@ -692,12 +703,15 @@ class VCLIpv6ThruHostStackExtendedBTestCase(VCLTestCase):
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
-            self.client_ipv6_bi_dir_nsock_test_args = ["-6", "-B", "-X",
+            self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
+                                                       "-I", "5", "-6",
+                                                       "-B", "-X",
                                                        self.loop0.local_ip6,
                                                        self.server_port]
         else:
             self.client_bi_dir_nsock_timeout = 60
-            self.client_ipv6_bi_dir_nsock_test_args = ["-6", "-I", "2",
+            self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
+                                                       "-6", "-I", "5",
                                                        "-B", "-X",
                                                        self.loop0.local_ip6,
                                                        self.server_port]
@@ -732,7 +746,7 @@ class VCLIpv6ThruHostStackExtendedCTestCase(VCLTestCase):
             self.client_uni_dir_nsock_timeout = 120
             self.numSockets = "5"
 
-        self.client_ipv6_uni_dir_nsock_test_args = ["-6",
+        self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-6",
                                                     "-I", self.numSockets,
                                                     "-U", "-X",
                                                     self.loop0.local_ip6,
@@ -768,8 +782,8 @@ class VCLIpv6ThruHostStackExtendedDTestCase(VCLTestCase):
             self.client_uni_dir_nsock_timeout = 120
             self.numSockets = "5"
 
-        self.client_ipv6_uni_dir_nsock_test_args = ["-6",
-                                                    "-I", self.numSockets,
+        self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000",
+                                                    "-I", "5", "-6",
                                                     "-U", "-X",
                                                     self.loop0.local_ip6,
                                                     self.server_port]
