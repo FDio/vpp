@@ -442,7 +442,7 @@ vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
       memset (&ifr, 0, sizeof ifr);
       memset (&drvinfo, 0, sizeof drvinfo);
       ifr.ifr_data = (char *) &drvinfo;
-      strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+      strncpy (ifr.ifr_name, e->d_name, strlen (ifr.ifr_name) - 1);
       drvinfo.cmd = ETHTOOL_GDRVINFO;
       if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
 	{
@@ -457,7 +457,7 @@ vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
 	continue;
 
       memset (&ifr, 0, sizeof (ifr));
-      strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+      strncpy (ifr.ifr_name, e->d_name, strlen (ifr.ifr_name));
       if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
 	{
 	  error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
