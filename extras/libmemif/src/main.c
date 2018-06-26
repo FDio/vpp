@@ -1480,13 +1480,11 @@ memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
   *count_out = 0;
 
   ring_size = (1 << mq->log2_ring_size);
-  ns = ring->tail - mq->last_tail;
-  mq->last_tail += ns;
   slot = (c->args.is_master) ? ring->tail : ring->head;
   slot += mq->alloc_bufs;
 
   /* can only be called by slave */
-  ns = ring_size - ring->head + mq->alloc_bufs + mq->last_tail;
+  ns = ring_size - (ring->head + mq->alloc_bufs) + ring->tail;
 
   b0 = bufs;
 
@@ -1562,15 +1560,13 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   *count_out = 0;
 
   ring_size = (1 << mq->log2_ring_size);
-  ns = ring->tail - mq->last_tail;
-  mq->last_tail += ns;
   slot = (c->args.is_master) ? ring->tail : ring->head;
   slot += mq->alloc_bufs;
 
   if (c->args.is_master)
-    ns = ring->head + mq->alloc_bufs - ring->tail;
+    ns = ring->head - (ring->tail + mq->alloc_bufs);
   else
-    ns = ring_size - ring->head + mq->alloc_bufs + mq->last_tail;
+    ns = ring_size - (ring->head + mq->alloc_bufs) + ring->tail;
 
   while (count && ns)
     {
@@ -1597,7 +1593,6 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 		  *count_out += 1;
 		  mq->alloc_bufs++;
 		  ns--;
-		  count--;
 
 		  ring->desc[b0->desc_index & mask].flags |=
 		    MEMIF_DESC_FLAG_NEXT;
@@ -1695,7 +1690,7 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
 
   if (headroom)
     {
-      slot = (c->args.is_master) ? ring->head : ring->tail;
+      slot = ring->head;
       while (slot < head)
 	{
 	  uint16_t x =
