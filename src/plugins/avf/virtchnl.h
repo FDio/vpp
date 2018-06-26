@@ -15,6 +15,9 @@
  *------------------------------------------------------------------
  */
 
+#ifndef _AVF_VIRTCHNL_H_
+#define _AVF_VIRTCHNL_H_
+
 #define VIRTCHNL_VERSION_MAJOR 1
 #define VIRTCHNL_VERSION_MINOR 1
 
@@ -351,6 +354,8 @@ typedef struct
 } virtchnl_rss_lut_t;
 
 STATIC_ASSERT_SIZEOF (virtchnl_rss_lut_t, 6);
+
+#endif /* AVF_VIRTCHNL_H */
 
 /*
  * fd.io coding-style-patch-verification: ON
