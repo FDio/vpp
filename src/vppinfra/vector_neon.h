@@ -21,30 +21,6 @@
 #define u16x8_sub_saturate(a,b) vsubq_u16(a,b)
 #define i16x8_sub_saturate(a,b) vsubq_s16(a,b)
 
-always_inline int
-u8x16_is_all_zero (u8x16 x)
-{
-  return !(vaddvq_u8 (x));
-}
-
-always_inline int
-u16x8_is_all_zero (u16x8 x)
-{
-  return !(vaddvq_u16 (x));
-}
-
-always_inline int
-u32x4_is_all_zero (u32x4 x)
-{
-  return !(vaddvq_u32 (x));
-}
-
-always_inline int
-u64x2_is_all_zero (u64x2 x)
-{
-  return !(vaddvq_u64 (x));
-}
-
 /* Converts all ones/zeros compare mask to bitmap. */
 always_inline u32
 u8x16_compare_byte_mask (u8x16 x)
@@ -104,8 +80,46 @@ u64x2_zero_byte_mask (u64x2 input)
   return u16x8_zero_byte_mask ((u16x8) input);
 }
 
+/* *INDENT-OFF* */
+#define foreach_neon_vec128i \
+  _(i,8,16,s8) _(i,16,8,s16) _(i,32,4,s32)  _(i,64,2,s64)
+#define foreach_neon_vec128u \
+  _(u,8,16,u8) _(u,16,8,u16) _(u,32,4,u32)  _(u,64,2,u64)
+#define foreach_neon_vec128f \
+  _(f,32,4,f32) _(f,64,2,f64)
 
+#define _(t, s, c, i) \
+static_always_inline t##s##x##c						\
+t##s##x##c##_splat (t##s x)						\
+{ return (t##s##x##c) vdupq_n_##i (x); }				\
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_load_unaligned (void *p)					\
+{ return (t##s##x##c) vld1q_##i (p); }					\
+\
+static_always_inline void						\
+t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
+{ vst1q_##i (p, v); }							\
+\
+static_always_inline int						\
+t##s##x##c##_is_all_zero (t##s##x##c x)					\
+{ return !(vaddvq_##i (x)); }						\
+\
+static_always_inline int						\
+t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
+{ return t##s##x##c##_is_all_zero (a ^ b); }				\
+\
+static_always_inline int						\
+t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
+{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); };		\
 
+foreach_neon_vec128i foreach_neon_vec128u
+
+#undef _
+/* *INDENT-ON* */
+
+#define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
+#define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
 
 /*
