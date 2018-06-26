@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "675c6d1f_0cc37c60",
+        "filename": "src/plugins/avf/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-06-26T13:01:09Z",
+      "side": 1,
+      "message": "unformat expects u32, and rxq_size is u16 so it will overwrite next entry in the struct. Simply use tmp variable which is u32, then copy to rxq_size...",
+      "range": {
+        "startLine": 48,
+        "startChar": 57,
+        "endLine": 48,
+        "endChar": 71
+      },
+      "revId": "b66834228656d57ca73c02c2bdd2d408010085bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8a8bb2c0_6e7faab6",
+        "filename": "src/plugins/avf/virtchnl.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-06-26T13:01:09Z",
+      "side": 1,
+      "message": "virtchnl_vf_res_request_t, also this should go to separate patch...",
+      "range": {
+        "startLine": 362,
+        "startChar": 2,
+        "endLine": 362,
+        "endChar": 25
+      },
+      "revId": "b66834228656d57ca73c02c2bdd2d408010085bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
