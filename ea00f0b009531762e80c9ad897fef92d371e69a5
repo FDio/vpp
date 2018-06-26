@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48927390_6ff24c8a",
+        "filename": "src/plugins/acl/public_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-06-26T15:13:42Z",
+      "side": 1,
+      "message": "Isn\u0027t this a bit too much for source code? Maybe wiki is better media...",
+      "range": {
+        "startLine": 609,
+        "startChar": 0,
+        "endLine": 682,
+        "endChar": 9
+      },
+      "revId": "ea00f0b009531762e80c9ad897fef92d371e69a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
