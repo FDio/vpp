@@ -12,6 +12,7 @@
 # limitations under the License.
 
 vppplugins_LTLIBRARIES += avf_plugin.la
+vppapitestplugins_LTLIBRARIES += avf_test_plugin.la
 
 avf_plugin_la_LIBADD =
 avf_plugin_la_SOURCES = \
@@ -20,9 +21,21 @@ avf_plugin_la_SOURCES = \
 	avf/format.c			\
 	avf/input.c			\
 	avf/output.c			\
-	avf/plugin.c
+	avf/plugin.c			\
+	avf/avf_api.c			\
+	avf/avf_plugin.api.h
+
+avf_test_plugin_la_SOURCES = \
+	avf/avf_test.c avf/avf_plugin.api.h
 
 noinst_HEADERS += avf/avf.h
+
+nobase_apiinclude_HEADERS +=		\
+		  avf/avf_all_api_h.h	\
+		  avf/avf_msg_enum.h	\
+		  avf/avf.api.h
+
+API_FILES += avf/avf.api
 
 if CPU_X86_64
 avf_multiversioning_sources = 					\
