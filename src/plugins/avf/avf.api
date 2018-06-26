@@ -1,0 +1,59 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+option version = "1.0.0";
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pci_addr - pci address as unsigned 32bit integer:
+		      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function 
+		      ddddddddddddddddbbbbbbbbsssssfff
+    @param rxq_size - receive queue size
+    @param txq_size - transmit queue size
+*/
+
+autoreply define avf_create
+{
+  u32 client_index;
+  u32 context;
+
+  u32 pci_addr;
+  i32 enable_elog;
+  u16 rxq_size;
+  u16 txq_size;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+*/
+
+autoreply define avf_delete
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
