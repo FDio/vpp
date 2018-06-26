@@ -917,15 +917,21 @@ API_FILES += vnet/pg/pg.api
 libvnet_la_SOURCES +=				\
   vnet/devices/virtio/device.c			\
   vnet/devices/virtio/node.c			\
-  vnet/devices/virtio/vhost-user.c		\
+  vnet/devices/virtio/vhost_user.c		\
+  vnet/devices/virtio/vhost_user_input.c	\
+  vnet/devices/virtio/vhost_user_output.c	\
   vnet/devices/virtio/vhost_user_api.c		\
   vnet/devices/virtio/virtio.c
 
 
 nobase_include_HEADERS +=			\
   vnet/devices/virtio/virtio.h			\
-  vnet/devices/virtio/vhost-user.h		\
+  vnet/devices/virtio/vhost_user.h		\
   vnet/devices/virtio/vhost_user.api.h
+
+libvnet_multiversioning_sources +=		\
+  vnet/devices/virtio/vhost_user_input.c	\
+  vnet/devices/virtio/vhost_user_output.c
 
 API_FILES += vnet/devices/virtio/vhost_user.api
 
