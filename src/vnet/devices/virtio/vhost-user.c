@@ -3188,7 +3188,7 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
       vuid->is_server = vui->unix_server_index != ~0;
       vuid->sock_errno = vui->sock_errno;
       strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
-	       ARRAY_LEN (vuid->sock_filename) - 1);
+	       strlen ((char *) vuid->sock_filename));
 
       s = format (s, "%v%c", hi->name, 0);
 
