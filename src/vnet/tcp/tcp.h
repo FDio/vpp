@@ -379,6 +379,9 @@ typedef struct tcp_worker_ctx_
 						     output nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];		/**< tx frames for ip 4/6
 						     lookup nodes */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  u8 cached_opts[40];				/**< cached 'on the wire'
+						     options for bursts */
 } tcp_worker_ctx_t;
 
 typedef struct _tcp_main
@@ -527,7 +530,7 @@ void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
-void tcp_update_snd_mss (tcp_connection_t * tc);
+void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
 void tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4);
 void tcp_flush_frames_to_output (u8 thread_index);
