@@ -93,6 +93,30 @@
       "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5bf36321_795a8f97",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-06-27T10:45:28Z",
+      "side": 1,
+      "message": "I did try that and I still get the warning/error.",
+      "parentUuid": "3b41b95d_9f6c9465",
+      "range": {
+        "startLine": 448,
+        "startChar": 40,
+        "endLine": 448,
+        "endChar": 52
+      },
+      "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
