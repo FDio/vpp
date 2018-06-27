@@ -200,8 +200,8 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   n_outqs = tm->n_vlib_mains;
 
   /* defaults */
-  args->tx_q_sz = args->tx_q_sz ? args->tx_q_sz : 2048;
-  args->rx_q_sz = args->rx_q_sz ? args->rx_q_sz : 2048;
+  args->tx_q_sz = args->tx_q_sz ? args->tx_q_sz : 2 * VLIB_FRAME_SIZE;
+  args->rx_q_sz = args->rx_q_sz ? args->rx_q_sz : 2 * VLIB_FRAME_SIZE;
 
   if (vec_len (ppm->per_thread_data) == 0)
     {
