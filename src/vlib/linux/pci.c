@@ -442,7 +442,12 @@ vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
       memset (&ifr, 0, sizeof ifr);
       memset (&drvinfo, 0, sizeof drvinfo);
       ifr.ifr_data = (char *) &drvinfo;
+#if __GNUC__ > 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
       strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+#pragma GCC diagnostic pop
+#endif
       drvinfo.cmd = ETHTOOL_GDRVINFO;
       if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
 	{
@@ -457,7 +462,12 @@ vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
 	continue;
 
       memset (&ifr, 0, sizeof (ifr));
+#if __GNUC__ > 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
       strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+#pragma GCC diagnostic pop
+#endif
       if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
 	{
 	  error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
