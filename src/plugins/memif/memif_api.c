@@ -130,7 +130,7 @@ void
   if (len > 0)
     {
       vec_validate (socket_filename, len);
-      strncpy ((char *) socket_filename, (char *) mp->socket_filename, len);
+      memcpy (socket_filename, mp->socket_filename, len);
     }
 
   rv = memif_socket_filename_add_del (is_add, socket_id, socket_filename);
