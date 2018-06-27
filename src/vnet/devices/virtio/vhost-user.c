@@ -3187,9 +3187,11 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
       vuid->num_regions = vui->nregions;
       vuid->is_server = vui->unix_server_index != ~0;
       vuid->sock_errno = vui->sock_errno;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
       strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
 	       ARRAY_LEN (vuid->sock_filename) - 1);
-
+#pragma GCC diagnostic pop
       s = format (s, "%v%c", hi->name, 0);
 
       strncpy ((char *) vuid->if_name, (char *) s,
