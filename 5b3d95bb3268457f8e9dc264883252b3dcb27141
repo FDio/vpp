@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b96dfae_f7b404af",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/jni_common_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-06-27T13:36:25Z",
+      "side": 1,
+      "message": "isinstance(base_type, (Class, Enum, Union))",
+      "range": {
+        "startLine": 59,
+        "startChar": 7,
+        "endLine": 59,
+        "endChar": 98
+      },
+      "revId": "5b3d95bb3268457f8e9dc264883252b3dcb27141",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
