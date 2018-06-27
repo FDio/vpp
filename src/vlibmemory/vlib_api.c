@@ -109,9 +109,8 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 
   if (am->msg_range_by_name == 0)
     goto out;
-
-  strncpy ((char *) name, (char *) mp->name, ARRAY_LEN (name) - 1);
-
+  strncpy ((char *) name, (char *) mp->name, ARRAY_LEN (name));
+  name[ARRAY_LEN (name) - 1] = '\0';
   p = hash_get_mem (am->msg_range_by_name, name);
   if (p == 0)
     goto out;
@@ -157,7 +156,10 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
       rmp->api_versions[i].major = htonl (vl->major);
       rmp->api_versions[i].minor = htonl (vl->minor);
       rmp->api_versions[i].patch = htonl (vl->patch);
-      strncpy ((char *) rmp->api_versions[i].name, vl->name, 64 - 1);
+      strncpy ((char *) rmp->api_versions[i].name, vl->name,
+	       ARRAY_LEN (rmp->api_versions[i].name));
+      rmp->api_versions[i].name[ARRAY_LEN (rmp->api_versions[i].name) - 1] =
+	'\0';
     }
 
   vl_api_send_msg (reg, (u8 *) rmp);
