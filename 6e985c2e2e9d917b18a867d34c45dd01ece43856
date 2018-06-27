@@ -69,6 +69,30 @@
       "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3b41b95d_9f6c9465",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-06-27T10:36:57Z",
+      "side": 1,
+      "message": "Per gcc-8 release note: \"To avoid the warning, specify sizeof buf - 1 as the bound and set the last element of the buffer to NUL.\"",
+      "parentUuid": "249af787_6961a6e2",
+      "range": {
+        "startLine": 448,
+        "startChar": 40,
+        "endLine": 448,
+        "endChar": 52
+      },
+      "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
