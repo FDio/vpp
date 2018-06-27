@@ -25,6 +25,19 @@ else
 FORCE_FOREGROUND=0
 endif
 
+ifdef PROFILE_OUTPUT
+PROFILE_OUTPUT_OPTS=-o $(PROFILE_OUTPUT)
+endif
+
+ifndef PROFILE_SORT_BY
+PROFILE_SORT_BY=cumtime
+endif
+
+ifeq ($(PROFILE),1)
+PYTHON_PROFILE_OPTS=-m cProfile $(PROFILE_OUTPUT_OPTS) -s $(PROFILE_SORT_BY)
+FORCE_FOREGROUND=1
+endif
+
 verify-no-running-vpp:
 	@if [ "$(VPP_PIDS)" != "" ]; then \
 		echo; \
@@ -95,7 +108,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -251,6 +264,10 @@ help:
 	@echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
 	@echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
 	@echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
+	@echo ""
+	@echo " PROFILE=1            - enable profiling of test framework via cProfile module"
+	@echo " PROFILE_SORT_BY=opt  - sort profiling report by opt - consult cProfile documentation for possible values (default: cumtime)"
+	@echo " PROFILE_OUTPUT=file  - output profiling info to file - use absolute path (default: stdout)"
 	@echo ""
 	@echo " TEST_DEBUG=1         - turn on debugging of the test framework itself (expert)"
 	@echo ""
