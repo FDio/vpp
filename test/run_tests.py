@@ -199,10 +199,16 @@ if __name__ == '__main__':
         retries = int(os.getenv("RETRIES", 0))
     except ValueError:
         retries = 0
+
+    try:
+        force_foreground = int(os.getenv("FORCE_FOREGROUND", 0))
+    except ValueError:
+        force_foreground = 0
     attempts = retries + 1
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
-    if (debug is not None and debug.lower() in ["gdb", "gdbserver"]) or step:
+    if (debug is not None and debug.lower() in ["gdb", "gdbserver"]) or step\
+            or force_foreground:
         # don't fork if requiring interactive terminal..
         sys.exit(not VppTestRunner(
             verbosity=verbose, failfast=failfast).run(suite).wasSuccessful())
