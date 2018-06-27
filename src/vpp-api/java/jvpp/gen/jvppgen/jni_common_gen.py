@@ -56,7 +56,7 @@ def generate_j2c_field_swap(field, struct_ref_name):
 def _generate_j2c_array_swap(field, struct_ref_name):
     # TODO(VPP-1186): move the logic to JNI generators
     base_type = field.type.base_type
-    if isinstance(base_type, Class) or isinstance(base_type, Enum) or isinstance(base_type, Union):
+    if isinstance(base_type, (Class, Enum, Union)):
         return _generate_j2c_object_array_swap(field, struct_ref_name)
     elif base_type.is_swap_needed:
         return _generate_j2c_primitive_type_array_swap(field, struct_ref_name)
@@ -184,7 +184,7 @@ def generate_c2j_swap(element, object_ref_name, struct_ref_name):
 def _generate_c2j_array_swap(msg_java_name, field, object_ref_name, struct_ref_name):
     # TODO(VPP-1186): move the logic to JNI generators
     base_type = field.type.base_type
-    if isinstance(base_type, Class) or isinstance(base_type, Union):
+    if isinstance(base_type, (Class, Union)):
         return _generate_c2j_object_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     elif isinstance(base_type, Enum):
         return _generate_c2j_enum_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
@@ -332,7 +332,7 @@ def _generate_c2j_scalar_swap(msg_java_name, field, object_ref_name, struct_ref_
     field_type = field.type
     if field_type.is_swap_needed:
         # TODO(VPP-1186): move the logic to JNI generators
-        if isinstance(field_type, Class) or isinstance(field_type, Union):
+        if isinstance(field_type, (Class, Union)):
             return _generate_c2j_object_swap(msg_java_name, field, object_ref_name, struct_ref_name)
         elif isinstance(field_type, Enum):
             return _generate_c2j_enum_swap(msg_java_name, field, object_ref_name, struct_ref_name)
