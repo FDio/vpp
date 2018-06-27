@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "60ec7e1d_e339d47b",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-06-27T10:38:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c64383fb_9f615a7f",
+      "range": {
+        "startLine": 130,
+        "startChar": 24,
+        "endLine": 130,
+        "endChar": 32
+      },
+      "revId": "94f78fe06fecbc1ac52ad2338d497c5c47b0ba4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d6266079_8c7d4346",
         "filename": "test/test_ip4.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-06-26T12:29:04Z",
       "side": 1,
       "message": "this is very inefficient for a large number of packets, adding 15 seconds to runtime and needs to be smarter before getting merged.",
+      "range": {
+        "startLine": 101,
+        "startChar": 1,
+        "endLine": 135,
+        "endChar": 28
+      },
+      "revId": "94f78fe06fecbc1ac52ad2338d497c5c47b0ba4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f643c2e6_81832b4b",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-06-27T10:38:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d6266079_8c7d4346",
       "range": {
         "startLine": 101,
         "startChar": 1,
