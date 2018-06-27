@@ -22,6 +22,7 @@
 #include <vnet/session/application_interface.h>
 #include <vcl/vppcom.h>
 #include <vcl/vcl_event.h>
+#include <vcl/vcl_debug.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/vec_bootstrap.h>
 #include <vppinfra/elog.h>
@@ -237,9 +238,11 @@ typedef struct vppcom_main_t_
   /* IO thread */
   vppcom_session_io_thread_t session_io_thread;
 
+#ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
   elog_track_t elog_track;
+#endif
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
@@ -406,8 +409,7 @@ vppcom_session_table_lookup_listener (u64 listener_handle)
     }
   if (pool_is_free_index (vcm->sessions, p[0]))
     {
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: invalid listen session, sid (%u)",
+      VDBG (1, "VCL<%d>: invalid listen session, sid (%u)",
 		      getpid (), p[0]);
       return 0;
     }
@@ -439,8 +441,7 @@ write_elog (void)
     {
       clib_error_report (error);
     }
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("[%d] Event Log:'%s' ", getpid (), chroot_file);
+  VDBG (0, "[%d] Event Log:'%s' ", getpid (), chroot_file);
 
 }
 
@@ -468,8 +469,7 @@ vppcom_connect_to_vpp (char *app_name)
   if (!vcl_cfg->vpp_api_filename)
     vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: app (%s) connecting to VPP api (%s)...",
+  VDBG (0, "VCL<%d>: app (%s) connecting to VPP api (%s)...",
 		  getpid (), app_name, vcl_cfg->vpp_api_filename);
 
   if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename, app_name,
@@ -484,39 +484,11 @@ vppcom_connect_to_vpp (char *app_name)
       vcm->my_client_index = (u32) am->my_client_index;
       vcm->app_state = STATE_APP_CONN_VPP;
 
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: app (%s) is connected to VPP!",
+      VDBG (0, "VCL<%d>: app (%s) is connected to VPP!",
 		      getpid (), app_name);
     }
 
-  if (VPPCOM_DEBUG > 0)
-    {
-      vcm->elog_main.lock =
-	clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-      vcm->elog_main.lock[0] = 0;
-      vcm->elog_main.event_ring_size = vcm->cfg.event_ring_size;
-      elog_init (&vcm->elog_main, vcm->elog_main.event_ring_size);
-      elog_enable_disable (&vcm->elog_main, 1);
-
-      vcm->elog_track.name =
-	(char *) format (0, "P:%d:C:%d%c", getpid (),
-			 vcm->my_client_index, 0);
-      elog_track_register (&vcm->elog_main, &vcm->elog_track);
-
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-      {
-	.format = "connect_vpp:rv:%d",
-	.format_args = "i4",
-      };
-      struct
-      {
-	u32 data;
-      } *ed;
-      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
-      ed->data = (u32) rv;
-      /* *INDENT-ON* */
-    }
+  VCL_EVT (VCL_EVT_INIT, vcm);
   return rv;
 }
 
@@ -557,28 +529,9 @@ vppcom_wait_for_app_state_change (app_state_t app_state)
       if (vcm->app_state == app_state)
 	return VPPCOM_OK;
     }
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: timeout waiting for state %s (%d)", getpid (),
+  VDBG (0, "VCL<%d>: timeout waiting for state %s (%d)", getpid (),
 		  vppcom_app_state_str (app_state), app_state);
-
-  if (VPPCOM_DEBUG > 0)
-    {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-	{
-	  .format = "ERR: timeout state:%d",
-	  .format_args = "i4",
-	};
-      struct
-      {
-	u32 data;
-      } *ed;
-
-      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
-
-      ed->data = app_state;
-      /* *INDENT-ON* */
-    }
+  VCL_EVT (VCL_EVT_SESSION_TIMEOUT, vcm, app_state);
 
   return VPPCOM_ETIMEDOUT;
 }
@@ -616,28 +569,9 @@ vppcom_wait_for_session_state_change (u32 session_index,
     }
   while (clib_time_now (&vcm->clib_time) < timeout);
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: timeout waiting for state 0x%x (%s)", getpid (),
-		  state, vppcom_session_state_str (state));
-
-  if (VPPCOM_DEBUG > 0)
-    {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-	{
-	  .format = "ERR: timeout state:%d",
-	  .format_args = "i4",
-	};
-      struct
-      {
-	u32 data;
-      } *ed;
-
-      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-
-      ed->data = state;
-      /* *INDENT-ON* */
-    }
+  VDBG (0, "VCL<%d>: timeout waiting for state 0x%x (%s)", getpid (), state,
+	vppcom_session_state_str (state));
+  VCL_EVT (VCL_EVT_SESSION_TIMEOUT, session, state);
 
   return VPPCOM_ETIMEDOUT;
 }
@@ -670,9 +604,8 @@ vppcom_app_session_enable (void)
       rv = vppcom_wait_for_app_state_change (STATE_APP_ENABLED);
       if (PREDICT_FALSE (rv))
 	{
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: application session enable timed out! "
-			  "returning %d (%s)",
+	  VDBG (0, "VCL<%d>: application session enable timed out! "
+	      "returning %d (%s)",
 			  getpid (), rv, vppcom_retval_str (rv));
 	  return rv;
 	}
@@ -740,10 +673,8 @@ vppcom_app_attach (void)
   rv = vppcom_wait_for_app_state_change (STATE_APP_ATTACHED);
   if (PREDICT_FALSE (rv))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: application attach timed out! "
-		      "returning %d (%s)",
-		      getpid (), rv, vppcom_retval_str (rv));
+      VDBG(0, "VCL<%d>: application attach timed out! returning %d (%s)",
+	   getpid (), rv, vppcom_retval_str (rv));
       return rv;
     }
 
@@ -846,9 +777,9 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 		    getpid (), mp->segment_name);
       return;
     }
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: mapped new segment '%s' size %d", getpid (),
-		  mp->segment_name, mp->segment_size);
+
+  VDBG (1, "VCL<%d>: mapped new segment '%s' size %d", getpid (),
+        mp->segment_name, mp->segment_size);
 }
 
 static void
@@ -859,8 +790,8 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
  * XXX Need segment_name to session_id hash,
  * XXX - have sessionID by handle hash currently
  */
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("Unmapped segment '%s'", mp->segment_name);
+
+  VDBG (1, "Unmapped segment '%s'", mp->segment_name);
 }
 
 static void
@@ -878,19 +809,15 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
       VCL_SESSION_LOCK_AND_GET (session_index, &session);
       session->state = STATE_CLOSE_ON_EMPTY;
 
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "setting state to 0x%x (%s)",
-		      getpid (), mp->handle, session_index, session->state,
-		      vppcom_session_state_str (session->state));
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: setting state to 0x%x "
+	    "(%s)", getpid (), mp->handle, session_index, session->state,
+	    vppcom_session_state_str (session->state));
       VCL_SESSION_UNLOCK ();
       return;
 
     done:
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "session lookup failed!",
-		      getpid (), mp->handle, session_index);
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session lookup failed!",
+	    getpid (), mp->handle, session_index);
     }
   else
     clib_warning ("VCL<%d>: vpp handle 0x%llx: session lookup by "
@@ -926,11 +853,9 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 	   */
 	  session->state = STATE_CLOSE_ON_EMPTY;
 
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			  "state set to %d (%s)!", getpid (),
-			  mp->handle, p[0], session->state,
-			  vppcom_session_state_str (session->state));
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: state set to %d "
+	        "(%s)!", getpid (), mp->handle, p[0], session->state,
+	        vppcom_session_state_str (session->state));
 	}
       VCL_SESSION_UNLOCK ();
     }
@@ -1017,14 +942,10 @@ done:
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: connect succeeded!"
-		  " session_rx_fifo %p, refcnt %d,"
-		  " session_tx_fifo %p, refcnt %d",
-		  getpid (), mp->handle, session_index,
-		  session->rx_fifo,
-		  session->rx_fifo->refcnt,
-		  session->tx_fifo, session->tx_fifo->refcnt);
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: connect succeeded! "
+        "session_rx_fifo %p, refcnt %d, session_tx_fifo %p, refcnt %d",
+        getpid (), mp->handle, session_index, session->rx_fifo,
+        session->rx_fifo->refcnt, session->tx_fifo, session->tx_fifo->refcnt);
 done_unlock:
   VCL_SESSION_UNLOCK ();
 }
@@ -1055,10 +976,8 @@ vppcom_send_disconnect_session_reply (u64 vpp_handle, u32 session_index,
 {
   vl_api_disconnect_session_reply_t *rmp;
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		  "sending disconnect msg",
-		  getpid (), vpp_handle, session_index);
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect msg",
+        getpid (), vpp_handle, session_index);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -1074,10 +993,8 @@ vppcom_send_disconnect_session (u64 vpp_handle, u32 session_index)
 {
   vl_api_disconnect_session_t *dmp;
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		  "sending disconnect msg",
-		  getpid (), vpp_handle, session_index);
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect msg",
+        getpid (), vpp_handle, session_index);
 
   dmp = vl_msg_api_alloc (sizeof (*dmp));
   memset (dmp, 0, sizeof (*dmp));
@@ -1125,9 +1042,8 @@ done:
   vppcom_session_table_add_listener (mp->handle, session_index);
   session->state = STATE_LISTEN;
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
-		  getpid (), mp->handle, mp->context);
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
+	getpid (), mp->handle, mp->context);
 done_unlock:
   VCL_SESSION_UNLOCK ();
 }
@@ -1140,9 +1056,8 @@ vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
 		  getpid (), mp->context, format_api_error,
 		  ntohl (mp->retval));
 
-  else if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: sid %u: unbind succeeded!",
-		  getpid (), mp->context);
+  else
+    VDBG (1, "VCL<%d>: sid %u: unbind succeeded!", getpid (), mp->context);
 }
 
 u8 *
@@ -1314,55 +1229,14 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   rv = vce_generate_event (&vcm->event_thread, ev_idx);
   ASSERT (rv == 0);
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: client accept "
-		  "request from %s address %U port %d queue %p!", getpid (),
-		  mp->handle, session_index, mp->is_ip4 ? "IPv4" : "IPv6",
-		  format_ip46_address, &mp->ip,
-		  mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-		  clib_net_to_host_u16 (mp->port), session->vpp_event_queue);
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: client accept request from %s"
+        " address %U port %d queue %p!", getpid (), mp->handle, session_index,
+        mp->is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->ip,
+	mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	clib_net_to_host_u16 (mp->port), session->vpp_event_queue);
 
-  if (VPPCOM_DEBUG > 0)
-    {
-      session->elog_track.name =
-	(char *) format (0, "C:%d:S:%d%c", vcm->my_client_index,
-			 session_index, 0);
-      elog_track_register (&vcm->elog_main, &session->elog_track);
-
-      if (session->peer_addr.is_ip4)
-	{
-          /* *INDENT-OFF* */
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	    .format =
-	    "client_accept:handle:%x addr:%d.%d.%d.%d:%d",
-	    .format_args = "i8i1i1i1i1i2",
-	  };
-
-	  CLIB_PACKED (struct {
-	    u64 handle;	//8
-	    u8 addr[4];	//4
-	    u16 port;	//2
-	  }) * ed;
-
-	  ed = ELOG_TRACK_DATA (&vcm->elog_main, e, session->elog_track);
-
-	  ed->handle = mp->handle;
-	  ed->addr[0] = session->peer_addr.ip46.ip4.as_u8[0];
-	  ed->addr[1] = session->peer_addr.ip46.ip4.as_u8[1];
-	  ed->addr[2] = session->peer_addr.ip46.ip4.as_u8[2];
-	  ed->addr[3] = session->peer_addr.ip46.ip4.as_u8[3];
-	  ed->port = clib_net_to_host_u16 (session->peer_port);
-	  /* *INDENT-ON* */
-	}
-      else
-	{
-	  clib_warning ("ip6");
-	}
-    }
-
+  VCL_EVT (VCL_EVT_SESSION_INIT, session, session_index, mp->handle);
   VCL_SESSION_UNLOCK ();
-
 }
 
 /* VPP combines bind and listen as one operation. VCL manages the separation
@@ -1420,12 +1294,9 @@ vppcom_session_unbind (u32 session_index)
 
   VCL_SESSION_UNLOCK ();
 
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		  "sending unbind msg! new state 0x%x (%s)",
-		  getpid (), vpp_handle, session_index,
-		  STATE_DISCONNECT,
-		  vppcom_session_state_str (STATE_DISCONNECT));
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending unbind msg! new state"
+        " 0x%x (%s)", getpid (), vpp_handle, session_index, STATE_DISCONNECT,
+        vppcom_session_state_str (STATE_DISCONNECT));
 
   if (VPPCOM_DEBUG > 0)
     {
@@ -1466,13 +1337,8 @@ vppcom_session_disconnect (u32 session_index)
   state = session->state;
   VCL_SESSION_UNLOCK ();
 
-  if (VPPCOM_DEBUG > 1)
-    {
-      clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u "
-		    "state 0x%x (%s)",
-		    getpid (), vpp_handle, session_index,
-		    state, vppcom_session_state_str (state));
-    }
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u state 0x%x (%s)", getpid (),
+        vpp_handle, session_index, state, vppcom_session_state_str (state));
 
   if (PREDICT_FALSE (state & STATE_LISTEN))
     {
@@ -1491,20 +1357,16 @@ vppcom_session_disconnect (u32 session_index)
       //XXX alagalah - Check and drain here?
       vppcom_send_disconnect_session_reply (vpp_handle,
 					    session_index, 0 /* rv */ );
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "sending disconnect REPLY...",
-		      getpid (), vpp_handle, session_index);
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect "
+            "REPLY...", getpid (), vpp_handle, session_index);
     }
 
   /* Otherwise, send a disconnect session msg...
    */
   else
     {
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "sending disconnect...",
-		      getpid (), vpp_handle, session_index);
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect...",
+            getpid (), vpp_handle, session_index);
 
       vppcom_send_disconnect_session (vpp_handle, session_index);
     }
@@ -1582,19 +1444,16 @@ vppcom_cfg_heapsize (char *conf_fname)
   fp = fopen (conf_fname, "r");
   if (fp == NULL)
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: using default heapsize %lld (0x%llx)",
-		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VDBG (0, "VCL<%d>: using default heapsize %lld (0x%llx)", getpid (),
+            vcl_cfg->heapsize, vcl_cfg->heapsize);
       goto defaulted;
     }
 
   argv = calloc (1, sizeof (char *));
   if (argv == NULL)
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: calloc failed, using default "
-		      "heapsize %lld (0x%llx)",
-		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VDBG (0, "VCL<%d>: calloc failed, using default heapsize %lld (0x%llx)",
+            getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
       goto defaulted;
     }
 
@@ -1611,22 +1470,18 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  char **tmp = realloc (argv, argc * sizeof (char *));
 	  if (tmp == NULL)
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: realloc failed, "
-			      "using default heapsize %lld (0x%llx)",
-			      getpid (), vcl_cfg->heapsize,
-			      vcl_cfg->heapsize);
+	      VDBG (0, "VCL<%d>: realloc failed, using default heapsize %lld "
+	            "(0x%llx)", getpid (), vcl_cfg->heapsize,
+	            vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	  argv = tmp;
 	  arg = strndup (p, 1024);
 	  if (arg == NULL)
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: strndup failed, "
-			      "using default heapsize %lld (0x%llx)",
-			      getpid (), vcl_cfg->heapsize,
-			      vcl_cfg->heapsize);
+	      VDBG (0, "VCL<%d>: strndup failed, using default heapsize %lld "
+	            "(0x%llx)", getpid (), vcl_cfg->heapsize,
+	            vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	  argv[argc - 1] = arg;
@@ -1640,10 +1495,8 @@ vppcom_cfg_heapsize (char *conf_fname)
   char **tmp = realloc (argv, (argc + 1) * sizeof (char *));
   if (tmp == NULL)
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: realloc failed, "
-		      "using default heapsize %lld (0x%llx)",
-		      getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VDBG (0, "VCL<%d>: realloc failed, using default heapsize %lld "
+	  "(0x%llx)", getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
       goto defaulted;
     }
   argv = tmp;
@@ -1669,11 +1522,9 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    }
 	  if (size == 0)
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: parse error '%s %s', "
-			      "using default heapsize %lld (0x%llx)",
-			      getpid (), argv[i], argv[i + 1],
-			      vcl_cfg->heapsize, vcl_cfg->heapsize);
+	      VDBG (0, "VCL<%d>: parse error '%s %s', using default "
+		    "heapsize %lld (0x%llx)", getpid (), argv[i], argv[i + 1],
+		    vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 
@@ -1683,11 +1534,9 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    vcl_cfg->heapsize = size << 20;
 	  else
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: parse error '%s %s', "
-			      "using default heapsize %lld (0x%llx)",
-			      getpid (), argv[i], argv[i + 1],
-			      vcl_cfg->heapsize, vcl_cfg->heapsize);
+	      VDBG (0, "VCL<%d>: parse error '%s %s', using default "
+	            "heapsize %lld (0x%llx)", getpid (), argv[i], argv[i + 1],
+	            vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	}
@@ -1728,9 +1577,8 @@ defaulted:
   clib_memcpy (vcl_mem, &_vppcom_main, sizeof (_vppcom_main));
   vcm = vcl_mem;
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: allocated VCL heap = %p, size %lld (0x%llx)",
-		  getpid (), heap, vcl_cfg->heapsize, vcl_cfg->heapsize);
+  VDBG (0, "VCL<%d>: allocated VCL heap = %p, size %lld (0x%llx)", getpid (),
+        heap, vcl_cfg->heapsize, vcl_cfg->heapsize);
 }
 
 static void
@@ -1748,25 +1596,21 @@ vppcom_cfg_read (char *conf_fname)
   fd = open (conf_fname, O_RDONLY);
   if (fd < 0)
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: using default configuration.",
-		      getpid (), conf_fname);
+      VDBG (0, "VCL<%d>: using default configuration.", getpid (), conf_fname);
       goto file_done;
     }
 
   if (fstat (fd, &s) < 0)
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: failed to stat `%s', "
-		      "using default configuration", getpid (), conf_fname);
+      VDBG (0, "VCL<%d>: failed to stat `%s', using default configuration",
+            getpid (), conf_fname);
       goto file_done;
     }
 
   if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: not a regular file `%s', "
-		      "using default configuration", getpid (), conf_fname);
+      VDBG (0, "VCL<%d>: not a regular file `%s', using default "
+            "configuration", getpid (), conf_fname);
       goto file_done;
     }
 
@@ -1788,11 +1632,9 @@ vppcom_cfg_read (char *conf_fname)
 	  if (unformat (line_input, "heapsize %s", &chroot_path))
 	    {
 	      vec_terminate_c_string (chroot_path);
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured heapsize %s, "
-			      "actual heapsize %lld (0x%llx)",
-			      getpid (), chroot_path, vcl_cfg->heapsize,
-			      vcl_cfg->heapsize);
+	      VDBG (0, "VCL<%d>: configured heapsize %s, actual heapsize %lld"
+	            " (0x%llx)", getpid (), chroot_path, vcl_cfg->heapsize,
+	            vcl_cfg->heapsize);
 	      vec_free (chroot_path);
 	    }
 	  else if (unformat (line_input, "api-prefix %s", &chroot_path))
@@ -1804,10 +1646,8 @@ vppcom_cfg_read (char *conf_fname)
 						  chroot_path, 0);
 	      vl_set_memory_root_path ((char *) chroot_path);
 
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured api-prefix (%s) and "
-			      "api filename (%s)", getpid (), chroot_path,
-			      vcl_cfg->vpp_api_filename);
+	      VDBG (0, "VCL<%d>: configured api-prefix (%s) and api filename"
+	            " (%s)", getpid (), chroot_path, vcl_cfg->vpp_api_filename);
 	      chroot_path = 0;	/* Don't vec_free() it! */
 	    }
 	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
@@ -1822,198 +1662,159 @@ vppcom_cfg_read (char *conf_fname)
 		{
 		  vcl_cfg->vpp_api_q_length = q_len;
 
-		  if (VPPCOM_DEBUG > 0)
-		    clib_warning ("VCL<%d>: configured vpp-api-q-length %u",
-				  getpid (), vcl_cfg->vpp_api_q_length);
+		  VDBG (0, "VCL<%d>: configured vpp-api-q-length %u", getpid (),
+		        vcl_cfg->vpp_api_q_length);
 		}
 	    }
 	  else if (unformat (line_input, "uid %d", &uid))
 	    {
 	      vl_set_memory_uid (uid);
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured uid %d", getpid (), uid);
+	      VDBG (0, "VCL<%d>: configured uid %d", getpid (), uid);
 	    }
 	  else if (unformat (line_input, "gid %d", &gid))
 	    {
 	      vl_set_memory_gid (gid);
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured gid %d", getpid (), gid);
+	      VDBG (0, "VCL<%d>: configured gid %d", getpid (), gid);
 	    }
 	  else if (unformat (line_input, "segment-baseva 0x%lx",
 			     &vcl_cfg->segment_baseva))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured segment_baseva 0x%lx",
-			      getpid (), vcl_cfg->segment_baseva);
+	       VDBG (0, "VCL<%d>: configured segment_baseva 0x%lx", getpid (),
+	             vcl_cfg->segment_baseva);
 	    }
 	  else if (unformat (line_input, "segment-size 0x%lx",
 			     &vcl_cfg->segment_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured segment_size 0x%lx (%ld)",
-			      getpid (), vcl_cfg->segment_size,
-			      vcl_cfg->segment_size);
+	      VDBG (0, "VCL<%d>: configured segment_size 0x%lx (%ld)",
+	            getpid (), vcl_cfg->segment_size, vcl_cfg->segment_size);
 	    }
 	  else if (unformat (line_input, "segment-size %ld",
 			     &vcl_cfg->segment_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured segment_size %ld (0x%lx)",
-			      getpid (), vcl_cfg->segment_size,
-			      vcl_cfg->segment_size);
+	      VDBG (0, "VCL<%d>: configured segment_size %ld (0x%lx)",
+	            getpid (), vcl_cfg->segment_size, vcl_cfg->segment_size);
 	    }
 	  else if (unformat (line_input, "add-segment-size 0x%lx",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning
-		  ("VCL<%d>: configured add_segment_size 0x%lx (%ld)",
-		   getpid (), vcl_cfg->add_segment_size,
-		   vcl_cfg->add_segment_size);
+	      VDBG (0, "VCL<%d>: configured add_segment_size 0x%lx (%ld)",
+	            getpid (), vcl_cfg->add_segment_size,
+	            vcl_cfg->add_segment_size);
 	    }
 	  else if (unformat (line_input, "add-segment-size %ld",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning
-		  ("VCL<%d>: configured add_segment_size %ld (0x%lx)",
-		   getpid (), vcl_cfg->add_segment_size,
-		   vcl_cfg->add_segment_size);
+	      VDBG (0, "VCL<%d>: configured add_segment_size %ld (0x%lx)",
+	            getpid (), vcl_cfg->add_segment_size,
+	            vcl_cfg->add_segment_size);
 	    }
 	  else if (unformat (line_input, "preallocated-fifo-pairs %d",
 			     &vcl_cfg->preallocated_fifo_pairs))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured preallocated_fifo_pairs "
-			      "%d (0x%x)", getpid (),
-			      vcl_cfg->preallocated_fifo_pairs,
-			      vcl_cfg->preallocated_fifo_pairs);
+	      VDBG (0, "VCL<%d>: configured preallocated_fifo_pairs %d "
+	            "(0x%x)",getpid (), vcl_cfg->preallocated_fifo_pairs,
+	            vcl_cfg->preallocated_fifo_pairs);
 	    }
 	  else if (unformat (line_input, "rx-fifo-size 0x%lx",
 			     &vcl_cfg->rx_fifo_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured rx_fifo_size 0x%lx (%ld)",
-			      getpid (), vcl_cfg->rx_fifo_size,
-			      vcl_cfg->rx_fifo_size);
+	      VDBG (0, "VCL<%d>: configured rx_fifo_size 0x%lx (%ld)",
+	            getpid (), vcl_cfg->rx_fifo_size, vcl_cfg->rx_fifo_size);
 	    }
 	  else if (unformat (line_input, "rx-fifo-size %ld",
 			     &vcl_cfg->rx_fifo_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured rx_fifo_size %ld (0x%lx)",
-			      getpid (), vcl_cfg->rx_fifo_size,
-			      vcl_cfg->rx_fifo_size);
+	      VDBG (0, "VCL<%d>: configured rx_fifo_size %ld (0x%lx)",
+	            getpid (), vcl_cfg->rx_fifo_size, vcl_cfg->rx_fifo_size);
 	    }
 	  else if (unformat (line_input, "tx-fifo-size 0x%lx",
 			     &vcl_cfg->tx_fifo_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured tx_fifo_size 0x%lx (%ld)",
+	      VDBG (0, "VCL<%d>: configured tx_fifo_size 0x%lx (%ld)",
 			      getpid (), vcl_cfg->tx_fifo_size,
 			      vcl_cfg->tx_fifo_size);
 	    }
 	  else if (unformat (line_input, "tx-fifo-size %ld",
 			     &vcl_cfg->tx_fifo_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured tx_fifo_size %ld (0x%lx)",
+	      VDBG (0, "VCL<%d>: configured tx_fifo_size %ld (0x%lx)",
 			      getpid (), vcl_cfg->tx_fifo_size,
 			      vcl_cfg->tx_fifo_size);
 	    }
 	  else if (unformat (line_input, "event-queue-size 0x%lx",
 			     &vcl_cfg->event_queue_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured event_queue_size "
-			      "0x%lx (%ld)",
+	      VDBG (0, "VCL<%d>: configured event_queue_size 0x%lx (%ld)",
 			      getpid (), vcl_cfg->event_queue_size,
 			      vcl_cfg->event_queue_size);
 	    }
 	  else if (unformat (line_input, "event-queue-size %ld",
 			     &vcl_cfg->event_queue_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured event_queue_size "
-			      "%ld (0x%lx)",
+	      VDBG (0, "VCL<%d>: configured event_queue_size %ld (0x%lx)",
 			      getpid (), vcl_cfg->event_queue_size,
 			      vcl_cfg->event_queue_size);
 	    }
 	  else if (unformat (line_input, "listen-queue-size 0x%lx",
 			     &vcl_cfg->listen_queue_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured listen_queue_size "
-			      "0x%lx (%ld)",
+	      VDBG (0, "VCL<%d>: configured listen_queue_size 0x%lx (%ld)",
 			      getpid (), vcl_cfg->listen_queue_size,
 			      vcl_cfg->listen_queue_size);
 	    }
 	  else if (unformat (line_input, "listen-queue-size %ld",
 			     &vcl_cfg->listen_queue_size))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured listen_queue_size "
-			      "%ld (0x%lx)",
+	      VDBG (0, "VCL<%d>: configured listen_queue_size %ld (0x%lx)",
 			      getpid (), vcl_cfg->listen_queue_size,
 			      vcl_cfg->listen_queue_size);
 	    }
 	  else if (unformat (line_input, "app-timeout %f",
 			     &vcl_cfg->app_timeout))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured app_timeout %f",
+	       VDBG (0, "VCL<%d>: configured app_timeout %f",
 			      getpid (), vcl_cfg->app_timeout);
 	    }
 	  else if (unformat (line_input, "session-timeout %f",
 			     &vcl_cfg->session_timeout))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured session_timeout %f",
+	      VDBG (0, "VCL<%d>: configured session_timeout %f",
 			      getpid (), vcl_cfg->session_timeout);
 	    }
 	  else if (unformat (line_input, "accept-timeout %f",
 			     &vcl_cfg->accept_timeout))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured accept_timeout %f",
+	      VDBG (0, "VCL<%d>: configured accept_timeout %f",
 			      getpid (), vcl_cfg->accept_timeout);
 	    }
 	  else if (unformat (line_input, "app-proxy-transport-tcp"))
 	    {
 	      vcl_cfg->app_proxy_transport_tcp = 1;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured "
-			      "app_proxy_transport_tcp (%d)",
+	      VDBG (0, "VCL<%d>: configured app_proxy_transport_tcp (%d)",
 			      getpid (), vcl_cfg->app_proxy_transport_tcp);
 	    }
 	  else if (unformat (line_input, "app-proxy-transport-udp"))
 	    {
 	      vcl_cfg->app_proxy_transport_udp = 1;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured "
-			      "app_proxy_transport_udp (%d)",
+	      VDBG (0, "VCL<%d>: configured app_proxy_transport_udp (%d)",
 			      getpid (), vcl_cfg->app_proxy_transport_udp);
 	    }
 	  else if (unformat (line_input, "app-scope-local"))
 	    {
 	      vcl_cfg->app_scope_local = 1;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured app_scope_local (%d)",
+	      VDBG (0, "VCL<%d>: configured app_scope_local (%d)",
 			      getpid (), vcl_cfg->app_scope_local);
 	    }
 	  else if (unformat (line_input, "app-scope-global"))
 	    {
 	      vcl_cfg->app_scope_global = 1;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured app_scope_global (%d)",
+	      VDBG (0, "VCL<%d>: configured app_scope_global (%d)",
 			      getpid (), vcl_cfg->app_scope_global);
 	    }
 	  else if (unformat (line_input, "namespace-secret %lu",
 			     &vcl_cfg->namespace_secret))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning
-		  ("VCL<%d>: configured namespace_secret %lu (0x%lx)",
+	      VDBG (0, "VCL<%d>: configured namespace_secret %lu (0x%lx)",
 		   getpid (), vcl_cfg->namespace_secret,
 		   vcl_cfg->namespace_secret);
 	    }
@@ -2026,21 +1827,18 @@ vppcom_cfg_read (char *conf_fname)
 	      if (nsid_vec_len > max_nsid_vec_len)
 		{
 		  _vec_len (vcl_cfg->namespace_id) = max_nsid_vec_len;
-		  if (VPPCOM_DEBUG > 0)
-		    clib_warning ("VCL<%d>: configured namespace_id is "
-				  "too long, truncated to %d characters!",
+		  VDBG (0, "VCL<%d>: configured namespace_id is too long,"
+		      " truncated to %d characters!",
 				  getpid (), max_nsid_vec_len);
 		}
 
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured namespace_id %v",
+	      VDBG (0, "VCL<%d>: configured namespace_id %v",
 			      getpid (), vcl_cfg->namespace_id);
 	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: completed parsing vppcom config!",
+	      VDBG (0, "VCL<%d>: completed parsing vppcom config!",
 			      getpid ());
 	      goto input_done;
 	    }
@@ -2093,8 +1891,7 @@ vppcom_app_create (char *app_name)
 	  else
 	    {
 	      vcm->debug = tmp;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured VCL debug level (%u) from "
+	      VDBG (0, "VCL<%d>: configured VCL debug level (%u) from "
 			      VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
 	    }
 	}
@@ -2118,9 +1915,8 @@ vppcom_app_create (char *app_name)
 					      env_var_str, 0);
 	  vl_set_memory_root_path ((char *) env_var_str);
 
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured api prefix (%s) and "
-			  "filename (%s) from " VPPCOM_ENV_API_PREFIX "!",
+	  VDBG (0, "VCL<%d>: configured api prefix (%s) and filename (%s) "
+	      "from " VPPCOM_ENV_API_PREFIX "!",
 			  getpid (), env_var_str, vcl_cfg->vpp_api_filename);
 	}
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
@@ -2132,10 +1928,9 @@ vppcom_app_create (char *app_name)
 	  vec_validate (vcm->cfg.namespace_id, ns_id_vec_len - 1);
 	  clib_memcpy (vcm->cfg.namespace_id, env_var_str, ns_id_vec_len);
 
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured namespace_id (%v) from "
-			  VPPCOM_ENV_APP_NAMESPACE_ID
-			  "!", getpid (), vcm->cfg.namespace_id);
+	  VDBG (0, "VCL<%d>: configured namespace_id (%v) from "
+	        VPPCOM_ENV_APP_NAMESPACE_ID "!", getpid (),
+	        vcm->cfg.namespace_id);
 	}
       env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
       if (env_var_str)
@@ -2149,46 +1944,33 @@ vppcom_app_create (char *app_name)
 	  else
 	    {
 	      vcm->cfg.namespace_secret = tmp;
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: configured namespace secret "
-			      "(%lu) from "
-			      VPPCOM_ENV_APP_NAMESPACE_SECRET
-			      "!", getpid (), vcm->cfg.namespace_secret);
+	      VDBG (0, "VCL<%d>: configured namespace secret (%lu) from "
+			      VPPCOM_ENV_APP_NAMESPACE_SECRET "!", getpid (), vcm->cfg.namespace_secret);
 	    }
 	}
       if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP))
 	{
 	  vcm->cfg.app_proxy_transport_tcp = 1;
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured app_proxy_transport_tcp "
-			  "(%u) from "
-			  VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP
-			  "!", getpid (), vcm->cfg.app_proxy_transport_tcp);
+	  VDBG (0, "VCL<%d>: configured app_proxy_transport_tcp (%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP "!", getpid (), vcm->cfg.app_proxy_transport_tcp);
 	}
       if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP))
 	{
 	  vcm->cfg.app_proxy_transport_udp = 1;
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured app_proxy_transport_udp "
-			  "(%u) from "
-			  VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP
-			  "!", getpid (), vcm->cfg.app_proxy_transport_udp);
+	  VDBG (0, "VCL<%d>: configured app_proxy_transport_udp (%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP "!", getpid (), vcm->cfg.app_proxy_transport_udp);
 	}
       if (getenv (VPPCOM_ENV_APP_SCOPE_LOCAL))
 	{
 	  vcm->cfg.app_scope_local = 1;
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured app_scope_local (%u) from "
-			  VPPCOM_ENV_APP_SCOPE_LOCAL
-			  "!", getpid (), vcm->cfg.app_scope_local);
+	  VDBG (0, "VCL<%d>: configured app_scope_local (%u) from "
+			  VPPCOM_ENV_APP_SCOPE_LOCAL "!", getpid (), vcm->cfg.app_scope_local);
 	}
       if (getenv (VPPCOM_ENV_APP_SCOPE_GLOBAL))
 	{
 	  vcm->cfg.app_scope_global = 1;
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: configured app_scope_global (%u) from "
-			  VPPCOM_ENV_APP_SCOPE_GLOBAL
-			  "!", getpid (), vcm->cfg.app_scope_global);
+	  VDBG (0, "VCL<%d>: configured app_scope_global (%u) from "
+			  VPPCOM_ENV_APP_SCOPE_GLOBAL "!", getpid (), vcm->cfg.app_scope_global);
 	}
 
       vcm->main_cpu = os_get_thread_index ();
@@ -2212,6 +1994,7 @@ vppcom_app_create (char *app_name)
 
       /* API hookup and connect to VPP */
       vppcom_api_hookup ();
+      vcl_elog_enable (vcm);
       vcm->app_state = STATE_APP_START;
       rv = vppcom_connect_to_vpp (app_name);
       if (rv)
@@ -2225,8 +2008,7 @@ vppcom_app_create (char *app_name)
 
       rv = vce_start_event_thread (&(vcm->event_thread), 20);
 
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: sending session enable", getpid ());
+      VDBG (0, "VCL<%d>: sending session enable", getpid ());
 
       rv = vppcom_app_session_enable ();
       if (rv)
@@ -2236,8 +2018,7 @@ vppcom_app_create (char *app_name)
 	  return rv;
 	}
 
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: sending app attach", getpid ());
+      VDBG (0, "VCL<%d>: sending app attach", getpid ());
 
       rv = vppcom_app_attach ();
       if (rv)
@@ -2247,8 +2028,7 @@ vppcom_app_create (char *app_name)
 	  return rv;
 	}
 
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: app_name '%s', my_client_index %d (0x%x)",
+      VDBG (0, "VCL<%d>: app_name '%s', my_client_index %d (0x%x)",
 		      getpid (), app_name, vcm->my_client_index,
 		      vcm->my_client_index);
     }
@@ -2265,8 +2045,7 @@ vppcom_app_destroy (void)
   if (vcm->my_client_index == ~0)
     return;
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: detaching from VPP, my_client_index %d (0x%x)",
+  VDBG (0, "VCL<%d>: detaching from VPP, my_client_index %d (0x%x)",
 		  getpid (), vcm->my_client_index, vcm->my_client_index);
 
   if (VPPCOM_DEBUG > 0)
@@ -2294,9 +2073,7 @@ vppcom_app_destroy (void)
   vcm->cfg.app_timeout = orig_app_timeout;
   if (PREDICT_FALSE (rv))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: application detach timed out! "
-		      "returning %d (%s)",
+      VDBG (0, "VCL<%d>: application detach timed out! returning %d (%s)",
 		      getpid (), rv, vppcom_retval_str (rv));
     }
 
@@ -2343,8 +2120,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
 
   VCL_SESSION_UNLOCK ();
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: sid %u", getpid (), session_index);
+  VDBG (0, "VCL<%d>: sid %u", getpid (), session_index);
 
   if (VPPCOM_DEBUG > 0)
     {
@@ -2423,9 +2199,9 @@ vppcom_session_close (uint32_t session_index)
       while (next_sid != ~0)
 	{
 	  rv = vppcom_epoll_ctl (session_index, EPOLL_CTL_DEL, next_sid, 0);
-	  if ((VPPCOM_DEBUG > 0) && PREDICT_FALSE (rv < 0))
-	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			  "EPOLL_CTL_DEL vep_idx %u failed! rv %d (%s)",
+	  if (PREDICT_FALSE (rv < 0))
+	  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: EPOLL_CTL_DEL "
+	        "vep_idx %u failed! rv %d (%s)",
 			  getpid (), vpp_handle, next_sid, vep_idx,
 			  rv, vppcom_retval_str (rv));
 
@@ -2439,9 +2215,9 @@ vppcom_session_close (uint32_t session_index)
       if (is_vep_session)
 	{
 	  rv = vppcom_epoll_ctl (vep_idx, EPOLL_CTL_DEL, session_index, 0);
-	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
-	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			  "EPOLL_CTL_DEL vep_idx %u failed! rv %d (%s)",
+	  if (rv < 0)
+	    VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: EPOLL_CTL_DEL "
+		"vep_idx %u failed! rv %d (%s)",
 			  getpid (), vpp_handle, session_index,
 			  vep_idx, rv, vppcom_retval_str (rv));
 	}
@@ -2450,13 +2226,10 @@ vppcom_session_close (uint32_t session_index)
 	{
 	  rv = vppcom_session_unbind (session_index);
 	  if (PREDICT_FALSE (rv < 0))
-	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			      "listener unbind failed! rv %d (%s)",
+	    VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: listener unbind "
+		"failed! rv %d (%s)",
 			      getpid (), vpp_handle, session_index,
 			      rv, vppcom_retval_str (rv));
-	    }
 	}
 
       else if (state & (CLIENT_STATE_OPEN | SERVER_STATE_OPEN))
@@ -2540,9 +2313,8 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
 				    IP46_TYPE_IP6, ep->ip);
   session->lcl_port = ep->port;
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: sid %u: binding to local %s address %U "
-		  "port %u, proto %s", getpid (), session_index,
+  VDBG (0, "VCL<%d>: sid %u: binding to local %s address %U port %u, "
+      "proto %s", getpid (), session_index,
 		  session->lcl_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address, &session->lcl_addr.ip46,
 		  session->lcl_addr.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
@@ -2609,17 +2381,14 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
   if (listen_session->state & STATE_LISTEN)
     {
       VCL_SESSION_UNLOCK ();
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "already in listen state!",
+      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: already in listen state!",
 		      getpid (), listen_vpp_handle, listen_session_index);
       rv = VPPCOM_OK;
       goto done;
     }
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, "
-		  "sid %u: sending VPP bind+listen request...",
+  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: sending VPP bind+listen "
+      "request...",
 		  getpid (), listen_vpp_handle, listen_session_index);
 
   vppcom_send_bind_sock (listen_session, listen_session_index);
@@ -2631,9 +2400,7 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
   VCL_SESSION_LOCK_AND_GET (listen_session_index, &listen_session);
   if (PREDICT_FALSE (retval))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning
-	  ("VCL<%d>: vpp handle 0x%llx, sid %u: bind+listen failed! "
+      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: bind+listen failed! "
 	   "returning %d (%s)", getpid (), listen_session->vpp_handle,
 	   listen_session_index, retval, vppcom_retval_str (retval));
       VCL_SESSION_UNLOCK ();
@@ -2775,8 +2542,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   else
     VCL_SESS_ATTR_CLR (client_session->attr, VCL_SESS_ATTR_NONBLOCK);
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: Got a client request! "
+  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: Got a client request! "
 		  "vpp handle 0x%llx, sid %u, flags %d, is_nonblocking %u",
 		  getpid (), listen_vpp_handle, listen_session_index,
 		  client_session->vpp_handle, client_session_index,
@@ -2799,10 +2565,9 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 				    client_session->client_context,
 				    0 /* retval OK */ );
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: accepted vpp handle "
-		  "0x%llx, sid %u connection from peer %s address %U port %u "
-		  "to local %s address %U port %u",
+  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: accepted vpp handle 0x%llx,"
+      " sid %u connection from peer %s address %U port %u to local %s address"
+      " %U port %u",
 		  getpid (), listen_vpp_handle,
 		  listen_session_index, client_session->vpp_handle,
 		  client_session_index,
@@ -2911,9 +2676,8 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 
   if (PREDICT_FALSE (session->state & CLIENT_STATE_OPEN))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: session already "
-		      "connected to %s %U port %d proto %s, state 0x%x (%s)",
+      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: session already "
+	  "connected to %s %U port %d proto %s, state 0x%x (%s)",
 		      getpid (), session->vpp_handle, session_index,
 		      session->peer_addr.is_ip4 ? "IPv4" : "IPv6",
 		      format_ip46_address,
@@ -2936,9 +2700,8 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 		 sizeof (ip6_address_t));
   session->peer_port = server_ep->port;
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: connecting to server "
-		  "%s %U port %d proto %s",
+  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: connecting to server %s %U "
+      "port %d proto %s",
 		  getpid (), session->vpp_handle, session_index,
 		  session->peer_addr.is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address,
@@ -2965,9 +2728,8 @@ done:
       if (VPPCOM_DEBUG > 0)
 	{
 	  if (session)
-	    clib_warning
-	      ("VCL<%d>: vpp handle 0x%llx, sid %u: connect failed! "
-	       "returning %d (%s)", getpid (), vpp_handle,
+	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: connect "
+		"failed! returning %d (%s)", getpid (), vpp_handle,
 	       session_index, rv, vppcom_retval_str (rv));
 	  else
 	    clib_warning ("VCL<%d>: no session for sid %u: connect failed! "
@@ -2975,8 +2737,8 @@ done:
 			  session_index, rv, vppcom_retval_str (rv));
 	}
     }
-  else if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: connected!",
+  else
+    VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: connected!",
 		  getpid (), vpp_handle, session_index);
 
   return rv;
@@ -3019,9 +2781,8 @@ vppcom_session_read_internal (uint32_t session_index, void *buf, int n,
       VCL_SESSION_UNLOCK ();
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
 
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: %s session is "
-		      "not open! state 0x%x (%s), returning %d (%s)",
+      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: %s session is not open! "
+	  "state 0x%x (%s), returning %d (%s)",
 		      getpid (), vpp_handle, session_index, state,
 		      vppcom_session_state_str (state),
 		      rv, vppcom_retval_str (rv));
@@ -3052,17 +2813,14 @@ vppcom_session_read_internal (uint32_t session_index, void *buf, int n,
 	{
 	  rv = VPPCOM_ECONNRESET;
 
-	  if (VPPCOM_DEBUG > 1)
-	    {
-	      clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: Empty fifo "
-			    "with session state 0x%x (%s)!"
-			    "  Setting state to 0x%x (%s), returning %d (%s)",
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: Empty fifo with "
+	        "session state 0x%x (%s)! Setting state to 0x%x (%s), "
+	        "returning %d (%s)",
 			    getpid (), session->vpp_handle, session_index,
 			    state, vppcom_session_state_str (state),
 			    STATE_DISCONNECT,
 			    vppcom_session_state_str (STATE_DISCONNECT), rv,
 			    vppcom_retval_str (rv));
-	    }
 
 	  session->state = STATE_DISCONNECT;
 	}
@@ -3132,9 +2890,8 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
 	  rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET :
 		VPPCOM_ENOTCONN);
 
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: session is "
-			  "not open! state 0x%x (%s), returning %d (%s)",
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session is not open!"
+	      " state 0x%x (%s), returning %d (%s)",
 			  getpid (), vpp_handle, session_index,
 			  state, vppcom_session_state_str (state),
 			  rv, vppcom_retval_str (rv));
@@ -3155,18 +2912,14 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
 	{
 	  rv = VPPCOM_ECONNRESET;
 
-	  if (VPPCOM_DEBUG > 1)
-	    {
-	      clib_warning ("VCL<%d>: vpp handle 0x%llx, "
-			    "sid %u: Empty fifo with"
-			    " session state 0x%x (%s)! Setting state to "
-			    "0x%x (%s), returning %d (%s)",
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: Empty fifo with "
+	        "session state 0x%x (%s)! Setting state to 0x%x (%s), "
+	        "returning %d (%s)",
 			    getpid (), session_index, vpp_handle,
 			    state, vppcom_session_state_str (state),
 			    STATE_DISCONNECT,
 			    vppcom_session_state_str (STATE_DISCONNECT), rv,
 			    vppcom_retval_str (rv));
-	    }
 	  session->state = STATE_DISCONNECT;
 	  goto done;
 	}
@@ -3227,9 +2980,8 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
 	 VPPCOM_ENOTCONN);
 
       VCL_SESSION_UNLOCK ();
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "session is not open! state 0x%x (%s)",
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session is not open! "
+	  "state 0x%x (%s)",
 		      getpid (), vpp_handle, session_index,
 		      state, vppcom_session_state_str (state));
       goto done;
@@ -3260,10 +3012,8 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
       ASSERT (q);
       svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
       VCL_SESSION_UNLOCK ();
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "added FIFO_EVENT_APP_TX to "
-		      "vpp_event_q %p, n_write %d", getpid (),
+      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: added FIFO_EVENT_APP_TX "
+	  "to vpp_event_q %p, n_write %d", getpid (),
 		      vpp_handle, session_index, q, n_write);
     }
 
@@ -3280,18 +3030,15 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
 	{
 	  rv = VPPCOM_ECONNRESET;
 
-	  if (VPPCOM_DEBUG > 1)
-	    {
-	      clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			    "Empty fifo with session state 0x%x (%s)!"
-			    "  Setting state to 0x%x (%s), returning %d (%s)",
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: Empty fifo with "
+	      "session state 0x%x (%s)! Setting state to 0x%x (%s), "
+	      "returning %d (%s)",
 			    getpid (), session->vpp_handle, session_index,
 			    session->state,
 			    vppcom_session_state_str (session->state),
 			    STATE_DISCONNECT,
 			    vppcom_session_state_str (STATE_DISCONNECT), rv,
 			    vppcom_retval_str (rv));
-	    }
 
 	  session->state = STATE_DISCONNECT;
 	}
@@ -3363,9 +3110,7 @@ vppcom_session_write_ready (session_t * session, u32 session_index)
 
   ready = svm_fifo_max_enqueue (session->tx_fifo);
 
-  if (VPPCOM_DEBUG > 3)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		  "peek %s (%p), ready = %d", getpid (),
+  VDBG (3, "VCL<%d>: vpp handle 0x%llx, sid %u: peek %s (%p), ready = %d", getpid (),
 		  session->vpp_handle, session_index,
 		  session->tx_fifo, ready);
 
@@ -3380,19 +3125,15 @@ vppcom_session_write_ready (session_t * session, u32 session_index)
 	{
 	  rv = VPPCOM_ECONNRESET;
 
-	  if (VPPCOM_DEBUG > 1)
-	    {
-	      clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-			    "Empty fifo with session "
-			    "state 0x%x (%s)! Setting state to 0x%x (%s), "
-			    "returning %d (%s)", getpid (),
+	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: Empty fifo with "
+	      "session state 0x%x (%s)! Setting state to 0x%x (%s), "
+	      "returning %d (%s)", getpid (),
 			    session->vpp_handle, session_index,
 			    session->state,
 			    vppcom_session_state_str (session->state),
 			    STATE_DISCONNECT,
 			    vppcom_session_state_str (STATE_DISCONNECT), rv,
 			    vppcom_retval_str (rv));
-	    }
 	  session->state = STATE_DISCONNECT;
 	  goto done;
 	}
@@ -3453,9 +3194,8 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
                   if (rv < 0)
                     {
                       VCL_SESSION_UNLOCK();
-                      if (VPPCOM_DEBUG > 1)
-                        clib_warning ("VCL<%d>: session %d specified in "
-                                      "read_map is closed.", getpid (),
+                      VDBG (1, "VCL<%d>: session %d specified in read_map is"
+                	  " closed.", getpid (),
                                       session_index);
                       bits_set = VPPCOM_EBADFD;
                       goto select_done;
@@ -3510,8 +3250,7 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
                   if (rv < 0)
                     {
                       VCL_SESSION_UNLOCK();
-                      if (VPPCOM_DEBUG > 0)
-                        clib_warning ("VCL<%d>: session %d specified in "
+                      VDBG (0, "VCL<%d>: session %d specified in "
                                       "write_map is closed.", getpid (),
                                       session_index);
                       bits_set = VPPCOM_EBADFD;
@@ -3537,9 +3276,8 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
                   if (rv < 0)
                     {
                       VCL_SESSION_UNLOCK();
-                      if (VPPCOM_DEBUG > 1)
-                        clib_warning ("VCL<%d>: session %d specified in "
-                                      "except_map is closed.", getpid (),
+                      VDBG (1, "VCL<%d>: session %d specified in except_map "
+                	  "is closed.", getpid (),
                                       session_index);
                       bits_set = VPPCOM_EBADFD;
                       goto select_done;
@@ -3677,8 +3415,7 @@ vppcom_epoll_create (void)
 
   VCL_SESSION_UNLOCK ();
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("VCL<%d>: Created vep_idx %u / sid %u!",
+  VDBG (0, "VCL<%d>: Created vep_idx %u / sid %u!",
 		  getpid (), vep_idx, vep_idx);
 
   if (VPPCOM_DEBUG > 0)
@@ -3740,8 +3477,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
   rv = vppcom_session_at_index (session_index, &session);
   if (PREDICT_FALSE (rv))
     {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("VCL<%d>: ERROR: Invalid session_index (%u)!",
+      VDBG (0, "VCL<%d>: ERROR: Invalid session_index (%u)!",
 		      getpid (), session_index);
       goto done;
     }
@@ -3798,8 +3534,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 				  vce_poll_wait_connect_request_handler_fn,
 				  0 /* No callback args */ );
 	}
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
+      VDBG (1, "VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, "
 		      "sid %u, events 0x%x, data 0x%llx!",
 		      getpid (), vep_idx, session_index,
 		      event->events, event->data.u64);
@@ -3851,9 +3586,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	}
       session->vep.et_mask = VEP_DEFAULT_ET_MASK;
       session->vep.ev = *event;
-      if (VPPCOM_DEBUG > 1)
-	clib_warning
-	  ("VCL<%d>: EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
+      VDBG (1, "VCL<%d>: EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
 	   " data 0x%llx!", getpid (), vep_idx, session_index, event->events,
 	   event->data.u64);
       break;
@@ -3923,8 +3656,7 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       session->vep.prev_sid = ~0;
       session->vep.vep_idx = ~0;
       session->is_vep_session = 0;
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: EPOLL_CTL_DEL: vep_idx %u, sid %u!",
+      VDBG (1, "VCL<%d>: EPOLL_CTL_DEL: vep_idx %u, sid %u!",
 		      getpid (), vep_idx, session_index);
       if (VPPCOM_DEBUG > 0)
 	{
@@ -3995,8 +3727,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
     }
   if (PREDICT_FALSE (vep_next_sid == ~0))
     {
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("VCL<%d>: WARNING: vep_idx (%u) is empty!",
+      VDBG (1, "VCL<%d>: WARNING: vep_idx (%u) is empty!",
 		      getpid (), vep_idx);
       if (VPPCOM_DEBUG > 1)
 	{
@@ -4052,8 +3783,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 
 	  if (PREDICT_FALSE (is_vep))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: ERROR: sid (%u) is a vep!",
+	      VDBG (0, "VCL<%d>: ERROR: sid (%u) is a vep!",
 			      getpid (), vep_idx);
 	      if (VPPCOM_DEBUG > 0)
 		{
@@ -4079,8 +3809,7 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 	    }
 	  if (PREDICT_FALSE (!is_vep_session))
 	    {
-	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("VCL<%d>: ERROR: session (%u) is not "
+	      VDBG (0, "VCL<%d>: ERROR: session (%u) is not "
 			      "a vep session!", getpid (), sid);
 	      if (VPPCOM_DEBUG > 0)
 		{
@@ -4231,8 +3960,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
     {
     case VPPCOM_ATTR_GET_NREAD:
       rv = vppcom_session_read_ready (session, session_index);
-      if (VPPCOM_DEBUG > 2)
-	clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_NREAD: sid %u, nread = %d",
+      VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_NREAD: sid %u, nread = %d",
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
@@ -4257,8 +3985,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 
     case VPPCOM_ATTR_GET_NWRITE:
       rv = vppcom_session_write_ready (session, session_index);
-      if (VPPCOM_DEBUG > 2)
-	clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_NWRITE: sid %u, nwrite = %d",
+      VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_NWRITE: sid %u, nwrite = %d",
 		      getpid (), session_index, rv);
       if (VPPCOM_DEBUG > 0)
 	{
@@ -4286,9 +4013,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  *flags = O_RDWR | (VCL_SESS_ATTR_TEST (session->attr,
 						 VCL_SESS_ATTR_NONBLOCK));
 	  *buflen = sizeof (*flags);
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_FLAGS: sid %u, "
-			  "flags = 0x%08x, is_nonblocking = %u", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_FLAGS: sid %u, flags = 0x%08x, "
+	      "is_nonblocking = %u", getpid (),
 			  session_index, *flags,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_NONBLOCK));
@@ -4326,9 +4052,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_NONBLOCK);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_FLAGS: sid %u, "
-			  "flags = 0x%08x, is_nonblocking = %u",
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_FLAGS: sid %u, flags = 0x%08x,"
+	      " is_nonblocking = %u",
 			  getpid (), session_index, *flags,
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_NONBLOCK));
@@ -4370,9 +4095,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_memcpy (ep->ip, &session->peer_addr.ip46.ip6,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_PEER_ADDR: sid %u, "
-			  "is_ip4 = %u, addr = %U, port %u", getpid (),
+	  VDBG (1, "VCL<%d>: VPPCOM_ATTR_GET_PEER_ADDR: sid %u, is_ip4 = %u, "
+	      "addr = %U, port %u", getpid (),
 			  session_index, ep->is_ip4, format_ip46_address,
 			  &session->peer_addr.ip46,
 			  ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
@@ -4437,9 +4161,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_memcpy (ep->ip, &session->lcl_addr.ip46.ip6,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_LCL_ADDR: sid %u, "
-			  "is_ip4 = %u, addr = %U port %d", getpid (),
+	  VDBG (1, "VCL<%d>: VPPCOM_ATTR_GET_LCL_ADDR: sid %u, is_ip4 = %u,"
+	      " addr = %U port %d", getpid (),
 			  session_index, ep->is_ip4, format_ip46_address,
 			  &session->lcl_addr.ip46,
 			  ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
@@ -4493,8 +4216,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 
     case VPPCOM_ATTR_GET_LIBC_EPFD:
       rv = session->libc_epfd;
-      if (VPPCOM_DEBUG > 2)
-	clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd %d",
+      VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_LIBC_EPFD: libc_epfd %d",
 		      getpid (), rv);
       if (VPPCOM_DEBUG > 0)
 	{
@@ -4522,9 +4244,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  session->libc_epfd = *(int *) buffer;
 	  *buflen = sizeof (session->libc_epfd);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_LIBC_EPFD: libc_epfd %d, "
-			  "buflen %d", getpid (), session->libc_epfd,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_LIBC_EPFD: libc_epfd %d, "
+	      "buflen %d", getpid (), session->libc_epfd,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4559,9 +4280,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  *(int *) buffer = session->proto;
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_PROTOCOL: %d (%s), "
-			  "buflen %d", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_PROTOCOL: %d (%s), buflen %d", getpid (), *(int *) buffer,
 			  *(int *) buffer ? "UDP" : "TCP", *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4596,9 +4315,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_LISTEN);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_LISTEN: %d, "
-			  "buflen %d", getpid (), *(int *) buffer, *buflen);
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_LISTEN: %d, buflen %d", getpid (), *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
                 /* *INDENT-OFF* */
@@ -4628,9 +4345,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  *(int *) buffer = 0;
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_ERROR: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_ERROR: %d, buflen %d, #VPP-TBD#", getpid (),
 			  *(int *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4665,8 +4380,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 				vcm->cfg.tx_fifo_size);
 	  *buflen = sizeof (u32);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TX_FIFO_LEN: %u (0x%x), "
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_TX_FIFO_LEN: %u (0x%x), "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
@@ -4697,8 +4411,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  /* VPP-TBD */
 	  session->sndbuf_size = *(u32 *) buffer;
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TX_FIFO_LEN: %u (0x%x), "
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_TX_FIFO_LEN: %u (0x%x), "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  session->sndbuf_size, session->sndbuf_size,
 			  *buflen);
@@ -4735,8 +4448,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 				vcm->cfg.rx_fifo_size);
 	  *buflen = sizeof (u32);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_RX_FIFO_LEN: %u (0x%x), "
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_RX_FIFO_LEN: %u (0x%x), "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  *(size_t *) buffer, *(size_t *) buffer, *buflen);
 	  if (VPPCOM_DEBUG > 0)
@@ -4767,8 +4479,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  /* VPP-TBD */
 	  session->rcvbuf_size = *(u32 *) buffer;
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_RX_FIFO_LEN: %u (0x%x), "
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_RX_FIFO_LEN: %u (0x%x), "
 			  "buflen %d, #VPP-TBD#", getpid (),
 			  session->sndbuf_size, session->sndbuf_size,
 			  *buflen);
@@ -4803,8 +4514,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_REUSEADDR);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_REUSEADDR: %d, "
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_REUSEADDR: %d, "
 			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
@@ -4840,9 +4550,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_REUSEADDR);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_REUSEADDR: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_REUSEADDR: %d, buflen %d,"
+	      " #VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_REUSEADDR),
 			  *buflen);
@@ -4878,9 +4587,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_REUSEPORT);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_REUSEPORT: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_REUSEPORT: %d, buflen %d,"
+	      " #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4915,9 +4623,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_REUSEPORT);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_REUSEPORT: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_REUSEPORT: %d, buflen %d,"
+	      " #VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_REUSEPORT),
 			  *buflen);
@@ -4953,9 +4660,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_BROADCAST);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_BROADCAST: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_BROADCAST: %d, buflen %d,"
+	      " #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -4989,9 +4695,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_BROADCAST);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_BROADCAST: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_BROADCAST: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_BROADCAST),
 			  *buflen);
@@ -5027,9 +4732,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_V6ONLY);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_V6ONLY: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_V6ONLY: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5063,9 +4767,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_V6ONLY);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_V6ONLY: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_V6ONLY: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_V6ONLY), *buflen);
 	  if (VPPCOM_DEBUG > 0)
@@ -5100,9 +4803,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_KEEPALIVE);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_KEEPALIVE: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_KEEPALIVE: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5136,9 +4838,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_KEEPALIVE);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_KEEPALIVE: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_KEEPALIVE: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_KEEPALIVE),
 			  *buflen);
@@ -5174,9 +4875,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_TCP_NODELAY);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_NODELAY: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_TCP_NODELAY: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5210,9 +4910,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_TCP_NODELAY);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_NODELAY: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_TCP_NODELAY: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_NODELAY),
 			  *buflen);
@@ -5248,9 +4947,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_TCP_KEEPIDLE);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPIDLE: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5284,9 +4982,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_TCP_KEEPIDLE);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_KEEPIDLE: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_TCP_KEEPIDLE: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_KEEPIDLE),
 			  *buflen);
@@ -5322,9 +5019,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 						VCL_SESS_ATTR_TCP_KEEPINTVL);
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPINTVL: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_TCP_KEEPINTVL: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5358,9 +5054,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  else
 	    VCL_SESS_ATTR_CLR (session->attr, VCL_SESS_ATTR_TCP_KEEPINTVL);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_KEEPINTVL: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_TCP_KEEPINTVL: %d, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  VCL_SESS_ATTR_TEST (session->attr,
 					      VCL_SESS_ATTR_TCP_KEEPINTVL),
 			  *buflen);
@@ -5395,9 +5090,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  *(u32 *) buffer = session->user_mss;
 	  *buflen = sizeof (int);
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_GET_TCP_USER_MSS: %d, "
-			  "buflen %d, #VPP-TBD#", getpid (), *(int *) buffer,
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_TCP_USER_MSS: %d, buflen %d,"
+	      " #VPP-TBD#", getpid (), *(int *) buffer,
 			  *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5428,9 +5122,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  /* VPP-TBD */
 	  session->user_mss = *(u32 *) buffer;
 
-	  if (VPPCOM_DEBUG > 2)
-	    clib_warning ("VCL<%d>: VPPCOM_ATTR_SET_TCP_USER_MSS: %u, "
-			  "buflen %d, #VPP-TBD#", getpid (),
+	  VDBG (2, "VCL<%d>: VPPCOM_ATTR_SET_TCP_USER_MSS: %u, buflen %d, "
+	      "#VPP-TBD#", getpid (),
 			  session->user_mss, *buflen);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5479,9 +5172,7 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
       if (PREDICT_FALSE (rv))
 	{
 	  VCL_SESSION_UNLOCK ();
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VCL<%d>: invalid session, "
-			  "sid (%u) has been closed!",
+	  VDBG (0, "VCL<%d>: invalid session, sid (%u) has been closed!",
 			  getpid (), session_index);
 	  if (VPPCOM_DEBUG > 0)
 	    {
@@ -5546,9 +5237,7 @@ vppcom_session_sendto (uint32_t session_index, void *buffer,
   if (flags)
     {
       // TBD check the flags and do the right thing
-      if (VPPCOM_DEBUG > 2)
-	clib_warning ("VCL<%d>: handling flags 0x%u (%d) "
-		      "not implemented yet.", getpid (), flags, flags);
+      VDBG (2, "VCL<%d>: handling flags 0x%u (%d) not implemented yet.", getpid (), flags, flags);
     }
 
   return (vppcom_session_write (session_index, buffer, buflen));
@@ -5561,8 +5250,7 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
   u32 i, keep_trying = 1;
   int rv, num_ev = 0;
 
-  if (VPPCOM_DEBUG > 3)
-    clib_warning ("VCL<%d>: vp %p, nsids %u, wait_for_time %f",
+  VDBG (3, "VCL<%d>: vp %p, nsids %u, wait_for_time %f",
 		  getpid (), vp, n_sids, wait_for_time);
 
   if (!vp)
