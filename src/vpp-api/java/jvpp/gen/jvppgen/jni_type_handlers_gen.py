@@ -42,28 +42,25 @@ def generate_type_handlers(model, logger):
 
 def _generate_class(model, t, type_handlers):
     ref_name = t.java_name_lower
-    jni_identifiers = generate_j2c_identifiers(t, class_ref_name="%sClass" % ref_name, object_ref_name="_host")
-    type_handlers.append(_TYPE_NET_TO_HOST_TEMPLATE.substitute(
-        c_name=t.name,
-        json_filename=model.json_api_files,
-        json_definition=t.doc,
-        type_reference_name=ref_name,
-        class_FQN=t.jni_name,
-        jni_identifiers=jni_identifiers,
-        type_swap=generate_j2c_swap(t, struct_ref_name="_net")
-    ))
-
     type_handlers.append(_TYPE_HOST_TO_NET_TEMPLATE.substitute(
         c_name=t.name,
         json_filename=model.json_api_files,
         json_definition=t.doc,
         type_reference_name=ref_name,
         class_FQN=t.jni_name,
-        jni_identifiers=jni_identifiers,
+        jni_identifiers=generate_j2c_identifiers(t, class_ref_name="%sClass" % ref_name, object_ref_name="_host"),
+        type_swap=generate_j2c_swap(t, struct_ref_name="_net")
+    ))
+    type_handlers.append(_TYPE_NET_TO_HOST_TEMPLATE.substitute(
+        c_name=t.name,
+        json_filename=model.json_api_files,
+        json_definition=t.doc,
+        type_reference_name=ref_name,
+        class_FQN=t.jni_name,
         type_swap=generate_c2j_swap(t, object_ref_name="_host", struct_ref_name="_net")
     ))
 
-_TYPE_NET_TO_HOST_TEMPLATE = Template("""
+_TYPE_HOST_TO_NET_TEMPLATE = Template("""
 /**
  * Host to network byte order conversion for ${c_name} type.
  * Generated based on $json_filename:
@@ -76,7 +73,7 @@ $jni_identifiers
 $type_swap
 }""")
 
-_TYPE_HOST_TO_NET_TEMPLATE = Template("""
+_TYPE_NET_TO_HOST_TEMPLATE = Template("""
 /**
  * Network to host byte order conversion for ${c_name} type.
  * Generated based on $json_filename:
