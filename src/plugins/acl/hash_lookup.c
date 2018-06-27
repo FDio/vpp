@@ -265,13 +265,14 @@ tm_assign_mask_type_index(acl_main_t *am, fa_5tuple_t *mask, int is_ip6, u32 lc_
 	u32 mask_type_index = ~0;
 	u32 for_mask_type_index = ~0;
 	ace_mask_type_entry_t *mte;
+	int order_index;
 	/* look for existing mask comparable with the one in input */
 
 	hash_applied_mask_info_t **hash_applied_mask_info_vec = vec_elt_at_index(am->hash_applied_mask_info_vec_by_lc_index, lc_index);
 	hash_applied_mask_info_t *minfo;
 
         if (vec_len(*hash_applied_mask_info_vec) > 0) {
-	    for(int order_index = vec_len((*hash_applied_mask_info_vec)) -1; order_index >= 0; order_index--) {
+	    for(order_index = vec_len((*hash_applied_mask_info_vec)) -1; order_index >= 0; order_index--) {
 		minfo = vec_elt_at_index((*hash_applied_mask_info_vec), order_index);
 		for_mask_type_index = minfo->mask_type_index;
 		mte = vec_elt_at_index(am->ace_mask_type_pool, for_mask_type_index);
