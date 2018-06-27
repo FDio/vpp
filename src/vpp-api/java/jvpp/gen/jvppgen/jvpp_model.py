@@ -166,10 +166,39 @@ class Class(Type):
         return "_host_to_net_%s(env, %s, &(%s))" % (self.name, host_ref_name, net_ref_name)
 
 
+class Union(Type):
+    def __init__(self, name, crc, fields, definition, plugin_name):
+        _java_name = _underscore_to_camelcase_upper(name)
+
+        super(Union, self).__init__(
+            name=name,
+            java_name=_java_name,
+            java_name_fqn="io.fd.vpp.jvpp.%s.types.%s" % (plugin_name, _java_name),
+            jni_signature="Lio/fd/vpp/jvpp/%s/types/%s;" % (plugin_name, _java_name),
+            jni_type="jobject",
+            jni_accessor="Object",
+            host_to_net_function="_host_to_net_%s" % name,
+            net_to_host_function="_net_to_host_%s" % name
+        )
+
+        self.crc = crc
+        self.fields = fields
+        self.doc = _message_to_javadoc(definition)
+        self.java_name_lower = _underscore_to_camelcase_lower(name)
+        self.vpp_name = "%s%s%s" % (_VPP_TYPE_PREFIX, name, _VPP_TYPE_SUFFIX)
+        # Fully qualified class name used by FindClass function, see:
+        # https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
+        self.jni_name = "io/fd/vpp/jvpp/%s/types/%s" % (plugin_name, _java_name)
+
+    def get_host_to_net_function(self, host_ref_name, net_ref_name):
+        return "_host_to_net_%s(env, %s, &(%s))" % (self.name, host_ref_name, net_ref_name)
+
+
 class Field(object):
     def __init__(self, name, field_type, array_len=None, array_len_field=None):
         self.name = name
         self.java_name = _underscore_to_camelcase_lower(name)
+        self.java_name_upper = _underscore_to_camelcase_upper(name)
         self.type = field_type
         self.array_len = array_len
         self.array_len_field = array_len_field
@@ -283,25 +312,60 @@ class JVppModel(object):
         self.plugin_name = plugin_name
         self.plugin_java_name = _underscore_to_camelcase_upper(plugin_name)
         self._load_json_files(json_api_files)
-        self._parse_simple_types()
-        self._parse_enums()
-        self._parse_types()
         self._parse_services()
         self._parse_messages()
         self._validate_messages()
 
     def _load_json_files(self, json_api_files):
-        self._enums = []
-        self._types = []
+        types = {}
         self._messages = []
         self._services = {}
         for file_name in json_api_files:
             with open(file_name) as f:
                 j = json.load(f)
-                self._enums.extend(j['enums'])
-                self._types.extend(j['types'])
+                types.update({d[0]: {'type': 'enum', 'data': d} for d in j['enums']})
+                types.update({d[0]: {'type': 'type', 'data': d} for d in j['types']})
+                types.update({d[0]: {'type': 'union', 'data': d} for d in j['unions']})
                 self._messages.extend(j['messages'])
                 self._services.update(j['services'])
+        self._parse_types(types)
+
+    def _parse_types(self, types):
+        self._parse_simple_types()
+        i = 0
+        while True:
+            unresolved = {}
+            for name, value in types.items():
+                if name in self._types_by_name:
+                    continue
+
+                type = value['type']
+                data = value['data'][1:]
+                try:
+                    if type == 'enum':
+                        type = self._parse_enum(name, data)
+                    elif type == 'union':
+                        type = self._parse_union(name, data)
+                    elif type == 'type':
+                        type = self._parse_type(name, data)
+                    else:
+                        self.logger.warning("Unsupported type %s. Ignoring...", type)
+                        continue
+
+                    self._types_by_name[name] = type
+                    self._types_by_name[name + _ARRAY_SUFFIX] = Array(type)
+                except ParseException as e:
+                    self.logger.debug("Failed to parse %s type in iteration %s: %s.", name, i, e)
+                    unresolved[name] = value
+            if len(unresolved) == 0:
+                break
+            if i > 3:
+                raise ParseException('Unresolved type definitions {}'
+                                     .format(unresolved))
+            types = unresolved
+            i += 1
+
+        self.types = self._types_by_name.values()
 
     def _parse_simple_types(self):
         # Mapping according to:
@@ -339,14 +403,6 @@ class JVppModel(object):
         for n, t in self._types_by_name.items():
             self._types_by_name[n + _ARRAY_SUFFIX] = Array(t)
 
-    def _parse_enums(self):
-        for json_type in self._enums:
-            name = json_type[0]
-            definition = json_type[1:]
-            _type = self._parse_enum(name, definition)
-            self._types_by_name[name] = _type
-            self._types_by_name[name + _ARRAY_SUFFIX] = Array(_type)
-
     def _parse_enum(self, name, definition):
         self.logger.debug("Parsing enum %s: %s", name, definition)
         constants = []
@@ -360,18 +416,10 @@ class JVppModel(object):
             raise ParseException("'enumtype' was not defined for %s" % definition)
         return Enum(name, Field('value', self._types_by_name[type_name]), constants, definition, self.plugin_name)
 
-    def _parse_types(self):
-        for json_type in self._types:
-            try:
-                name = json_type[0]
-                definition = json_type[1:]
-                _type = self._parse_type(name, definition)
-                self._types_by_name[name] = _type
-                self._types_by_name[name + _ARRAY_SUFFIX] = Array(_type)
-            except ParseException as e:
-                self.logger.warning("Failed to parse %s type: %s. Skipping type definition.", name, e)
-
-        self.types = self._types_by_name.values()
+    def _parse_union(self, name, definition):
+        self.logger.debug("Parsing union %s: %s", name, definition)
+        crc, fields = self._parse_fields(definition)
+        return Union(name, crc, fields, definition, self.plugin_name)
 
     def _parse_type(self, name, definition):
         self.logger.debug("Parsing type %s: %s", name, definition)

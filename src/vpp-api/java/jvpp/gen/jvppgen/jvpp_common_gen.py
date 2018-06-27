@@ -17,10 +17,12 @@ from string import Template
 from jvpp_model import is_array
 
 
-def generate_fields(fields):
-    return "\n".join(_FIELD_TEMPLATE.substitute(type=f.type.java_name_fqn, name=f.java_name) for f in fields)
+def generate_fields(fields, access_modifier="public"):
+    return "\n".join(_FIELD_TEMPLATE
+                     .substitute(access_modifier=access_modifier, type=f.type.java_name_fqn, name=f.java_name)
+                     for f in fields)
 
-_FIELD_TEMPLATE = Template("""    public $type $name;""")
+_FIELD_TEMPLATE = Template("""    ${access_modifier} ${type} ${name};""")
 
 
 def generate_hash_code(fields):

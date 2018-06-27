@@ -15,7 +15,7 @@
 #
 from string import Template
 
-from jvpp_model import is_array, is_retval, Class, Enum
+from jvpp_model import is_array, is_retval, Class, Enum, Union
 
 
 def generate_j2c_identifiers(element, class_ref_name, object_ref_name):
@@ -42,18 +42,21 @@ _REQUEST_FIELD_IDENTIFIER_TEMPLATE = Template("""
 def generate_j2c_swap(element, struct_ref_name):
     initialization = []
     for field in element.fields:
-        if is_array(field):
-            initialization.append(_generate_j2c_array_swap(field, struct_ref_name))
-        else:
-            initialization.append(_generate_j2c_scalar_swap(field, struct_ref_name))
-
+        initialization.append(generate_j2c_field_swap(field, struct_ref_name))
     return "\n".join(initialization)
+
+
+def generate_j2c_field_swap(field, struct_ref_name):
+    if is_array(field):
+        return _generate_j2c_array_swap(field, struct_ref_name)
+    else:
+        return _generate_j2c_scalar_swap(field, struct_ref_name)
 
 
 def _generate_j2c_array_swap(field, struct_ref_name):
     # TODO(VPP-1186): move the logic to JNI generators
     base_type = field.type.base_type
-    if isinstance(base_type, Class) or isinstance(base_type, Enum):
+    if isinstance(base_type, Class) or isinstance(base_type, Enum) or isinstance(base_type, Union):
         return _generate_j2c_object_array_swap(field, struct_ref_name)
     elif base_type.is_swap_needed:
         return _generate_j2c_primitive_type_array_swap(field, struct_ref_name)
@@ -181,8 +184,8 @@ def generate_c2j_swap(element, object_ref_name, struct_ref_name):
 def _generate_c2j_array_swap(msg_java_name, field, object_ref_name, struct_ref_name):
     # TODO(VPP-1186): move the logic to JNI generators
     base_type = field.type.base_type
-    if isinstance(base_type, Class):
-        return _generate_c2j_class_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
+    if isinstance(base_type, Class) or isinstance(base_type, Union):
+        return _generate_c2j_object_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     elif isinstance(base_type, Enum):
         return _generate_c2j_enum_array_swap(msg_java_name, field, object_ref_name, struct_ref_name)
     elif base_type.is_swap_needed:
@@ -191,9 +194,9 @@ def _generate_c2j_array_swap(msg_java_name, field, object_ref_name, struct_ref_n
         return _generate_c2j_primitive_type_array_no_swap(msg_java_name, field, object_ref_name, struct_ref_name)
 
 
-def _generate_c2j_class_array_swap(msg_java_name, field, object_ref_name, struct_ref_name):
+def _generate_c2j_object_array_swap(msg_java_name, field, object_ref_name, struct_ref_name):
     field_type = field.type
-    return _C2J_CLASS_ARRAY_SWAP_TEMPLATE.substitute(
+    return _C2J_OBJECT_ARRAY_SWAP_TEMPLATE.substitute(
         field_reference_name=field.java_name,
         class_ref_name=msg_java_name,
         jni_signature=field_type.jni_signature,
@@ -205,7 +208,7 @@ def _generate_c2j_class_array_swap(msg_java_name, field, object_ref_name, struct
         c_name=field.name
     )
 
-_C2J_CLASS_ARRAY_SWAP_TEMPLATE = Template("""
+_C2J_OBJECT_ARRAY_SWAP_TEMPLATE = Template("""
     jfieldID ${field_reference_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${field_reference_name}", "${jni_signature}");
     {
         jclass ${field_reference_name}Class = (*env)->FindClass(env, "${jni_name}");
@@ -329,8 +332,8 @@ def _generate_c2j_scalar_swap(msg_java_name, field, object_ref_name, struct_ref_
     field_type = field.type
     if field_type.is_swap_needed:
         # TODO(VPP-1186): move the logic to JNI generators
-        if isinstance(field_type, Class):
-            return _generate_c2j_class_swap(msg_java_name, field, object_ref_name, struct_ref_name)
+        if isinstance(field_type, Class) or isinstance(field_type, Union):
+            return _generate_c2j_object_swap(msg_java_name, field, object_ref_name, struct_ref_name)
         elif isinstance(field_type, Enum):
             return _generate_c2j_enum_swap(msg_java_name, field, object_ref_name, struct_ref_name)
         else:
@@ -339,9 +342,9 @@ def _generate_c2j_scalar_swap(msg_java_name, field, object_ref_name, struct_ref_
         return _generate_c2j_primitive_type_no_swap(msg_java_name, field, object_ref_name, struct_ref_name)
 
 
-def _generate_c2j_class_swap(msg_java_name, field, object_ref_name, struct_ref_name):
+def _generate_c2j_object_swap(msg_java_name, field, object_ref_name, struct_ref_name):
     field_type = field.type
-    return _C2J_CLASS_SWAP_TEMPLATE.substitute(
+    return _C2J_OBJECT_SWAP_TEMPLATE.substitute(
         java_name=field.java_name,
         class_ref_name=msg_java_name,
         jni_signature=field_type.jni_signature,
@@ -352,7 +355,7 @@ def _generate_c2j_class_swap(msg_java_name, field, object_ref_name, struct_ref_n
         net_to_host_function=field_type.net_to_host_function,
         c_name=field.name)
 
-_C2J_CLASS_SWAP_TEMPLATE = Template("""
+_C2J_OBJECT_SWAP_TEMPLATE = Template("""
     jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${java_name}", "${jni_signature}");
     jclass ${java_name}Class = (*env)->FindClass(env, "${jni_name}");
     jmethodID ${java_name}Constructor = (*env)->GetMethodID(env, ${java_name}Class, "<init>", "()V");
