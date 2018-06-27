@@ -45,6 +45,30 @@
       "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "249af787_6961a6e2",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-06-27T09:43:42Z",
+      "side": 1,
+      "message": "No, because the warning/error is about the fact that e-\u003ed_name is 256 chars whilst ifr.ifr_name is 16 so truncation will still happen hence the warning/error picks that up.",
+      "parentUuid": "5e61491d_a485483a",
+      "range": {
+        "startLine": 448,
+        "startChar": 40,
+        "endLine": 448,
+        "endChar": 52
+      },
+      "revId": "6e985c2e2e9d917b18a867d34c45dd01ece43856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
