@@ -136,7 +136,7 @@ typedef enum
   _(ACCEPT_REDIRECT, "Use FIFO with redirects")			\
   _(ADD_SEGMENT, "Add segment and signal app if needed")	\
   _(IS_BUILTIN, "Application is builtin")			\
-  _(IS_PROXY, "Application is proxying")				\
+  _(IS_PROXY, "Application is proxying")			\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")
 
@@ -177,21 +177,26 @@ typedef struct app_session_transport_
 {
   ip46_address_t rmt_ip;	/**< remote ip */
   ip46_address_t lcl_ip;	/**< local ip */
-  u16 rmt_port;			/**< remote port */
-  u16 lcl_port;			/**< local port */
+  u16 rmt_port;			/**< remote port (network order) */
+  u16 lcl_port;			/**< local port (network order) */
   u8 is_ip4;			/**< set if uses ip4 networking */
 } app_session_transport_t;
 
-typedef struct app_session_
+#define foreach_app_session_field					\
+  _(svm_fifo_t, *rx_fifo)		/**< rx fifo */			\
+  _(svm_fifo_t, *tx_fifo)		/**< tx fifo */			\
+  _(session_type_t, session_type)	/**< session type */		\
+  _(volatile u8, session_state)		/**< session state */		\
+  _(u32, session_index)			/**< index in owning pool */	\
+  _(app_session_transport_t, transport)	/**< transport info */		\
+  _(svm_queue_t, *vpp_evt_q)		/**< vpp event queue  */	\
+  _(u8, is_dgram)			/**< flag for dgram mode */	\
+
+typedef struct
 {
-  svm_fifo_t *rx_fifo;			/**< rx fifo */
-  svm_fifo_t *tx_fifo;			/**< tx fifo */
-  session_type_t session_type;		/**< session type */
-  volatile u8 session_state;		/**< session state */
-  u32 session_index;			/**< index in owning pool */
-  app_session_transport_t transport;	/**< transport info */
-  svm_queue_t *vpp_evt_q;		/**< vpp event queue for session */
-  u8 is_dgram;				/**< set if it works in dgram mode */
+#define _(type, name) type name;
+  foreach_app_session_field
+#undef _
 } app_session_t;
 
 always_inline int
