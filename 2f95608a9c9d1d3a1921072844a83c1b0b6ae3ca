@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3b95cf7b_aa4839a8",
+        "filename": "test/test_igmp.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-06-27T04:03:26Z",
+      "side": 1,
+      "message": "i don\u0027t understand this. If the connected host is \u0027joining\u0027 (10.1.1.1, 224.1.1.1) why does the proxy join for a different S,G?",
+      "revId": "2f95608a9c9d1d3a1921072844a83c1b0b6ae3ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
