@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f4e855d1_1de9d8f8",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1569,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-06-27T09:52:24Z",
+      "side": 1,
+      "message": "this needs to be:\nns \u003d ring_size - (ring-\u003ehead + mq-\u003ealloc_bufs) + ring-\u003etail;\nand same in memif_buffer_enq_tx()",
+      "range": {
+        "startLine": 1569,
+        "startChar": 0,
+        "endLine": 1569,
+        "endChar": 67
+      },
+      "revId": "00cc62c6a9ab329d1a829f850435450bd2fe4cf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
