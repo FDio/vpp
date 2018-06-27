@@ -592,6 +592,21 @@ u8x16_msb_mask (u8x16 v)
 
 #undef _signed_binop
 
+static_always_inline u16x8
+u16x8_byte_swap (u16x8 v)
+{
+  u8x16 swap = {
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+  };
+  return (u16x8) _mm_shuffle_epi8 ((__m128i) v, (__m128i) swap);
+}
+
+static_always_inline u32x4
+u32x4_hadd (u32x4 v1, u32x4 v2)
+{
+  return (u32x4) _mm_hadd_epi32 ((__m128i) v1, (__m128i) v2);
+}
+
 #endif /* included_vector_sse2_h */
 
 /*
