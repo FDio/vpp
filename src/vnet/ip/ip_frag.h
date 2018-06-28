@@ -84,7 +84,12 @@ typedef enum
 
 void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 offset, u16 mtu,
 			      u8 next_index, u8 flags);
-
+void
+ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
+		      ip_frag_error_t * error);
+void
+ip6_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
+		      ip_frag_error_t * error);
 #endif /* ifndef IP_FRAG_H */
 
 /*
