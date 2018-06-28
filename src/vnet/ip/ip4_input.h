@@ -49,6 +49,7 @@ typedef enum
 {
   IP4_INPUT_NEXT_DROP,
   IP4_INPUT_NEXT_PUNT,
+  IP4_INPUT_NEXT_OPTIONS,
   IP4_INPUT_NEXT_LOOKUP,
   IP4_INPUT_NEXT_LOOKUP_MULTICAST,
   IP4_INPUT_NEXT_ICMP_ERROR,
@@ -153,7 +154,7 @@ ip4_input_check_x4 (vlib_main_t * vm,
 	}
       else
 	next[0] = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p[0]->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
@@ -167,7 +168,7 @@ ip4_input_check_x4 (vlib_main_t * vm,
 	}
       else
 	next[1] = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p[1]->error = error_node->errors[error1];
     }
   if (PREDICT_FALSE (error2 != IP4_ERROR_NONE))
@@ -181,7 +182,7 @@ ip4_input_check_x4 (vlib_main_t * vm,
 	}
       else
 	next[2] = error2 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p[2]->error = error_node->errors[error2];
     }
   if (PREDICT_FALSE (error3 != IP4_ERROR_NONE))
@@ -195,7 +196,7 @@ ip4_input_check_x4 (vlib_main_t * vm,
 	}
       else
 	next[3] = error3 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p[3]->error = error_node->errors[error3];
     }
 }
@@ -256,7 +257,7 @@ ip4_input_check_x2 (vlib_main_t * vm,
 	}
       else
 	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p0->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
@@ -270,10 +271,9 @@ ip4_input_check_x2 (vlib_main_t * vm,
 	}
       else
 	*next1 = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p1->error = error_node->errors[error1];
     }
-
 }
 
 always_inline void
@@ -289,11 +289,6 @@ ip4_input_check_x1 (vlib_main_t * vm,
   error0 = IP4_ERROR_NONE;
 
   check_ver_opt_csum (ip0, &error0, verify_checksum);
-
-  /* Punt packets with options or wrong version. */
-  if (PREDICT_FALSE (ip0->ip_version_and_header_length != 0x45))
-    error0 = (ip0->ip_version_and_header_length & 0xf) != 5 ?
-      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
 
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip0) == 1 ?
@@ -322,10 +317,9 @@ ip4_input_check_x1 (vlib_main_t * vm,
 	}
       else
 	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
+	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
       p0->error = error_node->errors[error0];
     }
-
 }
 
 /*
