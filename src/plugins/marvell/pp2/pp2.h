@@ -23,6 +23,8 @@
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
 
+#include <vlib/vlib.h>
+
 #include "mv_std.h"
 #include "env/mv_sys_dma.h"
 #include "drivers/mv_pp2.h"
@@ -61,7 +63,7 @@ typedef struct
   u32 hw_if_index;
 } mrvl_pp2_if_t;
 
-#define MRVL_PP2_BUFF_BATCH_SZ 64
+#define MRVL_PP2_BUFF_BATCH_SZ VLIB_FRAME_SIZE
 
 typedef struct
 {
