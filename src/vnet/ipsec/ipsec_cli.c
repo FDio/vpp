@@ -344,6 +344,12 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
       ipsec_main_t *im = &ipsec_main;
       ipsec_sa_t *sa = 0;
       p1 = hash_get (im->sa_index_by_sa_id, p.sa_id);
+      if (!p1)
+	{
+	  error =
+	    clib_error_return (0, "SA with index %u not found", p.sa_id);
+	  goto done;
+	}
       sa = pool_elt_at_index (im->sad, p1[0]);
       if (sa && sa->protocol == IPSEC_PROTOCOL_AH && is_add && p.is_ipv6)
 	{
