@@ -15,8 +15,6 @@
 #ifndef __included_uri_h__
 #define __included_uri_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>

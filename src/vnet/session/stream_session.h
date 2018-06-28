@@ -16,7 +16,6 @@
 #ifndef SRC_VNET_SESSION_STREAM_SESSION_H_
 #define SRC_VNET_SESSION_STREAM_SESSION_H_
 
-#include <vnet/vnet.h>
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport.h>
 
