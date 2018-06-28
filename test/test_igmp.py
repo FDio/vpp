@@ -51,7 +51,11 @@ class TestIgmp(VppTestCase):
 
         # hos sends join IGMP 'join'
         p_join = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                  IP(src=self.pg0.remote_ip4, dst='224.0.0.22', tos=0xc0) /
+                  IP(src=self.pg0.remote_ip4, dst='224.0.0.22',
+                     tos=0xc0, ttl=1,
+                     options=IPOption(copy_flag=1, optclass=0,
+                                      option="router_alert",
+                                      length=2, value=0)) /
                   IGMPv3() /
                   IGMPv3mr(numgrp=1) /
                   IGMPv3gr(rtype=3, maddr="224.1.1.1", srcaddrs=["10.1.1.1"]))

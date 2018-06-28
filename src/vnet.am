@@ -354,6 +354,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip4_forward.c				\
  vnet/ip/ip4_punt_drop.c			\
  vnet/ip/ip4_input.c				\
+ vnet/ip/ip4_options.c				\
  vnet/ip/ip4_mtrie.c				\
  vnet/ip/ip4_pg.c				\
  vnet/ip/ip4_source_and_port_range_check.c	\

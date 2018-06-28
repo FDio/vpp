@@ -193,6 +193,8 @@ typedef union
 #define IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS \
   ((4 << 4) | (sizeof (ip4_header_t) / sizeof (u32)))
 
+#define IP4_ROUTER_ALERT_OPTION 20
+
 always_inline int
 ip4_get_fragment_offset (ip4_header_t * i)
 {
