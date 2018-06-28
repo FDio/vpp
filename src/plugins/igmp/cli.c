@@ -129,7 +129,7 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   rv = igmp_listen (vm, enable, sw_if_index, saddr, gaddr,
-		    /* cli_api_listen */ 1);
+		    IGMP_CONFIG_FLAG_CLI_API_CONFIGURED);
   if (rv == -1)
     {
       if (enable)

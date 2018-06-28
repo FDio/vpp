@@ -410,7 +410,7 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (config)
 	    {
 	      config->flags |= IGMP_CONFIG_FLAG_QUERY_RESP_RECVED;
-	      if (config->cli_api_configured)
+	      if (config->flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED)
 		{
 		  IGMP_DBG ("Interface %u has (S,G)s configured by CLI/API",
 			    sw_if_index);
@@ -451,6 +451,10 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_time_now (vm) + IGMP_SRC_TIMER;
 			  src_addr++;
 			}
+		    }
+		  else
+		    {
+		      j = clib_net_to_host_u16 (igmp_group->n_src_addresses);
 		    }
 		}
 	      else if (igmp_group->type ==
