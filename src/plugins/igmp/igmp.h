@@ -40,10 +40,22 @@
 /** General Query address - 224.0.0.1 */
 #define IGMP_GENERAL_QUERY_ADDRESS		(0xE0000001)
 /** Membership Report address - 224.0.0.22 */
-#define IGMP_MEMBERSHIP_REPORT_ADDRESS	(0xE0000016)
+#define IGMP_MEMBERSHIP_REPORT_ADDRESS		(0xE0000016)
 
 /** helper macro to get igmp mebership group from pointer plus offset */
 #define group_ptr(p, l) ((igmp_membership_group_v3_t *)((char*)p + l))
+
+#define foreach_igmp_config_flag \
+ _(0, QUERY_RESP_RECVED, "query_response_received")	\
+ _(1, CAN_SEND_REPORT, "can_send_report")		\
+ _(2, CLI_API_CONFIGURED, "cli/api")
+
+typedef enum
+{
+#define _(a,b,c) IGMP_CONFIG_FLAG_##b = (1 << a),
+  foreach_igmp_config_flag
+#undef _
+} igmp_config_flag_t;
 
 enum
 {
@@ -133,7 +145,6 @@ typedef struct igmp_group_t_
 /** \brief igmp configuration
     @param sw_if_index - interface sw_if_index
     @param adj_index - adjacency index
-    @param cli_api_configured - if zero, an igmp report was received
     @param next_create_msg - specify next igmp message
     @param igmp_ver - igmp version
     @param robustness_var - robustness variable
@@ -147,8 +158,6 @@ typedef struct igmp_config_t_
 
   adj_index_t adj_index;
 
-  u8 cli_api_configured;
-
   create_msg_t *next_create_msg;
 
   igmp_ver_t igmp_ver;
@@ -156,8 +165,6 @@ typedef struct igmp_config_t_
   u8 robustness_var;
 
   u8 flags;
-#define IGMP_CONFIG_FLAG_QUERY_RESP_RECVED 	(1 << 0)
-#define IGMP_CONFIG_FLAG_CAN_SEND_REPORT 	(1 << 1)
 
   uword *igmp_group_by_key;
 
@@ -207,8 +214,6 @@ typedef struct igmp_main_t_
 
   igmp_config_t *configs;
 
-  u32 **buffers;
-
   igmp_timer_t *timers;
 
   igmp_type_info_t *type_infos;
@@ -256,15 +261,14 @@ extern vlib_node_registration_t igmp_parse_report_node;
     @param sw_if_index - interface sw_if_index
     @param saddr - source address
     @param gaddr - group address
-    @param cli_api_configured - if zero, an igmp report has been received on interface
+    @param flags - igmp configuration flags
 
     Add/del (S,G) on an interface. If user configured,
     send a status change report from the interface.
     If a report was received on interface notify registered api clients.
 */
 int igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
-		 ip46_address_t saddr, ip46_address_t gaddr,
-		 u8 cli_api_configured);
+		 ip46_address_t saddr, ip46_address_t gaddr, u8 flags);
 
 /** \brief igmp clear config
     @param config - igmp configuration

@@ -79,7 +79,9 @@ vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
   clib_memcpy (&saddr.ip4.as_u8, mp->saddr, sizeof (u8) * 4);
   clib_memcpy (&gaddr.ip4.as_u8, mp->gaddr, sizeof (u8) * 4);
 
-  rv = igmp_listen (vm, mp->enable, ntohl (mp->sw_if_index), saddr, gaddr, 1);
+  rv =
+    igmp_listen (vm, mp->enable, ntohl (mp->sw_if_index), saddr, gaddr,
+		 IGMP_CONFIG_FLAG_CLI_API_CONFIGURED);
 
 done:;
   unix_shared_memory_queue_t *q =

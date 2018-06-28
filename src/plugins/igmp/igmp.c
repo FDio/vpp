@@ -402,65 +402,43 @@ igmp_send_msg (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       igmp_main_t * im, igmp_config_t * config, igmp_group_t * group,
 	       u8 is_report)
 {
-  u32 thread_index = vlib_get_thread_index ();
-  u32 *to_next;
-  u32 next_index = IGMP_NEXT_IP4_REWRITE_MCAST_NODE;
+  u32 *to_next = 0;
+  u32 next_index = ip4_rewrite_node.index;
 
-  u32 n_free_bufs = vec_len (im->buffers[thread_index]);
-  if (PREDICT_FALSE (n_free_bufs < 1))
-    {
-      vec_validate (im->buffers[thread_index], 1 + n_free_bufs - 1);
-      n_free_bufs +=
-	vlib_buffer_alloc (vm, &im->buffers[thread_index][n_free_bufs], 1);
-      _vec_len (im->buffers[thread_index]) = n_free_bufs;
-    }
+  u32 bi = 0;
+  vlib_buffer_alloc (vm, &bi, 1);
 
-  u32 n_left_to_next;
-  u32 next0 = next_index;
-  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_buffer_free_list_t *fl = vlib_buffer_get_free_list (vm,
+							   VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (b, fl);
 
-  if (n_left_to_next > 0)
-    {
-      vlib_buffer_t *b = 0;
-      u32 bi = 0;
+  b->current_data = 0;
+  b->current_length = 0;
 
-      if (n_free_bufs)
-	{
-	  u32 last_buf = vec_len (im->buffers[thread_index]) - 1;
-	  bi = im->buffers[thread_index][last_buf];
-	  b = vlib_get_buffer (vm, bi);
-	  _vec_len (im->buffers[thread_index]) = last_buf;
-	  n_free_bufs--;
-	  if (PREDICT_FALSE (n_free_bufs == 0))
-	    {
-	      n_free_bufs += vlib_buffer_alloc (vm,
-						&im->buffers[thread_index]
-						[n_free_bufs], 1);
-	      _vec_len (im->buffers[thread_index]) = n_free_bufs;
-	    }
+  igmp_create_ip4 (b, config, group, is_report);
 
-	  b->current_data = 0;
-	  b->current_length = 0;
+  b->current_data = 0;
 
-	  igmp_create_ip4 (b, config, group, is_report);
+  b->total_length_not_including_first_buffer = 0;
+  b->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = (u32) ~ 0;
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = config->adj_index;
 
-	  b->current_data = 0;
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
-	  b->total_length_not_including_first_buffer = 0;
-	  b->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	  vnet_buffer (b)->sw_if_index[VLIB_RX] = (u32) ~ 0;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = config->adj_index;
-	  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	}
 
-      to_next[0] = bi;
-      to_next += 1;
-      n_left_to_next -= 1;
+  vlib_frame_t *f = vlib_get_frame_to_node (vm, next_index);
+  to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
 
-      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-				       n_left_to_next, bi, next0);
-    }
-  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+  f->n_vectors = 1;
+
+  vlib_buffer_t *c = vlib_buffer_copy (vm, b);
+  to_next += 1;
+  to_next[0] = vlib_get_buffer_index (vm, c);
+
+  vlib_put_frame_to_node (vm, next_index, f);
 }
 
 void
@@ -736,8 +714,7 @@ VLIB_REGISTER_NODE (igmp_timer_process_node) =
 
 int
 igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
-	     ip46_address_t saddr, ip46_address_t gaddr,
-	     u8 cli_api_configured)
+	     ip46_address_t saddr, ip46_address_t gaddr, u8 flags)
 {
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
@@ -747,7 +724,7 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
   igmp_key_t gkey;
 
   igmp_membership_group_v3_type_t group_type =
-    (cli_api_configured) ?
+    (flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED) ?
     IGMP_MEMBERSHIP_GROUP_change_to_filter_include :
     IGMP_MEMBERSHIP_GROUP_mode_is_filter_include;
   int rv = 0;
@@ -769,13 +746,12 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 	  config->sw_if_index = sw_if_index;
 	  config->igmp_group_by_key =
 	    hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
-	  config->cli_api_configured = cli_api_configured;
 	  /* use IGMPv3 by default */
 	  config->igmp_ver = IGMP_V3;
 	  config->robustness_var = IGMP_DEFAULT_ROBUSTNESS_VARIABLE;
-	  config->flags |= IGMP_CONFIG_FLAG_QUERY_RESP_RECVED;
+	  config->flags |= IGMP_CONFIG_FLAG_QUERY_RESP_RECVED | flags;
 
-	  if (!cli_api_configured)
+	  if ((flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED) == 0)
 	    {
 	      /* create qery timer */
 	      igmp_create_int_timer (vlib_time_now (vm) + IGMP_QUERY_TIMER,
@@ -787,7 +763,8 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 	  hash_set (im->igmp_config_by_sw_if_index,
 		    config->sw_if_index, config - im->configs);
 	}
-      else if (config->cli_api_configured != cli_api_configured)
+      else if ((config->flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED & flags)
+	       == 0)
 	{
 	  rv = -2;
 	  goto error;
@@ -805,7 +782,7 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 	    hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
 	  group->n_srcs = 0;
 	  group->type = gkey.group_type;
-	  if (cli_api_configured)
+	  if (flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED)
 	    {
 	      /* create state-changed report timer with zero timeout */
 	      igmp_create_group_timer (0, sw_if_index, group->key,
@@ -825,7 +802,7 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 	  src->key = clib_mem_alloc (sizeof (igmp_key_t));
 	  clib_memcpy (src->key, &skey, sizeof (igmp_key_t));
 	  clib_memcpy (&src->addr, &saddr, sizeof (ip46_address_t));
-	  if (!cli_api_configured)
+	  if ((flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED) == 0)
 	    {
 	      /* arm source timer (after expiration remove (S,G)) */
 	      igmp_event (im, config, group, src);
@@ -899,7 +876,7 @@ igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 		    }
 
 		  /* notify all registered api clients */
-		  if (!cli_api_configured)
+		  if ((flags & IGMP_CONFIG_FLAG_CLI_API_CONFIGURED) == 0)
 		    igmp_event (im, config, new_group, new_src);
 		  else
 		    igmp_create_group_timer (0, sw_if_index, new_group->key,
@@ -975,14 +952,11 @@ igmp_init (vlib_main_t * vm)
 {
   clib_error_t *error;
   igmp_main_t *im = &igmp_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
     return error;
   im->igmp_config_by_sw_if_index = hash_create (0, sizeof (u32));
   im->igmp_api_client_by_client_index = hash_create (0, sizeof (u32));
-  vec_validate_aligned (im->buffers, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
   ip4_register_protocol (IP_PROTOCOL_IGMP, igmp_input_node.index);
   igmp_type_info_t *ti;
   igmp_report_type_info_t *rti;
