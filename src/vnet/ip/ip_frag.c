@@ -46,7 +46,7 @@ format_ip_frag_trace (u8 * s, va_list * args)
 
 static u32 running_fragment_id;
 
-static void
+void
 ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
 		      ip_frag_error_t * error)
 {
@@ -305,7 +305,7 @@ ip4_frag (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 
-static void
+void
 ip6_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
 		      ip_frag_error_t * error)
 {
