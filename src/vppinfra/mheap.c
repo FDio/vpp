@@ -663,12 +663,28 @@ mheap_get_aligned (void *v,
       return v;
     }
 
-  /* Round requested size. */
+  /*
+   * Round requested size.
+   *
+   * Step 1: round up to the minimum object size.
+   * Step 2: round up to a multiple of the user data size (e.g. 4)
+   * Step 3: if non-trivial alignment requested, round up
+   *         so that the object precisely fills a chunk
+   *         as big as the alignment request.
+   *
+   * Step 3 prevents the code from going into "bin search hyperspace":
+   * looking at a huge number of fractional remainder chunks, none of which
+   * will satisfy the alignment constraint. This fixes an allocator
+   * performance issue when one requests a large number of 16 byte objects
+   * aligned to 64 bytes, to name one variation on the theme.
+   */
   n_user_data_bytes = clib_max (n_user_data_bytes, MHEAP_MIN_USER_DATA_BYTES);
   n_user_data_bytes =
     round_pow2 (n_user_data_bytes,
 		STRUCT_SIZE_OF (mheap_elt_t, user_data[0]));
-
+  if (align > MHEAP_ELT_OVERHEAD_BYTES)
+    n_user_data_bytes = clib_max (n_user_data_bytes,
+				  align - MHEAP_ELT_OVERHEAD_BYTES);
   if (!v)
     v = mheap_alloc (0, 64 << 20);
 
