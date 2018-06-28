@@ -1,8 +1,9 @@
 # C generation
 import datetime
 import os
+import time
 
-datestring = datetime.datetime.now()
+datestring = datetime.datetime.utcfromtimestamp(int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
 input_filename = 'inputfil'
 top_boilerplate = '''\
 /*
