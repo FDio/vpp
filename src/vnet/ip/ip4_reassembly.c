@@ -23,7 +23,7 @@
 #include <vppinfra/vec.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_16_8.h>
 #include <vnet/ip/ip4_reassembly.h>
 
 #define MSEC_PER_SEC 1000
@@ -62,17 +62,14 @@ typedef struct
   {
     struct
     {
-      // align by making this 4 octets even though its a 2 octets field
       u32 xx_id;
       ip4_address_t src;
       ip4_address_t dst;
-      // align by making this 4 octets even though its a 2 octets field
-      u32 frag_id;
-      // align by making this 4 octets even though its a 1 octet field
-      u32 proto;
-      u32 unused;
+      u16 frag_id;
+      u8 proto;
+      u8 unused;
     };
-    u64 as_u64[3];
+    u64 as_u64[2];
   };
 } ip4_reass_key_t;
 
@@ -147,7 +144,7 @@ typedef struct
   u32 max_reass_n;
 
   // IPv4 runtime
-  clib_bihash_24_8_t hash;
+  clib_bihash_16_8_t hash;
   // per-thread data
   ip4_reass_per_thread_t *per_thread_data;
 
@@ -297,11 +294,10 @@ always_inline void
 ip4_reass_free (ip4_reass_main_t * rm, ip4_reass_per_thread_t * rt,
 		ip4_reass_t * reass)
 {
-  clib_bihash_kv_24_8_t kv;
+  clib_bihash_kv_16_8_t kv;
   kv.key[0] = reass->key.as_u64[0];
   kv.key[1] = reass->key.as_u64[1];
-  kv.key[2] = reass->key.as_u64[2];
-  clib_bihash_add_del_24_8 (&rm->hash, &kv, 0);
+  clib_bihash_add_del_16_8 (&rm->hash, &kv, 0);
   pool_put (rt->pool, reass);
   --rt->reass_n;
 }
@@ -343,12 +339,11 @@ ip4_reass_find_or_create (vlib_main_t * vm, ip4_reass_main_t * rm,
 {
   ip4_reass_t *reass = NULL;
   f64 now = vlib_time_now (rm->vlib_main);
-  clib_bihash_kv_24_8_t kv, value;
+  clib_bihash_kv_16_8_t kv, value;
   kv.key[0] = k->as_u64[0];
   kv.key[1] = k->as_u64[1];
-  kv.key[2] = k->as_u64[2];
 
-  if (!clib_bihash_search_24_8 (&rm->hash, &kv, &value))
+  if (!clib_bihash_search_16_8 (&rm->hash, &kv, &value))
     {
       reass = pool_elt_at_index (rt->pool, value.value);
       if (now > reass->last_heard + rm->timeout)
@@ -385,11 +380,10 @@ ip4_reass_find_or_create (vlib_main_t * vm, ip4_reass_main_t * rm,
 
   reass->key.as_u64[0] = kv.key[0] = k->as_u64[0];
   reass->key.as_u64[1] = kv.key[1] = k->as_u64[1];
-  reass->key.as_u64[2] = kv.key[2] = k->as_u64[2];
   kv.value = reass - rt->pool;
   reass->last_heard = now;
 
-  if (clib_bihash_add_del_24_8 (&rm->hash, &kv, 1))
+  if (clib_bihash_add_del_16_8 (&rm->hash, &kv, 1))
     {
       ip4_reass_free (rm, rt, reass);
       reass = NULL;
@@ -934,12 +928,14 @@ ip4_reassembly_inline (vlib_main_t * vm,
 	  else
 	    {
 	      ip4_reass_key_t k;
-	      k.src.as_u32 = ip0->src_address.as_u32;
-	      k.dst.as_u32 = ip0->dst_address.as_u32;
-	      k.xx_id = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      k.frag_id = ip0->fragment_id;
-	      k.proto = ip0->protocol;
-	      k.unused = 0;
+	      k.as_u64[0] =
+		(u64) vnet_buffer (b0)->sw_if_index[VLIB_RX] << 32 | (u64)
+		ip0->src_address.as_u32;
+	      k.as_u64[1] =
+		(u64) ip0->dst_address.
+		as_u32 << 32 | (u64) ip0->fragment_id << 16 | (u64) ip0->
+		protocol << 8;
+
 	      ip4_reass_t *reass =
 		ip4_reass_find_or_create (vm, rm, rt, &k, &vec_drop_timeout);
 
@@ -1076,14 +1072,14 @@ typedef enum
 typedef struct
 {
   int failure;
-  clib_bihash_24_8_t *new_hash;
+  clib_bihash_16_8_t *new_hash;
 } ip4_rehash_cb_ctx;
 
 static void
-ip4_rehash_cb (clib_bihash_kv_24_8_t * kv, void *_ctx)
+ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
 {
   ip4_rehash_cb_ctx *ctx = _ctx;
-  if (clib_bihash_add_del_24_8 (ctx->new_hash, kv, 1))
+  if (clib_bihash_add_del_16_8 (ctx->new_hash, kv, 1))
     {
       ctx->failure = 1;
     }
@@ -1112,23 +1108,23 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
   u32 new_nbuckets = ip4_reass_get_nbuckets ();
   if (ip4_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
     {
-      clib_bihash_24_8_t new_hash;
+      clib_bihash_16_8_t new_hash;
       memset (&new_hash, 0, sizeof (new_hash));
       ip4_rehash_cb_ctx ctx;
       ctx.failure = 0;
       ctx.new_hash = &new_hash;
-      clib_bihash_init_24_8 (&new_hash, "ip4-reass", new_nbuckets,
+      clib_bihash_init_16_8 (&new_hash, "ip4-reass", new_nbuckets,
 			     new_nbuckets * 1024);
-      clib_bihash_foreach_key_value_pair_24_8 (&ip4_reass_main.hash,
+      clib_bihash_foreach_key_value_pair_16_8 (&ip4_reass_main.hash,
 					       ip4_rehash_cb, &ctx);
       if (ctx.failure)
 	{
-	  clib_bihash_free_24_8 (&new_hash);
+	  clib_bihash_free_16_8 (&new_hash);
 	  return -1;
 	}
       else
 	{
-	  clib_bihash_free_24_8 (&ip4_reass_main.hash);
+	  clib_bihash_free_16_8 (&ip4_reass_main.hash);
 	  clib_memcpy (&ip4_reass_main.hash, &new_hash,
 		       sizeof (ip4_reass_main.hash));
 	}
@@ -1174,7 +1170,7 @@ ip4_reass_init_function (vlib_main_t * vm)
 			IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   nbuckets = ip4_reass_get_nbuckets ();
-  clib_bihash_init_24_8 (&rm->hash, "ip4-reass", nbuckets, nbuckets * 1024);
+  clib_bihash_init_16_8 (&rm->hash, "ip4-reass", nbuckets, nbuckets * 1024);
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
   ASSERT (node);

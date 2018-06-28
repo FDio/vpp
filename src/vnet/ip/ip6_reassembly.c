@@ -42,13 +42,10 @@ typedef struct
     {
       ip6_address_t src;
       ip6_address_t dst;
-      // align by making this 4 octets even though its a 2 octets field
       u32 xx_id;
-      // align by making this 4 octets even though its a 2 octets field
       u32 frag_id;
-      // align by making this 4 octets even though its a 1 octet field
-      u32 proto;
-      u32 unused;
+      u8 unused[7];
+      u8 proto;
     };
     u64 as_u64[6];
   };
@@ -958,14 +955,14 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	    (u8 *) frag_hdr - (u8 *) ip0;
 
 	  ip6_reass_key_t k;
-	  k.src.as_u64[0] = ip0->src_address.as_u64[0];
-	  k.src.as_u64[1] = ip0->src_address.as_u64[1];
-	  k.dst.as_u64[0] = ip0->dst_address.as_u64[0];
-	  k.dst.as_u64[1] = ip0->dst_address.as_u64[1];
-	  k.xx_id = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  k.frag_id = frag_hdr->identification;
-	  k.proto = ip0->protocol;
-	  k.unused = 0;
+	  k.as_u64[0] = ip0->src_address.as_u64[0];
+	  k.as_u64[1] = ip0->src_address.as_u64[1];
+	  k.as_u64[2] = ip0->dst_address.as_u64[0];
+	  k.as_u64[3] = ip0->dst_address.as_u64[1];
+	  k.as_u64[4] =
+	    (u64) vnet_buffer (b0)->
+	    sw_if_index[VLIB_RX] << 32 | frag_hdr->identification;
+	  k.as_u64[5] = ip0->protocol;
 	  ip6_reass_t *reass =
 	    ip6_reass_find_or_create (vm, node, rm, rt, &k, &icmp_bi,
 				      &vec_timeout);
