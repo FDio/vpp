@@ -75,9 +75,10 @@ clib_bihash_key_compare_48_8 (u64 * a, u64 * b)
   u64x8 v = u64x8_load_unaligned (a) ^ u64x8_load_unaligned (b);
   return (u64x8_is_zero_mask (v) & 0x3f) == 0;
 #elif defined (CLIB_HAVE_VEC256)
-  u64x4 v;
-  v = u64x4_load_unaligned (a) ^ u64x4_load_unaligned (b);
-  v |= u64x4_load_unaligned (a + 2) ^ u64x4_load_unaligned (b + 2);
+  u64x4 v = { 0 };
+  v = u64x4_insert_lo (v, u64x2_load_unaligned (a + 4) ^
+		       u64x2_load_unaligned (b + 4));
+  v |= u64x4_load_unaligned (a) ^ u64x4_load_unaligned (b);
   return u64x4_is_all_zero (v);
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
   u64x2 v;
