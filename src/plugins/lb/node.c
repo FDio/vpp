@@ -173,14 +173,16 @@ lb_node_get_other_ports6 (ip6_header_t *ip60)
   return 0;
 }
 
-static_always_inline u32
-lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
+static_always_inline int
+lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
+                  u32 *hash, u32 *vip_idx)
 {
-  u32 hash;
   if (is_input_v4)
     {
       ip4_header_t *ip40;
       u64 ports;
+      vip4_key_t key4;
+
       ip40 = vlib_buffer_get_current (p);
       if (PREDICT_TRUE(
           ip40->protocol == IP_PROTOCOL_TCP
@@ -190,13 +192,22 @@ lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
       else
         ports = lb_node_get_other_ports4 (ip40);
 
-      hash = lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
+      key4.dst = ip40->dst_address.as_u32;
+      key4.protocol = ip40->protocol;
+      key4.port = (u16)(ports & 0xFFFF);
+      uword * p = hash_get (lbm->vip4_by_key, key4.as_u64);
+      if (PREDICT_FALSE (p == 0))
+        return -1;
+
+      *vip_idx = p[0];
+      *hash = lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
     }
   else
     {
       ip6_header_t *ip60;
       ip60 = vlib_buffer_get_current (p);
       u64 ports;
+      vip6_key_t key6;
       if (PREDICT_TRUE(
           ip60->protocol == IP_PROTOCOL_TCP
               || ip60->protocol == IP_PROTOCOL_UDP))
@@ -205,12 +216,20 @@ lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
       else
         ports = lb_node_get_other_ports6 (ip60);
 
-      hash = lb_hash_hash (ip60->src_address.as_u64[0],
+      key6.dst = ip60->dst_address;
+      key6.protocol = ip60->protocol;
+      key6.port = (u16)(ports & 0xFFFF);
+      uword * p = hash_get_mem (lbm->vip6_by_key, &key6);
+      if (PREDICT_FALSE (p == 0))
+        return -1;
+
+      *vip_idx = p[0];
+      *hash = lb_hash_hash (ip60->src_address.as_u64[0],
                            ip60->src_address.as_u64[1],
                            ip60->dst_address.as_u64[0],
                            ip60->dst_address.as_u64[1], ports);
     }
-  return hash;
+  return 0;
 }
 
 static_always_inline uword
@@ -229,8 +248,11 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
   next_index = node->cached_next_index;
 
   u32 nexthash0 = 0;
+  u32 next_vip_idx0 = ~0;
+  int next_vip_ok0 = -1;
   if (PREDICT_TRUE(n_left_from > 0))
-    nexthash0 = lb_node_get_hash (vlib_get_buffer (vm, from[0]), is_input_v4);
+    next_vip_ok0 = lb_node_get_hash (lbm, vlib_get_buffer (vm, from[0]),
+                                     is_input_v4, &nexthash0, &next_vip_idx0);
 
   while (n_left_from > 0)
     {
@@ -238,19 +260,23 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
       while (n_left_from > 0 && n_left_to_next > 0)
         {
           u32 pi0;
-          vlib_buffer_t *p0;
+          vlib_buffer_t *p0 = 0;
           lb_vip_t *vip0;
-          u32 asindex0;
+          u32 asindex0 = 0;
           u16 len0;
           u32 available_index0;
           u8 counter = 0;
           u32 hash0 = nexthash0;
+          u32 vip_index0 = next_vip_idx0;
+          int vip_ok0 = next_vip_ok0;
+          u32 next0 = LB_NEXT_DROP;
 
           if (PREDICT_TRUE(n_left_from > 1))
             {
               vlib_buffer_t *p1 = vlib_get_buffer (vm, from[1]);
               //Compute next hash and prefetch bucket
-              nexthash0 = lb_node_get_hash (p1, is_input_v4);
+              next_vip_ok0 = lb_node_get_hash (lbm, p1, is_input_v4,
+                                               &nexthash0, &next_vip_idx0);
               lb_hash_prefetch_bucket (sticky_ht, nexthash0);
               //Prefetch for encap, next
               CLIB_PREFETCH(vlib_buffer_get_current (p1) - 64, 64, STORE);
@@ -272,8 +298,14 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
           n_left_to_next -= 1;
 
           p0 = vlib_get_buffer (vm, pi0);
-          vip0 = pool_elt_at_index(lbm->vips,
-                                   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
+          /* verify if vip+protocol+port exists */
+          if (vip_ok0 == -1)
+            {
+              next0 = LB_NEXT_DROP;
+              goto trace0;
+            }
+
+          vip0 = pool_elt_at_index(lbm->vips,vip_index0);
 
           if (is_input_v4)
             {
@@ -290,7 +322,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
             }
 
           lb_hash_get (sticky_ht, hash0,
-                       vnet_buffer (p0)->ip.adj_index[VLIB_TX], lb_time,
+                       vip_index0, lb_time,
                        &available_index0, &asindex0);
 
           if (PREDICT_TRUE(asindex0 != ~0))
@@ -320,7 +352,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
               //Note that when there is no AS configured, an entry is configured anyway.
               //But no configured AS is not something that should happen
               lb_hash_put (sticky_ht, hash0, asindex0,
-              vnet_buffer (p0)->ip.adj_index[VLIB_TX],
+                           vip_index0,
                            available_index0, lb_time);
             }
           else
@@ -333,7 +365,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
 
           vlib_increment_simple_counter (
               &lbm->vip_counters[counter], thread_index,
-              vnet_buffer (p0)->ip.adj_index[VLIB_TX],
+              vip_index0,
               1);
 
           //Now let's encap
@@ -448,7 +480,8 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
                     }
                   else
                     {
-                      next_index = LB_NEXT_DROP;
+                      next0 = LB_NEXT_DROP;
+                      goto trace0;
                     }
                 }
               else if ((is_input_v4 == 0) && (encap_type == LB_ENCAP_TYPE_NAT6))
@@ -481,25 +514,27 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
                     }
                   else
                     {
-                      next_index = LB_NEXT_DROP;
+                      next0 = LB_NEXT_DROP;
+                      goto trace0;
                     }
                 }
             }
+          next0 = lbm->ass[asindex0].dpo.dpoi_next_node;
+          //Note that this is going to error if asindex0 == 0
+          vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+              lbm->ass[asindex0].dpo.dpoi_index;
 
+        trace0:
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof(*tr));
               tr->as_index = asindex0;
-              tr->vip_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+              tr->vip_index = vip_index0;
             }
 
           //Enqueue to next
-          //Note that this is going to error if asindex0 == 0
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-              lbm->ass[asindex0].dpo.dpoi_index;
           vlib_validate_buffer_enqueue_x1(
-              vm, node, next_index, to_next, n_left_to_next, pi0,
-              lbm->ass[asindex0].dpo.dpoi_next_node);
+              vm, node, next_index, to_next, n_left_to_next, pi0, next0);
         }
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
