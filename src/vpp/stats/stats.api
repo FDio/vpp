@@ -18,7 +18,7 @@
     This file defines the stats API 
 */
 
-option version = "1.0.1";
+option version = "1.0.2";
 
 import "vnet/interface.api";
 import "vnet/bier/bier.api";
@@ -408,16 +408,18 @@ define vnet_get_summary_stats
 /** \brief Reply for vnet_get_summary_stats request
     @param context - sender context, to match reply w/ request
     @param retval - return code for request
-    @param total_pkts -  
-    @param total_bytes -
+    @param total_pkts - length of the array must match the length of 
+                        the combined counter part of the enum in interface.h
+    @param total_bytes - length of the array must match the length of 
+                         the combined counter part of the enum in interface.h
     @param vector_rate - 
 */
 define vnet_get_summary_stats_reply
 {
   u32 context;
   i32 retval;
-  u64 total_pkts[2];
-  u64 total_bytes[2];
+  u64 total_pkts[8];
+  u64 total_bytes[8];
   f64 vector_rate;
 };
 
