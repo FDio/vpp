@@ -37,6 +37,11 @@ public:
    * Constructor
    */
   connection();
+
+  /**
+   * Construct with custom name
+   */
+  explicit connection(const std::string& app_name);
   /**
    * Destructor
    */
@@ -68,6 +73,10 @@ private:
    * The name of this application
    */
   const std::string m_app_name;
+  /**
+   * Save state for destructor
+   */
+  bool m_is_connected;
 };
 };
 

@@ -21,11 +21,22 @@ namespace VOM {
 connection::connection()
   : m_vapi_conn(new vapi::Connection())
   , m_app_name("VOM")
+  , m_is_connected(false)
+{
+}
+
+connection::connection(const std::string& app_name)
+  : m_vapi_conn(new vapi::Connection())
+  , m_app_name(app_name)
+  , m_is_connected(false)
 {
 }
 
 connection::~connection()
 {
+  if (m_is_connected) {
+      disconnect();
+  }
 }
 
 void
@@ -37,11 +48,13 @@ connection::disconnect()
 int
 connection::connect()
 {
-  vapi_error_e rv;
-
-  rv = m_vapi_conn->connect(m_app_name.c_str(),
+  vapi_error_e rv = m_vapi_conn->connect(m_app_name.c_str(),
                             NULL, // m_api_prefix.c_str(),
                             128, 128);
+  if (rv == VAPI_OK) {
+      m_is_connected = true;
+  }
+
   return rv;
 }
 
