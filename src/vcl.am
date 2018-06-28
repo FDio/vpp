@@ -22,9 +22,12 @@ libvppcom_la_DEPENDENCIES =			\
 libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread -lrt -ldl
 
 libvppcom_la_SOURCES +=				\
-  vcl/vcl_event.c				\
   vcl/vppcom.c					\
+  vcl/vcl_bapi.c				\
+  vcl/vcl_cfg.c					\
   vcl/vcl_debug.h				\
+  vcl/vcl_event.c				\
+  vcl/vcl_private.h				\
   $(libvppinfra_la_SOURCES)			\
   $(libsvm_la_SOURCES)				\
   $(libvlibmemoryclient_la_SOURCES)
