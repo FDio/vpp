@@ -226,7 +226,7 @@ static int api_lb_add_del_as (vat_main_t * vam)
 #define foreach_vpe_api_msg                             \
 _(lb_conf, "<ip4-src-addr> <ip6-src-address> <sticky_buckets_per_core> <flow_timeout>") \
 _(lb_add_del_vip, "<ip-prefix> [gre4|gre6|l3dsr|nat4|nat6] " \
-                  "<dscp> <port> <target_port> <node_port> " \
+                  "<dscp> <port> <target_port> " \
                   "<new_table_len> [del]") \
 _(lb_add_del_as, "<vip-ip-prefix> <address> [del]")
 
