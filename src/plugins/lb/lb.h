@@ -229,8 +229,27 @@ typedef struct {
   };
 } lb_vip_encap_args_t;
 
+typedef CLIB_PACKED(struct {
+  /* all fields in NET byte order */
+  union {
+    struct {
+      u32 dst;
+      u16 port;
+      u8  protocol;
+    };
+    u64 as_u64;
+  };
+}) vip4_key_t;
+
+typedef CLIB_PACKED(struct {
+  /* all fields in NET byte order */
+  ip6_address_t dst;
+  u16 port;
+  u8  protocol;
+}) vip6_key_t;
+
 /**
- * Load balancing service is provided per VIP.
+ * Load balancing service is provided per VIP+protocol+port.
  * In this data model, a VIP can be a whole prefix.
  * But load balancing only
  * occurs on a per-source-address/port basis. Meaning that if a given source
@@ -274,6 +293,12 @@ typedef struct {
    * In case of IPv4, plen = 96 + ip4_plen.
    */
   u8 plen;
+
+  /* tcp or udp */
+  u8 protocol;
+
+  /* tcp port or udp port */
+  u16 port;
 
   /**
    * The type of traffic for this.
@@ -488,6 +513,10 @@ typedef struct {
    */
   fib_node_type_t fib_node_type;
 
+  /* lookup vip by key */
+  uword * vip4_by_key;
+  uword * vip6_by_key;
+
   /* Find a static mapping by AS IP : target_port */
   clib_bihash_8_8_t mapping_by_as4;
   clib_bihash_24_8_t mapping_by_as6;
@@ -511,6 +540,8 @@ typedef struct {
 typedef struct {
   ip46_address_t prefix;
   u8 plen;
+  u8 protocol;
+  u16 port;
   lb_vip_type_t type;
   u32 new_length;
   lb_vip_encap_args_t encap_args;

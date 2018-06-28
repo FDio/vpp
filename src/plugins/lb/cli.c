@@ -24,10 +24,10 @@ lb_vip_command_fn (vlib_main_t * vm,
   lb_vip_add_args_t args;
   u8 del = 0;
   int ret;
+  u32 port = 0;
   u32 encap = 0;
   u32 dscp = ~0;
   u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
-  u32 port = 0;
   u32 target_port = 0;
   u32 node_port = 0;
   clib_error_t *error = 0;
@@ -50,6 +50,12 @@ lb_vip_command_fn (vlib_main_t * vm,
       ;
     else if (unformat(line_input, "del"))
       del = 1;
+    else if (unformat(line_input, "protocol tcp"))
+      args.protocol = (u8)IP_PROTOCOL_TCP;
+    else if (unformat(line_input, "protocol udp"))
+      args.protocol = (u8)IP_PROTOCOL_UDP;
+    else if (unformat(line_input, "port %d", &port))
+      ;
     else if (unformat(line_input, "encap gre4"))
       encap = LB_ENCAP_TYPE_GRE4;
     else if (unformat(line_input, "encap gre6"))
@@ -66,8 +72,6 @@ lb_vip_command_fn (vlib_main_t * vm,
       srv_type = LB_SRV_TYPE_CLUSTERIP;
     else if (unformat(line_input, "type nodeport"))
       srv_type = LB_SRV_TYPE_NODEPORT;
-    else if (unformat(line_input, "port %d", &port))
-      ;
     else if (unformat(line_input, "target_port %d", &target_port))
       ;
     else if (unformat(line_input, "node_port %d", &node_port))
@@ -78,6 +82,7 @@ lb_vip_command_fn (vlib_main_t * vm,
       goto done;
     }
   }
+  args.port = (u16)port;
 
   if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
     {
@@ -165,9 +170,10 @@ done:
 VLIB_CLI_COMMAND (lb_vip_command, static) =
 {
   .path = "lb vip",
-  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] "
+  .short_help = "lb vip <prefix> [protocol (tcp|udp) port <n>] "
+      "[encap (gre6|gre4|l3dsr|nat4|nat6)] "
       "[dscp <n>] "
-      "[type (nodeport|clusterip) port <n> target_port <n> node_port <n>] "
+      "[type (nodeport|clusterip) target_port <n> node_port <n>] "
       "[new_len <n>] [del]",
   .function = lb_vip_command_fn,
 };
