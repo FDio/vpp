@@ -47,6 +47,9 @@
 #define LB_MAPPING_BUCKETS  1024
 #define LB_MAPPING_MEMORY_SIZE  64<<20
 
+#define LB_VIP_PER_PORT_BUCKETS  1024
+#define LB_VIP_PER_PORT_MEMORY_SIZE  64<<20
+
 typedef enum {
   LB_NEXT_DROP,
   LB_N_NEXT,
@@ -187,6 +190,17 @@ typedef enum {
 } lb_encap_type_t;
 
 /**
+ * Lookup type
+ */
+
+typedef enum {
+  LB_LKP_SAME_IP_PORT,
+  LB_LKP_DIFF_IP_PORT,
+  LB_LKP_ALL_PORT_IP,
+  LB_LKP_N_TYPES,
+} lb_lkp_type_t;
+
+/**
  * The load balancer supports IPv4 and IPv6 traffic
  * and GRE4, GRE6, L3DSR and NAT4, NAT6 encap.
  */
@@ -214,14 +228,8 @@ typedef struct {
       /* Service type. clusterip or nodeport */
       u8 srv_type;
 
-      /* Service port. network byte order */
-      u16 port;
-
       /* Pod's port corresponding to specific service. network byte order */
       u16 target_port;
-
-      /* Node's port, can access service via NodeIP:node_port. network byte order */
-      u16 node_port;
     };
     /* DSCP bits for L3DSR */
     u8 dscp;
@@ -229,8 +237,21 @@ typedef struct {
   };
 } lb_vip_encap_args_t;
 
+typedef struct {
+  /* all fields in NET byte order */
+  union {
+    struct {
+      u32 vip_prefix_index;
+      u16 port;
+      u8  protocol;
+      u8 rsv;
+    };
+    u64 as_u64;
+  };
+} vip_port_key_t;
+
 /**
- * Load balancing service is provided per VIP.
+ * Load balancing service is provided per VIP+protocol+port.
  * In this data model, a VIP can be a whole prefix.
  * But load balancing only
  * occurs on a per-source-address/port basis. Meaning that if a given source
@@ -275,6 +296,15 @@ typedef struct {
    */
   u8 plen;
 
+  /* tcp or udp. If not per-port vip, set to ~0 */
+  u8 protocol;
+
+  /* tcp port or udp port. If not per-port vip, set to ~0 */
+  u16 port;
+
+  /* Valid for per-port vip */
+  u32 vip_prefix_index;
+
   /**
    * The type of traffic for this.
    * LB_TYPE_UNDEFINED if unknown.
@@ -301,36 +331,57 @@ typedef struct {
   u32 *as_indexes;
 } lb_vip_t;
 
-#define lb_vip_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP4_GRE6 \
-                            || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
-                            || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
-                            || (vip)->type == LB_VIP_TYPE_IP4_NAT4 )
+#define lb_vip_is_ip4(type) (type == LB_VIP_TYPE_IP4_GRE6 \
+                            || type == LB_VIP_TYPE_IP4_GRE4 \
+                            || type == LB_VIP_TYPE_IP4_L3DSR \
+                            || type == LB_VIP_TYPE_IP4_NAT4 )
 
-#define lb_vip_is_gre4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
-                             || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
-
-#define lb_vip_is_gre6(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
-                             || (vip)->type == LB_VIP_TYPE_IP4_GRE6)
+#define lb_vip_is_ip6(type) (type == LB_VIP_TYPE_IP6_GRE6 \
+                            || type == LB_VIP_TYPE_IP6_GRE4 \
+                            || type == LB_VIP_TYPE_IP6_NAT6 )
 
 #define lb_encap_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
                              || (vip)->type == LB_VIP_TYPE_IP4_NAT4 )
 
+#define lb_vip_is_gre4(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
+                            || (vip)->type == LB_VIP_TYPE_IP4_GRE4) \
+                            && ((vip)->port == 0))
+
+
+#define lb_vip_is_gre6(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
+                            || (vip)->type == LB_VIP_TYPE_IP4_GRE6) \
+                            && ((vip)->port == 0))
+
+#define lb_vip_is_gre4_port(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
+                                 || (vip)->type == LB_VIP_TYPE_IP4_GRE4) \
+                                 && ((vip)->port != 0))
+
+#define lb_vip_is_gre6_port(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
+                                 || (vip)->type == LB_VIP_TYPE_IP4_GRE6) \
+                                 && ((vip)->port != 0))
+
 always_inline bool
 lb_vip_is_l3dsr(const lb_vip_t *vip)
 {
-  return vip->type == LB_VIP_TYPE_IP4_L3DSR;
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port ==0);
+}
+
+always_inline bool
+lb_vip_is_l3dsr_port(const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port !=0);
 }
 always_inline bool
-lb_vip_is_nat4(const lb_vip_t *vip)
+lb_vip_is_nat4_port(const lb_vip_t *vip)
 {
-  return vip->type == LB_VIP_TYPE_IP4_NAT4;
+  return (vip->type == LB_VIP_TYPE_IP4_NAT4 && vip->port !=0);
 }
 always_inline bool
-lb_vip_is_nat6(const lb_vip_t *vip)
+lb_vip_is_nat6_port(const lb_vip_t *vip)
 {
-  return vip->type == LB_VIP_TYPE_IP6_NAT6;
+  return (vip->type == LB_VIP_TYPE_IP6_NAT6 && vip->port !=0);
 }
 
 format_function_t format_lb_vip;
@@ -422,6 +473,11 @@ typedef struct {
   lb_vip_t *vips;
 
   /**
+   * bitmap for vip prefix to support per-port vip
+   */
+  uword *vip_prefix_indexes;
+
+  /**
    * Pool of ASs.
    * ASs are referenced by address and vip index.
    * The first element (index 0) is special and used only to fill
@@ -479,14 +535,19 @@ typedef struct {
    */
   dpo_type_t dpo_gre4_type;
   dpo_type_t dpo_gre6_type;
+  dpo_type_t dpo_gre4_port_type;
+  dpo_type_t dpo_gre6_port_type;
   dpo_type_t dpo_l3dsr_type;
-  dpo_type_t dpo_nat4_type;
-  dpo_type_t dpo_nat6_type;
-
+  dpo_type_t dpo_l3dsr_port_type;
+  dpo_type_t dpo_nat4_port_type;
+  dpo_type_t dpo_nat6_port_type;
   /**
    * Node type for registering to fib changes.
    */
   fib_node_type_t fib_node_type;
+
+  /* lookup per_port vip by key */
+  clib_bihash_8_8_t vip_index_per_port;
 
   /* Find a static mapping by AS IP : target_port */
   clib_bihash_8_8_t mapping_by_as4;
@@ -511,6 +572,8 @@ typedef struct {
 typedef struct {
   ip46_address_t prefix;
   u8 plen;
+  u8 protocol;
+  u16 port;
   lb_vip_type_t type;
   u32 new_length;
   lb_vip_encap_args_t encap_args;
@@ -537,7 +600,8 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index);
 
 int lb_vip_del(u32 vip_index);
 
-int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index);
+int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u8 protocol,
+                      u16 port, u32 *vip_index);
 
 #define lb_vip_get_by_index(index) (pool_is_free_index(lb_main.vips, index)?NULL:pool_elt_at_index(lb_main.vips, index))
 
