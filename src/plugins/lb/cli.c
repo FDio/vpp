@@ -24,10 +24,11 @@ lb_vip_command_fn (vlib_main_t * vm,
   lb_vip_add_args_t args;
   u8 del = 0;
   int ret;
+  u8 per_port_vip = 0;
+  u32 port = 0;
   u32 encap = 0;
   u32 dscp = ~0;
   u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
-  u32 port = 0;
   u32 target_port = 0;
   u32 node_port = 0;
   clib_error_t *error = 0;
@@ -50,6 +51,18 @@ lb_vip_command_fn (vlib_main_t * vm,
       ;
     else if (unformat(line_input, "del"))
       del = 1;
+    else if (unformat(line_input, "protocol tcp"))
+      {
+        args.protocol = (u8)IP_PROTOCOL_TCP;
+        per_port_vip = 1;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+        args.protocol = (u8)IP_PROTOCOL_UDP;
+        per_port_vip = 1;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
     else if (unformat(line_input, "encap gre4"))
       encap = LB_ENCAP_TYPE_GRE4;
     else if (unformat(line_input, "encap gre6"))
@@ -66,8 +79,6 @@ lb_vip_command_fn (vlib_main_t * vm,
       srv_type = LB_SRV_TYPE_CLUSTERIP;
     else if (unformat(line_input, "type nodeport"))
       srv_type = LB_SRV_TYPE_NODEPORT;
-    else if (unformat(line_input, "port %d", &port))
-      ;
     else if (unformat(line_input, "target_port %d", &target_port))
       ;
     else if (unformat(line_input, "node_port %d", &node_port))
@@ -78,6 +89,13 @@ lb_vip_command_fn (vlib_main_t * vm,
       goto done;
     }
   }
+  args.port = (u16)port;
+
+  if (per_port_vip == 0)
+    {
+      args.protocol = ~0;
+      args.port = ~0;
+    }
 
   if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
     {
@@ -95,14 +113,18 @@ lb_vip_command_fn (vlib_main_t * vm,
 
   if (ip46_prefix_is_ip4(&(args.prefix), (args.plen)))
     {
-      if (encap == LB_ENCAP_TYPE_GRE4)
+      if ((encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
         args.type = LB_VIP_TYPE_IP4_GRE4;
-      else if (encap == LB_ENCAP_TYPE_GRE6)
+      else if ((encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
         args.type = LB_VIP_TYPE_IP4_GRE6;
-      else if (encap == LB_ENCAP_TYPE_L3DSR)
-        args.type = LB_VIP_TYPE_IP4_L3DSR;
-      else if (encap == LB_ENCAP_TYPE_NAT4)
-        args.type = LB_VIP_TYPE_IP4_NAT4;
+      else if ((encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP4_GRE4_PORT;
+      else if ((encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP4_GRE6_PORT;
+      else if ((encap == LB_ENCAP_TYPE_L3DSR) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP4_L3DSR_PORT;
+      else if ((encap == LB_ENCAP_TYPE_NAT4) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP4_NAT4_PORT;
       else if (encap == LB_ENCAP_TYPE_NAT6)
         {
           error = clib_error_return(0, "currently does not support NAT46");
@@ -111,12 +133,16 @@ lb_vip_command_fn (vlib_main_t * vm,
     }
   else
     {
-      if (encap == LB_ENCAP_TYPE_GRE4)
+      if ((encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
         args.type = LB_VIP_TYPE_IP6_GRE4;
-      else if (encap == LB_ENCAP_TYPE_GRE6)
+      else if ((encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
         args.type = LB_VIP_TYPE_IP6_GRE6;
-      else if (encap == LB_ENCAP_TYPE_NAT6)
-        args.type = LB_VIP_TYPE_IP6_NAT6;
+      else if ((encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP6_GRE4_PORT;
+      else if ((encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP6_GRE6_PORT;
+      else if ((encap == LB_ENCAP_TYPE_NAT6) && (per_port_vip == 1))
+        args.type = LB_VIP_TYPE_IP6_NAT6_PORT;
       else if (encap == LB_ENCAP_TYPE_NAT4)
         {
           error = clib_error_return(0, "currently does not support NAT64");
@@ -147,7 +173,8 @@ lb_vip_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "lb_vip_add ok %d", index);
     }
   } else {
-    if ((ret = lb_vip_find_index(&(args.prefix), args.plen, &index))) {
+    if ((ret = lb_vip_find_index(&(args.prefix), args.plen,
+                                 args.protocol, args.port, &index))) {
       error = clib_error_return (0, "lb_vip_find_index error %d", ret);
       goto done;
     } else if ((ret = lb_vip_del(index))) {
@@ -165,9 +192,11 @@ done:
 VLIB_CLI_COMMAND (lb_vip_command, static) =
 {
   .path = "lb vip",
-  .short_help = "lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] "
+  .short_help = "lb vip <prefix> "
+      "[protocol (tcp|udp) port <n>] "
+      "[encap (gre6|gre4|l3dsr|nat4|nat6)] "
       "[dscp <n>] "
-      "[type (nodeport|clusterip) port <n> target_port <n> node_port <n>] "
+      "[type (nodeport|clusterip) target_port <n> node_port <n>] "
       "[new_len <n>] [del]",
   .function = lb_vip_command_fn,
 };
@@ -181,6 +210,9 @@ lb_as_command_fn (vlib_main_t * vm,
   u8 vip_plen;
   ip46_address_t *as_array = 0;
   u32 vip_index;
+  u32 port = 0;
+  u8 protocol = 0;
+  u8 per_port_vip = 0;
   u8 del = 0;
   int ret;
   clib_error_t *error = 0;
@@ -194,22 +226,42 @@ lb_as_command_fn (vlib_main_t * vm,
     goto done;
   }
 
-  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, &vip_index))) {
-    error = clib_error_return (0, "lb_vip_find_index error %d", ret);
-    goto done;
-  }
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
   {
     if (unformat(line_input, "%U", unformat_ip46_address, &as_addr, IP46_TYPE_ANY)) {
       vec_add1(as_array, as_addr);
     } else if (unformat(line_input, "del")) {
       del = 1;
-    } else {
+    }
+    else if (unformat(line_input, "protocol tcp"))
+      {
+          protocol = (u8)IP_PROTOCOL_TCP;
+          per_port_vip = 1;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+          protocol = (u8)IP_PROTOCOL_UDP;
+          per_port_vip = 1;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else {
       error = clib_error_return (0, "parse error: '%U'",
                                  format_unformat_error, line_input);
       goto done;
     }
+  }
+
+  if (per_port_vip == 0)
+    {
+      protocol = ~0;
+      port = ~0;
+    }
+
+  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, protocol,
+                               (u16)port, &vip_index))){
+    error = clib_error_return (0, "lb_vip_find_index error %d", ret);
+    goto done;
   }
 
   if (!vec_len(as_array)) {
@@ -242,7 +294,8 @@ done:
 VLIB_CLI_COMMAND (lb_as_command, static) =
 {
   .path = "lb as",
-  .short_help = "lb as <vip-prefix> [<address> [<address> [...]]] [del]",
+  .short_help = "lb as <vip-prefix> [protocol (tcp|udp) port <n>]"
+      " [<address> [<address> [...]]] [del]",
   .function = lb_as_command_fn,
 };
 
@@ -441,6 +494,113 @@ VLIB_CLI_COMMAND (lb_set_interface_nat6_command, static) = {
   .path = "lb set interface nat6",
   .function = lb_set_interface_nat6_command_fn,
   .short_help = "lb set interface nat6 in <intfc> [del]",
+};
+
+int
+lb_flush_vip (u32 vip_index)
+{
+  u32 thread_index;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  lb_main_t *lbm = &lb_main;
+
+  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
+    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
+    if (h != NULL) {
+        u32 i;
+        lb_hash_bucket_t *b;
+
+        lb_hash_foreach_entry(h, b, i) {
+          if (b->vip[i] == vip_index)
+            {
+              vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
+              vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
+              b->vip[i] = ~0;
+              b->value[i] = ~0;
+            }
+        }
+    }
+  }
+
+  return 0;
+}
+
+static clib_error_t *
+lb_flush_vip_command_fn (vlib_main_t * vm,
+                         unformat_input_t * input,
+                         vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int ret;
+  ip46_address_t vip_prefix;
+  u8 vip_plen;
+  u32 vip_index;
+  u8 protocol = 0;
+  u8 per_port_vip = 0;
+  u32 port = 0;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &vip_prefix,
+                &vip_plen, IP46_TYPE_ANY, &vip_plen)) {
+    error = clib_error_return (0, "invalid vip prefix: '%U'",
+                               format_unformat_error, line_input);
+    goto done;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "protocol tcp"))
+      {
+        protocol = (u8)IP_PROTOCOL_TCP;
+        per_port_vip = 1;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+        protocol = (u8)IP_PROTOCOL_UDP;
+        per_port_vip = 1;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+  }
+
+  if (per_port_vip == 0)
+    {
+      protocol = ~0;
+      port = ~0;
+    }
+
+  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, protocol,
+                               (u16)port, &vip_index))){
+    error = clib_error_return (0, "lb_vip_find_index error %d", ret);
+    goto done;
+  }
+
+  if ((ret = lb_flush_vip(vip_index)))
+    {
+      error = clib_error_return (0, "lb_flush_vip error %d", ret);
+    }
+  else
+    {
+        vlib_cli_output(vm, "lb_flush_vip ok %d", vip_index);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*
+ * flush lb flowtable as per vip
+ */
+VLIB_CLI_COMMAND (lb_flush_vip_command, static) =
+{
+  .path = "lb flush vip",
+  .short_help = "lb flush vip <prefix> "
+      "[protocol (tcp|udp) port <n>]",
+  .function = lb_flush_vip_command_fn,
 };
 
 static clib_error_t *
