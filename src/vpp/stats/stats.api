@@ -416,8 +416,8 @@ define vnet_get_summary_stats_reply
 {
   u32 context;
   i32 retval;
-  u64 total_pkts[2];
-  u64 total_bytes[2];
+  u64 total_pkts[8];
+  u64 total_bytes[8];
   f64 vector_rate;
 };
 
