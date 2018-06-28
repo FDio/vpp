@@ -108,33 +108,54 @@ vl_api_lb_add_del_vip_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
   lb_vip_add_args_t args;
+  u8 per_port_vip = 0;
+
+  if((mp->protocol == IP_PROTOCOL_TCP)
+     || (mp->protocol == IP_PROTOCOL_UDP))
+    {
+      per_port_vip = 1;
+    }
+  else
+    {
+      mp->protocol = ~0;
+      mp->port = ~0;
+    }
 
   memcpy (&(args.prefix.ip6), mp->ip_prefix, sizeof(args.prefix.ip6));
 
   if (mp->is_del) {
     u32 vip_index;
-    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length, &vip_index)))
+    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length,
+                                 mp->protocol, mp->port, &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
     lb_vip_type_t type = 0;
 
     if (ip46_prefix_is_ip4(&(args.prefix), mp->prefix_length)) {
-        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+        if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP4_GRE4;
-        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP4_GRE6;
-        else if (mp->encap == LB_ENCAP_TYPE_L3DSR)
-            type = LB_VIP_TYPE_IP4_L3DSR;
-        else if (mp->encap == LB_ENCAP_TYPE_NAT4)
-            type = LB_VIP_TYPE_IP4_NAT4;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_GRE4_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_GRE6_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_L3DSR) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_L3DSR_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_NAT4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_NAT4_PORT;
     } else {
-        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+        if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP6_GRE4;
-        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP6_GRE6;
-        else if (mp->encap == LB_ENCAP_TYPE_NAT6)
-            type = LB_VIP_TYPE_IP6_NAT6;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_GRE4_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_GRE6_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_NAT6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_NAT6_PORT;
     }
 
     args.plen = mp->prefix_length;
@@ -208,7 +229,8 @@ vl_api_lb_add_del_as_t_handler
   memcpy(&as_address.ip6, mp->as_address,
          sizeof(as_address.ip6));
 
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length, &vip_index)))
+  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length,
+                              mp->protocol, mp->port, &vip_index)))
     goto done;
 
   if (mp->is_del)
@@ -233,11 +255,56 @@ static void *vl_api_lb_add_del_as_t_print
   FINISH;
 }
 
+static void
+vl_api_lb_flush_vip_t_handler
+(vl_api_lb_flush_vip_t * mp)
+{
+  lb_main_t *lbm = &lb_main;
+  int rv = 0;
+  ip46_address_t vip_prefix;
+  u8 vip_plen;
+  u32 vip_index;
+  vl_api_lb_flush_vip_reply_t * rmp;
+
+  if((mp->protocol != IP_PROTOCOL_TCP)
+     && (mp->protocol != IP_PROTOCOL_UDP))
+    {
+      mp->protocol = ~0;
+      mp->port = ~0;
+    }
+
+  memcpy (&(vip_prefix.ip6), mp->ip_prefix, sizeof(vip_prefix.ip6));
+
+  vip_plen = mp->prefix_length;
+
+  rv = lb_vip_find_index(&vip_prefix, vip_plen, mp->protocol,
+                         (u16)mp->port, &vip_index);
+
+  rv = lb_flush_vip(vip_index);
+
+ REPLY_MACRO (VL_API_LB_FLUSH_VIP_REPLY);
+}
+
+static void *vl_api_lb_flush_vip_t_print
+(vl_api_lb_flush_vip_t *mp, void * handle)
+{
+  u8 * s;
+  s = format (0, "SCRIPT: lb_add_del_vip ");
+  s = format (s, "%U ", format_ip46_prefix,
+              (ip46_address_t *)mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
+
+  s = format (s, "protocol %u ", mp->protocol);
+  s = format (s, "port %u ", mp->port);
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_lb_plugin_api_msg            \
 _(LB_CONF, lb_conf)                          \
 _(LB_ADD_DEL_VIP, lb_add_del_vip)            \
-_(LB_ADD_DEL_AS, lb_add_del_as)
+_(LB_ADD_DEL_AS, lb_add_del_as)              \
+_(LB_FLUSH_VIP, lb_flush_vip)
 
 static clib_error_t * lb_api_init (vlib_main_t * vm)
 {
