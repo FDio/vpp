@@ -66,11 +66,11 @@ class TestLB(VppTestCase):
     def getIPv4Flow(self, id):
         return (IP(dst="90.0.%u.%u" % (id / 255, id % 255),
                    src="40.0.%u.%u" % (id / 255, id % 255)) /
-                UDP(sport=10000 + id, dport=20000 + id))
+                UDP(sport=10000 + id, dport=20000))
 
     def getIPv6Flow(self, id):
         return (IPv6(dst="2001::%u" % (id), src="fd00:f00d:ffff::%u" % (id)) /
-                UDP(sport=10000 + id, dport=20000 + id))
+                UDP(sport=10000 + id, dport=20000))
 
     def generatePackets(self, src_if, isv4):
         self.reset_packet_infos()
@@ -194,9 +194,9 @@ class TestLB(VppTestCase):
     def test_lb_ip4_gre4(self):
         """ Load Balancer IP4 GRE4 """
         try:
-            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            self.vapi.cli("lb vip 90.0.0.0/8 protocl udp port 20000 encap gre4")
             for asid in self.ass:
-                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % (asid))
+                self.vapi.cli("lb as 90.0.0.0/8 protocl udp port 20000 10.0.0.%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
@@ -205,8 +205,8 @@ class TestLB(VppTestCase):
 
         finally:
             for asid in self.ass:
-                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
-            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+                self.vapi.cli("lb as 90.0.0.0/8 protocl udp port 20000 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 protocl udp port 20000 encap gre4 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre4(self):
