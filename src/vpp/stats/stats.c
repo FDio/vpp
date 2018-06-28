@@ -3098,9 +3098,10 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   vl_api_vnet_get_summary_stats_reply_t *rmp;
   vlib_combined_counter_main_t *cm;
   vlib_counter_t v;
+  vnet_interface_counter_type_t ct;
   int i, which;
-  u64 total_pkts[VLIB_N_RX_TX];
-  u64 total_bytes[VLIB_N_RX_TX];
+  u64 total_pkts[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 total_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
   vl_api_registration_t *reg;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -3130,10 +3131,17 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   }
   vnet_interface_counter_unlock (im);
 
-  rmp->total_pkts[VLIB_RX] = clib_host_to_net_u64 (total_pkts[VLIB_RX]);
-  rmp->total_bytes[VLIB_RX] = clib_host_to_net_u64 (total_bytes[VLIB_RX]);
-  rmp->total_pkts[VLIB_TX] = clib_host_to_net_u64 (total_pkts[VLIB_TX]);
-  rmp->total_bytes[VLIB_TX] = clib_host_to_net_u64 (total_bytes[VLIB_TX]);
+  foreach_rx_combined_interface_counter (ct)
+  {
+    rmp->total_pkts[ct] = clib_host_to_net_u64 (total_pkts[ct]);
+    rmp->total_bytes[ct] = clib_host_to_net_u64 (total_bytes[ct]);
+  }
+
+  foreach_tx_combined_interface_counter (ct)
+  {
+    rmp->total_pkts[ct] = clib_host_to_net_u64 (total_pkts[ct]);
+    rmp->total_bytes[ct] = clib_host_to_net_u64 (total_bytes[ct]);
+  }
   rmp->vector_rate =
     clib_host_to_net_u64 (vlib_last_vector_length_per_node (sm->vlib_main));
 
