@@ -479,7 +479,8 @@ int lb_conf(ip4_address_t *ip4_address, ip6_address_t *ip6_address,
 }
 
 static
-int lb_vip_find_index_with_lock(ip46_address_t *prefix, u8 plen, u32 *vip_index)
+int lb_vip_find_index_with_lock(ip46_address_t *prefix, u8 plen,
+                                u8 protocol, u16 port, u32 *vip_index)
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
@@ -489,7 +490,9 @@ int lb_vip_find_index_with_lock(ip46_address_t *prefix, u8 plen, u32 *vip_index)
       if ((vip->flags & LB_AS_FLAGS_USED) &&
           vip->plen == plen &&
           vip->prefix.as_u64[0] == prefix->as_u64[0] &&
-          vip->prefix.as_u64[1] == prefix->as_u64[1]) {
+          vip->prefix.as_u64[1] == prefix->as_u64[1] &&
+          vip->protocol == protocol &&
+          vip->port == port) {
         *vip_index = vip - lbm->vips;
         return 0;
       }
@@ -497,11 +500,12 @@ int lb_vip_find_index_with_lock(ip46_address_t *prefix, u8 plen, u32 *vip_index)
   return VNET_API_ERROR_NO_SUCH_ENTRY;
 }
 
-int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index)
+int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u8 protocol,
+                      u16 port, u32 *vip_index)
 {
   int ret;
   lb_get_writer_lock();
-  ret = lb_vip_find_index_with_lock(prefix, plen, vip_index);
+  ret = lb_vip_find_index_with_lock(prefix, plen, protocol, port, vip_index);
   lb_put_writer_lock();
   return ret;
 }
@@ -803,6 +807,70 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 }
 
 /**
+ * Add the VIP filter entry
+ */
+static int lb_vip_add_filter(lb_main_t *lbm, lb_vip_t *vip, u32 vip_idx)
+{
+  vip4_key_t key4;
+  vip6_key_t key6;
+  uword *p;
+
+  if (lb_vip_is_ip4(vip)) {
+      key4.dst = vip->prefix.ip4.as_u32;
+      key4.protocol = vip->protocol;
+      key4.port = clib_host_to_net_u16(vip->port);
+      p = hash_get (lbm->vip4_by_key, key4.as_u64);
+  } else {
+      key6.dst = vip->prefix.ip6;
+      key6.protocol = vip->protocol;
+      key6.port = clib_host_to_net_u16(vip->port);
+      p = hash_get_mem (lbm->vip6_by_key, &key6);
+  }
+
+  if (p)
+    return VNET_API_ERROR_TUNNEL_EXIST;
+
+  if (lb_vip_is_ip4(vip))
+      hash_set (lbm->vip4_by_key, key4.as_u64, vip_idx);
+  else
+      hash_set_mem_alloc (&lbm->vip6_by_key, &key6, vip_idx);
+
+  return 0;
+}
+
+/**
+ * Del the VIP filter entry
+ */
+static int lb_vip_del_filter(lb_main_t *lbm, lb_vip_t *vip)
+{
+  vip4_key_t key4;
+  vip6_key_t key6;
+  uword *p;
+
+  if (lb_vip_is_ip4(vip)) {
+      key4.dst = vip->prefix.ip4.as_u32;
+      key4.protocol = vip->protocol;
+      key4.port = clib_host_to_net_u16(vip->port);
+      p = hash_get (lbm->vip4_by_key, key4.as_u64);
+  } else {
+      key6.dst = vip->prefix.ip6;
+      key6.protocol = vip->protocol;
+      key6.port = clib_host_to_net_u16(vip->port);
+      p = hash_get_mem (lbm->vip6_by_key, &key6);
+  }
+
+  if (!p)
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  if (lb_vip_is_ip4(vip))
+      hash_unset (lbm->vip4_by_key, key4.as_u64);
+  else
+      hash_unset_mem_free (&lbm->vip6_by_key, &key6);
+
+  return 0;
+}
+
+/**
  * Deletes the adjacency associated with the VIP
  */
 static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
@@ -831,7 +899,8 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
   lb_get_writer_lock();
   ip46_prefix_normalize(&(args.prefix), args.plen);
 
-  if (!lb_vip_find_index_with_lock(&(args.prefix), args.plen, vip_index)) {
+  if (!lb_vip_find_index_with_lock(&(args.prefix), args.plen,
+                                   args.protocol, args.port, vip_index)) {
     lb_put_writer_lock();
     return VNET_API_ERROR_VALUE_EXIST;
   }
@@ -870,6 +939,8 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
   //Init
   memcpy (&(vip->prefix), &(args.prefix), sizeof(args.prefix));
   vip->plen = args.plen;
+  vip->protocol = args.protocol;
+  vip->port = args.port;
   vip->last_garbage_collection = (u32) vlib_time_now(vlib_get_main());
   vip->type = args.type;
 
@@ -929,6 +1000,9 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
   //Return result
   *vip_index = vip - lbm->vips;
 
+  //Create vip filtering table
+  lb_vip_add_filter(lbm, vip, *vip_index);
+
   lb_put_writer_lock();
   return 0;
 }
@@ -962,6 +1036,9 @@ int lb_vip_del(u32 vip_index)
 
   //Delete adjacency
   lb_vip_del_adjacency(lbm, vip);
+
+  //Del vip filtering table
+  lb_vip_del_filter(lbm, vip);
 
   //Set the VIP as unused
   vip->flags &= ~LB_VIP_FLAGS_USED;
@@ -1125,6 +1202,11 @@ lb_init (vlib_main_t * vm)
 
   lbm->vip_index_by_nodeport
     = hash_create_mem (0, sizeof(u16), sizeof (uword));
+
+  /* initialize the ip6 hash */
+  lbm->vip6_by_key = hash_create_mem (0,
+                     sizeof (vip6_key_t),
+                     sizeof (uword));
 
   clib_bihash_init_8_8 (&lbm->mapping_by_as4,
                         "mapping_by_as4", LB_MAPPING_BUCKETS,
