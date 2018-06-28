@@ -173,14 +173,27 @@ lb_node_get_other_ports6 (ip6_header_t *ip60)
   return 0;
 }
 
-static_always_inline u32
-lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
+static_always_inline void
+lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
+                  u32 *hash, u32 *vip_idx, u8 per_port_vip)
 {
-  u32 hash;
+  vip_port_key_t key;
+  clib_bihash_kv_8_8_t kv, value;
+
+  /* For vip case, retrieve vip index for ip lookup */
+  *vip_idx = vnet_buffer (p)->ip.adj_index[VLIB_TX];
+
+  if (per_port_vip)
+    {
+      /* For per-port-vip case, ip lookup stores dummy index */
+      key.vip_prefix_index = *vip_idx;
+    }
+
   if (is_input_v4)
     {
       ip4_header_t *ip40;
       u64 ports;
+
       ip40 = vlib_buffer_get_current (p);
       if (PREDICT_TRUE(
           ip40->protocol == IP_PROTOCOL_TCP
@@ -190,13 +203,20 @@ lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
       else
         ports = lb_node_get_other_ports4 (ip40);
 
-      hash = lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
+      *hash = lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
+
+      if (per_port_vip)
+        {
+          key.protocol = ip40->protocol;
+          key.port = (u16)(ports & 0xFFFF);
+        }
     }
   else
     {
       ip6_header_t *ip60;
       ip60 = vlib_buffer_get_current (p);
       u64 ports;
+
       if (PREDICT_TRUE(
           ip60->protocol == IP_PROTOCOL_TCP
               || ip60->protocol == IP_PROTOCOL_UDP))
@@ -205,18 +225,39 @@ lb_node_get_hash (vlib_buffer_t *p, u8 is_input_v4)
       else
         ports = lb_node_get_other_ports6 (ip60);
 
-      hash = lb_hash_hash (ip60->src_address.as_u64[0],
+      *hash = lb_hash_hash (ip60->src_address.as_u64[0],
                            ip60->src_address.as_u64[1],
                            ip60->dst_address.as_u64[0],
                            ip60->dst_address.as_u64[1], ports);
+
+      if (per_port_vip)
+        {
+          key.protocol = ip60->protocol;
+          key.port = (u16)(ports & 0xFFFF);
+        }
     }
-  return hash;
+
+  /* For per-port-vip case, retrieve vip index for vip_port_filter table */
+  if (per_port_vip)
+    {
+      kv.key = key.as_u64;
+      if (clib_bihash_search_8_8(&lbm->vip_index_per_port, &kv, &value) < 0)
+        {
+          /* return default vip */
+          *vip_idx = 0;
+          return;
+        }
+      *vip_idx = value.value;
+    }
 }
 
 static_always_inline uword
-lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
+lb_node_fn (vlib_main_t * vm,
+            vlib_node_runtime_t * node,
+            vlib_frame_t * frame,
             u8 is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
-            lb_encap_type_t encap_type) //Compile-time parameter is GRE4/GRE6/L3DSR/NAT4/NAT6
+            lb_encap_type_t encap_type, //Compile-time parameter is GRE4/GRE6/L3DSR/NAT4/NAT6
+            u8 per_port_vip) //Compile-time parameter stating that is per_port_vip or not
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
@@ -229,8 +270,13 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
   next_index = node->cached_next_index;
 
   u32 nexthash0 = 0;
+  u32 next_vip_idx0 = ~0;
   if (PREDICT_TRUE(n_left_from > 0))
-    nexthash0 = lb_node_get_hash (vlib_get_buffer (vm, from[0]), is_input_v4);
+    {
+      vlib_buffer_t *p0 = vlib_get_buffer (vm, from[0]);
+      lb_node_get_hash (lbm, p0, is_input_v4, &nexthash0,
+                        &next_vip_idx0, per_port_vip);
+    }
 
   while (n_left_from > 0)
     {
@@ -240,17 +286,21 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
           u32 pi0;
           vlib_buffer_t *p0;
           lb_vip_t *vip0;
-          u32 asindex0;
+          u32 asindex0 = 0;
           u16 len0;
           u32 available_index0;
           u8 counter = 0;
           u32 hash0 = nexthash0;
+          u32 vip_index0 = next_vip_idx0;
+          u32 next0;
 
           if (PREDICT_TRUE(n_left_from > 1))
             {
               vlib_buffer_t *p1 = vlib_get_buffer (vm, from[1]);
               //Compute next hash and prefetch bucket
-              nexthash0 = lb_node_get_hash (p1, is_input_v4);
+              lb_node_get_hash (lbm, p1, is_input_v4,
+                                &nexthash0, &next_vip_idx0,
+                                per_port_vip);
               lb_hash_prefetch_bucket (sticky_ht, nexthash0);
               //Prefetch for encap, next
               CLIB_PREFETCH(vlib_buffer_get_current (p1) - 64, 64, STORE);
@@ -272,8 +322,8 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
           n_left_to_next -= 1;
 
           p0 = vlib_get_buffer (vm, pi0);
-          vip0 = pool_elt_at_index(lbm->vips,
-                                   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
+
+          vip0 = pool_elt_at_index(lbm->vips, vip_index0);
 
           if (is_input_v4)
             {
@@ -290,7 +340,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
             }
 
           lb_hash_get (sticky_ht, hash0,
-                       vnet_buffer (p0)->ip.adj_index[VLIB_TX], lb_time,
+                       vip_index0, lb_time,
                        &available_index0, &asindex0);
 
           if (PREDICT_TRUE(asindex0 != ~0))
@@ -320,7 +370,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
               //Note that when there is no AS configured, an entry is configured anyway.
               //But no configured AS is not something that should happen
               lb_hash_put (sticky_ht, hash0, asindex0,
-              vnet_buffer (p0)->ip.adj_index[VLIB_TX],
+                           vip_index0,
                            available_index0, lb_time);
             }
           else
@@ -333,7 +383,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
 
           vlib_increment_simple_counter (
               &lbm->vip_counters[counter], thread_index,
-              vnet_buffer (p0)->ip.adj_index[VLIB_TX],
+              vip_index0,
               1);
 
           //Now let's encap
@@ -436,8 +486,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
                       csum, lbm->ass[asindex0].address.ip4.as_u32);
                   ip40->checksum = ip_csum_fold (csum);
 
-                  if ((ip40->protocol == IP_PROTOCOL_UDP)
-                      || (uh->dst_port == vip0->encap_args.port))
+                  if (ip40->protocol == IP_PROTOCOL_UDP)
                     {
                       uh->dst_port = vip0->encap_args.target_port;
                       csum = uh->checksum;
@@ -448,7 +497,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
                     }
                   else
                     {
-                      next_index = LB_NEXT_DROP;
+                      asindex0 = 0;
                     }
                 }
               else if ((is_input_v4 == 0) && (encap_type == LB_ENCAP_TYPE_NAT6))
@@ -481,25 +530,25 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
                     }
                   else
                     {
-                      next_index = LB_NEXT_DROP;
+                      asindex0 = 0;
                     }
                 }
             }
+          next0 = lbm->ass[asindex0].dpo.dpoi_next_node;
+          //Note that this is going to error if asindex0 == 0
+          vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+              lbm->ass[asindex0].dpo.dpoi_index;
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof(*tr));
               tr->as_index = asindex0;
-              tr->vip_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+              tr->vip_index = vip_index0;
             }
 
           //Enqueue to next
-          //Note that this is going to error if asindex0 == 0
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-              lbm->ass[asindex0].dpo.dpoi_index;
           vlib_validate_buffer_enqueue_x1(
-              vm, node, next_index, to_next, n_left_to_next, pi0,
-              lbm->ass[asindex0].dpo.dpoi_next_node);
+              vm, node, next_index, to_next, n_left_to_next, pi0, next0);
         }
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -887,49 +936,84 @@ static uword
 lb6_gre6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 0);
 }
 
 static uword
 lb6_gre4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 0);
 }
 
 static uword
 lb4_gre6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 0);
 }
 
 static uword
 lb4_gre4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 0);
+}
+
+static uword
+lb6_gre6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 1);
+}
+
+static uword
+lb6_gre4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 1);
+}
+
+static uword
+lb4_gre6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 1);
+}
+
+static uword
+lb4_gre4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 1);
 }
 
 static uword
 lb4_l3dsr_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-                   vlib_frame_t * frame)
+                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 0);
 }
 
 static uword
-lb6_nat6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-                  vlib_frame_t * frame)
+lb4_l3dsr_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 1);
 }
 
 static uword
-lb4_nat4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-                  vlib_frame_t * frame)
+lb6_nat6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_NAT4);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6, 1);
+}
+
+static uword
+lb4_nat4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_NAT4, 1);
 }
 
 static uword
@@ -952,7 +1036,8 @@ VLIB_REGISTER_NODE (lb6_gre6_node) =
     .name = "lb6-gre6",
     .vector_size = sizeof(u32),
     .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR, .error_strings = lb_error_strings,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
     .n_next_nodes = LB_N_NEXT,
     .next_nodes =
         { [LB_NEXT_DROP] = "error-drop" },
@@ -992,7 +1077,72 @@ VLIB_REGISTER_NODE (lb4_gre4_node) =
     .format_trace = format_lb_trace,
     .n_errors = LB_N_ERROR,
     .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT, 
+    .n_next_nodes = LB_N_NEXT,
+    .next_nodes =
+        { [LB_NEXT_DROP] = "error-drop" },
+  };
+
+VLIB_REGISTER_NODE (lb6_gre6_port_node) =
+  {
+    .function = lb6_gre6_port_node_fn,
+    .name = "lb6-gre6-port",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_N_NEXT,
+    .next_nodes =
+        { [LB_NEXT_DROP] = "error-drop" },
+  };
+
+VLIB_REGISTER_NODE (lb6_gre4_port_node) =
+  {
+    .function = lb6_gre4_port_node_fn,
+    .name = "lb6-gre4-port",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_N_NEXT,
+    .next_nodes =
+        { [LB_NEXT_DROP] = "error-drop" },
+  };
+
+VLIB_REGISTER_NODE (lb4_gre6_port_node) =
+  {
+    .function = lb4_gre6_port_node_fn,
+    .name = "lb4-gre6-port",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_N_NEXT,
+    .next_nodes =
+        { [LB_NEXT_DROP] = "error-drop" },
+  };
+
+VLIB_REGISTER_NODE (lb4_gre4_port_node) =
+  {
+    .function = lb4_gre4_port_node_fn,
+    .name = "lb4-gre4-port",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_N_NEXT,
+    .next_nodes =
+        { [LB_NEXT_DROP] = "error-drop" },
+  };
+
+VLIB_REGISTER_NODE (lb4_l3dsr_port_node) =
+  {
+    .function = lb4_l3dsr_port_node_fn,
+    .name = "lb4-l3dsr-port",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_N_NEXT,
     .next_nodes =
         { [LB_NEXT_DROP] = "error-drop" },
   };
@@ -1010,10 +1160,10 @@ VLIB_REGISTER_NODE (lb4_l3dsr_node) =
         { [LB_NEXT_DROP] = "error-drop" },
   };
 
-VLIB_REGISTER_NODE (lb6_nat6_node) =
+VLIB_REGISTER_NODE (lb6_nat6_port_node) =
   {
-    .function = lb6_nat6_node_fn,
-    .name = "lb6-nat6",
+    .function = lb6_nat6_port_node_fn,
+    .name = "lb6-nat6-port",
     .vector_size = sizeof(u32),
     .format_trace = format_lb_trace,
     .n_errors = LB_N_ERROR,
@@ -1023,10 +1173,10 @@ VLIB_REGISTER_NODE (lb6_nat6_node) =
         { [LB_NEXT_DROP] = "error-drop" },
   };
 
-VLIB_REGISTER_NODE (lb4_nat4_node) =
+VLIB_REGISTER_NODE (lb4_nat4_port_node) =
   {
-    .function = lb4_nat4_node_fn,
-    .name = "lb4-nat4",
+    .function = lb4_nat4_port_node_fn,
+    .name = "lb4-nat4-port",
     .vector_size = sizeof(u32),
     .format_trace = format_lb_trace,
     .n_errors = LB_N_ERROR,
@@ -1061,7 +1211,7 @@ VLIB_REGISTER_NODE (lb4_nodeport_node) =
     .n_next_nodes = LB4_NODEPORT_N_NEXT,
     .next_nodes =
         {
-            [LB4_NODEPORT_NEXT_IP4_NAT4] = "lb4-nat4",
+            [LB4_NODEPORT_NEXT_IP4_NAT4] = "lb4-nat4-port",
             [LB4_NODEPORT_NEXT_DROP] = "error-drop",
         },
   };
@@ -1077,7 +1227,7 @@ VLIB_REGISTER_NODE (lb6_nodeport_node) =
     .n_next_nodes = LB6_NODEPORT_N_NEXT,
     .next_nodes =
       {
-          [LB6_NODEPORT_NEXT_IP6_NAT6] = "lb6-nat6",
+          [LB6_NODEPORT_NEXT_IP6_NAT6] = "lb6-nat6-port",
           [LB6_NODEPORT_NEXT_DROP] = "error-drop",
       },
   };

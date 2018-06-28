@@ -108,33 +108,56 @@ vl_api_lb_add_del_vip_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
   lb_vip_add_args_t args;
+  u8 per_port_vip = 0;
+
+  if((mp->protocol == IP_PROTOCOL_TCP)
+     || (mp->protocol == IP_PROTOCOL_UDP))
+    {
+      per_port_vip = 1;
+    }
+  else
+    {
+      mp->protocol = ~0;
+      mp->port = ~0;
+    }
 
   memcpy (&(args.prefix.ip6), mp->ip_prefix, sizeof(args.prefix.ip6));
 
   if (mp->is_del) {
     u32 vip_index;
-    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length, &vip_index)))
+    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length,
+                                 mp->protocol, mp->port, &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
     lb_vip_type_t type = 0;
 
     if (ip46_prefix_is_ip4(&(args.prefix), mp->prefix_length)) {
-        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+        if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP4_GRE4;
-        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP4_GRE6;
-        else if (mp->encap == LB_ENCAP_TYPE_L3DSR)
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_GRE4_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_GRE6_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_L3DSR) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP4_L3DSR;
-        else if (mp->encap == LB_ENCAP_TYPE_NAT4)
-            type = LB_VIP_TYPE_IP4_NAT4;
+        else if ((mp->encap == LB_ENCAP_TYPE_L3DSR) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_L3DSR_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_NAT4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP4_NAT4_PORT;
     } else {
-        if (mp->encap == LB_ENCAP_TYPE_GRE4)
+        if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP6_GRE4;
-        else if (mp->encap == LB_ENCAP_TYPE_GRE6)
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 0))
             type = LB_VIP_TYPE_IP6_GRE6;
-        else if (mp->encap == LB_ENCAP_TYPE_NAT6)
-            type = LB_VIP_TYPE_IP6_NAT6;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE4) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_GRE4_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_GRE6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_GRE6_PORT;
+        else if ((mp->encap == LB_ENCAP_TYPE_NAT6) && (per_port_vip == 1))
+            type = LB_VIP_TYPE_IP6_NAT6_PORT;
     }
 
     args.plen = mp->prefix_length;
@@ -147,9 +170,7 @@ vl_api_lb_add_del_vip_t_handler
     else if ((mp->encap == LB_ENCAP_TYPE_NAT4)
             ||(mp->encap == LB_ENCAP_TYPE_NAT6)) {
         args.encap_args.srv_type = mp->type;
-        args.encap_args.port = ntohs(mp->port);
         args.encap_args.target_port = ntohs(mp->target_port);
-        args.encap_args.node_port = ntohs(mp->node_port);
       }
 
     rv = lb_vip_add(args, &vip_index);
@@ -182,7 +203,6 @@ static void *vl_api_lb_add_del_vip_t_print
       s = format (s, "type %u ", mp->type);
       s = format (s, "port %u ", mp->port);
       s = format (s, "target_port %u ", mp->target_port);
-      s = format (s, "node_port %u ", mp->node_port);
     }
 
   s = format (s, "%u ", mp->new_flows_table_length);
@@ -208,7 +228,8 @@ vl_api_lb_add_del_as_t_handler
   memcpy(&as_address.ip6, mp->as_address,
          sizeof(as_address.ip6));
 
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length, &vip_index)))
+  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length,
+                              mp->protocol, mp->port, &vip_index)))
     goto done;
 
   if (mp->is_del)
