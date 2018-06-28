@@ -109,11 +109,19 @@ vl_api_lb_add_del_vip_t_handler
   int rv = 0;
   lb_vip_add_args_t args;
 
+  if((mp->protocol != IP_PROTOCOL_TCP)
+     && (mp->protocol != IP_PROTOCOL_UDP))
+    {
+      mp->protocol = ~0;
+      mp->port = 0;
+    }
+
   memcpy (&(args.prefix.ip6), mp->ip_prefix, sizeof(args.prefix.ip6));
 
   if (mp->is_del) {
     u32 vip_index;
-    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length, &vip_index)))
+    if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length,
+                                 mp->protocol, mp->port, &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
@@ -147,9 +155,7 @@ vl_api_lb_add_del_vip_t_handler
     else if ((mp->encap == LB_ENCAP_TYPE_NAT4)
             ||(mp->encap == LB_ENCAP_TYPE_NAT6)) {
         args.encap_args.srv_type = mp->type;
-        args.encap_args.port = ntohs(mp->port);
         args.encap_args.target_port = ntohs(mp->target_port);
-        args.encap_args.node_port = ntohs(mp->node_port);
       }
 
     rv = lb_vip_add(args, &vip_index);
@@ -182,7 +188,6 @@ static void *vl_api_lb_add_del_vip_t_print
       s = format (s, "type %u ", mp->type);
       s = format (s, "port %u ", mp->port);
       s = format (s, "target_port %u ", mp->target_port);
-      s = format (s, "node_port %u ", mp->node_port);
     }
 
   s = format (s, "%u ", mp->new_flows_table_length);
@@ -208,7 +213,8 @@ vl_api_lb_add_del_as_t_handler
   memcpy(&as_address.ip6, mp->as_address,
          sizeof(as_address.ip6));
 
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length, &vip_index)))
+  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length,
+                              mp->protocol, mp->port, &vip_index)))
     goto done;
 
   if (mp->is_del)
