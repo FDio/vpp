@@ -16,7 +16,6 @@
 #ifndef SRC_VNET_SESSION_APPLICATION_H_
 #define SRC_VNET_SESSION_APPLICATION_H_
 
-#include <vnet/vnet.h>
 #include <vnet/session/session.h>
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/application_namespace.h>
