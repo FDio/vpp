@@ -2489,6 +2489,10 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
   clib_file_t *uf;
   int i;
 
+  /* Validate cli_file_index */
+  if (pool_is_free_index (cm->cli_file_pool, cli_file_index))
+    return;
+
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
   uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
