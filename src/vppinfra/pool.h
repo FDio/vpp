@@ -201,8 +201,9 @@ do {                                                                    \
       /* Return free element from free list. */                         \
       uword _pool_var (i) = _pool_var (p)->free_indices[_pool_var (l) - 1]; \
       (E) = (P) + _pool_var (i);                                        \
-      clib_bitmap_set_no_check (_pool_var (p)->free_bitmap,             \
-                                _pool_var (i), 0);                      \
+      _pool_var (p)->free_bitmap =					\
+	clib_bitmap_andnoti_notrim (_pool_var (p)->free_bitmap,        \
+	                             _pool_var (i));	               	\
       _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;       \
     }                                                                   \
   else                                                                  \
@@ -220,7 +221,6 @@ do {                                                                    \
 		       pool_aligned_header_bytes,                       \
 		       /* align */ (A));                                \
       E = vec_end (P) - 1;                                              \
-      pool_validate_index (P, vec_len(P)-1);                            \
     }									\
 } while (0)
 
@@ -264,7 +264,7 @@ do {                                                                    \
 ({									\
   pool_header_t * _pool_var (p) = pool_header (P);			\
   uword _pool_var (i) = (E) - (P);					\
-  (_pool_var (i) < vec_len (P)) ? clib_bitmap_get_no_check (_pool_var (p)->free_bitmap, _pool_i) : 1; \
+  (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1; \
 })
 
 /** Use free bitmap to query whether given index is free */
@@ -279,8 +279,9 @@ do {									\
   ASSERT (! pool_is_free (P, E));					\
 									\
   /* Add element to free bitmap and to free list. */			\
-  clib_bitmap_set_no_check (_pool_var (p)->free_bitmap,                 \
-                            _pool_var (l), 1);                          \
+  _pool_var (p)->free_bitmap =						\
+    clib_bitmap_ori_notrim (_pool_var (p)->free_bitmap,              	\
+                             _pool_var (l));	                        \
                                                                         \
   /* Preallocated pool? */                                              \
   if (_pool_var (p)->max_elts)                                          \
