@@ -12,7 +12,6 @@
 # limitations under the License.
 
 lib_LTLIBRARIES += libvnet.la
-noinst_LTLIBRARIES =
 
 libvnet_la_SOURCES =
 libvnet_la_DEPENDENCIES = \
