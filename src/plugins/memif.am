@@ -44,24 +44,24 @@ if CC_SUPPORTS_AVX2
 ###############################################################
 # AVX2
 ###############################################################
-libmemif_plugin_avx2_la_SOURCES = $(memif_multiversioning_sources)
-libmemif_plugin_avx2_la_CFLAGS =				\
+memif_plugin_avx2_la_SOURCES = $(memif_multiversioning_sources)
+memif_plugin_avx2_la_CFLAGS =					\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
 	-DCLIB_MARCH_VARIANT=avx2
-noinst_LTLIBRARIES += libmemif_plugin_avx2.la
-memif_plugin_la_LIBADD += libmemif_plugin_avx2.la
+noinst_LTLIBRARIES += memif_plugin_avx2.la
+memif_plugin_la_LIBADD += memif_plugin_avx2.la
 endif
 
 if CC_SUPPORTS_AVX512
 ###############################################################
 # AVX512
 ###############################################################
-libmemif_plugin_avx512_la_SOURCES = $(memif_multiversioning_sources)
-libmemif_plugin_avx512_la_CFLAGS =				\
+memif_plugin_avx512_la_SOURCES = $(memif_multiversioning_sources)
+memif_plugin_avx512_la_CFLAGS =					\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
 	-DCLIB_MARCH_VARIANT=avx512
-noinst_LTLIBRARIES += libmemif_plugin_avx512.la
-memif_plugin_la_LIBADD += libmemif_plugin_avx512.la
+noinst_LTLIBRARIES += memif_plugin_avx512.la
+memif_plugin_la_LIBADD += memif_plugin_avx512.la
 endif
 endif
 

@@ -521,7 +521,7 @@ VNET_DEVICE_CLASS (memif_device_class) = {
 vlib_node_function_t __clib_weak memif_interface_tx_avx512;
 vlib_node_function_t __clib_weak memif_interface_tx_avx2;
 static void __clib_constructor
-dpdk_interface_tx_multiarch_select (void)
+memif_interface_tx_multiarch_select (void)
 {
   if (memif_interface_tx_avx512 && clib_cpu_supports_avx512f ())
     memif_device_class.tx_function = memif_interface_tx_avx512;
