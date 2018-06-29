@@ -25,6 +25,8 @@
 #include "vom/bond_group_binding_cmds.hpp"
 #include "vom/l2_binding.hpp"
 #include "vom/l2_binding_cmds.hpp"
+#include "vom/l2_xconnect.hpp"
+#include "vom/l2_xconnect_cmds.hpp"
 #include "vom/l3_binding.hpp"
 #include "vom/l3_binding_cmds.hpp"
 #include "vom/bridge_domain.hpp"
@@ -292,6 +294,14 @@ public:
                     else if (typeid(*f_exp) == typeid(l2_binding_cmds::set_vtr_op_cmd))
                     {
                         rc = handle_derived<l2_binding_cmds::set_vtr_op_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(l2_xconnect_cmds::bind_cmd))
+                    {
+                        rc = handle_derived<l2_xconnect_cmds::bind_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(l2_xconnect_cmds::unbind_cmd))
+                    {
+                        rc = handle_derived<l2_xconnect_cmds::unbind_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(vxlan_tunnel_cmds::create_cmd))
                     {
@@ -1015,6 +1025,60 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh3));
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd2));
     TRY_CHECK(OM::remove(jkr));
+}
+
+BOOST_AUTO_TEST_CASE(test_l2_xconnect) {
+    VppInit vi;
+    const std::string nicholas = "NicholasAbercrombie";
+    rc_t rc = rc_t::OK;
+
+    /*
+     * Interface 1
+     */
+    std::string itf1_name = "host1";
+    interface itf1(itf1_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+    HW::item<handle_t> hw_ifh(2, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
+    TRY_CHECK_RC(OM::write(nicholas, itf1));
+
+    /*
+     * Interface 2
+     */
+    std::string itf2_name = "host2";
+    interface itf2(itf2_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+
+    HW::item<handle_t> hw_ifh2(4, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
+    TRY_CHECK_RC(OM::write(nicholas, itf2));
+
+    l2_xconnect *l2_xconn = new l2_xconnect(itf1, itf2);
+    HW::item<bool> xconnect_east(true, rc_t::OK);
+    HW::item<bool> xconnect_west(true, rc_t::OK);
+    HW::item<bool> xconnect_east_unbind(false, rc_t::OK);
+    HW::item<bool> xconnect_west_unbind(false, rc_t::OK);
+    ADD_EXPECT(l2_xconnect_cmds::bind_cmd(xconnect_east, hw_ifh.data(), hw_ifh2.data()));
+    ADD_EXPECT(l2_xconnect_cmds::bind_cmd(xconnect_west, hw_ifh2.data(), hw_ifh.data()));
+    TRY_CHECK_RC(OM::write(nicholas, *l2_xconn));
+
+    delete l2_xconn;
+
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
+    STRICT_ORDER_OFF();
+    ADD_EXPECT(l2_xconnect_cmds::unbind_cmd(xconnect_east_unbind, hw_ifh.data(), hw_ifh2.data()));
+    ADD_EXPECT(l2_xconnect_cmds::unbind_cmd(xconnect_west_unbind, hw_ifh2.data(), hw_ifh.data()));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
+
+    TRY_CHECK(OM::remove(nicholas));
 }
 
 BOOST_AUTO_TEST_CASE(test_vxlan) {
