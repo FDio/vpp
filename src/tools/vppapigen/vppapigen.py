@@ -685,12 +685,13 @@ class VPPAPI(object):
             # Only allow the following object types from imported file
             if in_import and not (isinstance(o, Enum) or
                                   isinstance(o, Union) or
-                                  isinstance(o, Typedef)):
+                                  isinstance(o, Typedef) or
+                                  isinstance(o, Import)):
                 continue
-            result.append(o)
-
             if isinstance(o, Import):
                 self.process_imports(o.result, True, result)
+            else:
+                result.append(o)
 
 # Add message ids to each message.
 def add_msg_id(s):
@@ -764,7 +765,7 @@ def main():
     # Debug
     if args.debug:
         import pprint
-        pp = pprint.PrettyPrinter(indent=4)
+        pp = pprint.PrettyPrinter(indent=4, stream=sys.stderr)
         for t in s['Define']:
             pp.pprint([t.name, t.flags, t.block])
         for t in s['types']:
