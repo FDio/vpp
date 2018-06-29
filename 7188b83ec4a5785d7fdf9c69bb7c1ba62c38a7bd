@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff2236c4_0c7b2659",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 420,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-06-29T10:04:20Z",
+      "side": 1,
+      "message": "The vnet_interface_counter_t enum should probably be moved to the .api file. But, we might deprecate this API call over time anyway, and instead use the new shared memory segment for all statistics.\nA long story short, would you mind:\na) rev\u0027ing the version number at the top of the file\nb) Adding a comment stating that the length of the array must match the length of the combined counter part of the enum in interface.h.\n\nThanks!",
+      "range": {
+        "startLine": 419,
+        "startChar": 2,
+        "endLine": 420,
+        "endChar": 20
+      },
+      "revId": "7188b83ec4a5785d7fdf9c69bb7c1ba62c38a7bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
