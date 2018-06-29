@@ -517,6 +517,7 @@ int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
 int session_dgram_connect_notify (transport_connection_t * tc,
 				  u32 old_thread_index,
 				  stream_session_t ** new_session);
+int session_dequeue_notify (stream_session_t * s);
 void stream_session_init_fifos_pointers (transport_connection_t * tc,
 					 u32 rx_pointer, u32 tx_pointer);
 

@@ -503,6 +503,32 @@ session_enqueue_notify (stream_session_t * s, u8 block)
   return 0;
 }
 
+int
+session_dequeue_notify (stream_session_t * s)
+{
+  application_t *app;
+  svm_queue_t *q;
+
+  app = application_get (s->app_index);
+  if (application_is_builtin (app))
+    return 0;
+
+  q = app->event_queue;
+  if (PREDICT_TRUE (q->cursize < q->maxsize))
+    {
+      session_fifo_event_t evt = {
+	.event_type = FIFO_EVENT_APP_TX,
+	.fifo = s->server_tx_fifo
+      };
+      svm_queue_add (app->event_queue, (u8 *) & evt, SVM_Q_WAIT);
+    }
+  else
+    {
+      return -1;
+    }
+  return 0;
+}
+
 /**
  * Flushes queue of sessions that are to be notified of new data
  * enqueued events.
