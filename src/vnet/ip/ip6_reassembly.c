@@ -663,6 +663,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   int consumed = 0;
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
+  reass->next_index = fvnb->ip.reass.next_index;	// store next_index before it's overwritten
   fvnb->ip.reass.ip6_frag_hdr_offset =
     (u8 *) frag_hdr - (u8 *) vlib_buffer_get_current (fb);
   ip6_header_t *fip = vlib_buffer_get_current (fb);
