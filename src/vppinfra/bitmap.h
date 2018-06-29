@@ -533,8 +533,12 @@ clib_bitmap_##name (uword * ai, uword * bi)			\
 }
 
 /* ALU functions: */
+/* *INDENT-OFF* */
 _(and, a = a & b, 1)
-_(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
+_(andnot, a = a & ~b, 1)
+_(or, a = a | b, 0)
+_(xor, a = a ^ b, 1)
+/* *INDENT-ON* */
 #undef _
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -542,8 +546,7 @@ _(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
     @param bi - pointer to the source bitmap
     @returns aiDup = ai and bi. Neither ai nor bi are modified
 */
-     always_inline uword *
-     clib_bitmap_dup_and (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_dup_and (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -551,8 +554,7 @@ _(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
     @param bi - pointer to the source bitmap
     @returns aiDup = ai & ~bi. Neither ai nor bi are modified
 */
-     always_inline uword *
-     clib_bitmap_dup_andnot (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_dup_andnot (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -560,8 +562,7 @@ _(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
     @param bi - pointer to the source bitmap
     @returns aiDup = ai or bi. Neither ai nor bi are modified
 */
-     always_inline uword *
-     clib_bitmap_dup_or (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_dup_or (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -569,22 +570,23 @@ _(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
     @param bi - pointer to the source bitmap
     @returns aiDup = ai xor bi. Neither ai nor bi are modified
 */
-     always_inline uword *
-     clib_bitmap_dup_xor (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_dup_xor (uword * ai, uword * bi);
 
 #define _(name)						\
   always_inline uword *					\
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
 { return clib_bitmap_##name (clib_bitmap_dup (ai), bi); }
 
+/* *INDENT-OFF* */
 _(and);
 _(andnot);
 _(or);
 _(xor);
-
+/* *INDENT-ON* */
 #undef _
 
-/* ALU function definition macro for functions taking one bitmap and an immediate. */
+/* ALU function definition macro for functions taking one bitmap and an
+ * immediate. */
 #define _(name, body, check_zero)			\
 always_inline uword *					\
 clib_bitmap_##name (uword * ai, uword i)		\
@@ -603,17 +605,48 @@ clib_bitmap_##name (uword * ai, uword i)		\
 }
 
 /* ALU functions immediate: */
+/* *INDENT-OFF* */
 _(andi, a = a & b, 1)
-_(andnoti, a = a & ~b, 1) _(ori, a = a | b, 0) _(xori, a = a ^ b, 1)
+_(andnoti, a = a & ~b, 1)
+_(ori, a = a | b, 0)
+_(xori, a = a ^ b, 1)
+/* *INDENT-ON* */
 #undef _
+
+/* ALU function definition macro for functions taking one bitmap and an
+ * immediate. No tail trimming */
+#define _(name, body)					\
+always_inline uword *					\
+clib_bitmap_##name##_notrim (uword * ai, uword i)	\
+{							\
+  uword i0 = i / BITS (ai[0]);				\
+  uword i1 = i % BITS (ai[0]);				\
+  uword a, b;						\
+  clib_bitmap_vec_validate (ai, i0);			\
+  a = ai[i0];						\
+  b = (uword) 1 << i1;					\
+  do { body; } while (0);				\
+  ai[i0] = a;						\
+  return ai;						\
+}
+
+/* ALU functions immediate: */
+/* *INDENT-OFF* */
+_(andi, a = a & b)
+_(andnoti, a = a & ~b)
+_(ori, a = a | b)
+_(xori, a = a ^ b)
+#undef _
+/* *INDENT-ON* */
+
 /** Return a random bitmap of the requested length
     @param ai - pointer to the destination bitmap
     @param n_bits - number of bits to allocate
     @param [in,out] seed - pointer to the random number seed
     @returns a reasonably random bitmap based. See random.h.
 */
-     always_inline uword *
-     clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
+always_inline uword *
+clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
   vec_reset_length (ai);
 
