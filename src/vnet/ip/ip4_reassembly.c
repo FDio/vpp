@@ -653,6 +653,7 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip4_header_t *fip = vlib_buffer_get_current (fb);
   ASSERT (fb->current_length >= sizeof (*fip));
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
+  reass->next_index = fvnb->ip.reass.next_index;	// store next_index before it's overwritten
   u32 fragment_first = fvnb->ip.reass.fragment_first =
     ip4_get_fragment_offset_bytes (fip);
   u32 fragment_length =
@@ -662,7 +663,6 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   int more_fragments = ip4_get_fragment_more (fip);
   u32 candidate_range_bi = reass->first_bi;
   u32 prev_range_bi = ~0;
-  reass->next_index = fvnb->ip.reass.next_index;	// store next_index before it's overwritten
   fvnb->ip.reass.range_first = fragment_first;
   fvnb->ip.reass.range_last = fragment_last;
   fvnb->ip.reass.next_range_bi = ~0;
