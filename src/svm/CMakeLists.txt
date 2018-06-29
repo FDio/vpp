@@ -23,6 +23,9 @@ add_vpp_library(svm
   queue.c
   message_queue.c
 
+  MULTIARCH_SOURCES
+  svm_fifo.c
+
   INSTALL_HEADERS
   ssvm.h
   svm_common.h
