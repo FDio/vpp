@@ -16,6 +16,41 @@
 #include <svm/svm_fifo.h>
 #include <vppinfra/cpu.h>
 
+#if __x86_64__ && CLIB_DEBUG == 0
+#define foreach_march_variant_runtime(macro, _args...) 			\
+  macro(avx512, avx512f, _args)						\
+  macro(avx2, avx2, _args)
+#else
+#define foreach_march_variant_runtime(macro, _args...)
+#endif
+
+#define CLIB_MARCH_ARCH_CHECK(arch, archname, fn)			\
+  if (clib_cpu_supports_ ## archname ())				\
+    return & fn ## _ ##arch;
+
+#define CLIB_MARCH_SELECT_FN(fn,...)                               	\
+  __VA_ARGS__ void * fn ## _multiarch_select(void)                     	\
+{                                                                      	\
+  foreach_march_variant_runtime(CLIB_MARCH_ARCH_CHECK, fn)              \
+  return & fn;                                                         	\
+}
+
+#define DEFINE_WEAK_FN(_arch, _fn, _args...) 				\
+  int __attribute__((weak)) _fn##_ma_##_arch(_args);
+#define DEFINE_FN_HELPER(arch, archname, macro, _args...)		\
+  macro(arch, _args)
+
+#ifndef CLIB_MARCH_VARIANT
+#define MARCH_FN(fn, _args...)						\
+  static void * (*fn ## _selected) (void);				\
+  foreach_march_variant_runtime (DEFINE_FN_HELPER, DEFINE_WEAK_FN, fn,	\
+				  _args);				\
+  static inline int CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args)
+#else
+#define MARCH_FN(fn, _args...)						\
+ int CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args)
+#endif
+
 static inline u8
 position_lt (svm_fifo_t * f, u32 a, u32 b)
 {
@@ -49,6 +84,8 @@ ooo_segment_end_pos (svm_fifo_t * f, ooo_segment_t * s)
 {
   return (s->start + s->length) % f->nitems;
 }
+
+#ifndef CLIB_MARCH_VARIANT
 
 u8 *
 format_ooo_segment (u8 * s, va_list * args)
@@ -225,6 +262,7 @@ svm_fifo_free (svm_fifo_t * f)
       clib_mem_free (f);
     }
 }
+#endif
 
 always_inline ooo_segment_t *
 ooo_segment_new (svm_fifo_t * f, u32 start, u32 length)
@@ -451,9 +489,8 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
   return bytes;
 }
 
-static int
-svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes,
-			   const u8 * copy_from_here)
+MARCH_FN (svm_fifo_enqueue_nowait, svm_fifo_t * f, u32 max_bytes,
+	  const u8 * copy_from_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -515,40 +552,15 @@ svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes,
   return (total_copy_bytes);
 }
 
-#define SVM_ENQUEUE_CLONE_TEMPLATE(arch, fn, tgt)                       \
-  uword                                                                 \
-  __attribute__ ((flatten))                                             \
-  __attribute__ ((target (tgt)))                                        \
-  CLIB_CPU_OPTIMIZED                                                    \
-  fn ## _ ## arch ( svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here) \
-  { return fn (f, max_bytes, copy_from_here);}
-
-static int
-svm_fifo_enqueue_nowait_ma (svm_fifo_t * f, u32 max_bytes,
-			    const u8 * copy_from_here)
-{
-  return svm_fifo_enqueue_internal (f, max_bytes, copy_from_here);
-}
-
-foreach_march_variant (SVM_ENQUEUE_CLONE_TEMPLATE,
-		       svm_fifo_enqueue_nowait_ma);
-CLIB_MULTIARCH_SELECT_FN (svm_fifo_enqueue_nowait_ma);
-
+#ifndef CLIB_MARCH_VARIANT
 int
 svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
 			 const u8 * copy_from_here)
 {
-#if CLIB_DEBUG > 0
-  return svm_fifo_enqueue_nowait_ma (f, max_bytes, copy_from_here);
-#else
-  static int (*fp) (svm_fifo_t *, u32, const u8 *);
-
-  if (PREDICT_FALSE (fp == 0))
-    fp = (void *) svm_fifo_enqueue_nowait_ma_multiarch_select ();
-
-  return (*fp) (f, max_bytes, copy_from_here);
-#endif
+  return ((int (*)(svm_fifo_t * f, u32, const u8 *))
+	  (*svm_fifo_enqueue_nowait_selected)) (f, max_bytes, copy_from_here);
 }
+#endif
 
 /**
  * Enqueue a future segment.
@@ -557,11 +569,8 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
  * Returns 0 of the entire segment was copied
  * Returns -1 if none of the segment was copied due to lack of space
  */
-static int
-svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
-				       u32 offset,
-				       u32 required_bytes,
-				       u8 * copy_from_here)
+MARCH_FN (svm_fifo_enqueue_with_offset, svm_fifo_t * f,
+	  u32 offset, u32 required_bytes, u8 * copy_from_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems, normalized_offset;
@@ -609,14 +618,16 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   return (0);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 
 int
-svm_fifo_enqueue_with_offset (svm_fifo_t * f,
-			      u32 offset,
-			      u32 required_bytes, u8 * copy_from_here)
+svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 required_bytes,
+			      u8 * copy_from_here)
 {
-  return svm_fifo_enqueue_with_offset_internal (f, offset, required_bytes,
-						copy_from_here);
+  return ((int (*)(svm_fifo_t * f, u32, u32, u8 *))
+	  (*svm_fifo_enqueue_with_offset_selected)) (f, offset,
+						     required_bytes,
+						     copy_from_here);
 }
 
 void
@@ -633,9 +644,10 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
       clib_memcpy (&f->data[0], data + first_chunk, len - first_chunk);
     }
 }
+#endif
 
-static int
-svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
+MARCH_FN (svm_fifo_dequeue_nowait, svm_fifo_t * f, u32 max_bytes,
+	  u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -687,43 +699,18 @@ svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
   return (total_copy_bytes);
 }
 
-static int
-svm_fifo_dequeue_nowait_ma (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
-{
-  return svm_fifo_dequeue_internal (f, max_bytes, copy_here);
-}
-
-#define SVM_FIFO_DEQUEUE_CLONE_TEMPLATE(arch, fn, tgt)          \
-  uword                                                         \
-  __attribute__ ((flatten))                                     \
-  __attribute__ ((target (tgt)))                                \
-  CLIB_CPU_OPTIMIZED                                            \
-  fn ## _ ## arch ( svm_fifo_t * f, u32 max_bytes,              \
-                    u8 * copy_here)                             \
-  { return fn (f, max_bytes, copy_here);}
-
-foreach_march_variant (SVM_FIFO_DEQUEUE_CLONE_TEMPLATE,
-		       svm_fifo_dequeue_nowait_ma);
-CLIB_MULTIARCH_SELECT_FN (svm_fifo_dequeue_nowait_ma);
+#ifndef CLIB_MARCH_VARIANT
 
 int
 svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
 {
-#if CLIB_DEBUG > 0
-  return svm_fifo_dequeue_nowait_ma (f, max_bytes, copy_here);
-#else
-  static int (*fp) (svm_fifo_t *, u32, u8 *);
-
-  if (PREDICT_FALSE (fp == 0))
-    fp = (void *) svm_fifo_dequeue_nowait_ma_multiarch_select ();
-
-  return (*fp) (f, max_bytes, copy_here);
-#endif
+  return ((int (*)(svm_fifo_t * f, u32, u8 *))
+	  (*svm_fifo_dequeue_nowait_selected)) (f, max_bytes, copy_here);
 }
+#endif
 
-static int
-svm_fifo_peek_ma (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
-		  u8 * copy_here)
+MARCH_FN (svm_fifo_peek, svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
+	  u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems, real_head;
@@ -760,32 +747,15 @@ svm_fifo_peek_ma (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
   return total_copy_bytes;
 }
 
-#define SVM_FIFO_PEEK_CLONE_TEMPLATE(arch, fn, tgt)                     \
-  uword                                                                 \
-  __attribute__ ((flatten))                                             \
-  __attribute__ ((target (tgt)))                                        \
-  CLIB_CPU_OPTIMIZED                                                    \
-  fn ## _ ## arch ( svm_fifo_t * f, u32 relative_offset, u32 max_bytes, \
-                    u8 * copy_here)                                     \
-  { return fn (f, relative_offset, max_bytes, copy_here);}
-
-foreach_march_variant (SVM_FIFO_PEEK_CLONE_TEMPLATE, svm_fifo_peek_ma);
-CLIB_MULTIARCH_SELECT_FN (svm_fifo_peek_ma);
+#ifndef CLIB_MARCH_VARIANT
 
 int
 svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
 	       u8 * copy_here)
 {
-#if CLIB_DEBUG > 0
-  return svm_fifo_peek_ma (f, relative_offset, max_bytes, copy_here);
-#else
-  static int (*fp) (svm_fifo_t *, u32, u32, u8 *);
-
-  if (PREDICT_FALSE (fp == 0))
-    fp = (void *) svm_fifo_peek_ma_multiarch_select ();
-
-  return (*fp) (f, relative_offset, max_bytes, copy_here);
-#endif
+  return ((int (*)(svm_fifo_t * f, u32, u32, u8 *))
+	  (*svm_fifo_peek_selected)) (f, relative_offset, max_bytes,
+				      copy_here);
 }
 
 int
@@ -903,6 +873,24 @@ svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer)
   f->head = f->tail = pointer % f->nitems;
 }
 
+#define foreach_svm_fifo_march_fn					\
+  _(svm_fifo_enqueue_nowait)						\
+  _(svm_fifo_enqueue_with_offset)					\
+  _(svm_fifo_dequeue_nowait)						\
+  _(svm_fifo_peek)							\
+
+#define _(_fn, _args...) CLIB_MARCH_SELECT_FN(_fn ## _ma);
+foreach_svm_fifo_march_fn
+#undef _
+void __clib_constructor
+svm_fifo_select_march_fns (void)
+{
+#define _(_fn, _args...) _fn ## _selected = _fn ## _ma_multiarch_select ();
+  foreach_svm_fifo_march_fn
+#undef _
+}
+
+#endif
 /*
  * fd.io coding-style-patch-verification: ON
  *
