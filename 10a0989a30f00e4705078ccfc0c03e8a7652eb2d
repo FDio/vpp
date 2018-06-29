@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f33419cb_f5069ac6",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 689,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-06-29T12:56:51Z",
+      "side": 1,
+      "message": "isinstance(o, (Enum, Union, Typedef, Import))",
+      "range": {
+        "startLine": 686,
+        "startChar": 33,
+        "endLine": 689,
+        "endChar": 56
+      },
+      "revId": "10a0989a30f00e4705078ccfc0c03e8a7652eb2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
