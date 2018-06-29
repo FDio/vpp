@@ -23,6 +23,7 @@ nobase_include_HEADERS += 			\
   svm/svm.h
 
 lib_LTLIBRARIES += libsvm.la libsvmdb.la
+noinst_LTLIBRARIES =
 
 libsvm_la_SOURCES =				\
   svm/svm.c 					\
@@ -48,5 +49,34 @@ noinst_PROGRAMS += test_svm_fifo1
 test_svm_fifo1_SOURCES = svm/test_svm_fifo1.c
 test_svm_fifo1_LDADD = libsvm.la libvppinfra.la -lpthread -lrt
 test_svm_fifo1_LDFLAGS = -static
+
+if CPU_X86_64
+libsvm_multiversioning_sources = 					\
+	svm/svm_fifo.c
+
+if CC_SUPPORTS_AVX2
+###############################################################
+# AVX2
+###############################################################
+libsvm_avx2_la_SOURCES = $(libsvm_multiversioning_sources)
+libsvm_avx2_la_CFLAGS =							\
+	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
+	-DCLIB_MARCH_VARIANT=avx2
+noinst_LTLIBRARIES += libsvm_avx2.la
+libsvm_la_LIBADD += libsvm_avx2.la
+endif
+
+if CC_SUPPORTS_AVX512
+###############################################################
+# AVX512
+###############################################################
+libsvm_avx512_la_SOURCES = $(libsvm_multiversioning_sources)
+libsvm_avx512_la_CFLAGS =						\
+	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
+	-DCLIB_MARCH_VARIANT=avx512
+noinst_LTLIBRARIES += libsvm_avx512.la
+libsvm_la_LIBADD += libsvm_avx512.la
+endif
+endif
 
 # vi:syntax=automake
