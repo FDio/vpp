@@ -1996,8 +1996,8 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (n_left_from > 1)
 	{
-	  vlib_prefetch_buffer_header (b[0], STORE);
-	  CLIB_PREFETCH (b[0]->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+	  vlib_prefetch_buffer_header (b[1], STORE);
+	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
 	}
 
       next[0] = TCP_OUTPUT_NEXT_IP_LOOKUP;

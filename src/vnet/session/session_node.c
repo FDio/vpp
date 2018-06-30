@@ -483,7 +483,13 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_t *b0;
       u32 bi0;
 
-      ASSERT (n_bufs >= 1);
+      if (n_left > 1)
+	{
+	  pbi = smm->tx_buffers[thread_index][n_bufs - 2];
+	  pb = vlib_get_buffer (vm, pbi);
+	  vlib_prefetch_buffer_header (pb, STORE);
+	}
+
       to_next[0] = bi0 = smm->tx_buffers[thread_index][--n_bufs];
       b0 = vlib_get_buffer (vm, bi0);
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
