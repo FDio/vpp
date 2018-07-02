@@ -69,6 +69,30 @@
       "revId": "398e2c15fc17cc5234f50c0d8556239d5c2cdce3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e44ce349_a74994d1",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1171,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-02T20:40:32Z",
+      "side": 1,
+      "message": "It will be useful to provide CLI which calls  BV (format_bihash), so you can see details about bihash utilization, it can show you if some buckets are using linear search...",
+      "parentUuid": "2b97b266_210fc007",
+      "range": {
+        "startLine": 1171,
+        "startChar": 52,
+        "endLine": 1171,
+        "endChar": 53
+      },
+      "revId": "398e2c15fc17cc5234f50c0d8556239d5c2cdce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
