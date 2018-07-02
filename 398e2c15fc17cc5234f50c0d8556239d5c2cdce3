@@ -22,6 +22,29 @@
       "revId": "398e2c15fc17cc5234f50c0d8556239d5c2cdce3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8d79565f_d0df6edd",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1171,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-02T15:30:40Z",
+      "side": 1,
+      "message": "I think we should use #define\u0027s for both values in vxlan.h and not hard code the values here. How did you pick 2K buckets and 1M memory size? Was the performance test done with 4K IPv6 VXLANs?",
+      "range": {
+        "startLine": 1171,
+        "startChar": 52,
+        "endLine": 1171,
+        "endChar": 53
+      },
+      "revId": "398e2c15fc17cc5234f50c0d8556239d5c2cdce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
