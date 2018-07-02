@@ -745,8 +745,13 @@ show_memory_usage (vlib_main_t * vm,
   /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
-      vlib_cli_output (vm, "Thread %d %v\n", index, vlib_worker_threads[index].name);
-      vlib_cli_output (vm, "%U\n", format_mheap, clib_per_cpu_mheaps[index], verbose);
+      mheap_t *h = mheap_header (clib_per_cpu_mheaps[index]);
+      vlib_cli_output (vm, "%sThread %d %v\n", index ? "\n":"", index,
+		       vlib_worker_threads[index].name);
+      vlib_cli_output (vm, "  %U\n", format_page_map, pointer_to_uword (h) -
+		       h->vm_alloc_offset_from_header,
+		       h->vm_alloc_size);
+      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index], verbose);
       index++;
   }));
   /* *INDENT-ON* */
