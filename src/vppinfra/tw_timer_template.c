@@ -157,7 +157,7 @@ timer_remove (TWT (tw_timer) * pool, TWT (tw_timer) * elt)
   elt->prev = elt->next = ~0;
 }
 
-static void
+static inline void
 timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
 {
 #if TW_TIMER_WHEELS > 1

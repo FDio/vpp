@@ -1306,6 +1306,8 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
       ASSERT (n_bytes == max_deq_bytes);
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
+      if (seq_gt (tc->snd_nxt, tc->snd_una_max))
+	tc->snd_una_max = tc->snd_nxt;
     }
   /* Split mss into multiple buffers */
   else
@@ -1369,6 +1371,8 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 	}
 
       tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
+      if (seq_gt (tc->snd_nxt, tc->snd_una_max))
+	tc->snd_una_max = tc->snd_nxt;
     }
 
   ASSERT (n_bytes > 0);
