@@ -459,9 +459,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Get session's server */
   app = application_get_if_valid (s->app_index);
-
   if (PREDICT_FALSE (app == 0))
     {
       clib_warning ("invalid s->app_index = %d", s->app_index);
@@ -509,7 +507,10 @@ session_dequeue_notify (stream_session_t * s)
   application_t *app;
   svm_queue_t *q;
 
-  app = application_get (s->app_index);
+  app = application_get_if_valid (s->app_index);
+  if (PREDICT_FALSE (!app))
+    return -1;
+
   if (application_is_builtin (app))
     return 0;
 
