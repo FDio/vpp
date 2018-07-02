@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0738d0f7_dd38cd05",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-02T15:06:24Z",
+      "side": 1,
+      "message": "This will cause Store Forward stall and cost lot of cycles. Try to combine this into single u64 store as CRC32C instruction we use operates with quadwords.",
+      "range": {
+        "startLine": 386,
+        "startChar": 0,
+        "endLine": 388,
+        "endChar": 42
+      },
+      "revId": "398e2c15fc17cc5234f50c0d8556239d5c2cdce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
