@@ -495,6 +495,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = DPO_PROTO_MPLS;
             *payload_proto = DPO_PROTO_MPLS;
         }
+        else if (unformat (input, "src-lookup"))
+        {
+            rpath->frp_flags |= FIB_ROUTE_PATH_SOURCE_LOOKUP;
+        }
         else if (unformat (input,
                            "l2-input-on %U",
                            unformat_vnet_sw_interface, vnm,
