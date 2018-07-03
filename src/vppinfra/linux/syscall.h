@@ -39,6 +39,12 @@ move_pages (int pid, unsigned long count, void **pages, const int *nodes,
   return syscall (__NR_move_pages, pid, count, pages, nodes, status, flags);
 }
 
+static inline int
+getcpu (unsigned *cpu, unsigned *node, void *tcache)
+{
+  return syscall (__NR_getcpu, cpu, node, tcache);
+}
+
 #ifndef HAVE_MEMFD_CREATE
 static inline int
 memfd_create (const char *name, unsigned int flags)

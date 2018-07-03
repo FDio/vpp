@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <math.h>
 #include <vppinfra/format.h>
+#include <vppinfra/linux/syscall.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
@@ -324,6 +325,7 @@ vlib_thread_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
   vlib_thread_registration_t *tr;
+  unsigned int old_numa, new_numa;
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
@@ -367,6 +369,9 @@ vlib_thread_init (vlib_main_t * vm)
   if (!tm->cpu_socket_bitmap)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
+  if (getcpu (0, &old_numa, 0) != 0)
+    old_numa = -1;
+
   /* pin main thread to main_lcore  */
   if (tm->cb.vlib_thread_set_lcore_cb)
     {
@@ -378,6 +383,38 @@ vlib_thread_init (vlib_main_t * vm)
       CPU_ZERO (&cpuset);
       CPU_SET (tm->main_lcore, &cpuset);
       pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
+
+  if (getcpu (0, &new_numa, 0) != 0)
+    new_numa = -1;
+
+  if (old_numa != new_numa)
+    {
+      int *status = 0, *nodes = 0;
+      void **ptr = 0, *start;
+      uword n_pages, page_size = clib_mem_get_page_size ();
+
+      mheap_t *h = mheap_header (clib_per_cpu_mheaps[0]);
+      n_pages = h->vm_alloc_size / page_size;
+      start = clib_per_cpu_mheaps[0] - h->vm_alloc_offset_from_header;
+
+      vec_validate (status, n_pages - 1);
+      vec_validate (nodes, n_pages - 1);
+      vec_validate (ptr, n_pages - 1);
+
+      for (i = 0; i < n_pages; i++)
+	{
+	  ptr[i] = start + i * page_size;
+	  nodes[i] = new_numa;
+	}
+
+      if (move_pages (0, n_pages, ptr, nodes, status, 0) != 0)
+	clib_warning ("Main heap move from numa node %d to numa node %d "
+		      "failed (errno %d)", old_numa, new_numa, errno);
+
+      vec_free (status);
+      vec_free (nodes);
+      vec_free (ptr);
     }
 
   /* as many threads as stacks... */
