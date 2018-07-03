@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
+#include <pthread.h>
+#include <sched.h>
+
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -103,6 +107,8 @@ main (int argc, char *argv[])
   uword main_heap_size = (1ULL << 30);
   u8 *sizep;
   u32 size;
+  int main_core = 1;
+  cpu_set_t cpuset;
 
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
@@ -234,9 +240,24 @@ main (int argc, char *argv[])
 	  else if (*sizep == 'm' || *sizep == 'M')
 	    main_heap_size <<= 20;
 	}
+      else if (!strncmp (argv[i], "main-core", 9))
+	{
+	  if (i < (argc - 1))
+	    {
+	      errno = 0;
+	      unsigned long x = strtol (argv[++i], 0, 0);
+	      if (errno == 0)
+		main_core = x;
+	    }
+	}
     }
 
 defaulted:
+
+  /* set process affinity for main thread */
+  CPU_ZERO (&cpuset);
+  CPU_SET (main_core, &cpuset);
+  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
 
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
