@@ -9,6 +9,7 @@ import socket
 
 
 from scapy.packet import Raw
+from scapy.data import ETH_P_IP, ETH_P_IPV6
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
@@ -145,40 +146,6 @@ class TestClassifyAcl(VppTestCase):
             self.logger.info(self.vapi.ppcli("show classify tables verbose"))
             self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
                                              % self.bd_id))
-
-    @staticmethod
-    def build_ip_mask(proto='', src_ip='', dst_ip='',
-                      src_port='', dst_port=''):
-        """Build IP ACL mask data with hexstring format
-
-        :param str proto: protocol number <0-ff>
-        :param str src_ip: source ip address <0-ffffffff>
-        :param str dst_ip: destination ip address <0-ffffffff>
-        :param str src_port: source port number <0-ffff>
-        :param str dst_port: destination port number <0-ffff>
-        """
-
-        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(
-            proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
-
-    @staticmethod
-    def build_ip_match(proto='', src_ip='', dst_ip='',
-                       src_port='', dst_port=''):
-        """Build IP ACL match data with hexstring format
-
-        :param str proto: protocol number with valid option "<0-ff>"
-        :param str src_ip: source ip address with format of "x.x.x.x"
-        :param str dst_ip: destination ip address with format of "x.x.x.x"
-        :param str src_port: source port number <0-ffff>
-        :param str dst_port: destination port number <0-ffff>
-        """
-        if src_ip:
-            src_ip = socket.inet_aton(src_ip).encode('hex')
-        if dst_ip:
-            dst_ip = socket.inet_aton(dst_ip).encode('hex')
-
-        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(
-            proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
 
     @staticmethod
     def build_mac_mask(dst_mac='', src_mac='', ether_type=''):
@@ -546,15 +513,29 @@ class TestClassifyAcl(VppTestCase):
                     capture = dst_if.get_capture(0)
                     self.assertEqual(len(capture), 0)
 
-    def build_classify_table(self, hit_next_index=0xffffffff):
-        # Basic ACL testing with source MAC
-        a_mask = self.build_mac_mask(src_mac='ffffffffffff')
-        self.create_classify_table('ip', a_mask)
+    def build_classify_table(self, src_mac='', dst_mac='', ether_type='',
+                             etype='', hit_next_index=0xffffffff):
+        # Basic ACL testing
+        a_mask = self.build_mac_mask(src_mac=src_mac, dst_mac=dst_mac,
+                                     ether_type=ether_type)
+        self.create_classify_table('mac', a_mask)
         for host in self.hosts_by_pg_idx[self.pg0.sw_if_index]:
-            self.create_classify_session(
-                self.pg0, self.acl_tbl_idx.get('ip'),
-                self.build_mac_match(src_mac=host.mac),
-                hit_next_index=hit_next_index)
+            s_mac = host.mac if src_mac else ''
+            if dst_mac:
+                for dst_if in self.flows[self.pg0]:
+                    for dst_host in self.hosts_by_pg_idx[dst_if.sw_if_index]:
+                        self.create_classify_session(
+                            self.pg0, self.acl_tbl_idx.get('mac'),
+                            self.build_mac_match(src_mac=s_mac,
+                                                 dst_mac=dst_host.mac,
+                                                 ether_type=etype),
+                            hit_next_index=hit_next_index)
+            else:
+                self.create_classify_session(
+                    self.pg0, self.acl_tbl_idx.get('mac'),
+                    self.build_mac_match(src_mac=s_mac, dst_mac='',
+                                         ether_type=etype),
+                    hit_next_index=hit_next_index)
 
     def test_0000_warmup_test(self):
         """ Learn the MAC addresses
@@ -562,31 +543,72 @@ class TestClassifyAcl(VppTestCase):
         self.create_hosts(2)
         self.run_traffic_no_check()
 
-    def test_0010_inacl_permit(self):
-        """ Input  L2 ACL test - permit
+    def test_0010_inacl_permit_src_mac(self):
+        """ Input  L2 ACL test - permit source MAC
 
         Test scenario for basic IP ACL with source IP
             - Create IPv4 stream for pg0 -> pg1 interface.
             - Create ACL with source MAC address.
             - Send and verify received packets on pg1 interface.
         """
-        self.build_classify_table()
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'))
+        self.build_classify_table(src_mac='ffffffffffff')
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
         self.run_verify_test(self.IP, self.IPV4, -1)
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'), 0)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
+
+    def test_0011_inacl_permit_dst_mac(self):
+        """ Input  L2 ACL test - permit destination MAC
+
+        Test scenario for basic IP ACL with source IP
+            - Create IPv4 stream for pg0 -> pg1 interface.
+            - Create ACL with destination MAC address.
+            - Send and verify received packets on pg1 interface.
+        """
+        self.build_classify_table(dst_mac='ffffffffffff')
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
+        self.run_verify_test(self.IP, self.IPV4, -1)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
+
+    def test_0012_inacl_permit_src_dst_mac(self):
+        """ Input  L2 ACL test - permit source and destination MAC
+
+        Test scenario for basic IP ACL with source IP
+            - Create IPv4 stream for pg0 -> pg1 interface.
+            - Create ACL with source and destination MAC addresses.
+            - Send and verify received packets on pg1 interface.
+        """
+        self.build_classify_table(
+            src_mac='ffffffffffff', dst_mac='ffffffffffff')
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
+        self.run_verify_test(self.IP, self.IPV4, -1)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
+
+    def test_0013_inacl_permit_ether_type(self):
+        """ Input  L2 ACL test - permit ether_type
+
+        Test scenario for basic IP ACL with source IP
+            - Create IPv4 stream for pg0 -> pg1 interface.
+            - Create ACL with destination MAC address.
+            - Send and verify received packets on pg1 interface.
+        """
+        self.build_classify_table(ether_type='ffff', etype=hex(ETH_P_IP)[2:])
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
+        self.run_verify_test(self.IP, self.IPV4, -1)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
 
     def test_0015_inacl_deny(self):
         """ Input  L2 ACL test - deny
 
         Test scenario for basic IP ACL with source IP
             - Create IPv4 stream for pg0 -> pg1 interface.
+
             - Create ACL with source MAC address.
             - Send and verify no received packets on pg1 interface.
         """
-        self.build_classify_table(hit_next_index=0)
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'))
+        self.build_classify_table(src_mac='ffffffffffff', hit_next_index=0)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
         self.run_verify_negat_test(self.IP, self.IPV4, -1)
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'), 0)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
 
     def test_0020_outacl_permit(self):
         """ Output L2 ACL test - permit
@@ -596,10 +618,10 @@ class TestClassifyAcl(VppTestCase):
             - Create ACL with source MAC address.
             - Send and verify received packets on pg1 interface.
         """
-        self.build_classify_table()
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'))
+        self.build_classify_table(src_mac='ffffffffffff')
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'))
         self.run_verify_test(self.IP, self.IPV4, -1)
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'), 0)
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'), 0)
 
     def test_0025_outacl_deny(self):
         """ Output L2 ACL test - deny
@@ -609,10 +631,10 @@ class TestClassifyAcl(VppTestCase):
             - Create ACL with source MAC address.
             - Send and verify no received packets on pg1 interface.
         """
-        self.build_classify_table(hit_next_index=0)
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'))
+        self.build_classify_table(src_mac='ffffffffffff', hit_next_index=0)
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'))
         self.run_verify_negat_test(self.IP, self.IPV4, -1)
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'), 0)
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'), 0)
 
     def test_0030_inoutacl_permit(self):
         """ Input+Output L2 ACL test - permit
@@ -622,12 +644,12 @@ class TestClassifyAcl(VppTestCase):
             - Create ACLs with source MAC address.
             - Send and verify received packets on pg1 interface.
         """
-        self.build_classify_table()
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'))
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'))
+        self.build_classify_table(src_mac='ffffffffffff')
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'))
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
         self.run_verify_test(self.IP, self.IPV4, -1)
-        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('ip'), 0)
-        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'), 0)
+        self.output_acl_set_interface(self.pg1, self.acl_tbl_idx.get('mac'), 0)
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
