@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65512492_1db267c9",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1418
+      },
+      "writtenOn": "2018-07-03T03:31:02Z",
+      "side": 1,
+      "message": "this line is not needed, since ip4_header_checksum function will do this",
+      "range": {
+        "startLine": 117,
+        "startChar": 8,
+        "endLine": 117,
+        "endChar": 26
+      },
+      "revId": "714554b9a8f2f6f455664658026dfd51e3d6016e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8cc8ac45_446c113c",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 1418
+      },
+      "writtenOn": "2018-07-03T03:31:02Z",
+      "side": 1,
+      "message": "after calling this function, does b0 need further processing ? if not, we can directly go to trace0.\nSame for b1",
+      "range": {
+        "startLine": 344,
+        "startChar": 8,
+        "endLine": 344,
+        "endChar": 23
+      },
+      "revId": "714554b9a8f2f6f455664658026dfd51e3d6016e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcea87de_12995027",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 1418
+      },
+      "writtenOn": "2018-07-03T03:31:02Z",
+      "side": 1,
+      "message": "GTP-U signalling messages will also run here? suggest following code only process G-PDU packets",
+      "range": {
+        "startLine": 376,
+        "startChar": 0,
+        "endLine": 376,
+        "endChar": 0
+      },
+      "revId": "714554b9a8f2f6f455664658026dfd51e3d6016e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1cd36d22_c690ba2b",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 1418
+      },
+      "writtenOn": "2018-07-03T03:31:02Z",
+      "side": 1,
+      "message": "if this part of code only process G-PDU messages, then do not to check the type",
+      "range": {
+        "startLine": 431,
+        "startChar": 12,
+        "endLine": 431,
+        "endChar": 41
+      },
+      "revId": "714554b9a8f2f6f455664658026dfd51e3d6016e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1707b2de_e1736b35",
+        "filename": "src/plugins/gtpu/gtpu_process.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 1418
+      },
+      "writtenOn": "2018-07-03T03:31:02Z",
+      "side": 1,
+      "message": "should set udp-\u003echecksum to 0?",
+      "range": {
+        "startLine": 396,
+        "startChar": 0,
+        "endLine": 396,
+        "endChar": 4
+      },
+      "revId": "714554b9a8f2f6f455664658026dfd51e3d6016e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
