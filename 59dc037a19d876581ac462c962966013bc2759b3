@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "47e4fa72_2e51f4e0",
+        "filename": "src/vlibmemory/memclnt.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-04T12:35:39Z",
+      "side": 1,
+      "message": "what does this do?",
+      "revId": "59dc037a19d876581ac462c962966013bc2759b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
