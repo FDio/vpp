@@ -310,6 +310,8 @@ main (int argc, char **argv)
   uint16_t port = SOCK_TEST_SERVER_PORT;
   vppcom_endpt_t endpt;
 
+  clib_mem_init_thread_safe (0, 64<<20);
+
   opterr = 0;
   while ((c = getopt (argc, argv, "6D")) != -1)
     switch (c)
