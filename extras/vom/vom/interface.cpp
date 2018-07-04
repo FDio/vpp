@@ -286,8 +286,7 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
-  } else if (type_t::TAP == m_type) {
-    q.push(new interface_cmds::tap_create_cmd(m_hdl, m_name));
+  } else if (type_t::TAP == m_type || type_t::TAPV2 == m_type) {
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
   } else if (type_t::VHOST == m_type) {
@@ -306,8 +305,6 @@ interface::mk_delete_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::loopback_delete_cmd(m_hdl));
   } else if (type_t::AFPACKET == m_type) {
     q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
-  } else if (type_t::TAP == m_type) {
-    q.push(new interface_cmds::tap_delete_cmd(m_hdl));
   } else if (type_t::VHOST == m_type) {
     q.push(new interface_cmds::vhost_delete_cmd(m_hdl, m_name));
   }

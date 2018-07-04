@@ -26,10 +26,12 @@ class tap_interface : public interface
 {
 public:
   tap_interface(const std::string& name,
+                type_t type,
                 admin_state_t state,
                 route::prefix_t prefix);
 
   tap_interface(const std::string& name,
+                type_t type,
                 admin_state_t state,
                 route::prefix_t prefix,
                 const l2_address_t& l2_address);

@@ -72,11 +72,11 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   /*
    * pull out the other special cases
    */
-  if (interface::type_t::TAP == type) {
+  if (interface::type_t::TAP == type || interface::type_t::TAPV2 == type) {
     /*
-     * TAP interface
+     * TAP interfaces
      */
-    sp = tap_interface(name, state, route::prefix_t()).singular();
+    sp = tap_interface(name, type, state, route::prefix_t()).singular();
     if (sp && !tag.empty())
       sp->set(tag);
   } else if ((name.find(".") != std::string::npos) && (0 != vd.sub_id)) {
