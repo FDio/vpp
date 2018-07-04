@@ -107,10 +107,22 @@ svm_fifo_max_dequeue (svm_fifo_t * f)
   return f->cursize;
 }
 
+static inline int
+svm_fifo_is_full (svm_fifo_t * f)
+{
+  return (f->cursize == f->nitems);
+}
+
 static inline u32
 svm_fifo_max_enqueue (svm_fifo_t * f)
 {
   return f->nitems - svm_fifo_max_dequeue (f);
+}
+
+static inline int
+svm_fifo_has_event (svm_fifo_t *f)
+{
+  return f->has_event;
 }
 
 static inline u8
