@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e4a0020_f5c75ec4",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 584,
+      "author": {
+        "id": 1410
+      },
+      "writtenOn": "2018-07-04T16:13:21Z",
+      "side": 1,
+      "message": "Looks like I\u0027m doing something wrong. Here I have infinity loop, but if I replace this with something like:\n\nconst size_t size \u003d sizeof(vapi_msg_memclnt_keepalive_reply);\n\nreply \u003d (vapi_msg_memclnt_keepalive_reply*)vapi_msg_alloc(ctx, size);\nif (!reply) {\n  return VAPI_ENOMEM;\n}\n\nThe application works well without looping.",
+      "revId": "03c8e9639eca7365960abf69c555ee649e045a08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eedd443c_ee8a58b1",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 595,
+      "author": {
+        "id": 1410
+      },
+      "writtenOn": "2018-07-04T16:13:21Z",
+      "side": 1,
+      "message": "After replacing previous block I get:\n\nvapi_msg_free (ctx\u003d\u003coptimized out\u003e, msg\u003d0x7fffed5fee68)\nERR:vapi.c:194:vapi_trace_free():Trying to free untracked pointer 0x7fffed5fee68",
+      "revId": "03c8e9639eca7365960abf69c555ee649e045a08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
