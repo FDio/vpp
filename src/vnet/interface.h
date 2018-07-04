@@ -578,6 +578,7 @@ typedef enum
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,
   VNET_SW_INTERFACE_TYPE_P2P,
+  VNET_SW_INTERFACE_TYPE_PIPE,
 } vnet_sw_interface_type_t;
 
 typedef struct
