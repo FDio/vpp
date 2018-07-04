@@ -1409,21 +1409,14 @@ main (int argc, char **argv)
   echo_main_t *em = &echo_main;
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
-  u8 *heap, *uri = 0;
+  u8 *uri = 0;
   u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
   u8 *connect_uri = (u8 *) "tcp://6.0.1.1/1234";
   u64 bytes_to_send = 64 << 10, mbytes;
   char *app_name;
   u32 tmp;
-  mheap_t *h;
 
-  clib_mem_init (0, 256 << 20);
-
-  heap = clib_mem_get_per_cpu_heap ();
-  h = mheap_header (heap);
-
-  /* make the main heap thread-safe */
-  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  clib_mem_init_thread_safe (0, 256 << 20);
 
   memset (em, 0, sizeof (*em));
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));

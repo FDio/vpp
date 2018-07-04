@@ -28,7 +28,10 @@ static delete_fn delete_fns[SSVM_N_SEGMENT_TYPES] =
 int
 ssvm_master_init_shm (ssvm_private_t * ssvm)
 {
-  int ssvm_fd, mh_flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
+  int ssvm_fd;
+#if USE_DLMALLOC == 0
+  int mh_flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
+#endif
   clib_mem_vm_map_t mapa = { 0 };
   u8 junk = 0, *ssvm_filename;
   ssvm_shared_header_t *sh;
@@ -100,8 +103,15 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   sh->ssvm_size = ssvm->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_SHM;
+#if USE_DLMALLOC == 0
   sh->heap = mheap_alloc_with_flags (((u8 *) sh) + page_size,
 				     ssvm->ssvm_size - page_size, mh_flags);
+#else
+  sh->heap = create_mspace_with_base (((u8 *) sh) + page_size,
+				      ssvm->ssvm_size - page_size,
+				      1 /* locked */ );
+  mspace_disable_expand (sh->heap);
+#endif
 
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", ssvm->name, 0);
@@ -212,7 +222,7 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
 int
 ssvm_master_init_memfd (ssvm_private_t * memfd)
 {
-  uword page_size, flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
+  uword page_size;
   ssvm_shared_header_t *sh;
   void *oldheap;
   clib_mem_vm_alloc_t alloc = { 0 };
@@ -244,9 +254,18 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
   sh->ssvm_size = memfd->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
+
+#if USE_DLMALLOC == 0
+  uword flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
+
   sh->heap = mheap_alloc_with_flags (((u8 *) sh) + page_size,
 				     memfd->ssvm_size - page_size, flags);
-
+#else
+  sh->heap = create_mspace_with_base (((u8 *) sh) + page_size,
+				      memfd->ssvm_size - page_size,
+				      1 /* locked */ );
+  mspace_disable_expand (sh->heap);
+#endif
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", memfd->name, 0);
   ssvm_pop_heap (oldheap);
@@ -328,22 +347,30 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
 int
 ssvm_master_init_private (ssvm_private_t * ssvm)
 {
-  u32 pagesize = clib_mem_get_page_size ();
   ssvm_shared_header_t *sh;
-  mheap_t *heap_header;
-  u64 rnd_size = 0;
+  u32 pagesize = clib_mem_get_page_size ();
+  u32 rnd_size = 0;
   u8 *heap;
 
   rnd_size = (ssvm->ssvm_size + (pagesize - 1)) & ~(pagesize - 1);
   rnd_size = clib_min (rnd_size, ((u64) 1 << 32) - pagesize);
-  heap = mheap_alloc (0, rnd_size);
-  if (heap == 0)
-    {
-      clib_unix_warning ("mheap alloc");
-      return -1;
-    }
-  heap_header = mheap_header (heap);
-  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+
+#if USE_DLMALLOC == 0
+  {
+    mheap_t *heap_header;
+
+    heap = mheap_alloc (0, rnd_size);
+    if (heap == 0)
+      {
+	clib_unix_warning ("mheap alloc");
+	return -1;
+      }
+    heap_header = mheap_header (heap);
+    heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+  }
+#else
+  heap = create_mspace (rnd_size, 1 /* locked */ );
+#endif
 
   ssvm->ssvm_size = rnd_size;
   ssvm->i_am_master = 1;
@@ -372,7 +399,11 @@ void
 ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
+#if USE_DLMALLOC == 0
   mheap_free (ssvm->sh->heap);
+#else
+  destroy_mspace (ssvm->sh->heap);
+#endif
   clib_mem_free (ssvm->sh);
 }
 

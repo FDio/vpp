@@ -139,15 +139,16 @@ acl_set_heap (acl_main_t * am)
 	  clib_warning ("ACL heap size requested: %lld, max possible %lld",
 			am->acl_mheap_size, max_possible);
 	}
-      am->acl_mheap = mheap_alloc (0 /* use VM */ , am->acl_mheap_size);
+
+      am->acl_mheap = mheap_alloc_with_lock (0 /* use VM */ ,
+					     am->acl_mheap_size,
+					     1 /* locked */ );
       if (0 == am->acl_mheap)
 	{
 	  clib_error
 	    ("ACL plugin failed to allocate main heap of %U bytes, abort",
 	     format_memory_size, am->acl_mheap_size);
 	}
-      mheap_t *h = mheap_header (am->acl_mheap);
-      h->flags |= MHEAP_FLAG_THREAD_SAFE;
     }
   void *oldheap = clib_mem_set_heap (am->acl_mheap);
   return oldheap;
@@ -164,6 +165,7 @@ void
 acl_plugin_acl_set_validate_heap (acl_main_t * am, int on)
 {
   clib_mem_set_heap (acl_set_heap (am));
+#if USE_DLMALLOC == 0
   mheap_t *h = mheap_header (am->acl_mheap);
   if (on)
     {
@@ -176,12 +178,14 @@ acl_plugin_acl_set_validate_heap (acl_main_t * am, int on)
       h->flags &= ~MHEAP_FLAG_VALIDATE;
       h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
     }
+#endif
 }
 
 void
 acl_plugin_acl_set_trace_heap (acl_main_t * am, int on)
 {
   clib_mem_set_heap (acl_set_heap (am));
+#if USE_DLMALLOC == 0
   mheap_t *h = mheap_header (am->acl_mheap);
   if (on)
     {
@@ -191,6 +195,7 @@ acl_plugin_acl_set_trace_heap (acl_main_t * am, int on)
     {
       h->flags &= ~MHEAP_FLAG_TRACE;
     }
+#endif
 }
 
 static void

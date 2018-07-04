@@ -1207,16 +1207,11 @@ main (int argc, char **argv)
   app_session_t *session;
   u8 *chroot_prefix;
   char *app_name;
-  mheap_t *h;
-  u8 *heap;
   u32 tmp;
   int i;
 
-  clib_mem_init (0, 256 << 20);
-  heap = clib_mem_get_per_cpu_heap ();
-  h = mheap_header (heap);
-  /* make the main heap thread-safe */
-  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  clib_mem_init_thread_safe (0, 256 << 20);
+
   svm_fifo_segment_main_init (0x200000000ULL, 20);
 
   vec_validate (utm->rx_buf, 8192);
