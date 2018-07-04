@@ -31,7 +31,7 @@ static void
 session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
 			    u32 thread_index, void *fp, void *rpc_args)
 {
-  session_fifo_event_t evt = { {0}, };
+  session_message_t evt = SESSION_MSG_NULL;
   svm_queue_t *q;
   u32 tries = 0, max_tries;
 
