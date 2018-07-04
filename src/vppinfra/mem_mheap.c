@@ -95,6 +95,25 @@ clib_mem_init (void *memory, uword memory_size)
   return heap;
 }
 
+void *
+clib_mem_init_thread_safe (void *memory, uword memory_size)
+{
+  mheap_t *h;
+  u8 *heap;
+
+  clib_mem_init (memory, memory_size);
+
+  heap = clib_mem_get_per_cpu_heap ();
+  ASSERT (heap);
+
+  h = mheap_header (heap);
+
+  /* make the main heap thread-safe */
+  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+
+  return heap;
+}
+
 #ifdef CLIB_LINUX_KERNEL
 #include <asm/page.h>
 
