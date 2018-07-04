@@ -129,8 +129,6 @@ ip4_create_fib_with_table_id (u32 table_id,
 	v4_fib->table_id =
 	    table_id;
     fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
-    v4_fib->fwd_classify_table_index = ~0;
-    v4_fib->rev_classify_table_index = ~0;
     
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4, src);
 

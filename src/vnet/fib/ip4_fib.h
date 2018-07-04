@@ -38,6 +38,9 @@
 
 typedef struct ip4_fib_t_
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+
   /**
    * Mtrie for fast lookups. Hash is used to maintain overlapping prefixes.
    * First member so it's in the first cacheline.
@@ -52,13 +55,6 @@ typedef struct ip4_fib_t_
 
   /* Index into FIB vector. */
   u32 index;
-
-  /* N-tuple classifier indices */
-  u32 fwd_classify_table_index;
-  u32 rev_classify_table_index;
-
-  /* Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
 } ip4_fib_t;
 
 extern fib_node_index_t ip4_fib_table_lookup(const ip4_fib_t *fib,
