@@ -48,7 +48,7 @@ typedef struct
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  svm_queue_t *vpp_evt_q;
+  svm_msg_q_t *vpp_evt_q;
 
   u64 vpp_session_handle;
   u64 bytes_sent;
@@ -99,7 +99,7 @@ typedef struct
   int no_return;
 
   /* Our event queue */
-  svm_queue_t *our_event_queue;
+  svm_msg_q_t *our_event_queue;
 
   /* $$$ single thread only for the moment */
   svm_queue_t *vpp_event_queue;
@@ -426,7 +426,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   ASSERT (mp->app_event_queue_address);
   em->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					  svm_queue_t *);
+					  svm_msg_q_t *);
   em->state = STATE_ATTACHED;
 }
 
@@ -677,7 +677,6 @@ send_test_chunk (echo_main_t * em, session_t * s)
   svm_fifo_t *tx_fifo = s->server_tx_fifo;
   u8 *test_data = em->connect_test_data;
   u32 enq_space, min_chunk = 16 << 10;
-  session_fifo_event_t evt;
   int written;
 
   test_buf_len = vec_len (test_data);
@@ -698,12 +697,8 @@ send_test_chunk (echo_main_t * em, session_t * s)
       s->bytes_sent += written;
 
       if (svm_fifo_set_event (tx_fifo))
-	{
-	  /* Fabricate TX event, send to vpp */
-	  evt.fifo = tx_fifo;
-	  evt.event_type = FIFO_EVENT_APP_TX;
-	  svm_queue_add (s->vpp_evt_q, (u8 *) & evt, 0 /* wait for mutex */ );
-	}
+	app_send_io_evt_to_vpp (s->vpp_evt_q, tx_fifo, FIFO_EVENT_APP_TX,
+				0 /* do wait for mutex */ );
     }
 }
 
@@ -751,6 +746,7 @@ client_rx_thread_fn (void *arg)
   session_fifo_event_t _e, *e = &_e;
   echo_main_t *em = &echo_main;
   static u8 *rx_buf = 0;
+  svm_msg_q_msg_t msg;
 
   vec_validate (rx_buf, 1 << 20);
 
@@ -759,7 +755,8 @@ client_rx_thread_fn (void *arg)
 
   while (!em->time_to_stop)
     {
-      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+      svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_WAIT, 0);
+      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
@@ -769,6 +766,7 @@ client_rx_thread_fn (void *arg)
 	  clib_warning ("unknown event type %d", e->event_type);
 	  break;
 	}
+      svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
   pthread_exit (0);
 }
@@ -808,7 +806,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   session->vpp_session_handle = mp->handle;
   session->start = clib_time_now (&em->clib_time);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_queue_t *);
+					 svm_msg_q_t *);
 
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
@@ -869,8 +867,8 @@ client_disconnect (echo_main_t * em, session_t * s)
 static void
 clients_run (echo_main_t * em)
 {
-  session_fifo_event_t _e, *e = &_e;
   f64 start_time, deltat, timeout = 100.0;
+  svm_msg_q_msg_t msg;
   session_t *s;
   int i;
 
@@ -918,9 +916,15 @@ clients_run (echo_main_t * em)
   start_time = clib_time_now (&em->clib_time);
   em->state = STATE_READY;
   while (em->n_active_clients)
-    if (em->our_event_queue->cursize)
-      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_NOWAIT, 0);
-
+    if (!svm_msg_q_is_empty (em->our_event_queue))
+      {
+	if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_WAIT, 0))
+	  {
+	    clib_warning ("svm msg q returned");
+	  }
+	else
+	  svm_msg_q_free_msg (em->our_event_queue, &msg);
+      }
 
   for (i = 0; i < em->n_clients; i++)
     {
@@ -1180,10 +1184,12 @@ void
 server_handle_event_queue (echo_main_t * em)
 {
   session_fifo_event_t _e, *e = &_e;
+  svm_msg_q_msg_t msg;
 
   while (1)
     {
-      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+      svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_WAIT, 0);
+      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
@@ -1191,6 +1197,7 @@ server_handle_event_queue (echo_main_t * em)
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
+	  svm_msg_q_free_msg (em->our_event_queue, &msg);
 	  return;
 
 	default:
@@ -1204,6 +1211,7 @@ server_handle_event_queue (echo_main_t * em)
 	  em->time_to_print_stats = 0;
 	  fformat (stdout, "%d connections\n", pool_elts (em->sessions));
 	}
+      svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
 }
 

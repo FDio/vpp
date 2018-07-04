@@ -46,7 +46,7 @@ typedef struct
    * Application setup parameters
    */
   svm_queue_t *vl_input_queue;		/**< vpe input queue */
-  svm_queue_t **vpp_event_queue;
+  svm_msg_q_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
   u32 my_client_index;			/**< loopback API client handle */

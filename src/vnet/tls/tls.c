@@ -41,63 +41,15 @@ tls_get_available_engine (void)
 int
 tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type)
 {
-  session_fifo_event_t evt;
-  svm_queue_t *q;
-
   if (svm_fifo_set_event (f))
-    {
-      evt.fifo = f;
-      evt.event_type = evt_type;
-
-      q = session_manager_get_vpp_event_queue (f->master_thread_index);
-      if (PREDICT_TRUE (q->cursize < q->maxsize))
-	{
-	  svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
-	}
-      else
-	{
-	  clib_warning ("vpp's evt q full");
-	  return -1;
-	}
-    }
+    session_send_io_evt_to_thread (f, evt_type);
   return 0;
 }
 
 static inline int
 tls_add_app_q_evt (application_t * app, stream_session_t * app_session)
 {
-  session_fifo_event_t evt;
-  svm_queue_t *q;
-
-  if (PREDICT_FALSE (app_session->session_state == SESSION_STATE_CLOSED))
-    {
-      /* Session is closed so app will never clean up. Flush rx fifo */
-      u32 to_dequeue = svm_fifo_max_dequeue (app_session->server_rx_fifo);
-      if (to_dequeue)
-	svm_fifo_dequeue_drop (app_session->server_rx_fifo, to_dequeue);
-      return 0;
-    }
-
-  if (app->cb_fns.builtin_app_rx_callback)
-    return app->cb_fns.builtin_app_rx_callback (app_session);
-
-  if (svm_fifo_set_event (app_session->server_rx_fifo))
-    {
-      evt.fifo = app_session->server_rx_fifo;
-      evt.event_type = FIFO_EVENT_APP_RX;
-      q = app->event_queue;
-
-      if (PREDICT_TRUE (q->cursize < q->maxsize))
-	{
-	  svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
-	}
-      else
-	{
-	  clib_warning ("app evt q full");
-	  return -1;
-	}
-    }
-  return 0;
+  return application_send_event (app, app_session, FIFO_EVENT_APP_RX);
 }
 
 u32
