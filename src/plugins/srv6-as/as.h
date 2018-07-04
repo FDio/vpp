@@ -23,8 +23,9 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-#define DA_IP4 4
-#define DA_IP6 6
+#define AS_TYPE_L2	2
+#define AS_TYPE_IP4	4
+#define AS_TYPE_IP6	6
 
 /*
  * This is the memory that will be stored per each localsid
@@ -35,7 +36,7 @@ typedef struct
   ip46_address_t nh_addr;		/**< Proxied device address */
   u32 sw_if_index_out;			/**< Outgoing iface to proxied dev. */
   u32 nh_adj;				/**< Adjacency index for out. iface */
-  u8 ip_version;
+  u8 inner_type;
 
   u32 sw_if_index_in;			/**< Incoming iface from proxied dev. */
   u8 *rewrite;				/**< Headers to be rewritten */
@@ -57,6 +58,7 @@ typedef struct
 
   u32 srv6_localsid_behavior_id;	/**< SRv6 LocalSID behavior number */
 
+  u32 *sw_iface_localsid2;		/**< Retrieve local SID from iface */
   u32 *sw_iface_localsid4;		/**< Retrieve local SID from iface */
   u32 *sw_iface_localsid6;		/**< Retrieve local SID from iface */
 
