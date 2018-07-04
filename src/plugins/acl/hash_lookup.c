@@ -558,12 +558,13 @@ static void *
 hash_acl_set_heap(acl_main_t *am)
 {
   if (0 == am->hash_lookup_mheap) {
-    am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , am->hash_lookup_mheap_size);
+    am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ , 
+                                                   am->hash_lookup_mheap_size,
+                                                   1 /* locked */);
     if (0 == am->hash_lookup_mheap) {
-      clib_error("ACL plugin failed to allocate hash lookup heap of %U bytes, abort", format_memory_size, am->hash_lookup_mheap_size);
+        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
+                   format_memory_size, am->hash_lookup_mheap_size);
     }
-    mheap_t *h = mheap_header (am->hash_lookup_mheap);
-    h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
@@ -574,6 +575,7 @@ acl_plugin_hash_acl_set_validate_heap(int on)
 {
   acl_main_t *am = &acl_main;
   clib_mem_set_heap(hash_acl_set_heap(am));
+#if USE_DLMALLOC == 0
   mheap_t *h = mheap_header (am->hash_lookup_mheap);
   if (on) {
     h->flags |= MHEAP_FLAG_VALIDATE;
@@ -583,6 +585,7 @@ acl_plugin_hash_acl_set_validate_heap(int on)
     h->flags &= ~MHEAP_FLAG_VALIDATE;
     h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
   }
+#endif
 }
 
 void
@@ -590,12 +593,14 @@ acl_plugin_hash_acl_set_trace_heap(int on)
 {
   acl_main_t *am = &acl_main;
   clib_mem_set_heap(hash_acl_set_heap(am));
+#if USE_DLMALLOC == 0
   mheap_t *h = mheap_header (am->hash_lookup_mheap);
   if (on) {
     h->flags |= MHEAP_FLAG_TRACE;
   } else {
     h->flags &= ~MHEAP_FLAG_TRACE;
   }
+#endif
 }
 
 static void

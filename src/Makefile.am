@@ -19,7 +19,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
-AM_CFLAGS = @CPU_FLAGS@ -Wall
+AM_CFLAGS = @CPU_FLAGS@ @DLMALLOC@ -Wall
 AM_CXXFLAGS = -Wall -std=gnu++11
 
 SUBDIRS = .

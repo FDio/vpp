@@ -367,8 +367,6 @@ int
 vppcom_app_create (char *app_name)
 {
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
-  u8 *heap;
-  mheap_t *h;
   int rv;
 
   if (!vcm->init)
@@ -382,10 +380,17 @@ vppcom_app_create (char *app_name)
       vppcom_cfg (&vcm->cfg);
 
       vcm->main_cpu = os_get_thread_index ();
-      heap = clib_mem_get_per_cpu_heap ();
-      h = mheap_header (heap);
-      /* make the main heap thread-safe */
-      h->flags |= MHEAP_FLAG_THREAD_SAFE;
+
+#if USE_DLMALLOC == 0
+      {
+	u8 *heap;
+	mheap_t *h;
+	heap = clib_mem_get_per_cpu_heap ();
+	h = mheap_header (heap);
+	/* make the main heap thread-safe */
+	h->flags |= MHEAP_FLAG_THREAD_SAFE;
+      }
+#endif
 
       vcm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
 
