@@ -38,10 +38,10 @@ typedef enum
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
   FIFO_EVENT_RPC,
-} fifo_event_type_t;
+} session_evt_type_t;
 
 static inline const char *
-fifo_event_type_str (fifo_event_type_t et)
+fifo_event_type_str (session_evt_type_t et)
 {
   switch (et)
     {
@@ -61,6 +61,13 @@ fifo_event_type_str (fifo_event_type_t et)
       return "UNKNOWN FIFO EVENT";
     }
 }
+
+typedef enum
+{
+  SESSION_MQ_IO_EVT_RING,
+  SESSION_MQ_CTRL_EVT_RING,
+  SESSION_MQ_N_RINGS
+} session_mq_rings_e;
 
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
@@ -86,22 +93,29 @@ typedef struct
 {
   void *fp;
   void *arg;
-} rpc_args_t;
+} session_rpc_args_t;
 
 typedef u64 session_handle_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  union
-    {
-      svm_fifo_t * fifo;
-      session_handle_t session_handle;
-      rpc_args_t rpc_args;
-    };
+typedef struct
+{
   u8 event_type;
   u8 postponed;
-}) session_fifo_event_t;
+  union
+  {
+    svm_fifo_t *fifo;
+    session_handle_t session_handle;
+    session_rpc_args_t rpc_args;
+    struct
+    {
+      u8 data[0];
+    };
+  };
+} __clib_packed session_fifo_event_t;
 /* *INDENT-ON* */
+
+#define SESSION_MSG_NULL { }
 
 typedef struct session_dgram_pre_hdr_
 {
@@ -193,7 +207,7 @@ struct _session_manager_main
   session_tx_context_t *ctx;
 
   /** vpp fifo event queue */
-  svm_queue_t **vpp_event_queues;
+  svm_msg_q_t **vpp_event_queues;
 
   /** Event queues memfd segment initialized only if so configured */
   ssvm_private_t evt_qs_segment;
@@ -533,9 +547,12 @@ int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_disconnect_transport (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
-void session_send_session_evt_to_thread (u64 session_handle,
-					 fifo_event_type_t evt_type,
-					 u32 thread_index);
+int session_send_io_evt_to_thread (svm_fifo_t * f,
+				   session_evt_type_t evt_type);
+int session_send_io_evt_to_thread_custom (svm_fifo_t * f, u32 thread_index,
+					  session_evt_type_t evt_type);
+void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
+				     void *rpc_args);
 ssvm_private_t *session_manager_get_evt_q_segment (void);
 
 u8 *format_stream_session (u8 * s, va_list * args);
@@ -549,7 +566,7 @@ void session_register_transport (transport_proto_t transport_proto,
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
-always_inline svm_queue_t *
+always_inline svm_msg_q_t *
 session_manager_get_vpp_event_queue (u32 thread_index)
 {
   return session_manager_main.vpp_event_queues[thread_index];

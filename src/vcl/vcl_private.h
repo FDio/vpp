@@ -194,7 +194,7 @@ typedef struct vppcom_main_t_
   clib_bitmap_t *ex_bitmap;
 
   /* Our event queue */
-  svm_queue_t *app_event_queue;
+  svm_msg_q_t *app_event_queue;
 
   /* unique segment name counter */
   u32 unique_segment_index;

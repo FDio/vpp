@@ -17,7 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
-#include <svm/queue.h>
+#include <svm/message_queue.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/lock.h>
 #include <vppinfra/valloc.h>
@@ -61,7 +61,7 @@ typedef struct _segment_manager
   /**
    * App event queue allocated in first segment
    */
-  svm_queue_t *event_queue;
+  svm_msg_q_t *event_queue;
 } segment_manager_t;
 
 #define segment_manager_foreach_segment_w_lock(VAR, SM, BODY)		\
@@ -114,7 +114,7 @@ segment_manager_index (segment_manager_t * sm)
   return sm - segment_manager_main.segment_managers;
 }
 
-always_inline svm_queue_t *
+always_inline svm_msg_q_t *
 segment_manager_event_queue (segment_manager_t * sm)
 {
   return sm->event_queue;
@@ -152,7 +152,8 @@ int segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
-svm_queue_t *segment_manager_alloc_queue (svm_fifo_segment_private_t * fs,
+u32 segment_manager_evt_q_expected_size (u32 q_size);
+svm_msg_q_t *segment_manager_alloc_queue (svm_fifo_segment_private_t * fs,
 					  u32 queue_size);
 void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);

@@ -155,7 +155,7 @@ send_session_accept_callback (stream_session_t * s)
   vl_api_registration_t *reg;
   transport_connection_t *tc;
   stream_session_t *listener;
-  svm_queue_t *vpp_queue;
+  svm_msg_q_t *vpp_queue;
 
   reg = vl_mem_api_client_index_to_registration (server->api_client_index);
   if (!reg)
@@ -300,7 +300,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   vl_api_connect_session_reply_t *mp;
   transport_connection_t *tc;
   vl_api_registration_t *reg;
-  svm_queue_t *vpp_queue;
+  svm_msg_q_t *vpp_queue;
   application_t *app;
 
   app = application_get (app_index);
@@ -485,7 +485,7 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
   vl_api_bind_uri_reply_t *rmp;
   stream_session_t *s;
   application_t *app = 0;
-  svm_queue_t *vpp_evt_q;
+  svm_msg_q_t *vpp_evt_q;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -759,7 +759,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   stream_session_t *s;
   transport_connection_t *tc = 0;
   ip46_address_t *ip46;
-  svm_queue_t *vpp_evt_q;
+  svm_msg_q_t *vpp_evt_q;
 
   if (session_manager_is_enabled () == 0)
     {

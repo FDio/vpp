@@ -32,7 +32,7 @@ typedef struct
 typedef struct
 {
   u8 **rx_buf;
-  svm_queue_t **vpp_queue;
+  svm_msg_q_t **vpp_queue;
   u64 byte_index;
 
   uword *handler_by_get_request;
@@ -140,7 +140,6 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 void
 send_data (stream_session_t * s, u8 * data)
 {
-  session_fifo_event_t evt;
   u32 offset, bytes_to_send;
   f64 delay = 10e-3;
   http_server_main_t *hsm = &http_server_main;
@@ -178,14 +177,8 @@ send_data (stream_session_t * s, u8 * data)
 	  bytes_to_send -= actual_transfer;
 
 	  if (svm_fifo_set_event (s->server_tx_fifo))
-	    {
-	      /* Fabricate TX event, send to vpp */
-	      evt.fifo = s->server_tx_fifo;
-	      evt.event_type = FIFO_EVENT_APP_TX;
-
-	      svm_queue_add (hsm->vpp_queue[s->thread_index],
-			     (u8 *) & evt, 0 /* do wait for mutex */ );
-	    }
+	    session_send_io_evt_to_thread (s->server_tx_fifo,
+					   FIFO_EVENT_APP_TX);
 	  delay = 10e-3;
 	}
     }
@@ -379,15 +372,7 @@ http_server_rx_callback (stream_session_t * s)
 
   /* Send an RPC request via the thread-0 input node */
   if (vlib_get_thread_index () != 0)
-    {
-      session_fifo_event_t evt;
-      evt.rpc_args.fp = alloc_http_process_callback;
-      evt.rpc_args.arg = args;
-      evt.event_type = FIFO_EVENT_RPC;
-      svm_queue_add
-	(session_manager_get_vpp_event_queue (0 /* main thread */ ),
-	 (u8 *) & evt, 0 /* do wait for mutex */ );
-    }
+    session_send_rpc_evt_to_thread (0, alloc_http_process_callback, args);
   else
     alloc_http_process (args);
   return 0;

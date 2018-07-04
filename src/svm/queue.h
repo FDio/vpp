@@ -69,7 +69,13 @@ void svm_queue_unlock (svm_queue_t * q);
 int svm_queue_is_full (svm_queue_t * q);
 int svm_queue_add_nolock (svm_queue_t * q, u8 * elem);
 int svm_queue_sub_raw (svm_queue_t * q, u8 * elem);
-int svm_queue_add_raw (svm_queue_t * q, u8 * elem);
+
+/**
+ * Add element to queue with mutex held
+ * @param q		queue
+ * @param elem		pointer element data to add
+ */
+void svm_queue_add_raw (svm_queue_t * q, u8 * elem);
 
 /*
  * DEPRECATED please use svm_queue_t instead

@@ -154,26 +154,16 @@ svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
   return 0;
 }
 
-int
+void
 svm_queue_add_raw (svm_queue_t * q, u8 * elem)
 {
   i8 *tailp;
 
-  if (PREDICT_FALSE (q->cursize == q->maxsize))
-    {
-      while (q->cursize == q->maxsize)
-	;
-    }
-
   tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
   clib_memcpy (tailp, elem, q->elsize);
 
-  q->tail++;
+  q->tail = (q->tail + 1) % q->maxsize;
   q->cursize++;
-
-  if (q->tail == q->maxsize)
-    q->tail = 0;
-  return 0;
 }
 
 
@@ -414,11 +404,9 @@ svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
   headp = (i8 *) (&q->data[0] + q->elsize * q->head);
   clib_memcpy (elem, headp, q->elsize);
 
-  q->head++;
+  q->head = (q->head + 1) % q->maxsize;
   q->cursize--;
 
-  if (q->head == q->maxsize)
-    q->head = 0;
   return 0;
 }
 

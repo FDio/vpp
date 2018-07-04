@@ -62,13 +62,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  svm_fifo_t *f = s->data.tx_fifo;
 	  rv = clib_min (svm_fifo_max_enqueue (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  if (svm_fifo_set_event (f))
-	    {
-	      session_fifo_event_t evt;
-	      evt.fifo = f;
-	      evt.event_type = FIFO_EVENT_APP_TX;
-	      svm_queue_add (s->data.vpp_evt_q, (u8 *) & evt, 0);
-	    }
+	  session_send_io_evt_to_thread_custom (f, s->thread_index,
+						FIFO_EVENT_APP_TX);
 	}
       else
 	rv = app_send_stream (&s->data, test_data + test_buf_offset,
@@ -98,13 +93,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  hdr.lcl_port = at->lcl_port;
 	  svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  if (svm_fifo_set_event (f))
-	    {
-	      session_fifo_event_t evt;
-	      evt.fifo = f;
-	      evt.event_type = FIFO_EVENT_APP_TX;
-	      svm_queue_add (s->data.vpp_evt_q, (u8 *) & evt, 0);
-	    }
+	  session_send_io_evt_to_thread_custom (f, s->thread_index,
+						FIFO_EVENT_APP_TX);
 	}
       else
 	rv = app_send_dgram (&s->data, test_data + test_buf_offset,
@@ -462,18 +452,9 @@ echo_clients_rx_callback (stream_session_t * s)
 
   if (svm_fifo_max_dequeue (s->server_rx_fifo))
     {
-      session_fifo_event_t evt;
-      svm_queue_t *q;
       if (svm_fifo_set_event (s->server_rx_fifo))
-	{
-	  evt.fifo = s->server_rx_fifo;
-	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
-	  q = session_manager_get_vpp_event_queue (s->thread_index);
-	  if (PREDICT_FALSE (q->cursize == q->maxsize))
-	    clib_warning ("out of event queue space");
-	  else if (svm_queue_add (q, (u8 *) & evt, 0))
-	    clib_warning ("failed to enqueue self-tap");
-	}
+	session_send_io_evt_to_thread (s->server_rx_fifo,
+				       FIFO_EVENT_BUILTIN_RX);
     }
   return 0;
 }

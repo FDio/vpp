@@ -23,7 +23,7 @@ typedef struct
   /*
    * Server app parameters
    */
-  svm_queue_t **vpp_queue;
+  svm_msg_q_t **vpp_queue;
   svm_queue_t *vl_input_queue;	/**< Sever's event queue */
 
   u32 app_index;		/**< Server app index */
@@ -145,10 +145,8 @@ echo_server_rx_callback (stream_session_t * s)
   int actual_transfer;
   svm_fifo_t *tx_fifo, *rx_fifo;
   echo_server_main_t *esm = &echo_server_main;
-  session_fifo_event_t evt;
   u32 thread_index = vlib_get_thread_index ();
   app_session_transport_t at;
-  svm_queue_t *q;
 
   ASSERT (s->thread_index == thread_index);
 
@@ -170,8 +168,9 @@ echo_server_rx_callback (stream_session_t * s)
       max_dequeue = ph.data_length - ph.data_offset;
       if (!esm->vpp_queue[s->thread_index])
 	{
-	  q = session_manager_get_vpp_event_queue (s->thread_index);
-	  esm->vpp_queue[s->thread_index] = q;
+	  svm_msg_q_t *mq;
+	  mq = session_manager_get_vpp_event_queue (s->thread_index);
+	  esm->vpp_queue[s->thread_index] = mq;
 	}
       max_enqueue -= sizeof (session_dgram_hdr_t);
     }
@@ -191,13 +190,7 @@ echo_server_rx_callback (stream_session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
-	  evt.fifo = rx_fifo;
-	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
-
-	  q = esm->vpp_queue[s->thread_index];
-	  if (PREDICT_FALSE (q->cursize == q->maxsize))
-	    clib_warning ("out of event queue space");
-	  else if (svm_queue_add (q, (u8 *) & evt, 0))
+	  if (session_send_io_evt_to_thread (rx_fifo, FIFO_EVENT_BUILTIN_RX))
 	    clib_warning ("failed to enqueue self-tap");
 
 	  vec_validate (esm->rx_retries[s->thread_index], s->session_index);

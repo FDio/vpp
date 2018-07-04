@@ -87,10 +87,10 @@ typedef struct
   u8 is_connected;
 
   /* Our event queue */
-  svm_queue_t *our_event_queue;
+  svm_msg_q_t *our_event_queue;
 
   /* $$$ single thread only for the moment */
-  svm_queue_t *vpp_event_queue;
+  svm_msg_q_t *vpp_event_queue;
 
   /* $$$$ hack: cut-through session index */
   volatile u32 cut_through_session_index;
@@ -369,7 +369,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   utm->our_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
+    uword_to_pointer (mp->app_event_queue_address, svm_msg_q_t *);
 }
 
 static void
@@ -736,7 +736,7 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 	       sizeof (ip46_address_t));
   session->transport.is_ip4 = mp->lcl_is_ip4;
   session->transport.lcl_port = mp->lcl_port;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_queue_t *);
+  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
 
   utm->state = utm->is_connected ? STATE_BOUND : STATE_READY;
 }
@@ -896,7 +896,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     start_time = clib_time_now (&utm->clib_time);
 
   utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					   svm_queue_t *);
+					   svm_msg_q_t *);
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
@@ -909,7 +909,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     {
       clib_warning ("cut-through session");
       utm->our_event_queue = uword_to_pointer (mp->server_event_queue_address,
-					       svm_queue_t *);
+					       svm_msg_q_t *);
       rx_fifo->master_session_index = session_index;
       tx_fifo->master_session_index = session_index;
       utm->cut_through_session_index = session_index;
@@ -1012,23 +1012,23 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   session->rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   session->tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_queue_t *);
+					 svm_msg_q_t *);
   /* Cut-through case */
   if (mp->client_event_queue_address)
     {
       clib_warning ("cut-through session");
       utm->cut_through_session_index = session - utm->sessions;
       utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					       svm_queue_t *);
+					       svm_msg_q_t *);
       utm->our_event_queue = uword_to_pointer (mp->client_event_queue_address,
-					       svm_queue_t *);
+					       svm_msg_q_t *);
       utm->do_echo = 1;
     }
   else
     {
       utm->connected_session = session - utm->sessions;
       utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					       svm_queue_t *);
+					       svm_msg_q_t *);
 
       clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
 		   sizeof (ip46_address_t));
@@ -1134,14 +1134,20 @@ server_handle_fifo_event_rx (udp_echo_main_t * utm, session_fifo_event_t * e)
 void
 server_handle_event_queue (udp_echo_main_t * utm)
 {
-  session_fifo_event_t _e, *e = &_e;
+  session_fifo_event_t *e;
+  svm_msg_q_msg_t msg;
 
   while (utm->state != STATE_READY)
     sleep (5);
 
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+      if (svm_msg_q_sub (utm->our_event_queue, &msg, SVM_Q_WAIT, 0))
+	{
+	  clib_warning ("svm msg q returned");
+	  continue;
+	}
+      e = svm_msg_q_msg_data (utm->our_event_queue, &msg);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
@@ -1149,12 +1155,14 @@ server_handle_event_queue (udp_echo_main_t * utm)
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
-	  return;
+	  utm->time_to_stop = 1;
+	  break;
 
 	default:
 	  clib_warning ("unknown event type %d", e->event_type);
 	  break;
 	}
+      svm_msg_q_free_msg (utm->our_event_queue, &msg);
       if (PREDICT_FALSE (utm->time_to_stop == 1))
 	return;
       if (PREDICT_FALSE (utm->time_to_print_stats == 1))

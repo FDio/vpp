@@ -72,7 +72,7 @@ typedef struct _application
   u32 ns_index;
 
   /** Application listens for events on this svm queue */
-  svm_queue_t *event_queue;
+  svm_msg_q_t *event_queue;
 
   /*
    * Callbacks: shoulder-taps for the server/client
@@ -206,6 +206,11 @@ int application_local_session_disconnect (u32 app_index,
 int application_local_session_disconnect_w_index (u32 app_index,
 						  u32 ls_index);
 void application_local_sessions_del (application_t * app);
+
+int application_send_event (application_t * app, stream_session_t * s,
+			    u8 evt);
+int application_lock_and_send_event (application_t * app,
+				     stream_session_t * s, u8 evt_type);
 
 always_inline u32
 local_session_id (local_session_t * ll)
