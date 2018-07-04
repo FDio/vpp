@@ -1,7 +1,7 @@
 #
 # spec file for package vpp
 #
-# Copyright (c) 2017 SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) 2018 SUSE LINUX GmbH, Nuernberg, Germany.
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -38,17 +38,23 @@ BuildRequires:  check-devel
 BuildRequires:  chrpath
 BuildRequires:  distribution-release
 BuildRequires:  gcc
+BuildRequires:  gcc-c++
+BuildRequires:  glibc-devel
 BuildRequires:  glibc-devel-static
-BuildRequires:  java-1_8_0-openjdk-devel
+BuildRequires:  java-devel >= 1.8
+BuildRequires:  libboost_headers-devel
+BuildRequires:  libboost_thread-devel
 BuildRequires:  libnuma-devel
 BuildRequires:  libopenssl-devel
 BuildRequires:  libtool
 BuildRequires:  lsb-release
 BuildRequires:  make
+BuildRequires:  mbedtls-devel
 BuildRequires:  openssl-devel
 BuildRequires:  python-devel
 BuildRequires:  python-pip
 BuildRequires:  python-rpm-macros
+BuildRequires:  python2-ply
 BuildRequires:  python3-devel
 BuildRequires:  python3-pip
 BuildRequires:  shadow
@@ -112,6 +118,7 @@ Summary:        VPP api lua bindings
 Group:          Development/Libraries/Other
 Requires:       %{lname} = %{version}
 Requires:       %{name} = %{version}
+Requires:       %{name}-devel = %{version}
 Conflicts:      otherproviders(%{name}-any-api-lua)
 Provides:       %{name}-any-api-lua = %{version}
 
@@ -123,6 +130,7 @@ Summary:        VPP api java bindings
 Group:          Development/Libraries/Java
 Requires:       %{lname} = %{version}
 Requires:       %{name} = %{version}
+Requires:       %{name}-devel = %{version}
 Conflicts:      otherproviders(%{name}-any-api-java)
 Provides:       %{name}-any-api-java = %{version}
 
@@ -134,6 +142,7 @@ Summary:        VPP api python bindings
 Group:          Development/Libraries/Python
 Requires:       %{lname} = %{version}
 Requires:       %{name} = %{version}
+Requires:       %{name}-devel = %{version}
 Requires:       python-setuptools
 Conflicts:      otherproviders(%{name}-any-python-api)
 Provides:       %{name}-any-python-api = %{version}
@@ -148,7 +157,6 @@ This package contains the python bindings for the vpp api
 export VPP_BUILD_USER=suse
 export VPP_BUILD_HOST=SUSE
 
-make V=1 PLATFORM=vpp bootstrap
 make V=1 PLATFORM=vpp build-release
 
 cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_build}
@@ -315,7 +323,7 @@ export NO_BRP_CHECK_RPATH=true
 %config %{_sysconfdir}/vpp/startup.conf
 %{_sysconfdir}/bash_completion.d/vppctl_completion
 %{_datadir}/vpp/vppctl-cmd-list
-%doc LICENSE
+%license LICENSE
 
 %files -n %{lname}
 %exclude %{_libdir}/vpp_plugins
@@ -330,7 +338,7 @@ export NO_BRP_CHECK_RPATH=true
 
 %files api-python
 %dir %{python_sitelib}/vpp_papi*
-%{python_sitelib}/vpp_*
+%{python_sitelib}/vpp_papi*
 
 %files devel
 %dir %{python_sitelib}/jvppgen
