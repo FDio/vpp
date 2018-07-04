@@ -94,10 +94,10 @@ vec_resize_allocate_memory (void *v,
 
   clib_memcpy (new, old, old_alloc_bytes);
   clib_mem_free (old);
-  v = new;
 
   /* Allocator may give a bit of extra room. */
-  new_alloc_bytes = clib_mem_size (v);
+  new_alloc_bytes = clib_mem_size (new);
+  v = new;
 
   /* Zero new memory. */
   memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
