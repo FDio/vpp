@@ -2474,11 +2474,11 @@ stats_thread_fn (void *arg)
     pthread_sigmask (SIG_SETMASK, &s, 0);
   }
 
+  clib_mem_set_heap (w->thread_mheap);
+
   if (vec_len (tm->thread_prefix))
     vlib_set_thread_name ((char *)
 			  format (0, "%v_stats%c", tm->thread_prefix, '\0'));
-
-  clib_mem_set_heap (w->thread_mheap);
 
   while (1)
     {
