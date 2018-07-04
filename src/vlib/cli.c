@@ -707,7 +707,7 @@ static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  int verbose = 0, api_segment = 0;
+  int verbose __attribute__ ((unused)) = 0, api_segment = 0;
   clib_error_t *error;
   u32 index = 0;
 
@@ -745,13 +745,30 @@ show_memory_usage (vlib_main_t * vm,
   /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
+#if USE_DLMALLOC == 0
       mheap_t *h = mheap_header (clib_per_cpu_mheaps[index]);
-      vlib_cli_output (vm, "%sThread %d %v\n", index ? "\n":"", index,
+      vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
 		       vlib_worker_threads[index].name);
       vlib_cli_output (vm, "  %U\n", format_page_map, pointer_to_uword (h) -
 		       h->vm_alloc_offset_from_header,
 		       h->vm_alloc_size);
-      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index], verbose);
+      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index],
+                       verbose);
+#else
+      struct mallinfo mi;
+      void *mspace;
+      mspace = clib_per_cpu_mheaps[index];
+
+      mi = mspace_mallinfo (mspace);
+
+      vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
+		       vlib_worker_threads[index].name);
+      vlib_cli_output (vm, "  %U\n", format_page_map,
+                       pointer_to_uword (mspace_least_addr(mspace)),
+                       mi.arena);
+      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index],
+                       verbose);
+#endif
       index++;
   }));
   /* *INDENT-ON* */
@@ -850,6 +867,7 @@ static clib_error_t *
 test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
 		    vlib_cli_command_t * cmd)
 {
+#if USE_DLMALLOC == 0
   clib_error_t *error = 0;
   void *heap;
   mheap_t *mheap;
@@ -897,6 +915,9 @@ test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
     }
 
   return error;
+#else
+  return clib_error_return (0, "unimplemented...");
+#endif /* USE_DLMALLOC */
 }
 
 /* *INDENT-OFF* */

@@ -140,7 +140,11 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   t->skip_n_vectors = skip_n_vectors;
   t->entries_per_page = 2;
 
+#if USE_DLMALLOC == 0
   t->mheap = mheap_alloc (0 /* use VM */ , memory_size);
+#else
+  t->mheap = create_mspace (memory_size, 1 /* locked */ );
+#endif
 
   vec_validate_aligned (t->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
   oldheap = clib_mem_set_heap (t->mheap);
@@ -170,7 +174,11 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
 
   vec_free (t->mask);
   vec_free (t->buckets);
+#if USE_DLMALLOC == 0
   mheap_free (t->mheap);
+#else
+  destroy_mspace (t->mheap);
+#endif
 
   pool_put (cm->tables, t);
 }

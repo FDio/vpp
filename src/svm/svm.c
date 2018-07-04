@@ -236,6 +236,7 @@ format_svm_region (u8 * s, va_list * args)
 		}
 	    }
 	}
+#if USE_DLMALLOC == 0
       s = format (s, "  rgn heap stats: %U", format_mheap,
 		  rp->region_heap, 0);
       if ((rp->flags & SVM_FLAGS_MHEAP) && rp->data_heap)
@@ -244,6 +245,7 @@ format_svm_region (u8 * s, va_list * args)
 		      rp->data_heap, 1);
 	}
       s = format (s, "\n");
+#endif
     }
 
   return (s);
@@ -339,12 +341,18 @@ svm_data_region_create (svm_map_region_args_t * a, svm_region_t * rp)
 
   if (a->flags & SVM_FLAGS_MHEAP)
     {
+#if USE_DLMALLOC == 0
       mheap_t *heap_header;
       rp->data_heap =
 	mheap_alloc_with_flags ((void *) (rp->data_base), map_size,
 				MHEAP_FLAG_DISABLE_VM);
       heap_header = mheap_header (rp->data_heap);
       heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+#else
+      rp->data_heap = create_mspace_with_base (rp->data_base,
+					       map_size, 1 /* locked */ );
+      mspace_disable_expand (rp->data_heap);
+#endif
 
       rp->flags |= SVM_FLAGS_MHEAP;
     }
@@ -518,12 +526,22 @@ svm_region_init_mapped_region (svm_map_region_args_t * a, svm_region_t * rp)
   rp->virtual_base = a->baseva;
   rp->virtual_size = a->size;
 
+#if USE_DLMALLOC == 0
   rp->region_heap =
     mheap_alloc_with_flags (uword_to_pointer
 			    (a->baseva + MMAP_PAGESIZE, void *),
 			    (a->pvt_heap_size !=
 			     0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
 			    MHEAP_FLAG_DISABLE_VM);
+#else
+  rp->region_heap = create_mspace_with_base
+    (uword_to_pointer (a->baseva + MMAP_PAGESIZE, void *),
+     (a->pvt_heap_size !=
+      0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE, 1 /* locked */ );
+
+  mspace_disable_expand (rp->region_heap);
+#endif
+
   oldheap = svm_push_pvt_heap (rp);
 
   rp->region_name = (char *) format (0, "%s%c", a->name, 0);
