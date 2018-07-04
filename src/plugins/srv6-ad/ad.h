@@ -55,6 +55,9 @@ typedef struct
   u32 sw_if_index_in;						    /**< Incoming iface from proxied dev. */
   u32 rw_len;		      /**< Number of bits to be rewritten */
   u8 *rewrite;								/**< Headers to be rewritten */
+
+  vlib_counter_t valid_counter;
+  vlib_counter_t invalid_counter;
 } srv6_ad_localsid_t;
 
 srv6_ad_main_t srv6_ad_main;

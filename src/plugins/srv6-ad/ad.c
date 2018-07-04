@@ -114,6 +114,12 @@ srv6_ad_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 
   ls_mem->rw_len = 0;
 
+  /* Step 3: Initialize rewrite counters */
+  ls_mem->valid_counter.packets = 0;
+  ls_mem->valid_counter.bytes = 0;
+  ls_mem->invalid_counter.packets = 0;
+  ls_mem->invalid_counter.bytes = 0;
+
   return 0;
 }
 
@@ -172,26 +178,28 @@ format_srv6_ad_localsid (u8 * s, va_list * args)
 
   if (ls_mem->ip_version == DA_IP4)
     {
-      return (format (s,
-		      "Next-hop:\t%U\n"
-		      "\tOutgoing iface: %U\n"
-		      "\tIncoming iface: %U",
-		      format_ip4_address, &ls_mem->nh_addr.ip4,
-		      format_vnet_sw_if_index_name, vnm,
-		      ls_mem->sw_if_index_out, format_vnet_sw_if_index_name,
-		      vnm, ls_mem->sw_if_index_in));
+      s =
+	format (s, "Next-hop:\t%U\n", format_ip4_address,
+		&ls_mem->nh_addr.ip4);
     }
   else
     {
-      return (format (s,
-		      "Next-hop:\t%U\n"
-		      "\tOutgoing iface: %U\n"
-		      "\tIncoming iface: %U",
-		      format_ip6_address, &ls_mem->nh_addr.ip6,
-		      format_vnet_sw_if_index_name, vnm,
-		      ls_mem->sw_if_index_out, format_vnet_sw_if_index_name,
-		      vnm, ls_mem->sw_if_index_in));
+      s =
+	format (s, "Next-hop:\t%U\n", format_ip6_address,
+		&ls_mem->nh_addr.ip6);
     }
+
+  s = format (s, "\tOutgoing iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
+	      ls_mem->sw_if_index_out);
+  s = format (s, "\tIncoming iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
+	      ls_mem->sw_if_index_in);
+
+  s = format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	      ls_mem->valid_counter.packets, ls_mem->valid_counter.bytes);
+  s = format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	      ls_mem->invalid_counter.packets, ls_mem->invalid_counter.bytes);
+
+  return s;
 }
 
 /*
