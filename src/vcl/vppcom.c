@@ -1164,16 +1164,19 @@ vppcom_session_read_ready (vcl_session_t * session, u32 session_index)
     }
   rv = ready;
 
-  if (vcm->app_event_queue->cursize &&
-      !pthread_mutex_trylock (&vcm->app_event_queue->mutex))
+  if (!svm_msg_q_is_empty (vcm->app_event_queue) &&
+      !pthread_mutex_trylock (&vcm->app_event_queue->q->mutex))
     {
-      u32 i, n_to_dequeue = vcm->app_event_queue->cursize;
-      session_fifo_event_t e;
+      u32 i, n_to_dequeue = vcm->app_event_queue->q->cursize;
+      svm_msg_q_msg_t msg;
 
       for (i = 0; i < n_to_dequeue; i++)
-	svm_queue_sub_raw (vcm->app_event_queue, (u8 *) & e);
+	{
+	  svm_queue_sub_raw (vcm->app_event_queue->q, (u8 *) & msg);
+	  svm_msg_q_free_msg (vcm->app_event_queue, &msg);
+	}
 
-      pthread_mutex_unlock (&vcm->app_event_queue->mutex);
+      pthread_mutex_unlock (&vcm->app_event_queue->q->mutex);
     }
 done:
   return rv;
@@ -1184,8 +1187,7 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
 {
   vcl_session_t *session = 0;
   svm_fifo_t *tx_fifo = 0;
-  svm_queue_t *q;
-  session_fifo_event_t evt;
+  svm_msg_q_t *mq;
   session_state_t state;
   int rv, n_write, is_nonblocking;
   u32 poll_et;
@@ -1241,18 +1243,15 @@ vppcom_session_write (uint32_t session_index, void *buf, size_t n)
 
   if ((n_write > 0) && svm_fifo_set_event (tx_fifo))
     {
-      /* Fabricate TX event, send to vpp */
-      evt.fifo = tx_fifo;
-      evt.event_type = FIFO_EVENT_APP_TX;
-
+      /* Send TX event to vpp */
       VCL_SESSION_LOCK_AND_GET (session_index, &session);
-      q = session->vpp_evt_q;
-      ASSERT (q);
-      svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
+      mq = session->vpp_evt_q;
+      ASSERT (mq);
+      app_send_io_evt_to_vpp (mq, tx_fifo, FIFO_EVENT_APP_TX, SVM_Q_WAIT);
       VCL_SESSION_UNLOCK ();
       VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: added FIFO_EVENT_APP_TX "
 	    "to vpp_event_q %p, n_write %d", getpid (),
-	    vpp_handle, session_index, q, n_write);
+	    vpp_handle, session_index, mq, n_write);
     }
 
   if (n_write <= 0)
