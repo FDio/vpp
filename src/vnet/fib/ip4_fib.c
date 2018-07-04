@@ -567,10 +567,18 @@ ip4_fib_table_show_one (ip4_fib_t *fib,
 u8 *
 format_ip4_fib_table_memory (u8 * s, va_list * args)
 {
+#if USE_DLMALLOC == 0
     s = format(s, "%=30s %=6d %=8ld\n",
                "IPv4 unicast",
                pool_elts(ip4_main.fibs),
                mheap_bytes(ip4_main.mtrie_mheap));
+#else
+    s = format(s, "%=30s %=6d %=8ld\n",
+               "IPv4 unicast",
+               pool_elts(ip4_main.fibs),
+               mspace_footprint(ip4_main.mtrie_mheap));
+#endif
+    
 
     return (s);
 }

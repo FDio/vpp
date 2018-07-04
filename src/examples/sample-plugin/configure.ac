@@ -22,6 +22,19 @@ AC_DEFUN([CC_CHECK_FLAG],
   AC_LANG_POP([C])
 ])
 
+AC_DEFUN([ENABLE_ARG],
+[
+  AC_ARG_ENABLE($1,
+    AC_HELP_STRING(patsubst([--enable-$1],[_],[-]), $2),
+    [enable_$1=yes n_enable_$1=1],
+    [enable_$1=no n_enable_$1=0])
+  AM_CONDITIONAL(m4_toupper(ENABLE_$1), test "$enable_$1" = "yes")
+  m4_append([list_of_enabled], [$1], [, ])
+])
+
+ENABLE_ARG(dlmalloc,    [Enable dlmalloc])
+AC_SUBST(DLMALLOC,              [-DUSE_DLMALLOC=${n_enable_dlmalloc}])
+
 CC_CHECK_FLAG("-Wno-address-of-packed-member")
 AS_IF([test "$cc_flag_check" = yes],
 	[CFLAGS="${CFLAGS} -Wno-address-of-packed-member"], [])

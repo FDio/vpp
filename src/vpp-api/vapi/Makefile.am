@@ -15,7 +15,7 @@ AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
-AM_CFLAGS = @CPU_FLAGS@ -Wall -I${top_srcdir} -I${top_builddir} -I. -I$(top_srcdir)/vpp-api/
+AM_CFLAGS = @CPU_FLAGS@ @DLMALLOC@ -Wall -I${top_srcdir} -I${top_builddir} -I. -I$(top_srcdir)/vpp-api/
 
 AM_LDFLAGS = -shared -avoid-version -rpath /none -no-undefined
 

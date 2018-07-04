@@ -38,6 +38,8 @@
 #ifndef included_mheap_h
 #define included_mheap_h
 
+#if USE_DLMALLOC == 0
+
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>	/* clib_error_t */
 #include <vppinfra/mem.h>	/* clib_mem_usage_t */
@@ -58,6 +60,7 @@ mheap_get (void *v, uword size, uword * offset_return)
  */
 void *mheap_alloc (void *memory, uword memory_bytes);
 void *mheap_alloc_with_flags (void *memory, uword memory_bytes, uword flags);
+void *mheap_alloc_with_lock (void *memory, uword size, int locked);
 
 #define mheap_free(v) (v) = _mheap_free(v)
 void *_mheap_free (void *v);
@@ -82,6 +85,13 @@ void mheap_trace (void *v, int enable);
 
 /* Test routine. */
 int test_mheap_main (unformat_input_t * input);
+
+#else /* USE_DLMALLOC */
+/* Format mheap data structures as string. */
+u8 *format_mheap (u8 * s, va_list * va);
+void *mheap_alloc_with_lock (void *memory, uword size, int locked);
+
+#endif /* USE_DLMALLOC */
 
 #endif /* included_mheap_h */
 
