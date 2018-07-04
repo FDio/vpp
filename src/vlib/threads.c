@@ -727,7 +727,6 @@ start_workers (vlib_main_t * vm)
   u32 n_vlib_mains = tm->n_vlib_mains;
   u32 worker_thread_index;
   u8 *main_heap = clib_mem_get_per_cpu_heap ();
-  mheap_t *main_heap_header = mheap_header (main_heap);
 
   vec_reset_length (vlib_worker_threads);
 
@@ -742,12 +741,6 @@ start_workers (vlib_main_t * vm)
       vlib_set_thread_name ((char *) w->name);
     }
 
-  /*
-   * Truth of the matter: we always use at least two
-   * threads. So, make the main heap thread-safe
-   * and make the event log thread-safe.
-   */
-  main_heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
   vm->elog_main.lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
   vm->elog_main.lock[0] = 0;
@@ -801,9 +794,17 @@ start_workers (vlib_main_t * vm)
 	      vlib_node_t *n;
 
 	      vec_add2 (vlib_worker_threads, w, 1);
+	      /* Currently unused, may not really work */
 	      if (tr->mheap_size)
-		w->thread_mheap =
-		  mheap_alloc (0 /* use VM */ , tr->mheap_size);
+		{
+#if USE_DLMALLOC == 0
+		  w->thread_mheap =
+		    mheap_alloc (0 /* use VM */ , tr->mheap_size);
+#else
+		  w->thread_mheap = create_mspace (tr->mheap_size,
+						   0 /* unlocked */ );
+#endif
+		}
 	      else
 		w->thread_mheap = main_heap;
 
@@ -831,6 +832,8 @@ start_workers (vlib_main_t * vm)
 
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
+	      vm_clone->heap_aligned_base = (void *)
+		(((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
 	      vm_clone->init_functions_called =
 		hash_create (0, /* value bytes */ 0);
 	      vm_clone->pending_rpc_requests = 0;
@@ -959,8 +962,15 @@ start_workers (vlib_main_t * vm)
 	    {
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      if (tr->mheap_size)
-		w->thread_mheap =
-		  mheap_alloc (0 /* use VM */ , tr->mheap_size);
+		{
+#if USE_DLMALLOC == 0
+		  w->thread_mheap =
+		    mheap_alloc (0 /* use VM */ , tr->mheap_size);
+#else
+		  w->thread_mheap =
+		    create_mspace (tr->mheap_size, 0 /* locked */ );
+#endif
+		}
 	      else
 		w->thread_mheap = main_heap;
 	      w->thread_stack =
