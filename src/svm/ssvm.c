@@ -29,7 +29,6 @@ int
 ssvm_master_init_shm (ssvm_private_t * ssvm)
 {
   int ssvm_fd, mh_flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
-  svm_main_region_t *smr = svm_get_root_rp ()->data_base;
   clib_mem_vm_map_t mapa = { 0 };
   u8 junk = 0, *ssvm_filename;
   ssvm_shared_header_t *sh;
@@ -56,8 +55,13 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
 
   if (fchmod (ssvm_fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0)
     clib_unix_warning ("ssvm segment chmod");
-  if (fchown (ssvm_fd, smr->uid, smr->gid) < 0)
-    clib_unix_warning ("ssvm segment chown");
+  if (svm_get_root_rp ())
+    {
+      /* TODO: is this really needed? */
+      svm_main_region_t *smr = svm_get_root_rp ()->data_base;
+      if (fchown (ssvm_fd, smr->uid, smr->gid) < 0)
+	clib_unix_warning ("ssvm segment chown");
+    }
 
   if (lseek (ssvm_fd, ssvm->ssvm_size, SEEK_SET) < 0)
     {
