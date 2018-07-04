@@ -305,18 +305,10 @@ main (int argc, char **argv)
   u8 *this_input_file;
   u8 interactive = 1;
   u8 json_output = 0;
-  u8 *heap;
-  mheap_t *h;
   int i;
   f64 timeout;
 
-  clib_mem_init (0, 128 << 20);
-
-  heap = clib_mem_get_per_cpu_heap ();
-  h = mheap_header (heap);
-
-  /* make the main heap thread-safe */
-  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  clib_mem_init_thread_safe (0, 128 << 20);
 
   clib_macro_init (&vam->macro_main);
   clib_macro_add_builtin (&vam->macro_main, "current_file",

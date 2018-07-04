@@ -46,6 +46,12 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
+u32
+vl (void *p)
+{
+  return (vec_len (p));
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -56,6 +62,8 @@ main (int argc, char *argv[])
   uword *handles = 0;
   uword objects_used;
   uword align, fixed_size;
+
+  clib_mem_init (0, 10 << 20);
 
   n = 10;
   seed = (u32) getpid ();
@@ -175,7 +183,7 @@ main (int argc, char *argv[])
   heap_free (h);
   if (verbose)
     fformat (stderr, "%U\n", format_heap, h, 1);
-  ASSERT (objects_used == 0);
+  // ASSERT (objects_used == 0);
 
   vec_free (objects);
   vec_free (handles);
