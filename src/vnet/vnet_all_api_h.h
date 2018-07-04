@@ -34,6 +34,7 @@
 #include <vnet/devices/netmap/netmap.api.h>
 #include <vnet/devices/virtio/vhost_user.api.h>
 #include <vnet/devices/tap/tapv2.api.h>
+#include <vnet/devices/pipe/pipe.api.h>
 #include <vnet/gre/gre.api.h>
 #include <vnet/ipip/ipip.api.h>
 #include <vnet/interface.api.h>

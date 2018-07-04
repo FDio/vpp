@@ -41,6 +41,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/p2p_ethernet.h>
+#include <vnet/devices/pipe/pipe.h>
 #include <vppinfra/sparse_vec.h>
 #include <vnet/l2/l2_bvi.h>
 
@@ -837,6 +838,13 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
       else
 	subint = vec_elt_at_index (p2pm->p2p_subif_pool, si->p2p.pool_index);
       *flags = SUBINT_CONFIG_P2P;
+    }
+  else if (si->type == VNET_SW_INTERFACE_TYPE_PIPE)
+    {
+      pipe_t *pipe;
+
+      pipe = pipe_get (sw_if_index);
+      subint = &pipe->subint;
     }
   else if (si->sub.eth.flags.default_sub)
     {

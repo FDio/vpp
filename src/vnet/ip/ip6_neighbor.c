@@ -4190,6 +4190,7 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 
 		  sw_if0 = vnet_get_sw_interface (vnm, sw_if_index);
 		  if (sw_if0->type == VNET_SW_INTERFACE_TYPE_SUB ||
+		      sw_if0->type == VNET_SW_INTERFACE_TYPE_PIPE ||
 		      sw_if0->type == VNET_SW_INTERFACE_TYPE_P2P)
 		    {
 		      /* make up  an interface id */
