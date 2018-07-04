@@ -3650,3 +3650,15 @@ class VppPapiProvider(object):
     def abf_itf_attach_dump(self):
         return self.api(
             self.papi.abf_itf_attach_dump, {})
+
+    def pipe_create(self, is_specified, user_instance):
+        return self.api(self.papi.pipe_create,
+                        {'is_specified': is_specified,
+                         'user_instance': user_instance})
+
+    def pipe_delete(self, parent_sw_if_index):
+        return self.api(self.papi.pipe_delete,
+                        {'parent_sw_if_index': parent_sw_if_index})
+
+    def pipe_dump(self):
+        return self.api(self.papi.pipe_dump, {})

@@ -91,7 +91,8 @@ ethernet_build_rewrite (vnet_main_t * vnm,
   u8 *rewrite = NULL;
   u8 is_p2p = 0;
 
-  if (sub_sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+  if ((sub_sw->type == VNET_SW_INTERFACE_TYPE_P2P) ||
+      (sub_sw->type == VNET_SW_INTERFACE_TYPE_PIPE))
     is_p2p = 1;
   if (sub_sw != sup_sw)
     {
@@ -197,7 +198,8 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
   adj = adj_get (ai);
 
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
-  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+  if ((si->type == VNET_SW_INTERFACE_TYPE_P2P) ||
+      (si->type == VNET_SW_INTERFACE_TYPE_PIPE))
     {
       default_update_adjacency (vnm, sw_if_index, ai);
     }
@@ -748,6 +750,7 @@ vnet_delete_sub_interface (u32 sw_if_index)
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
   if (si->type == VNET_SW_INTERFACE_TYPE_SUB ||
+      si->type == VNET_SW_INTERFACE_TYPE_PIPE ||
       si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
       vnet_interface_main_t *im = &vnm->interface_main;

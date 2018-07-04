@@ -82,6 +82,7 @@ vnet_get_sup_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
   if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
+      sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
       sw->type == VNET_SW_INTERFACE_TYPE_P2P)
     sw = vnet_get_sw_interface (vnm, sw->sup_sw_if_index);
   return sw;
@@ -91,7 +92,8 @@ always_inline vnet_hw_interface_t *
 vnet_get_sup_hw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
-  ASSERT (sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
+  ASSERT ((sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE) ||
+	  (sw->type == VNET_SW_INTERFACE_TYPE_PIPE));
   return vnet_get_hw_interface (vnm, sw->hw_if_index);
 }
 
@@ -184,6 +186,20 @@ typedef walk_rc_t (*vnet_sw_interface_walk_t) (vnet_main_t * vnm,
  */
 void vnet_sw_interface_walk (vnet_main_t * vnm,
 			     vnet_sw_interface_walk_t fn, void *ctx);
+
+
+/**
+ * Call back walk type for walking all HW indices
+ */
+typedef walk_rc_t (*vnet_hw_interface_walk_t) (vnet_main_t * vnm,
+					       u32 hw_if_index, void *ctx);
+
+/**
+ * @brief
+ * Walk all the HW interface
+ */
+void vnet_hw_interface_walk (vnet_main_t * vnm,
+			     vnet_hw_interface_walk_t fn, void *ctx);
 
 /* Register a hardware interface instance. */
 u32 vnet_register_interface (vnet_main_t * vnm,
