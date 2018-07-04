@@ -143,6 +143,15 @@ int svm_msg_q_sub (svm_msg_q_t * mq, svm_msg_q_msg_t * msg,
  */
 void *svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 
+/**
+ * Check if message queue is full
+ */
+static inline u8
+svm_msg_q_full (svm_msg_q_t *mq)
+{
+  return (mq->q->cursize == mq->q->maxsize);
+}
+
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
 
 /*
