@@ -44,7 +44,13 @@
 
 #include <vppinfra/clib.h>	/* uword, etc */
 #include <vppinfra/clib_error.h>
+
+#if USE_DLMALLOC == 0
 #include <vppinfra/mheap_bootstrap.h>
+#else
+#include <vppinfra/dlmalloc.h>
+#endif
+
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, memset */
 #include <vppinfra/valgrind.h>
@@ -76,7 +82,7 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 				  int os_out_of_memory_on_failure)
 {
   void *heap, *p;
-  uword offset, cpu;
+  uword cpu;
 
   if (align_offset > align)
     {
@@ -88,6 +94,9 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 
   cpu = os_get_thread_index ();
   heap = clib_per_cpu_mheaps[cpu];
+
+#if USE_DLMALLOC == 0
+  uword offset;
   heap = mheap_get_aligned (heap, size, align, align_offset, &offset);
   clib_per_cpu_mheaps[cpu] = heap;
 
@@ -105,6 +114,17 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 	os_out_of_memory ();
       return 0;
     }
+#else
+  p = mspace_get_aligned (heap, size, align, align_offset);
+  if (PREDICT_FALSE (p == 0))
+    {
+      if (os_out_of_memory_on_failure)
+	os_out_of_memory ();
+      return 0;
+    }
+
+  return p;
+#endif /* USE_DLMALLOC */
 }
 
 /* Memory allocator which calls os_out_of_memory() when it fails */
@@ -161,6 +181,7 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 always_inline uword
 clib_mem_is_heap_object (void *p)
 {
+#if USE_DLMALLOC == 0
   void *heap = clib_mem_get_per_cpu_heap ();
   uword offset = (uword) p - (uword) heap;
   mheap_elt_t *e, *n;
@@ -173,6 +194,11 @@ clib_mem_is_heap_object (void *p)
 
   /* Check that heap forward and reverse pointers agree. */
   return e->n_user_data == n->prev_n_user_data;
+#else
+  void *heap = clib_mem_get_per_cpu_heap ();
+
+  return mspace_is_heap_object (heap, p);
+#endif /* USE_DLMALLOC */
 }
 
 always_inline void
@@ -183,7 +209,11 @@ clib_mem_free (void *p)
   /* Make sure object is in the correct heap. */
   ASSERT (clib_mem_is_heap_object (p));
 
+#if USE_DLMALLOC == 0
   mheap_put (heap, (u8 *) p - heap);
+#else
+  mspace_put (heap, p);
+#endif
 
 #if CLIB_DEBUG > 0
   VALGRIND_FREELIKE_BLOCK (p, 0);
@@ -211,9 +241,14 @@ clib_mem_realloc (void *p, uword new_size, uword old_size)
 always_inline uword
 clib_mem_size (void *p)
 {
-  ASSERT (clib_mem_is_heap_object (p));
+#if USE_DLMALLOC == 0
   mheap_elt_t *e = mheap_user_pointer_to_elt (p);
+  ASSERT (clib_mem_is_heap_object (p));
   return mheap_elt_data_bytes (e);
+#else
+  ASSERT (clib_mem_is_heap_object (p));
+  return mspace_usable_size_with_delta (p);
+#endif
 }
 
 always_inline void *
@@ -229,6 +264,7 @@ clib_mem_set_heap (void *heap)
 }
 
 void *clib_mem_init (void *heap, uword size);
+void *clib_mem_init_thread_safe (void *memory, uword memory_size);
 
 void clib_mem_exit (void);
 
@@ -365,6 +401,7 @@ typedef struct
 
 clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 void clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size);
+void mheap_trace (void *v, int enable);
 
 #include <vppinfra/error.h>	/* clib_panic */
 

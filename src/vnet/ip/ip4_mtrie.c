@@ -812,7 +812,11 @@ ip4_mtrie_module_init (vlib_main_t * vm)
 
   if (0 == im->mtrie_heap_size)
     im->mtrie_heap_size = IP4_FIB_DEFAULT_MTRIE_HEAP_SIZE;
+#if USE_DLMALLOC == 0
   im->mtrie_mheap = mheap_alloc (0, im->mtrie_heap_size);
+#else
+  im->mtrie_mheap = create_mspace (im->mtrie_heap_size, 1 /* locked */ );
+#endif
 
   /* Burn one ply so index 0 is taken */
   old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);

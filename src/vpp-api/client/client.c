@@ -79,13 +79,18 @@ __attribute__((constructor))
 static void
 vac_client_constructor (void)
 {
-  u8 *heap;
-  mheap_t *h;
   clib_mem_init (0, 1 << 30);
-  heap = clib_mem_get_per_cpu_heap ();
-  h = mheap_header (heap);
-  /* make the main heap thread-safe */
-  h->flags |= MHEAP_FLAG_THREAD_SAFE;
+#if USE_DLMALLOC == 0
+  {
+      u8 *heap;
+      mheap_t *h;
+
+      heap = clib_mem_get_per_cpu_heap ();
+      h = mheap_header (heap);
+      /* make the main heap thread-safe */
+      h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  }
+#endif
   if (mem_trace)
     clib_mem_trace (1);
 }

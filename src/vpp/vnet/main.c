@@ -263,7 +263,7 @@ defaulted:
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
 
   /* Allocate main heap */
-  if (clib_mem_init (0, main_heap_size))
+  if (clib_mem_init_thread_safe (0, main_heap_size))
     {
       vm->init_functions_called = hash_create (0, /* value bytes */ 0);
       vpe_main_init (vm);
