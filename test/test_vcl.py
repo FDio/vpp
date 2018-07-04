@@ -324,17 +324,17 @@ class VCLThruHostStackTestCase(VCLTestCase):
                                   "sock_test_client",
                                   self.client_echo_test_args)
         # TBD: Remove these when VPP thru host teardown config bug is fixed.
-        self.thru_host_stack_test("vcl_test_server", self.server_args,
-                                  "vcl_test_client",
-                                  self.client_echo_test_args)
+        # self.thru_host_stack_test("vcl_test_server", self.server_args,
+        #                          "vcl_test_client",
+        #                          self.client_echo_test_args)
 
     def test_vcl_thru_host_stack_echo(self):
         """ run VCL thru host stack echo test """
 
         # TBD: Enable this when VPP  thru host teardown config bug is fixed.
-        # self.thru_host_stack_test("vcl_test_server", self.server_args,
-        #                           "vcl_test_client",
-        #                           self.client_echo_test_args)
+        self.thru_host_stack_test("vcl_test_server", self.server_args,
+                                  "vcl_test_client",
+                                  self.client_echo_test_args)
 
     # TBD: Remove VCLThruHostStackExtended*TestCase classes and move
     #      tests here when VPP  thru host teardown/setup config bug
