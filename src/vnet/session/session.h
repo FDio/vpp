@@ -88,6 +88,11 @@ typedef struct
   void *arg;
 } rpc_args_t;
 
+typedef struct
+{
+  u8 data[0];
+} session_evt_t;
+
 typedef u64 session_handle_t;
 
 /* *INDENT-OFF* */
@@ -102,6 +107,24 @@ typedef CLIB_PACKED (struct {
   u8 postponed;
 }) session_fifo_event_t;
 /* *INDENT-ON* */
+
+typedef struct
+{
+  u8 event_type;
+  u8 postponed;
+  union
+  {
+    svm_fifo_t * fifo;
+    session_handle_t session_handle;
+    rpc_args_t rpc_args;
+    struct
+    {
+      u8 data[0];
+    };
+  };
+} __clib_packed session_message_t;
+
+#define SESSION_MSG_NULL { }
 
 typedef struct session_dgram_pre_hdr_
 {
