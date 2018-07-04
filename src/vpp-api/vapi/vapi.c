@@ -31,11 +31,15 @@
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
 
+#include <vapi/memclnt.api.vapi.h>
+
 /* we need to use control pings for some stuff and because we're forced to put
  * the code in headers, we need a way to be able to grab the ids of these
  * messages - so declare them here as extern */
 vapi_msg_id_t vapi_msg_id_control_ping = 0;
 vapi_msg_id_t vapi_msg_id_control_ping_reply = 0;
+
+DEFINE_VAPI_MSG_IDS_MEMCLNT_API_JSON;
 
 struct
 {
@@ -81,6 +85,7 @@ struct vapi_ctx_s
   u16 vl_msg_id_max;
   vapi_msg_id_t *vl_msg_id_to_vapi_msg_t;
   bool connected;
+  bool handle_keepalives;
   pthread_mutex_t requests_mutex;
 };
 
@@ -238,7 +243,7 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
     {
       return ctx->vl_msg_id_to_vapi_msg_t[vl_msg_id];
     }
-  return INVALID_MSG_ID;
+  return VAPI_INVALID_MSG_ID;
 }
 
 vapi_error_e
@@ -257,6 +262,8 @@ vapi_ctx_alloc (vapi_ctx_t * result)
     {
       goto fail;
     }
+  memset (ctx->vapi_msg_id_t_to_vl_msg_id, ~0,
+	  __vapi_metadata.count * sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
   ctx->event_cbs = calloc (__vapi_metadata.count, sizeof (*ctx->event_cbs));
   if (!ctx->event_cbs)
     {
@@ -292,7 +299,8 @@ vapi_error_e
 vapi_connect (vapi_ctx_t ctx, const char *name,
 	      const char *chroot_prefix,
 	      int max_outstanding_requests,
-	      int response_queue_size, vapi_mode_e mode)
+	      int response_queue_size, vapi_mode_e mode,
+	      bool handle_keepalives)
 {
   if (response_queue_size <= 0 || max_outstanding_requests <= 0)
     {
@@ -337,7 +345,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
       u8 scratch[m->name_with_crc_len + 1];
       memcpy (scratch, m->name_with_crc, m->name_with_crc_len + 1);
       u32 id = vl_msg_api_get_msg_index (scratch);
-      if (INVALID_MSG_ID != id)
+      if (VAPI_INVALID_MSG_ID != id)
 	{
 	  if (id > UINT16_MAX)
 	    {
@@ -386,6 +394,14 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
     }
   ctx->mode = mode;
   ctx->connected = true;
+  if (vapi_is_msg_available (ctx, vapi_msg_id_memclnt_keepalive))
+    {
+      ctx->handle_keepalives = handle_keepalives;
+    }
+  else
+    {
+      ctx->handle_keepalives = false;
+    }
   return VAPI_OK;
 fail:
   vl_client_disconnect ();
@@ -519,6 +535,7 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
     }
 
   svm_queue_t *q = am->vl_input_queue;
+again:
   VAPI_DBG ("doing shm queue sub");
 
   int tmp = svm_queue_sub (q, (u8 *) & data, cond, time);
@@ -557,6 +574,30 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
 	  VAPI_DBG ("recv msg@%p:%u[UNKNOWN]", *msg, msgid);
 	}
 #endif
+      if (ctx->handle_keepalives)
+	{
+	  unsigned msgid = be16toh (*(u16 *) * msg);
+	  if (msgid ==
+	      vapi_lookup_vl_msg_id (ctx, vapi_msg_id_memclnt_keepalive))
+	    {
+	      vapi_msg_memclnt_keepalive_reply *reply = NULL;
+	      do
+		{
+		  reply = vapi_msg_alloc (ctx, sizeof (*reply));
+		}
+	      while (!reply);
+	      reply->header.context = vapi_get_client_index (ctx);
+	      reply->header._vl_msg_id =
+		vapi_lookup_vl_msg_id (ctx,
+				       vapi_msg_id_memclnt_keepalive_reply);
+	      reply->payload.retval = 0;
+	      vapi_msg_memclnt_keepalive_reply_hton (reply);
+	      while (VAPI_EAGAIN == vapi_send (ctx, reply));
+	      vapi_msg_free (ctx, *msg);
+	      VAPI_DBG ("autohandled memclnt_keepalive");
+	      goto again;
+	    }
+	}
     }
   else
     {
@@ -601,8 +642,7 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 	{
 	  VAPI_ERR ("No response to req with context=%u",
 		    (unsigned) ctx->requests[tmp].context);
-	  ctx->requests[ctx->requests_start].callback (ctx,
-						       ctx->requests
+	  ctx->requests[ctx->requests_start].callback (ctx, ctx->requests
 						       [ctx->
 							requests_start].callback_ctx,
 						       VAPI_ENORESP, true,
@@ -717,7 +757,7 @@ vapi_dispatch_one (vapi_ctx_t ctx)
       vapi_msg_free (ctx, msg);
       return VAPI_EINVAL;
     }
-  if (INVALID_MSG_ID == (unsigned) ctx->vl_msg_id_to_vapi_msg_t[vpp_id])
+  if (VAPI_INVALID_MSG_ID == (unsigned) ctx->vl_msg_id_to_vapi_msg_t[vpp_id])
     {
       VAPI_ERR ("Unknown msg ID received, id `%u' marked as not supported",
 		(unsigned) vpp_id);
