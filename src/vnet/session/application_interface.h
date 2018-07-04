@@ -136,7 +136,7 @@ typedef enum
   _(IS_BUILTIN, "Application is builtin")			\
   _(IS_PROXY, "Application is proxying")			\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
-  _(USE_LOCAL_SCOPE, "App can use local session scope")
+  _(USE_LOCAL_SCOPE, "App can use local session scope")		\
 
 typedef enum _app_options
 {
@@ -187,7 +187,7 @@ typedef struct app_session_transport_
   _(volatile u8, session_state)		/**< session state */		\
   _(u32, session_index)			/**< index in owning pool */	\
   _(app_session_transport_t, transport)	/**< transport info */		\
-  _(svm_queue_t, *vpp_evt_q)		/**< vpp event queue  */	\
+  _(svm_msg_q_t, *vpp_evt_q)		/**< vpp event queue  */	\
   _(u8, is_dgram)			/**< flag for dgram mode */	\
 
 typedef struct
@@ -197,13 +197,73 @@ typedef struct
 #undef _
 } app_session_t;
 
+/**
+ * Send fifo io event to vpp worker thread
+ *
+ * Because there may be multiple writers to one of vpp's queues, this
+ * protects message allocation and enqueueing.
+ *
+ * @param mq		vpp message queue
+ * @param f		fifo for which the event is sent
+ * @param evt_type	type of event
+ * @param noblock	flag to indicate is request is blocking or not
+ * @return		0 if success, negative integer otherwise
+ */
+static inline int
+app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
+			u8 noblock)
+{
+  session_fifo_event_t *evt;
+  svm_msg_q_msg_t msg;
+
+  if (noblock)
+    {
+      if (svm_msg_q_try_lock (mq))
+	return -1;
+      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+	{
+	  svm_msg_q_unlock (mq);
+	  return -2;
+	}
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
+	{
+	  svm_msg_q_unlock (mq);
+	  return -2;
+	}
+      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt->fifo = f;
+      evt->event_type = evt_type;
+      svm_msg_q_add_w_lock (mq, &msg);
+      svm_msg_q_unlock (mq);
+      return 0;
+    }
+  else
+    {
+      svm_msg_q_lock (mq);
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      while (svm_msg_q_msg_is_invalid (&msg))
+	{
+	  svm_msg_q_wait (mq);
+	  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+	}
+      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt->fifo = f;
+      evt->event_type = evt_type;
+      if (svm_msg_q_is_full (mq))
+	svm_msg_q_wait (mq);
+      svm_msg_q_add_w_lock (mq, &msg);
+      svm_msg_q_unlock (mq);
+      return 0;
+    }
+}
+
 always_inline int
 app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
-		    svm_queue_t * vpp_evt_q, u8 * data, u32 len, u8 noblock)
+		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 noblock)
 {
   u32 max_enqueue, actual_write;
   session_dgram_hdr_t hdr;
-  session_fifo_event_t evt;
   int rv;
 
   max_enqueue = svm_fifo_max_enqueue (f);
@@ -225,11 +285,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   if ((rv = svm_fifo_enqueue_nowait (f, actual_write, data)) > 0)
     {
       if (svm_fifo_set_event (f))
-	{
-	  evt.fifo = f;
-	  evt.event_type = FIFO_EVENT_APP_TX;
-	  svm_queue_add (vpp_evt_q, (u8 *) & evt, noblock);
-	}
+	app_send_io_evt_to_vpp (vpp_evt_q, f, FIFO_EVENT_APP_TX, noblock);
     }
   ASSERT (rv);
   return rv;
@@ -243,20 +299,15 @@ app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
 }
 
 always_inline int
-app_send_stream_raw (svm_fifo_t * f, svm_queue_t * vpp_evt_q, u8 * data,
+app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
 		     u32 len, u8 noblock)
 {
-  session_fifo_event_t evt;
   int rv;
 
   if ((rv = svm_fifo_enqueue_nowait (f, len, data)) > 0)
     {
       if (svm_fifo_set_event (f))
-	{
-	  evt.fifo = f;
-	  evt.event_type = FIFO_EVENT_APP_TX;
-	  svm_queue_add (vpp_evt_q, (u8 *) & evt, noblock);
-	}
+	app_send_io_evt_to_vpp (vpp_evt_q, f, FIFO_EVENT_APP_TX, noblock);
     }
   return rv;
 }

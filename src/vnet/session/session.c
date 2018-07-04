@@ -27,49 +27,90 @@
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
 
-static void
-session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
-			    u32 thread_index, void *fp, void *rpc_args)
+static inline int
+session_send_evt_to_thread (void *data, void *args, u32 thread_index,
+			    session_evt_type_t evt_type)
 {
-  session_fifo_event_t evt = { {0}, };
-  svm_queue_t *q;
+  session_fifo_event_t *evt;
+  svm_msg_q_msg_t msg;
+  svm_msg_q_t *mq;
   u32 tries = 0, max_tries;
 
-  evt.event_type = evt_type;
-  if (evt_type == FIFO_EVENT_RPC)
-    {
-      evt.rpc_args.fp = fp;
-      evt.rpc_args.arg = rpc_args;
-    }
-  else
-    evt.session_handle = session_handle;
-
-  q = session_manager_get_vpp_event_queue (thread_index);
-  while (svm_queue_add (q, (u8 *) & evt, 1))
+  mq = session_manager_get_vpp_event_queue (thread_index);
+  while (svm_msg_q_try_lock (mq))
     {
       max_tries = vlib_get_current_process (vlib_get_main ())? 1e6 : 3;
       if (tries++ == max_tries)
 	{
 	  SESSION_DBG ("failed to enqueue evt");
-	  break;
+	  return -1;
 	}
     }
+  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+    {
+      svm_msg_q_unlock (mq);
+      return -2;
+    }
+  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
+    {
+      svm_msg_q_unlock (mq);
+      return -2;
+    }
+  evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+  evt->event_type = evt_type;
+  switch (evt_type)
+    {
+    case FIFO_EVENT_RPC:
+      evt->rpc_args.fp = data;
+      evt->rpc_args.arg = args;
+      break;
+    case FIFO_EVENT_APP_TX:
+    case FIFO_EVENT_BUILTIN_RX:
+      evt->fifo = data;
+      break;
+    case FIFO_EVENT_DISCONNECT:
+      evt->session_handle = session_handle ((stream_session_t *) data);
+      break;
+    default:
+      clib_warning ("evt unhandled!");
+      svm_msg_q_unlock (mq);
+      return -1;
+    }
+
+  svm_msg_q_add_w_lock (mq, &msg);
+  svm_msg_q_unlock (mq);
+  return 0;
 }
 
-void
-session_send_session_evt_to_thread (u64 session_handle,
-				    fifo_event_type_t evt_type,
-				    u32 thread_index)
+int
+session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
-  session_send_evt_to_thread (session_handle, evt_type, thread_index, 0, 0);
+  return session_send_evt_to_thread (f, 0, f->master_thread_index, evt_type);
+}
+
+int
+session_send_io_evt_to_thread_custom (svm_fifo_t * f, u32 thread_index,
+				      session_evt_type_t evt_type)
+{
+  return session_send_evt_to_thread (f, 0, thread_index, evt_type);
+}
+
+int
+session_send_ctrl_evt_to_thread (stream_session_t * s,
+				 session_evt_type_t evt_type)
+{
+  /* only event supported for now is disconnect */
+  ASSERT (evt_type == FIFO_EVENT_DISCONNECT);
+  return session_send_evt_to_thread (s, 0, s->thread_index,
+				     FIFO_EVENT_DISCONNECT);
 }
 
 void
 session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
 {
   if (thread_index != vlib_get_thread_index ())
-    session_send_evt_to_thread (0, FIFO_EVENT_RPC, thread_index, fp,
-				rpc_args);
+    session_send_evt_to_thread (fp, rpc_args, thread_index, FIFO_EVENT_RPC);
   else
     {
       void (*fnp) (void *) = fp;
@@ -440,24 +481,15 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 /**
  * Notify session peer that new data has been enqueued.
  *
- * @param s Stream session for which the event is to be generated.
- * @param block Flag to indicate if call should block if event queue is full.
+ * @param s 	Stream session for which the event is to be generated.
+ * @param lock 	Flag to indicate if call should lock message queue.
  *
- * @return 0 on succes or negative number if failed to send notification.
+ * @return 0 on success or negative number if failed to send notification.
  */
-static int
-session_enqueue_notify (stream_session_t * s, u8 block)
+static inline int
+session_enqueue_notify (stream_session_t * s, u8 lock)
 {
   application_t *app;
-  session_fifo_event_t evt;
-  svm_queue_t *q;
-
-  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
-    {
-      /* Session is closed so app will never clean up. Flush rx fifo */
-      svm_fifo_dequeue_drop_all (s->server_rx_fifo);
-      return 0;
-    }
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (app == 0))
@@ -466,68 +498,32 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Built-in app? Hand event to the callback... */
-  if (app->cb_fns.builtin_app_rx_callback)
-    return app->cb_fns.builtin_app_rx_callback (s);
-
-  /* If no event, send one */
-  if (svm_fifo_set_event (s->server_rx_fifo))
-    {
-      /* Fabricate event */
-      evt.fifo = s->server_rx_fifo;
-      evt.event_type = FIFO_EVENT_APP_RX;
-
-      /* Add event to server's event queue */
-      q = app->event_queue;
-
-      /* Based on request block (or not) for lack of space */
-      if (block || PREDICT_TRUE (q->cursize < q->maxsize))
-	svm_queue_add (app->event_queue, (u8 *) & evt,
-		       0 /* do wait for mutex */ );
-      else
-	{
-	  clib_warning ("fifo full");
-	  return -1;
-	}
-    }
-
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
-      ed->data[0] = evt.event_type;
+      ed->data[0] = FIFO_EVENT_APP_RX;
       ed->data[1] = svm_fifo_max_dequeue (s->server_rx_fifo);
   }));
   /* *INDENT-ON* */
 
-  return 0;
+  if (lock)
+    return application_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
+
+  return application_send_event (app, s, FIFO_EVENT_APP_RX);
 }
 
 int
 session_dequeue_notify (stream_session_t * s)
 {
   application_t *app;
-  svm_queue_t *q;
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (!app))
     return -1;
 
-  if (application_is_builtin (app))
-    return 0;
+  if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
+    return application_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
 
-  q = app->event_queue;
-  if (PREDICT_TRUE (q->cursize < q->maxsize))
-    {
-      session_fifo_event_t evt = {
-	.event_type = FIFO_EVENT_APP_TX,
-	.fifo = s->server_tx_fifo
-      };
-      svm_queue_add (app->event_queue, (u8 *) & evt, SVM_Q_WAIT);
-    }
-  else
-    {
-      return -1;
-    }
-  return 0;
+  return application_send_event (app, s, FIFO_EVENT_APP_TX);
 }
 
 /**
@@ -542,16 +538,24 @@ int
 session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u32 *indices;
+  transport_service_type_t tp_service;
+  int i, errors = 0, lock;
   stream_session_t *s;
-  int i, errors = 0;
+  u32 *indices;
 
   indices = smm->session_to_enqueue[transport_proto][thread_index];
+  tp_service = transport_protocol_service_type (transport_proto);
+  lock = tp_service == TRANSPORT_SERVICE_CL;
 
   for (i = 0; i < vec_len (indices); i++)
     {
       s = session_get_if_valid (indices[i], thread_index);
-      if (s == 0 || session_enqueue_notify (s, 0 /* don't block */ ))
+      if (PREDICT_FALSE (!s))
+	{
+	  errors++;
+	  continue;
+	}
+      if (PREDICT_FALSE (session_enqueue_notify (s, lock)))
 	errors++;
     }
 
@@ -1118,9 +1122,7 @@ stream_session_disconnect (stream_session_t * s)
       evt->event_type = FIFO_EVENT_DISCONNECT;
     }
   else
-    session_send_session_evt_to_thread (session_handle (s),
-					FIFO_EVENT_DISCONNECT,
-					s->thread_index);
+    session_send_ctrl_evt_to_thread (s, FIFO_EVENT_DISCONNECT);
 }
 
 /**
@@ -1231,8 +1233,18 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
 
   for (i = 0; i < vec_len (smm->vpp_event_queues); i++)
     {
-      smm->vpp_event_queues[i] = svm_queue_init (evt_q_length, evt_size,
-						 vpp_pid, 0);
+      svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
+      u32 notif_q_size = clib_max (16, evt_q_length >> 4);
+      svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
+	{evt_q_length, evt_size, 0}
+	,
+	{notif_q_size, 256, 0}
+      };
+      cfg->consumer_pid = 0;
+      cfg->n_rings = 2;
+      cfg->q_nitems = evt_q_length;
+      cfg->ring_cfgs = rc;
+      smm->vpp_event_queues[i] = svm_msg_q_alloc (cfg);
     }
 
   if (smm->evt_qs_use_memfd_seg)
