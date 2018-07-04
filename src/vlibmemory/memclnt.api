@@ -31,18 +31,18 @@ service {
  */
 manual_print 
 define memclnt_create {
-    i32 ctx_quota;              /* requested punt context quota */
     u32 context;                /* opaque value to be returned in the reply */
+    i32 ctx_quota;              /* requested punt context quota */
     u64 input_queue;            /* client's queue */
     u8 name[64];                /* for show, find by name, whatever */
     u32 api_versions[8];        /* client-server pairs use as desired */
 };
 
 define memclnt_create_reply {
+    u32 context;                /* opaque value from the create request */
     i32 response;               /* Non-negative = success */
     u64 handle;                 /* handle by which vlib knows this client */
     u32 index;                  /* index, used e.g. by API trace replay */
-    u32 context;                /* opaque value from the create request */
     u64 message_table;          /* serialized message table in shmem */
 };
 
@@ -150,15 +150,15 @@ manual_print define trace_plugin_msg_ids
  * Create a socket client registration. 
  */
 define sockclnt_create {
-    u8 name[64];                /* for show, find by name, whatever */
     u32 context;                /* opaque value to be returned in the reply */
+    u8 name[64];                /* for show, find by name, whatever */
 };
 
 define sockclnt_create_reply {
+    u32 context;                /* opaque value from the create request */
     i32 response;               /* Non-negative = success */
     u64 handle;           	/* handle by which vlib knows this client */
     u32 index;                  /* index, used e.g. by API trace replay */
-    u32 context;                /* opaque value from the create request */
 };
 
 /*

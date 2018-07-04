@@ -195,15 +195,17 @@ public:
    * @param name application name
    * @param chroot_prefix shared memory prefix
    * @param max_queued_request max number of outstanding requests queued
+   * @param handle_keepalives handle memclnt_keepalive automatically
    *
    * @return VAPI_OK on success, other error code on error
    */
   vapi_error_e connect (const char *name, const char *chroot_prefix,
-                        int max_outstanding_requests, int response_queue_size)
+                        int max_outstanding_requests, int response_queue_size,
+                        bool handle_keepalives = true)
   {
     return vapi_connect (vapi_ctx, name, chroot_prefix,
                          max_outstanding_requests, response_queue_size,
-                         VAPI_MODE_BLOCKING);
+                         VAPI_MODE_BLOCKING, handle_keepalives);
   }
 
   /**
@@ -579,14 +581,14 @@ private:
 
   static void set_msg_id (vapi_msg_id_t id)
   {
-    assert ((INVALID_MSG_ID == *msg_id_holder ()) ||
+    assert ((VAPI_INVALID_MSG_ID == *msg_id_holder ()) ||
             (id == *msg_id_holder ()));
     *msg_id_holder () = id;
   }
 
   static vapi_msg_id_t *msg_id_holder ()
   {
-    static vapi_msg_id_t my_id{INVALID_MSG_ID};
+    static vapi_msg_id_t my_id{VAPI_INVALID_MSG_ID};
     return &my_id;
   }
 

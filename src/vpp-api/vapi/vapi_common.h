@@ -54,7 +54,7 @@ typedef enum
 
 typedef unsigned int vapi_msg_id_t;
 
-#define INVALID_MSG_ID ((vapi_msg_id_t)(~0))
+#define VAPI_INVALID_MSG_ID ((vapi_msg_id_t)(~0))
 
 #ifdef __cplusplus
 }

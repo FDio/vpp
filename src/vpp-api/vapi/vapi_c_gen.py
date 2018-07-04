@@ -500,11 +500,11 @@ class CMessage (Message):
             '    offsetof(%s, context),' % self.header.get_c_name()
             if has_context else '    0,',
             ('    offsetof(%s, payload),' % self.get_c_name())
-            if self.has_payload() else '    INVALID_MSG_ID,',
+            if self.has_payload() else '    VAPI_INVALID_MSG_ID,',
             '    sizeof(%s),' % self.get_c_name(),
             '    (generic_swap_fn_t)%s,' % self.get_swap_to_be_func_name(),
             '    (generic_swap_fn_t)%s,' % self.get_swap_to_host_func_name(),
-            '    INVALID_MSG_ID,',
+            '    VAPI_INVALID_MSG_ID,',
             '  };',
             '',
             '  %s = vapi_register_msg(&%s);' %
