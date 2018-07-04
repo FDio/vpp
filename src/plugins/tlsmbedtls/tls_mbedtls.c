@@ -169,7 +169,8 @@ tls_net_send (void *ctx_indexp, const unsigned char *buf, size_t len)
   rv = svm_fifo_enqueue_nowait (tls_session->server_tx_fifo, len, buf);
   if (rv < 0)
     return MBEDTLS_ERR_SSL_WANT_WRITE;
-  tls_add_vpp_q_evt (tls_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+  tls_add_vpp_q_evt (tls_session, tls_session->server_tx_fifo,
+                     FIFO_EVENT_APP_TX);
   return rv;
 }
 
@@ -436,7 +437,8 @@ mbedtls_ctx_write (tls_ctx_t * ctx, stream_session_t * app_session)
 
   if (PREDICT_FALSE (enq_max == 0))
     {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+      tls_add_vpp_q_evt (app_session, app_session->server_tx_fifo,
+                         FIFO_EVENT_APP_TX);
       return 0;
     }
 
@@ -447,16 +449,19 @@ mbedtls_ctx_write (tls_ctx_t * ctx, stream_session_t * app_session)
   wrote = mbedtls_ssl_write (&mc->ssl, mm->tx_bufs[thread_index], deq_now);
   if (wrote <= 0)
     {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+      tls_add_vpp_q_evt (app_session, app_session->server_tx_fifo,
+                         FIFO_EVENT_APP_TX);
       return 0;
     }
 
   svm_fifo_dequeue_drop (app_session->server_tx_fifo, wrote);
   vec_reset_length (mm->tx_bufs[thread_index]);
-  tls_add_vpp_q_evt (tls_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+  tls_add_vpp_q_evt (app_session, tls_session->server_tx_fifo,
+                     FIFO_EVENT_APP_TX);
 
   if (deq_now < deq_max)
-    tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+    tls_add_vpp_q_evt (app_session, app_session->server_tx_fifo,
+                       FIFO_EVENT_APP_TX);
 
   return 0;
 }
@@ -487,7 +492,8 @@ mbedtls_ctx_read (tls_ctx_t * ctx, stream_session_t * tls_session)
 
   if (PREDICT_FALSE (enq_now == 0))
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      tls_add_vpp_q_evt (tls_session, tls_session->server_rx_fifo,
+                         FIFO_EVENT_BUILTIN_RX);
       return 0;
     }
 
@@ -495,7 +501,8 @@ mbedtls_ctx_read (tls_ctx_t * ctx, stream_session_t * tls_session)
   read = mbedtls_ssl_read (&mc->ssl, mm->rx_bufs[thread_index], enq_now);
   if (read <= 0)
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      tls_add_vpp_q_evt (tls_session, tls_session->server_rx_fifo,
+                         FIFO_EVENT_BUILTIN_RX);
       return 0;
     }
 
@@ -505,7 +512,8 @@ mbedtls_ctx_read (tls_ctx_t * ctx, stream_session_t * tls_session)
   vec_reset_length (mm->rx_bufs[thread_index]);
 
   if (svm_fifo_max_dequeue (tls_session->server_rx_fifo))
-    tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+    tls_add_vpp_q_evt (tls_session, tls_session->server_rx_fifo,
+                       FIFO_EVENT_BUILTIN_RX);
 
   if (enq > 0)
     tls_notify_app_enqueue (ctx, app_session);
