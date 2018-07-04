@@ -28,10 +28,10 @@ session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
 
 static void
-session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
+session_send_evt_to_thread (u64 session_handle, session_evt_type_t evt_type,
 			    u32 thread_index, void *fp, void *rpc_args)
 {
-  session_fifo_event_t evt = { {0}, };
+  session_fifo_event_t evt = SESSION_MSG_NULL;
   svm_queue_t *q;
   u32 tries = 0, max_tries;
 
@@ -58,7 +58,7 @@ session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
 
 void
 session_send_session_evt_to_thread (u64 session_handle,
-				    fifo_event_type_t evt_type,
+				    session_evt_type_t evt_type,
 				    u32 thread_index)
 {
   session_send_evt_to_thread (session_handle, evt_type, thread_index, 0, 0);
@@ -449,15 +449,6 @@ static int
 session_enqueue_notify (stream_session_t * s, u8 block)
 {
   application_t *app;
-  session_fifo_event_t evt;
-  svm_queue_t *q;
-
-  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
-    {
-      /* Session is closed so app will never clean up. Flush rx fifo */
-      svm_fifo_dequeue_drop_all (s->server_rx_fifo);
-      return 0;
-    }
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (app == 0))
@@ -466,30 +457,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
       return 0;
     }
 
-  /* Built-in app? Hand event to the callback... */
-  if (app->cb_fns.builtin_app_rx_callback)
-    return app->cb_fns.builtin_app_rx_callback (s);
-
-  /* If no event, send one */
-  if (svm_fifo_set_event (s->server_rx_fifo))
-    {
-      /* Fabricate event */
-      evt.fifo = s->server_rx_fifo;
-      evt.event_type = FIFO_EVENT_APP_RX;
-
-      /* Add event to server's event queue */
-      q = app->event_queue;
-
-      /* Based on request block (or not) for lack of space */
-      if (block || PREDICT_TRUE (q->cursize < q->maxsize))
-	svm_queue_add (app->event_queue, (u8 *) & evt,
-		       0 /* do wait for mutex */ );
-      else
-	{
-	  clib_warning ("fifo full");
-	  return -1;
-	}
-    }
+  application_send_event (app, s, FIFO_EVENT_APP_RX);
 
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
@@ -505,29 +473,12 @@ int
 session_dequeue_notify (stream_session_t * s)
 {
   application_t *app;
-  svm_queue_t *q;
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (!app))
     return -1;
 
-  if (application_is_builtin (app))
-    return 0;
-
-  q = app->event_queue;
-  if (PREDICT_TRUE (q->cursize < q->maxsize))
-    {
-      session_fifo_event_t evt = {
-	.event_type = FIFO_EVENT_APP_TX,
-	.fifo = s->server_tx_fifo
-      };
-      svm_queue_add (app->event_queue, (u8 *) & evt, SVM_Q_WAIT);
-    }
-  else
-    {
-      return -1;
-    }
-  return 0;
+  return application_send_event (app, s, FIFO_EVENT_APP_TX);
 }
 
 /**

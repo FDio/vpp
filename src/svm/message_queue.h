@@ -21,14 +21,15 @@
 #define SRC_SVM_MESSAGE_QUEUE_H_
 
 #include <vppinfra/clib.h>
+#include <vppinfra/error.h>
 #include <svm/queue.h>
 
 typedef struct svm_msg_q_ring_
 {
   volatile u32 cursize;			/**< current size of the ring */
   u32 nitems;				/**< max size of the ring */
-  u32 head;				/**< current head (for dequeue) */
-  u32 tail;				/**< current tail (for enqueue) */
+  volatile u32 head;			/**< current head (for dequeue) */
+  volatile u32 tail;			/**< current tail (for enqueue) */
   u32 elsize;				/**< size of an element */
   u8 *data;				/**< chunk of memory for msg data */
 } svm_msg_q_ring_t;
@@ -98,6 +99,20 @@ void svm_msg_q_free (svm_msg_q_t * mq);
 svm_msg_q_msg_t svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes);
 
 /**
+ * Allocate message buffer on ring
+ *
+ * Message is allocated, if possible, on requested ring
+ *
+ * @param mq		message queue
+ * @param ring_index	ring on which the allocation should occur
+ * @param nbytes	number of bytes needed for message
+ * @return		message structure pointing to the ring and position
+ * 			allocated
+ */
+svm_msg_q_msg_t svm_msg_q_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
+                                            u32 nbytes);
+
+/**
  * Free message buffer
  *
  * Marks message buffer on ring as free.
@@ -142,6 +157,40 @@ int svm_msg_q_sub (svm_msg_q_t * mq, svm_msg_q_msg_t * msg,
  * @return		pointer to data
  */
 void *svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
+
+/**
+ * Check if message queue is full
+ */
+static inline u8
+svm_msg_q_is_full (svm_msg_q_t *mq)
+{
+  return (mq->q->cursize == mq->q->maxsize);
+}
+
+static inline u8
+svm_msg_q_ring_is_full (svm_msg_q_t *mq, u32 ring_index)
+{
+  ASSERT (ring_index < vec_len (mq->rings));
+  return (mq->rings[ring_index].cursize == mq->rings[ring_index].nitems);
+}
+
+/**
+ * Check if message queue is empty
+ */
+static inline u8
+svm_msg_q_is_empty (svm_msg_q_t *mq)
+{
+  return (mq->q->cursize == 0);
+}
+
+/**
+ * Check if message is invalid
+ */
+static inline u8
+svm_msg_q_msg_is_invalid (svm_msg_q_msg_t *msg)
+{
+  return (msg->as_u64 == (u64)~0);
+}
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
 
