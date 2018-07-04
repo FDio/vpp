@@ -99,7 +99,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   vcm->app_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
+    uword_to_pointer (mp->app_event_queue_address, svm_msg_q_t *);
 
   vcm->app_state = STATE_APP_ATTACHED;
 }

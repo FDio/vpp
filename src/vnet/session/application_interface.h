@@ -136,7 +136,8 @@ typedef enum
   _(IS_BUILTIN, "Application is builtin")			\
   _(IS_PROXY, "Application is proxying")			\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
-  _(USE_LOCAL_SCOPE, "App can use local session scope")
+  _(USE_LOCAL_SCOPE, "App can use local session scope")		\
+  _(USE_Q_FOR_CTRL_EVTS, "Use q for connect/accept evts")	\
 
 typedef enum _app_options
 {

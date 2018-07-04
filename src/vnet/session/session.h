@@ -38,10 +38,10 @@ typedef enum
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
   FIFO_EVENT_RPC,
-} fifo_event_type_t;
+} session_evt_type_t;
 
 static inline const char *
-fifo_event_type_str (fifo_event_type_t et)
+fifo_event_type_str (session_evt_type_t et)
 {
   switch (et)
     {
@@ -91,17 +91,35 @@ typedef struct
 typedef u64 session_handle_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  union
-    {
-      svm_fifo_t * fifo;
-      session_handle_t session_handle;
-      rpc_args_t rpc_args;
-    };
+//typedef CLIB_PACKED (struct {
+//  union
+//    {
+//      svm_fifo_t * fifo;
+//      session_handle_t session_handle;
+//      rpc_args_t rpc_args;
+//    };
+//  u8 event_type;
+//  u8 postponed;
+//}) session_fifo_event_t;
+/* *INDENT-ON* */
+
+typedef struct
+{
   u8 event_type;
   u8 postponed;
-}) session_fifo_event_t;
-/* *INDENT-ON* */
+  union
+  {
+    svm_fifo_t *fifo;
+    session_handle_t session_handle;
+    rpc_args_t rpc_args;
+    struct
+    {
+      u8 data[0];
+    };
+  };
+} __clib_packed session_fifo_event_t;
+
+#define SESSION_MSG_NULL { }
 
 typedef struct session_dgram_pre_hdr_
 {
@@ -534,7 +552,7 @@ void stream_session_disconnect (stream_session_t * s);
 void stream_session_disconnect_transport (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
 void session_send_session_evt_to_thread (u64 session_handle,
-					 fifo_event_type_t evt_type,
+					 session_evt_type_t evt_type,
 					 u32 thread_index);
 ssvm_private_t *session_manager_get_evt_q_segment (void);
 
