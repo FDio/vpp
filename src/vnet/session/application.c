@@ -807,6 +807,87 @@ application_get_segment_manager_properties (u32 app_index)
   return &app->sm_properties;
 }
 
+int
+application_send_event (application_t * app, stream_session_t * s,
+			u8 evt_type)
+{
+  svm_msg_q_t *mq = app->event_queue;
+  session_fifo_event_t *evt;
+  svm_msg_q_msg_t msg;
+
+  ASSERT (app);
+
+  switch (evt_type)
+    {
+    case FIFO_EVENT_APP_RX:
+      if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
+	{
+	  /* Session is closed so app will never clean up. Flush rx fifo */
+	  svm_fifo_dequeue_drop_all (s->server_rx_fifo);
+	  return 0;
+	}
+      /* Built-in app? Hand event to the callback... */
+      if (app->cb_fns.builtin_app_rx_callback)
+	return app->cb_fns.builtin_app_rx_callback (s);
+
+      /* If no need for event, return */
+      if (!svm_fifo_set_event (s->server_rx_fifo))
+	return 0;
+
+      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq,
+                                                 SESSION_MQ_IO_EVT_RING)))
+	{
+	  clib_warning("evt q rings full");
+	  return -1;
+	}
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      ASSERT(!svm_msg_q_msg_is_invalid (&msg));
+
+      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt->fifo = s->server_rx_fifo;
+      evt->event_type = FIFO_EVENT_APP_RX;
+      break;
+    case FIFO_EVENT_APP_TX:
+      if (application_is_builtin (app))
+	return 0;
+
+      mq = app->event_queue;
+      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+	return -1;
+
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      ASSERT (!svm_msg_q_msg_is_invalid (&msg));
+
+      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt->event_type = FIFO_EVENT_APP_TX;
+      evt->fifo = s->server_tx_fifo;
+
+      break;
+    default:
+      {
+	clib_warning ("unsupported event");
+	return 0;
+      }
+    }
+
+  if (PREDICT_TRUE (!svm_msg_q_is_full (mq)))
+    {
+      if (svm_msg_q_add (mq, &msg, SVM_Q_WAIT))
+	{
+	  clib_warning ("msg q add returned");
+	  return -1;
+	}
+    }
+  else
+    {
+      clib_warning ("evt q full");
+      svm_msg_q_free_msg (mq, &msg);
+      return -1;
+    }
+
+  return 0;
+}
+
 local_session_t *
 application_alloc_local_session (application_t * app)
 {
@@ -949,14 +1030,14 @@ application_local_session_connect (u32 table_index, application_t * client,
   svm_fifo_segment_private_t *seg;
   segment_manager_t *sm;
   local_session_t *ls;
-  svm_queue_t *sq, *cq;
+  svm_msg_q_t *sq, *cq;
 
   ls = application_alloc_local_session (server);
 
   props = application_segment_manager_properties (server);
   cprops = application_segment_manager_properties (client);
   evt_q_elts = props->evt_q_size + cprops->evt_q_size;
-  evt_q_sz = evt_q_elts * sizeof (session_fifo_event_t);
+  evt_q_sz = segment_manager_evt_q_expected_size (evt_q_elts);
   seg_size = props->rx_fifo_size + props->tx_fifo_size + evt_q_sz + margin;
 
   has_transport = session_has_transport ((stream_session_t *) ll);

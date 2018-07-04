@@ -155,7 +155,7 @@ send_session_accept_callback (stream_session_t * s)
   vl_api_registration_t *reg;
   transport_connection_t *tc;
   stream_session_t *listener;
-  svm_queue_t *vpp_queue;
+  svm_msg_q_t *vpp_queue;
 
   reg = vl_mem_api_client_index_to_registration (server->api_client_index);
   if (!reg)
@@ -300,7 +300,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   vl_api_connect_session_reply_t *mp;
   transport_connection_t *tc;
   vl_api_registration_t *reg;
-  svm_queue_t *vpp_queue;
+  svm_msg_q_t *vpp_queue;
   application_t *app;
 
   app = application_get (app_index);
@@ -354,6 +354,19 @@ done:
   return 0;
 }
 
+//static inline int
+//session_api_send_q_evt (svm_queue_t *q, session_fifo_event_t *evt)
+//{
+//  return 0;
+//}
+
+static int
+send_session_accept_q_cb (stream_session_t * s)
+{
+//  application_t *app = application_get (s->app_index);
+  return 0;
+}
+
 static session_cb_vft_t session_cb_vft = {
   .session_accept_callback = send_session_accept_callback,
   .session_disconnect_callback = send_session_disconnect_callback,
@@ -362,6 +375,16 @@ static session_cb_vft_t session_cb_vft = {
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
 };
+
+static session_cb_vft_t session_q_cb_vft = {
+  .session_accept_callback = send_session_accept_q_cb,
+//  .session_disconnect_callback = send_session_disconnect_q_cb,
+//  .session_connected_callback = send_session_connected_q_cb,
+//  .session_reset_callback = send_session_reset_q_cb,
+  .add_segment_callback = send_add_segment_callback,
+  .del_segment_callback = send_del_segment_callback,
+};
+
 
 static void
 vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
@@ -401,7 +424,11 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   memset (a, 0, sizeof (*a));
   a->api_client_index = mp->client_index;
   a->options = mp->options;
-  a->session_cb_vft = &session_cb_vft;
+
+  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_USE_Q_FOR_CTRL_EVTS)
+    a->session_cb_vft = &session_q_cb_vft;
+  else
+    a->session_cb_vft = &session_cb_vft;
 
   if (mp->namespace_id_len > 64)
     {
@@ -485,7 +512,7 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
   vl_api_bind_uri_reply_t *rmp;
   stream_session_t *s;
   application_t *app = 0;
-  svm_queue_t *vpp_evt_q;
+  svm_msg_q_t *vpp_evt_q;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -759,7 +786,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   stream_session_t *s;
   transport_connection_t *tc = 0;
   ip46_address_t *ip46;
-  svm_queue_t *vpp_evt_q;
+  svm_msg_q_t *vpp_evt_q;
 
   if (session_manager_is_enabled () == 0)
     {
