@@ -26,10 +26,12 @@ class tap_interface : public interface
 {
 public:
   tap_interface(const std::string& name,
+                type_t type,
                 admin_state_t state,
                 route::prefix_t prefix);
 
   tap_interface(const std::string& name,
+                type_t type,
                 admin_state_t state,
                 route::prefix_t prefix,
                 const l2_address_t& l2_address);
@@ -75,10 +77,13 @@ private:
   static event_handler m_evh;
 
   /**
-   * Ip Prefix
+   * host Ip Prefix
    */
   route::prefix_t m_prefix;
 
+  /**
+   * host mac address
+   */
   l2_address_t m_l2_address;
 
   /**

@@ -72,11 +72,11 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   /*
    * pull out the other special cases
    */
-  if (interface::type_t::TAP == type) {
+  if (interface::type_t::TAP == type || interface::type_t::TAPV2 == type) {
     /*
-     * TAP interface
+     * TAP interfaces
      */
-    sp = tap_interface(name, state, route::prefix_t()).singular();
+    sp = interface::find(hdl);
     if (sp && !tag.empty())
       sp->set(tag);
   } else if ((name.find(".") != std::string::npos) && (0 != vd.sub_id)) {
@@ -150,6 +150,48 @@ interface_factory::new_af_packet_interface(
     interface(name, interface::type_t::AFPACKET, interface::admin_state_t::DOWN)
       .singular();
   sp->set(hdl);
+  return (sp);
+}
+
+std::shared_ptr<tap_interface>
+interface_factory::new_tap_interface(
+  const vapi_payload_sw_interface_tap_details& vd)
+{
+  std::shared_ptr<tap_interface> sp;
+  std::string name = reinterpret_cast<const char*>(vd.dev_name);
+  handle_t hdl(vd.sw_if_index);
+
+  sp = tap_interface(name, interface::type_t::TAP, interface::admin_state_t::UP,
+                     route::prefix_t::ZERO)
+         .singular();
+  sp->set(hdl);
+  return (sp);
+}
+
+std::shared_ptr<tap_interface>
+interface_factory::new_tap_v2_interface(
+  const vapi_payload_sw_interface_tap_v2_details& vd)
+{
+  std::shared_ptr<tap_interface> sp;
+  handle_t hdl(vd.sw_if_index);
+  std::string name = reinterpret_cast<const char*>(vd.host_if_name);
+  route::prefix_t pfx(route::prefix_t::ZERO);
+  boost::asio::ip::address addr;
+
+  if (vd.host_ip4_prefix_len)
+    pfx =
+      route::prefix_t(0, (uint8_t*)vd.host_ip4_addr, vd.host_ip4_prefix_len);
+  else if (vd.host_ip6_prefix_len)
+    pfx =
+      route::prefix_t(1, (uint8_t*)vd.host_ip6_addr, vd.host_ip6_prefix_len);
+
+  l2_address_t l2_address(vd.host_mac_addr, 6);
+  sp = tap_interface(name, interface::type_t::TAPV2,
+                     interface::admin_state_t::UP, pfx, l2_address)
+         .singular();
+
+  sp->set(hdl);
+
   return (sp);
 }
 

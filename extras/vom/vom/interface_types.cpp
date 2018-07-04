@@ -26,8 +26,9 @@ const interface::type_t interface::type_t::AFPACKET(4, "AFPACKET");
 const interface::type_t interface::type_t::LOOPBACK(5, "LOOPBACK");
 const interface::type_t interface::type_t::LOCAL(6, "LOCAL");
 const interface::type_t interface::type_t::TAP(7, "TAP");
-const interface::type_t interface::type_t::VHOST(8, "VHOST");
-const interface::type_t interface::type_t::BOND(9, "Bond");
+const interface::type_t interface::type_t::TAPV2(8, "TAPV2");
+const interface::type_t interface::type_t::VHOST(9, "VHOST");
+const interface::type_t interface::type_t::BOND(10, "Bond");
 
 const interface::oper_state_t interface::oper_state_t::DOWN(0, "down");
 const interface::oper_state_t interface::oper_state_t::UP(1, "up");
@@ -58,8 +59,11 @@ interface::type_t::from_string(const std::string& str)
     return interface::type_t::AFPACKET;
   } else if (str.find("local") != std::string::npos) {
     return interface::type_t::LOCAL;
-  } else if (str.find("tap") != std::string::npos) {
+  } else if ((str.find("tapcli") != std::string::npos) ||
+             (str.find("tuntap") != std::string::npos)) {
     return interface::type_t::TAP;
+  } else if (str.find("tap") != std::string::npos) {
+    return interface::type_t::TAPV2;
   } else if (str.find("bvi") != std::string::npos) {
     return interface::type_t::BVI;
   }

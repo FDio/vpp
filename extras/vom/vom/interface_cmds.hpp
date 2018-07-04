@@ -87,30 +87,6 @@ public:
 };
 
 /**
-* A command class to create TAP interfaces in VPP
-*/
-class tap_create_cmd : public interface::create_cmd<vapi::Tap_connect>
-{
-public:
-  /**
-   * Constructor taking the HW::item to update
-   * and the name of the interface to create
-   */
-  tap_create_cmd(HW::item<handle_t>& item, const std::string& name);
-  ~tap_create_cmd() = default;
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-
-  /**
- * convert to string format for debug purposes
- */
-  std::string to_string() const;
-};
-
-/**
  * A functor class that creates an interface
  */
 class vhost_create_cmd
@@ -167,27 +143,6 @@ public:
    * and the name of the interface to delete
    */
   af_packet_delete_cmd(HW::item<handle_t>& item, const std::string& name);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-};
-
-/**
-* A command class to delete TAP interfaces in VPP
-*/
-class tap_delete_cmd : public interface::delete_cmd<vapi::Tap_delete>
-{
-public:
-  /**
-   * Constructor taking the HW::item to update
-   */
-  tap_delete_cmd(HW::item<handle_t>& item);
 
   /**
    * Issue the command to VPP/HW

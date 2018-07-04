@@ -25,19 +25,21 @@ tap_interface::event_handler tap_interface::m_evh;
  * Construct a new object matching the desried state
  */
 tap_interface::tap_interface(const std::string& name,
+                             type_t type,
                              admin_state_t state,
                              route::prefix_t prefix)
-  : interface(name, type_t::TAP, state)
+  : interface(name, type, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address_t::ZERO)
 {
 }
 
 tap_interface::tap_interface(const std::string& name,
+                             type_t type,
                              admin_state_t state,
                              route::prefix_t prefix,
                              const l2_address_t& l2_address)
-  : interface(name, type_t::TAP, state)
+  : interface(name, type, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address)
 {
@@ -59,8 +61,12 @@ tap_interface::tap_interface(const tap_interface& o)
 std::queue<cmd*>&
 tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(
-    new tap_interface_cmds::create_cmd(m_hdl, name(), m_prefix, m_l2_address));
+  if (type_t::TAPV2 == type())
+    q.push(new tap_interface_cmds::tapv2_create_cmd(m_hdl, name(), m_prefix,
+                                                    m_l2_address));
+  else
+    q.push(new tap_interface_cmds::tap_create_cmd(m_hdl, name(), m_prefix,
+                                                  m_l2_address));
 
   return (q);
 }
@@ -68,7 +74,10 @@ tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 std::queue<cmd*>&
 tap_interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
-  q.push(new tap_interface_cmds::delete_cmd(m_hdl));
+  if (type_t::TAPV2 == type())
+    q.push(new tap_interface_cmds::tapv2_delete_cmd(m_hdl));
+  else
+    q.push(new tap_interface_cmds::tap_delete_cmd(m_hdl));
 
   return (q);
 }
@@ -88,32 +97,7 @@ tap_interface::singular_i() const
 void
 tap_interface::event_handler::handle_populate(const client_db::key_t& key)
 {
-  /*
-   * dump VPP current states
-   */
-  std::shared_ptr<tap_interface_cmds::dump_cmd> cmd =
-    std::make_shared<tap_interface_cmds::dump_cmd>();
-
-  HW::enqueue(cmd);
-  HW::write();
-
-  for (auto& record : *cmd) {
-    auto& payload = record.get_payload();
-
-    std::string name = reinterpret_cast<const char*>(payload.dev_name);
-
-    tap_interface itf(name, interface::admin_state_t::UP,
-                      route::prefix_t::ZERO);
-
-    VOM_LOG(log_level_t::DEBUG) << "tap-dump: " << itf.to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, itf);
-  }
+  // It will be polulate by interface handler
 }
 
 tap_interface::event_handler::event_handler()
