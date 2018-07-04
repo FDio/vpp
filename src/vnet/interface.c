@@ -1042,14 +1042,33 @@ vnet_hw_interface_walk_sw (vnet_main_t * vnm,
   u32 id, sw_if_index;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
-  /* the super first, then the and sub interfaces */
-  fn (vnm, hi->sw_if_index, ctx);
+  /* the super first, then the sub interfaces */
+  if (WALK_STOP == fn (vnm, hi->sw_if_index, ctx))
+    return;
 
   /* *INDENT-OFF* */
   hash_foreach (id, sw_if_index,
                 hi->sub_interface_sw_if_index_by_id,
   ({
     if (WALK_STOP == fn (vnm, sw_if_index, ctx))
+      break;
+  }));
+  /* *INDENT-ON* */
+}
+
+void
+vnet_hw_interface_walk (vnet_main_t * vnm,
+			vnet_hw_interface_walk_t fn, void *ctx)
+{
+  vnet_interface_main_t *im;
+  vnet_hw_interface_t *hi;
+
+  im = &vnm->interface_main;
+
+  /* *INDENT-OFF* */
+  pool_foreach (hi, im->hw_interfaces,
+  ({
+    if (WALK_STOP == fn(vnm, hi->hw_if_index, ctx))
       break;
   }));
   /* *INDENT-ON* */
@@ -1257,7 +1276,8 @@ int
 vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
-  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+  if ((si->type == VNET_SW_INTERFACE_TYPE_P2P) ||
+      (si->type == VNET_SW_INTERFACE_TYPE_PIPE))
     return 1;
 
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);

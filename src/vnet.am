@@ -945,6 +945,19 @@ nobase_include_HEADERS += 			\
 API_FILES += vnet/devices/tap/tapv2.api
 
 ########################################
+# tap interface (with virtio backend)
+########################################
+
+libvnet_la_SOURCES += 				\
+  vnet/devices/pipe/pipe_api.c			\
+  vnet/devices/pipe/pipe.c
+
+nobase_include_HEADERS += 			\
+  vnet/devices/pipe/pipe.h
+
+API_FILES += vnet/devices/pipe/pipe.api
+
+########################################
 # session managmeent
 ########################################
 
