@@ -975,6 +975,29 @@ mheap_alloc (void *memory, uword size)
 }
 
 void *
+mheap_alloc_with_lock (void *memory, uword size, int locked)
+{
+  uword flags = 0;
+  void *rv;
+
+  if (memory != 0)
+    flags |= MHEAP_FLAG_DISABLE_VM;
+
+#ifdef CLIB_HAVE_VEC128
+  flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
+#endif
+
+  rv = mheap_alloc_with_flags (memory, size, flags);
+
+  if (rv && locked)
+    {
+      mheap_t *h = mheap_header (rv);
+      h->flags |= MHEAP_FLAG_THREAD_SAFE;
+    }
+  return rv;
+}
+
+void *
 _mheap_free (void *v)
 {
   mheap_t *h = mheap_header (v);
