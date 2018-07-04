@@ -611,8 +611,8 @@ buffer_state_validation_init (vlib_main_t * vm)
 {
   void *oldheap;
 
-  vlib_buffer_state_heap = mheap_alloc (0, 10 << 20);
-
+  vlib_buffer_state_heap =
+    mheap_alloc_with_lock (0, 10 << 20, 0 /* locked */ );
   oldheap = clib_mem_set_heap (vlib_buffer_state_heap);
 
   vlib_buffer_state_validation_hash = hash_create (0, sizeof (uword));

@@ -246,8 +246,6 @@ nobase_include_HEADERS = \
   vppinfra/memcpy_avx2.h \
   vppinfra/memcpy_avx512.h \
   vppinfra/mhash.h \
-  vppinfra/mheap.h \
-  vppinfra/mheap_bootstrap.h \
   vppinfra/os.h \
   vppinfra/pipeline.h \
   vppinfra/pool.h \
@@ -289,6 +287,15 @@ nobase_include_HEADERS = \
   vppinfra/xy.h \
   vppinfra/zvec.h
 
+if ENABLE_DLMALLOC
+  nobase_include_HEADERS += \
+  vppinfra/dlmalloc.h
+else
+  nobase_include_HEADERS +=  \
+  vppinfra/mheap.h \
+  vppinfra/mheap_bootstrap.h 
+endif
+
 CLIB_CORE = \
   vppinfra/asm_x86.c \
   vppinfra/backtrace.c \
@@ -313,8 +320,6 @@ CLIB_CORE = \
   vppinfra/longjmp.S \
   vppinfra/macros.c \
   vppinfra/mhash.c \
-  vppinfra/mheap.c \
-  vppinfra/mem_mheap.c \
   vppinfra/ptclosure.c \
   vppinfra/random.c \
   vppinfra/random_buffer.c \
@@ -342,6 +347,17 @@ CLIB_CORE = \
   vppinfra/vec.c \
   vppinfra/vector.c \
   vppinfra/zvec.c
+
+if ENABLE_DLMALLOC
+  CLIB_CORE += \
+  vppinfra/mem_dlmalloc.c \
+  vppinfra/dlmalloc.c \
+  vppinfra/dlmalloc.h
+else
+  CLIB_CORE += \
+  vppinfra/mheap.c \
+  vppinfra/mem_mheap.c 
+endif
 
 # Core plus Unix additions
 libvppinfra_la_SOURCES =			\
