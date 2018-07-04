@@ -88,9 +88,9 @@ test1 (int verbose)
       test1_error ("failed: msg alloc3");
 
   *(u32 *)svm_msg_q_msg_data (mq, &msg2) = 123;
-  svm_msg_q_add (mq, msg2, SVM_Q_NOWAIT);
+  svm_msg_q_add (mq, &msg2, SVM_Q_NOWAIT);
   for (i = 0; i < 12; i++)
-    svm_msg_q_add (mq, msg[i], SVM_Q_NOWAIT);
+    svm_msg_q_add (mq, &msg[i], SVM_Q_NOWAIT);
 
   if (svm_msg_q_sub (mq, &msg2, SVM_Q_NOWAIT, 0))
     test1_error ("failed: dequeue1");

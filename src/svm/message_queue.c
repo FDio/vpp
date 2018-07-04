@@ -16,6 +16,19 @@
 #include <svm/message_queue.h>
 #include <vppinfra/mem.h>
 
+static inline svm_msg_q_ring_t *
+svm_msg_q_get_ring (svm_msg_q_t * mq, u32 ring_index)
+{
+  return vec_elt_at_index (mq->rings, ring_index);
+}
+
+static inline void *
+svm_msg_q_ring_data (svm_msg_q_ring_t * ring, u32 elt_index)
+{
+  ASSERT (elt_index < ring->nitems);
+  return (ring->data + elt_index * ring->elsize);
+}
+
 svm_msg_q_t *
 svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 {
@@ -60,6 +73,20 @@ svm_msg_q_free (svm_msg_q_t * mq)
 }
 
 svm_msg_q_msg_t
+svm_msg_q_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index, u32 nbytes)
+{
+  svm_msg_q_msg_t msg = {.as_u64 = ~0 };
+  svm_msg_q_ring_t *ring = svm_msg_q_get_ring (mq, ring_index);
+
+  ASSERT (ring->cursize != ring->nitems);
+  msg.ring_index = ring - mq->rings;
+  msg.elt_index = ring->tail;
+  ring->tail = (ring->tail + 1) % ring->nitems;
+  __sync_fetch_and_add (&ring->cursize, 1);
+  return msg;
+}
+
+svm_msg_q_msg_t
 svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
 {
   svm_msg_q_msg_t msg = {.as_u64 = ~0 };
@@ -76,19 +103,6 @@ svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
     break;
   }
   return msg;
-}
-
-static inline svm_msg_q_ring_t *
-svm_msg_q_get_ring (svm_msg_q_t * mq, u32 ring_index)
-{
-  return vec_elt_at_index (mq->rings, ring_index);
-}
-
-static inline void *
-svm_msg_q_ring_data (svm_msg_q_ring_t * ring, u32 elt_index)
-{
-  ASSERT (elt_index < ring->nitems);
-  return (ring->data + elt_index * ring->elsize);
 }
 
 void *
@@ -128,7 +142,7 @@ svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
     return 0;
   ring = &mq->rings[msg->ring_index];
 
-  dist1 = ((ring->nitems + msg->ring_index) - ring->head) % ring->nitems;
+  dist1 = ((ring->nitems + msg->elt_index) - ring->head) % ring->nitems;
   if (ring->tail == ring->head)
     dist2 = (ring->cursize == 0) ? 0 : ring->nitems;
   else
@@ -137,10 +151,10 @@ svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 }
 
 int
-svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t msg, int nowait)
+svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t *msg, int nowait)
 {
-  ASSERT (svm_msq_q_msg_is_valid (mq, &msg));
-  return svm_queue_add (mq->q, (u8 *) & msg, nowait);
+  ASSERT (svm_msq_q_msg_is_valid (mq, msg));
+  return svm_queue_add (mq->q, (u8 *) msg, nowait);
 }
 
 int

@@ -1164,16 +1164,16 @@ vppcom_session_read_ready (vcl_session_t * session, u32 session_index)
     }
   rv = ready;
 
-  if (vcm->app_event_queue->cursize &&
-      !pthread_mutex_trylock (&vcm->app_event_queue->mutex))
+  if (!svm_msg_q_is_empty (vcm->app_event_queue) &&
+      !pthread_mutex_trylock (&vcm->app_event_queue->q->mutex))
     {
-      u32 i, n_to_dequeue = vcm->app_event_queue->cursize;
+      u32 i, n_to_dequeue = vcm->app_event_queue->q->cursize;
       session_fifo_event_t e;
 
       for (i = 0; i < n_to_dequeue; i++)
-	svm_queue_sub_raw (vcm->app_event_queue, (u8 *) & e);
+	svm_queue_sub_raw (vcm->app_event_queue->q, (u8 *) & e);
 
-      pthread_mutex_unlock (&vcm->app_event_queue->mutex);
+      pthread_mutex_unlock (&vcm->app_event_queue->q->mutex);
     }
 done:
   return rv;
