@@ -92,6 +92,7 @@ typedef enum
   SRV6_AS_LOCALSID_NEXT_ERROR,
   SRV6_AS_LOCALSID_NEXT_REWRITE4,
   SRV6_AS_LOCALSID_NEXT_REWRITE6,
+  SRV6_AS_LOCALSID_NEXT_INTERFACE,
   SRV6_AS_LOCALSID_N_NEXT,
 } srv6_as_localsid_next_t;
 
@@ -129,9 +130,10 @@ end_as_processing (vlib_buffer_t * b0,
       ext_hdr = ip6_ext_next_header (ext_hdr);
     }
 
-  /* Make sure next header is IP */
+  /* Make sure next header is valid */
   if (PREDICT_FALSE (hdr_type != IP_PROTOCOL_IPV6 &&
-		     hdr_type != IP_PROTOCOL_IP_IN_IP))
+		     hdr_type != IP_PROTOCOL_IP_IN_IP &&
+		     hdr_type != IP_PROTOCOL_IP6_NONXT))
     {
       return;
     }
@@ -139,13 +141,23 @@ end_as_processing (vlib_buffer_t * b0,
   /* Remove IP header and extensions */
   vlib_buffer_advance (b0, encap_len);
 
-  /* Set Xconnect adjacency to VNF */
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0_mem->nh_adj;
+  if (hdr_type == IP_PROTOCOL_IP6_NONXT)
+    {
+      /* Set output interface */
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0_mem->sw_if_index_out;
 
-  if (ls0_mem->ip_version == DA_IP4)
-    *next0 = SRV6_AS_LOCALSID_NEXT_REWRITE4;
-  else if (ls0_mem->ip_version == DA_IP6)
-    *next0 = SRV6_AS_LOCALSID_NEXT_REWRITE6;
+      /* Set next node to interface-output */
+      *next0 = SRV6_AS_LOCALSID_NEXT_INTERFACE;
+    }
+  else
+    {
+      /* Set Xconnect adjacency to VNF */
+      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0_mem->nh_adj;
+
+      /* Set next node to ip-rewrite */
+      *next0 = (hdr_type == IP_PROTOCOL_IPV6) ?
+	SRV6_AS_LOCALSID_NEXT_REWRITE6 : SRV6_AS_LOCALSID_NEXT_REWRITE4;
+    }
 }
 
 /**
@@ -236,6 +248,7 @@ VLIB_REGISTER_NODE (srv6_as_localsid_node) = {
   .next_nodes = {
     [SRV6_AS_LOCALSID_NEXT_REWRITE4] = "ip4-rewrite",
     [SRV6_AS_LOCALSID_NEXT_REWRITE6] = "ip6-rewrite",
+    [SRV6_AS_LOCALSID_NEXT_INTERFACE] = "interface-output",
     [SRV6_AS_LOCALSID_NEXT_ERROR] = "error-drop",
   },
 };
@@ -243,6 +256,140 @@ VLIB_REGISTER_NODE (srv6_as_localsid_node) = {
 
 
 /******************************* Rewriting node *******************************/
+
+/**
+ * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation
+ */
+static uword
+srv6_as2_rewrite_fn (vlib_main_t * vm,
+		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  ip6_sr_main_t *srm = &sr_main;
+  srv6_as_main_t *sm = &srv6_as_main;
+  u32 n_left_from, next_index, *from, *to_next;
+  u32 cnt_packets = 0;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      /* TODO: Dual/quad loop */
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  ethernet_header_t *en0;
+	  ip6_header_t *ip0 = 0;
+	  ip6_sr_localsid_t *ls0;
+	  srv6_as_localsid_t *ls0_mem;
+	  u32 next0 = SRV6_AS_REWRITE_NEXT_LOOKUP;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  en0 = vlib_buffer_get_current (b0);
+	  ls0 = pool_elt_at_index (srm->localsids,
+				   sm->sw_iface_localsid2[vnet_buffer
+							  (b0)->sw_if_index
+							  [VLIB_RX]]);
+	  ls0_mem = ls0->plugin_mem;
+
+	  if (PREDICT_FALSE (ls0_mem == NULL || ls0_mem->rewrite == NULL))
+	    {
+	      next0 = SRV6_AS_REWRITE_NEXT_ERROR;
+	      b0->error = node->errors[SRV6_AS_REWRITE_COUNTER_NO_RW];
+	    }
+	  else
+	    {
+	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
+		      (vec_len (ls0_mem->rewrite) + b0->current_data));
+
+	      clib_memcpy (((u8 *) en0) - vec_len (ls0_mem->rewrite),
+			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
+	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
+
+	      ip0 = vlib_buffer_get_current (b0);
+
+	      ip0->payload_length =
+		clib_host_to_net_u16 (b0->current_length -
+				      sizeof (ip6_header_t));
+	    }
+
+	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      srv6_as_rewrite_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof *tr);
+	      tr->error = 0;
+
+	      if (next0 == SRV6_AS_REWRITE_NEXT_ERROR)
+		{
+		  tr->error = 1;
+		}
+	      else
+		{
+		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+			       sizeof tr->src.as_u8);
+		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+			       sizeof tr->dst.as_u8);
+		}
+	    }
+
+	  /* Increment per-SID AS rewrite counters */
+	  vlib_increment_combined_counter (((next0 ==
+					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
+					    &(sm->invalid_counters) :
+					    &(sm->valid_counters)),
+					   vm->thread_index, ls0_mem->index,
+					   1, vlib_buffer_length_in_chain (vm,
+									   b0));
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+
+	  cnt_packets++;
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  /* Update counters */
+  vlib_node_increment_counter (vm, srv6_as4_rewrite_node.index,
+			       SRV6_AS_REWRITE_COUNTER_PROCESSED,
+			       cnt_packets);
+
+  return frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (srv6_as2_rewrite_node) = {
+  .function = srv6_as2_rewrite_fn,
+  .name = "srv6-as2-rewrite",
+  .vector_size = sizeof (u32),
+  .format_trace = format_srv6_as_rewrite_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = SRV6_AS_REWRITE_N_COUNTERS,
+  .error_strings = srv6_as_rewrite_counter_strings,
+  .n_next_nodes = SRV6_AS_REWRITE_N_NEXT,
+  .next_nodes = {
+    [SRV6_AS_REWRITE_NEXT_LOOKUP] = "ip6-lookup",
+    [SRV6_AS_REWRITE_NEXT_ERROR] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
 
 /**
  * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation

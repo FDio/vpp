@@ -121,18 +121,21 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 
   /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
   adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
-  if (ls_mem->ip_version == DA_IP4)
-    nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-					VNET_LINK_IP4, &ls_mem->nh_addr,
-					ls_mem->sw_if_index_out);
-  else if (ls_mem->ip_version == DA_IP6)
-    nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
-					VNET_LINK_IP6, &ls_mem->nh_addr,
-					ls_mem->sw_if_index_out);
-  if (nh_adj_index == ADJ_INDEX_INVALID)
+  if (ls_mem->inner_type != AS_TYPE_L2)
     {
-      free_ls_mem (ls_mem);
-      return SID_CREATE_INVALID_ADJ_INDEX;
+      if (ls_mem->inner_type == AS_TYPE_IP4)
+	nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+					    VNET_LINK_IP4, &ls_mem->nh_addr,
+					    ls_mem->sw_if_index_out);
+      else if (ls_mem->inner_type == AS_TYPE_IP6)
+	nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
+					    VNET_LINK_IP6, &ls_mem->nh_addr,
+					    ls_mem->sw_if_index_out);
+      if (nh_adj_index == ADJ_INDEX_INVALID)
+	{
+	  free_ls_mem (ls_mem);
+	  return SID_CREATE_INVALID_ADJ_INDEX;
+	}
     }
 
   ls_mem->nh_adj = nh_adj_index;
@@ -159,7 +162,37 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
       return SID_CREATE_INVALID_IFACE_TYPE;
     }
 
-  if (ls_mem->ip_version == DA_IP4)
+  if (ls_mem->inner_type == AS_TYPE_L2)
+    {
+      /* Enable End.AS2 rewrite node for this interface */
+      int ret =
+	vnet_feature_enable_disable ("device-input", "srv6-as2-rewrite",
+				     ls_mem->sw_if_index_in, 1, 0, 0);
+      if (ret != 0)
+	{
+	  free_ls_mem (ls_mem);
+	  return SID_CREATE_IFACE_FEATURE_ERROR;
+	}
+
+      /* Set interface in promiscuous mode */
+      vnet_main_t *vnm = vnet_get_main ();
+      ethernet_set_flags (vnm, ls_mem->sw_if_index_in,
+			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+
+      /* Prepare rewrite string */
+      ls_mem->rewrite = prepare_rewrite (ls_mem->src_addr, ls_mem->sid_list,
+					 IP_PROTOCOL_IP6_NONXT);
+
+      /* Associate local SID index to this interface (resize vector if needed) */
+      if (ls_mem->sw_if_index_in >= vec_len (sm->sw_iface_localsid2))
+	{
+	  vec_resize (sm->sw_iface_localsid2,
+		      (pool_len (sm->vnet_main->interface_main.sw_interfaces)
+		       - vec_len (sm->sw_iface_localsid2)));
+	}
+      sm->sw_iface_localsid2[ls_mem->sw_if_index_in] = localsid_index;
+    }
+  else if (ls_mem->inner_type == AS_TYPE_IP4)
     {
       /* Enable End.AS4 rewrite node for this interface */
       int ret =
@@ -185,7 +218,7 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 	}
       sm->sw_iface_localsid4[ls_mem->sw_if_index_in] = localsid_index;
     }
-  else if (ls_mem->ip_version == DA_IP6)
+  else if (ls_mem->inner_type == AS_TYPE_IP6)
     {
       /* Enable End.AS6 rewrite node for this interface */
       int ret =
@@ -233,7 +266,23 @@ srv6_as_localsid_removal_fn (ip6_sr_localsid_t * localsid)
   srv6_as_main_t *sm = &srv6_as_main;
   srv6_as_localsid_t *ls_mem = localsid->plugin_mem;
 
-  if (ls_mem->ip_version == DA_IP4)
+  if (ls_mem->inner_type == AS_TYPE_L2)
+    {
+      /* Disable End.AS2 rewrite node for this interface */
+      int ret;
+      ret = vnet_feature_enable_disable ("device-input", "srv6-as2-rewrite",
+					 ls_mem->sw_if_index_in, 0, 0, 0);
+      if (ret != 0)
+	return -1;
+
+      /* Disable promiscuous mode on the interface */
+      vnet_main_t *vnm = vnet_get_main ();
+      ethernet_set_flags (vnm, ls_mem->sw_if_index_in, 0);
+
+      /* Remove local SID index from interface table */
+      sm->sw_iface_localsid2[ls_mem->sw_if_index_in] = ~(u32) 0;
+    }
+  else if (ls_mem->inner_type == AS_TYPE_IP4)
     {
       /* Disable End.AS4 rewrite node for this interface */
       int ret;
@@ -245,7 +294,7 @@ srv6_as_localsid_removal_fn (ip6_sr_localsid_t * localsid)
       /* Remove local SID index from interface table */
       sm->sw_iface_localsid4[ls_mem->sw_if_index_in] = ~(u32) 0;
     }
-  else if (ls_mem->ip_version == DA_IP6)
+  else if (ls_mem->inner_type == AS_TYPE_IP6)
     {
       /* Disable End.AS6 rewrite node for this interface */
       int ret;
@@ -285,20 +334,20 @@ format_srv6_as_localsid (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
   srv6_as_main_t *sm = &srv6_as_main;
 
-  if (ls_mem->ip_version == DA_IP4)
+  if (ls_mem->inner_type == AS_TYPE_IP4)
     {
       s =
-	format (s, "Next-hop:\t%U\n", format_ip4_address,
+	format (s, "Next-hop:\t%U\n\t", format_ip4_address,
 		&ls_mem->nh_addr.ip4);
     }
-  else
+  else if (ls_mem->inner_type == AS_TYPE_IP6)
     {
       s =
-	format (s, "Next-hop:\t%U\n", format_ip6_address,
+	format (s, "Next-hop:\t%U\n\t", format_ip6_address,
 		&ls_mem->nh_addr.ip6);
     }
 
-  s = format (s, "\tOutgoing iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
+  s = format (s, "Outgoing iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
 	      ls_mem->sw_if_index_out);
   s = format (s, "\tIncoming iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
 	      ls_mem->sw_if_index_in);
@@ -342,7 +391,7 @@ unformat_srv6_as_localsid (unformat_input_t * input, va_list * args)
 
   vnet_main_t *vnm = vnet_get_main ();
 
-  u8 ip_version = 0;
+  u8 inner_type = AS_TYPE_L2;
   ip46_address_t nh_addr;
   u32 sw_if_index_out;
   u32 sw_if_index_in;
@@ -365,14 +414,14 @@ unformat_srv6_as_localsid (unformat_input_t * input, va_list * args)
 					       unformat_ip4_address,
 					       &nh_addr.ip4))
 	{
-	  ip_version = DA_IP4;
+	  inner_type = AS_TYPE_IP4;
 	  params |= PARAM_AS_NH;
 	}
       if (!(params & PARAM_AS_NH) && unformat (input, "nh %U",
 					       unformat_ip6_address,
 					       &nh_addr.ip6))
 	{
-	  ip_version = DA_IP6;
+	  inner_type = AS_TYPE_IP6;
 	  params |= PARAM_AS_NH;
 	}
       else if (!(params & PARAM_AS_OIF) && unformat (input, "oif %U",
@@ -404,7 +453,7 @@ unformat_srv6_as_localsid (unformat_input_t * input, va_list * args)
     }
 
   /* Make sure that all parameters are supplied */
-  u8 params_chk = (PARAM_AS_NH | PARAM_AS_OIF | PARAM_AS_IIF | PARAM_AS_SRC);
+  u8 params_chk = (PARAM_AS_OIF | PARAM_AS_IIF | PARAM_AS_SRC);
   if ((params & params_chk) != params_chk || sid_list == NULL)
     {
       vec_free (sid_list);
@@ -417,10 +466,10 @@ unformat_srv6_as_localsid (unformat_input_t * input, va_list * args)
   *plugin_mem_p = ls_mem;
 
   /* Set local SID parameters */
-  ls_mem->ip_version = ip_version;
-  if (ip_version == DA_IP4)
+  ls_mem->inner_type = inner_type;
+  if (inner_type == AS_TYPE_IP4)
     ls_mem->nh_addr.ip4 = nh_addr.ip4;
-  else
+  else if (inner_type == AS_TYPE_IP6)
     ls_mem->nh_addr.ip6 = nh_addr.ip6;
   ls_mem->sw_if_index_out = sw_if_index_out;
   ls_mem->sw_if_index_in = sw_if_index_in;
@@ -499,6 +548,13 @@ srv6_as_init (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
+VNET_FEATURE_INIT (srv6_as2_rewrite, static) =
+{
+  .arc_name = "device-input",
+  .node_name = "srv6-as2-rewrite",
+  .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
 VNET_FEATURE_INIT (srv6_as4_rewrite, static) =
 {
   .arc_name = "ip4-unicast",
