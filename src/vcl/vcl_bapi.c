@@ -99,7 +99,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   vcm->app_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
+    uword_to_pointer (mp->app_event_queue_address, svm_msg_q_t *);
 
   vcm->app_state = STATE_APP_ATTACHED;
 }
@@ -291,7 +291,7 @@ done:
       VCL_IO_SESSIONS_UNLOCK ();
     }
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_queue_t *);
+					 svm_msg_q_t *);
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -431,7 +431,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_queue_t *);
+					 svm_msg_q_t *);
   session->session_state = STATE_ACCEPT;
   session->transport.rmt_port = mp->port;
   session->transport.is_ip4 = mp->is_ip4;

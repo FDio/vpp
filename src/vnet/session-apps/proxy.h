@@ -40,8 +40,8 @@ typedef struct
 {
   svm_queue_t *vl_input_queue;	/**< vpe input queue */
   /** per-thread vectors */
-  svm_queue_t **server_event_queue;
-  svm_queue_t **active_open_event_queue;
+  svm_msg_q_t **server_event_queue;
+  svm_msg_q_t **active_open_event_queue;
   u8 **rx_buf;				/**< intermediate rx buffers */
 
   u32 cli_node_index;			/**< cli process node index */
