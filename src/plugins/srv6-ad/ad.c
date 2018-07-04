@@ -114,6 +114,18 @@ srv6_ad_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 
   ls_mem->rw_len = 0;
 
+  /* Step 3: Initialize rewrite counters */
+  srv6_ad_localsid_t **ls_p;
+  pool_get (sm->sids, ls_p);
+  *ls_p = ls_mem;
+  ls_mem->index = ls_p - sm->sids;
+
+  vlib_validate_combined_counter (&(sm->valid_counters), ls_mem->index);
+  vlib_validate_combined_counter (&(sm->invalid_counters), ls_mem->index);
+
+  vlib_zero_combined_counter (&(sm->valid_counters), ls_mem->index);
+  vlib_zero_combined_counter (&(sm->invalid_counters), ls_mem->index);
+
   return 0;
 }
 
@@ -151,6 +163,9 @@ srv6_ad_localsid_removal_fn (ip6_sr_localsid_t * localsid)
   /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
   adj_unlock (ls_mem->nh_adj);
 
+  /* Delete SID entry */
+  pool_put (sm->sids, pool_elt_at_index (sm->sids, ls_mem->index));
+
   /* Clean up local SID memory */
   clib_mem_free (localsid->plugin_mem);
 
@@ -169,29 +184,36 @@ format_srv6_ad_localsid (u8 * s, va_list * args)
   srv6_ad_localsid_t *ls_mem = va_arg (*args, void *);
 
   vnet_main_t *vnm = vnet_get_main ();
+  srv6_ad_main_t *sm = &srv6_ad_main;
 
   if (ls_mem->ip_version == DA_IP4)
     {
-      return (format (s,
-		      "Next-hop:\t%U\n"
-		      "\tOutgoing iface: %U\n"
-		      "\tIncoming iface: %U",
-		      format_ip4_address, &ls_mem->nh_addr.ip4,
-		      format_vnet_sw_if_index_name, vnm,
-		      ls_mem->sw_if_index_out, format_vnet_sw_if_index_name,
-		      vnm, ls_mem->sw_if_index_in));
+      s =
+	format (s, "Next-hop:\t%U\n", format_ip4_address,
+		&ls_mem->nh_addr.ip4);
     }
   else
     {
-      return (format (s,
-		      "Next-hop:\t%U\n"
-		      "\tOutgoing iface: %U\n"
-		      "\tIncoming iface: %U",
-		      format_ip6_address, &ls_mem->nh_addr.ip6,
-		      format_vnet_sw_if_index_name, vnm,
-		      ls_mem->sw_if_index_out, format_vnet_sw_if_index_name,
-		      vnm, ls_mem->sw_if_index_in));
+      s =
+	format (s, "Next-hop:\t%U\n", format_ip6_address,
+		&ls_mem->nh_addr.ip6);
     }
+
+  s = format (s, "\tOutgoing iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
+	      ls_mem->sw_if_index_out);
+  s = format (s, "\tIncoming iface:\t%U\n", format_vnet_sw_if_index_name, vnm,
+	      ls_mem->sw_if_index_in);
+
+  vlib_counter_t valid, invalid;
+  vlib_get_combined_counter (&(sm->valid_counters), ls_mem->index, &valid);
+  vlib_get_combined_counter (&(sm->invalid_counters), ls_mem->index,
+			     &invalid);
+  s = format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	      valid.packets, valid.bytes);
+  s = format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	      invalid.packets, invalid.bytes);
+
+  return s;
 }
 
 /*
