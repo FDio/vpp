@@ -100,6 +100,11 @@ public:
     const static type_t TAP;
 
     /**
+     * TAPv2 interface type
+     */
+    const static type_t TAPV2;
+
+    /**
      * vhost-user interface type
      */
     const static type_t VHOST;

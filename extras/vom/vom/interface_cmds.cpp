@@ -19,7 +19,6 @@
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
 DEFINE_VAPI_MSG_IDS_AF_PACKET_API_JSON;
-DEFINE_VAPI_MSG_IDS_TAP_API_JSON;
 DEFINE_VAPI_MSG_IDS_VHOST_USER_API_JSON;
 DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
 
@@ -88,44 +87,6 @@ af_packet_create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "af-packet-itf-create: " << m_hw_item.to_string() << " name:" << m_name;
-
-  return (s.str());
-}
-
-tap_create_cmd::tap_create_cmd(HW::item<handle_t>& item,
-                               const std::string& name)
-  : create_cmd(item, name)
-{
-}
-
-rc_t
-tap_create_cmd::issue(connection& con)
-{
-  msg_t req(con.ctx(), std::ref(*this));
-
-  auto& payload = req.get_request().get_payload();
-
-  memset(payload.tap_name, 0, sizeof(payload.tap_name));
-  memcpy(payload.tap_name, m_name.c_str(),
-         std::min(m_name.length(), sizeof(payload.tap_name)));
-  payload.use_random_mac = 1;
-
-  VAPI_CALL(req.execute());
-
-  m_hw_item = wait();
-
-  if (m_hw_item.rc() == rc_t::OK) {
-    insert_interface();
-  }
-
-  return rc_t::OK;
-}
-
-std::string
-tap_create_cmd::to_string() const
-{
-  std::ostringstream s;
-  s << "tap-intf-create: " << m_hw_item.to_string() << " name:" << m_name;
 
   return (s.str());
 }
@@ -238,28 +199,6 @@ af_packet_delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "af_packet-itf-delete: " << m_hw_item.to_string();
-
-  return (s.str());
-}
-
-tap_delete_cmd::tap_delete_cmd(HW::item<handle_t>& item)
-  : delete_cmd(item)
-{
-}
-
-rc_t
-tap_delete_cmd::issue(connection& con)
-{
-  // finally... call VPP
-
-  remove_interface();
-  return rc_t::OK;
-}
-std::string
-tap_delete_cmd::to_string() const
-{
-  std::ostringstream s;
-  s << "tap-itf-delete: " << m_hw_item.to_string();
 
   return (s.str());
 }
@@ -470,13 +409,13 @@ rc_t
 events_cmd::issue(connection& con)
 {
   /*
- * First set the call back to handle the interface events
- */
+   * First set the call back to handle the interface events
+   */
   m_reg.reset(new reg_t(con.ctx(), std::ref(*(static_cast<event_cmd*>(this)))));
 
   /*
- * then send the request to enable them
- */
+   * then send the request to enable them
+   */
   msg_t req(con.ctx(), std::ref(*(static_cast<rpc_cmd*>(this))));
 
   auto& payload = req.get_request().get_payload();
@@ -494,8 +433,8 @@ void
 events_cmd::retire(connection& con)
 {
   /*
- * disable interface events.
- */
+   * disable interface events.
+   */
   msg_t req(con.ctx(), std::ref(*(static_cast<rpc_cmd*>(this))));
 
   auto& payload = req.get_request().get_payload();

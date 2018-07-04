@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
 /**
@@ -286,8 +287,7 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
-  } else if (type_t::TAP == m_type) {
-    q.push(new interface_cmds::tap_create_cmd(m_hdl, m_name));
+  } else if (type_t::TAP == m_type || type_t::TAPV2 == m_type) {
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
   } else if (type_t::VHOST == m_type) {
@@ -306,8 +306,6 @@ interface::mk_delete_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::loopback_delete_cmd(m_hdl));
   } else if (type_t::AFPACKET == m_type) {
     q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
-  } else if (type_t::TAP == m_type) {
-    q.push(new interface_cmds::tap_delete_cmd(m_hdl));
   } else if (type_t::VHOST == m_type) {
     q.push(new interface_cmds::vhost_delete_cmd(m_hdl, m_name));
   }
@@ -491,7 +489,7 @@ void
 interface::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
-   * dump VPP current states
+   * dump VPP vhost-user interfaces
    */
   std::shared_ptr<interface_cmds::vhost_dump_cmd> vcmd =
     std::make_shared<interface_cmds::vhost_dump_cmd>();
@@ -507,6 +505,9 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     OM::commit(key, *vitf);
   }
 
+  /*
+   * dump VPP af-packet interfaces
+   */
   std::shared_ptr<interface_cmds::af_packet_dump_cmd> afcmd =
     std::make_shared<interface_cmds::af_packet_dump_cmd>();
 
@@ -521,6 +522,53 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     OM::commit(key, *afitf);
   }
 
+  /*
+   * dump VPP tap interfaces
+   */
+  std::shared_ptr<tap_interface_cmds::tap_dump_cmd> tapcmd =
+    std::make_shared<tap_interface_cmds::tap_dump_cmd>();
+
+  HW::enqueue(tapcmd);
+  HW::write();
+
+  for (auto& tap_record : *tapcmd) {
+    std::shared_ptr<tap_interface> tapitf =
+      interface_factory::new_tap_interface(tap_record.get_payload());
+    VOM_LOG(log_level_t::DEBUG) << "tap-dump: " << tapitf->to_string();
+
+    /*
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, *tapitf);
+  }
+
+  /*
+   * dump VPP tapv2 interfaces
+   */
+  std::shared_ptr<tap_interface_cmds::tapv2_dump_cmd> tapv2cmd =
+    std::make_shared<tap_interface_cmds::tapv2_dump_cmd>();
+
+  HW::enqueue(tapv2cmd);
+  HW::write();
+
+  for (auto& tapv2_record : *tapv2cmd) {
+    std::shared_ptr<tap_interface> tapv2itf =
+      interface_factory::new_tap_v2_interface(tapv2_record.get_payload());
+    VOM_LOG(log_level_t::DEBUG) << "tapv2-dump: " << tapv2itf->to_string();
+
+    /*
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, *tapv2itf);
+  }
+
+  /*
+   * dump VPP interfaces
+   */
   std::shared_ptr<interface_cmds::dump_cmd> cmd =
     std::make_shared<interface_cmds::dump_cmd>();
 
@@ -567,6 +615,9 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     }
   }
 
+  /*
+   * dump VPP bond interfaces
+   */
   std::shared_ptr<bond_interface_cmds::dump_cmd> bcmd =
     std::make_shared<bond_interface_cmds::dump_cmd>();
 

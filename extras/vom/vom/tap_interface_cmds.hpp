@@ -23,6 +23,7 @@
 
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/tap.api.vapi.hpp>
+#include <vapi/tapv2.api.vapi.hpp>
 
 namespace VOM {
 namespace tap_interface_cmds {
@@ -30,10 +31,10 @@ namespace tap_interface_cmds {
 /**
  * A functor class that creates an interface
  */
-class create_cmd : public interface::create_cmd<vapi::Tap_connect>
+class tap_create_cmd : public interface::create_cmd<vapi::Tap_connect>
 {
 public:
-  create_cmd(HW::item<handle_t>& item,
+  tap_create_cmd(HW::item<handle_t>& item,
              const std::string& name,
              route::prefix_t& prefix,
              const l2_address_t& l2_address);
@@ -55,10 +56,10 @@ private:
 /**
  * A functor class that deletes a Tap interface
  */
-class delete_cmd : public interface::delete_cmd<vapi::Tap_delete>
+class tap_delete_cmd : public interface::delete_cmd<vapi::Tap_delete>
 {
 public:
-  delete_cmd(HW::item<handle_t>& item);
+  tap_delete_cmd(HW::item<handle_t>& item);
 
   /**
    * Issue the command to VPP/HW
@@ -73,13 +74,13 @@ public:
 /**
  * A cmd class that Dumps all the Vpp Interfaces
  */
-class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_tap_dump>
+class tap_dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_tap_dump>
 {
 public:
   /**
    * Default Constructor
    */
-  dump_cmd();
+  tap_dump_cmd();
 
   /**
    * Issue the command to VPP/HW
@@ -93,7 +94,76 @@ public:
   /**
    * Comparison operator - only used for UT
    */
-  bool operator==(const dump_cmd& i) const;
+  bool operator==(const tap_dump_cmd& i) const;
+};
+
+/**
+ * A functor class that creates an interface
+ */
+class tapv2_create_cmd : public interface::create_cmd<vapi::Tap_create_v2>
+{
+public:
+  tapv2_create_cmd(HW::item<handle_t>& item,
+             const std::string& name,
+             route::prefix_t& prefix,
+             const l2_address_t& l2_address);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+private:
+  route::prefix_t& m_prefix;
+  const l2_address_t& m_l2_address;
+};
+
+/**
+ * A functor class that deletes a Tap interface
+ */
+class tapv2_delete_cmd : public interface::delete_cmd<vapi::Tap_delete_v2>
+{
+public:
+  tapv2_delete_cmd(HW::item<handle_t>& item);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+};
+
+/**
+ * A cmd class that Dumps all the Vpp Interfaces
+ */
+class tapv2_dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_tap_v2_dump>
+{
+public:
+  /**
+   * Default Constructor
+   */
+  tapv2_dump_cmd();
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const tapv2_dump_cmd& i) const;
 };
 
 }; // namespace tap_interface_cmds 
