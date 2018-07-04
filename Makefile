@@ -128,11 +128,11 @@ RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 ifeq ($(OS_ID),opensuse)
 ifeq ($(SUSE_NAME),Tumbleweed)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc
-	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
 endif
 ifeq ($(SUSE_ID),15.0)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc6
-	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
 else
 	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6
 	RPM_SUSE_PYTHON_DEPS += python-virtualenv
@@ -142,7 +142,7 @@ endif
 ifeq ($(OS_ID),opensuse-leap)
 ifeq ($(SUSE_ID),15.0)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc6
-	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
 endif
 endif
 
