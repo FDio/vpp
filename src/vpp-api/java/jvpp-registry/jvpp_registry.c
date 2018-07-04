@@ -245,10 +245,18 @@ static int send_initial_control_ping() {
     return rv;
 }
 
+#if USE_DLMALLOC == 1
+void * __jvpp_heap;
+#endif
+
 static int connect_to_vpe(char *shm_prefix, char *name) {
     jvpp_main_t * jm = &jvpp_main;
     api_main_t * am = &api_main;
     jvpp_registry_main_t * rm = &jvpp_registry_main;
+
+#if USE_DLMALLOC == 1
+    __jvpp_heap = clib_mem_init (0, 1<<20);
+#endif
 
     if (vl_client_connect_to_vlib(shm_prefix, name, 32) < 0)
         return -1;

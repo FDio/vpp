@@ -107,7 +107,12 @@ svm_fifo_segment_preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
 
   /* Calculate space requirements */
   pair_size = 2 * sizeof (*f) + rx_rounded_data_size + tx_rounded_data_size;
+#if USE_DLMALLOC == 0
   space_available = s->ssvm.ssvm_size - mheap_bytes (sh->heap);
+#else
+  space_available = s->ssvm.ssvm_size - mspace_usable_size (sh->heap);
+#endif
+
   pairs_to_allocate = clib_min (space_available / pair_size, *n_fifo_pairs);
   rx_fifos_size = (sizeof (*f) + rx_rounded_data_size) * pairs_to_allocate;
   tx_fifos_size = (sizeof (*f) + tx_rounded_data_size) * pairs_to_allocate;
@@ -237,7 +242,6 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   svm_fifo_segment_private_t *s;
   ssvm_shared_header_t *sh;
-  mheap_t *heap_header;
   u32 rnd_size = 0;
   u8 *heap;
   u32 pagesize = clib_mem_get_page_size ();
@@ -247,6 +251,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 
   rnd_size = (a->segment_size + (pagesize - 1)) & ~pagesize;
 
+#if USE_DLMALLOC == 0
   heap = mheap_alloc (0, rnd_size);
   if (heap == 0)
     {
@@ -254,8 +259,14 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       pool_put (sm->segments, s);
       return -1;
     }
-  heap_header = mheap_header (heap);
-  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+  {
+    mheap_t *heap_header;
+    heap_header = mheap_header (heap);
+    heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+  }
+#else
+  heap = create_mspace (rnd_size, 1 /* locked */ );
+#endif
 
   s->ssvm.ssvm_size = rnd_size;
   s->ssvm.i_am_master = 1;
@@ -572,11 +583,17 @@ svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
 {
   if (ssvm_type (&seg->ssvm) == SSVM_SEGMENT_PRIVATE)
     {
+#if USE_DLMALLOC == 0
       mheap_t *heap_header;
 
       *address = pointer_to_uword (seg->ssvm.sh->heap);
       heap_header = mheap_header (seg->ssvm.sh->heap);
       *size = heap_header->max_size;
+#else
+      mspace_get_address_and_size (seg->ssvm.sh->heap,
+				   (unsigned long long *) address,
+				   (unsigned long long *) size);
+#endif
     }
   else
     {
@@ -585,7 +602,7 @@ svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
     }
 }
 
-mheap_t *
+void *
 svm_fifo_segment_heap (svm_fifo_segment_private_t * seg)
 {
   return seg->ssvm.sh->heap;
@@ -617,17 +634,19 @@ format_svm_fifo_segment (u8 * s, va_list * args)
 {
   svm_fifo_segment_private_t *sp
     = va_arg (*args, svm_fifo_segment_private_t *);
-  int verbose = va_arg (*args, int);
+  int verbose __attribute__ ((unused)) = va_arg (*args, int);
   svm_fifo_segment_header_t *fsh = sp->h;
   u32 count, indent;
   svm_fifo_t *f;
   int i;
 
   indent = format_get_indent (s) + 2;
+#if USE_DLMALLOC == 0
   s = format (s, "%U segment heap: %U\n", format_white_space, indent,
 	      format_mheap, svm_fifo_segment_heap (sp), verbose);
   s = format (s, "%U segment has %u active fifos\n",
 	      format_white_space, indent, svm_fifo_segment_num_fifos (sp));
+#endif
 
   for (i = 0; i < vec_len (fsh->free_fifos); i++)
     {
