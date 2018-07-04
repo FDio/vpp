@@ -190,6 +190,7 @@ ENABLE_ARG(tests,	[Enable unit tests])
 ENABLE_ARG(dpdk_shared,	[Enable unit tests])
 ENABLE_ARG(perftool,	[Enable perftool])
 ENABLE_ARG(g2,		[Enable g2])
+ENABLE_ARG(dlmalloc,    [Enable dlmalloc])
 
 # --disable-X
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
@@ -231,6 +232,8 @@ AC_ARG_WITH(pre-data,
 	       256) ;;
                *) with_pre_data="pre-data-not-set" ;;
 	     esac], [with_pre_data=128])
+
+AM_CONDITIONAL(ENABLE_DLMALLOC, test "$enable_dlmalloc" = "yes")
 
 ###############################################################################
 # Target CPU flags
@@ -278,6 +281,7 @@ AS_IF([test "$cc_flag_check" = yes],
 AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(LOG2_CACHE_LINE_BYTES, [$with_log2_cache_line_bytes])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
+AC_SUBST(DLMALLOC,              [-DUSE_DLMALLOC=${n_enable_dlmalloc}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
@@ -447,6 +451,7 @@ PRINT_VAL([CFLAGS], ${CFLAGS})
 PRINT_VAL([CPPFLAGS], ${CPPFLAGS})
 PRINT_VAL([LDFLAGS], ${LDFLAGS})
 PRINT_VAL([LOG2_CACHE_LINE_BYTES], ${with_log2_cache_line_bytes})
+PRINT_VAL([DLMALLOC], ${enable_dlmalloc})
 AM_COND_IF([ENABLE_JAPI],
 [
   PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})

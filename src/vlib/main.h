@@ -100,8 +100,13 @@ typedef struct vlib_main_t
   /* Name for e.g. syslog. */
   char *name;
 
-  /* Start and size of CLIB heap. */
+  /* Start of the heap. */
   void *heap_base;
+
+  /* Truncated version, to create frame indices */
+  void *heap_aligned_base;
+
+  /* Size of the heap */
   uword heap_size;
 
   /* Pool of buffer free lists. */

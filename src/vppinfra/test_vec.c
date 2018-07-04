@@ -47,7 +47,6 @@
 #endif
 
 #include <vppinfra/clib.h>
-#include <vppinfra/mheap.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/random.h>
@@ -1068,11 +1067,18 @@ prob_free (void)
 }
 
 int
+vl (void *v)
+{
+  return vec_len (v);
+}
+
+int
 test_vec_main (unformat_input_t * input)
 {
   uword iter = 1000;
   uword help = 0;
   uword big = 0;
+  uword align = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1082,7 +1088,8 @@ test_vec_main (unformat_input_t * input)
 	  && 0 == unformat (input, "set %d", &g_set_verbose_at)
 	  && 0 == unformat (input, "dump %d", &g_dump_period)
 	  && 0 == unformat (input, "help %=", &help, 1)
-	  && 0 == unformat (input, "big %=", &big, 1))
+	  && 0 == unformat (input, "big %=", &big, 1)
+	  && 0 == unformat (input, "align %=", &align, 1))
 	{
 	  clib_error ("unknown input `%U'", format_unformat_error, input);
 	  goto usage;
@@ -1104,6 +1111,16 @@ test_vec_main (unformat_input_t * input)
       for (index = size; index >= 0; index--)
 	bigboy[index] = index & 0xff;
       return 0;
+    }
+
+  if (align)
+    {
+      u8 *v = 0;
+
+      vec_validate_aligned (v, 9, CLIB_CACHE_LINE_BYTES);
+      fformat (stdout, "v = 0x%llx, aligned %llx\n",
+	       v, ((uword) v) & ~(CLIB_CACHE_LINE_BYTES - 1));
+      vec_free (v);
     }
 
 
@@ -1139,7 +1156,9 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int ret;
 
-  mheap_alloc (0, (uword) 10ULL << 30);
+  clib_mem_init (0, 3ULL << 30);
+
+  //  mheap_alloc (0, (uword) 10ULL << 30);
 
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);

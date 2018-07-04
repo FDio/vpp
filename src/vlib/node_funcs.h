@@ -216,7 +216,7 @@ always_inline vlib_frame_t *
 vlib_get_frame_no_check (vlib_main_t * vm, uword frame_index)
 {
   vlib_frame_t *f;
-  f = vm->heap_base + (frame_index * VLIB_FRAME_ALIGN);
+  f = vm->heap_aligned_base + (frame_index * VLIB_FRAME_ALIGN);
   return f;
 }
 
@@ -227,7 +227,7 @@ vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
 
   ASSERT (((uword) f & (VLIB_FRAME_ALIGN - 1)) == 0);
 
-  i = ((u8 *) f - (u8 *) vm->heap_base);
+  i = ((u8 *) f - (u8 *) vm->heap_aligned_base);
   ASSERT ((i / VLIB_FRAME_ALIGN) <= 0xFFFFFFFFULL);
 
   return i / VLIB_FRAME_ALIGN;
