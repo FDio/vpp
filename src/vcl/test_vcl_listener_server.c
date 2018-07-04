@@ -62,6 +62,8 @@ main (int argc, char **argv)
   uint32_t listen_fd;
   vppcom_endpt_t endpt;
 
+  clib_mem_init_thread_safe (0, 64<<20);
+
   //Address stuff
   memset (&sin, 0, sizeof (sin));
   sin.sin_family = AF_INET;
