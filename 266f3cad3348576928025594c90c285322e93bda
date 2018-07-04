@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dd5591f1_d1c41245",
+        "filename": "extras/vom/vom/connection.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-04T12:55:17Z",
+      "side": 1,
+      "message": "Why do you want it to be explicit?",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 10
+      },
+      "revId": "266f3cad3348576928025594c90c285322e93bda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
