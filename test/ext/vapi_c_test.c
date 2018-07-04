@@ -60,7 +60,7 @@ START_TEST (test_invalid_values)
   rv = vapi_send (ctx, sv);
   ck_assert_int_eq (VAPI_EINVAL, rv);
   rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING);
+		     response_queue_size, VAPI_MODE_BLOCKING, true);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_send (ctx, NULL);
   ck_assert_int_eq (VAPI_EINVAL, rv);
@@ -483,7 +483,7 @@ START_TEST (test_connect)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING);
+		     response_queue_size, VAPI_MODE_BLOCKING, true);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_disconnect (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -500,7 +500,7 @@ setup_blocking (void)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING);
+		     response_queue_size, VAPI_MODE_BLOCKING, true);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -510,7 +510,7 @@ setup_nonblocking (void)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_NONBLOCKING);
+		     response_queue_size, VAPI_MODE_NONBLOCKING, true);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
