@@ -367,25 +367,20 @@ int
 vppcom_app_create (char *app_name)
 {
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
-  u8 *heap;
-  mheap_t *h;
   int rv;
 
   if (!vcm->init)
     {
       vcm->init = 1;
+      vppcom_cfg (&vcm->cfg);
+
       clib_spinlock_init (&vcm->session_fifo_lockp);
       clib_fifo_validate (vcm->client_session_index_fifo,
 			  vcm->cfg.listen_queue_size);
       clib_spinlock_init (&vcm->sessions_lockp);
 
-      vppcom_cfg (&vcm->cfg);
 
       vcm->main_cpu = os_get_thread_index ();
-      heap = clib_mem_get_per_cpu_heap ();
-      h = mheap_header (heap);
-      /* make the main heap thread-safe */
-      h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
       vcm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
 
