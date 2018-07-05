@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "911a02a8_f29210dc",
+        "filename": "extras/vom/vom/dump_cmd.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-05T07:02:50Z",
+      "side": 1,
+      "message": "when does flush get called?",
+      "revId": "24f491998ca2e655f8b4aa78ba1b4e13e947e11c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a8630ce_a0247f54",
+        "filename": "extras/vom/vom/dump_cmd.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-05T07:02:50Z",
+      "side": 1,
+      "message": "this is the only place this mutex is used, so what does it protect against?",
+      "revId": "24f491998ca2e655f8b4aa78ba1b4e13e947e11c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "00316fba_7c3b6e6c",
+        "filename": "extras/vom/vom/dump_cmd.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-05T07:02:50Z",
+      "side": 1,
+      "message": "isn\u0027t the result set freed when the vapi dump command is deleted?",
+      "revId": "24f491998ca2e655f8b4aa78ba1b4e13e947e11c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
