@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "010eb65c_a2612db2",
+        "filename": "src/plugins/srv6-as/as.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-05T09:28:01Z",
+      "side": 1,
+      "message": "you need per-thread counters for consistency.",
+      "revId": "5e8e529be2c270828acc7dcd8004983480672887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
