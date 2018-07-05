@@ -1140,6 +1140,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  num_whitelisted++;
 	}
+      else if (unformat (input, "num-mem-channels %d", &conf->nchannels))
+	conf->nchannels_set_manually = 0;
       else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
 	;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
