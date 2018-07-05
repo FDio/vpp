@@ -198,8 +198,13 @@ vlib_map_stat_segment_init (void)
   void *oldheap;
   u32 *lock;
   int rv;
+  u64 memory_size;
 
-  ssvmp->ssvm_size = 32 << 20;	/*$$$$$ CONFIG PARAM */
+  memory_size = sm->memory_size;
+  if (memory_size == 0)
+    memory_size = STAT_SEGMENT_DEFAULT_SIZE;
+
+  ssvmp->ssvm_size = memory_size;
   ssvmp->i_am_master = 1;
   ssvmp->my_pid = getpid ();
   ssvmp->name = format (0, "/stats%c", 0);
@@ -508,6 +513,25 @@ do_stat_segment_updates (stats_main_t * sm)
   update_serialized_nodes (sm);
 }
 
+static clib_error_t *
+statseg_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  stats_main_t *sm = &stats_main;
+  uword ms;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "size %U", unformat_memory_size, &sm->memory_size))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 
 /*
  * fd.io coding-style-patch-verification: ON

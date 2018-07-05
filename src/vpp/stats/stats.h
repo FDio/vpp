@@ -167,6 +167,7 @@ typedef struct
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;
+  uword memory_size;
 
   /* Pointers to scalar stats maintained by the stat thread */
   f64 *input_rate_ptr;
@@ -194,6 +195,9 @@ typedef struct
 } stats_main_t;
 
 extern stats_main_t stats_main;
+
+/* Default stat segment 32m */
+#define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
 
 #define STAT_SEGMENT_OPAQUE_LOCK	0
 #define STAT_SEGMENT_OPAQUE_DIR		1
