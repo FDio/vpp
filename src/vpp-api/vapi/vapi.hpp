@@ -830,7 +830,7 @@ public:
 
   using resp_type = typename Msg<Resp>::shm_data_type;
 
-  const Result_set<Resp> &get_result_set (void) const
+  Result_set<Resp> &get_result_set (void)
   {
     return result_set;
   }

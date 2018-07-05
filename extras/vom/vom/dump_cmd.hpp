@@ -88,6 +88,17 @@ public:
   }
 
   /**
+   * flush/free all the events thus far received.
+   */
+  void flush()
+  {
+    std::lock_guard<std::mutex> guarded(m_mutex);
+    if (m_dump) {
+      m_dump->get_result_set().free_all_responses();
+    }
+  }
+
+  /**
    * Wait for the issue of the command to complete
    */
   rc_t wait()
@@ -141,6 +152,11 @@ protected:
    * The VAPI event registration
    */
   std::unique_ptr<MSG> m_dump;
+
+  /**
+   * Mutex protection for the events
+   */
+  std::mutex m_mutex;
 };
 };
 
