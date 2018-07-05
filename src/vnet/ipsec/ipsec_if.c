@@ -366,8 +366,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
 
-      slot = vlib_node_add_named_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, "esp-encrypt",
+      slot = vlib_node_add_next_with_slot
+	(vnm->vlib_main, hi->tx_node_index, im->esp_encrypt_node_index,
 	 IPSEC_OUTPUT_NEXT_ESP_ENCRYPT);
 
       ASSERT (slot == IPSEC_OUTPUT_NEXT_ESP_ENCRYPT);
