@@ -1217,7 +1217,11 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
       eqs->name = format (0, "%s%c", "evt-qs-segment", 0);
       eqs->requested_va = smm->session_baseva;
 
-      ssvm_master_init (eqs, SSVM_SEGMENT_MEMFD);
+      if (ssvm_master_init (eqs, SSVM_SEGMENT_MEMFD))
+	{
+	  clib_warning ("failed to initialize queue segment");
+	  return;
+	}
     }
 
   if (smm->evt_qs_use_memfd_seg)

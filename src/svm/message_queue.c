@@ -21,6 +21,7 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 {
   svm_msg_q_ring_t *ring;
   svm_msg_q_t *mq;
+  uword size;
   int i;
 
   if (!cfg)
@@ -39,8 +40,10 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
       if (cfg->ring_cfgs[i].data)
 	ring->data = cfg->ring_cfgs[i].data;
       else
-	ring->data = clib_mem_alloc_aligned (ring->nitems * ring->elsize,
-					     CLIB_CACHE_LINE_BYTES);
+	{
+	  size = (uword) ring->nitems * ring->elsize;
+	  ring->data = clib_mem_alloc_aligned (size, CLIB_CACHE_LINE_BYTES);
+	}
     }
 
   return mq;
