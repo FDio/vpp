@@ -93,7 +93,7 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class Empty(object):
+class VppApiDynamicMethodHolder(object):
     pass
 
 
@@ -405,7 +405,7 @@ class VPP():
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
-        self._api = Empty()
+        self._api = VppApiDynamicMethodHolder()
         for name, msg in vpp_iterator(self.messages):
             n = name + '_' + msg.crc[2:]
             i = vpp_api.vac_get_msg_index(n.encode())
