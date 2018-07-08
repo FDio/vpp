@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3fed24ec_0e672676",
+        "filename": "src/plugins/marvell/pp2/pp2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-08T11:19:44Z",
+      "side": 1,
+      "message": "Are you sure that this is right? it vill likely result in VPP vector size never reaching 256. Going down to 512 or 1024 still have sense to me....",
+      "range": {
+        "startLine": 203,
+        "startChar": 51,
+        "endLine": 204,
+        "endChar": 70
+      },
+      "revId": "e9936a348fbcb0b438cde0da9df8a73658954613",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
