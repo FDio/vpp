@@ -17,6 +17,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -43,27 +44,20 @@ typedef CLIB_PACKED (struct {
   udp_header_t udp;	/* 8 bytes */
   vxlan_header_t vxlan;	/* 8 bytes */
 }) ip6_vxlan_header_t;
+/* *INDENT-ON* */
 
-typedef CLIB_PACKED (union {
-  /*
-  * Key fields: remote ip, vni on incoming VXLAN packet
-  * all fields in NET byte order
-  */
-  struct
-    {
-      u32 src;
-      u32 vni;	/* shifted left 8 bits */
-    };
-  u64 as_u64;
-}) vxlan4_tunnel_key_t;
+/*
+* Key fields: remote ip, vni on incoming VXLAN packet
+* all fields in NET byte order
+*/
+typedef clib_bihash_kv_16_8_t vxlan4_tunnel_key_t;
 
 /*
 * Key fields: remote ip, vni and fib index on incoming VXLAN packet
 * ip, vni fields in NET byte order
 * fib index field in host byte order
 */
-typedef BVT (clib_bihash_kv)  vxlan6_tunnel_key_t;
-/* *INDENT-ON* */
+typedef clib_bihash_kv_24_8_t vxlan6_tunnel_key_t;
 
 typedef struct
 {
@@ -146,8 +140,8 @@ typedef struct
   vxlan_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword *vxlan4_tunnel_by_key;	/* keyed on ipv4.dst + vni */
-    BVT (clib_bihash) vxlan6_tunnel_by_key;	/* keyed on ipv6.dst + fib +  vni */
+  clib_bihash_16_8_t vxlan4_tunnel_by_key;	/* keyed on ipv4.dst + fib + vni */
+  clib_bihash_24_8_t vxlan6_tunnel_by_key;	/* keyed on ipv6.dst + fib + vni */
 
   /* local VTEP IPs ref count used by vxlan-bypass node to check if
      received VXLAN packet DIP matches any local VTEP address */
