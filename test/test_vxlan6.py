@@ -11,8 +11,8 @@ from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
 
-class TestVxlan(BridgeDomain, VppTestCase):
-    """ VXLAN Test Case """
+class TestVxlan6(BridgeDomain, VppTestCase):
+    """ VXLAN over IPv6 Test Case """
 
     def __init__(self, *args):
         BridgeDomain.__init__(self)
