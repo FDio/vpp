@@ -369,17 +369,21 @@ int vnet_vxlan_add_del_tunnel
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t = 0;
   vnet_main_t *vnm = vxm->vnet_main;
-  uword *p;
+  u64 *p;
   u32 sw_if_index = ~0;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
   u32 is_ip6 = a->is_ip6;
 
+  int not_found;
   if (!is_ip6)
     {
-      key4.src = a->dst.ip4.as_u32;	/* decap src in key is encap dst in config */
-      key4.vni = clib_host_to_net_u32 (a->vni << 8);
-      p = hash_get (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+      key4.key[0] = a->dst.ip4.as_u32;
+      key4.key[1] = (((u64) a->encap_fib_index) << 32)
+	| clib_host_to_net_u32 (a->vni << 8);
+      not_found =
+	clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
+      p = &key4.value;
     }
   else
     {
@@ -387,13 +391,13 @@ int vnet_vxlan_add_del_tunnel
       key6.key[1] = a->dst.ip6.as_u64[1];
       key6.key[2] = (((u64) a->encap_fib_index) << 32)
 	| clib_host_to_net_u32 (a->vni << 8);
-      int rv =
-	BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
-      if (PREDICT_FALSE (rv != 0))
-	p = 0;
-      else
-	p = &key6.value;
+      not_found =
+	clib_bihash_search_inline_24_8 (&vxm->vxlan6_tunnel_by_key, &key6);
+      p = &key6.value;
     }
+
+  if (not_found)
+    p = 0;
 
   if (a->is_add)
     {
@@ -439,18 +443,25 @@ int vnet_vxlan_add_del_tunnel
       t->flow_index = ~0;
 
       /* copy the key */
+      int add_failed;
       if (is_ip6)
 	{
 	  key6.value = (u64) dev_instance;
-	  if (BV (clib_bihash_add_del) (&vxm->vxlan6_tunnel_by_key,
-					&key6, 1 /*add */ ))
-	    {
-	      pool_put (vxm->tunnels, t);
-	      return VNET_API_ERROR_INVALID_REGISTRATION;
-	    }
+	  add_failed = clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key,
+						 &key6, 1 /*add */ );
 	}
       else
-	hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, dev_instance);
+	{
+	  key4.value = (u64) dev_instance;
+	  add_failed = clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key,
+						 &key4, 1 /*add */ );
+	}
+
+      if (add_failed)
+	{
+	  pool_put (vxm->tunnels, t);
+	  return VNET_API_ERROR_INVALID_REGISTRATION;
+	}
 
       t->hw_if_index = vnet_register_interface
 	(vnm, vxlan_device_class.index, dev_instance,
@@ -587,9 +598,10 @@ int vnet_vxlan_add_del_tunnel
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 
       if (!is_ip6)
-	hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+	clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key, &key4,
+				  0 /*del */ );
       else
-	BV (clib_bihash_add_del) (&vxm->vxlan6_tunnel_by_key, &key6,
+	clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key, &key6,
 				  0 /*del */ );
 
       if (!ip46_address_is_multicast (&t->dst))
@@ -817,6 +829,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 encap-vrf-id 7}
  * Example of how to create a VXLAN Tunnel with a known name, vxlan_tunnel42:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
+ * Example of how to create a multicast VXLAN Tunnel with a known name, vxlan_tunnel23:
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 group 239.1.1.1 GigabitEtherner0/8/0 instance 23}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -872,9 +886,14 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
 /* *INDENT-ON* */
 
   if (raw)
-    vlib_cli_output (vm, "Raw IPv6 Hash Table:\n%U\n",
-		     BV (format_bihash), &vxm->vxlan6_tunnel_by_key,
-		     1 /* verbose */ );
+    {
+      vlib_cli_output (vm, "Raw IPv4 Hash Table:\n%U\n",
+		       format_bihash_16_8, &vxm->vxlan4_tunnel_by_key,
+		       1 /* verbose */ );
+      vlib_cli_output (vm, "Raw IPv6 Hash Table:\n%U\n",
+		       format_bihash_24_8, &vxm->vxlan6_tunnel_by_key,
+		       1 /* verbose */ );
+    }
 
   return 0;
 }
@@ -1198,7 +1217,9 @@ vxlan_init (vlib_main_t * vm)
 		       &vxm->flow_id_start);
 
   /* initialize the ip6 hash */
-  BV (clib_bihash_init) (&vxm->vxlan6_tunnel_by_key, "vxlan6",
+  clib_bihash_init_16_8 (&vxm->vxlan4_tunnel_by_key, "vxlan4",
+			 VXLAN_HASH_NUM_BUCKETS, VXLAN_HASH_MEMORY_SIZE);
+  clib_bihash_init_24_8 (&vxm->vxlan6_tunnel_by_key, "vxlan6",
 			 VXLAN_HASH_NUM_BUCKETS, VXLAN_HASH_MEMORY_SIZE);
   vxm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
   vxm->mcast_shared = hash_create_mem (0,

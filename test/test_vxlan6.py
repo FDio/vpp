@@ -11,8 +11,8 @@ from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
 
-class TestVxlan(BridgeDomain, VppTestCase):
-    """ VXLAN Test Case """
+class TestVxlan6(BridgeDomain, VppTestCase):
+    """ VXLAN over IPv6 Test Case """
 
     def __init__(self, *args):
         BridgeDomain.__init__(self)
@@ -112,7 +112,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
     #  @param cls The class pointer.
     @classmethod
     def setUpClass(cls):
-        super(TestVxlan, cls).setUpClass()
+        super(TestVxlan6, cls).setUpClass()
 
         try:
             cls.dport = 4789
@@ -168,14 +168,14 @@ class TestVxlan(BridgeDomain, VppTestCase):
             cls.vapi.sw_interface_set_l2_bridge(cls.pg3.sw_if_index,
                                                 bd_id=cls.ucast_flood_bd)
         except Exception:
-            super(TestVxlan, cls).tearDownClass()
+            super(TestVxlan6, cls).tearDownClass()
             raise
 
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.
     def tearDown(self):
-        super(TestVxlan, self).tearDown()
+        super(TestVxlan6, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
             self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
