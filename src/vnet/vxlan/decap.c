@@ -62,11 +62,7 @@ buf_fib_index (vlib_buffer_t *b, u32 is_ip4)
   return vec_elt (fib_index_by_sw_if_index, sw_if_index);
 }
 
-typedef struct
-{
-  vxlan4_tunnel_key_t key4;
-  u32 tunnel_index;
-}last_tunnel_cache4;
+typedef vxlan4_tunnel_key_t last_tunnel_cache4;
 
 always_inline vxlan_tunnel_t *
 vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
@@ -74,24 +70,22 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
                     vxlan_tunnel_t ** stats_t0)
 {
   /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-  vxlan4_tunnel_key_t key4_0 = {
-    .src = ip4_0->src_address.as_u32,
-    .vni = vxlan0->vni_reserved,
+  vxlan4_tunnel_key_t key4 = {
+    .key = {
+      [0] = ip4_0->src_address.as_u32,
+      [1] = (((u64) fib_index) << 32) | vxlan0->vni_reserved,
+    }
   };
 
-  if (PREDICT_FALSE (key4_0.as_u64 != cache->key4.as_u64))
+  if (PREDICT_FALSE (clib_bihash_key_compare_16_8 (key4.key, cache->key) == 0))
   {
-    uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-    if (PREDICT_FALSE (p == 0))
+    int rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
+    if (PREDICT_FALSE (rv != 0))
       return 0;
 
-    cache->key4 = key4_0;
-    cache->tunnel_index = p[0];
+    *cache = key4;
   }
-  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->tunnel_index);
-
-  if (PREDICT_FALSE (fib_index != t0->encap_fib_index))
-    return 0;
+  vxlan_tunnel_t * t0 = pool_elt_at_index (vxm->tunnels, cache->value);
 
   /* Validate VXLAN tunnel SIP against packet DIP */
   if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
@@ -102,12 +96,13 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
     if (PREDICT_TRUE (!ip4_address_is_multicast (&ip4_0->dst_address)))
       return 0;
 
-    key4_0.src = ip4_0->dst_address.as_u32;
+    key4.key[0] = ip4_0->dst_address.as_u32;
     /* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
-    uword * p = hash_get (vxm->vxlan4_tunnel_by_key, key4_0.as_u64);
-    if (PREDICT_FALSE (p == NULL))
+    int rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
+    if (PREDICT_FALSE (rv != 0))
       return 0;
-    *stats_t0 = pool_elt_at_index (vxm->tunnels, p[0]);
+
+    *stats_t0 = pool_elt_at_index (vxm->tunnels, key4.value);
   }
 
   return t0;
@@ -126,13 +121,13 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
     .key = {
       [0] = ip6_0->src_address.as_u64[0],
       [1] = ip6_0->src_address.as_u64[1],
-      [2] = (((u64) fib_index) << 32) | vxlan0->vni_reserved
+      [2] = (((u64) fib_index) << 32) | vxlan0->vni_reserved,
     }
   };
 
-  if (PREDICT_FALSE (BV (clib_bihash_key_compare) (key6.key, cache->key) == 0))
+  if (PREDICT_FALSE (clib_bihash_key_compare_24_8 (key6.key, cache->key) == 0))
   {
-    int rv = BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
+    int rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_tunnel_by_key, &key6);
     if (PREDICT_FALSE (rv != 0))
       return 0;
 
@@ -152,7 +147,7 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
     /* Make sure mcast VXLAN tunnel exist by packet DIP and VNI */
     key6.key[0] = ip6_0->dst_address.as_u64[0];
     key6.key[1] = ip6_0->dst_address.as_u64[1];
-    int rv = BV (clib_bihash_search_inline) (&vxm->vxlan6_tunnel_by_key, &key6);
+    int rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_tunnel_by_key, &key6);
     if (PREDICT_FALSE (rv != 0))
       return 0;
 
@@ -173,13 +168,13 @@ vxlan_input (vlib_main_t * vm,
   vnet_interface_main_t * im = &vnm->interface_main;
   vlib_combined_counter_main_t * rx_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
   vlib_combined_counter_main_t * drop_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
-  last_tunnel_cache4 last4 = { .tunnel_index = ~0 };
+  last_tunnel_cache4 last4;
   last_tunnel_cache6 last6;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
 
   if (is_ip4)
-    last4.key4.as_u64 = ~0;
+    memset (&last4, 0xff, sizeof last4);
   else
     memset (&last6, 0xff, sizeof last6);
 
