@@ -203,6 +203,11 @@ typedef struct {
 } snat_address_t;
 
 typedef struct {
+  u32 fib_index;
+  u32 refcount;
+} nat_outside_fib_t;
+
+typedef struct {
   u16 in_port;
   snat_det_out_key_t out;
   u8 state;
@@ -349,6 +354,9 @@ typedef struct snat_main_s {
   u8 psid_offset;
   u8 psid_length;
   u16 psid;
+
+  /* vector of outside fibs */
+  nat_outside_fib_t * outside_fibs;
 
   /* Vector of twice NAT addresses for extenal hosts */
   snat_address_t * twice_nat_addresses;

@@ -626,7 +626,7 @@ nat_out2in_sm_unknown_proto (snat_main_t *sm,
   m_key.addr = ip->dst_address;
   m_key.port = 0;
   m_key.protocol = 0;
-  m_key.fib_index = rx_fib_index;
+  m_key.fib_index = 0;
   kv.key = m_key.as_u64;
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     return 1;
@@ -1962,7 +1962,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t *sm,
           return 0;
         }
 
-      make_sm_kv (&kv, &ip->dst_address, 0, rx_fib_index, 0);
+      make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
       if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
         {
           b->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
