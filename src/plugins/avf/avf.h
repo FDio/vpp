@@ -189,6 +189,8 @@ typedef struct
 
 void avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args);
 void avf_delete_if (vlib_main_t * vm, avf_device_t * ad);
+clib_error_t *avf_request_queues (vlib_main_t * vm, avf_device_t * ad,
+				  u16 num_queue_pairs);
 
 extern vlib_node_registration_t avf_input_node;
 extern vnet_device_class_t avf_device_class;

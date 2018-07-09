@@ -65,7 +65,8 @@ avf_test_main_t avf_test_main;
 
 #define foreach_standard_reply_retval_handler		\
 _(avf_create_reply)					\
-_(avf_delete_reply)
+_(avf_delete_reply)					\
+_(avf_request_queues_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -85,7 +86,8 @@ foreach_standard_reply_retval_handler;
 
 #define foreach_vpe_api_reply_msg			\
 _(AVF_CREATE_REPLY, avf_create_reply)			\
-_(AVF_DELETE_REPLY, avf_delete_reply)
+_(AVF_DELETE_REPLY, avf_delete_reply)			\
+_(AVF_REQUEST_QUEUES_REPLY, avf_request_queues_reply)
 
 /* avf create API */
 static int
@@ -171,6 +173,47 @@ api_avf_delete (vat_main_t * vam)
   return ret;
 }
 
+/* avf request queues API */
+static int
+api_avf_request_queues (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_avf_request_queues_t *mp;
+  u32 sw_if_index = 0;
+  u32 tmp;
+  u16 num_queue_pairs = 0;
+  u8 index_defined = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %u", &sw_if_index))
+	index_defined = 1;
+      else if (unformat (i, "queue-pairs %u", &tmp))
+	num_queue_pairs = tmp;
+      else
+	{
+	  clib_warning ("unknown input '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+  if (!index_defined)
+    {
+      errmsg ("missing sw_if_index\n");
+      return -99;
+    }
+
+  M (AVF_REQUEST_QUEUES, mp);
+
+  mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
+  mp->num_queue_pairs = clib_host_to_net_u16 (num_queue_pairs);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
 /*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -178,7 +221,8 @@ api_avf_delete (vat_main_t * vam)
 #define foreach_vpe_api_msg					\
 _(avf_create, "<pci-address> [rx-queue-size <size>] "		\
               "[tx-queue-size <size>]")				\
-_(avf_delete, "<sw_if_index>")
+_(avf_delete, "<sw_if_index>")					\
+_(avf_request_queues, "<sw_if_index> queue-pairs <num>")
 
 static void
 avf_vat_api_hookup (vat_main_t * vam)
