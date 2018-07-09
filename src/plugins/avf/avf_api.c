@@ -51,8 +51,8 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_avf_plugin_api_msg	\
-_(AVF_CREATE, avf_create)		\
+#define foreach_avf_plugin_api_msg		\
+_(AVF_CREATE, avf_create)			\
 _(AVF_DELETE, avf_delete)
 
 static void
