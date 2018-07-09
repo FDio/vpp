@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b93f51b_d53282ea",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-07-09T21:10:31Z",
+      "side": 1,
+      "message": "Not picking on emacs users or anything, but can\u0027t these be added at the end of the file like for vim :-)",
+      "range": {
+        "startLine": 1,
+        "startChar": 7,
+        "endLine": 1,
+        "endChar": 12
+      },
+      "revId": "eb6db3805601ca579c5b001f0a72a6c771438a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bd9fa6ad_b79e2e45",
+        "filename": "src/vnet/ip/ip_types_api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-07-09T21:10:31Z",
+      "side": 1,
+      "message": "This is a bit of a waste, but I\u0027m not sure this is enough of a reason to add an ip_api_h.h file ...",
+      "range": {
+        "startLine": 19,
+        "startChar": 15,
+        "endLine": 19,
+        "endChar": 29
+      },
+      "revId": "eb6db3805601ca579c5b001f0a72a6c771438a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "40e2ec12_9e49deff",
+        "filename": "src/vnet/ip/ip_types_api.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-07-09T21:10:31Z",
+      "side": 1,
+      "message": "Cool! Hopefully we can now convince everyone to switch to these!",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 37
+      },
+      "revId": "eb6db3805601ca579c5b001f0a72a6c771438a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "48d27bca_dfb93123",
+        "filename": "src/vppinfra/vec.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 959,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-07-09T21:10:31Z",
+      "side": 1,
+      "message": "v and E",
+      "range": {
+        "startLine": 958,
+        "startChar": 11,
+        "endLine": 959,
+        "endChar": 13
+      },
+      "revId": "eb6db3805601ca579c5b001f0a72a6c771438a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
