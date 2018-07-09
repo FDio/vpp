@@ -522,7 +522,7 @@ pipe_instance_free (u32 instance)
 
 static clib_error_t *
 pipe_create_sub_interface (vnet_hw_interface_t * hi,
-			   uint32_t sub_id, u32 * sw_if_index)
+			   u32 sub_id, u32 * sw_if_index)
 {
   vnet_sw_interface_t template;
 
@@ -543,7 +543,7 @@ vnet_create_pipe_interface (u8 is_specified,
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
-  uint8_t address[6] = {
+  u8 address[6] = {
     [0] = 0x22,
     [1] = 0x22,
   };
