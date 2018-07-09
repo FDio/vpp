@@ -22,6 +22,30 @@
       "revId": "e9936a348fbcb0b438cde0da9df8a73658954613",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07a1492e_67035945",
+        "filename": "src/plugins/marvell/pp2/pp2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-07-09T17:23:31Z",
+      "side": 1,
+      "message": "Yup, the PP can transfer 256 descriptors+packets to memory and update it\u0027s registers by the time the next graph execution comes around. For l2xc, all the nodes are 256 Vectors/Call. TG is sending 64B packets at line rate.",
+      "parentUuid": "3fed24ec_0e672676",
+      "range": {
+        "startLine": 203,
+        "startChar": 51,
+        "endLine": 204,
+        "endChar": 70
+      },
+      "revId": "e9936a348fbcb0b438cde0da9df8a73658954613",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
