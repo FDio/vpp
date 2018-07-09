@@ -132,6 +132,13 @@ typedef enum
   VIRTCHNL_VSI_SRIOV = 6,
 } virtchnl_vsi_type_t;
 
+typedef enum
+{
+  VIRTCHNL_VFR_INPROGRESS = 0,
+  VIRTCHNL_VFR_COMPLETED,
+  VIRTCHNL_VFR_VFACTIVE,
+} virtchnl_vfr_states_t;
+
 typedef struct
 {
   u16 vsi_id;
@@ -354,6 +361,12 @@ typedef struct
 } virtchnl_rss_lut_t;
 
 STATIC_ASSERT_SIZEOF (virtchnl_rss_lut_t, 6);
+
+/* VIRTCHNL_OP_REQUEST_QUEUES */
+typedef struct
+{
+  u16 num_queue_pairs;
+} virtchnl_vf_res_request_t;
 
 #endif /* AVF_VIRTCHNL_H */
 

@@ -104,7 +104,7 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)
-    return clib_error_return (0, "not a AVF interface");
+    return clib_error_return (0, "not an AVF interface");
 
   ad = pool_elt_at_index (am->devices, hw->dev_instance);
 
