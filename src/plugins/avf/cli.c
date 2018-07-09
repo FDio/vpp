@@ -71,6 +71,59 @@ VLIB_CLI_COMMAND (avf_create_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+avf_request_queues_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_hw_interface_t *hw;
+  u32 sw_if_index = ~0;
+  avf_main_t *am = &avf_main;
+  avf_device_t *ad;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 tmp;
+  u16 num_queue_pairs;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	if (unformat
+	    (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "queue-pairs %u", &tmp))
+	num_queue_pairs = tmp;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if ((hw == NULL) || (avf_device_class.index != hw->dev_class_index))
+    return clib_error_return (0, "not an AVF interface");
+
+  ad = pool_elt_at_index (am->devices, hw->dev_instance);
+
+  return avf_request_queues (vm, ad, num_queue_pairs);
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (avf_request_queues_command, static) = {
+  .path = "set avf queues",
+  .short_help = "set avf queues {<interface> | sw_if_index <sw_idx>} "
+		"queue-pairs <num>",
+  .function = avf_request_queues_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
@@ -104,7 +157,7 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)
-    return clib_error_return (0, "not a AVF interface");
+    return clib_error_return (0, "not an AVF interface");
 
   ad = pool_elt_at_index (am->devices, hw->dev_instance);
 

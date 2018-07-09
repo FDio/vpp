@@ -51,9 +51,10 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_avf_plugin_api_msg	\
-_(AVF_CREATE, avf_create)		\
-_(AVF_DELETE, avf_delete)
+#define foreach_avf_plugin_api_msg		\
+_(AVF_CREATE, avf_create)			\
+_(AVF_DELETE, avf_delete)			\
+_(AVF_REQUEST_QUEUES, avf_request_queues)	\
 
 static void
 vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
@@ -102,6 +103,33 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
 
 reply:
   REPLY_MACRO (VL_API_AVF_DELETE_REPLY + am->msg_id_base);
+}
+
+static void
+vl_api_avf_request_queues_t_handler (vl_api_avf_request_queues_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  avf_main_t *am = &avf_main;
+  vl_api_avf_request_queues_reply_t *rmp;
+  avf_device_t *ad;
+  vnet_hw_interface_t *hw;
+  int rv = 0;
+
+  hw = vnet_get_sup_hw_interface (vnm, htonl (mp->sw_if_index));
+  if (hw == NULL || avf_device_class.index != hw->dev_class_index)
+    {
+      rv = VNET_API_ERROR_INVALID_INTERFACE;
+      goto reply;
+    }
+
+  ad = pool_elt_at_index (am->devices, hw->dev_instance);
+
+  if (avf_request_queues (vm, ad, clib_net_to_host_u16 (mp->num_queue_pairs)))
+    rv = VNET_API_ERROR_INVALID_VALUE;
+
+reply:
+  REPLY_MACRO (VL_API_AVF_REQUEST_QUEUES_REPLY + am->msg_id_base);
 }
 
 #define vl_msg_name_crc_list

@@ -752,6 +752,52 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
   return error;
 }
 
+clib_error_t *
+avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
+{
+  avf_create_if_args_t args;
+  virtchnl_vf_res_request_t res_req = { 0 };
+  clib_error_t *error;
+  u32 rstat;
+  int n_retry = 20;
+
+  /* backup rx/tx queue sizes, needed to reinitialize the device */
+  args.rxq_size = ad->rxqs->size;
+  args.txq_size = ad->txqs->size;
+
+  res_req.num_queue_pairs = num_queue_pairs;
+
+  error =
+    avf_send_to_pf (vm, ad, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
+		    sizeof (virtchnl_vf_res_request_t), &res_req,
+		    sizeof (virtchnl_vf_res_request_t));
+
+  /*
+   * if PF respondes, the request failed
+   * else PF initializes restart and avf_send_to_pf returns an error
+   */
+  if (!error)
+    {
+      return clib_error_return (0, "requested more than %u queue pairs",
+				res_req.num_queue_pairs);
+    }
+
+retry:
+  vlib_process_suspend (vm, 10e-3);
+  rstat = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
+
+  if ((rstat == VIRTCHNL_VFR_COMPLETED) || (rstat == VIRTCHNL_VFR_VFACTIVE))
+    goto done;
+
+  if (--n_retry == 0)
+    return clib_error_return (0, "reset failed (timeout)");
+
+  goto retry;
+
+done:
+  return avf_device_init (vm, ad, &args);
+}
+
 void
 avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 {
@@ -767,6 +813,11 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
     return;
 
   ASSERT (ad->error == 0);
+
+  /* do not process device in reset state */
+  r = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
+  if (r != VIRTCHNL_VFR_VFACTIVE)
+    return;
 
   r = avf_get_u32 (ad->bar0, AVF_ARQLEN);
   if ((r & 0xf0000000) != (1 << 31))
