@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "149c1d24_51c16c0f",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-09T16:40:27Z",
+      "side": 1,
+      "message": "Can you add a CLI example about how to create a VXLAN mcast tunnel please? I just got a request from Maciek to include it for doxygen text. Thanks!",
+      "range": {
+        "startLine": 830,
+        "startChar": 3,
+        "endLine": 830,
+        "endChar": 10
+      },
+      "revId": "42c146879f77e5e57077aec6a02fe46b6a79527a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
