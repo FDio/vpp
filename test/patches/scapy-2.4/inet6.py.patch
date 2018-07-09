@@ -1,0 +1,28 @@
+diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
+index 6f9f16b..d61c621 100644
+--- a/scapy/layers/inet6.py
++++ b/scapy/layers/inet6.py
+@@ -1089,9 +1089,9 @@ class IPv6ExtHdrSegmentRouting(_IPv6ExtHdr):
+                     BitField("unused2", 0, 3),
+                     ShortField("tag", 0),
+                     IP6ListField("addresses", ["::1"],
+-                        count_from=lambda pkt: pkt.lastentry),
++                        count_from=lambda pkt: pkt.lastentry+1),
+                     PacketListField("tlv_objects", [], IPv6ExtHdrSegmentRoutingTLV,
+-                        length_from=lambda pkt: 8*pkt.len - 16*pkt.lastentry) ]
++                        length_from=lambda pkt: 8*pkt.len - 16*(pkt.lastentry+1)) ]
+ 
+     overload_fields = { IPv6: { "nh": 43 } }
+ 
+@@ -1119,7 +1119,10 @@ class IPv6ExtHdrSegmentRouting(_IPv6ExtHdr):
+             pkt = pkt[:3] + struct.pack("B", tmp_len) + pkt[4:]
+ 
+         if self.lastentry is None:
+-            pkt = pkt[:4] + struct.pack("B", len(self.addresses)) + pkt[5:]
++            tmp_len = len(self.addresses)
++            if tmp_len:
++                tmp_len -= 1
++            pkt = pkt[:4] + struct.pack("B", tmp_len) + pkt[5:]
+ 
+         return _IPv6ExtHdr.post_build(self, pkt, pay) 
+ 
