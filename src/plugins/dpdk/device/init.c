@@ -1012,7 +1012,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   unformat_input_t sub_input;
   uword x;
   u8 *s, *tmp = 0;
-  u8 *rte_cmd = 0, *ethname = 0;
   u32 log_level;
   int ret, i;
   int num_whitelisted = 0;
@@ -1258,9 +1257,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
     }
-
-  vec_free (rte_cmd);
-  vec_free (ethname);
 
   if (error)
     return error;
