@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "55ecd13d_a46065d4",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-09T16:47:29Z",
+      "side": 1,
+      "message": "We can also add sip as part of the key. Then the source IP verification check below can also be removed.  This won\u0027t increase the key size for IP4 but would for IP6. Do you think it is worthwhile to do it for IP6 as well?",
+      "range": {
+        "startLine": 75,
+        "startChar": 30,
+        "endLine": 75,
+        "endChar": 31
+      },
+      "revId": "5d3a4a77c70dc274162b3b25e3d2d4682166875d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
