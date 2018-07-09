@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d59d244_7285e102",
+        "filename": "src/plugins/nat/nat64_in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-07-09T09:22:15Z",
+      "side": 1,
+      "message": "ip6_address_compare",
+      "range": {
+        "startLine": 131,
+        "startChar": 10,
+        "endLine": 131,
+        "endChar": 52
+      },
+      "revId": "d896f6febd9cca9771b1c889e46695d70f0addd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
