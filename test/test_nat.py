@@ -9,7 +9,8 @@ import random
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
+    ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr
 from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
@@ -5189,7 +5190,7 @@ class TestNAT64(MethodHolder):
             cls.ipfix_src_port = 4739
             cls.ipfix_domain_id = 1
 
-            cls.create_pg_interfaces(range(5))
+            cls.create_pg_interfaces(range(6))
             cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
             cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
@@ -5216,8 +5217,65 @@ class TestNAT64(MethodHolder):
             cls.pg3.config_ip6()
             cls.pg3.configure_ipv6_neighbors()
 
+            cls.pg5.admin_up()
+            cls.pg5.config_ip6()
+
         except Exception:
             super(TestNAT64, cls).tearDownClass()
+            raise
+
+    def test_nat64_inside_interface_handles_neighbor_advertisement(self):
+        """ NAT64 inside interface handles Neighbor Advertisement """
+
+        self.vapi.nat64_add_del_interface(self.pg5.sw_if_index)
+
+        # Try to send ping
+        ping = (Ether(dst=self.pg5.local_mac, src=self.pg5.remote_mac) /
+                IPv6(src=self.pg5.remote_ip6, dst=self.pg5.local_ip6) /
+                ICMPv6EchoRequest())
+        pkts = [ping]
+        self.pg5.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Wait for Neighbor Solicitation
+        capture = self.pg5.get_capture(len(pkts))
+        self.assertEqual(1, len(capture))
+        packet = capture[0]
+        try:
+            self.assertEqual(packet[IPv6].src, self.pg5.local_ip6)
+            self.assertTrue(packet.haslayer(ICMPv6ND_NS))
+            tgt = packet[ICMPv6ND_NS].tgt
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # Send Neighbor Advertisement
+        p = (Ether(dst=self.pg5.local_mac, src=self.pg5.remote_mac) /
+             IPv6(src=self.pg5.remote_ip6, dst=self.pg5.local_ip6) /
+             ICMPv6ND_NA(tgt=tgt) /
+             ICMPv6NDOptDstLLAddr(lladdr=self.pg5.remote_mac))
+        pkts = [p]
+        self.pg5.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Try to send ping again
+        pkts = [ping]
+        self.pg5.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Wait for ping reply
+        capture = self.pg5.get_capture(len(pkts))
+        self.assertEqual(1, len(capture))
+        packet = capture[0]
+        try:
+            self.assertEqual(packet[IPv6].src, self.pg5.local_ip6)
+            self.assertEqual(packet[IPv6].dst, self.pg5.remote_ip6)
+            self.assertTrue(packet.haslayer(ICMPv6EchoReply))
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
     def test_pool(self):

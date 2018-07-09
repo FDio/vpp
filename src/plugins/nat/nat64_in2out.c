@@ -116,6 +116,26 @@ typedef struct nat64_in2out_set_ctx_t_
   u32 thread_index;
 } nat64_in2out_set_ctx_t;
 
+static inline u8
+nat64_not_translate (u32 sw_if_index, ip6_address_t ip6_addr)
+{
+  ip6_address_t *addr;
+  ip6_main_t *im6 = &ip6_main;
+  ip_lookup_main_t *lm6 = &im6->lookup_main;
+  ip_interface_address_t *ia = 0;
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
+  ({
+	addr = ip_interface_address_get_address (lm6, ia);
+	if (0 == ip6_address_compare (addr, &ip6_addr))
+		return 1;
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
 /**
  * @brief Check whether is a hairpinning.
  *
@@ -927,6 +947,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 l4_protocol0;
 	  u32 proto0;
 	  nat64_in2out_set_ctx_t ctx0;
+	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -952,6 +973,14 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      next0 = NAT64_IN2OUT_NEXT_DROP;
 	      b0->error = node->errors[NAT64_IN2OUT_ERROR_UNKNOWN];
+	      goto trace0;
+	    }
+
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	  if (nat64_not_translate (sw_if_index0, ip60->dst_address))
+	    {
+	      next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
 	      goto trace0;
 	    }
 
