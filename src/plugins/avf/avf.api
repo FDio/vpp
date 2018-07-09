@@ -52,6 +52,21 @@ autoreply define avf_delete
   u32 sw_if_index;
 };
 
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param num_queue_pairs - requested number of queues
+*/
+autoreply define avf_request_queues
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+  u16 num_queue_pairs;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
