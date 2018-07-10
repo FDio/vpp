@@ -84,7 +84,7 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
   u8 enable = 1;
-  ip46_address_t saddr, gaddr;
+  ip46_address_t saddr, *saddrs = NULL, gaddr;
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
   int rv;
@@ -108,7 +108,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    (line_input, "int %U", unformat_vnet_sw_interface, vnm,
 	     &sw_if_index));
       else
-	if (unformat (line_input, "saddr %U", unformat_ip46_address, &saddr));
+	if (unformat (line_input, "saddr %U", unformat_ip46_address, &saddr))
+	vec_add1 (saddrs, saddr);
       else
 	if (unformat (line_input, "gaddr %U", unformat_ip46_address, &gaddr));
       else
@@ -127,7 +128,7 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  rv = igmp_listen (vm, enable, sw_if_index, &saddr, &gaddr);
+  rv = igmp_listen (vm, enable, sw_if_index, saddrs, &gaddr);
 
   if (rv == -1)
     {
@@ -145,6 +146,7 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 done:
   unformat_free (line_input);
+  vec_free (saddrs);
   return error;
 }
 
