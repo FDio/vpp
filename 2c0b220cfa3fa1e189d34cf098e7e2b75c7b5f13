@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "57a5cdbe_74df40bc",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-10T10:13:05Z",
+      "side": 1,
+      "message": "I was having problem with Bi hash which was used in ip fib and acl.",
+      "parentUuid": "f64b70f1_24885344",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0436a0b7_3d535eea",
         "filename": "src/plugins/gbp/gbp_policy_dpo.c",
         "patchSetId": 15
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "77b4e877_730100aa",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-10T10:13:05Z",
+      "side": 1,
+      "message": "It is for coding style.",
+      "parentUuid": "0436a0b7_3d535eea",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a48a9ed_d519a90e",
         "filename": "test/test_gbp.py",
         "patchSetId": 15
@@ -47,6 +83,24 @@
       "writtenOn": "2018-07-10T07:13:59Z",
       "side": 1,
       "message": "why a fixed set of rules? pass an array of addresses/tuples from which to construct rules.",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "36ec425f_b38349f5",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-10T10:13:05Z",
+      "side": 1,
+      "message": "Actually we don\u0027t want to test ACL code here. That\u0027s why I have used fixed set of rules and test GBP functionality.",
+      "parentUuid": "3a48a9ed_d519a90e",
       "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
