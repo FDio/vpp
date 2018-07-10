@@ -2618,6 +2618,7 @@ fib_path_encode (fib_node_index_t path_list_index,
         break;
       case FIB_PATH_TYPE_RECURSIVE:
         api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;
+        api_rpath->rpath.frp_fib_index = path->recursive.fp_tbl_id;
         break;
       case FIB_PATH_TYPE_DVR:
           api_rpath->rpath.frp_sw_if_index = path->dvr.fp_interface;
