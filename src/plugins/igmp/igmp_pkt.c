@@ -148,6 +148,10 @@ igmp_pkt_tx (igmp_pkt_build_t * bk)
 
   vm = vlib_get_main ();
   config = igmp_config_lookup (bk->sw_if_index);
+
+  if (NULL == config)
+    return;
+
   f = vlib_get_frame_to_node (vm, ip4_rewrite_mcast_node.index);
   to_next = vlib_frame_vector_args (f);
 

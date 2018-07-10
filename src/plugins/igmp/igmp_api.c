@@ -134,7 +134,7 @@ send_igmp_details (unix_shared_memory_queue_t * q, igmp_main_t * im,
   mp->context = context;
   mp->sw_if_index = htonl (config->sw_if_index);
   clib_memcpy (mp->saddr.address, &src->key->ip4, sizeof (src->key->ip4));
-  clib_memcpy (mp->gaddr.address, &group->key->ip4, sizeof (group->key->ip6));
+  clib_memcpy (mp->gaddr.address, &group->key->ip4, sizeof (group->key->ip4));
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
