@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0eb712e4_da326572",
+        "filename": "src/plugins/srv6-as/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-10T10:54:42Z",
+      "side": 1,
+      "message": "For performance reasons can you count using local variables and then call vlib_increment_combined_counter() outside of the loop?",
+      "range": {
+        "startLine": 348,
+        "startChar": 0,
+        "endLine": 355,
+        "endChar": 14
+      },
+      "revId": "5902acd2b90c406b00da4aa289247e9c32ecec5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8d7431d7_1e80b306",
+        "filename": "src/plugins/srv6-as/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-10T10:54:42Z",
+      "side": 1,
+      "message": "vm-\u003ethread_index is faster...",
+      "range": {
+        "startLine": 402,
+        "startChar": 21,
+        "endLine": 402,
+        "endChar": 46
+      },
+      "revId": "5902acd2b90c406b00da4aa289247e9c32ecec5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fc411b8b_91a81616",
+        "filename": "src/plugins/srv6-as/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-10T10:54:42Z",
+      "side": 1,
+      "message": "same as above...",
+      "range": {
+        "startLine": 487,
+        "startChar": 0,
+        "endLine": 494,
+        "endChar": 14
+      },
+      "revId": "5902acd2b90c406b00da4aa289247e9c32ecec5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
