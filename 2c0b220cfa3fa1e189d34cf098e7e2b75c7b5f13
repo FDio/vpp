@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "cde7a4a4_74f5baa9",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-10T11:43:56Z",
+      "side": 1,
+      "message": "i think the original author preferred the old style ;)",
+      "parentUuid": "77b4e877_730100aa",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a48a9ed_d519a90e",
         "filename": "test/test_gbp.py",
         "patchSetId": 15
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "Actually we don\u0027t want to test ACL code here. That\u0027s why I have used fixed set of rules and test GBP functionality.",
       "parentUuid": "3a48a9ed_d519a90e",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a322913b_b82d8944",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-10T11:43:56Z",
+      "side": 1,
+      "message": "we don\u0027t want to tests different contracts that have different ACLs?",
+      "parentUuid": "36ec425f_b38349f5",
       "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
