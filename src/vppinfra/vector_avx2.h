@@ -165,6 +165,24 @@ u16x16_mask_last (u16x16 v, u8 n_last)
   return v & masks[16 - n_last];
 }
 
+static_always_inline u32x8
+u32x8_blend (u32x8 v0, u32x8 v1, u8 opt)
+{
+  return (u32x8) _mm256_blend_epi32 ((__m256i) v0, (__m256i) v1, opt);
+}
+
+static_always_inline u64x4
+u64x4_permute (u64x4 v, u8 opt)
+{
+  return (u64x4) _mm256_permute4x64_epi64 ((__m256i) v, opt);
+}
+
+static_always_inline u32x8
+u32x8_permute_lanes (u32x8 v0, u32x8 v1, u8 opt)
+{
+  return (u32x8) _mm256_permute2x128_si256 ((__m256i) v0, (__m256i) v1, opt);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
