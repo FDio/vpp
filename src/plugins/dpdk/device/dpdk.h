@@ -95,26 +95,34 @@ typedef enum
     VNET_DPDK_PMD_UNKNOWN,	/* must be last */
 } dpdk_pmd_t;
 
+#define foreach_dpdk_port_type    \
+  _ ("eth_1G", ETH_1G)            \
+  _ ("eth_2_5G", ETH_2_5G)        \
+  _ ("eth_5G", ETH_5G)            \
+  _ ("eth_10G", ETH_10G)          \
+  _ ("eth_20G", ETH_20G)          \
+  _ ("eth_25G", ETH_25G)          \
+  _ ("eth_40G", ETH_40G)          \
+  _ ("eth_50G", ETH_50G)          \
+  _ ("eth_56G", ETH_56G)          \
+  _ ("eth_100G", ETH_100G)          \
+  _ ("eth_bond", ETH_BOND)        \
+  _ ("eth_swithc", ETH_SWITCH)    \
+  _ ("af_packet",  AF_PACKET)     \
+  _ ("eth_vf", ETH_VF)            \
+  _ ("virtio_user", VIRTIO_USER)  \
+  _ ("vhost_ether", VHOST_ETHER)  \
+  _ ("failsafe", FAILSAFE)
+
+
 typedef enum
 {
-  VNET_DPDK_PORT_TYPE_ETH_1G,
-  VNET_DPDK_PORT_TYPE_ETH_2_5G,
-  VNET_DPDK_PORT_TYPE_ETH_5G,
-  VNET_DPDK_PORT_TYPE_ETH_10G,
-  VNET_DPDK_PORT_TYPE_ETH_20G,
-  VNET_DPDK_PORT_TYPE_ETH_25G,
-  VNET_DPDK_PORT_TYPE_ETH_40G,
-  VNET_DPDK_PORT_TYPE_ETH_50G,
-  VNET_DPDK_PORT_TYPE_ETH_56G,
-  VNET_DPDK_PORT_TYPE_ETH_100G,
-  VNET_DPDK_PORT_TYPE_ETH_BOND,
-  VNET_DPDK_PORT_TYPE_ETH_SWITCH,
-  VNET_DPDK_PORT_TYPE_AF_PACKET,
-  VNET_DPDK_PORT_TYPE_ETH_VF,
-  VNET_DPDK_PORT_TYPE_VIRTIO_USER,
-  VNET_DPDK_PORT_TYPE_VHOST_ETHER,
-  VNET_DPDK_PORT_TYPE_FAILSAFE,
-  VNET_DPDK_PORT_TYPE_UNKNOWN,
+  VNET_DPDK_PORT_TYPE_NONE,
+
+#define _(s,f) VNET_DPDK_PORT_TYPE_##f,
+  foreach_dpdk_port_type
+#undef _
+    VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
 typedef uint16_t dpdk_portid_t;
@@ -507,6 +515,7 @@ typedef enum
 
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
+format_function_t format_dpdk_device_flags;
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
 format_function_t format_dpdk_device_errors;

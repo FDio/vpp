@@ -62,6 +62,91 @@
 
 #include <vlibapi/api_helper_macros.h>
 
+static void *vl_api_dpdk_device_dump_t_print
+  (vl_api_dpdk_device_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dpdk_device_dump ");
+
+  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void
+send_dpdk_device_details (vl_api_registration_t * rp, dpdk_main_t * dm,
+			  dpdk_device_t * xd, u32 context)
+{
+  vl_api_dpdk_device_details_t *rmp;
+  struct rte_eth_dev_info dev_info;
+  struct rte_pci_device *pci_dev;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+
+  rmp->_vl_msg_id = htons (VL_API_DPDK_DEVICE_DETAILS + dm->msg_id_base);
+  rmp->context = context;
+
+  rmp->sw_if_index = ntohl (xd->sw_if_index);
+
+  rmp->pmd = ntohl ((u32) (xd->pmd));
+  rmp->port_type = ntohl ((u32) (xd->port_type));
+  rmp->cpu_socket = (u8) (xd->cpu_socket);
+
+  rmp->flags = ntohs ((u16) (xd->flags));
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+
+#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+  pci_dev = dev_info.pci_dev;
+#else
+  pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+#endif
+
+  rmp->pci_domain = ntohs ((u16) (pci_dev->addr.domain));
+  rmp->pci_bus = (u8) (pci_dev->addr.bus);
+  rmp->pci_slot = (u8) (pci_dev->addr.devid);
+  rmp->pci_function = (u8) (pci_dev->addr.function);
+
+  vl_api_send_msg (rp, (u8 *) rmp);
+}
+
+static void
+  vl_api_dpdk_device_dump_t_handler
+  (vl_api_dpdk_device_dump_t * mp, vlib_main_t * vm)
+{
+  dpdk_device_t *xd;
+  dpdk_main_t *dm = &dpdk_main;
+  vl_api_registration_t *rp;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    return;
+
+  if (sw_if_index != ~0)
+    {
+      vec_foreach (xd, dm->devices)
+      {
+	if (sw_if_index == xd->sw_if_index)
+	  {
+	    send_dpdk_device_details (rp, dm, xd, mp->context);
+	    return;
+	  }
+      }
+    }
+  else
+    {
+      vec_foreach (xd, dm->devices)
+      {
+	send_dpdk_device_details (rp, dm, xd, mp->context);
+      }
+    }
+}
+
 static void
   vl_api_sw_interface_set_dpdk_hqos_pipe_t_handler
   (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp)
@@ -245,7 +330,8 @@ static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
 #define foreach_dpdk_plugin_api_msg                                       \
 _(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)       \
 _(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport) \
-_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl)
+_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl)	  \
+_(DPDK_DEVICE_DUMP, dpdk_device_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *

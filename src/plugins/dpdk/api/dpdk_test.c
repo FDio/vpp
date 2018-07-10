@@ -26,8 +26,17 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 /* Declare message IDs */
 #include <dpdk/api/dpdk_msg_enum.h>
 
+/* Declare message IDs */
+#include <dpdk/device/dpdk.h>
+
+/* Get CRC codes of the messages defined outside of this plugin */
+#define vl_msg_name_crc_list
+#include <vpp/api/vpe_all_api_h.h>
+#undef vl_msg_name_crc_list
+
 /* define message structures */
 #define vl_typedefs
+#include <vpp/api/vpe_all_api_h.h>
 #include <dpdk/api/dpdk.api.h>
 #undef vl_typedefs
 
@@ -48,9 +57,13 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #include <dpdk/api/dpdk.api.h>
 #undef vl_api_version
 
+#define __plugin_msg_base dpdk_test_main.msg_id_base
+#include <vlibapi/vat_helper_macros.h>
+
 typedef struct {
     /* API message ID base */
     u16 msg_id_base;
+    u32 ping_id;
     vat_main_t *vat_main;
 } dpdk_test_main_t;
 
@@ -65,7 +78,7 @@ _(sw_interface_set_dpdk_hqos_tctbl_reply)
     static void vl_api_##n##_t_handler                \
     (vl_api_##n##_t * mp)                             \
     {                                                 \
-        vat_main_t * vam = dpdk_test_main.vat_main;  \
+        vat_main_t * vam = dpdk_test_main.vat_main;   \
         i32 retval = ntohl(mp->retval);               \
         if (vam->async_mode) {                        \
             vam->async_errors += (retval < 0);        \
@@ -87,50 +100,16 @@ _(SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY,                        \
 _(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY,                     \
   sw_interface_set_dpdk_hqos_subport_reply)                     \
 _(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                       \
-  sw_interface_set_dpdk_hqos_tctbl_reply)
+  sw_interface_set_dpdk_hqos_tctbl_reply)                       \
+_(DPDK_DEVICE_DETAILS,                                          \
+  dpdk_device_details)
 
-/* M: construct, but don't yet send a message */
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
 
 static int
 api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 subport;
@@ -139,6 +118,7 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
   u8 pipe_set = 0;
   u32 profile;
   u8 profile_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -179,7 +159,7 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe);
+  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->subport = ntohl (subport);
@@ -187,19 +167,17 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
   mp->profile = ntohl (profile);
 
 
-  S;
-  W;
+  S (mp);
+  W (ret);
   /* NOTREACHED */
-  return 0;
+  return ret;
 }
 
 static int
 api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_subport_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 subport;
@@ -208,6 +186,7 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
   u32 tb_size = 1000000;
   u32 tc_rate[] = { 1250000000, 1250000000, 1250000000, 1250000000 };
   u32 tc_period = 10;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -252,7 +231,7 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport);
+  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->subport = ntohl (subport);
@@ -264,25 +243,24 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
   mp->tc_rate[3] = ntohl (tc_rate[3]);
   mp->tc_period = ntohl (tc_period);
 
-  S;
-  W;
+  S (mp);
+  W (ret);
   /* NOTREACHED */
-  return 0;
+  return ret;
 }
 
 static int
 api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 entry_set = 0;
   u8 tc_set = 0;
   u8 queue_set = 0;
   u32 entry, tc, queue;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -323,17 +301,126 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl);
+  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->entry = ntohl (entry);
   mp->tc = ntohl (tc);
   mp->queue = ntohl (queue);
 
-  S;
-  W;
+  S (mp);
+  W (ret);
   /* NOTREACHED */
-  return 0;
+  return ret;
+}
+
+u8 * format_pmd (u8 * s, va_list * args)
+{
+  u32 pmd = va_arg (*args, uword);
+  u8 *t = 0;
+  switch(pmd){
+#define _(c,f) \
+  case VNET_DPDK_PMD_##f:\
+    t = format (t, "%s%s", t ? " ":"", c);\
+    break;
+  foreach_dpdk_pmd
+#undef _
+  }
+  if (t) {
+    s = format (s, "%v", t);
+    vec_free (t);
+  }
+  return s;
+}
+
+u8 * format_port_type (u8 * s, va_list * args)
+{
+  u32 ptype = va_arg (*args, uword);
+  u8 *t = 0;
+  switch(ptype){
+#define _(c,f) \
+  case VNET_DPDK_PORT_TYPE_##f:\
+    t = format (t, "%s%s", t ? " ":"", c);\
+    break;
+  foreach_dpdk_port_type
+#undef _
+  }
+  if (t) {
+    s = format (s, "%v", t);
+    vec_free (t);
+  }
+  return s;
+}
+
+static void vl_api_dpdk_device_details_t_handler
+  (vl_api_dpdk_device_details_t * mp)
+{
+  vat_main_t * vam = dpdk_test_main.vat_main;
+  u16 flags = ntohs(mp->flags);
+  u32 pmd = ntohl(mp->pmd);
+  u32 ptype = ntohl(mp->port_type);
+  print (vam->ofp,
+         "%-12d %-16U %-16U %-12d 0x%-16X      %-6d: %d/%d/%d",
+         ntohl(mp->sw_if_index), format_pmd, pmd, format_port_type, ptype, mp->cpu_socket, flags,
+         ntohs(mp->pci_domain), mp->pci_bus, mp->pci_slot, mp->pci_function);
+#define _(a, b, c) {\
+  if (flags & (1 << a)) \
+    print (vam->ofp,\
+           "%-12s %-16s %-16s %-12s %-16s",\
+           "", "", "", "", c);\
+}
+  foreach_dpdk_device_flags
+#undef _
+  print (vam->ofp,"");
+}
+
+static int
+api_dpdk_device_dump (vat_main_t * vam)
+{
+  dpdk_test_main_t *dm = &dpdk_test_main;
+  unformat_input_t *i = vam->input;
+  vl_api_dpdk_device_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%u", &sw_if_index))
+        sw_if_index_set = 1;
+      else
+  break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      sw_if_index = ~0;
+    }
+
+  print (vam->ofp,
+         "\n%-12s %-16s %-16s %-12s %-16s PCI: %-6s: %s/%s/%s",
+         "sw_if_index", "pmd", "port_type", "cpu_socket", "flags",
+	 "domain", "bus", "slot", "function");
+
+  M (DPDK_DEVICE_DUMP, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (dm->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+
+  vam->result_ready = 0;
+  S (mp_ping);
+
+  W (ret);
+  /* NOTREACHED */
+  return ret;
 }
 
 /* 
@@ -342,13 +429,15 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
  */
 #define foreach_vpe_api_msg                                               \
 _(sw_interface_set_dpdk_hqos_pipe,                                        \
-  "rx sw_if_index <id> subport <subport-id> pipe <pipe-id>\n"   \
+  "rx sw_if_index <id> subport <subport-id> pipe <pipe-id>\n"             \
   "profile <profile-id>\n")                                               \
 _(sw_interface_set_dpdk_hqos_subport,                                     \
-  "rx sw_if_index <id> subport <subport-id> [rate <n>]\n"       \
+  "rx sw_if_index <id> subport <subport-id> [rate <n>]\n"                 \
   "[bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]\n") \
 _(sw_interface_set_dpdk_hqos_tctbl,                                       \
-  "rx sw_if_index <id> entry <n> tc <n> queue <n>\n")
+  "rx sw_if_index <id> entry <n> tc <n> queue <n>\n")                     \
+_(dpdk_device_dump,                                       \
+  "[<id>]\n")
 
 static void dpdk_api_hookup (vat_main_t *vam)
 {
@@ -386,6 +475,13 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   /* Ask the vpp engine for the first assigned message-id */
   name = format (0, "dpdk_%08x%c", api_version, 0);
   dm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+
+  /* Get the control ping ID */
+#define _(id,n,crc) \
+  const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
+  foreach_vl_msg_name_crc_vpe;
+#undef _
+  dm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
 
   if (dm->msg_id_base != (u16) ~0)
     dpdk_api_hookup (vam);
