@@ -181,11 +181,9 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   memif_ring_t *ring;
   memif_queue_t *mq;
   u16 buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-  u32 next_index;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 n_rx_packets = 0, n_rx_bytes = 0;
-  u32 n_left, *to_next = 0;
-  u32 bi0, bi1, bi2, bi3;
+  u32 n_left;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
@@ -203,9 +201,6 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
   mask = ring_size - 1;
-
-  next_index = (mode == MEMIF_INTERFACE_MODE_IP) ?
-    VNET_DEVICE_INPUT_NEXT_IP6_INPUT : VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 
   /* asume that somebody will want to add ethernet header on the packet
      so start with IP header at offset 14 */
@@ -340,161 +335,141 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       mq->last_tail = cur_slot;
     }
 
+  u16 nexts[MEMIF_RX_VECTOR_SZ], *next = nexts;
+  u32 to_next_buffers[MEMIF_RX_VECTOR_SZ], *bi = to_next_buffers;
+
+  /* prepare buffer template and next indices */
+  vnet_buffer (bt)->sw_if_index[VLIB_RX] = mif->sw_if_index;
+  vnet_buffer (bt)->feature_arc_index = 0;
+  bt->current_data = start_offset;
+  bt->current_config_index = 0;
+
+  if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
+    {
+      u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      if (mif->per_interface_next_index != ~0)
+	next_index = mif->per_interface_next_index;
+      else
+	vnet_feature_start_device_input_x1 (mif->sw_if_index, &next_index,
+					    bt);
+      clib_memset_u16 (nexts, next_index, n_rx_packets);
+    }
+
+  /* process buffer metadata */
   u32 n_from = n_rx_packets;
   po = ptd->packet_ops;
 
-  vnet_buffer (bt)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-  bt->current_data = start_offset;
+  while (n_from >= 8)
+    {
+      b0 = vlib_get_buffer (vm, po[4].first_buffer_vec_index);
+      b1 = vlib_get_buffer (vm, po[5].first_buffer_vec_index);
+      b2 = vlib_get_buffer (vm, po[6].first_buffer_vec_index);
+      b3 = vlib_get_buffer (vm, po[7].first_buffer_vec_index);
+      vlib_prefetch_buffer_header (b0, STORE);
+      vlib_prefetch_buffer_header (b1, STORE);
+      vlib_prefetch_buffer_header (b2, STORE);
+      vlib_prefetch_buffer_header (b3, STORE);
 
+      /* enqueue buffer */
+      u32 fbvi[4];
+      fbvi[0] = po[0].first_buffer_vec_index;
+      fbvi[1] = po[1].first_buffer_vec_index;
+      fbvi[2] = po[2].first_buffer_vec_index;
+      fbvi[3] = po[3].first_buffer_vec_index;
+
+      bi[0] = ptd->buffers[fbvi[0]];
+      bi[1] = ptd->buffers[fbvi[1]];
+      bi[2] = ptd->buffers[fbvi[2]];
+      bi[3] = ptd->buffers[fbvi[3]];
+
+      b0 = vlib_get_buffer (vm, bi[0]);
+      b1 = vlib_get_buffer (vm, bi[1]);
+      b2 = vlib_get_buffer (vm, bi[2]);
+      b3 = vlib_get_buffer (vm, bi[3]);
+
+      clib_memcpy64_x4 (b0, b1, b2, b3, bt);
+
+      b0->current_length = po[0].packet_len;
+      n_rx_bytes += b0->current_length;
+      b1->current_length = po[1].packet_len;
+      n_rx_bytes += b1->current_length;
+      b2->current_length = po[2].packet_len;
+      n_rx_bytes += b2->current_length;
+      b3->current_length = po[3].packet_len;
+      n_rx_bytes += b3->current_length;
+
+      memif_add_to_chain (vm, b0, ptd->buffers + fbvi[0] + 1, buffer_size);
+      memif_add_to_chain (vm, b1, ptd->buffers + fbvi[1] + 1, buffer_size);
+      memif_add_to_chain (vm, b2, ptd->buffers + fbvi[2] + 1, buffer_size);
+      memif_add_to_chain (vm, b3, ptd->buffers + fbvi[3] + 1, buffer_size);
+
+      if (mode == MEMIF_INTERFACE_MODE_IP)
+	{
+	  next[0] = memif_next_from_ip_hdr (node, b0);
+	  next[1] = memif_next_from_ip_hdr (node, b1);
+	  next[2] = memif_next_from_ip_hdr (node, b2);
+	  next[3] = memif_next_from_ip_hdr (node, b3);
+	}
+
+      /* next */
+      n_from -= 4;
+      po += 4;
+      bi += 4;
+      next += 4;
+    }
   while (n_from)
     {
-      u32 n_left_to_next;
-      u32 next0, next1, next2, next3;
+      u32 fbvi[4];
+      /* enqueue buffer */
+      fbvi[0] = po[0].first_buffer_vec_index;
+      bi[0] = ptd->buffers[fbvi[0]];
+      b0 = vlib_get_buffer (vm, bi[0]);
+      clib_memcpy (b0, bt, 64);
+      b0->current_length = po->packet_len;
+      n_rx_bytes += b0->current_length;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-      while (n_from >= 8 && n_left_to_next >= 4)
+      memif_add_to_chain (vm, b0, ptd->buffers + fbvi[0] + 1, buffer_size);
+
+      if (mode == MEMIF_INTERFACE_MODE_IP)
 	{
-	  b0 = vlib_get_buffer (vm, po[4].first_buffer_vec_index);
-	  b1 = vlib_get_buffer (vm, po[5].first_buffer_vec_index);
-	  b2 = vlib_get_buffer (vm, po[6].first_buffer_vec_index);
-	  b3 = vlib_get_buffer (vm, po[7].first_buffer_vec_index);
-	  vlib_prefetch_buffer_header (b0, STORE);
-	  vlib_prefetch_buffer_header (b1, STORE);
-	  vlib_prefetch_buffer_header (b2, STORE);
-	  vlib_prefetch_buffer_header (b3, STORE);
-
-	  /* enqueue buffer */
-	  u32 fbvi0 = po[0].first_buffer_vec_index;
-	  u32 fbvi1 = po[1].first_buffer_vec_index;
-	  u32 fbvi2 = po[2].first_buffer_vec_index;
-	  u32 fbvi3 = po[3].first_buffer_vec_index;
-	  to_next[0] = bi0 = ptd->buffers[fbvi0];
-	  to_next[1] = bi1 = ptd->buffers[fbvi1];
-	  to_next[2] = bi2 = ptd->buffers[fbvi2];
-	  to_next[3] = bi3 = ptd->buffers[fbvi3];
-	  to_next += 4;
-	  n_left_to_next -= 4;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
-
-	  clib_memcpy64_x4 (b0, b1, b2, b3, bt);
-
-	  b0->current_length = po[0].packet_len;
-	  n_rx_bytes += b0->current_length;
-	  b1->current_length = po[1].packet_len;
-	  n_rx_bytes += b1->current_length;
-	  b2->current_length = po[2].packet_len;
-	  n_rx_bytes += b2->current_length;
-	  b3->current_length = po[3].packet_len;
-	  n_rx_bytes += b3->current_length;
-
-	  memif_add_to_chain (vm, b0, ptd->buffers + fbvi0 + 1, buffer_size);
-	  memif_add_to_chain (vm, b1, ptd->buffers + fbvi1 + 1, buffer_size);
-	  memif_add_to_chain (vm, b2, ptd->buffers + fbvi2 + 1, buffer_size);
-	  memif_add_to_chain (vm, b3, ptd->buffers + fbvi3 + 1, buffer_size);
-
-	  if (mode == MEMIF_INTERFACE_MODE_IP)
-	    {
-	      next0 = memif_next_from_ip_hdr (node, b0);
-	      next1 = memif_next_from_ip_hdr (node, b1);
-	      next2 = memif_next_from_ip_hdr (node, b2);
-	      next3 = memif_next_from_ip_hdr (node, b3);
-	    }
-	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
-	    {
-	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
-		{
-		  next0 = mif->per_interface_next_index;
-		  next1 = mif->per_interface_next_index;
-		  next2 = mif->per_interface_next_index;
-		  next3 = mif->per_interface_next_index;
-		}
-	      else
-		{
-		  next0 = next1 = next2 = next3 = next_index;
-		  /* redirect if feature path enabled */
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next0, b0);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next1, b1);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next2, b2);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next3, b3);
-		}
-	    }
-
-	  /* trace */
-	  if (PREDICT_FALSE (n_trace > 0))
-	    {
-	      memif_trace_buffer (vm, node, mif, b0, next0, qid, &n_trace);
-	      if (PREDICT_FALSE (n_trace > 0))
-		memif_trace_buffer (vm, node, mif, b1, next1, qid, &n_trace);
-	      if (PREDICT_FALSE (n_trace > 0))
-		memif_trace_buffer (vm, node, mif, b2, next2, qid, &n_trace);
-	      if (PREDICT_FALSE (n_trace > 0))
-		memif_trace_buffer (vm, node, mif, b3, next3, qid, &n_trace);
-	    }
-
-	  /* enqueue */
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, bi1, bi2, bi3,
-					   next0, next1, next2, next3);
-
-	  /* next */
-	  n_from -= 4;
-	  po += 4;
+	  next[0] = memif_next_from_ip_hdr (node, b0);
 	}
-      while (n_from && n_left_to_next)
-	{
-	  /* enqueue buffer */
-	  u32 fbvi0 = po->first_buffer_vec_index;
-	  to_next[0] = bi0 = ptd->buffers[fbvi0];
-	  to_next += 1;
-	  n_left_to_next--;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  clib_memcpy (b0, bt, 64);
-	  b0->current_length = po->packet_len;
-	  n_rx_bytes += b0->current_length;
-
-	  memif_add_to_chain (vm, b0, ptd->buffers + fbvi0 + 1, buffer_size);
-
-	  if (mode == MEMIF_INTERFACE_MODE_IP)
-	    {
-	      next0 = memif_next_from_ip_hdr (node, b0);
-	    }
-	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
-	    {
-	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
-		next0 = mif->per_interface_next_index;
-	      else
-		{
-		  next0 = next_index;
-		  /* redirect if feature path enabled */
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next0, b0);
-		}
-
-	    }
-
-	  /* trace */
-	  if (PREDICT_FALSE (n_trace > 0))
-	    memif_trace_buffer (vm, node, mif, b0, next0, qid, &n_trace);
-
-	  /* enqueue */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
-
-	  /* next */
-	  n_from--;
-	  po++;
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      /* next */
+      n_from -= 1;
+      po += 1;
+      bi += 1;
+      next += 1;
     }
+
+  /* packet trace if enabled */
+  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
+    {
+      u32 n_left = n_rx_packets;
+      bi = to_next_buffers;
+      next = nexts;
+      while (n_trace && n_left)
+	{
+	  vlib_buffer_t *b;
+	  memif_input_trace_t *tr;
+	  b = vlib_get_buffer (vm, bi[0]);
+	  vlib_trace_buffer (vm, node, next[0], b, /* follow_chain */ 0);
+	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+	  tr->next_index = next[0];
+	  tr->hw_if_index = mif->hw_if_index;
+	  tr->ring = qid;
+
+	  /* next */
+	  n_trace--;
+	  n_left--;
+	  bi++;
+	  next++;
+	}
+      vlib_set_trace_count (vm, node, n_trace);
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, to_next_buffers, nexts,
+			       n_rx_packets);
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
