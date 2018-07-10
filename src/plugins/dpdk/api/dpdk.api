@@ -70,6 +70,42 @@ autoreply define sw_interface_set_dpdk_hqos_tctbl {
     u32 queue;
 };
 
+/** \brief DPDK device details (reply to dpdk_device_dump)
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to query. ~0 means all.
+    @param pmd - PMD for the device - values defined in dpdk_pmd_t
+    @param port_type - Port type for the device - values in dpdk_port_type_t
+    @param cpu_socket - CPU socket device is attached to
+    @param flags - Flags set on device - see foreach_dpdk_device_flags
+    @param pci_domain - PCI domain
+    @param pci_bus - PCI bus
+    @param pci_slot - PCI slot
+    @param pci_function - PCI function
+*/
+define dpdk_device_details {
+    u32 context;
+    u32 sw_if_index;
+    u32 pmd;
+    u32 port_type;
+    u8 cpu_socket;
+    u16 flags;
+    u16 pci_domain;
+    u8 pci_bus;
+    u8 pci_slot;
+    u8 pci_function;
+};
+
+/** \brief Get DPDK device data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to query. ~0 means all.
+*/
+define dpdk_device_dump {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
