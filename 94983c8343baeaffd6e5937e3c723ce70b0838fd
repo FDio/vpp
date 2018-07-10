@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "79ec9115_2139e389",
+        "filename": "src/vnet/fib/ip4_fib.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-10T07:32:44Z",
+      "side": 1,
+      "message": "M-x whitespace-mode\nto see these whitespace only lines",
+      "revId": "94983c8343baeaffd6e5937e3c723ce70b0838fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35c38db0_244d591f",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-10T07:32:44Z",
+      "side": 1,
+      "message": "I appreciate the parameters are not always the same for mheap and dmalloc, but can we have a new API that wraps this config option, with the parameter list as the superset? e.g.:\n\n#if USE_DLMALLOC \u003d\u003d 0\n#define vheap_alloc(a, b, c) mheap_alloc(a,b)\n#else\n#define vheap_alloc(a, b, c) create_mspace(b,c)\n#endif\n\nI prefer:\n foo (..., MHEAP_FLAG_LOCKED)\nover\n  foo (..., 1 /* locked */);\nbut there\u0027s no accounting for taste ;) \ncscope/gid on the enum is more rewarding.",
+      "revId": "94983c8343baeaffd6e5937e3c723ce70b0838fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
