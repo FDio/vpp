@@ -58,6 +58,7 @@ bd_validate (l2_bridge_domain_t * bd_config)
   bd_config->flood_count = 0;
   bd_config->tun_master_count = 0;
   bd_config->tun_normal_count = 0;
+  bd_config->no_flood_count = 0;
   bd_config->mac_by_ip4 = 0;
   bd_config->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t),
 					   sizeof (uword));
@@ -199,6 +200,8 @@ bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index)
 	      bd_config->tun_master_count--;
 	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_NORMAL)
 	      bd_config->tun_normal_count--;
+	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_NO_FLOOD)
+	      bd_config->no_flood_count--;
 	  }
 	vec_delete (bd_config->members, 1, ix);
 	update_flood_count (bd_config);
