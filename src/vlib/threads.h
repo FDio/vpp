@@ -323,7 +323,7 @@ typedef struct
   u8 *thread_prefix;
 
   /* main thread lcore */
-  u8 main_lcore;
+  u32 main_lcore;
 
   /* Bitmap of available CPU cores */
   uword *cpu_core_bitmap;
