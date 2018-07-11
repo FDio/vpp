@@ -399,6 +399,7 @@ mpls_tunnel_update_adj (vnet_main_t * vnm,
     {
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
+    case IP_LOOKUP_NEXT_BCAST:
         adj_nbr_midchain_update_rewrite(ai, mpls_tunnel_fixup,
                                         NULL,
                                         ADJ_FLAG_NONE,

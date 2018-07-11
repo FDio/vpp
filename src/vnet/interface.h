@@ -648,6 +648,32 @@ typedef enum
 
 extern vnet_mtu_t vnet_link_to_mtu (vnet_link_t link);
 
+typedef enum vnet_sw_interface_flags_t_
+{
+  /* Interface is "up" meaning adminstratively up.
+     Up in the sense of link state being up is maintained by hardware interface. */
+  VNET_SW_INTERFACE_FLAG_ADMIN_UP = (1 << 0),
+
+  /* Interface is disabled for forwarding: punt all traffic to slow-path. */
+  VNET_SW_INTERFACE_FLAG_PUNT = (1 << 1),
+
+  VNET_SW_INTERFACE_FLAG_PROXY_ARP = (1 << 2),
+
+  VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
+
+  VNET_SW_INTERFACE_FLAG_BOND_SLAVE = (1 << 4),
+
+  /* Interface does not appear in CLI/API */
+  VNET_SW_INTERFACE_FLAG_HIDDEN = (1 << 5),
+
+  /* Interface in ERROR state */
+  VNET_SW_INTERFACE_FLAG_ERROR = (1 << 6),
+
+  /* Interface has IP configured directed broadcast */
+  VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST = (1 << 7),
+
+} __attribute__ ((packed)) vnet_sw_interface_flags_t;
+
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
    software interface. */
@@ -655,25 +681,7 @@ typedef struct
 {
   vnet_sw_interface_type_t type:16;
 
-  u16 flags;
-  /* Interface is "up" meaning adminstratively up.
-     Up in the sense of link state being up is maintained by hardware interface. */
-#define VNET_SW_INTERFACE_FLAG_ADMIN_UP (1 << 0)
-
-  /* Interface is disabled for forwarding: punt all traffic to slow-path. */
-#define VNET_SW_INTERFACE_FLAG_PUNT (1 << 1)
-
-#define VNET_SW_INTERFACE_FLAG_PROXY_ARP (1 << 2)
-
-#define VNET_SW_INTERFACE_FLAG_UNNUMBERED (1 << 3)
-
-#define VNET_SW_INTERFACE_FLAG_BOND_SLAVE (1 << 4)
-
-  /* Interface does not appear in CLI/API */
-#define VNET_SW_INTERFACE_FLAG_HIDDEN (1 << 5)
-
-  /* Interface in ERROR state */
-#define VNET_SW_INTERFACE_FLAG_ERROR (1 << 6)
+  vnet_sw_interface_flags_t flags;
 
   /* Index for this interface. */
   u32 sw_if_index;

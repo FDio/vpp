@@ -184,6 +184,7 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
     {
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
+    case IP_LOOKUP_NEXT_BCAST:
       adj_nbr_midchain_update_rewrite (ai, pppoe_fixup, t,
 				       ADJ_FLAG_NONE,
 				       pppoe_build_rewrite (vnm,
