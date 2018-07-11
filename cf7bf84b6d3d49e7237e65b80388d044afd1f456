@@ -22,6 +22,30 @@
       "revId": "cf7bf84b6d3d49e7237e65b80388d044afd1f456",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "96cfab3a_caeb7eef",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-07-11T15:24:42Z",
+      "side": 1,
+      "message": "i somehow missed that",
+      "parentUuid": "f5de7adc_efb65db6",
+      "range": {
+        "startLine": 964,
+        "startChar": 0,
+        "endLine": 965,
+        "endChar": 30
+      },
+      "revId": "cf7bf84b6d3d49e7237e65b80388d044afd1f456",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
