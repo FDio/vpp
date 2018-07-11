@@ -24,9 +24,9 @@
 #define MEMIF_DEFAULT_TX_QUEUES 1
 #define MEMIF_DEFAULT_BUFFER_SIZE 2048
 
-#define MEMIF_MAX_M2S_RING		(vec_len (vlib_mains) - 1)
-#define MEMIF_MAX_S2M_RING		(vec_len (vlib_mains) - 1)
-#define MEMIF_MAX_REGION		255
+#define MEMIF_MAX_M2S_RING		(vec_len (vlib_mains))
+#define MEMIF_MAX_S2M_RING		256
+#define MEMIF_MAX_REGION		256
 #define MEMIF_MAX_LOG2_RING_SIZE	14
 
 
