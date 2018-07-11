@@ -1392,5 +1392,74 @@ class TestIPInput(VppTestCase):
         # Reset MTU for subsequent tests
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
 
+
+class TestIPDirectedBroadcast(VppTestCase):
+    """ IPv4 Directed Broadcast """
+
+    def setUp(self):
+        super(TestIPDirectedBroadcast, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+    def tearDown(self):
+        super(TestIPDirectedBroadcast, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+
+    def test_ip_input(self):
+        """ IP Directed Broadcast """
+
+        #
+        # set the directed broadcast on pg0 first, then config IP4 addresses
+        # for pg1 directed broadcast is always disabled
+        self.vapi.sw_interface_set_ip_directed_broadcast(
+            self.pg0.sw_if_index, 1)
+
+        p0 = (Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac) /
+              IP(src="1.1.1.1",
+                 dst=self.pg0._local_ip4_bcast) /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 2000))
+        p1 = (Ether(src=self.pg0.remote_mac,
+                    dst=self.pg0.local_mac) /
+              IP(src="1.1.1.1",
+                 dst=self.pg1._local_ip4_bcast) /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 2000))
+
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+        self.pg1.config_ip4()
+        self.pg1.resolve_arp()
+
+        #
+        # test packet is L2 broadcast
+        #
+        rx = self.send_and_expect(self.pg1, p0 * 65, self.pg0)
+        self.assertTrue(rx[0][Ether].dst, "ff:ff:ff:ff:ff:ff")
+
+        self.send_and_assert_no_replies(self.pg0, p1 * 65,
+                                        "directed broadcast disabled")
+
+        #
+        # toggle directed broadcast on pg0
+        #
+        self.vapi.sw_interface_set_ip_directed_broadcast(
+            self.pg0.sw_if_index, 0)
+        self.send_and_assert_no_replies(self.pg1, p0 * 65,
+                                        "directed broadcast disabled")
+
+        self.vapi.sw_interface_set_ip_directed_broadcast(
+            self.pg0.sw_if_index, 1)
+        rx = self.send_and_expect(self.pg1, p0 * 65, self.pg0)
+
+        self.pg0.unconfig_ip4()
+        self.pg1.unconfig_ip4()
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

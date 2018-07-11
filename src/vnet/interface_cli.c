@@ -1274,6 +1274,46 @@ VLIB_CLI_COMMAND (clear_tag_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+set_ip_directed_broadcast (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  u8 enable = 0;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index));
+  else if (unformat (input, "enable"))
+    enable = 1;
+  else if (unformat (input, "disable"))
+    enable = 0;
+  else
+    return clib_error_return (0, "unknown input: `%U'",
+			      format_unformat_error, input);
+
+  if (~0 == sw_if_index)
+    return clib_error_return (0, "specify an interface: `%U'",
+			      format_unformat_error, input);
+
+  vnet_sw_interface_ip_directed_broadcast (vnm, sw_if_index, enable);
+
+  return 0;
+}
+
+/*?
+ * This command is used to enable/disable IP directed broadcast
+ * If directed broadcast is enabled a packet sent to the interface's
+ * subnet broadcast address will be sent L2 broadcast on the interface,
+ * otherwise it is dropped.
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_ip_directed_broadcast_command, static) = {
+  .path = "set interface ip directed-broadcast",
+  .short_help = "set interface enable <interface> <enable|disable>",
+  .function = set_ip_directed_broadcast,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 			  u32 queue_id, vnet_hw_interface_rx_mode mode)
 {

@@ -81,6 +81,9 @@ typedef enum
   /** Multicast Adjacency. */
   IP_LOOKUP_NEXT_MCAST,
 
+  /** Broadcasr Adjacency. */
+  IP_LOOKUP_NEXT_BCAST,
+
   /** Multicast Midchain Adjacency. An Adjacency for sending macst packets
    *  on a tunnel/virtual interface */
   IP_LOOKUP_NEXT_MCAST_MIDCHAIN,
@@ -110,6 +113,7 @@ typedef enum
     [IP_LOOKUP_NEXT_GLEAN] = "ip4-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
     [IP_LOOKUP_NEXT_MCAST] = "ip4-rewrite-mcast",	        \
+    [IP_LOOKUP_NEXT_BCAST] = "ip4-rewrite-bcast",               \
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
     [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip4-mcast-midchain",     \
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
@@ -122,6 +126,7 @@ typedef enum
     [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",		\
     [IP_LOOKUP_NEXT_GLEAN] = "ip6-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
+    [IP_LOOKUP_NEXT_BCAST] = "ip6-rewrite-bcast",		\
     [IP_LOOKUP_NEXT_MCAST] = "ip6-rewrite-mcast",		\
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
     [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip6-mcast-midchain",     \
@@ -130,6 +135,11 @@ typedef enum
     [IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
     [IP6_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
 }
+
+/**
+ * The special broadcast address (to construct a broadcast adjacency
+ */
+extern const ip46_address_t ADJ_BCAST_ADDR;
 
 /**
  * Forward delcartion

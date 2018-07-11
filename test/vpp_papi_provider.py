@@ -720,6 +720,18 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'enable': enable})
 
+    def sw_interface_set_ip_directed_broadcast(
+            self,
+            sw_if_index,
+            enable=1):
+        """IP Directed broadcast
+        :param sw_if_index - interface the operation is applied to
+
+        """
+        return self.api(self.papi.sw_interface_set_ip_directed_broadcast,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})
+
     def sw_interface_set_flags(self, sw_if_index, admin_up_down):
         """
 

@@ -341,6 +341,45 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
 }
 
 static void
+ip4_add_subnet_bcast_route (u32 fib_index,
+                            fib_prefix_t *pfx,
+                            u32 sw_if_index)
+{
+  vnet_sw_interface_flags_t iflags;
+
+  iflags = vnet_sw_interface_get_flags(vnet_get_main(), sw_if_index);
+
+  fib_table_entry_special_remove(fib_index,
+                                 pfx,
+                                 FIB_SOURCE_INTERFACE);
+
+  if (iflags & VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST)
+    {
+      fib_table_entry_update_one_path (fib_index, pfx,
+                                       FIB_SOURCE_INTERFACE,
+                                       FIB_ENTRY_FLAG_NONE,
+                                       DPO_PROTO_IP4,
+                                       /* No next-hop address */
+                                       &ADJ_BCAST_ADDR,
+                                       sw_if_index,
+                                       // invalid FIB index
+                                       ~0,
+                                       1,
+                                       // no out-label stack
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+    }
+  else
+    {
+        fib_table_entry_special_add(fib_index,
+                                    pfx,
+                                    FIB_SOURCE_INTERFACE,
+                                    (FIB_ENTRY_FLAG_DROP |
+                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
+    }
+}
+
+static void
 ip4_add_interface_routes (u32 sw_if_index,
 			  ip4_main_t * im, u32 fib_index,
 			  ip_interface_address_t * a)
@@ -385,11 +424,7 @@ ip4_add_interface_routes (u32 sw_if_index,
                                      FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
       net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
       if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
-        fib_table_entry_special_add(fib_index,
-                                    &net_pfx,
-                                    FIB_SOURCE_INTERFACE,
-                                    (FIB_ENTRY_FLAG_DROP |
-                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
+        ip4_add_subnet_bcast_route(fib_index, &net_pfx, sw_if_index);
     }
   else if (pfx.fp_len == 31)
     {
@@ -635,6 +670,45 @@ ip4_add_del_interface_address (vlib_main_t * vm,
 {
   return ip4_add_del_interface_address_internal
     (vm, sw_if_index, address, address_length, is_del);
+}
+
+void
+ip4_directed_broadcast (u32 sw_if_index, u8 enable)
+{
+  ip_interface_address_t *ia;
+  ip4_main_t *im;
+
+  im = &ip4_main;
+
+  /*
+   * when directed broadcast is enabled, the subnet braodcast route will forward
+   * packets using an adjacency with a broadcast MAC. otherwise it drops
+   */
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address(&im->lookup_main, ia,
+                               sw_if_index, 0,
+     ({
+       if (ia->address_length <= 30)
+         {
+           ip4_address_t *ipa;
+
+           ipa = ip_interface_address_get_address (&im->lookup_main, ia);
+
+           fib_prefix_t pfx = {
+             .fp_len = 32,
+             .fp_proto = FIB_PROTOCOL_IP4,
+             .fp_addr = {
+               .ip4.as_u32 = (ipa->as_u32 | ~im->fib_masks[ia->address_length]),
+             },
+           };
+
+           ip4_add_subnet_bcast_route
+             (fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+                                                  sw_if_index),
+              &pfx, sw_if_index);
+         }
+     }));
+  /* *INDENT-ON* */
 }
 
 /* Built-in ip4 unicast rx feature path definition */
@@ -2522,6 +2596,16 @@ ip4_rewrite (vlib_main_t * vm,
 }
 
 static uword
+ip4_rewrite_bcast (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
+  else
+    return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
+}
+
+static uword
 ip4_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
@@ -2566,7 +2650,16 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
     [IP4_REWRITE_NEXT_FRAGMENT] = "ip4-frag",
   },
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite)
+
+VLIB_REGISTER_NODE (ip4_rewrite_bcast_node) = {
+  .function = ip4_rewrite,
+  .name = "ip4-rewrite-bcast",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_rewrite_trace,
+  .sibling_of = "ip4-rewrite",
+};
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_bcast_node, ip4_rewrite_bcast)
 
 VLIB_REGISTER_NODE (ip4_rewrite_mcast_node) = {
   .function = ip4_rewrite_mcast,
