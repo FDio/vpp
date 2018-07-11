@@ -25,6 +25,10 @@ igmp_group_mk_source_list (const igmp_membership_group_v3_t * r)
   const ip4_address_t *s;
   u16 ii, n;
 
+  /*
+   * we validated this packet when we accepted it in the DP, so
+   * this number is safe to use
+   */
   n = clib_net_to_host_u16 (r->n_src_addresses);
 
   if (0 == n)
@@ -172,6 +176,10 @@ igmp_handle_report (const igmp_report_args_t * args)
       return;
     }
 
+  /*
+   * we validated this packet when we accepted it in the DP, so
+   * this number is safe to use
+   */
   n_groups = clib_net_to_host_u16 (args->report[0].n_groups);
   igmp_group = args->report[0].groups;
 

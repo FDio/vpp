@@ -36,6 +36,10 @@ igmp_query_mk_source_list (const igmp_membership_query_v3_t * q)
   const ip4_address_t *s;
   u16 ii, n;
 
+  /*
+   * we validated this packet when we accepted it in the DP, so
+   * this number is safe to use
+   */
   n = clib_net_to_host_u16 (q->n_src_addresses);
 
   if (0 == n)
