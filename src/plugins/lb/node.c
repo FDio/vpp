@@ -220,7 +220,7 @@ lb_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 lb_time = lb_hash_time_now (vm);
 
   lb_hash_t *sticky_ht = lb_get_sticky_table (thread_index);

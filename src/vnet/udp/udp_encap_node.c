@@ -67,7 +67,7 @@ udp_encap_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &udp_encap_counters;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, next_index;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;

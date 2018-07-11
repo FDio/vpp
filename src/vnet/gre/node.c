@@ -77,7 +77,7 @@ gre_input (vlib_main_t * vm,
 
   u32 cached_tunnel_sw_if_index = ~0, tunnel_sw_if_index = ~0;
 
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 len;
   vnet_interface_main_t *im = &gm->vnet_main->interface_main;
 

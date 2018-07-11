@@ -138,7 +138,7 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  u32 * bond_sw_if_index, vlib_buffer_t * b,
 		  u32 * next_index, vlib_error_t * error)
 {
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
   slave_if_t *sif;
   bond_if_t *bif;
 
@@ -176,7 +176,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
   u32 *from, n_left;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;

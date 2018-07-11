@@ -187,7 +187,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left, *to_next = 0;
   u32 bi0, bi1, bi2, bi3;
   vlib_buffer_t *b0, *b1, *b2, *b3;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
   vlib_buffer_t *bt = &ptd->buffer_template;
@@ -542,7 +542,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 s0, s1, s2, s3;
   memif_desc_t *d0, *d1, *d2, *d3;
   vlib_buffer_t *b0, *b1, *b2, *b3;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
   u16 cur_slot, last_slot, ring_size, n_slots, mask, head;

@@ -69,7 +69,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *from, *to_next = 0, next_index;
   u32 n_left_from, last_sw_if_index = ~0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u64 n_bytes = 0, n_packets = 0;
   u8 icv_len;
   ipsec_tunnel_if_t *last_t = NULL;

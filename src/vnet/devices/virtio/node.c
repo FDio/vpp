@@ -128,7 +128,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
   virtio_vring_t *vring = vec_elt_at_index (vif->vrings, 0);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;

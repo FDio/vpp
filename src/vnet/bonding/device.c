@@ -140,7 +140,7 @@ bond_load_balance_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *to_next = 0;
   u32 sw_if_index;
   vlib_frame_t *f;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
 
   for (port = 1; port < slave_count; port++)
     {
@@ -403,7 +403,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 sw_if_index, sw_if_index1, sw_if_index2, sw_if_index3;
   bond_packet_trace_t *t0;
   uword n_trace = vlib_get_trace_count (vm, node);
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   u32 *to_next;
   u32 sif_if_index, sif_if_index1, sif_if_index2, sif_if_index3;

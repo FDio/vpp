@@ -265,7 +265,7 @@ udp_open_connection (transport_endpoint_t * rmt)
 {
   udp_main_t *um = vnet_get_udp_main ();
   vlib_main_t *vm = vlib_get_main ();
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   udp_connection_t *uc;
   ip46_address_t lcl_addr;
   u32 node_index;
