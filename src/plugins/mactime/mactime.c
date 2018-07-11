@@ -177,9 +177,11 @@ static void vl_api_mactime_enable_disable_t_handler
   mactime_main_t *mm = &mactime_main;
   int rv;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   rv = mactime_enable_disable (mm, ntohl (mp->sw_if_index),
 			       (int) (mp->enable_disable));
-
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_MACTIME_ENABLE_DISABLE_REPLY);
 }
 
