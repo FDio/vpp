@@ -107,7 +107,7 @@ memif_msg_send_hello (int fd)
   msg.type = MEMIF_MSG_TYPE_HELLO;
   h->min_version = MEMIF_VERSION;
   h->max_version = MEMIF_VERSION;
-  h->max_s2m_ring = MEMIF_MAX_M2S_RING;
+  h->max_s2m_ring = MEMIF_MAX_S2M_RING;
   h->max_m2s_ring = MEMIF_MAX_M2S_RING;
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
