@@ -337,10 +337,6 @@ vlib_thread_init (vlib_main_t * vm)
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
-  /* by default we skip core 0, unless it is the only one available */
-  if (tm->skip_cores == ~0)
-    tm->skip_cores = (clib_bitmap_count_set_bits (avail_cpu) < 2) ? 0 : 1;
-
   /* skip cores */
   for (i = 0; i < tm->skip_cores; i++)
     {
@@ -352,9 +348,13 @@ vlib_thread_init (vlib_main_t * vm)
     }
 
   /* grab cpu for main thread */
-  if (!tm->main_lcore)
+  if (tm->main_lcore == ~0)
     {
-      tm->main_lcore = clib_bitmap_first_set (avail_cpu);
+      /* if main-lcore is not set, we try to use lcore 1 */
+      if (clib_bitmap_get (avail_cpu, 1))
+	tm->main_lcore = 1;
+      else
+	tm->main_lcore = clib_bitmap_first_set (avail_cpu);
       if (tm->main_lcore == (u8) ~ 0)
 	return clib_error_return (0, "no available cpus to be used for the"
 				  " main thread");
@@ -375,6 +375,13 @@ vlib_thread_init (vlib_main_t * vm)
   if (tm->cb.vlib_thread_set_lcore_cb)
     {
       tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
+    }
+  else
+    {
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      CPU_SET (tm->main_lcore, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
     }
 
   /* as many threads as stacks... */
@@ -1259,7 +1266,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   tm->n_thread_stacks = 1;	/* account for main thread */
   tm->sched_policy = ~0;
   tm->sched_priority = ~0;
-  tm->skip_cores = ~0;
+  tm->main_lcore = ~0;
 
   tr = tm->next;
 
