@@ -90,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "6f7021f2_b95f4b45",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-11T11:09:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cde7a4a4_74f5baa9",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a48a9ed_d519a90e",
         "filename": "test/test_gbp.py",
         "patchSetId": 15
@@ -137,6 +155,24 @@
       "side": 1,
       "message": "we don\u0027t want to tests different contracts that have different ACLs?",
       "parentUuid": "36ec425f_b38349f5",
+      "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "45054209_ea514b84",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-11T11:09:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a322913b_b82d8944",
       "revId": "2c0b220cfa3fa1e189d34cf098e7e2b75c7b5f13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
