@@ -949,6 +949,9 @@ vnet_register_interface (vnet_main_t * vnm,
 	}
     }
 
+  vec_free (tx_node_name);
+  vec_free (output_node_name);
+
   setup_output_node (vm, hw->output_node_index, hw_class);
   setup_tx_node (vm, hw->tx_node_index, dev_class);
 
