@@ -32,13 +32,13 @@ typedef struct svm_msg_q_ring_
   volatile u32 tail;			/**< current tail (for enqueue) */
   u32 elsize;				/**< size of an element */
   u8 *data;				/**< chunk of memory for msg data */
-} svm_msg_q_ring_t;
+} __clib_packed svm_msg_q_ring_t;
 
 typedef struct svm_msg_q_
 {
   svm_queue_t *q;			/**< queue for exchanging messages */
   svm_msg_q_ring_t *rings;		/**< rings with message data*/
-} svm_msg_q_t;
+} __clib_packed svm_msg_q_t;
 
 typedef struct svm_msg_q_ring_cfg_
 {
