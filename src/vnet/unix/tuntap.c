@@ -153,7 +153,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 n_bytes = 0;
   int i;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
 
   for (i = 0; i < n_packets; i++)
     {
@@ -243,7 +243,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   vlib_buffer_t *b;
   u32 bi;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
 
   /** Make sure we have some RX buffers. */
   {

@@ -101,7 +101,7 @@ dslite_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, *to_next;
   dslite_out2in_next_t next_index;
   vlib_node_runtime_t *error_node;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   f64 now = vlib_time_now (vm);
   dslite_main_t *dm = &dslite_main;
 

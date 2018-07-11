@@ -154,7 +154,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0, drops = 0;
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
 
-  thread_index = vlib_get_thread_index ();
+  thread_index = vm->thread_index;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 

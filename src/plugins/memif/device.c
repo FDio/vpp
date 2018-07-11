@@ -409,7 +409,7 @@ CLIB_MULTIARCH_FN (memif_interface_tx) (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
   memif_queue_t *mq;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
 						   thread_index);
   u8 tx_queues = vec_len (mif->tx_queues);

@@ -78,7 +78,7 @@ ipsec_if_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_interface_main_t *vim = &vnm->interface_main;
   u32 *from, *to_next = 0, next_index;
   u32 n_left_from, sw_if_index0, last_sw_if_index = ~0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 n_bytes = 0, n_packets = 0;
 
   from = vlib_frame_vector_args (from_frame);

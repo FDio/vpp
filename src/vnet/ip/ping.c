@@ -577,7 +577,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
   pool_get (pm->ping_runs, pr);
   ping_run_index = pr - pm->ping_runs;
   pr->cli_process_id = curr_proc;
-  pr->cli_thread_index = vlib_get_thread_index ();
+  pr->cli_thread_index = vm->thread_index;
   pr->icmp_id = icmp_id;
   hash_set (pm->ping_run_by_icmp_id, icmp_id, ping_run_index);
   for (i = 1; i <= ping_repeat; i++)

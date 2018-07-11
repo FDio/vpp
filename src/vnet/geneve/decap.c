@@ -82,7 +82,7 @@ geneve_input (vlib_main_t * vm,
   geneve4_tunnel_key_t last_key4;
   geneve6_tunnel_key_t last_key6;
   u32 pkts_decapsulated = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   if (is_ip4)

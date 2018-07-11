@@ -256,7 +256,7 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 map_hint = 0;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
   u16 copy_len = 0;
 
   {

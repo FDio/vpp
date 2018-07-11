@@ -90,7 +90,8 @@ ip4_input_set_next (u32 sw_if_index, vlib_buffer_t * b, int arc_enabled)
 }
 
 static_always_inline void
-ip4_input_check_sw_if_index (vlib_simple_counter_main_t * cm, u32 sw_if_index,
+ip4_input_check_sw_if_index (vlib_main_t * vm,
+			     vlib_simple_counter_main_t * cm, u32 sw_if_index,
 			     u32 * last_sw_if_index, u32 * cnt,
 			     int *arc_enabled)
 {
@@ -103,7 +104,7 @@ ip4_input_check_sw_if_index (vlib_simple_counter_main_t * cm, u32 sw_if_index,
       return;
     }
 
-  thread_index = vlib_get_thread_index ();
+  thread_index = vm->thread_index;
   if (*cnt)
     vlib_increment_simple_counter (cm, thread_index, *last_sw_if_index, *cnt);
   *cnt = 1;
@@ -125,7 +126,7 @@ ip4_input_inline (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_simple_counter_main_t *cm;
@@ -206,14 +207,14 @@ ip4_input_inline (vlib_main_t * vm,
 	}
       else
 	{
-	  ip4_input_check_sw_if_index (cm, sw_if_index[0], &last_sw_if_index,
-				       &cnt, &arc_enabled);
-	  ip4_input_check_sw_if_index (cm, sw_if_index[1], &last_sw_if_index,
-				       &cnt, &arc_enabled);
-	  ip4_input_check_sw_if_index (cm, sw_if_index[2], &last_sw_if_index,
-				       &cnt, &arc_enabled);
-	  ip4_input_check_sw_if_index (cm, sw_if_index[3], &last_sw_if_index,
-				       &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (vm, cm, sw_if_index[0],
+				       &last_sw_if_index, &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (vm, cm, sw_if_index[1],
+				       &last_sw_if_index, &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (vm, cm, sw_if_index[2],
+				       &last_sw_if_index, &cnt, &arc_enabled);
+	  ip4_input_check_sw_if_index (vm, cm, sw_if_index[3],
+				       &last_sw_if_index, &cnt, &arc_enabled);
 
 	  next[0] = ip4_input_set_next (sw_if_index[0], b[0], 1);
 	  next[1] = ip4_input_set_next (sw_if_index[1], b[1], 1);
@@ -238,7 +239,7 @@ ip4_input_inline (vlib_main_t * vm,
       u32 next0;
       vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      ip4_input_check_sw_if_index (cm, sw_if_index[0], &last_sw_if_index,
+      ip4_input_check_sw_if_index (vm, cm, sw_if_index[0], &last_sw_if_index,
 				   &cnt, &arc_enabled);
       next0 = ip4_input_set_next (sw_if_index[0], b[0], arc_enabled);
       ip[0] = vlib_buffer_get_current (b[0]);

@@ -238,7 +238,7 @@ CLIB_MULTIARCH_FN (vhost_user_tx) (vlib_main_t * vm,
   u32 qid = ~0;
   vhost_user_vring_t *rxvq;
   u8 error;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 map_hint = 0;
   u8 retry = 8;
   u16 copy_len;

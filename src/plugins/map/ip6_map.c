@@ -174,7 +174,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     vlib_node_get_runtime (vm, ip6_map_node.index);
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -825,7 +825,7 @@ ip6_map_ip4_reass (vlib_main_t * vm,
     vlib_node_get_runtime (vm, ip6_map_ip4_reass_node.index);
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 *fragments_to_drop = NULL;
   u32 *fragments_to_loopback = NULL;
 
@@ -1018,7 +1018,7 @@ ip6_map_icmp_relay (vlib_main_t * vm,
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_map_icmp_relay_node.index);
   map_main_t *mm = &map_main;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u16 *fragment_ids, *fid;
 
   from = vlib_frame_vector_args (frame);
