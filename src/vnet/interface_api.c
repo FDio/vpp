@@ -70,7 +70,9 @@ _(CREATE_LOOPBACK, create_loopback)				\
 _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)		\
 _(DELETE_LOOPBACK, delete_loopback)                             \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)             \
-_(COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats)
+_(COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats) \
+_(SW_INTERFACE_SET_IP_DIRECTED_BROADCAST,                            \
+  sw_interface_set_ip_directed_broadcast)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -161,6 +163,23 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_ip_directed_broadcast_t_handler
+  (vl_api_sw_interface_set_ip_directed_broadcast_t * mp)
+{
+  vl_api_sw_interface_set_ip_directed_broadcast_reply_t *rmp;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vnet_sw_interface_ip_directed_broadcast (vnet_get_main (),
+					   sw_if_index, mp->enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_IP_DIRECTED_BROADCAST_REPLY);
 }
 
 static void

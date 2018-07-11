@@ -1944,6 +1944,16 @@ ip6_rewrite (vlib_main_t * vm,
 }
 
 static uword
+ip6_rewrite_bcast (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
+}
+
+static uword
 ip6_rewrite_mcast (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
@@ -1982,11 +1992,9 @@ VLIB_REGISTER_NODE (ip6_midchain_node) =
   .format_trace = format_ip6_forward_next_trace,
   .sibling_of = "ip6-rewrite",
   };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_midchain_node, ip6_midchain);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_rewrite_node) =
 {
   .function = ip6_rewrite,
@@ -2001,11 +2009,19 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
     [IP6_REWRITE_NEXT_FRAGMENT] = "ip6-frag",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
 
-/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_rewrite_bcast_node) = {
+  .function = ip6_rewrite,
+  .name = "ip6-rewrite-bcast",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip6_rewrite_trace,
+  .sibling_of = "ip6-rewrite",
+};
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_bcast_node, ip6_rewrite_bcast)
+
 VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
 {
   .function = ip6_rewrite_mcast,
@@ -2014,11 +2030,9 @@ VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
 {
   .function = ip6_mcast_midchain,
@@ -2027,9 +2041,9 @@ VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_mcast_midchain_node, ip6_mcast_midchain);
+/* *INDENT-ON* */
 
 /*
  * Hop-by-Hop handling

@@ -224,7 +224,7 @@ void vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index);
 void vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index);
 int vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index);
 
-always_inline uword
+always_inline vnet_sw_interface_flags_t
 vnet_sw_interface_get_flags (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
@@ -368,6 +368,8 @@ void vnet_sw_interface_update_unnumbered (u32 sw_if_index,
 
 int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 						    u8 enable);
+void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
+					      u32 sw_if_index, u8 enable);
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;

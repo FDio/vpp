@@ -705,6 +705,22 @@ vnet_sw_interface_set_protocol_mtu (vnet_main_t * vnm, u32 sw_if_index,
     call_sw_interface_mtu_change_callbacks (vnm, sw_if_index);
 }
 
+void
+vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
+					 u32 sw_if_index, u8 enable)
+{
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+
+  if (enable)
+    si->flags |= VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST;
+  else
+    si->flags &= ~VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST;
+
+  ip4_directed_broadcast (sw_if_index, enable);
+}
+
 /*
  * Reflect a change in hardware MTU on protocol MTUs
  */
@@ -1609,6 +1625,7 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
       adj_glean_update_rewrite (ai);
       break;
     case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_BCAST:
       /*
        * default rewirte in neighbour adj
        */

@@ -35,6 +35,13 @@ ip_adjacency_t *adj_pool;
  */
 int adj_per_adj_counters;
 
+const ip46_address_t ADJ_BCAST_ADDR = {
+    .ip6 = {
+        .as_u64[0] = 0xffffffffffffffff,
+        .as_u64[1] = 0xffffffffffffffff,
+    },
+};
+
 always_inline void
 adj_poison (ip_adjacency_t * adj)
 {
@@ -172,6 +179,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
         /* FALL THROUGH */
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_BCAST:
 	/*
 	 * complete and incomplete nbr adjs
 	 */
