@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8f834245_8313aace",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1299,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-11T17:12:47Z",
+      "side": 1,
+      "message": "is this a general statement or does it refer specifically to the offer sent at this point?",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f2099bb1_966c742f",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1404,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-11T17:12:47Z",
+      "side": 1,
+      "message": "is using the brackets wrong? otherwise this looks like an unnecessary change.",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "98a3c7db_7f8c8088",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1541,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-11T17:12:47Z",
+      "side": 1,
+      "message": "remove this dead line",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
