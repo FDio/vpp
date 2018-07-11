@@ -259,8 +259,8 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  igmp_membership_query_v3_t *igmp;
 	  igmp_query_args_t *args;
+	  u32 bi, next, len;
 	  vlib_buffer_t *b;
-	  u32 bi, next;
 
 	  next = IGMP_PARSE_QUERY_NEXT_DROP;
 	  bi = from[0];
@@ -283,20 +283,29 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b),
 			   sizeof (tr->packet_data));
 	    }
+	  len = igmp_membership_query_v3_length (igmp);
 
 	  /*
-	   * copy the contents of the query, and the interface, over
-	   * to the main thread for processing
+	   * validate that the length on the packet on the wire
+	   * corresponds to the length on the calculated v3 query
 	   */
-	  vlib_buffer_advance (b, -sizeof (u32));
-	  args = vlib_buffer_get_current (b);
-	  args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+	  if (vlib_buffer_length_in_chain (vm, b) == len)
+	    {
+	      /*
+	       * copy the contents of the query, and the interface, over
+	       * to the main thread for processing
+	       */
+	      vlib_buffer_advance (b, -sizeof (u32));
+	      args = vlib_buffer_get_current (b);
+	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	  vl_api_rpc_call_main_thread (igmp_handle_query,
-				       (u8 *) args,
-				       sizeof (*args) +
-				       igmp_membership_query_v3_length
-				       (igmp));
+	      vl_api_rpc_call_main_thread (igmp_handle_query,
+					   (u8 *) args, sizeof (*args) + len);
+	    }
+	  /*
+	   * else a packet that is reporting more or less sources
+	   * than it really has, bin it
+	   */
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi, next);
@@ -351,7 +360,7 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  igmp_membership_report_v3_t *igmp;
 	  igmp_report_args_t *args;
-	  u32 bi, next;
+	  u32 bi, next, len;
 	  vlib_buffer_t *b;
 
 	  next = IGMP_PARSE_REPORT_NEXT_DROP;
@@ -368,6 +377,7 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  error = IGMP_ERROR_NONE;
 	  b->error = error_node->errors[error];
 	  igmp = vlib_buffer_get_current (b);
+	  len = igmp_membership_report_v3_length (igmp);
 
 	  ASSERT (igmp->header.type == IGMP_TYPE_membership_report_v3);
 
@@ -382,19 +392,27 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /*
-	   * copy the contents of the query, and the interface, over
-	   * to the main thread for processing
+	   * validate that the length on the packet on the wire
+	   * corresponds to the length on the calculated v3 query
 	   */
-	  vlib_buffer_advance (b, -sizeof (u32));
-	  args = vlib_buffer_get_current (b);
-	  args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+	  if (vlib_buffer_length_in_chain (vm, b) == len)
+	    {
+	      /*
+	       * copy the contents of the query, and the interface, over
+	       * to the main thread for processing
+	       */
+	      vlib_buffer_advance (b, -sizeof (u32));
+	      args = vlib_buffer_get_current (b);
+	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	  vl_api_rpc_call_main_thread (igmp_handle_report,
-				       (u8 *) args,
-				       sizeof (*args) +
-				       igmp_membership_report_v3_length
-				       (igmp));
-
+	      vl_api_rpc_call_main_thread (igmp_handle_report,
+					   (u8 *) args, sizeof (*args) + len);
+	    }
+	  /*
+	   * else
+	   *   this is a packet with more groups/sources than the
+	   *   header reports. bin it
+	   */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi, next);
 	}
