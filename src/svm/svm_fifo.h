@@ -113,6 +113,12 @@ svm_fifo_max_enqueue (svm_fifo_t * f)
   return f->nitems - svm_fifo_max_dequeue (f);
 }
 
+static inline int
+svm_fifo_has_event (svm_fifo_t * f)
+{
+  return f->has_event;
+}
+
 static inline u8
 svm_fifo_has_ooo_data (svm_fifo_t * f)
 {
