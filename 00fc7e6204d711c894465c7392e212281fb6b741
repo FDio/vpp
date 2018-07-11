@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3b83c0d_16d58789",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 1082,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-11T13:15:36Z",
+      "side": 1,
+      "message": "it would be good to test one of these contracts with a different ACL index.",
+      "revId": "00fc7e6204d711c894465c7392e212281fb6b741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
