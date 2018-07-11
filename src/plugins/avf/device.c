@@ -227,7 +227,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   rxq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
 					   rxq->size * sizeof (avf_rx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
-  memset (rxq->descs, 0, rxq->size * sizeof (avf_rx_desc_t));
+  memset ((void *) rxq->descs, 0, rxq->size * sizeof (avf_rx_desc_t));
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
 
@@ -236,7 +236,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   if (n_alloc == 0)
     return clib_error_return (0, "buffer allocation error");
 
-  rxq->n_bufs = n_alloc;
+  rxq->n_enqueued = n_alloc;
   avf_rx_desc_t *d = rxq->descs;
   for (i = 0; i < n_alloc; i++)
     {
@@ -323,7 +323,7 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
   pa = avf_dma_addr (vm, ad, ad->atq);
   avf_reg_write (ad, AVF_ATQT, 0);	/* Tail */
   avf_reg_write (ad, AVF_ATQH, 0);	/* Head */
-  avf_reg_write (ad, AVF_ATQLEN, AVF_MBOX_LEN | (1 << 31));	/* len & ena */
+  avf_reg_write (ad, AVF_ATQLEN, AVF_MBOX_LEN | (1ULL << 31));	/* len & ena */
   avf_reg_write (ad, AVF_ATQBAL, (u32) pa);	/* Base Address Low */
   avf_reg_write (ad, AVF_ATQBAH, (u32) (pa >> 32));	/* Base Address High */
 
@@ -338,7 +338,7 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
 
   avf_reg_write (ad, AVF_ARQH, 0);	/* Head */
   avf_reg_write (ad, AVF_ARQT, 0);	/* Head */
-  avf_reg_write (ad, AVF_ARQLEN, AVF_MBOX_LEN | (1 << 31));	/* len & ena */
+  avf_reg_write (ad, AVF_ARQLEN, AVF_MBOX_LEN | (1ULL << 31));	/* len & ena */
   avf_reg_write (ad, AVF_ARQBAL, (u32) pa);	/* Base Address Low */
   avf_reg_write (ad, AVF_ARQBAH, (u32) (pa >> 32));	/* Base Address High */
   avf_reg_write (ad, AVF_ARQT, AVF_MBOX_LEN - 1);	/* Tail */
@@ -552,7 +552,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);
 	  rxq->ring_len = q->size;
 	  rxq->databuffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, q->descs);
+	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}
 
@@ -562,7 +562,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	{
 	  txq->queue_id = i;
 	  txq->ring_len = q->size;
-	  txq->dma_ring_addr = avf_dma_addr (vm, ad, q->descs);
+	  txq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	}
     }
 
@@ -618,7 +618,7 @@ avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
   qs.rx_queues = rx;
   qs.tx_queues = tx;
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, 0);
-  avf_reg_write (ad, AVF_QRX_TAIL (0), rxq->n_bufs);
+  avf_reg_write (ad, AVF_QRX_TAIL (0), rxq->n_enqueued);
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
 			 sizeof (virtchnl_queue_select_t), 0, 0);
 }
@@ -769,14 +769,14 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   ASSERT (ad->error == 0);
 
   r = avf_get_u32 (ad->bar0, AVF_ARQLEN);
-  if ((r & 0xf0000000) != (1 << 31))
+  if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "arq not enabled, arqlen = 0x%x", r);
       goto error;
     }
 
   r = avf_get_u32 (ad->bar0, AVF_ATQLEN);
-  if ((r & 0xf0000000) != (1 << 31))
+  if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "atq not enabled, atqlen = 0x%x", r);
       goto error;
@@ -1032,10 +1032,10 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
   vec_foreach_index (i, ad->rxqs)
     {
       avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
-      vlib_physmem_free (vm, am->physmem_region, rxq->descs);
-      if (rxq->n_bufs)
+      vlib_physmem_free (vm, am->physmem_region, (void *) rxq->descs);
+      if (rxq->n_enqueued)
 	vlib_buffer_free_from_ring (vm, rxq->bufs, rxq->next, rxq->size,
-				    rxq->n_bufs);
+				    rxq->n_enqueued);
       vec_free (rxq->bufs);
     }
   /* *INDENT-ON* */
@@ -1045,12 +1045,12 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
   vec_foreach_index (i, ad->txqs)
     {
       avf_txq_t *txq = vec_elt_at_index (ad->txqs, i);
-      vlib_physmem_free (vm, am->physmem_region, txq->descs);
-      if (txq->n_bufs)
+      vlib_physmem_free (vm, am->physmem_region, (void *) txq->descs);
+      if (txq->n_enqueued)
 	{
-	  u16 first = (txq->next - txq->n_bufs) & (txq->size -1);
+	  u16 first = (txq->next - txq->n_enqueued) & (txq->size -1);
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
-				      txq->n_bufs);
+				      txq->n_enqueued);
 	}
       vec_free (txq->bufs);
     }
