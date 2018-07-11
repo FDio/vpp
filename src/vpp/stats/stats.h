@@ -168,6 +168,7 @@ typedef struct
   clib_socket_t *socket;
   u8 *socket_name;
   uword memory_size;
+  u8 serialize_nodes;
 
   /* Pointers to scalar stats maintained by the stat thread */
   f64 *input_rate_ptr;

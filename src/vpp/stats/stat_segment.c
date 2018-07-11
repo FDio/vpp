@@ -510,7 +510,8 @@ do_stat_segment_updates (stats_main_t * sm)
   sm->last_runtime_stats_clear_ptr[0] =
     vm->node_main.time_last_runtime_stats_clear;
 
-  update_serialized_nodes (sm);
+  if (sm->serialize_nodes)
+    update_serialized_nodes (sm);
 }
 
 static clib_error_t *
@@ -523,6 +524,10 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "size %U", unformat_memory_size, &sm->memory_size))
 	;
+      else if (unformat (input, "serialize-nodes on"))
+	sm->serialize_nodes = 1;
+      else if (unformat (input, "serialize-nodes off"))
+	sm->serialize_nodes = 0;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
