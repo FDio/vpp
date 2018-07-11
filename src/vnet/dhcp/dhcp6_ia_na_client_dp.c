@@ -540,6 +540,7 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  address->preferred_time = htonl (info->preferred_time);
 		  address++;
 		}
+	      vec_free (events[i].addresses);
 
 	      dhcp6_ia_na_client_public_main_t *dcpm =
 		&dhcp6_ia_na_client_public_main;

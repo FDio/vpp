@@ -548,6 +548,7 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  prefix->preferred_time = htonl (info->preferred_time);
 		  prefix++;
 		}
+	      vec_free (events[i].prefixes);
 
 	      dhcp6_pd_client_public_main_t *dpcpm =
 		&dhcp6_pd_client_public_main;

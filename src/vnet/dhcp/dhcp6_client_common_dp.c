@@ -395,6 +395,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      r.n_addresses = vec_len (addresses);
 		      r.addresses = addresses;
 		      dhcp6_publish_report (&r);
+		      /* We just gave addresses to another process! */
+		      addresses = 0;
 		    }
 		  else
 		    {
@@ -403,6 +405,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      r.n_prefixes = vec_len (prefixes);
 		      r.prefixes = prefixes;
 		      dhcp6_pd_publish_report (&r);
+		      /* We just gave prefixes to another process! */
+		      prefixes = 0;
 		    }
 		}
 	      vec_free (addresses);
