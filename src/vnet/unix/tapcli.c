@@ -175,7 +175,7 @@ tapcli_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   tapcli_main_t *tm = &tapcli_main;
   tapcli_interface_t *ti;
   int i;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
 
   for (i = 0; i < n_packets; i++)
     {
@@ -271,7 +271,7 @@ tapcli_rx_iface (vlib_main_t * vm,
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u8 set_trace = 0;
-  u16 thread_index = vlib_get_thread_index ();
+  u16 thread_index = vm->thread_index;
   vnet_main_t *vnm;
   vnet_sw_interface_t *si;
   u8 admin_down;

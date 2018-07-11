@@ -653,7 +653,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t * sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1256,7 +1256,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *per_thread_data =
     &sm->per_thread_data[thread_index];
   u32 *fragments_to_drop = 0;
@@ -2038,7 +2038,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
   nat44_ed_out2in_next_t next_index;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   stats_node_index = is_slow_path ? nat44_ed_out2in_slowpath_node.index :
@@ -2837,7 +2837,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
   snat_out2in_next_t next_index;
   u32 pkts_processed = 0;
   snat_main_t * sm = &snat_main;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -3473,7 +3473,7 @@ snat_out2in_worker_handoff_fn (vlib_main_t * vm,
   u32 n_left_to_next_worker = 0, *to_next_worker = 0;
   u32 next_worker_index = 0;
   u32 current_worker_index = ~0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   vlib_frame_t *d = 0;
 
   ASSERT (vec_len (sm->workers));

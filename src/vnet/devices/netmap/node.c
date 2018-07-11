@@ -98,7 +98,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_free_bufs;
   struct netmap_ring *ring;
   int cur_ring;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
 							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
@@ -260,7 +260,7 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   int i;
   u32 n_rx_packets = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   netmap_main_t *nm = &netmap_main;
   netmap_if_t *nmi;
 

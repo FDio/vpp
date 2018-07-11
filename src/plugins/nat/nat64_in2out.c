@@ -922,7 +922,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   nat64_in2out_next_t next_index;
   u32 pkts_processed = 0;
   u32 stats_node_index;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   stats_node_index =
     is_slow_path ? nat64_in2out_slowpath_node.index : nat64_in2out_node.index;
@@ -1316,7 +1316,7 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
   u32 *fragments_to_drop = 0;
   u32 *fragments_to_loopback = 0;
   nat64_main_t *nm = &nat64_main;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1644,7 +1644,7 @@ nat64_in2out_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_to_next_worker = 0, *to_next_worker = 0;
   u32 next_worker_index = 0;
   u32 current_worker_index = ~0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 fq_index;
   u32 to_node_index;
 

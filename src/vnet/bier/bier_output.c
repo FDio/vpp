@@ -69,7 +69,7 @@ bier_output (vlib_main_t * vm,
     u32 n_left_from, next_index, * from, * to_next;
     u32 thread_index;
 
-    thread_index = vlib_get_thread_index ();
+    thread_index = vm->thread_index;
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
 

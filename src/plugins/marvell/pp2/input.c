@@ -162,7 +162,7 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vnet_main_t *vnm = vnet_get_main ();
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   mrvl_pp2_inq_t *inq = vec_elt_at_index (ppif->inqs, qid);
   uword n_trace = vlib_get_trace_count (vm, node);
   mrvl_pp2_per_thread_data_t *ptd =

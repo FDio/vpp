@@ -42,7 +42,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
   avf_main_t *am = &avf_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   avf_device_t *ad = pool_elt_at_index (am->devices, rd->dev_instance);
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u8 qid = thread_index;
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
   avf_tx_desc_t *d0, *d1, *d2, *d3;

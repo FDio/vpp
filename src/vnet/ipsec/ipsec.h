@@ -355,7 +355,7 @@ int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 always_inline void
 ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   uword l = vec_len (im->empty_buffers[thread_index]);
   uword n_alloc = 0;
 

@@ -157,7 +157,7 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 session_index;
   u32 counter_index;
   u32 nincr = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions,

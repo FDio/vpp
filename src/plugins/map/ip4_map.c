@@ -203,7 +203,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   next_index = node->cached_next_index;
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {
@@ -519,7 +519,7 @@ ip4_map_reass (vlib_main_t * vm,
   next_index = node->cached_next_index;
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 *fragments_to_drop = NULL;
   u32 *fragments_to_loopback = NULL;
 

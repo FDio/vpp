@@ -151,7 +151,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
   vnet_main_t *vnm = ngm->vnet_main;
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   from = vlib_frame_vector_args (from_frame);

@@ -34,7 +34,7 @@ mrvl_pp2_interface_tx (vlib_main_t * vm,
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   mrvl_pp2_if_t *ppif = pool_elt_at_index (ppm->interfaces, rd->dev_instance);
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   mrvl_pp2_per_thread_data_t *ptd =
     vec_elt_at_index (ppm->per_thread_data, thread_index);
   u8 qid = thread_index;

@@ -239,7 +239,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 			 u8 is_l2)
 {
     u32 n_left_from, next_index, * from, * to_next;
-    u32 thread_index = vlib_get_thread_index ();
+    u32 thread_index = vm->thread_index;
     vnet_interface_main_t *im;
 
     im = &vnet_get_main ()->interface_main;
