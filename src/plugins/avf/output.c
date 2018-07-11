@@ -57,12 +57,12 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
   clib_spinlock_lock_if_init (&txq->lock);
 
   /* release cosumed bufs */
-  if (txq->n_bufs)
+  if (txq->n_enqueued)
     {
       u16 first, slot, n_free = 0;
-      first = slot = (txq->next - txq->n_bufs) & mask;
+      first = slot = (txq->next - txq->n_enqueued) & mask;
       d0 = txq->descs + slot;
-      while (n_free < txq->n_bufs && avf_tx_desc_get_dtyp (d0) == 0x0F)
+      while (n_free < txq->n_enqueued && avf_tx_desc_get_dtyp (d0) == 0x0F)
 	{
 	  n_free++;
 	  slot = (slot + 1) & mask;
@@ -71,7 +71,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
 
       if (n_free)
 	{
-	  txq->n_bufs -= n_free;;
+	  txq->n_enqueued -= n_free;
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
 				      n_free);
 	}
@@ -126,7 +126,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
       d3->qword[1] = ((u64) b3->current_length) << 34 | bits;
 
       txq->next = (txq->next + 4) & mask;
-      txq->n_bufs += 4;
+      txq->n_enqueued += 4;
       buffers += 4;
       n_left -= 4;
     }
@@ -147,7 +147,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
       d0->qword[1] = (((u64) b0->current_length) << 34) | bits;
 
       txq->next = (txq->next + 1) & mask;
-      txq->n_bufs++;
+      txq->n_enqueued++;
       buffers++;
       n_left--;
     }

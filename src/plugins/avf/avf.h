@@ -38,19 +38,39 @@ enum
 #undef _
 };
 
-typedef struct
+typedef volatile struct
 {
-  u64 qword[4];
+  union
+  {
+    struct
+    {
+      u64 mirr:13;
+      u64 rsv1:3;
+      u64 l2tag1:16;
+      u64 filter_status:32;
+      u64 status:19;
+      u64 error:8;
+      u64 rsv2:3;
+      u64 ptype:8;
+      u64 length:26;
+    };
+    u64 qword[4];
+#ifdef CLIB_HAVE_VEC256
+    u64x4 as_u64x4;
+#endif
+  };
 } avf_rx_desc_t;
 
 STATIC_ASSERT_SIZEOF (avf_rx_desc_t, 32);
 
-typedef struct
+typedef volatile struct
 {
   union
   {
     u64 qword[2];
+#ifdef CLIB_HAVE_VEC128
     u64x2 as_u64x2;
+#endif
   };
 } avf_tx_desc_t;
 
@@ -64,7 +84,7 @@ typedef struct
   u16 size;
   avf_rx_desc_t *descs;
   u32 *bufs;
-  u16 n_bufs;
+  u16 n_enqueued;
 } avf_rxq_t;
 
 typedef struct
@@ -76,7 +96,7 @@ typedef struct
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;
-  u16 n_bufs;
+  u16 n_enqueued;
 } avf_txq_t;
 
 typedef struct

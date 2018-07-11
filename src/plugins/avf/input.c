@@ -54,7 +54,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
   u32 s0, s1, s2, s3;
   avf_rx_desc_t *d[4];
 
-  n_refill = rxq->size - 1 - rxq->n_bufs;
+  n_refill = rxq->size - 1 - rxq->n_enqueued;
   if (PREDICT_TRUE (n_refill <= AVF_INPUT_REFILL_TRESHOLD))
     return;
 
@@ -74,7 +74,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       return;
     }
 
-  rxq->n_bufs += n_alloc;
+  rxq->n_enqueued += n_alloc;
 
   while (n_alloc >= 4)
     {
@@ -355,13 +355,13 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (rxq->next + 11 < rxq->size)
 	{
 	  int stride = 8;
-	  CLIB_PREFETCH (rxq->descs + (rxq->next + stride),
+	  CLIB_PREFETCH ((void *) (rxq->descs + (rxq->next + stride)),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (rxq->descs + (rxq->next + stride + 1),
+	  CLIB_PREFETCH ((void *) (rxq->descs + (rxq->next + stride + 1)),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (rxq->descs + (rxq->next + stride + 2),
+	  CLIB_PREFETCH ((void *) (rxq->descs + (rxq->next + stride + 2)),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (rxq->descs + (rxq->next + stride + 3),
+	  CLIB_PREFETCH ((void *) (rxq->descs + (rxq->next + stride + 3)),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
@@ -404,21 +404,21 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       rxq->next = (rxq->next + 4) & mask;
       d = rxq->descs + rxq->next;
       n_rxv += 4;
-      rxq->n_bufs -= 4;
+      rxq->n_enqueued -= 4;
       bi += 4;
       continue;
     one_by_one:
 #endif
-      CLIB_PREFETCH (rxq->descs + ((rxq->next + 8) & mask),
+      CLIB_PREFETCH ((void *) (rxq->descs + ((rxq->next + 8) & mask)),
 		     CLIB_CACHE_LINE_BYTES, LOAD);
       if ((d->qword[1] & AVF_RX_DESC_STATUS_DD) == 0)
 	break;
       rxve = ptd->rx_vector + n_rxv;
       bi[0] = rxq->bufs[rxq->next];
-      rxve->status = avf_get_u64_bits (d, 8, 18, 0);
-      rxve->error = avf_get_u64_bits (d, 8, 26, 19);
-      rxve->ptype = avf_get_u64_bits (d, 8, 37, 30);
-      rxve->length = avf_get_u64_bits (d, 8, 63, 38);
+      rxve->status = avf_get_u64_bits ((void *) d, 8, 18, 0);
+      rxve->error = avf_get_u64_bits ((void *) d, 8, 26, 19);
+      rxve->ptype = avf_get_u64_bits ((void *) d, 8, 37, 30);
+      rxve->length = avf_get_u64_bits ((void *) d, 8, 63, 38);
       maybe_error |= rxve->error;
 
       /* deal with chained buffers */
@@ -431,7 +431,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       rxq->next = (rxq->next + 1) & mask;
       d = rxq->descs + rxq->next;
       n_rxv++;
-      rxq->n_bufs--;
+      rxq->n_enqueued--;
       bi++;
     }
 
