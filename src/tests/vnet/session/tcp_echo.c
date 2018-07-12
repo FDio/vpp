@@ -661,7 +661,7 @@ recv_test_chunk (echo_main_t * em, session_t * s, u8 * rx_buf)
 }
 
 void
-client_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e,
+client_handle_fifo_event_rx (echo_main_t * em, session_event_t * e,
 			     u8 * rx_buf)
 {
   session_t *s;
@@ -743,7 +743,7 @@ client_thread_fn (void *arg)
 void *
 client_rx_thread_fn (void *arg)
 {
-  session_fifo_event_t _e, *e = &_e;
+  session_event_t _e, *e = &_e;
   echo_main_t *em = &echo_main;
   static u8 *rx_buf = 0;
   svm_msg_q_msg_t msg;
@@ -1115,11 +1115,11 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 }
 
 void
-server_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
+server_handle_fifo_event_rx (echo_main_t * em, session_event_t * e)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   int n_read;
-  session_fifo_event_t evt;
+  session_event_t evt;
   svm_queue_t *q;
   session_t *session;
   int rv;
@@ -1183,7 +1183,7 @@ server_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
 void
 server_handle_event_queue (echo_main_t * em)
 {
-  session_fifo_event_t _e, *e = &_e;
+  session_event_t _e, *e = &_e;
   svm_msg_q_msg_t msg;
 
   while (1)
