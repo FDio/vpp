@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "763515b1_7bc80352",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1607,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-07-12T16:10:39Z",
+      "side": 1,
+      "message": "I\u0027ll let Damjan comment, but I suspect this is somewhat slower than what we had before. Coverity for some reason don\u0027t properly take into account the assert.",
+      "range": {
+        "startLine": 1607,
+        "startChar": 9,
+        "endLine": 1607,
+        "endChar": 22
+      },
+      "revId": "95fac1a4dd999a366dee51e5cb2b59c455729898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
