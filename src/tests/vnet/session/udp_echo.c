@@ -1113,7 +1113,7 @@ init_error_string_table (udp_echo_main_t * utm)
 }
 
 void
-server_handle_fifo_event_rx (udp_echo_main_t * utm, session_fifo_event_t * e)
+server_handle_fifo_event_rx (udp_echo_main_t * utm, session_event_t * e)
 {
   app_session_t *s;
   int rv;
@@ -1134,7 +1134,7 @@ server_handle_fifo_event_rx (udp_echo_main_t * utm, session_fifo_event_t * e)
 void
 server_handle_event_queue (udp_echo_main_t * utm)
 {
-  session_fifo_event_t *e;
+  session_event_t *e;
   svm_msg_q_msg_t msg;
 
   while (utm->state != STATE_READY)
