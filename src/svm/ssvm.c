@@ -331,10 +331,11 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   u32 pagesize = clib_mem_get_page_size ();
   ssvm_shared_header_t *sh;
   mheap_t *heap_header;
-  u32 rnd_size = 0;
+  u64 rnd_size = 0;
   u8 *heap;
 
-  rnd_size = (ssvm->ssvm_size + (pagesize - 1)) & ~pagesize;
+  rnd_size = (ssvm->ssvm_size + (pagesize - 1)) & ~(pagesize - 1);
+  rnd_size = clib_min (rnd_size, ((u64) 1 << 32) - pagesize);
   heap = mheap_alloc (0, rnd_size);
   if (heap == 0)
     {
