@@ -378,6 +378,14 @@ crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
     }
 }
 
+static_always_inline void
+adjust_buffer_to_l3(vlib_buffer_t *b)
+{
+  if (b->current_data < vnet_buffer (b)->l3_hdr_offset)
+    vlib_buffer_advance (b, (vnet_buffer (b)->l3_hdr_offset));
+}
+
+
 #endif /* __DPDK_IPSEC_H__ */
 
 /*
