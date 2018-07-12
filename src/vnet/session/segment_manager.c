@@ -153,7 +153,7 @@ int
 segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
 {
   segment_manager_main_t *smm = &segment_manager_main;
-  u32 rnd_margin = 128 << 10, seg_index;
+  u32 rnd_margin = 128 << 10, seg_index, page_size;
   segment_manager_properties_t *props;
   uword baseva = (u64) ~ 0, alloc_size;
   svm_fifo_segment_private_t *seg;
@@ -187,6 +187,8 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    * Initialize ssvm segment and svm fifo private header
    */
   segment_size = segment_size ? segment_size : props->add_segment_size;
+  page_size = clib_mem_get_page_size ();
+  segment_size = (segment_size + page_size - 1) & ~(page_size - 1);
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
     {
       seg_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
