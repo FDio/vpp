@@ -34,7 +34,6 @@ typedef enum
 {
   FIFO_EVENT_APP_RX,
   FIFO_EVENT_APP_TX,
-  FIFO_EVENT_TIMEOUT,
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
   FIFO_EVENT_RPC,
@@ -49,8 +48,6 @@ fifo_event_type_str (session_evt_type_t et)
       return "FIFO_EVENT_APP_RX";
     case FIFO_EVENT_APP_TX:
       return "FIFO_EVENT_APP_TX";
-    case FIFO_EVENT_TIMEOUT:
-      return "FIFO_EVENT_TIMEOUT";
     case FIFO_EVENT_DISCONNECT:
       return "FIFO_EVENT_DISCONNECT";
     case FIFO_EVENT_BUILTIN_RX:

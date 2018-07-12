@@ -810,27 +810,25 @@ application_get_segment_manager_properties (u32 app_index)
 static inline int
 app_enqueue_evt (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, u8 lock)
 {
-  if (PREDICT_TRUE (!svm_msg_q_is_full (mq)))
-    {
-      if (lock)
-	{
-	  svm_msg_q_add_w_lock (mq, msg);
-	  svm_msg_q_unlock (mq);
-	}
-      else if (svm_msg_q_add (mq, msg, SVM_Q_WAIT))
-	{
-	  clib_warning ("msg q add returned");
-	  if (lock)
-	    svm_msg_q_unlock (mq);
-	  return -1;
-	}
-    }
-  else
+  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
     {
       clib_warning ("evt q full");
       svm_msg_q_free_msg (mq, msg);
       if (lock)
 	svm_msg_q_unlock (mq);
+      return -1;
+    }
+
+  if (lock)
+    {
+      svm_msg_q_add_and_unlock (mq, msg);
+      return 0;
+    }
+
+  /* Even when not locking the ring, we must wait for queue mutex */
+  if (svm_msg_q_add (mq, msg, SVM_Q_WAIT))
+    {
+      clib_warning("msg q add returned");
       return -1;
     }
   return 0;

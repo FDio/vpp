@@ -78,8 +78,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       return -1;
     }
 
-  svm_msg_q_add_w_lock (mq, &msg);
-  svm_msg_q_unlock (mq);
+  svm_msg_q_add_and_unlock (mq, &msg);
   return 0;
 }
 
