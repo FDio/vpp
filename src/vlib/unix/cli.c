@@ -2670,7 +2670,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   unix_cli_file_t *cf;
   clib_file_t template = { 0 };
   vlib_main_t *vm = um->vlib_main;
-  vlib_node_t *n;
+  vlib_node_t *n = 0;
   u8 *file_desc = 0;
 
   file_desc = format (0, "%s", name);
@@ -2680,11 +2680,27 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   if (vec_len (cm->unused_cli_process_node_indices) > 0)
     {
       uword l = vec_len (cm->unused_cli_process_node_indices);
+      int i;
+      vlib_main_t *this_vlib_main;
+      u8 *old_name = 0;
 
-      /* Find node and give it new name. */
-      n = vlib_get_node (vm, cm->unused_cli_process_node_indices[l - 1]);
-      vec_free (n->name);
-      n->name = (u8 *) name;
+      /*
+       * Nodes are bulk-copied, so node name pointers are shared.
+       * Find the cli node in all graph replicas, and give all of them
+       * the same new name.
+       * Then, throw away the old shared name-vector.
+       */
+      for (i = 0; i < vec_len (vlib_mains); i++)
+	{
+	  this_vlib_main = vlib_mains[i];
+	  if (this_vlib_main == 0)
+	    continue;
+	  n = vlib_get_node (this_vlib_main,
+			     cm->unused_cli_process_node_indices[l - 1]);
+	  old_name = n->name;
+	  n->name = (u8 *) name;
+	}
+      vec_free (old_name);
 
       vlib_node_set_state (vm, n->index, VLIB_NODE_STATE_POLLING);
 
@@ -2699,10 +2715,15 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       };
 
       r.name = name;
+
+      vlib_worker_thread_barrier_sync (vm);
+
       vlib_register_node (vm, &r);
       vec_free (name);
 
       n = vlib_get_node (vm, r.index);
+      vlib_worker_thread_node_runtime_update ();
+      vlib_worker_thread_barrier_release (vm);
     }
 
   pool_get (cm->cli_file_pool, cf);
