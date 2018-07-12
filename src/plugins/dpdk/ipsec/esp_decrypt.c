@@ -143,6 +143,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	  n_left_from -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  adjust_buffer_to_l3(b0);
 	  mb0 = rte_mbuf_from_vlib_buffer(b0);
 	  esp0 = vlib_buffer_get_current (b0);
 
