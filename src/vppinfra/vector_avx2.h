@@ -165,12 +165,6 @@ u16x16_mask_last (u16x16 v, u8 n_last)
   return v & masks[16 - n_last];
 }
 
-static_always_inline u32x8
-u32x8_blend (u32x8 v0, u32x8 v1, u8 opt)
-{
-  return (u32x8) _mm256_blend_epi32 ((__m256i) v0, (__m256i) v1, opt);
-}
-
 #endif /* included_vector_avx2_h */
 
 /*
