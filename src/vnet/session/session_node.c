@@ -20,8 +20,153 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_interface.h>
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
+
+static void
+session_mq_accepted_reply_handler (void *data)
+{
+  session_accepted_reply_msg_t *mp = (session_accepted_reply_msg_t *) data;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  local_session_t *ls;
+  stream_session_t *s;
+
+  /* Server isn't interested, kill the session */
+  if (mp->retval)
+    {
+      a->app_index = mp->context;
+      a->handle = mp->handle;
+      vnet_disconnect_session (a);
+      return;
+    }
+
+  if (session_handle_is_local (mp->handle))
+    {
+      ls = application_get_local_session_from_handle (mp->handle);
+      if (!ls || ls->app_index != mp->context)
+	{
+	  clib_warning ("server %u doesn't own local handle %llu",
+			mp->context, mp->handle);
+	  return;
+	}
+      if (application_local_session_connect_notify (ls))
+	return;
+      ls->session_state = SESSION_STATE_READY;
+    }
+  else
+    {
+      s = session_get_from_handle_if_valid (mp->handle);
+      if (!s)
+	{
+	  clib_warning ("session doesn't exist");
+	  return;
+	}
+      if (s->app_index != mp->context)
+	{
+	  clib_warning ("app doesn't own session");
+	  return;
+	}
+      s->session_state = SESSION_STATE_READY;
+    }
+}
+
+static void
+session_mq_reset_reply_handler (void *data)
+{
+  session_reset_reply_msg_t *mp;
+  application_t *app;
+  stream_session_t *s;
+  u32 index, thread_index;
+
+  mp = (session_reset_reply_msg_t *) data;
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  session_parse_handle (mp->handle, &index, &thread_index);
+  s = session_get_if_valid (index, thread_index);
+  if (s == 0 || app->index != s->app_index)
+    {
+      clib_warning ("Invalid session!");
+      return;
+    }
+
+  /* Client objected to resetting the session, log and continue */
+  if (mp->retval)
+    {
+      clib_warning ("client retval %d", mp->retval);
+      return;
+    }
+
+  /* This comes as a response to a reset, transport only waiting for
+   * confirmation to remove connection state, no need to disconnect */
+  stream_session_cleanup (s);
+}
+
+static void
+session_mq_disconnected_handler (void *data)
+{
+  session_disconnected_reply_msg_t *rmp;
+  vnet_disconnect_args_t _a, *a = &_a;
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_disconnected_msg_t *mp;
+  session_event_t *evt;
+  application_t *app;
+  int rv = 0;
+
+  mp = (session_disconnected_msg_t *) data;
+  app = application_lookup (mp->client_index);
+  if (app)
+    {
+      a->handle = mp->handle;
+      a->app_index = app->index;
+      rv = vnet_disconnect_session (a);
+    }
+  else
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    }
+
+  svm_msg_q_lock_and_alloc_msg_w_ring (app->event_queue,
+				       SESSION_MQ_CTRL_EVT_RING,
+				       SVM_Q_WAIT, msg);
+  svm_msg_q_unlock (app->event_queue);
+  evt = svm_msg_q_msg_data (app->event_queue, msg);
+  memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+  rmp = (session_disconnected_reply_msg_t *) evt->data;
+  rmp->handle = mp->handle;
+  rmp->context = mp->context;
+  rmp->retval = rv;
+  svm_msg_q_add (app->event_queue, msg, SVM_Q_WAIT);
+}
+
+static void
+session_mq_disconnected_reply_handler (void *data)
+{
+  session_disconnected_reply_msg_t *mp;
+  vnet_disconnect_args_t _a, *a = &_a;
+  application_t *app;
+
+  mp = (session_disconnected_reply_msg_t *) data;
+
+  /* Client objected to disconnecting the session, log and continue */
+  if (mp->retval)
+    {
+      clib_warning ("client retval %d", mp->retval);
+      return;
+    }
+
+  /* Disconnect has been confirmed. Confirm close to transport */
+  app = application_lookup (mp->context);
+  if (app)
+    {
+      a->handle = mp->handle;
+      a->app_index = app->index;
+      vnet_disconnect_session (a);
+    }
+}
 
 vlib_node_registration_t session_queue_node;
 
@@ -43,8 +188,6 @@ format_session_queue_trace (u8 * s, va_list * args)
 	      t->session_index, t->server_thread_index);
   return s;
 }
-
-vlib_node_registration_t session_queue_node;
 
 #define foreach_session_queue_error		\
 _(TX, "Packets transmitted")                  	\
@@ -71,7 +214,6 @@ enum
   SESSION_TX_NO_DATA,
   SESSION_TX_OK
 };
-
 
 static void
 session_tx_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -369,7 +511,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
 always_inline int
 session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
-				session_fifo_event_t * e,
+				session_event_t * e,
 				stream_session_t * s, int *n_tx_packets,
 				u8 peek_data)
 {
@@ -538,7 +680,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 int
 session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      session_fifo_event_t * e,
+			      session_event_t * e,
 			      stream_session_t * s, int *n_tx_pkts)
 {
   return session_tx_fifo_read_and_snd_i (vm, node, e, s, n_tx_pkts, 1);
@@ -546,7 +688,7 @@ session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 int
 session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 session_fifo_event_t * e,
+				 session_event_t * e,
 				 stream_session_t * s, int *n_tx_pkts)
 {
   return session_tx_fifo_read_and_snd_i (vm, node, e, s, n_tx_pkts, 0);
@@ -555,7 +697,7 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 int
 session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
-				  session_fifo_event_t * e,
+				  session_event_t * e,
 				  stream_session_t * s, int *n_tx_pkts)
 {
   application_t *app;
@@ -565,7 +707,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 }
 
 always_inline stream_session_t *
-session_event_get_session (session_fifo_event_t * e, u8 thread_index)
+session_event_get_session (session_event_t * e, u8 thread_index)
 {
   return session_get_if_valid (e->fifo->master_session_index, thread_index);
 }
@@ -576,8 +718,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   u32 thread_index = vm->thread_index, n_to_dequeue, n_events;
-  session_fifo_event_t *pending_events, *e;
-  session_fifo_event_t *fifo_events;
+  session_event_t *pending_events, *e;
+  session_event_t *fifo_events;
   svm_msg_q_msg_t _msg, *msg = &_msg;
   f64 now = vlib_time_now (vm);
   int n_tx_packets = 0, i, rv;
@@ -644,7 +786,7 @@ skip_dequeue:
   for (i = 0; i < n_events; i++)
     {
       stream_session_t *s;	/* $$$ prefetch 1 ahead maybe */
-      session_fifo_event_t *e;
+      session_event_t *e;
       u32 to_dequeue;
 
       e = &fifo_events[i];
@@ -715,7 +857,20 @@ skip_dequeue:
 	  fp = e->rpc_args.fp;
 	  (*fp) (e->rpc_args.arg);
 	  break;
-
+	case SESSION_CTRL_EVT_DISCONNECTED:
+	  session_mq_disconnected_handler (e->data);
+	  break;
+	case SESSION_CTRL_EVT_ACCEPTED_REPLY:
+	  session_mq_accepted_reply_handler (e->data);
+	  break;
+	case SESSION_CTRL_EVT_CONNECTED_REPLY:
+	  break;
+	case SESSION_CTRL_EVT_DISCONNECTED_REPLY:
+	  session_mq_disconnected_reply_handler (e->data);
+	  break;
+	case SESSION_CTRL_EVT_RESET_REPLY:
+	  session_mq_reset_reply_handler (e->data);
+	  break;
 	default:
 	  clib_warning ("unhandled event type %d", e->event_type);
 	}
@@ -751,7 +906,7 @@ dump_thread_0_event_queue (void)
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   vlib_main_t *vm = &vlib_global_main;
   u32 my_thread_index = vm->thread_index;
-  session_fifo_event_t _e, *e = &_e;
+  session_event_t _e, *e = &_e;
   svm_msg_q_ring_t *ring;
   stream_session_t *s0;
   svm_msg_q_msg_t *msg;
@@ -804,7 +959,7 @@ dump_thread_0_event_queue (void)
 }
 
 static u8
-session_node_cmp_event (session_fifo_event_t * e, svm_fifo_t * f)
+session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
 {
   stream_session_t *s;
   switch (e->event_type)
@@ -834,11 +989,11 @@ session_node_cmp_event (session_fifo_event_t * e, svm_fifo_t * f)
 }
 
 u8
-session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e)
+session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   svm_msg_q_t *mq;
-  session_fifo_event_t *pending_event_vector, *evt;
+  session_event_t *pending_event_vector, *evt;
   int i, index, found = 0;
   svm_msg_q_msg_t *msg;
   svm_msg_q_ring_t *ring;

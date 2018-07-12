@@ -200,10 +200,11 @@ svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
 }
 
 void
-svm_msg_q_add_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
+svm_msg_q_add_and_unlock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   ASSERT (svm_msq_q_msg_is_valid (mq, msg));
   svm_queue_add_raw (mq->q, (u8 *) msg);
+  svm_msg_q_unlock (mq);
 }
 
 int
