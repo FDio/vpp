@@ -701,7 +701,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
-	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
+	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 
       dpdk_device_setup (xd);
@@ -1605,9 +1605,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		    xd = &dm->devices[j];
 		  }
 	      }
-	    ASSERT (xd != NULL);
-
-	    if (xd->pmd == VNET_DPDK_PMD_BOND)
+	    if (xd != NULL && xd->pmd == VNET_DPDK_PMD_BOND)
 	      {
 		u8 addr[6];
 		dpdk_portid_t slink[16];
