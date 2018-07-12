@@ -259,6 +259,9 @@ stat_poll_loop (stat_client_main_t * sm)
 		  switch (n->type)
 		    {
 		    default:
+		      vec_free (n->name);
+		      vec_free (n->next_nodes);
+		      vec_free (n);
 		      continue;
 
 		    case VLIB_NODE_TYPE_INTERNAL:
