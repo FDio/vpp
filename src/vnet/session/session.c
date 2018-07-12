@@ -31,7 +31,7 @@ static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 			    session_evt_type_t evt_type)
 {
-  session_fifo_event_t *evt;
+  session_event_t *evt;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
   u32 tries = 0, max_tries;
@@ -57,7 +57,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -2;
     }
-  evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = evt_type;
   switch (evt_type)
     {
@@ -78,8 +78,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       return -1;
     }
 
-  svm_msg_q_add_w_lock (mq, &msg);
-  svm_msg_q_unlock (mq);
+  svm_msg_q_add_and_unlock (mq, &msg);
   return 0;
 }
 
@@ -1095,7 +1094,7 @@ stream_session_disconnect (stream_session_t * s)
 {
   u32 thread_index = vlib_get_thread_index ();
   session_manager_main_t *smm = &session_manager_main;
-  session_fifo_event_t *evt;
+  session_event_t *evt;
 
   if (!s)
     return;
@@ -1197,7 +1196,7 @@ session_tx_is_dgram (stream_session_t * s)
 void
 session_vpp_event_queues_allocate (session_manager_main_t * smm)
 {
-  u32 evt_q_length = 2048, evt_size = sizeof (session_fifo_event_t);
+  u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
   ssvm_private_t *eqs = &smm->evt_qs_segment;
   api_main_t *am = &api_main;
   u64 eqs_size = 64 << 20;

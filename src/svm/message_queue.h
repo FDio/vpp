@@ -163,7 +163,7 @@ int svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait);
  * @param msg		message (pointer to ring position) to be enqueued
  * @return		success status
  */
-void svm_msg_q_add_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
+void svm_msg_q_add_and_unlock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 
 /**
  * Consumer dequeue one message from queue

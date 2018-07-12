@@ -137,6 +137,7 @@ typedef enum
   _(IS_PROXY, "Application is proxying")			\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")		\
+  _(USE_MQ_FOR_CTRL_MSGS, "Use message queue for ctr msgs")	\
 
 typedef enum _app_options
 {
@@ -197,6 +198,102 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_accepted_msg_
+{
+  u32 context;
+  u64 listener_handle;
+  u64 handle;
+  u64 server_rx_fifo;
+  u64 server_tx_fifo;
+  u64 vpp_event_queue_address;
+  u64 server_event_queue_address;
+  u16 port;
+  u8 is_ip4;
+  u8 ip[16];
+} session_accepted_msg_t;
+
+typedef struct session_accepted_reply_msg_
+{
+  u32 context;
+  i32 retval;
+  u64 handle;
+} session_accepted_reply_msg_t;
+
+/* Make sure this is not too large, otherwise it won't fit when dequeued in
+ * the session queue node */
+STATIC_ASSERT (sizeof (session_accepted_reply_msg_t) <= 16, "accept reply");
+
+typedef struct session_connected_msg_
+{
+  u32 context;
+  i32 retval;
+  u64 handle;
+  u64 server_rx_fifo;
+  u64 server_tx_fifo;
+  u64 vpp_event_queue_address;
+  u64 client_event_queue_address;
+  u32 segment_size;
+  u8 segment_name_length;
+  u8 segment_name[64];
+  u8 lcl_ip[16];
+  u8 is_ip4;
+  u16 lcl_port;
+} session_connected_msg_t;
+
+typedef struct session_disconnected_msg_
+{
+  u32 client_index;
+  u32 context;
+  u64 handle;
+} session_disconnected_msg_t;
+
+typedef struct session_disconnected_reply_msg_
+{
+  u32 context;
+  i32 retval;
+  u64 handle;
+} session_disconnected_reply_msg_t;
+
+typedef struct session_reset_msg_
+{
+  u32 client_index;
+  u32 context;
+  u64 handle;
+} session_reset_msg_t;
+
+typedef struct session_reset_reply_msg_
+{
+  u32 client_index;
+  u32 context;
+  i32 retval;
+  u64 handle;
+} session_reset_reply_msg_t;
+
+typedef struct app_session_event_
+{
+  svm_msg_q_msg_t msg;
+  session_event_t *evt;
+} app_session_evt_t;
+
+static inline void
+app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
+			   u8 evt_type)
+{
+  svm_msg_q_lock_and_alloc_msg_w_ring (mq,
+				       SESSION_MQ_CTRL_EVT_RING,
+				       SVM_Q_WAIT, &app_evt->msg);
+  svm_msg_q_unlock (mq);
+  app_evt->evt = svm_msg_q_msg_data (mq, &app_evt->msg);
+  memset (app_evt->evt, 0, sizeof (*app_evt->evt));
+  app_evt->evt->event_type = evt_type;
+}
+
+static inline void
+app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
+{
+  svm_msg_q_add (mq, &app_evt->msg, SVM_Q_WAIT);
+}
+
 /**
  * Send fifo io event to vpp worker thread
  *
@@ -213,7 +310,7 @@ static inline int
 app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 			u8 noblock)
 {
-  session_fifo_event_t *evt;
+  session_event_t *evt;
   svm_msg_q_msg_t msg;
 
   if (noblock)
@@ -231,11 +328,10 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	  svm_msg_q_unlock (mq);
 	  return -2;
 	}
-      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->fifo = f;
       evt->event_type = evt_type;
-      svm_msg_q_add_w_lock (mq, &msg);
-      svm_msg_q_unlock (mq);
+      svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
     }
   else
@@ -247,13 +343,12 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	  svm_msg_q_wait (mq);
 	  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
 	}
-      evt = (session_fifo_event_t *) svm_msg_q_msg_data (mq, &msg);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->fifo = f;
       evt->event_type = evt_type;
       if (svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq);
-      svm_msg_q_add_w_lock (mq, &msg);
-      svm_msg_q_unlock (mq);
+      svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
     }
 }

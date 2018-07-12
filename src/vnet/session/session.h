@@ -34,10 +34,17 @@ typedef enum
 {
   FIFO_EVENT_APP_RX,
   FIFO_EVENT_APP_TX,
-  FIFO_EVENT_TIMEOUT,
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
   FIFO_EVENT_RPC,
+  SESSION_CTRL_EVT_ACCEPTED,
+  SESSION_CTRL_EVT_ACCEPTED_REPLY,
+  SESSION_CTRL_EVT_CONNECTED,
+  SESSION_CTRL_EVT_CONNECTED_REPLY,
+  SESSION_CTRL_EVT_DISCONNECTED,
+  SESSION_CTRL_EVT_DISCONNECTED_REPLY,
+  SESSION_CTRL_EVT_RESET,
+  SESSION_CTRL_EVT_RESET_REPLY
 } session_evt_type_t;
 
 static inline const char *
@@ -49,8 +56,6 @@ fifo_event_type_str (session_evt_type_t et)
       return "FIFO_EVENT_APP_RX";
     case FIFO_EVENT_APP_TX:
       return "FIFO_EVENT_APP_TX";
-    case FIFO_EVENT_TIMEOUT:
-      return "FIFO_EVENT_TIMEOUT";
     case FIFO_EVENT_DISCONNECT:
       return "FIFO_EVENT_DISCONNECT";
     case FIFO_EVENT_BUILTIN_RX:
@@ -112,7 +117,7 @@ typedef struct
       u8 data[0];
     };
   };
-} __clib_packed session_fifo_event_t;
+} __clib_packed session_event_t;
 /* *INDENT-ON* */
 
 #define SESSION_MSG_NULL { }
@@ -168,14 +173,14 @@ typedef struct _session_manager_main session_manager_main_t;
 
 typedef int
   (session_fifo_rx_fn) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			session_fifo_event_t * e0, stream_session_t * s0,
+			session_event_t * e0, stream_session_t * s0,
 			int *n_tx_pkts);
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
-u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e);
+u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
 struct _session_manager_main
 {
@@ -195,13 +200,13 @@ struct _session_manager_main
   u32 **tx_buffers;
 
   /** Per worker-thread vector of partially read events */
-  session_fifo_event_t **free_event_vector;
+  session_event_t **free_event_vector;
 
   /** per-worker active event vectors */
-  session_fifo_event_t **pending_event_vector;
+  session_event_t **pending_event_vector;
 
   /** per-worker postponed disconnects */
-  session_fifo_event_t **pending_disconnects;
+  session_event_t **pending_disconnects;
 
   /** per-worker session context */
   session_tx_context_t *ctx;
