@@ -605,7 +605,7 @@ segment_manager_evt_q_expected_size (u32 q_len)
   u32 fifo_evt_size, notif_q_size, q_hdrs;
   u32 msg_q_sz, fifo_evt_ring_sz, session_ntf_ring_sz;
 
-  fifo_evt_size = 1 << max_log2 (sizeof (session_fifo_event_t));
+  fifo_evt_size = 1 << max_log2 (sizeof (session_event_t));
   notif_q_size = clib_max (16, q_len >> 4);
 
   msg_q_sz = q_len * sizeof (svm_msg_q_msg_t);
@@ -630,7 +630,7 @@ segment_manager_alloc_queue (svm_fifo_segment_private_t * segment,
   svm_msg_q_t *q;
   void *oldheap;
 
-  fifo_evt_size = sizeof (session_fifo_event_t);
+  fifo_evt_size = sizeof (session_event_t);
   notif_q_size = clib_max (16, queue_size >> 4);
   /* *INDENT-OFF* */
   svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {

@@ -20,7 +20,7 @@ format_stream_session_fifos (u8 * s, va_list * args)
 {
   stream_session_t *ss = va_arg (*args, stream_session_t *);
   int verbose = va_arg (*args, int);
-  session_fifo_event_t _e, *e = &_e;
+  session_event_t _e, *e = &_e;
   u8 found;
 
   if (!ss->server_rx_fifo || !ss->server_tx_fifo)
