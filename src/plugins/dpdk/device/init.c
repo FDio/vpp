@@ -436,6 +436,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
 	    case VNET_DPDK_PMD_MLX5:
+	    case VNET_DPDK_PMD_QEDE:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      break;
 
@@ -834,14 +835,14 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Cavium Network Adapter */
     else if (d->vendor_id == 0x177d && d->device_id == 0x9712)
       ;
+    /* Cavium FastlinQ QL41000 Series */
+    else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
+      ;
     /* Mellanox  */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
       {
         continue;
       }
-    /* Cavium FastlinQ QL41000 Series */
-    else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
-      ;
     else
       {
         dpdk_log_warn ("Unsupported PCI device 0x%04x:0x%04x found "
