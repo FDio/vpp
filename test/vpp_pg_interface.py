@@ -217,7 +217,9 @@ class VppPGInterface(VppInterface):
             capture = self._get_capture(remaining_time, filter_out_fn)
             elapsed_time = time.time() - before
             if capture:
-                if len(capture.res) == expected_count:
+                if str(expected_count) == 'nonzero':
+                    return capture
+                elif len(capture.res) == expected_count:
                     # bingo, got the packets we expected
                     return capture
                 elif len(capture.res) > expected_count:
