@@ -194,8 +194,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   sa.spi = ntohl (mp->spi);
   sa.protocol = mp->protocol;
   /* check for unsupported crypto-alg */
-  if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_NONE ||
-      mp->crypto_algorithm >= IPSEC_CRYPTO_N_ALG)
+  if (mp->crypto_algorithm >= IPSEC_CRYPTO_N_ALG)
     {
       clib_warning ("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg,
 		    mp->crypto_algorithm);
@@ -527,7 +526,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
     case IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO:
     case IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO:
       if (mp->alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
-	  mp->alg > IPSEC_CRYPTO_N_ALG)
+	  mp->alg >= IPSEC_CRYPTO_N_ALG)
 	{
 	  rv = VNET_API_ERROR_UNIMPLEMENTED;
 	  goto out;
@@ -535,7 +534,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
       break;
     case IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG:
     case IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG:
-      if (mp->alg > IPSEC_INTEG_N_ALG)
+      if (mp->alg >= IPSEC_INTEG_N_ALG)
 	{
 	  rv = VNET_API_ERROR_UNIMPLEMENTED;
 	  goto out;
