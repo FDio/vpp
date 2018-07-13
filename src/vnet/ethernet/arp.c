@@ -633,7 +633,13 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
 	  /* Refuse to over-write static arp. */
 	  if (!is_static && (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC))
-	    return -2;
+	    {
+	      /* if MAC address match, still check to send event */
+	      if (0 == memcmp (e->ethernet_address,
+			       a->ethernet, sizeof (e->ethernet_address)))
+		goto check_customers;
+	      return -2;
+	    }
 	  make_new_arp_cache_entry = 0;
 	}
     }
@@ -685,11 +691,12 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  goto check_customers;
 	}
 
-      /* Update time stamp and ethernet address. */
+      /* Update ethernet address. */
       clib_memcpy (e->ethernet_address, a->ethernet,
 		   sizeof (e->ethernet_address));
     }
 
+  /* Update time stamp and flags. */
   e->time_last_updated = vlib_time_now (vm);
   if (is_static)
     {
@@ -2342,13 +2349,16 @@ arp_term_l2bd (vlib_main_t * vm,
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
 	  arp0 = (ethernet_arp_header_t *) l3h0;
 
-	  if (PREDICT_FALSE ((ethertype0 != ETHERNET_TYPE_ARP) ||
-			     (arp0->opcode !=
-			      clib_host_to_net_u16
-			      (ETHERNET_ARP_OPCODE_request))))
+	  if (ethertype0 != ETHERNET_TYPE_ARP)
 	    goto check_ip6_nd;
 
-	  /* Must be ARP request packet here */
+	  if ((arp0->opcode !=
+	       clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request)) &&
+	      (arp0->opcode !=
+	       clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply)))
+	    goto check_ip6_nd;
+
+	  /* Must be ARP request/reply packet here */
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (p0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
@@ -2357,7 +2367,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	      clib_memcpy (t0, l3h0, sizeof (ethernet_arp_input_trace_t));
 	    }
 
-	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  error0 = 0;
 	  error0 =
 	    (arp0->l2_type !=
 	     clib_net_to_host_u16 (ETHERNET_ARP_HARDWARE_TYPE_ethernet)
@@ -2379,8 +2389,13 @@ arp_term_l2bd (vlib_main_t * vm,
 		       sizeof (eth0->src_address)) ||
 	       ethernet_address_cast (arp0->ip4_over_ethernet[0].ethernet)))
 	    {
-	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
-	      goto drop;
+	      /* VRRP virtual MAC may be different to SMAC in ARP reply */
+	      if (memcmp (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
+			  sizeof (vrrp_prefix)))
+		{
+		  error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
+		  goto drop;
+		}
 	    }
 	  if (PREDICT_FALSE
 	      (ip4_address_is_multicast (&arp0->ip4_over_ethernet[0].ip4)))

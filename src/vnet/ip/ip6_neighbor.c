@@ -794,7 +794,13 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
       n = pool_elt_at_index (nm->neighbor_pool, p[0]);
       /* Refuse to over-write static neighbor entry. */
       if (!is_static && (n->flags & IP6_NEIGHBOR_FLAG_STATIC))
-	return -2;
+	{
+	  /* if MAC address match, still check to send event */
+	  if (0 == memcmp (n->link_layer_address,
+			   link_layer_address, n_bytes_link_layer_address))
+	    goto check_customers;
+	  return -2;
+	}
       make_new_nd_cache_entry = 0;
     }
 
