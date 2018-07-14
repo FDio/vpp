@@ -429,6 +429,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	    {
 	      vnet_update_l2_len (b);
 	      vnet_buffer (b)->sw_if_index[VLIB_TX] = L2INPUT_BVI;
+	      next_index = VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT;
 	    }
 	  else
 	    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -616,6 +617,11 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
     (vm, hw_if->tx_node_index,
      "ethernet-input", VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
   ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+
+  slot = vlib_node_add_named_next_with_slot
+    (vm, hw_if->tx_node_index,
+     "l2-input", VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT);
+  ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT);
 
   {
     vnet_sw_interface_t *si = vnet_get_hw_sw_interface (vnm, hw_if_index);
