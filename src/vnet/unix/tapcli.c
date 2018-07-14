@@ -275,7 +275,7 @@ tapcli_rx_iface (vlib_main_t * vm,
   vnet_main_t *vnm;
   vnet_sw_interface_t *si;
   u8 admin_down;
-  u32 next = node->cached_next_index;
+  u32 next = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_left_to_next, next_index;
   u32 *to_next;
 
