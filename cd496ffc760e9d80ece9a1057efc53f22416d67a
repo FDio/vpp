@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c2206bb_556c3f49",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-14T20:30:41Z",
+      "side": 1,
+      "message": "I believe each interface loopN would have its own instance of loopN-tx node.  All packets in the frame should have the same sw_if_index for TX so we can just read it from the first packet and then use it for all sub-subsequent packets. The checks for sw_if_index being the same among packets should not be required. The checks for sw_if_index being in a bridge is needed once only.",
+      "revId": "cd496ffc760e9d80ece9a1057efc53f22416d67a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
