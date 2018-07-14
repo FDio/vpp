@@ -564,7 +564,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   l2_input_config_t *config;
   l2_bridge_domain_t *bd_config;
   i32 l2_if_adjust = 0;
-  u32 slot;
   vnet_device_class_t *dev_class;
 
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
@@ -588,13 +587,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
 	  /* delete the l2fib entry for the bvi interface */
 	  l2fib_del_entry (hi->hw_address, config->bd_index, sw_if_index);
-
-	  /* Make loop output node send packet back to ethernet-input node */
-	  slot =
-	    vlib_node_add_named_next_with_slot (vm, hi->tx_node_index,
-						"ethernet-input",
-						VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
-	  ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 
 	  /* since this is a no longer BVI interface do not to flood to it */
 	  si = vnet_get_sw_interface (vnm, sw_if_index);
@@ -696,13 +688,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
 	      /* Disable learning by default. no use since l2fib entry is static. */
 	      config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;
-
-	      /* Make loop output node send packet to l2-input node */
-	      slot =
-		vlib_node_add_named_next_with_slot (vm, hi->tx_node_index,
-						    "l2-input",
-						    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
-	      ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 
 	      /* since this is a BVI interface we want to flood to it */
 	      si = vnet_get_sw_interface (vnm, sw_if_index);
