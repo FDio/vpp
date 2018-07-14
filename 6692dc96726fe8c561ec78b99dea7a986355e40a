@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83f2f6bf_a7d36b8b",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-14T01:13:34Z",
+      "side": 1,
+      "message": "Your change would make this check to set bvi_flag not \ncorrect. I wonder if there is another way we can use to \ncheck if loopback is used as a BVI or not.  One way is \nto check if it is in a BD using sw_if_index.  I suppose \nwe can and get sw_if_index outside of the while loop \nfrom the first packet in the first frame since it should \nnot change anyway. Once we have the sw_if_index, it \nwould be something like:\n  config \u003d l2input_intf_config (sw_if_index);\n  bvi_flag \u003d (config-\u003ebridge);\nThe down side would be, what if someone put a loopback \ninto a BD without making it a BVI. I don\u0027t know how \nloopback can be used in BD in non-BVI mode anyway, so it \nwould be a moot point.",
+      "range": {
+        "startLine": 405,
+        "startChar": 33,
+        "endLine": 405,
+        "endChar": 45
+      },
+      "revId": "6692dc96726fe8c561ec78b99dea7a986355e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
