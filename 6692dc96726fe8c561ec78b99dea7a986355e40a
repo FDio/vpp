@@ -22,6 +22,30 @@
       "revId": "6692dc96726fe8c561ec78b99dea7a986355e40a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d15cc5d9_024e967c",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-07-14T02:10:04Z",
+      "side": 1,
+      "message": "Yeah, thanks, I see what you mean. That\u0027s why this is a DRAFT patch... (;-)... \n\nThis started off as a \"ping6\" problem, morphed into a graph dispatcher problem, and finally ended up as an L2- + loopback issue. We have minimal time to clean it up before the 18.07 release throttle is pulled / some cherry-pick annoyance is involved.",
+      "parentUuid": "83f2f6bf_a7d36b8b",
+      "range": {
+        "startLine": 405,
+        "startChar": 33,
+        "endLine": 405,
+        "endChar": 45
+      },
+      "revId": "6692dc96726fe8c561ec78b99dea7a986355e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
