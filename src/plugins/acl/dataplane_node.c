@@ -144,11 +144,9 @@ acl_fa_node_fn (vlib_main_t * vm,
        * Extract the L3/L4 matching info into a 5-tuple structure.
        */
 
-      acl_plugin_fill_5tuple_inline (&acl_main, lc_index0, b[0], is_ip6,
-				     is_input, is_l2_path,
-				     (fa_5tuple_opaque_t *) & fa_5tuple);
-      fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-      fa_5tuple.pkt.mask_type_index_lsb = ~0;
+      acl_fill_5tuple (&acl_main, sw_if_index0, b[0], is_ip6,
+		       is_input, is_l2_path, &fa_5tuple);
+
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning
 	("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
