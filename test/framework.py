@@ -83,7 +83,7 @@ def pump_output(testclass):
     """ pump output from vpp stdout/stderr to proper queues """
     stdout_fragment = ""
     stderr_fragment = ""
-    while not testclass.pump_thread_stop_flag.wait(0):
+    while not testclass.pump_thread_stop_flag.is_set():
         readable = select.select([testclass.vpp.stdout.fileno(),
                                   testclass.vpp.stderr.fileno(),
                                   testclass.pump_thread_wakeup_pipe[0]],
@@ -127,6 +127,60 @@ def pump_output(testclass):
 def running_extended_tests():
     s = os.getenv("EXTENDED_TESTS", "n")
     return True if s.lower() in ("y", "yes", "1") else False
+
+
+class Filter_by_test_option:
+    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
+        self.filter_file_name = filter_file_name
+        self.filter_class_name = filter_class_name
+        self.filter_func_name = filter_func_name
+
+    def __call__(self, file_name, class_name, func_name):
+        if file_name == 'test_ipsec_tun_if_esp.py' or file_name == 'test_ip6.py':
+            return True
+        else:
+            return False
+        if self.filter_file_name and file_name != self.filter_file_name:
+            return False
+        if self.filter_class_name and class_name != self.filter_class_name:
+            return False
+        if self.filter_func_name and func_name != self.filter_func_name:
+            return False
+        return True
+
+
+test_option = "TEST"
+
+
+def parse_test_option():
+    f = os.getenv(test_option, None)
+    filter_file_name = None
+    filter_class_name = None
+    filter_func_name = None
+    if f:
+        if '.' in f:
+            parts = f.split('.')
+            if len(parts) > 3:
+                raise Exception("Unrecognized %s option: %s" %
+                                (test_option, f))
+            if len(parts) > 2:
+                if parts[2] not in ('*', ''):
+                    filter_func_name = parts[2]
+            if parts[1] not in ('*', ''):
+                filter_class_name = parts[1]
+            if parts[0] not in ('*', ''):
+                if parts[0].startswith('test_'):
+                    filter_file_name = parts[0]
+                else:
+                    filter_file_name = 'test_%s' % parts[0]
+        else:
+            if f.startswith('test_'):
+                filter_file_name = f
+            else:
+                filter_file_name = 'test_%s' % f
+    if filter_file_name:
+        filter_file_name = '%s.py' % filter_file_name
+    return filter_file_name, filter_class_name, filter_func_name
 
 
 def running_on_centos():
@@ -391,8 +445,9 @@ class VppTestCase(unittest.TestCase):
                 raw_input("When done debugging, press ENTER to kill the "
                           "process and finish running the testcase...")
 
-        os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
+        # first signal that we want to stop the pump thread, then wake it up
         cls.pump_thread_stop_flag.set()
+        os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
         if hasattr(cls, 'pump_thread'):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
@@ -869,7 +924,7 @@ class TestCasePrinter(object):
     def print_test_case_heading_if_first_time(self, case):
         if case.__class__ not in self._test_case_set:
             print(double_line_delim)
-            print(colorize(getdoc(case.__class__).splitlines()[0], YELLOW))
+            print(colorize(getdoc(case.__class__).splitlines()[0], GREEN))
             print(double_line_delim)
             self._test_case_set.add(case.__class__)
 
@@ -1099,22 +1154,6 @@ class VppTestResult(unittest.TestResult):
             self.stream.writeln("%s" % err)
 
 
-class Filter_by_test_option:
-    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
-        self.filter_file_name = filter_file_name
-        self.filter_class_name = filter_class_name
-        self.filter_func_name = filter_func_name
-
-    def __call__(self, file_name, class_name, func_name):
-        if self.filter_file_name and file_name != self.filter_file_name:
-            return False
-        if self.filter_class_name and class_name != self.filter_class_name:
-            return False
-        if self.filter_func_name and func_name != self.filter_func_name:
-            return False
-        return True
-
-
 class VppTestRunner(unittest.TextTestRunner):
     """
     A basic test runner implementation which prints results to standard error.
@@ -1138,60 +1177,6 @@ class VppTestRunner(unittest.TextTestRunner):
         # as we run only one test at the same time
         VppTestResult.test_framework_failed_pipe = failed_pipe
 
-    test_option = "TEST"
-
-    def parse_test_option(self):
-        f = os.getenv(self.test_option, None)
-        filter_file_name = None
-        filter_class_name = None
-        filter_func_name = None
-        if f:
-            if '.' in f:
-                parts = f.split('.')
-                if len(parts) > 3:
-                    raise Exception("Unrecognized %s option: %s" %
-                                    (self.test_option, f))
-                if len(parts) > 2:
-                    if parts[2] not in ('*', ''):
-                        filter_func_name = parts[2]
-                if parts[1] not in ('*', ''):
-                    filter_class_name = parts[1]
-                if parts[0] not in ('*', ''):
-                    if parts[0].startswith('test_'):
-                        filter_file_name = parts[0]
-                    else:
-                        filter_file_name = 'test_%s' % parts[0]
-            else:
-                if f.startswith('test_'):
-                    filter_file_name = f
-                else:
-                    filter_file_name = 'test_%s' % f
-        return filter_file_name, filter_class_name, filter_func_name
-
-    @staticmethod
-    def filter_tests(tests, filter_cb):
-        result = unittest.suite.TestSuite()
-        for t in tests:
-            if isinstance(t, unittest.suite.TestSuite):
-                # this is a bunch of tests, recursively filter...
-                x = VppTestRunner.filter_tests(t, filter_cb)
-                if x.countTestCases() > 0:
-                    result.addTest(x)
-            elif isinstance(t, unittest.TestCase):
-                # this is a single test
-                parts = t.id().split('.')
-                # t.id() for common cases like this:
-                # test_classifier.TestClassifier.test_acl_ip
-                # apply filtering only if it is so
-                if len(parts) == 3:
-                    if not filter_cb(parts[0], parts[1], parts[2]):
-                        continue
-                result.addTest(t)
-            else:
-                # unexpected object, don't touch it
-                result.addTest(t)
-        return result
-
     def run(self, test):
         """
         Run the tests
@@ -1200,20 +1185,10 @@ class VppTestRunner(unittest.TextTestRunner):
 
         """
         faulthandler.enable()  # emit stack trace to stderr if killed by signal
-        print("Running tests using custom test runner")  # debug message
-        filter_file, filter_class, filter_func = self.parse_test_option()
-        print("Active filters: file=%s, class=%s, function=%s" % (
-            filter_file, filter_class, filter_func))
-        filter_cb = Filter_by_test_option(
-            filter_file, filter_class, filter_func)
-        filtered = self.filter_tests(test, filter_cb)
-        print("%s out of %s tests match specified filters" % (
-            filtered.countTestCases(), test.countTestCases()))
-        if not running_extended_tests():
-            print("Not running extended tests (some tests will be skipped)")
+
         # super-ugly hack #2
-        VppTestResult.test_suite = filtered
-        return super(VppTestRunner, self).run(filtered)
+        # VppTestResult.test_suite = test
+        return super(VppTestRunner, self).run(test)
 
 
 class Worker(Thread):
