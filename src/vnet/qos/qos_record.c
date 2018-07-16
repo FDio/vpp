@@ -44,9 +44,23 @@ qos_record_feature_config (u32 sw_if_index,
 				  enable);
       break;
     case QOS_SOURCE_MPLS:
+      vnet_feature_enable_disable ("mpls-input", "mpls-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      break;
     case QOS_SOURCE_VLAN:
+      vnet_feature_enable_disable ("ip6-unicast", "vlan-ip6-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      vnet_feature_enable_disable ("ip6-multicast", "vlan-ip6-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      vnet_feature_enable_disable ("ip4-unicast", "vlan-ip4-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      vnet_feature_enable_disable ("ip4-multicast", "vlan-ip4-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      vnet_feature_enable_disable ("mpls-input", "vlan-mpls-qos-record",
+				   sw_if_index, enable, NULL, 0);
+      break;
     case QOS_SOURCE_EXT:
-      // not implemented yet
+      /* not a valid option for recording */
       break;
     }
 }
@@ -119,7 +133,7 @@ typedef struct qos_record_trace_t_
 static inline uword
 qos_record_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, int is_ip6, int is_l2)
+		   vlib_frame_t * frame, dpo_proto_t dproto, int is_l2)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -164,23 +178,42 @@ qos_record_inline (vlib_main_t * vm,
 	      ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
 
 	      if (ethertype == ETHERNET_TYPE_IP4)
-		is_ip6 = 0;
+		dproto = DPO_PROTO_IP4;
 	      else if (ethertype == ETHERNET_TYPE_IP6)
-		is_ip6 = 1;
+		dproto = DPO_PROTO_IP6;
+	      else if (ethertype == ETHERNET_TYPE_MPLS)
+		dproto = DPO_PROTO_MPLS;
 	      else
 		goto non_ip;
 	    }
 
-	  if (is_ip6)
+	  if (DPO_PROTO_IP6 == dproto)
 	    {
 	      ip6_0 = vlib_buffer_get_current (b0);
 	      qos0 = ip6_traffic_class_network_order (ip6_0);
 	    }
-	  else
+	  else if (DPO_PROTO_IP4 == dproto)
 	    {
 	      ip4_0 = vlib_buffer_get_current (b0);
 	      qos0 = ip4_0->tos;
 	    }
+	  else if (DPO_PROTO_ETHERNET == dproto)
+	    {
+	      ethernet_vlan_header_t *vlan0;
+
+	      vlan0 = (vlib_buffer_get_current (b0) -
+		       sizeof (ethernet_vlan_header_t));
+
+	      qos0 = ethernet_vlan_header_get_priority_net_order (vlan0);
+	    }
+	  else if (DPO_PROTO_MPLS)
+	    {
+	      mpls_unicast_header_t *mh;
+
+	      mh = vlib_buffer_get_current (b0);
+	      qos0 = vnet_mpls_uc_get_exp (mh->label_exp_s_ttl);
+	    }
+
 	  vnet_buffer2 (b0)->qos.bits = qos0;
 	  vnet_buffer2 (b0)->qos.source = QOS_SOURCE_IP;
 	  b0->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
@@ -233,14 +266,42 @@ static inline uword
 ip4_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-  return (qos_record_inline (vm, node, frame, 0, 0));
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_IP4, 0));
 }
 
 static inline uword
 ip6_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-  return (qos_record_inline (vm, node, frame, 1, 0));
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_IP6, 0));
+}
+
+static inline uword
+mpls_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
+		 vlib_frame_t * frame)
+{
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_MPLS, 0));
+}
+
+static inline uword
+vlan_ip4_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame)
+{
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_ETHERNET, 0));
+}
+
+static inline uword
+vlan_ip6_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame)
+{
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_ETHERNET, 0));
+}
+
+static inline uword
+vlan_mpls_qos_record (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      vlib_frame_t * frame)
+{
+  return (qos_record_inline (vm, node, frame, DPO_PROTO_ETHERNET, 0));
 }
 
 static inline uword
@@ -272,6 +333,10 @@ VNET_FEATURE_INIT (ip4_qos_record_node, static) = {
     .arc_name = "ip4-unicast",
     .node_name = "ip4-qos-record",
 };
+VNET_FEATURE_INIT (ip4m_qos_record_node, static) = {
+    .arc_name = "ip4-multicast",
+    .node_name = "ip4-qos-record",
+};
 
 VLIB_REGISTER_NODE (ip6_qos_record_node) = {
   .function = ip6_qos_record,
@@ -294,6 +359,111 @@ VNET_FEATURE_INIT (ip6_qos_record_node, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "ip6-qos-record",
 };
+VNET_FEATURE_INIT (ip6m_qos_record_node, static) = {
+    .arc_name = "ip6-multicast",
+    .node_name = "ip6-qos-record",
+};
+
+VLIB_REGISTER_NODE (mpls_qos_record_node) = {
+  .function = mpls_qos_record,
+  .name = "mpls-qos-record",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_record_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "mpls-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_qos_record_node, mpls_qos_record);
+
+VNET_FEATURE_INIT (mpls_qos_record_node, static) = {
+    .arc_name = "mpls-input",
+    .node_name = "mpls-qos-record",
+};
+
+VLIB_REGISTER_NODE (vlan_mpls_qos_record_node) = {
+  .function = vlan_mpls_qos_record,
+  .name = "vlan-mpls-qos-record",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_record_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "mpls-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_mpls_qos_record_node, vlan_mpls_qos_record);
+
+VNET_FEATURE_INIT (vlan_mpls_qos_record_node, static) = {
+    .arc_name = "mpls-input",
+    .node_name = "vlan-mpls-qos-record",
+    .runs_before = VNET_FEATURES ("mpls-qos-mark"),
+};
+
+VLIB_REGISTER_NODE (vlan_ip4_qos_record_node) = {
+  .function = vlan_ip4_qos_record,
+  .name = "vlan-ip4-qos-record",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_record_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "ip4-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip4_qos_record_node, vlan_ip4_qos_record);
+
+VNET_FEATURE_INIT (vlan_ip4_qos_record_node, static) = {
+    .arc_name = "ip4-unicast",
+    .node_name = "vlan-ip4-qos-record",
+    .runs_before = VNET_FEATURES ("ip4-qos-mark"),
+};
+VNET_FEATURE_INIT (vlan_ip4m_qos_record_node, static) = {
+    .arc_name = "ip4-multicast",
+    .node_name = "vlan-ip4-qos-record",
+    .runs_before = VNET_FEATURES ("ip4-qos-mark"),
+};
+
+VLIB_REGISTER_NODE (vlan_ip6_qos_record_node) = {
+  .function = vlan_ip6_qos_record,
+  .name = "vlan-ip6-qos-record",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_record_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "ip6-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip6_qos_record_node, vlan_ip6_qos_record);
+
+VNET_FEATURE_INIT (vlan_ip6_qos_record_node, static) = {
+    .arc_name = "ip6-unicast",
+    .node_name = "vlan-ip6-qos-record",
+    .runs_before = VNET_FEATURES ("ip6-qos-mark"),
+};
+VNET_FEATURE_INIT (vlan_ip6m_qos_record_node, static) = {
+    .arc_name = "ip6-multicast",
+    .node_name = "vlan-ip6-qos-record",
+    .runs_before = VNET_FEATURES ("ip6-qos-mark"),
+};
 
 VLIB_REGISTER_NODE (l2_ip_qos_record_node, static) = {
   .function = l2_ip_qos_record,
@@ -312,6 +482,7 @@ VLIB_REGISTER_NODE (l2_ip_qos_record_node, static) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2_ip_qos_record_node, l2_ip_qos_record);
+
 /* *INDENT-ON* */
 
 clib_error_t *
