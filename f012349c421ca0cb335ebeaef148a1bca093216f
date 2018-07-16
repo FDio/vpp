@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8ff3ffd0_c6ca8142",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1299,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-07-16T08:40:43Z",
+      "side": 1,
+      "message": "The DHCP OFFER message with incorrect XID should not be accepted in general but here it is related to the offer sent at this point.",
+      "parentUuid": "8f834245_8313aace",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f2099bb1_966c742f",
         "filename": "test/test_dhcp.py",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "0f4fa3c9_3e42abdf",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1404,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-07-16T08:40:43Z",
+      "side": 1,
+      "message": "From functional point of it was not wrong but these brackets were redundant there.",
+      "parentUuid": "f2099bb1_966c742f",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "98a3c7db_7f8c8088",
         "filename": "test/test_dhcp.py",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2018-07-11T17:12:47Z",
       "side": 1,
       "message": "remove this dead line",
+      "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "469138d1_30e1429d",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1541,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-07-16T08:40:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "98a3c7db_7f8c8088",
       "revId": "f012349c421ca0cb335ebeaef148a1bca093216f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
