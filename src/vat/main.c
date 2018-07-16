@@ -26,17 +26,6 @@ vat_suspend (vlib_main_t * vm, f64 interval)
   /* do nothing in the standalone version, just return */
 }
 
-void
-fformat_append_cr (FILE * ofp, const char *fmt, ...)
-{
-  va_list va;
-
-  va_start (va, fmt);
-  (void) va_fformat (ofp, (char *) fmt, &va);
-  va_end (va);
-  fformat (ofp, "\n");
-}
-
 int
 connect_to_vpe (char *name)
 {
