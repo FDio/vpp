@@ -8198,7 +8198,7 @@ fib_test_bfd (void)
     /*
      * whilst the BFD session is not signalled, the adj is up
      */
-    FIB_TEST(adj_is_up(ai_10_10_10_1), "Adj state up on uninit session");
+    FIB_TEST(!adj_is_up(ai_10_10_10_1), "Adj state down on uninit session");
 
     /*
      * bring the BFD session up
@@ -8213,7 +8213,6 @@ fib_test_bfd (void)
     bfd_10_10_10_1.local_state = BFD_STATE_down;
     adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
     FIB_TEST(!adj_is_up(ai_10_10_10_1), "Adj state down on DOWN session");
-
 
     /*
      * add an attached next hop FIB entry via the down adj

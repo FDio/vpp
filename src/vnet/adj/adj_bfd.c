@@ -29,6 +29,13 @@ typedef enum adj_bfd_state_t_
     ADJ_BFD_STATE_UP,
 } adj_bfd_state_t;
 
+#define ADJ_BFD_STATES {                        \
+    [ADJ_BFD_STATE_DOWN] = "down",              \
+    [ADJ_BFD_STATE_UP]   = "up",                \
+}
+
+static const char *adj_bfd_state_names[] = ADJ_BFD_STATES;
+
 /**
  * BFD delegate daa
  */
@@ -165,16 +172,17 @@ adj_bfd_notify (bfd_listen_event_e event,
             pool_get(abd_pool, abd);
 
             /*
-             * pretend the session is up and skip the walk.
-             * If we set it down then we get traffic loss on new children.
-             * if we walk then we lose traffic for existing children. Wait
-             * for the first BFD UP/DOWN before we let the session's state
-             * influence forwarding.
+             * it would be best here if we could ignore this create and just
+             * wait for the first update, but this is not posible because
+             * BFD sessions are created in the down state, and can remain this
+             * way without transitioning to another state if the peer is
+             * unresponxive. So we have to assuem down and wait for up.
              */
-            abd->abd_state = ADJ_BFD_STATE_UP;
+            abd->abd_state = ADJ_BFD_STATE_DOWN;
             abd->abd_index = session->bs_idx;
 
             adj_delegate_add(adj_get(ai), ADJ_DELEGATE_BFD, abd - abd_pool);
+            adj_bfd_update_walk(ai);
         }
         break;
 
@@ -258,8 +266,8 @@ adj_delegate_fmt_bfd (const adj_delegate_t *aed, u8 *s)
 {
     const adj_bfd_delegate_t *abd = adj_bfd_from_const_base(aed);
 
-    s = format(s, "BFD:[state:%d index:%d]",
-               abd->abd_state,
+    s = format(s, "BFD:[state:%s index:%d]",
+               adj_bfd_state_names[abd->abd_state],
                abd->abd_index);
 
     return (s);
