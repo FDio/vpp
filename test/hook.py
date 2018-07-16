@@ -176,19 +176,19 @@ class StepHook(PollHook):
             print('%02d.\t%s\t%s:%d\t[%s]' % (counter, e[2], e[0], e[1], e[3]))
             counter += 1
         print(single_line_delim)
-        print("You can enter a number of stack frame chosen from above")
+        print("You may enter a number of stack frame chosen from above")
         print("Calls in/below that stack frame will be not be stepped anymore")
         print(single_line_delim)
         while True:
-            choice = sys.stdin.readline(
-                "Enter your choice, if any, and press ENTER to continue "
-                "running the testcase...")
+            print("Enter your choice, if any, and press ENTER to continue "
+                  "running the testcase...")
+            choice = sys.stdin.readline()
             if choice == "":
                 choice = None
             try:
                 if choice is not None:
                     num = int(choice)
-            except TypeError:
+            except ValueError:
                 print("Invalid input")
                 continue
             if choice is not None and (num < 0 or num >= len(stack)):

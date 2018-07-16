@@ -63,7 +63,7 @@ vpp_api = ffi.dlopen('libvppapiclient.so')
 def vpp_atexit(vpp_weakref):
     """Clean up VPP connection on shutdown."""
     vpp_instance = vpp_weakref()
-    if vpp_instance.connected:
+    if vpp_instance and vpp_instance.connected:
         vpp_instance.logger.debug('Cleaning up VPP on exit')
         vpp_instance.disconnect()
 
