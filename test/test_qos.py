@@ -4,10 +4,12 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_papi_provider import QOS_SOURCE
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_sub_interface import VppDot1QSubint
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+    VppMplsLabel, VppMplsTable, DpoProto
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
@@ -21,22 +23,27 @@ class TestQOS(VppTestCase):
 
         self.create_pg_interfaces(range(5))
 
+        tbl = VppMplsTable(self, 0)
+        tbl.add_vpp_config()
+
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
             i.config_ip6()
             i.resolve_ndp()
+            i.enable_mpls()
 
     def tearDown(self):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
+            i.disable_mpls()
 
         super(TestQOS, self).tearDown()
 
     def test_qos_ip(self):
-        """ QoS Mark IP """
+        """ QoS Mark/Record IP """
 
         #
         # for table 1 map the n=0xff possible values of input QoS mark,
@@ -265,7 +272,7 @@ class TestQOS(VppTestCase):
         self.vapi.qos_egress_map_delete(7)
 
     def test_qos_mpls(self):
-        """ QoS Mark MPLS """
+        """ QoS Mark/Record MPLS """
 
         #
         # 255 QoS for all input values
@@ -346,6 +353,64 @@ class TestQOS(VppTestCase):
             self.assertEqual(h[MPLS].s, 1)
 
         #
+        # enable MPLS QoS recording on the input Pg0 and IP egress marking
+        # on Pg1
+        #
+        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
+                                            QOS_SOURCE.MPLS,
+                                            1)
+        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
+                                          QOS_SOURCE.IP,
+                                          1,
+                                          1)
+
+        #
+        # MPLS x-connect - COS is preserved
+        #
+        route_32_eos = VppMplsRoute(self, 32, 1,
+                                    [VppRoutePath(self.pg1.remote_ip4,
+                                                  self.pg1.sw_if_index,
+                                                  labels=[VppMplsLabel(33)])])
+        route_32_eos.add_vpp_config()
+
+        p_m1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                MPLS(label=32, cos=3, ttl=2) /
+                IP(src=self.pg0.remote_ip4, dst="10.0.0.1", tos=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        rx = self.send_and_expect(self.pg0, p_m1 * 65, self.pg1)
+        for p in rx:
+            self.assertEqual(p[MPLS].cos, 7)
+            self.assertEqual(p[MPLS].label, 33)
+            self.assertEqual(p[MPLS].s, 1)
+
+        #
+        # MPLS deag - COS is copied from MPLS to IP
+        #
+        route_33_eos = VppMplsRoute(self, 33, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=0)])
+        route_33_eos.add_vpp_config()
+
+        route_10_0_0_4 = VppIpRoute(self, "10.0.0.4", 32,
+                                    [VppRoutePath(self.pg1.remote_ip4,
+                                                  self.pg1.sw_if_index)])
+        route_10_0_0_4.add_vpp_config()
+
+        p_m2 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                MPLS(label=33, ttl=2, cos=3) /
+                IP(src=self.pg0.remote_ip4, dst="10.0.0.4", tos=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        rx = self.send_and_expect(self.pg0, p_m2 * 65, self.pg1)
+
+        for p in rx:
+            self.assertEqual(p[IP].tos, 255)
+
+        #
         # cleanup
         #
         self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
@@ -355,7 +420,148 @@ class TestQOS(VppTestCase):
                                           QOS_SOURCE.MPLS,
                                           1,
                                           0)
+        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
+                                            QOS_SOURCE.MPLS,
+                                            0)
+        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
+                                          QOS_SOURCE.IP,
+                                          1,
+                                          0)
         self.vapi.qos_egress_map_delete(1)
+
+    def test_qos_vlan(self):
+        """QoS mark/record VLAN """
+
+        #
+        # QoS for all input values
+        #
+        output = [chr(0)] * 256
+        for i in range(0, 255):
+            output[i] = chr(255 - i)
+        os = ''.join(output)
+        rows = [{'outputs': os},
+                {'outputs': os},
+                {'outputs': os},
+                {'outputs': os}]
+
+        self.vapi.qos_egress_map_update(1, rows)
+
+        sub_if = VppDot1QSubint(self, self.pg0, 11)
+
+        sub_if.admin_up()
+        sub_if.config_ip4()
+        sub_if.resolve_arp()
+        sub_if.config_ip6()
+        sub_if.resolve_ndp()
+
+        #
+        # enable VLAN QoS recording/marking on the input Pg0 subinterface and
+        #
+        self.vapi.qos_record_enable_disable(sub_if.sw_if_index,
+                                            QOS_SOURCE.VLAN,
+                                            1)
+        self.vapi.qos_mark_enable_disable(sub_if.sw_if_index,
+                                          QOS_SOURCE.VLAN,
+                                          1,
+                                          1)
+
+        #
+        # IP marking/recording on pg1
+        #
+        self.vapi.qos_record_enable_disable(self.pg1.sw_if_index,
+                                            QOS_SOURCE.IP,
+                                            1)
+        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
+                                          QOS_SOURCE.IP,
+                                          1,
+                                          1)
+
+        #
+        # a routes to/from sub-interface
+        #
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    [VppRoutePath(sub_if.remote_ip4,
+                                                  sub_if.sw_if_index)])
+        route_10_0_0_1.add_vpp_config()
+        route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
+                                    [VppRoutePath(self.pg1.remote_ip4,
+                                                  self.pg1.sw_if_index)])
+        route_10_0_0_2.add_vpp_config()
+        route_2001_1 = VppIpRoute(self, "2001::1", 128,
+                                  [VppRoutePath(sub_if.remote_ip6,
+                                                sub_if.sw_if_index,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1)
+        route_2001_1.add_vpp_config()
+        route_2001_2 = VppIpRoute(self, "2001::2", 128,
+                                  [VppRoutePath(self.pg1.remote_ip6,
+                                                self.pg1.sw_if_index,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1)
+        route_2001_2.add_vpp_config()
+
+        p_v1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                Dot1Q(vlan=11, prio=1) /
+                IP(src="1.1.1.1", dst="10.0.0.2", tos=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        p_v2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                IP(src="1.1.1.1", dst="10.0.0.1", tos=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        rx = self.send_and_expect(self.pg1, p_v2 * 65, self.pg0)
+
+        for p in rx:
+            self.assertEqual(p[Dot1Q].prio, 6)
+
+        rx = self.send_and_expect(self.pg0, p_v1 * 65, self.pg1)
+
+        for p in rx:
+            self.assertEqual(p[IP].tos, 254)
+
+        p_v1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                Dot1Q(vlan=11, prio=2) /
+                IPv6(src="2001::1", dst="2001::2", tc=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        p_v2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                IPv6(src="3001::1", dst="2001::1", tc=1) /
+                UDP(sport=1234, dport=1234) /
+                Raw(chr(100) * 65))
+
+        rx = self.send_and_expect(self.pg1, p_v2 * 65, self.pg0)
+
+        for p in rx:
+            self.assertEqual(p[Dot1Q].prio, 6)
+
+        rx = self.send_and_expect(self.pg0, p_v1 * 65, self.pg1)
+
+        for p in rx:
+            self.assertEqual(p[IPv6].tc, 253)
+
+        #
+        # cleanup
+        #
+        sub_if.unconfig_ip4()
+        sub_if.unconfig_ip6()
+
+        self.vapi.qos_record_enable_disable(sub_if.sw_if_index,
+                                            QOS_SOURCE.VLAN,
+                                            0)
+        self.vapi.qos_mark_enable_disable(sub_if.sw_if_index,
+                                          QOS_SOURCE.VLAN,
+                                          1,
+                                          0)
+        self.vapi.qos_record_enable_disable(self.pg1.sw_if_index,
+                                            QOS_SOURCE.IP,
+                                            0)
+        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
+                                          QOS_SOURCE.IP,
+                                          1,
+                                          0)
 
 
 if __name__ == '__main__':
