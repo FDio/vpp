@@ -66,6 +66,18 @@ typedef enum
 
 /* *INDENT-ON* */
 
+always_inline u16
+get_current_policy_epoch (acl_main_t * am, int is_input, u32 sw_if_index0)
+{
+  u32 **p_epoch_vec =
+    is_input ? &am->input_policy_epoch_by_sw_if_index :
+    &am->output_policy_epoch_by_sw_if_index;
+  u16 current_policy_epoch =
+    sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
+						     sw_if_index0)
+    : (is_input * FA_POLICY_EPOCH_IS_INPUT);
+  return current_policy_epoch;
+}
 
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
@@ -124,14 +136,10 @@ acl_fa_node_fn (vlib_main_t * vm,
       else
 	lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
 
-
-      u32 **p_epoch_vec =
-	is_input ? &am->input_policy_epoch_by_sw_if_index :
-	&am->output_policy_epoch_by_sw_if_index;
       u16 current_policy_epoch =
-	sw_if_index0 < vec_len (*p_epoch_vec) ? vec_elt (*p_epoch_vec,
-							 sw_if_index0)
-	: (is_input * FA_POLICY_EPOCH_IS_INPUT);
+	get_current_policy_epoch (am, is_input, sw_if_index0);
+
+
       /*
        * Extract the L3/L4 matching info into a 5-tuple structure.
        */
