@@ -36,7 +36,15 @@ qos_mark_ip_enable_disable (u32 sw_if_index, u8 enable)
 void
 qos_mark_vlan_enable_disable (u32 sw_if_index, u8 enable)
 {
-  vnet_feature_enable_disable ("interface-output", "vlan-qos-mark",
+  /*
+   * one cannot run a feature on a sub-interface, so we need
+   * to enable a feature on all the L3 output paths
+   */
+  vnet_feature_enable_disable ("ip6-output", "vlan-ip6-qos-mark",
+			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("ip4-output", "vlan-ip4-qos-mark",
+			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("mpls-output", "vlan-mpls-qos-mark",
 			       sw_if_index, enable, NULL, 0);
 }
 
@@ -239,8 +247,22 @@ mpls_qos_mark (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static inline uword
-vlan_qos_mark (vlib_main_t * vm, vlib_node_runtime_t * node,
-	       vlib_frame_t * frame)
+vlan_mpls_qos_mark (vlib_main_t * vm, vlib_node_runtime_t * node,
+		    vlib_frame_t * frame)
+{
+  return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
+}
+
+static inline uword
+vlan_ip4_qos_mark (vlib_main_t * vm, vlib_node_runtime_t * node,
+		   vlib_frame_t * frame)
+{
+  return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
+}
+
+static inline uword
+vlan_ip6_qos_mark (vlib_main_t * vm, vlib_node_runtime_t * node,
+		   vlib_frame_t * frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
 }
@@ -311,9 +333,10 @@ VNET_FEATURE_INIT (mpls_qos_mark_node, static) = {
     .arc_name = "mpls-output",
     .node_name = "mpls-qos-mark",
 };
-VLIB_REGISTER_NODE (vlan_qos_mark_node) = {
-  .function = vlan_qos_mark,
-  .name = "vlan-qos-mark",
+
+VLIB_REGISTER_NODE (vlan_ip4_qos_mark_node) = {
+  .function = vlan_ip4_qos_mark,
+  .name = "vlan-ip4-qos-mark",
   .vector_size = sizeof (u32),
   .format_trace = format_qos_mark_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -326,11 +349,58 @@ VLIB_REGISTER_NODE (vlan_qos_mark_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vlan_qos_mark_node, vlan_qos_mark);
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip4_qos_mark_node, vlan_ip4_qos_mark);
 
-VNET_FEATURE_INIT (vlan_qos_mark_node, static) = {
-    .arc_name = "interface-output",
-    .node_name = "vlan-qos-mark",
+VNET_FEATURE_INIT (vlan_ip4_qos_mark_node, static) = {
+    .arc_name = "ip4-output",
+    .node_name = "vlan-ip4-qos-mark",
+    .runs_after = VNET_FEATURES ("ip4-qos-mark"),
+};
+
+VLIB_REGISTER_NODE (vlan_ip6_qos_mark_node) = {
+  .function = vlan_ip6_qos_mark,
+  .name = "vlan-ip6-qos-mark",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_mark_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip6_qos_mark_node, vlan_ip6_qos_mark);
+
+VNET_FEATURE_INIT (vlan_ip6_qos_mark_node, static) = {
+    .arc_name = "ip6-output",
+    .node_name = "vlan-ip6-qos-mark",
+    .runs_after = VNET_FEATURES ("ip6-qos-mark"),
+};
+
+VLIB_REGISTER_NODE (vlan_mpls_qos_mark_node) = {
+  .function = vlan_mpls_qos_mark,
+  .name = "vlan-mpls-qos-mark",
+  .vector_size = sizeof (u32),
+  .format_trace = format_qos_mark_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = 0,
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (vlan_mpls_qos_mark_node, vlan_mpls_qos_mark);
+
+VNET_FEATURE_INIT (vlan_mpls_qos_mark_node, static) = {
+    .arc_name = "mpls-output",
+    .node_name = "vlan-mpls-qos-mark",
+    .runs_after = VNET_FEATURES ("mpls-qos-mark"),
 };
 /* *INDENT-ON* */
 
