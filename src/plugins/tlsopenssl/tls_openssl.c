@@ -427,6 +427,9 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   stream_session_t *tls_session;
   const SSL_METHOD *method;
   int rv, err;
+#ifdef HAVE_OPENSSL_ASYNC
+  openssl_resume_handler *handler;
+#endif
 
   method = SSLv23_client_method ();
   if (method == NULL)
@@ -444,6 +447,10 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 
   SSL_CTX_set_ecdh_auto (oc->ssl_ctx, 1);
   SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+#ifdef HAVE_OPENSSL_ASYNC
+  if (om->async)
+    SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ASYNC);
+#endif
   rv = SSL_CTX_set_cipher_list (oc->ssl_ctx, (const char *) ciphers);
   if (rv != 1)
     {
@@ -489,6 +496,14 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
       openssl_try_handshake_write (oc, tls_session);
+#ifdef HAVE_OPENSSL_ASYNC
+      if (err == SSL_ERROR_WANT_ASYNC)
+	{
+	  handler = (openssl_resume_handler *) openssl_ctx_handshake_rx;
+	  vpp_ssl_async_process_event (ctx, handler);
+	  break;
+	}
+#endif
       if (err != SSL_ERROR_WANT_WRITE)
 	break;
     }
