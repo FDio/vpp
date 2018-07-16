@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f4e7288_f5bfbbbd",
+        "filename": "src/plugins/acl/hash_lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 565,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-16T11:49:21Z",
+      "side": 1,
+      "message": "you can mark it as a false positive in coverity instead of making this change.",
+      "revId": "77bea468304ab354f46e8b7e809568e93ec28314",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
