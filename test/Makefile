@@ -67,7 +67,7 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) faulthandler six scapy==2.4.0 pexpect cryptography subprocess32 cffi git+https://github.com/vpp-dev/py-lispnetworking
+PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) psutil faulthandler six scapy==2.4.0 pexpect cryptography subprocess32 cffi git+https://github.com/vpp-dev/py-lispnetworking
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 
@@ -236,6 +236,7 @@ help:
 	@echo ""
 	@echo "Arguments controlling test runs:"
 	@echo " V=[0|1|2]            - set test verbosity level"
+	@echo " TEST_JOBS=[<n>|auto] - use <n> parallel processes for test execution or automatic discovery of maximum processes (default: 1)"
 	@echo " CACHE_OUTPUT=[0|1]   - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
 	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
 	@echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> (in seconds) to finish"
