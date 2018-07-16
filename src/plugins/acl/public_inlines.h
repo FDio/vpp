@@ -93,7 +93,17 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
   u16 ports[2];
   u8 proto;
 
-  fa_session_l4_key_t tmp_l4 = { .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
+  register fa_session_l4_key_t tmp_l4;
+  tmp_l4.as_u64 = (((u64)sw_if_index0) << 48) & 0xffff000000000000ULL;
+/*
+  // This is what this was supposed to be.
+  fa_session_l4_key_t tmp_l4_x = { .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
+
+  // This is a simple testcase to verify it works ok 
+  if (tmp_l4_x.as_u64 != tmp_l4.as_u64) {
+    clib_error("tmp_l4 values do not match: %llx vs %llx", tmp_l4_x.as_u64, tmp_l4.as_u64);
+  }
+*/
   fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
 
   if (is_ip6)
@@ -160,10 +170,9 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
                                       offsetof (ip4_header_t,
                                                 flags_and_fragment_offset)) + l3_offset,
                                                 sizeof(flags_and_fragment_offset));
-      flags_and_fragment_offset = clib_net_to_host_u16 (flags_and_fragment_offset);
 
       /* non-initial fragments have non-zero offset */
-      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
+      if ((PREDICT_FALSE(clib_host_to_net_u16(0xfff) & flags_and_fragment_offset)))
         {
           tmp_pkt.is_nonfirst_fragment = 1;
           /* invalidate L4 offset so we don't try to find L4 info */
@@ -191,7 +200,21 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 							     code));
           tmp_l4.is_slowpath = 1;
 	}
-      else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
+      else if (IP_PROTOCOL_UDP == proto)
+	{
+	  clib_memcpy (&ports,
+		       get_ptr_to_offset (b0,
+					  l4_offset + offsetof (tcp_header_t,
+								src_port)),
+		       sizeof (ports));
+	  tmp_l4.port[0] = clib_net_to_host_u16 (ports[0]);
+	  tmp_l4.port[1] = clib_net_to_host_u16 (ports[1]);
+
+	  tmp_pkt.tcp_flags = 0;
+	  tmp_pkt.tcp_flags_valid = 0;
+          tmp_l4.is_slowpath = 0;
+	}
+      else if (IP_PROTOCOL_TCP == proto)
 	{
 	  clib_memcpy (&ports,
 		       get_ptr_to_offset (b0,
@@ -205,7 +228,7 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 	    *(u8 *) get_ptr_to_offset (b0,
 				       l4_offset + offsetof (tcp_header_t,
 							     flags));
-	  tmp_pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
+	  tmp_pkt.tcp_flags_valid = 1;
           tmp_l4.is_slowpath = 0;
 	}
       else
