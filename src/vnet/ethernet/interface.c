@@ -838,25 +838,18 @@ int
 vnet_delete_loopback_interface (u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t *si;
-  u32 hw_if_index;
-  vnet_hw_interface_t *hw;
-  u32 instance;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-  hw_if_index = si->hw_if_index;
-  hw = vnet_get_hw_interface (vnm, hw_if_index);
-  instance = hw->dev_instance;
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (hw == 0 || hw->dev_class_index != ethernet_simulated_device_class.index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  if (loopback_instance_free (instance) < 0)
-    {
-      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-    }
+  if (loopback_instance_free (hw->dev_instance) < 0)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  ethernet_delete_interface (vnm, hw_if_index);
+  ethernet_delete_interface (vnm, hw->hw_if_index);
 
   return 0;
 }
