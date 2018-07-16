@@ -38,8 +38,9 @@ else:
     log_level = 40
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
-                                    datefmt="%H:%M:%S"))
+color_formatter = ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
+                                 datefmt="%H:%M:%S")
+handler.setFormatter(color_formatter)
 handler.setLevel(log_level)
 
 global_logger = logging.getLogger()
@@ -52,6 +53,16 @@ scapy_logger.setLevel(logging.ERROR)
 def getLogger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
+    return logger
+
+
+def get_parallel_logger(stream):
+    logger = logging.getLogger('parallel_logger_{}'.format(stream))
+    logger.propagate = False
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(color_formatter)
+    handler.setLevel(log_level)
+    logger.addHandler(handler)
     return logger
 
 # Static variables to store color formatting strings.
