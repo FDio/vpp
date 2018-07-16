@@ -21,11 +21,13 @@
 
 /* *INDENT-OFF* */
 #define foreach_avx2_vec256i \
-  _(i,8,32,epi8) _(i,16,16,epi16) _(i,32,8,epi32)  _(i,64,4,epi64x)
+  _(i,8,32,epi8) _(i,16,16,epi16) _(i,32,8,epi32)  _(i,64,4,epi64)
 #define foreach_avx2_vec256u \
-  _(u,8,32,epi8) _(u,16,16,epi16) _(u,32,8,epi32)  _(u,64,4,epi64x)
+  _(u,8,32,epi8) _(u,16,16,epi16) _(u,32,8,epi32)  _(u,64,4,epi64)
 #define foreach_avx2_vec256f \
   _(f,32,8,ps) _(f,64,4,pd)
+
+#define _mm256_set1_epi64 _mm256_set1_epi64x
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal */
@@ -52,7 +54,16 @@ t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); };		\
+{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
+{ return (t##s##x##c) _mm256_unpacklo_##i ((__m256i) a, (__m256i) b); } \
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
+{ return (t##s##x##c) _mm256_unpackhi_##i ((__m256i) a, (__m256i) b); } \
+
 
 foreach_avx2_vec256i foreach_avx2_vec256u
 #undef _
