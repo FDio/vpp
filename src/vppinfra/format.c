@@ -463,6 +463,17 @@ fformat (FILE * f, char *fmt, ...)
 }
 
 #ifdef CLIB_UNIX
+void
+fformat_append_cr (FILE * ofp, const char *fmt, ...)
+{
+  va_list va;
+
+  va_start (va, fmt);
+  (void) va_fformat (ofp, (char *) fmt, &va);
+  va_end (va);
+  fformat (ofp, "\n");
+}
+
 word
 fdformat (int fd, char *fmt, ...)
 {
