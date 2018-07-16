@@ -573,12 +573,10 @@ api_acl_add_replace_from_file (vat_main_t * vam)
     vl_api_acl_rule_t *rules = 0;
     int rule_idx = -1;
     int n_rules = 0;
-    int n_rules_override = -1;
     int is_permit = 0;
     int append_default_permit = 0;
     u32 tcpflags = 0, tcpmask = 0;
     ip4_address_t src_v4address, dst_v4address;
-    u8 *tag = 0;
     int fd = -1;
 
     char *file_name = NULL;
@@ -690,13 +688,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
 
     vam->result_ready = 0;
 
-    if(rules)
-      n_rules = vec_len(rules);
-    else
-      n_rules = 0;
-
-    if (n_rules_override >= 0)
-      n_rules = n_rules_override;
+    n_rules = vec_len(rules);
 
     msg_size += n_rules*sizeof(rules[0]);
 
@@ -704,19 +696,8 @@ api_acl_add_replace_from_file (vat_main_t * vam)
     memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
-    mp->client_index = 0;
     if (n_rules > 0)
       clib_memcpy(mp->r, rules, n_rules*sizeof (vl_api_acl_rule_t));
-    if (tag)
-      {
-        if (vec_len(tag) >= sizeof(mp->tag))
-          {
-            tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
-      }
     mp->acl_index = ntohl(acl_index);
     mp->count = htonl(n_rules);
 

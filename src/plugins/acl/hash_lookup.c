@@ -561,6 +561,8 @@ hash_acl_set_heap(acl_main_t *am)
     am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , am->hash_lookup_mheap_size);
     if (0 == am->hash_lookup_mheap) {
       clib_error("ACL plugin failed to allocate hash lookup heap of %U bytes, abort", format_memory_size, am->hash_lookup_mheap_size);
+      /* clib_error causes the VPP to terminate, but coverity doesn't think so. */
+      exit(1);
     }
     mheap_t *h = mheap_header (am->hash_lookup_mheap);
     h->flags |= MHEAP_FLAG_THREAD_SAFE;
