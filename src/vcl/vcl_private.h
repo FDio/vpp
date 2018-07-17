@@ -58,6 +58,7 @@ typedef enum
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_CLOSE_ON_EMPTY)
 #define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_CLOSE_ON_EMPTY)
+#define STATE_OPEN (SERVER_STATE_OPEN | CLIENT_STATE_OPEN)
 
 typedef struct epoll_event vppcom_epoll_event_t;
 
@@ -77,6 +78,15 @@ typedef struct
   u8 is_ip4;
   ip46_address_t ip46;
 } vppcom_ip46_t;
+
+typedef struct vcl_session_msg
+{
+  u32 next;
+  union
+  {
+    session_accepted_msg_t accepted_msg;
+  };
+} vcl_session_msg_t;
 
 enum
 {
@@ -130,9 +140,11 @@ typedef struct
   u32 wait_cont_idx;
   vppcom_epoll_t vep;
   int libc_epfd;
-  u64 client_queue_address;
+  svm_msg_q_t *our_evt_q;
+  u32 ct_registration;
   u64 options[16];
   vce_event_handler_reg_t *poll_reg;
+  vcl_session_msg_t *accept_evts_fifo;
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -165,6 +177,12 @@ typedef struct vppcom_cfg_t_
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
+
+typedef struct vcl_cut_through_registration_
+{
+  svm_msg_q_t *mq;
+  u32 sid;
+} vcl_cut_through_registration_t;
 
 typedef struct vppcom_main_t_
 {
@@ -213,6 +231,12 @@ typedef struct vppcom_main_t_
   /* IO thread */
   vppcom_session_io_thread_t session_io_thread;
 
+  /* pool of ctrl msgs */
+  vcl_session_msg_t *ctrl_evt_pool;
+
+  /** Pool of cut through registrations */
+  vcl_cut_through_registration_t *cut_through_registrations;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
@@ -254,6 +278,40 @@ do {                                                            \
   clib_spinlock_lock (&(vcm->event_thread.events_lockp))
 #define VCL_EVENTS_UNLOCK() \
   clib_spinlock_unlock (&(vcm->event_thread.events_lockp))
+
+#define VCL_INVALID_SESSION_INDEX ((u32)~0)
+
+static inline vcl_session_t *
+vcl_session_get (u32 session_index)
+{
+  if (pool_is_free_index (vcm->sessions, session_index))
+    return 0;
+  return pool_elt_at_index (vcm->sessions, session_index);
+}
+
+static inline u32
+vcl_session_index (vcl_session_t * s)
+{
+  return (s - vcm->sessions);
+}
+
+static inline vcl_session_t *
+vcl_session_get_w_handle (u64 handle)
+{
+  uword *p;
+  if ((p = hash_get (vcm->session_index_by_vpp_handles, handle)))
+    return vcl_session_get ((u32) p[0]);
+  return 0;
+}
+
+static inline u32
+vcl_session_get_index_from_handle (u64 handle)
+{
+  uword *p;
+  if ((p = hash_get (vcm->session_index_by_vpp_handles, handle)))
+    return p[0];
+  return VCL_INVALID_SESSION_INDEX;
+}
 
 static inline int
 vppcom_session_at_index (u32 session_index, vcl_session_t * volatile *sess)
@@ -325,6 +383,8 @@ void vppcom_api_hookup (void);
 void vppcom_send_accept_session_reply (u64 handle, u32 context, int retval);
 
 u32 vcl_max_nsid_len (void);
+
+u8 *format_api_error (u8 * s, va_list * args);
 
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
