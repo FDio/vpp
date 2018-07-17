@@ -26,14 +26,16 @@ format_stream_session_fifos (u8 * s, va_list * args)
   if (!ss->server_rx_fifo || !ss->server_tx_fifo)
     return s;
 
-  s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo, 1);
+  s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo,
+	      verbose);
   if (verbose > 2 && ss->server_rx_fifo->has_event)
     {
       found = session_node_lookup_fifo_event (ss->server_rx_fifo, e);
       s = format (s, " session node event: %s\n",
 		  found ? "found" : "not found");
     }
-  s = format (s, " Tx fifo: %U", format_svm_fifo, ss->server_tx_fifo, 1);
+  s = format (s, " Tx fifo: %U", format_svm_fifo, ss->server_tx_fifo,
+	      verbose);
   if (verbose > 2 && ss->server_tx_fifo->has_event)
     {
       found = session_node_lookup_fifo_event (ss->server_tx_fifo, e);
