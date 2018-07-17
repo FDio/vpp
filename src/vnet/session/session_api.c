@@ -435,7 +435,9 @@ mq_send_session_accepted_cb (stream_session_t * s)
 	}
       mp->handle = application_local_session_handle (ls);
       mp->port = ls->port;
-      mp->vpp_event_queue_address = ls->client_evt_q;
+      vpp_queue = session_manager_get_vpp_event_queue (0);
+      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      mp->client_event_queue_address = ls->client_evt_q;
       mp->server_event_queue_address = ls->server_evt_q;
     }
   svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
@@ -541,8 +543,10 @@ mq_send_session_connected_cb (u32 app_index, u32 api_context,
       local_session_t *ls = (local_session_t *) s;
       mp->handle = application_local_session_handle (ls);
       mp->lcl_port = ls->port;
-      mp->vpp_event_queue_address = ls->server_evt_q;
+      vpp_mq = session_manager_get_vpp_event_queue (0);
+      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->client_event_queue_address = ls->client_evt_q;
+      mp->server_event_queue_address = ls->server_evt_q;
       mp->server_rx_fifo = pointer_to_uword (s->server_tx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->server_rx_fifo);
     }

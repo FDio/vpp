@@ -179,7 +179,7 @@ format_svm_fifo (u8 * s, va_list * args)
 
   if (verbose > 1)
     s = format
-      (s, " server session %d thread %d client session %d thread %d\n",
+      (s, " vpp session %d thread %d app session %d thread %d\n",
        f->master_session_index, f->master_thread_index,
        f->client_session_index, f->client_thread_index);
 

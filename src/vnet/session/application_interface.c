@@ -598,7 +598,7 @@ vnet_bind (vnet_bind_args_t * a)
 {
   int rv;
   if ((rv = vnet_bind_i (a->app_index, &a->sep, &a->handle)))
-    return clib_error_return_code (0, rv, 0, "bind failed");
+    return clib_error_return_code (0, rv, 0, "bind failed: %d", rv);
   return 0;
 }
 
@@ -607,7 +607,7 @@ vnet_unbind (vnet_unbind_args_t * a)
 {
   int rv;
   if ((rv = vnet_unbind_i (a->app_index, a->handle)))
-    return clib_error_return_code (0, rv, 0, "unbind failed");
+    return clib_error_return_code (0, rv, 0, "unbind failed: %d", rv);
   return 0;
 }
 
@@ -618,7 +618,7 @@ vnet_connect (vnet_connect_args_t * a)
   int rv;
 
   if ((rv = application_connect (a->app_index, a->api_context, sep)))
-    return clib_error_return_code (0, rv, 0, "connect failed");
+    return clib_error_return_code (0, rv, 0, "connect failed: %d", rv);
   return 0;
 }
 
