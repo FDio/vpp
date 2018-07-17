@@ -112,21 +112,23 @@ session_mq_disconnected_handler (void *data)
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_disconnected_msg_t *mp;
   session_event_t *evt;
+  stream_session_t *s;
   application_t *app;
   int rv = 0;
 
   mp = (session_disconnected_msg_t *) data;
   app = application_lookup (mp->client_index);
-  if (app)
+  s = session_get_from_handle_if_valid (mp->handle);
+  if (!(app && s && s->app_index == app->index))
     {
-      a->handle = mp->handle;
-      a->app_index = app->index;
-      rv = vnet_disconnect_session (a);
+      clib_warning ("could not disconnect session: %llu app: %u", mp->handle,
+		    mp->client_index);
+      return;
     }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
+
+  a->handle = mp->handle;
+  a->app_index = app->index;
+  rv = vnet_disconnect_session (a);
 
   svm_msg_q_lock_and_alloc_msg_w_ring (app->event_queue,
 				       SESSION_MQ_CTRL_EVT_RING,
