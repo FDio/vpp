@@ -70,6 +70,30 @@
       "revId": "15dff7234270b5f4ad724d3a69d3ed73db2a966b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8d97d875_4a085df5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-17T15:21:08Z",
+      "side": 1,
+      "message": "\u003e to avoid the problem in the future\n\nThe commit message was fine for patch set 1.\n\nI believe short reviewer comments on Gerrit\nshould be enough for everyone involved\nto naturally get better at noticing outdated commit messages.",
+      "parentUuid": "e2ae629b_755e776c",
+      "range": {
+        "startLine": 10,
+        "startChar": 6,
+        "endLine": 10,
+        "endChar": 29
+      },
+      "revId": "15dff7234270b5f4ad724d3a69d3ed73db2a966b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
