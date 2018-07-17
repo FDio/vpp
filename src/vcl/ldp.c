@@ -3171,7 +3171,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events,
       return -1;
     }
 
-  time_to_wait = ((timeout >= 0) ? (double) timeout / (double) 1000 : 0);
+  time_to_wait = ((timeout >= 0) ? (double) timeout : 0);
   time_out = clib_time_now (&ldp->clib_time) + time_to_wait;
 
   func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
