@@ -177,18 +177,20 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 static int
 svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
+  u32 dist1, dist2, tail, head;
   svm_msg_q_ring_t *ring;
-  u32 dist1, dist2;
 
   if (vec_len (mq->rings) <= msg->ring_index)
     return 0;
   ring = &mq->rings[msg->ring_index];
+  tail = ring->tail;
+  head = ring->head;
 
-  dist1 = ((ring->nitems + msg->elt_index) - ring->head) % ring->nitems;
-  if (ring->tail == ring->head)
+  dist1 = ((ring->nitems + msg->elt_index) - head) % ring->nitems;
+  if (tail == head)
     dist2 = (ring->cursize == 0) ? 0 : ring->nitems;
   else
-    dist2 = ((ring->nitems + ring->tail) - ring->head) % ring->nitems;
+    dist2 = ((ring->nitems + tail) - head) % ring->nitems;
   return (dist1 < dist2);
 }
 
