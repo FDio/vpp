@@ -187,9 +187,8 @@ echo_test_client ()
 	  if ((FD_ISSET (tsock->fd, rfdset)) &&
 	      (tsock->stats.rx_bytes < ctrl->cfg.total_bytes))
 	    {
-	      rx_bytes =
-		vcl_test_read (tsock->fd, (uint8_t *) tsock->rxbuf,
-			       nbytes, &tsock->stats);
+	      rx_bytes = vcl_test_read (tsock->fd, (uint8_t *) tsock->rxbuf,
+	                                nbytes, &tsock->stats);
 	      if (rx_bytes > 0)
 		{
 		  printf ("CLIENT (fd %d): RX (%d bytes) - '%s'\n",
