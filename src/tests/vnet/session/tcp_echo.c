@@ -892,7 +892,7 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   else
     {
       clib_warning ("couldn't find session key %llx", mp->handle);
-      rv = -11;
+      return;
     }
 
   app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
@@ -903,8 +903,7 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   rmp->context = mp->context;
   app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
 
-  if (session)
-    session_print_stats (em, session);
+  session_print_stats (em, session);
 }
 
 static void
