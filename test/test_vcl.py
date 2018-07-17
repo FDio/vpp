@@ -43,7 +43,7 @@ class VCLTestCase(VppTestCase):
         self.server_args = [self.server_port]
         self.server_ipv6_addr = "::1"
         self.server_ipv6_args = ["-6", self.server_port]
-        self.timeout = 3
+        self.timeout = 10
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
 
         super(VCLTestCase, self).__init__(methodName)
