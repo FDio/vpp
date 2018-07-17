@@ -340,17 +340,7 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node) = {
   .name = "ip4-input-no-checksum",
   .vector_size = sizeof (u32),
 
-  .n_next_nodes = IP4_INPUT_N_NEXT,
-  .next_nodes = {
-    [IP4_INPUT_NEXT_DROP] = "error-drop",
-    [IP4_INPUT_NEXT_PUNT] = "error-punt",
-    [IP4_INPUT_NEXT_OPTIONS] = "ip4-options",
-    [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
-    [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
-    [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [IP4_INPUT_NEXT_REASSEMBLY] = "ip4-reassembly",
-  },
-
+  .sibling_of = "ip4-input",
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_input_trace,
 };
