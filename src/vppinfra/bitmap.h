@@ -735,6 +735,42 @@ clib_bitmap_next_clear (uword * ai, uword i)
   return i;
 }
 
+/** unformat an any sized hexadecimal bitmask into a bitmap
+
+    uword * bitmap;
+    rv = unformat ("%U", unformat_bitmap_mask, &bitmap);
+
+    Standard unformat_function_t arguments
+
+    @param input - pointer an unformat_input_t
+    @param va - varargs list comprising a single uword **
+    @returns 1 on success, 0 on failure
+*/
+static inline uword
+unformat_bitmap_mask (unformat_input_t * input, va_list * va)
+{
+  u8 *v = 0;			/* hexadecimal vector */
+  uword **bitmap_return = va_arg (*va, uword **);
+  uword *bitmap = 0;
+
+  if (unformat (input, "%U", unformat_hex_string, &v))
+    {
+      int i, s = vec_len (v) - 1;	/* 's' for significance or shift */
+
+      /* v[0] holds the most significant byte */
+      for (i = 0; s >= 0; i++, s--)
+	bitmap = clib_bitmap_set_multiple (bitmap,
+					   s * BITS (v[i]), v[i],
+					   BITS (v[i]));
+
+      vec_free (v);
+      *bitmap_return = bitmap;
+      return 1;
+    }
+
+  return 0;
+}
+
 /** unformat a list of bit ranges into a bitmap (eg "0-3,5-7,11" )
 
     uword * bitmap;
