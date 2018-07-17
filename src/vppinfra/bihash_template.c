@@ -287,7 +287,7 @@ int BV (clib_bihash_add_del)
     ;
 
   /* First elt in the bucket? */
-  if (b->offset == 0)
+  if (BV (clib_bihash_bucket_is_empty) (b))
     {
       if (is_add == 0)
 	{
@@ -473,7 +473,7 @@ int BV (clib_bihash_search)
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
 
-  if (b->offset == 0)
+  if (BV (clib_bihash_bucket_is_empty) (b))
     return -1;
 
 #if BIHASH_KVP_CACHE_SIZE > 0
@@ -571,7 +571,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   for (i = 0; i < h->nbuckets; i++)
     {
       b = &h->buckets[i];
-      if (b->offset == 0)
+      if (BV (clib_bihash_bucket_is_empty) (b))
 	{
 	  if (verbose > 1)
 	    s = format (s, "[%d]: empty\n", i);
@@ -665,7 +665,7 @@ void BV (clib_bihash_foreach_key_value_pair)
   for (i = 0; i < h->nbuckets; i++)
     {
       b = &h->buckets[i];
-      if (b->offset == 0)
+      if (BV (clib_bihash_bucket_is_empty) (b))
 	continue;
 
       v = BV (clib_bihash_get_value) (h, b->offset);
