@@ -875,6 +875,7 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
   evt->fifo = s->server_rx_fifo;
   evt->event_type = FIFO_EVENT_APP_RX;
 
+  clib_warning ("evt for session %u app sid %u", s->session_index, evt->fifo->client_session_index);
   return app_enqueue_evt (mq, &msg, lock);
 }
 
