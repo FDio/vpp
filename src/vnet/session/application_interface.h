@@ -207,17 +207,18 @@ typedef struct session_accepted_msg_
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;
   u64 server_event_queue_address;
+  u64 client_event_queue_address;
   u16 port;
   u8 is_ip4;
   u8 ip[16];
-} session_accepted_msg_t;
+} __clib_packed session_accepted_msg_t;
 
 typedef struct session_accepted_reply_msg_
 {
   u32 context;
   i32 retval;
   u64 handle;
-} session_accepted_reply_msg_t;
+} __clib_packed session_accepted_reply_msg_t;
 
 /* Make sure this is not too large, otherwise it won't fit when dequeued in
  * the session queue node */
@@ -232,34 +233,35 @@ typedef struct session_connected_msg_
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;
   u64 client_event_queue_address;
+  u64 server_event_queue_address;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[64];
   u8 lcl_ip[16];
   u8 is_ip4;
   u16 lcl_port;
-} session_connected_msg_t;
+} __clib_packed session_connected_msg_t;
 
 typedef struct session_disconnected_msg_
 {
   u32 client_index;
   u32 context;
   u64 handle;
-} session_disconnected_msg_t;
+} __clib_packed session_disconnected_msg_t;
 
 typedef struct session_disconnected_reply_msg_
 {
   u32 context;
   i32 retval;
   u64 handle;
-} session_disconnected_reply_msg_t;
+} __clib_packed session_disconnected_reply_msg_t;
 
 typedef struct session_reset_msg_
 {
   u32 client_index;
   u32 context;
   u64 handle;
-} session_reset_msg_t;
+} __clib_packed session_reset_msg_t;
 
 typedef struct session_reset_reply_msg_
 {
@@ -267,13 +269,13 @@ typedef struct session_reset_reply_msg_
   u32 context;
   i32 retval;
   u64 handle;
-} session_reset_reply_msg_t;
+} __clib_packed session_reset_reply_msg_t;
 
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
   session_event_t *evt;
-} app_session_evt_t;
+} __clib_packed app_session_evt_t;
 
 static inline void
 app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
