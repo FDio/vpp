@@ -849,12 +849,11 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
       return 0;
     }
 
-  /* Built-in app? Hand event to the callback... */
   if (app->cb_fns.builtin_app_rx_callback)
     return app->cb_fns.builtin_app_rx_callback (s);
 
-  /* If no need for event, return */
-  if (!svm_fifo_set_event (s->server_rx_fifo))
+  if (svm_fifo_has_event (s->server_rx_fifo)
+      || svm_fifo_is_empty (s->server_rx_fifo))
     return 0;
 
   mq = app->event_queue;
@@ -876,7 +875,10 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
   evt->fifo = s->server_rx_fifo;
   evt->event_type = FIFO_EVENT_APP_RX;
 
-  return app_enqueue_evt (mq, &msg, lock);
+  if (app_enqueue_evt (mq, &msg, lock))
+    return -1;
+  svm_fifo_set_event (s->server_rx_fifo);
+  return 0;
 }
 
 static inline int
@@ -1081,6 +1083,7 @@ application_local_session_connect (u32 table_index, application_t * client,
 {
   u32 seg_size, evt_q_sz, evt_q_elts, margin = 16 << 10;
   segment_manager_properties_t *props, *cprops;
+  u32 round_rx_fifo_sz, round_tx_fifo_sz;
   int rv, has_transport, seg_index;
   svm_fifo_segment_private_t *seg;
   segment_manager_t *sm;
@@ -1093,7 +1096,9 @@ application_local_session_connect (u32 table_index, application_t * client,
   cprops = application_segment_manager_properties (client);
   evt_q_elts = props->evt_q_size + cprops->evt_q_size;
   evt_q_sz = segment_manager_evt_q_expected_size (evt_q_elts);
-  seg_size = props->rx_fifo_size + props->tx_fifo_size + evt_q_sz + margin;
+  round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
+  round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
+  seg_size = round_rx_fifo_sz + round_tx_fifo_sz + evt_q_sz + margin;
 
   has_transport = session_has_transport ((stream_session_t *) ll);
   if (!has_transport)

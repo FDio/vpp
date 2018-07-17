@@ -221,14 +221,14 @@ class VCLCutThruTestCase(VCLTestCase):
         self.cut_thru_setup()
         self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
                                       self.server_addr, self.server_port]
-        self.client_iperf3_timeout = 20
+        self.client_iperf3_timeout = 60
         self.client_iperf3_args = ["-V4d", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
-        self.client_uni_dir_nsock_timeout = 60
+        self.client_uni_dir_nsock_timeout = 90
         self.client_uni_dir_nsock_test_args = ["-I", "5", "-U", "-X",
                                                self.server_addr,
                                                self.server_port]
-        self.client_bi_dir_nsock_timeout = 120
+        self.client_bi_dir_nsock_timeout = 150
         self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
                                               self.server_addr,
                                               self.server_port]
