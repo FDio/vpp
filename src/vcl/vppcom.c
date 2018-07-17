@@ -1866,13 +1866,13 @@ int
 vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		   int maxevents, double wait_for_time)
 {
+  f64 timeout;
+  u32 vep_next_sid, wait_cont_idx, keep_trying = 1;
   vcl_session_t *vep_session;
-  int rv;
-  f64 timeout = clib_time_now (&vcm->clib_time) + wait_for_time;
-  u32 keep_trying = 1;
-  int num_ev = 0;
-  u32 vep_next_sid, wait_cont_idx;
-  u8 is_vep;
+  svm_msg_q_msg_t msg;
+  session_event_t *e;
+  int rv, num_ev = 0;
+  u8 is_vep, cond_wait;
 
   if (PREDICT_FALSE (maxevents <= 0))
     {
@@ -1900,6 +1900,37 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
       VDBG (1, "VCL<%d>: WARNING: vep_idx (%u) is empty!",
 	    getpid (), vep_idx);
       goto done;
+    }
+
+
+
+
+  timeout = clib_time_now (&vcm->clib_time) + wait_for_time;
+  cond_wait = wait_for_time != -1 ? SVM_Q_NOWAIT : SVM_Q_WAIT;
+
+  while (1)
+    {
+      if (svm_msg_q_sub (vcm->app_event_queue, &msg, cond_wait, 0))
+	goto done;
+      e = svm_msg_q_msg_data (vcm->app_event_queue, &msg);
+      switch (e->event_type)
+        {
+        case SESSION_CTRL_EVT_ACCEPTED:
+          session_accepted_handler ((session_accepted_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_CONNECTED:
+          session_connected_handler ((session_connected_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_DISCONNECTED:
+          session_disconnected_handler ((session_disconnected_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_RESET:
+          session_reset_handler ((session_reset_msg_t *) e->data);
+          break;
+        default:
+          clib_warning ("unhandled %u", e->event_type);
+        }
+      svm_msg_q_free_msg (vcm->app_event_queue, &msg);
     }
 
   do
@@ -2010,6 +2041,12 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		}
 	    }
 
+
+
+
+
+
+
 	  if (add_event)
 	    {
 	      events[num_ev].data.u64 = session_ev_data;
@@ -2028,13 +2065,15 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		  goto done;
 		}
 	    }
-	  if (wait_cont_idx != ~0)
-	    {
-	      if (next_sid == ~0)
-		next_sid = vep_next_sid;
-	      else if (next_sid == wait_cont_idx)
-		next_sid = ~0;
-	    }
+
+//	  if (wait_cont_idx != ~0)
+//	    {
+//	      if (next_sid == ~0)
+//		next_sid = vep_next_sid;
+//	      else if (next_sid == wait_cont_idx)
+//		next_sid = ~0;
+//	    }
+
 	}
       if (wait_for_time != -1)
 	keep_trying = (clib_time_now (&vcm->clib_time) <= timeout) ? 1 : 0;
