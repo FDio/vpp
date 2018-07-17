@@ -22,6 +22,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/error.h>
+#include <vppinfra/time.h>
 #include <svm/queue.h>
 
 typedef struct svm_msg_q_ring_
@@ -274,12 +275,6 @@ svm_msg_q_lock (svm_msg_q_t * mq)
   return pthread_mutex_lock (&mq->q->mutex);
 }
 
-static inline void
-svm_msg_q_wait (svm_msg_q_t * mq)
-{
-  pthread_cond_wait (&mq->q->condvar, &mq->q->mutex);
-}
-
 /**
  * Unlock message queue
  */
@@ -290,6 +285,37 @@ svm_msg_q_unlock (svm_msg_q_t * mq)
   if (mq->q->cursize < (mq->q->maxsize / 8))
     (void) pthread_cond_broadcast (&mq->q->condvar);
   pthread_mutex_unlock (&mq->q->mutex);
+}
+
+/**
+ * Wait for message queue event
+ *
+ * Must be called with mutex held
+ */
+static inline void
+svm_msg_q_wait (svm_msg_q_t * mq)
+{
+  pthread_cond_wait (&mq->q->condvar, &mq->q->mutex);
+}
+
+/**
+ * Timed wait for message queue event
+ *
+ * Must be called with mutex held.
+ *
+ * @param mq 		message queue
+ * @param timeout	time in seconds
+ */
+static inline int
+svm_msg_q_timedwait (svm_msg_q_t * mq, double timeout)
+{
+  struct timespec ts;
+
+  ts.tv_sec = unix_time_now () + (u32) timeout;
+  ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
+  if (pthread_cond_timedwait (&mq->q->condvar, &mq->q->mutex, &ts))
+    return -1;
+  return 0;
 }
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
