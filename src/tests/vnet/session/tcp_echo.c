@@ -881,19 +881,15 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   int rv = 0;
 
   p = hash_get (em->session_index_by_vpp_handles, mp->handle);
-
-  if (p)
-    {
-      clib_warning ("disconnected");
-      session = pool_elt_at_index (em->sessions, p[0]);
-      hash_unset (em->session_index_by_vpp_handles, mp->handle);
-      pool_put (em->sessions, session);
-    }
-  else
+  if (!p)
     {
       clib_warning ("couldn't find session key %llx", mp->handle);
-      rv = -11;
+      return;
     }
+
+  session = pool_elt_at_index (em->sessions, p[0]);
+  hash_unset (em->session_index_by_vpp_handles, mp->handle);
+  pool_put (em->sessions, session);
 
   app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
 			     SESSION_CTRL_EVT_DISCONNECTED_REPLY);
@@ -903,8 +899,7 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   rmp->context = mp->context;
   app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
 
-  if (session)
-    session_print_stats (em, session);
+  session_print_stats (em, session);
 }
 
 static void
