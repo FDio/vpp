@@ -274,10 +274,33 @@ svm_msg_q_lock (svm_msg_q_t * mq)
   return pthread_mutex_lock (&mq->q->mutex);
 }
 
+/**
+ * Wait for message queue event
+ *
+ * Must be called with mutex held
+ */
 static inline void
 svm_msg_q_wait (svm_msg_q_t * mq)
 {
   pthread_cond_wait (&mq->q->condvar, &mq->q->mutex);
+}
+
+/**
+ * Timed wait for message queue event
+ *
+ * Must be called with mutex held
+ */
+static inline int
+svm_msg_q_timedwait (svm_msg_q_t * mq, u32 sec, u64 nsec)
+{
+  struct timespec ts;
+  int rv;
+
+  ts.tv_sec = 0;
+  ts.tv_nsec = unix_time_now_nsec () + (u64) sec * 1e9 + nsec;
+  if (pthread_cond_timedwait (&mq->q->condvar, &mq->q->mutex, &ts))
+    return -1;
+  return 0;
 }
 
 /**
