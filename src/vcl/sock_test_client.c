@@ -455,10 +455,9 @@ stream_test_client (sock_test_t test)
 	  if (FD_ISSET (tsock->fd, wfdset) &&
 	      (tsock->stats.tx_bytes < ctrl->cfg.total_bytes))
 	    {
-	      tx_bytes =
-		sock_test_write (tsock->fd, (uint8_t *) tsock->txbuf,
-				 ctrl->cfg.txbuf_size, &tsock->stats,
-				 ctrl->cfg.verbose);
+	      tx_bytes = sock_test_write (tsock->fd, (uint8_t *) tsock->txbuf,
+					  ctrl->cfg.txbuf_size, &tsock->stats,
+					  ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
 		{
 		  fprintf (stderr, "\nCLIENT: ERROR: sock_test_write(%d) "
