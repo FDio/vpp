@@ -46,6 +46,30 @@
       "revId": "15dff7234270b5f4ad724d3a69d3ed73db2a966b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2ae629b_755e776c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-07-17T14:31:56Z",
+      "side": 1,
+      "message": "Sorry, my bad indeed. The exit(1) was there in the first version and then I deleted it but didn’t update the message. The lesson learned is probably that commit message should not contain the “what” was done, but rather “why”, to avoid the problem in the future ?",
+      "parentUuid": "e268529f_5abc6730",
+      "range": {
+        "startLine": 10,
+        "startChar": 6,
+        "endLine": 10,
+        "endChar": 29
+      },
+      "revId": "15dff7234270b5f4ad724d3a69d3ed73db2a966b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
