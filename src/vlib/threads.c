@@ -1267,7 +1267,6 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   uword *p;
   vlib_thread_main_t *tm = &vlib_thread_main;
   u8 *name;
-  u64 coremask;
   uword *bitmap;
   u32 count;
 
@@ -1296,25 +1295,10 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
-      else if (unformat (input, "coremask-%s %llx", &name, &coremask))
-	{
-	  p = hash_get_mem (tm->thread_registrations_by_name, name);
-	  if (p == 0)
-	    return clib_error_return (0, "no such thread type '%s'", name);
-
-	  tr = (vlib_thread_registration_t *) p[0];
-
-	  if (tr->use_pthreads)
-	    return clib_error_return (0,
-				      "coremask cannot be set for '%s' threads",
-				      name);
-
-	  tr->coremask = clib_bitmap_set_multiple
-	    (tr->coremask, 0, coremask, BITS (coremask));
-	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
-	}
-      else if (unformat (input, "corelist-%s %U", &name, unformat_bitmap_list,
-			 &bitmap))
+      else if (unformat (input, "coremask-%s %U", &name,
+			 unformat_bitmap_mask, &bitmap) ||
+	       unformat (input, "corelist-%s %U", &name,
+			 unformat_bitmap_list, &bitmap))
 	{
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
 	  if (p == 0)
