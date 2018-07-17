@@ -849,12 +849,11 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
       return 0;
     }
 
-  /* Built-in app? Hand event to the callback... */
   if (app->cb_fns.builtin_app_rx_callback)
     return app->cb_fns.builtin_app_rx_callback (s);
 
-  /* If no need for event, return */
-  if (!svm_fifo_set_event (s->server_rx_fifo))
+  if (svm_fifo_has_event (s->server_rx_fifo)
+      || svm_fifo_is_empty (s->server_rx_fifo))
     return 0;
 
   mq = app->event_queue;
@@ -876,7 +875,10 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
   evt->fifo = s->server_rx_fifo;
   evt->event_type = FIFO_EVENT_APP_RX;
 
-  return app_enqueue_evt (mq, &msg, lock);
+  if (app_enqueue_evt (mq, &msg, lock))
+    return -1;
+  svm_fifo_set_event (s->server_rx_fifo);
+  return 0;
 }
 
 static inline int
