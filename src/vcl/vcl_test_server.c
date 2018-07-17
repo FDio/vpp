@@ -463,7 +463,7 @@ main (int argc, char **argv)
     {
       int num_ev;
       num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
-				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60.0);
+				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60000.0);
       if (num_ev < 0)
 	{
 	  errno = -num_ev;

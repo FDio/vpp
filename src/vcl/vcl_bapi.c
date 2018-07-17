@@ -33,7 +33,7 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-static u8 *
+u8 *
 format_api_error (u8 * s, va_list * args)
 {
   i32 error = va_arg (*args, u32);
@@ -350,8 +350,8 @@ done:
 
   session->vpp_handle = mp->handle;
   session->transport.is_ip4 = mp->lcl_is_ip4;
-  session->transport.lcl_ip = to_ip46 (mp->lcl_is_ip4 ? IP46_TYPE_IP4 :
-				       IP46_TYPE_IP6, mp->lcl_ip);
+  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
+	       sizeof (ip46_address_t));
   session->transport.lcl_port = mp->lcl_port;
   vppcom_session_table_add_listener (mp->handle, session_index);
   session->session_state = STATE_LISTEN;
@@ -435,8 +435,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->session_state = STATE_ACCEPT;
   session->transport.rmt_port = mp->port;
   session->transport.is_ip4 = mp->is_ip4;
-  session->transport.rmt_ip = to_ip46 (mp->is_ip4 ? IP46_TYPE_IP4 :
-				       IP46_TYPE_IP6, mp->ip);
+  clib_memcpy (&session->transport.rmt_ip, mp->ip, sizeof (ip46_address_t));
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -533,7 +532,8 @@ vppcom_app_send_attach (void)
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
     (vcm->cfg.app_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
     (vcm->cfg.app_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
-    (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0);
+    (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0) |
+    APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
   bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
     (u64) ((vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
 	   (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0));

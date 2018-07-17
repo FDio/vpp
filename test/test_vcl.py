@@ -56,7 +56,8 @@ class VCLTestCase(VppTestCase):
 
     def cut_thru_test(self, server_app, server_args, client_app, client_args):
         self.env = {'VCL_API_PREFIX': self.shm_prefix,
-                    'VCL_APP_SCOPE_LOCAL': "true"}
+                    'VCL_APP_SCOPE_LOCAL': "true",
+                    'VCL_DEBUG':"2"}
 
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
@@ -221,14 +222,14 @@ class VCLCutThruTestCase(VCLTestCase):
         self.cut_thru_setup()
         self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
                                       self.server_addr, self.server_port]
-        self.client_iperf3_timeout = 20
+        self.client_iperf3_timeout = 60
         self.client_iperf3_args = ["-V4d", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
-        self.client_uni_dir_nsock_timeout = 60
+        self.client_uni_dir_nsock_timeout = 90
         self.client_uni_dir_nsock_test_args = ["-I", "5", "-U", "-X",
                                                self.server_addr,
                                                self.server_port]
-        self.client_bi_dir_nsock_timeout = 120
+        self.client_bi_dir_nsock_timeout = 150
         self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
                                               self.server_addr,
                                               self.server_port]
