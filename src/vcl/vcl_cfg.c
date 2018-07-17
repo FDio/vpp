@@ -29,8 +29,6 @@ vppcom_main_t *vcm = &_vppcom_main;
 void
 vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 {
-  char *env_var_str;
-
   ASSERT (vcl_cfg);
 
   vcl_cfg->heapsize = (256ULL << 20);
@@ -48,24 +46,11 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   vcl_cfg->accept_timeout = 60.0;
   vcl_cfg->event_ring_size = (128 << 10);
   vcl_cfg->event_log_path = "/dev/shm";
-
-  env_var_str = getenv (VPPCOM_ENV_DEBUG);
-  if (env_var_str)
-    {
-      u32 tmp;
-      if (sscanf (env_var_str, "%u", &tmp) != 1)
-	clib_warning ("VCL<%d>: WARNING: Invalid debug level specified in the"
-		      " environment variable " VPPCOM_ENV_DEBUG " (%s)!\n",
-		      getpid (), env_var_str);
-      else
-	{
-	  vcm->debug = tmp;
-	  VDBG (0, "VCL<%d>: configured VCL debug level (%u) from "
-		VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
-	}
-    }
 }
 
+#define VCL_CFG_DBG(_lvl, _fmt, _args...) 		\
+  if (vcm->debug > _lvl) 				\
+    fprintf (stderr, _fmt, ##_args)
 void
 vppcom_cfg_heapsize (char *conf_fname)
 {
@@ -85,16 +70,17 @@ vppcom_cfg_heapsize (char *conf_fname)
   fp = fopen (conf_fname, "r");
   if (fp == NULL)
     {
-      VDBG (0, "VCL<%d>: using default heapsize %lld (0x%llx)", getpid (),
-	    vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VCL_CFG_DBG (0, "VCL<%d>: using default heapsize %lu (0x%lx)",
+		   getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
       goto defaulted;
     }
 
   argv = calloc (1, sizeof (char *));
   if (argv == NULL)
     {
-      VDBG (0, "VCL<%d>: calloc failed, using default heapsize %lld (0x%llx)",
-	    getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VCL_CFG_DBG (0, "VCL<%d>: calloc failed, using default heapsize %lu"
+		   " (0x%lx)", getpid (), vcl_cfg->heapsize,
+		   vcl_cfg->heapsize);
       goto defaulted;
     }
 
@@ -111,18 +97,18 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  char **tmp = realloc (argv, argc * sizeof (char *));
 	  if (tmp == NULL)
 	    {
-	      VDBG (0, "VCL<%d>: realloc failed, using default heapsize %lld "
-		    "(0x%llx)", getpid (), vcl_cfg->heapsize,
-		    vcl_cfg->heapsize);
+	      VCL_CFG_DBG (0, "VCL<%d>: realloc failed, using default "
+			   "heapsize %lu (0x%lx)", getpid (),
+			   vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	  argv = tmp;
 	  arg = strndup (p, 1024);
 	  if (arg == NULL)
 	    {
-	      VDBG (0, "VCL<%d>: strndup failed, using default heapsize %lld "
-		    "(0x%llx)", getpid (), vcl_cfg->heapsize,
-		    vcl_cfg->heapsize);
+	      VCL_CFG_DBG (0, "VCL<%d>: strndup failed, using default "
+			   "heapsize %ld (0x%lx)", getpid (),
+			   vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	  argv[argc - 1] = arg;
@@ -136,8 +122,9 @@ vppcom_cfg_heapsize (char *conf_fname)
   char **tmp = realloc (argv, (argc + 1) * sizeof (char *));
   if (tmp == NULL)
     {
-      VDBG (0, "VCL<%d>: realloc failed, using default heapsize %lld "
-	    "(0x%llx)", getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VCL_CFG_DBG (0, "VCL<%d>: realloc failed, using default heapsize %ld "
+		   "(0x%lx)", getpid (), vcl_cfg->heapsize,
+		   vcl_cfg->heapsize);
       goto defaulted;
     }
   argv = tmp;
@@ -163,9 +150,9 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    }
 	  if (size == 0)
 	    {
-	      VDBG (0, "VCL<%d>: parse error '%s %s', using default "
-		    "heapsize %lld (0x%llx)", getpid (), argv[i], argv[i + 1],
-		    vcl_cfg->heapsize, vcl_cfg->heapsize);
+	      VCL_CFG_DBG (0, "VCL<%d>: parse error '%s %s', using default "
+			   "heapsize %ld (0x%lx)", getpid (), argv[i],
+			   argv[i + 1], vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 
@@ -175,9 +162,9 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    vcl_cfg->heapsize = size << 20;
 	  else
 	    {
-	      VDBG (0, "VCL<%d>: parse error '%s %s', using default "
-		    "heapsize %lld (0x%llx)", getpid (), argv[i], argv[i + 1],
-		    vcl_cfg->heapsize, vcl_cfg->heapsize);
+	      VCL_CFG_DBG (0, "VCL<%d>: parse error '%s %s', using default "
+			   "heapsize %ld (0x%lx)", getpid (), argv[i],
+			   argv[i + 1], vcl_cfg->heapsize, vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
 	}
@@ -193,17 +180,17 @@ defaulted:
 		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   if (vcl_mem == MAP_FAILED)
     {
-      clib_unix_error ("VCL<%d>: ERROR: mmap(0, %lld == 0x%llx, "
-		       "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
-		       "-1, 0) failed!",
-		       getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      VCL_CFG_DBG (0, "VCL<%d>: ERROR: mmap(0, %ld == 0x%lx, "
+		   "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
+		   "-1, 0) failed!", getpid (), vcl_cfg->heapsize,
+		   vcl_cfg->heapsize);
       ASSERT (vcl_mem != MAP_FAILED);
       return;
     }
   heap = clib_mem_init_thread_safe (vcl_mem, vcl_cfg->heapsize);
   if (!heap)
     {
-      clib_warning ("VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());
+      fprintf (stderr, "VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());
       ASSERT (heap);
       return;
     }
