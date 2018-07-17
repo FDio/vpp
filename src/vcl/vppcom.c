@@ -1862,17 +1862,88 @@ done:
   return rv;
 }
 
+static void
+vcl_send_session_accepted_reply (svm_msg_q_t *mq, u32 context,
+                                 session_handle_t handle, int retval)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_accepted_reply_msg_t *rmp;
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_ACCEPTED_REPLY);
+  rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
+  rmp->handle = handle;
+  rmp->context = context;
+  rmp->retval = retval;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+static void
+vcl_session_accepted_handler (session_accepted_msg_t * mp)
+{
+  vcl_session_t *session, *listen_session;
+  vce_event_connect_request_t *ecr;
+  svm_fifo_t *rx_fifo, *tx_fifo;
+  u32 session_index, ev_idx;
+  vce_event_t *ev;
+
+  VCL_SESSION_LOCK ();
+
+  listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
+  if (!listen_session)
+    {
+      clib_warning ("VCL<%d>: ERROR: couldn't find listen session: "
+		    "unknown vpp listener handle %llx",
+		    getpid (), mp->listener_handle);
+      vcl_send_session_accepted_reply (session->vpp_evt_q, mp->context,
+                                       mp->handle,
+                                       VNET_API_ERROR_INVALID_ARGUMENT);
+      return;
+    }
+
+  pool_get (vcm->sessions, session);
+  memset (session, 0, sizeof (*session));
+  session_index = (u32) (session - vcm->sessions);
+
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
+  rx_fifo->client_session_index = session_index;
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
+  tx_fifo->client_session_index = session_index;
+
+  session->vpp_handle = mp->handle;
+  session->client_context = mp->context;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
+  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+					 svm_msg_q_t *);
+  session->session_state = STATE_ACCEPT;
+  session->transport.rmt_port = mp->port;
+  session->transport.is_ip4 = mp->is_ip4;
+  session->transport.rmt_ip = to_ip46 (!mp->is_ip4, mp->ip);
+
+  hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
+  session->transport.lcl_port = listen_session->transport.lcl_port;
+  session->transport.lcl_ip = listen_session->transport.lcl_ip;
+  clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+
+  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: client accept request from %s"
+	" address %U port %d queue %p!", getpid (), mp->handle, session_index,
+	mp->is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->ip,
+	mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	clib_net_to_host_u16 (mp->port), session->vpp_evt_q);
+  vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
+
+  VCL_SESSION_UNLOCK ();
+}
+
 int
 vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		   int maxevents, double wait_for_time)
 {
+  f64 timeout;
+  u32 vep_next_sid, wait_cont_idx, keep_trying = 1;
   vcl_session_t *vep_session;
-  int rv;
-  f64 timeout = clib_time_now (&vcm->clib_time) + wait_for_time;
-  u32 keep_trying = 1;
-  int num_ev = 0;
-  u32 vep_next_sid, wait_cont_idx;
-  u8 is_vep;
+  svm_msg_q_msg_t msg;
+  session_event_t *e;
+  int rv, num_ev = 0;
+  u8 is_vep, cond_wait;
 
   if (PREDICT_FALSE (maxevents <= 0))
     {
@@ -1900,6 +1971,37 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
       VDBG (1, "VCL<%d>: WARNING: vep_idx (%u) is empty!",
 	    getpid (), vep_idx);
       goto done;
+    }
+
+
+
+
+  timeout = clib_time_now (&vcm->clib_time) + wait_for_time;
+  cond_wait = wait_for_time != -1 ? SVM_Q_NOWAIT : SVM_Q_WAIT;
+
+  while (1)
+    {
+      if (svm_msg_q_sub (vcm->app_event_queue, &msg, cond_wait, 0))
+	goto done;
+      e = svm_msg_q_msg_data (vcm->app_event_queue, &msg);
+      switch (e->event_type)
+        {
+        case SESSION_CTRL_EVT_ACCEPTED:
+          vcl_session_accepted_handler ((session_accepted_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_CONNECTED:
+          session_connected_handler ((session_connected_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_DISCONNECTED:
+          session_disconnected_handler ((session_disconnected_msg_t *) e->data);
+          break;
+        case SESSION_CTRL_EVT_RESET:
+          session_reset_handler ((session_reset_msg_t *) e->data);
+          break;
+        default:
+          clib_warning ("unhandled %u", e->event_type);
+        }
+      svm_msg_q_free_msg (vcm->app_event_queue, &msg);
     }
 
   do
@@ -2010,6 +2112,12 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		}
 	    }
 
+
+
+
+
+
+
 	  if (add_event)
 	    {
 	      events[num_ev].data.u64 = session_ev_data;
@@ -2028,13 +2136,15 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		  goto done;
 		}
 	    }
-	  if (wait_cont_idx != ~0)
-	    {
-	      if (next_sid == ~0)
-		next_sid = vep_next_sid;
-	      else if (next_sid == wait_cont_idx)
-		next_sid = ~0;
-	    }
+
+//	  if (wait_cont_idx != ~0)
+//	    {
+//	      if (next_sid == ~0)
+//		next_sid = vep_next_sid;
+//	      else if (next_sid == wait_cont_idx)
+//		next_sid = ~0;
+//	    }
+
 	}
       if (wait_for_time != -1)
 	keep_trying = (clib_time_now (&vcm->clib_time) <= timeout) ? 1 : 0;
