@@ -59,10 +59,10 @@ typedef struct
   {
     struct
     {
-      u32 offset;
-      u8 linear_search;
-      u8 log2_pages;
-      i16 refcnt;
+      u64 offset:37;
+      u64 linear_search:1;
+      u64 log2_pages:8;
+      i64 refcnt:16;
     };
     u64 as_u64;
   };
@@ -71,6 +71,10 @@ typedef struct
     BVT (clib_bihash_kv) cache[BIHASH_KVP_CACHE_SIZE];
 #endif
 } BVT (clib_bihash_bucket);
+
+#if BIHASH_KVP_CACHE_SIZE == 0
+STATIC_ASSERT_SIZEOF (BVT (clib_bihash_bucket), sizeof (u64));
+#endif
 
 typedef struct
 {
@@ -238,6 +242,12 @@ static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
   return (void *) vp;
 }
 
+static inline int BV (clib_bihash_bucket_is_empty)
+  (BVT (clib_bihash_bucket) * b)
+{
+  return b->as_u64 == 0;
+}
+
 static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 						 void *v)
 {
@@ -284,7 +294,7 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
 
-  if (b->offset == 0)
+  if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
 
 #if BIHASH_KVP_CACHE_SIZE > 0
@@ -373,7 +383,7 @@ static inline void BV (clib_bihash_prefetch_data)
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
 
-  if (PREDICT_FALSE (b->offset == 0))
+  if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return;
 
   hash >>= h->log2_nbuckets;
@@ -401,7 +411,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
 
-  if (b->offset == 0)
+  if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
 
   /* Check the cache, if currently unlocked */
