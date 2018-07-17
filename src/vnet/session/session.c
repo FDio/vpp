@@ -753,9 +753,10 @@ stream_session_disconnect_notify (transport_connection_t * tc)
   stream_session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
-  server = application_get (s->app_index);
-  server->cb_fns.session_disconnect_callback (s);
   s->session_state = SESSION_STATE_CLOSING;
+  server = application_get_if_valid (s->app_index);
+  if (server)
+    server->cb_fns.session_disconnect_callback (s);
 }
 
 /**

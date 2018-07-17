@@ -1299,7 +1299,7 @@ u8 *
 format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 {
   clib_bihash_kv_16_8_t *kvp = va_arg (*args, clib_bihash_kv_16_8_t *);
-  u32 is_local = va_arg (*args, u32);
+  u32 is_local = va_arg (*args, u32), app_index, session_index;
   u8 *app_name, *str = 0;
   stream_session_t *session;
   v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
@@ -1316,7 +1316,8 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
     }
   else
     {
-      app_name = application_name_from_index (kvp->value);
+      local_session_parse_handle (kvp->value, &app_index, &session_index);
+      app_name = application_name_from_index (app_index);
       str = format (0, "[%U] %U:%d", format_transport_proto_short, key->proto,
 		    format_ip4_address, &key->src,
 		    clib_net_to_host_u16 (key->src_port));

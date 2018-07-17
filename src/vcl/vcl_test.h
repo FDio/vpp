@@ -102,11 +102,6 @@ vcl_test_write (int fd, uint8_t *buf, uint32_t nbytes,
           nbytes_left = nbytes_left - rv;
           if (stats)
             stats->tx_incomp++;
-          if (verbose)
-            {
-              printf ("SOCK_TEST: WARNING: bytes written (%d) "
-                      "!= bytes to write (%d)!\n", tx_bytes, nbytes);
-            }
         }
      
     } while (tx_bytes != nbytes);
