@@ -361,7 +361,7 @@ qos_mark_enable (u32 sw_if_index,
 int
 qos_mark_disable (u32 sw_if_index, qos_source_t output_source)
 {
-  if (vec_len (qos_mark_configs[output_source]) < sw_if_index)
+  if (vec_len (qos_mark_configs[output_source]) <= sw_if_index)
     return VNET_API_ERROR_NO_MATCHING_INTERFACE;
   if (INDEX_INVALID == qos_mark_configs[output_source][sw_if_index])
     return VNET_API_ERROR_VALUE_EXIST;
