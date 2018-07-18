@@ -106,9 +106,16 @@ class TestJVpp(VppTestCase):
                                                REGISTRY_JAR_PREFIX, version)
         self.logger.info("JVpp Registry jar path : {0}"
                          .format(registry_jar_path))
+        if (not os.path.isfile(registry_jar_path)):
+            raise Exception(
+                "JVpp Registry jar has not been found: {0}"
+                .format(registry_jar_path))
 
         api_jar_path = self.full_jar_name(install_dir, api_jar_name, version)
         self.logger.info("Api jar path : {0}".format(api_jar_path))
+        if (not os.path.isfile(api_jar_path)):
+            raise Exception(
+                "Api jar has not been found: {0}".format(api_jar_path))
 
         # passes shm prefix as parameter to create connection with same value
         command = ["java", "-cp",
