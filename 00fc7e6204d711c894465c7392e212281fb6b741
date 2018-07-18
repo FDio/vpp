@@ -16,6 +16,24 @@
       "revId": "00fc7e6204d711c894465c7392e212281fb6b741",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d2d2945d_d9440c19",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 1082,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-07-18T10:41:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c3b83c0d_16d58789",
+      "revId": "00fc7e6204d711c894465c7392e212281fb6b741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
