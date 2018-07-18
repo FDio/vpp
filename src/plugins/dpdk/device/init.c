@@ -838,7 +838,12 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Cavium FastlinQ QL41000 Series */
     else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
       ;
-    /* Mellanox  */
+    /* Mellanox mlx4 */
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1003 && d->device_id <= 0x104)
+      {
+        continue;
+      }
+    /* Mellanox mlx5 */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
       {
         continue;
