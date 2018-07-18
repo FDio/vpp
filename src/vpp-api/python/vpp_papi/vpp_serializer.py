@@ -45,11 +45,9 @@ class BaseTypes():
                      .format(type, base_types[type]))
 
     def pack(self, data, kwargs=None):
-        logger.debug("Data: {} Format: {}".format(data, self.packer.format))
         return self.packer.pack(data)
 
     def unpack(self, data, offset, result=None):
-        logger.debug("@ {} Format: {}".format(offset, self.packer.format))
         return self.packer.unpack_from(data, offset)[0]
 
 
@@ -72,8 +70,6 @@ class FixedList_u8():
     def pack(self, list, kwargs):
         """Packs a fixed length bytestring. Left-pads with zeros
         if input data is too short."""
-        logger.debug("Data: {}".format(list))
-
         if len(list) > self.num:
             raise ValueError('Fixed list length error for "{}", got: {}'
                              ' expected: {}'
@@ -95,8 +91,6 @@ class FixedList():
         self.size = self.packer.size * num
 
     def pack(self, list, kwargs):
-        logger.debug("Data: {}".format(list))
-
         if len(list) != self.num:
             raise ValueError('Fixed list length error, got: {} expected: {}'
                              .format(len(list), self.num))
@@ -123,7 +117,6 @@ class VLAList():
         self.length_field = len_field_name
 
     def pack(self, list, kwargs=None):
-        logger.debug("Data: {}".format(list))
         if len(list) != kwargs[self.length_field]:
             raise ValueError('Variable length error, got: {} expected: {}'
                              .format(len(list), kwargs[self.length_field]))
@@ -138,8 +131,6 @@ class VLAList():
         return b
 
     def unpack(self, data, offset=0, result=None):
-        logger.debug("Data: {} @ {} Result: {}"
-                     .format(list, offset, result[self.index]))
         # Return a list of arguments
 
         # u8 array
@@ -164,8 +155,6 @@ class VLAList_legacy():
         self.size = self.packer.size
 
     def pack(self, list, kwargs=None):
-        logger.debug("Data: {}".format(list))
-
         if self.packer.size == 1:
             return bytes(list)
 
@@ -180,8 +169,6 @@ class VLAList_legacy():
             raise ValueError('Legacy Variable Length Array length mismatch.')
         elements = int((len(data) - offset) / self.packer.size)
         r = []
-        logger.debug("Legacy VLA: {} elements of size {}"
-                     .format(elements, self.packer.size))
         for e in range(elements):
             x = self.packer.unpack(data, offset)
             r.append(x)
@@ -208,7 +195,6 @@ class VPPEnumType():
         return self.enum[name]
 
     def pack(self, data, kwargs=None):
-        logger.debug("Data: {}".format(data))
         return types['u32'].pack(data, kwargs)
 
     def unpack(self, data, offset=0, result=None):
@@ -243,7 +229,6 @@ class VPPUnionType():
         logger.debug('Adding union {}'.format(name))
 
     def pack(self, data, kwargs=None):
-        logger.debug("Data: {}".format(data))
         for k, v in data.items():
             logger.debug("Key: {} Value: {}".format(k, v))
             b = self.packers[k].pack(v, kwargs)
@@ -312,12 +297,9 @@ class VPPType():
     def pack(self, data, kwargs=None):
         if not kwargs:
             kwargs = data
-        logger.debug("Data: {}".format(data))
         b = bytes()
         for i, a in enumerate(self.fields):
             if a not in data:
-                logger.debug("Argument {} not given, defaulting to 0"
-                             .format(a))
                 b += b'\x00' * self.packers[i].size
                 continue
 
