@@ -68,7 +68,7 @@ qos_record_enable (u32 sw_if_index, qos_source_t input_source)
 int
 qos_record_disable (u32 sw_if_index, qos_source_t input_source)
 {
-  if (vec_len (qos_record_configs[input_source]) < sw_if_index)
+  if (vec_len (qos_record_configs[input_source]) <= sw_if_index)
     return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
   if (0 == qos_record_configs[input_source][sw_if_index])
