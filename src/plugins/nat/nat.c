@@ -428,12 +428,15 @@ static u8 * format_nat44_classify_trace (u8 * s, va_list * args)
 static inline uword
 nat44_classify_node_fn_inline (vlib_main_t * vm,
                                vlib_node_runtime_t * node,
-                               vlib_frame_t * frame)
+                               vlib_frame_t * frame,
+                               int is_ed)
 {
   u32 n_left_from, * from, * to_next;
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
+  u32 thread_index = vm->thread_index;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -450,11 +453,13 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	{
           u32 bi0;
 	  vlib_buffer_t *b0;
-          u32 next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
+          u32 next0 = NAT44_CLASSIFY_NEXT_IN2OUT, sw_if_index0, rx_fib_index0;
           ip4_header_t *ip0;
           snat_address_t *ap;
           snat_session_key_t m_key0;
           clib_bihash_kv_8_8_t kv0, value0;
+          clib_bihash_kv_16_8_t ed_kv0, ed_value0;
+          udp_header_t *udp0;
 
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -466,6 +471,20 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
           ip0 = vlib_buffer_get_current (b0);
+          udp0 = ip4_next_header (ip0);
+
+          if (is_ed)
+            {
+              sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+              rx_fib_index0 =
+                fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+                                                     sw_if_index0);
+              make_ed_kv (&ed_kv0, &ip0->src_address, &ip0->dst_address,
+                          ip0->protocol, rx_fib_index0, udp0->src_port,
+                          udp0->dst_port);
+              if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &ed_kv0, &ed_value0))
+                goto enqueue0;
+            }
 
           vec_foreach (ap, sm->addresses)
             {
@@ -481,7 +500,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               m_key0.addr = ip0->dst_address;
               m_key0.port = 0;
               m_key0.protocol = 0;
-              m_key0.fib_index = sm->outside_fib_index;
+              m_key0.fib_index = 0;
               kv0.key = m_key0.as_u64;
               if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
                 {
@@ -490,7 +509,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
                     next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
                   goto enqueue0;
                 }
-              udp_header_t * udp0 = ip4_next_header (ip0);
               m_key0.port = clib_net_to_host_u16 (udp0->dst_port);
               m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
               kv0.key = m_key0.as_u64;
@@ -528,7 +546,7 @@ nat44_classify_node_fn (vlib_main_t * vm,
                         vlib_node_runtime_t * node,
                         vlib_frame_t * frame)
 {
-  return nat44_classify_node_fn_inline (vm, node, frame);
+  return nat44_classify_node_fn_inline (vm, node, frame, 0);
 };
 
 VLIB_REGISTER_NODE (nat44_classify_node) = {
@@ -551,7 +569,7 @@ nat44_ed_classify_node_fn (vlib_main_t * vm,
                            vlib_node_runtime_t * node,
                            vlib_frame_t * frame)
 {
-  return nat44_classify_node_fn_inline (vm, node, frame);
+  return nat44_classify_node_fn_inline (vm, node, frame, 1);
 };
 
 VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
@@ -575,7 +593,7 @@ nat44_det_classify_node_fn (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
                             vlib_frame_t * frame)
 {
-  return nat44_classify_node_fn_inline (vm, node, frame);
+  return nat44_classify_node_fn_inline (vm, node, frame, 0);
 };
 
 VLIB_REGISTER_NODE (nat44_det_classify_node) = {
@@ -599,7 +617,7 @@ nat44_handoff_classify_node_fn (vlib_main_t * vm,
                                 vlib_node_runtime_t * node,
                                 vlib_frame_t * frame)
 {
-  return nat44_classify_node_fn_inline (vm, node, frame);
+  return nat44_classify_node_fn_inline (vm, node, frame, 0);
 };
 
 VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
