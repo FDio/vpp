@@ -22,7 +22,7 @@ This driver is still in experimental phase, however it shows very good
 performance numbers. Following items are not implemented (yet).
 
 * Jumbo MTU support
-* Interrupt and adaptive mode
+* Adaptive mode
 * NUMA support
 
 ## Usage
