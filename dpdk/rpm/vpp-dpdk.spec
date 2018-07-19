@@ -20,7 +20,7 @@ make %{_make_args} install
 
 %files devel
 /usr/bin/*
-/usr/include/dpdk
+/usr/include/dpdk/*
 /usr/lib/*
 /usr/sbin/*
 /usr/share/dpdk
