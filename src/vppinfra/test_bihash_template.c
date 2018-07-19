@@ -17,6 +17,7 @@
 #include <vppinfra/error.h>
 #include <sys/resource.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_template.h>
@@ -25,6 +26,9 @@
 
 typedef struct
 {
+  volatile u32 thread_barrier;
+  volatile u32 threads_running;
+  volatile u64 sequence_number;
   u64 seed;
   u32 nbuckets;
   u32 nitems;
@@ -34,11 +38,13 @@ typedef struct
   int careful_delete_tests;
   int verbose;
   int non_random_keys;
+  u32 nthreads;
   uword *key_hash;
   u64 *keys;
   uword hash_memory_size;
     BVT (clib_bihash) hash;
   clib_time_t clib_time;
+  void *global_heap;
 
   unformat_input_t *input;
 
@@ -88,6 +94,102 @@ test_bihash_vec64 (test_main_t * tm)
 
   return 0;
 }
+
+void *
+test_bihash_thread_fn (void *arg)
+{
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
+  test_main_t *tm = &test_main;
+
+  int i, j;
+
+  u32 my_thread_index = (u32) (u64) arg;
+  __os_thread_index = my_thread_index;
+  clib_mem_set_per_cpu_heap (tm->global_heap);
+
+  while (tm->thread_barrier)
+    ;
+
+  h = &tm->hash;
+
+  for (i = 0; i < tm->ncycles; i++)
+    {
+      for (j = 0; j < tm->nitems; j++)
+	{
+	  kv.key = ((u64) my_thread_index << 32) | (u64) j;
+	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
+	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
+				     __ATOMIC_ACQUIRE);
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+	}
+      for (j = 0; j < tm->nitems; j++)
+	{
+	  kv.key = ((u64) my_thread_index << 32) | (u64) j;
+	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
+	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
+				     __ATOMIC_ACQUIRE);
+	  BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
+	}
+    }
+
+  (void) __atomic_sub_fetch (&tm->threads_running, 1, __ATOMIC_ACQUIRE);
+  while (1)
+    {
+      struct timespec ts, tsrem;
+      ts.tv_sec = 1;
+      ts.tv_nsec = 0;
+
+      while (nanosleep (&ts, &tsrem) < 0)
+	ts = tsrem;
+    }
+  return (0);			/* not so much */
+}
+
+static clib_error_t *
+test_bihash_threads (test_main_t * tm)
+{
+  int i;
+  pthread_t handle;
+  BVT (clib_bihash) * h;
+  int rv;
+
+  h = &tm->hash;
+
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+
+  tm->thread_barrier = 1;
+
+  /* Start the worker threads */
+  for (i = 0; i < tm->nthreads; i++)
+    {
+      rv = pthread_create (&handle, NULL, test_bihash_thread_fn,
+			   (void *) (u64) i);
+      if (rv)
+	{
+	  clib_unix_warning ("pthread_create returned %d", rv);
+	}
+    }
+  tm->threads_running = i;
+  tm->sequence_number = 0;
+  CLIB_MEMORY_BARRIER ();
+
+  /* start the workers */
+  tm->thread_barrier = 0;
+
+  while (tm->threads_running)
+    {
+      struct timespec ts, tsrem;
+      ts.tv_sec = 0;
+      ts.tv_nsec = 20 * 1000 * 1000;	/* sleep for 20ms at a time */
+
+      while (nanosleep (&ts, &tsrem) < 0)
+	ts = tsrem;
+    }
+
+  return 0;
+}
+
 
 static clib_error_t *
 test_bihash (test_main_t * tm)
@@ -283,39 +385,6 @@ test_bihash (test_main_t * tm)
 }
 
 clib_error_t *
-test_bihash_cache (test_main_t * tm)
-{
-  u32 lru;
-  BVT (clib_bihash_bucket) _b, *b = &_b;
-
-  BV (clib_bihash_reset_cache) (b);
-
-  fformat (stdout, "Initial LRU config: %U\n", BV (format_bihash_lru), b);
-
-  BV (clib_bihash_update_lru_not_inline) (b, 3);
-
-  fformat (stdout, "use slot 3, LRU config: %U\n", BV (format_bihash_lru), b);
-
-  BV (clib_bihash_update_lru) (b, 1);
-
-  fformat (stdout, "use slot 1 LRU config: %U\n", BV (format_bihash_lru), b);
-
-  lru = BV (clib_bihash_get_lru) (b);
-
-  fformat (stdout, "least-recently-used is %d\n", lru);
-
-  BV (clib_bihash_update_lru) (b, 4);
-
-  fformat (stdout, "use slot 4 LRU config: %U\n", BV (format_bihash_lru), b);
-
-  lru = BV (clib_bihash_get_lru) (b);
-
-  fformat (stdout, "least-recently-used is %d\n", lru);
-
-  return 0;
-}
-
-clib_error_t *
 test_bihash_main (test_main_t * tm)
 {
   unformat_input_t *i = tm->input;
@@ -351,9 +420,8 @@ test_bihash_main (test_main_t * tm)
 	;
       else if (unformat (i, "vec64"))
 	which = 1;
-      else if (unformat (i, "cache"))
+      else if (unformat (i, "threads %u", &tm->nthreads))
 	which = 2;
-
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
       else
@@ -378,7 +446,7 @@ test_bihash_main (test_main_t * tm)
       break;
 
     case 2:
-      error = test_bihash_cache (tm);
+      error = test_bihash_threads (tm);
       break;
 
     default:
@@ -397,6 +465,8 @@ main (int argc, char *argv[])
   test_main_t *tm = &test_main;
 
   clib_mem_init (0, 4095ULL << 20);
+
+  tm->global_heap = clib_mem_get_per_cpu_heap ();
 
   tm->input = &i;
   tm->seed = 0xdeaddabe;
