@@ -22,6 +22,30 @@
       "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b98c2d91_98e59c9e",
+        "filename": "test/run_tests.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-07-19T15:31:30Z",
+      "side": 1,
+      "message": "Maybe we could use the PARALLEL env variable for this.\nPARALLEL\u003d1 would mean autodetection\nPARALLEL\u003d\u003e1 would mean spawn this many processes",
+      "parentUuid": "34c20303_3d2a2967",
+      "range": {
+        "startLine": 115,
+        "startChar": 4,
+        "endLine": 115,
+        "endChar": 20
+      },
+      "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
