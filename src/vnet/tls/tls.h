@@ -32,7 +32,7 @@
   if (_lvl <= TLS_DEBUG) 				\
     clib_warning (_fmt, ##_args)
 #else
-#define TLS_DBG(_fmt, _args...)
+#define TLS_DBG(_lvl, _fmt, _args...)
 #endif
 
 /* *INDENT-OFF* */
