@@ -22,17 +22,6 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
 
-typedef enum
-{
-  HANDOFF_DISPATCH_NEXT_IP4_INPUT,
-  HANDOFF_DISPATCH_NEXT_IP6_INPUT,
-  HANDOFF_DISPATCH_NEXT_MPLS_INPUT,
-  HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT,
-  HANDOFF_DISPATCH_NEXT_DROP,
-  HANDOFF_DISPATCH_N_NEXT,
-} handoff_dispatch_next_t;
-
-
 static inline u64
 ipv4_get_key (ip4_header_t * ip)
 {
