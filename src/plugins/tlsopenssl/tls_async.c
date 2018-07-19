@@ -99,7 +99,7 @@ evt_pool_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  TLS_DBG ("Totally there is %d thread\n", num_threads);
+  TLS_DBG (2, "Totally there is %d thread\n", num_threads);
 
   vec_validate (om->evt_pool, num_threads - 1);
   vec_validate (om->status, num_threads - 1);
@@ -115,7 +115,6 @@ evt_pool_init (vlib_main_t * vm)
     }
   om->polling = NULL;
 
-  TLS_DBG ("Node disabled\n");
   openssl_async_node_enable_disable (0);
 
   return;
@@ -253,7 +252,7 @@ openssl_async_run (void *evt)
   int *evt_run_tail = &om->status[thread_index].evt_run_tail;
   int *evt_run_head = &om->status[thread_index].evt_run_head;
 
-  TLS_DBG ("Set event %d to run\n", event_index);
+  TLS_DBG (2, "Set event %d to run\n", event_index);
 
   event = openssl_evt_get_w_thread (event_index, thread_index);
 
@@ -271,7 +270,9 @@ openssl_async_run (void *evt)
     }
   *evt_run_tail = event_index;
   if (*evt_run_head < 0)
-    *evt_run_head = event_index;
+    {
+      *evt_run_head = event_index;
+    }
 
   return 1;
 }
@@ -303,8 +304,31 @@ vpp_add_async_pending_event (tls_ctx_t * ctx,
   event->next = *evt_pending_head;
   *evt_pending_head = eidx;
 
-
   return &event->engine_callback;
+}
+
+int
+vpp_add_async_run_event (tls_ctx_t * ctx, openssl_resume_handler * handler)
+{
+  u32 eidx;
+  openssl_evt_t *event;
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  u32 thread_id = ctx->c_thread_index;
+
+  eidx = openssl_evt_alloc ();
+  event = openssl_evt_get (eidx);
+
+  event->ctx_index = oc->openssl_ctx_index;
+  event->status = SSL_ASYNC_PENDING;
+  event->handler = handler;
+  event->cb_args.event_index = eidx;
+  event->cb_args.thread_index = thread_id;
+  event->engine_callback.callback = openssl_async_run;
+  event->engine_callback.arg = &event->cb_args;
+
+  /* This is a retry event, and need to put to ring to make it run again */
+  return openssl_async_run (&event->cb_args);
+
 }
 
 void
@@ -325,7 +349,6 @@ event_handler (void *tls_async)
 
   if (handler)
     {
-      TLS_DBG ("relaunch...\n");
       (*handler) (ctx, tls_session);
     }
 
@@ -349,7 +372,7 @@ dasync_polling ()
   evt_pending = &om->status[thread_index].evt_pending_head;
   while (*evt_pending >= 0)
     {
-      TLS_DBG ("polling... current head = %d\n", *evt_pending);
+      TLS_DBG (2, "polling... current head = %d\n", *evt_pending);
       event = openssl_evt_get_w_thread (*evt_pending, thread_index);
       *evt_pending = event->next;
       if (event->status == SSL_ASYNC_PENDING)
@@ -385,7 +408,7 @@ qat_polling_config ()
 		   NULL, NULL, 0);
   *config = 1;
 
-  TLS_DBG ("set thread %d and instance %d mapping\n", thread_index,
+  TLS_DBG (2, "set thread %d and instance %d mapping\n", thread_index,
 	   thread_index);
 
 }
@@ -394,14 +417,12 @@ void
 qat_polling ()
 {
   openssl_async_t *om = &openssl_async_main;
-  int ret;
+  int poll_status = 0;
 
   if (om->start_polling)
     {
       qat_polling_config ();
-#define QAT_CMD_POLL (ENGINE_CMD_BASE + 1)
-      ENGINE_ctrl (om->engine, QAT_CMD_POLL, 0, &ret, NULL);
-      ;
+      ENGINE_ctrl_cmd (om->engine, "POLL", 0, &poll_status, NULL, 0);
     }
 }
 
@@ -462,7 +483,7 @@ tls_resume_from_crypto (int thread_index)
       if (*evt_run_head >= 0)
 	{
 	  event = openssl_evt_get_w_thread (*evt_run_head, thread_index);
-	  TLS_DBG ("event run = %d\n", *evt_run_head);
+	  TLS_DBG (2, "event run = %d\n", *evt_run_head);
 	  tls_async_do_job (*evt_run_head, thread_index);
 
 	  *evt_run_head = event->next;
@@ -481,8 +502,6 @@ tls_resume_from_crypto (int thread_index)
 static clib_error_t *
 tls_async_init (vlib_main_t * vm)
 {
-
-  TLS_DBG ("Start to call tls_async_init\n");
   evt_pool_init (vm);
   return 0;
 

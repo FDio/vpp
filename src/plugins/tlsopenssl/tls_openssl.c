@@ -167,13 +167,26 @@ vpp_ssl_async_process_event (tls_ctx_t * ctx,
     {
       SSL_set_async_callback (oc->ssl, (void *) engine_cb->callback,
 			      (void *) engine_cb->arg);
-      TLS_DBG ("set callback to engine %p\n", engine_cb->callback);
+      TLS_DBG (2, "set callback to engine %p\n", engine_cb->callback);
     }
-  /* associated fd with context for return */
-  TLS_DBG ("completed assoicated fd with tls session\n");
   return 0;
 
 }
+
+/* Due to engine busy stat, VPP need to retry later */
+static int
+vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+
+  if (vpp_add_async_run_event (ctx, handler))
+    {
+      SSL_set_async_estatus (oc->ssl, 0);
+    }
+  return 0;
+
+}
+
 #endif
 
 int
@@ -182,6 +195,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
 #ifdef HAVE_OPENSSL_ASYNC
+  int estatus;
   openssl_resume_handler *myself;
 #endif
 
@@ -200,9 +214,14 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
       err = SSL_get_error (oc->ssl, rv);
       openssl_try_handshake_write (oc, tls_session);
 #ifdef HAVE_OPENSSL_ASYNC
+      myself = openssl_ctx_handshake_rx;
+      if (SSL_get_async_estatus (oc->ssl, &estatus)
+	  && (estatus == ENGINE_STATUS_RETRY))
+	{
+	  vpp_ssl_async_retry_func (ctx, myself);
+	}
       if (err == SSL_ERROR_WANT_ASYNC)
 	{
-	  myself = openssl_ctx_handshake_rx;
 	  vpp_ssl_async_process_event (ctx, myself);
 	}
 #endif
