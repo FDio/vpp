@@ -131,14 +131,10 @@ dhcp_client_detect_node_fn (vlib_main_t * vm,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b2);
 
-	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
-			     &next0, b0);
-	  vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_TX],
-			     &next1, b1);
-	  vnet_feature_next (vnet_buffer (b2)->sw_if_index[VLIB_TX],
-			     &next2, b2);
-	  vnet_feature_next (vnet_buffer (b3)->sw_if_index[VLIB_TX],
-			     &next3, b3);
+	  vnet_feature_next (&next0, b0);
+	  vnet_feature_next (&next1, b1);
+	  vnet_feature_next (&next2, b2);
+	  vnet_feature_next (&next3, b3);
 
 	  if (ip0->protocol == IP_PROTOCOL_UDP)
 	    {
@@ -237,8 +233,7 @@ dhcp_client_detect_node_fn (vlib_main_t * vm,
 	   * assigned) we are looking for the preverbial needle in the haystack
 	   * so assume the packet is not the one we are looking for.
 	   */
-	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
-			     &next0, b0);
+	  vnet_feature_next (&next0, b0);
 
 	  /*
 	   * all we are looking for here is DHCP/BOOTP packet-to-client

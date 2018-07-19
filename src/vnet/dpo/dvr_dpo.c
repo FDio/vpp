@@ -473,14 +473,12 @@ dvr_reinject_inline (vlib_main_t * vm,
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
                 next0 = DVR_REINJECT_OUTPUT;
             else
-                vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_TX],
-                                  &next0, b0);
+                vnet_feature_next( &next0, b0);
 
             if (b1->flags & VNET_BUFFER_F_IS_DVR)
                 next1 = DVR_REINJECT_OUTPUT;
             else
-                vnet_feature_next(vnet_buffer(b1)->sw_if_index[VLIB_TX],
-                                  &next1, b1);
+                vnet_feature_next( &next1, b1);
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -520,8 +518,7 @@ dvr_reinject_inline (vlib_main_t * vm,
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
                 next0 = DVR_REINJECT_OUTPUT;
             else
-                vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_TX],
-                                  &next0, b0);
+                vnet_feature_next( &next0, b0);
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

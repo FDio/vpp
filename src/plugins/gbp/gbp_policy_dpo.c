@@ -455,8 +455,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	    {
 	      gpd0 = gbp_policy_dpo_get_i (dpo0->dpoi_index);
 	      src_epg0 = gpd0->gpd_epg;
-	      vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_RX],
-				 &next0, b0);
+	      vnet_feature_next (&next0, b0);
 	    }
 	  else
 	    {

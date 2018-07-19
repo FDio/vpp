@@ -147,7 +147,7 @@ stn_ip46_punt_fn (vlib_main_t * vm,
 	    }
           else
           {
-              vnet_feature_next (0, &next0, p0);
+              vnet_feature_next (&next0, p0);
           }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))

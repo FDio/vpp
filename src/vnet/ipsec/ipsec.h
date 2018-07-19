@@ -378,11 +378,10 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
 				    vlib_node_runtime_t * nr)
 {
   u32 next;
-  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_t *node = vlib_get_node (vm, nr->node_index);
 
-  vnet_feature_next (sw_if_index, &next, b);
+  vnet_feature_next (&next, b);
   return node->next_nodes[next];
 }
 

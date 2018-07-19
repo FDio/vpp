@@ -138,7 +138,7 @@ qos_record_inline (vlib_main_t * vm,
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
 	  vlib_buffer_t *b0;
-	  u32 sw_if_index0, next0, bi0;
+	  u32 next0, bi0;
 	  qos_bits_t qos0;
 	  u8 l2_len;
 
@@ -184,7 +184,6 @@ qos_record_inline (vlib_main_t * vm,
 	  vnet_buffer2 (b0)->qos.bits = qos0;
 	  vnet_buffer2 (b0)->qos.source = QOS_SOURCE_IP;
 	  b0->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -203,7 +202,7 @@ qos_record_inline (vlib_main_t * vm,
 					    L2INPUT_FEAT_L2_IP_QOS_RECORD);
 	    }
 	  else
-	    vnet_feature_next (sw_if_index0, &next0, b0);
+	    vnet_feature_next (&next0, b0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

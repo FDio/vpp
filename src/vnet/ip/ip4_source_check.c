@@ -150,14 +150,8 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  c0 =
-	    vnet_feature_next_with_data (vnet_buffer (p0)->sw_if_index
-					 [VLIB_RX], &next0, p0,
-					 sizeof (c0[0]));
-	  c1 =
-	    vnet_feature_next_with_data (vnet_buffer (p1)->sw_if_index
-					 [VLIB_RX], &next1, p1,
-					 sizeof (c1[0]));
+	  c0 = vnet_feature_next_with_data (&next0, p0, sizeof (c0[0]));
+	  c1 = vnet_feature_next_with_data (&next1, p1, sizeof (c1[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
@@ -234,10 +228,7 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  c0 =
-	    vnet_feature_next_with_data (vnet_buffer (p0)->sw_if_index
-					 [VLIB_RX], &next0, p0,
-					 sizeof (c0[0]));
+	  c0 = vnet_feature_next_with_data (&next0, p0, sizeof (c0[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 

@@ -774,10 +774,8 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
-			     &next0, b0);
-	  vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_TX],
-			     &next1, b1);
+	  vnet_feature_next (&next0, b0);
+	  vnet_feature_next (&next1, b1);
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
@@ -822,8 +820,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
-			     &next0, b0);
+	  vnet_feature_next (&next0, b0);
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);

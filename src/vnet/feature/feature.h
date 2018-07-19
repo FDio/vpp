@@ -221,8 +221,8 @@ vnet_feature_arc_start (u8 arc, u32 sw_if_index, u32 * next0,
 }
 
 static_always_inline void *
-vnet_feature_next_with_data (u32 sw_if_index, u32 * next0,
-			     vlib_buffer_t * b0, u32 n_data_bytes)
+vnet_feature_next_with_data (u32 * next0, vlib_buffer_t * b0,
+			     u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
   u8 arc = vnet_buffer (b0)->feature_arc_index;
@@ -234,9 +234,9 @@ vnet_feature_next_with_data (u32 sw_if_index, u32 * next0,
 }
 
 static_always_inline void
-vnet_feature_next (u32 sw_if_index, u32 * next0, vlib_buffer_t * b0)
+vnet_feature_next (u32 * next0, vlib_buffer_t * b0)
 {
-  vnet_feature_next_with_data (sw_if_index, next0, b0, 0);
+  vnet_feature_next_with_data (next0, b0, 0);
 }
 
 static_always_inline int
