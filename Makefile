@@ -17,6 +17,7 @@ CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
+STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
@@ -75,7 +76,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl1.0-dev
-else 
+else
 	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl-dev
 endif
@@ -420,7 +421,6 @@ retest:
 retest-debug:
 	$(call test,vpp,vpp_debug,retest)
 
-STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
@@ -451,7 +451,7 @@ run-release:
 debug:
 	$(call run, $(BR)/install-$(PLATFORM)_debug-native,$(GDB) $(GDB_ARGS) --args)
 
-build-coverity: 
+build-coverity:
 	$(call make,$(PLATFORM)_coverity,install-packages)
 
 debug-release:

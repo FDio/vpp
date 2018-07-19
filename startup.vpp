@@ -1,0 +1,9 @@
+set interface ip address VirtualFunctionEthernet3b/2/0 172.16.0.1/24
+set interface ip address VirtualFunctionEthernet3b/a/0 172.16.1.1/24
+set interface state VirtualFunctionEthernet3b/2/0 up
+set interface state VirtualFunctionEthernet3b/a/0 up
+set interface handoff VirtualFunctionEthernet3b/2/0 workers 2,3
+set interface handoff VirtualFunctionEthernet3b/a/0 workers 2,3
+---
+flow-handoff VirtualFunctionEthernet3b/2/0
+flow-handoff VirtualFunctionEthernet3b/a/0

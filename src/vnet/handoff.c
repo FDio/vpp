@@ -70,90 +70,36 @@ format_worker_handoff_trace (u8 * s, va_list * args)
 
 vlib_node_registration_t handoff_node;
 
-static uword
-worker_handoff_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline void
+vlib_buffer_enqueue_to_worker (vlib_main_t *vm, u32 frame_queue_index,
+			       u32 *buffer_indices, u16 * worker_indices, u32 n_left)
 {
-  handoff_main_t *hm = &handoff_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 n_left_from, *from;
-  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index;
-  static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index
-    = 0;
+  vlib_thread_main_t * tm = vlib_get_thread_main ();
+  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index = 0;
+  static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index = 0;
   vlib_frame_queue_elt_t *hf = 0;
-  int i;
   u32 n_left_to_next_worker = 0, *to_next_worker = 0;
-  u32 next_worker_index = 0;
-  u32 current_worker_index = ~0;
+  u32 next_worker_index, current_worker_index = ~0;
+  int i;
 
   if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
     {
       vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
-
       vec_validate_init_empty (congested_handoff_queue_by_worker_index,
-			       hm->first_worker_index + hm->num_workers - 1,
+			       tm->n_vlib_mains - 1,
 			       (vlib_frame_queue_t *) (~0));
     }
 
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-
-  while (n_left_from > 0)
+  while (n_left)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      u32 sw_if_index0;
-      u32 hash;
-      u64 hash_key;
-      per_inteface_handoff_data_t *ihd0;
-      u32 index0;
-
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      ASSERT (hm->if_data);
-      ihd0 = vec_elt_at_index (hm->if_data, sw_if_index0);
-
-      next_worker_index = hm->first_worker_index;
-
-      /*
-       * Force unknown traffic onto worker 0,
-       * and into ethernet-input. $$$$ add more hashes.
-       */
-
-      /* Compute ingress LB hash */
-      hash_key = hm->hash_fn ((ethernet_header_t *) b0->data);
-      hash = (u32) clib_xxhash (hash_key);
-
-      /* if input node did not specify next index, then packet
-         should go to eternet-input */
-      if (PREDICT_FALSE ((b0->flags & VNET_BUFFER_F_HANDOFF_NEXT_VALID) == 0))
-	vnet_buffer (b0)->handoff.next_index =
-	  HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT;
-      else if (vnet_buffer (b0)->handoff.next_index ==
-	       HANDOFF_DISPATCH_NEXT_IP4_INPUT
-	       || vnet_buffer (b0)->handoff.next_index ==
-	       HANDOFF_DISPATCH_NEXT_IP6_INPUT
-	       || vnet_buffer (b0)->handoff.next_index ==
-	       HANDOFF_DISPATCH_NEXT_MPLS_INPUT)
-	vlib_buffer_advance (b0, (sizeof (ethernet_header_t)));
-
-      if (PREDICT_TRUE (is_pow2 (vec_len (ihd0->workers))))
-	index0 = hash & (vec_len (ihd0->workers) - 1);
-      else
-	index0 = hash % vec_len (ihd0->workers);
-
-      next_worker_index += ihd0->workers[index0];
+      next_worker_index = worker_indices[0];
 
       if (next_worker_index != current_worker_index)
 	{
 	  if (hf)
 	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
 
-	  hf = vlib_get_worker_handoff_queue_elt (hm->frame_queue_index,
+	  hf = vlib_get_worker_handoff_queue_elt (frame_queue_index,
 						  next_worker_index,
 						  handoff_queue_elt_by_worker_index);
 
@@ -162,8 +108,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
 	  current_worker_index = next_worker_index;
 	}
 
-      /* enqueue to correct worker thread */
-      to_next_worker[0] = bi0;
+      to_next_worker[0] = buffer_indices[0];
       to_next_worker++;
       n_left_to_next_worker--;
 
@@ -176,16 +121,10 @@ worker_handoff_node_fn (vlib_main_t * vm,
 	  hf = 0;
 	}
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	{
-	  worker_handoff_trace_t *t =
-	    vlib_add_trace (vm, node, b0, sizeof (*t));
-	  t->sw_if_index = sw_if_index0;
-	  t->next_worker_index = next_worker_index - hm->first_worker_index;
-	  t->buffer_index = bi0;
-	}
-
+      /* next */
+      worker_indices += 1;
+      buffer_indices += 1;
+      n_left -= 1;
     }
 
   if (hf)
@@ -212,8 +151,77 @@ worker_handoff_node_fn (vlib_main_t * vm,
       congested_handoff_queue_by_worker_index[i] =
 	(vlib_frame_queue_t *) (~0);
     }
-  hf = 0;
-  current_worker_index = ~0;
+}
+
+static uword
+worker_handoff_node_fn (vlib_main_t * vm,
+			vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  handoff_main_t *hm = &handoff_main;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 n_left_from, *from;
+  u32 next_worker_index = 0;
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  ti = thread_indices;
+
+  while (n_left_from > 0)
+    {
+      u32 sw_if_index0;
+      u32 hash;
+      u64 hash_key;
+      per_inteface_handoff_data_t *ihd0;
+      u32 index0;
+
+
+      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      ASSERT (hm->if_data);
+      ihd0 = vec_elt_at_index (hm->if_data, sw_if_index0);
+
+      next_worker_index = hm->first_worker_index;
+
+      /*
+       * Force unknown traffic onto worker 0,
+       * and into ethernet-input. $$$$ add more hashes.
+       */
+
+      /* Compute ingress LB hash */
+      hash_key = hm->hash_fn ((ethernet_header_t *) b[0]->data);
+      hash = (u32) clib_xxhash (hash_key);
+
+      /* if input node did not specify next index, then packet
+         should go to eternet-input */
+
+      if (PREDICT_TRUE (is_pow2 (vec_len (ihd0->workers))))
+	index0 = hash & (vec_len (ihd0->workers) - 1);
+      else
+	index0 = hash % vec_len (ihd0->workers);
+
+      next_worker_index += ihd0->workers[index0];
+      ti[0] = next_worker_index;
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  worker_handoff_trace_t *t =
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->next_worker_index = next_worker_index - hm->first_worker_index;
+	}
+
+      /* next */
+      n_left_from -= 1;
+      ti += 1;
+      b += 1;
+    }
+
+  vlib_buffer_enqueue_to_worker (vm, hm->frame_queue_index, from,
+				 thread_indices, frame->n_vectors);
   return frame->n_vectors;
 }
 
