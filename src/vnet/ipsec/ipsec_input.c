@@ -209,10 +209,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->flags |= VNET_BUFFER_F_IS_IP4;
 	  b0->flags &= ~VNET_BUFFER_F_IS_IP6;
-	  c0 =
-	    vnet_feature_next_with_data (vnet_buffer (b0)->sw_if_index
-					 [VLIB_RX], &next0, b0,
-					 sizeof (c0[0]));
+	  c0 = vnet_feature_next_with_data (&next0, b0, sizeof (c0[0]));
 
 	  spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
@@ -393,10 +390,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->flags |= VNET_BUFFER_F_IS_IP6;
 	  b0->flags &= ~VNET_BUFFER_F_IS_IP4;
-	  c0 =
-	    vnet_feature_next_with_data (vnet_buffer (b0)->sw_if_index
-					 [VLIB_RX], &next0, b0,
-					 sizeof (c0[0]));
+	  c0 = vnet_feature_next_with_data (&next0, b0, sizeof (c0[0]));
 
 	  spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 

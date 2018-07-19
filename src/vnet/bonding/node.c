@@ -169,7 +169,7 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   *bond_sw_if_index = bif->sw_if_index;
   *error = 0;
-  vnet_feature_next ( /* not used */ 0, next_index, b);
+  vnet_feature_next (next_index, b);
 }
 
 VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,

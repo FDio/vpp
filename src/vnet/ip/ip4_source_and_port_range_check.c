@@ -449,8 +449,7 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  c0 = vnet_feature_next_with_data (sw_if_index0, &next0,
-					    b0, sizeof (c0[0]));
+	  c0 = vnet_feature_next_with_data (&next0, b0, sizeof (c0[0]));
 
 	  /* we can't use the default VRF here... */
 	  for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)

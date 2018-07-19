@@ -107,8 +107,8 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 	  en1 = vlib_buffer_get_current (b1);
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-	  vnet_feature_next (sw_if_index0, &next0, b0);
-	  vnet_feature_next (sw_if_index1, &next1, b1);
+	  vnet_feature_next (&next0, b0);
+	  vnet_feature_next (&next1, b1);
 
 	  rx0 = p2p_ethernet_lookup (sw_if_index0, en0->src_address);
 	  rx1 = p2p_ethernet_lookup (sw_if_index1, en1->src_address);
@@ -186,7 +186,7 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 	  en0 = vlib_buffer_get_current (b0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  vnet_feature_next (sw_if_index0, &next0, b0);
+	  vnet_feature_next (&next0, b0);
 
 	  rx0 = p2p_ethernet_lookup (sw_if_index0, en0->src_address);
 	  if (rx0 != ~0)

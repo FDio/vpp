@@ -517,8 +517,8 @@ ila_sir2ila (vlib_main_t * vm,
 	  ip61->dst_address.as_u64[0] = ila_address1->as_u64[0];
 	  ip61->dst_address.as_u64[1] = ila_address1->as_u64[1];
 
-	  vnet_feature_next (vnet_buffer (p0)->sw_if_index[VLIB_RX], &next0, p0);
-	  vnet_feature_next (vnet_buffer (p1)->sw_if_index[VLIB_RX], &next1, p1);
+	  vnet_feature_next (&next0, p0);
+	  vnet_feature_next (&next1, p1);
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, pi1, next0,
@@ -569,7 +569,7 @@ ila_sir2ila (vlib_main_t * vm,
 	  ip60->dst_address.as_u64[0] = ila_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = ila_address0->as_u64[1];
 
-	  vnet_feature_next (vnet_buffer (p0)->sw_if_index[VLIB_RX], &next0, p0);
+	  vnet_feature_next (&next0, p0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);

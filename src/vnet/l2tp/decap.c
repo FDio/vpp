@@ -219,7 +219,7 @@ done:
 	{
 	  /* Go to next node on the ip6 configuration chain */
 	  if (PREDICT_TRUE (session != 0))
-	    vnet_feature_next (session->sw_if_index, &next_index, b);
+	    vnet_feature_next (&next_index, b);
 	}
     }
 

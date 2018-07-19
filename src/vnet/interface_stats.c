@@ -121,7 +121,7 @@ stats_collect_inline (vlib_main_t * vm,
 	  stats_n_bytes[b0_ctype] += vlib_buffer_length_in_chain (vm, b0);
 	  stats_n_packets[b0_ctype] += 1;
 
-	  vnet_feature_next (sw_if_index, &next0, b0);
+	  vnet_feature_next (&next0, b0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);

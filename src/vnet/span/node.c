@@ -201,8 +201,8 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      break;
 	    case SPAN_FEAT_DEVICE:
 	    default:
-	      vnet_feature_next (sw_if_index0, &next0, b0);
-	      vnet_feature_next (sw_if_index1, &next1, b1);
+	      vnet_feature_next (&next0, b0);
+	      vnet_feature_next (&next1, b1);
 	      break;
 	    }
 
@@ -242,7 +242,7 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      break;
 	    case SPAN_FEAT_DEVICE:
 	    default:
-	      vnet_feature_next (sw_if_index0, &next0, b0);
+	      vnet_feature_next (&next0, b0);
 	      break;
 	    }
 

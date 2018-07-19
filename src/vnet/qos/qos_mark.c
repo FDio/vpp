@@ -180,7 +180,7 @@ qos_mark_inline (vlib_main_t * vm,
 		  ethernet_vlan_header_set_priority_net_order (vlan0, qos0);
 		}
 	    }
-	  vnet_feature_next (sw_if_index0, &next0, b0);
+	  vnet_feature_next (&next0, b0);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

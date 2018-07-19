@@ -275,7 +275,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (is_l2_path)
 	    next0 = vnet_l2_feature_next (b[0], l2_feat_next_node_index, 0);
 	  else
-	    vnet_feature_next (sw_if_index0, &next0, b[0]);
+	    vnet_feature_next (&next0, b[0]);
 	}
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning

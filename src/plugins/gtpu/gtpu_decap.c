@@ -933,8 +933,8 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	    }
 
 	  /* Setup packet for next IP feature */
-	  vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_RX], &next0, b0);
-	  vnet_feature_next(vnet_buffer(b1)->sw_if_index[VLIB_RX], &next1, b1);
+	  vnet_feature_next(&next0, b0);
+	  vnet_feature_next(&next1, b1);
 
 	  if (is_ip4)
 	    {
@@ -1141,7 +1141,7 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	    ip60 = vlib_buffer_get_current (b0);
 
 	  /* Setup packet for next IP feature */
-	  vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_RX], &next0, b0);
+	  vnet_feature_next(&next0, b0);
 
 	  if (is_ip4)
 	    /* Treat IP4 frag packets as "experimental" protocol for now
