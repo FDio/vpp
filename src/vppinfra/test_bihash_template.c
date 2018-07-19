@@ -283,39 +283,6 @@ test_bihash (test_main_t * tm)
 }
 
 clib_error_t *
-test_bihash_cache (test_main_t * tm)
-{
-  u32 lru;
-  BVT (clib_bihash_bucket) _b, *b = &_b;
-
-  BV (clib_bihash_reset_cache) (b);
-
-  fformat (stdout, "Initial LRU config: %U\n", BV (format_bihash_lru), b);
-
-  BV (clib_bihash_update_lru_not_inline) (b, 3);
-
-  fformat (stdout, "use slot 3, LRU config: %U\n", BV (format_bihash_lru), b);
-
-  BV (clib_bihash_update_lru) (b, 1);
-
-  fformat (stdout, "use slot 1 LRU config: %U\n", BV (format_bihash_lru), b);
-
-  lru = BV (clib_bihash_get_lru) (b);
-
-  fformat (stdout, "least-recently-used is %d\n", lru);
-
-  BV (clib_bihash_update_lru) (b, 4);
-
-  fformat (stdout, "use slot 4 LRU config: %U\n", BV (format_bihash_lru), b);
-
-  lru = BV (clib_bihash_get_lru) (b);
-
-  fformat (stdout, "least-recently-used is %d\n", lru);
-
-  return 0;
-}
-
-clib_error_t *
 test_bihash_main (test_main_t * tm)
 {
   unformat_input_t *i = tm->input;
@@ -351,9 +318,6 @@ test_bihash_main (test_main_t * tm)
 	;
       else if (unformat (i, "vec64"))
 	which = 1;
-      else if (unformat (i, "cache"))
-	which = 2;
-
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
       else
@@ -375,10 +339,6 @@ test_bihash_main (test_main_t * tm)
 
     case 1:
       error = test_bihash_vec64 (tm);
-      break;
-
-    case 2:
-      error = test_bihash_cache (tm);
       break;
 
     default:
