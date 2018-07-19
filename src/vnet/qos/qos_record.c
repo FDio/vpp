@@ -98,7 +98,7 @@ qos_record_ip_interface_add_del (vnet_main_t * vnm,
 
       FOR_EACH_QOS_SOURCE (qs)
       {
-	qos_record_disable (sw_if_index, qs);
+	while (qos_record_disable (sw_if_index, qs) == 0);
       }
     }
 
