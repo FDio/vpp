@@ -839,7 +839,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
       ;
     /* Mellanox mlx4 */
-    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1003 && d->device_id <= 0x104)
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1003 && d->device_id <= 0x1004)
       {
         continue;
       }
