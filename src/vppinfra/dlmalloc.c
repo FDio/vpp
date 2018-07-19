@@ -4133,7 +4133,7 @@ int mspace_enable_disable_trace (mspace msp, int enable)
   mstate ms = (mstate)msp;
   int was_enabled = 0;
 
-  if (use_trace(ms) == 1)
+  if (use_trace(ms))
     was_enabled = 1;
 
   if (enable)
