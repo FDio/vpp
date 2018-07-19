@@ -979,6 +979,7 @@ avf_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
 static void
 avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
   uword pd = vlib_pci_get_private_data (h);
@@ -1004,6 +1005,7 @@ avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
       ed->line = line;
     }
 
+  vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, 0);
   avf_irq_n_enable (ad, 0);
 }
 
@@ -1172,6 +1174,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
   ad->sw_if_index = sw->sw_if_index;
 
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
 				    avf_input_node.index);
 
