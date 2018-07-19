@@ -265,9 +265,7 @@ vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
        */
       u16 adv;
 
-      vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
       adv = device_input_next_node_advance[*next0];
-      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b0, -adv);
 
       vnet_buffer (b0)->feature_arc_index = feature_arc_index;
@@ -299,14 +297,10 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
        */
       u16 adv;
 
-      vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
       adv = device_input_next_node_advance[*next0];
-      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b0, -adv);
 
-      vnet_buffer (b1)->device_input_feat.saved_next_index = *next1;
       adv = device_input_next_node_advance[*next1];
-      vnet_buffer (b1)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b1, -adv);
 
       vnet_buffer (b0)->feature_arc_index = feature_arc_index;
@@ -346,24 +340,16 @@ vnet_feature_start_device_input_x4 (u32 sw_if_index,
        */
       u16 adv;
 
-      vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
       adv = device_input_next_node_advance[*next0];
-      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b0, -adv);
 
-      vnet_buffer (b1)->device_input_feat.saved_next_index = *next1;
       adv = device_input_next_node_advance[*next1];
-      vnet_buffer (b1)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b1, -adv);
 
-      vnet_buffer (b2)->device_input_feat.saved_next_index = *next2;
       adv = device_input_next_node_advance[*next2];
-      vnet_buffer (b2)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b2, -adv);
 
-      vnet_buffer (b3)->device_input_feat.saved_next_index = *next3;
       adv = device_input_next_node_advance[*next3];
-      vnet_buffer (b3)->device_input_feat.buffer_advance = adv;
       vlib_buffer_advance (b3, -adv);
 
       vnet_buffer (b0)->feature_arc_index = feature_arc_index;

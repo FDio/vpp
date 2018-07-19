@@ -443,6 +443,92 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 }
 
+static_always_inline void
+vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
+			       u32 * buffer_indices, u16 * thread_indices,
+			       u32 n_left)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_thread_index =
+    0;
+  static __thread vlib_frame_queue_t **congested_handoff_queue_by_thread_index
+    = 0;
+  vlib_frame_queue_elt_t *hf = 0;
+  u32 n_left_to_next_thread = 0, *to_next_thread = 0;
+  u32 next_thread_index, current_thread_index = ~0;
+  int i;
+
+  if (PREDICT_FALSE (handoff_queue_elt_by_thread_index == 0))
+    {
+      vec_validate (handoff_queue_elt_by_thread_index, tm->n_vlib_mains - 1);
+      vec_validate_init_empty (congested_handoff_queue_by_thread_index,
+			       tm->n_vlib_mains - 1,
+			       (vlib_frame_queue_t *) (~0));
+    }
+
+  while (n_left)
+    {
+      next_thread_index = thread_indices[0];
+
+      if (next_thread_index != current_thread_index)
+	{
+	  if (hf)
+	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_thread;
+
+	  hf = vlib_get_worker_handoff_queue_elt (frame_queue_index,
+						  next_thread_index,
+						  handoff_queue_elt_by_thread_index);
+
+	  n_left_to_next_thread = VLIB_FRAME_SIZE - hf->n_vectors;
+	  to_next_thread = &hf->buffer_index[hf->n_vectors];
+	  current_thread_index = next_thread_index;
+	}
+
+      to_next_thread[0] = buffer_indices[0];
+      to_next_thread++;
+      n_left_to_next_thread--;
+
+      if (n_left_to_next_thread == 0)
+	{
+	  hf->n_vectors = VLIB_FRAME_SIZE;
+	  vlib_put_frame_queue_elt (hf);
+	  current_thread_index = ~0;
+	  handoff_queue_elt_by_thread_index[next_thread_index] = 0;
+	  hf = 0;
+	}
+
+      /* next */
+      thread_indices += 1;
+      buffer_indices += 1;
+      n_left -= 1;
+    }
+
+  if (hf)
+    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_thread;
+
+  /* Ship frames to the thread nodes */
+  for (i = 0; i < vec_len (handoff_queue_elt_by_thread_index); i++)
+    {
+      if (handoff_queue_elt_by_thread_index[i])
+	{
+	  hf = handoff_queue_elt_by_thread_index[i];
+	  /*
+	   * It works better to let the handoff node
+	   * rate-adapt, always ship the handoff queue element.
+	   */
+	  if (1 || hf->n_vectors == hf->last_n_vectors)
+	    {
+	      vlib_put_frame_queue_elt (hf);
+	      handoff_queue_elt_by_thread_index[i] = 0;
+	    }
+	  else
+	    hf->last_n_vectors = hf->n_vectors;
+	}
+      congested_handoff_queue_by_thread_index[i] =
+	(vlib_frame_queue_t *) (~0);
+    }
+}
+
 #endif /* included_vlib_buffer_node_h */
 
 /*
