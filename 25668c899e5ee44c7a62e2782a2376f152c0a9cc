@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1951f672_3c6ab259",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 842,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-19T13:40:57Z",
+      "side": 1,
+      "message": "0x1004\n\nOr other similar value not _smaller_ than 0x1003.",
+      "range": {
+        "startLine": 842,
+        "startChar": 81,
+        "endLine": 842,
+        "endChar": 86
+      },
+      "revId": "25668c899e5ee44c7a62e2782a2376f152c0a9cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
