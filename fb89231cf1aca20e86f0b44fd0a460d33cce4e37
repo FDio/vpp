@@ -46,6 +46,30 @@
       "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "03716b6c_7f5bed3c",
+        "filename": "test/run_tests.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-19T15:34:03Z",
+      "side": 1,
+      "message": "I think PARALLEL\u003d0 is a better value for autodetection.\nPARALLEL\u003d1 could be used by less smart scripts as a way to force single thread.\n\nOtherwise sounds good.",
+      "parentUuid": "b98c2d91_98e59c9e",
+      "range": {
+        "startLine": 115,
+        "startChar": 4,
+        "endLine": 115,
+        "endChar": 20
+      },
+      "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
