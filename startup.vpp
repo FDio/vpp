@@ -1,0 +1,6 @@
+set interface ip address TwentyFiveGigabitEthernet3b/0/0 172.16.0.1/24
+set interface ip address TwentyFiveGigabitEthernet3b/0/1 172.16.1.1/24
+set interface state TwentyFiveGigabitEthernet3b/0/0 up
+set interface state TwentyFiveGigabitEthernet3b/0/1 up
+flow-handoff TwentyFiveGigabitEthernet3b/0/0
+flow-handoff TwentyFiveGigabitEthernet3b/0/1
