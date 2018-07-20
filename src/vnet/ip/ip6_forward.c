@@ -2013,7 +2013,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
 
 VLIB_REGISTER_NODE (ip6_rewrite_bcast_node) = {
-  .function = ip6_rewrite,
+  .function = ip6_rewrite_bcast,
   .name = "ip6-rewrite-bcast",
   .vector_size = sizeof (u32),
 
