@@ -1289,7 +1289,7 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
 			sm->worker_in2out_cb (&ip, ukey.fib_index));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
-  if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
+  if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value) < 0)
     return;
   u = pool_elt_at_index (tsm->users, value.value);
   if (!u->nsessions && !u->nstaticsessions)

@@ -128,8 +128,8 @@ nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, u8 is_local)
   kv.key[1] = sm_key.as_u64[1];
   kv.key[2] = sm_key.as_u64[2];
 
-  if (!clib_bihash_search_24_8
-      (is_local ? &nm->sm_l : &nm->sm_e, &kv, &value))
+  if (clib_bihash_search_24_8
+      (is_local ? &nm->sm_l : &nm->sm_e, &kv, &value) >= 0)
     sm = pool_elt_at_index (nm->sm, value.value);
 
   return sm;
@@ -154,7 +154,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
   kv.key[1] = sm_key.as_u64[1];
   kv.key[2] = sm_key.as_u64[2];
 
-  if (!clib_bihash_search_24_8 (&nm->sm_l, &kv, &value))
+  if (clib_bihash_search_24_8 (&nm->sm_l, &kv, &value) >= 0)
     sm = pool_elt_at_index (nm->sm, value.value);
 
   if (is_add)

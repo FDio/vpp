@@ -294,7 +294,7 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
   kv.key[0] = args->address.as_u64[0];
   kv.key[1] = args->address.as_u64[1];
 
-  if (clib_bihash_search_inline_16_8 (&stn->rule_by_address_table, &kv) == 0)
+  if (clib_bihash_search_inline_16_8 (&stn->rule_by_address_table, &kv) >= 0)
     {
       r = &stn->rules[kv.value];
     }

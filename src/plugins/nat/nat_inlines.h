@@ -154,7 +154,7 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   u_key.addr = ses->in2out.addr;
   u_key.fib_index = ses->in2out.fib_index;
   kv.key = u_key.as_u64;
-  if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+  if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value) >= 0)
     {
       u = pool_elt_at_index (tsm->users, value.value);
       if (snat_is_session_static (ses))

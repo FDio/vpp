@@ -636,7 +636,7 @@ lb_nat44_mapping_match (lb_main_t *lbm, lb_snat4_key_t * match, u32 *index)
 
   kv4.key = match->as_u64;
   kv4.value = 0;
-  if (clib_bihash_search_8_8 (mapping_hash, &kv4, &value))
+  if (clib_bihash_search_8_8 (mapping_hash, &kv4, &value) < 0)
     {
       return 1;
     }
@@ -671,7 +671,7 @@ lb_nat66_mapping_match (lb_main_t *lbm, lb_snat6_key_t * match, u32 *index)
   kv6.key[1] = m_key6.as_u64[1];
   kv6.key[2] = m_key6.as_u64[2];
   kv6.value = 0;
-  if (clib_bihash_search_24_8 (mapping_hash, &kv6, &value))
+  if (clib_bihash_search_24_8 (mapping_hash, &kv6, &value) < 0)
     {
       return 1;
     }

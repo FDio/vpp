@@ -308,7 +308,7 @@ nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr, u32 fib_index,
   kv.key = user_key.as_u64;
 
   /* Ever heard of the "user" = src ip4 address before? */
-  if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+  if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value) < 0)
     {
       /* no, make a new one */
       pool_get (tsm->users, u);
@@ -483,7 +483,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               m_key0.protocol = 0;
               m_key0.fib_index = sm->outside_fib_index;
               kv0.key = m_key0.as_u64;
-              if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+              if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0) >= 0)
                 {
                   m = pool_elt_at_index (sm->static_mappings, value0.value);
                   if (m->local_addr.as_u32 != m->external_addr.as_u32)
@@ -494,7 +494,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
               m_key0.port = clib_net_to_host_u16 (udp0->dst_port);
               m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
               kv0.key = m_key0.as_u64;
-              if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+              if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0) >= 0)
                 {
                   m = pool_elt_at_index (sm->static_mappings, value0.value);
                   if (m->local_addr.as_u32 != m->external_addr.as_u32)
@@ -897,7 +897,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   m_key.protocol = addr_only ? 0 : proto;
   m_key.fib_index = 0;
   kv.key = m_key.as_u64;
-  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) < 0)
     m = 0;
   else
     m = pool_elt_at_index (sm->static_mappings, value.value);
@@ -932,7 +932,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           m_key.protocol = addr_only ? 0 : proto;
           m_key.fib_index = fib_index;
           kv.key = m_key.as_u64;
-          if (!clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv, &value))
+          if (clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv, &value) >= 0)
             return VNET_API_ERROR_VALUE_EXIST;
         }
 
@@ -1042,7 +1042,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+          if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value) >= 0)
             {
               user_index = value.value;
               u = pool_elt_at_index (tsm->users, user_index);
@@ -1141,7 +1141,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+          if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value) >= 0)
             {
               user_index = value.value;
               u = pool_elt_at_index (tsm->users, user_index);
@@ -1246,7 +1246,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   m_key.protocol = proto;
   m_key.fib_index = 0;
   kv.key = m_key.as_u64;
-  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) < 0)
     m = 0;
   else
     m = pool_elt_at_index (sm->static_mappings, value.value);
@@ -1435,7 +1435,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           u_key.addr = local->addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+          if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value) >= 0)
             {
               u = pool_elt_at_index (tsm->users, value.value);
               if (u->nstaticsessions)
@@ -2153,13 +2153,13 @@ int snat_static_mapping_match (snat_main_t * sm,
 
   kv.key = m_key.as_u64;
 
-  if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+  if (clib_bihash_search_8_8 (mapping_hash, &kv, &value) < 0)
     {
       /* Try address only mapping */
       m_key.port = 0;
       m_key.protocol = 0;
       kv.key = m_key.as_u64;
-      if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+      if (clib_bihash_search_8_8 (mapping_hash, &kv, &value) < 0)
         return 1;
     }
 
@@ -2544,7 +2544,7 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
       m_key.protocol = 0;
       m_key.fib_index = rx_fib_index0;
       kv.key = m_key.as_u64;
-      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) >= 0)
         {
           m = pool_elt_at_index (sm->static_mappings, value.value);
           return m->workers[0];
@@ -2617,7 +2617,7 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
       m_key.protocol = proto;
       m_key.fib_index = rx_fib_index0;
       kv.key = m_key.as_u64;
-      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) >= 0)
         {
           m = pool_elt_at_index (sm->static_mappings, value.value);
           return m->workers[0];
@@ -2646,7 +2646,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
       make_sm_kv (&kv, &ip->dst_address, 0, rx_fib_index, 0);
-      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) >= 0)
         {
           m = pool_elt_at_index (sm->static_mappings, value.value);
           return m->workers[0];
@@ -2698,7 +2698,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
     {
       make_sm_kv (&kv, &ip->dst_address, proto, rx_fib_index,
                   clib_net_to_host_u16 (port));
-      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) >= 0)
         {
           m = pool_elt_at_index (sm->static_mappings, value.value);
           if (!vec_len(m->locals))
@@ -3173,7 +3173,7 @@ match:
   m_key.protocol = rp->addr_only ? 0 : rp->proto;
   m_key.fib_index = sm->outside_fib_index;
   kv.key = m_key.as_u64;
-  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value) < 0)
     m = 0;
   else
     m = pool_elt_at_index (sm->static_mappings, value.value);
@@ -3386,7 +3386,7 @@ nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
   key.fib_index = fib_index;
   kv.key = key.as_u64;
   t = is_in ? &tsm->in2out : &tsm->out2in;
-  if (!clib_bihash_search_8_8 (t, &kv, &value))
+  if (clib_bihash_search_8_8 (t, &kv, &value) >= 0)
     {
       if (pool_is_free_index (tsm->sessions, value.value))
         return VNET_API_ERROR_UNSPECIFIED;
@@ -3433,7 +3433,7 @@ nat44_del_ed_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
   key.fib_index = clib_host_to_net_u32 (fib_index);
   kv.key[0] = key.as_u64[0];
   kv.key[1] = key.as_u64[1];
-  if (clib_bihash_search_16_8 (t, &kv, &value))
+  if (clib_bihash_search_16_8 (t, &kv, &value) < 0)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   if (pool_is_free_index (tsm->sessions, value.value))

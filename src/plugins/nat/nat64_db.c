@@ -236,8 +236,8 @@ nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
   kv.key[1] = bibe_key.as_u64[1];
   kv.key[2] = bibe_key.as_u64[2];
 
-  if (!clib_bihash_search_24_8
-      (is_ip6 ? &db->bib.in2out : &db->bib.out2in, &kv, &value))
+  if (clib_bihash_search_24_8
+      (is_ip6 ? &db->bib.in2out : &db->bib.out2in, &kv, &value) >= 0)
     bibe = pool_elt_at_index (bib, value.value);
 
   return bibe;
@@ -581,8 +581,8 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
   kv.key[4] = ste_key.as_u64[4];
   kv.key[5] = ste_key.as_u64[5];
 
-  if (!clib_bihash_search_48_8
-      (is_ip6 ? &db->st.in2out : &db->st.out2in, &kv, &value))
+  if (clib_bihash_search_48_8
+      (is_ip6 ? &db->st.in2out : &db->st.out2in, &kv, &value) >= 0)
     ste = pool_elt_at_index (st, value.value);
 
   return ste;

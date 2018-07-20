@@ -62,7 +62,7 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
   kv.key = key.as_u64;
 
   if (clib_bihash_search_8_8
-      (&dm->per_thread_data[thread_index].out2in, &kv, &value))
+      (&dm->per_thread_data[thread_index].out2in, &kv, &value) < 0)
     {
       next = DSLITE_OUT2IN_NEXT_DROP;
       *error = DSLITE_ERROR_NO_TRANSLATION;
@@ -176,7 +176,7 @@ dslite_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  kv0.key = key0.as_u64;
 
 	  if (clib_bihash_search_8_8
-	      (&dm->per_thread_data[thread_index].out2in, &kv0, &value0))
+	      (&dm->per_thread_data[thread_index].out2in, &kv0, &value0) < 0)
 	    {
 	      next0 = DSLITE_OUT2IN_NEXT_DROP;
 	      error0 = DSLITE_ERROR_NO_TRANSLATION;

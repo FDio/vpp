@@ -617,7 +617,7 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
       int res =
 	clib_bihash_search_inline_2_48_8 (&am->acl_lookup_hash, &kv, &result);
 
-      if (res == 0)
+      if (res >= 0)
 	{
 	  /* There is a hit in the hash, so check the collision vector */
 	  u32 curr_index = result_val->applied_entry_index;

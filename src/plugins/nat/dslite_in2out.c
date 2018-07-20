@@ -54,7 +54,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   b4_kv.key[1] = in2out_key->softwire_id.as_u64[1];
 
   if (clib_bihash_search_16_8
-      (&dm->per_thread_data[thread_index].b4_hash, &b4_kv, &b4_value))
+      (&dm->per_thread_data[thread_index].b4_hash, &b4_kv, &b4_value) < 0)
     {
       pool_get (dm->per_thread_data[thread_index].b4s, b4);
       memset (b4, 0, sizeof (*b4));
@@ -189,7 +189,7 @@ dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
   kv.key[2] = key.as_u64[2];
 
   if (clib_bihash_search_24_8
-      (&dm->per_thread_data[thread_index].in2out, &kv, &value))
+      (&dm->per_thread_data[thread_index].in2out, &kv, &value) < 0)
     {
       n = slow_path (dm, &key, &s, next, error, thread_index);
       if (PREDICT_FALSE (next == DSLITE_IN2OUT_NEXT_DROP))
@@ -335,7 +335,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  kv0.key[2] = key0.as_u64[2];
 
 	  if (clib_bihash_search_24_8
-	      (&dm->per_thread_data[thread_index].in2out, &kv0, &value0))
+	      (&dm->per_thread_data[thread_index].in2out, &kv0, &value0) < 0)
 	    {
 	      if (is_slow_path)
 		{

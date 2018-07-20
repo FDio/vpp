@@ -294,7 +294,7 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
               m_key4.fib_index = 0;
 
               kv4.key = m_key4.as_u64;
-              if(!clib_bihash_search_8_8(&lbm->mapping_by_as4, &kv4, &value4))
+              if(clib_bihash_search_8_8(&lbm->mapping_by_as4, &kv4, &value4) >= 0)
                 m = pool_elt_at_index (lbm->snat_mappings, value4.value);
               ASSERT (m);
 
@@ -312,7 +312,7 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
               kv6.key[1] = m_key6.as_u64[1];
               kv6.key[2] = m_key6.as_u64[2];
 
-              if (!clib_bihash_search_24_8 (&lbm->mapping_by_as6, &kv6, &value6))
+              if (clib_bihash_search_24_8 (&lbm->mapping_by_as6, &kv6, &value6) >= 0)
                 m = pool_elt_at_index (lbm->snat_mappings, value6.value);
               ASSERT (m);
 

@@ -185,7 +185,7 @@ nat_ip4_reass_lookup (nat_reass_ip4_key_t * k, f64 now)
   kv.key[0] = k->as_u64[0];
   kv.key[1] = k->as_u64[1];
 
-  if (clib_bihash_search_16_8 (&srm->ip4_reass_hash, &kv, &value))
+  if (clib_bihash_search_16_8 (&srm->ip4_reass_hash, &kv, &value) < 0)
     return 0;
 
   reass = pool_elt_at_index (srm->ip4_reass_pool, value.value);
@@ -275,7 +275,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 
       kv.key[0] = reass->key.as_u64[0];
       kv.key[1] = reass->key.as_u64[1];
-      if (!clib_bihash_search_16_8 (&srm->ip4_reass_hash, &kv, &value))
+      if (clib_bihash_search_16_8 (&srm->ip4_reass_hash, &kv, &value) >= 0)
 	{
 	  if (value.value == (reass - srm->ip4_reass_pool))
 	    {
@@ -400,7 +400,7 @@ nat_ip6_reass_lookup (nat_reass_ip6_key_t * k, f64 now)
   kv.key[4] = k->as_u64[4];
   kv.key[5] = k->as_u64[5];
 
-  if (clib_bihash_search_48_8 (&srm->ip6_reass_hash, &kv, &value))
+  if (clib_bihash_search_48_8 (&srm->ip6_reass_hash, &kv, &value) < 0)
     return 0;
 
   reass = pool_elt_at_index (srm->ip6_reass_pool, value.value);
