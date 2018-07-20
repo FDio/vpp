@@ -1341,6 +1341,7 @@ unformat_nat44_lb_addr_port (vl_api_nat44_lb_addr_port_t * addr_port_pairs,
       clib_memcpy (&lb_addr_port.addr, ap->addr, 4);
       lb_addr_port.port = clib_net_to_host_u16 (ap->port);
       lb_addr_port.probability = ap->probability;
+      lb_addr_port.vrf_id = clib_net_to_host_u32 (ap->vrf_id);
       vec_add1 (lb_addr_port_pairs, lb_addr_port);
     }
 
@@ -1360,7 +1361,7 @@ static void
   snat_protocol_t proto;
   u8 *tag = 0;
 
-  if (sm->deterministic)
+  if (!sm->endpoint_dependent)
     {
       rv = VNET_API_ERROR_UNSUPPORTED;
       goto send_reply;
@@ -1380,8 +1381,7 @@ static void
   rv =
     nat44_add_del_lb_static_mapping (e_addr,
 				     clib_net_to_host_u16 (mp->external_port),
-				     proto, clib_net_to_host_u32 (mp->vrf_id),
-				     locals, mp->is_add, twice_nat,
+				     proto, locals, mp->is_add, twice_nat,
 				     mp->out2in_only, tag);
 
   vec_free (locals);
@@ -1423,7 +1423,6 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
   clib_memcpy (rmp->external_addr, &(m->external_addr), 4);
   rmp->external_port = ntohs (m->external_port);
   rmp->protocol = snat_proto_to_ip_proto (m->proto);
-  rmp->vrf_id = ntohl (m->vrf_id);
   rmp->context = context;
   if (m->twice_nat == TWICE_NAT)
     rmp->twice_nat = 1;
@@ -1439,6 +1438,7 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
     clib_memcpy (locals->addr, &(ap->addr), 4);
     locals->port = htons (ap->port);
     locals->probability = ap->probability;
+    locals->vrf_id = ntohl (ap->vrf_id);
     locals++;
     rmp->local_num++;
   }
@@ -1454,7 +1454,7 @@ static void
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
 
-  if (sm->deterministic)
+  if (!sm->endpoint_dependent)
     return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);

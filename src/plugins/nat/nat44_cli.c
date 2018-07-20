@@ -767,10 +767,19 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	  local.probability = (u8) probability;
 	  vec_add1 (locals, local);
 	}
+      else if (unformat (line_input, "local %U:%u vrf %u probability %u",
+			 unformat_ip4_address, &l_addr, &l_port, &vrf_id,
+			 &probability))
+	{
+	  memset (&local, 0, sizeof (local));
+	  local.addr = l_addr;
+	  local.port = (u16) l_port;
+	  local.probability = (u8) probability;
+	  local.vrf_id = vrf_id;
+	  vec_add1 (locals, local);
+	}
       else if (unformat (line_input, "external %U:%u", unformat_ip4_address,
 			 &e_addr, &e_port))
-	;
-      else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "protocol %U", unformat_snat_protocol,
 			 &proto))
@@ -803,9 +812,8 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = nat44_add_del_lb_static_mapping (e_addr, (u16) e_port, proto, vrf_id,
-					locals, is_add, twice_nat,
-					out2in_only, 0);
+  rv = nat44_add_del_lb_static_mapping (e_addr, (u16) e_port, proto, locals,
+					is_add, twice_nat, out2in_only, 0);
 
   switch (rv)
     {
@@ -1716,8 +1724,8 @@ VLIB_CLI_COMMAND (add_lb_static_mapping_command, static) = {
   .function = add_lb_static_mapping_command_fn,
   .short_help =
     "nat44 add load-balancing static mapping protocol tcp|udp "
-    "external <addr>:<port> local <addr>:<port> probability <n> "
-    "[twice-nat|self-twice-nat] [vrf <table-id>] [out2in-only] [del]",
+    "external <addr>:<port> local <addr>:<port> [vrf <table-id>] "
+    "probability <n> [twice-nat|self-twice-nat] [out2in-only] [del]",
 };
 
 /*?
