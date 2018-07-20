@@ -508,7 +508,7 @@ int BV (clib_bihash_search)
     {
       volatile BVT (clib_bihash_bucket) * bv = b;
       while (bv->lock)
-	;
+	CLIB_PAUSE ();
     }
 
   hash >>= h->log2_nbuckets;

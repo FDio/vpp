@@ -27,6 +27,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/cache.h>
+#include <vppinfra/lock.h>
 
 #ifndef BIHASH_TYPE
 #error BIHASH_TYPE not defined
@@ -106,7 +107,7 @@ typedef struct
 static inline void BV (clib_bihash_alloc_lock) (BVT (clib_bihash) * h)
 {
   while (__atomic_test_and_set (h->alloc_lock, __ATOMIC_ACQUIRE))
-    ;
+    CLIB_PAUSE ();
 }
 
 static inline void BV (clib_bihash_alloc_unlock) (BVT (clib_bihash) * h)
@@ -123,6 +124,7 @@ static inline void BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
       locked_bucket.as_u64 = unlocked_bucket.as_u64 = b->as_u64;
       unlocked_bucket.lock = 0;
       locked_bucket.lock = 1;
+      CLIB_PAUSE ();
     }
   while (__atomic_compare_exchange_n (&b->as_u64, &unlocked_bucket.as_u64,
 				      locked_bucket.as_u64, 1 /* weak */ ,
@@ -203,7 +205,7 @@ static inline int BV (clib_bihash_search_inline_with_hash)
     {
       volatile BVT (clib_bihash_bucket) * bv = b;
       while (bv->lock)
-	;
+	CLIB_PAUSE ();
     }
 
   hash >>= h->log2_nbuckets;
@@ -291,7 +293,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
     {
       volatile BVT (clib_bihash_bucket) * bv = b;
       while (bv->lock)
-	;
+	CLIB_PAUSE ();
     }
 
   hash >>= h->log2_nbuckets;
