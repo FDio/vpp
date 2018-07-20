@@ -63,6 +63,8 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
+sample_main_t sample_main;
+
 /**
  * @brief Enable/disable the macswap plugin. 
  *
