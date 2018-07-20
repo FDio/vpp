@@ -406,7 +406,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (vlan_mpls_qos_record_node, vlan_mpls_qos_record);
 VNET_FEATURE_INIT (vlan_mpls_qos_record_node, static) = {
     .arc_name = "mpls-input",
     .node_name = "vlan-mpls-qos-record",
-    .runs_before = VNET_FEATURES ("mpls-qos-mark"),
+    .runs_before = VNET_FEATURES ("mpls-qos-record"),
 };
 
 VLIB_REGISTER_NODE (vlan_ip4_qos_record_node) = {
@@ -429,12 +429,12 @@ VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip4_qos_record_node, vlan_ip4_qos_record);
 VNET_FEATURE_INIT (vlan_ip4_qos_record_node, static) = {
     .arc_name = "ip4-unicast",
     .node_name = "vlan-ip4-qos-record",
-    .runs_before = VNET_FEATURES ("ip4-qos-mark"),
+    .runs_before = VNET_FEATURES ("ip4-qos-record"),
 };
 VNET_FEATURE_INIT (vlan_ip4m_qos_record_node, static) = {
     .arc_name = "ip4-multicast",
     .node_name = "vlan-ip4-qos-record",
-    .runs_before = VNET_FEATURES ("ip4-qos-mark"),
+    .runs_before = VNET_FEATURES ("ip4-qos-record"),
 };
 
 VLIB_REGISTER_NODE (vlan_ip6_qos_record_node) = {
@@ -457,12 +457,12 @@ VLIB_NODE_FUNCTION_MULTIARCH (vlan_ip6_qos_record_node, vlan_ip6_qos_record);
 VNET_FEATURE_INIT (vlan_ip6_qos_record_node, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "vlan-ip6-qos-record",
-    .runs_before = VNET_FEATURES ("ip6-qos-mark"),
+    .runs_before = VNET_FEATURES ("ip6-qos-record"),
 };
 VNET_FEATURE_INIT (vlan_ip6m_qos_record_node, static) = {
     .arc_name = "ip6-multicast",
     .node_name = "vlan-ip6-qos-record",
-    .runs_before = VNET_FEATURES ("ip6-qos-mark"),
+    .runs_before = VNET_FEATURES ("ip6-qos-record"),
 };
 
 VLIB_REGISTER_NODE (l2_ip_qos_record_node, static) = {
