@@ -2652,7 +2652,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 };
 
 VLIB_REGISTER_NODE (ip4_rewrite_bcast_node) = {
-  .function = ip4_rewrite,
+  .function = ip4_rewrite_bcast,
   .name = "ip4-rewrite-bcast",
   .vector_size = sizeof (u32),
 
