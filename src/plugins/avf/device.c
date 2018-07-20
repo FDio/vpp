@@ -737,7 +737,6 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
     return error;
 
   avf_irq_0_enable (ad);
-  avf_irq_n_enable (ad, 0);
 
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
