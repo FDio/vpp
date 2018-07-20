@@ -112,7 +112,11 @@ unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
       vec_free (to_free);
     }
 
+#if USE_DLMALLOC == 0
   return lo_offset != ~0 ? pr->heap + lo_offset : 0;
+#else
+  return lo_offset != ~0 ? lo_offset : 0;
+#endif
 }
 
 static void
