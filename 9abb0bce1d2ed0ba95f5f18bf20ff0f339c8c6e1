@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "36054572_b0dd9620",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-20T21:46:07Z",
+      "side": 1,
+      "message": "Just want to make sure, if n_clones \u003d 1, vlib_buffer_clone() will not clone any buffer and just return the original buffer as the single \"clone\"?  Does seem so when I read the code in vlib_buffer_clone_256().",
+      "range": {
+        "startLine": 216,
+        "startChar": 14,
+        "endLine": 216,
+        "endChar": 31
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7dd1a325_5c3e808e",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-20T21:46:07Z",
+      "side": 1,
+      "message": "Any special reason to choose l2_len for head_end_offset rather than 128 used for replicate_dpo?  Since l2_len is typically 10B (or 14B with 1 VLAN tag) I suppose it is more efficient to make clone head smaller so less memcpy than completely clone/copy small packets? This also make the threshold to completely copy/clone packets smaller in vlib_buffer_clone_256().",
+      "range": {
+        "startLine": 219,
+        "startChar": 23,
+        "endLine": 219,
+        "endChar": 25
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
