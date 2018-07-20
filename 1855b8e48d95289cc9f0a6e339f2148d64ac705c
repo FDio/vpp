@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59a057f0_70c2b5ff",
+        "filename": "src/vnet/adj/adj.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-20T13:48:57Z",
+      "side": 1,
+      "message": "Broadcast",
+      "range": {
+        "startLine": 84,
+        "startChar": 6,
+        "endLine": 84,
+        "endChar": 15
+      },
+      "revId": "1855b8e48d95289cc9f0a6e339f2148d64ac705c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
