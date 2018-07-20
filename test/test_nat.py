@@ -108,7 +108,6 @@ class MethodHolder(VppTestCase):
                 lb_sm.external_addr,
                 lb_sm.external_port,
                 lb_sm.protocol,
-                vrf_id=lb_sm.vrf_id,
                 twice_nat=lb_sm.twice_nat,
                 self_twice_nat=lb_sm.self_twice_nat,
                 out2in_only=lb_sm.out2in_only,
@@ -3433,10 +3432,12 @@ class TestNAT44EndpointDependent(MethodHolder):
 
         locals = [{'addr': server1.ip4n,
                    'port': local_port,
-                   'probability': 70},
+                   'probability': 70,
+                   'vrf_id': 0},
                   {'addr': server2.ip4n,
                    'port': local_port,
-                   'probability': 30}]
+                   'probability': 30,
+                   'vrf_id': 0}]
 
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
@@ -3515,10 +3516,12 @@ class TestNAT44EndpointDependent(MethodHolder):
 
         locals = [{'addr': server1.ip4n,
                    'port': local_port,
-                   'probability': 90},
+                   'probability': 90,
+                   'vrf_id': 0},
                   {'addr': server2.ip4n,
                    'port': local_port,
-                   'probability': 10}]
+                   'probability': 10,
+                   'vrf_id': 0}]
 
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
@@ -3560,10 +3563,12 @@ class TestNAT44EndpointDependent(MethodHolder):
 
         locals = [{'addr': server1.ip4n,
                    'port': local_port,
-                   'probability': 70},
+                   'probability': 70,
+                   'vrf_id': 0},
                   {'addr': server2.ip4n,
                    'port': local_port,
-                   'probability': 30}]
+                   'probability': 30,
+                   'vrf_id': 0}]
 
         self.vapi.nat44_forwarding_enable_disable(1)
         self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
@@ -3998,10 +4003,12 @@ class TestNAT44EndpointDependent(MethodHolder):
         else:
             locals = [{'addr': server1.ip4n,
                        'port': port_in1,
-                       'probability': 50},
+                       'probability': 50,
+                       'vrf_id': 0},
                       {'addr': server2.ip4n,
                        'port': port_in2,
-                       'probability': 50}]
+                       'probability': 50,
+                       'vrf_id': 0}]
             out_addr_n = socket.inet_pton(socket.AF_INET, self.nat_addr)
             self.vapi.nat44_add_del_lb_static_mapping(out_addr_n,
                                                       port_out,

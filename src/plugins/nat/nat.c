@@ -1235,7 +1235,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 }
 
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
-                                     snat_protocol_t proto, u32 vrf_id,
+                                     snat_protocol_t proto,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
                                      twice_nat_type_t twice_nat, u8 out2in_only,
                                      u8 *tag)
@@ -1244,7 +1244,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   snat_static_mapping_t *m;
   snat_session_key_t m_key;
   clib_bihash_kv_8_8_t kv, value;
-  u32 fib_index;
   snat_address_t *a = 0;
   int i;
   nat44_lb_addr_port_t *local;
@@ -1276,10 +1275,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
       if (vec_len (locals) < 2)
         return VNET_API_ERROR_INVALID_VALUE;
-
-      fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-                                                     vrf_id,
-                                                     FIB_SOURCE_PLUGIN_LOW);
 
       /* Find external address in allocated addresses and reserve port for
          address and port pair mapping when dynamic translations enabled */
@@ -1323,8 +1318,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       m->tag = vec_dup (tag);
       m->external_addr = e_addr;
       m->addr_only = 0;
-      m->vrf_id = vrf_id;
-      m->fib_index = fib_index;
       m->external_port = e_port;
       m->proto = proto;
       m->twice_nat = twice_nat;
@@ -1345,7 +1338,10 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       m_key.fib_index = m->fib_index;
       for (i = 0; i < vec_len (locals); i++)
         {
+          locals[i].fib_index = fib_table_find_or_create_and_lock (
+            FIB_PROTOCOL_IP4, locals[i].vrf_id, FIB_SOURCE_PLUGIN_LOW);
           m_key.addr = locals[i].addr;
+          m_key.fib_index = locals[i].fib_index;
           if (!out2in_only)
             {
               m_key.port = locals[i].port;
@@ -1379,8 +1375,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
     {
       if (!m)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
 
       /* Free external address port */
       if (!(sm->static_mapping_only || out2in_only))
@@ -1425,11 +1419,13 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
       vec_foreach (local, m->locals)
         {
+          fib_table_unlock (local->fib_index, FIB_PROTOCOL_IP4,
+                            FIB_SOURCE_PLUGIN_LOW);
           m_key.addr = local->addr;
           if (!out2in_only)
             {
               m_key.port = local->port;
-              m_key.fib_index = m->fib_index;
+              m_key.fib_index = local->fib_index;
               kv.key = m_key.as_u64;
               if (clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 0))
                 {
@@ -2207,15 +2203,16 @@ get_local:
             }
           mapping->addr = m->locals[lo].addr;
           mapping->port = clib_host_to_net_u16 (m->locals[lo].port);
+          mapping->fib_index = m->locals[lo].fib_index;
         }
       else
         {
+          mapping->fib_index = m->fib_index;
           mapping->addr = m->local_addr;
           /* Address only mapping doesn't change port */
           mapping->port = m->addr_only ? match.port
             : clib_host_to_net_u16 (m->local_port);
         }
-      mapping->fib_index = m->fib_index;
       mapping->protocol = m->proto;
     }
   else
@@ -3083,17 +3080,16 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
    {
       if (vec_len (m->locals))
         {
-          s = format (s, "%U vrf %d external %U:%d %s %s",
+          s = format (s, "%U external %U:%d %s %s",
                       format_snat_protocol, m->proto,
-                      m->vrf_id,
                       format_ip4_address, &m->external_addr, m->external_port,
                       m->twice_nat == TWICE_NAT ? "twice-nat" :
                       m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
                       m->out2in_only ? "out2in-only" : "");
           vec_foreach (local, m->locals)
-            s = format (s, "\n  local %U:%d probability %d\%",
+            s = format (s, "\n  local %U:%d vrf %d probability %d\%",
                         format_ip4_address, &local->addr, local->port,
-                        local->probability);
+                        local->vrf_id, local->probability);
         }
       else
         s = format (s, "%U local %U:%d external %U:%d vrf %d %s %s",

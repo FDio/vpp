@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.6.0";
+option version = "3.0.0";
 
 /**
  * @file nat.api
@@ -595,6 +595,7 @@ typeonly manual_endian define nat44_lb_addr_port {
   u8 addr[4];
   u16 port;
   u8 probability;
+  u32 vrf_id;
 };
 
 /** \brief Add/delete NAT44 load-balancing static mapping rule
@@ -604,7 +605,6 @@ typeonly manual_endian define nat44_lb_addr_port {
     @param external_addr - external IPv4 address of the service
     @param external_port - external L4 port number of the service
     @param protocol - IP protocol number of the service
-    @param vrf_id - internal network VRF ID
     @param twice_nat - if 1 translate external host address and port
     @param self_twice_nat - if 1 translate external host address and port
                             whenever external host address equals
@@ -621,7 +621,6 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u8 external_addr[4];
   u16 external_port;
   u8 protocol;
-  u32 vrf_id;
   u8 twice_nat;
   u8 self_twice_nat;
   u8 out2in_only;
@@ -645,7 +644,6 @@ define nat44_lb_static_mapping_dump {
     @param external_addr - external IPv4 address of the service
     @param external_port - external L4 port number of the service
     @param protocol - IP protocol number of the service
-    @param vrf_id - internal network VRF ID
     @param twice_nat - if 1 translate external host address and port
     @param self_twice_nat - if 1 translate external host address and port
                             whenever external host address equals
@@ -660,7 +658,6 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 external_addr[4];
   u16 external_port;
   u8 protocol;
-  u32 vrf_id;
   u8 twice_nat;
   u8 self_twice_nat;
   u8 out2in_only;

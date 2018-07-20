@@ -231,6 +231,8 @@ typedef struct {
   u16 port;
   u8 probability;
   u8 prefix;
+  u32 vrf_id;
+  u32 fib_index;
 } nat44_lb_addr_port_t;
 
 typedef enum {
@@ -610,7 +612,7 @@ int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del,
 uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
 u8 * format_snat_protocol(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
-                                     snat_protocol_t proto, u32 vrf_id,
+                                     snat_protocol_t proto,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
                                      twice_nat_type_t twice_nat, u8 out2in_only,
                                      u8 *tag);
