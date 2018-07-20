@@ -24,7 +24,7 @@
 
 DECLARE_CJ_GLOBAL_LOG;
 
-#define FRAME_QUEUE_NELTS 32
+#define FRAME_QUEUE_NELTS 64
 
 u32
 vl (void *p)
@@ -1795,16 +1795,29 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   if (frame_queue_nelts == 0)
     frame_queue_nelts = FRAME_QUEUE_NELTS;
 
+  ASSERT (frame_queue_nelts >= 8);
+
   vec_add2 (tm->frame_queue_mains, fqm, 1);
 
   fqm->node_index = node_index;
+  fqm->frame_queue_nelts = frame_queue_nelts;
+  fqm->queue_hi_thresh = frame_queue_nelts - 2;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
+  vec_validate (fqm->per_thread_data, tm->n_vlib_mains - 1);
   _vec_len (fqm->vlib_frame_queues) = 0;
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
+      vlib_frame_queue_per_thread_data_t *ptd;
       fq = vlib_frame_queue_alloc (frame_queue_nelts);
       vec_add1 (fqm->vlib_frame_queues, fq);
+
+      ptd = vec_elt_at_index (fqm->per_thread_data, i);
+      vec_validate (ptd->handoff_queue_elt_by_thread_index,
+		    tm->n_vlib_mains - 1);
+      vec_validate_init_empty (ptd->congested_handoff_queue_by_thread_index,
+			       tm->n_vlib_mains - 1,
+			       (vlib_frame_queue_t *) (~0));
     }
 
   return (fqm - tm->frame_queue_mains);

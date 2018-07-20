@@ -163,8 +163,18 @@ vlib_frame_queue_t;
 
 typedef struct
 {
+  vlib_frame_queue_elt_t **handoff_queue_elt_by_thread_index;
+  vlib_frame_queue_t **congested_handoff_queue_by_thread_index;
+} vlib_frame_queue_per_thread_data_t;
+
+typedef struct
+{
   u32 node_index;
+  u32 frame_queue_nelts;
+  u32 queue_hi_thresh;
+
   vlib_frame_queue_t **vlib_frame_queues;
+  vlib_frame_queue_per_thread_data_t *per_thread_data;
 
   /* for frame queue tracing */
   frame_queue_trace_t *frame_queue_traces;

@@ -49,6 +49,23 @@ typedef struct
   u32 buffer_index;
 } worker_handoff_trace_t;
 
+#define foreach_worker_handoff_error			\
+  _(CONGESTION_DROP, "congestion drop")
+
+typedef enum
+{
+#define _(sym,str) WORKER_HANDOFF_ERROR_##sym,
+  foreach_worker_handoff_error
+#undef _
+    WORKER_HANDOFF_N_ERROR,
+} worker_handoff_error_t;
+
+static char *worker_handoff_error_strings[] = {
+#define _(sym,string) string,
+  foreach_worker_handoff_error
+#undef _
+};
+
 /* packet trace format function */
 static u8 *
 format_worker_handoff_trace (u8 * s, va_list * args)
@@ -71,7 +88,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
 {
   handoff_main_t *hm = &handoff_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u32 n_left_from, *from;
+  u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
 
   from = vlib_frame_vector_args (frame);
@@ -130,8 +147,13 @@ worker_handoff_node_fn (vlib_main_t * vm,
       b += 1;
     }
 
-  vlib_buffer_enqueue_to_thread (vm, hm->frame_queue_index, from,
-				 thread_indices, frame->n_vectors);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, hm->frame_queue_index, from,
+					 thread_indices, frame->n_vectors, 1);
+
+  if (n_enq < frame->n_vectors)
+    vlib_node_increment_counter (vm, node->node_index,
+				 WORKER_HANDOFF_ERROR_CONGESTION_DROP,
+				 frame->n_vectors - n_enq);
   return frame->n_vectors;
 }
 
@@ -142,6 +164,8 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_worker_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(worker_handoff_error_strings),
+  .error_strings = worker_handoff_error_strings,
 
   .n_next_nodes = 1,
   .next_nodes = {
