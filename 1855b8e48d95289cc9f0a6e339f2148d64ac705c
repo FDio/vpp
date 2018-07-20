@@ -22,6 +22,29 @@
       "revId": "1855b8e48d95289cc9f0a6e339f2148d64ac705c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0761d304_3ff93cf9",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2655,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2018-07-20T16:13:03Z",
+      "side": 1,
+      "message": "Should this be ip4_rewrite_bcast?\n\u0027make build\u0027 started failing for me with the error:\n\n/home/mgsmith/src/vpp/build-data/../src/vnet/ip/ip4_forward.c:2599:1: error: \u0027ip4_rewrite_bcast\u0027 defined but not used [-Werror\u003dunused-function]\n ip4_rewrite_bcast (vlib_main_t * vm,\n ^",
+      "range": {
+        "startLine": 2655,
+        "startChar": 0,
+        "endLine": 2655,
+        "endChar": 26
+      },
+      "revId": "1855b8e48d95289cc9f0a6e339f2148d64ac705c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
