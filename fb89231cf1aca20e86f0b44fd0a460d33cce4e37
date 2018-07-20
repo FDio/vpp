@@ -94,6 +94,30 @@
       "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a00e28e5_fa1b3c41",
+        "filename": "test/run_tests.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-20T12:39:16Z",
+      "side": 1,
+      "message": "\u003e use PARALLEL\u003dauto for autodetection\n\nOk.\n\n\u003e What should be the default? PARALLEL\u003d1?\n\nYes.",
+      "parentUuid": "5cd781fa_a42c8253",
+      "range": {
+        "startLine": 115,
+        "startChar": 4,
+        "endLine": 115,
+        "endChar": 20
+      },
+      "revId": "fb89231cf1aca20e86f0b44fd0a460d33cce4e37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
