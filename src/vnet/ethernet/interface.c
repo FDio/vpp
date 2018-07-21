@@ -382,192 +382,236 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 /**
  * Echo packets back to ethernet/l2-input.
- *
- * This node is "special." We know, for example, that
- * all of the vnet_buffer (bX)->sw_if_index[VLIB_TX] values
- * [had better!] match.
- *
- * Please do not copy the code first and ask questions later.
- *
- * "These are not the droids we're looking.
- *  You can go about your business.
- *  Move along..."
  */
 static uword
 simulated_ethernet_interface_tx (vlib_main_t * vm,
 				 vlib_node_runtime_t *
 				 node, vlib_frame_t * frame)
 {
-  u32 n_left_from, n_left_to_next, *from, *to_next;
-  u32 next_index;
-  u32 n_bytes = 0;
+  u32 n_left_from, *from;
+  u32 next_index = 0;
+  u32 n_bytes;
   u32 thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
-  u32 new_tx_sw_if_index, sw_if_index_all;
-  vlib_buffer_t *b0, *b1, *b2, *b3;
-  u32 bi0, bi1, bi2, bi3;
-  u32 next_all;
   l2_input_config_t *config;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 new_rx_sw_if_index = ~0;
+  u32 new_tx_sw_if_index = ~0;
 
   n_left_from = frame->n_vectors;
   from = vlib_frame_args (frame);
 
-  /*
-   * Work out where all of the packets are going.
-   */
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
+  next = nexts;
 
-  bi0 = from[0];
-  b0 = vlib_get_buffer (vm, bi0);
-  sw_if_index_all = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-  /*
-   * Look at the L2 config for the interface to decide which
-   * graph arc to use. If the interface is bridged, send pkts
-   * to l2-input. Otherwise, to ethernet-input
-   */
-  config = l2input_intf_config (sw_if_index_all);
-  next_all =
+  /* Ordinarily, this is the only config lookup. */
+  config = l2input_intf_config (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+  next_index =
     config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
     VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+  new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 
-  /*
-   * If the interface is a BVI, set the tx sw_if_index to the
-   * L2 path's special value.
-   * Otherwise, set it to ~0, to be reset later by the L3 path
-   */
-  if (config->bvi)
-    new_tx_sw_if_index = L2INPUT_BVI;
-  else
-    new_tx_sw_if_index = ~0;
+  while (n_left_from >= 4)
+    {
+      u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
+      u32 not_all_match_config;
 
-  /* Get the right next frame... */
-  next_index = next_all;
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  vlib_prefetch_buffer_header (b[4], STORE);
+	  vlib_prefetch_buffer_header (b[5], STORE);
+	  vlib_prefetch_buffer_header (b[6], STORE);
+	  vlib_prefetch_buffer_header (b[7], STORE);
+	}
 
-  /*
-   * Use a quad-single loop, in case we have to impedance-match a
-   * full frame into a non-empty next frame or some such.
-   */
+      /* Make sure all pkts were transmitted on the same (loop) intfc */
+      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      sw_if_index1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+      sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+      sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
+      not_all_match_config = (sw_if_index0 ^ sw_if_index1)
+	^ (sw_if_index2 ^ sw_if_index3);
+      not_all_match_config += sw_if_index0 ^ new_rx_sw_if_index;
+
+      /* Speed path / expected case: all pkts on the same intfc */
+      if (PREDICT_TRUE (not_all_match_config == 0))
+	{
+	  next[0] = next_index;
+	  next[1] = next_index;
+	  next[2] = next_index;
+	  next[3] = next_index;
+	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+	  vnet_buffer (b[2])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+	  vnet_buffer (b[3])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+	  vnet_buffer (b[2])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+	  vnet_buffer (b[3])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+	  n_bytes = vlib_buffer_length_in_chain (vm, b[0]);
+	  n_bytes += vlib_buffer_length_in_chain (vm, b[1]);
+	  n_bytes += vlib_buffer_length_in_chain (vm, b[2]);
+	  n_bytes += vlib_buffer_length_in_chain (vm, b[3]);
+
+	  if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	    {
+	      vnet_update_l2_len (b[0]);
+	      vnet_update_l2_len (b[1]);
+	      vnet_update_l2_len (b[2]);
+	      vnet_update_l2_len (b[3]);
+	    }
+
+	  /* increment TX interface stat */
+	  vlib_increment_combined_counter (im->combined_sw_if_counters +
+					   VNET_INTERFACE_COUNTER_TX,
+					   thread_index, new_rx_sw_if_index,
+					   4 /* pkts */ , n_bytes);
+	  b += 4;
+	  next += 4;
+	  n_left_from -= 4;
+	  continue;
+	}
+
+      /*
+       * Slow path: we know that at least one of the pkts
+       * was transmitted on a different sw_if_index, so
+       * check each sw_if_index against the cached data and proceed
+       * accordingly.
+       *
+       * This shouldn't happen, but code can (and does) bypass the
+       * per-interface output node, so deal with it.
+       */
+      if (PREDICT_FALSE (vnet_buffer (b[0])->sw_if_index[VLIB_TX]
+			 != new_rx_sw_if_index))
+	{
+	  config = l2input_intf_config
+	    (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+	  next_index =
+	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	}
+      next[0] = next_index;
+      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+      n_bytes = vlib_buffer_length_in_chain (vm, b[0]);
+      if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	vnet_update_l2_len (b[0]);
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, new_rx_sw_if_index,
+				       1 /* pkts */ , n_bytes);
+
+      if (PREDICT_FALSE (vnet_buffer (b[1])->sw_if_index[VLIB_TX]
+			 != new_rx_sw_if_index))
+	{
+	  config = l2input_intf_config
+	    (vnet_buffer (b[1])->sw_if_index[VLIB_TX]);
+	  next_index =
+	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  new_rx_sw_if_index = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	}
+      next[1] = next_index;
+      vnet_buffer (b[1])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+      vnet_buffer (b[1])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+      n_bytes = vlib_buffer_length_in_chain (vm, b[1]);
+      if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	vnet_update_l2_len (b[1]);
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, new_rx_sw_if_index,
+				       1 /* pkts */ , n_bytes);
+
+      if (PREDICT_FALSE (vnet_buffer (b[2])->sw_if_index[VLIB_TX]
+			 != new_rx_sw_if_index))
+	{
+	  config = l2input_intf_config
+	    (vnet_buffer (b[2])->sw_if_index[VLIB_TX]);
+	  next_index =
+	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  new_rx_sw_if_index = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	}
+      next[2] = next_index;
+      vnet_buffer (b[2])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+      vnet_buffer (b[2])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+      n_bytes = vlib_buffer_length_in_chain (vm, b[2]);
+      if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	vnet_update_l2_len (b[2]);
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, new_rx_sw_if_index,
+				       1 /* pkts */ , n_bytes);
+
+      if (PREDICT_FALSE (vnet_buffer (b[3])->sw_if_index[VLIB_TX]
+			 != new_rx_sw_if_index))
+	{
+	  config = l2input_intf_config
+	    (vnet_buffer (b[3])->sw_if_index[VLIB_TX]);
+	  next_index =
+	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  new_rx_sw_if_index = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
+	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	}
+      next[3] = next_index;
+      vnet_buffer (b[3])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+      vnet_buffer (b[3])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+      n_bytes = vlib_buffer_length_in_chain (vm, b[3]);
+      if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	vnet_update_l2_len (b[3]);
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, new_rx_sw_if_index,
+				       1 /* pkts */ , n_bytes);
+      b += 4;
+      next += 4;
+      n_left_from -= 4;
+    }
   while (n_left_from > 0)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from >= 4 && n_left_to_next >= 4)
+      if (PREDICT_FALSE (vnet_buffer (b[0])->sw_if_index[VLIB_TX]
+			 != new_rx_sw_if_index))
 	{
-	  /* Prefetch next iteration. */
-	  if (PREDICT_TRUE (n_left_from >= 8))
-	    {
-	      vlib_buffer_t *p4, *p5, *p6, *p7;
-
-	      p4 = vlib_get_buffer (vm, from[4]);
-	      p5 = vlib_get_buffer (vm, from[5]);
-	      p6 = vlib_get_buffer (vm, from[6]);
-	      p7 = vlib_get_buffer (vm, from[7]);
-
-	      vlib_prefetch_buffer_header (p4, STORE);
-	      vlib_prefetch_buffer_header (p5, STORE);
-	      vlib_prefetch_buffer_header (p6, STORE);
-	      vlib_prefetch_buffer_header (p7, STORE);
-	    }
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  to_next[2] = bi2 = from[2];
-	  to_next[3] = bi3 = from[3];
-	  from += 4;
-	  to_next += 4;
-	  n_left_from -= 4;
-	  n_left_to_next -= 4;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
-
-	  /* This "should never happen," of course... */
-	  if (CLIB_DEBUG > 0)
-	    {
-	      u32 cache_not_ok;
-	      u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	      sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
-	      sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
-
-	      cache_not_ok = (sw_if_index0 ^ sw_if_index1)
-		^ (sw_if_index2 ^ sw_if_index3);
-	      cache_not_ok += sw_if_index0 ^ sw_if_index_all;
-	      ASSERT (cache_not_ok == 0);
-	    }
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index_all;
-	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = sw_if_index_all;
-	  vnet_buffer (b2)->sw_if_index[VLIB_RX] = sw_if_index_all;
-	  vnet_buffer (b3)->sw_if_index[VLIB_RX] = sw_if_index_all;
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
-	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
-	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
-
-	  /* Update l2 lengths if necessary */
-	  if (next_all == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
-	    {
-	      vnet_update_l2_len (b0);
-	      vnet_update_l2_len (b1);
-	      vnet_update_l2_len (b2);
-	      vnet_update_l2_len (b3);
-	    }
-
-	  /* Byte accounting */
-	  n_bytes += vlib_buffer_length_in_chain (vm, b0);
-	  n_bytes += vlib_buffer_length_in_chain (vm, b1);
-	  n_bytes += vlib_buffer_length_in_chain (vm, b2);
-	  n_bytes += vlib_buffer_length_in_chain (vm, b3);
-
-	  /* This *should* be a noop every time... */
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
-					   next_all, next_all,
-					   next_all, next_all);
+	  config = l2input_intf_config
+	    (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+	  next_index =
+	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	}
+      next[0] = next_index;
+      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
+      n_bytes = vlib_buffer_length_in_chain (vm, b[0]);
+      if (next_index == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
+	vnet_update_l2_len (b[0]);
 
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  if (CLIB_DEBUG > 0)
-	    {
-	      u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      ASSERT (sw_if_index0 == sw_if_index_all);
-	    }
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index_all;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = new_tx_sw_if_index;
-	  if (next_all == VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT)
-	    vnet_update_l2_len (b0);
-
-	  n_bytes += vlib_buffer_length_in_chain (vm, b0);
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next_all);
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, new_rx_sw_if_index,
+				       1 /* pkts */ , n_bytes);
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
     }
 
-  /* increment TX interface stat */
-  vlib_increment_combined_counter (im->combined_sw_if_counters +
-				   VNET_INTERFACE_COUNTER_TX,
-				   thread_index, sw_if_index_all,
-				   frame->n_vectors, n_bytes);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }
