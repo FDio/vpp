@@ -68,6 +68,30 @@
       "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85e0134e_f3f48531",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-22T18:20:43Z",
+      "side": 1,
+      "message": "The limitation of 1 BVI per BD and having BVI be the first (or last replicated) member is due to the previous flooding mechanism, due to MAC rewrite of the packet output to BVI.  With the new packet clone mechanism, we have the option to relieve both restrictions in the future if needed.",
+      "parentUuid": "035feed5_ed174bb6",
+      "range": {
+        "startLine": 258,
+        "startChar": 26,
+        "endLine": 258,
+        "endChar": 61
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
