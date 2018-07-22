@@ -68,6 +68,12 @@ session_mq_accepted_reply_handler (void *data)
 	  return;
 	}
       s->session_state = SESSION_STATE_READY;
+      if (!svm_fifo_is_empty (s->server_rx_fifo))
+	{
+	  application_t *app;
+	  app = application_get (s->app_index);
+	  application_send_event (app, s, FIFO_EVENT_APP_RX);
+	}
     }
 }
 
