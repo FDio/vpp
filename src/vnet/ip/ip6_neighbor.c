@@ -4247,7 +4247,7 @@ ip6_get_ll_address (u32 sw_if_index, ip6_address_t * addr)
   ip6_radv_t *radv_info;
   u32 ri;
 
-  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) <= sw_if_index)
     return 0;
 
   ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];

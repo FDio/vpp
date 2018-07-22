@@ -29,7 +29,7 @@ mpls_sw_interface_is_enabled (u32 sw_if_index)
 {
     mpls_main_t * mm = &mpls_main;
 
-    if (vec_len(mm->mpls_enabled_by_sw_if_index) < sw_if_index)
+    if (vec_len(mm->mpls_enabled_by_sw_if_index) <= sw_if_index)
         return (0);
 
     return (mm->mpls_enabled_by_sw_if_index[sw_if_index]);

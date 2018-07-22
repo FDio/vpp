@@ -562,7 +562,7 @@ svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t * fifo_segment,
   freelist_index = max_log2 (rounded_data_size)
     - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
 
-  if (freelist_index > vec_len (fsh->free_fifos))
+  if (freelist_index >= vec_len (fsh->free_fifos))
     return 0;
 
   f = fsh->free_fifos[freelist_index];

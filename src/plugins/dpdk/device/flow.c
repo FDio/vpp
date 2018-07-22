@@ -368,7 +368,7 @@ format_dpdk_flow (u8 * s, va_list * args)
       return s;
     }
 
-  if (private_data > vec_len (xd->flow_entries))
+  if (private_data >= vec_len (xd->flow_entries))
     return format (s, "unknown flow");
 
   fe = vec_elt_at_index (xd->flow_entries, private_data);
