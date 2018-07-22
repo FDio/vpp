@@ -1124,7 +1124,7 @@ vnet_vxlan_get_tunnel_index (u32 sw_if_index)
 {
   vxlan_main_t *vxm = &vxlan_main;
 
-  if (sw_if_index > vec_len (vxm->tunnel_index_by_sw_if_index))
+  if (sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index))
     return ~0;
   return vxm->tunnel_index_by_sw_if_index[sw_if_index];
 }
