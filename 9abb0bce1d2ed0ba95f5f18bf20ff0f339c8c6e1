@@ -45,6 +45,29 @@
       "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "035feed5_ed174bb6",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-07-22T14:21:49Z",
+      "side": 1,
+      "message": "since the bridge member list is ordered (bvi is the first) it would be ok to check for bvi only for the first member...",
+      "range": {
+        "startLine": 258,
+        "startChar": 26,
+        "endLine": 258,
+        "endChar": 61
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
