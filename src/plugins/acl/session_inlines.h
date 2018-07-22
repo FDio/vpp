@@ -120,15 +120,10 @@ always_inline fa_session_t *
 get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  if (session_index > vec_len (pw->fa_sessions_pool))
-    {
-      return 0;
-    }
+  if (session_index >= vec_len (pw->fa_sessions_pool))
+    return 0;
 
-  fa_session_t *sess = (session_index > vec_len (pw->fa_sessions_pool)) ? 0 :
-    pool_elt_at_index (pw->fa_sessions_pool,
-		       session_index);
-  return sess;
+  return pool_elt_at_index (pw->fa_sessions_pool, session_index);
 }
 
 always_inline int
