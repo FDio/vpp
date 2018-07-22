@@ -131,7 +131,7 @@ vlib_runtime_index_to_node_name (u32 index)
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_main_t *nm = &vm->node_main;
 
-  if (index > vec_len (nm->nodes))
+  if (index >= vec_len (nm->nodes))
     {
       fformat (stderr, "%d out of range, max %d\n", vec_len (nm->nodes));
       return;

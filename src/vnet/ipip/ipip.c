@@ -355,7 +355,7 @@ ipip_tunnel_t *
 ipip_tunnel_db_find_by_sw_if_index (u32 sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
-  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return NULL;
   u32 ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   if (ti == ~0)
