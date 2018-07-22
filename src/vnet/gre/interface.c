@@ -135,7 +135,7 @@ gre_tunnel_stack (adj_index_t ai)
   adj = adj_get (ai);
   sw_if_index = adj->rewrite_header.sw_if_index;
 
-  if ((vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index) ||
+  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
       (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]))
     return;
 

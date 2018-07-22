@@ -1418,7 +1418,7 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
     }
   else
     {
-      if (sw_if_index > vec_len (*pinout_acl_vec_by_sw_if_index))
+      if (sw_if_index >= vec_len (*pinout_acl_vec_by_sw_if_index))
 	{
 	  rv = VNET_API_ERROR_NO_SUCH_ENTRY;
 	  goto done;
@@ -3457,7 +3457,7 @@ macip_acl_print (acl_main_t * am, u32 macip_acl_index)
   int i;
 
   /* Don't try to print someone else's memory */
-  if (macip_acl_index > vec_len (am->macip_acls))
+  if (macip_acl_index >= vec_len (am->macip_acls))
     return;
 
   macip_acl_list_t *a = vec_elt_at_index (am->macip_acls, macip_acl_index);

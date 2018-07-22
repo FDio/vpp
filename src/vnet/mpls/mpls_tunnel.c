@@ -52,7 +52,7 @@ static const char *mpls_tunnel_attribute_names[] = MPLS_TUNNEL_ATTRIBUTES;
 static mpls_tunnel_t*
 mpls_tunnel_get_from_sw_if_index (u32 sw_if_index)
 {
-    if ((vec_len(mpls_tunnel_db) < sw_if_index) ||
+    if ((vec_len(mpls_tunnel_db) <= sw_if_index) ||
         (~0 == mpls_tunnel_db[sw_if_index]))
         return (NULL);
 

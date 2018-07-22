@@ -44,7 +44,7 @@ vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
 
       node_index = trace[i];
 
-      if (node_index > vec_len (vnm->nodes))
+      if (node_index >= vec_len (vnm->nodes))
 	{
 	  fformat (stderr, "Skip bogus node index %d\n", node_index);
 	  continue;
