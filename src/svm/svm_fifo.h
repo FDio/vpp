@@ -113,6 +113,12 @@ svm_fifo_is_full (svm_fifo_t * f)
   return (f->cursize == f->nitems);
 }
 
+static inline int
+svm_fifo_is_empty (svm_fifo_t * f)
+{
+  return (f->cursize == 0);
+}
+
 static inline u32
 svm_fifo_max_enqueue (svm_fifo_t * f)
 {
