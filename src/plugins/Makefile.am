@@ -139,6 +139,10 @@ if ENABLE_TLSOPENSSL_PLUGIN
 include tlsopenssl.am
 endif
 
+if ENABLE_UNITTEST_PLUGIN
+include unittest.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
