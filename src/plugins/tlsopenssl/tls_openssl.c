@@ -220,7 +220,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
 	{
 	  vpp_ssl_async_retry_func (ctx, myself);
 	}
-      if (err == SSL_ERROR_WANT_ASYNC)
+      else if (err == SSL_ERROR_WANT_ASYNC)
 	{
 	  vpp_ssl_async_process_event (ctx, myself);
 	}
