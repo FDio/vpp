@@ -250,7 +250,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 			      reass->lru_list_index);
 	}
 
-      if (reass->flags && NAT_REASS_FLAG_MAX_FRAG_DROP)
+      if (reass->flags & NAT_REASS_FLAG_MAX_FRAG_DROP)
 	{
 	  reass = 0;
 	  goto unlock;
@@ -320,6 +320,8 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
   reass->thread_index = (u32) ~ 0;
   reass->last_heard = now;
   reass->frag_n = 0;
+  reass->flags = 0;
+  reass->classify_next = NAT_REASS_IP4_CLASSIFY_NONE;
 
   if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 1))
     {
@@ -457,7 +459,7 @@ nat_ip6_reass_find_or_create (ip6_address_t src, ip6_address_t dst,
 			      reass->lru_list_index);
 	}
 
-      if (reass->flags && NAT_REASS_FLAG_MAX_FRAG_DROP)
+      if (reass->flags & NAT_REASS_FLAG_MAX_FRAG_DROP)
 	{
 	  reass = 0;
 	  goto unlock;
@@ -724,12 +726,51 @@ static int
 nat_ip4_reass_walk_cli (nat_reass_ip4_t * reass, void *ctx)
 {
   vlib_main_t *vm = ctx;
+  u8 *flags_str = 0;
+  const char *classify_next_str;
 
-  vlib_cli_output (vm, "  src %U dst %U proto %u id 0x%04x cached %u",
+  if (reass->flags & NAT_REASS_FLAG_MAX_FRAG_DROP)
+    flags_str = format (flags_str, "MAX_FRAG_DROP");
+  if (reass->flags & NAT_REASS_FLAG_CLASSIFY_ED_CONTINUE)
+    {
+      if (flags_str)
+	flags_str = format (flags_str, " | ");
+      flags_str = format (flags_str, "CLASSIFY_ED_CONTINUE");
+    }
+  if (reass->flags & NAT_REASS_FLAG_ED_DONT_TRANSLATE)
+    {
+      if (flags_str)
+	flags_str = format (flags_str, " | ");
+      flags_str = format (flags_str, "CLASSIFY_ED_DONT_TRANSLATE");
+    }
+  if (!flags_str)
+    flags_str = format (flags_str, "0");
+  flags_str = format (flags_str, "%c", 0);
+
+  switch (reass->classify_next)
+    {
+    case NAT_REASS_IP4_CLASSIFY_NONE:
+      classify_next_str = "NONE";
+      break;
+    case NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT:
+      classify_next_str = "IN2OUT";
+      break;
+    case NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN:
+      classify_next_str = "OUT2IN";
+      break;
+    default:
+      classify_next_str = "invalid value";
+    }
+
+  vlib_cli_output (vm, "  src %U dst %U proto %u id 0x%04x cached %u "
+		   "flags %s classify_next %s",
 		   format_ip4_address, &reass->key.src,
 		   format_ip4_address, &reass->key.dst,
 		   reass->key.proto,
-		   clib_net_to_host_u16 (reass->key.frag_id), reass->frag_n);
+		   clib_net_to_host_u16 (reass->key.frag_id), reass->frag_n,
+		   flags_str, classify_next_str);
+
+  vec_free (flags_str);
 
   return 0;
 }
