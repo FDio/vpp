@@ -180,6 +180,7 @@ vlib_node_registration_t nat44_handoff_classify_node;
 typedef enum {
   NAT44_CLASSIFY_NEXT_IN2OUT,
   NAT44_CLASSIFY_NEXT_OUT2IN,
+  NAT44_CLASSIFY_NEXT_DROP,
   NAT44_CLASSIFY_N_NEXT,
 } nat44_classify_next_t;
 
@@ -439,6 +440,8 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   snat_static_mapping_t *m;
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  u32 *fragments_to_drop = 0;
+  u32 *fragments_to_loopback = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -462,6 +465,8 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
           clib_bihash_kv_8_8_t kv0, value0;
           clib_bihash_kv_16_8_t ed_kv0, ed_value0;
           udp_header_t *udp0;
+          nat_reass_ip4_t *reass0;
+          snat_session_t * s0 = 0;
 
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -475,18 +480,95 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
           ip0 = vlib_buffer_get_current (b0);
           udp0 = ip4_next_header (ip0);
 
-          if (is_ed)
+          if (is_ed && ip0->protocol != IP_PROTOCOL_ICMP)
             {
-              sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-              rx_fib_index0 =
-                fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-                                                     sw_if_index0);
-              make_ed_kv (&ed_kv0, &ip0->src_address, &ip0->dst_address,
-                          ip0->protocol, rx_fib_index0, udp0->src_port,
-                          udp0->dst_port);
-              if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &ed_kv0, &ed_value0))
-                goto enqueue0;
+              if (!ip4_is_fragment (ip0) || ip4_is_first_fragment (ip0))
+                {
+                  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+                  rx_fib_index0 =
+                    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+                                                         sw_if_index0);
+                  make_ed_kv (&ed_kv0, &ip0->src_address, &ip0->dst_address,
+                              ip0->protocol, rx_fib_index0, udp0->src_port,
+                              udp0->dst_port);
+                  if (ip4_is_fragment (ip0))
+                    {
+		      reass0 = nat_ip4_reass_find_or_create (ip0->src_address,
+                                                             ip0->dst_address,
+                                                             ip0->fragment_id,
+                                                             ip0->protocol,
+                                                             1,
+                                                             &fragments_to_drop);
+		      if (PREDICT_FALSE (!reass0))
+		        {
+		          next0 = NAT44_CLASSIFY_NEXT_DROP;
+		          //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS]; TODO
+		          nat_log_notice ("maximum reassemblies exceeded");
+		          goto enqueue0;
+		        }
+                      if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &ed_kv0, &ed_value0))
+                        {
+                          reass0->sess_index = ed_value0.value;
+                          s0 = pool_elt_at_index (tsm->sessions, reass0->sess_index);
+                          if (s0->in2out.addr.as_u32 != ip0->src_address.as_u32)
+                            {
+                              next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                              reass0->classify_next = NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN;
+                            }
+                          else
+                            {
+                              /* default */
+                              next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
+                              reass0->classify_next = NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT;
+                            }
+                          nat_ip4_reass_get_frags (reass0, &fragments_to_loopback);
+                          goto enqueue0;
+                        }
+                      else
+                        {
+                	  reass0->sess_index = ~0; // TODO: needed ?
+                          reass0->ed_dont_translate = 1;
+                	  goto ed_out;
+                        }
+                    }
+                }
+              else
+                {
+                  reass0 = nat_ip4_reass_find_or_create (ip0->src_address,
+                                                         ip0->dst_address,
+                                                         ip0->fragment_id,
+                                                         ip0->protocol,
+					                 1,
+                                                         &fragments_to_drop);
+                  if (PREDICT_FALSE (!reass0))
+                    {
+                      next0 = NAT44_CLASSIFY_NEXT_DROP;
+                      //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS]; TODO
+                      nat_log_notice ("maximum reassemblies exceeded");
+                      goto enqueue0;
+                    }
+                  if (reass0->sess_index == ~0 && !reass0->ed_dont_translate)
+                    {
+		      if (nat_ip4_reass_add_fragment (reass0, bi0))
+		        {
+		          //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_FRAG]; TODO
+		          nat_log_notice ("maximum fragments per reassembly exceeded");
+		          next0 = NAT44_CLASSIFY_NEXT_DROP;
+		          goto enqueue0;
+		        }
+		      goto enqueue0;
+                    }
+                  if (reass0->sess_index == ~0)
+                    goto ed_out;
+                  if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN)
+                    next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                  else if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT)
+                    next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
+                  else
+                    ASSERT (0);
+                }
             }
+          ed_out:
 
           vec_foreach (ap, sm->addresses)
             {
@@ -511,14 +593,75 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
                     next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
                   goto enqueue0;
                 }
-              m_key0.port = clib_net_to_host_u16 (udp0->dst_port);
-              m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
-              kv0.key = m_key0.as_u64;
-              if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+              if (!ip4_is_fragment (ip0) || ip4_is_first_fragment (ip0))
                 {
-                  m = pool_elt_at_index (sm->static_mappings, value0.value);
-                  if (m->local_addr.as_u32 != m->external_addr.as_u32)
-                    next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                  m_key0.port = clib_net_to_host_u16 (udp0->dst_port);
+                  m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
+                  kv0.key = m_key0.as_u64;
+                  if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+                    {
+                      m = pool_elt_at_index (sm->static_mappings, value0.value);
+                      if (m->local_addr.as_u32 != m->external_addr.as_u32)
+                        next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                    }
+                  if (ip4_is_fragment (ip0))
+                    {
+		      reass0 = nat_ip4_reass_find_or_create (ip0->src_address,
+                                                             ip0->dst_address,
+                                                             ip0->fragment_id,
+                                                             ip0->protocol,
+                                                             1,
+                                                             &fragments_to_drop);
+		      if (PREDICT_FALSE (!reass0))
+		        {
+		          next0 = NAT44_CLASSIFY_NEXT_DROP;
+		          //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS]; TODO
+		          nat_log_notice ("maximum reassemblies exceeded");
+		          goto enqueue0;
+		        }
+		      if (next0 == NAT44_CLASSIFY_NEXT_OUT2IN)
+		        reass0->classify_next = NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN;
+		      else
+			reass0->classify_next = NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT;
+		      nat_ip4_reass_get_frags (reass0, &fragments_to_loopback);
+                    }
+                }
+              else
+                {
+                  reass0 = nat_ip4_reass_find_or_create (ip0->src_address,
+                                                         ip0->dst_address,
+                                                         ip0->fragment_id,
+                                                         ip0->protocol,
+    					                 1,
+                                                         &fragments_to_drop);
+                  if (PREDICT_FALSE (!reass0))
+                    {
+                      next0 = NAT44_CLASSIFY_NEXT_DROP;
+                      //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS]; TODO
+                      nat_log_notice ("maximum reassemblies exceeded");
+                      goto enqueue0;
+                    }
+                  if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NONE)
+                    {
+		      if (nat_ip4_reass_add_fragment (reass0, bi0))
+		        {
+		          //b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_FRAG]; TODO
+		          nat_log_notice ("maximum fragments per reassembly exceeded");
+		          next0 = NAT44_CLASSIFY_NEXT_DROP;
+		          goto enqueue0;
+		        }
+		      goto enqueue0;
+                    }
+                  else if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN)
+                    {
+                      next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                    }
+                  else if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT)
+                    {
+                      next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
+                    }
+                  else
+                    ASSERT (0);
                 }
             }
 
@@ -539,6 +682,10 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  nat_send_all_to_node (vm, fragments_to_drop, node, 0, NAT44_CLASSIFY_NEXT_DROP);
+
+  vec_free (fragments_to_drop);
 
   return frame->n_vectors;
 }
@@ -561,6 +708,7 @@ VLIB_REGISTER_NODE (nat44_classify_node) = {
   .next_nodes = {
     [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-in2out",
     [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-out2in",
+    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
 
@@ -584,6 +732,7 @@ VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
   .next_nodes = {
     [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-ed-in2out",
     [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-ed-out2in",
+    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
 
@@ -608,6 +757,7 @@ VLIB_REGISTER_NODE (nat44_det_classify_node) = {
   .next_nodes = {
     [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-det-in2out",
     [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-det-out2in",
+    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
 
@@ -632,6 +782,7 @@ VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   .next_nodes = {
     [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-in2out-worker-handoff",
     [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-out2in-worker-handoff",
+    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
 
