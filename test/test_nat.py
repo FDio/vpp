@@ -1253,7 +1253,7 @@ class TestNAT44(MethodHolder):
         self.verify_capture_out(capture, same_port=True, packet_num=1)
         self.assert_equal(capture[0][IP].proto, IP_PROTOS.icmp)
 
-    def _test_forwarding(self):
+    def test_forwarding(self):
         """ NAT44 forwarding test """
 
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
@@ -1267,7 +1267,7 @@ class TestNAT44(MethodHolder):
                                                external_ip=alias_ip)
 
         try:
-            # in2out - static mapping match
+            # static mapping match
 
             pkts = self.create_stream_out(self.pg1)
             self.pg1.add_stream(pkts)
@@ -1283,7 +1283,7 @@ class TestNAT44(MethodHolder):
             capture = self.pg1.get_capture(len(pkts))
             self.verify_capture_out(capture, same_port=True)
 
-            # in2out - no static mapping match
+            # no static mapping match
 
             host0 = self.pg0.remote_hosts[0]
             self.pg0.remote_hosts[0] = self.pg0.remote_hosts[1]
@@ -1306,19 +1306,6 @@ class TestNAT44(MethodHolder):
                                         same_port=True)
             finally:
                 self.pg0.remote_hosts[0] = host0
-
-            user = self.pg0.remote_hosts[1]
-            sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
-            self.assertEqual(len(sessions), 3)
-            self.assertTrue(sessions[0].ext_host_valid)
-            self.vapi.nat44_del_session(
-                sessions[0].inside_ip_address,
-                sessions[0].inside_port,
-                sessions[0].protocol,
-                ext_host_address=sessions[0].ext_host_address,
-                ext_host_port=sessions[0].ext_host_port)
-            sessions = self.vapi.nat44_user_session_dump(user.ip4n, 0)
-            self.assertEqual(len(sessions), 2)
 
         finally:
             self.vapi.nat44_forwarding_enable_disable(0)
