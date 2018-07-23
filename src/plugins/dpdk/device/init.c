@@ -587,7 +587,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
 
       error = ethernet_register_interface
-	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
+	(dm->vnet_main, dpdk_tx_device_class.index, xd->device_index,
 	 /* ethernet address */ addr,
 	 &xd->hw_if_index, dpdk_flag_change);
       if (error)

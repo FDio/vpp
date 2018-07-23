@@ -218,7 +218,7 @@ typedef struct
 } memif_main_t;
 
 extern memif_main_t memif_main;
-extern vnet_device_class_t memif_device_class;
+extern vnet_device_class_t memif_tx_device_class;
 extern vlib_node_registration_t memif_input_node;
 
 enum

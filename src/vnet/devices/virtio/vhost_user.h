@@ -365,7 +365,7 @@ int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 			 vhost_user_intf_details_t ** out_vuids);
 
 extern vlib_node_registration_t vhost_user_send_interrupt_node;
-extern vnet_device_class_t vhost_user_device_class;
+extern vnet_device_class_t vhost_user_tx_device_class;
 extern vlib_node_registration_t vhost_user_input_node;
 extern vhost_user_main_t vhost_user_main;
 

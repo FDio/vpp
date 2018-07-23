@@ -1163,7 +1163,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     goto error;
 
   /* create interface */
-  error = ethernet_register_interface (vnm, avf_device_class.index,
+  error = ethernet_register_interface (vnm, avf_tx_device_class.index,
 				       ad->dev_instance, ad->hwaddr,
 				       &ad->hw_if_index, avf_flag_change);
 
@@ -1219,10 +1219,9 @@ avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (avf_device_class,) =
+VNET_DEVICE_CLASS (avf_tx_device_class,) =
 {
   .name = "Adaptive Virtual Function (AVF) interface",
-  .tx_function = avf_interface_tx,
   .format_device = format_avf_device,
   .format_device_name = format_avf_device_name,
   .admin_up_down_function = avf_interface_admin_up_down,

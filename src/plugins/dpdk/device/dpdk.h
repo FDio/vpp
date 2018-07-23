@@ -58,7 +58,7 @@
 
 #define NB_MBUF   (16<<10)
 
-extern vnet_device_class_t dpdk_device_class;
+extern vnet_device_class_t dpdk_tx_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 
 #define foreach_dpdk_pmd          \

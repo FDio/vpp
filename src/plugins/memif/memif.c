@@ -864,7 +864,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  args->hw_addr[0] = 2;
 	  args->hw_addr[1] = 0xfe;
 	}
-      error = ethernet_register_interface (vnm, memif_device_class.index,
+      error = ethernet_register_interface (vnm, memif_tx_device_class.index,
 					   mif->dev_instance, args->hw_addr,
 					   &mif->hw_if_index,
 					   memif_eth_flag_change);
@@ -872,7 +872,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   else if (mif->mode == MEMIF_INTERFACE_MODE_IP)
     {
       mif->hw_if_index =
-	vnet_register_interface (vnm, memif_device_class.index,
+	vnet_register_interface (vnm, memif_tx_device_class.index,
 				 mif->dev_instance,
 				 memif_ip_hw_if_class.index,
 				 mif->dev_instance);

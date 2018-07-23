@@ -829,6 +829,25 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->min_packet_bytes = 0;
   vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, 0);
 
+  if (dev_class->device_fn_class)
+    {
+      vnet_device_fn_class_t *dfc = dev_class->device_fn_class;
+      i32 priority = -1;
+
+      /* check no device function is set */
+      ASSERT (dev_class->tx_function == 0);
+
+      while (dfc)
+	{
+	  if (dfc->priority > priority)
+	    {
+	      priority = dfc->priority;
+	      dev_class->tx_function = dfc->tx_function;
+	    }
+	  dfc = dfc->next_fn_class;
+	}
+    }
+
   if (dev_class->tx_function == 0)
     goto no_output_nodes;	/* No output/tx nodes to create */
 

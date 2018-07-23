@@ -1210,7 +1210,7 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   u16 *queue;
 
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_device_class.index)
+      hwif->dev_class_index != vhost_user_tx_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   DBG_SOCK ("Deleting vhost-user interface %s (instance %d)",
@@ -1342,7 +1342,7 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 
   error = ethernet_register_interface
     (vnm,
-     vhost_user_device_class.index,
+     vhost_user_tx_device_class.index,
      vui - vum->vhost_user_interfaces /* device instance */ ,
      hwaddr /* ethernet address */ ,
      &vui->hw_if_index, 0 /* flag change */ );
@@ -1490,7 +1490,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   uword *if_index;
 
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_device_class.index)
+      hwif->dev_class_index != vhost_user_tx_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
@@ -1615,7 +1615,7 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 	  vnet_hw_interface_t *hwif =
 	    vnet_get_sup_hw_interface (vnm, sw_if_index);
 	  if (hwif == NULL ||
-	      vhost_user_device_class.index != hwif->dev_class_index)
+	      vhost_user_tx_device_class.index != hwif->dev_class_index)
 	    {
 	      error = clib_error_return (0, "Not a vhost interface");
 	      goto done;
@@ -1734,7 +1734,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	{
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  if (vhost_user_device_class.index != hi->dev_class_index)
+	  if (vhost_user_tx_device_class.index != hi->dev_class_index)
 	    {
 	      error = clib_error_return (0, "unknown input `%U'",
 					 format_unformat_error, input);

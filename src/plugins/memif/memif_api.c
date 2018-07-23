@@ -248,7 +248,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
   memif_if_t *mif;
   int rv = 0;
 
-  if (hi == NULL || memif_device_class.index != hi->dev_class_index)
+  if (hi == NULL || memif_tx_device_class.index != hi->dev_class_index)
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
   else
     {
