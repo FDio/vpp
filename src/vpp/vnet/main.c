@@ -391,36 +391,6 @@ vlib_app_num_thread_stacks_needed (void)
  * messages!
  */
 
-#if CLIB_DEBUG > 0
-
-static clib_error_t *
-test_crash_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  u64 *p = (u64 *) 0xdefec8ed;
-
-  ELOG_TYPE_DECLARE (e) =
-  {
-  .format = "deliberate crash: touching %x",.format_args = "i4",};
-
-  elog (&vm->elog_main, &e, 0xdefec8ed);
-
-  *p = 0xdeadbeef;
-
-  /* Not so much... */
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_crash_command, static) = {
-  .path = "test crash",
-  .short_help = "crash the bus!",
-  .function = test_crash_command_fn,
-};
-/* *INDENT-ON* */
-
-#endif
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
