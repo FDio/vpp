@@ -16,6 +16,24 @@
       "revId": "821a9bac226cb8678f33c5dba33324015976ae45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b17573e0_5ed0c38e",
+        "filename": "test/test_ip_ecmp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2018-07-23T14:43:19Z",
+      "side": 1,
+      "message": "It will not work as inside the get_capture method the default value of parameter expected_count (\u003dNone) is going to be replaced by value based on packet count for dst interface which we don\u0027t know so it would return 0 that woudl caused failure of capturing. We just now that we expect at least one packet on every possible dst interface - that\u0027s the reason for introduction of the new value \"nonzero\" there.",
+      "parentUuid": "e126042b_40220f67",
+      "revId": "821a9bac226cb8678f33c5dba33324015976ae45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
