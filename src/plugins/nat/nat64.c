@@ -34,21 +34,25 @@ VNET_FEATURE_INIT (nat64_in2out, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "nat64-in2out",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
 VNET_FEATURE_INIT (nat64_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat64-out2in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 VNET_FEATURE_INIT (nat64_in2out_handoff, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "nat64-in2out-handoff",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
 VNET_FEATURE_INIT (nat64_out2in_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat64-out2in-handoff",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 
 
