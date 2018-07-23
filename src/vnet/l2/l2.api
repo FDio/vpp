@@ -470,7 +470,7 @@ autoreply define l2_interface_efp_filter
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u32 enable_disable;
+  u8 enable_disable;
 };
 
 /** \brief Interface set vpath request

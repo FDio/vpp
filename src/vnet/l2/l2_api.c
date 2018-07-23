@@ -734,7 +734,7 @@ out:
 }
 
 extern void l2_efp_filter_configure (vnet_main_t * vnet_main,
-				     u32 sw_if_index, u32 enable);
+				     u32 sw_if_index, u8 enable);
 
 static void
 vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
@@ -744,10 +744,13 @@ vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
   vl_api_l2_interface_efp_filter_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   // enable/disable the feature
-  l2_efp_filter_configure (vnm, mp->sw_if_index, mp->enable_disable);
+  l2_efp_filter_configure (vnm, ntohl (mp->sw_if_index), mp->enable_disable);
   rv = vnm->api_errno;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_L2_INTERFACE_EFP_FILTER_REPLY);
 }
 
