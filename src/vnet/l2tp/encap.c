@@ -62,18 +62,16 @@ vlib_node_registration_t l2t_encap_node;
 #define NSTAGES 3
 
 static inline void
-stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, u32 buffer_index)
+stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 {
-  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
   vlib_prefetch_buffer_header (b, STORE);
   CLIB_PREFETCH (b->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
 }
 
 static inline void
-stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, u32 bi)
+stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 {
   l2tp_encap_runtime_t *rt = (void *) node->runtime_data;
-  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_hw_interface_t *hi;
 
   u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
@@ -94,9 +92,8 @@ stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, u32 bi)
 }
 
 static inline u32
-last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, u32 bi)
+last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 {
-  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   l2t_main_t *lm = &l2t_main;
   vlib_node_t *n = vlib_get_node (vm, l2t_encap_node.index);
   u32 node_counter_base_index = n->error_heap_index;

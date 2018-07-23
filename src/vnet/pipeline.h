@@ -20,6 +20,10 @@
  *
  * #define NSTAGES 3 or whatever
  *
+ * If using an aux data vector - to hold bihash keys or some such:
+ *
+ * #define AUX_DATA_TYPE my_aux_data_t
+ *
  * <Define pipeline stages>
  *
  * #include <vnet/pipeline.h>
@@ -41,6 +45,17 @@
 #define STAGE_INLINE inline
 #endif
 
+/* Unless the user wants the aux data scheme, don't configure it */
+#ifndef AUX_DATA_TYPE
+#define AUX_DATA_ARG
+#define AUX_DATA_DECL
+#define AUX_DATA_PTR(pi)
+#else
+#define AUX_DATA_ARG ,##AUX_DATA_TYPE *ap
+#define AUX_DATA_DECL AUX_DATA_TYPE aux_data[VLIB_FRAME_SIZE]
+#define AUX_DATA_PTR(pi) ,aux_data +(pi)
+#endif
+
 /*
  * A prefetch stride of 2 is quasi-equivalent to doubling the number
  * of stages with every other pipeline stage empty.
@@ -49,15 +64,16 @@
 /*
  * This is a typical first pipeline stage, which prefetches
  * buffer metadata and the first line of pkt data.
+ *
  * To use it:
  *  #define stage0 generic_stage0
+ *
+ * This implementation won't use the aux data argument
  */
 static STAGE_INLINE void
 generic_stage0 (vlib_main_t * vm,
-		vlib_node_runtime_t * node, u32 buffer_index)
+		vlib_node_runtime_t * node, vlib_buffer_t * b AUX_DATA_ARG)
 {
-  /* generic default stage 0 here */
-  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
   vlib_prefetch_buffer_header (b, STORE);
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
 }
@@ -68,62 +84,39 @@ static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index, next0;
-  int pi, pi_limit;
+  u32 *from;
+  u32 n_left_from;
+  int pi;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  from = vlib_frame_args (frame);
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  while (n_left_from > 0)
+  for (pi = 0; pi < NSTAGES - 1; pi++)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      pi_limit = clib_min (n_left_from, n_left_to_next);
-
-      for (pi = 0; pi < NSTAGES - 1; pi++)
-	{
-	  if (pi == pi_limit)
-	    break;
-	  stage0 (vm, node, from[pi]);
-	}
-
-      for (; pi < pi_limit; pi++)
-	{
-	  stage0 (vm, node, from[pi]);
-	  to_next[0] = from[pi - 1];
-	  to_next++;
-	  n_left_to_next--;
-	  next0 = last_stage (vm, node, from[pi - 1]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   from[pi - 1], next0);
-	  n_left_from--;
-	  if ((int) n_left_to_next < 0 && n_left_from > 0)
-	    vlib_get_next_frame (vm, node, next_index, to_next,
-				 n_left_to_next);
-	}
-
-      for (; pi < (pi_limit + (NSTAGES - 1)); pi++)
-	{
-	  if (((pi - 1) >= 0) && ((pi - 1) < pi_limit))
-	    {
-	      to_next[0] = from[pi - 1];
-	      to_next++;
-	      n_left_to_next--;
-	      next0 = last_stage (vm, node, from[pi - 1]);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       from[pi - 1], next0);
-	      n_left_from--;
-	      if ((int) n_left_to_next < 0 && n_left_from > 0)
-		vlib_get_next_frame (vm, node, next_index, to_next,
-				     n_left_to_next);
-	    }
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      from += pi_limit;
+      if (pi == n_left_from)
+	break;
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
     }
+
+  for (; pi < n_left_from; pi++)
+    {
+      stage0 (vm, node, bufs[pi]);
+      nexts[pi - 1] =
+	last_stage (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+    }
+
+  for (; pi < (n_left_from + (NSTAGES - 1)); pi++)
+    {
+      if (((pi - 1) >= 0) && ((pi - 1) < n_left_from))
+	nexts[pi - 1] =
+	  last_stage (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 #endif
@@ -133,69 +126,44 @@ static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index, next0;
-  int pi, pi_limit;
+  u32 *from;
+  u32 n_left_from;
+  int pi;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  from = vlib_frame_args (frame);
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  while (n_left_from > 0)
+  for (pi = 0; pi < NSTAGES - 1; pi++)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      pi_limit = clib_min (n_left_from, n_left_to_next);
-
-      for (pi = 0; pi < NSTAGES - 1; pi++)
-	{
-	  if (pi == pi_limit)
-	    break;
-	  stage0 (vm, node, from[pi]);
-	  if (pi - 1 >= 0)
-	    stage1 (vm, node, from[pi - 1]);
-	}
-
-      for (; pi < pi_limit; pi++)
-	{
-	  stage0 (vm, node, from[pi]);
-	  stage1 (vm, node, from[pi - 1]);
-	  to_next[0] = from[pi - 2];
-	  to_next++;
-	  n_left_to_next--;
-	  next0 = last_stage (vm, node, from[pi - 2]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   from[pi - 2], next0);
-	  n_left_from--;
-	  if ((int) n_left_to_next < 0 && n_left_from > 0)
-	    vlib_get_next_frame (vm, node, next_index, to_next,
-				 n_left_to_next);
-	}
-
-
-      for (; pi < (pi_limit + (NSTAGES - 1)); pi++)
-	{
-	  if (((pi - 1) >= 0) && ((pi - 1) < pi_limit))
-	    stage1 (vm, node, from[pi - 1]);
-	  if (((pi - 2) >= 0) && ((pi - 2) < pi_limit))
-	    {
-	      to_next[0] = from[pi - 2];
-	      to_next++;
-	      n_left_to_next--;
-	      next0 = last_stage (vm, node, from[pi - 2]);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       from[pi - 2], next0);
-	      n_left_from--;
-	      if ((int) n_left_to_next < 0 && n_left_from > 0)
-		vlib_get_next_frame (vm, node, next_index, to_next,
-				     n_left_to_next);
-	    }
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      from += pi_limit;
+      if (pi == n_left_from)
+	break;
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      if (pi - 1 >= 0)
+	stage1 (vm, node, bufs[pi - 1]);
     }
+
+  for (; pi < n_left_from; pi++)
+    {
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      nexts[pi - 2] =
+	last_stage (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+    }
+
+  for (; pi < (n_left_from + (NSTAGES - 1)); pi++)
+    {
+      if (((pi - 1) >= 0) && ((pi - 1) < n_left_from))
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (((pi - 2) >= 0) && ((pi - 2) < n_left_from))
+	nexts[pi - 2] =
+	  last_stage (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 #endif
@@ -205,157 +173,106 @@ static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index, next0;
-  int pi, pi_limit;
+  u32 *from;
+  u32 n_left_from;
+  int pi;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  from = vlib_frame_args (frame);
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  while (n_left_from > 0)
+  for (pi = 0; pi < NSTAGES - 1; pi++)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      pi_limit = clib_min (n_left_from, n_left_to_next);
-
-      for (pi = 0; pi < NSTAGES - 1; pi++)
-	{
-	  if (pi == pi_limit)
-	    break;
-	  stage0 (vm, node, from[pi]);
-	  if (pi - 1 >= 0)
-	    stage1 (vm, node, from[pi - 1]);
-	  if (pi - 2 >= 0)
-	    stage2 (vm, node, from[pi - 2]);
-	}
-
-      for (; pi < pi_limit; pi++)
-	{
-	  stage0 (vm, node, from[pi]);
-	  stage1 (vm, node, from[pi - 1]);
-	  stage2 (vm, node, from[pi - 2]);
-	  to_next[0] = from[pi - 3];
-	  to_next++;
-	  n_left_to_next--;
-	  next0 = last_stage (vm, node, from[pi - 3]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   from[pi - 3], next0);
-	  n_left_from--;
-	  if ((int) n_left_to_next < 0 && n_left_from > 0)
-	    vlib_get_next_frame (vm, node, next_index, to_next,
-				 n_left_to_next);
-	}
-
-
-      for (; pi < (pi_limit + (NSTAGES - 1)); pi++)
-	{
-	  if (((pi - 1) >= 0) && ((pi - 1) < pi_limit))
-	    stage1 (vm, node, from[pi - 1]);
-	  if (((pi - 2) >= 0) && ((pi - 2) < pi_limit))
-	    stage2 (vm, node, from[pi - 2]);
-	  if (((pi - 3) >= 0) && ((pi - 3) < pi_limit))
-	    {
-	      to_next[0] = from[pi - 3];
-	      to_next++;
-	      n_left_to_next--;
-	      next0 = last_stage (vm, node, from[pi - 3]);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       from[pi - 3], next0);
-	      n_left_from--;
-	      if ((int) n_left_to_next < 0 && n_left_from > 0)
-		vlib_get_next_frame (vm, node, next_index, to_next,
-				     n_left_to_next);
-	    }
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      from += pi_limit;
+      if (pi == n_left_from)
+	break;
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      if (pi - 1 >= 0)
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (pi - 2 >= 0)
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
     }
+
+  for (; pi < n_left_from; pi++)
+    {
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      nexts[pi - 3] =
+	last_stage (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+    }
+
+  for (; pi < (n_left_from + (NSTAGES - 1)); pi++)
+    {
+      if (((pi - 1) >= 0) && ((pi - 1) < n_left_from))
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (((pi - 2) >= 0) && ((pi - 2) < n_left_from))
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      if (((pi - 3) >= 0) && ((pi - 3) < n_left_from))
+	nexts[pi - 3] =
+	  last_stage (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 #endif
-
 
 #if NSTAGES == 5
 static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index, next0;
-  int pi, pi_limit;
+  u32 *from;
+  u32 n_left_from;
+  int pi;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  from = vlib_frame_args (frame);
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  while (n_left_from > 0)
+  for (pi = 0; pi < NSTAGES - 1; pi++)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      pi_limit = clib_min (n_left_from, n_left_to_next);
-
-      for (pi = 0; pi < NSTAGES - 1; pi++)
-	{
-	  if (pi == pi_limit)
-	    break;
-	  stage0 (vm, node, from[pi]);
-	  if (pi - 1 >= 0)
-	    stage1 (vm, node, from[pi - 1]);
-	  if (pi - 2 >= 0)
-	    stage2 (vm, node, from[pi - 2]);
-	  if (pi - 3 >= 0)
-	    stage3 (vm, node, from[pi - 3]);
-	}
-
-      for (; pi < pi_limit; pi++)
-	{
-	  stage0 (vm, node, from[pi]);
-	  stage1 (vm, node, from[pi - 1]);
-	  stage2 (vm, node, from[pi - 2]);
-	  stage3 (vm, node, from[pi - 3]);
-	  to_next[0] = from[pi - 4];
-	  to_next++;
-	  n_left_to_next--;
-	  next0 = last_stage (vm, node, from[pi - 4]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   from[pi - 4], next0);
-	  n_left_from--;
-	  if ((int) n_left_to_next < 0 && n_left_from > 0)
-	    vlib_get_next_frame (vm, node, next_index, to_next,
-				 n_left_to_next);
-	}
-
-
-      for (; pi < (pi_limit + (NSTAGES - 1)); pi++)
-	{
-	  if (((pi - 1) >= 0) && ((pi - 1) < pi_limit))
-	    stage1 (vm, node, from[pi - 1]);
-	  if (((pi - 2) >= 0) && ((pi - 2) < pi_limit))
-	    stage2 (vm, node, from[pi - 2]);
-	  if (((pi - 3) >= 0) && ((pi - 3) < pi_limit))
-	    stage3 (vm, node, from[pi - 3]);
-	  if (((pi - 4) >= 0) && ((pi - 4) < pi_limit))
-	    {
-	      to_next[0] = from[pi - 4];
-	      to_next++;
-	      n_left_to_next--;
-	      next0 = last_stage (vm, node, from[pi - 4]);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       from[pi - 4], next0);
-	      n_left_from--;
-	      if ((int) n_left_to_next < 0 && n_left_from > 0)
-		vlib_get_next_frame (vm, node, next_index, to_next,
-				     n_left_to_next);
-	    }
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      from += pi_limit;
+      if (pi == n_left_from)
+	break;
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      if (pi - 1 >= 0)
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (pi - 2 >= 0)
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      if (pi - 3 >= 0)
+	stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
     }
+
+  for (; pi < n_left_from; pi++)
+    {
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+      nexts[pi - 4] =
+	last_stage (vm, node, bufs[pi - 4] AUX_DATA_PTR (pi - 4));
+    }
+
+  for (; pi < (n_left_from + (NSTAGES - 1)); pi++)
+    {
+      if (((pi - 1) >= 0) && ((pi - 1) < n_left_from))
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (((pi - 2) >= 0) && ((pi - 2) < n_left_from))
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      if (((pi - 3) >= 0) && ((pi - 3) < n_left_from))
+	stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+      if (((pi - 4) >= 0) && ((pi - 4) < n_left_from))
+	nexts[pi - 4] =
+	  last_stage (vm, node, bufs[pi - 4] AUX_DATA_PTR (pi - 4));
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 #endif
@@ -365,84 +282,59 @@ static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index, next0;
-  int pi, pi_limit;
+  u32 *from;
+  u32 n_left_from;
+  int pi;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  from = vlib_frame_args (frame);
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  while (n_left_from > 0)
+  for (pi = 0; pi < NSTAGES - 1; pi++)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      pi_limit = clib_min (n_left_from, n_left_to_next);
-
-      for (pi = 0; pi < NSTAGES - 1; pi++)
-	{
-	  if (pi == pi_limit)
-	    break;
-	  stage0 (vm, node, from[pi]);
-	  if (pi - 1 >= 0)
-	    stage1 (vm, node, from[pi - 1]);
-	  if (pi - 2 >= 0)
-	    stage2 (vm, node, from[pi - 2]);
-	  if (pi - 3 >= 0)
-	    stage3 (vm, node, from[pi - 3]);
-	  if (pi - 4 >= 0)
-	    stage4 (vm, node, from[pi - 4]);
-	}
-
-      for (; pi < pi_limit; pi++)
-	{
-	  stage0 (vm, node, from[pi]);
-	  stage1 (vm, node, from[pi - 1]);
-	  stage2 (vm, node, from[pi - 2]);
-	  stage3 (vm, node, from[pi - 3]);
-	  stage4 (vm, node, from[pi - 4]);
-	  to_next[0] = from[pi - 5];
-	  to_next++;
-	  n_left_to_next--;
-	  next0 = last_stage (vm, node, from[pi - 5]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   from[pi - 5], next0);
-	  n_left_from--;
-	  if ((int) n_left_to_next < 0 && n_left_from > 0)
-	    vlib_get_next_frame (vm, node, next_index, to_next,
-				 n_left_to_next);
-	}
-
-
-      for (; pi < (pi_limit + (NSTAGES - 1)); pi++)
-	{
-	  if (((pi - 1) >= 0) && ((pi - 1) < pi_limit))
-	    stage1 (vm, node, from[pi - 1]);
-	  if (((pi - 2) >= 0) && ((pi - 2) < pi_limit))
-	    stage2 (vm, node, from[pi - 2]);
-	  if (((pi - 3) >= 0) && ((pi - 3) < pi_limit))
-	    stage3 (vm, node, from[pi - 3]);
-	  if (((pi - 4) >= 0) && ((pi - 4) < pi_limit))
-	    stage4 (vm, node, from[pi - 4]);
-	  if (((pi - 5) >= 0) && ((pi - 5) < pi_limit))
-	    {
-	      to_next[0] = from[pi - 5];
-	      to_next++;
-	      n_left_to_next--;
-	      next0 = last_stage (vm, node, from[pi - 5]);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       from[pi - 5], next0);
-	      n_left_from--;
-	      if ((int) n_left_to_next < 0 && n_left_from > 0)
-		vlib_get_next_frame (vm, node, next_index, to_next,
-				     n_left_to_next);
-	    }
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      from += pi_limit;
+      if (pi == n_left_from)
+	break;
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      if (pi - 1 >= 0)
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (pi - 2 >= 0)
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      if (pi - 3 >= 0)
+	stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+      if (pi - 4 >= 0)
+	stage4 (vm, node, bufs[pi - 4] AUX_DATA_PTR (pi - 4));
     }
+
+  for (; pi < n_left_from; pi++)
+    {
+      stage0 (vm, node, bufs[pi] AUX_DATA_PTR (pi));
+      stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+      stage4 (vm, node, bufs[pi - 4] AUX_DATA_PTR (pi - 4));
+      nexts[pi - 5] =
+	last_stage (vm, node, bufs[pi - 5] AUX_DATA_PTR (pi - 5));
+    }
+
+  for (; pi < (n_left_from + (NSTAGES - 1)); pi++)
+    {
+      if (((pi - 1) >= 0) && ((pi - 1) < n_left_from))
+	stage1 (vm, node, bufs[pi - 1] AUX_DATA_PTR (pi - 1));
+      if (((pi - 2) >= 0) && ((pi - 2) < n_left_from))
+	stage2 (vm, node, bufs[pi - 2] AUX_DATA_PTR (pi - 2));
+      if (((pi - 3) >= 0) && ((pi - 3) < n_left_from))
+	stage3 (vm, node, bufs[pi - 3] AUX_DATA_PTR (pi - 3));
+      if (((pi - 4) >= 0) && ((pi - 4) < n_left_from))
+	stage4 (vm, node, bufs[pi - 4] AUX_DATA_PTR (pi - 4));
+      if (((pi - 5) >= 0) && ((pi - 5) < n_left_from))
+	nexts[pi - 5] =
+	  last_stage (vm, node, bufs[pi - 5] AUX_DATA_PTR (pi - 5));
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 #endif
