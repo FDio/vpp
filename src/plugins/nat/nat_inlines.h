@@ -120,7 +120,8 @@ nat_send_all_to_node (vlib_main_t * vm, u32 * bi_vector,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 	  vlib_buffer_t *p0 = vlib_get_buffer (vm, bi0);
-	  p0->error = *error;
+	  if (error)
+	    p0->error = *error;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next);
 	}
