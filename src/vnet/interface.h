@@ -165,6 +165,13 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(f,p)     	\
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,sw_interface_admin_up_down, p)
 
+typedef struct _vnet_device_fn_class
+{
+  vlib_node_function_t *tx_function;
+  i32 priority;
+  struct _vnet_device_fn_class *next_fn_class;
+} vnet_device_fn_class_t;
+
 /* A class of hardware interface devices. */
 typedef struct _vnet_device_class
 {
@@ -194,6 +201,9 @@ typedef struct _vnet_device_class
 
   /* Transmit function. */
   vlib_node_function_t *tx_function;
+
+  /* Transmit function candidate registration with priority */
+  vnet_device_fn_class_t *device_fn_class;
 
   /* Error strings indexed by error code for this node. */
   char **tx_function_error_strings;
@@ -264,6 +274,24 @@ static void __vnet_rm_device_class_registration_##x (void)              \
                                   &x, next_class_registration);         \
 }                                                                       \
 __VA_ARGS__ vnet_device_class_t x
+
+#define VNET_DEVICE_CLASS_TX_FN(tx)                                     \
+uword CLIB_MARCH_SFX (tx##_fn)();                                       \
+static vnet_device_fn_class_t                                           \
+  CLIB_MARCH_SFX(tx##_fn_class) =                                       \
+  { .tx_function = &CLIB_MARCH_SFX (tx##_fn), };                        \
+                                                                        \
+static void __clib_constructor                                          \
+CLIB_MARCH_SFX (tx##_multiarch_select) (void)                           \
+{                                                                       \
+  extern vnet_device_class_t tx##_device_class;                         \
+  vnet_device_fn_class_t *r;                                            \
+  r = &CLIB_MARCH_SFX (tx##_fn_class);                                  \
+  r->priority = CLIB_MARCH_FN_PRIORITY();                               \
+  r->next_fn_class = tx##_device_class.device_fn_class;                 \
+  tx##_device_class.device_fn_class = r;                                \
+}                                                                       \
+uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (tx##_fn)
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
   uword									\
