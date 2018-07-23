@@ -47,6 +47,13 @@ typedef struct
   };
 } nat_reass_ip4_key_t;
 
+enum
+{
+  NAT_REASS_IP4_CLASSIFY_NONE,
+  NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT,
+  NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN
+};
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
@@ -57,6 +64,14 @@ typedef CLIB_PACKED(struct
   f64 last_heard;
   u32 frags_per_reass_list_head_index;
   u8 frag_n;
+
+  /* state used by nat44-classify node */
+  u8 classify_next;
+  u8 classify_dont_translate;
+
+  /* state used by nat44-ed-in2out-reass[-output]
+   * and nat44-ed-out2in-reass nodes */
+  u8 ed_reass_dont_translate;
 }) nat_reass_ip4_t;
 /* *INDENT-ON* */
 
