@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cac700ca_319fcc87",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-07-23T12:07:14Z",
+      "side": 1,
+      "message": "VALIDATE_SW_IF_INDEX missing.",
+      "revId": "5f8b31c79413f280bd3cecf32d4b3d1d4e4a9909",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
