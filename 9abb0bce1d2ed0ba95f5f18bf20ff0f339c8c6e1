@@ -188,6 +188,30 @@
       "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "000351cf_35b5060a",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-23T14:13:49Z",
+      "side": 1,
+      "message": "For BVI, the packet will be sent to L3 forwarding path. Won\u0027t the L3 forwarding path assume the L3 header be in the first copied buffer?  With the about comment setting head_end_offset to l2_len for vlib_buffer_clone(), this means L3 (or even L4) header will not be in the first (copied) buffer of each cloned packet.  Won\u0027t this be a problem for any feature, even L3 forwarding, to work properly unless packets are small and completely copied?",
+      "parentUuid": "6e66db14_6c3f4ea6",
+      "range": {
+        "startLine": 258,
+        "startChar": 26,
+        "endLine": 258,
+        "endChar": 61
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
