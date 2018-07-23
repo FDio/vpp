@@ -83,7 +83,7 @@ def pump_output(testclass):
     """ pump output from vpp stdout/stderr to proper queues """
     stdout_fragment = ""
     stderr_fragment = ""
-    while not testclass.pump_thread_stop_flag.wait(0):
+    while not testclass.pump_thread_stop_flag.is_set():
         readable = select.select([testclass.vpp.stdout.fileno(),
                                   testclass.vpp.stderr.fileno(),
                                   testclass.pump_thread_wakeup_pipe[0]],
@@ -391,8 +391,8 @@ class VppTestCase(unittest.TestCase):
                 raw_input("When done debugging, press ENTER to kill the "
                           "process and finish running the testcase...")
 
-        os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
         cls.pump_thread_stop_flag.set()
+        os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
         if hasattr(cls, 'pump_thread'):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
