@@ -795,8 +795,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     {
                       b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                       next0 = SNAT_OUT2IN_NEXT_DROP;
-                      goto trace0;
                     }
+                  goto trace0;
                 }
 
               /* Create session initiated by host from external network */
@@ -947,8 +947,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     {
                       b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                       next1 = SNAT_OUT2IN_NEXT_DROP;
-                      goto trace1;
                     }
+                  goto trace1;
                 }
 
               /* Create session initiated by host from external network */
@@ -1135,8 +1135,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
                     {
                       b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                       next0 = SNAT_OUT2IN_NEXT_DROP;
-                      goto trace00;
                     }
+                  goto trace00;
                 }
 
               /* Create session initiated by host from external network */
