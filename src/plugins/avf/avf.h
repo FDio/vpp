@@ -216,8 +216,6 @@ void avf_delete_if (vlib_main_t * vm, avf_device_t * ad);
 
 extern vlib_node_registration_t avf_input_node;
 extern vnet_device_class_t avf_device_class;
-uword avf_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * frame);
 
 /* format.c */
 format_function_t format_avf_device;

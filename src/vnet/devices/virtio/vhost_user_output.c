@@ -223,11 +223,9 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
   return 0;
 }
 
-
-uword
-CLIB_MULTIARCH_FN (vhost_user_tx) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
+						   vlib_node_runtime_t *
+						   node, vlib_frame_t * frame)
 {
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
@@ -636,7 +634,6 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .name = "vhost-user",
-  .tx_function = vhost_user_tx,
   .tx_function_n_errors = VHOST_USER_TX_FUNC_N_ERROR,
   .tx_function_error_strings = vhost_user_tx_func_error_strings,
   .format_device_name = format_vhost_user_interface_name,
@@ -646,18 +643,6 @@ VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .format_tx_trace = format_vhost_trace,
 };
 
-#if __x86_64__
-vlib_node_function_t __clib_weak vhost_user_tx_avx512;
-vlib_node_function_t __clib_weak vhost_user_tx_avx2;
-static void __clib_constructor
-vhost_user_tx_multiarch_select (void)
-{
-  if (vhost_user_tx_avx512 && clib_cpu_supports_avx512f ())
-    vhost_user_device_class.tx_function = vhost_user_tx_avx512;
-  else if (vhost_user_tx_avx2 && clib_cpu_supports_avx2 ())
-    vhost_user_device_class.tx_function = vhost_user_tx_avx2;
-}
-#endif
 #endif
 
 /* *INDENT-ON* */

@@ -34,10 +34,9 @@ avf_tx_desc_get_dtyp (avf_tx_desc_t * d)
   return d->qword[1] & 0x0f;
 }
 
-uword
-CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   avf_main_t *am = &avf_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -158,21 +157,6 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
 
   return frame->n_vectors - n_left;
 }
-
-#ifndef CLIB_MARCH_VARIANT
-#if __x86_64__
-vlib_node_function_t __clib_weak avf_interface_tx_avx512;
-vlib_node_function_t __clib_weak avf_interface_tx_avx2;
-static void __clib_constructor
-avf_interface_tx_multiarch_select (void)
-{
-  if (avf_interface_tx_avx512 && clib_cpu_supports_avx512f ())
-    avf_device_class.tx_function = avf_interface_tx_avx512;
-  else if (avf_interface_tx_avx2 && clib_cpu_supports_avx2 ())
-    avf_device_class.tx_function = avf_interface_tx_avx2;
-}
-#endif
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
