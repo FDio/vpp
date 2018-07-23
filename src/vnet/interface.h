@@ -195,6 +195,9 @@ typedef struct _vnet_device_class
   /* Transmit function. */
   vlib_node_function_t *tx_function;
 
+  /* Transmit function candidate registration with priority */
+  vlib_node_fn_registration_t *tx_fn_registrations;
+
   /* Error strings indexed by error code for this node. */
   char **tx_function_error_strings;
 
@@ -264,6 +267,24 @@ static void __vnet_rm_device_class_registration_##x (void)              \
                                   &x, next_class_registration);         \
 }                                                                       \
 __VA_ARGS__ vnet_device_class_t x
+
+#define VNET_DEVICE_CLASS_TX_FN(devclass)				\
+uword CLIB_MARCH_SFX (devclass##_tx_fn)();				\
+static vlib_node_fn_registration_t					\
+  CLIB_MARCH_SFX(devclass##_tx_fn_registration) =			\
+  { .function = &CLIB_MARCH_SFX (devclass##_tx_fn), };			\
+									\
+static void __clib_constructor						\
+CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
+{									\
+  extern vnet_device_class_t devclass;					\
+  vlib_node_fn_registration_t *r;					\
+  r = &CLIB_MARCH_SFX (devclass##_tx_fn_registration);			\
+  r->priority = CLIB_MARCH_FN_PRIORITY();				\
+  r->next_registration = devclass.tx_fn_registrations;			\
+  devclass.tx_fn_registrations = r;					\
+}									\
+uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
   uword									\

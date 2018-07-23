@@ -327,10 +327,9 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
  * node. It first copies packets on the frame to a per-thread arrays
  * containing the rte_mbuf pointers.
  */
-uword
-CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * f)
+VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
+					     vlib_node_runtime_t * node,
+					     vlib_frame_t * f)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -663,7 +662,6 @@ done:
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
-  .tx_function = dpdk_interface_tx,
   .tx_function_n_errors = DPDK_TX_FUNC_N_ERROR,
   .tx_function_error_strings = dpdk_tx_func_error_strings,
   .format_device_name = format_dpdk_device_name,
@@ -679,18 +677,6 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
 };
 /* *INDENT-ON* */
 
-#if __x86_64__
-vlib_node_function_t __clib_weak dpdk_interface_tx_avx512;
-vlib_node_function_t __clib_weak dpdk_interface_tx_avx2;
-static void __clib_constructor
-dpdk_interface_tx_multiarch_select (void)
-{
-  if (dpdk_interface_tx_avx512 && clib_cpu_supports_avx512f ())
-    dpdk_device_class.tx_function = dpdk_interface_tx_avx512;
-  else if (dpdk_interface_tx_avx2 && clib_cpu_supports_avx2 ())
-    dpdk_device_class.tx_function = dpdk_interface_tx_avx2;
-}
-#endif
 #endif
 
 #define UP_DOWN_FLAG_EVENT 1

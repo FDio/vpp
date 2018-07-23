@@ -400,10 +400,9 @@ no_free_slots:
   return frame->n_vectors;
 }
 
-uword
-CLIB_MULTIARCH_FN (memif_interface_tx) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
+					      vlib_node_runtime_t * node,
+					      vlib_frame_t * frame)
 {
   memif_main_t *nm = &memif_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
@@ -504,7 +503,6 @@ memif_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",
-  .tx_function = memif_interface_tx,
   .format_device_name = format_memif_device_name,
   .format_device = format_memif_device,
   .format_tx_trace = format_memif_tx_trace,
@@ -517,18 +515,6 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .rx_mode_change_function = memif_interface_rx_mode_change,
 };
 
-#if __x86_64__
-vlib_node_function_t __clib_weak memif_interface_tx_avx512;
-vlib_node_function_t __clib_weak memif_interface_tx_avx2;
-static void __clib_constructor
-memif_interface_tx_multiarch_select (void)
-{
-  if (memif_interface_tx_avx512 && clib_cpu_supports_avx512f ())
-    memif_device_class.tx_function = memif_interface_tx_avx512;
-  else if (memif_interface_tx_avx2 && clib_cpu_supports_avx2 ())
-    memif_device_class.tx_function = memif_interface_tx_avx2;
-}
-#endif
 #endif
 
 /* *INDENT-ON* */

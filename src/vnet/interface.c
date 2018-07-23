@@ -1359,6 +1359,27 @@ vnet_interface_init (vlib_main_t * vm)
       {
 	c->index = vec_len (im->device_classes);
 	hash_set_mem (im->device_class_by_name, c->name, c->index);
+
+	if (c->tx_fn_registrations)
+	  {
+	    vlib_node_fn_registration_t *fnr = c->tx_fn_registrations;
+	    int priority = -1;
+
+	    /* to avoid confusion, please remove ".tx_function" statiement
+	       from VNET_DEVICE_CLASS() if using function candidates */
+	    ASSERT (c->tx_function == 0);
+
+	    while (fnr)
+	      {
+		if (fnr->priority > priority)
+		  {
+		    priority = fnr->priority;
+		    c->tx_function = fnr->function;
+		  }
+		fnr = fnr->next_registration;
+	      }
+	  }
+
 	vec_add1 (im->device_classes, c[0]);
 	c = c->next_class_registration;
       }
