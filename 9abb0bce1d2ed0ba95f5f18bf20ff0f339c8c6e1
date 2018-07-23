@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "511d62f9_75791141",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-23T08:17:03Z",
+      "side": 1,
+      "message": "you are correct. if n_clones\u003d\u003d1, no copying occurs.",
+      "parentUuid": "36054572_b0dd9620",
+      "range": {
+        "startLine": 216,
+        "startChar": 14,
+        "endLine": 216,
+        "endChar": 31
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7dd1a325_5c3e808e",
         "filename": "src/vnet/l2/l2_flood.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2018-07-20T21:46:07Z",
       "side": 1,
       "message": "Any special reason to choose l2_len for head_end_offset rather than 128 used for replicate_dpo?  Since l2_len is typically 10B (or 14B with 1 VLAN tag) I suppose it is more efficient to make clone head smaller so less memcpy than completely clone/copy small packets? This also make the threshold to completely copy/clone packets smaller in vlib_buffer_clone_256().",
+      "range": {
+        "startLine": 219,
+        "startChar": 23,
+        "endLine": 219,
+        "endChar": 25
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55d91440_d2bd3a3e",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-23T08:17:03Z",
+      "side": 1,
+      "message": "indeed, as small ass possible is best.",
+      "parentUuid": "7dd1a325_5c3e808e",
       "range": {
         "startLine": 219,
         "startChar": 23,
@@ -83,6 +131,54 @@
       "side": 1,
       "message": "The limitation of 1 BVI per BD and having BVI be the first (or last replicated) member is due to the previous flooding mechanism, due to MAC rewrite of the packet output to BVI.  With the new packet clone mechanism, we have the option to relieve both restrictions in the future if needed.",
       "parentUuid": "035feed5_ed174bb6",
+      "range": {
+        "startLine": 258,
+        "startChar": 26,
+        "endLine": 258,
+        "endChar": 61
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "18d45eb7_e888f26a",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-23T08:17:03Z",
+      "side": 1,
+      "message": "if present it will be last. i could stop the loop one clone early and check for BVI.",
+      "parentUuid": "035feed5_ed174bb6",
+      "range": {
+        "startLine": 258,
+        "startChar": 26,
+        "endLine": 258,
+        "endChar": 61
+      },
+      "revId": "9abb0bce1d2ed0ba95f5f18bf20ff0f339c8c6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6e66db14_6c3f4ea6",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-23T08:17:03Z",
+      "side": 1,
+      "message": "the clone mechanism produces chained buffers in the case of large packets, with the first buffer having the specified amount of copied data therein. So it is still unsafe to consider the entire buffer available for BVI actions. So i left the BVI replication until last.",
+      "parentUuid": "85e0134e_f3f48531",
       "range": {
         "startLine": 258,
         "startChar": 26,
