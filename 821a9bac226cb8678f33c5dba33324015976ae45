@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e126042b_40220f67",
+        "filename": "test/test_ip_ecmp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-23T13:19:21Z",
+      "side": 1,
+      "message": "use\n pg_ig_get_capture(timeout\u003d1)\nrather than pass a string where an int is expected?",
+      "revId": "821a9bac226cb8678f33c5dba33324015976ae45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
