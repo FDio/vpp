@@ -31,6 +31,8 @@
 #define NAT_REASS_HT_LOAD_FACTOR (0.75)
 
 #define NAT_REASS_FLAG_MAX_FRAG_DROP 1
+#define NAT_REASS_FLAG_CLASSIFY_ED_CONTINUE 2
+#define NAT_REASS_FLAG_ED_DONT_TRANSLATE 4
 
 typedef struct
 {
@@ -49,6 +51,13 @@ typedef struct
   };
 } nat_reass_ip4_key_t;
 
+enum
+{
+  NAT_REASS_IP4_CLASSIFY_NONE,
+  NAT_REASS_IP4_CLASSIFY_NEXT_IN2OUT,
+  NAT_REASS_IP4_CLASSIFY_NEXT_OUT2IN
+};
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
@@ -60,6 +69,7 @@ typedef CLIB_PACKED(struct
   u32 frags_per_reass_list_head_index;
   u8 frag_n;
   u8 flags;
+  u8 classify_next;
 }) nat_reass_ip4_t;
 /* *INDENT-ON* */
 
