@@ -746,6 +746,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   d->total_length_not_including_first_buffer =
     s->total_length_not_including_first_buffer;
   clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+  clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
   clib_memcpy (vlib_buffer_get_current (d),
 	       vlib_buffer_get_current (s), s->current_length);
 
@@ -833,6 +834,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
       d->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
       clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+      clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
       clib_memcpy (vlib_buffer_get_current (d), vlib_buffer_get_current (s),
 		   head_end_offset);
       d->next_buffer = src_buffer;
