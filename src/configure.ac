@@ -10,6 +10,7 @@ AC_CONFIG_FILES([ \
   vpp-api/java/Makefile \
   vpp-api/vapi/Makefile \
   vlib/config.h \
+  vppinfra/config.h \
 ])
 AC_CONFIG_MACRO_DIR([m4])
 
