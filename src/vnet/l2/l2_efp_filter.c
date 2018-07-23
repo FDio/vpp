@@ -502,7 +502,7 @@ VLIB_INIT_FUNCTION (l2_efp_filter_init);
 
 /** Enable/disable the EFP Filter check on the subinterface. */
 void
-l2_efp_filter_configure (vnet_main_t * vnet_main, u32 sw_if_index, u32 enable)
+l2_efp_filter_configure (vnet_main_t * vnet_main, u32 sw_if_index, u8 enable)
 {
   /* set the interface flag */
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_EFP_FILTER, enable);
