@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea759f56_19289ed1",
+        "filename": "src/plugins/unittest.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-24T17:47:01Z",
+      "side": 1,
+      "message": "Can you be more specific?\n\nApplies to other files as well.\nI do not think this \"template copyright notice\" is legally valid.",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "8b5dc4fd5e6698870ca33f50079b7277aa11f24e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92ca2f71_a7d332fa",
+        "filename": "src/plugins/unittest/bihash_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-24T17:47:01Z",
+      "side": 1,
+      "message": "2018\n\nUnless this file is a verbatim copy from elsewhere.\nApplies to other files as well.",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "8b5dc4fd5e6698870ca33f50079b7277aa11f24e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1151abec_af6fa440",
+        "filename": "test/test_bihash.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-24T17:47:01Z",
+      "side": 1,
+      "message": "I think .py files should contain copyright notice as well.",
+      "range": {
+        "startLine": 1,
+        "startChar": 20,
+        "endLine": 1,
+        "endChar": 21
+      },
+      "revId": "8b5dc4fd5e6698870ca33f50079b7277aa11f24e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
