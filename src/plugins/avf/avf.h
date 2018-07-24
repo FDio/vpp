@@ -204,6 +204,7 @@ typedef struct
   u16 txq_size;
   /* return */
   int rv;
+  u32 sw_if_index;
   clib_error_t *error;
 } avf_create_if_args_t;
 

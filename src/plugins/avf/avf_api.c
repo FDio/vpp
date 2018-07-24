@@ -62,20 +62,24 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   avf_main_t *am = &avf_main;
   vl_api_avf_create_reply_t *rmp;
   avf_create_if_args_t args;
-  int rv = 0;
+  int rv;
 
   memset (&args, 0, sizeof (avf_create_if_args_t));
 
   args.enable_elog = ntohl (mp->enable_elog);
   args.addr.as_u32 = ntohl (mp->pci_addr);
-  args.rxq_size = ntohl (mp->rxq_size);
-  args.txq_size = ntohl (mp->txq_size);
+  args.rxq_size = ntohs (mp->rxq_size);
+  args.txq_size = ntohs (mp->txq_size);
 
   avf_create_if (vm, &args);
-
   rv = args.rv;
 
-  REPLY_MACRO (VL_API_AVF_CREATE_REPLY + am->msg_id_base);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY + am->msg_id_base,
+    ({
+      rmp->sw_if_index = ntohl (args.sw_if_index);
+    }));
+  /* *INDENT-ON* */
 }
 
 static void
