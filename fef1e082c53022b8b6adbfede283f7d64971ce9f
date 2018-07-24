@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6eb35a3_add3149b",
+        "filename": "src/plugins/avf/avf.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-24T10:19:38Z",
+      "side": 1,
+      "message": "Not needed...",
+      "range": {
+        "startLine": 55,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 2
+      },
+      "revId": "fef1e082c53022b8b6adbfede283f7d64971ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d537ed0_41b910df",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 723,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-24T10:19:38Z",
+      "side": 1,
+      "message": "Do you need to do this at all if tm-\u003en_vlib_mains \u003c\u003d 4?",
+      "range": {
+        "startLine": 721,
+        "startChar": 0,
+        "endLine": 723,
+        "endChar": 54
+      },
+      "revId": "fef1e082c53022b8b6adbfede283f7d64971ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
