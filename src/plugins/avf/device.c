@@ -1170,7 +1170,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     goto error;
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
-  ad->sw_if_index = sw->sw_if_index;
+  args->sw_if_index = ad->sw_if_index = sw->sw_if_index;
 
   vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
 				    avf_input_node.index);
