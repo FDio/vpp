@@ -45,6 +45,30 @@
       "revId": "fef1e082c53022b8b6adbfede283f7d64971ce9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5692c4db_0f27338e",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 723,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-07-24T10:27:53Z",
+      "side": 1,
+      "message": "as far as I know, number of queue pairs wont change unless requested. I don\u0027t know if there is any other way of resetting rx queues to default",
+      "parentUuid": "0d537ed0_41b910df",
+      "range": {
+        "startLine": 721,
+        "startChar": 0,
+        "endLine": 723,
+        "endChar": 54
+      },
+      "revId": "fef1e082c53022b8b6adbfede283f7d64971ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
