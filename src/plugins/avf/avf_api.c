@@ -61,21 +61,29 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
   vl_api_avf_create_reply_t *rmp;
+  unix_shared_memory_queue_t *q;
   avf_create_if_args_t args;
-  int rv = 0;
 
   memset (&args, 0, sizeof (avf_create_if_args_t));
 
   args.enable_elog = ntohl (mp->enable_elog);
   args.addr.as_u32 = ntohl (mp->pci_addr);
-  args.rxq_size = ntohl (mp->rxq_size);
-  args.txq_size = ntohl (mp->txq_size);
+  args.rxq_size = ntohs (mp->rxq_size);
+  args.txq_size = ntohs (mp->txq_size);
 
   avf_create_if (vm, &args);
 
-  rv = args.rv;
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
-  REPLY_MACRO (VL_API_AVF_CREATE_REPLY + am->msg_id_base);
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_AVF_CREATE_REPLY + am->msg_id_base);
+  rmp->context = mp->context;
+  rmp->retval = htonl (args.rv);
+  rmp->sw_if_index = htonl (args.sw_if_index);
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 static void

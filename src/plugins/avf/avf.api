@@ -27,7 +27,7 @@ option version = "1.0.0";
     @param txq_size - transmit queue size
 */
 
-autoreply define avf_create
+define avf_create
 {
   u32 client_index;
   u32 context;
@@ -36,6 +36,19 @@ autoreply define avf_create
   i32 enable_elog;
   u16 rxq_size;
   u16 txq_size;
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new avf interface
+*/
+
+define avf_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
 };
 
 /** \brief
