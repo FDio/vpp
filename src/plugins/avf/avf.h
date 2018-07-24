@@ -85,6 +85,7 @@ typedef struct
   avf_rx_desc_t *descs;
   u32 *bufs;
   u16 n_enqueued;
+  u8 int_mode;
 } avf_rxq_t;
 
 typedef struct

@@ -737,6 +737,7 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
     return error;
 
   avf_irq_0_enable (ad);
+  avf_irq_n_enable (ad, 0);
 
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
@@ -983,6 +984,7 @@ avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
   avf_main_t *am = &avf_main;
   uword pd = vlib_pci_get_private_data (h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
+  u16 qid;
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -1004,7 +1006,9 @@ avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
       ed->line = line;
     }
 
-  vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, 0);
+  qid = line - 1;
+  if (vec_len (ad->rxqs) > qid && ad->rxqs[qid].int_mode != 0)
+    vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, qid);
   avf_irq_n_enable (ad, 0);
 }
 
@@ -1177,6 +1181,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
 				    avf_input_node.index);
+  vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, 0, ~0);
 
   if (pool_elts (am->devices) == 1)
     vlib_process_signal_event (vm, avf_process_node.index,
@@ -1208,13 +1213,29 @@ avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
       ad->flags |= AVF_DEVICE_F_ADMIN_UP;
-      vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, 0, ~0);
     }
   else
     {
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
       ad->flags &= ~AVF_DEVICE_F_ADMIN_UP;
     }
+  return 0;
+}
+
+static clib_error_t *
+avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
+			      vnet_hw_interface_rx_mode mode)
+{
+  avf_main_t *am = &avf_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  avf_device_t *ad = pool_elt_at_index (am->devices, hw->dev_instance);
+  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
+
+  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+    rxq->int_mode = 0;
+  else
+    rxq->int_mode = 1;
+
   return 0;
 }
 
@@ -1226,6 +1247,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .format_device = format_avf_device,
   .format_device_name = format_avf_device_name,
   .admin_up_down_function = avf_interface_admin_up_down,
+  .rx_mode_change_function = avf_interface_rx_mode_change,
 };
 /* *INDENT-ON* */
 
