@@ -50,6 +50,24 @@
       "revId": "38d493a1cac831d9d0a61d809d97c8759d789837",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6b2e2f54_e4546ada",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-07-25T09:10:05Z",
+      "side": 1,
+      "message": "avf create args alredy contains retval and error, so I was merely following the idea.",
+      "parentUuid": "7587f3bf_901d55ad",
+      "revId": "38d493a1cac831d9d0a61d809d97c8759d789837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
