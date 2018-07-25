@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "50c54741_d0059697",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2164,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T12:01:02Z",
+      "side": 1,
+      "message": "i doubt it since each statement needs to be evaluated each time. whereas with the logical operation if the first fails the second is not evaluated.",
+      "parentUuid": "c1228e85_477b3111",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1c976eba_33df3596",
         "filename": "src/vnet/ip/ip4_forward.c",
         "patchSetId": 1
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "7c2c9ae8_53faaa92",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T12:01:02Z",
+      "side": 1,
+      "message": "you might try pre-fetching the header 2 packets in advance and then the data 4 in advance.",
+      "parentUuid": "47845c4d_fad1526a",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "87834f0a_d9064609",
         "filename": "src/vnet/ip/ip4_input.c",
         "patchSetId": 1
@@ -101,6 +137,24 @@
       "side": 1,
       "message": "I don\u0027t understand why index 8,9,10,11 are used here in original implementation.",
       "parentUuid": "87834f0a_d9064609",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "651bd255_eb41750a",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T12:01:02Z",
+      "side": 1,
+      "message": "the headers are prefetched 8 buffers ahead, the data 4 buffers ahead.",
+      "parentUuid": "c702550a_3f5e6706",
       "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
