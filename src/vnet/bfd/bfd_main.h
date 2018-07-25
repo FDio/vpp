@@ -24,6 +24,7 @@
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vlib/log.h>
+#include <vppinfra/os.h>
 
 #define foreach_bfd_mode(F) \
   F (asynchronous)          \
@@ -260,6 +261,23 @@ typedef void (*bfd_notify_fn_t) (bfd_listen_event_e, const bfd_session_t *);
 
 typedef struct
 {
+  /** lock to protect data structures */
+  clib_spinlock_t lock;
+  int lock_recursion_count;
+  uword owner_thread_index;
+
+  /** Number of event wakeup RPCs in flight. Should be 0 or 1 */
+  int bfd_process_wakeup_events_in_flight;
+
+  /** The timestamp of last wakeup event being sent */
+  u64 bfd_process_wakeup_event_start_clocks;
+
+  /** The time it took the last wakeup event to make it to handling */
+  u64 bfd_process_wakeup_event_delay_clocks;
+
+  /** When the bfd process is supposed to wake up next */
+  u64 bfd_process_next_wakeup_clocks;
+
   /** pool of bfd sessions context data */
   bfd_session_t *sessions;
 
@@ -345,6 +363,51 @@ typedef CLIB_PACKED (struct {
   u64 checksum;
 }) bfd_echo_pkt_t;
 /* *INDENT-ON* */
+
+static inline void
+bfd_lock (bfd_main_t * bm)
+{
+  uword my_thread_index = __os_thread_index;
+
+  if (bm->owner_thread_index == my_thread_index
+      && bm->lock_recursion_count > 0)
+    {
+      bm->lock_recursion_count++;
+      return;
+    }
+
+  clib_spinlock_lock_if_init (&bm->lock);
+  bm->lock_recursion_count = 1;
+  bm->owner_thread_index = my_thread_index;
+}
+
+static inline void
+bfd_unlock (bfd_main_t * bm)
+{
+  uword my_thread_index = __os_thread_index;
+  ASSERT (bm->owner_thread_index == my_thread_index);
+
+  if (bm->lock_recursion_count > 1)
+    {
+      bm->lock_recursion_count--;
+      return;
+    }
+  bm->lock_recursion_count = 0;
+  bm->owner_thread_index = ~0;
+  clib_spinlock_unlock_if_init (&bm->lock);
+}
+
+void oingo (void);
+
+static inline void
+bfd_lock_check (bfd_main_t * bm)
+{
+  if (PREDICT_FALSE (bm->lock_recursion_count < 1))
+    {
+      clib_warning ("lock check failure");
+      oingo ();
+    }
+}
 
 u8 *bfd_input_format_trace (u8 * s, va_list * args);
 bfd_session_t *bfd_get_session (bfd_main_t * bm, bfd_transport_e t);
