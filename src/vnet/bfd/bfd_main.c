@@ -25,6 +25,7 @@
 #include <x86intrin.h>
 #endif
 
+#include <vlibmemory/api.h>
 #include <vppinfra/random.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -35,6 +36,14 @@
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_main.h>
 #include <vlib/log.h>
+
+u32 oingoes;
+
+void
+oingo (void)
+{
+  oingoes++;
+}
 
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
@@ -315,6 +324,7 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   if (next && (now + bm->wheel_inaccuracy > bs->wheel_time_clocks ||
 	       next < bs->wheel_time_clocks || !bs->wheel_time_clocks))
     {
+      int send_signal = 0;
       bs->wheel_time_clocks = next;
       BFD_DBG ("timing_wheel_insert(%p, %lu (%ld clocks/%.2fs in the "
 	       "future), %u);",
@@ -322,12 +332,41 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 	       (i64) bs->wheel_time_clocks - clib_cpu_time_now (),
 	       (i64) (bs->wheel_time_clocks - clib_cpu_time_now ()) /
 	       bm->cpu_cps, bs->bs_idx);
+      bfd_lock (bm);
       timing_wheel_insert (&bm->wheel, bs->wheel_time_clocks, bs->bs_idx);
+
       if (!handling_wakeup)
 	{
-	  vlib_process_signal_event (bm->vlib_main,
-				     bm->bfd_process_node_index,
-				     BFD_EVENT_RESCHEDULE, bs->bs_idx);
+
+	  /* Send only if it is earlier than current awaited wakeup time */
+	  send_signal =
+	    (bs->wheel_time_clocks < bm->bfd_process_next_wakeup_clocks) &&
+	    /*
+	     * If the wake-up time is within 2x the delay of the event propagation delay,
+	     * avoid the expense of sending the event. The 2x multiplier is to workaround the race whereby
+	     * simultaneous event + expired timer create one recurring bogus wakeup/suspend instance,
+	     * due to double scheduling of the node on the pending list.
+	     */
+	    (bm->bfd_process_next_wakeup_clocks - bs->wheel_time_clocks >
+	     2 * bm->bfd_process_wakeup_event_delay_clocks) &&
+	    /* Must be no events in flight to send an event */
+	    (!bm->bfd_process_wakeup_events_in_flight);
+
+	  /* If we do send the signal, note this down along with the start timestamp */
+	  if (send_signal)
+	    {
+	      bm->bfd_process_wakeup_events_in_flight++;
+	      bm->bfd_process_wakeup_event_start_clocks = now;
+	    }
+	}
+      bfd_unlock (bm);
+
+      /* Use the multithreaded event sending so the workers can send events too */
+      if (send_signal)
+	{
+	  vlib_process_signal_event_mt (bm->vlib_main,
+					bm->bfd_process_node_index,
+					BFD_EVENT_RESCHEDULE, ~0);
 	}
     }
 }
@@ -508,12 +547,98 @@ bfd_input_format_trace (u8 * s, va_list * args)
   return s;
 }
 
+typedef struct
+{
+  u32 bs_idx;
+} bfd_rpc_event_t;
+
+static void
+bfd_rpc_event_cb (const bfd_rpc_event_t * a)
+{
+  bfd_main_t *bm = &bfd_main;
+  u32 bs_idx = a->bs_idx;
+  u32 valid_bs = 0;
+  bfd_session_t session_data;
+
+  bfd_lock (bm);
+  if (!pool_is_free_index (bm->sessions, bs_idx))
+    {
+      bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
+      clib_memcpy (&session_data, bs, sizeof (bfd_session_t));
+      valid_bs = 1;
+    }
+  else
+    {
+      BFD_DBG ("Ignoring event RPC for non-existent session index %u",
+	       bs_idx);
+    }
+  bfd_unlock (bm);
+
+  if (valid_bs)
+    bfd_event (bm, &session_data);
+}
+
+static void
+bfd_event_rpc (u32 bs_idx)
+{
+  const u32 data_size = sizeof (bfd_rpc_event_t);
+  u8 data[data_size];
+  bfd_rpc_event_t *event = (bfd_rpc_event_t *) data;
+
+  event->bs_idx = bs_idx;
+  vl_api_rpc_call_main_thread (bfd_rpc_event_cb, data, data_size);
+}
+
+typedef struct
+{
+  u32 bs_idx;
+} bfd_rpc_notify_listeners_t;
+
+static void
+bfd_rpc_notify_listeners_cb (const bfd_rpc_notify_listeners_t * a)
+{
+  bfd_main_t *bm = &bfd_main;
+  u32 bs_idx = a->bs_idx;
+  bfd_lock (bm);
+  if (!pool_is_free_index (bm->sessions, bs_idx))
+    {
+      bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
+      bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
+    }
+  else
+    {
+      BFD_DBG ("Ignoring notify RPC for non-existent session index %u",
+	       bs_idx);
+    }
+  bfd_unlock (bm);
+}
+
+static void
+bfd_notify_listeners_rpc (u32 bs_idx)
+{
+  const u32 data_size = sizeof (bfd_rpc_notify_listeners_t);
+  u8 data[data_size];
+  bfd_rpc_notify_listeners_t *notify = (bfd_rpc_notify_listeners_t *) data;
+  notify->bs_idx = bs_idx;
+  vl_api_rpc_call_main_thread (bfd_rpc_notify_listeners_cb, data, data_size);
+}
+
 static void
 bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 		     int handling_wakeup)
 {
   BFD_DBG ("\nState changed: %U", format_bfd_session, bs);
-  bfd_event (bm, bs);
+
+  if (vlib_get_thread_index () == 0)
+    {
+      bfd_event (bm, bs);
+    }
+  else
+    {
+      /* without RPC - a REGRESSION: BFD event are not propagated */
+      bfd_event_rpc (bs->bs_idx);
+    }
+
   switch (bs->local_state)
     {
     case BFD_STATE_admin_down:
@@ -553,7 +678,15 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     }
-  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
+  if (vlib_get_thread_index () == 0)
+    {
+      bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
+    }
+  else
+    {
+      /* without RPC - a REGRESSION: state changes are not propagated */
+      bfd_notify_listeners_rpc (bs->bs_idx);
+    }
 }
 
 static void
@@ -1011,9 +1144,13 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   while (1)
     {
       u64 now = clib_cpu_time_now ();
+      bfd_lock (bm);
       u64 next_expire = timing_wheel_next_expiring_elt_time (&bm->wheel);
       BFD_DBG ("timing_wheel_next_expiring_elt_time(%p) returns %lu",
 	       &bm->wheel, next_expire);
+      bm->bfd_process_next_wakeup_clocks =
+	(i64) next_expire >= 0 ? next_expire : ~0;
+      bfd_unlock (bm);
       if ((i64) next_expire < 0)
 	{
 	  BFD_DBG ("wait for event without timeout");
@@ -1042,10 +1179,16 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  /* nothing to do here */
 	  break;
 	case BFD_EVENT_RESCHEDULE:
+	  bfd_lock (bm);
+	  bm->bfd_process_wakeup_event_delay_clocks =
+	    now - bm->bfd_process_wakeup_event_start_clocks;
+	  bm->bfd_process_wakeup_events_in_flight--;
+	  bfd_unlock (bm);
 	  /* nothing to do here - reschedule is done automatically after
 	   * each event or timeout */
 	  break;
 	case BFD_EVENT_NEW_SESSION:
+	  bfd_lock (bm);
 	  if (!pool_is_free_index (bm->sessions, *event_data))
 	    {
 	      bfd_session_t *bs =
@@ -1058,8 +1201,10 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      BFD_DBG ("Ignoring event for non-existent session index %u",
 		       (u32) * event_data);
 	    }
+	  bfd_unlock (bm);
 	  break;
 	case BFD_EVENT_CONFIG_CHANGED:
+	  bfd_lock (bm);
 	  if (!pool_is_free_index (bm->sessions, *event_data))
 	    {
 	      bfd_session_t *bs =
@@ -1071,6 +1216,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      BFD_DBG ("Ignoring event for non-existent session index %u",
 		       (u32) * event_data);
 	    }
+	  bfd_unlock (bm);
 	  break;
 	default:
 	  vlib_log_err (bm->log_class, "BUG: event type 0x%wx", event_type);
@@ -1079,6 +1225,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       BFD_DBG ("advancing wheel, now is %lu", now);
       BFD_DBG ("timing_wheel_advance (%p, %lu, %p, 0);", &bm->wheel, now,
 	       expired);
+      bfd_lock (bm);
       expired = timing_wheel_advance (&bm->wheel, now, expired, 0);
       BFD_DBG ("Expired %d elements", vec_len (expired));
       u32 *p = NULL;
@@ -1092,6 +1239,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    bfd_set_timer (bm, bs, now, 1);
 	  }
       }
+      bfd_unlock (bm);
       if (expired)
 	{
 	  _vec_len (expired) = 0;
@@ -1159,6 +1307,8 @@ bfd_register_listener (bfd_notify_fn_t fn)
 static clib_error_t *
 bfd_main_init (vlib_main_t * vm)
 {
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
 #if BFD_DEBUG
   setbuf (stdout, NULL);
 #endif
@@ -1178,6 +1328,9 @@ bfd_main_init (vlib_main_t * vm)
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
   bm->log_class = vlib_log_register_class ("bfd", 0);
   vlib_log_debug (bm->log_class, "initialized");
+  bm->owner_thread_index = ~0;
+  if (n_vlib_mains > 1)
+    clib_spinlock_init (&bm->lock);
   return 0;
 }
 
@@ -1187,6 +1340,9 @@ bfd_session_t *
 bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 {
   bfd_session_t *result;
+
+  bfd_lock (bm);
+
   pool_get (bm->sessions, result);
   memset (result, 0, sizeof (*result));
   result->bs_idx = result - bm->sessions;
@@ -1202,6 +1358,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 			 "couldn't allocate unused session discriminator even "
 			 "after %u tries!", limit);
 	  pool_put (bm->sessions, result);
+	  bfd_unlock (bm);
 	  return NULL;
 	}
       ++counter;
@@ -1209,12 +1366,15 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   while (hash_get (bm->session_by_disc, result->local_discr));
   bfd_set_defaults (bm, result);
   hash_set (bm->session_by_disc, result->local_discr, result->bs_idx);
+  bfd_unlock (bm);
   return result;
 }
 
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
+  bfd_lock (bm);
+
   vlib_log_info (bm->log_class, "delete session: %U",
 		 format_bfd_session_brief, bs);
   bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
@@ -1228,11 +1388,13 @@ bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
     }
   hash_unset (bm->session_by_disc, bs->local_discr);
   pool_put (bm->sessions, bs);
+  bfd_unlock (bm);
 }
 
 bfd_session_t *
 bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx)
 {
+  bfd_lock_check (bm);
   if (!pool_is_free_index (bm->sessions, bs_idx))
     {
       return pool_elt_at_index (bm->sessions, bs_idx);
@@ -1243,6 +1405,7 @@ bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx)
 bfd_session_t *
 bfd_find_session_by_disc (bfd_main_t * bm, u32 disc)
 {
+  bfd_lock_check (bm);
   uword *p = hash_get (bfd_main.session_by_disc, disc);
   if (p)
     {
@@ -1620,6 +1783,8 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 void
 bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 {
+  bfd_lock_check (bm);
+
   bfd_session_t *bs = bfd_find_session_by_idx (bm, bs_idx);
   if (!bs || (pkt->your_disc && pkt->your_disc != bs->local_discr))
     {
