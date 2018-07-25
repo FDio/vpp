@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a496100e_8f5cd0f2",
+        "filename": "src/examples/sample-plugin/sample/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-25T21:21:44Z",
+      "side": 1,
+      "message": "Does not exist in clang...\n\nYou can add this one to vector_sse42.h\n\nstatic_always_inline u8x16\nu8x16_shuffle (u8x16 v, u8x16 m)\n{\n  return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) m);\n}\n\nand use it instead...",
+      "range": {
+        "startLine": 513,
+        "startChar": 17,
+        "endLine": 513,
+        "endChar": 34
+      },
+      "revId": "0d2b81593df7fb0a77791fff7c325b11c50a4055",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
