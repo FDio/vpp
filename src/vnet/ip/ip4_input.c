@@ -157,12 +157,12 @@ ip4_input_inline (vlib_main_t * vm,
       u32 x = 0;
 
       /* Prefetch next iteration. */
-      if (n_left_from >= 12)
+      if (n_left_from >= 8)
 	{
-	  vlib_prefetch_buffer_header (b[8], LOAD);
-	  vlib_prefetch_buffer_header (b[9], LOAD);
-	  vlib_prefetch_buffer_header (b[10], LOAD);
-	  vlib_prefetch_buffer_header (b[11], LOAD);
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
 
 	  CLIB_PREFETCH (b[4]->data, sizeof (ip4_header_t), LOAD);
 	  CLIB_PREFETCH (b[5]->data, sizeof (ip4_header_t), LOAD);

@@ -42,6 +42,7 @@
 static ip_csum_t
 _ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
+#if 0
   uword data = pointer_to_uword (_data);
   ip_csum_t sum0, sum1;
 
@@ -109,6 +110,31 @@ do {									\
   sum0 = ip_csum_with_carry (sum0, sum1);
 
   return sum0;
+#else
+  u16 *ptr = _data;
+
+  while (n_bytes >= (sizeof (*ptr) * 4))
+    {
+      sum += ptr[0];
+      sum += ptr[1];
+      sum += ptr[2];
+      sum += ptr[3];
+      n_bytes -= sizeof (*ptr) * 4;
+      ptr += 4;
+    }
+
+  while (n_bytes >= sizeof (*ptr))
+    {
+      sum += ptr[0];
+      n_bytes -= sizeof (*ptr);
+      ptr += 1;
+    }
+  /* if length is in odd bytes */
+  if (PREDICT_FALSE (n_bytes == 1))
+    sum += *((const u8 *) ptr);
+
+  return sum;
+#endif
 }
 
 /*

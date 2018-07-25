@@ -70,7 +70,7 @@ ip4_lookup_inline (vlib_main_t * vm,
     {
       vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
 
-      while (n_left_from >= 8 && n_left_to_next >= 4)
+      while ((n_left_from >= 8) & (n_left_to_next >= 4))
 	{
 	  vlib_buffer_t *p0, *p1, *p2, *p3;
 	  ip4_header_t *ip0, *ip1, *ip2, *ip3;
@@ -284,7 +284,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 					   next0, next1, next2, next3);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      while ((n_left_from > 0) & (n_left_to_next > 0))
 	{
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;

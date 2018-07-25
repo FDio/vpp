@@ -184,7 +184,17 @@ always_inline ip_csum_t
 ip_csum_with_carry (ip_csum_t sum, ip_csum_t x)
 {
   ip_csum_t t = sum + x;
-  return t + (t < x);
+#if 0
+  if (t >= x)
+    return t;
+  else
+    return t + 1;
+#else
+  if (t < x)
+    t += 1;
+  return t;
+
+#endif
 }
 
 /* Update checksum changing field at even byte offset from x -> 0. */
@@ -237,9 +247,10 @@ always_inline u16
 ip_csum_fold (ip_csum_t c)
 {
   /* Reduce to 16 bits. */
-#if uword_bits == 64
+#if 0				//uword_bits == 64
   c = (c & (ip_csum_t) 0xffffffff) + (c >> (ip_csum_t) 32);
-  c = (c & 0xffff) + (c >> 16);
+//  c = (c & 0xffff) + (c >> 16);
+  c = (c & (ip_csum_t) 0xffffffff) + (c >> (ip_csum_t) 32);
 #endif
 
   c = (c & 0xffff) + (c >> 16);

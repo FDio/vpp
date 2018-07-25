@@ -2153,7 +2153,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, *to_next, next_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
-
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   u32 thread_index = vm->thread_index;
@@ -2162,7 +2161,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
     {
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while ((n_left_from >= 4) & (n_left_to_next >= 2))
 	{
 	  ip_adjacency_t *adj0, *adj1;
 	  vlib_buffer_t *p0, *p1;
@@ -2181,8 +2180,11 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, STORE);
 	    vlib_prefetch_buffer_header (p3, STORE);
 
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
-	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);
+	    CLIB_PREFETCH (p2->data + p2->current_data, sizeof (ip0[0]),
+			   STORE);
+	    CLIB_PREFETCH (p3->data + p3->current_data, sizeof (ip0[0]),
+			   STORE);
+
 	  }
 
 	  pi0 = to_next[0] = from[0];
