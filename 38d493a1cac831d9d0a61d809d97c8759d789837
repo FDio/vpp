@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3b40ab42_378c45fd",
+        "filename": "src/plugins/avf/avf_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T08:16:06Z",
+      "side": 1,
+      "message": "this looks like a bug. will this change make it to 18.07?",
+      "revId": "38d493a1cac831d9d0a61d809d97c8759d789837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e99b4b6_e5b1c351",
+        "filename": "src/plugins/avf/avf_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T08:16:06Z",
+      "side": 1,
+      "message": "/* *INDENT-OFF* */\n  REPLY_MACRO2(VL_API_AVF_CREATE_REPLY + am-\u003emsg_id_base,\n  ({\n    rmp-\u003esw_if_index \u003d ntohl(sw_if_index);\n  }));\n  /* *INDENT-ON* */",
+      "revId": "38d493a1cac831d9d0a61d809d97c8759d789837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7587f3bf_901d55ad",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T08:16:06Z",
+      "side": 1,
+      "message": "wouldn\u0027t it be better to return the sw_if_index as the function\u0027s return code rather than it being part of the (should be const) create args?",
+      "revId": "38d493a1cac831d9d0a61d809d97c8759d789837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
