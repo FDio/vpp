@@ -620,6 +620,10 @@ memif_delete_socket_file (u32 sock_id)
 int
 memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 {
+  struct stat file_stat;
+  char *dir = 0;
+  u32 idx = 0;
+
   if (sock_id == 0 || sock_id == ~0)
     {
       return VNET_API_ERROR_INVALID_ARGUMENT;
@@ -638,7 +642,17 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
   if (sock_filename[0] != '/')
     {
       clib_error_t *error;
-      error = vlib_unix_recursive_mkdir (vlib_unix_get_runtime_dir ());
+
+      /* copy runtime dir path */
+      vec_add (dir, vlib_unix_get_runtime_dir (),
+	       strlen (vlib_unix_get_runtime_dir ()));
+
+      /* if sock_filename contains dirs, add them to path */
+      idx = strrchr ((char *) sock_filename, '/') - (char *) sock_filename;
+      vec_add (dir, sock_filename, idx);
+
+      /* create socket dir */
+      error = vlib_unix_recursive_mkdir (dir);
       if (error)
 	{
 	  clib_error_free (error);
@@ -651,7 +665,19 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
   else
     {
       sock_filename = vec_dup (sock_filename);
+
+      /* check if directory exists */
+      idx = strrchr ((char *) sock_filename, '/') - (char *) sock_filename;
+      vec_add (dir, sock_filename, idx);
+
+      if (((stat (dir, &file_stat) == -1) || (!S_ISDIR (file_stat.st_mode)))
+	  && (idx != 0))
+	{
+	  vec_free (dir);
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
     }
+  vec_free (dir);
 
   return memif_add_socket_file (sock_id, sock_filename);
 }
