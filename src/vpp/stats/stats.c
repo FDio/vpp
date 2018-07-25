@@ -2451,7 +2451,7 @@ static void
   vl_api_stats_get_poller_delay_reply_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_WANT_PER_INTERFACE_SIMPLE_STATS_REPLY);
+  rmp->_vl_msg_id = ntohs (VL_API_STATS_GET_POLLER_DELAY_REPLY);
   rmp->context = mp->context;
   rmp->retval = 0;
   rmp->delay = clib_host_to_net_u32 (sm->stats_poll_interval_in_seconds);
