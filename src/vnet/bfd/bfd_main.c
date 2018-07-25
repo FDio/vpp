@@ -36,6 +36,14 @@
 #include <vnet/bfd/bfd_main.h>
 #include <vlib/log.h>
 
+u32 oingoes;
+
+void
+oingo (void)
+{
+  oingoes++;
+}
+
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 {
@@ -1046,6 +1054,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * each event or timeout */
 	  break;
 	case BFD_EVENT_NEW_SESSION:
+	  bfd_lock (bm);
 	  if (!pool_is_free_index (bm->sessions, *event_data))
 	    {
 	      bfd_session_t *bs =
@@ -1058,8 +1067,10 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      BFD_DBG ("Ignoring event for non-existent session index %u",
 		       (u32) * event_data);
 	    }
+	  bfd_unlock (bm);
 	  break;
 	case BFD_EVENT_CONFIG_CHANGED:
+	  bfd_lock (bm);
 	  if (!pool_is_free_index (bm->sessions, *event_data))
 	    {
 	      bfd_session_t *bs =
@@ -1071,6 +1082,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      BFD_DBG ("Ignoring event for non-existent session index %u",
 		       (u32) * event_data);
 	    }
+	  bfd_unlock (bm);
 	  break;
 	default:
 	  vlib_log_err (bm->log_class, "BUG: event type 0x%wx", event_type);
@@ -1079,6 +1091,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       BFD_DBG ("advancing wheel, now is %lu", now);
       BFD_DBG ("timing_wheel_advance (%p, %lu, %p, 0);", &bm->wheel, now,
 	       expired);
+      bfd_lock (bm);
       expired = timing_wheel_advance (&bm->wheel, now, expired, 0);
       BFD_DBG ("Expired %d elements", vec_len (expired));
       u32 *p = NULL;
@@ -1092,6 +1105,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    bfd_set_timer (bm, bs, now, 1);
 	  }
       }
+      bfd_unlock (bm);
       if (expired)
 	{
 	  _vec_len (expired) = 0;
@@ -1159,6 +1173,8 @@ bfd_register_listener (bfd_notify_fn_t fn)
 static clib_error_t *
 bfd_main_init (vlib_main_t * vm)
 {
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
 #if BFD_DEBUG
   setbuf (stdout, NULL);
 #endif
@@ -1178,6 +1194,9 @@ bfd_main_init (vlib_main_t * vm)
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
   bm->log_class = vlib_log_register_class ("bfd", 0);
   vlib_log_debug (bm->log_class, "initialized");
+  bm->owner_thread_index = ~0;
+  if (n_vlib_mains > 1)
+    clib_spinlock_init (&bm->lock);
   return 0;
 }
 
@@ -1187,6 +1206,9 @@ bfd_session_t *
 bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 {
   bfd_session_t *result;
+
+  bfd_lock (bm);
+
   pool_get (bm->sessions, result);
   memset (result, 0, sizeof (*result));
   result->bs_idx = result - bm->sessions;
@@ -1202,6 +1224,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 			 "couldn't allocate unused session discriminator even "
 			 "after %u tries!", limit);
 	  pool_put (bm->sessions, result);
+	  bfd_unlock (bm);
 	  return NULL;
 	}
       ++counter;
@@ -1209,12 +1232,15 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   while (hash_get (bm->session_by_disc, result->local_discr));
   bfd_set_defaults (bm, result);
   hash_set (bm->session_by_disc, result->local_discr, result->bs_idx);
+  bfd_unlock (bm);
   return result;
 }
 
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
+  bfd_lock (bm);
+
   vlib_log_info (bm->log_class, "delete session: %U",
 		 format_bfd_session_brief, bs);
   bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
@@ -1228,11 +1254,13 @@ bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
     }
   hash_unset (bm->session_by_disc, bs->local_discr);
   pool_put (bm->sessions, bs);
+  bfd_unlock (bm);
 }
 
 bfd_session_t *
 bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx)
 {
+  bfd_lock_check (bm);
   if (!pool_is_free_index (bm->sessions, bs_idx))
     {
       return pool_elt_at_index (bm->sessions, bs_idx);
@@ -1243,6 +1271,7 @@ bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx)
 bfd_session_t *
 bfd_find_session_by_disc (bfd_main_t * bm, u32 disc)
 {
+  bfd_lock_check (bm);
   uword *p = hash_get (bfd_main.session_by_disc, disc);
   if (p)
     {
@@ -1620,6 +1649,8 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 void
 bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 {
+  bfd_lock_check (bm);
+
   bfd_session_t *bs = bfd_find_session_by_idx (bm, bs_idx);
   if (!bs || (pkt->your_disc && pkt->your_disc != bs->local_discr))
     {
