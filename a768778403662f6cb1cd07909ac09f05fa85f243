@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee7e63b7_0bfc919e",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2164,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T09:42:01Z",
+      "side": 1,
+      "message": "what does this achieve?",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c976eba_33df3596",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T09:42:01Z",
+      "side": 1,
+      "message": "doesn\u0027t this make this prefetch dependent on the completion of the first?",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87834f0a_d9064609",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-25T09:42:01Z",
+      "side": 1,
+      "message": "changes to the data-path like this require some justification. why are you making this change and what performance benefits does it bring?",
+      "revId": "a768778403662f6cb1cd07909ac09f05fa85f243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
