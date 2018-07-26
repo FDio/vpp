@@ -39,24 +39,24 @@ To get a new patch reviewed use the following:
 
 .. code-block:: console
 
-    git status
-    git add <filename>
-    git commit -s
-    git review
+    $ git status
+    $ git add <filename>
+    $ git commit -s
+    $ git review
 
 If the patch is a draft use the following:
 
 .. note::
 
-    git review -D
+    $ git review -D
 
 
 To get back to the master:
 
 .. code-block:: console
 
-    git reset --hard origin/master
-    git checkout master
+    $ git reset --hard origin/master
+    $ git checkout master
 
 Existing patch
 --------------
@@ -66,7 +66,7 @@ To modify an existing patch:
 
 .. code-block:: console
 
-    git status
-    git add <filename>
-    git commit --amend
-    git review
+    $ git status
+    $ git add <filename>
+    $ git commit --amend
+    $ git review

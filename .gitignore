@@ -84,6 +84,7 @@ GTAGS
 /build-root/.doxygen-siphon.dep
 /docs/_build
 /env
+!/docs/Makefile
 
 # indent backup files
 *.BAK
