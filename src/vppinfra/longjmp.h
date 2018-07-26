@@ -93,6 +93,8 @@
 
 #elif defined(__aarch64__)
 #define CLIB_ARCH_LONGJMP_REGS (22)
+#elif defined(_mips) && __mips == 64
+#define CLIB_ARCH_LONGJMP_REGS (12)
 #else
 #error "unknown machine"
 #endif
