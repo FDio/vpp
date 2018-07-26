@@ -123,6 +123,9 @@ typedef struct
  */
 typedef struct
 {
+  /** spinlock to protect e.g. pcap_data */
+  clib_spinlock_t lock;
+
   /** File name of pcap output. */
   char *file_name;
 
@@ -213,6 +216,7 @@ pcap_add_buffer (pcap_main_t * pm,
 
   if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
     {
+      clib_spinlock_lock_if_init (&pm->lock);
       d = pcap_add_packet (pm, time_now, n_left, n);
       while (1)
 	{
@@ -225,6 +229,7 @@ pcap_add_buffer (pcap_main_t * pm,
 	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  b = vlib_get_buffer (vm, b->next_buffer);
 	}
+      clib_spinlock_unlock_if_init (&pm->lock);
     }
 }
 

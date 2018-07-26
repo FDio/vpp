@@ -110,6 +110,7 @@ pcap_write (pcap_main_t * pm)
       pm->flags |= PCAP_MAIN_INIT_DONE;
       pm->n_packets_captured = 0;
       pm->n_pcap_data_written = 0;
+      clib_spinlock_init (&pm->lock);
 
       /* Write file header. */
       memset (&fh, 0, sizeof (fh));
