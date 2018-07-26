@@ -62,6 +62,7 @@ typedef struct {
   pthread_cond_t suspend_cv;
   pthread_cond_t resume_cv;
   pthread_mutex_t timeout_lock;
+  u8 timeout_loop;
   pthread_cond_t timeout_cv;
   pthread_cond_t timeout_cancel_cv;
   pthread_cond_t terminate_cv;
@@ -115,6 +116,7 @@ init (void)
   pthread_cond_init(&pm->suspend_cv, NULL);
   pthread_cond_init(&pm->resume_cv, NULL);
   pthread_mutex_init(&pm->timeout_lock, NULL);
+  pm->timeout_loop = 1;
   pthread_cond_init(&pm->timeout_cv, NULL);
   pthread_cond_init(&pm->timeout_cancel_cv, NULL);
   pthread_cond_init(&pm->terminate_cv, NULL);
@@ -234,7 +236,7 @@ vac_timeout_thread_fn (void *arg)
   u16 timeout;
   int rv;
 
-  while (1)
+  while (pm->timeout_loop)
     {
       /* Wait for poke */
       pthread_mutex_lock(&pm->timeout_lock);
@@ -402,7 +404,8 @@ vac_disconnect (void)
   }
   if (pm->timeout_thread_handle) {
     /* cancel, wake then join the timeout thread */
-    pthread_cancel(pm->timeout_thread_handle);
+    clib_warning("vac_disconnect cnacel");
+    pm->timeout_loop = 0;
     set_timeout(0);
     pthread_join(pm->timeout_thread_handle, (void **) &junk);
   }
