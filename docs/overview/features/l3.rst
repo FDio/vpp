@@ -1,0 +1,55 @@
+.. _l3:
+
+=======
+Layer 3
+=======
+
+IP Layer
+--------
+* ICMP
+* IPv4
+* IPv6
+* IPSEC
+* Link Local Addressing
+
+MultiCast
+---------
+* Multicast FiB
+* IGMP
+
+Virtual Routing and forwarding (VRF)
+------------------------------------
+* VRF scaling, thousands of tables. 
+* Controlled cross-VRF lookups
+
+Multi-path
+----------
+* Equal Cost Multi Path (ECMP)
+* Unequal Cost Multi Path (UCMP)
+
+IPv4
+----
+* ARP
+* ARP Proxy
+* ARP Snooping
+
+IPv6
+----
+* Neighbour discovery (ND)
+* ND Proxy
+* Router Advertisement
+* Segment Routing
+* Distributed Virtual Routing Resolution
+
+Forwarding Information Base (FIB)
+---------------------------------
+
+* Hierarchical FIB
+* Memory efficient
+* Multi-million entry scalable
+* Lockless/concurrent updates
+* Recursive lookups
+* Next hop failure detection
+* Shared FIB adjacencies
+* Multicast support
+* MPLS support

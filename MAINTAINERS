@@ -28,6 +28,11 @@ Doxygen
 M:	Chris Luke <chrisy@flirble.org>
 F:	doxygen/
 
+Sphinx Documents
+M:     John DeNisco <jdenisco@cisco.com>
+M:     Ray Kinsella <raykinsella78@gmail.com>
+F:     docs/
+
 DPDK Development Packaging
 M:	Damjan Marion <damarion@cisco.com>
 F:	dpdk/

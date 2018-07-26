@@ -1,0 +1,115 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  # Pick the right distro and bootstrap, default is ubuntu1604
+  distro = ( ENV['VPP_VAGRANT_DISTRO'] || "ubuntu1604")
+  if distro == 'centos7'
+    config.vm.box = "centos/7"
+    config.vm.box_version = "1708.01"
+    config.ssh.insert_key = false
+  elsif distro == 'opensuse'
+    config.vm.box = "opensuse/openSUSE-42.3-x86_64"
+    config.vm.box_version = "1.0.4.20170726"
+  else
+    config.vm.box = "puppetlabs/ubuntu-16.04-64-nocm"
+  end
+  config.vm.box_check_update = false
+
+  config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"update.sh")
+  config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"build.sh"), :args => "/vpp vagrant"
+
+  post_build = ( ENV['VPP_VAGRANT_POST_BUILD'] )
+  if post_build == "test"
+    config.vm.provision "shell", inline: "echo Testing VPP; cd /vpp; make test"
+  elsif post_build == "install"
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"install.sh"), :args => "/vpp"
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"clearinterfaces.sh")
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"run.sh")
+  end
+
+  # Add .gnupg dir in so folks can sign patches
+  # Note, as gnupg puts socket files in that dir, we have
+  # to be cautious and make sure we are dealing with a plain file
+  homedir = File.expand_path("~/")
+  Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+    if File.file?(fname)
+      destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+      config.vm.provision "file", source: fname, destination: destname
+    end
+  end
+
+  # Copy in the .gitconfig if it exists
+  if File.file?(File.expand_path("~/.gitconfig"))
+    config.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+  end
+
+  # vagrant-cachier caches apt/yum etc to speed subsequent
+  # vagrant up
+  # to enable, run
+  # vagrant plugin install vagrant-cachier
+  #
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.scope = :box
+  end
+
+  # Define some physical ports for your VMs to be used by DPDK
+  nics = (ENV['VPP_VAGRANT_NICS'] || "2").to_i(10)
+  for i in 1..nics
+    config.vm.network "private_network", type: "dhcp"
+  end
+
+  # use http proxy if avaiable
+  if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+   config.proxy.http     = ENV['http_proxy']
+   config.proxy.https    = ENV['https_proxy']
+   config.proxy.no_proxy = "localhost,127.0.0.1"
+  end
+
+  vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
+  vmram=(ENV['VPP_VAGRANT_VMRAM'] || 4096)
+
+  config.ssh.forward_agent = true
+  config.ssh.forward_x11 = true
+
+  config.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--ioapic", "on"]
+      vb.memory = "#{vmram}"
+      vb.cpus = "#{vmcpu}"
+
+      # rsync the vpp directory if provision hasn't happened yet
+      unless File.exist? (".vagrant/machines/default/virtualbox/action_provision")
+        config.vm.synced_folder "../../", "/vpp", type: "rsync",
+         rsync__auto: false,
+         rsync__exclude: [
+          "build-root/build*/",
+          "build-root/install*/",
+          "build-root/images*/",
+          "build-root/*.deb",
+          "build-root/*.rpm",
+          "build-root/*.changes",
+          "build-root/python",
+          "build-root/deb/debian/*.dkms",
+          "build-root/deb/debian/*.install",
+          "build-root/deb/debian/changes",
+          "build-root/tools"]
+      end
+
+      #support for the SSE4.x instruction is required in some versions of VB.
+      vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.1", "1"]
+      vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.2", "1"]
+  end
+  config.vm.provider "vmware_fusion" do |fusion,override|
+    fusion.vmx["memsize"] = "#{vmram}"
+    fusion.vmx["numvcpus"] = "#{vmcpu}"
+  end
+  config.vm.provider "libvirt" do |lv|
+    lv.memory = "#{vmram}"
+    lv.cpus = "#{vmcpu}"
+  end
+  config.vm.provider "vmware_workstation" do |vws,override|
+    vws.vmx["memsize"] = "#{vmram}"
+    vws.vmx["numvcpus"] = "#{vmcpu}"
+  end
+end
