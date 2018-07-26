@@ -64,7 +64,7 @@ typedef unsigned int u128 __attribute__ ((mode (TI)));
 #endif
 #endif
 
-#if (defined(i386) || defined(_mips) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__) || defined(__TMS320C6X__))
+#if (defined(i386) || (defined(_mips) && __mips != 64) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__) || defined(__TMS320C6X__))
 typedef signed int i32;
 typedef signed long long i64;
 
@@ -73,16 +73,16 @@ typedef unsigned int u32;
 typedef unsigned long long u64;
 #endif /* CLIB_AVOID_CLASH_WITH_LINUX_TYPES */
 
-#elif defined(_mips) && __mips == 64
-#define log2_uword_bits 6
-#define clib_address_bits _MIPS_SZPTR
-
-#elif defined(alpha) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
+#elif defined(alpha) || (defined(_mips) && __mips == 64) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
 typedef signed int i32;
 typedef signed long i64;
 
 #define log2_uword_bits 6
+#if defined(_mips)
+#define clib_address_bits _MIPS_SZPTR
+#else
 #define clib_address_bits 64
+#endif
 
 #ifndef CLIB_AVOID_CLASH_WITH_LINUX_TYPES
 typedef unsigned int u32;

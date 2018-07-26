@@ -174,6 +174,16 @@ clib_cpu_time_now (void)
   return ((u64) h << 32) | l;
 }
 
+#elif defined(_mips) && __mips == 64
+
+always_inline u64
+clib_cpu_time_now (void)
+{
+  u64 result;
+  asm volatile ("rdhwr %0,$31\n":"=r" (result));
+  return result;
+}
+
 #else
 #error "don't know how to read CPU time stamp"
 

@@ -580,6 +580,80 @@ clib_longjmp:
 clib_calljmp:	
 1:	B	.S1     1b
 	
+#elif defined(_mips) && __mips == 64
+
+	.global clib_setjmp
+	.align 8
+	.type clib_setjmp, %function
+clib_setjmp:
+	sd $ra, 0($a0)
+	sd $sp, 8($a0)
+	sd $gp, 16($a0)
+	sd $16, 24($a0)
+	sd $17, 32($a0)
+	sd $18, 40($a0)
+	sd $19, 48($a0)
+	sd $20, 56($a0)
+	sd $21, 64($a0)
+	sd $22, 72($a0)
+	sd $23, 80($a0)
+	sd $30, 88($a0)
+	move $v0, $a1
+	jr $ra
+	nop
+
+	.global clib_longjmp
+	.align 8
+	.type clib_longjmp, @function
+clib_longjmp:
+	move $v0, $a1
+	bne $v0, $0, 1f
+	nop
+	daddu $v0, $v0, 1
+1:
+	ld $ra, 0($a0)
+	ld $sp, 8($a0)
+	ld $gp, 16($a0)
+	ld $16, 24($a0)
+	ld $17, 32($a0)
+	ld $18, 40($a0)
+	ld $19, 48($a0)
+	ld $20, 56($a0)
+	ld $21, 64($a0)
+	ld $22, 72($a0)
+	ld $23, 80($a0)
+	ld $30, 88($a0)
+	jr $ra
+	nop
+
+	.global clib_calljmp
+	.align 8
+	.type clib_calljmp, %function
+clib_calljmp:
+	/* Force 16 byte alignment of the new stack */
+	li $t1, -16
+	and $t0, $a2, $t1
+	/* Save old ra/gp/sp on new stack */
+	daddiu $t0, $t0, (-24)
+	sd $ra, 0($t0)
+	sd $gp, 8($t0)
+	sd $sp, 16($t0)
+	/* Switch stacks */
+	move $sp, $t0
+	/* Away we go */
+	move $t9, $a0
+	move $a0, $a1
+	jalr $t9
+	nop
+	/* Switch back to old ra/gp/sp */
+	move $t0, $sp
+	ld $ra, 0($t0)
+	ld $gp, 8($t0)
+	ld $sp, 16($t0)
+	/* Return to caller */
+	jr $ra
+	nop
+
 #elif defined (__aarch64__)
 /*
    Copyright (c) 2011, 2012 ARM Ltd
