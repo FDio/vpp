@@ -613,6 +613,42 @@ u8x16_shuffle (u8x16 v, u8x16 m)
   return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) m);
 }
 
+static_always_inline u32x4
+u32x4_shuffle (u32x4 v, const int a, const int b, const int c, const int d)
+{
+#ifdef __clang__
+  u32x4 r = { v[a], v[b], v[c], v[d] };
+  return r;
+#else
+  return (u32x4) _mm_shuffle_epi32 ((__m128i) v,
+				    a | b << 2 | c << 4 | d << 6);
+#endif
+}
+
+/* _extend_to_ */
+/* *INDENT-OFF* */
+#define _(f,t,i) \
+static_always_inline t							\
+f##_extend_to_##t (f x)							\
+{ return (t) _mm_cvt##i ((__m128i) x); }
+
+_(u8x16, u16x8, epu8_epi16)
+_(u8x16, u32x4, epu8_epi32)
+_(u8x16, u64x2, epu8_epi64)
+_(u16x8, u32x4, epu16_epi32)
+_(u16x8, u64x2, epu16_epi64)
+_(u32x4, u64x2, epu32_epi64)
+
+_(i8x16, i16x8, epi8_epi16)
+_(i8x16, i32x4, epi8_epi32)
+_(i8x16, i64x2, epi8_epi64)
+_(i16x8, i32x4, epi16_epi32)
+_(i16x8, i64x2, epi16_epi64)
+_(i32x4, i64x2, epi32_epi64)
+#undef _
+/* *INDENT-ON* */
+
+
 #endif /* included_vector_sse2_h */
 
 /*
