@@ -115,6 +115,8 @@ typedef struct
   /* queues */
   avf_rxq_t *rxqs;
   avf_txq_t *txqs;
+  u16 n_tx_queues;
+  u16 n_rx_queues;
 
   /* Admin queues */
   avf_aq_desc_t *atq;
