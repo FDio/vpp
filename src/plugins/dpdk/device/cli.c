@@ -147,7 +147,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
 		    clib_error_report (error);
 		  else
 		    vlib_cli_output (vm, "saved to %s...",
-				     dm->pcap[rx_tx].pcap_filename);
+				     dm->pcap[rx_tx].pcap_main.file_name);
 		}
 
 	      dm->pcap[rx_tx].pcap_enable = 0;
@@ -211,23 +211,25 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    {
 	      vlib_cli_output
 		(vm, "max is %d for any interface to file %s",
-		 dm->pcap_pkts_to_capture ?
-		 dm->pcap[rx_tx].pcap_pkts_to_capture
+		 dm->pcap[rx_tx].pcap_main.n_packets_to_capture ?
+		 dm->pcap[rx_tx].pcap_main.n_packets_to_capture
 		 : PCAP_DEF_PKT_TO_CAPTURE,
-		 dm->pcap_filename ?
-		 dm->pcap[rx_tx].pcap_filename : (u8 *) "/tmp/vpe.pcap");
+		 dm->pcap[rx_tx].pcap_main.file_name ?
+		 (u8 *) dm->pcap[rx_tx].pcap_main.file_name :
+		 (u8 *) "/tmp/vpe.pcap");
 	    }
 	  else
 	    {
 	      vlib_cli_output (vm, "max is %d for interface %U to file %s",
-			       dm->pcap[rx_tx].pcap_pkts_to_capture
-			       ? dm->pcap_pkts_to_capture
-			       : PCAP_DEF_PKT_TO_CAPTURE,
+			       dm->pcap[rx_tx].pcap_main.n_packets_to_capture
+			       ? dm->pcap[rx_tx].
+			       pcap_main.n_packets_to_capture :
+			       PCAP_DEF_PKT_TO_CAPTURE,
 			       format_vnet_sw_if_index_name, dm->vnet_main,
 			       dm->pcap_sw_if_index,
-			       dm->pcap[rx_tx].pcap_filename
-			       ? dm->pcap[rx_tx].pcap_filename : (u8 *)
-			       "/tmp/vpe.pcap");
+			       dm->pcap[rx_tx].
+			       pcap_main.file_name ? (u8 *) dm->pcap[rx_tx].
+			       pcap_main.file_name : (u8 *) "/tmp/vpe.pcap");
 	    }
 
 	  if (dm->pcap[rx_tx].pcap_enable == 0)
@@ -262,34 +264,28 @@ pcap_trace_command_internal (vlib_main_t * vm,
       /* Since no error, save configured values. */
       if (chroot_filename)
 	{
-	  if (dm->pcap[rx_tx].pcap_filename)
-	    vec_free (dm->pcap[rx_tx].pcap_filename);
+	  if (dm->pcap[rx_tx].pcap_main.file_name)
+	    vec_free (dm->pcap[rx_tx].pcap_main.file_name);
 	  vec_add1 (chroot_filename, 0);
-	  dm->pcap[rx_tx].pcap_filename = chroot_filename;
+	  dm->pcap[rx_tx].pcap_main.file_name = (char *) chroot_filename;
 	}
 
       if (max)
-	dm->pcap[rx_tx].pcap_pkts_to_capture = max;
-
+	dm->pcap[rx_tx].pcap_main.n_packets_to_capture = max;
 
       if (enabled)
 	{
-	  if (dm->pcap[rx_tx].pcap_filename == 0)
-	    dm->pcap[rx_tx].pcap_filename = format (0, "/tmp/vpe.pcap%c", 0);
+	  if (dm->pcap[rx_tx].pcap_main.file_name == 0)
+	    dm->pcap[rx_tx].pcap_main.file_name
+	      = (char *) format (0, "/tmp/vpe.pcap%c", 0);
 
-	  memset (&dm->pcap[rx_tx].pcap_main, 0,
-		  sizeof (dm->pcap[rx_tx].pcap_main));
-	  dm->pcap[rx_tx].pcap_main.file_name =
-	    (char *) dm->pcap[rx_tx].pcap_filename;
-	  dm->pcap[rx_tx].pcap_main.n_packets_to_capture
-	    = PCAP_DEF_PKT_TO_CAPTURE;
-	  if (dm->pcap[rx_tx].pcap_pkts_to_capture)
-	    dm->pcap[rx_tx].pcap_main.n_packets_to_capture
-	      = dm->pcap[rx_tx].pcap_pkts_to_capture;
-
+	  dm->pcap[rx_tx].pcap_main.n_packets_captured = 0;
 	  dm->pcap[rx_tx].pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+	  if (dm->pcap[rx_tx].pcap_main.lock == 0)
+	    clib_spinlock_init (&(dm->pcap[rx_tx].pcap_main.lock));
 	  dm->pcap[rx_tx].pcap_enable = 1;
-	  vlib_cli_output (vm, "pcap tx capture on...");
+	  vlib_cli_output (vm, "pcap %s capture on...",
+			   rx_tx == VLIB_RX ? "rx" : "tx");
 	}
     }
   else if (chroot_filename)

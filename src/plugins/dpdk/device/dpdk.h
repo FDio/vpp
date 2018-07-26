@@ -391,10 +391,8 @@ typedef struct
 typedef struct
 {
   int pcap_enable;
-  pcap_main_t pcap_main;
-  u8 *pcap_filename;
   u32 pcap_sw_if_index;
-  u32 pcap_pkts_to_capture;
+  pcap_main_t pcap_main;
 } dpdk_pcap_t;
 
 typedef struct
