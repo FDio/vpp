@@ -250,6 +250,8 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[i]);
       d++;
     }
+
+  ad->n_rx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
 }
 
@@ -279,6 +281,8 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 					   2 * CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
+
+  ad->n_tx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
 }
 
@@ -789,10 +793,10 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
 
-  if ((error = avf_op_enable_queues (vm, ad, 1, 0)))
+  if ((error = avf_op_enable_queues (vm, ad, ad->n_rx_queues, 0)))
     return error;
 
-  if ((error = avf_op_enable_queues (vm, ad, 0, 1)))
+  if ((error = avf_op_enable_queues (vm, ad, 0, ad->n_tx_queues)))
     return error;
 
   ad->flags |= AVF_DEVICE_F_INITIALIZED;
