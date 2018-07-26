@@ -607,6 +607,12 @@ u32x4_hadd (u32x4 v1, u32x4 v2)
   return (u32x4) _mm_hadd_epi32 ((__m128i) v1, (__m128i) v2);
 }
 
+static_always_inline u8x16
+u8x16_shuffle (u8x16 v, u8x16 m)
+{
+  return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) m);
+}
+
 #endif /* included_vector_sse2_h */
 
 /*
