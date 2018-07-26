@@ -524,6 +524,17 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #include <vppinfra/clib.h>
 #include <vppinfra/cache.h>
 
+/* --- begin vpp customizations --- */
+
+#if CLIB_DEBUG > 0
+#define FOOTERS 1  /* extra debugging */
+#endif
+#define USE_LOCKS 1
+#define DLM_ABORT {extern void os_panic(void); os_panic(); abort();}
+#define ONLY_MSPACES 1
+
+/* --- end vpp customizations --- */
+
 /* Version identifier to allow people to support multiple versions */
 #ifndef DLMALLOC_VERSION
 #define DLMALLOC_VERSION 20806
@@ -586,8 +597,6 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 
 /* The maximum possible size_t value has all bits set */
 #define MAX_SIZE_T           (~(size_t)0)
-
-#define USE_LOCKS 1
 
 #ifndef USE_LOCKS /* ensure true if spin or recursive locks set */
 #define USE_LOCKS  ((defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \

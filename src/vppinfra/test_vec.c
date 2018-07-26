@@ -1079,6 +1079,7 @@ test_vec_main (unformat_input_t * input)
   uword help = 0;
   uword big = 0;
   uword align = 0;
+  uword ugly = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1089,11 +1090,25 @@ test_vec_main (unformat_input_t * input)
 	  && 0 == unformat (input, "dump %d", &g_dump_period)
 	  && 0 == unformat (input, "help %=", &help, 1)
 	  && 0 == unformat (input, "big %=", &big, 1)
+	  && 0 == unformat (input, "ugly %d", &ugly)
 	  && 0 == unformat (input, "align %=", &align, 1))
 	{
 	  clib_error ("unknown input `%U'", format_unformat_error, input);
 	  goto usage;
 	}
+    }
+
+  /* Cause a deliberate heap botch */
+  if (ugly)
+    {
+      u8 *overrun_me = 0;
+      int i;
+
+      vec_validate (overrun_me, 31);
+      for (i = 0; i < vec_len (overrun_me) + ugly; i++)
+	overrun_me[i] = i;
+
+      vec_free (overrun_me);
     }
 
   if (big)
