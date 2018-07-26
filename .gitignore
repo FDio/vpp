@@ -82,6 +82,8 @@ GTAGS
 /build-root/docs
 /build-root/.doxygen-bootstrap.ok
 /build-root/.doxygen-siphon.dep
+/docs/_build
+/env
 
 # indent backup files
 *.BAK

@@ -1,0 +1,56 @@
+.. _l2:
+
+=======
+Layer 2
+=======
+
+MAC Layer
+---------
+* Ethernet
+
+Discovery
+---------
+* Cisco Discovery Protocol
+* Link Layer Discovery Protocol (LLDP)
+
+Link Layer Control Protocol
+---------------------------
+* Bit Index Explicit Replication – Link Layer Multi-cast forwarding.
+* Link Layer Control (LLC) - multiplex protocols over the MAC layer. 
+* Spatial Reuse Protocol (SRP)
+* High-Level Data Link Control (HDLC)
+* Logical link control (LLC)
+* Link Agg Control Protocol (Active/Active, Active/Passive) – 18.04 
+
+Virtual Private Networks
+------------------------
+* MPLS 
+  
+  * MPLS-o-Ethernet – Deep label stacks supported
+
+* Virtual Private LAN Service (VPLS)
+* VLAN
+* Q-in-Q
+* Tag-rewrite (VTR) - push/pop/Translate (1:1,1:2, 2:1,2:2)
+* Ethernet flow point Filtering
+* Layer 2 Cross Connect
+
+Bridging
+---------
+* Bridge Domains
+* MAC Learning (50k addresses)
+* Split-horizon group support
+* Flooding
+
+ARP
+---
+* Proxy
+* Termination
+* Bidirectional Forwarding Detection
+
+Integrated Routing and Bridging (IRB)
+-------------------------------------
+* Flexibility to both route and switch between groups of ports.
+* Bridged Virtual Interface (BVI) Support, allows traffic switched traffic to be routed.
+
+
