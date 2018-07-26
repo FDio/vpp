@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "382e0d7e_3588d74a",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-26T11:46:04Z",
+      "side": 1,
+      "message": "responds",
+      "range": {
+        "startLine": 678,
+        "startChar": 11,
+        "endLine": 678,
+        "endChar": 20
+      },
+      "revId": "ae9118055f6236b71145ace400464aa709265ff0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
