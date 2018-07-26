@@ -66,7 +66,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
   ptr = 0;
   max = (mtu - sizeof (*ip4) - vnet_buffer (p)->ip_frag.header_offset) & ~0x7;
 
-  if (rem < (p->current_length - offset - sizeof (*ip4)))
+  if (rem > (p->current_length - offset - sizeof (*ip4)))
     {
       *error = IP_FRAG_ERROR_MALFORMED;
       return;
