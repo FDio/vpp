@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "20fad035_a509e145",
+        "filename": "docs/README",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-27T13:08:48Z",
+      "side": 1,
+      "message": "No trailing whitespace please.",
+      "range": {
+        "startLine": 26,
+        "startChar": 41,
+        "endLine": 26,
+        "endChar": 42
+      },
+      "revId": "2d1a04371a8e61f9d5ba8b028f41fcbcec017b9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
