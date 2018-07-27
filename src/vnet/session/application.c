@@ -841,7 +841,8 @@ app_send_io_evt_rx (application_t * app, stream_session_t * s, u8 lock)
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
 
-  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
+  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY
+		     && s->session_state != SESSION_STATE_LISTENING))
     {
       /* Session is closed so app will never clean up. Flush rx fifo */
       if (s->session_state == SESSION_STATE_CLOSED)
@@ -917,8 +918,9 @@ app_send_io_evt_tx (application_t * app, stream_session_t * s, u8 lock)
 typedef int (app_send_evt_handler_fn) (application_t *app,
 				       stream_session_t *s,
 				       u8 lock);
-static app_send_evt_handler_fn * const app_send_evt_handler_fns[2] = {
+static app_send_evt_handler_fn * const app_send_evt_handler_fns[3] = {
     app_send_io_evt_rx,
+    0,
     app_send_io_evt_tx,
 };
 /* *INDENT-ON* */

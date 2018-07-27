@@ -425,14 +425,17 @@ main (int argc, char **argv)
       return -1;
     }
 
-  rv = vppcom_session_listen (ssm->listen_fd, 10);
-  if (rv < 0)
+  if (!ssm->cfg.transport_udp)
     {
-      errno_val = errno = -rv;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: listen failed "
-	       "(errno = %d)!\n", errno_val);
-      return -1;
+      rv = vppcom_session_listen (ssm->listen_fd, 10);
+      if (rv < 0)
+	{
+	  errno_val = errno = -rv;
+	  perror ("ERROR in main()");
+	  fprintf (stderr, "SERVER: ERROR: listen failed "
+		   "(errno = %d)!\n", errno_val);
+	  return -1;
+	}
     }
 
   ssm->epfd = vppcom_epoll_create ();
