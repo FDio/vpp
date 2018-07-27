@@ -354,7 +354,8 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 
 always_inline int
 app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
-		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 noblock)
+		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 evt_type,
+		    u8 noblock)
 {
   u32 max_enqueue, actual_write;
   session_dgram_hdr_t hdr;
@@ -379,7 +380,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   if ((rv = svm_fifo_enqueue_nowait (f, actual_write, data)) > 0)
     {
       if (svm_fifo_set_event (f))
-	app_send_io_evt_to_vpp (vpp_evt_q, f, FIFO_EVENT_APP_TX, noblock);
+	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
     }
   ASSERT (rv);
   return rv;
@@ -389,19 +390,19 @@ always_inline int
 app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
   return app_send_dgram_raw (s->tx_fifo, &s->transport, s->vpp_evt_q, data,
-			     len, noblock);
+			     len, FIFO_EVENT_APP_TX, noblock);
 }
 
 always_inline int
 app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
-		     u32 len, u8 noblock)
+		     u32 len, u8 evt_type, u8 noblock)
 {
   int rv;
 
   if ((rv = svm_fifo_enqueue_nowait (f, len, data)) > 0)
     {
       if (svm_fifo_set_event (f))
-	app_send_io_evt_to_vpp (vpp_evt_q, f, FIFO_EVENT_APP_TX, noblock);
+	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
     }
   return rv;
 }
@@ -409,7 +410,8 @@ app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
 always_inline int
 app_send_stream (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
-  return app_send_stream_raw (s->tx_fifo, s->vpp_evt_q, data, len, noblock);
+  return app_send_stream_raw (s->tx_fifo, s->vpp_evt_q, data, len,
+			      FIFO_EVENT_APP_TX, noblock);
 }
 
 always_inline int
@@ -422,17 +424,22 @@ app_send (app_session_t * s, u8 * data, u32 len, u8 noblock)
 
 always_inline int
 app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
-		    app_session_transport_t * at, u8 clear_evt)
+		    app_session_transport_t * at, u8 clear_evt, u8 peek)
 {
   session_dgram_pre_hdr_t ph;
   u32 max_deq;
   int rv;
 
-  if (clear_evt)
-    svm_fifo_unset_event (f);
   max_deq = svm_fifo_max_dequeue (f);
   if (max_deq < sizeof (session_dgram_hdr_t))
-    return 0;
+    {
+      if (clear_evt)
+	svm_fifo_unset_event (f);
+      return 0;
+    }
+
+  if (clear_evt)
+    svm_fifo_unset_event (f);
 
   svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
   ASSERT (ph.data_length >= ph.data_offset);
@@ -440,6 +447,8 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
     svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
+  if (peek)
+    return rv;
   ph.data_offset += rv;
   if (ph.data_offset == ph.data_length)
     svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
@@ -451,21 +460,25 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 always_inline int
 app_recv_dgram (app_session_t * s, u8 * buf, u32 len)
 {
-  return app_recv_dgram_raw (s->rx_fifo, buf, len, &s->transport, 1);
+  return app_recv_dgram_raw (s->rx_fifo, buf, len, &s->transport, 1, 0);
 }
 
 always_inline int
-app_recv_stream_raw (svm_fifo_t * f, u8 * buf, u32 len, u8 clear_evt)
+app_recv_stream_raw (svm_fifo_t * f, u8 * buf, u32 len, u8 clear_evt, u8 peek)
 {
   if (clear_evt)
     svm_fifo_unset_event (f);
+
+  if (peek)
+    return svm_fifo_peek (f, 0, len, buf);
+
   return svm_fifo_dequeue_nowait (f, len, buf);
 }
 
 always_inline int
 app_recv_stream (app_session_t * s, u8 * buf, u32 len)
 {
-  return app_recv_stream_raw (s->rx_fifo, buf, len, 1);
+  return app_recv_stream_raw (s->rx_fifo, buf, len, 1, 0);
 }
 
 always_inline int

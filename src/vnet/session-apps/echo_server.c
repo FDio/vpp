@@ -211,14 +211,16 @@ echo_server_rx_callback (stream_session_t * s)
       actual_transfer = app_recv_stream_raw (rx_fifo,
 					     esm->rx_buf[thread_index],
 					     max_transfer,
-					     0 /* don't clear event */ );
+					     0 /* don't clear event */ ,
+					     0 /* peek */ );
     }
   else
     {
       actual_transfer = app_recv_dgram_raw (rx_fifo,
 					    esm->rx_buf[thread_index],
 					    max_transfer, &at,
-					    0 /* don't clear event */ );
+					    0 /* don't clear event */ ,
+					    0 /* peek */ );
     }
   ASSERT (actual_transfer == max_transfer);
   /* test_bytes (esm, actual_transfer); */
@@ -232,14 +234,14 @@ echo_server_rx_callback (stream_session_t * s)
       n_written = app_send_stream_raw (tx_fifo,
 				       esm->vpp_queue[thread_index],
 				       esm->rx_buf[thread_index],
-				       actual_transfer, 0);
+				       actual_transfer, FIFO_EVENT_APP_TX, 0);
     }
   else
     {
       n_written = app_send_dgram_raw (tx_fifo, &at,
 				      esm->vpp_queue[s->thread_index],
 				      esm->rx_buf[thread_index],
-				      actual_transfer, 0);
+				      actual_transfer, FIFO_EVENT_APP_TX, 0);
     }
 
   if (n_written != max_transfer)

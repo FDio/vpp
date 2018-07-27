@@ -132,6 +132,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   svm_fifo_segment_create_args_t *a = &_a;
   int rv;
 
+  vcm->mounting_segment = 1;
   memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
@@ -147,6 +148,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 
   VDBG (1, "VCL<%d>: mapped new segment '%s' size %d", getpid (),
 	mp->segment_name, mp->segment_size);
+  vcm->mounting_segment = 0;
 }
 
 static void
@@ -355,6 +357,18 @@ done:
   session->transport.lcl_port = mp->lcl_port;
   vppcom_session_table_add_listener (mp->handle, session_index);
   session->session_state = STATE_LISTEN;
+
+  if (session->is_dgram)
+    {
+      svm_fifo_t *rx_fifo, *tx_fifo;
+      session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+      rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
+      rx_fifo->client_session_index = session_index;
+      tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
+      tx_fifo->client_session_index = session_index;
+      session->rx_fifo = rx_fifo;
+      session->tx_fifo = tx_fifo;
+    }
 
   VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
 	getpid (), mp->handle, mp->context);
