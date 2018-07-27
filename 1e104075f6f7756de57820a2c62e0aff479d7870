@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56a8d869_48d50eb4",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-07-27T02:57:02Z",
+      "side": 1,
+      "message": "There is an equivalent function vlib_process_signal_event_mt() in node_funcs.h that allow worker threads to signal event in the main thread.  I wonder if we can just use it here?",
+      "range": {
+        "startLine": 356,
+        "startChar": 3,
+        "endLine": 356,
+        "endChar": 28
+      },
+      "revId": "1e104075f6f7756de57820a2c62e0aff479d7870",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
