@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d1dc95b_8fa03aa4",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2470,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-07-27T11:57:11Z",
+      "side": 1,
+      "message": "I don\u0027t really know who invented vlib_process_put_event_data(..), but I use  vec_reset_length (event_data) to avoid any/all allocation activity.",
+      "revId": "d7f58cc4f0ab6d98dc57da52a8665b495493049e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
