@@ -1,0 +1,268 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea6ebcb1_5076f322",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Pretty sure this is not what it does. ;-)",
+      "range": {
+        "startLine": 76,
+        "startChar": 11,
+        "endLine": 76,
+        "endChar": 44
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e38761fc_63e0af76",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "The space is in the added string %s",
+      "range": {
+        "startLine": 200,
+        "startChar": 31,
+        "endLine": 200,
+        "endChar": 32
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ff1cd8d_dc42afb5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Add the indent whitespaces",
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3287af6c_e99426be",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "node_port should be replaced by port",
+      "range": {
+        "startLine": 232,
+        "startChar": 43,
+        "endLine": 232,
+        "endChar": 52
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "269f7174_9febeab3",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 842,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Why is this here ?",
+      "range": {
+        "startLine": 842,
+        "startChar": 10,
+        "endLine": 842,
+        "endChar": 31
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e03f9db6_075c311b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 956,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 956,
+        "startChar": 17,
+        "endLine": 956,
+        "endChar": 18
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa9259d1_60a4544e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "There should be a test making sure we can\u0027t add a per-port VIP entry when there already is an all-port VIP for the same prefix.",
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4414fe77_c870a52c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1002,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Would probably be useful to define some macro for this.",
+      "range": {
+        "startLine": 997,
+        "startChar": 6,
+        "endLine": 1002,
+        "endChar": 41
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9009c137_4cc3c243",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1012,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Define some macro for this too.",
+      "range": {
+        "startLine": 1008,
+        "startChar": 6,
+        "endLine": 1012,
+        "endChar": 41
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58e5fd73_0901e26b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1029,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "I think there should be a special value for all-ports (like ~0) such that it is explicit that the called is asking for *all-port*, and not some other random protocol.\nIt would also be better for future extensions to not have args.protocol \u003d foo to behave as a *all-port* request.",
+      "range": {
+        "startLine": 1029,
+        "startChar": 7,
+        "endLine": 1029,
+        "endChar": 20
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "474a9991_1466d755",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1038,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Port 0xffff is a valide value for a port.\nUse port \u003d 0, which is a reserved invalid value, instead.",
+      "range": {
+        "startLine": 1038,
+        "startChar": 6,
+        "endLine": 1038,
+        "endChar": 21
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f8c4a3f3_b2aef077",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1140,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "lb_vip_add_port_filter is only called when protocol is UDP or TCP. So this is not symmetrical behavior.",
+      "range": {
+        "startLine": 1140,
+        "startChar": 2,
+        "endLine": 1140,
+        "endChar": 35
+      },
+      "revId": "21ec198d8d16ac972ce5ff983a13b9dfffc96a71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
