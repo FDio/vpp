@@ -199,6 +199,7 @@ help:
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " dpdk-install-dev    - install DPDK development packages"
+	@echo " openssl-install-dev - install OpenSSL development packages"
 	@echo " ctags               - (re)generate ctags database"
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
@@ -480,6 +481,9 @@ pkg-srpm: dist
 
 dpdk-install-dev:
 	make -C dpdk install-$(PKG)
+
+openssl-install-dev:
+	make -C openssl install-$(PKG)
 
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<

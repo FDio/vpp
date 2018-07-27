@@ -1,0 +1,161 @@
+index f0ac05a..6b3a62f 100644
+--- a/crypto/async/async_locl.h
++++ b/crypto/async/async_locl.h
+@@ -56,6 +56,9 @@ struct fd_lookup_st {
+ };
+ 
+ struct async_wait_ctx_st {
++    int (*callback)(void *arg);
++    void *callback_arg;
++    int estatus;
+     struct fd_lookup_st *fds;
+     size_t numadd;
+     size_t numdel;
+diff --git a/crypto/async/async_wait.c b/crypto/async/async_wait.c
+index e115985..65d0a08 100644
+--- a/crypto/async/async_wait.c
++++ b/crypto/async/async_wait.c
+@@ -62,6 +62,38 @@ int ASYNC_WAIT_CTX_set_wait_fd(ASYNC_WAIT_CTX *ctx, const void *key,
+     return 1;
+ }
+ 
++int ASYNC_WAIT_CTX_set_callback(ASYNC_WAIT_CTX *ctx, void *callback,
++                               void *callback_arg)
++{
++
++      ctx->callback = callback;
++      ctx->callback_arg = callback_arg;
++      return 1;
++}
++
++int ASYNC_WAIT_CTX_get_callback(ASYNC_WAIT_CTX *ctx, void **callback,
++                               void **callback_arg)
++{
++      if (!ctx->callback) 
++          return 0;
++
++      *callback = ctx->callback;
++      *callback_arg = ctx->callback_arg;
++      return 1;
++}
++
++int ASYNC_WAIT_CTX_set_estatus(ASYNC_WAIT_CTX *ctx, int status)
++{
++      ctx->estatus = status;
++      return 1;
++}
++
++int ASYNC_WAIT_CTX_get_estatus(ASYNC_WAIT_CTX *ctx, int *status)
++{
++      *status = ctx->estatus;
++      return 1;
++}
++
+ int ASYNC_WAIT_CTX_get_fd(ASYNC_WAIT_CTX *ctx, const void *key,
+                           OSSL_ASYNC_FD *fd, void **custom_data)
+ {
+diff --git a/include/openssl/async.h b/include/openssl/async.h
+index 5b2e496..c5b1af9 100644
+--- a/include/openssl/async.h
++++ b/include/openssl/async.h
+@@ -51,6 +51,10 @@ int ASYNC_WAIT_CTX_get_fd(ASYNC_WAIT_CTX *ctx, const void *key,
+                         OSSL_ASYNC_FD *fd, void **custom_data);
+ int ASYNC_WAIT_CTX_get_all_fds(ASYNC_WAIT_CTX *ctx, OSSL_ASYNC_FD *fd,
+                                size_t *numfds);
++int ASYNC_WAIT_CTX_get_callback(ASYNC_WAIT_CTX *ctx, void **callback, void **callback_arg);
++int ASYNC_WAIT_CTX_set_callback(ASYNC_WAIT_CTX *ctx, void *callback, void *callback_arg);
++int ASYNC_WAIT_CTX_set_estatus(ASYNC_WAIT_CTX *ctx, int status);
++int ASYNC_WAIT_CTX_get_estatus(ASYNC_WAIT_CTX *ctx, int *status);
+ int ASYNC_WAIT_CTX_get_changed_fds(ASYNC_WAIT_CTX *ctx, OSSL_ASYNC_FD *addfd,
+                                    size_t *numaddfds, OSSL_ASYNC_FD *delfd,
+                                    size_t *numdelfds);
+diff --git a/include/openssl/engine.h b/include/openssl/engine.h
+index 26cf714..a459010 100644
+--- a/include/openssl/engine.h
++++ b/include/openssl/engine.h
+@@ -755,6 +755,9 @@ DEPRECATEDIN_1_1_0(void ENGINE_setup_bsd_cryptodev(void))
+ 
+ int ERR_load_ENGINE_strings(void);
+ 
++/* Engine status */
++# define ENGINE_STATUS_RETRY                            1
++
+ /* Error codes for the ENGINE functions. */
+ 
+ /* Function codes. */
+diff --git a/include/openssl/ssl.h b/include/openssl/ssl.h
+index 4e7f82f..8a45cbf 100644
+--- a/include/openssl/ssl.h
++++ b/include/openssl/ssl.h
+@@ -1588,6 +1588,10 @@ __owur int SSL_get_all_async_fds(SSL *s, OSSL_ASYNC_FD *fds, size_t *numfds);
+ __owur int SSL_get_changed_async_fds(SSL *s, OSSL_ASYNC_FD *addfd,
+                                      size_t *numaddfds, OSSL_ASYNC_FD *delfd,
+                                      size_t *numdelfds);
++__owur int SSL_set_async_callback(SSL *s, void *callback, void *callback_arg);
++__owur int SSL_get_async_estatus(SSL *s, int *status);
++__owur int SSL_set_async_estatus(SSL *s, int status);
++
+ # endif
+ __owur int SSL_accept(SSL *ssl);
+ __owur int SSL_connect(SSL *ssl);
+diff --git a/ssl/ssl_lib.c b/ssl/ssl_lib.c
+index 6908f16..0fcca9f 100644
+--- a/ssl/ssl_lib.c
++++ b/ssl/ssl_lib.c
+@@ -1546,6 +1546,33 @@ int SSL_get_changed_async_fds(SSL *s, OSSL_ASYNC_FD *addfd, size_t *numaddfds,
+                                           numdelfds);
+ }
+ 
++int SSL_set_async_callback(SSL *s, void *callback, void *callback_arg)
++{
++    ASYNC_WAIT_CTX *ctx = s->waitctx;
++    if (ctx == NULL)
++        return 0;
++    return ASYNC_WAIT_CTX_set_callback(ctx, callback, callback_arg);
++
++}
++
++int SSL_get_async_estatus(SSL *s, int *status)
++{
++    ASYNC_WAIT_CTX *ctx = s->waitctx;
++    if (ctx == NULL)
++        return 0;
++    return ASYNC_WAIT_CTX_get_estatus(ctx, status);
++
++}
++
++int SSL_set_async_estatus(SSL *s, int status)
++{
++    ASYNC_WAIT_CTX *ctx = s->waitctx;
++    if (ctx == NULL)
++        return 0;
++    return ASYNC_WAIT_CTX_set_estatus(ctx, status);
++
++}
++
+ int SSL_accept(SSL *s)
+ {
+     if (s->handshake_func == NULL) {
+diff --git a/util/libcrypto.num b/util/libcrypto.num
+index a6d313f..8b54c2c 100644
+--- a/util/libcrypto.num
++++ b/util/libcrypto.num
+@@ -4232,3 +4232,7 @@ ZINT64_it                               4215	1_1_0f	EXIST:!EXPORT_VAR_AS_FUNCTIO
+ ZINT64_it                               4215	1_1_0f	EXIST:EXPORT_VAR_AS_FUNCTION:FUNCTION:
+ CRYPTO_secure_clear_free                4315	1_1_0g	EXIST::FUNCTION:
+ EVP_PKEY_set1_engine                    4347	1_1_0g	EXIST::FUNCTION:ENGINE
++ASYNC_WAIT_CTX_set_callback             4349    1_1_0g  EXIST::FUNCTION:
++ASYNC_WAIT_CTX_get_callback             4350    1_1_0g  EXIST::FUNCTION:
++ASYNC_WAIT_CTX_set_estatus              4351    1_1_0g  EXIST::FUNCTION:
++ASYNC_WAIT_CTX_get_estatus              4352    1_1_0g  EXIST::FUNCTION:
+diff --git a/util/libssl.num b/util/libssl.num
+index 7b9b3c2..973b923 100644
+--- a/util/libssl.num
++++ b/util/libssl.num
+@@ -405,3 +405,6 @@ SSL_SESSION_get0_id_context             405	1_1_0	EXIST::FUNCTION:
+ SSL_SESSION_set1_id                     406	1_1_0	EXIST::FUNCTION:
+ SSL_COMP_get_id                         412	1_1_0d	EXIST::FUNCTION:
+ SSL_COMP_get0_name                      413	1_1_0d	EXIST::FUNCTION:
++SSL_set_async_callback                  414	1_1_0g	EXIST::FUNCTION:
++SSL_get_async_estatus                   415	1_1_0g	EXIST::FUNCTION:
++SSL_set_async_estatus                   416	1_1_0g	EXIST::FUNCTION:

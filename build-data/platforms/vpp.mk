@@ -26,6 +26,9 @@ vpp_uses_dpdk = yes
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
+# Uncoment to enable building openssl with patch
+# vpp_uses_internal_openssl = yes
+
 vpp_root_packages = vpp vom
 
 # DPDK configuration parameters

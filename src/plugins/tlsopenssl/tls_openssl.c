@@ -464,7 +464,6 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
-  SSL_CTX_set_ecdh_auto (oc->ssl_ctx, 1);
   SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 #ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
@@ -570,7 +569,6 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
     SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ASYNC);
 #endif
   SSL_CTX_set_options (oc->ssl_ctx, flags);
-  SSL_CTX_set_ecdh_auto (oc->ssl_ctx, 1);
 
   rv = SSL_CTX_set_cipher_list (oc->ssl_ctx, (const char *) ciphers);
   if (rv != 1)

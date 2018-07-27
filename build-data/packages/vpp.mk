@@ -46,6 +46,12 @@ else
 vpp_configure_args += --disable-dpdk-plugin
 endif
 
+ifeq ($($(PLATFORM)_uses_internal_openssl),yes)
+vpp_configure_depend += openssl-install
+vpp_CPPFLAGS += $(call installed_includes_fn, openssl)
+vpp_LDFLAGS += $(call installed_libs_fn, openssl)
+endif
+
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
 endif
