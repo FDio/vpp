@@ -237,6 +237,9 @@ typedef struct vppcom_main_t_
   /** Pool of cut through registrations */
   vcl_cut_through_registration_t *cut_through_registrations;
 
+  /** Flag indicating that a new segment is being mounted */
+  volatile u32 mounting_segment;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
@@ -311,6 +314,12 @@ vcl_session_get_index_from_handle (u64 handle)
   if ((p = hash_get (vcm->session_index_by_vpp_handles, handle)))
     return p[0];
   return VCL_INVALID_SESSION_INDEX;
+}
+
+static inline u8
+vcl_session_is_ct (vcl_session_t * s)
+{
+  return (s->our_evt_q != 0);
 }
 
 static inline int
