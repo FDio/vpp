@@ -2463,7 +2463,8 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		    vl_api_send_msg (vl_reg, (u8 *) event);
 		  }
               }));
-            /* *INDENT-ON* */
+              /* *INDENT-ON* */
+	      vec_free (ra_events[i].prefixes);
 	    }
 	}
       vlib_process_put_event_data (vm, event_data);
