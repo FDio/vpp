@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a394d496_6f2a354b",
+        "filename": "docs/_images/Create_Interface_Topology.jpg",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-27T11:09:14Z",
+      "side": 0,
+      "message": "In CSIT, we try to avoid .jpg and .png, going for .svg instead, as that is a textual format, thus more suitable for git. Also, scalable, so less troubles making it look good in various resolutions.",
+      "revId": "1d65279ffecd0f540288187b94cb1a6b84a7a0c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9c1c65fc_b1d34785",
+        "filename": "docs/events/CiscoLiveUS/2017_06_26_vppcontainernetwork.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-27T11:09:14Z",
+      "side": 1,
+      "message": "No trailing whitespace please.\nApplies to other files as well.",
+      "range": {
+        "startLine": 6,
+        "startChar": 39,
+        "endLine": 6,
+        "endChar": 40
+      },
+      "revId": "06dcd45ff81e06bc8cf40ed487c0b2652d346a5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50cd610f_fafb6346",
+        "filename": "docs/events/FDIOVPPTerabit/2017_07_11_fdiouniversalterabitnetwork.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-27T11:09:14Z",
+      "side": 1,
+      "message": "Fill the mising data in.\nApplies to other files as well.",
+      "range": {
+        "startLine": 12,
+        "startChar": 27,
+        "endLine": 12,
+        "endChar": 50
+      },
+      "revId": "06dcd45ff81e06bc8cf40ed487c0b2652d346a5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
