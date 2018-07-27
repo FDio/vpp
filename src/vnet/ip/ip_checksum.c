@@ -42,73 +42,29 @@
 static ip_csum_t
 _ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
-  uword data = pointer_to_uword (_data);
-  ip_csum_t sum0, sum1;
+  u16 *ptr = _data;
 
-  sum0 = 0;
-  sum1 = sum;
-
-  /*
-   * Align pointer to 64 bits. The ip checksum is a 16-bit
-   * one's complememt sum. It's impractical to optimize
-   * the calculation if the incoming address is odd.
-   */
-#define _(t)					\
-do {						\
-  if (n_bytes >= sizeof (t)			\
-      && sizeof (t) < sizeof (ip_csum_t)	\
-      && (data % (2 * sizeof (t))) != 0)	\
-    {						\
-      sum0 += * uword_to_pointer (data, t *);	\
-      data += sizeof (t);			\
-      n_bytes -= sizeof (t);			\
-    }						\
-} while (0)
-
-  if (PREDICT_TRUE ((data & 1) == 0))
+  while (n_bytes >= (sizeof (*ptr) * 4))
     {
-      _(u16);
-      if (BITS (ip_csum_t) > 32)
-	_(u32);
+      sum += ptr[0];
+      sum += ptr[1];
+      sum += ptr[2];
+      sum += ptr[3];
+      n_bytes -= sizeof (*ptr) * 4;
+      ptr += 4;
     }
-#undef _
 
-  {
-    ip_csum_t *d = uword_to_pointer (data, ip_csum_t *);
+  while (n_bytes >= sizeof (*ptr))
+    {
+      sum += ptr[0];
+      n_bytes -= sizeof (*ptr);
+      ptr += 1;
+    }
 
-    while (n_bytes >= 2 * sizeof (d[0]))
-      {
-	sum0 = ip_csum_with_carry (sum0, d[0]);
-	sum1 = ip_csum_with_carry (sum1, d[1]);
-	d += 2;
-	n_bytes -= 2 * sizeof (d[0]);
-      }
+  if (PREDICT_FALSE (n_bytes == 1))
+    sum += *((u8 *) ptr);
 
-    data = pointer_to_uword (d);
-  }
-
-#define _(t)								\
-do {									\
-  if (n_bytes >= sizeof (t) && sizeof (t) <= sizeof (ip_csum_t))	\
-    {									\
-      sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, t *));	\
-      data += sizeof (t);						\
-      n_bytes -= sizeof (t);						\
-    }									\
-} while (0)
-
-  if (BITS (ip_csum_t) > 32)
-    _(u64);
-  _(u32);
-  _(u16);
-  _(u8);
-
-#undef _
-
-  /* Combine even and odd sums. */
-  sum0 = ip_csum_with_carry (sum0, sum1);
-
-  return sum0;
+  return sum;
 }
 
 /*
