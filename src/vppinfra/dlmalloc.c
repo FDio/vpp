@@ -1765,6 +1765,9 @@ static int init_mparams(void) {
 #endif
       magic |= (size_t)8U;    /* ensure nonzero */
       magic &= ~(size_t)7U;   /* improve chances of fault for bad values */
+#ifdef DLM_MAGIC_CONSTANT
+      magic = DLM_MAGIC_CONSTANT;
+#endif
       /* Until memory modes commonly available, use volatile-write */
       (*(volatile size_t *)(&(mparams.magic))) = magic;
     }
