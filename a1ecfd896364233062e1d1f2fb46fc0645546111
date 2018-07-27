@@ -1,0 +1,613 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d57b051b_8602eec0",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Use port \u003d\u003d 0 as special value to tell all-ports",
+      "range": {
+        "startLine": 27,
+        "startChar": 5,
+        "endLine": 27,
+        "endChar": 17
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da455ec4_17e9c38a",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "This should not be necessary",
+      "range": {
+        "startLine": 84,
+        "startChar": 35,
+        "endLine": 84,
+        "endChar": 44
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "23d11da1_8bcbe9d3",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Use port \u003d\u003d 0 as special value. As 0xffff is a valid port, but 0 is not.",
+      "range": {
+        "startLine": 97,
+        "startChar": 6,
+        "endLine": 97,
+        "endChar": 21
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a610c054_d6d863c5",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Add an additional \u0027if\u0027 \u0027else\u0027 statement with port !\u003d 0 rather than this.",
+      "range": {
+        "startLine": 116,
+        "startChar": 6,
+        "endLine": 127,
+        "endChar": 46
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31c4cb55_47e391e7",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Same comment",
+      "range": {
+        "startLine": 136,
+        "startChar": 6,
+        "endLine": 145,
+        "endChar": 46
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c3bd1dfa_0a7f0cee",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Should be removed",
+      "range": {
+        "startLine": 199,
+        "startChar": 50,
+        "endLine": 199,
+        "endChar": 63
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0dc8d080_80c2cad7",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Missing indent",
+      "range": {
+        "startLine": 213,
+        "startChar": 21,
+        "endLine": 213,
+        "endChar": 23
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b90c10e3_48f7cbc3",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Be careful with the race conditions with worker threads.",
+      "range": {
+        "startLine": 766,
+        "startChar": 0,
+        "endLine": 766,
+        "endChar": 15
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b16110b_e5105c5b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Not certain this is necessary. is it ?",
+      "range": {
+        "startLine": 784,
+        "startChar": 14,
+        "endLine": 784,
+        "endChar": 29
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43412607_59670e6a",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Is this not supposed to be 0 instead ?",
+      "range": {
+        "startLine": 785,
+        "startChar": 14,
+        "endLine": 785,
+        "endChar": 31
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c4989c8_745327db",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "This should be optional.\nThere are two types of server removals. Soft removals, where we allow ongoing connections to finish, and abrupt shutdown where all ongoing connexions must be closed.\nSo my best guess is that this should not be in the same patch, as it might be a larger problem to solve.",
+      "range": {
+        "startLine": 852,
+        "startChar": 2,
+        "endLine": 852,
+        "endChar": 45
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c9d75c0_86cac0bf",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Something should make sure someone cannot add a port-specific VIP when the same prefix is used for all-ports already.\nAlso, there must be a check ensuring all VIP for a given prefix (using different ports) have the same type.",
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "910095f9_f2dd2ed5",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Could you please add all-port L3DSR case ?\nI know this is not part of the main use-case for L3DSR, but that would be useful for code-testing and validation. It could also improve the performance when port distinction is not necessary.",
+      "range": {
+        "startLine": 202,
+        "startChar": 2,
+        "endLine": 202,
+        "endChar": 29
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "34fabc54_52ca42af",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "This should be removed and use the port field in the main args struct.",
+      "range": {
+        "startLine": 222,
+        "startChar": 6,
+        "endLine": 222,
+        "endChar": 15
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eddbd38a_ed215a85",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "This should be removed, and the port field should be used instead.",
+      "range": {
+        "startLine": 228,
+        "startChar": 6,
+        "endLine": 228,
+        "endChar": 20
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73660de4_6e304ed4",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "The packed attribute should be on the inner struct. Is has no effect here.",
+      "range": {
+        "startLine": 236,
+        "startChar": 8,
+        "endLine": 236,
+        "endChar": 19
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0f335fd3_b7ea752b",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "While reviewing the draft, I found ip_lkp_idx names a bit confusing. Particularly the fact that it comes from the dummy_vip pool.\nCould we call it \u0027vip_prefix_index\u0027 instead ? Since it really identifies the VIP prefix.",
+      "range": {
+        "startLine": 301,
+        "startChar": 6,
+        "endLine": 301,
+        "endChar": 16
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff3d69bb_c0e0f390",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "What is this used for ?",
+      "range": {
+        "startLine": 349,
+        "startChar": 0,
+        "endLine": 350,
+        "endChar": 77
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cd34afea_ed7b5b87",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "What is this used for ?",
+      "range": {
+        "startLine": 352,
+        "startChar": 0,
+        "endLine": 353,
+        "endChar": 73
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "98011562_7a626111",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "I think the right struct to allocate indexes is rather a bitmap, not a pool (The stored u32 is actually not used).\nPlease also rename as vip_prefix_indexes .",
+      "range": {
+        "startLine": 462,
+        "startChar": 2,
+        "endLine": 462,
+        "endChar": 17
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5fb3d919_b6bd4d4e",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "The name does not really reflect what it does.\nMaybe use vip_index_per_port",
+      "range": {
+        "startLine": 533,
+        "startChar": 10,
+        "endLine": 533,
+        "endChar": 26
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fb2a0d7_75793aca",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "See comment in node function",
+      "range": {
+        "startLine": 176,
+        "startChar": 21,
+        "endLine": 176,
+        "endChar": 24
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cdaf3300_11541f5f",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Should be removed (see proposal below)",
+      "range": {
+        "startLine": 293,
+        "startChar": 14,
+        "endLine": 293,
+        "endChar": 21
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c506010_f47a0ac3",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "I am wondering if it would not be useful to add an error number as we start to getting an increasing number of error causes.\nHaving an error number might help count errors.",
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1e19024_3a787491",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "I think there is a way to make this check unnecessary (this would improve performance).\nIn case the VIP for the port is not found, the lookup function should return a dummy VIP index (typically 0) that would cause the packets to be dropped. There is no dummy-VIP for now, but that could be done fairly easily by creating one during initialization.",
+      "range": {
+        "startLine": 325,
+        "startChar": 10,
+        "endLine": 329,
+        "endChar": 13
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d9460236_2f42b2aa",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "Good catch",
+      "range": {
+        "startLine": 540,
+        "startChar": 22,
+        "endLine": 540,
+        "endChar": 43
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd2afe2b_1aead586",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-07-27T09:15:23Z",
+      "side": 1,
+      "message": "We should find a way to avoid this. It would help the compiler optimize the code. Maybe use the dummy as_index.",
+      "range": {
+        "startLine": 541,
+        "startChar": 22,
+        "endLine": 541,
+        "endChar": 34
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
