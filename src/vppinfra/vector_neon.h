@@ -118,6 +118,22 @@ foreach_neon_vec128i foreach_neon_vec128u
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u16x8
+u16x8_byte_swap (u16x8 v)
+{
+  const u8 swap_pattern[] = {
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+  };
+  u8x16 swap = vld1q_u8 (swap_pattern);
+  return (u16x8) vqtbl1q_u8 ((u8x16) v, swap);
+}
+
+static_always_inline u8x16
+u8x16_shuffle (u8x16 v, u8x16 m)
+{
+  return (u8x16) vqtbl1q_u8 (v, m);
+}
+
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
