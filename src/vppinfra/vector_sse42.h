@@ -616,7 +616,7 @@ u8x16_shuffle (u8x16 v, u8x16 m)
 static_always_inline u32x4
 u32x4_shuffle (u32x4 v, const int a, const int b, const int c, const int d)
 {
-#ifdef __clang__
+#if defined(__clang__) || CLIB_DEBUG > 0
   u32x4 r = { v[a], v[b], v[c], v[d] };
   return r;
 #else
