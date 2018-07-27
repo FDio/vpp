@@ -70,6 +70,30 @@
       "revId": "1e104075f6f7756de57820a2c62e0aff479d7870",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7241f3ad_dff97b48",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-07-27T14:37:35Z",
+      "side": 1,
+      "message": "Protect a vector of pending reschedule bs-\u003ebs_idx\u0027es with the lock. When adding an element to the pending list, if it transitions from empty to non-empty, send ONE RPC event to kick the process in the pants. \n\nIn the process: grab lock, dequeue all elts (to_process \u003d pending_list, pending_list \u003d 0), drop lock. If the process keeps up, you\u0027ll see one RPC per event added. If not, the number of RPC events per event added will be far smaller.\n\nThis is a slightly simplified sketch. Think through how to completely avoid memory allocation traffic.",
+      "parentUuid": "2c7b01f9_0cf668f0",
+      "range": {
+        "startLine": 356,
+        "startChar": 3,
+        "endLine": 356,
+        "endChar": 28
+      },
+      "revId": "1e104075f6f7756de57820a2c62e0aff479d7870",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
