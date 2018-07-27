@@ -313,6 +313,12 @@ vcl_session_get_index_from_handle (u64 handle)
   return VCL_INVALID_SESSION_INDEX;
 }
 
+static inline u8
+vcl_session_is_ct (vcl_session_t * s)
+{
+  return (s->our_evt_q != 0);
+}
+
 static inline int
 vppcom_session_at_index (u32 session_index, vcl_session_t * volatile *sess)
 {

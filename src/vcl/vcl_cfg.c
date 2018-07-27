@@ -21,6 +21,7 @@
  */
 static vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
+  .init = 0,
   .my_client_index = ~0
 };
 
