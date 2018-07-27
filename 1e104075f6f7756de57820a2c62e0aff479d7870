@@ -22,6 +22,30 @@
       "revId": "1e104075f6f7756de57820a2c62e0aff479d7870",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba71ec91_9fea9216",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2018-07-27T10:11:02Z",
+      "side": 1,
+      "message": "We can use RPC calls across threads, then we\u0027ll hit the original high CPU usage issue.",
+      "parentUuid": "56a8d869_48d50eb4",
+      "range": {
+        "startLine": 356,
+        "startChar": 3,
+        "endLine": 356,
+        "endChar": 28
+      },
+      "revId": "1e104075f6f7756de57820a2c62e0aff479d7870",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
