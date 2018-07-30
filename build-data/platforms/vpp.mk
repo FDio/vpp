@@ -23,6 +23,9 @@ vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
 
+# use cmake as an alternative to autotools
+# vpp_uses_cmake = yes
+
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
