@@ -267,22 +267,6 @@ VLIB_CLI_COMMAND (memif_create_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-create_memif_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
-{
-  vlib_cli_output (vm, "command deprecated. Please use "
-		   "'create interface memif' instead.\n");
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (create_memif_command, static) = {
-  .path = "create memif",
-  .function = create_memif_command_fn,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
 memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
