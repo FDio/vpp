@@ -16,6 +16,24 @@
       "revId": "e7ed811ed6bf1548999e5bafe4ce776ddf48595e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "108cc133_c7958bcd",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-30T19:02:18Z",
+      "side": 1,
+      "message": "i had some problems with unions too. i\u0027d like to move it back to union.",
+      "parentUuid": "8910c14a_6d92bd94",
+      "revId": "e7ed811ed6bf1548999e5bafe4ce776ddf48595e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
