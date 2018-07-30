@@ -1,0 +1,5 @@
+#define VPP_BUILD_DATE "Tue Jul  3 16:55:03 CEST 2018"
+#define VPP_BUILD_USER "damarion"
+#define VPP_BUILD_HOST "proteus"
+#define VPP_BUILD_TOPDIR "/home/damarion/cisco/vpp2"
+#define VPP_BUILD_VER "18.07-rc0~457-g926b564d"

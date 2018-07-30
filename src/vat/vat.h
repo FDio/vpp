@@ -251,7 +251,6 @@ int vat_socket_connect (vat_main_t * vam);
 void api_cli_output (void *, const char *fmt, ...);
 #else
 #define print fformat_append_cr
-void fformat_append_cr (FILE *, const char *fmt, ...);
 #endif
 
 #endif /* __included_vat_h__ */
