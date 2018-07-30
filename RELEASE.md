@@ -12,6 +12,322 @@
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
+@page release_notes_1807 Release notes for VPP 18.07
+
+More than 533 commits since the 18.04 release.
+
+## Features
+
+### Infrastructure
+- DPDK 18.02.1
+  - Complete rework of the dpdk-input node
+  - Display rx/tx burst function name in "show hardware detail"
+  - Improve buffer alloc perfomance
+      - This is ~50% improvement in buffer alloc performance.  For a 256 buffer allocation, it was ~10 clocks/buffer, now is < 5 clocks.
+  - Add per-numa page allocation info to 'show memory'
+  - Vectorized bihash_{48,40,24,16}_8 key compare
+      - bihash_48_8 case:
+          - Scalar code: 6 clocks
+          - SSE4.2 code: 3 clocks
+          - AVX2 code: 2.27 clocks
+          - AVX512 code: 1.5 clocks
+  - Pollable Stats
+     - Stats are now available to a client in a shared memory segment and
+       in the form of a directory, allowing very high performance polling
+       of stats without directly querying VPP.
+
+### VNET & Plugins
+- IGMP improvements
+  - Enable/Disable an interface for IGMP
+  - improve logging
+  - refactor common code
+  - no orphaned timers
+  - IGMP state changes in main thread only
+  - Large groups split over multiple state-change reports
+  - SSM range configuration API.
+  - more tests
+- IP: vectorized IP checksum
+- VXLAN : HW offload RX flow
+- Rework kube-proxy into LB plugin and add NATA66
+- NAT:
+    - Code refactor
+    - Syslog
+    - Multiple outside interfaces
+    - Endpoint dependent filtering and mapping
+- ACL:
+    - Tuple Merge algorithm cleanup and integration
+    - Processing pipeline optimizations
+    - Refactoring
+- Experimental AVF driver
+
+### Host stack
+
+- Session: performance improvements, add support for connectionless transports, datagram reception and transmission
+- TCP: congestion control improvements and overall fixes
+- UDP: datagram mode
+- TLS async support
+
+
+## Known issues
+
+For the full list of issues please refer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1807)
+
+## API changes
+
+Description of results:
+
+* _Definition changed_: indicates that the API file was modified between releases.
+* _Only in image_: indicates the API is new for this release.
+* _Only in file_: indicates the API has been removed in this release.
+
+                        Message Name                         Result
+abf_itf_attach_add_del                                       definition changed
+abf_itf_attach_details                                       only in image
+abf_itf_attach_dump                                          only in image
+abf_plugin_get_version                                       definition changed
+abf_policy_add_del                                           definition changed
+abf_policy_details                                           only in image
+abf_policy_dump                                              only in image
+af_packet_details                                            only in image
+af_packet_dump                                               only in image
+avf_create                                                   definition changed
+avf_delete                                                   definition changed
+bind_sock_reply                                              definition changed
+bind_uri_reply                                               definition changed
+dhcp6_client_enable_disable                                  definition changed
+dhcp6_clients_enable_disable                                 definition changed
+dhcp6_duid_ll_set                                            definition changed
+dhcp6_pd_client_enable_disable                               definition changed
+dhcp6_pd_reply_event                                         only in image
+dhcp6_pd_send_client_message                                 definition changed
+dhcp6_reply_event                                            only in image
+dhcp6_send_client_message                                    definition changed
+dhcp_client_config                                           definition changed
+dhcp_client_details                                          only in image
+dhcp_client_dump                                             only in image
+dhcp_compl_event                                             definition changed
+dslite_address_details                                       only in image
+dslite_address_dump                                          only in image
+gbp_endpoint_group_add_del                                   definition changed
+gbp_endpoint_group_details                                   only in image
+gbp_endpoint_group_dump                                      only in image
+gbp_recirc_add_del                                           definition changed
+gbp_recirc_details                                           only in image
+gbp_recirc_dump                                              only in image
+gbp_subnet_add_del                                           definition changed
+gbp_subnet_details                                           only in image
+gbp_subnet_dump                                              only in image
+hw_interface_set_mtu                                         definition changed
+igmp_details                                                 definition changed
+igmp_dump                                                    definition changed
+igmp_enable_disable                                          definition changed
+igmp_event                                                   definition changed
+igmp_group_prefix_details                                    only in image
+igmp_group_prefix_dump                                       only in image
+igmp_group_prefix_set                                        definition changed
+igmp_listen                                                  definition changed
+ikev2_profile_set_auth                                       definition changed
+ikev2_profile_set_id                                         definition changed
+ip6_add_del_address_using_prefix                             definition changed
+ip_mroute_add_del                                            definition changed
+ip_probe_neighbor                                            definition changed
+ip_scan_neighbor_enable_disable                              definition changed
+ip_unnumbered_details                                        only in image
+ip_unnumbered_dump                                           only in image
+ipip_6rd_add_tunnel                                          definition changed
+ipip_add_tunnel                                              definition changed
+ipip_tunnel_details                                          definition changed
+ipsec_sa_details                                             definition changed
+ipsec_sad_add_del_entry                                      definition changed
+ipsec_tunnel_if_add_del                                      definition changed
+kp_add_del_pod                                               definition changed
+kp_add_del_vip                                               definition changed
+kp_conf                                                      definition changed
+lb_add_del_vip                                               definition changed
+mactime_add_del                                              definition changed
+mactime_enable                                               definition changed
+memclnt_create                                               definition changed
+memclnt_create_reply                                         definition changed
+memfd_segment_create                                         definition changed
+nat44_add_del_lb_static_mapping                              definition changed
+nat44_add_del_static_mapping                                 definition changed
+nat44_del_session                                            definition changed
+nat44_lb_static_mapping_details                              definition changed
+nat44_static_mapping_details                                 definition changed
+nat44_user_session_details                                   definition changed
+pipe_create                                                  definition changed
+pipe_delete                                                  definition changed
+pipe_details                                                 only in image
+pipe_dump                                                    only in image
+pot_profile_activate                                         definition changed
+pot_profile_add                                              definition changed
+pot_profile_del                                              definition changed
+proxy_arp_add_del                                            definition changed
+proxy_arp_details                                            only in image
+proxy_arp_dump                                               only in image
+proxy_arp_intfc_details                                      only in image
+proxy_arp_intfc_dump                                         only in image
+sock_init_shm_reply                                          definition changed
+sockclnt_create                                              definition changed
+sockclnt_create_reply                                        definition changed
+sr_localsid_add_del                                          definition changed
+sr_localsids_details                                         definition changed
+sr_policies_details                                          only in image
+sr_policies_dump                                             only in image
+sr_policy_add                                                definition changed
+sr_policy_del                                                definition changed
+sr_policy_mod                                                definition changed
+sr_steering_pol_details                                      only in image
+sr_steering_pol_dump                                         only in image
+sw_interface_details                                         definition changed
+sw_interface_set_mtu                                         definition changed
+tap_create_v2                                                definition changed
+vnet_bier_neighbor_counters                                  only in image
+vnet_get_summary_stats_reply                                 definition changed
+vxlan_offload_rx                                             definition changed
+want_bier_neighbor_stats                                     definition changed
+want_dhcp6_pd_reply_events                                   definition changed
+want_dhcp6_reply_events                                      definition changed
+Found 107 api message signature differences
+
+### Patches that changed API definitions
+
+| @c src/plugins/ioam/lib-pot/pot.api ||
+| ------- | ------- |
+| [e9fcf23](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e9fcf23) | Fix some build warnings about "Old Style VLA" |
+
+| @c src/plugins/gbp/gbp.api ||
+| ------- | ------- |
+| [25b0494](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=25b0494) | GBP V2 |
+
+| @c src/plugins/map/map.api ||
+| ------- | ------- |
+| [381e9a9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=381e9a9) | MAP: Move MAP-E/T to a plugin. |
+
+| @c src/plugins/igmp/igmp.api ||
+| ------- | ------- |
+| [947ea62](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=947ea62) | IGMP improvements |
+
+| @c src/plugins/lb/lb.api ||
+| ------- | ------- |
+| [d92a0b5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d92a0b5) | Rework kube-proxy into LB plugin |
+
+| @c src/plugins/nat/nat.api ||
+| ------- | ------- |
+| [70a26ac](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=70a26ac) | NAT44: nat44_del_session and nat44_user_session_details API update (VPP-1271) |
+| [ebdf190](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ebdf190) | NAT44: TCP connection close detection (VPP-1266) |
+| [1e5c07d](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1e5c07d) | Add special Twice-NAT feature (VPP-1221) |
+| [16aa7f8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=16aa7f8) | DSLite: Implement new API call DSLITE_ADDRESS_DUMP. |
+
+| @c src/plugins/avf/avf.api ||
+| ------- | ------- |
+| [258a189](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=258a189) | avf: api fix |
+| [6c9b964](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6c9b964) | avf: binary API and configurable RX/TX queue size |
+
+| @c src/plugins/mactime/mactime.api ||
+| ------- | ------- |
+| [7055e26](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7055e26) | Driver level time-based src mac filter |
+
+| @c src/plugins/abf/abf.api ||
+| ------- | ------- |
+| [669d07d](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=669d07d) | ACL based forwarding |
+
+| @c src/vlibmemory/memclnt.api ||
+| ------- | ------- |
+| [dab732a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dab732a) | VPP-1335 vapi crash when memclnt_keepalive received |
+| [7895872](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7895872) | Remove the historical memfd api segment bootstrap |
+
+| @c src/vpp/stats/stats.api ||
+| ------- | ------- |
+| [a21a367](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a21a367) | VPP-1324 SIGSEGV vl_msg_api_handler_with_vm_node() |
+| [586479a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=586479a) | BIER neighbor stats |
+| [e906aac](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e906aac) | STATS: Separate socket for fd exchange. |
+| [048a4e5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=048a4e5) | export counters in a memfd segment |
+
+| @c src/vnet/interface.api ||
+| ------- | ------- |
+| [d723161](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d723161) | MTU: Software interface / Per-protocol MTU support |
+| [fe7d4a2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fe7d4a2) | Revert "MTU: Setting of MTU on software interface (instead of hardware interface)" |
+| [70083ee](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=70083ee) | MTU: Setting of MTU on software interface (instead of hardware interface) |
+
+| @c src/vnet/ipfix-export/ipfix_export.api ||
+| ------- | ------- |
+| [a9855ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a9855ef) | Flow: Rename IPFIX exporter. |
+
+| @c src/vnet/dhcp/dhcp6_pd_client_cp.api ||
+| ------- | ------- |
+| [81119e8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=81119e8) | Implement DHCPv6 PD client (VPP-718, VPP-1050) |
+
+| @c src/vnet/dhcp/dhcp.api ||
+| ------- | ------- |
+| [dd3b8f7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dd3b8f7) | Implement DHCPv6 IA NA client (VPP-1094) |
+| [d9778c2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d9778c2) | Update DHCPv6 DUID code and fix coverity warnings |
+| [81119e8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=81119e8) | Implement DHCPv6 PD client (VPP-718, VPP-1050) |
+| [daff178](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=daff178) | DHCP Client Dump |
+
+| @c src/vnet/dhcp/dhcp6_ia_na_client_cp.api ||
+| ------- | ------- |
+| [dd3b8f7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dd3b8f7) | Implement DHCPv6 IA NA client (VPP-1094) |
+
+| @c src/vnet/ip/ip.api ||
+| ------- | ------- |
+| [947ea62](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=947ea62) | IGMP improvements |
+| [7eaaf74](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7eaaf74) | proxy_arp: remove unused is_add |
+| [0053de6](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0053de6) | ARP proxy dumps |
+| [9e2f915](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9e2f915) | IP unnumbered dump |
+| [7f358b3](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7f358b3) | Periodic scan and probe of IP neighbors to maintain neighbor pools |
+| [e821ab1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e821ab1) | IP mcast: allow unicast address as a next-hop |
+| [c7b4304](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c7b4304) | Implement ip_probe_neighbor API |
+
+| @c src/vnet/ip/ip_types.api ||
+| ------- | ------- |
+| [947ea62](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=947ea62) | IGMP improvements |
+| [2c2feab](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2c2feab) | VPPAPIGEN: Add union and enum support and IP4/IP6 address type. |
+
+| @c src/vnet/devices/af_packet/af_packet.api ||
+| ------- | ------- |
+| [04e0bb2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=04e0bb2) | af_packet: Add support for dump interfaces |
+
+| @c src/vnet/devices/tap/tapv2.api ||
+| ------- | ------- |
+| [d600ffe](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d600ffe) | Update tapv2 documentation |
+| [0b06111](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0b06111) | VPP-1305: Add support for tags |
+
+| @c src/vnet/devices/pipe/pipe.api ||
+| ------- | ------- |
+| [ee8b973](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee8b973) | VOM: support for pipes |
+| [17ff3c1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=17ff3c1) | Pipes |
+
+| @c src/vnet/ipip/ipip.api ||
+| ------- | ------- |
+| [d57f636](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d57f636) | VPP-1277: IPIP - Copy TOS/TC from inner packet to outer. |
+
+| @c src/vnet/session/session.api ||
+| ------- | ------- |
+| [7fb0fe1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7fb0fe1) | udp/session: refactor to support dgram mode |
+
+| @c src/vnet/ipsec/ipsec.api ||
+| ------- | ------- |
+| [4b089f2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4b089f2) | ipsec: support UDP encap/decap for NAT traversal |
+| [e9fcf23](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e9fcf23) | Fix some build warnings about "Old Style VLA" |
+| [8e1039a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8e1039a) | Allow an IPsec tunnel interface to be renumbered |
+
+| @c src/vnet/vxlan/vxlan.api ||
+| ------- | ------- |
+| [af86a48](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=af86a48) | vxlan:offload RX flow |
+
+| @c src/vnet/srv6/sr.api ||
+| ------- | ------- |
+| [3337bd2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3337bd2) | Fixed bugs in SRv6 API |
+| [e9fcf23](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e9fcf23) | Fix some build warnings about "Old Style VLA" |
+
+
 
 @page release_notes_1804 Release notes for VPP 18.04
 
