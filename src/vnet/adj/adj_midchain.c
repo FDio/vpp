@@ -520,7 +520,8 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      * src,dst, this is all we need.
      */
     ASSERT((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP) ||
-           (adj->lookup_next_index == IP_LOOKUP_NEXT_GLEAN));
+           (adj->lookup_next_index == IP_LOOKUP_NEXT_GLEAN) ||
+           (adj->lookup_next_index == IP_LOOKUP_NEXT_BCAST));
 
     /*
      * tunnels can always provide a rewrite.

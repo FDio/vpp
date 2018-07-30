@@ -179,14 +179,6 @@ sixrd_tunnel_stack (adj_index_t ai, u32 fib_index)
   adj_nbr_midchain_stack (ai, &dpo);
 }
 
-const static ip46_address_t sixrd_special_nh = {
-  .ip6 = {
-	  .as_u64 = {
-		     [0] = 0xffffffffffffffff,
-		     [1] = 0xffffffffffffffff,
-		     },
-	  },
-};
 
 static void
 sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
@@ -197,8 +189,7 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   /* Not our tunnel */
   if (!t)
     return;
-  if (!memcmp (&sixrd_special_nh, &adj->sub_type.nbr.next_hop,
-	       sizeof (sixrd_special_nh)))
+  if (IP_LOOKUP_NEXT_BCAST == adj->lookup_next_index)
     {
       adj_nbr_midchain_update_rewrite (ai, sixrd_fixup, t, ADJ_FLAG_NONE,
 				       sixrd_build_rewrite (vnm, sw_if_index,
@@ -363,7 +354,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 
   fib_table_entry_update_one_path (fib_index, &pfx6, FIB_SOURCE_CLI,
 				   FIB_ENTRY_FLAG_ATTACHED, DPO_PROTO_IP6,
-				   &sixrd_special_nh, hi->sw_if_index, ~0, 1,
+				   &ADJ_BCAST_ADDR, hi->sw_if_index, ~0, 1,
 				   NULL, FIB_ROUTE_PATH_FLAG_NONE);
 
   *sw_if_index = hi->sw_if_index;
