@@ -1529,14 +1529,14 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
 }
 
 #define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
+//#include <vpp/api/vpe_all_api_h.h>
 #undef vl_msg_name_crc_list
 
 static void
 setup_message_id_table (api_main_t * am)
 {
 #define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_dns;
+//  foreach_vl_msg_name_crc_dns;
 #undef _
 }
 
