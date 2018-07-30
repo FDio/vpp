@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "94bdc392_b3d47429",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-30T09:22:44Z",
+      "side": 1,
+      "message": "we can probably improve performance further by crafting ip header using avx2, that will avoid long-read after short write issue.",
+      "range": {
+        "startLine": 251,
+        "startChar": 14,
+        "endLine": 251,
+        "endChar": 15
+      },
+      "revId": "84af694e95430ff24360ce8be7340df407a73f0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9f814dc7_c423c29e",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-07-30T09:22:44Z",
+      "side": 1,
+      "message": "i dont think this is needed with new function",
+      "range": {
+        "startLine": 255,
+        "startChar": 0,
+        "endLine": 258,
+        "endChar": 16
+      },
+      "revId": "84af694e95430ff24360ce8be7340df407a73f0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
