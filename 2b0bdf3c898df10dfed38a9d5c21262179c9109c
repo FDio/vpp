@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5d2dcea_866fbc74",
+        "filename": "src/vppinfra/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-07-30T12:00:35Z",
+      "side": 1,
+      "message": "This routine needs to be under #ifdef CLIB_UNIX. Pls hoist line 476 above the function declaration.",
+      "revId": "2b0bdf3c898df10dfed38a9d5c21262179c9109c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
