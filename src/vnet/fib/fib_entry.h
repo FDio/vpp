@@ -594,8 +594,7 @@ extern u32 fib_entry_get_resolving_interface_for_source(
 
 extern void fib_entry_encode(fib_node_index_t fib_entry_index,
 			     fib_route_path_encode_t **api_rpaths);
-extern void fib_entry_get_prefix(fib_node_index_t fib_entry_index,
-				 fib_prefix_t *pfx);
+extern const fib_prefix_t *fib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern void fib_entry_set_source_data(fib_node_index_t fib_entry_index,
                                       fib_source_t source,

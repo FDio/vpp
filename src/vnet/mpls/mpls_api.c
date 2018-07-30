@@ -460,7 +460,7 @@ static void
 send_mpls_fib_details (vpe_api_main_t * am,
 		       vl_api_registration_t * reg,
 		       const fib_table_t * table,
-		       u32 label, u32 eos,
+		       const fib_prefix_t * pfx,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_mpls_fib_details_t *mp;
@@ -479,8 +479,8 @@ send_mpls_fib_details (vpe_api_main_t * am,
   mp->table_id = htonl (table->ft_table_id);
   memcpy (mp->table_name, table->ft_desc,
 	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
-  mp->eos_bit = eos;
-  mp->label = htonl (label);
+  mp->eos_bit = pfx->fp_eos;
+  mp->label = htonl (pfx->fp_label);
 
   mp->count = htonl (path_count);
   fp = mp->path;
@@ -517,7 +517,7 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
   fib_table_t *fib_table;
   mpls_fib_t *mpls_fib;
   fib_node_index_t *lfeip = NULL;
-  fib_prefix_t pfx;
+  const fib_prefix_t *pfx;
   u32 fib_index;
   fib_route_path_encode_t *api_rpaths;
   vl_api_mpls_fib_dump_table_walk_ctx_t ctx = {
@@ -540,14 +540,12 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
 
   vec_foreach (lfeip, ctx.lfeis)
   {
-    fib_entry_get_prefix (*lfeip, &pfx);
+    pfx = fib_entry_get_prefix (*lfeip);
     fib_index = fib_entry_get_fib_index (*lfeip);
-    fib_table = fib_table_get (fib_index, pfx.fp_proto);
+    fib_table = fib_table_get (fib_index, pfx->fp_proto);
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
-    send_mpls_fib_details (am, reg,
-			   fib_table, pfx.fp_label,
-			   pfx.fp_eos, api_rpaths, mp->context);
+    send_mpls_fib_details (am, reg, fib_table, pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 

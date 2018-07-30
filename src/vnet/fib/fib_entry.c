@@ -1433,11 +1433,7 @@ fib_entry_get_best_source (fib_node_index_t entry_index)
 int
 fib_entry_is_host (fib_node_index_t fib_entry_index)
 {
-    fib_prefix_t pfx;
-
-    fib_entry_get_prefix(fib_entry_index, &pfx);
-
-    return (fib_prefix_is_host(&pfx));
+    return (fib_prefix_is_host(fib_entry_get_prefix(fib_entry_index)));
 }
 
 /**
@@ -1612,14 +1608,14 @@ fib_entry_encode (fib_node_index_t fib_entry_index,
     }
 }
 
-void
-fib_entry_get_prefix (fib_node_index_t fib_entry_index,
-		      fib_prefix_t *pfx)
+const fib_prefix_t *
+fib_entry_get_prefix (fib_node_index_t fib_entry_index)
 {
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
-    *pfx = fib_entry->fe_prefix;
+
+    return (&fib_entry->fe_prefix);
 }
 
 u32

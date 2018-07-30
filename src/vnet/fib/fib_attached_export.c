@@ -126,7 +126,6 @@ static void
 fib_entry_import_remove (fib_ae_import_t *import,
 			 fib_node_index_t entry_index)
 {
-    fib_prefix_t prefix;
     u32 index;
 
     /*
@@ -139,10 +138,8 @@ fib_entry_import_remove (fib_ae_import_t *import,
 	/*
 	 * this is an entry that was previsouly imported
 	 */
-	fib_entry_get_prefix(entry_index, &prefix);
-
 	fib_table_entry_special_remove(import->faei_import_fib,
-				       &prefix,
+				       fib_entry_get_prefix(entry_index),
 				       FIB_SOURCE_AE);
 
 	fib_entry_unlock(entry_index);
@@ -155,7 +152,7 @@ fib_entry_import_add (fib_ae_import_t *import,
 		      fib_node_index_t entry_index)
 {
     fib_node_index_t *existing;
-    fib_prefix_t prefix;
+    const fib_prefix_t *prefix;
 
     /*
      * ensure we only add the exported entry once, since
@@ -173,12 +170,12 @@ fib_entry_import_add (fib_ae_import_t *import,
      * this is the first time this export entry has been imported
      * Add it to the import FIB and to the list of importeds
      */
-    fib_entry_get_prefix(entry_index, &prefix);
+    prefix = fib_entry_get_prefix(entry_index);
 
     /*
      * don't import entries that have the same prefix the import entry
      */
-    if (0 != fib_prefix_cmp(&prefix,
+    if (0 != fib_prefix_cmp(prefix,
 			    &import->faei_prefix))
     {
         const dpo_id_t *dpo;
@@ -188,7 +185,7 @@ fib_entry_import_add (fib_ae_import_t *import,
         if (dpo_id_is_valid(dpo) && !dpo_is_drop(dpo))
         {
             fib_table_entry_special_dpo_add(import->faei_import_fib,
-                                            &prefix,
+                                            prefix,
                                             FIB_SOURCE_AE,
                                             (fib_entry_get_flags(entry_index) |
                                              FIB_ENTRY_FLAG_EXCLUSIVE),
@@ -337,12 +334,8 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	 */
 	vec_foreach(import_index, import->faei_importeds)
 	{
-	    fib_prefix_t prefix;
-
-	    fib_entry_get_prefix(*import_index, &prefix);
-
 	    fib_table_entry_delete(import->faei_import_fib,
-				   &prefix,
+				   fib_entry_get_prefix(*import_index),
 				   FIB_SOURCE_AE);
 	    fib_entry_unlock(*import_index);
 	}

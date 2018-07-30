@@ -874,13 +874,10 @@ fib_path_unresolve (fib_path_t *path)
     case FIB_PATH_TYPE_RECURSIVE:
 	if (FIB_NODE_INDEX_INVALID != path->fp_via_fib)
 	{
-	    fib_prefix_t pfx;
-
-	    fib_entry_get_prefix(path->fp_via_fib, &pfx);
 	    fib_entry_child_remove(path->fp_via_fib,
 				   path->fp_sibling);
 	    fib_table_entry_special_remove(path->recursive.fp_tbl_id,
-					   &pfx,
+					   fib_entry_get_prefix(path->fp_via_fib),
 					   FIB_SOURCE_RR);
 	    path->fp_via_fib = FIB_NODE_INDEX_INVALID;
 	}

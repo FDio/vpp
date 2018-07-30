@@ -665,7 +665,7 @@ fib_test_validate_entry (fib_node_index_t fei,
                          ...)
 {
     dpo_id_t dpo = DPO_INVALID;
-    fib_prefix_t pfx;
+    const fib_prefix_t *pfx;
     index_t fw_lbi;
     u32 fib_index;
     va_list ap;
@@ -674,7 +674,7 @@ fib_test_validate_entry (fib_node_index_t fei,
     va_start(ap, n_buckets);
 
     res = 0;
-    fib_entry_get_prefix(fei, &pfx);
+    pfx = fib_entry_get_prefix(fei);
     fib_index = fib_entry_get_fib_index(fei);
     fib_entry_contribute_forwarding(fei, fct, &dpo);
 
@@ -691,7 +691,7 @@ fib_test_validate_entry (fib_node_index_t fei,
 
         FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
                     "%U Entry links to %U",
-                    format_fib_prefix, &pfx,
+                    format_fib_prefix, pfx,
                     format_dpo_type, dpo.dpoi_type);
 
         lb = load_balance_get(dpo.dpoi_index);
@@ -703,13 +703,13 @@ fib_test_validate_entry (fib_node_index_t fei,
          */
         if (fct == fib_entry_get_default_chain_type(fib_entry_get(fei)))
         {
-            switch (pfx.fp_proto)
+            switch (pfx->fp_proto)
             {
             case FIB_PROTOCOL_IP4:
-                fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx.fp_addr.ip4);
+                fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx->fp_addr.ip4);
                 break;
             case FIB_PROTOCOL_IP6:
-                fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx.fp_addr.ip6);
+                fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx->fp_addr.ip6);
                 break;
             case FIB_PROTOCOL_MPLS:
                 {
@@ -717,8 +717,8 @@ fib_test_validate_entry (fib_node_index_t fei,
                         .label_exp_s_ttl = 0,
                     };
 
-                    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
-                    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);
+                    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx->fp_label);
+                    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx->fp_eos);
                     hdr.label_exp_s_ttl = clib_host_to_net_u32(hdr.label_exp_s_ttl);
 
                     fw_lbi = mpls_fib_table_forwarding_lookup(fib_index, &hdr);

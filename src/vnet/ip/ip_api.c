@@ -247,7 +247,7 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
   ip4_main_t *im = &ip4_main;
   fib_table_t *fib_table;
   fib_node_index_t *lfeip;
-  fib_prefix_t pfx;
+  const fib_prefix_t *pfx;
   u32 fib_index;
   fib_route_path_encode_t *api_rpaths;
   vl_api_ip_fib_dump_walk_ctx_t ctx = {
@@ -272,12 +272,12 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
 
   vec_foreach (lfeip, ctx.feis)
   {
-    fib_entry_get_prefix (*lfeip, &pfx);
+    pfx = fib_entry_get_prefix (*lfeip);
     fib_index = fib_entry_get_fib_index (*lfeip);
-    fib_table = fib_table_get (fib_index, pfx.fp_proto);
+    fib_table = fib_table_get (fib_index, pfx->fp_proto);
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
-    send_ip_fib_details (am, reg, fib_table, &pfx, api_rpaths, mp->context);
+    send_ip_fib_details (am, reg, fib_table, pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
@@ -351,7 +351,7 @@ api_ip6_fib_table_get_all (vl_api_registration_t * reg,
     .entries = NULL,
   };
   fib_route_path_encode_t *api_rpaths;
-  fib_prefix_t pfx;
+  const fib_prefix_t *pfx;
 
   BV (clib_bihash_foreach_key_value_pair)
     ((BVT (clib_bihash) *) & im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].
@@ -361,10 +361,10 @@ api_ip6_fib_table_get_all (vl_api_registration_t * reg,
 
   vec_foreach (fib_entry_index, ctx.entries)
   {
-    fib_entry_get_prefix (*fib_entry_index, &pfx);
+    pfx = fib_entry_get_prefix (*fib_entry_index);
     api_rpaths = NULL;
     fib_entry_encode (*fib_entry_index, &api_rpaths);
-    send_ip6_fib_details (am, reg, fib_table, &pfx, api_rpaths, mp->context);
+    send_ip6_fib_details (am, reg, fib_table, pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
@@ -1690,7 +1690,7 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
     .indices = NULL,
   };
   fib_node_index_t *feip;
-  fib_prefix_t pfx;
+  const fib_prefix_t *pfx;
   vl_api_registration_t *reg;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -1711,11 +1711,11 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
 
   vec_foreach (feip, ctx.indices)
   {
-    fib_entry_get_prefix (*feip, &pfx);
+    pfx = fib_entry_get_prefix (*feip);
 
     send_ip6nd_proxy_details (reg,
 			      mp->context,
-			      &pfx.fp_addr,
+			      &pfx->fp_addr,
 			      fib_entry_get_resolving_interface (*feip));
   }
 
