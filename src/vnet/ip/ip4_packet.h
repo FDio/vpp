@@ -246,13 +246,10 @@ always_inline u16
 ip4_header_checksum (ip4_header_t * i)
 {
   u16 save, csum;
-  ip_csum_t sum;
 
   save = i->checksum;
   i->checksum = 0;
-  sum = ip_incremental_checksum (0, i, ip4_header_bytes (i));
-  csum = ~ip_csum_fold (sum);
-
+  csum = ip_csum (i, ip4_header_bytes (i));
   i->checksum = save;
 
   /* Make checksum agree for special case where either
