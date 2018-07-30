@@ -12,6 +12,7 @@
 # limitations under the License.
 
 vpp_source = src
+ifneq ($(vpp_uses_cmake),yes)
 
 ifeq ($($(PLATFORM)_dpdk_shared_lib),yes)
 vpp_configure_args = --enable-dpdk-shared
@@ -48,4 +49,16 @@ endif
 
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
+endif
+
+else
+vpp_configure = \
+  cd $(PACKAGE_BUILD_DIR) && \
+  cmake -G Ninja \
+    -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR) \
+    -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)" \
+    $(call find_source_fn,$(PACKAGE_SOURCE))
+#vpp_make_args = --no-print-directory
+vpp_build = ninja
+vpp_install = ninja -C $(PACKAGE_BUILD_DIR) install | grep -v 'Set runtime path'
 endif

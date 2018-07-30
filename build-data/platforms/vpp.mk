@@ -22,6 +22,7 @@ endif
 vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
+vpp_uses_cmake = yes
 
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
