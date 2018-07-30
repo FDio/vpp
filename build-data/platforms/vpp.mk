@@ -26,7 +26,7 @@ vpp_uses_dpdk = yes
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
-vpp_root_packages = vpp vom
+vpp_root_packages = vpp vom japi
 
 # DPDK configuration parameters
 # vpp_uses_dpdk_mlx4_pmd = yes

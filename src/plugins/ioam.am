@@ -70,7 +70,6 @@ IOAM_TRACE_SRC =				\
 	ioam/lib-trace/trace_api.c
 
 IOAM_TRACE_NOINST_HDR =                 \
-  ioam/export/ioam_export_all_api_h.h   \
   ioam/lib-trace/trace_all_api_h.h	\
   ioam/lib-trace/trace_msg_enum.h	\
   ioam/lib-trace/trace.api.h		\
@@ -107,7 +106,6 @@ IOAM_VXLAN_GPE_SRC =					\
 	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_thread.c
 
 IOAM_VXLAN_GPE_NOINST_HDR =                       		\
-  ioam/export/ioam_export_all_api_h.h   			\
   ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h			\
   ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h			\
   ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.h			\
@@ -233,7 +231,7 @@ API_FILES +=				            \
         $(IOAM_IP6_MANYCAST_API)        \
 		$(UDP_PING_API)
 
-noinst_HEADERS +=                               \
+nobase_apiinclude_HEADERS +=                               \
         $(IOAM_POT_NOINST_HDR)                  \
         $(IOAM_EXPORT_NOINST_HDR)               \
         $(IOAM_TRACE_NOINST_HDR)                \

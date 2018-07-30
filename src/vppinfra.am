@@ -237,6 +237,7 @@ nobase_include_HEADERS = \
   vppinfra/memcpy_avx512.h \
   vppinfra/mhash.h \
   vppinfra/mheap.h \
+  vppinfra/mheap_bootstrap.h \
   vppinfra/os.h \
   vppinfra/pipeline.h \
   vppinfra/pool.h \

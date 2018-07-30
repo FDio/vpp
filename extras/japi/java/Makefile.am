@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign
+AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
@@ -36,14 +36,11 @@ nobase_include_HEADERS =                \
 
 lib_LTLIBRARIES = libjvpp_common.la
 libjvpp_common_la_SOURCES = jvpp-common/jvpp_common.c
-libjvpp_common_la_LDFLAGS = shared -rpath /none -no-undefined
+libjvpp_common_la_LDFLAGS = shared -rpath /none -no-undefined -lvppinfra
 
 JVPP_LIBS = \
   libjvpp_common.la \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libsvm.la \
-  -lpthread -lm -lrt
+  -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lm -lrt
 
 #
 # jvpp-registry (connection management + plugin registry)
@@ -99,8 +96,8 @@ JAR_FILES += jvpp-core-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-core/target
 
 # Include all VPP API files
-jvpp_core_json_files = $(shell find @top_builddir@/vnet/ -type f -name '*.api.json')
-jvpp_core_json_files += $(shell find @top_builddir@/vpp/ -type f -name '*.api.json')
+jvpp_core_json_files = $(shell find @top_builddir@/../vpp/vnet  -type f -name '*.api.json')
+jvpp_core_json_files += $(shell find @top_builddir@/../vpp/vpp -type f -name '*.api.json')
 # except for plugins and unsupported ones:
 # jvpp_core_json_files += @top_builddir@/vlibmemory/memclnt.api.json
 
@@ -121,7 +118,7 @@ BUILT_SOURCES += jvpp-acl/io_fd_vpp_jvpp_acl_JVppAclImpl.h
 JAR_FILES += jvpp-acl-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-acl/target
 
-jvpp_acl_json_files = @top_builddir@/plugins/acl/acl.api.json
+jvpp_acl_json_files = @top_builddir@/../vpp/plugins/acl/acl.api.json
 
 jvpp-acl/io_fd_vpp_jvpp_acl_JVppAclImpl.h: $(jvpp_registry_ok) $(jvpp_acl_json_files)
 	$(call japigen,acl,JVppAclImpl)
@@ -141,7 +138,7 @@ BUILT_SOURCES += jvpp-gtpu/io_fd_vpp_jvpp_gtpu_JVppGtpuImpl.h
 JAR_FILES += jvpp-gtpu-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-gtpu/target
 
-jvpp_gtpu_json_files = @top_builddir@/plugins/gtpu/gtpu.api.json
+jvpp_gtpu_json_files = @top_builddir@/../vpp/plugins/gtpu/gtpu.api.json
 
 jvpp-gtpu/io_fd_vpp_jvpp_gtpu_JVppGtpuImpl.h: $(jvpp_registry_ok) $(jvpp_gtpu_json_files)
 	$(call japigen,gtpu,JVppGtpuImpl)
@@ -161,7 +158,7 @@ BUILT_SOURCES += jvpp-pppoe/io_fd_vpp_jvpp_pppoe_JVppPppoeImpl.h
 JAR_FILES += jvpp-pppoe-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-pppoe/target
 
-jvpp_pppoe_json_files = @top_builddir@/plugins/pppoe/pppoe.api.json
+jvpp_pppoe_json_files = @top_builddir@/../vpp/plugins/pppoe/pppoe.api.json
 
 jvpp-pppoe/io_fd_vpp_jvpp_pppoe_JVppPppoeImpl.h: $(jvpp_registry_ok) $(jvpp_pppoe_json_files)
 	$(call japigen,pppoe,JVppPppoeImpl)
@@ -181,7 +178,7 @@ BUILT_SOURCES += jvpp-nat/io_fd_vpp_jvpp_nat_JVppNatImpl.h
 JAR_FILES += jvpp-nat-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-nat/target
 
-jvpp_nat_json_files = @top_builddir@/plugins/nat/nat.api.json
+jvpp_nat_json_files = @top_builddir@/../vpp/plugins/nat/nat.api.json
 
 jvpp-nat/io_fd_vpp_jvpp_nat_JVppNatImpl.h: $(jvpp_registry_ok) $(jvpp_nat_json_files)
 	$(call japigen,nat,JVppNatImpl)
@@ -200,7 +197,7 @@ BUILT_SOURCES += jvpp-ioamtrace/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h
 JAR_FILES += jvpp-ioamtrace-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-ioamtrace/target
 
-jvpp_ioamtrace_json_files = @top_builddir@/plugins/ioam/lib-trace/trace.api.json
+jvpp_ioamtrace_json_files = @top_builddir@/../vpp/plugins/ioam/lib-trace/trace.api.json
 
 jvpp-ioamtrace/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: $(jvpp_registry_ok) $(jvpp_ioamtrace_json_files)
 	$(call japigen,ioamtrace,JVppIoamtraceImpl)
@@ -217,7 +214,7 @@ BUILT_SOURCES += jvpp-ioampot/io_fd_vpp_jvpp_ioampot_JVppIoampotImpl.h
 JAR_FILES += jvpp-ioampot-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-ioampot/target
 
-jvpp_ioampot_json_files = @top_builddir@/plugins/ioam/lib-pot/pot.api.json
+jvpp_ioampot_json_files = @top_builddir@/../vpp/plugins/ioam/lib-pot/pot.api.json
 
 jvpp-ioampot/io_fd_vpp_jvpp_ioampot_JVppIoampotImpl.h: $(jvpp_registry_ok) $(jvpp_ioampot_json_files)
 	$(call japigen,ioampot,JVppIoampotImpl)
@@ -234,7 +231,7 @@ BUILT_SOURCES += jvpp-ioamexport/io_fd_vpp_jvpp_ioamexport_JVppIoamexportImpl.h
 JAR_FILES += jvpp-ioamexport-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-ioamexport/target
 
-jvpp_ioamexport_json_files = @top_builddir@/plugins/ioam/export/ioam_export.api.json
+jvpp_ioamexport_json_files = @top_builddir@/../vpp/plugins/ioam/export/ioam_export.api.json
 
 jvpp-ioamexport/io_fd_vpp_jvpp_ioamexport_JVppIoamexportImpl.h: $(jvpp_registry_ok) $(jvpp_ioamexport_json_files)
 	$(call japigen,ioamexport,JVppIoamexportImpl)
