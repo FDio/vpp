@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "236207a5_0aada713",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-07-30T09:47:37Z",
+      "side": 1,
+      "message": "Good idea. Let me try it.",
+      "parentUuid": "94bdc392_b3d47429",
+      "range": {
+        "startLine": 251,
+        "startChar": 14,
+        "endLine": 251,
+        "endChar": 15
+      },
+      "revId": "84af694e95430ff24360ce8be7340df407a73f0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9f814dc7_c423c29e",
         "filename": "src/vnet/ip/ip4_packet.h",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-07-30T09:22:44Z",
       "side": 1,
       "message": "i dont think this is needed with new function",
+      "range": {
+        "startLine": 255,
+        "startChar": 0,
+        "endLine": 258,
+        "endChar": 16
+      },
+      "revId": "84af694e95430ff24360ce8be7340df407a73f0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2db2cf13_5eabf178",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-07-30T09:47:37Z",
+      "side": 1,
+      "message": "Agreed. The code should be removed.",
+      "parentUuid": "9f814dc7_c423c29e",
       "range": {
         "startLine": 255,
         "startChar": 0,
