@@ -6,7 +6,7 @@ import subprocess
 from framework import VppTestCase
 
 # Api files path
-API_FILES_PATH = "vpp/vpp-api/java"
+API_FILES_PATH = "japi/java"
 
 # Registry jar file name prefix
 REGISTRY_JAR_PREFIX = "jvpp-registry"

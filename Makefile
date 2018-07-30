@@ -533,6 +533,8 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
 	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	$(call banner,"Building JAPI")
+	@make -C build-root PLATFORM=vpp TAG=vpp japi-install
 	$(call banner,"Building VOM")
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
