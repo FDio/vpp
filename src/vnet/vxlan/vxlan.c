@@ -851,29 +851,18 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t;
   int raw = 0;
-  clib_error_t *parse_error = NULL;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "raw"))
+      if (unformat (input, "raw"))
 	raw = 1;
       else
-	parse_error = clib_error_return (0, "parse error: '%U'",
-					 format_unformat_error, line_input);
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, input);
     }
-
-  unformat_free (line_input);
-
-  if (parse_error)
-    return parse_error;
 
   if (pool_elts (vxm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan tunnels configured...");
