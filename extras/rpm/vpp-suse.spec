@@ -227,7 +227,7 @@ done
 
 # Java bindings
 mkdir -p -m755 %{buildroot}%{_datadir}/java
-for file in $(find %{_vpp_install_dir}/vpp/share/java -type f -name '*.jar' -print )
+for file in $(find %{_vpp_install_dir}/japi/share/java -type f -name '*.jar' -print )
 do
         install -p -m 644 $file %{buildroot}%{_datadir}/java
 done
@@ -258,8 +258,8 @@ do
 done
 
 mkdir -p -m755 %{buildroot}%{python_sitelib}/jvppgen
-install -p -m755 %{_vpp_build_dir}/../src/vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}%{_prefix}/bin
-for i in $(ls %{_vpp_build_dir}/../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do
+install -p -m755 %{_vpp_build_dir}/../extras/japi/java/jvpp/gen/jvpp_gen.py %{buildroot}%{_prefix}/bin
+for i in $(ls %{_vpp_build_dir}/../extras/japi/java/jvpp/gen/jvppgen/*.py); do
    install -p -m755 ${i} %{buildroot}%{python_sitelib}/jvppgen
 done;
 

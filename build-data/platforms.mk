@@ -86,7 +86,7 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/JSON.py /usr/share/vpp \
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../../src/vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin	\
+	echo ../../extras/japi/java/jvpp/gen/jvpp_gen.py /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
 	for i in $$(ls ../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
 	   echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen	\
