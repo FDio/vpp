@@ -16,6 +16,24 @@
       "revId": "2b0bdf3c898df10dfed38a9d5c21262179c9109c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ae22441_b38eec74",
+        "filename": "src/vppinfra/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 1385
+      },
+      "writtenOn": "2018-07-31T06:57:51Z",
+      "side": 1,
+      "message": "Yes updated.",
+      "parentUuid": "c5d2dcea_866fbc74",
+      "revId": "2b0bdf3c898df10dfed38a9d5c21262179c9109c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
