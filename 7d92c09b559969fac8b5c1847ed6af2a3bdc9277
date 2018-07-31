@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7cd5489_9726ad49",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-31T17:41:35Z",
+      "side": 1,
+      "message": "One space less? Also applies to line 124.\n\nIs there a document which specifies that? My quick glance at [0] has spotted nothing relevant.\n\n[0] https://www.emacswiki.org/emacs/IndentingC",
+      "range": {
+        "startLine": 73,
+        "startChar": 4,
+        "endLine": 73,
+        "endChar": 5
+      },
+      "revId": "7d92c09b559969fac8b5c1847ed6af2a3bdc9277",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
