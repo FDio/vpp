@@ -621,10 +621,11 @@ int
 memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 {
   struct stat file_stat;
-  char *dir = 0;
+  char *dir = 0, *tmp;
   u32 idx = 0;
 
-  if (sock_id == 0 || sock_id == ~0)
+  /* allow adding socket id 0 */
+  if ((sock_id == 0 && is_add == 0) || sock_id == ~0)
     {
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
@@ -646,11 +647,17 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       /* copy runtime dir path */
       vec_add (dir, vlib_unix_get_runtime_dir (),
 	       strlen (vlib_unix_get_runtime_dir ()));
+      vec_add1 (dir, '/');
 
       /* if sock_filename contains dirs, add them to path */
-      idx = strrchr ((char *) sock_filename, '/') - (char *) sock_filename;
-      vec_add (dir, sock_filename, idx);
+      tmp = strrchr ((char *) sock_filename, '/');
+      if (tmp)
+	{
+	  idx = tmp - (char *) sock_filename;
+	  vec_add (dir, sock_filename, idx);
+	}
 
+      vec_add1 (dir, '\0');
       /* create socket dir */
       error = vlib_unix_recursive_mkdir (dir);
       if (error)
@@ -667,8 +674,13 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       sock_filename = vec_dup (sock_filename);
 
       /* check if directory exists */
-      idx = strrchr ((char *) sock_filename, '/') - (char *) sock_filename;
-      vec_add (dir, sock_filename, idx);
+      tmp = strrchr ((char *) sock_filename, '/');
+      if (tmp)
+	{
+	  idx = tmp - (char *) sock_filename;
+	  vec_add (dir, sock_filename, idx);
+	  vec_add1 (dir, '\0');
+	}
 
       if (((stat (dir, &file_stat) == -1) || (!S_ISDIR (file_stat.st_mode)))
 	  && (idx != 0))
@@ -1007,7 +1019,6 @@ static clib_error_t *
 memif_init (vlib_main_t * vm)
 {
   memif_main_t *mm = &memif_main;
-  u8 *filename;
 
   memset (mm, 0, sizeof (memif_main_t));
 
@@ -1022,10 +1033,7 @@ memif_init (vlib_main_t * vm)
    * for socket-id 0 to MEMIF_DEFAULT_SOCKET_FILENAME in the
    * default run-time directory.
    */
-  filename = format (0, "%s/%s%c",
-		     vlib_unix_get_runtime_dir (),
-		     MEMIF_DEFAULT_SOCKET_FILENAME, 0);
-  memif_add_socket_file (0, filename);
+  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
 
   return 0;
 }
