@@ -4271,6 +4271,14 @@ void mspace_put (mspace msp, void *p_arg)
       mheap_put_trace ((u64)p_arg, psize);
     }
 
+#if CLIB_DEBUG > 0
+  /* Poison the object */
+  {
+    size_t psize = mspace_usable_size (object_header);
+    memset (object_header, 0x13, psize);
+  }
+#endif
+
   /* And free it... */
   mspace_free (msp, object_header);
 }
