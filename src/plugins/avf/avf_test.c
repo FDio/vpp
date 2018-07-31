@@ -64,7 +64,6 @@ typedef struct
 avf_test_main_t avf_test_main;
 
 #define foreach_standard_reply_retval_handler		\
-_(avf_create_reply)					\
 _(avf_delete_reply)
 
 #define _(n)                                            \
@@ -132,6 +131,24 @@ api_avf_create (vat_main_t * vam)
   W (ret);
 
   return ret;
+}
+
+/* avf-create reply handler */
+static void
+vl_api_avf_create_reply_t_handler (vl_api_avf_create_reply_t * mp)
+{
+  vat_main_t *vam = avf_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created avf with sw_if_index %d\n",
+	       ntohl (mp->sw_if_index));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
 }
 
 /* avf delete API */
