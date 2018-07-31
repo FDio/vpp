@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "731ccbd2_c5c763b4",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-07-31T14:17:55Z",
+      "side": 1,
+      "message": "DPDK dependency has been bumped twice during VPP 1807 release cycle, the final version is 18.05.\nSee line 30 of [0].\n\n[0] https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003ddpdk/Makefile;h\u003d78df15b94662df64178d9751e97e2c4163c1c5aa;hb\u003dd05ce97724ed8681e80c32a948564d0163994365",
+      "range": {
+        "startLine": 22,
+        "startChar": 7,
+        "endLine": 22,
+        "endChar": 14
+      },
+      "revId": "e939bf1b508e1fae6929dd8cf0f3effdc2c12549",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
