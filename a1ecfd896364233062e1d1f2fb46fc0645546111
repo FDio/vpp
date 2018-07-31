@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "6f8fcc1f_95a59b31",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d57b051b_8602eec0",
+      "range": {
+        "startLine": 27,
+        "startChar": 5,
+        "endLine": 27,
+        "endChar": 17
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da455ec4_17e9c38a",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 13
@@ -36,6 +60,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "This should not be necessary",
+      "range": {
+        "startLine": 84,
+        "startChar": 35,
+        "endLine": 84,
+        "endChar": 44
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7957b4d5_cb09fa01",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da455ec4_17e9c38a",
       "range": {
         "startLine": 84,
         "startChar": 35,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "f381f051_80a2d094",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "23d11da1_8bcbe9d3",
+      "range": {
+        "startLine": 97,
+        "startChar": 6,
+        "endLine": 97,
+        "endChar": 21
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a610c054_d6d863c5",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 13
@@ -82,6 +154,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Add an additional \u0027if\u0027 \u0027else\u0027 statement with port !\u003d 0 rather than this.",
+      "range": {
+        "startLine": 116,
+        "startChar": 6,
+        "endLine": 127,
+        "endChar": 46
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c4e49742_98c14cff",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a610c054_d6d863c5",
       "range": {
         "startLine": 116,
         "startChar": 6,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "bc637ef0_32b23675",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31c4cb55_47e391e7",
+      "range": {
+        "startLine": 136,
+        "startChar": 6,
+        "endLine": 145,
+        "endChar": 46
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c3bd1dfa_0a7f0cee",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 13
@@ -128,6 +248,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Should be removed",
+      "range": {
+        "startLine": 199,
+        "startChar": 50,
+        "endLine": 199,
+        "endChar": 63
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f2fb5e24_8f3386f3",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c3bd1dfa_0a7f0cee",
       "range": {
         "startLine": 199,
         "startChar": 50,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "c5989b8f_5a4db10e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0dc8d080_80c2cad7",
+      "range": {
+        "startLine": 213,
+        "startChar": 21,
+        "endLine": 213,
+        "endChar": 23
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b90c10e3_48f7cbc3",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 13
@@ -174,6 +342,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Be careful with the race conditions with worker threads.",
+      "range": {
+        "startLine": 766,
+        "startChar": 0,
+        "endLine": 766,
+        "endChar": 15
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e04fdc29_69017361",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Will submit it with a separate patch.",
+      "parentUuid": "b90c10e3_48f7cbc3",
       "range": {
         "startLine": 766,
         "startChar": 0,
@@ -209,6 +401,30 @@
     },
     {
       "key": {
+        "uuid": "36af8337_73fc99b4",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b16110b_e5105c5b",
+      "range": {
+        "startLine": 784,
+        "startChar": 14,
+        "endLine": 784,
+        "endChar": 29
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "43412607_59670e6a",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 13
@@ -220,6 +436,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Is this not supposed to be 0 instead ?",
+      "range": {
+        "startLine": 785,
+        "startChar": 14,
+        "endLine": 785,
+        "endChar": 31
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2e62794_b28b89f5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43412607_59670e6a",
       "range": {
         "startLine": 785,
         "startChar": 14,
@@ -255,6 +495,30 @@
     },
     {
       "key": {
+        "uuid": "6024a3a4_1e03c818",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8c4989c8_745327db",
+      "range": {
+        "startLine": 852,
+        "startChar": 2,
+        "endLine": 852,
+        "endChar": 45
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0c9d75c0_86cac0bf",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 13
@@ -272,6 +536,24 @@
     },
     {
       "key": {
+        "uuid": "a1f27d35_9ee232ee",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c9d75c0_86cac0bf",
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "910095f9_f2dd2ed5",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 13
@@ -283,6 +565,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Could you please add all-port L3DSR case ?\nI know this is not part of the main use-case for L3DSR, but that would be useful for code-testing and validation. It could also improve the performance when port distinction is not necessary.",
+      "range": {
+        "startLine": 202,
+        "startChar": 2,
+        "endLine": 202,
+        "endChar": 29
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b1f5f426_8356f485",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "910095f9_f2dd2ed5",
       "range": {
         "startLine": 202,
         "startChar": 2,
@@ -318,6 +624,30 @@
     },
     {
       "key": {
+        "uuid": "9795c1c6_bcc6380a",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34fabc54_52ca42af",
+      "range": {
+        "startLine": 222,
+        "startChar": 6,
+        "endLine": 222,
+        "endChar": 15
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "eddbd38a_ed215a85",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 13
@@ -329,6 +659,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "This should be removed, and the port field should be used instead.",
+      "range": {
+        "startLine": 228,
+        "startChar": 6,
+        "endLine": 228,
+        "endChar": 20
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "545a6f66_2b3b2254",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eddbd38a_ed215a85",
       "range": {
         "startLine": 228,
         "startChar": 6,
@@ -364,6 +718,30 @@
     },
     {
       "key": {
+        "uuid": "1b01cfb8_64b5c4cc",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "73660de4_6e304ed4",
+      "range": {
+        "startLine": 236,
+        "startChar": 8,
+        "endLine": 236,
+        "endChar": 19
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0f335fd3_b7ea752b",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 13
@@ -375,6 +753,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "While reviewing the draft, I found ip_lkp_idx names a bit confusing. Particularly the fact that it comes from the dummy_vip pool.\nCould we call it \u0027vip_prefix_index\u0027 instead ? Since it really identifies the VIP prefix.",
+      "range": {
+        "startLine": 301,
+        "startChar": 6,
+        "endLine": 301,
+        "endChar": 16
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a9d8811_e8a126e4",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f335fd3_b7ea752b",
       "range": {
         "startLine": 301,
         "startChar": 6,
@@ -410,6 +812,30 @@
     },
     {
       "key": {
+        "uuid": "f0405f7d_a3b86397",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "used in lb_vip_add_adjacency and lb_as_stack.",
+      "parentUuid": "ff3d69bb_c0e0f390",
+      "range": {
+        "startLine": 349,
+        "startChar": 0,
+        "endLine": 350,
+        "endChar": 77
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cd34afea_ed7b5b87",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 13
@@ -421,6 +847,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "What is this used for ?",
+      "range": {
+        "startLine": 352,
+        "startChar": 0,
+        "endLine": 353,
+        "endChar": 73
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2708460b_36556796",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "used in lb_vip_add_adjacency and lb_as_stack.",
+      "parentUuid": "cd34afea_ed7b5b87",
       "range": {
         "startLine": 352,
         "startChar": 0,
@@ -456,6 +906,30 @@
     },
     {
       "key": {
+        "uuid": "f7cdc139_6ad3e0ed",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "98011562_7a626111",
+      "range": {
+        "startLine": 462,
+        "startChar": 2,
+        "endLine": 462,
+        "endChar": 17
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5fb3d919_b6bd4d4e",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 13
@@ -467,6 +941,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "The name does not really reflect what it does.\nMaybe use vip_index_per_port",
+      "range": {
+        "startLine": 533,
+        "startChar": 10,
+        "endLine": 533,
+        "endChar": 26
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fffbb117_1eb2cd0c",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5fb3d919_b6bd4d4e",
       "range": {
         "startLine": 533,
         "startChar": 10,
@@ -502,6 +1000,30 @@
     },
     {
       "key": {
+        "uuid": "20233e1b_8a5cee40",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1fb2a0d7_75793aca",
+      "range": {
+        "startLine": 176,
+        "startChar": 21,
+        "endLine": 176,
+        "endChar": 24
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cdaf3300_11541f5f",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 13
@@ -513,6 +1035,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "Should be removed (see proposal below)",
+      "range": {
+        "startLine": 293,
+        "startChar": 14,
+        "endLine": 293,
+        "endChar": 21
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aac54e6_d61c5ae8",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cdaf3300_11541f5f",
       "range": {
         "startLine": 293,
         "startChar": 14,
@@ -542,6 +1088,24 @@
     },
     {
       "key": {
+        "uuid": "3ab3a12f_b20bddfb",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8c506010_f47a0ac3",
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c1e19024_3a787491",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 13
@@ -553,6 +1117,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "I think there is a way to make this check unnecessary (this would improve performance).\nIn case the VIP for the port is not found, the lookup function should return a dummy VIP index (typically 0) that would cause the packets to be dropped. There is no dummy-VIP for now, but that could be done fairly easily by creating one during initialization.",
+      "range": {
+        "startLine": 325,
+        "startChar": 10,
+        "endLine": 329,
+        "endChar": 13
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6376cc2f_70d37ae2",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c1e19024_3a787491",
       "range": {
         "startLine": 325,
         "startChar": 10,
@@ -588,6 +1176,30 @@
     },
     {
       "key": {
+        "uuid": "256805ed_42d18b55",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d9460236_2f42b2aa",
+      "range": {
+        "startLine": 540,
+        "startChar": 22,
+        "endLine": 540,
+        "endChar": 43
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd2afe2b_1aead586",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 13
@@ -599,6 +1211,30 @@
       "writtenOn": "2018-07-27T09:15:23Z",
       "side": 1,
       "message": "We should find a way to avoid this. It would help the compiler optimize the code. Maybe use the dummy as_index.",
+      "range": {
+        "startLine": 541,
+        "startChar": 22,
+        "endLine": 541,
+        "endChar": 34
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "42a4bb28_72bfdb48",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-07-31T05:21:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dd2afe2b_1aead586",
       "range": {
         "startLine": 541,
         "startChar": 22,
