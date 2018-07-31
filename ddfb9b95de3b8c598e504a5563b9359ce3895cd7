@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f5735712_b04666b1",
+        "filename": "src/plugins/avf/avf_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-07-31T11:51:33Z",
+      "side": 1,
+      "message": "you can remove this now and write the specific delete handler.",
+      "revId": "ddfb9b95de3b8c598e504a5563b9359ce3895cd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
