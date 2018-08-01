@@ -238,6 +238,7 @@ u32 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw,
 			 u32 pool_index, u32 timer_id, u64 interval);
 
 void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle);
+int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle);
 void TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle,
 			   u64 interval);
 
