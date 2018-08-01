@@ -169,6 +169,7 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int r;
 
+  clib_mem_init_thread_safe (0, 256 << 20);
   unformat_init_command_line (&i, argv);
   r = test_svm_message_queue (&i);
   unformat_free (&i);
