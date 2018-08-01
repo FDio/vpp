@@ -696,7 +696,7 @@ VLIB_REGISTER_NODE (mpls_load_balance_node) = {
   .n_next_nodes = 1,
   .next_nodes =
   {
-      [0] = "mpls-drop",
+      [MPLS_LOOKUP_NEXT_DROP] = "mpls-drop",
   },
 
 };

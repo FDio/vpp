@@ -51,6 +51,7 @@
   _( 3, VLAN_2_DEEP, "vlan-2-deep")			\
   _( 4, VLAN_1_DEEP, "vlan-1-deep")			\
   _( 5, SPAN_CLONE, "span-clone")			\
+  _( 6, LOOP_COUNTER_VALID, 0)                          \
   _( 7, LOCALLY_ORIGINATED, "local")			\
   _( 8, IS_IP4, "ip4")					\
   _( 9, IS_IP6, "ip6")					\
@@ -357,7 +358,8 @@ typedef struct
     u8 source;
   } qos;
 
-  u8 __unused[2];
+  u8 loop_counter;
+  u8 __unused[1];
 
   /* Group Based Policy */
   struct

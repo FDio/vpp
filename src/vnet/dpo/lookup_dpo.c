@@ -29,6 +29,12 @@ static const char *const lookup_input_names[] = LOOKUP_INPUTS;
 static const char *const lookup_cast_names[] = LOOKUP_CASTS;
 
 /**
+ * If a packet encounters a lookup DPO more than the many times
+ * then we assume there is a loop in the forward graph and drop the packet
+ */
+#define MAX_LUKPS_PER_PACKET 4
+
+/**
  * @brief Enumeration of the lookup subtypes
  */
 typedef enum lookup_sub_type_t_
@@ -471,6 +477,23 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 		(cm, thread_index, lbi1, 1,
 		 vlib_buffer_length_in_chain (vm, b1));
 
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+            if (!(b1->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b1)->loop_counter = 0;
+                b1->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+            vnet_buffer2(b1)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = IP_LOOKUP_NEXT_DROP;
+            if (PREDICT_FALSE(vnet_buffer2(b1)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next1 = IP_LOOKUP_NEXT_DROP;
+
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 		lookup_trace_t *tr = vlib_add_trace (vm, node,
@@ -571,6 +594,16 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
 		 vlib_buffer_length_in_chain (vm, b0));
+
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = IP_LOOKUP_NEXT_DROP;
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -780,6 +813,23 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    hash_c0 = vnet_buffer (b0)->ip.flow_hash = 0;
 	    hash_c1 = vnet_buffer (b1)->ip.flow_hash = 0;
 
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+            if (!(b1->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b1)->loop_counter = 0;
+                b1->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+            vnet_buffer2(b1)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = IP_LOOKUP_NEXT_DROP;
+            if (PREDICT_FALSE(vnet_buffer2(b1)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next1 = IP_LOOKUP_NEXT_DROP;
+
 	    if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	    {
 		flow_hash_config0 = lb0->lb_hash_config;
@@ -909,6 +959,16 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 
 	    next0 = dpo0->dpoi_next_node;
 	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = IP_LOOKUP_NEXT_DROP;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
@@ -1085,10 +1145,20 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
                      vlib_buffer_length_in_chain (vm, b0));
             }
 
-          vnet_buffer (b0)->mpls.ttl = ((char*)hdr0)[3];
+            vnet_buffer (b0)->mpls.ttl = ((char*)hdr0)[3];
             vnet_buffer (b0)->mpls.exp = (((char*)hdr0)[2] & 0xe) >> 1;
             vnet_buffer (b0)->mpls.first = 1;
             vlib_buffer_advance(b0, sizeof(*hdr0));
+
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = MPLS_LOOKUP_NEXT_DROP;
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
@@ -1163,6 +1233,7 @@ VLIB_REGISTER_NODE (lookup_mpls_dst_itf_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_mpls_dst_itf_node, lookup_mpls_dst_itf)
 
 typedef enum lookup_ip_dst_mcast_next_t_ {
+    LOOKUP_IP_DST_MCAST_NEXT_DROP,
     LOOKUP_IP_DST_MCAST_NEXT_RPF,
     LOOKUP_IP_DST_MCAST_N_NEXT,
 } mfib_forward_lookup_next_t;
@@ -1249,6 +1320,16 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
 
             vnet_buffer (b0)->ip.adj_index[VLIB_TX] = mfei0;
 
+            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
+                vnet_buffer2(b0)->loop_counter = 0;
+                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+            }
+
+            vnet_buffer2(b0)->loop_counter++;
+
+            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+                next0 = LOOKUP_IP_DST_MCAST_NEXT_DROP;
+
             vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
                                             n_left_to_next, bi0, next0);
         }
@@ -1273,6 +1354,7 @@ VLIB_REGISTER_NODE (lookup_ip4_dst_mcast_node) = {
     .format_trace = format_lookup_trace,
     .n_next_nodes = LOOKUP_IP_DST_MCAST_N_NEXT,
     .next_nodes = {
+        [LOOKUP_IP_DST_MCAST_NEXT_DROP] = "ip4-drop",
         [LOOKUP_IP_DST_MCAST_NEXT_RPF] = "ip4-mfib-forward-rpf",
     },
 };
@@ -1295,6 +1377,7 @@ VLIB_REGISTER_NODE (lookup_ip6_dst_mcast_node) = {
     .format_trace = format_lookup_trace,
     .n_next_nodes = LOOKUP_IP_DST_MCAST_N_NEXT,
     .next_nodes = {
+        [LOOKUP_IP_DST_MCAST_NEXT_DROP] = "ip6-drop",
         [LOOKUP_IP_DST_MCAST_NEXT_RPF] = "ip6-mfib-forward-rpf",
     },
 };
