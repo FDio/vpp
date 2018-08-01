@@ -2181,8 +2181,15 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, STORE);
 	    vlib_prefetch_buffer_header (p3, STORE);
 
+#if __x86_64__
+	    CLIB_PREFETCH (p2->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p3->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, STORE);
+#else
 	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
 	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);
+#endif
 	  }
 
 	  pi0 = to_next[0] = from[0];
