@@ -14,7 +14,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = @CPU_FLAGS@ @DLMALLOC@ -Wall -I${top_srcdir} -I${top_builddir}
+AM_CFLAGS = @CPU_FLAGS@ -Wall -I${top_srcdir} -I${top_builddir}
 AM_LDFLAGS = -module -shared -avoid-version
 AM_LIBTOOLFLAGS = --quiet
 SUFFIXES = .api.h .api .api.json

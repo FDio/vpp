@@ -39,7 +39,7 @@ endif
 # bin_vpp_SOURCES +=				\
 #  vpp/api/gmon.c
 
-bin_vpp_CFLAGS = @APICLI@ @DLMALLOC@
+bin_vpp_CFLAGS = @APICLI@
 
 nobase_include_HEADERS +=			\
   vpp/api/vpe_all_api_h.h			\

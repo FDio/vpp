@@ -38,6 +38,8 @@
 #ifndef included_clib_h
 #define included_clib_h
 
+#include <vppinfra/config.h>
+
 /* Standalone means to not assume we are running on a Unix box. */
 #if ! defined (CLIB_STANDALONE) && ! defined (CLIB_LINUX_KERNEL)
 #define CLIB_UNIX

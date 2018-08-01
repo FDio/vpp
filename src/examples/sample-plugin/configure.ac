@@ -32,9 +32,6 @@ AC_DEFUN([ENABLE_ARG],
   m4_append([list_of_enabled], [$1], [, ])
 ])
 
-ENABLE_ARG(dlmalloc,    [Enable dlmalloc])
-AC_SUBST(DLMALLOC,              [-DUSE_DLMALLOC=${n_enable_dlmalloc}])
-
 CC_CHECK_FLAG("-Wno-address-of-packed-member")
 AS_IF([test "$cc_flag_check" = yes],
 	[CFLAGS="${CFLAGS} -Wno-address-of-packed-member"], [])

@@ -282,7 +282,7 @@ AS_IF([test "$cc_flag_check" = yes],
 AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(LOG2_CACHE_LINE_BYTES, [$with_log2_cache_line_bytes])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
-AC_SUBST(DLMALLOC,              [-DUSE_DLMALLOC=${n_enable_dlmalloc}])
+AC_SUBST(DLMALLOC,              [${n_enable_dlmalloc}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
