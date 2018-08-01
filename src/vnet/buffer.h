@@ -64,7 +64,8 @@
   _(16, L4_HDR_OFFSET_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
-  _(19, QOS_DATA_VALID, 0)
+  _(19, QOS_DATA_VALID, 0)                              \
+  _(20, LOOP_COUNTER_VALID, 0)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -372,7 +373,8 @@ typedef struct
     u8 source;
   } qos;
 
-  u8 __unused[2];
+  u8 loop_counter;
+  u8 __unused[1];
 
   /* Group Based Policy */
   struct

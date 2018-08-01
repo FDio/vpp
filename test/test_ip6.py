@@ -9,7 +9,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, DpoProto, VppMplsTable
+    VppMplsRoute, DpoProto, VppMplsTable, VppIpTable
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -1955,6 +1955,125 @@ class TestIP6Punt(VppTestCase):
                                    nh_addr,
                                    is_add=0,
                                    is_ip6=1)
+
+
+class TestIPDeag(VppTestCase):
+    """ IPv6 Deaggregate Routes """
+
+    def setUp(self):
+        super(TestIPDeag, self).setUp()
+
+        self.create_pg_interfaces(range(3))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIPDeag, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def test_ip_deag(self):
+        """ IP Deag Routes """
+
+        #
+        # Create a table to be used for:
+        #  1 - another destination address lookup
+        #  2 - a source address lookup
+        #
+        table_dst = VppIpTable(self, 1, is_ip6=1)
+        table_src = VppIpTable(self, 2, is_ip6=1)
+        table_dst.add_vpp_config()
+        table_src.add_vpp_config()
+
+        #
+        # Add a route in the default table to point to a deag/
+        # second lookup in each of these tables
+        #
+        route_to_dst = VppIpRoute(self, "1::1", 128,
+                                  [VppRoutePath("::",
+                                                0xffffffff,
+                                                nh_table_id=1,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1)
+        route_to_src = VppIpRoute(self, "1::2", 128,
+                                  [VppRoutePath("::",
+                                                0xffffffff,
+                                                nh_table_id=2,
+                                                is_source_lookup=1,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1)
+        route_to_dst.add_vpp_config()
+        route_to_src.add_vpp_config()
+
+        #
+        # packets to these destination are dropped, since they'll
+        # hit the respective default routes in the second table
+        #
+        p_dst = (Ether(src=self.pg0.remote_mac,
+                       dst=self.pg0.local_mac) /
+                 IPv6(src="5::5", dst="1::1") /
+                 TCP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+        p_src = (Ether(src=self.pg0.remote_mac,
+                       dst=self.pg0.local_mac) /
+                 IPv6(src="2::2", dst="1::2") /
+                 TCP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+        pkts_dst = p_dst * 257
+        pkts_src = p_src * 257
+
+        self.send_and_assert_no_replies(self.pg0, pkts_dst,
+                                        "IP in dst table")
+        self.send_and_assert_no_replies(self.pg0, pkts_src,
+                                        "IP in src table")
+
+        #
+        # add a route in the dst table to forward via pg1
+        #
+        route_in_dst = VppIpRoute(self, "1::1", 128,
+                                  [VppRoutePath(self.pg1.remote_ip6,
+                                                self.pg1.sw_if_index,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1,
+                                  table_id=1)
+        route_in_dst.add_vpp_config()
+
+        self.send_and_expect(self.pg0, pkts_dst, self.pg1)
+
+        #
+        # add a route in the src table to forward via pg2
+        #
+        route_in_src = VppIpRoute(self, "2::2", 128,
+                                  [VppRoutePath(self.pg2.remote_ip6,
+                                                self.pg2.sw_if_index,
+                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                  is_ip6=1,
+                                  table_id=2)
+        route_in_src.add_vpp_config()
+        self.send_and_expect(self.pg0, pkts_src, self.pg2)
+
+        #
+        # loop in the lookup DP
+        #
+        route_loop = VppIpRoute(self, "3::3", 128,
+                                [VppRoutePath("::",
+                                              0xffffffff,
+                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                is_ip6=1)
+        route_loop.add_vpp_config()
+
+        p_l = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src="3::4", dst="3::3") /
+               TCP(sport=1234, dport=1234) /
+               Raw('\xa5' * 100))
+
+        self.send_and_assert_no_replies(self.pg0, p_l * 257,
+                                        "IP lookup loop")
 
 
 class TestIP6Input(VppTestCase):

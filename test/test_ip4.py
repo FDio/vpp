@@ -1246,6 +1246,24 @@ class TestIPDeag(VppTestCase):
         route_in_src.add_vpp_config()
         self.send_and_expect(self.pg0, pkts_src, self.pg2)
 
+        #
+        # loop in the lookup DP
+        #
+        route_loop = VppIpRoute(self, "2.2.2.3", 32,
+                                [VppRoutePath("0.0.0.0",
+                                              0xffffffff,
+                                              nh_table_id=0)])
+        route_loop.add_vpp_config()
+
+        p_l = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IP(src="2.2.2.4", dst="2.2.2.3") /
+               TCP(sport=1234, dport=1234) /
+               Raw('\xa5' * 100))
+
+        self.send_and_assert_no_replies(self.pg0, p_l * 257,
+                                        "IP lookup loop")
+
 
 class TestIPInput(VppTestCase):
     """ IPv4 Input Exceptions """
