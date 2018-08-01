@@ -199,8 +199,8 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
-  vl_input_queue = svm_queue_init (input_queue_size, sizeof (uword),
-				   getpid (), 0);
+  vl_input_queue = svm_queue_alloc_and_init (input_queue_size, sizeof (uword),
+					     getpid ());
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&svm->mutex);
 

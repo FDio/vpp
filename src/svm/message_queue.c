@@ -39,12 +39,12 @@ svm_msg_q_t *
 svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 {
   svm_msg_q_ring_cfg_t *ring_cfg;
+  uword rings_sz = 0, mq_sz;
   svm_msg_q_ring_t *ring;
   u8 *base, *rings_ptr;
-  uword rings_sz = 0;
   vec_header_t *vh;
+  u32 vec_sz, q_sz;
   svm_msg_q_t *mq;
-  u32 vec_sz;
   int i;
 
   ASSERT (cfg);
@@ -58,13 +58,17 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
       rings_sz += (uword) ring_cfg->nitems * ring_cfg->elsize;
     }
 
-  base = clib_mem_alloc_aligned (sizeof (svm_msg_q_t) + vec_sz + rings_sz,
-				 CLIB_CACHE_LINE_BYTES);
+  q_sz = sizeof (svm_queue_t) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
+  mq_sz = sizeof (svm_msg_q_t) + vec_sz + rings_sz + q_sz;
+  base = clib_mem_alloc_aligned (mq_sz, CLIB_CACHE_LINE_BYTES);
   if (!base)
     return 0;
 
   mq = (svm_msg_q_t *) base;
-  vh = (vec_header_t *) (base + sizeof (svm_msg_q_t));
+  mq->q = svm_queue_init (base + sizeof (svm_msg_q_t), cfg->q_nitems,
+			  sizeof (svm_msg_q_msg_t));
+  mq->q->consumer_pid = cfg->consumer_pid;
+  vh = (vec_header_t *) ((u8 *) mq->q + q_sz);
   vh->len = cfg->n_rings;
   mq->rings = (svm_msg_q_ring_t *) (vh + 1);
   rings_ptr = (u8 *) mq->rings + vec_sz;
@@ -82,8 +86,6 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 	  rings_ptr += (uword) ring->nitems * ring->elsize;
 	}
     }
-  mq->q = svm_queue_init (cfg->q_nitems, sizeof (svm_msg_q_msg_t),
-			  cfg->consumer_pid, 0);
 
   return mq;
 }

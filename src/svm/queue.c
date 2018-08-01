@@ -27,42 +27,21 @@
 #include <vppinfra/cache.h>
 #include <svm/queue.h>
 #include <vppinfra/time.h>
-#include <signal.h>
 
-/*
- * svm_queue_init
- *
- * nels = number of elements on the queue
- * elsize = element size, presumably 4 and cacheline-size will
- *          be popular choices.
- * pid   = consumer pid
- *
- * The idea is to call this function in the queue consumer,
- * and e-mail the queue pointer to the producer(s).
- *
- * The vpp process / main thread allocates one of these
- * at startup; its main input queue. The vpp main input queue
- * has a pointer to it in the shared memory segment header.
- *
- * You probably want to be on an svm data heap before calling this
- * function.
- */
 svm_queue_t *
-svm_queue_init (int nels,
-		int elsize, int consumer_pid, int signal_when_queue_non_empty)
+svm_queue_init (void *base, int nels, int elsize)
 {
   svm_queue_t *q;
   pthread_mutexattr_t attr;
   pthread_condattr_t cattr;
 
-  q = clib_mem_alloc_aligned (sizeof (svm_queue_t)
-			      + nels * elsize, CLIB_CACHE_LINE_BYTES);
+  q = (svm_queue_t *) base;
   memset (q, 0, sizeof (*q));
 
   q->elsize = elsize;
   q->maxsize = nels;
-  q->consumer_pid = consumer_pid;
-  q->signal_when_queue_non_empty = signal_when_queue_non_empty;
+  q->producer_evtfd = -1;
+  q->consumer_evtfd = -1;
 
   memset (&attr, 0, sizeof (attr));
   memset (&cattr, 0, sizeof (cattr));
@@ -86,6 +65,20 @@ svm_queue_init (int nels,
     clib_unix_warning ("cond_init2");
 
   return (q);
+}
+
+svm_queue_t *
+svm_queue_alloc_and_init (int nels, int elsize, int consumer_pid)
+{
+  svm_queue_t *q;
+
+  q = clib_mem_alloc_aligned (sizeof (svm_queue_t)
+			      + nels * elsize, CLIB_CACHE_LINE_BYTES);
+  memset (q, 0, sizeof (*q));
+  q = svm_queue_init (q, nels, elsize);
+  q->consumer_pid = consumer_pid;
+
+  return q;
 }
 
 /*
@@ -117,6 +110,23 @@ svm_queue_is_full (svm_queue_t * q)
   return q->cursize == q->maxsize;
 }
 
+static inline void
+svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
+{
+  if (q->producer_evtfd == -1)
+    {
+      (void) pthread_cond_broadcast (&q->condvar);
+    }
+  else
+    {
+      int __clib_unused rv, fd;
+      u64 data = 1;
+      ASSERT (q->consumer_evtfd != -1);
+      fd = is_prod ? q->producer_evtfd : q->consumer_evtfd;
+      rv = write (fd, &data, sizeof (data));
+    }
+}
+
 /*
  * svm_queue_add_nolock
  */
@@ -146,11 +156,7 @@ svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
     q->tail = 0;
 
   if (need_broadcast)
-    {
-      (void) pthread_cond_broadcast (&q->condvar);
-      if (q->signal_when_queue_non_empty)
-	kill (q->consumer_pid, q->signal_when_queue_non_empty);
-    }
+    svm_queue_send_signal (q, 1);
   return 0;
 }
 
@@ -212,11 +218,8 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
     q->tail = 0;
 
   if (need_broadcast)
-    {
-      (void) pthread_cond_broadcast (&q->condvar);
-      if (q->signal_when_queue_non_empty)
-	kill (q->consumer_pid, q->signal_when_queue_non_empty);
-    }
+    svm_queue_send_signal (q, 1);
+
   pthread_mutex_unlock (&q->mutex);
 
   return 0;
@@ -276,11 +279,8 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
     q->tail = 0;
 
   if (need_broadcast)
-    {
-      (void) pthread_cond_broadcast (&q->condvar);
-      if (q->signal_when_queue_non_empty)
-	kill (q->consumer_pid, q->signal_when_queue_non_empty);
-    }
+    svm_queue_send_signal (q, 1);
+
   pthread_mutex_unlock (&q->mutex);
 
   return 0;
@@ -353,7 +353,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
     q->head = 0;
 
   if (need_broadcast)
-    (void) pthread_cond_broadcast (&q->condvar);
+    svm_queue_send_signal (q, 0);
 
   pthread_mutex_unlock (&q->mutex);
 
@@ -385,7 +385,7 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
   pthread_mutex_unlock (&q->mutex);
 
   if (need_broadcast)
-    (void) pthread_cond_broadcast (&q->condvar);
+    svm_queue_send_signal (q, 0);
 
   return 0;
 }
@@ -408,6 +408,18 @@ svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
   q->cursize--;
 
   return 0;
+}
+
+void
+svm_queue_set_producer_event_fd (svm_queue_t * q, int fd)
+{
+  q->producer_evtfd = fd;
+}
+
+void
+svm_queue_set_consumer_event_fd (svm_queue_t * q, int fd)
+{
+  q->consumer_evtfd = fd;
 }
 
 /*
