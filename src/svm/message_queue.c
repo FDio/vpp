@@ -82,8 +82,8 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 	  rings_ptr += (uword) ring->nitems * ring->elsize;
 	}
     }
-  mq->q = svm_queue_init (cfg->q_nitems, sizeof (svm_msg_q_msg_t),
-			  cfg->consumer_pid, 0);
+  mq->q = svm_queue_alloc_and_init (cfg->q_nitems, sizeof (svm_msg_q_msg_t),
+			  cfg->consumer_pid);
 
   return mq;
 }

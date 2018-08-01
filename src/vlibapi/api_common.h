@@ -314,9 +314,6 @@ typedef struct
    */
   vl_api_registration_t *my_registration;
 
-  /** (Historical) signal-based queue non-empty signal, to be removed */
-  i32 vlib_signal;
-
   /** vpp/vlib input queue length */
   u32 vlib_input_queue_length;
 
