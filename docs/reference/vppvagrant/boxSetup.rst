@@ -82,7 +82,7 @@ __________
 
 Once you're satisfied with your *Vagrantfile*, boot the box with:
 
-.. code-block:: console
+.. code-block:: shell
 
     $ vagrant up
 
@@ -106,19 +106,19 @@ To confirm it is up, show the status and information of Vagrant boxes with:
 
   To poweroff your VM, type:
 
-  .. code-block:: console
+  .. code-block:: shell
 
      $ vagrant halt <id>
 
   To resume your VM, type:
 
-  .. code-block:: console
+  .. code-block:: shell
 
      $ vagrant resume <id>
      
   To destroy your VM, type:
 
-  .. code-block:: console
+  .. code-block:: shell
 
      $ vagrant destroy <id>
 
