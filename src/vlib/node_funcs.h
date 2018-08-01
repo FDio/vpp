@@ -818,7 +818,15 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
     {
       /* Waiting for both event and clock? */
       if (p_flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT)
-	delete_from_wheel = 1;
+	{
+	  if (!TW (tw_timer_handle_is_free) (
+	      (TWT (tw_timer_wheel) *) nm->timing_wheel,
+	      p->stop_timer_handle))
+	    delete_from_wheel = 1;
+	  else
+	    /* timer just popped so it should already be on the list */
+	    add_to_pending = 0;
+	}
       else
 	/* Waiting only for clock.  Event will be queue and may be
 	   handled when timer expires. */
@@ -836,7 +844,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
       vec_add1 (nm->data_from_advancing_timing_wheel, x);
       if (delete_from_wheel)
 	TW (tw_timer_stop) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
-			    p->stop_timer_handle);
+	                    p->stop_timer_handle);
     }
 
   return data_to_be_written_by_caller;
