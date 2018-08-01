@@ -24,6 +24,6 @@ Adding your own ENV variables is easy. For example, if you wanted to setup proxi
 
 Once you're finished with *env.sh* script, and you are in the directory containing *env.sh*, run the script to set the ENV variables with:
 
-.. code-block:: console
+.. code-block:: shell
    
    $ source ./env.sh

@@ -7,13 +7,13 @@ ___________________
 
 First you should have root privileges:
 
-.. code-block:: console
+.. code-block:: shell
 
-  $ sudo bash
+  ~$ sudo bash
 
 Then install packages for containers such as lxc:
 
-.. code-block:: console
+.. code-block:: shell
 
   # apt-get install bridge-utils lxc
 
@@ -26,9 +26,9 @@ Since we want to ping between two containers, we'll need to **add to this file**
 
 Look at the contents of *default.conf*, which should initially look like this:
 
-.. code-block:: console
+.. code-block:: shell
     
-    # cat /etc/lxc/default.conf 
+    # cat /etc/lxc/default.conf
     lxc.network.type = veth
     lxc.network.link = lxcbr0
     lxc.network.flags = up
@@ -40,15 +40,15 @@ Now you will *append to this file* so that each container you create will have a
 
 You can do this by piping *echo* output into *tee*, where each line is separated with a newline character *\\n* as shown below. Alternatively, you can manually add to this file with a text editor such as **vi**, but make sure you have root privileges. 
 
-.. code-block:: console
+.. code-block:: shell
 
     # echo -e "lxc.network.name = veth0\nlxc.network.type = veth\nlxc.network.name = veth_link1"  | sudo tee -a /etc/lxc/default.conf
 
 Inspect the contents again to verify the file was indeed modified:
 
-.. code-block:: console
+.. code-block:: shell
 
-    # cat /etc/lxc/default.conf 
+    # cat /etc/lxc/default.conf
     lxc.network.type = veth
     lxc.network.link = lxcbr0
     lxc.network.flags = up
@@ -62,7 +62,7 @@ After this, we're ready to create the containers.
 
 Creates an Ubuntu Xenial container named "cone".
 
-.. code-block:: console
+.. code-block:: shell
 
       # lxc-create -t download -n cone -- --dist ubuntu --release xenial --arch amd64 --keyserver hkp://p80.pool.sks-keyservers.net:80
 
@@ -79,7 +79,7 @@ If successful, you'll get an output similar to this:
 
 Make another container "ctwo".
 
-.. code-block:: console
+.. code-block:: shell
 
      # lxc-create -t download -n ctwo -- --dist ubuntu --release xenial --arch amd64 --keyserver hkp://p80.pool.sks-keyservers.net:80
 
@@ -87,7 +87,7 @@ Make another container "ctwo".
 List your containers to verify they exist:
 
 
-.. code-block:: console
+.. code-block:: shell
 
      # lxc-ls
      cone ctwo
@@ -95,13 +95,13 @@ List your containers to verify they exist:
 
 Start the first container:
 
-.. code-block:: console
+.. code-block:: shell
     
     # lxc-start --name cone
 
 And verify its running:
 
-.. code-block:: console
+.. code-block:: shell
     
     # lxc-ls --fancy
     NAME STATE   AUTOSTART GROUPS IPV4 IPV6 
@@ -114,7 +114,7 @@ And verify its running:
     Here are some `lxc container commands <https://help.ubuntu.com/lts/serverguide/lxc.html.en-GB#lxc-basic-usage>`_ you may find useful:
 
 
-    .. code-block:: console
+    .. code-block:: shell
 
           sudo lxc-ls --fancy
           sudo lxc-start --name u1 --daemon
