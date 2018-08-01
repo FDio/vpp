@@ -15,8 +15,9 @@
 vppplugins_LTLIBRARIES += unittest_plugin.la
 
 unittest_plugin_la_SOURCES = \
-  unittest/unittest.c \
+  unittest/bihash_test.c \
   unittest/tcp_test.c \
-  unittest/bihash_test.c
+  unittest/unittest.c \
+  unittest/util_test.c
 
 # vi:syntax=automake
