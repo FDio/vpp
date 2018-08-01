@@ -24,6 +24,14 @@
  */
 u32 mpls_lookup_to_replicate_edge;
 
+/**
+ * Enum of statically configred MPLS lookup next nodes
+ */
+typedef enum mpls_lookup_next_t_
+{
+    MPLS_LOOKUP_NEXT_DROP = 0,
+} mpls_lookup_next_t;
+
 /*
  * Compute flow hash. 
  * We'll use it to select which adjacency to use for this flow.  And other things.
