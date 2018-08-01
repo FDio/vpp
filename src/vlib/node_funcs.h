@@ -818,7 +818,15 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
     {
       /* Waiting for both event and clock? */
       if (p_flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT)
-	delete_from_wheel = 1;
+	{
+	  if (!TW (tw_timer_handle_is_free)
+	      ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+	       p->stop_timer_handle))
+	    delete_from_wheel = 1;
+	  else
+	    /* timer just popped so process should already be on the list */
+	    add_to_pending = 0;
+	}
       else
 	/* Waiting only for clock.  Event will be queue and may be
 	   handled when timer expires. */

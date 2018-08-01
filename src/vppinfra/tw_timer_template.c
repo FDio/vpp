@@ -376,6 +376,11 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   pool_put_index (tw->timers, handle);
 }
 
+int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
+{
+  return pool_is_free_index (tw->timers, handle);
+}
+
 /**
  * @brief Update a tw timer
  * @param tw_timer_wheel_t * tw timer wheel object pointer
