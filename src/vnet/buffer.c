@@ -42,6 +42,9 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "qos %d.%d ",
 		vnet_buffer2 (b)->qos.bits, vnet_buffer2 (b)->qos.source);
 
+  if (b->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)
+    a = format (a, "loop-counter %d ", vnet_buffer2 (b)->loop_counter);
+
   s = format (s, "%U", format_vlib_buffer, b);
   if (a)
     s = format (s, "\n%U%v", format_white_space, indent, a);
