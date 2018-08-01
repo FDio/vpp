@@ -393,13 +393,13 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
     vlib_input_queue_length = am->vlib_input_queue_length;
 
   shmem_hdr->vl_input_queue =
-    svm_queue_init (vlib_input_queue_length, sizeof (uword),
-		    getpid (), am->vlib_signal);
+    svm_queue_alloc_and_init (vlib_input_queue_length, sizeof (uword),
+			      getpid ());
 
 #define _(sz,n)                                                 \
     do {                                                        \
         ring_alloc_t _rp;                                       \
-        _rp.rp = svm_queue_init ((n), (sz), 0, 0); \
+        _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0); 	\
         _rp.size = (sz);                                        \
         _rp.nitems = n;                                         \
         _rp.hits = 0;                                           \
@@ -413,7 +413,7 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
 #define _(sz,n)                                                 \
     do {                                                        \
         ring_alloc_t _rp;                                       \
-        _rp.rp = svm_queue_init ((n), (sz), 0, 0); \
+        _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0); 	\
         _rp.size = (sz);                                        \
         _rp.nitems = n;                                         \
         _rp.hits = 0;                                           \
@@ -428,7 +428,6 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
 void
 vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
 {
-  api_main_t *am = &api_main;
   vl_api_shm_elem_config_t *c;
   ring_alloc_t *rp;
   u32 size;
@@ -444,9 +443,8 @@ vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
     switch (c->type)
       {
       case VL_API_QUEUE:
-	hdr->vl_input_queue = svm_queue_init (c->count,
-					      c->size,
-					      getpid (), am->vlib_signal);
+	hdr->vl_input_queue = svm_queue_alloc_and_init (c->count, c->size,
+							getpid ());
 	continue;
       case VL_API_VLIB_RING:
 	vec_add2 (hdr->vl_rings, rp, 1);
@@ -460,7 +458,7 @@ vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
       }
 
     size = sizeof (ring_alloc_t) + c->size;
-    rp->rp = svm_queue_init (c->count, size, 0, 0);
+    rp->rp = svm_queue_alloc_and_init (c->count, size, 0);
     rp->size = size;
     rp->nitems = c->count;
     rp->hits = 0;

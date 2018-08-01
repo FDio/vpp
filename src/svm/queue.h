@@ -32,32 +32,43 @@ typedef struct _svm_queue
   int maxsize;
   int elsize;
   int consumer_pid;
-  int signal_when_queue_non_empty;
+  int producer_evtfd;
+  int consumer_evtfd;
   char data[0];
 } svm_queue_t;
 
 typedef enum
 {
-  /**
-   * blocking call
-   */
-  SVM_Q_WAIT = 0,
-
-  /**
-   * non-blocking call
-   */
-  SVM_Q_NOWAIT,
-
-  /**
-   * blocking call, return on signal or time-out
-   */
-  SVM_Q_TIMEDWAIT,
+  SVM_Q_WAIT = 0,	/**< blocking call - must be used only in combination
+			     with condvars */
+  SVM_Q_NOWAIT,		/**< non-blocking call - works with both condvar and
+			     eventfd signaling */
+  SVM_Q_TIMEDWAIT,	/**< blocking call, returns on signal or time-out -
+			     must be used only in combination with condvars */
 } svm_q_conditional_wait_t;
 
-svm_queue_t *svm_queue_init (int nels,
-			     int elsize,
-			     int consumer_pid,
-			     int signal_when_queue_non_empty);
+/**
+ * Allocate and initialize svm queue
+ *
+ * @param nels		number of elements on the queue
+ * @param elsize	element size, presumably 4 and cacheline-size will
+ *          		be popular choices.
+ * @param pid   	consumer pid
+ * @return 		a newly initialized svm queue
+ *
+ * The idea is to call this function in the queue consumer,
+ * and e-mail the queue pointer to the producer(s).
+ *
+ * The vpp process / main thread allocates one of these
+ * at startup; its main input queue. The vpp main input queue
+ * has a pointer to it in the shared memory segment header.
+ *
+ * You probably want to be on an svm data heap before calling this
+ * function.
+ */
+svm_queue_t *svm_queue_alloc_and_init (int nels, int elsize,
+				       int consumer_pid);
+svm_queue_t *svm_queue_init (void *base, int nels, int elsize);
 void svm_queue_free (svm_queue_t * q);
 int svm_queue_add (svm_queue_t * q, u8 * elem, int nowait);
 int svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait);
@@ -76,6 +87,25 @@ int svm_queue_sub_raw (svm_queue_t * q, u8 * elem);
  * @param elem		pointer element data to add
  */
 void svm_queue_add_raw (svm_queue_t * q, u8 * elem);
+
+/**
+ * Set producer's event fd
+ *
+ * When the producer must generate an event it writes 1 to the provided fd.
+ * Once this is set, condvars are not used anymore for signaling.
+ */
+void svm_queue_set_producer_event_fd (svm_queue_t * q, int fd);
+
+/**
+ * Set consumer's event fd
+ *
+ * When the consumer must generate an event it writes 1 to the provided fd.
+ * Although in practice the two fds point to the same underlying file
+ * description, because the producer and consumer are different processes
+ * the descriptors will be different. It's the caller's responsibility to
+ * ensure the file descriptors are properly exchanged between the two peers.
+ */
+void svm_queue_set_consumer_event_fd (svm_queue_t * q, int fd);
 
 /*
  * DEPRECATED please use svm_queue_t instead
