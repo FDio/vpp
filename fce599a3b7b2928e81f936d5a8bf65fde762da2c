@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cce89f38_d2cc0789",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2184,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-01T06:51:50Z",
+      "side": 1,
+      "message": "Have you actually tested this with both \"normal\" ip4 and gre traffic? Because the buffer header is not yet prefetched, the result can be slower for pure ip4 traffic and lead to no improvements for gre.",
+      "range": {
+        "startLine": 2184,
+        "startChar": 20,
+        "endLine": 2184,
+        "endChar": 43
+      },
+      "revId": "fce599a3b7b2928e81f936d5a8bf65fde762da2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
