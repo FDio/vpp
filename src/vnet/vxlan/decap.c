@@ -66,16 +66,13 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
 		    vxlan_header_t * vxlan0, vxlan_tunnel_t ** stats_t0)
 {
   /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-  vxlan4_tunnel_key_t key4 = {
-    .key = {
-	    [0] = ip4_0->src_address.as_u32,
-	    [1] = (((u64) fib_index) << 32) | vxlan0->vni_reserved,
-	    }
-  };
+  vxlan4_tunnel_key_t key4;
+  key4.key[1] = ((u64) fib_index << 32) | vxlan0->vni_reserved;
 
-  if (PREDICT_FALSE
-      (clib_bihash_key_compare_16_8 (key4.key, cache->key) == 0))
+  if (PREDICT_FALSE (key4.key[1] != cache->key[1] ||
+		     ip4_0->src_address.as_u32 != (u32) cache->key[0]))
     {
+      key4.key[0] = ip4_0->src_address.as_u32;
       int rv =
 	clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
       if (PREDICT_FALSE (rv != 0))
@@ -115,7 +112,6 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
 		    vxlan_header_t * vxlan0, vxlan_tunnel_t ** stats_t0)
 {
   /* Make sure VXLAN tunnel exist according to packet SIP and VNI */
-
   vxlan6_tunnel_key_t key6 = {
     .key = {
 	    [0] = ip6_0->src_address.as_u64[0],
