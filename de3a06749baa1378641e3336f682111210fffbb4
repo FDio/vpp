@@ -1,0 +1,290 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "41a5f378_6ceb9221",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3961,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "missing following check for output feture before protocol\nif (is_output_feature)\n                {\n                  if (PREDICT_FALSE(nat_not_translate_output_feature_fwd(\n                      sm, ip0, thread_index, now, vm, b0)))\n                    goto trace0;\n                }",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ead71874_d13feafd",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3983,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "if (is_output_feature)\n                    {\n                      if (PREDICT_FALSE(nat44_ed_not_translate_output_feature(\n                          sm, ip0, ip0-\u003eprotocol, udp0-\u003esrc_port,\n                          udp0-\u003edst_port, thread_index, sw_if_index0)))\n                        goto trace0;\n                    }\n                  else\n                    {\n                      if (PREDICT_FALSE(nat44_ed_not_translate(sm, node,\n                          sw_if_index0, ip0, proto0, rx_fib_index0,\n                          thread_index)))\n                        goto trace0;\n                    }",
+      "range": {
+        "startLine": 3981,
+        "startChar": 0,
+        "endLine": 3983,
+        "endChar": 32
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fcad71b5_e942fc53",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4045,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "twice nat?",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b0e6a735_81db80af",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4051,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "twice nat?",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "daee9845_cb1cc719",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 522,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "what is purpose of this?",
+      "range": {
+        "startLine": 505,
+        "startChar": 0,
+        "endLine": 522,
+        "endChar": 17
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "258cf5d7_45cd4d4d",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "this not work with fragmented packet (only with first fragment)",
+      "range": {
+        "startLine": 535,
+        "startChar": 0,
+        "endLine": 536,
+        "endChar": 71
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f93a5878_f5321e4b",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3058,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "twice nat?",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "13a53ed5_2f2c9fa4",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3064,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "twice nat?",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8314cc18_354c6b91",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1030,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "i think nat config should not be here",
+      "range": {
+        "startLine": 1027,
+        "startChar": 0,
+        "endLine": 1030,
+        "endChar": 62
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "efa18f52_775d994b",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "why this?",
+      "range": {
+        "startLine": 1034,
+        "startChar": 0,
+        "endLine": 1037,
+        "endChar": 48
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "18945277_3a5b7912",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1124,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "i think nat config should not be here",
+      "range": {
+        "startLine": 1113,
+        "startChar": 0,
+        "endLine": 1124,
+        "endChar": 54
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "76896058_d08babed",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1151,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "i think nat config should not be here",
+      "range": {
+        "startLine": 1148,
+        "startChar": 0,
+        "endLine": 1151,
+        "endChar": 62
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cba183a4_b6e567f8",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 3451,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "test tcp and icmp in one test",
+      "range": {
+        "startLine": 3429,
+        "startChar": 0,
+        "endLine": 3451,
+        "endChar": 52
+      },
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d85e7dd_7a8cd771",
+        "filename": "test/test_nat.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 3452,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-01T07:08:44Z",
+      "side": 1,
+      "message": "missing test for in+out interface!",
+      "revId": "de3a06749baa1378641e3336f682111210fffbb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
