@@ -51,7 +51,6 @@ VLIB API Libraries
 M:	Dave Barach <dave@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
-F:	src/vlibsocket/
 
 VNET Bidirectonal Forwarding Detection (BFD)
 M:	Klement Sekera <ksekera@cisco.com>
