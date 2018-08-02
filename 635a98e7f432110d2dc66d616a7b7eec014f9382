@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "93e2cde8_9e4649b1",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2188,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-08-02T07:27:02Z",
+      "side": 1,
+      "message": "fetching sizeof(ip) header from the current pointer will mean (in an ideal world0 that there is no cache miss when updating the checksum.\nI wonder though if we can do better. If we specualte we are writing sizeof (ethernet_header_t) bytes of rewrite, then we can prefetch from current-14 and size 20+14.\na perf comparison would be interesting to see.",
+      "revId": "635a98e7f432110d2dc66d616a7b7eec014f9382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
