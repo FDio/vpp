@@ -39,7 +39,6 @@ Details of the changes leading up to this version of VPP can be found under
 | @ref src/vlib          | VPP application library                     |
 | @ref src/vlibapi       | VPP API library                             |
 | @ref src/vlibmemory    | VPP Memory management                       |
-| @ref src/vlibsocket    | VPP Socket I/O                              |
 | @ref src/vnet          | VPP networking                              |
 | @ref src/vpp           | VPP application                             |
 | @ref src/vpp-api       | VPP application API bindings                |
