@@ -4,11 +4,11 @@
 List/Install/Uninstall VPP
 **************************
 
-With option "4" the user can list, install or uninstall the FD.io VPP packages. If there
-are packages already installed, the packages will be listed and then the user will be asked
-if the packages should be uninstalled. If no packages are installed the user will be asked if
-the FD.io packages should be installed. The packages installed will be the latest released
-packages.
+With command option "4" the user can list, install, or uninstall the FD.io VPP
+packages. If there are packages already installed, then the packages will be listed
+and the user will be asked if the packages should be uninstalled. If no packages are
+installed, then the user will be asked if the FD.io packages should be installed. The
+packages installed will be the latest released packages.
 
 Uninstalling the packages:
 

@@ -8,7 +8,7 @@ Setup the fd.io Repository - Centos 7
 Update the OS
 -------------
 
-It is probably a good idea to update and upgrade the OS before starting:
+Before starting the repository setup, it is a good idea to first update and upgrade the OS.
 
 .. code-block:: console
 

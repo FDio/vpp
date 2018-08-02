@@ -4,9 +4,9 @@
 Show System Information
 ***********************
 
-With option "1" the user can inspect the system characteristics.
+With command option "1" the user can inspect the system characteristics.
 
-This example shows a system that VPP has not yet been installed.
+This example shows a system that has not yet had VPP installed.
 
 .. code-block:: console
 

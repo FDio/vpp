@@ -1,13 +1,14 @@
 .. _config-command-three:
 
-***********************
+************************
 Apply the Configuration
-***********************
+************************
 
-After the configuration files have been examined and are correct. The configuration
-can be applied. After the configuration is applied use option "1" to check the
-system configuration. Notice the default is NOT to change the grub file. If the option
-to change the grub command line is selected a reboot of the system will be required.
+After the configuration files have been examined and verified as correct, then the
+configuration can be applied by using command option '3'. After the configuration
+is applied, use option "1" to check the system configuration. Notice the default is
+NOT to change the grub file. If the option to change the grub command line is selected,
+then a reboot of the system will be required.
 
 .. code-block:: console
 

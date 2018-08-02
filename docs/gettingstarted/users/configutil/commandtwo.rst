@@ -4,10 +4,12 @@
 Dry Run
 *******
 
-With the config utility dry run option the important configuration files are created
-so that the user can examine them and then if they look reasonable apply them with
-option 3. The files for **Ubuntu** can be found in the root directory /usr/local/vpp/vpp-config/dryrun
-and for **Centos** in /usr/vpp/vpp-config/dryrun.
+With command option '2' (the config utility *dry run* option) the important
+configuration files are created so that the user can examine them, and then
+if they look reasonable apply them with command option 3. 
+
+The files for **Ubuntu** can be found in the root directory */usr/local/vpp/vpp-config/dryrun*
+and for **Centos** in directory */usr/vpp/vpp-config/dryrun*.
 
 The important configuration files are **/etc/vpp/startup.conf**, **/etc/sysctl.d/80-vpp.conf**,
 and **/etc/default/grub** 
@@ -15,32 +17,32 @@ and **/etc/default/grub**
 Startup.conf
 ============
 
-FD.io VPP startup parameters are configured in the file **/etc/vpp/startup.conf**. The
-utility creates this file under the vpp-config root directory in vpp/startup.conf.
-the values in this file come from the questions asked about the devices, cores, rx queues,
+FD.io VPP startup parameters are configured in the file **/etc/vpp/startup.conf**.
+The utility creates this file under the *vpp-config* root directory in the file *vpp/startup.conf*.
+The values in this file come from the questions asked about the devices, cores, rx queues,
 and tcp parameters.
 
 80-vpp.conf
-===========
+============
 
 The huge page configuration comes by setting values in the file **/etc/sysctl.d/80-vpp.conf**.
-The utility creates the file under the root directory in sysctl.d/80-vpp.conf. When asked the
-question about huge pages the correct values are put in the dryrin file.
+The utility creates the file under the root directory in the file *sysctl.d/80-vpp.conf*. When asked the
+question about huge pages the correct values are put in the dryrun file.
 
 grub
 ====
 
-CPUs can be isolated for use by VPP or other processes such as VMs using the grub configuration
-file. This file is **/etc/default/grub**. This file must be modified with care. It is possible to
-make your system unusable if this file is modified incorrectly. The dry run file is located under
-the vpp-config root directory and then default.
+CPUs can be isolated for use by VPP or other processes such as VMs using the grub
+configuration file. This file is **/etc/default/grub**. This file must be modified with
+care. It is possible to make your system unusable if this file is modified incorrectly.
+The dry run file is located under the *vpp-config* root directory and then default.
 
-*********************
+***********************
 Executing the Dry Run
-*********************
+***********************
 
-The following is an example of how to execute a dry run. Defaults should be picked first and then
-the values increased accordingly.
+The following is an example of how to execute a dry run. Defaults should be picked first,
+and then the values increased accordingly.
 
 .. code-block:: console
 

@@ -8,14 +8,15 @@ The vpp-config utility provides the user with several different menus. This allo
 user to configure ports, some performance characteristics, the number of huge pages
 and install/uninstall the released FD.io packages.
 
-It is recommended that the menu options are executed in this order.
+It is recommended that the menu command options, noted below as *"x)"*, are run in
+this order (command option 4 first, then options 1,2,3):
 
 #. :ref:`4) List/Install/Uninstall VPP <config-command-four>`
 #. :ref:`1) Show basic system information <config-command-one>`
 #. :ref:`2) Dry Run <config-command-two>`
 #. :ref:`3) Full Configuration <config-command-three>`
 
-Once vpp-config is installed as a root user execute the following
+Once vpp-config is installed as a root user, then run the following code:
 
 .. code-block:: console
 
@@ -44,8 +45,8 @@ Once vpp-config is installed as a root user execute the following
 Default Values
 ==============
 
-If you do not choose to modify the default for any of the questions prompted by vpp-config,
-you may press the ENTER key to select the default options:
+If you do not choose to modify the default for any of the questions prompted by vpp-config, then
+you may press the **ENTER** key to select the default options:
 
 * Questions that ask [Y/n], the capital letter Y is the default answer.
 * Numbers have their default within brackets, such as in [1024], the 1024 is the default.   

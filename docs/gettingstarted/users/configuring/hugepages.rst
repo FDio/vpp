@@ -3,11 +3,12 @@
 Huge Pages
 ----------
 
-VPP requires *'hugepages'* to run. VPP will overwrite existing hugepage
-settings when VPP is installed. By default, VPP sets the number of hugepages on
-a system to 1024 2M hugepages (1G hugepages are no longer supported). This is
-the number of hugepages on the system, not just used by VPP. When VPP is
-installed, the following file is copied to the system and used to apply the
+VPP requires *'hugepages'* to run. VPP will overwrite existing hugepage settings
+when VPP is installed. By default, VPP sets the number of hugepages on a system
+to 1024 2M hugepages (1G hugepages are no longer supported). This is the number
+of hugepages on the system, not just used by VPP. 
+
+When VPP is installed, the following file is copied to the system and used to apply the
 hugepage settings on VPP installation and system reboot:
 
 .. code-block:: console
