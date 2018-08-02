@@ -85,6 +85,8 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   api_main_t *am = &api_main;
   msgbuf_t *mb = (msgbuf_t *) (elem - offsetof (msgbuf_t, data));
   vl_api_registration_t *sock_rp;
+  clib_file_main_t *fm = &file_main;
+  clib_error_t *error;
   clib_file_t *cf;
 
   cf = vl_api_registration_file (rp);
@@ -102,10 +104,21 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   ASSERT (sock_rp);
 
   /* Add the msgbuf_t to the output vector */
-  vl_socket_add_pending_output_no_flush (cf, sock_rp, (u8 *) mb,
-					 sizeof (*mb));
-  /* Send the message */
-  vl_socket_add_pending_output (cf, sock_rp, elem, ntohl (mb->data_len));
+  vec_add (sock_rp->output_vector, (u8 *) mb, sizeof (*mb));
+
+  /* Try to send the message and save any error like
+   * we do in the input epoll loop */
+  vec_add (sock_rp->output_vector, elem, ntohl (mb->data_len));
+  error = clib_file_write (cf);
+  unix_save_error (&unix_main, error);
+
+  /* If we didn't finish sending everything, wait for tx space */
+  if (vec_len (sock_rp->output_vector) > 0
+      && !(cf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
+    {
+      cf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
+      fm->file_update (cf, UNIX_FILE_UPDATE_MODIFY);
+    }
 
 #if CLIB_DEBUG > 1
   output_length = sizeof (*mb) + ntohl (mb->data_len);
@@ -266,47 +279,6 @@ vl_socket_read_ready (clib_file_t * uf)
   return 0;
 }
 
-void
-vl_socket_add_pending_output (clib_file_t * uf,
-			      vl_api_registration_t * rp,
-			      u8 * buffer, uword buffer_bytes)
-{
-  clib_file_main_t *fm = &file_main;
-
-  vec_add (rp->output_vector, buffer, buffer_bytes);
-  if (vec_len (rp->output_vector) > 0)
-    {
-      int skip_update = 0 != (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
-      uf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-      if (!skip_update)
-	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
-    }
-}
-
-void
-vl_socket_add_pending_output_no_flush (clib_file_t * uf,
-				       vl_api_registration_t * rp,
-				       u8 * buffer, uword buffer_bytes)
-{
-  vec_add (rp->output_vector, buffer, buffer_bytes);
-}
-
-static void
-socket_del_pending_output (clib_file_t * uf,
-			   vl_api_registration_t * rp, uword n_bytes)
-{
-  clib_file_main_t *fm = &file_main;
-
-  vec_delete (rp->output_vector, n_bytes, 0);
-  if (vec_len (rp->output_vector) <= 0)
-    {
-      int skip_update = 0 == (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
-      uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-      if (!skip_update)
-	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
-    }
-}
-
 clib_error_t *
 vl_socket_write_ready (clib_file_t * uf)
 {
@@ -317,21 +289,27 @@ vl_socket_write_ready (clib_file_t * uf)
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
 
   /* Flush output vector. */
-  n = write (uf->file_descriptor,
-	     rp->output_vector, vec_len (rp->output_vector));
+  n = write (uf->file_descriptor, rp->output_vector,
+	     vec_len (rp->output_vector));
   if (n < 0)
     {
 #if DEBUG > 2
       clib_warning ("write error, close the file...\n");
 #endif
       clib_file_del (fm, uf);
-
       vl_socket_free_registration_index (rp - socket_main.registration_pool);
       return 0;
     }
-
   else if (n > 0)
-    socket_del_pending_output (uf, rp, n);
+    {
+      vec_delete (rp->output_vector, n, 0);
+      if (vec_len (rp->output_vector) <= 0
+	  && (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
+	{
+	  uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
+	  fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	}
+    }
 
   return 0;
 }
@@ -616,19 +594,18 @@ reply:
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
 
-  vl_api_send_msg (regp, (u8 *) rmp);
+  /*
+   * Note: The reply message needs to make it out the back door
+   * before we send the magic fd message. That's taken care of by
+   * the send function.
+   */
+  vl_socket_api_send (regp, (u8 *) rmp);
 
   if (rv != 0)
     return;
 
-  /*
-   * We need the reply message to make it out the back door
-   * before we send the magic fd message so force a flush
-   */
-  cf = vl_api_registration_file (regp);
-  cf->write_function (cf);
-
   /* Send the magic "here's your sign (aka fd)" socket message */
+  cf = vl_api_registration_file (regp);
   vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
 }
 
