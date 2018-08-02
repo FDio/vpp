@@ -312,6 +312,12 @@ application_init (application_t * app, u32 api_client_index, u8 * app_name,
     }
   else
     {
+      if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+	{
+	  clib_warning ("mq eventfds can only be used if socket transport is "
+			"used for api");
+	  return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+	}
       seg_type = SSVM_SEGMENT_PRIVATE;
     }
 
@@ -336,6 +342,8 @@ application_init (application_t * app, u32 api_client_index, u8 * app_name,
     props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   if (options[APP_OPTIONS_EVT_QUEUE_SIZE])
     props->evt_q_size = options[APP_OPTIONS_EVT_QUEUE_SIZE];
+  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
     app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
   props->segment_type = seg_type;
@@ -1125,8 +1133,8 @@ application_local_session_connect (u32 table_index, application_t * client,
       return seg_index;
     }
   seg = segment_manager_get_segment_w_lock (sm, seg_index);
-  sq = segment_manager_alloc_queue (seg, props->evt_q_size);
-  cq = segment_manager_alloc_queue (seg, cprops->evt_q_size);
+  sq = segment_manager_alloc_queue (seg, props);
+  cq = segment_manager_alloc_queue (seg, cprops);
   ls->server_evt_q = pointer_to_uword (sq);
   ls->client_evt_q = pointer_to_uword (cq);
   rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
