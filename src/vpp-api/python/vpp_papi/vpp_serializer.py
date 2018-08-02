@@ -232,17 +232,15 @@ class VPPUnionType():
         for k, v in data.items():
             logger.debug("Key: {} Value: {}".format(k, v))
             b = self.packers[k].pack(v, kwargs)
-            offset = self.size - self.packers[k].size
             break
         r = bytearray(self.size)
-        r[offset:] = b
+        r[:len(b)] = b
         return r
 
     def unpack(self, data, offset=0, result=None):
         r = []
         for k, p in self.packers.items():
-            union_offset = self.size - p.size
-            r.append(p.unpack(data, offset + union_offset))
+            r.append(p.unpack(data, offset))
         return self.tuple._make(r)
 
 
