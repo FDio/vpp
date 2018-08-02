@@ -156,6 +156,13 @@ clib_file_get (clib_file_main_t * fm, u32 file_index)
   return pool_elt_at_index (fm->file_pool, file_index);
 }
 
+always_inline clib_error_t *
+clib_file_write (clib_file_t * f)
+{
+  f->write_events++;
+  return f->write_function (f);
+}
+
 #endif /* included_clib_file_h */
 
 /*
