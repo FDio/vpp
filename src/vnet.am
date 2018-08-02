@@ -419,6 +419,7 @@ API_FILES += 					\
  vnet/ip/punt.api
 
 libvnet_multiversioning_sources +=		\
+ vnet/ip/ip4_forward.c				\
  vnet/ip/ip4_input.c
 
 ########################################
