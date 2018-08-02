@@ -168,12 +168,14 @@ typedef struct vppcom_cfg_t_
   u8 app_scope_global;
   u8 *namespace_id;
   u64 namespace_secret;
+  u8 use_mq_eventfd;
   f64 app_timeout;
   f64 session_timeout;
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
   u8 *vpp_api_filename;
+  u8 *vpp_api_socket_name;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
@@ -181,8 +183,17 @@ void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
 typedef struct vcl_cut_through_registration_
 {
   svm_msg_q_t *mq;
+  svm_msg_q_t *peer_mq;
   u32 sid;
+  u32 epoll_evt_conn_index;	/*< mq evt connection index part of
+				    the mqs evtfd epoll (if used) */
 } vcl_cut_through_registration_t;
+
+typedef struct vcl_mq_evt_conn_
+{
+  svm_msg_q_t * mq;
+  int mq_fd;
+} vcl_mq_evt_conn_t;
 
 typedef struct vppcom_main_t_
 {
@@ -202,6 +213,12 @@ typedef struct vppcom_main_t_
   /* Session pool */
   clib_spinlock_t sessions_lockp;
   vcl_session_t *sessions;
+
+  /** Message queues epoll fd. Initialized only if using mqs with eventfds */
+  int mqs_epfd;
+
+  /** Pool of event message queue event connections */
+  vcl_mq_evt_conn_t *mq_evt_conns;
 
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
@@ -236,6 +253,12 @@ typedef struct vppcom_main_t_
 
   /** Pool of cut through registrations */
   vcl_cut_through_registration_t *cut_through_registrations;
+
+  /** Lock for accessing ct registration pool */
+  clib_spinlock_t ct_registration_lock;
+
+  /** Cut-through registration by mq address hash table */
+  uword *ct_registration_by_mq;
 
   /** Flag indicating that a new segment is being mounted */
   volatile u32 mounting_segment;
@@ -304,6 +327,149 @@ vcl_session_get_w_handle (u64 handle)
   uword *p;
   if ((p = hash_get (vcm->session_index_by_vpp_handles, handle)))
     return vcl_session_get ((u32) p[0]);
+  return 0;
+}
+
+static vcl_cut_through_registration_t *
+vcl_ct_registration_lock_and_alloc (void)
+{
+  vcl_cut_through_registration_t *cr;
+  pool_get (vcm->cut_through_registrations, cr);
+  clib_spinlock_lock (&vcm->ct_registration_lock);
+  memset (cr, 0, sizeof (*cr));
+  cr->epoll_evt_conn_index = -1;
+  return cr;
+}
+
+static u32
+vcl_ct_registration_index (vcl_cut_through_registration_t *ctr)
+{
+  return (ctr - vcm->cut_through_registrations);
+}
+
+static void
+vcl_ct_registration_unlock (void)
+{
+  clib_spinlock_unlock (&vcm->ct_registration_lock);
+}
+
+static vcl_cut_through_registration_t *
+vcl_ct_registration_get (u32 ctr_index)
+{
+  if (pool_is_free_index (vcm->cut_through_registrations, ctr_index))
+    return 0;
+  return pool_elt_at_index (vcm->cut_through_registrations, ctr_index);
+}
+
+static vcl_cut_through_registration_t *
+vcl_ct_registration_lock_and_lookup (uword mq_addr)
+{
+  uword *p;
+  clib_spinlock_lock (&vcm->ct_registration_lock);
+  p = hash_get (vcm->ct_registration_by_mq, mq_addr);
+  if (!p)
+    return 0;
+  return vcl_ct_registration_get (p[0]);
+}
+
+static void
+vcl_ct_registration_lookup_add (uword mq_addr, u32 ctr_index)
+{
+  hash_set (vcm->ct_registration_by_mq, mq_addr, ctr_index);
+}
+
+static void
+vcl_ct_registration_del (u32 ct_index)
+{
+  pool_put_index (vcm->cut_through_registrations, ct_index);
+}
+
+static vcl_session_t *
+vcl_ct_session_get_from_fifo (svm_fifo_t * f, u8 type)
+{
+  vcl_session_t *s;
+  s = vcl_session_get (f->client_session_index);
+  if (s)
+    {
+      /* rx fifo */
+      if (type == 0 && s->rx_fifo == f)
+	return s;
+      /* tx fifo */
+      if (type == 1 && s->tx_fifo == f)
+	return s;
+    }
+  s = vcl_session_get (f->master_session_index);
+  if (s)
+    {
+      if (type == 0 && s->rx_fifo == f)
+	return s;
+      if (type == 1 && s->tx_fifo == f)
+	return s;
+    }
+  return 0;
+}
+
+static vcl_mq_evt_conn_t *
+vcl_mq_evt_conn_alloc (void)
+{
+  vcl_mq_evt_conn_t *mqc;
+  pool_get (vcm->mq_evt_conns, mqc);
+  memset (mqc, 0, sizeof (*mqc));
+  return mqc;
+}
+
+static u32
+vcl_mq_evt_conn_index (vcl_mq_evt_conn_t *mqc)
+{
+  return (mqc - vcm->mq_evt_conns);
+}
+
+static vcl_mq_evt_conn_t *
+vcl_mq_evt_conn_get (u32 mq_conn_idx)
+{
+  return pool_elt_at_index (vcm->mq_evt_conns, mq_conn_idx);
+}
+
+static int
+vcl_mq_epoll_add_evfd (int mq_fd)
+{
+  struct epoll_event e = { 0 };
+  vcl_mq_evt_conn_t *mqc;
+  u32 mqc_index;
+
+  if (vcm->mqs_epfd || mq_fd == -1)
+    return -1;
+
+  mqc = vcl_mq_evt_conn_alloc ();
+  mqc_index = vcl_mq_evt_conn_index (mqc);
+  mqc->mq_fd = mq_fd;
+
+  e.events = EPOLLIN;
+  e.data.u32 = mqc_index;
+  if (epoll_ctl (vcm->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
+    {
+      clib_warning ("failed to add mq eventfd to mq epoll fd");
+      return -1;
+    }
+
+  return mqc_index;
+}
+
+static int
+vcl_mq_epoll_del_evfd (u32 mqc_index)
+{
+  vcl_mq_evt_conn_t *mqc;
+  int mq_fd;
+
+  if (vcm->mqs_epfd || mqc_index == ~0)
+    return -1;
+
+  mqc = vcl_mq_evt_conn_get (mqc_index);
+  if (epoll_ctl (vcm->mqs_epfd, EPOLL_CTL_DEL, mqc->mq_fd, 0) < 0)
+    {
+      clib_warning ("failed to del mq eventfd to mq epoll fd");
+      return -1;
+    }
   return 0;
 }
 

@@ -217,8 +217,7 @@ vppcom_cfg_read_file (char *conf_fname)
   int fd;
   unformat_input_t _input, *input = &_input;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 vc_cfg_input = 0;
-  u8 *chroot_path;
+  u8 vc_cfg_input = 0, *chroot_path;
   struct stat s;
   u32 uid, gid, q_len;
 
@@ -280,6 +279,13 @@ vppcom_cfg_read_file (char *conf_fname)
 		    " (%s)", getpid (), chroot_path,
 		    vcl_cfg->vpp_api_filename);
 	      chroot_path = 0;	/* Don't vec_free() it! */
+	    }
+	  else if (unformat (line_input, "api-socket-name %s",
+	                     &vcl_cfg->vpp_api_socket_name))
+	    {
+	      vec_terminate_c_string (vcl_cfg->vpp_api_socket_name);
+	      VDBG (0, "VCL<%d>: configured api-socket-name (%s)", getpid (),
+	            vcl_cfg->vpp_api_socket_name);
 	    }
 	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
 	    {
@@ -463,6 +469,11 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VDBG (0, "VCL<%d>: configured namespace_id %v",
 		    getpid (), vcl_cfg->namespace_id);
 	    }
+	  else if (unformat (line_input, "use-mq-eventfd %lu",
+			     &vcl_cfg->use_mq_eventfd))
+	    {
+	      VDBG (0, "VCL<%d>: configured with mq with eventfd", getpid ());
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;
@@ -588,6 +599,13 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       VDBG (0, "VCL<%d>: configured app_scope_global (%u) from "
 	    VPPCOM_ENV_APP_SCOPE_GLOBAL "!", getpid (),
 	    vcm->cfg.app_scope_global);
+    }
+  env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
+  if (env_var_str)
+    {
+      vcm->cfg.vpp_api_socket_name = format (0, "%s%c", env_var_str, 0);
+      VDBG (0, "VCL<%d>: configured api-socket-name (%s)", getpid (),
+            vcl_cfg->vpp_api_socket_name);
     }
 }
 
