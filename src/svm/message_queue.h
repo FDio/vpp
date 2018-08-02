@@ -215,6 +215,40 @@ void *svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 svm_msg_q_ring_t *svm_msg_q_ring (svm_msg_q_t * mq, u32 ring_index);
 
 /**
+ * Set event fd for queue consumer
+ *
+ * If set, queue will exclusively use eventfds for signaling. Moreover,
+ * afterwards, the queue should only be used in non-blocking mode. Waiting
+ * for events should be done externally using something like epoll.
+ *
+ * @param mq		message queue
+ * @param fd		consumer eventfd
+ */
+void svm_msg_q_set_consumer_eventfd (svm_msg_q_t *mq, int fd);
+
+/**
+ * Set event fd for queue producer
+ *
+ * If set, queue will exclusively use eventfds for signaling. Moreover,
+ * afterwards, the queue should only be used in non-blocking mode. Waiting
+ * for events should be done externally using something like epoll.
+ *
+ * @param mq		message queue
+ * @param fd		producer eventfd
+ */
+void svm_msg_q_set_producer_eventfd (svm_msg_q_t *mq, int fd);
+
+/**
+ * Allocate event fd for queue consumer
+ */
+int svm_msg_q_alloc_consumer_eventfd (svm_msg_q_t *mq);
+
+/**
+ * Allocate event fd for queue consumer
+ */
+int svm_msg_q_alloc_producer_eventfd (svm_msg_q_t *mq);
+
+/**
  * Check if message queue is full
  */
 static inline u8
@@ -316,6 +350,18 @@ svm_msg_q_timedwait (svm_msg_q_t * mq, double timeout)
   if (pthread_cond_timedwait (&mq->q->condvar, &mq->q->mutex, &ts))
     return -1;
   return 0;
+}
+
+static inline int
+svm_msg_q_get_consumer_eventfd (svm_msg_q_t *mq)
+{
+  return mq->q->consumer_evtfd;
+}
+
+static inline int
+svm_msg_q_get_producer_eventfd (svm_msg_q_t *mq)
+{
+  return mq->q->producer_evtfd;
 }
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
