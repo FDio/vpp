@@ -2,18 +2,16 @@
 
 import os
 import subprocess
-import unittest
 
-from framework import VppTestCase, running_extended_tests
+from framework import VppTestCase
 
 # Api files path
-API_FILES_PATH = "japi/java"
+API_FILES_PATH = "vpp/vpp-api/java"
 
 # Registry jar file name prefix
 REGISTRY_JAR_PREFIX = "jvpp-registry"
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class TestJVpp(VppTestCase):
     """ JVPP Core Test Case """
 
