@@ -53,20 +53,30 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
   vlib_buffer_t *p;
   ip4_header_t *ip4;
   u16 mtu, ptr, len, max, rem, offset, ip_frag_id, ip_frag_offset;
-  u8 *packet, more;
+  u8 *packet = 0, more;
 
   vec_add1 (*buffer, pi);
   p = vlib_get_buffer (vm, pi);
   offset = vnet_buffer (p)->ip_frag.header_offset;
   mtu = vnet_buffer (p)->ip_frag.mtu;
-  packet = (u8 *) vlib_buffer_get_current (p);
-  ip4 = (ip4_header_t *) (packet + offset);
+  ip4 = (ip4_header_t *) (vlib_buffer_get_current (p) + offset);
+
+  if (p->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      vec_validate (packet, clib_net_to_host_u16 (ip4->length));
+      vlib_buffer_contents (vm, pi, packet);
+    }
+  else
+    {
+      packet = (u8 *) vlib_buffer_get_current (p);
+    }
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (*ip4);
+
   ptr = 0;
   max = (mtu - sizeof (*ip4) - vnet_buffer (p)->ip_frag.header_offset) & ~0x7;
 
-  if (rem > (p->current_length - offset - sizeof (*ip4)))
+  if (rem > (vlib_buffer_length_in_chain (vm, p) - offset - sizeof (*ip4)))
     {
       *error = IP_FRAG_ERROR_MALFORMED;
       return;
@@ -82,12 +92,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 pi, u32 ** buffer,
       clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT))
     {
       *error = IP_FRAG_ERROR_DONT_FRAGMENT_SET;
-      return;
-    }
-
-  if (p->flags & VLIB_BUFFER_NEXT_PRESENT)
-    {
-      *error = IP_FRAG_ERROR_MALFORMED;
       return;
     }
 
