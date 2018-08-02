@@ -248,7 +248,7 @@ vac_timeout_thread_fn (void *arg)
       rv = pthread_cond_timedwait (&pm->timeout_cancel_cv,
 				   &pm->timeout_lock, &ts);
       pthread_mutex_unlock(&pm->timeout_lock);
-      if (rv == ETIMEDOUT)
+      if (rv == ETIMEDOUT && pm->timeout_loop)
 	{
 	  ep = vl_msg_api_alloc (sizeof (*ep));
 	  ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_READ_TIMEOUT);
@@ -404,7 +404,6 @@ vac_disconnect (void)
   }
   if (pm->timeout_thread_handle) {
     /* cancel, wake then join the timeout thread */
-    clib_warning("vac_disconnect cnacel");
     pm->timeout_loop = 0;
     set_timeout(0);
     pthread_join(pm->timeout_thread_handle, (void **) &junk);

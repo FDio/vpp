@@ -247,7 +247,8 @@ class VppTestCase(unittest.TestCase):
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
                            "disable", "}", "plugin", "unittest_plugin.so",
-                           "{", "enable", "}", "}", ]
+                           "{", "enable", "}", "}",
+                           "socksvr {socket-name /tmp/vpp-api.sock}"]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
