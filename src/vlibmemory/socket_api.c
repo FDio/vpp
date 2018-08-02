@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * socksvr_vlib.c
+ * socket_api.c
  *
  * Copyright (c) 2009 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -411,8 +411,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE_REPLY);
-  rp->handle = (uword) regp;
-  rp->index = (uword) regp->vl_api_registration_pool_index;
+  rp->index = htonl (regp->vl_api_registration_pool_index);
   rp->context = mp->context;
   rp->response = htonl (rv);
 
@@ -428,23 +427,37 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
   vl_api_registration_t *regp;
   vl_api_sockclnt_delete_reply_t *rp;
 
-  if (!pool_is_free_index (socket_main.registration_pool, mp->index))
+  regp = vl_api_client_index_to_registration (mp->client_index);
+  if (!regp)
+    return;
+
+  u32 reg_index = ntohl (mp->index);
+  rp = vl_msg_api_alloc (sizeof (*rp));
+  rp->_vl_msg_id = htons (VL_API_SOCKCLNT_DELETE_REPLY);
+  rp->context = mp->context;
+
+  if (!pool_is_free_index (socket_main.registration_pool, reg_index))
     {
-      regp = pool_elt_at_index (socket_main.registration_pool, mp->index);
+      clib_file_t *cf;
 
-      rp = vl_msg_api_alloc (sizeof (*rp));
-      rp->_vl_msg_id = htons (VL_API_SOCKCLNT_DELETE_REPLY);
-      rp->handle = mp->handle;
       rp->response = htonl (1);
-
       vl_api_send_msg (regp, (u8 *) rp);
 
+      /*
+       * We need the reply message to make it out before we close
+       * socket.
+       */
+      cf = vl_api_registration_file (regp);
+      cf->write_function (cf);
+
       vl_api_registration_del_file (regp);
-      vl_socket_free_registration_index (mp->index);
+      vl_socket_free_registration_index (reg_index);
     }
   else
     {
-      clib_warning ("unknown client ID %d", mp->index);
+      rp->response = htonl (-1);
+      vl_api_send_msg (regp, (u8 *) rp);
+      clib_warning ("unknown client ID %d", reg_index);
     }
 }
 
