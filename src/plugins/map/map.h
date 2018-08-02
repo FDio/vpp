@@ -451,10 +451,6 @@ ip6_map_get_domain (u32 mdi,
   //#error "How can you be sure this domain is not shared?"
 #endif
 
-  *map_domain_index = mdi;
-  return pool_elt_at_index(mm->domains, mdi);
-
-#ifdef TODO
   u32 lbi = ip4_fib_forwarding_lookup(0, addr);
   const dpo_id_t *dpo = load_balance_get_bucket(lbi, 0);
   if (PREDICT_TRUE(dpo->dpoi_type == map_dpo_type ||
@@ -465,7 +461,6 @@ ip6_map_get_domain (u32 mdi,
     }
   *error = MAP_ERROR_NO_DOMAIN;
   return NULL;
-#endif
 }
 
 map_ip4_reass_t *
