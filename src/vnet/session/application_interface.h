@@ -42,7 +42,7 @@ typedef struct _vnet_app_attach_args_t
    * Results
    */
   ssvm_private_t *segment;
-  u64 app_event_queue_address;
+  svm_msg_q_t *app_evt_q;
   u32 app_index;
 } vnet_app_attach_args_t;
 
@@ -138,6 +138,7 @@ typedef enum
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")		\
   _(USE_MQ_FOR_CTRL_MSGS, "Use message queue for ctr msgs")	\
+  _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
 
 typedef enum _app_options
 {
@@ -152,6 +153,27 @@ typedef enum _app_options_flags
   foreach_app_options_flags
 #undef _
 } app_options_flags_t;
+
+#define foreach_fd_type						\
+  _(VPP_MQ_SEGMENT, "Fd for vpp's event mq segment")		\
+  _(MEMFD_SEGMENT, "Fd for memfd segment")			\
+  _(MQ_EVENTFD, "Event fd used by message queue")		\
+  _(VPP_MQ_EVENTFD, "Event fd used by vpp's message queue")	\
+
+typedef enum session_fd_type_
+{
+#define _(sym, str) SESSION_FD_##sym,
+  foreach_fd_type
+#undef _
+  SESSION_N_FD_TYPE
+} session_fd_type_t;
+
+typedef enum session_fd_flag_
+{
+#define _(sym, str) SESSION_FD_F_##sym = 1 << SESSION_FD_##sym,
+  foreach_fd_type
+#undef _
+} session_fd_flag_t;
 
 int vnet_bind_uri (vnet_bind_args_t *);
 int vnet_unbind_uri (vnet_unbind_args_t * a);

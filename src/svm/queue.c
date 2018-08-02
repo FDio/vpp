@@ -27,6 +27,7 @@
 #include <vppinfra/cache.h>
 #include <svm/queue.h>
 #include <vppinfra/time.h>
+#include <vppinfra/lock.h>
 
 svm_queue_t *
 svm_queue_init (void *base, int nels, int elsize)
@@ -127,6 +128,63 @@ svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
     }
 }
 
+static inline void
+svm_queue_wait_inline (svm_queue_t * q)
+{
+  if (q->producer_evtfd == -1)
+    {
+      pthread_cond_wait (&q->condvar, &q->mutex);
+    }
+  else
+    {
+      /* Fake a wait for event. We could use epoll but that would mean
+       * using yet another fd. Should do for now */
+      u32 cursize = q->cursize;
+      pthread_mutex_unlock (&q->mutex);
+      while (q->cursize == cursize)
+	CLIB_PAUSE ();
+      pthread_mutex_lock (&q->mutex);
+    }
+}
+
+void
+svm_queue_wait (svm_queue_t * q)
+{
+  svm_queue_wait_inline (q);
+}
+
+static inline int
+svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
+{
+  struct timespec ts;
+  ts.tv_sec = unix_time_now () + (u32) timeout;
+  ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
+
+  if (q->producer_evtfd == -1)
+    {
+      return pthread_cond_timedwait (&q->condvar, &q->mutex, &ts);
+    }
+  else
+    {
+      double max_time = unix_time_now () + timeout;
+      u32 cursize = q->cursize;
+      int rv;
+
+      pthread_mutex_unlock (&q->mutex);
+      while (q->cursize == cursize && unix_time_now () < max_time)
+	CLIB_PAUSE ();
+      rv = unix_time_now () < max_time ? 0 : ETIMEDOUT;
+      pthread_mutex_lock (&q->mutex);
+      return rv;
+    }
+}
+
+int
+svm_queue_timedwait (svm_queue_t * q, double timeout)
+{
+  return svm_queue_timedwait_inline (q, timeout);
+}
+
 /*
  * svm_queue_add_nolock
  */
@@ -139,9 +197,7 @@ svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
   if (PREDICT_FALSE (q->cursize == q->maxsize))
     {
       while (q->cursize == q->maxsize)
-	{
-	  (void) pthread_cond_wait (&q->condvar, &q->mutex);
-	}
+	svm_queue_wait_inline (q);
     }
 
   tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
@@ -170,6 +226,9 @@ svm_queue_add_raw (svm_queue_t * q, u8 * elem)
 
   q->tail = (q->tail + 1) % q->maxsize;
   q->cursize++;
+
+  if (q->cursize == 1)
+    svm_queue_send_signal (q, 1);
 }
 
 
@@ -201,9 +260,7 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
 	  return (-2);
 	}
       while (q->cursize == q->maxsize)
-	{
-	  (void) pthread_cond_wait (&q->condvar, &q->mutex);
-	}
+	svm_queue_wait_inline (q);
     }
 
   tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
@@ -253,9 +310,7 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
 	  return (-2);
 	}
       while (q->cursize + 1 == q->maxsize)
-	{
-	  (void) pthread_cond_wait (&q->condvar, &q->mutex);
-	}
+	svm_queue_wait_inline (q);
     }
 
   tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
@@ -317,13 +372,9 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
 	}
       else if (cond == SVM_Q_TIMEDWAIT)
 	{
-	  struct timespec ts;
-	  ts.tv_sec = unix_time_now () + time;
-	  ts.tv_nsec = 0;
 	  while (q->cursize == 0 && rc == 0)
-	    {
-	      rc = pthread_cond_timedwait (&q->condvar, &q->mutex, &ts);
-	    }
+	    rc = svm_queue_timedwait_inline (q, time);
+
 	  if (rc == ETIMEDOUT)
 	    {
 	      pthread_mutex_unlock (&q->mutex);
@@ -333,9 +384,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
       else
 	{
 	  while (q->cursize == 0)
-	    {
-	      (void) pthread_cond_wait (&q->condvar, &q->mutex);
-	    }
+	    svm_queue_wait_inline (q);
 	}
     }
 

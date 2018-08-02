@@ -15,6 +15,7 @@
 
 #include <svm/message_queue.h>
 #include <vppinfra/mem.h>
+#include <sys/eventfd.h>
 
 static inline svm_msg_q_ring_t *
 svm_msg_q_ring_inline (svm_msg_q_t * mq, u32 ring_index)
@@ -233,6 +234,38 @@ void
 svm_msg_q_sub_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   svm_queue_sub_raw (mq->q, (u8 *) msg);
+}
+
+void
+svm_msg_q_set_consumer_eventfd (svm_msg_q_t * mq, int fd)
+{
+  mq->q->consumer_evtfd = fd;
+}
+
+void
+svm_msg_q_set_producer_eventfd (svm_msg_q_t * mq, int fd)
+{
+  mq->q->producer_evtfd = fd;
+}
+
+int
+svm_msg_q_alloc_consumer_eventfd (svm_msg_q_t * mq)
+{
+  int fd;
+  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+    return -1;
+  svm_msg_q_set_consumer_eventfd (mq, fd);
+  return 0;
+}
+
+int
+svm_msg_q_alloc_producer_eventfd (svm_msg_q_t * mq)
+{
+  int fd;
+  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+    return -1;
+  svm_msg_q_set_producer_eventfd (mq, fd);
+  return 0;
 }
 
 /*

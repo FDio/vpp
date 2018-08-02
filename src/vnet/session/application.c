@@ -312,6 +312,12 @@ application_init (application_t * app, u32 api_client_index, u8 * app_name,
     }
   else
     {
+      if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+	{
+	  clib_warning ("mq eventfds can only be used if socket transport is "
+			"used for api");
+	  return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+	}
       seg_type = SSVM_SEGMENT_PRIVATE;
     }
 
@@ -336,6 +342,8 @@ application_init (application_t * app, u32 api_client_index, u8 * app_name,
     props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   if (options[APP_OPTIONS_EVT_QUEUE_SIZE])
     props->evt_q_size = options[APP_OPTIONS_EVT_QUEUE_SIZE];
+  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
     app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
   props->segment_type = seg_type;
@@ -970,6 +978,8 @@ application_free_local_session (application_t * app, local_session_t * s)
 local_session_t *
 application_get_local_session (application_t * app, u32 session_index)
 {
+  if (pool_is_free_index (app->local_sessions, session_index))
+    return 0;
   return pool_elt_at_index (app->local_sessions, session_index);
 }
 
@@ -1078,6 +1088,23 @@ application_stop_local_listen (application_t * server, session_handle_t lh)
   return 0;
 }
 
+static void
+application_local_session_fix_eventds (svm_msg_q_t * sq, svm_msg_q_t * cq)
+{
+  int fd;
+
+  /*
+   * segment manager initializes only the producer eventds, since vpp is
+   * typically the producer. But for local sessions, we also pass to the
+   * apps the mqs they listen on for events from peer apps, so they are also
+   * consumer fds.
+   */
+  fd = svm_msg_q_get_producer_eventfd (sq);
+  svm_msg_q_set_consumer_eventfd (sq, fd);
+  fd = svm_msg_q_get_producer_eventfd (cq);
+  svm_msg_q_set_consumer_eventfd (cq, fd);
+}
+
 int
 application_local_session_connect (u32 table_index, application_t * client,
 				   application_t * server,
@@ -1125,8 +1152,12 @@ application_local_session_connect (u32 table_index, application_t * client,
       return seg_index;
     }
   seg = segment_manager_get_segment_w_lock (sm, seg_index);
-  sq = segment_manager_alloc_queue (seg, props->evt_q_size);
-  cq = segment_manager_alloc_queue (seg, cprops->evt_q_size);
+  sq = segment_manager_alloc_queue (seg, props);
+  cq = segment_manager_alloc_queue (seg, cprops);
+
+  if (props->use_mq_eventfd)
+    application_local_session_fix_eventds (sq, cq);
+
   ls->server_evt_q = pointer_to_uword (sq);
   ls->client_evt_q = pointer_to_uword (cq);
   rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
@@ -1273,7 +1304,7 @@ application_local_session_disconnect (u32 app_index, local_session_t * ls)
 
   if (app_index == ls->client_index)
     {
-      send_local_session_disconnect_callback (ls->app_index, ls);
+      mq_send_local_session_disconnected_cb (ls->app_index, ls);
     }
   else
     {
@@ -1292,7 +1323,7 @@ application_local_session_disconnect (u32 app_index, local_session_t * ls)
 	}
       else
 	{
-	  send_local_session_disconnect_callback (client->index, ls);
+	  mq_send_local_session_disconnected_cb (client->index, ls);
 	}
     }
 

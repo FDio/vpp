@@ -32,8 +32,10 @@ typedef struct _segment_manager_properties
   /** Configured additional segment size */
   u32 add_segment_size;
 
-  /** Flag that indicates if additional segments should be created */
-  u8 add_segment;
+  /** Flags */
+  u8 add_segment:1;		/**< can add new segments */
+  u8 use_mq_eventfd:1;		/**< use eventfds for mqs */
+  u8 reserved:6;
 
   /** Segment type: if set to SSVM_N_TYPES, private segments are used */
   ssvm_segment_type_t segment_type;
@@ -154,7 +156,8 @@ void segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
 u32 segment_manager_evt_q_expected_size (u32 q_size);
 svm_msg_q_t *segment_manager_alloc_queue (svm_fifo_segment_private_t * fs,
-					  u32 queue_size);
+					  segment_manager_properties_t *
+					  props);
 void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);
 
