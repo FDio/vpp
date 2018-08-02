@@ -19,6 +19,7 @@
 
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
@@ -165,9 +166,48 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-#define foreach_vlib_api_msg                            \
-_(GET_FIRST_MSG_ID, get_first_msg_id)                   \
-_(API_VERSIONS, api_versions)
+/*
+ * Warning: At some point we're going to hit the max packet size on Unix Domain sockets.
+ */
+static void
+vl_api_api_message_table_t_handler (vl_api_api_message_table_t * mp)
+{
+  api_main_t *am = &api_main;
+  vl_api_registration_t *reg;
+  hash_pair_t *hp;
+  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* Walk message dictionary. */
+  u32 i = 0;
+  vl_api_api_message_table_reply_t *rmp;
+  u32 size = sizeof (*rmp) + (nmsg * sizeof (vl_api_message_table_entry_t));
+
+  rmp = vl_msg_api_alloc (size);
+  memset (rmp, 0, size);
+  rmp->_vl_msg_id = htons (VL_API_API_MESSAGE_TABLE_REPLY);
+  rmp->context = mp->context;
+  rmp->count = htons (nmsg);
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    rmp->message_table[i].index = htons(hp->value[0]);
+    strncpy((char *)rmp->message_table[i].name, (char *)hp->key, 64-1);
+    i++;
+  }));
+  /* *INDENT-ON* */
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+#define foreach_vlib_api_msg				\
+_(GET_FIRST_MSG_ID, get_first_msg_id)			\
+_(API_VERSIONS, api_versions)				\
+_(API_MESSAGE_TABLE, api_message_table)
 
 /*
  * vl_api_init
