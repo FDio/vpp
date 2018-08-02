@@ -453,7 +453,7 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
 {
   struct msghdr mh = { 0 };
   struct iovec iov[1];
-  char ctl[CMSG_SPACE (sizeof (int)) * n_fds];
+  char ctl[CMSG_SPACE (sizeof (int) * n_fds)];
   struct cmsghdr *cmsg;
   char *msg = "fdmsg";
   int rv;
@@ -470,7 +470,7 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
   cmsg->cmsg_len = CMSG_LEN (sizeof (int) * n_fds);
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_RIGHTS;
-  memcpy (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
+  clib_memcpy (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
 
   rv = sendmsg (socket_fd, &mh, 0);
   if (rv < 0)
