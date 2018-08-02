@@ -463,6 +463,11 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VDBG (0, "VCL<%d>: configured namespace_id %v",
 		    getpid (), vcl_cfg->namespace_id);
 	    }
+	  else if (unformat (line_input, "use-mq-eventfd %lu",
+			     &vcl_cfg->use_mq_eventfd))
+	    {
+	      VDBG (0, "VCL<%d>: configured with mq with eventfd", getpid ());
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;

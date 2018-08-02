@@ -168,6 +168,7 @@ typedef struct vppcom_cfg_t_
   u8 app_scope_global;
   u8 *namespace_id;
   u64 namespace_secret;
+  u8 use_mq_eventfd;
   f64 app_timeout;
   f64 session_timeout;
   f64 accept_timeout;
@@ -183,6 +184,11 @@ typedef struct vcl_cut_through_registration_
   svm_msg_q_t *mq;
   u32 sid;
 } vcl_cut_through_registration_t;
+
+typedef struct vcl_mq_evt_conn_
+{
+  svm_msg_q_t * mq;
+} vcl_mq_evt_conn_t;
 
 typedef struct vppcom_main_t_
 {
@@ -202,6 +208,12 @@ typedef struct vppcom_main_t_
   /* Session pool */
   clib_spinlock_t sessions_lockp;
   vcl_session_t *sessions;
+
+  /** Message queues epoll fd. Initialized only if using mqs with eventfds */
+  int mqs_epfd;
+
+  /** Pool of event message queue event connections */
+  vcl_mq_evt_conn_t *mq_evt_conns;
 
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;

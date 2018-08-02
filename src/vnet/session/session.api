@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.3";
+option version = "1.1.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -38,6 +38,9 @@ option version = "1.0.3";
     @param retval - return code for the request
     @param app_event_queue_address - vpp event queue address or 0 if this 
                                  	 connection shouldn't send events
+    @param n_fds - number of fds exchanged
+    @param fd_flags - set of flags that indicate which fds are to be expected
+    				  over the socket (set only if socket transport available) 
     @param segment_size - size of first shm segment
     @param segment_name_length - length of segment name 
     @param segment_name - name of segment client needs to attach to
@@ -46,6 +49,8 @@ define application_attach_reply {
     u32 context;
     i32 retval;
     u64 app_event_queue_address;
+    u8 n_fds;
+    u8 fd_flags;
     u32 segment_size;
     u8 segment_name_length;
     u8 segment_name[128];
@@ -91,11 +96,16 @@ autoreply define application_detach {
 /** \brief vpp->client, please map an additional shared memory segment
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param segment_name - 
+   	@param fd_flags - set of flags that indicate which, if any, fds are 
+   					  to be expected over the socket. This is set only if 
+   					  socket transport available
+    @param segment_size - size of the segment to be mapped
+    @param segment_name - name of the segment to be mapped
 */
 autoreply define map_another_segment {
     u32 client_index;
     u32 context;
+    u8 fd_flags;
     u32 segment_size;
     u8 segment_name[128];
 };

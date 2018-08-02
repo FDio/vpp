@@ -2300,14 +2300,65 @@ vcl_epoll_wait_handle_mq (svm_msg_q_t * mq, struct epoll_event *events,
   return *num_ev;
 }
 
+static int
+vppcom_epoll_wait_condvar (struct epoll_event *events, int maxevents,
+                           double wait_for_time)
+{
+  vcl_cut_through_registration_t *cr;
+  double total_wait = 0, wait_slice;
+  u32 num_ev = 0;
+
+  wait_for_time = (wait_for_time == -1) ? 10e9 : wait_for_time;
+  wait_slice = vcm->cut_through_registrations ? 10e-6 : wait_for_time;
+
+  do
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (cr, vcm->cut_through_registrations, ({
+        vcl_epoll_wait_handle_mq (cr->mq, events, maxevents, 0, &num_ev);
+      }));
+      /* *INDENT-ON* */
+
+      vcl_epoll_wait_handle_mq (vcm->app_event_queue, events, maxevents,
+				num_ev ? 0 : wait_slice, &num_ev);
+      total_wait += wait_slice;
+      if (num_ev)
+	return num_ev;
+    }
+  while (total_wait < wait_for_time);
+  return (int) num_ev;
+}
+
+static vcl_mq_evt_conn_t *
+vcl_mq_evt_conn_get (u32 mq_conn_idx)
+{
+  return pool_elt_at_index (vcm->mq_evt_conns, mq_conn_idx);
+}
+
+static int
+vppcom_epoll_wait_eventfd (struct epoll_event *events, int maxevents,
+                           double wait_for_time)
+{
+  struct epoll_event mq_evts[100];
+  vcl_mq_evt_conn_t *mqc;
+  int n_mq_evts, i;
+  u32 n_evts = 0;
+
+  n_mq_evts = epoll_wait (vcm->mqs_epfd, mq_evts, 100, wait_for_time);
+  for (i = 0; i < n_mq_evts; i++)
+    {
+      mqc = vcl_mq_evt_conn_get (mq_evts[i].data.u32);
+      vcl_epoll_wait_handle_mq (mqc->mq, events, maxevents, 0, &n_evts);
+    }
+
+  return (int) n_evts;
+}
+
 int
 vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		   int maxevents, double wait_for_time)
 {
-  vcl_cut_through_registration_t *cr;
   vcl_session_t *vep_session;
-  double total_wait = 0, wait_slice;
-  u32 num_ev = 0;
 
   if (PREDICT_FALSE (maxevents <= 0))
     {
@@ -2328,25 +2379,11 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   memset (events, 0, sizeof (*events) * maxevents);
-  wait_slice = vcm->cut_through_registrations ? 10e-6 : wait_for_time;
 
-  do
-    {
-      /* *INDENT-OFF* */
-      pool_foreach (cr, vcm->cut_through_registrations, ({
-        vcl_epoll_wait_handle_mq (cr->mq, events, maxevents, 0, &num_ev);
-      }));
-      /* *INDENT-ON* */
+  if (vcm->cfg.use_mq_eventfd)
+    return vppcom_epoll_wait_eventfd (events, maxevents, wait_for_time);
 
-      vcl_epoll_wait_handle_mq (vcm->app_event_queue, events, maxevents,
-				num_ev ? 0 : wait_slice, &num_ev);
-      total_wait += wait_slice;
-      if (num_ev)
-	return num_ev;
-    }
-  while (total_wait < wait_for_time);
-
-  return num_ev;
+   return vppcom_epoll_wait_condvar (events, maxevents, wait_for_time);
 }
 
 int

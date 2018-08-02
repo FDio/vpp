@@ -60,16 +60,15 @@ _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 
 static int
-session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
+session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 {
   clib_error_t *error;
-  int fd = sp->fd;
   if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
     {
       clib_warning ("can't send memfd fd");
       return -1;
     }
-  error = vl_api_send_fd_msg (reg, &fd, 1);
+  error = vl_api_send_fd_msg (reg, fds, n_fds);
   if (error)
     {
       clib_error_report (error);
@@ -81,8 +80,10 @@ session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
 static int
 send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
 {
+  int fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_map_another_segment_t *mp;
   vl_api_registration_t *reg;
+  u8 fd_flags = 0;
 
   reg = vl_mem_api_client_index_to_registration (api_client_index);
   if (!reg)
@@ -91,24 +92,31 @@ send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
       return -1;
     }
 
-  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD
-      && vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
     {
-      clib_warning ("can't send memfd fd");
-      return -1;
+      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+	{
+	  clib_warning ("can't send memfd fd");
+	  return -1;
+	}
+
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = sp->fd;
+      n_fds += 1;
     }
 
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
   mp->segment_size = sp->ssvm_size;
+  mp->fd_flags = fd_flags;
   strncpy ((char *) mp->segment_name, (char *) sp->name,
 	   sizeof (mp->segment_name) - 1);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
-  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
-    return session_send_memfd_fd (reg, sp);
+  if (n_fds)
+    return session_send_fds (reg, fds, n_fds);
 
   return 0;
 }
@@ -140,9 +148,6 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
 	   sizeof (mp->segment_name) - 1);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
-
-  if (ssvm_type (fs) == SSVM_SEGMENT_MEMFD)
-    return session_send_memfd_fd (reg, fs);
 
   return 0;
 }
@@ -583,12 +588,13 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 static void
 vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_application_attach_reply_t *rmp;
   ssvm_private_t *segp, *evt_q_segment;
   vnet_app_attach_args_t _a, *a = &_a;
   vl_api_registration_t *reg;
   clib_error_t *error = 0;
-  int rv = 0;
+  u8 fd_flags = 0;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -632,6 +638,27 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
     }
   vec_free (a->namespace_id);
 
+  /* Send event queues segment */
+  if ((evt_q_segment = session_manager_get_evt_q_segment ()))
+    {
+      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+      fds[n_fds] = evt_q_segment->fd;
+      n_fds += 1;
+    }
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = a->segment->fd;
+      n_fds += 1;
+    }
+  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      n_fds += 1;
+    }
+
 done:
 
   /* *INDENT-OFF* */
@@ -646,20 +673,15 @@ done:
 	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
 	    rmp->segment_name_length = vec_len (segp->name);
 	  }
-	rmp->app_event_queue_address = a->app_event_queue_address;
+	rmp->app_event_queue_address = pointer_to_uword (a->app_evt_q);
+	rmp->n_fds = n_fds;
+	rmp->fd_flags = fd_flags;
       }
   }));
   /* *INDENT-ON* */
 
-  if (rv)
-    return;
-
-  /* Send fifo segment fd if needed */
-  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
-    session_send_memfd_fd (reg, a->segment);
-  /* Send event queues segment */
-  if ((evt_q_segment = session_manager_get_evt_q_segment ()))
-    session_send_memfd_fd (reg, evt_q_segment);
+  if (n_fds)
+    session_send_fds (reg, fds, n_fds);
 }
 
 static void
