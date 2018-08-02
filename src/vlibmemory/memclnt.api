@@ -17,7 +17,7 @@
 option version = "1.0.0";
 
 /*
- * Define services not following the normal convetions here
+ * Define services not following the normal conventions here
  */
 service {
   rpc memclnt_rx_thread_suspend returns null;
@@ -155,9 +155,9 @@ define sockclnt_create {
 };
 
 define sockclnt_create_reply {
+    u32 client_index;
     u32 context;                /* opaque value from the create request */
     i32 response;               /* Non-negative = success */
-    u64 handle;           	/* handle by which vlib knows this client */
     u32 index;                  /* index, used e.g. by API trace replay */
 };
 
@@ -165,13 +165,14 @@ define sockclnt_create_reply {
  * Delete a client registration 
  */
 define sockclnt_delete {
+    u32 client_index;
+    u32 context;
     u32 index;                  /* index, used e.g. by API trace replay */
-    u64 handle;               	/* handle by which vlib knows this client */
 };
 
 define sockclnt_delete_reply {
+    u32 context;
     i32 response;               /* Non-negative = success */
-    u64 handle;               	/* in case the client wonders */
 };
 
 /*
@@ -199,4 +200,28 @@ autoreply define memclnt_keepalive
 {
   u32 client_index;
   u32 context;
+};
+
+/*
+ * Message dictionary
+ */
+
+typedef message_table_entry
+{
+  u16 index;
+  u8 name[64];
+};
+
+define api_message_table
+{
+  u32 client_index;
+  u32 context;
+};
+
+define api_message_table_reply
+{
+  u32 client_index;
+  u32 context;
+  u16 count;
+  vl_api_message_table_entry_t message_table[count];
 };
