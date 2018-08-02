@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * socksvr_vlib.c
+ * socket_api.c
  *
  * Copyright (c) 2009 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -384,7 +384,11 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
 {
   vl_api_registration_t *regp;
   vl_api_sockclnt_create_reply_t *rp;
+  api_main_t *am = &api_main;
+  hash_pair_t *hp;
   int rv = 0;
+  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
+  u32 i = 0;
 
   regp = socket_main.current_rp;
 
@@ -392,13 +396,22 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
 
   regp->name = format (0, "%s%c", mp->name, 0);
 
-  rp = vl_msg_api_alloc (sizeof (*rp));
+  u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
+  rp = vl_msg_api_alloc (size);
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE_REPLY);
-  rp->handle = (uword) regp;
-  rp->index = (uword) regp->vl_api_registration_pool_index;
+  rp->index = htonl (regp->vl_api_registration_pool_index);
   rp->context = mp->context;
   rp->response = htonl (rv);
+  rp->count = htons (nmsg);
 
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    rp->message_table[i].index = htons(hp->value[0]);
+    strncpy((char *)rp->message_table[i].name, (char *)hp->key, 64-1);
+    i++;
+  }));
+  /* *INDENT-ON* */
   vl_api_send_msg (regp, (u8 *) rp);
 }
 
@@ -411,23 +424,27 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
   vl_api_registration_t *regp;
   vl_api_sockclnt_delete_reply_t *rp;
 
-  if (!pool_is_free_index (socket_main.registration_pool, mp->index))
+  regp = vl_api_client_index_to_registration (mp->client_index);
+  if (!regp)
+    return;
+
+  u32 reg_index = ntohl (mp->index);
+  rp = vl_msg_api_alloc (sizeof (*rp));
+  rp->_vl_msg_id = htons (VL_API_SOCKCLNT_DELETE_REPLY);
+  rp->context = mp->context;
+
+  if (!pool_is_free_index (socket_main.registration_pool, reg_index))
     {
-      regp = pool_elt_at_index (socket_main.registration_pool, mp->index);
-
-      rp = vl_msg_api_alloc (sizeof (*rp));
-      rp->_vl_msg_id = htons (VL_API_SOCKCLNT_DELETE_REPLY);
-      rp->handle = mp->handle;
       rp->response = htonl (1);
-
       vl_api_send_msg (regp, (u8 *) rp);
-
       vl_api_registration_del_file (regp);
-      vl_socket_free_registration_index (mp->index);
+      vl_socket_free_registration_index (reg_index);
     }
   else
     {
-      clib_warning ("unknown client ID %d", mp->index);
+      rp->response = htonl (-1);
+      vl_api_send_msg (regp, (u8 *) rp);
+      clib_warning ("unknown client ID %d", reg_index);
     }
 }
 
