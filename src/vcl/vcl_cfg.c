@@ -501,14 +501,16 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
     {
       u32 tmp;
       if (sscanf (env_var_str, "%u", &tmp) != 1)
-	clib_warning ("VCL<%d>: WARNING: Invalid debug level specified "
-		      "in the environment variable " VPPCOM_ENV_DEBUG
-		      " (%s)!\n", getpid (), env_var_str);
+	{
+	  VCL_CFG_DBG (0, "VCL<%d>: WARNING: Invalid debug level specified "
+		       "in the environment variable " VPPCOM_ENV_DEBUG
+		       " (%s)!\n", getpid (), env_var_str);
+	}
       else
 	{
 	  vcm->debug = tmp;
-	  VDBG (0, "VCL<%d>: configured VCL debug level (%u) from "
-		VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
+	  VCL_CFG_DBG (0, "VCL<%d>: configured VCL debug level (%u) from "
+		       VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
 	}
     }
   conf_fname = getenv (VPPCOM_ENV_CONF);
