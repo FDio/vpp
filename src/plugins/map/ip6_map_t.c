@@ -680,7 +680,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      u32 daddr0, daddr1;
 	      daddr0 = 0;	/* TODO */
 	      daddr1 = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
 
 	      daddr0 = map_get_ip4 (&ip60->dst_address, 0 /*TODO*/);
 	      daddr1 = map_get_ip4 (&ip61->dst_address, 0 /*TODO*/);
@@ -710,7 +709,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      u32 saddr0, saddr1;
 	      saddr0 = 0;	/* TODO */
 	      saddr1 = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
 
 	      saddr0 = map_get_ip4 (&ip60->src_address, 0 /*TODO*/);
 	      saddr1 = map_get_ip4 (&ip61->src_address, 0 /*TODO*/);
@@ -902,7 +900,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      u32 daddr;
 	      //Save daddr in a different variable to not overwrite ip.adj_index
 	      daddr = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
 
 	      daddr = map_get_ip4 (&ip60->dst_address, 0 /*TODO*/);
 	      d0 =
@@ -925,7 +922,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      u32 saddr;
 	      //Save saddr in a different variable to not overwrite ip.adj_index
 	      saddr = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
 
 	      saddr = map_get_ip4 (&ip60->src_address, 0 /*TODO*/);
 	      d0 =
