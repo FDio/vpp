@@ -212,6 +212,68 @@ _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
 }
 
 always_inline void
+_vnet_rewrite_one_header_x4 (vnet_rewrite_header_t * h0,
+			     void *packet0, void *packet1, void *packet2,
+			     void *packet3, int max_size,
+			     int most_likely_size)
+{
+  vnet_rewrite_data_t *p0 = packet0;
+  vnet_rewrite_data_t *p1 = packet1;
+  vnet_rewrite_data_t *p2 = packet2;
+  vnet_rewrite_data_t *p3 = packet3;
+  vnet_rewrite_data_t *rw0 = (vnet_rewrite_data_t *) (h0->data + max_size);
+  word n_left0;
+
+  /* 0xfefe => poisoned adjacency => crash */
+  ASSERT (h0->data_bytes != 0xfefe);
+
+  if (PREDICT_TRUE (h0->data_bytes == sizeof (eh_copy_t)))
+    {
+      eh_copy_t *s, *d;
+      s = (eh_copy_t *) (h0->data + max_size - sizeof (eh_copy_t));
+      d = (eh_copy_t *) (((u8 *) packet0) - sizeof (eh_copy_t));
+      clib_memcpy (d, s, sizeof (eh_copy_t));
+      d = (eh_copy_t *) (((u8 *) packet1) - sizeof (eh_copy_t));
+      clib_memcpy (d, s, sizeof (eh_copy_t));
+      d = (eh_copy_t *) (((u8 *) packet2) - sizeof (eh_copy_t));
+      clib_memcpy (d, s, sizeof (eh_copy_t));
+      d = (eh_copy_t *) (((u8 *) packet3) - sizeof (eh_copy_t));
+      clib_memcpy (d, s, sizeof (eh_copy_t));
+      return;
+    }
+
+
+#define _(i)								\
+  do {									\
+    if (most_likely_size > ((i)-1)*sizeof (vnet_rewrite_data_t))	\
+      {									\
+	vnet_rewrite_copy_one (p0, rw0, (i));				\
+	vnet_rewrite_copy_one (p1, rw0, (i));				\
+	vnet_rewrite_copy_one (p2, rw0, (i));				\
+	vnet_rewrite_copy_one (p3, rw0, (i));				\
+      }									\
+  } while (0)
+
+  _(4);
+  _(3);
+  _(2);
+  _(1);
+
+#undef _
+
+  n_left0 = (int)
+    (((int) h0->data_bytes - most_likely_size) + (sizeof (rw0[0]) - 1))
+    / (int) sizeof (rw0[0]);
+  if (PREDICT_FALSE (n_left0 > 0))
+    {
+      vnet_rewrite_copy_slow_path (p0, rw0, n_left0, most_likely_size);
+      vnet_rewrite_copy_slow_path (p1, rw0, n_left0, most_likely_size);
+      vnet_rewrite_copy_slow_path (p2, rw0, n_left0, most_likely_size);
+      vnet_rewrite_copy_slow_path (p3, rw0, n_left0, most_likely_size);
+    }
+}
+
+always_inline void
 _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 			   vnet_rewrite_header_t * h1,
 			   void *packet0,
@@ -276,6 +338,11 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 
 #define vnet_rewrite_one_header(rw0,p0,most_likely_size)	\
   _vnet_rewrite_one_header (&((rw0).rewrite_header), (p0),	\
+			    sizeof ((rw0).rewrite_data),	\
+			    (most_likely_size))
+
+#define vnet_rewrite_one_header_x4(rw0,p0,p1,p2,p3,most_likely_size)	\
+  _vnet_rewrite_one_header_x4 (&((rw0).rewrite_header), (p0), (p1), (p2), (p3),	\
 			    sizeof ((rw0).rewrite_data),	\
 			    (most_likely_size))
 
