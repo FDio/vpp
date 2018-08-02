@@ -50,7 +50,6 @@ DOXY_SRC_DIRECTORIES = \
 	$(DOXY_SRC)/vlib \
 	$(DOXY_SRC)/vlibapi \
 	$(DOXY_SRC)/vlibmemory \
-	$(DOXY_SRC)/vlibsocket \
 	$(DOXY_SRC)/vnet \
 	$(DOXY_SRC)/vpp \
 	$(DOXY_SRC)/vpp-api \
