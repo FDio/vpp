@@ -80,7 +80,7 @@ class FixedList_u8():
         if len(data[offset:]) < self.num:
             raise ValueError('Invalid array length for "{}" got {}'
                              ' expected {}'
-                             .format(self.name, len(data), self.num))
+                             .format(self.name, len(data[offset:]), self.num))
         return self.packer.unpack(data, offset)
 
 

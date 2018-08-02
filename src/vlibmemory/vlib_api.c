@@ -165,8 +165,8 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-#define foreach_vlib_api_msg                            \
-_(GET_FIRST_MSG_ID, get_first_msg_id)                   \
+#define foreach_vlib_api_msg				\
+_(GET_FIRST_MSG_ID, get_first_msg_id)			\
 _(API_VERSIONS, api_versions)
 
 /*

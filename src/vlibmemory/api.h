@@ -55,10 +55,11 @@ vl_api_can_send_msg (vl_api_registration_t * rp)
 always_inline vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
-  if (PREDICT_FALSE (socket_main.current_rp != 0))
-    return socket_main.current_rp;
-
-  return (vl_mem_api_client_index_to_registration (index));
+  vl_api_registration_t *reg =
+    vl_socket_api_client_index_to_registration (index);
+  if (reg && reg->registration_type != REGISTRATION_TYPE_FREE)
+    return reg;
+  return vl_mem_api_client_index_to_registration (index);
 }
 
 always_inline u32
