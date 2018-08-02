@@ -1245,6 +1245,11 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
       cfg->q_nitems = evt_q_length;
       cfg->ring_cfgs = rc;
       smm->vpp_event_queues[i] = svm_msg_q_alloc (cfg);
+      if (smm->evt_qs_use_memfd_seg)
+	{
+	  if (svm_msg_q_alloc_consumer_eventfd (smm->vpp_event_queues[i]))
+	    clib_warning ("eventfd returned");
+	}
     }
 
   if (smm->evt_qs_use_memfd_seg)

@@ -267,8 +267,8 @@ application_local_session_listener_has_transport (local_session_t * ls)
   return (tp != TRANSPORT_PROTO_NONE);
 }
 
-void send_local_session_disconnect_callback (u32 app_index,
-					     local_session_t * ls);
+void mq_send_local_session_disconnected_cb (u32 app_index,
+					    local_session_t * ls);
 
 int application_connect (u32 client_index, u32 api_context,
 			 session_endpoint_t * sep);
