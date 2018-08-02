@@ -28,6 +28,7 @@ libvppcom_la_SOURCES +=				\
   vcl/vcl_debug.h				\
   vcl/vcl_event.c				\
   vcl/vcl_private.h				\
+  vcl/vcl_private.c				\
   $(libvppinfra_la_SOURCES)			\
   $(libsvm_la_SOURCES)				\
   $(libvlibmemoryclient_la_SOURCES)

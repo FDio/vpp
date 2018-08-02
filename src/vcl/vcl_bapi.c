@@ -61,15 +61,35 @@ static void
     vcm->app_state = STATE_APP_ENABLED;
 }
 
+static int
+ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
+{
+  svm_fifo_segment_create_args_t _a, *a = &_a;
+  int rv;
+
+  memset (a, 0, sizeof (*a));
+  a->segment_name = (char *) name;
+  a->segment_type = type;
+
+  if (type == SSVM_SEGMENT_MEMFD)
+    a->memfd_fd = fd;
+
+  if ((rv = svm_fifo_segment_attach (a)))
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
+      return rv;
+    }
+  vec_reset_length (a->new_segment_indices);
+  return 0;
+}
+
 static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
-  static svm_fifo_segment_create_args_t _a;
-  svm_fifo_segment_create_args_t *a = &_a;
-  int rv;
+  u32 n_fds = 0;
+  int *fds = 0;
 
-  memset (a, 0, sizeof (*a));
   if (mp->retval)
     {
       clib_warning ("VCL<%d>: attach failed: %U", getpid (),
@@ -77,29 +97,40 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  if (mp->segment_name_length == 0)
+  vcm->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+					   svm_msg_q_t *);
+  if (mp->n_fds)
     {
-      clib_warning ("VCL<%d>: segment_name_length zero", getpid ());
-      return;
+      vec_validate (fds, mp->n_fds);
+      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+
+      if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
+	if (ssvm_segment_attach ("vpp-mq-seg", SSVM_SEGMENT_MEMFD,
+				 fds[n_fds++]))
+	  return;
+
+      if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+	if (ssvm_segment_attach ((char *) mp->segment_name,
+				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	  return;
+
+      if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+	{
+	  svm_msg_q_set_consumer_eventfd (vcm->app_event_queue, fds[n_fds]);
+	  if (vcm->mqs_epfd < 0)
+	    clib_unix_warning ("epoll_create() returned");
+	  vcl_mq_epoll_add_evfd (vcm->app_event_queue);
+	  n_fds++;
+	}
+
+      vec_free (fds);
     }
-
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
-
-  ASSERT (mp->app_event_queue_address);
-
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  vec_reset_length (a->new_segment_indices);
-  if (PREDICT_FALSE (rv))
+  else
     {
-      clib_warning ("VCL<%d>: svm_fifo_segment_attach ('%s') failed",
-		    getpid (), mp->segment_name);
-      return;
+      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
+			       -1))
+	return;
     }
-
-  vcm->app_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_msg_q_t *);
 
   vcm->app_state = STATE_APP_ATTACHED;
 }
@@ -128,18 +159,19 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
-  static svm_fifo_segment_create_args_t _a;
-  svm_fifo_segment_create_args_t *a = &_a;
-  int rv;
+  ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
+  int fd = -1;
 
   vcm->mounting_segment = 1;
-  memset (a, 0, sizeof (*a));
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  vec_reset_length (a->new_segment_indices);
-  if (PREDICT_FALSE (rv))
+
+  if (mp->fd_flags)
+    {
+      vl_socket_client_recv_fd_msg (&fd, 1, 5);
+      seg_type = SSVM_SEGMENT_MEMFD;
+    }
+
+  if (PREDICT_FALSE (ssvm_segment_attach ((char *) mp->segment_name,
+					  seg_type, fd)))
     {
       clib_warning ("VCL<%d>: svm_fifo_segment_attach ('%s') failed",
 		    getpid (), mp->segment_name);
@@ -161,6 +193,39 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
  */
 
   VDBG (1, "Unmapped segment '%s'", mp->segment_name);
+}
+
+static void
+  vl_api_app_cut_through_registration_add_t_handler
+  (vl_api_app_cut_through_registration_add_t * mp)
+{
+  vcl_cut_through_registration_t *ctr;
+  u32 mqc_index = ~0;
+  int *fds = 0;
+
+  if (mp->n_fds)
+    {
+      ASSERT (mp->n_fds == 2);
+      vec_validate (fds, mp->n_fds);
+      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+    }
+
+  ctr = vcl_ct_registration_lock_and_alloc ();
+  ctr->mq = uword_to_pointer (mp->evt_q_address, svm_msg_q_t *);
+  ctr->peer_mq = uword_to_pointer (mp->peer_evt_q_address, svm_msg_q_t *);
+  VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (ctr));
+
+  if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+    {
+      svm_msg_q_set_consumer_eventfd (ctr->mq, fds[0]);
+      svm_msg_q_set_producer_eventfd (ctr->peer_mq, fds[1]);
+      mqc_index = vcl_mq_epoll_add_evfd (ctr->mq);
+      ctr->epoll_evt_conn_index = mqc_index;
+      vec_free (fds);
+    }
+  vcl_ct_registration_lookup_add (mp->evt_q_address,
+				  vcl_ct_registration_index (ctr));
+  vcl_ct_registration_unlock ();
 }
 
 static void
@@ -483,19 +548,20 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   VCL_SESSION_UNLOCK ();
 }
 
-#define foreach_sock_msg                                        \
-_(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   \
-_(BIND_SOCK_REPLY, bind_sock_reply)                             \
-_(UNBIND_SOCK_REPLY, unbind_sock_reply)                         \
-_(ACCEPT_SESSION, accept_session)                               \
-_(CONNECT_SESSION_REPLY, connect_session_reply)                 \
-_(DISCONNECT_SESSION, disconnect_session)                       \
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)           \
-_(RESET_SESSION, reset_session)                                 \
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)           \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)           \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                     \
-_(UNMAP_SEGMENT, unmap_segment)
+#define foreach_sock_msg                                        	\
+_(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
+_(BIND_SOCK_REPLY, bind_sock_reply)                             	\
+_(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
+_(ACCEPT_SESSION, accept_session)                               	\
+_(CONNECT_SESSION_REPLY, connect_session_reply)                 	\
+_(DISCONNECT_SESSION, disconnect_session)                      		\
+_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)           	\
+_(RESET_SESSION, reset_session)                                 	\
+_(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
+_(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
+_(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
+_(UNMAP_SEGMENT, unmap_segment)						\
+_(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
 
 void
 vppcom_api_hookup (void)
@@ -547,7 +613,8 @@ vppcom_app_send_attach (void)
     (vcm->cfg.app_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
     (vcm->cfg.app_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
     (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0) |
-    APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
+    APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS |
+    (vcm->cfg.use_mq_eventfd ? APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD : 0);
   bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
     (u64) ((vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
 	   (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0));
@@ -709,31 +776,50 @@ vppcom_connect_to_vpp (char *app_name)
 {
   api_main_t *am = &api_main;
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
-  int rv = VPPCOM_OK;
 
-  if (!vcl_cfg->vpp_api_filename)
-    vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
-
-  VDBG (0, "VCL<%d>: app (%s) connecting to VPP api (%s)...",
-	getpid (), app_name, vcl_cfg->vpp_api_filename);
-
-  if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename, app_name,
-				 vcm->cfg.vpp_api_q_length) < 0)
+  if (vcl_cfg->vpp_api_socket_name)
     {
-      clib_warning ("VCL<%d>: app (%s) connect failed!", getpid (), app_name);
-      rv = VPPCOM_ECONNREFUSED;
+      if (vl_socket_client_connect ((char *) vcl_cfg->vpp_api_socket_name,
+				    app_name, 0 /* default rx/tx buffer */ ))
+	{
+	  clib_warning ("VCL<%d>: app (%s) socket connect failed!",
+			getpid (), app_name);
+	  return VPPCOM_ECONNREFUSED;
+	}
+
+      if (vl_socket_client_init_shm (0))
+	{
+	  clib_warning ("VCL<%d>: app (%s) init shm failed!",
+			getpid (), app_name);
+	  return VPPCOM_ECONNREFUSED;
+	}
     }
   else
     {
-      vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-      vcm->my_client_index = (u32) am->my_client_index;
-      vcm->app_state = STATE_APP_CONN_VPP;
+      if (!vcl_cfg->vpp_api_filename)
+	vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
 
-      VDBG (0, "VCL<%d>: app (%s) is connected to VPP!", getpid (), app_name);
+      VDBG (0, "VCL<%d>: app (%s) connecting to VPP api (%s)...", getpid (),
+	    app_name, vcl_cfg->vpp_api_filename);
+
+      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename,
+				     app_name, vcm->cfg.vpp_api_q_length) < 0)
+	{
+	  clib_warning ("VCL<%d>: app (%s) connect failed!", getpid (),
+			app_name);
+	  return VPPCOM_ECONNREFUSED;
+	}
+
     }
 
+  vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  vcm->my_client_index = (u32) am->my_client_index;
+  vcm->app_state = STATE_APP_CONN_VPP;
+
+  VDBG (0, "VCL<%d>: app (%s) is connected to VPP!", getpid (), app_name);
+
   vcl_evt (VCL_EVT_INIT, vcm);
-  return rv;
+  return VPPCOM_OK;
 }
 
 /*

@@ -31,17 +31,18 @@ extern "C"
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID                   (~0)
-#define VPPCOM_CONF_DEFAULT                  "/etc/vpp/vcl.conf"
-#define VPPCOM_ENV_CONF                      "VCL_CONFIG"
-#define VPPCOM_ENV_DEBUG                     "VCL_DEBUG"
-#define VPPCOM_ENV_API_PREFIX                "VCL_API_PREFIX"
-#define VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP   "VCL_APP_PROXY_TRANSPORT_TCP"
-#define VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP   "VCL_APP_PROXY_TRANSPORT_UDP"
-#define VPPCOM_ENV_APP_NAMESPACE_ID          "VCL_APP_NAMESPACE_ID"
-#define VPPCOM_ENV_APP_NAMESPACE_SECRET      "VCL_APP_NAMESPACE_SECRET"
-#define VPPCOM_ENV_APP_SCOPE_LOCAL           "VCL_APP_SCOPE_LOCAL"
-#define VPPCOM_ENV_APP_SCOPE_GLOBAL          "VCL_APP_SCOPE_GLOBAL"
+#define INVALID_SESSION_ID                  	(~0)
+#define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
+#define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
+#define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
+#define VPPCOM_ENV_API_PREFIX                	"VCL_API_PREFIX"
+#define VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP   	"VCL_APP_PROXY_TRANSPORT_TCP"
+#define VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP   	"VCL_APP_PROXY_TRANSPORT_UDP"
+#define VPPCOM_ENV_APP_NAMESPACE_ID          	"VCL_APP_NAMESPACE_ID"
+#define VPPCOM_ENV_APP_NAMESPACE_SECRET      	"VCL_APP_NAMESPACE_SECRET"
+#define VPPCOM_ENV_APP_SCOPE_LOCAL           	"VCL_APP_SCOPE_LOCAL"
+#define VPPCOM_ENV_APP_SCOPE_GLOBAL          	"VCL_APP_SCOPE_GLOBAL"
+#define VPPCOM_ENV_VPP_API_SOCKET           	"VCL_VPP_API_SOCKET"
 
 typedef enum
 {
@@ -250,6 +251,7 @@ extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
 				  vppcom_endpt_t * ep);
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
+extern int vppcom_mq_epoll_fd (void);
 
 /*
  * VPPCOM Event Functions

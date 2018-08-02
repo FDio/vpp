@@ -475,7 +475,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 			      a->session_cb_vft)))
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 
-  a->app_event_queue_address = pointer_to_uword (app->event_queue);
+  a->app_evt_q = app->event_queue;
   sm = segment_manager_get (app->first_segment_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
@@ -569,7 +569,18 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   if (session_handle_is_local (a->handle))
     {
       local_session_t *ls;
-      ls = application_get_local_session_from_handle (a->handle);
+
+      /* Disconnect reply came to worker 1 not main thread */
+      if (vlib_get_thread_index () == 1)
+	{
+	  vlib_rpc_call_main_thread (vnet_disconnect_session, (u8 *) a,
+				     sizeof (*a));
+	  return 0;
+	}
+
+      if (!(ls = application_get_local_session_from_handle (a->handle)))
+	return 0;
+
       if (ls->app_index != a->app_index && ls->client_index != a->app_index)
 	{
 	  clib_warning ("app %u is neither client nor server for session %u",
