@@ -64,10 +64,6 @@ BUILT_SOURCES +=				\
 	vlibmemory/memclnt.api.h		\
 	vlibmemory/memclnt.api.json
 
-noinst_PROGRAMS += sock_test
-
-sock_test_SOURCES = vlibsocket/sock_test.c
-
 API_FILES += vlibmemory/memclnt.api 
 
 # vi:syntax=automake
