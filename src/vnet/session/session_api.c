@@ -60,16 +60,15 @@ _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 
 static int
-session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
+session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 {
   clib_error_t *error;
-  int fd = sp->fd;
   if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
     {
       clib_warning ("can't send memfd fd");
       return -1;
     }
-  error = vl_api_send_fd_msg (reg, &fd, 1);
+  error = vl_api_send_fd_msg (reg, fds, n_fds);
   if (error)
     {
       clib_error_report (error);
@@ -81,8 +80,10 @@ session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
 static int
 send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
 {
+  int fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_map_another_segment_t *mp;
   vl_api_registration_t *reg;
+  u8 fd_flags = 0;
 
   reg = vl_mem_api_client_index_to_registration (api_client_index);
   if (!reg)
@@ -91,24 +92,31 @@ send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
       return -1;
     }
 
-  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD
-      && vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
     {
-      clib_warning ("can't send memfd fd");
-      return -1;
+      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+	{
+	  clib_warning ("can't send memfd fd");
+	  return -1;
+	}
+
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = sp->fd;
+      n_fds += 1;
     }
 
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
   mp->segment_size = sp->ssvm_size;
+  mp->fd_flags = fd_flags;
   strncpy ((char *) mp->segment_name, (char *) sp->name,
 	   sizeof (mp->segment_name) - 1);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
-  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
-    return session_send_memfd_fd (reg, sp);
+  if (n_fds)
+    return session_send_fds (reg, fds, n_fds);
 
   return 0;
 }
@@ -126,23 +134,58 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
       return -1;
     }
 
-  if (ssvm_type (fs) == SSVM_SEGMENT_MEMFD
-      && vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-    {
-      clib_warning ("can't send memfd fd");
-      return -1;
-    }
-
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
-  strncpy ((char *) mp->segment_name, (char *) fs->name,
-	   sizeof (mp->segment_name) - 1);
+  strcpy ((char *) mp->segment_name, (char *) fs->name);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
-  if (ssvm_type (fs) == SSVM_SEGMENT_MEMFD)
-    return session_send_memfd_fd (reg, fs);
+  return 0;
+}
+
+static int
+send_app_cut_through_registration_add (u32 api_client_index, u64 mq_addr,
+				       u64 peer_mq_addr)
+{
+  vl_api_app_cut_through_registration_add_t *mp;
+  vl_api_registration_t *reg;
+  svm_msg_q_t *mq, *peer_mq;
+  int fds[2];
+
+  reg = vl_mem_api_client_index_to_registration (api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", api_client_index);
+      return -1;
+    }
+
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id =
+    clib_host_to_net_u16 (VL_API_APP_CUT_THROUGH_REGISTRATION_ADD);
+
+  mp->evt_q_address = mq_addr;
+  mp->peer_evt_q_address = peer_mq_addr;
+
+  mq = uword_to_pointer (mq_addr, svm_msg_q_t *);
+  peer_mq = uword_to_pointer (peer_mq_addr, svm_msg_q_t *);
+
+  if (svm_msg_q_get_producer_eventfd (mq) != -1)
+    {
+      mp->fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      mp->n_fds = 2;
+      /* app will overwrite exactly the fds we pass here. So
+       * when we swap mq with peer_mq (accept vs connect) the
+       * fds will still be valid */
+      fds[0] = svm_msg_q_get_consumer_eventfd (mq);
+      fds[1] = svm_msg_q_get_producer_eventfd (peer_mq);
+    }
+
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
+
+  if (mp->n_fds != 0)
+    session_send_fds (reg, fds, mp->n_fds);
 
   return 0;
 }
@@ -230,25 +273,25 @@ send_session_accept_callback (stream_session_t * s)
 }
 
 void
-send_local_session_disconnect_callback (u32 app_index, local_session_t * ls)
+mq_send_local_session_disconnected_cb (u32 app_index, local_session_t * ls)
 {
   application_t *app = application_get (app_index);
-  vl_api_disconnect_session_t *mp;
-  vl_api_registration_t *reg;
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_disconnected_msg_t *mp;
+  svm_msg_q_t *app_mq;
+  session_event_t *evt;
 
-  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
-  if (!reg)
-    {
-      clib_warning ("no registration: %u", app->api_client_index);
-      return;
-    }
-
-  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
+  app_mq = app->event_queue;
+  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
+				       SVM_Q_WAIT, msg);
+  svm_msg_q_unlock (app_mq);
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+  mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = application_local_session_handle (ls);
   mp->context = app->api_client_index;
-  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
+  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
 }
 
 static void
@@ -414,6 +457,12 @@ mq_send_session_accepted_cb (stream_session_t * s)
     {
       local_session_t *ls = (local_session_t *) s;
       local_session_t *ll;
+      u8 main_thread = vlib_num_workers ()? 1 : 0;
+
+      send_app_cut_through_registration_add (app->api_client_index,
+					     ls->server_evt_q,
+					     ls->client_evt_q);
+
       if (application_local_session_listener_has_transport (ls))
 	{
 	  listener = listen_session_get (ls->listener_index);
@@ -436,7 +485,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
 	}
       mp->handle = application_local_session_handle (ls);
       mp->port = ls->port;
-      vpp_queue = session_manager_get_vpp_event_queue (0);
+      vpp_queue = session_manager_get_vpp_event_queue (main_thread);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->client_event_queue_address = ls->client_evt_q;
       mp->server_event_queue_address = ls->server_evt_q;
@@ -542,9 +591,15 @@ mq_send_session_connected_cb (u32 app_index, u32 api_context,
   else
     {
       local_session_t *ls = (local_session_t *) s;
+      u8 main_thread = vlib_num_workers ()? 1 : 0;
+
+      send_app_cut_through_registration_add (app->api_client_index,
+					     ls->client_evt_q,
+					     ls->server_evt_q);
+
       mp->handle = application_local_session_handle (ls);
       mp->lcl_port = ls->port;
-      vpp_mq = session_manager_get_vpp_event_queue (0);
+      vpp_mq = session_manager_get_vpp_event_queue (main_thread);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->client_event_queue_address = ls->client_evt_q;
       mp->server_event_queue_address = ls->server_evt_q;
@@ -583,12 +638,13 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 static void
 vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_application_attach_reply_t *rmp;
   ssvm_private_t *segp, *evt_q_segment;
   vnet_app_attach_args_t _a, *a = &_a;
   vl_api_registration_t *reg;
   clib_error_t *error = 0;
-  int rv = 0;
+  u8 fd_flags = 0;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -629,8 +685,31 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
     {
       rv = clib_error_get_code (error);
       clib_error_report (error);
+      vec_free (a->namespace_id);
+      goto done;
     }
   vec_free (a->namespace_id);
+
+  /* Send event queues segment */
+  if ((evt_q_segment = session_manager_get_evt_q_segment ()))
+    {
+      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+      fds[n_fds] = evt_q_segment->fd;
+      n_fds += 1;
+    }
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = a->segment->fd;
+      n_fds += 1;
+    }
+  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      n_fds += 1;
+    }
 
 done:
 
@@ -646,20 +725,15 @@ done:
 	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
 	    rmp->segment_name_length = vec_len (segp->name);
 	  }
-	rmp->app_event_queue_address = a->app_event_queue_address;
+	rmp->app_event_queue_address = pointer_to_uword (a->app_evt_q);
+	rmp->n_fds = n_fds;
+	rmp->fd_flags = fd_flags;
       }
   }));
   /* *INDENT-ON* */
 
-  if (rv)
-    return;
-
-  /* Send fifo segment fd if needed */
-  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
-    session_send_memfd_fd (reg, a->segment);
-  /* Send event queues segment */
-  if ((evt_q_segment = session_manager_get_evt_q_segment ()))
-    session_send_memfd_fd (reg, evt_q_segment);
+  if (n_fds)
+    session_send_fds (reg, fds, n_fds);
 }
 
 static void

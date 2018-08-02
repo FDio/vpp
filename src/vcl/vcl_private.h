@@ -141,7 +141,6 @@ typedef struct
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
-  u32 ct_registration;
   u64 options[16];
   vce_event_handler_reg_t *poll_reg;
   vcl_session_msg_t *accept_evts_fifo;
@@ -168,12 +167,14 @@ typedef struct vppcom_cfg_t_
   u8 app_scope_global;
   u8 *namespace_id;
   u64 namespace_secret;
+  u8 use_mq_eventfd;
   f64 app_timeout;
   f64 session_timeout;
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
   u8 *vpp_api_filename;
+  u8 *vpp_api_socket_name;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
@@ -181,8 +182,17 @@ void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
 typedef struct vcl_cut_through_registration_
 {
   svm_msg_q_t *mq;
+  svm_msg_q_t *peer_mq;
   u32 sid;
+  u32 epoll_evt_conn_index;	/*< mq evt connection index part of
+				   the mqs evtfd epoll (if used) */
 } vcl_cut_through_registration_t;
+
+typedef struct vcl_mq_evt_conn_
+{
+  svm_msg_q_t *mq;
+  int mq_fd;
+} vcl_mq_evt_conn_t;
 
 typedef struct vppcom_main_t_
 {
@@ -203,6 +213,15 @@ typedef struct vppcom_main_t_
   clib_spinlock_t sessions_lockp;
   vcl_session_t *sessions;
 
+  /** Message queues epoll fd. Initialized only if using mqs with eventfds */
+  int mqs_epfd;
+
+  /** Pool of event message queue event connections */
+  vcl_mq_evt_conn_t *mq_evt_conns;
+
+  /** Per worker buffer for receiving mq epoll events */
+  struct epoll_event *mq_events;
+
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
 
@@ -213,6 +232,8 @@ typedef struct vppcom_main_t_
 
   /* Our event queue */
   svm_msg_q_t *app_event_queue;
+
+  svm_msg_q_t **vpp_event_queues;
 
   /* unique segment name counter */
   u32 unique_segment_index;
@@ -236,6 +257,14 @@ typedef struct vppcom_main_t_
 
   /** Pool of cut through registrations */
   vcl_cut_through_registration_t *cut_through_registrations;
+
+  /** Lock for accessing ct registration pool */
+  clib_spinlock_t ct_registration_lock;
+
+  /** Cut-through registration by mq address hash table */
+  uword *ct_registration_by_mq;
+
+  svm_msg_q_msg_t *mq_msg_vector;
 
   /** Flag indicating that a new segment is being mounted */
   volatile u32 mounting_segment;
@@ -283,6 +312,21 @@ do {                                                            \
   clib_spinlock_unlock (&(vcm->event_thread.events_lockp))
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
+
+static inline vcl_session_t *
+vcl_session_alloc (void)
+{
+  vcl_session_t *s;
+  pool_get (vcm->sessions, s);
+  memset (s, 0, sizeof (*s));
+  return s;
+}
+
+static inline void
+vcl_session_free (vcl_session_t * s)
+{
+  pool_put (vcm->sessions, s);
+}
 
 static inline vcl_session_t *
 vcl_session_get (u32 session_index)
@@ -373,6 +417,23 @@ vppcom_session_table_lookup_listener (u64 listener_handle)
 }
 
 const char *vppcom_session_state_str (session_state_t state);
+
+/*
+ * Helpers
+ */
+vcl_cut_through_registration_t *vcl_ct_registration_lock_and_alloc (void);
+void vcl_ct_registration_del (vcl_cut_through_registration_t * ctr);
+u32 vcl_ct_registration_index (vcl_cut_through_registration_t * ctr);
+void vcl_ct_registration_unlock (void);
+vcl_cut_through_registration_t *vcl_ct_registration_get (u32 ctr_index);
+vcl_cut_through_registration_t *vcl_ct_registration_lock_and_lookup (uword);
+void vcl_ct_registration_lookup_add (uword mq_addr, u32 ctr_index);
+void vcl_ct_registration_lookup_del (uword mq_addr);
+vcl_mq_evt_conn_t *vcl_mq_evt_conn_alloc (void);
+u32 vcl_mq_evt_conn_index (vcl_mq_evt_conn_t * mqc);
+vcl_mq_evt_conn_t *vcl_mq_evt_conn_get (u32 mq_conn_idx);
+int vcl_mq_epoll_add_evfd (svm_msg_q_t * mq);
+int vcl_mq_epoll_del_evfd (u32 mqc_index);
 
 /*
  * VCL Binary API

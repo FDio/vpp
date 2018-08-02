@@ -629,7 +629,6 @@ main (int argc, char **argv)
 		    printf ("SERVER (fd %d): TX (%d bytes) - '%s'\n",
 			    conn->fd, tx_bytes, conn->buf);
 		}
-
 	      else		// Extraneous read data from non-echo tests???
 		{
 		  xtra++;
