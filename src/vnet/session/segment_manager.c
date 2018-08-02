@@ -88,7 +88,7 @@ segment_manager_del_segment (segment_manager_t * sm,
 /**
  * Removes segment after acquiring writer lock
  */
-always_inline void
+static inline void
 segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
 {
   svm_fifo_segment_private_t *fs;
@@ -290,8 +290,7 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 
 	  segment = segment_manager_get_segment (sm, seg_index);
 	  if (i == 0)
-	    sm->event_queue = segment_manager_alloc_queue (segment,
-							   props->evt_q_size);
+	    sm->event_queue = segment_manager_alloc_queue (segment, props);
 
 	  svm_fifo_segment_preallocate_fifo_pairs (segment,
 						   props->rx_fifo_size,
@@ -311,8 +310,7 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 	  return seg_index;
 	}
       segment = segment_manager_get_segment (sm, seg_index);
-      sm->event_queue = segment_manager_alloc_queue (segment,
-						     props->evt_q_size);
+      sm->event_queue = segment_manager_alloc_queue (segment, props);
     }
 
   return 0;
@@ -623,7 +621,7 @@ segment_manager_evt_q_expected_size (u32 q_len)
  */
 svm_msg_q_t *
 segment_manager_alloc_queue (svm_fifo_segment_private_t * segment,
-			     u32 queue_size)
+			     segment_manager_properties_t * props)
 {
   u32 fifo_evt_size, session_evt_size = 256, notif_q_size;
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
@@ -631,21 +629,27 @@ segment_manager_alloc_queue (svm_fifo_segment_private_t * segment,
   void *oldheap;
 
   fifo_evt_size = sizeof (session_event_t);
-  notif_q_size = clib_max (16, queue_size >> 4);
+  notif_q_size = clib_max (16, props->evt_q_size >> 4);
   /* *INDENT-OFF* */
   svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
-    {queue_size, fifo_evt_size, 0},
+    {props->evt_q_size, fifo_evt_size, 0},
     {notif_q_size, session_evt_size, 0}
   };
   /* *INDENT-ON* */
   cfg->consumer_pid = 0;
   cfg->n_rings = 2;
-  cfg->q_nitems = queue_size;
+  cfg->q_nitems = props->evt_q_size;
   cfg->ring_cfgs = rc;
 
   oldheap = ssvm_push_heap (segment->ssvm.sh);
   q = svm_msg_q_alloc (cfg);
   ssvm_pop_heap (oldheap);
+
+  if (props->use_mq_eventfd)
+    {
+      if (svm_msg_q_alloc_producer_eventfd (q))
+	clib_warning ("failed to alloc eventfd");
+    }
   return q;
 }
 

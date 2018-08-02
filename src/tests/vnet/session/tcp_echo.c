@@ -263,7 +263,7 @@ wait_for_state_change (echo_main_t * em, connection_state_t state)
 	return -1;
       if (em->time_to_stop == 1)
 	return 0;
-      if (!em->our_event_queue)
+      if (!em->our_event_queue || em->state < STATE_ATTACHED)
 	continue;
 
       if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_NOWAIT, 0))
@@ -347,44 +347,17 @@ application_detach (echo_main_t * em)
 }
 
 static int
-memfd_segment_attach (void)
-{
-  ssvm_private_t _ssvm = { 0 }, *ssvm = &_ssvm;
-  clib_error_t *error;
-  int rv;
-
-  if ((error = vl_socket_client_recv_fd_msg (&ssvm->fd, 1, 5)))
-    {
-      clib_error_report (error);
-      return -1;
-    }
-
-  if ((rv = ssvm_slave_init_memfd (ssvm)))
-    return rv;
-
-  return 0;
-}
-
-static int
-fifo_segment_attach (char *name, u32 size, ssvm_segment_type_t type)
+ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
-  clib_error_t *error;
   int rv;
 
   memset (a, 0, sizeof (*a));
   a->segment_name = (char *) name;
-  a->segment_size = size;
   a->segment_type = type;
 
   if (type == SSVM_SEGMENT_MEMFD)
-    {
-      if ((error = vl_socket_client_recv_fd_msg (&a->memfd_fd, 1, 5)))
-	{
-	  clib_error_report (error);
-	  return -1;
-	}
-    }
+    a->memfd_fd = fd;
 
   if ((rv = svm_fifo_segment_attach (a)))
     {
@@ -392,6 +365,7 @@ fifo_segment_attach (char *name, u32 size, ssvm_segment_type_t type)
       return rv;
     }
 
+  vec_reset_length (a->new_segment_indices);
   return 0;
 }
 
@@ -400,47 +374,57 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
   echo_main_t *em = &echo_main;
-  ssvm_segment_type_t seg_type;
+  int *fds = 0;
+  u32 n_fds = 0;
 
   if (mp->retval)
     {
       clib_warning ("attach failed: %U", format_api_error,
 		    clib_net_to_host_u32 (mp->retval));
-      em->state = STATE_FAILED;
-      return;
+      goto failed;
     }
 
   if (mp->segment_name_length == 0)
     {
       clib_warning ("segment_name_length zero");
-      return;
-    }
-
-  seg_type = em->use_sock_api ? SSVM_SEGMENT_MEMFD : SSVM_SEGMENT_SHM;
-
-  /* Attach to fifo segment */
-  if (fifo_segment_attach ((char *) mp->segment_name, mp->segment_size,
-			   seg_type))
-    {
-      em->state = STATE_FAILED;
-      return;
-    }
-
-  /* If we're using memfd segments, read and attach to event qs segment */
-  if (seg_type == SSVM_SEGMENT_MEMFD)
-    {
-      if (memfd_segment_attach ())
-	{
-	  clib_warning ("failed to attach to evt q segment");
-	  em->state = STATE_FAILED;
-	  return;
-	}
+      goto failed;
     }
 
   ASSERT (mp->app_event_queue_address);
   em->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					  svm_msg_q_t *);
+
+  if (mp->n_fds)
+    {
+      vec_validate (fds, mp->n_fds);
+      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+
+      if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
+	if (ssvm_segment_attach (0, SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	  goto failed;
+
+      if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+	if (ssvm_segment_attach ((char *) mp->segment_name,
+				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	  goto failed;
+
+      if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+	svm_msg_q_set_consumer_eventfd (em->our_event_queue, fds[n_fds++]);
+
+      vec_free (fds);
+    }
+  else
+    {
+      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
+			       -1))
+	goto failed;
+    }
+
   em->state = STATE_ATTACHED;
+  return;
+failed:
+  em->state = STATE_FAILED;
+  return;
 }
 
 static void

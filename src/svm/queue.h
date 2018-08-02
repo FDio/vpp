@@ -82,6 +82,24 @@ int svm_queue_add_nolock (svm_queue_t * q, u8 * elem);
 int svm_queue_sub_raw (svm_queue_t * q, u8 * elem);
 
 /**
+ * Wait for queue event
+ *
+ * Must be called with mutex held.
+ */
+void svm_queue_wait (svm_queue_t * q);
+
+/**
+ * Timed wait for queue event
+ *
+ * Must be called with mutex held.
+ *
+ * @param q		svm queue
+ * @param timeout	time in seconds
+ * @return 		0 on success, ETIMEDOUT on timeout or an error
+ */
+int svm_queue_timedwait (svm_queue_t * q, double timeout);
+
+/**
  * Add element to queue with mutex held
  * @param q		queue
  * @param elem		pointer element data to add
