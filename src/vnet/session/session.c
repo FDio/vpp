@@ -1203,7 +1203,7 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
   u64 eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
   void *oldheap;
-  int i;
+  int i, fd;
 
   if (smm->configured_event_queue_length)
     evt_q_length = smm->configured_event_queue_length;
@@ -1245,6 +1245,12 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
       cfg->q_nitems = evt_q_length;
       cfg->ring_cfgs = rc;
       smm->vpp_event_queues[i] = svm_msg_q_alloc (cfg);
+      if ((fd = eventfd(0, EFD_NONBLOCK)) < 0)
+	{
+	  clib_warning ("eventfd returned");
+	  continue;
+	}
+      svm_msg_q_set_consumer_eventfd (smm->vpp_event_queues[i], fd);
     }
 
   if (smm->evt_qs_use_memfd_seg)

@@ -215,6 +215,30 @@ void *svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 svm_msg_q_ring_t *svm_msg_q_ring (svm_msg_q_t * mq, u32 ring_index);
 
 /**
+ * Set event fd for queue consumer
+ *
+ * If set, queue will exclusively use eventfds for signaling. Moreover,
+ * afterwards, the queue should only be used in non-blocking mode. Waiting
+ * for events should be done externally using something like epoll.
+ *
+ * @param mq		message queue
+ * @param fd		consumer eventfd
+ */
+void svm_msg_q_set_consumer_eventfd (svm_msg_q_t *mq, int fd);
+
+/**
+ * Set event fd for queue producer
+ *
+ * If set, queue will exclusively use eventfds for signaling. Moreover,
+ * afterwards, the queue should only be used in non-blocking mode. Waiting
+ * for events should be done externally using something like epoll.
+ *
+ * @param mq		message queue
+ * @param fd		producer eventfd
+ */
+void svm_msg_q_set_producer_eventfd (svm_msg_q_t *mq, int fd);
+
+/**
  * Check if message queue is full
  */
 static inline u8

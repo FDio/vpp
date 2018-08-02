@@ -233,6 +233,18 @@ svm_msg_q_sub_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   svm_queue_sub_raw (mq->q, (u8 *) msg);
 }
 
+void
+svm_msg_q_set_consumer_eventfd (svm_msg_q_t *mq, int fd)
+{
+  mq->q->consumer_evtfd = fd;
+}
+
+void
+svm_msg_q_set_producer_eventfd (svm_msg_q_t *mq, int fd)
+{
+  mq->q->producer_evtfd = fd;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
