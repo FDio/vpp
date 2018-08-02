@@ -1,7 +1,9 @@
 .. _packages:
 
 Packages
-========
+==========
+
+This section identifies the different VPP packages and describes their contents.
 
 .. toctree::
 

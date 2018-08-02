@@ -1,8 +1,10 @@
 .. _packet-processing:
 
-=================
+===================
 Packet Processing
-=================
+===================
+
+This section identifies different components of packet processing and describes their benefits:
 
 * Layer 2 - 4 Network Stack
 

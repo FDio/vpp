@@ -3,13 +3,13 @@
 .. toctree::
  
 Ubuntu 16.04 - Setup the fd.io Repository
-=========================================
+==========================================
 
-From the following choose one of the releases to install.
+From the following, choose one of the releases to install.
 
 
 Update the OS
--------------
+-----------------------
 
 It is probably a good idea to update and upgrade the OS before starting
 
@@ -19,7 +19,7 @@ It is probably a good idea to update and upgrade the OS before starting
 
 
 Point to the Repository
------------------------
+-----------------------------------
 
 Create a file **"/etc/apt/sources.list.d/99fd.io.list"** with the contents that point to
 the version needed. The contents needed are shown below.
@@ -27,7 +27,7 @@ the version needed. The contents needed are shown below.
 .. _install_vpp:
 
 VPP latest Release
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
@@ -37,7 +37,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
 
 VPP stable/1804 Branch
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
@@ -47,7 +47,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
 
 VPP master Branch
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
@@ -57,7 +57,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** with contents:
 
 
 Install the Mandatory Packages
-==============================
+===============================
 
 .. code-block:: console
 
@@ -66,7 +66,7 @@ Install the Mandatory Packages
 
 
 Install the Optional Packages
-=============================
+==============================
 
 .. code-block:: console
 

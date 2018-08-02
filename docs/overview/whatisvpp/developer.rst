@@ -4,6 +4,8 @@
 Developer Friendly
 ==================
 
+This section describes the different ways VPP is friendly to developers:
+
 * Extensive runtime counters; throughput, `intructions per cycle <https://en.wikipedia.org/wiki/Instructions_per_cycle>`_, errors, events etc.
 * Integrated pipeline tracing facilities
 * Multi-language API bindings

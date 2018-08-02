@@ -10,9 +10,10 @@ VPP Configuration File - 'startup.conf'
 
 
 After a successful installation, VPP installs a startup config file named
-*'startup.conf'* in the *'/etc/vpp/'*' directory. This file can be tailored to
+*startup.conf* in the */etc/vpp/* directory. This file can be tailored to
 make VPP run as desired, but contains default values for typical installations.
-Below are more details about this file and parameter and values it contains.
+
+Below are more details about this file and the parameters and values it contains.
 
 Introduction
 ------------

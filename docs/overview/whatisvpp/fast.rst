@@ -4,7 +4,9 @@
 Fast, Scalable and Deterministic
 ================================
 
-* `Continuous integration and system testing <https://wiki.fd.io/view/CSIT#Start_Here>`_
+This section describes the ways that VPP is fast, scalable and deterministic:
+
+* `Continuous integration and system testing (CSIT) <https://wiki.fd.io/view/CSIT#Start_Here>`_
 
   * Including continuous & extensive, latency and throughput testing
 
