@@ -398,6 +398,7 @@ fi
 %files api-python
 %defattr(644,root,root)
 %{python2_sitelib}/vpp_*
+%{python2_sitelib}/tests/*
 
 %files selinux-policy
 %defattr(-,root,root,0755)
