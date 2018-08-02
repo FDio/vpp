@@ -507,7 +507,7 @@ typedef VL_API_PACKED(struct _vl_api_header {
   u32 client_index;
 }) vl_api_header_t;
 
-static unsigned int
+static u32
 vac_client_index (void)
 {
   return (api_main.my_client_index);
