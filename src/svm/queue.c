@@ -123,6 +123,7 @@ svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
       u64 data = 1;
       ASSERT (q->consumer_evtfd != -1);
       fd = is_prod ? q->producer_evtfd : q->consumer_evtfd;
+//      clib_warning ("mq sending event on fd %u", fd);
       rv = write (fd, &data, sizeof (data));
     }
 }
@@ -170,6 +171,9 @@ svm_queue_add_raw (svm_queue_t * q, u8 * elem)
 
   q->tail = (q->tail + 1) % q->maxsize;
   q->cursize++;
+
+  if (q->cursize == 1)
+    svm_queue_send_signal (q, 1);
 }
 
 
