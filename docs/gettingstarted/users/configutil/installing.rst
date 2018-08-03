@@ -2,9 +2,11 @@
 
 .. toctree::
 
-**********
-Installing
-**********
+.. _installing-vpp-config:
+
+*********************
+Installing VPP-Config
+*********************
 
 The FD.io VPP configuration utility uses the `Python Package Index <https://pypi.org>`__
 or "pypi".
