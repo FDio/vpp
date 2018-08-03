@@ -449,12 +449,13 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
 }
 
 clib_error_t *
-vl_sock_api_send_fd_msg (int socket_fd, int fd_to_share)
+vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
 {
   struct msghdr mh = { 0 };
   struct iovec iov[1];
-  char ctl[CMSG_SPACE (sizeof (int))];
-  char *msg = "memfd";
+  char ctl[CMSG_SPACE (sizeof (int)) * n_fds];
+  struct cmsghdr *cmsg;
+  char *msg = "fdmsg";
   int rv;
 
   iov[0].iov_base = msg;
@@ -462,15 +463,14 @@ vl_sock_api_send_fd_msg (int socket_fd, int fd_to_share)
   mh.msg_iov = iov;
   mh.msg_iovlen = 1;
 
-  struct cmsghdr *cmsg;
   memset (&ctl, 0, sizeof (ctl));
   mh.msg_control = ctl;
   mh.msg_controllen = sizeof (ctl);
   cmsg = CMSG_FIRSTHDR (&mh);
-  cmsg->cmsg_len = CMSG_LEN (sizeof (int));
+  cmsg->cmsg_len = CMSG_LEN (sizeof (int) * n_fds);
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_RIGHTS;
-  memcpy (CMSG_DATA (cmsg), &fd_to_share, sizeof (int));
+  memcpy (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
 
   rv = sendmsg (socket_fd, &mh, 0);
   if (rv < 0)
@@ -629,7 +629,7 @@ reply:
   cf->write_function (cf);
 
   /* Send the magic "here's your sign (aka fd)" socket message */
-  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
+  vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
 }
 
 #define foreach_vlib_api_msg                    	\

@@ -77,8 +77,8 @@ void vl_socket_process_api_msg (clib_file_t * uf, vl_api_registration_t * rp,
 				i8 * input_v);
 void vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am);
 clib_error_t *vl_sock_api_init (vlib_main_t * vm);
-clib_error_t *vl_sock_api_send_fd_msg (int socket_fd, int fd_to_share);
-clib_error_t *vl_sock_api_recv_fd_msg (int socket_fd, int *fd_to_share,
+clib_error_t *vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds);
+clib_error_t *vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds,
 				       u32 wait);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_API_H_ */

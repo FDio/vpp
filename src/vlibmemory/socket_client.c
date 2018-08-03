@@ -177,11 +177,12 @@ vl_socket_client_enable_disable (int enable)
 }
 
 clib_error_t *
-vl_sock_api_recv_fd_msg (int socket_fd, int *my_fd, u32 wait)
+vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
 {
   socket_client_main_t *scm = &socket_client_main;
   char msgbuf[16];
-  char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
+  char ctl[CMSG_SPACE (sizeof (int) * n_fds)
+	   + CMSG_SPACE (sizeof (struct ucred))];
   struct msghdr mh = { 0 };
   struct iovec iov[1];
   ssize_t size = 0;
@@ -231,7 +232,7 @@ vl_sock_api_recv_fd_msg (int socket_fd, int *my_fd, u32 wait)
 	    }
 	  else if (cmsg->cmsg_type == SCM_RIGHTS)
 	    {
-	      clib_memcpy (my_fd, CMSG_DATA (cmsg), sizeof (int));
+	      clib_memcpy (fds, CMSG_DATA (cmsg), sizeof (int) * n_fds);
 	    }
 	}
       cmsg = CMSG_NXTHDR (&mh, cmsg);
@@ -259,7 +260,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   /*
    * Check the socket for the magic fd
    */
-  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 5);
+  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 1, 5);
   if (error)
     {
       clib_error_report (error);
@@ -409,12 +410,12 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
 }
 
 clib_error_t *
-vl_socket_client_recv_fd_msg (int *fd_to_recv, u32 wait)
+vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait)
 {
   socket_client_main_t *scm = &socket_client_main;
   if (!scm->socket_fd)
     return clib_error_return (0, "no socket");
-  return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fd_to_recv, wait);
+  return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fds, n_fds, wait);
 }
 
 /*
