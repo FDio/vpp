@@ -353,7 +353,7 @@ memfd_segment_attach (void)
   clib_error_t *error;
   int rv;
 
-  if ((error = vl_socket_client_recv_fd_msg (&ssvm->fd, 5)))
+  if ((error = vl_socket_client_recv_fd_msg (&ssvm->fd, 1, 5)))
     {
       clib_error_report (error);
       return -1;
@@ -379,7 +379,7 @@ fifo_segment_attach (char *name, u32 size, ssvm_segment_type_t type)
 
   if (type == SSVM_SEGMENT_MEMFD)
     {
-      if ((error = vl_socket_client_recv_fd_msg (&a->memfd_fd, 5)))
+      if ((error = vl_socket_client_recv_fd_msg (&a->memfd_fd, 1, 5)))
 	{
 	  clib_error_report (error);
 	  return -1;

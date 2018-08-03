@@ -63,12 +63,13 @@ static int
 session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
 {
   clib_error_t *error;
+  int fd = sp->fd;
   if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
     {
       clib_warning ("can't send memfd fd");
       return -1;
     }
-  error = vl_api_send_fd_msg (reg, sp->fd);
+  error = vl_api_send_fd_msg (reg, &fd, 1);
   if (error)
     {
       clib_error_report (error);
