@@ -318,6 +318,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       sa->use_esn = args->esn;
       sa->use_anti_replay = args->anti_replay;
       sa->integ_alg = args->integ_alg;
+      sa->udp_encap = args->udp_encap;
       if (args->remote_integ_key_len <= sizeof (args->remote_integ_key))
 	{
 	  sa->integ_key_len = args->remote_integ_key_len;
@@ -342,6 +343,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       sa->use_esn = args->esn;
       sa->use_anti_replay = args->anti_replay;
       sa->integ_alg = args->integ_alg;
+      sa->udp_encap = args->udp_encap;
       if (args->local_integ_key_len <= sizeof (args->local_integ_key))
 	{
 	  sa->integ_key_len = args->local_integ_key_len;
