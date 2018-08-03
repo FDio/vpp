@@ -148,6 +148,10 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  sa.is_tunnel = 1;
 	  sa.is_tunnel_ip6 = 1;
 	}
+      else if (unformat (line_input, "udp-encap"))
+	{
+	  sa.udp_encap = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -176,7 +180,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	goto done;
     }
 
-  ipsec_add_del_sa (vm, &sa, is_add, 0 /* enable nat traversal */ );
+  ipsec_add_del_sa (vm, &sa, is_add);
 
 done:
   unformat_free (line_input);
@@ -665,8 +669,8 @@ show_ipsec_command_fn (vlib_main_t * vm,
     hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
     vlib_cli_output(vm, "  %s seq", hi->name);
     sa = pool_elt_at_index(im->sad, t->output_sa_index);
-    vlib_cli_output(vm, "   seq %u seq-hi %u esn %u anti-replay %u",
-                    sa->seq, sa->seq_hi, sa->use_esn, sa->use_anti_replay);
+    vlib_cli_output(vm, "   seq %u seq-hi %u esn %u anti-replay %u udp-encap %u",
+                    sa->seq, sa->seq_hi, sa->use_esn, sa->use_anti_replay, sa->udp_encap);
     vlib_cli_output(vm, "   local-spi %u local-ip %U", sa->spi,
                     format_ip4_address, &sa->tunnel_src_addr.ip4);
     vlib_cli_output(vm, "   local-crypto %U %U",
@@ -766,6 +770,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	a.renumber = 1;
       else if (unformat (line_input, "del"))
 	a.is_add = 0;
+      else if (unformat (line_input, "udp-encap"))
+	a.udp_encap = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -808,7 +814,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
   .path = "create ipsec tunnel",
-  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi> [instance <inst_num>]",
+  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap]",
   .function = create_ipsec_tunnel_command_fn,
 };
 /* *INDENT-ON* */
