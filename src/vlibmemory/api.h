@@ -82,20 +82,21 @@ vl_api_registration_del_file (vl_api_registration_t * reg)
 }
 
 always_inline clib_error_t *
-vl_api_send_fd_msg (vl_api_registration_t * reg, int fd_to_send)
+vl_api_send_fd_msg (vl_api_registration_t * reg, int fds[], int n_fds)
 {
   clib_file_t *cf = vl_api_registration_file (reg);
   if (cf)
-    return vl_sock_api_send_fd_msg (cf->file_descriptor, fd_to_send);
+    return vl_sock_api_send_fd_msg (cf->file_descriptor, fds, n_fds);
   return 0;
 }
 
 always_inline clib_error_t *
-vl_api_recv_fd_msg (vl_api_registration_t * reg, int *fd_to_recv, u32 wait)
+vl_api_recv_fd_msg (vl_api_registration_t * reg, int fds[], int n_fds,
+		    u32 wait)
 {
   clib_file_t *cf = vl_api_registration_file (reg);
   if (cf)
-    return vl_sock_api_recv_fd_msg (cf->file_descriptor, fd_to_recv, wait);
+    return vl_sock_api_recv_fd_msg (cf->file_descriptor, fds, n_fds, wait);
   return 0;
 }
 

@@ -53,7 +53,7 @@ int vl_socket_client_write (void);
 void vl_socket_client_enable_disable (int enable);
 void *vl_socket_client_msg_alloc (int nbytes);
 int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config);
-clib_error_t *vl_socket_client_recv_fd_msg (int *fd_to_recv, u32 wait);
+clib_error_t *vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_CLIENT_H_ */
 
