@@ -66,6 +66,7 @@ To modify an existing patch:
 
 .. code-block:: console
 
+    $ git review -d <review number>
     $ git status
     $ git add <filename>
     $ git commit --amend
