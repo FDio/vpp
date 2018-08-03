@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2e8b830_ef1425e0",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-03T14:42:06Z",
+      "side": 1,
+      "message": "Hmm, just checked and I don\u0027t really like how we handle sending. I think vl_socket_add_pending_output should first try to write something and if it gets EAGAIN then ask the infra to listen for EPOLLOUT events. In theory, that should save you from diving into the registration and forcing a write on the fd.\n\nHere\u0027s an attempt at doing that: https://gerrit.fd.io/r/#/c/13923/",
+      "range": {
+        "startLine": 450,
+        "startChar": 4,
+        "endLine": 451,
+        "endChar": 30
+      },
+      "revId": "3371a681ed6f3dc0ae538f25dceaa334aa136c50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
