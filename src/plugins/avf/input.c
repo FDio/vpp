@@ -304,7 +304,7 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
       clib_memcpy (vnet_buffer (b[0])->sw_if_index,
 		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */
       rxve += 1;
