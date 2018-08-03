@@ -16,6 +16,24 @@
       "revId": "635a98e7f432110d2dc66d616a7b7eec014f9382",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "57a03b91_35d239ea",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2188,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-08-03T04:16:08Z",
+      "side": 1,
+      "message": "if I understand right, though size is ip header here, real size prefetched is still one cache line. while it is crossing the border of two physical cache lines. I wonder the perf impact about this case.",
+      "parentUuid": "93e2cde8_9e4649b1",
+      "revId": "635a98e7f432110d2dc66d616a7b7eec014f9382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
