@@ -184,7 +184,9 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       raw[0].item.length = vxlan_hdr_sz;
 
       clib_memcpy (raw[0].val + raw_sz, &spec_hdr, vxlan_hdr_sz);
-      clib_memcpy (raw[1].val + raw_sz, &mask_hdr, vxlan_hdr_sz);;
+      raw[0].item.pattern = raw[0].val + raw_sz;
+      clib_memcpy (raw[1].val + raw_sz, &mask_hdr, vxlan_hdr_sz);
+      raw[1].item.pattern = raw[1].val + raw_sz;
 
       vec_add2 (items, item, 1);
       item->type = RTE_FLOW_ITEM_TYPE_RAW;
