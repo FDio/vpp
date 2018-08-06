@@ -23,4 +23,7 @@ The Developers section covers the following areas:
    vnet
    featurearcs
    bihash
+   vpp_api_module
+   binary_api_support
+   sample_plugin
 
