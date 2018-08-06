@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d38a9b30_485c56b3",
+        "filename": "test/run_tests.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-06T12:25:07Z",
+      "side": 1,
+      "message": "Yes, we should.",
+      "range": {
+        "startLine": 585,
+        "startChar": 15,
+        "endLine": 585,
+        "endChar": 24
+      },
+      "revId": "6e1bec7b971abfd56a2b46ad6767bef2d3d4bd39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
