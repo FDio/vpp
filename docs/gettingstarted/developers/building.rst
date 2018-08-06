@@ -10,7 +10,7 @@ To get started developing with VPP you need to get the sources and build the pac
 .. _setupproxies:
 
 Set up Proxies
---------------
+--------------------------
 
 Depending on the environment, proxies may need to be set. 
 You may run these commands:
@@ -22,7 +22,7 @@ You may run these commands:
 
 
 Get the VPP Sources
--------------------
+-----------------------------------
 
 To get the VPP sources and get ready to build execute the following:
 
@@ -32,7 +32,7 @@ To get the VPP sources and get ready to build execute the following:
     $ cd vpp
 
 Build VPP Dependencies
-----------------------
+--------------------------------------
 
 Before building, make sure there are no FD.io VPP or DPDK packages installed by entering the following
 commands:
@@ -44,7 +44,7 @@ commands:
 
 There should be no output, or packages showing after each of the above commands.
 
-Run this to install the dependencies for FD.io VPP. 
+Run these commands to install the dependencies for FD.io VPP. 
 If it hangs during downloading at any point, you may need to set up :ref:`proxies for this to work <setupproxies>`.
 
 .. code-block:: console
@@ -71,11 +71,12 @@ If it hangs during downloading at any point, you may need to set up :ref:`proxie
     done.
     done.
 
-Build VPP (Debug Mode)
-----------------------
+Build VPP (Debug)
+----------------------------
 
-This build version contains debug symbols which is useful to modify VPP. The command below will build debug version of VPP. 
-This build will come with /build-root/vpp_debug-native.
+This build version contains debug symbols which is useful to modify VPP. The command
+below will build debug version of VPP. The binaries when building the debug images
+can be found in /build-root/vpp_debug-native.
 
 .. code-block:: console
 
@@ -99,24 +100,23 @@ This build will come with /build-root/vpp_debug-native.
     make[1]: Leaving directory '/home/vagrant/vpp-master/build-root'
 
 Build VPP (Release Version)
----------------------------
+-----------------------------------------
 
-To build the release version of FD.io VPP.
-This build is optimized and will not create debug symbols.
-This build will come with /build-root/build-vpp-native
+To build the release version of FD.io VPP. This build is optimized and will not create debug symbols.
+The binaries when building the release images can be found in /build-root/vpp-native.
 
 .. code-block:: console
 
-    $ make release
+    $ make build-release
 
 
 Building Necessary Packages
----------------------------
+--------------------------------------------
 
 To build the debian packages, one of the following commands below depending on the system:
 
 Building Debian Packages
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
 
@@ -124,13 +124,13 @@ Building Debian Packages
 
 
 Building RPM Packages
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
 
     $ make pkg-rpm
 
-The packages will be found in the build-root directory.
+Once the packages are builty they can be found in the build-root directory.
 
 .. code-block:: console
     
@@ -143,9 +143,18 @@ The packages will be found in the build-root directory.
     vpp-api-lua_18.07-rc0~456-gb361076_amd64.deb     vpp-lib_18.07-rc0~456-gb361076_amd64.deb
     vpp-api-python_18.07-rc0~456-gb361076_amd64.deb  vpp-plugins_18.07-rc0~456-gb361076_amd64.deb
 
-Packages built installed end up in build-root directory. Finally, the command below installs all built packages.
+Finally, the packages can be installed with the following:
+
+For Ubuntu:
 
 .. code-block:: console
 
    $ sudo bash
    # dpkg -i *.deb
+
+For Centos or Redhat:
+
+.. code-block:: console
+
+   $ sudo bash
+   # rpm -ivh *.rpm

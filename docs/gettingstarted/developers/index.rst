@@ -16,6 +16,8 @@ The Developers section covers the following areas:
    :maxdepth: 2
 
    building
+   running_vpp
+   gdb_examples
    softwarearchitecture
    infrastructure
    vlib
