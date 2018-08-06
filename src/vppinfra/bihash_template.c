@@ -677,9 +677,16 @@ void BV (clib_bihash_foreach_key_value_pair)
 		continue;
 
 	      (*fp) (&v->kvp[k], arg);
+	      /*
+	       * In case the callback deletes the last entry in the bucket...
+	       */
+	      if (b->offset == 0)
+		goto doublebreak;
 	    }
 	  v++;
 	}
+    doublebreak:
+      ;
     }
 }
 
