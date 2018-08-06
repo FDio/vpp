@@ -22,6 +22,29 @@
       "revId": "ec806c2fd263a2b9179dc84e6532b21fc9b650ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "278c31eb_ecad3bf0",
+        "filename": "build-data/platforms/dpaa.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-08-06T08:18:22Z",
+      "side": 1,
+      "message": "These 4 lines are required in build-root/platforms/vpp.mk as well.",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 69,
+        "endChar": 5
+      },
+      "revId": "ec806c2fd263a2b9179dc84e6532b21fc9b650ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
