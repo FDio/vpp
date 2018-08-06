@@ -34,9 +34,9 @@
 typedef enum udp_encap_fixup_flags_t_
 {
   UDP_ENCAP_FIXUP_NONE = 0,
-    /**
-     * UDP source port contains an entropy/hash value for load-balancing by downstream peers.
-     */
+  /**
+   * UDP source port contains an entropy/hash value for load-balancing by downstream peers.
+   */
   UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY = (1 << 0),
 } udp_encap_fixup_flags_t;
 
@@ -45,14 +45,14 @@ typedef enum udp_encap_fixup_flags_t_
  */
 typedef struct udp_encap_t_
 {
-    /**
-     * The first cacheline contains the data used in the data-plane
-     */
+  /**
+   * The first cacheline contains the data used in the data-plane
+   */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * The headers to paint, in packet painting order
-     */
+  /**
+   * The headers to paint, in packet painting order
+   */
   union
   {
     struct
@@ -67,43 +67,46 @@ typedef struct udp_encap_t_
     } __attribute__ ((packed)) ip6;
   } __attribute__ ((packed)) ue_hdrs;
 
-    /**
-     * Flags controlling fixup behaviour
-     */
+  /**
+   * Flags controlling fixup behaviour
+   */
   udp_encap_fixup_flags_t ue_flags;
 
-    /**
-     * The DPO used to forward to the next node in the VLIB graph
-     */
+  /**
+   * The DPO used to forward to the next node in the VLIB graph
+   */
   dpo_id_t ue_dpo;
 
-    /**
-     * the protocol of the IP header imposed
-     */
+  /**
+   * the protocol of the IP header imposed
+   */
   fib_protocol_t ue_ip_proto;
 
+  /**
+   * The seond cacheline contains control-plane data
+   */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-    /**
-     * linkage into the FIB graph
-     */
+  /**
+   * linkage into the FIB graph
+   */
   fib_node_t ue_fib_node;
 
-    /**
-     * The ID given by the user/client.
-     * This ID is used by the client for modifications.
-     */
+  /**
+   * The ID given by the user/client.
+   * This ID is used by the client for modifications.
+   */
   u32 ue_id;
 
-    /**
-     * Tracking information for the IP destination
-     */
+  /**
+   * Tracking information for the IP destination
+   */
   fib_node_index_t ue_fib_entry_index;
   u32 ue_fib_sibling;
 
-    /**
-     * The FIB index in which the encap destination resides
-     */
+  /**
+   * The FIB index in which the encap destination resides
+   */
   index_t ue_fib_index;
 } udp_encap_t;
 
