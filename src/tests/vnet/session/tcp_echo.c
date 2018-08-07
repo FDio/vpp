@@ -1181,6 +1181,7 @@ server_handle_event_queue (echo_main_t * em)
 {
   session_fifo_event_t _e, *e = &_e;
 
+
   while (1)
     {
       svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
@@ -1386,8 +1387,6 @@ main (int argc, char **argv)
   /* make the main heap thread-safe */
   h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
-  vec_validate (em->rx_buf, 128 << 10);
-
   memset (em, 0, sizeof (*em));
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   em->my_pid = getpid ();
@@ -1396,6 +1395,7 @@ main (int argc, char **argv)
   em->use_sock_api = 1;
   em->fifo_size = 64 << 10;
   em->n_clients = 1;
+  vec_validate (em->rx_buf, 128 << 10);
 
   clib_time_init (&em->clib_time);
   init_error_string_table (em);
