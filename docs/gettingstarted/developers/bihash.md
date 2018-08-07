@@ -257,6 +257,41 @@ To nobody's great surprise: clib_bihash_foreach_key_value_pair
 iterates across the entire table, calling callback_fn with active
 entries.
 
+#### Bihash table iteration safety
+
+The iterator template "clib_bihash_foreach_key_value_pair" must be
+used with a certain amount of care. For one thing, the iterator
+template does _not_ take the bihash hash table writer lock. If your
+use-case requires it, lock the table.
+
+For another, the iterator template is not safe under all conditions:
+
+* It's __OK to delete__ bihash table entries during a table-walk. The
+iterator checks whether the current bucket has been freed after each
+_callback_fn(...)_ invocation.
+
+* It is __not OK to add__ entries during a table-walk. 
+
+The add-during-walk case involves a jackpot: while processing a
+key-value-pair in a particular bucket, add a certain number of
+entries. By luck, assume that one or more of the added entries causes
+the __current bucket__ to split-and-rehash.
+
+Since we rehash KVP's to different pages based on what amounts to a
+different hash function, either of these things can go wrong:
+
+* We may revisit previously-visited entries. Depending on how one
+coded the use-case, we could end up in a recursive-add situation.
+
+* We may skip entries that have not been visited
+
+One could build an add-safe iterator, at a significant cost in
+performance: copy the entire bucket, and walk the copy.
+
+It's hard to imagine a worthwhile add-during walk use-case in the
+first place; let alone one which couldn't be implemented by walking
+the table without modifying it, then adding a set of records.
+
 ### Creating a new template instance
 
 Creating a new template is easy. Use one of the existing templates as
