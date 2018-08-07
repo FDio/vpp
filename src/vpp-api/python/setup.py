@@ -18,13 +18,13 @@ except ImportError:
     from distutils.core import setup, find_packages
 
 setup(name='vpp_papi',
-      version='1.6',
+      version='1.6.1',
       description='VPP Python binding',
       author='Ole Troan',
       author_email='ot@cisco.com',
       url='https://wiki.fd.io/view/VPP/Python_API',
       license='Apache-2.0',
-      test_suite='tests',
+      test_suite='vpp_papi.tests',
       # Add when we don't need to support 2.7.5
       # 'enum34;python_version<"3.4"'],
       install_requires=['cffi >= 1.6', 'enum34'],
