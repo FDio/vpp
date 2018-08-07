@@ -11,8 +11,8 @@ Architectures
 * - The FD.io VPP platform supports:
 
    * - x86/64
-   * - ARM
-     
+   * - ARM-AArch64
+
 Operating Systems and Packaging
 -------------------------------
 
