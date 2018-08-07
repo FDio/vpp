@@ -1103,9 +1103,17 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      kv.key = key.raw;
 	      BV (clib_bihash_add_del) (&fm->mac_table, &kv, 0);
 	      learn_count--;
+	      /*
+	       * Note: we may have just freed the bucket's backing
+	       * storage, so check right here...
+	       */
+	      if (b->offset == 0)
+		goto doublebreak;
 	    }
 	  v++;
 	}
+    doublebreak:
+      ;
     }
 
   /* keep learn count consistent */
