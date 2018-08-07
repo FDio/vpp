@@ -56,6 +56,15 @@ These are some of the trending packet throughput graphs from the CSIT `trending 
 For More information on CSIT 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+The FD.io CSIT is implemented with below platforms:
+
+* - x86/64
+* - ARM-AArch64
+
+   * - Huawei TaiShan 2280
+   * - Marvell MACCHIATObin
+
+
 These are FD.io Continuous System Integration and Testing (CSIT)'s documentation links.
 
 * `CSIT Code Documentation <https://docs.fd.io/csit/master/doc/overview.html>`_
