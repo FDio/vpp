@@ -628,69 +628,62 @@ VLIB_CLI_COMMAND (show_pppoe_session_command, static) = {
 };
 /* *INDENT-ON* */
 
+typedef struct pppoe_show_walk_ctx_t_
+{
+  vlib_main_t *vm;
+  u8 first_entry;
+  u32 total_entries;
+} pppoe_show_walk_ctx_t;
+
+static void
+pppoe_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  pppoe_show_walk_ctx_t *ctx = arg;
+  pppoe_entry_result_t result;
+  pppoe_entry_key_t key;
+
+  if (ctx->first_entry)
+    {
+      ctx->first_entry = 0;
+      vlib_cli_output (ctx->vm,
+		       "%=19s%=12s%=13s%=14s",
+		       "Mac-Address", "session_id", "sw_if_index",
+		       "session_index");
+    }
+
+  key.raw = kvp->key;
+  result.raw = kvp->value;
+
+  vlib_cli_output (ctx->vm,
+		   "%=19U%=12d%=13d%=14d",
+		   format_ethernet_address, key.fields.mac,
+		   clib_net_to_host_u16 (key.fields.session_id),
+		   result.fields.sw_if_index == ~0
+		   ? -1 : result.fields.sw_if_index,
+		   result.fields.session_index == ~0
+		   ? -1 : result.fields.session_index);
+  ctx->total_entries++;
+}
+
 /** Display the contents of the PPPoE Fib. */
 static clib_error_t *
 show_pppoe_fib_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   pppoe_main_t *pem = &pppoe_main;
-  BVT (clib_bihash) * h = &pem->session_table;
-  BVT (clib_bihash_bucket) * b;
-  BVT (clib_bihash_value) * v;
-  pppoe_entry_key_t key;
-  pppoe_entry_result_t result;
-  u32 first_entry = 1;
-  u64 total_entries = 0;
-  int i, j, k;
-  u8 *s = 0;
+  pppoe_show_walk_ctx_t ctx = {
+    .first_entry = 1,
+    .vm = vm,
+  };
 
-  for (i = 0; i < h->nbuckets; i++)
-    {
-      b = &h->buckets[i];
-      if (b->offset == 0)
-	continue;
-      v = BV (clib_bihash_get_value) (h, b->offset);
-      for (j = 0; j < (1 << b->log2_pages); j++)
-	{
-	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
-	    {
-	      if (v->kvp[k].key == ~0ULL && v->kvp[k].value == ~0ULL)
-		continue;
+  BV (clib_bihash_foreach_key_value_pair)
+    (&pem->session_table, pppoe_show_walk_cb, &ctx);
 
-	      if (first_entry)
-		{
-		  first_entry = 0;
-		  vlib_cli_output (vm,
-				   "%=19s%=12s%=13s%=14s",
-				   "Mac-Address", "session_id", "sw_if_index",
-				   "session_index");
-		}
-
-	      key.raw = v->kvp[k].key;
-	      result.raw = v->kvp[k].value;
-
-
-	      vlib_cli_output (vm,
-			       "%=19U%=12d%=13d%=14d",
-			       format_ethernet_address, key.fields.mac,
-			       clib_net_to_host_u16 (key.fields.session_id),
-			       result.fields.sw_if_index == ~0
-			       ? -1 : result.fields.sw_if_index,
-			       result.fields.session_index == ~0
-			       ? -1 : result.fields.session_index);
-	      vec_reset_length (s);
-	      total_entries++;
-	    }
-	  v++;
-	}
-    }
-
-  if (total_entries == 0)
+  if (ctx.total_entries == 0)
     vlib_cli_output (vm, "no pppoe fib entries");
   else
-    vlib_cli_output (vm, "%lld pppoe fib entries", total_entries);
+    vlib_cli_output (vm, "%lld pppoe fib entries", ctx.total_entries);
 
-  vec_free (s);
   return 0;
 }
 
