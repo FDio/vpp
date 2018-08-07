@@ -164,6 +164,21 @@ else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif
 
+# -Wimplicit-fallthrough was introduced starting from GCC 7,
+# and it requires newer version of ccache.
+# Disable fallthrough warning for old ccache version.
+ifeq ($(DPDK_CC),gcc)
+GCC_VER_V = "7.0.0"
+CCACHE_VER_V = "3.4.1"
+GCC_VER = $(shell gcc --version | grep ^gcc | sed 's/^.* //g')
+CCACHE_VER = $(shell ccache --version | grep ^ccache | sed 's/^.* //g')
+ifeq ($(shell expr "$(GCC_VER)" ">=" "$(GCC_VER_V)"),1)
+ifeq ($(shell expr "$(CCACHE_VER)" "<" "$(CCACHE_VER_V)"),1)
+DPDK_EXTRA_CFLAGS += -Wimplicit-fallthrough=0
+endif
+endif
+endif
+
 ifeq ($(AESNI),y)
 IPSEC_MB_BUILD_PATH := $(B)/intel-ipsec-mb-$(IPSEC_MB_VER)
 DPDK_EXTRA_CFLAGS += -L$(IPSEC_MB_BUILD_PATH) -I$(IPSEC_MB_BUILD_PATH)
