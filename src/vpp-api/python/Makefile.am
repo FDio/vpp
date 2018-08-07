@@ -19,5 +19,5 @@ install-exec-local:
 	--prefix $(DESTDIR)$(prefix)                                    \
 	--single-version-externally-managed                             \
 	--verbose                                                       \
-	bdist_egg 							\
+	bdist_whl 							\
 	--dist-dir=$(DESTDIR)$(prefix))
