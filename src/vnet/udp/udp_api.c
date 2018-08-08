@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -18,6 +18,7 @@
 
 #include <vnet/udp/udp_encap.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -38,8 +39,9 @@
 #include <vlibapi/api_helper_macros.h>
 
 
-#define foreach_udp_api_msg                      \
-  _(UDP_ENCAP_ADD_DEL, udp_encap_add_del)        \
+#define foreach_udp_api_msg            \
+_(UDP_ENCAP_DEL, udp_encap_del)        \
+_(UDP_ENCAP_ADD, udp_encap_add)        \
 _(UDP_ENCAP_DUMP, udp_encap_dump)
 
 static void
@@ -47,33 +49,44 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 			u32 context)
 {
   vl_api_udp_encap_details_t *mp;
-  fib_table_t *fib_table;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_UDP_ENCAP_DETAILS);
   mp->context = context;
 
-  mp->is_ip6 = (ue->ue_ip_proto == FIB_PROTOCOL_IP6);
-
   if (FIB_PROTOCOL_IP4 == ue->ue_ip_proto)
     {
-      clib_memcpy (mp->src_ip, &ue->ue_hdrs.ip4.ue_ip4.src_address, 4);
-      clib_memcpy (mp->dst_ip, &ue->ue_hdrs.ip4.ue_ip4.dst_address, 4);
-      mp->src_port = htons (ue->ue_hdrs.ip4.ue_udp.src_port);
-      mp->dst_port = htons (ue->ue_hdrs.ip4.ue_udp.dst_port);
+      clib_memcpy (&mp->udp_encap.src_ip.un.ip4,
+		   &ue->ue_hdrs.ip4.ue_ip4.src_address, 4);
+      clib_memcpy (&mp->udp_encap.dst_ip.un.ip4,
+		   &ue->ue_hdrs.ip4.ue_ip4.dst_address, 4);
+      mp->udp_encap.dst_ip.af = clib_host_to_net_u32 (ADDRESS_IP4);
+      mp->udp_encap.src_ip.af = clib_host_to_net_u32 (ADDRESS_IP4);
+
+      /* ports aren't byte swapped because they are stored in network
+       * byte order */
+      mp->udp_encap.src_port = ue->ue_hdrs.ip4.ue_udp.src_port;
+      mp->udp_encap.dst_port = ue->ue_hdrs.ip4.ue_udp.dst_port;
     }
   else
     {
-      clib_memcpy (mp->src_ip, &ue->ue_hdrs.ip6.ue_ip6.src_address, 16);
-      clib_memcpy (mp->dst_ip, &ue->ue_hdrs.ip6.ue_ip6.dst_address, 16);
-      mp->src_port = htons (ue->ue_hdrs.ip6.ue_udp.src_port);
-      mp->dst_port = htons (ue->ue_hdrs.ip6.ue_udp.dst_port);
+      clib_memcpy (&mp->udp_encap.src_ip.un.ip6,
+		   &ue->ue_hdrs.ip6.ue_ip6.src_address, 16);
+      clib_memcpy (&mp->udp_encap.dst_ip.un.ip6,
+		   &ue->ue_hdrs.ip6.ue_ip6.dst_address, 16);
+      mp->udp_encap.dst_ip.af = clib_host_to_net_u32 (ADDRESS_IP6);
+      mp->udp_encap.src_ip.af = clib_host_to_net_u32 (ADDRESS_IP6);
+
+      /* ports aren't byte swapped because they are stored in network
+       * byte order */
+      mp->udp_encap.src_port = ue->ue_hdrs.ip6.ue_udp.src_port;
+      mp->udp_encap.dst_port = ue->ue_hdrs.ip6.ue_udp.dst_port;
     }
 
-  fib_table = fib_table_get (ue->ue_fib_index, ue->ue_ip_proto);
-  mp->table_id = htonl (fib_table->ft_table_id);
-  mp->id = htonl (ue->ue_id);
+  mp->udp_encap.table_id =
+    htonl (fib_table_get_table_id (ue->ue_fib_index, ue->ue_ip_proto));
+  mp->udp_encap.id = htonl (ue->ue_id);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -98,19 +111,21 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
 }
 
 static void
-vl_api_udp_encap_add_del_t_handler (vl_api_udp_encap_add_del_t * mp,
-				    vlib_main_t * vm)
+vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
 {
-  vl_api_udp_encap_add_del_reply_t *rmp;
+  vl_api_udp_encap_add_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
   u32 fib_index, table_id, ue_id;
   fib_protocol_t fproto;
+  ip46_type_t itype;
   int rv = 0;
 
-  ue_id = ntohl (mp->id);
-  table_id = ntohl (mp->table_id);
-  fproto = (mp->is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  ue_id = ntohl (mp->udp_encap.id);
+  table_id = ntohl (mp->udp_encap.table_id);
 
+  itype = ip_address_decode (&mp->udp_encap.src_ip, &src_ip);
+  itype = ip_address_decode (&mp->udp_encap.dst_ip, &dst_ip);
+  fproto = fib_proto_from_ip46 (itype);
   fib_index = fib_table_find (fproto, table_id);
 
   if (~0 == fib_index)
@@ -119,31 +134,25 @@ vl_api_udp_encap_add_del_t_handler (vl_api_udp_encap_add_del_t * mp,
       goto done;
     }
 
-  if (FIB_PROTOCOL_IP4 == fproto)
-    {
-      clib_memcpy (&src_ip.ip4, mp->src_ip, 4);
-      clib_memcpy (&dst_ip.ip4, mp->dst_ip, 4);
-    }
-  else
-    {
-      clib_memcpy (&src_ip.ip6, mp->src_ip, 16);
-      clib_memcpy (&dst_ip.ip6, mp->dst_ip, 16);
-    }
-
-  if (mp->is_add)
-    {
-      udp_encap_add_and_lock (ue_id, fproto, fib_index,
-			      &src_ip, &dst_ip,
-			      ntohs (mp->src_port),
-			      ntohs (mp->dst_port), UDP_ENCAP_FIXUP_NONE);
-    }
-  else
-    {
-      udp_encap_unlock (ue_id);
-    }
+  udp_encap_add_and_lock (ue_id, fproto, fib_index,
+			  &src_ip, &dst_ip,
+			  ntohs (mp->udp_encap.src_port),
+			  ntohs (mp->udp_encap.dst_port),
+			  UDP_ENCAP_FIXUP_NONE);
 
 done:
-  REPLY_MACRO (VL_API_UDP_ENCAP_ADD_DEL_REPLY);
+  REPLY_MACRO (VL_API_UDP_ENCAP_ADD_REPLY);
+}
+
+static void
+vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t * mp, vlib_main_t * vm)
+{
+  vl_api_udp_encap_del_reply_t *rmp;
+  int rv = 0;
+
+  udp_encap_unlock (ntohl (mp->id));
+
+  REPLY_MACRO (VL_API_UDP_ENCAP_DEL_REPLY);
 }
 
 #define vl_msg_name_crc_list
