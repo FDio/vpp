@@ -246,8 +246,10 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_input_node, ip6_input)
-     static clib_error_t *ip6_init (vlib_main_t * vm)
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_input_node, ip6_input);
+
+static clib_error_t *
+ip6_init (vlib_main_t * vm)
 {
   ethernet_register_input_type (vm, ETHERNET_TYPE_IP6, ip6_input_node.index);
   ppp_register_input_protocol (vm, PPP_PROTOCOL_ip6, ip6_input_node.index);
@@ -269,6 +271,26 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip6_input_node, ip6_input)
 }
 
 VLIB_INIT_FUNCTION (ip6_init);
+
+static clib_error_t *
+ip6_main_loop_enter (vlib_main_t * vm)
+{
+  ip6_main_t *im = &ip6_main;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
+  int i;
+
+  vec_validate (im->nd_throttle_bitmaps, n_vlib_mains);
+  vec_validate (im->nd_throttle_seeds, n_vlib_mains);
+  vec_validate (im->nd_throttle_last_seed_change_time, n_vlib_mains);
+
+  for (i = 0; i < n_vlib_mains; i++)
+    vec_validate (im->nd_throttle_bitmaps[i],
+		  (ND_THROTTLE_BITS / BITS (uword)) - 1);
+  return 0;
+}
+
+VLIB_MAIN_LOOP_ENTER_FUNCTION (ip6_main_loop_enter);
 
 /*
  * fd.io coding-style-patch-verification: ON
