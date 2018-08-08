@@ -328,6 +328,8 @@ nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr, u32 fib_index,
       /* add user */
       if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
         nat_log_warn ("user_hash keay add failed");
+
+      clib_warning("%U %d", format_ip4_address, addr, fib_index);
     }
   else
     {
@@ -1086,7 +1088,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       nat_free_session_data (sm, s, tsm - sm->per_thread_data);
                       nat44_delete_session (sm, s, tsm - sm->per_thread_data);
 
-                      if (!addr_only)
+                      if (!addr_only && !sm->endpoint_dependent)
                         break;
                     }
                 }
@@ -1192,13 +1194,8 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       nat_free_session_data (sm, s, tsm - sm->per_thread_data);
                       nat44_delete_session (sm, s, tsm - sm->per_thread_data);
 
-                      if (!addr_only)
+                      if (!addr_only && !sm->endpoint_dependent)
                         break;
-                    }
-                  if (addr_only && (u->nstaticsessions == 0) && (u->nsessions == 0))
-                    {
-                      pool_put (tsm->users, u);
-                      clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
                     }
                 }
             }

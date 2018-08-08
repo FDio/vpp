@@ -188,6 +188,7 @@ create_session_for_static_mapping (snat_main_t *sm,
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
     {
+      nat44_delete_user_with_no_session (sm, u, thread_index);
       nat_log_warn ("create NAT session failed");
       return 0;
     }
@@ -1599,6 +1600,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
     {
+      nat44_delete_user_with_no_session (sm, u, thread_index);
       nat_log_warn ("create NAT session failed");
       return 0;
     }
@@ -1780,6 +1782,7 @@ create_bypass_for_fwd(snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
       s = nat_session_alloc_or_recycle (sm, u, thread_index);
       if (!s)
         {
+          nat44_delete_user_with_no_session (sm, u, thread_index);
           nat_log_warn ("create NAT session failed");
           return;
         }
@@ -1980,6 +1983,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t *sm,
       s = nat_session_alloc_or_recycle (sm, u, thread_index);
       if (!s)
         {
+          nat44_delete_user_with_no_session (sm, u, thread_index);
           nat_log_warn ("create NAT session failed");
           return 0;
         }

@@ -347,14 +347,6 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
 
   key1.protocol = key0->protocol;
 
-  u = nat_user_get_or_create (sm, &ip0->src_address, rx_fib_index0,
-                              thread_index);
-  if (!u)
-    {
-      nat_log_warn ("create NAT user failed");
-      return SNAT_IN2OUT_NEXT_DROP;
-    }
-
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match (sm, *key0, &key1, 0, 0, 0, 0))
     {
@@ -372,9 +364,18 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   else
     is_sm = 1;
 
+  u = nat_user_get_or_create (sm, &ip0->src_address, rx_fib_index0,
+                              thread_index);
+  if (!u)
+    {
+      nat_log_warn ("create NAT user failed");
+      return SNAT_IN2OUT_NEXT_DROP;
+    }
+
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
     {
+      nat44_delete_user_with_no_session (sm, u, thread_index);
       nat_log_warn ("create NAT session failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
@@ -2442,6 +2443,7 @@ slow_path_ed (snat_main_t *sm,
   s = nat_session_alloc_or_recycle (sm, u, thread_index);
   if (!s)
     {
+      nat44_delete_user_with_no_session (sm, u, thread_index);
       nat_log_warn ("create NAT session failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
@@ -2924,6 +2926,7 @@ create_ses:
       s = nat_session_alloc_or_recycle (sm, u, thread_index);
       if (!s)
         {
+          nat44_delete_user_with_no_session (sm, u, thread_index);
           nat_log_warn ("create NAT session failed");
           return 0;
         }

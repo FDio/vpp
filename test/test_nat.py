@@ -136,6 +136,7 @@ class MethodHolder(VppTestCase):
 
         self.vapi.nat_set_reass()
         self.vapi.nat_set_reass(is_ip6=1)
+        self.verify_no_nat44_user()
 
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
@@ -986,6 +987,11 @@ class MethodHolder(VppTestCase):
         self.assertEqual(struct.pack("!H", dst_port), record[11])
         # postNAPTDestinationTransportPort
         self.assertEqual(struct.pack("!H", dst_port), record[228])
+
+    def verify_no_nat44_user(self):
+        """ Verify that there is no NAT44 user """
+        users = self.vapi.nat44_user_dump()
+        self.assertEqual(len(users), 0)
 
 
 class TestNAT44(MethodHolder):
@@ -2908,6 +2914,12 @@ class TestNAT44(MethodHolder):
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
         self.assertEqual(nsessions - len(sessions), 2)
+
+        self.vapi.nat44_del_session(sessions[0].inside_ip_address,
+                                    sessions[0].inside_port,
+                                    sessions[0].protocol)
+
+        self.verify_no_nat44_user()
 
     def test_set_get_reass(self):
         """ NAT44 set/get virtual fragmentation reassembly """

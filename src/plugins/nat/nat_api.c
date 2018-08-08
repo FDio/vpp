@@ -1195,8 +1195,12 @@ vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 
   /* *INDENT-OFF* */
   vec_foreach (tsm, sm->per_thread_data)
-    vec_foreach (u, tsm->users)
-      send_nat44_user_details (u, reg, mp->context);
+    {
+      pool_foreach (u, tsm->users,
+      ({
+        send_nat44_user_details (u, reg, mp->context);
+      }));
+    }
   /* *INDENT-ON* */
 }
 
