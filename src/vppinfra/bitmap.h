@@ -314,7 +314,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 }
 
 always_inline uword *
-clfib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
+clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
   uword a0, a1, b0;
   uword i_end, mask;
