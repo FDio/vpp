@@ -472,7 +472,7 @@ vlib_buffer_delete_free_list_internal (vlib_main_t * vm,
 static_always_inline void *
 vlib_buffer_pool_get_buffer (vlib_buffer_pool_t * bp)
 {
-  uword slot, page, addr;
+  uword slot, page, addr, next;
 
   if (PREDICT_FALSE (bp->n_elts == bp->n_used))
     {
@@ -481,7 +481,10 @@ vlib_buffer_pool_get_buffer (vlib_buffer_pool_t * bp)
     }
   slot = bp->next_clear;
   bp->bitmap = clib_bitmap_set (bp->bitmap, slot, 1);
-  bp->next_clear = clib_bitmap_next_clear (bp->bitmap, slot + 1);
+  if ( (next = clib_bitmap_next_clear (bp->bitmap, slot + 1)) == ~0)
+     /* no clear bit left in bitmap, return bit just beyond bitmap */
+      next = vec_len (bp->bitmap);
+  bp->next_clear = next;
   bp->n_used++;
 
   page = slot / bp->buffers_per_page;

@@ -314,7 +314,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 }
 
 always_inline uword *
-clfib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
+clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
   uword a0, a1, b0;
   uword i_end, mask;
@@ -708,6 +708,7 @@ clib_bitmap_next_set (uword * ai, uword i)
     @param ai - pointer to the bitmap
     @param i - first bit position to test
     @returns first clear bit position at or after i
+    ~0 if no further clear bits are found
 */
 always_inline uword
 clib_bitmap_next_clear (uword * ai, uword i)
@@ -728,11 +729,9 @@ clib_bitmap_next_clear (uword * ai, uword i)
 	  if (t)
 	    return log2_first_set (t) + i0 * BITS (ai[0]);
 	}
-
-      /* no clear bit left in bitmap, return bit just beyond bitmap */
-      return (i0 + 1) * BITS (ai[0]);
     }
-  return i;
+
+  return ~0;
 }
 
 /** unformat an any sized hexadecimal bitmask into a bitmap

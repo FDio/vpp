@@ -469,19 +469,17 @@ do {									\
 })
 
 /** Return next occupied pool index after @c i, useful for safe iteration. */
-#define pool_next_index(P,I)                                            \
-({                                                                      \
-  pool_header_t * _pool_var (p) = pool_header (P);                      \
-  uword _pool_var (rv) = (I) + 1;                                       \
-                                                                        \
-  _pool_var(rv) =                                                       \
-    (_pool_var (rv) < vec_len (P) ?                                     \
-     clib_bitmap_next_clear (_pool_var (p)->free_bitmap, _pool_var(rv)) \
-     : ~0);                                                             \
-  _pool_var(rv) =                                                       \
-    (_pool_var (rv) < vec_len (P) ?                                     \
-     _pool_var (rv) : ~0);						\
-  _pool_var(rv);                                                        \
+#define pool_next_index(P,I)                                             \
+({                                                                       \
+  pool_header_t * _pool_var (p) = pool_header (P);                       \
+  uword _pool_var (rv) = (I) + 1;                                        \
+                                                                         \
+  _pool_var(rv) =                                                        \
+     clib_bitmap_next_clear (_pool_var (p)->free_bitmap, _pool_var(rv)); \
+  _pool_var(rv) =                                                        \
+    (_pool_var (rv) < vec_len (P) ?                                      \
+     _pool_var (rv) : ~0);						                               \
+  _pool_var(rv);                                                         \
 })
 
 /** Iterate pool by index. */
