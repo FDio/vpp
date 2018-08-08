@@ -1722,29 +1722,23 @@ ip4_arp_inline (vlib_main_t * vm,
   ip_lookup_main_t *lm = &im->lookup_main;
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop, next_index;
-  static f64 time_last_seed_change = -1e100;
-  static u32 hash_seeds[3];
-  static uword hash_bitmap[256 / BITS (uword)];
+  u32 thread_index = vm->thread_index;
+  u32 seed;
   f64 time_now;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   time_now = vlib_time_now (vm);
-  if (time_now - time_last_seed_change > 1e-3)
+  if (time_now - im->arp_throttle_last_seed_change_time[thread_index] > 1e-3)
     {
-      uword i;
-      u32 *r = clib_random_buffer_get_data (&vm->random_buffer,
-					    sizeof (hash_seeds));
-      for (i = 0; i < ARRAY_LEN (hash_seeds); i++)
-	hash_seeds[i] = r[i];
+      (void) random_u32 (&im->arp_throttle_seeds[thread_index]);
+      memset (im->arp_throttle_bitmaps[thread_index], 0,
+	      ARP_THROTTLE_BITS / BITS (u8));
 
-      /* Mark all hash keys as been no-seen before. */
-      for (i = 0; i < ARRAY_LEN (hash_bitmap); i++)
-	hash_bitmap[i] = 0;
-
-      time_last_seed_change = time_now;
+      im->arp_throttle_last_seed_change_time[thread_index] = time_now;
     }
+  seed = im->arp_throttle_seeds[thread_index];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1759,11 +1753,11 @@ ip4_arp_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  u32 pi0, adj_index0, a0, b0, c0, m0, sw_if_index0, drop0;
+	  u32 pi0, adj_index0, r0, w0, sw_if_index0, drop0;
+	  uword m0;
 	  ip_adjacency_t *adj0;
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
-	  uword bm0;
 
 	  pi0 = from[0];
 
@@ -1773,39 +1767,30 @@ ip4_arp_inline (vlib_main_t * vm,
 	  adj0 = adj_get (adj_index0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  a0 = hash_seeds[0];
-	  b0 = hash_seeds[1];
-	  c0 = hash_seeds[2];
-
 	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  if (is_glean)
+	  if (PREDICT_TRUE (is_glean))
 	    {
 	      /*
 	       * this is the Glean case, so we are ARPing for the
 	       * packet's destination
 	       */
-	      a0 ^= ip0->dst_address.data_u32;
+	      r0 = ip0->dst_address.data_u32;
 	    }
 	  else
 	    {
-	      a0 ^= adj0->sub_type.nbr.next_hop.ip4.data_u32;
+	      r0 = adj0->sub_type.nbr.next_hop.ip4.data_u32;
 	    }
-	  b0 ^= sw_if_index0;
 
-	  hash_v3_mix32 (a0, b0, c0);
-	  hash_v3_finalize32 (a0, b0, c0);
+	  r0 ^= seed;
+	  /* Select bit number */
+	  r0 &= ARP_THROTTLE_BITS - 1;
+	  w0 = r0 / BITS (uword);
+	  m0 = (uword) 1 << (r0 % BITS (uword));
 
-	  c0 &= BITS (hash_bitmap) - 1;
-	  m0 = (uword) 1 << (c0 % BITS (uword));
-	  c0 = c0 / BITS (uword);
-
-	  bm0 = hash_bitmap[c0];
-	  drop0 = (bm0 & m0) != 0;
-
-	  /* Mark it as seen. */
-	  hash_bitmap[c0] = bm0 | m0;
+	  drop0 = (im->arp_throttle_bitmaps[thread_index][w0] & m0) != 0;
+	  im->arp_throttle_bitmaps[thread_index][w0] |= m0;
 
 	  from += 1;
 	  n_left_from -= 1;

@@ -219,7 +219,15 @@ typedef struct ip6_main_t
 
   /* HBH processing enabled? */
   u8 hbh_enabled;
+
+  /** ND throttling */
+  uword **nd_throttle_bitmaps;
+  u64 *nd_throttle_seeds;
+  f64 *nd_throttle_last_seed_change_time;
+
 } ip6_main_t;
+
+#define ND_THROTTLE_BITS 512
 
 /* Global ip6 main structure. */
 extern ip6_main_t ip6_main;
