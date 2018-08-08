@@ -1,0 +1,19 @@
+/** \brief Configure Port-Mirroring global parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param dst_interface - name or id of interface to copy packets to
+    @param is_del - Whether we have to delete any port mirrring information
+*/
+define pm_conf
+{
+  u32 client_index;
+  u32 context;
+  u8 dst_interface;
+  u8 is_del;
+};
+
+define pm_conf_reply {
+  u32 context;
+  i32 retval;
+};
+
