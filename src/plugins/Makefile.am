@@ -54,6 +54,9 @@ if ENABLE_FLOWPROBE_PLUGIN
 include flowprobe.am
 endif
 
+if ENABLE_FLOWTABLE_PLUGIN
+include flowtable.am
+endif
 
 if ENABLE_GTPU_PLUGIN
 include gtpu.am
