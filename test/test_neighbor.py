@@ -296,6 +296,10 @@ class ARPTestCase(VppTestCase):
         #
         self.pg2.set_unnumbered(self.pg1.sw_if_index)
 
+        unnum = self.vapi.ip_unnumbered_dump()
+        self.assertEqual(unnum[0].ip_sw_if_index, self.pg1.sw_if_index)
+        self.assertEqual(unnum[0].sw_if_index, self.pg2.sw_if_index)
+
         #
         # We should respond to ARP requests for the unnumbered to address
         # once an attached route to the source is known

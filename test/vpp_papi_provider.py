@@ -275,6 +275,10 @@ class VppPapiProvider(object):
                          'unnumbered_sw_if_index': sw_if_index,
                          'is_add': is_add})
 
+    def ip_unnumbered_dump(self, sw_if_index=0xffffffff):
+        return self.api(self.papi.ip_unnumbered_dump,
+                        {'sw_if_index': sw_if_index})
+
     def sw_interface_enable_disable_mpls(self, sw_if_index,
                                          is_enable=1):
         """
