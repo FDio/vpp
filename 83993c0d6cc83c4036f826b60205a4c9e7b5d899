@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "751eec67_3e9fc6a0",
+        "filename": "test/framework.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-08T11:18:14Z",
+      "side": 1,
+      "message": "Trailing comma is less readable (even though still valid in Python).",
+      "range": {
+        "startLine": 284,
+        "startChar": 50,
+        "endLine": 284,
+        "endChar": 52
+      },
+      "revId": "83993c0d6cc83c4036f826b60205a4c9e7b5d899",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
