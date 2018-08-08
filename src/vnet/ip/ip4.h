@@ -154,6 +154,12 @@ typedef struct ip4_main_t
 
   /** The memory heap for the mtries */
   void *mtrie_mheap;
+
+  /** ARP throttling */
+  uword **arp_throttle_bitmaps;
+  u32 *arp_throttle_seeds;
+  f64 *arp_throttle_last_seed_change_time;
+
 } ip4_main_t;
 
 /** Global ip4 main structure. */
