@@ -141,6 +141,26 @@ user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
 }
 
 always_inline void
+nat44_delete_user_with_no_session (snat_main_t * sm, snat_user_t * u,
+				   u32 thread_index)
+{
+  clib_bihash_kv_8_8_t kv;
+  snat_user_key_t u_key;
+  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
+						       thread_index);
+
+  if (u->nstaticsessions == 0 && u->nsessions == 0)
+    {
+      u_key.addr.as_u32 = u->addr.as_u32;
+      u_key.fib_index = u->fib_index;
+      kv.key = u_key.as_u64;
+      pool_put_index (tsm->list_pool, u->sessions_per_user_list_head_index);
+      pool_put (tsm->users, u);
+      clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
+    }
+}
+
+always_inline void
 nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 		      u32 thread_index)
 {
@@ -151,6 +171,11 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   snat_user_t *u;
 
   nat_log_debug ("session deleted %U", format_snat_session, tsm, ses);
+
+  clib_dlist_remove (tsm->list_pool, ses->per_user_index);
+  pool_put_index (tsm->list_pool, ses->per_user_index);
+  pool_put (tsm->sessions, ses);
+
   u_key.addr = ses->in2out.addr;
   u_key.fib_index = ses->in2out.fib_index;
   kv.key = u_key.as_u64;
@@ -161,10 +186,9 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 	u->nstaticsessions--;
       else
 	u->nsessions--;
+
+      nat44_delete_user_with_no_session (sm, u, thread_index);
     }
-  clib_dlist_remove (tsm->list_pool, ses->per_user_index);
-  pool_put_index (tsm->list_pool, ses->per_user_index);
-  pool_put (tsm->sessions, ses);
 }
 
 /** \brief Set TCP session state.
