@@ -1,0 +1,22 @@
+.. _2017_12_5_VPPHost:
+
+.. toctree::
+
+##############
+VPP Host Stack
+##############
+
+Event
+-----
+
+This presentation was held during the FD.io Mini Summit at KubeCon 2017 on December 5th, 2017.
+
+Speakers
+--------
+
+Florin Coras
+
+Presentation
+------------
+
+`PDF <https://wiki.fd.io/images/b/b4/Vpp-hoststack-kc.pdf>`_

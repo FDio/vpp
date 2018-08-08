@@ -13,9 +13,9 @@ Conferences
 .. toctree::
     :maxdepth: 2
     
-    Linuxcon/index.rst
-    CiscoLiveUS/index.rst
-    OSCON/index.rst
+    Conferences/Linuxcon/index.rst
+    Conferences/CiscoLiveUS/index.rst
+    Conferences/OSCON/index.rst
 
     
 =======
@@ -25,17 +25,17 @@ Summits
 .. toctree::
     :maxdepth: 2
 
-    FDioMiniSummit/KubeCon/index.rst
-    DPDKSummit/2017/index.rst
-    OpensourceSummit/index.rst
-    FDioMiniSummit/index.rst
-    UKNO/index.rst
-    OpNFV/index.rst
-    DPDKSummit/index.rst  
-    OpNFV/OpNFVtechnicalwork/index.rst
-    OpenNetworkSummit/index.rst
-    OpNFV/OPNFVSummit/index.rst
-    OpenDaylight/index.rst
+    Summits/FDioMiniSummit/KubeCon_2017/index.rst
+    Summits/DPDKSummit/index.rst
+    Summits/OpensourceSummit/index.rst
+    Summits/FDioMiniSummit/index.rst
+    Summits/UKNO/index.rst
+    Summits/OpNFV/index.rst
+    Summits/DPDKSummit/2016/index.rst
+    Summits/OpNFV/OpNFVtechnicalwork/index.rst
+    Summits/OpenNetworkSummit/index.rst
+    Summits/OpNFV/OPNFVSummit/index.rst
+    Summits/OpenDaylight/index.rst
 
 ========
 Meetings
@@ -44,30 +44,17 @@ Meetings
 .. toctree::
     :maxdepth: 2
 
-    FDIOVPPTerabit/index.rst
-    IntelSDN/index.rst
-    TWSMeeting/index.rst
-    fdioWebinar/index.rst
-    TSCmeeting/index.rst
+    MeetUps/FDIOVPPTerabit/index.rst
+    MeetUps/IntelSDN/index.rst
+    MeetUps/TWS/index.rst
+    MeetUps/fdioWebinar/index.rst
 
-=====
-Calls
-=====
+=========
+Community
+=========
 
 .. toctree::
     :maxdepth: 2
 
-    TLDKCall/index.rst
-    VPPCall/index.rst
-
-====================
-Fd.io Training Event  
-====================
-
-The FD.io Training provides new users with a detailed set of training courses on FD.io
-separated by days.
-
-.. toctree::
-    :maxdepth: 3
-
-    fdioTraining/index.rst
+    Community/VPP/index.rst
+    Community/TSC/index.rst
