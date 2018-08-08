@@ -54,6 +54,9 @@ if ENABLE_FLOWPROBE_PLUGIN
 include flowprobe.am
 endif
 
+if ENABLE_FLOWTABLE_PLUGIN
+include flowtable.am
+endif
 
 if ENABLE_GTPU_PLUGIN
 include gtpu.am
@@ -93,6 +96,10 @@ endif
 
 if ENABLE_MEMIF_PLUGIN
 include memif.am
+endif
+
+if ENABLE_PORTMIRRORING_PLUGIN
+include portmirroring.am
 endif
 
 if ENABLE_PPPOE_PLUGIN
