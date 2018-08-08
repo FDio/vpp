@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 from framework import VppTestCase, VppTestRunner
-from vpp_udp_encap import VppUdpEncap
+from vpp_udp_encap import *
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel
 
 from scapy.packet import Raw
@@ -100,18 +100,23 @@ class TestUdpEncap(VppTestCase):
                                   self.pg2.local_ip6,
                                   self.pg2.remote_ip6,
                                   332, 442,
-                                  table_id=2,
-                                  is_ip6=1)
+                                  table_id=2)
         udp_encap_3 = VppUdpEncap(self, 3,
                                   self.pg3.local_ip6,
                                   self.pg3.remote_ip6,
                                   333, 443,
-                                  table_id=3,
-                                  is_ip6=1)
+                                  table_id=3)
         udp_encap_0.add_vpp_config()
         udp_encap_1.add_vpp_config()
         udp_encap_2.add_vpp_config()
         udp_encap_3.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh udp encap"))
+
+        self.assertTrue(find_udp_encap(self, udp_encap_2))
+        self.assertTrue(find_udp_encap(self, udp_encap_3))
+        self.assertTrue(find_udp_encap(self, udp_encap_0))
+        self.assertTrue(find_udp_encap(self, udp_encap_1))
 
         #
         # Routes via each UDP encap object - all combinations of v4 and v6.
