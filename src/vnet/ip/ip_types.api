@@ -41,3 +41,10 @@ typedef prefix {
   vl_api_address_t address;
   u8 address_length;
 };
+
+typedef mprefix {
+  vl_api_address_family_t af;
+  u16 grp_address_length;
+  vl_api_address_union_t grp_address;
+  vl_api_address_union_t src_address;
+};
