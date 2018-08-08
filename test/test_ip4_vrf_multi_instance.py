@@ -179,9 +179,6 @@ class TestIp4VrfMultiInst(VppTestCase):
             dest_addr = pg_if.local_ip4n
             dest_addr_len = 24
             self.vapi.ip_table_add_del(vrf_id, is_add=1)
-            self.vapi.ip_add_del_route(
-                dest_addr, dest_addr_len, pg_if.local_ip4n,
-                table_id=vrf_id, is_multipath=1)
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
