@@ -3,15 +3,31 @@
 
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP
+from scapy.all import fragment
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from socket import AF_INET, AF_INET6, inet_pton
+import StringIO
 
 """ Testipip is a subclass of  VPPTestCase classes.
 
 IPIP tests.
 
 """
+
+
+def reassemble(listoffragments):
+    buffer = StringIO.StringIO()
+    first = listoffragments[0]
+    buffer.seek(20)
+    for pkt in listoffragments:
+        buffer.seek(pkt[IP].frag*8)
+        buffer.write(pkt[IP].payload)
+    first.len = len(buffer.getvalue()) + 20
+    first.flags = 0
+    del(first.chksum)
+    header = str(first[IP])[:20]
+    return first[IP].__class__(header + buffer.getvalue())
 
 
 class TestIPIP(VppTestCase):
@@ -126,6 +142,38 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p6_reply)
 
+        # Fragmentation / Reassembly and Re-fragmentation
+        rv = self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.pg1.sw_if_index,
+            enable_ip4=1)
+        # Decapsulation
+        p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        p_payload = UDP(sport=1234, dport=1234) / self.payload(3123)
+        p_ip4 = IP(src="1.2.3.4", dst=self.pg0.remote_ip4)
+        outer_ip4 = (p_ether / IP(src=self.pg1.remote_ip4,
+                     dst=self.pg0.local_ip4) / p_ip4 / p_payload)
+        frags = fragment(outer_ip4, 1400)
+        p4_reply = (p_ip4 / p_payload)
+        p4_reply.ttl -= 1
+
+        self.pg_enable_capture()
+        self.pg1.add_stream(frags)
+        self.pg_start()
+        rx = self.pg0.get_capture(1)
+        for p in rx:
+            self.validate(p[1], p4_reply)
+
+        # Now try with re-fragmentation
+        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [576, 0, 0, 0])
+        self.pg_enable_capture()
+        self.pg1.add_stream(frags)
+        self.pg_start()
+        rx = self.pg0.get_capture(6)
+        reass_pkt = reassemble(rx)
+        p4_reply.ttl -= 1
+        p4_reply.id = 256
+        self.validate(reass_pkt, p4_reply)
+
     def test_ipip6(self):
         """ ip{v4,v6} over ip6 test """
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -212,6 +260,9 @@ class TestIPIP(VppTestCase):
             dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0)
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
+
+    def payload(self, len):
+        return 'x' * len
 
 
 if __name__ == '__main__':

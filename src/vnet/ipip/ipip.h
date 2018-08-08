@@ -26,11 +26,12 @@
 
 extern vnet_hw_interface_class_t ipip_hw_interface_class;
 
-#define foreach_ipip_error			\
-  /* Must be first. */				\
-  _(DECAP_PKTS, "packets decapsulated")		\
-  _(BAD_PROTOCOL, "bad protocol")		\
-  _(NO_TUNNEL, "no tunnel")
+#define foreach_ipip_error				\
+  /* Must be first. */					\
+  _(DECAP_PKTS, "packets decapsulated")			\
+  _(BAD_PROTOCOL, "bad protocol")			\
+  _(NO_TUNNEL, "no tunnel")				\
+  _(FRAGMENTED_PACKET, "fragmented outer packet")
 
 typedef enum
 {
