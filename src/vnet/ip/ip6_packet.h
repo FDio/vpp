@@ -67,6 +67,13 @@ typedef CLIB_PACKED (struct {
 }) ip6_address_fib_t;
 /* *INDENT-ON* */
 
+typedef enum
+{
+  IP46_TYPE_ANY,
+  IP46_TYPE_IP4,
+  IP46_TYPE_IP6
+} ip46_type_t;
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (union {
   struct {

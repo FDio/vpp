@@ -83,6 +83,16 @@ fib_ip_proto(bool is_ip6)
 }
 
 /**
+ * @brief Convert from fib_protocol to ip46_type
+ */
+extern ip46_type_t fib_proto_to_ip46(fib_protocol_t fproto);
+
+/**
+ * @brief Convert from ip46_type to fib_protocol
+ */
+extern fib_protocol_t fib_proto_from_ip46(ip46_type_t iproto);
+
+/**
  * @brief Convert from a protocol to a link type
  */
 vnet_link_t fib_proto_to_link (fib_protocol_t proto);

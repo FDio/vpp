@@ -347,7 +347,6 @@ class JsonParser(object):
         if len(self.messages) == 0:
             for e in self.exceptions:
                 self.logger.error(e)
-            raise Exception("No messages parsed.")
         for jn, j in self.messages_by_json.items():
             remove = []
             for n, m in j.items():

@@ -1,5 +1,6 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,51 +14,79 @@
  * limitations under the License.
  */
 
-/** \file
+/**
+ * @file
+ *
+ * This file defines vpp UDP control-plane API messages which are generally
+ * called through a shared memory interface.
+ */
 
-    This file defines vpp UDP control-plane API messages which are generally
-    called through a shared memory interface. 
+option version = "1.1.0";
+
+import "vnet/ip/ip_types.api";
+
+
+/**
+ * @brief UDP Encap object
+ * @param table_id - table ID associated with the encap destination
+ * @param dst_ip - Encap destination address
+ * @param src_ip - Encap source address
+ * @param dst_port - Encap destination port
+ * @param src_port - Encap source port
+ * @param id - The ID assigned to this encap object by the caller
+ */
+typedef udp_encap
+{
+  u32 id;
+  u32 table_id;
+  u16 src_port;
+  u16 dst_port;
+  vl_api_address_t src_ip;
+  vl_api_address_t dst_ip;
+};
+
+/**
+ * @brief Add UDP encap
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param udp_encap - UDP encap description
+ */
+autoreply define udp_encap_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_udp_encap_t udp_encap;
+};
+
+/**
+ * @brief Del UDP encap
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param id - ID of the encap object the client chose during the add
 */
-
-option version = "1.0.0";
-
-/** \brief Add / del table request
-           A table can be added multiple times, but need be deleted only once.
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_ipv6 - V4 or V6 table
-    @param table_id - table ID associated with the encap destination
-*/
-autoreply define udp_encap_add_del
+autoreply define udp_encap_del
 {
   u32 client_index;
   u32 context;
   u32 id;
-  u32 table_id;
-  u8 is_ip6;
-  u8 is_add;
-  u16 src_port;
-  u16 dst_port;
-  u8 src_ip[16];
-  u8 dst_ip[16];
 };
 
+/**
+ * @brief dump UDP encaps
+ */
 define udp_encap_dump
 {
   u32 client_index;
   u32 context;
 };
 
+/**
+ * @brief UDP encap details during dump
+ */
 define udp_encap_details
 {
   u32 context;
-  u32 id;
-  u32 table_id;
-  u8 is_ip6;
-  u16 src_port;
-  u16 dst_port;
-  u8 src_ip[16];
-  u8 dst_ip[16];
+  vl_api_udp_encap_t udp_encap;
 };
 
 /*
