@@ -699,6 +699,9 @@ start_workers (vlib_main_t * vm)
       vlib_worker_threads->node_reforks_required =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
 
+      /* We'll need the rpc vector lock... */
+      clib_spinlock_init (&vm->pending_rpc_lock);
+
       /* Ask for an initial barrier sync */
       *vlib_worker_threads->workers_at_barrier = 0;
       *vlib_worker_threads->wait_at_barrier = 1;
