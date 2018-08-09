@@ -8,3 +8,4 @@ Reference
 
    vppvagrant/index.rst
    cmdreference/index.rst
+   buildsystem/index.rst
