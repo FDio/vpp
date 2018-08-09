@@ -37,7 +37,7 @@ For example start with a clone of the vpp-docs.
 Install the virtual environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  
-In your vpp-docs directory, run: 
+In the vpp root directory on your system, run: 
 
 .. code-block:: console
 
