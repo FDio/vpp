@@ -89,6 +89,28 @@ typedef struct
   int verbose;
 } vlib_trace_main_t;
 
+typedef struct
+{
+  /* Index of the node where the filter data is stored */
+  u32 node_index;
+
+  /* Offset in header data of where it is */
+  u32 offset;
+
+  /* Size of data in header */
+  u32 size;
+
+  /* Pay attaintion to IPv4's IHL header (0 = don't use it.) */
+  u8 use_ip4_ihl;
+
+  /* Protocol that must be set (skips if it doesn't, zero = disabled.) */
+  u8 protocol;
+
+  /* Data to filter on */
+  u8 data[16];
+
+} vlib_show_trace_filter_t;
+
 #endif /* included_vlib_trace_h */
 
 /*
