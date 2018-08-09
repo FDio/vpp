@@ -621,7 +621,7 @@ send_test_chunk (echo_main_t * em, session_t * s)
   u64 test_buf_len, bytes_this_chunk, test_buf_offset;
   svm_fifo_t *tx_fifo = s->server_tx_fifo;
   u8 *test_data = em->connect_test_data;
-  u32 enq_space, min_chunk = 16 << 10;
+  u32 enq_space = 16 << 10;
   int written;
 
   test_buf_len = vec_len (test_data);
@@ -629,8 +629,6 @@ send_test_chunk (echo_main_t * em, session_t * s)
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
 			       s->bytes_to_send);
   enq_space = svm_fifo_max_enqueue (tx_fifo);
-  if (enq_space < clib_min (bytes_this_chunk, min_chunk))
-    return;
 
   bytes_this_chunk = clib_min (bytes_this_chunk, enq_space);
   written = svm_fifo_enqueue_nowait (tx_fifo, bytes_this_chunk,
