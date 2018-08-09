@@ -388,8 +388,8 @@ class VPP():
             raise Exception("Not connected, api definitions not available")
         return self._api
 
-    def make_function(self, msg, i, multipart, async):
-        if (async):
+    def make_function(self, msg, i, multipart, do_async):
+        if (do_async):
             def f(**kwargs):
                 return self._call_vpp_async(i, msg, **kwargs)
         else:
@@ -402,7 +402,7 @@ class VPP():
                                for j, k in enumerate(msg.fields)])
         return f
 
-    def _register_functions(self, async=False):
+    def _register_functions(self, do_async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         self._api = VppApiDynamicMethodHolder()
@@ -414,7 +414,7 @@ class VPP():
                 self.id_names[i] = name
                 # TODO: Fix multipart (use services)
                 multipart = True if name.find('_dump') > 0 else False
-                f = self.make_function(msg, i, multipart, async)
+                f = self.make_function(msg, i, multipart, do_async)
                 setattr(self._api, name, FuncWrapper(f))
             else:
                 self.logger.debug(
@@ -445,14 +445,14 @@ class VPP():
         return msg
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
-                         async):
+                         do_async):
         pfx = chroot_prefix.encode() if chroot_prefix else ffi.NULL
         rv = vpp_api.vac_connect(name.encode(), pfx, msg_handler, rx_qlen)
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
         self.vpp_dictionary_maxid = vpp_api.vac_msg_table_max_index()
-        self._register_functions(async=async)
+        self._register_functions(do_async=do_async)
 
         # Initialise control ping
         crc = self.messages['control_ping'].crc
@@ -466,18 +466,18 @@ class VPP():
             self.event_thread.start()
         return rv
 
-    def connect(self, name, chroot_prefix=None, async=False, rx_qlen=32):
+    def connect(self, name, chroot_prefix=None, do_async=False, rx_qlen=32):
         """Attach to VPP.
 
         name - the name of the client.
         chroot_prefix - if VPP is chroot'ed, the prefix of the jail
-        async - if true, messages are sent without waiting for a reply
+        do_async - if true, messages are sent without waiting for a reply
         rx_qlen - the length of the VPP message receive queue between
         client and server.
         """
-        msg_handler = vac_callback_sync if not async else vac_callback_async
+        msg_handler = vac_callback_sync if not do_async else vac_callback_async
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
-                                     async)
+                                     do_async)
 
     def connect_sync(self, name, chroot_prefix=None, rx_qlen=32):
         """Attach to VPP in synchronous mode. Application must poll for events.
@@ -489,7 +489,7 @@ class VPP():
         """
 
         return self.connect_internal(name, ffi.NULL, chroot_prefix, rx_qlen,
-                                     async=False)
+                                     do_async=False)
 
     def disconnect(self):
         """Detach from VPP."""
