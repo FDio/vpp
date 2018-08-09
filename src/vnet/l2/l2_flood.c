@@ -168,7 +168,7 @@ l2flood_node_fn (vlib_main_t * vm,
 	  bi0 = from[0];
 	  from += 1;
 	  n_left_from -= 1;
-	  next0 = L2FLOOD_NEXT_DROP;
+	  next0 = L2FLOOD_NEXT_L2_OUTPUT;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
@@ -263,7 +263,6 @@ l2flood_node_fn (vlib_main_t * vm,
 
 	      /* Do normal L2 forwarding */
 	      vnet_buffer (c0)->sw_if_index[VLIB_TX] = member->sw_if_index;
-	      next0 = L2FLOOD_NEXT_L2_OUTPUT;
 
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					       to_next, n_left_to_next,
@@ -314,7 +313,7 @@ l2flood_node_fn (vlib_main_t * vm,
 			      msm->vnet_main,
 			      c0, member->sw_if_index, &msm->l3_next, &next0);
 
-	      if (PREDICT_FALSE (rc))
+	      if (PREDICT_FALSE (rc != TO_BVI_ERR_OK))
 		{
 		  if (rc == TO_BVI_ERR_BAD_MAC)
 		    {
@@ -324,13 +323,13 @@ l2flood_node_fn (vlib_main_t * vm,
 		    {
 		      c0->error = node->errors[L2FLOOD_ERROR_BVI_ETHERTYPE];
 		    }
+		  next0 = L2FLOOD_NEXT_DROP;
 		}
 	    }
 	  else
 	    {
 	      /* Do normal L2 forwarding */
 	      vnet_buffer (c0)->sw_if_index[VLIB_TX] = member->sw_if_index;
-	      next0 = L2FLOOD_NEXT_L2_OUTPUT;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
