@@ -1704,7 +1704,7 @@ feature_set:
                       vnet_feature_enable_disable ("ip4-local",
                                                    "nat44-ed-hairpinning",
                                                    sw_if_index, 1, 0, 0);
-                    else
+                    else if (!sm->deterministic)
                       vnet_feature_enable_disable ("ip4-local",
                                                    "nat44-hairpinning",
                                                    sw_if_index, 1, 0, 0);
@@ -1721,7 +1721,7 @@ feature_set:
                       vnet_feature_enable_disable ("ip4-local",
                                                    "nat44-ed-hairpinning",
                                                    sw_if_index, 0, 0, 0);
-                    else
+                    else if (!sm->deterministic)
                       vnet_feature_enable_disable ("ip4-local",
                                                    "nat44-hairpinning",
                                                    sw_if_index, 0, 0, 0);
@@ -1767,7 +1767,7 @@ feature_set:
                 if (sm->endpoint_dependent)
                   vnet_feature_enable_disable ("ip4-local", "nat44-ed-hairpinning",
                                                sw_if_index, 0, 0, 0);
-                else
+                else if (!sm->deterministic)
                   vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
                                                sw_if_index, 0, 0, 0);
               }
@@ -1791,7 +1791,7 @@ feature_set:
       if (sm->endpoint_dependent)
         vnet_feature_enable_disable ("ip4-local", "nat44-ed-hairpinning",
                                      sw_if_index, 1, 0, 0);
-      else
+      else if (!sm->deterministic)
         vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
                                      sw_if_index, 1, 0, 0);
     }
