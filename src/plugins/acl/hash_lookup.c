@@ -610,17 +610,17 @@ assign_mask_type_index_to_pae(acl_main_t *am, u32 lc_index, int is_ip6, applied_
   hash_ace_info_t *ace_info = vec_elt_at_index(ha->rules, pae->hash_ace_info_index);
 
   ace_mask_type_entry_t *mte;
-  fa_5tuple_t *mask;
+  fa_5tuple_t mask;
   /*
    * Start taking base_mask associated to ace, and essentially copy it.
    * With TupleMerge we will assign a relaxed mask here.
    */
   mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
-  mask = &mte->mask;
+  mask = mte->mask;
   if (am->use_tuple_merge)
-    pae->mask_type_index = tm_assign_mask_type_index(am, mask, is_ip6, lc_index);
+    pae->mask_type_index = tm_assign_mask_type_index(am, &mask, is_ip6, lc_index);
   else
-    pae->mask_type_index = assign_mask_type_index(am, mask);
+    pae->mask_type_index = assign_mask_type_index(am, &mask);
 }
 
 static void
