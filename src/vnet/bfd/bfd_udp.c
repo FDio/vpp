@@ -473,7 +473,6 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
   bfd_session_t *bs = bfd_get_session (bum->bfd_main, t);
   if (!bs)
     {
-      bfd_put_session (bum->bfd_main, bs);
       return VNET_API_ERROR_BFD_EAGAIN;
     }
   bfd_udp_session_t *bus = &bs->udp;
