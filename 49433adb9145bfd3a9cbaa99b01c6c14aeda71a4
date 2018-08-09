@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "957d85a6_1611b7bb",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-09T16:18:13Z",
+      "side": 1,
+      "message": "Why two empty lines?",
+      "range": {
+        "startLine": 394,
+        "startChar": 0,
+        "endLine": 395,
+        "endChar": 0
+      },
+      "revId": "49433adb9145bfd3a9cbaa99b01c6c14aeda71a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
