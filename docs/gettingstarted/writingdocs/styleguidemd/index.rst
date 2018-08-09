@@ -9,7 +9,8 @@ written in Markdown. This chapter describes some constructs used to write these 
 For a more detailed description of Markdown refer to `Markdown Wikipedia <https://en.wikipedia.org/wiki/Markdown>`_
 
 .. toctree::
+   :maxdepth: 2
 
-  styleguide.md
-  styleguide02.md
-  styleguide03.md
+   styleguide.md
+   styleguide02.md
+   styleguide03.md
