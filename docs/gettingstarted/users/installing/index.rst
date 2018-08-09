@@ -2,6 +2,8 @@
 
 .. toctree::
 
+.. _installingVPP:
+
 Installing VPP from Packages
 ==============================
 

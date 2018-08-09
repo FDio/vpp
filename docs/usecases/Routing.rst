@@ -9,7 +9,7 @@ Now for connecting these two linux containers to VPP and pinging between them.
 
 Enter container *cone*, and check the current network configuration:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@cone:/# ip -o a
     1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
@@ -24,7 +24,7 @@ Notice that *veth_link1* has no assigned IP.
 
 Check if the interfaces are down or up:
 
-.. code-block:: shell
+.. code-block:: console
 
     root@cone:/# ip link
     1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1
@@ -42,7 +42,7 @@ Check if the interfaces are down or up:
 
 Make sure your loopback interface is up, and assign an IP and gateway to veth_link1.
 
-.. code-block:: shell
+.. code-block:: console
     
     root@cone:/# ip link set dev lo up
     root@cone:/# ip addr add 172.16.1.2/24 dev veth_link1
@@ -54,7 +54,7 @@ Here, the IP is 172.16.1.2/24 and the gateway is 172.16.1.1.
 
 Run some commands to verify the changes:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@cone:/# ip -o a
     1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
@@ -77,7 +77,7 @@ Now exit this container and repeat this process with container *ctwo*, except wi
 
 After thats done for *both* containers, exit from the container if you're in one:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@ctwo:/# exit
     exit
@@ -85,7 +85,7 @@ After thats done for *both* containers, exit from the container if you're in one
 
 In the machine running the containers, run **ip link** to see the host *veth* network interfaces, and their link with their respective *container veth's*.
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# ip link
     1: lo: <LOOPBACK> mtu 65536 qdisc noqueue state DOWN mode DEFAULT group default qlen 1
@@ -112,7 +112,7 @@ Remember our network interface index 32 in *cone* from this :ref:`note <networkN
 
 With VPP in the host machine, show current VPP interfaces:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl show inter
               Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count     
@@ -122,14 +122,14 @@ Which should only output local0.
 
 Based on the names of the network interfaces discussed previously, which are specific to my systems, we can create VPP host-interfaces:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl create host-interface name vethQL7K0C
     root@localhost:~# vppctl create host-interface name veth8NA72P
 
 Verify they have been set up properly:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl show inter
               Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count     
@@ -142,14 +142,14 @@ Which should output *three network interfaces*, local0, and the other two host n
 
 Set their state to up:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl set interface state host-vethQL7K0C up
     root@localhost:~# vppctl set interface state host-veth8NA72P up
 
 Verify they are now up:
 
-.. code-block:: shell
+.. code-block:: console
 
     root@localhost:~# vppctl show inter
               Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count     
@@ -160,7 +160,7 @@ Verify they are now up:
 
 Add IP addresses for the other end of each veth link:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl set interface ip address host-vethQL7K0C 172.16.1.1/24
     root@localhost:~# vppctl set interface ip address host-veth8NA72P 172.16.2.1/24
@@ -168,7 +168,7 @@ Add IP addresses for the other end of each veth link:
 
 Verify the addresses are set properly by looking at the L3 table:
 
-.. code-block:: shell
+.. code-block:: console
 
     root@localhost:~# vppctl show inter addr
     host-vethQL7K0C (up):
@@ -179,7 +179,7 @@ Verify the addresses are set properly by looking at the L3 table:
 
 Or looking at the FIB by doing:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# vppctl show ip fib
     ipv4-VRF:0, fib_index:0, flow hash:[src dst sport dport proto ] locks:[src:plugin-hi:2, src:default-route:1, ]
@@ -238,7 +238,7 @@ Or looking at the FIB by doing:
 
 At long last you probably want to see some pings:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@localhost:~# lxc-attach -n cone -- ping -c3 172.16.2.2
     PING 172.16.2.2 (172.16.2.2) 56(84) bytes of data.

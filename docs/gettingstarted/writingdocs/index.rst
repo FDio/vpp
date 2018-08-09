@@ -14,11 +14,12 @@ This section covers the following topics:
 
 
 .. toctree::
+   :maxdepth: 2
 
-  buildingrst
-  gitreview
-  readthedocs
-  styleguide/index.rst
-  styleguidemd/index.rst
-  todo
-  pushingapatch
+   buildingrst
+   gitreview
+   readthedocs
+   styleguide/index.rst
+   styleguidemd/index.rst
+   todo
+   pushingapatch

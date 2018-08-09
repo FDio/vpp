@@ -9,14 +9,14 @@ Now we can go into container *cone* and install prerequisites such as VPP, and p
 
 To enter our container via the shell, type:
 
-.. code-block:: shell
+.. code-block:: console
     
     # lxc-attach -n cone
     root@cone:/#
 
 Run the linux DHCP setup and install VPP: 
 
-.. code-block:: shell
+.. code-block:: console
     
     root@cone:/# resolvconf -d eth0
     root@cone:/# dhclient
@@ -28,13 +28,13 @@ Run the linux DHCP setup and install VPP:
 
 After this is done, start VPP in this container:
 
-.. code-block:: shell
+.. code-block:: console
     
     root@cone:/# service vpp start
 
 Exit this container with the **exit** command (you *may* need to run **exit** twice):
 
-.. code-block:: shell
+.. code-block:: console
 
     root@cone:/# exit
     exit

@@ -21,10 +21,11 @@ A **Table of Contents** structure is shown below. Using **toctree** in this way 
 in a nicely in the generated documents.
 
 .. toctree::
+   :maxdepth: 2
 
-  styleguide.rst
-  styleguide02.rst
-  styleguide02table.rst
-  styleguide03.rst
-  styleguide04.rst
-  styleguide05.rst
+   styleguide.rst
+   styleguide02.rst
+   styleguide02table.rst
+   styleguide03.rst
+   styleguide04.rst
+   styleguide05.rst
