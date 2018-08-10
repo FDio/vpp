@@ -163,15 +163,13 @@ class TestL2bdArpTerm(VppTestCase):
         return '%s.%s.%s.%s' % (o1, o2, o3, o4)
 
     def arp_event_host(self, e):
-        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
-                    ip4=self.inttoip4(e.address))
+        return Host(str(e.mac), ip4=self.inttoip4(e.address))
 
     def arp_event_hosts(self, evs):
         return {self.arp_event_host(e) for e in evs}
 
     def nd_event_host(self, e):
-        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
-                    ip6=inet_ntop(AF_INET6, e.address))
+        return Host(str(e.mac), ip6=str(e.address))
 
     def nd_event_hosts(self, evs):
         return {self.nd_event_host(e) for e in evs}

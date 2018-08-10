@@ -1052,8 +1052,7 @@ class TestDHCP(VppTestCase):
         nd_entry = VppNeighbor(self,
                                self.pg1.sw_if_index,
                                self.pg1.remote_hosts[1].mac,
-                               self.pg1.remote_hosts[1].ip6,
-                               af=AF_INET6)
+                               self.pg1.remote_hosts[1].ip6)
         nd_entry.add_vpp_config()
 
         #
@@ -1267,9 +1266,10 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mac_pton(self.pg3.remote_mac),
+                                      self.pg3.remote_mac,
                                       self.pg3.remote_ip4,
                                       is_add=0)
+
         #
         # remove the DHCP config
         #
@@ -1423,7 +1423,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mac_pton(self.pg3.remote_mac),
+                                      self.pg3.remote_mac,
                                       self.pg3.remote_ip4,
                                       is_add=0)
 
@@ -1530,7 +1530,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mac_pton(self.pg3.remote_mac),
+                                      self.pg3.remote_mac,
                                       self.pg3.remote_ip4,
                                       is_add=0)
 
