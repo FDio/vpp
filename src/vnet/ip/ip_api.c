@@ -23,8 +23,10 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
@@ -115,13 +117,25 @@ _(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
 
+static vl_api_ip_neighbor_flags_t
+ip_neighbor_flags_encode (ip_neighbor_flags_t f)
+{
+  vl_api_ip_neighbor_flags_t v = IP_API_NEIGHBOR_FLAG_NONE;
+
+  if (f & IP_NEIGHBOR_FLAG_STATIC)
+    v |= IP_API_NEIGHBOR_FLAG_STATIC;
+  if (f & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    v |= IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY;
+
+  return (clib_host_to_net_u32 (v));
+}
+
 static void
 send_ip_neighbor_details (u32 sw_if_index,
-			  u8 is_ipv6,
-			  u8 is_static,
-			  u8 * mac_address,
-			  u8 * ip_address, vl_api_registration_t * reg,
-			  u32 context)
+			  const ip46_address_t * ip_address,
+			  const mac_address_t * mac,
+			  ip_neighbor_flags_t flags,
+			  vl_api_registration_t * reg, u32 context)
 {
   vl_api_ip_neighbor_details_t *mp;
 
@@ -129,11 +143,11 @@ send_ip_neighbor_details (u32 sw_if_index,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS);
   mp->context = context;
-  mp->sw_if_index = htonl (sw_if_index);
-  mp->is_ipv6 = is_ipv6;
-  mp->is_static = is_static;
-  memcpy (mp->mac_address, mac_address, 6);
-  memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
+  mp->neighbor.sw_if_index = htonl (sw_if_index);
+  mp->neighbor.flags = ip_neighbor_flags_encode (flags);
+
+  ip_address_encode (ip_address, IP46_TYPE_ANY, &mp->neighbor.ip_address);
+  mac_address_encode (mac, &mp->neighbor.mac_address);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -157,12 +171,15 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
-        send_ip_neighbor_details
-          (n->key.sw_if_index, mp->is_ipv6,
-	   ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
-           (u8 *) n->link_layer_address,
-           (u8 *) & (n->key.ip6_address.as_u8),
-           reg, mp->context);
+        ip46_address_t nh = {
+          .ip6 = {
+            .as_u64[0] = n->key.ip6_address.as_u64[0],
+            .as_u64[1] = n->key.ip6_address.as_u64[1],
+          },
+        };
+        send_ip_neighbor_details (n->key.sw_if_index, &nh,
+                                  &n->mac, n->flags,
+                                  reg, mp->context);
       }
       /* *INDENT-ON* */
       vec_free (ns);
@@ -175,11 +192,15 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
-        send_ip_neighbor_details (n->sw_if_index, mp->is_ipv6,
-          ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
-          (u8*) n->ethernet_address,
-          (u8*) & (n->ip4_address.as_u8),
-          reg, mp->context);
+        ip46_address_t nh = {
+          .ip4 = {
+            .as_u32 = n->ip4_address.as_u32,
+          },
+        };
+
+        send_ip_neighbor_details (n->sw_if_index, &nh,
+                                  &n->mac, n->flags,
+                                  reg, mp->context);
       }
       /* *INDENT-ON* */
       vec_free (ns);
@@ -652,36 +673,52 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
   REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
 }
 
+static ip_neighbor_flags_t
+ip_neighbor_flags_decode (vl_api_ip_neighbor_flags_t v)
+{
+  ip_neighbor_flags_t f = IP_NEIGHBOR_FLAG_NONE;
+
+  v = clib_net_to_host_u32 (v);
+
+  if (v & IP_API_NEIGHBOR_FLAG_STATIC)
+    f |= IP_NEIGHBOR_FLAG_STATIC;
+  if (v & IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    f |= IP_NEIGHBOR_FLAG_NO_FIB_ENTRY;
+
+  return (f);
+}
+
 static void
 vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 				      vlib_main_t * vm)
 {
-  ip46_address_t ip = ip46_address_initializer;
   vl_api_ip_neighbor_add_del_reply_t *rmp;
   ip_neighbor_flags_t flags;
   u32 stats_index = ~0;
+  ip46_address_t ip;
+  mac_address_t mac;
+  ip46_type_t type;
   int rv = 0;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  VALIDATE_SW_IF_INDEX ((&mp->neighbor));
 
   stats_dslock_with_hint (1 /* release hint */ , 7 /* tag */ );
 
-  flags = IP_NEIGHBOR_FLAG_NODE;
-  if (mp->is_static)
-    flags |= IP_NEIGHBOR_FLAG_STATIC;
-  if (mp->is_no_adj_fib)
-    flags |= IP_NEIGHBOR_FLAG_NO_ADJ_FIB;
+  flags = ip_neighbor_flags_decode (mp->neighbor.flags);
+  type = ip_address_decode (&mp->neighbor.ip_address, &ip);
+  mac_address_decode (&mp->neighbor.mac_address, &mac);
 
-  if (mp->is_ipv6)
-    clib_memcpy (&ip.ip6, mp->dst_address, 16);
-  else
-    clib_memcpy (&ip.ip4, mp->dst_address, 4);
-
+  /*
+   * there's no validation here of the ND/ARP entry being added.
+   * The expectation is that the FIB will ensure that nothing bad
+   * will come of adding bogus entries.
+   */
   if (mp->is_add)
-    rv = ip_neighbor_add (&ip, mp->is_ipv6, mp->mac_address,
-			  ntohl (mp->sw_if_index), flags, &stats_index);
+    rv = ip_neighbor_add (&ip, type, &mac,
+			  ntohl (mp->neighbor.sw_if_index),
+			  flags, &stats_index);
   else
-    rv = ip_neighbor_del (&ip, mp->is_ipv6, ntohl (mp->sw_if_index));
+    rv = ip_neighbor_del (&ip, type, ntohl (mp->neighbor.sw_if_index));
 
   stats_dsunlock ();
 
@@ -2140,9 +2177,21 @@ reply:
 #define IP4_ARP_EVENT 3
 #define IP6_ND_EVENT 4
 
-static int arp_change_delete_callback (u32 pool_index, u8 * notused);
-static int nd_change_delete_callback (u32 pool_index, u8 * notused);
 static vlib_node_registration_t ip_resolver_process_node;
+
+static int
+arp_change_delete_callback (u32 pool_index,
+			    const mac_address_t * mac,
+			    u32 sw_if_index, const ip4_address_t * address)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+
+  if (pool_is_free_index (am->arp_events, pool_index))
+    return 1;
+
+  pool_put_index (am->arp_events, pool_index);
+  return 0;
+}
 
 static void
 handle_ip4_arp_event (u32 pool_index)
@@ -2191,6 +2240,20 @@ handle_ip4_arp_event (u32 pool_index)
 	  last_time = vlib_time_now (vm);
 	}
     }
+}
+
+static int
+nd_change_delete_callback (u32 pool_index,
+			   const mac_address_t * mac,
+			   u32 sw_if_index, const ip6_address_t * addr)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+
+  if (pool_is_free_index (am->nd_events, pool_index))
+    return 1;
+
+  pool_put_index (am->nd_events, pool_index);
+  return 0;
 }
 
 static void
@@ -2287,8 +2350,8 @@ VLIB_REGISTER_NODE (ip_resolver_process_node,static) = {
 /* *INDENT-ON* */
 
 static int
-nd_change_data_callback (u32 pool_index, u8 * new_mac,
-			 u32 sw_if_index, ip6_address_t * address)
+nd_change_data_callback (u32 pool_index, const mac_address_t * new_mac,
+			 u32 sw_if_index, const ip6_address_t * address)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_ip6_nd_event_t *event;
@@ -2297,38 +2360,14 @@ nd_change_data_callback (u32 pool_index, u8 * new_mac,
     return 1;
 
   event = pool_elt_at_index (am->nd_events, pool_index);
-  if (eth_mac_equal (event->new_mac, new_mac) &&
+  if (ethernet_mac_address_equal (event->new_mac.bytes, new_mac->bytes) &&
       sw_if_index == ntohl (event->sw_if_index))
     {
       return 1;
     }
 
-  clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
+  mac_address_encode (new_mac, &event->new_mac);
   event->sw_if_index = htonl (sw_if_index);
-  return 0;
-}
-
-static int
-arp_change_delete_callback (u32 pool_index, u8 * notused)
-{
-  vpe_api_main_t *am = &vpe_api_main;
-
-  if (pool_is_free_index (am->arp_events, pool_index))
-    return 1;
-
-  pool_put_index (am->arp_events, pool_index);
-  return 0;
-}
-
-static int
-nd_change_delete_callback (u32 pool_index, u8 * notused)
-{
-  vpe_api_main_t *am = &vpe_api_main;
-
-  if (pool_is_free_index (am->nd_events, pool_index))
-    return 1;
-
-  pool_put_index (am->nd_events, pool_index);
   return 0;
 }
 
@@ -2362,9 +2401,10 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  wc_arp_report_t *arp_events = event_data;
 	  for (i = 0; i < vec_len (arp_events); i++)
 	    {
-	      /* discard dup event */
+	      /* discard dup event - cast away volatile */
 	      if (arp_prev.ip4 == arp_events[i].ip4 &&
-		  eth_mac_equal ((u8 *) arp_prev.mac, arp_events[i].mac) &&
+		  mac_address_equal ((const mac_address_t *) &arp_prev.mac,
+				     &arp_events[i].mac) &&
 		  arp_prev.sw_if_index == arp_events[i].sw_if_index &&
 		  (now - last_arp) < 10.0)
 		{
@@ -2389,7 +2429,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	          event->mac_ip = 1;
 	          event->address = arp_events[i].ip4;
 	          event->sw_if_index = htonl(arp_events[i].sw_if_index);
-	          memcpy(event->new_mac, arp_events[i].mac, sizeof event->new_mac);
+	          mac_address_encode(&arp_events[i].mac, &event->mac);
 	          vl_api_send_msg (vl_reg, (u8 *) event);
 	        }
             }));
@@ -2401,10 +2441,11 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  wc_nd_report_t *nd_events = event_data;
 	  for (i = 0; i < vec_len (nd_events); i++)
 	    {
-	      /* discard dup event */
-	      if (ip6_address_is_equal
-		  ((ip6_address_t *) & nd_prev.ip6, &nd_events[i].ip6)
-		  && eth_mac_equal ((u8 *) nd_prev.mac, nd_events[i].mac)
+	      /* discard dup event - cast away volatile */
+	      if (ip6_address_is_equal ((const ip6_address_t *) &nd_prev.ip6,
+					&nd_events[i].ip6)
+		  && mac_address_equal ((const mac_address_t *) &nd_prev.mac,
+					&nd_events[i].mac)
 		  && nd_prev.sw_if_index == nd_events[i].sw_if_index
 		  && (now - last_nd) < 10.0)
 		{
@@ -2426,9 +2467,9 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	            event->client_index = reg->client_index;
 	            event->pid = reg->client_pid;
 	            event->mac_ip = 1;
-	            memcpy(event->address, nd_events[i].ip6.as_u8, sizeof event->address);
+	            ip6_address_encode(&nd_events[i].ip6, &event->address);
 	            event->sw_if_index = htonl(nd_events[i].sw_if_index);
-	            memcpy(event->new_mac, nd_events[i].mac, sizeof event->new_mac);
+	            mac_address_encode(&nd_events[i].mac, &event->new_mac);
 	            vl_api_send_msg (vl_reg, (u8 *) event);
 	          }
               }));
@@ -2523,8 +2564,9 @@ VLIB_REGISTER_NODE (wc_arp_process_node,static) = {
 /* *INDENT-ON* */
 
 static int
-arp_change_data_callback (u32 pool_index, u8 * new_mac,
-			  u32 sw_if_index, u32 address)
+arp_change_data_callback (u32 pool_index,
+			  const mac_address_t * mac,
+			  u32 sw_if_index, const ip4_address_t * address)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_ip4_arp_event_t *event;
@@ -2533,13 +2575,13 @@ arp_change_data_callback (u32 pool_index, u8 * new_mac,
     return 1;
 
   event = pool_elt_at_index (am->arp_events, pool_index);
-  if (eth_mac_equal (event->new_mac, new_mac) &&
+  if (ethernet_mac_address_equal (event->mac.bytes, mac->bytes) &&
       sw_if_index == ntohl (event->sw_if_index))
     {
       return 1;
     }
 
-  clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
+  mac_address_encode (mac, &event->mac);
   event->sw_if_index = htonl (sw_if_index);
   return 0;
 }
@@ -2687,9 +2729,12 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_want_ip6_nd_events_reply_t *rmp;
+  ip6_address_t ip6;
   int rv = 0;
 
-  if (ip6_address_is_zero ((ip6_address_t *) mp->address))
+  ip6_address_decode (&mp->address, &ip6);
+
+  if (ip6_address_is_zero (&ip6))
     {
       uword *p =
 	hash_get (am->wc_ip6_nd_events_registration_hash, mp->client_index);
@@ -2736,7 +2781,7 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 
       rv = vnet_add_del_ip6_nd_change_event
 	(vnm, nd_change_data_callback,
-	 mp->pid, mp->address /* addr, in net byte order */ ,
+	 mp->pid, &ip6,
 	 ip_resolver_process_node.index,
 	 IP6_ND_EVENT, event - am->nd_events, 1 /* is_add */ );
 
@@ -2749,14 +2794,14 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 
       event->_vl_msg_id = ntohs (VL_API_IP6_ND_EVENT);
       event->client_index = mp->client_index;
-      clib_memcpy (event->address, mp->address, sizeof event->address);
+      ip6_address_encode (&ip6, &event->address);
       event->pid = mp->pid;
     }
   else
     {
       rv = vnet_add_del_ip6_nd_change_event
 	(vnm, nd_change_delete_callback,
-	 mp->pid, mp->address /* addr, in net byte order */ ,
+	 mp->pid, &ip6 /* addr, in net byte order */ ,
 	 ip_resolver_process_node.index,
 	 IP6_ND_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
     }

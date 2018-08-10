@@ -212,7 +212,7 @@ identify_subint (vnet_hw_interface_t * hi,
 
 	  if (!(ethernet_address_cast (e0->dst_address)))
 	    {
-	      if (!eth_mac_equal ((u8 *) e0, hi->hw_address))
+	      if (!ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
 		{
 		  *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 		}
@@ -431,11 +431,11 @@ ethernet_input_inline (vlib_main_t * vm,
 		{
 		  if (!ethernet_address_cast (e0->dst_address) &&
 		      (hi->hw_address != 0) &&
-		      !eth_mac_equal ((u8 *) e0, hi->hw_address))
+		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 		  if (!ethernet_address_cast (e1->dst_address) &&
 		      (hi->hw_address != 0) &&
-		      !eth_mac_equal ((u8 *) e1, hi->hw_address))
+		      !ethernet_mac_address_equal ((u8 *) e1, hi->hw_address))
 		    error1 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
@@ -655,7 +655,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		{
 		  if (!ethernet_address_cast (e0->dst_address) &&
 		      (hi->hw_address != 0) &&
-		      !eth_mac_equal ((u8 *) e0, hi->hw_address))
+		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,

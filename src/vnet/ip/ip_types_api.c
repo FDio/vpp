@@ -29,6 +29,18 @@
 #include <vnet/vnet_all_api_h.h>
 #undef vl_printfun
 
+void
+ip6_address_encode (const ip6_address_t * in, struct _vl_api_ip6_address *out)
+{
+  clib_memcpy (out, in, sizeof (out));
+}
+
+void
+ip6_address_decode (const struct _vl_api_ip6_address *in, ip6_address_t * out)
+{
+  clib_memcpy (out, in, sizeof (out));
+}
+
 static ip46_type_t
 ip_address_union_decode (const vl_api_address_union_t * in,
 			 vl_api_address_family_t af, ip46_address_t * out)
@@ -43,7 +55,7 @@ ip_address_union_decode (const vl_api_address_union_t * in,
       type = IP46_TYPE_IP4;
       break;
     case ADDRESS_IP6:
-      clib_memcpy (&out->ip6, &in->ip6, sizeof (out->ip6));
+      ip6_address_decode (&in->ip6, &out->ip6);
       type = IP46_TYPE_IP6;
       break;
     default:
@@ -67,7 +79,7 @@ ip_address_union_encode (const ip46_address_t * in,
 			 vl_api_address_union_t * out)
 {
   if (ADDRESS_IP6 == clib_net_to_host_u32 (af))
-    memcpy (out->ip6.address, &in->ip6, sizeof (out->ip6));
+    ip6_address_encode (&in->ip6, &out->ip6);
   else
     memcpy (out->ip4.address, &in->ip4, sizeof (out->ip4));
 }

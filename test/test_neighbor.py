@@ -271,6 +271,8 @@ class ARPTestCase(VppTestCase):
         #
         # VPP should have learned the mapping for the remote host
         #
+        print "IP %s" % self.pg1._remote_hosts[3].ip4
+        self.logger.error(self.vapi.ppcli("sh ip arp"))
         self.assertTrue(find_nbr(self,
                                  self.pg1.sw_if_index,
                                  self.pg1._remote_hosts[3].ip4))
@@ -971,11 +973,7 @@ class ARPTestCase(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw())
 
-        self.pg0.add_stream(p0)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx1 = self.pg1.get_capture(1)
+        rx1 = self.send_and_expect(self.pg0, [p0], self.pg1)
 
         self.verify_arp_req(rx1[0],
                             self.pg1.local_mac,
@@ -992,20 +990,14 @@ class ARPTestCase(VppTestCase):
                   hwsrc="00:00:5e:00:01:09", pdst=self.pg1.local_ip4,
                   psrc=self.pg1.remote_ip4))
 
-        self.pg1.add_stream(p1)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        self.send_and_assert_no_replies(self.pg1, p1, "ARP reply")
 
         #
         # IP packet destined for pg1 remote host arrives on pg0 again.
         # VPP should have an ARP entry for that address now and the packet
         # should be sent out pg1.
         #
-        self.pg0.add_stream(p0)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx1 = self.pg1.get_capture(1)
+        rx1 = self.send_and_expect(self.pg0, [p0], self.pg1)
 
         self.verify_ip(rx1[0],
                        self.pg1.local_mac,

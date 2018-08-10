@@ -41,6 +41,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/arp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/adj/adj.h>

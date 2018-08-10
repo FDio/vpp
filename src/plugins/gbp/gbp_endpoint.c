@@ -99,7 +99,7 @@ static void
 gbp_endpoint_extract_key_mac_itf (const clib_bihash_kv_16_8_t * key,
 				  mac_address_t * mac, u32 * sw_if_index)
 {
-  mac_address_from_u64 (key->key[0], mac);
+  mac_address_from_u64 (mac, key->key[0]);
   *sw_if_index = key->key[1];
 }
 

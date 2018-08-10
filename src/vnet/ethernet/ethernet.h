@@ -42,42 +42,9 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/ethernet/mac_address.h>
 #include <vnet/pg/pg.h>
 #include <vnet/feature/feature.h>
-
-always_inline u64
-ethernet_mac_address_u64 (const u8 * a)
-{
-  return (((u64) a[0] << (u64) (5 * 8))
-	  | ((u64) a[1] << (u64) (4 * 8))
-	  | ((u64) a[2] << (u64) (3 * 8))
-	  | ((u64) a[3] << (u64) (2 * 8))
-	  | ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
-}
-
-always_inline void
-ethernet_mac_address_from_u64 (u64 u, u8 * a)
-{
-  i8 ii;
-
-  for (ii = 5; ii >= 0; ii--)
-    {
-      a[ii] = u & 0xFF;
-      u = u >> 8;
-    }
-}
-
-static inline int
-ethernet_mac_address_is_multicast_u64 (u64 a)
-{
-  return (a & (1ULL << (5 * 8))) != 0;
-}
-
-static inline int
-ethernet_mac_address_is_zero (const u8 * mac)
-{
-  return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
-}
 
 #ifdef CLIB_HAVE_VEC128
 static const u16x8 tagged_ethertypes = {
@@ -551,41 +518,11 @@ matched:
   return 1;
 }
 
-// Compare two ethernet macs. Return 1 if they are the same, 0 if different
-always_inline u32
-eth_mac_equal (const u8 * mac1, const u8 * mac2)
-{
-  return (*((u32 *) (mac1 + 0)) == *((u32 *) (mac2 + 0)) &&
-	  *((u32 *) (mac1 + 2)) == *((u32 *) (mac2 + 2)));
-}
-
-
 always_inline ethernet_main_t *
 vnet_get_ethernet_main (void)
 {
   return &ethernet_main;
 }
-
-void vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm,
-					     void *address_arg,
-					     uword node_index,
-					     uword type_opaque, uword data);
-
-
-int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
-				       void *data_callback,
-				       u32 pid,
-				       void *address_arg,
-				       uword node_index,
-				       uword type_opaque,
-				       uword data, int is_add);
-
-void wc_arp_set_publisher_node (uword inode_index, uword event_type);
-
-void ethernet_arp_change_mac (u32 sw_if_index);
-void ethernet_ndp_change_mac (u32 sw_if_index);
-
-void arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
@@ -595,13 +532,6 @@ const u8 *ethernet_ip4_mcast_dst_addr (void);
 const u8 *ethernet_ip6_mcast_dst_addr (void);
 
 extern vlib_node_registration_t ethernet_input_node;
-
-typedef struct
-{
-  u32 sw_if_index;
-  u32 ip4;
-  u8 mac[6];
-} wc_arp_report_t;
 
 #endif /* included_ethernet_h */
 

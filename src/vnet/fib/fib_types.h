@@ -16,11 +16,8 @@
 #ifndef __FIB_TYPES_H__
 #define __FIB_TYPES_H__
 
-#include <stdbool.h>
-#include <vlib/vlib.h>
-#include <vnet/ip/ip6_packet.h>
+#include <vnet/fib/fib_protocol.h>
 #include <vnet/mpls/packet.h>
-#include <vnet/dpo/dpo.h>
 #include <vnet/bier/bier_types.h>
 
 /**
@@ -29,73 +26,6 @@
  */
 typedef u32 fib_node_index_t;
 #define FIB_NODE_INDEX_INVALID ((fib_node_index_t)(~0))
-
-/**
- * Protocol Type. packed so it consumes a u8 only
- */
-typedef enum fib_protocol_t_ {
-    FIB_PROTOCOL_IP4 = DPO_PROTO_IP4,
-    FIB_PROTOCOL_IP6 = DPO_PROTO_IP6,
-    FIB_PROTOCOL_MPLS = DPO_PROTO_MPLS,
-}  __attribute__ ((packed)) fib_protocol_t;
-
-#define FIB_PROTOCOLS {			\
-    [FIB_PROTOCOL_IP4] = "ipv4",	\
-    [FIB_PROTOCOL_IP6] = "ipv6",        \
-    [FIB_PROTOCOL_MPLS] = "MPLS",       \
-}
-
-/**
- * Definition outside of enum so it does not need to be included in non-defaulted
- * switch statements
- */
-#define FIB_PROTOCOL_MAX (FIB_PROTOCOL_MPLS + 1)
-
-/**
- * Definition outside of enum so it does not need to be included in non-defaulted
- * switch statements
- */
-#define FIB_PROTOCOL_IP_MAX (FIB_PROTOCOL_IP6 + 1)
-
-/**
- * Not part of the enum so it does not have to be handled in switch statements
- */
-#define FIB_PROTOCOL_NONE (FIB_PROTOCOL_MAX+1)
-
-#define FOR_EACH_FIB_PROTOCOL(_item)    \
-    for (_item = FIB_PROTOCOL_IP4;      \
-	 _item <= FIB_PROTOCOL_MPLS;    \
-	 _item++)
-
-#define FOR_EACH_FIB_IP_PROTOCOL(_item)    \
-    for (_item = FIB_PROTOCOL_IP4;         \
-	 _item <= FIB_PROTOCOL_IP6;        \
-	 _item++)
-
-/**
- * @brief Convert from boolean is_ip6 to FIB protocol.
- * Drop MPLS on the floor in favor of IPv4.
- */
-static inline fib_protocol_t
-fib_ip_proto(bool is_ip6)
-{
-  return (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
-}
-
-/**
- * @brief Convert from fib_protocol to ip46_type
- */
-extern ip46_type_t fib_proto_to_ip46(fib_protocol_t fproto);
-
-/**
- * @brief Convert from ip46_type to fib_protocol
- */
-extern fib_protocol_t fib_proto_from_ip46(ip46_type_t iproto);
-
-/**
- * @brief Convert from a protocol to a link type
- */
-vnet_link_t fib_proto_to_link (fib_protocol_t proto);
 
 /**
  * FIB output chain type. When a child object requests a forwarding contribution

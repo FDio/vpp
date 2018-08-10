@@ -41,11 +41,12 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.sw_if_index = m_itf.value();
   payload.is_add = 1;
-  payload.is_static = 1;
-  m_mac.to_bytes(payload.mac_address, 6);
-  to_bytes(m_ip_addr, &payload.is_ipv6, payload.dst_address);
+  payload.neighbor.sw_if_index = m_itf.value();
+  payload.neighbor.is_static = 1;
+  m_mac.to_bytes(payload.neighbor.mac_address, 6);
+  // FIXME
+  // to_bytes(m_ip_addr, &payload.is_ipv6, payload.dst_address);
 
   VAPI_CALL(req.execute());
 
@@ -87,11 +88,12 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.sw_if_index = m_itf.value();
   payload.is_add = 0;
-  payload.is_static = 1;
-  m_mac.to_bytes(payload.mac_address, 6);
-  to_bytes(m_ip_addr, &payload.is_ipv6, payload.dst_address);
+  payload.neighbor.sw_if_index = m_itf.value();
+  payload.neighbor.is_static = 1;
+  m_mac.to_bytes(payload.neighbor.mac_address, 6);
+  // FIXME
+  // to_bytes(m_ip_addr, &payload.is_ipv6, payload.dst_address);
 
   VAPI_CALL(req.execute());
 

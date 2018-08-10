@@ -20,7 +20,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.3.0";
+option version = "1.4.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -103,6 +103,53 @@ manual_endian manual_print define ip6_fib_details
   vl_api_fib_path_t path[count];
 };
 
+/** \brief IP neighbor flags
+    @param is_static - A static neighbor Entry - there are not flushed
+                       If the interface goes down.
+    @param is_no_fib_entry - Do not create a corresponding entry in the FIB
+                           table for the neighbor.
+*/
+enum ip_neighbor_flags
+{
+  IP_API_NEIGHBOR_FLAG_NONE = 0,
+  IP_API_NEIGHBOR_FLAG_STATIC = 0x1,
+  IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY = 0x2,
+};
+
+/** \brief IP neighbor
+    @param sw_if_index - interface used to reach neighbor
+    @param mac_address - l2 address of the neighbor
+    @param ip_address - ip4 or ip6 address of the neighbor
+    @param flags - flags for the nieghbor
+*/
+typedef ip_neighbor {
+  u32 sw_if_index;
+  vl_api_ip_neighbor_flags_t flags;
+  vl_api_mac_address_t mac_address;
+  vl_api_address_t ip_address;
+};
+
+/** \brief IP neighbor add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param neighbor - the neighor to add/remove
+*/
+define ip_neighbor_add_del
+{
+  u32 client_index;
+  u32 context;
+  /* 1 = add, 0 = delete */
+  u8 is_add;
+  vl_api_ip_neighbor_t neighbor;
+};
+define ip_neighbor_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+
 /** \brief Dump IP neighboors
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -111,63 +158,19 @@ manual_endian manual_print define ip6_fib_details
 */
 define ip_neighbor_dump
 {
-    u32 client_index;
-    u32 context;
-    u32 sw_if_index;
-    u8  is_ipv6;
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8  is_ipv6;
 };
 
 /** \brief IP neighboors dump response
     @param context - sender context which was passed in the request
-    @param sw_if_index - The interface used to reach the neighbor
-    @param stats_index - An index in the stats segment that can be used to read
-                         the counters for this neighbour.
-    @param is_static - [1|0] to indicate if neighbor is statically configured
-    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+    @param neighbour - the neighbor
 */
 define ip_neighbor_details {
-    u32 context;
-    u32 sw_if_index;
-    u32 stats_index;
-    u8  is_static;
-    u8  is_ipv6;
-    u8  mac_address[6];
-    u8  ip_address[16];
-};
-
-/** \brief IP neighbor add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface used to reach neighbor
-    @param is_add - 1 to add neighbor, 0 to delete
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
-    @param is_static - A static neighbor Entry - there are not flushed
-                       If the interface goes down.
-    @param is_no_adj_fib - Do not create a corresponding entry in the FIB
-                           table for the neighbor.
-    @param mac_address - l2 address of the neighbor
-    @param dst_address - ip4 or ip6 address of the neighbor
-*/
-define ip_neighbor_add_del
-{
-  u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  /* 1 = add, 0 = delete */
-  u8 is_add;
-  u8 is_ipv6;
-  u8 is_static;
-  u8 is_no_adj_fib;
-  u8 mac_address[6];
-  u8 dst_address[16];
-};
-
-define ip_neighbor_add_del_reply
-{
-  u32 context;
-  i32 retval;
-  u32 stats_index;
+  vl_api_ip_neighbor_t neighbor;
 };
 
 /** \brief Set the ip flow hash config for a fib request
@@ -794,7 +797,7 @@ define ip4_arp_event
   u32 address;
   u32 pid;
   u32 sw_if_index;
-  u8 new_mac[6];
+  vl_api_mac_address_t mac;
   u8 mac_ip;
 };
 
@@ -818,7 +821,7 @@ autoreply define want_ip6_nd_events
   u32 context;
   u8 enable_disable;
   u32 pid;
-  u8 address[16];
+  vl_api_ip6_address_t address;
 };
 
 /** \brief Tell client about an IP6 ND resolution or
@@ -835,8 +838,8 @@ define ip6_nd_event
   u32 client_index;
   u32 pid;
   u32 sw_if_index;
-  u8 address[16];
-  u8 new_mac[6];
+  vl_api_ip6_address_t address;
+  vl_api_mac_address_t new_mac;
   u8 mac_ip;
 };
 

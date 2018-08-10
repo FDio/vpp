@@ -2,6 +2,8 @@ from abc import abstractmethod, ABCMeta
 import socket
 
 from util import Host, mk_ll_addr, mactobinary
+from vpp_ip import VppIpAddress
+from vpp_mac import VppMacAddress
 
 
 class VppInterface(object):
@@ -271,10 +273,9 @@ class VppInterface(object):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip4n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn)
+                self.sw_if_index, VppMacAddress(host.mac).encode(),
+                VppIpAddress(host.ip4).encode())
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
@@ -303,9 +304,8 @@ class VppInterface(object):
         """
         for host in self._remote_hosts:
             macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip6n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, is_ipv6=1)
+                self.sw_if_index, macn, VppIpAddress(host.ip6).encode())
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""
@@ -397,9 +397,9 @@ class VppInterface(object):
 
     def is_ip4_entry_in_fib_dump(self, dump):
         for i in dump:
-            if i.address == self.local_ip4n and \
-               i.address_length == self.local_ip4_prefix_len and \
-               i.table_id == self.ip4_table_id:
+            if i.route.prefix.address.un.ip4.address == self.local_ip4n and \
+               i.route.prefix.address_length == self.local_ip4_prefix_len and \
+               i.route.table_id == self.ip4_table_id:
                 return True
         return False
 

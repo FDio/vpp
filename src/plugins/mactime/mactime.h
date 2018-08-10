@@ -21,7 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/arp_packet.h>
+#include <vnet/ethernet/arp.h>
 #include <vlib/counter.h>
 
 #include <vppinfra/hash.h>

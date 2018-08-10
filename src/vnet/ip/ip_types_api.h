@@ -28,6 +28,7 @@
  * Forward declarations so we need not #include the API definitions here
  */
 struct _vl_api_address;
+struct _vl_api_ip6_address;
 struct _vl_api_prefix;
 struct _vl_api_mprefix;
 
@@ -35,6 +36,10 @@ extern ip46_type_t ip_address_decode (const struct _vl_api_address *in,
 				      ip46_address_t * out);
 extern void ip_address_encode (const ip46_address_t * in,
 			       ip46_type_t type, struct _vl_api_address *out);
+extern void ip6_address_encode (const ip6_address_t * in,
+				struct _vl_api_ip6_address *out);
+extern void ip6_address_decode (const struct _vl_api_ip6_address *in,
+				ip6_address_t * out);
 
 extern void ip_prefix_decode (const struct _vl_api_prefix *in,
 			      fib_prefix_t * out);

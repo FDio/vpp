@@ -20,6 +20,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/dhcp_proxy.h>
@@ -43,6 +44,7 @@
 #include <vpp/oam/oam.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/l2/l2_vtr.h>
 
 #include <vpp/api/vpe_msg_enum.h>
@@ -1029,37 +1031,28 @@ static void *vl_api_ip_neighbor_add_del_t_print
   (vl_api_ip_neighbor_add_del_t * mp, void *handle)
 {
   u8 *s;
-  u8 null_mac[6];
-
-  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: ip_neighbor_add_del ");
 
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "sw_if_index %d ", ntohl (mp->neighbor.sw_if_index));
 
-  if (mp->is_static)
+  if (IP_API_NEIGHBOR_FLAG_STATIC & ntohl (mp->neighbor.flags))
     s = format (s, "is_static ");
 
-  if (mp->is_no_adj_fib)
+  if (IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY & ntohl (mp->neighbor.flags))
     s = format (s, "is_no_fib_entry ");
 
-  if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
+  s = format (s, "mac %U ", format_vl_api_mac_address,
+	      &mp->neighbor.mac_address);
 
-  if (mp->is_ipv6)
-    s =
-      format (s, "dst %U ", format_ip6_address,
-	      (ip6_address_t *) mp->dst_address);
-  else
-    s =
-      format (s, "dst %U ", format_ip4_address,
-	      (ip4_address_t *) mp->dst_address);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->neighbor.ip_address);
 
   if (mp->is_add == 0)
     s = format (s, "del ");
 
   FINISH;
 }
+
 
 static void *vl_api_create_vlan_subif_t_print
   (vl_api_create_vlan_subif_t * mp, void *handle)
