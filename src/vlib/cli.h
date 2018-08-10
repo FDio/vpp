@@ -151,6 +151,7 @@ typedef struct
   vlib_cli_command_t *cli_command_registrations;
 } vlib_cli_main_t;
 
+#ifndef CLIB_MARCH_VARIANT
 #define VLIB_CLI_COMMAND(x,...)                                         \
     __VA_ARGS__ vlib_cli_command_t x;                                   \
 static void __vlib_cli_command_registration_##x (void)                  \
@@ -172,6 +173,13 @@ static void __vlib_cli_command_unregistration_##x (void)                \
                                   next_cli_command);                    \
 }                                                                       \
 __VA_ARGS__ vlib_cli_command_t x
+#else
+/* create unused pointer to silence compiler warnings and get whole
+   function optimized out */
+#define VLIB_CLI_COMMAND(x,...)                                         \
+static __clib_unused vlib_cli_command_t __clib_unused_##x
+#endif
+
 #define VLIB_CLI_PARSE_RULE(x) \
   vlib_cli_parse_rule_t x
 /* Output to current CLI connection. */

@@ -99,6 +99,7 @@ typedef struct
 
 extern vnet_feature_main_t feature_main;
 
+#ifndef CLIB_MARCH_VARIANT
 #define VNET_FEATURE_ARC_INIT(x,...)				\
   __VA_ARGS__ vnet_feature_arc_registration_t vnet_feat_arc_##x;\
 static void __vnet_add_feature_arc_registration_##x (void)	\
@@ -138,6 +139,14 @@ static void __vnet_rm_feature_registration_##x (void)		\
   VLIB_REMOVE_FROM_LINKED_LIST (fm->next_feature, r, next);	\
 }								\
 __VA_ARGS__ vnet_feature_registration_t vnet_feat_##x
+#else
+#define VNET_FEATURE_ARC_INIT(x,...)				\
+extern vnet_feature_arc_registration_t __clib_unused vnet_feat_arc_##x; \
+static vnet_feature_arc_registration_t __clib_unused __clib_unused_vnet_feat_arc_##x
+#define VNET_FEATURE_INIT(x,...)				\
+extern vnet_feature_registration_t __clib_unused vnet_feat_##x; \
+static vnet_feature_registration_t __clib_unused __clib_unused_vnet_feat_##x
+#endif
 
 void
 vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,

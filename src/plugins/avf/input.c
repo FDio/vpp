@@ -530,7 +530,6 @@ VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (avf_input_node) = {
   .name = "avf-input",
@@ -541,7 +540,6 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .n_errors = AVF_INPUT_N_ERROR,
   .error_strings = avf_input_error_strings,
 };
-#endif
 
 /* *INDENT-ON* */
 

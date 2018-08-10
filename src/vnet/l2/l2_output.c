@@ -76,7 +76,6 @@ typedef struct
   u8 raw[12];			/* raw data */
 } l2output_trace_t;
 
-#ifndef CLIB_MARCH_VARIANT
 /* packet trace format function */
 static u8 *
 format_l2output_trace (u8 * s, va_list * args)
@@ -103,7 +102,6 @@ static char *l2output_error_strings[] = {
   foreach_l2output_error
 #undef _
 };
-#endif
 
 /**
  * Check for split horizon violations.
@@ -430,7 +428,6 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node) = {
   .name = "l2-output",
@@ -481,11 +478,10 @@ typedef enum
  * sending packets to the error-drop node to drop the packet. Then, stale L2FIB
  * entries for delted tunnels won't cause possible packet or memory corrpution.
  */
-static vlib_node_registration_t l2output_bad_intf_node;
 
-static uword
-l2output_bad_intf_node_fn (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2output_bad_intf_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2output_next_t next_index = 0;
@@ -539,8 +535,7 @@ l2output_bad_intf_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2output_bad_intf_node,static) = {
-  .function = l2output_bad_intf_node_fn,
+VLIB_REGISTER_NODE (l2output_bad_intf_node) = {
   .name = "l2-output-bad-intf",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -555,8 +550,6 @@ VLIB_REGISTER_NODE (l2output_bad_intf_node,static) = {
 	[0] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2output_bad_intf_node, l2output_bad_intf_node_fn);
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -588,6 +581,7 @@ l2output_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2output_init);
 
 
+#ifndef CLIB_MARCH_VARIANT
 /** Create a mapping in the next node mapping table for the given sw_if_index. */
 void
 l2output_create_output_node_mapping (vlib_main_t * vlib_main,
