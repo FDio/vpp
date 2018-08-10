@@ -297,7 +297,7 @@ ip6_ra_report_handler (void *data)
         if (default_route->sw_if_index != sw_if_index)
           ;
         else if (0 != memcmp (&default_route->router_address,
-                              r->router_address, 16))
+                              &r->router_address, 16))
           ;
         else
           {
@@ -311,7 +311,7 @@ ip6_ra_report_handler (void *data)
       if (!route_already_present)
 	{
 	  if (router_lifetime_in_sec != 0)
-	    add_default_route (vm, sw_if_index, (void *) r->router_address,
+	    add_default_route (vm, sw_if_index, &r->router_address,
 			       current_time + router_lifetime_in_sec);
 	}
       else
@@ -346,8 +346,8 @@ ip6_ra_report_handler (void *data)
       if (!(prefix->flags & PREFIX_FLAG_A))
 	continue;
 
-      dst_address = &prefix->dst_address;
-      prefix_length = prefix->dst_address_length;
+      dst_address = &prefix->prefix.fp_addr.ip6;
+      prefix_length = prefix->prefix.fp_len;
 
       if (ip6_address_is_link_local_unicast (dst_address))
 	continue;

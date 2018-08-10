@@ -18,6 +18,17 @@
 namespace VOM {
 
 void
+to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v)
+{
+  std::copy_n(std::begin(a.to_bytes()), a.to_bytes().size(), v);
+}
+void
+to_api(const boost::asio::ip::address_v6& a, vapi_type_ip6_address& v)
+{
+  std::copy_n(std::begin(a.to_bytes()), a.to_bytes().size(), v);
+}
+
+void
 to_api(const ip_address_t& a, vapi_type_address& v)
 {
   if (a.is_v4()) {
@@ -43,10 +54,24 @@ to_api(const ip_address_t& a,
   }
 }
 
-void
-to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v)
+boost::asio::ip::address_v6
+from_api(const vapi_type_ip6_address& v)
 {
-  memcpy(v, a.to_v4().to_bytes().data(), 4);
+  std::array<uint8_t, 16> a;
+  std::copy(v, v + 16, std::begin(a));
+  boost::asio::ip::address_v6 v6(a);
+
+  return v6;
+}
+
+boost::asio::ip::address_v4
+from_api(const vapi_type_ip4_address& v)
+{
+  std::array<uint8_t, 4> a;
+  std::copy(v, v + 4, std::begin(a));
+  boost::asio::ip::address_v4 v4(a);
+
+  return v4;
 }
 
 ip_address_t

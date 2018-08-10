@@ -20,6 +20,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/dhcp_proxy.h>
@@ -44,6 +45,7 @@
 #include <vpp/oam/oam.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/l2/l2_vtr.h>
 
 #include <vpp/api/vpe_msg_enum.h>
@@ -897,11 +899,10 @@ static void *vl_api_proxy_arp_add_del_t_print
   s = format (0, "SCRIPT: proxy_arp_add_del ");
 
   s = format (s, "%U - %U ",
-	      format_ip4_address, mp->proxy.low_address,
-	      format_ip4_address, mp->proxy.hi_address);
+	      format_vl_api_ip4_address, mp->proxy.low,
+	      format_vl_api_ip4_address, mp->proxy.hi);
 
-  if (mp->proxy.vrf_id)
-    s = format (s, "vrf %d ", ntohl (mp->proxy.vrf_id));
+  s = format (s, "table %d ", ntohl (mp->proxy.table_id));
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -1020,37 +1021,28 @@ static void *vl_api_ip_neighbor_add_del_t_print
   (vl_api_ip_neighbor_add_del_t * mp, void *handle)
 {
   u8 *s;
-  u8 null_mac[6];
-
-  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: ip_neighbor_add_del ");
 
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "sw_if_index %d ", ntohl (mp->neighbor.sw_if_index));
 
-  if (mp->is_static)
+  if (IP_API_NEIGHBOR_FLAG_STATIC & ntohl (mp->neighbor.flags))
     s = format (s, "is_static ");
 
-  if (mp->is_no_adj_fib)
+  if (IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY & ntohl (mp->neighbor.flags))
     s = format (s, "is_no_fib_entry ");
 
-  if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
+  s = format (s, "mac %U ", format_vl_api_mac_address,
+	      &mp->neighbor.mac_address);
 
-  if (mp->is_ipv6)
-    s =
-      format (s, "dst %U ", format_ip6_address,
-	      (ip6_address_t *) mp->dst_address);
-  else
-    s =
-      format (s, "dst %U ", format_ip4_address,
-	      (ip4_address_t *) mp->dst_address);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->neighbor.ip_address);
 
   if (mp->is_add == 0)
     s = format (s, "del ");
 
   FINISH;
 }
+
 
 static void *vl_api_create_vlan_subif_t_print
   (vl_api_create_vlan_subif_t * mp, void *handle)
@@ -1269,8 +1261,7 @@ static void *vl_api_sw_interface_ip6nd_ra_prefix_t_print
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  s = format (s, "%U/%d ", format_ip6_address, mp->address,
-	      mp->address_length);
+  s = format (s, "%U ", format_vl_api_prefix, &mp->prefix);
 
   s = format (s, "val_life %d ", ntohl (mp->val_lifetime));
 
@@ -2217,10 +2208,7 @@ static void *vl_api_ip_probe_neighbor_t_print
 
   s = format (0, "SCRIPT: ip_probe_neighbor ");
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-  if (mp->is_ipv6)
-    s = format (s, "address %U ", format_ip6_address, &mp->dst_address);
-  else
-    s = format (s, "address %U ", format_ip4_address, &mp->dst_address);
+  s = format (s, "address %U ", format_vl_api_address, &mp->dst);
 
   FINISH;
 }
@@ -2263,7 +2251,7 @@ static void *vl_api_want_ip4_arp_events_t_print
 
   s = format (0, "SCRIPT: want_ip4_arp_events ");
   s = format (s, "pid %d address %U ", ntohl (mp->pid),
-	      format_ip4_address, &mp->address);
+	      format_ip4_address, mp->ip);
   if (mp->enable_disable == 0)
     s = format (s, "del ");
 
@@ -2277,7 +2265,7 @@ static void *vl_api_want_ip6_nd_events_t_print
 
   s = format (0, "SCRIPT: want_ip6_nd_events ");
   s = format (s, "pid %d address %U ", ntohl (mp->pid),
-	      format_ip6_address, mp->address);
+	      format_vl_api_ip6_address, mp->ip);
   if (mp->enable_disable == 0)
     s = format (s, "del ");
 
@@ -2867,12 +2855,7 @@ static void *vl_api_ip_source_and_port_range_check_add_del_t_print
   int i;
 
   s = format (0, "SCRIPT: ip_source_and_port_range_check_add_del ");
-  if (mp->is_ipv6)
-    s = format (s, "%U/%d ", format_ip6_address, mp->address,
-		mp->mask_length);
-  else
-    s = format (s, "%U/%d ", format_ip4_address, mp->address,
-		mp->mask_length);
+  s = format (s, "%U ", format_vl_api_prefix, &mp->prefix);
 
   for (i = 0; i < mp->number_of_ranges; i++)
     {
@@ -3662,14 +3645,9 @@ static void *vl_api_ip_container_proxy_add_del_t_print
 {
   u8 *s;
   s = format (0, "SCRIPT: ip_container_proxy_add_del ");
-  if (mp->is_ip4)
-    s = format (s, "is_add %d address %U/%d sw_if_index %d",
-		mp->is_add, format_ip4_address,
-		(ip4_address_t *) mp->ip, mp->plen, mp->sw_if_index);
-  else
-    s = format (s, "is_add %d address %U/%d sw_if_index %d",
-		mp->is_add, format_ip6_address,
-		(ip6_address_t *) mp->ip, mp->plen, mp->sw_if_index);
+  s = format (s, "is_add %d prefix %U sw_if_index %d",
+	      mp->is_add, format_vl_api_prefix, mp->sw_if_index);
+
   FINISH;
 }
 
@@ -3680,9 +3658,8 @@ static void *vl_api_qos_record_enable_disable_t_print
 
   s = format (0, "SCRIPT: qos_record_enable_disable ");
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-  s =
-    format (s, "input_source %U ", format_qos_source,
-	    ntohl (mp->input_source));
+  s = format (s, "input_source %U ", format_qos_source,
+	      ntohl (mp->input_source));
 
   if (!mp->enable)
     s = format (s, "disable ");

@@ -163,15 +163,13 @@ class TestL2bdArpTerm(VppTestCase):
         return '%s.%s.%s.%s' % (o1, o2, o3, o4)
 
     def arp_event_host(self, e):
-        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
-                    ip4=self.inttoip4(e.address))
+        return Host(str(e.mac), ip4=str(e.ip))
 
     def arp_event_hosts(self, evs):
         return {self.arp_event_host(e) for e in evs}
 
     def nd_event_host(self, e):
-        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
-                    ip6=inet_ntop(AF_INET6, e.address))
+        return Host(str(e.mac), ip6=str(e.ip))
 
     def nd_event_hosts(self, evs):
         return {self.nd_event_host(e) for e in evs}
@@ -439,7 +437,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_12(self):
         """ L2BD ND term - send NS packets verify reports
         """
-        self.vapi.want_ip6_nd_events(address=inet_pton(AF_INET6, "::0"))
+        self.vapi.want_ip6_nd_events(ip="::")
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         self.bd_add_del(1, is_add=1)
         self.set_bd_flags(1, arp_term=True, flood=False,
@@ -475,8 +473,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_14(self):
         """ L2BD ND term - disable ip4 arp events,send ns, verify no events
         """
-        self.vapi.want_ip6_nd_events(enable_disable=0,
-                                     address=inet_pton(AF_INET6, "::0"))
+        self.vapi.want_ip6_nd_events(enable_disable=0, ip="::")
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         macs = self.mac_list(range(10, 15))
         hosts = self.ip6_hosts(5, 1, macs)

@@ -26,6 +26,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
+from ipaddress import IPv6Network, IPv4Network
 
 AF_INET6 = socket.AF_INET6
 
@@ -445,7 +446,6 @@ class TestIPv6(TestIPv6ND):
                                self.pg0.sw_if_index,
                                self.pg0.remote_hosts[2].mac,
                                self.pg0.remote_hosts[2].ip6,
-                               af=AF_INET6,
                                is_no_fib_entry=1)
         nd_entry.add_vpp_config()
 
@@ -454,8 +454,7 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[2].ip6,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[2].ip6))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[2].ip6,
                                     128,
@@ -483,8 +482,7 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[2].ip6_ll,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[2].ip6_ll))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[2].ip6_ll,
                                     128,
@@ -511,8 +509,7 @@ class TestIPv6(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
-                                 self.pg0._remote_hosts[3].ip6_ll,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[3].ip6_ll))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[3].ip6_ll,
                                     128,
@@ -532,14 +529,12 @@ class TestIPv6(TestIPv6ND):
         ns_pg1 = VppNeighbor(self,
                              self.pg1.sw_if_index,
                              self.pg1.remote_hosts[1].mac,
-                             self.pg1.remote_hosts[1].ip6,
-                             af=AF_INET6)
+                             self.pg1.remote_hosts[1].ip6)
         ns_pg1.add_vpp_config()
         ns_pg2 = VppNeighbor(self,
                              self.pg2.sw_if_index,
                              self.pg2.remote_mac,
-                             self.pg1.remote_hosts[1].ip6,
-                             af=AF_INET6)
+                             self.pg1.remote_hosts[1].ip6)
         ns_pg2.add_vpp_config()
 
         #
@@ -755,7 +750,7 @@ class TestIPv6(TestIPv6ND):
         #
         # Configure The RA to announce the links prefix
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len)
 
         #
@@ -781,7 +776,7 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link
         #  L-flag is clear
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len,
                                off_link=1)
 
@@ -801,7 +796,7 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link, no-autoconfig
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len,
                                off_link=1,
                                no_autoconfig=1)
@@ -822,7 +817,7 @@ class TestIPv6(TestIPv6ND):
         # Change the flag settings back to the defaults
         #  L and A flag are set in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len)
 
         opt = ICMPv6NDOptPrefixInfo(
@@ -841,7 +836,7 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link, no-autoconfig
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len,
                                off_link=1,
                                no_autoconfig=1)
@@ -862,7 +857,7 @@ class TestIPv6(TestIPv6ND):
         # Use the reset to defults option to revert to defaults
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len,
                                use_default=1)
 
@@ -881,7 +876,7 @@ class TestIPv6(TestIPv6ND):
         #
         # Advertise Another prefix. With no L-flag/A-flag
         #
-        self.pg0.ip6_ra_prefix(self.pg1.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg1.local_ip6,
                                self.pg1.local_ip6_prefix_len,
                                off_link=1,
                                no_autoconfig=1)
@@ -911,7 +906,7 @@ class TestIPv6(TestIPv6ND):
         # Remove the first refix-info - expect the second is still in the
         # advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
                                self.pg0.local_ip6_prefix_len,
                                is_no=1)
 
@@ -930,7 +925,7 @@ class TestIPv6(TestIPv6ND):
         #
         # Remove the second prefix-info - expect no prefix-info i nthe adverts
         #
-        self.pg0.ip6_ra_prefix(self.pg1.local_ip6n,
+        self.pg0.ip6_ra_prefix(self.pg1.local_ip6,
                                self.pg1.local_ip6_prefix_len,
                                is_no=1)
 
@@ -1064,11 +1059,13 @@ class TestIPv6RD(TestIPv6ND):
                 self.pg1.local_mac)
 
     def verify_prefix_info(self, reported_prefix, prefix_option):
-        prefix = socket.inet_pton(socket.AF_INET6,
-                                  prefix_option.getfieldval("prefix"))
-        self.assert_equal(reported_prefix.dst_address, prefix)
-        self.assert_equal(reported_prefix.dst_address_length,
-                          prefix_option.getfieldval("prefixlen"))
+        prefix = IPv6Network(
+            unicode(prefix_option.getfieldval("prefix") +
+                    "/" +
+                    str(prefix_option.getfieldval("prefixlen"))),
+            strict=False)
+        self.assert_equal(reported_prefix.prefix.network_address,
+                          prefix.network_address)
         L = prefix_option.getfieldval("L")
         A = prefix_option.getfieldval("A")
         option_flags = (L << 7) | (A << 6)
@@ -1366,8 +1363,7 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         self.assertTrue(find_nbr(self,
                                  self.pg1.sw_if_index,
-                                 self.pg0._remote_hosts[2].ip6,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[2].ip6))
 
         #
         # ... and we can route traffic to it
@@ -1428,8 +1424,7 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         self.assertTrue(find_nbr(self,
                                  self.pg2.sw_if_index,
-                                 self.pg0._remote_hosts[3].ip6,
-                                 inet=AF_INET6))
+                                 self.pg0._remote_hosts[3].ip6))
 
         #
         # hosts can communicate. pg2->pg1
@@ -1469,12 +1464,10 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         self.assertFalse(find_nbr(self,
                                   self.pg2.sw_if_index,
-                                  self.pg0._remote_hosts[3].ip6,
-                                  inet=AF_INET6))
+                                  self.pg0._remote_hosts[3].ip6))
         self.assertFalse(find_nbr(self,
                                   self.pg1.sw_if_index,
-                                  self.pg0._remote_hosts[2].ip6,
-                                  inet=AF_INET6))
+                                  self.pg0._remote_hosts[2].ip6))
 
         #
         # no longer proxy-ing...

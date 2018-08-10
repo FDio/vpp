@@ -46,7 +46,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
     {
       vnet_hw_interface_t *hi =
 	vnet_get_sup_hw_interface (vnet_main, bvi_sw_if_index);
-      if (!eth_mac_equal (e0->dst_address, hi->hw_address))
+      if (!ethernet_mac_address_equal (e0->dst_address, hi->hw_address))
 	return TO_BVI_ERR_BAD_MAC;
     }
 

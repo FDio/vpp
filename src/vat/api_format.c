@@ -24,6 +24,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
@@ -53,6 +54,8 @@
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/bonding/node.h>
 #include <vnet/qos/qos_types.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/ip/ip_types_api.h>
 #include "vat/json_format.h"
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
@@ -1441,8 +1444,8 @@ vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
   u32 sw_if_index = ntohl (mp->sw_if_index);
   errmsg ("arp %s event: pid %d address %U new mac %U sw_if_index %d\n",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
-	  ntohl (mp->pid), format_ip4_address, &mp->address,
-	  format_ethernet_address, mp->new_mac, sw_if_index);
+	  ntohl (mp->pid), format_ip4_address, mp->ip,
+	  format_vl_api_mac_address, &mp->mac, sw_if_index);
 }
 
 static void
@@ -1457,8 +1460,8 @@ vl_api_ip6_nd_event_t_handler (vl_api_ip6_nd_event_t * mp)
   u32 sw_if_index = ntohl (mp->sw_if_index);
   errmsg ("ip6 nd %s event: pid %d address %U new mac %U sw_if_index %d\n",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
-	  ntohl (mp->pid), format_ip6_address, mp->address,
-	  format_ethernet_address, mp->new_mac, sw_if_index);
+	  ntohl (mp->pid), format_vl_api_ip6_address, mp->ip,
+	  format_vl_api_mac_address, mp->mac, sw_if_index);
 }
 
 static void
@@ -9117,7 +9120,7 @@ api_proxy_arp_add_del (vat_main_t * vam)
   vl_api_proxy_arp_add_del_t *mp;
   u32 vrf_id = 0;
   u8 is_add = 1;
-  ip4_address_t lo, hi;
+  vl_api_ip4_address_t lo, hi;
   u8 range_set = 0;
   int ret;
 
@@ -9125,8 +9128,8 @@ api_proxy_arp_add_del (vat_main_t * vam)
     {
       if (unformat (i, "vrf %d", &vrf_id))
 	;
-      else if (unformat (i, "%U - %U", unformat_ip4_address, &lo,
-			 unformat_ip4_address, &hi))
+      else if (unformat (i, "%U - %U", unformat_vl_api_ip4_address, &lo,
+			 unformat_vl_api_ip4_address, &hi))
 	range_set = 1;
       else if (unformat (i, "del"))
 	is_add = 0;
@@ -9145,10 +9148,10 @@ api_proxy_arp_add_del (vat_main_t * vam)
 
   M (PROXY_ARP_ADD_DEL, mp);
 
-  mp->proxy.vrf_id = ntohl (vrf_id);
+  mp->proxy.table_id = ntohl (vrf_id);
   mp->is_add = is_add;
-  clib_memcpy (mp->proxy.low_address, &lo, sizeof (mp->proxy.low_address));
-  clib_memcpy (mp->proxy.hi_address, &hi, sizeof (mp->proxy.hi_address));
+  clib_memcpy (mp->proxy.low, &lo, sizeof (lo));
+  clib_memcpy (mp->proxy.hi, &hi, sizeof (hi));
 
   S (mp);
   W (ret);
@@ -9356,27 +9359,25 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
 static int
 api_ip_neighbor_add_del (vat_main_t * vam)
 {
+  vl_api_mac_address_t mac_address;
   unformat_input_t *i = vam->input;
   vl_api_ip_neighbor_add_del_t *mp;
+  vl_api_address_t ip_address;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
-  u8 is_static = 0;
-  u8 is_no_fib_entry = 0;
-  u8 mac_address[6];
   u8 mac_set = 0;
-  u8 v4_address_set = 0;
-  u8 v6_address_set = 0;
-  ip4_address_t v4address;
-  ip6_address_t v6address;
+  u8 address_set = 0;
   int ret;
+  ip_neighbor_flags_t flags;
 
-  clib_memset (mac_address, 0, sizeof (mac_address));
-
+  flags = IP_NEIGHBOR_FLAG_NONE;
+  clib_memset (&ip_address, 0, sizeof (ip_address));
+  clib_memset (&mac_address, 0, sizeof (mac_address));
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
+      if (unformat (i, "mac %U", unformat_vl_api_mac_address, &mac_address))
 	{
 	  mac_set = 1;
 	}
@@ -9387,14 +9388,12 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 	sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (i, "is_static"))
-	is_static = 1;
+      else if (unformat (i, "static"))
+	flags |= IP_NEIGHBOR_FLAG_STATIC;
       else if (unformat (i, "no-fib-entry"))
-	is_no_fib_entry = 1;
-      else if (unformat (i, "dst %U", unformat_ip4_address, &v4address))
-	v4_address_set = 1;
-      else if (unformat (i, "dst %U", unformat_ip6_address, &v6address))
-	v6_address_set = 1;
+	flags |= IP_NEIGHBOR_FLAG_NO_FIB_ENTRY;
+      else if (unformat (i, "dst %U", unformat_vl_api_address, &ip_address))
+	address_set = 1;
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9407,12 +9406,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
       errmsg ("missing interface name or sw_if_index");
       return -99;
     }
-  if (v4_address_set && v6_address_set)
-    {
-      errmsg ("both v4 and v6 addresses set");
-      return -99;
-    }
-  if (!v4_address_set && !v6_address_set)
+  if (!address_set)
     {
       errmsg ("no address set");
       return -99;
@@ -9421,22 +9415,14 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   /* Construct the API message */
   M (IP_NEIGHBOR_ADD_DEL, mp);
 
-  mp->sw_if_index = ntohl (sw_if_index);
+  mp->neighbor.sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
-  mp->is_static = is_static;
-  mp->is_no_adj_fib = is_no_fib_entry;
+  mp->neighbor.flags = htonl (flags);
   if (mac_set)
-    clib_memcpy (mp->mac_address, mac_address, 6);
-  if (v6_address_set)
-    {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->dst_address, &v6address, sizeof (v6address));
-    }
-  else
-    {
-      /* mp->is_ipv6 = 0; via clib_memset in M macro above */
-      clib_memcpy (mp->dst_address, &v4address, sizeof (v4address));
-    }
+    clib_memcpy (&mp->neighbor.mac_address, &mac_address,
+		 sizeof (mac_address));
+  if (address_set)
+    clib_memcpy (&mp->neighbor.ip_address, &ip_address, sizeof (ip_address));
 
   /* send it... */
   S (mp);
@@ -10135,7 +10121,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
   vl_api_ip6nd_proxy_add_del_t *mp;
   u32 sw_if_index = ~0;
   u8 v6_address_set = 0;
-  ip6_address_t v6address;
+  vl_api_ip6_address_t v6address;
   u8 is_del = 0;
   int ret;
 
@@ -10146,7 +10132,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (i, "%U", unformat_ip6_address, &v6address))
+      else if (unformat (i, "%U", unformat_vl_api_ip6_address, &v6address))
 	v6_address_set = 1;
       if (unformat (i, "del"))
 	is_del = 1;
@@ -10173,7 +10159,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
 
   mp->is_del = is_del;
   mp->sw_if_index = ntohl (sw_if_index);
-  clib_memcpy (mp->address, &v6address, sizeof (v6address));
+  clib_memcpy (mp->ip, v6address, sizeof (v6address));
 
   /* send it... */
   S (mp);
@@ -10208,7 +10194,7 @@ static void vl_api_ip6nd_proxy_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp, "host %U sw_if_index %d",
-	 format_ip6_address, mp->address, ntohl (mp->sw_if_index));
+	 format_vl_api_ip6_address, mp->ip, ntohl (mp->sw_if_index));
 }
 
 static void vl_api_ip6nd_proxy_details_t_handler_json
@@ -10228,7 +10214,7 @@ static void vl_api_ip6nd_proxy_details_t_handler_json
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
 
-  clib_memcpy (&ip6, mp->address, sizeof (ip6));
+  clib_memcpy (&ip6, mp->ip, sizeof (ip6));
   vat_json_object_add_ip6 (node, "host", ip6);
 }
 
@@ -10241,7 +10227,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 address_length = 0;
   u8 v6_address_set = 0;
-  ip6_address_t v6address;
+  vl_api_prefix_t pfx;
   u8 use_default = 0;
   u8 no_advertise = 0;
   u8 off_link = 0;
@@ -10259,8 +10245,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
 	sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (i, "%U/%d",
-			 unformat_ip6_address, &v6address, &address_length))
+      else if (unformat (i, "%U", unformat_vl_api_prefix, &pfx))
 	v6_address_set = 1;
       else if (unformat (i, "val_life %d", &val_lifetime))
 	;
@@ -10300,8 +10285,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   M (SW_INTERFACE_IP6ND_RA_PREFIX, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
-  clib_memcpy (mp->address, &v6address, sizeof (v6address));
-  mp->address_length = address_length;
+  clib_memcpy (&mp->prefix, &pfx, sizeof (pfx));
   mp->use_default = use_default;
   mp->no_advertise = no_advertise;
   mp->off_link = off_link;
@@ -14310,10 +14294,9 @@ api_ip_probe_neighbor (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_probe_neighbor_t *mp;
+  vl_api_address_t dst_adr;
   u8 int_set = 0;
   u8 adr_set = 0;
-  u8 is_ipv6 = 0;
-  u8 dst_adr[16];
   u32 sw_if_index;
   int ret;
 
@@ -14323,13 +14306,8 @@ api_ip_probe_neighbor (vat_main_t * vam)
 	int_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	int_set = 1;
-      else if (unformat (i, "address %U", unformat_ip4_address, dst_adr))
+      else if (unformat (i, "address %U", unformat_vl_api_address, dst_adr))
 	adr_set = 1;
-      else if (unformat (i, "address %U", unformat_ip6_address, dst_adr))
-	{
-	  adr_set = 1;
-	  is_ipv6 = 1;
-	}
       else
 	break;
     }
@@ -14349,8 +14327,7 @@ api_ip_probe_neighbor (vat_main_t * vam)
   M (IP_PROBE_NEIGHBOR, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
-  mp->is_ipv6 = is_ipv6;
-  clib_memcpy (mp->dst_address, dst_adr, sizeof (dst_adr));
+  clib_memcpy (&mp->dst, &dst_adr, sizeof (dst_adr));
 
   S (mp);
   W (ret);
@@ -14458,7 +14435,7 @@ api_want_ip4_arp_events (vat_main_t * vam)
   M (WANT_IP4_ARP_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = htonl (getpid ());
-  mp->address = address.as_u32;
+  clib_memcpy (mp->ip, &address, sizeof (address));
 
   S (mp);
   W (ret);
@@ -14470,14 +14447,15 @@ api_want_ip6_nd_events (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_want_ip6_nd_events_t *mp;
-  ip6_address_t address;
+  vl_api_ip6_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
   int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "address %U", unformat_ip6_address, &address))
+      if (unformat
+	  (line_input, "address %U", unformat_vl_api_ip6_address, &address))
 	address_set = 1;
       else if (unformat (line_input, "del"))
 	enable_disable = 0;
@@ -14494,7 +14472,7 @@ api_want_ip6_nd_events (vat_main_t * vam)
   M (WANT_IP6_ND_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = htonl (getpid ());
-  clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
+  clib_memcpy (&mp->ip, &address, sizeof (address));
 
   S (mp);
   W (ret);
@@ -20178,10 +20156,9 @@ static void vl_api_ip_neighbor_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp, "%c %U %U",
-	 (mp->is_static) ? 'S' : 'D',
-	 format_ethernet_address, &mp->mac_address,
-	 (mp->is_ipv6) ? format_ip6_address : format_ip4_address,
-	 &mp->ip_address);
+	 (ntohl (mp->neighbor.flags) & IP_NEIGHBOR_FLAG_STATIC) ? 'S' : 'D',
+	 format_vl_api_mac_address, &mp->neighbor.mac_address,
+	 format_vl_api_address, &mp->neighbor.ip_address);
 }
 
 static void vl_api_ip_neighbor_details_t_handler_json
@@ -20201,22 +20178,23 @@ static void vl_api_ip_neighbor_details_t_handler_json
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  vat_json_object_add_string_copy (node, "flag",
-				   (mp->is_static) ? (u8 *) "static" : (u8 *)
-				   "dynamic");
+  vat_json_object_add_string_copy
+    (node, "flag",
+     ((ntohl (mp->neighbor.flags) & IP_NEIGHBOR_FLAG_STATIC) ?
+      (u8 *) "static" : (u8 *) "dynamic"));
 
   vat_json_object_add_string_copy (node, "link_layer",
-				   format (0, "%U", format_ethernet_address,
-					   &mp->mac_address));
+				   format (0, "%U", format_vl_api_mac_address,
+					   &mp->neighbor.mac_address));
 
-  if (mp->is_ipv6)
+  if (ADDRESS_IP6 == mp->neighbor.ip_address.af)
     {
-      clib_memcpy (&ip6, &mp->ip_address, sizeof (ip6));
+      clib_memcpy (&ip6, &mp->neighbor.ip_address.un.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "ip_address", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &mp->ip_address, sizeof (ip4));
+      clib_memcpy (&ip4, &mp->neighbor.ip_address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "ip_address", ip4);
     }
 }
@@ -20969,9 +20947,7 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
   u16 *high_ports = 0;
   u16 this_low;
   u16 this_hi;
-  ip4_address_t ip4_addr;
-  ip6_address_t ip6_addr;
-  u32 length;
+  vl_api_prefix_t prefix;
   u32 tmp, tmp2;
   u8 prefix_set = 0;
   u32 vrf_id = ~0;
@@ -20981,17 +20957,8 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U/%d", unformat_ip4_address, &ip4_addr, &length))
-	{
-	  prefix_set = 1;
-	}
-      else
-	if (unformat
-	    (input, "%U/%d", unformat_ip6_address, &ip6_addr, &length))
-	{
-	  prefix_set = 1;
-	  is_ipv6 = 1;
-	}
+      if (unformat (input, "%U", unformat_vl_api_prefix, &prefix))
+	prefix_set = 1;
       else if (unformat (input, "vrf %d", &vrf_id))
 	;
       else if (unformat (input, "del"))
@@ -21062,18 +21029,8 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 
   mp->is_add = is_add;
 
-  if (is_ipv6)
-    {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->address, &ip6_addr, sizeof (ip6_addr));
-    }
-  else
-    {
-      mp->is_ipv6 = 0;
-      clib_memcpy (mp->address, &ip4_addr, sizeof (ip4_addr));
-    }
+  clib_memcpy (&mp->prefix, &prefix, sizeof (prefix));
 
-  mp->mask_length = length;
   mp->number_of_ranges = vec_len (low_ports);
 
   clib_memcpy (mp->low_ports, low_ports, vec_len (low_ports));
@@ -22526,10 +22483,8 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
 {
   vl_api_ip_container_proxy_add_del_t *mp;
   unformat_input_t *i = vam->input;
-  u32 plen = ~0, sw_if_index = ~0;
-  ip4_address_t ip4;
-  ip6_address_t ip6;
-  u8 is_ip4 = 1;
+  u32 sw_if_index = ~0;
+  vl_api_prefix_t pfx = { };
   u8 is_add = 1;
   int ret;
 
@@ -22539,22 +22494,14 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
 	is_add = 0;
       else if (unformat (i, "add"))
 	;
-      if (unformat (i, "%U", unformat_ip4_address, &ip4))
-	{
-	  is_ip4 = 1;
-	  plen = 32;
-	}
-      else if (unformat (i, "%U", unformat_ip6_address, &ip6))
-	{
-	  is_ip4 = 0;
-	  plen = 128;
-	}
+      if (unformat (i, "%U", unformat_vl_api_prefix, &pfx))
+	;
       else if (unformat (i, "sw_if_index %u", &sw_if_index))
 	;
       else
 	break;
     }
-  if (sw_if_index == ~0 || plen == ~0)
+  if (sw_if_index == ~0 || pfx.address_length == 0)
     {
       errmsg ("address and sw_if_index must be set");
       return -99;
@@ -22562,14 +22509,9 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
 
   M (IP_CONTAINER_PROXY_ADD_DEL, mp);
 
-  mp->is_ip4 = is_ip4;
   mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
-  mp->plen = plen;
   mp->is_add = is_add;
-  if (is_ip4)
-    clib_memcpy (mp->ip, &ip4, sizeof (ip4));
-  else
-    clib_memcpy (mp->ip, &ip6, sizeof (ip6));
+  clib_memcpy (&mp->pfx, &pfx, sizeof (pfx));
 
   S (mp);
   W (ret);

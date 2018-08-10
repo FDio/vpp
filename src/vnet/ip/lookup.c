@@ -51,6 +51,7 @@
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/dpo/l3_proxy_dpo.h>
 #include <vnet/ip/ip6_neighbor.h>
+#include <vnet/ethernet/arp.h>
 
 /**
  * @file
