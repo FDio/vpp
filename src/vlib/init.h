@@ -115,6 +115,7 @@ typedef struct vlib_config_function_runtime_t
 /* Declaration is global (e.g. not static) so that init functions can
    be called from other modules to resolve init function depend. */
 
+#ifndef CLIB_MARCH_VARIANT
 #define VLIB_DECLARE_INIT_FUNCTION(x, tag)                      \
 vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x; \
 static void __vlib_add_##tag##_function_##x (void)              \
@@ -152,6 +153,10 @@ static void __vlib_rm_##tag##_function_##x (void)               \
       next = next->next_init_function;                          \
     }                                                           \
 }
+#else
+#define VLIB_DECLARE_INIT_FUNCTION(x, tag)                      \
+static __clib_unused void * dummy_##tag##_##x##_ptr = x;
+#endif
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
 #define VLIB_WORKER_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,worker_init)
@@ -192,6 +197,7 @@ static void __vlib_rm_config_function_##x (void)                \
     .is_early = 0,						\
   }
 
+#ifndef CLIB_MARCH_VARIANT
 #define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                     \
     __VA_ARGS__ vlib_config_function_runtime_t                  \
     VLIB_CONFIG_FUNCTION_SYMBOL(x);                             \
@@ -222,6 +228,16 @@ static void __vlib_rm_config_function_##x (void)                \
     .function = x,                                              \
     .is_early = 1,						\
   }
+#else
+#define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                     \
+  static __clib_unused vlib_config_function_runtime_t           \
+    VLIB_CONFIG_FUNCTION_SYMBOL (unused_##x)                    \
+  = {                                                           \
+    .name = n,                                                  \
+    .function = x,                                              \
+    .is_early = 1,						\
+  }
+#endif
 
 /* Call given init function: used for init function dependencies. */
 #define vlib_call_init_function(vm, x)					\

@@ -108,6 +108,7 @@ typedef struct _vnet_interface_function_list_elt
   clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 if_index, u32 flags);
 } _vnet_interface_function_list_elt_t;
 
+#ifndef CLIB_MARCH_VARIANT
 #define _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,p)                    \
                                                                         \
 static void __vnet_interface_function_init_##tag##_##f (void)           \
@@ -146,6 +147,10 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
       next = next->next_interface_function;                             \
     }                                                                   \
 }
+#else
+#define _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,p)                    \
+static clib_error_t __clib_unused * f();
+#endif
 
 #define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,VNET_ITF_FUNC_PRIORITY_LOW)
