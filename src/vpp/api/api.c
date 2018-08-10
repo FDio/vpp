@@ -59,6 +59,7 @@
 #include <vnet/ip/format.h>
 
 #include <vpp/api/vpe_msg_enum.h>
+#include <vpp/api/types.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
@@ -698,7 +699,7 @@ format_arp_event (u8 * s, va_list * args)
   vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *);
 
   s = format (s, "pid %d: ", ntohl (event->pid));
-  s = format (s, "resolution for %U", format_ip4_address, &event->address);
+  s = format (s, "resolution for %U", format_vl_api_ip4_address, event->ip);
   return s;
 }
 
@@ -708,7 +709,7 @@ format_nd_event (u8 * s, va_list * args)
   vl_api_ip6_nd_event_t *event = va_arg (*args, vl_api_ip6_nd_event_t *);
 
   s = format (s, "pid %d: ", ntohl (event->pid));
-  s = format (s, "resolution for %U", format_ip6_address, event->address);
+  s = format (s, "resolution for %U", format_vl_api_ip6_address, event->ip);
   return s;
 }
 

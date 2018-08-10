@@ -37,13 +37,28 @@ uword
 unformat_mac_address_t (unformat_input_t * input, va_list * args)
 {
   mac_address_t *mac = va_arg (*args, mac_address_t *);
+  u32 i, a[3];
 
-  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		 &mac->bytes[0], &mac->bytes[1], &mac->bytes[2],
-		 &mac->bytes[3], &mac->bytes[4], &mac->bytes[5]))
-    return 0;
+  if (unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
+		&mac->bytes[0], &mac->bytes[1], &mac->bytes[2],
+		&mac->bytes[3], &mac->bytes[4], &mac->bytes[5]))
+    return (1);
+  else if (unformat (input, "%_%x.%x.%x%_", &a[0], &a[1], &a[2]))
+    {
+      for (i = 0; i < ARRAY_LEN (a); i++)
+	if (a[i] >= (1 << 16))
+	  return 0;
 
-  return 1;
+      mac->bytes[0] = (a[0] >> 8) & 0xff;
+      mac->bytes[1] = (a[0] >> 0) & 0xff;
+      mac->bytes[2] = (a[1] >> 8) & 0xff;
+      mac->bytes[3] = (a[1] >> 0) & 0xff;
+      mac->bytes[4] = (a[2] >> 8) & 0xff;
+      mac->bytes[5] = (a[2] >> 0) & 0xff;
+
+      return (1);
+    }
+  return (0);
 }
 
 /*

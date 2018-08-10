@@ -338,9 +338,9 @@ class VppPapiProvider(object):
                          'reverse': reverse,
                          'is_ipv6': is_ip6})
 
-    def ip6_nd_proxy(self, address, sw_if_index, is_del=0):
+    def ip6_nd_proxy(self, ip, sw_if_index, is_del=0):
         return self.api(self.papi.ip6nd_proxy_add_del,
-                        {'address': address,
+                        {'ip': ip,
                          'sw_if_index': sw_if_index,
                          'is_del': is_del})
 
@@ -368,8 +368,10 @@ class VppPapiProvider(object):
                                    pref_lifetime=0xffffffff):
         return self.api(self.papi.sw_interface_ip6nd_ra_prefix,
                         {'sw_if_index': sw_if_index,
-                         'address': address,
-                         'address_length': address_length,
+                         'prefix': {
+                             'address': address,
+                             'address_length': address_length,
+                         },
                          'use_default': use_default,
                          'no_advertise': no_advertise,
                          'off_link': off_link,
@@ -491,16 +493,16 @@ class VppPapiProvider(object):
         return self.api(self.papi.bd_ip_mac_dump,
                         {'bd_id': bd_id})
 
-    def want_ip4_arp_events(self, enable_disable=1, address=0):
+    def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
         return self.api(self.papi.want_ip4_arp_events,
                         {'enable_disable': enable_disable,
-                         'address': address,
+                         'ip': ip,
                          'pid': os.getpid(), })
 
-    def want_ip6_nd_events(self, enable_disable=1, address=0):
+    def want_ip6_nd_events(self, enable_disable=1, ip="::"):
         return self.api(self.papi.want_ip6_nd_events,
                         {'enable_disable': enable_disable,
-                         'address': address,
+                         'ip': ip,
                          'pid': os.getpid(), })
 
     def want_ip6_ra_events(self, enable_disable=1):
@@ -1006,32 +1008,28 @@ class VppPapiProvider(object):
     def ip_neighbor_add_del(self,
                             sw_if_index,
                             mac_address,
-                            dst_address,
+                            ip_address,
                             is_add=1,
-                            is_ipv6=0,
-                            is_static=0,
-                            is_no_adj_fib=0,
-                            ):
+                            flags=0):
         """ Add neighbor MAC to IPv4 or IPv6 address.
 
         :param sw_if_index:
         :param mac_address:
         :param dst_address:
         :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param is_static:  (Default value = 0)
-        :param is_no_adj_fib:  (Default value = 0)
+        :param flags:  (Default value = 0/NONE)
         """
         return self.api(
             self.papi.ip_neighbor_add_del,
-            {'sw_if_index': sw_if_index,
-             'is_add': is_add,
-             'is_ipv6': is_ipv6,
-             'is_static': is_static,
-             'is_no_adj_fib': is_no_adj_fib,
-             'mac_address': mac_address,
-             'dst_address': dst_address
-             }
+            {
+                'is_add': is_add,
+                'neighbor': {
+                    'sw_if_index': sw_if_index,
+                    'flags': flags,
+                    'mac_address': mac_address,
+                    'ip_address': ip_address
+                }
+            }
         )
 
     def ip_neighbor_dump(self,
@@ -1051,9 +1049,9 @@ class VppPapiProvider(object):
         )
 
     def proxy_arp_add_del(self,
-                          low_address,
-                          hi_address,
-                          vrf_id=0,
+                          low,
+                          hi,
+                          table_id=0,
                           is_add=1):
         """ Config Proxy Arp Range.
 
@@ -1066,9 +1064,9 @@ class VppPapiProvider(object):
             self.papi.proxy_arp_add_del,
             {'proxy':
              {
-                 'vrf_id': vrf_id,
-                 'low_address': low_address,
-                 'hi_address': hi_address,
+                 'table_id': table_id,
+                 'low': low,
+                 'hi': hi,
              },
              'is_add': is_add})
 
