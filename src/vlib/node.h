@@ -150,6 +150,7 @@ typedef struct _vlib_node_registration
 
 } vlib_node_registration_t;
 
+#ifndef CLIB_MARCH_VARIANT
 #define VLIB_REGISTER_NODE(x,...)                                       \
     __VA_ARGS__ vlib_node_registration_t x;                             \
 static void __vlib_add_node_registration_##x (void)                     \
@@ -169,6 +170,10 @@ static void __vlib_rm_node_registration_##x (void)                      \
                                   &x, next_registration);               \
 }                                                                       \
 __VA_ARGS__ vlib_node_registration_t x
+#else
+#define VLIB_REGISTER_NODE(x,...)                                       \
+static __clib_unused vlib_node_registration_t __clib_unused_##x
+#endif
 
 #define VLIB_NODE_FN(node)						\
 uword CLIB_MARCH_SFX (node##_fn)();					\

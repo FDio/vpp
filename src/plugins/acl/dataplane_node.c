@@ -415,7 +415,6 @@ VLIB_NODE_FN (acl_out_fa_ip4_node) (vlib_main_t * vm,
   return acl_fa_node_fn (vm, node, frame, 0, 0, 0, 0, &acl_out_fa_ip4_node);
 }
 
-#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_fa_5tuple (u8 * s, va_list * args)
 {
@@ -447,14 +446,16 @@ format_fa_5tuple (u8 * s, va_list * args)
 		   p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_acl_plugin_5tuple (u8 * s, va_list * args)
 {
   return format_fa_5tuple (s, args);
 }
+#endif
 
 /* packet trace format function */
-u8 *
+static u8 *
 format_acl_plugin_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -474,7 +475,6 @@ format_acl_plugin_trace (u8 * s, va_list * args)
   s = format (s, "\n   %U", format_fa_5tuple, t->packet_info);
   return s;
 }
-
 
 /* *INDENT-OFF* */
 
@@ -634,7 +634,6 @@ VNET_FEATURE_INIT (acl_out_ip4_fa_feature, static) =
   .node_name = "acl-plugin-out-ip4-fa",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
-#endif
 
 /* *INDENT-ON* */
 
