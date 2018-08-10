@@ -128,7 +128,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       if (!vlib_buffer_alloc (vm, &to_bi, 1))
 	{
 	  *error = IP_FRAG_ERROR_MEMORY;
-	  /* XXX: Free already allocated buffers? */
 	  return;
 	}
       vec_add1 (*buffer, to_bi);
@@ -152,32 +151,33 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       to_ip4 = vlib_buffer_get_current (to_b) + offset;
       to_data = (void *) (to_ip4 + 1);
 
-      /* Spin through buffer chain copying data */
-      // XXX: Make sure we don't overflow source buffer!!!
-      if (len > left_in_from_buffer)
-	{
-	  clib_memcpy (to_data, from_data + ptr, left_in_from_buffer);
+      /* Spin through from buffers filling up the to buffer */
+      u16 to_ptr = 0;
+      u16 bytes_to_copy, left_in_to_buffer = len;
+      while (1) {
+	/* Figure out how many bytes we can safely copy */
+	bytes_to_copy = left_in_to_buffer <= left_in_from_buffer ?
+	  left_in_to_buffer : left_in_from_buffer;
+	clib_memcpy (to_data + to_ptr, from_data + ptr, bytes_to_copy);
+	left_in_to_buffer -= bytes_to_copy;
+	ptr += bytes_to_copy;
+	left_in_from_buffer -= bytes_to_copy;
+	if (left_in_to_buffer == 0)
+	  break;
 
-	  /* Move buffer */
-	  if (!(from_b->flags & VLIB_BUFFER_NEXT_PRESENT))
-	    {
-	      *error = IP_FRAG_ERROR_MALFORMED;
-	      return;
-	    }
-	  from_b = vlib_get_buffer (vm, from_b->next_buffer);
-	  from_data = (u8 *) vlib_buffer_get_current (from_b);
-	  clib_memcpy (to_data + left_in_from_buffer, from_data,
-		       len - left_in_from_buffer);
-	  ptr = len - left_in_from_buffer;
-	  left_in_from_buffer =
-	    from_b->current_length - (len - left_in_from_buffer);
+	ASSERT(left_in_from_buffer == 0);
+	/* Move buffer */
+	if (!(from_b->flags & VLIB_BUFFER_NEXT_PRESENT)) {
+	  *error = IP_FRAG_ERROR_MALFORMED;
+	  return;
 	}
-      else
-	{
-	  clib_memcpy (to_data, from_data + ptr, len);
-	  left_in_from_buffer -= len;
-	  ptr += len;
-	}
+	from_b = vlib_get_buffer (vm, from_b->next_buffer);
+	from_data = (u8 *) vlib_buffer_get_current (from_b);
+	ptr = 0;
+	left_in_from_buffer = from_b->current_length;
+	to_ptr += bytes_to_copy;
+      }
+
       to_b->current_length = offset + len + sizeof (ip4_header_t);
 
       to_ip4->fragment_id = ip_frag_id;
@@ -209,8 +209,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       rem -= len;
       fo += len;
     }
-  /* Free original packet chain */
-  vlib_buffer_free_one (vm, from_bi);
 }
 
 void
@@ -287,6 +285,8 @@ ip4_frag (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (error0 == IP_FRAG_ERROR_NONE)
 	    {
+	      /* Free original buffer chain */
+	      vlib_buffer_free_one(vm, pi0);
 	      frag_sent += vec_len (buffer);
 	      small_packets += (vec_len (buffer) == 1);
 	    }
