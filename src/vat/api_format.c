@@ -24,6 +24,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
@@ -53,6 +54,8 @@
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/bonding/node.h>
 #include <vnet/qos/qos_types.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/ip/ip_types_api.h>
 #include "vat/json_format.h"
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
@@ -1411,7 +1414,7 @@ vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
   errmsg ("arp %s event: pid %d address %U new mac %U sw_if_index %d\n",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
 	  ntohl (mp->pid), format_ip4_address, &mp->address,
-	  format_ethernet_address, mp->new_mac, sw_if_index);
+	  format_vl_api_mac_address, &mp->mac, sw_if_index);
 }
 
 static void
@@ -9910,27 +9913,25 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
 static int
 api_ip_neighbor_add_del (vat_main_t * vam)
 {
+  vl_api_mac_address_t mac_address;
   unformat_input_t *i = vam->input;
   vl_api_ip_neighbor_add_del_t *mp;
+  vl_api_address_t ip_address;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
-  u8 is_static = 0;
-  u8 is_no_fib_entry = 0;
-  u8 mac_address[6];
   u8 mac_set = 0;
-  u8 v4_address_set = 0;
-  u8 v6_address_set = 0;
-  ip4_address_t v4address;
-  ip6_address_t v6address;
+  u8 address_set = 0;
   int ret;
+  ip_neighbor_flags_t flags;
 
-  clib_memset (mac_address, 0, sizeof (mac_address));
-
+  flags = IP_NEIGHBOR_FLAG_NONE;
+  clib_memset (&ip_address, 0, sizeof (ip_address));
+  clib_memset (&mac_address, 0, sizeof (mac_address));
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
+      if (unformat (i, "mac %U", unformat_vl_api_mac_address, &mac_address))
 	{
 	  mac_set = 1;
 	}
@@ -9941,14 +9942,12 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 	sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (i, "is_static"))
-	is_static = 1;
+      else if (unformat (i, "static"))
+	flags |= IP_NEIGHBOR_FLAG_STATIC;
       else if (unformat (i, "no-fib-entry"))
-	is_no_fib_entry = 1;
-      else if (unformat (i, "dst %U", unformat_ip4_address, &v4address))
-	v4_address_set = 1;
-      else if (unformat (i, "dst %U", unformat_ip6_address, &v6address))
-	v6_address_set = 1;
+	flags |= IP_NEIGHBOR_FLAG_NO_FIB_ENTRY;
+      else if (unformat (i, "dst %U", unformat_vl_api_address, &ip_address))
+	address_set = 1;
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9961,12 +9960,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
       errmsg ("missing interface name or sw_if_index");
       return -99;
     }
-  if (v4_address_set && v6_address_set)
-    {
-      errmsg ("both v4 and v6 addresses set");
-      return -99;
-    }
-  if (!v4_address_set && !v6_address_set)
+  if (!address_set)
     {
       errmsg ("no address set");
       return -99;
@@ -9975,22 +9969,14 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   /* Construct the API message */
   M (IP_NEIGHBOR_ADD_DEL, mp);
 
-  mp->sw_if_index = ntohl (sw_if_index);
+  mp->neighbor.sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
-  mp->is_static = is_static;
-  mp->is_no_adj_fib = is_no_fib_entry;
+  mp->neighbor.flags = htonl (flags);
   if (mac_set)
-    clib_memcpy (mp->mac_address, mac_address, 6);
-  if (v6_address_set)
-    {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->dst_address, &v6address, sizeof (v6address));
-    }
-  else
-    {
-      /* mp->is_ipv6 = 0; via clib_memset in M macro above */
-      clib_memcpy (mp->dst_address, &v4address, sizeof (v4address));
-    }
+    clib_memcpy (&mp->neighbor.mac_address, &mac_address,
+		 sizeof (mac_address));
+  if (address_set)
+    clib_memcpy (&mp->neighbor.ip_address, &ip_address, sizeof (ip_address));
 
   /* send it... */
   S (mp);
@@ -14991,14 +14977,15 @@ api_want_ip6_nd_events (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_want_ip6_nd_events_t *mp;
-  ip6_address_t address;
+  vl_api_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
   int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "address %U", unformat_ip6_address, &address))
+      if (unformat
+	  (line_input, "address %U", unformat_vl_api_address, &address))
 	address_set = 1;
       else if (unformat (line_input, "del"))
 	enable_disable = 0;
@@ -15015,7 +15002,7 @@ api_want_ip6_nd_events (vat_main_t * vam)
   M (WANT_IP6_ND_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = htonl (getpid ());
-  clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
+  clib_memcpy (&mp->address, &address.un.ip6, sizeof (ip6_address_t));
 
   S (mp);
   W (ret);
@@ -20699,10 +20686,9 @@ static void vl_api_ip_neighbor_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp, "%c %U %U",
-	 (mp->is_static) ? 'S' : 'D',
-	 format_ethernet_address, &mp->mac_address,
-	 (mp->is_ipv6) ? format_ip6_address : format_ip4_address,
-	 &mp->ip_address);
+	 (ntohl (mp->neighbor.flags) & IP_NEIGHBOR_FLAG_STATIC) ? 'S' : 'D',
+	 format_vl_api_mac_address, &mp->neighbor.mac_address,
+	 format_vl_api_address, &mp->neighbor.ip_address);
 }
 
 static void vl_api_ip_neighbor_details_t_handler_json
@@ -20722,22 +20708,23 @@ static void vl_api_ip_neighbor_details_t_handler_json
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  vat_json_object_add_string_copy (node, "flag",
-				   (mp->is_static) ? (u8 *) "static" : (u8 *)
-				   "dynamic");
+  vat_json_object_add_string_copy
+    (node, "flag",
+     ((ntohl (mp->neighbor.flags) & IP_NEIGHBOR_FLAG_STATIC) ?
+      (u8 *) "static" : (u8 *) "dynamic"));
 
   vat_json_object_add_string_copy (node, "link_layer",
-				   format (0, "%U", format_ethernet_address,
-					   &mp->mac_address));
+				   format (0, "%U", format_vl_api_mac_address,
+					   &mp->neighbor.mac_address));
 
-  if (mp->is_ipv6)
+  if (ADDRESS_IP6 == mp->neighbor.ip_address.af)
     {
-      clib_memcpy (&ip6, &mp->ip_address, sizeof (ip6));
+      clib_memcpy (&ip6, &mp->neighbor.ip_address.un.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "ip_address", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &mp->ip_address, sizeof (ip4));
+      clib_memcpy (&ip4, &mp->neighbor.ip_address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "ip_address", ip4);
     }
 }

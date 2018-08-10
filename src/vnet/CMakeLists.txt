@@ -1186,6 +1186,7 @@ list(APPEND VNET_SOURCES
   fib/fib_path_list.c
   fib/fib_path.c
   fib/fib_path_ext.c
+  fib/fib_protocol.c
   fib/fib_urpf_list.c
   fib/fib_attached_export.c
   fib/fib_api.c
