@@ -3457,8 +3457,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 						+ sizeof (*eth0));
 	      arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	      arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
-	      clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
-			   (u8 *) & mac0, 6);
+	      mac_address_from_u64 (&arp0->ip4_over_ethernet[0].mac, mac0);
 	      clib_memcpy (&arp0->ip4_over_ethernet[0].ip4,
 			   &gid_address_arp_ip4 (&dst), 4);
 

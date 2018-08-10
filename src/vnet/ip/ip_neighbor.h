@@ -37,19 +37,22 @@ void ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg);
 
 typedef enum ip_neighbor_flags_t_
 {
-  IP_NEIGHBOR_FLAG_NODE = 0,
+  IP_NEIGHBOR_FLAG_NONE = 0,
   IP_NEIGHBOR_FLAG_STATIC = (1 << 0),
-  IP_NEIGHBOR_FLAG_NO_ADJ_FIB = (1 << 1),
-} ip_neighbor_flags_t;
+  IP_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
+  IP_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
+} __attribute__ ((packed)) ip_neighbor_flags_t;
+
+extern u8 *format_ip_neighbor_flags (u8 * s, va_list * args);
 
 extern int ip_neighbor_add (const ip46_address_t * ip,
-			    u8 is_ip6,
-			    const u8 * mac,
+			    ip46_type_t type,
+			    const mac_address_t * mac,
 			    u32 sw_if_index,
 			    ip_neighbor_flags_t flags, u32 * stats_index);
 
 extern int ip_neighbor_del (const ip46_address_t * ip,
-			    u8 is_ip6, u32 sw_if_index);
+			    ip46_type_t type, u32 sw_if_index);
 
 #endif /* included_ip_neighbor_h */
 

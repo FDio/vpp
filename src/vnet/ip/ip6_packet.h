@@ -182,6 +182,13 @@ ip46_address_is_multicast (const ip46_address_t * a)
 }
 
 always_inline void
+ip6_address_copy (ip6_address_t * dst, const ip6_address_t * src)
+{
+  dst->as_u64[0] = src->as_u64[0];
+  dst->as_u64[1] = src->as_u64[1];
+}
+
+always_inline void
 ip6_set_reserved_multicast_address (ip6_address_t * a,
 				    ip6_multicast_address_scope_t scope,
 				    u16 id)
