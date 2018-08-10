@@ -342,7 +342,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
   u8 *flags = 0;
 
   if (!n)
-    return format (s, "%=12s%=25s%=6s%=20s%=40s", "Time", "Address", "Flags",
+    return format (s, "%=12s%=45s%=6s%=20s%=40s", "Time", "Address", "Flags",
 		   "Link layer", "Interface");
 
   if (n->flags & IP6_NEIGHBOR_FLAG_DYNAMIC)
@@ -355,7 +355,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
     flags = format (flags, "N");
 
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
-  s = format (s, "%=12U%=25U%=6s%=20U%=40U",
+  s = format (s, "%=12U%=45U%=6s%=20U%=40U",
 	      format_vlib_time, vm, n->time_last_updated,
 	      format_ip6_address, &n->key.ip6_address,
 	      flags ? (char *) flags : "",
