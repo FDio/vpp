@@ -23,6 +23,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
@@ -9429,13 +9430,12 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   u8 is_no_fib_entry = 0;
   u8 mac_address[6];
   u8 mac_set = 0;
-  u8 v4_address_set = 0;
-  u8 v6_address_set = 0;
-  ip4_address_t v4address;
-  ip6_address_t v6address;
+  u8 address_set = 0;
+  ip46_address_t ip_address;
   int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
+  memset (&ip_address, 0, sizeof (ip_address));
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -9455,10 +9455,10 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 	is_static = 1;
       else if (unformat (i, "no-fib-entry"))
 	is_no_fib_entry = 1;
-      else if (unformat (i, "dst %U", unformat_ip4_address, &v4address))
-	v4_address_set = 1;
-      else if (unformat (i, "dst %U", unformat_ip6_address, &v6address))
-	v6_address_set = 1;
+      else if (unformat (i, "dst %U", unformat_ip4_address, &ip_address.ip4))
+	address_set = 1;
+      else if (unformat (i, "dst %U", unformat_ip6_address, &ip_address.ip6))
+	address_set = 1;
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9471,12 +9471,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
       errmsg ("missing interface name or sw_if_index");
       return -99;
     }
-  if (v4_address_set && v6_address_set)
-    {
-      errmsg ("both v4 and v6 addresses set");
-      return -99;
-    }
-  if (!v4_address_set && !v6_address_set)
+  if (!address_set)
     {
       errmsg ("no address set");
       return -99;
@@ -9485,21 +9480,15 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   /* Construct the API message */
   M (IP_NEIGHBOR_ADD_DEL, mp);
 
-  mp->sw_if_index = ntohl (sw_if_index);
+  mp->neighbor.sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
-  mp->is_static = is_static;
-  mp->is_no_adj_fib = is_no_fib_entry;
+  mp->neighbor.is_static = is_static;
+  mp->neighbor.is_no_adj_fib = is_no_fib_entry;
   if (mac_set)
-    clib_memcpy (mp->mac_address, mac_address, 6);
-  if (v6_address_set)
+    clib_memcpy (mp->neighbor.mac_address, mac_address, 6);
+  if (address_set)
     {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->dst_address, &v6address, sizeof (v6address));
-    }
-  else
-    {
-      /* mp->is_ipv6 = 0; via memset in M macro above */
-      clib_memcpy (mp->dst_address, &v4address, sizeof (v4address));
+      ip_address_encode(&ip_address, IP46_TYPE_ANY, &mp->neighbor.ip_address);
     }
 
   /* send it... */
@@ -20252,10 +20241,9 @@ static void vl_api_ip_neighbor_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp, "%c %U %U",
-	 (mp->is_static) ? 'S' : 'D',
-	 format_ethernet_address, &mp->mac_address,
-	 (mp->is_ipv6) ? format_ip6_address : format_ip4_address,
-	 &mp->ip_address);
+         (mp->neighbor.is_static) ? 'S' : 'D',
+         format_ethernet_address, &mp->neighbor.mac_address,
+         format_vl_api_address, &mp->neighbor.ip_address);
 }
 
 static void vl_api_ip_neighbor_details_t_handler_json
@@ -20276,21 +20264,21 @@ static void vl_api_ip_neighbor_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_string_copy (node, "flag",
-				   (mp->is_static) ? (u8 *) "static" : (u8 *)
-				   "dynamic");
+				   (mp->neighbor.is_static) ? (u8 *) "static"
+				   : (u8 *) "dynamic");
 
   vat_json_object_add_string_copy (node, "link_layer",
 				   format (0, "%U", format_ethernet_address,
-					   &mp->mac_address));
+					   &mp->neighbor.mac_address));
 
-  if (mp->is_ipv6)
+  if (ADDRESS_IP6 == mp->neighbor.ip_address.af)
     {
-      clib_memcpy (&ip6, &mp->ip_address, sizeof (ip6));
+      clib_memcpy (&ip6, &mp->neighbor.ip_address.un.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "ip_address", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &mp->ip_address, sizeof (ip4));
+      clib_memcpy (&ip4, &mp->neighbor.ip_address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "ip_address", ip4);
     }
 }

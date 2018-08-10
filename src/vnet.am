@@ -1110,6 +1110,7 @@ libvnet_la_SOURCES +=				\
   vnet/fib/fib_table.c                          \
   vnet/fib/fib_walk.c                           \
   vnet/fib/fib_types.c                          \
+  vnet/fib/fib_protocol.c                       \
   vnet/fib/fib_node.c                           \
   vnet/fib/fib_node_list.c                      \
   vnet/fib/fib_entry.c                          \

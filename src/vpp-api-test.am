@@ -19,8 +19,11 @@ libvatplugin_la_SOURCES = \
 lib_LTLIBRARIES += libvatplugin.la
 
 bin_PROGRAMS += vpp_api_test vpp_json_test vpp_restart
+vpp_api_test_CFLAGS = $(AM_CFLAGS)
 
 vpp_api_test_SOURCES = \
+  vnet/ip/ip_types_api.c \
+  vnet/fib/fib_protocol.c \
   vat/api_format.c 	\
   vat/main.c		\
   vat/plugin.c		\

@@ -26,6 +26,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
@@ -120,9 +121,9 @@ static void
 send_ip_neighbor_details (u32 sw_if_index,
 			  u8 is_ipv6,
 			  u8 is_static,
-			  u8 * mac_address,
-			  u8 * ip_address, vl_api_registration_t * reg,
-			  u32 context)
+			  const u8 * mac_address,
+			  const ip46_address_t * ip_address,
+			  vl_api_registration_t * reg, u32 context)
 {
   vl_api_ip_neighbor_details_t *mp;
 
@@ -130,11 +131,11 @@ send_ip_neighbor_details (u32 sw_if_index,
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS);
   mp->context = context;
-  mp->sw_if_index = htonl (sw_if_index);
-  mp->is_ipv6 = is_ipv6;
-  mp->is_static = is_static;
-  memcpy (mp->mac_address, mac_address, 6);
-  memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
+  mp->neighbor.sw_if_index = htonl (sw_if_index);
+  mp->neighbor.is_static = is_static;
+  memcpy (mp->neighbor.mac_address, mac_address, 6);
+
+  ip_address_encode (ip_address, IP46_TYPE_ANY, &mp->neighbor.ip_address);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -158,11 +159,17 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
+        ip46_address_t nh = {
+          .ip6 = {
+            .as_u64[0] = n->key.ip6_address.as_u64[0],
+            .as_u64[1] = n->key.ip6_address.as_u64[1],
+          },
+        };
         send_ip_neighbor_details
           (n->key.sw_if_index, mp->is_ipv6,
 	   ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
            (u8 *) n->link_layer_address,
-           (u8 *) & (n->key.ip6_address.as_u8),
+           &nh,
            reg, mp->context);
       }
       /* *INDENT-ON* */
@@ -176,10 +183,16 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
+        ip46_address_t nh = {
+          .ip4 = {
+            .as_u32 = n->ip4_address.as_u32,
+          },
+        };
+
         send_ip_neighbor_details (n->sw_if_index, mp->is_ipv6,
           ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
           (u8*) n->ethernet_address,
-          (u8*) & (n->ip4_address.as_u8),
+          &nh,
           reg, mp->context);
       }
       /* *INDENT-ON* */
@@ -654,46 +667,55 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 				      vlib_main_t * vm)
 {
   vl_api_ip_neighbor_add_del_reply_t *rmp;
+  ip46_address_t addr;
+  ip46_type_t type;
   vnet_main_t *vnm = vnet_get_main ();
   int rv = 0;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  VALIDATE_SW_IF_INDEX ((&mp->neighbor));
 
   stats_dslock_with_hint (1 /* release hint */ , 7 /* tag */ );
+
+  type = ip_address_decode (&mp->neighbor.ip_address, &addr);
 
   /*
    * there's no validation here of the ND/ARP entry being added.
    * The expectation is that the FIB will ensure that nothing bad
    * will come of adding bogus entries.
    */
-  if (mp->is_ipv6)
+  if (IP46_TYPE_IP6 == type)
     {
       if (mp->is_add)
 	rv = vnet_set_ip6_ethernet_neighbor
-	  (vm, ntohl (mp->sw_if_index),
-	   (ip6_address_t *) (mp->dst_address),
-	   mp->mac_address, sizeof (mp->mac_address), mp->is_static,
-	   mp->is_no_adj_fib);
+	  (vm, ntohl (mp->neighbor.sw_if_index),
+	   &addr.ip6,
+	   mp->neighbor.mac_address,
+	   sizeof (mp->neighbor.mac_address),
+	   mp->neighbor.is_static, mp->neighbor.is_no_adj_fib);
       else
 	rv = vnet_unset_ip6_ethernet_neighbor
-	  (vm, ntohl (mp->sw_if_index),
-	   (ip6_address_t *) (mp->dst_address),
-	   mp->mac_address, sizeof (mp->mac_address));
+	  (vm, ntohl (mp->neighbor.sw_if_index),
+	   &addr.ip6,
+	   mp->neighbor.mac_address, sizeof (mp->neighbor.mac_address));
     }
   else
     {
       ethernet_arp_ip4_over_ethernet_address_t a;
 
-      clib_memcpy (&a.ethernet, mp->mac_address, 6);
-      clib_memcpy (&a.ip4, mp->dst_address, 4);
+      clib_memcpy (&a.ethernet, mp->neighbor.mac_address, 6);
+      a.ip4.as_u32 = addr.ip4.as_u32;
 
       if (mp->is_add)
-	rv = vnet_arp_set_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index),
-					     &a, mp->is_static,
-					     mp->is_no_adj_fib);
+	rv =
+	  vnet_arp_set_ip4_over_ethernet (vnm,
+					  ntohl (mp->neighbor.sw_if_index),
+					  &a, mp->neighbor.is_static,
+					  mp->neighbor.is_no_adj_fib);
       else
 	rv =
-	  vnet_arp_unset_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index), &a);
+	  vnet_arp_unset_ip4_over_ethernet (vnm,
+					    ntohl (mp->neighbor.sw_if_index),
+					    &a);
     }
 
   stats_dsunlock ();
