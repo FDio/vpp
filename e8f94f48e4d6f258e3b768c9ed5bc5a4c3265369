@@ -16,6 +16,24 @@
       "revId": "e8f94f48e4d6f258e3b768c9ed5bc5a4c3265369",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6376741_f74e08db",
+        "filename": "src/plugins/nat/nat64_out2in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 1442
+      },
+      "writtenOn": "2018-08-10T06:24:56Z",
+      "side": 1,
+      "message": "How about put this after translate wihch translate fail netx0\u003d\u003d NAT64_OUT2IN_NEXT_DROP?",
+      "parentUuid": "53460cf5_b1bba231",
+      "revId": "e8f94f48e4d6f258e3b768c9ed5bc5a4c3265369",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
