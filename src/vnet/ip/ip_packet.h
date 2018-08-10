@@ -237,7 +237,7 @@ always_inline u16
 ip_csum_fold (ip_csum_t c)
 {
   /* Reduce to 16 bits. */
-#if uword_bits == 64
+#if (uword_bits == 64) && (!__x86_64__)
   c = (c & (ip_csum_t) 0xffffffff) + (c >> (ip_csum_t) 32);
   c = (c & 0xffff) + (c >> 16);
 #endif
