@@ -12,11 +12,12 @@ fi
 
 if [ "$OS_ID" == "centos" ] || [ "$OS_ID" == "opensuse" ]; then
     # Install uio-pci-generic
-    modprobe uio_pci_generic
+    sudo -E modprobe uio_pci_generic
 fi
+
 echo "Starting VPP..."
-if [ "$OS_ID" == "ubuntu" ] && [ $OS_CODENAME = "trusty" ] ; then
-    start vpp
+if [ "$OS_ID" == "ubuntu" ] && [ "$OS_CODENAME" == "trusty" ] ; then
+    sudo -E start vpp
 else
-    service vpp start
+    sudo -E service vpp start
 fi

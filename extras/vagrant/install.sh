@@ -12,7 +12,7 @@ fi
 if [ -f /etc/lsb-release ];then
     . /etc/lsb-release
 elif [ -f /etc/redhat-release ];then
-    sudo yum install -y redhat-lsb
+    sudo -E yum install -y redhat-lsb
     DISTRIB_ID=`lsb_release -si`
     DISTRIB_RELEASE=`lsb_release -sr`
     DISTRIB_CODENAME=`lsb_release -sc`
@@ -24,7 +24,7 @@ echo DISTRIB_CODENAME: $DISTRIB_CODENAME
 echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
 if [ $DISTRIB_ID == "Ubuntu" ]; then
-    (cd ${VPP_DIR}/build-root/;sudo dpkg -i *.deb)
+    (cd ${VPP_DIR}/build-root/;sudo -E dpkg -i *.deb)
 elif [ $DISTRIB_ID == "CentOS" ]; then
-    (cd ${VPP_DIR}/build-root/;sudo rpm -Uvh *.rpm)
+    (cd ${VPP_DIR}/build-root/;sudo -E rpm -Uvh *.rpm)
 fi
