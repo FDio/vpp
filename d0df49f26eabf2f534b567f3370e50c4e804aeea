@@ -22,6 +22,30 @@
       "revId": "d0df49f26eabf2f534b567f3370e50c4e804aeea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9eb44bb_d4759ff5",
+        "filename": "src/vnet/fib/fib_types.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-08-10T11:42:33Z",
+      "side": 1,
+      "message": "no rules.",
+      "parentUuid": "7602ac72_b83718a4",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 0
+      },
+      "revId": "d0df49f26eabf2f534b567f3370e50c4e804aeea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
