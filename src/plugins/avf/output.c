@@ -77,7 +77,7 @@ CLIB_MULTIARCH_FN (avf_interface_tx) (vlib_main_t * vm,
 	}
     }
 
-  while (n_left >= 7)
+  while (n_left >= 8)
     {
       u16 slot0, slot1, slot2, slot3;
 
