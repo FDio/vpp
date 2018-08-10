@@ -37,6 +37,7 @@ nil
 
 vppapitestplugins_LTLIBRARIES += " plugin-name "_test_plugin.la
 vppplugins_LTLIBRARIES += " plugin-name "_plugin.la
+" plugin-name "_plugin_la_LIBADD =
 
 " plugin-name "_plugin_la_SOURCES = \\
   " plugin-name "/node.c \\
@@ -57,5 +58,32 @@ nobase_apiinclude_HEADERS +=		\\
   " plugin-name "/" plugin-name "_test.c \\
   " plugin-name "/" plugin-name ".api.h 
 
-# vi:syntax=automake
+if CPU_X86_64
+  " plugin-name "_multiversioning_sources =			\\
+  " plugin-name "/node.c
+
+if CC_SUPPORTS_AVX2
+###############################################################
+# AVX2
+###############################################################
+lib" plugin-name "_plugin_avx2_la_SOURCES = $(" plugin-name "_multiversioning_sources)
+lib" plugin-name "_plugin_avx2_la_CFLAGS =					\\
+	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\\
+	-DCLIB_MARCH_VARIANT=avx2
+noinst_LTLIBRARIES += lib" plugin-name "_plugin_avx2.la
+" plugin-name "_plugin_la_LIBADD += lib" plugin-name "_plugin_avx2.la
+endif
+
+if CC_SUPPORTS_AVX512
+###############################################################
+# AVX512
+###############################################################
+lib" plugin-name "_plugin_avx512_la_SOURCES = $(" plugin-name "_multiversioning_sources)
+lib" plugin-name "_plugin_avx512_la_CFLAGS =				\\
+	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\\
+	-DCLIB_MARCH_VARIANT=avx512
+noinst_LTLIBRARIES += lib" plugin-name "_plugin_avx512.la
+" plugin-name "_plugin_la_LIBADD += lib" plugin-name "_plugin_avx512.la
+endif
+endif
 ")
