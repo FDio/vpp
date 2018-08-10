@@ -111,6 +111,27 @@ typedef struct nat64_out2in_set_ctx_t_
   u32 thread_index;
 } nat64_out2in_set_ctx_t;
 
+static inline u8
+nat64_not_translate (u32 sw_if_index, ip4_address_t ip4_addr)
+{
+  ip4_address_t *addr;
+  ip4_main_t *im4 = &ip4_main;
+  ip_lookup_main_t *lm4 = &im4->lookup_main;
+  ip_interface_address_t *ia = 0;
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
+  ({
+	addr = ip_interface_address_get_address (lm4, ia);
+	if (0 == ip4_address_compare (addr, &ip4_addr))
+		return 1;
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+
 static int
 nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 			     void *arg)
@@ -428,6 +449,7 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 proto0;
 	  nat64_out2in_set_ctx_t ctx0;
 	  udp_header_t *udp0;
+	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -498,6 +520,17 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	trace0:
+	  if (next0 == NAT64_OUT2IN_NEXT_DROP)
+	    {
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	      if (nat64_not_translate (sw_if_index0, ip40->dst_address))
+	    {
+	      next0 = NAT64_OUT2IN_NEXT_IP4_LOOKUP;
+	      b0->error = 0;
+	    }
+	    }
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
