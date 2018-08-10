@@ -943,11 +943,8 @@ ip4_lookup_init (vlib_main_t * vm)
   {
     ethernet_arp_header_t h;
 
-    memset (&h, 0, sizeof (h));
-
     /* Set target ethernet address to all zeros. */
-    memset (h.ip4_over_ethernet[1].ethernet, 0,
-	    sizeof (h.ip4_over_ethernet[1].ethernet));
+    memset (&h, 0, sizeof (h));
 
 #define _16(f,v) h.f = clib_host_to_net_u16 (v);
 #define _8(f,v) h.f = v;
@@ -1822,9 +1819,8 @@ ip4_arp_inline (vlib_main_t * vm,
 	      hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
 	      /* Src ethernet address in ARP header. */
-	      clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
-			   hw_if0->hw_address,
-			   sizeof (h0->ip4_over_ethernet[0].ethernet));
+	      mac_address_from_bytes (&h0->ip4_over_ethernet[0].mac,
+				      hw_if0->hw_address);
 
 	      if (is_glean)
 		{
@@ -2007,8 +2003,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
 				sw_if_index);
     }
 
-  clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
-	       sizeof (h->ip4_over_ethernet[0].ethernet));
+  mac_address_from_bytes (&h->ip4_over_ethernet[0].mac, hi->hw_address);
 
   h->ip4_over_ethernet[0].ip4 = src[0];
   h->ip4_over_ethernet[1].ip4 = dst[0];

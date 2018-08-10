@@ -127,15 +127,14 @@ ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
 	  if (!is_ip6)
 	    {
 	      ethernet_arp_ip4_over_ethernet_address_t delme;
-	      clib_memcpy (&delme.ethernet, n4->ethernet_address, 6);
+	      mac_address_copy (&delme.mac, &n4->mac);
 	      delme.ip4.as_u32 = n4->ip4_address.as_u32;
 	      vnet_arp_unset_ip4_over_ethernet (vnm, n4->sw_if_index, &delme);
 	    }
 	  else
 	    {
 	      vnet_unset_ip6_ethernet_neighbor
-		(vm, n6->key.sw_if_index, &n6->key.ip6_address,
-		 n6->link_layer_address, 6);
+		(vm, n6->key.sw_if_index, &n6->key.ip6_address, &n6->mac);
 	    }
 	}
       else if (delta >= cfg->scan_interval)

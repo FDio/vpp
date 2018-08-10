@@ -16,7 +16,7 @@
 #ifndef __MAC_ADDRESS_H__
 #define __MAC_ADDRESS_H__
 
-#include <vnet/ethernet/ethernet.h>
+#include <vlib/vlib.h>
 
 typedef struct mac_address_t_
 {
@@ -24,6 +24,47 @@ typedef struct mac_address_t_
 } mac_address_t;
 
 extern const mac_address_t ZERO_MAC_ADDRESS;
+
+always_inline u64
+ethernet_mac_address_u64 (const u8 * a)
+{
+  return (((u64) a[0] << (u64) (5 * 8))
+	  | ((u64) a[1] << (u64) (4 * 8))
+	  | ((u64) a[2] << (u64) (3 * 8))
+	  | ((u64) a[3] << (u64) (2 * 8))
+	  | ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
+}
+
+always_inline void
+ethernet_mac_address_from_u64 (u64 u, u8 * a)
+{
+  i8 ii;
+
+  for (ii = 5; ii >= 0; ii--)
+    {
+      a[ii] = u & 0xFF;
+      u = u >> 8;
+    }
+}
+
+static inline int
+ethernet_mac_address_is_multicast_u64 (u64 a)
+{
+  return (a & (1ULL << (5 * 8))) != 0;
+}
+
+static inline int
+ethernet_mac_address_is_zero (const u8 * mac)
+{
+  return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
+}
+
+static inline int
+ethernet_mac_address_equal (const u8 * a, const u8 * b)
+{
+  return ((*((u32 *) a) == (*((u32 *) b))) &&
+	  (*((u16 *) (a + 4)) == (*((u16 *) (b + 4)))));
+}
 
 static_always_inline void
 mac_address_from_bytes (mac_address_t * mac, const u8 * bytes)
@@ -49,6 +90,29 @@ mac_address_from_u64 (u64 u, mac_address_t * mac)
   ethernet_mac_address_from_u64 (u, mac->bytes);
 }
 
+static_always_inline void
+mac_address_copy (mac_address_t * dst, const mac_address_t * src)
+{
+  if (src)
+    mac_address_from_bytes (dst, src->bytes);
+  else
+    mac_address_from_u64 (0, dst);
+}
+
+static_always_inline int
+mac_address_cmp (const mac_address_t * a, const mac_address_t * b)
+{
+  return (memcmp (a->bytes, b->bytes, 6));
+}
+
+static_always_inline int
+mac_address_equal (const mac_address_t * a, const mac_address_t * b)
+{
+  return (ethernet_mac_address_equal (a->bytes, b->bytes));
+}
+
+extern uword unformat_mac_address_t (unformat_input_t * input,
+				     va_list * args);
 extern u8 *format_mac_address_t (u8 * s, va_list * args);
 
 #endif

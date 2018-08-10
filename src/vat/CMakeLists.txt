@@ -28,8 +28,12 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   main.c
   plugin.c
   json_format.c
+  ip_types_api.c
+  ethernet_types_api.c
+  fib_protocol.c
 
   LINK_LIBRARIES
+  vnettypes
   vlibmemoryclient
   svm
   vatplugin

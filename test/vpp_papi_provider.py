@@ -969,7 +969,7 @@ class VppPapiProvider(object):
     def ip_neighbor_add_del(self,
                             sw_if_index,
                             mac_address,
-                            dst_address,
+                            ip_address,
                             is_add=1,
                             is_ipv6=0,
                             is_static=0,
@@ -988,14 +988,16 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.ip_neighbor_add_del,
-            {'sw_if_index': sw_if_index,
-             'is_add': is_add,
-             'is_ipv6': is_ipv6,
-             'is_static': is_static,
-             'is_no_adj_fib': is_no_adj_fib,
-             'mac_address': mac_address,
-             'dst_address': dst_address
-             }
+            {
+                'is_add': is_add,
+                'neighbor': {
+                    'sw_if_index': sw_if_index,
+                    'is_static': is_static,
+                    'is_no_adj_fib': is_no_adj_fib,
+                    'mac_address': mac_address,
+                    'ip_address': ip_address
+                }
+            }
         )
 
     def ip_neighbor_dump(self,
