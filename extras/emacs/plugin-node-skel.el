@@ -52,6 +52,7 @@ typedef struct
   u8 new_dst_mac[6];
 } " plugin-name "_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_mac_address (u8 * s, va_list * args)
 {
@@ -74,6 +75,7 @@ static u8 * format_" plugin-name "_trace (u8 * s, va_list * args)
               format_mac_address, t->new_dst_mac);
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 vlib_node_registration_t " plugin-name "_node;
 
@@ -87,11 +89,14 @@ typedef enum {
   " PLUGIN-NAME "_N_ERROR,
 } " plugin-name "_error_t;
 
-static char * " plugin-name "_error_strings[] = {
+#ifndef CLIB_MARCH_VARIANT
+static char * " plugin-name "_error_strings[] = 
+{
 #define _(sym,string) string,
   foreach_" plugin-name "_error
 #undef _
 };
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum 
 {
@@ -107,8 +112,8 @@ _(3)                                            \\
 _(4)                                            \\
 _(5)
 
-static uword
-" plugin-name "_node_fn (vlib_main_t * vm,
+
+VLIB_NODE_FN (" plugin-name "_node) (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame)
 {
@@ -301,9 +306,9 @@ static uword
 }
 
 /* *INDENT-OFF* */
+#ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (" plugin-name "_node) = 
 {
-  .function = " plugin-name "_node_fn,
   .name = \"" plugin-name "\",
   .vector_size = sizeof (u32),
   .format_trace = format_" plugin-name "_trace,
@@ -319,6 +324,7 @@ VLIB_REGISTER_NODE (" plugin-name "_node) =
         [" PLUGIN-NAME "_NEXT_INTERFACE_OUTPUT] = \"interface-output\",
   },
 };
+#endif /* CLIB_MARCH_VARIANT */
 /* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "
