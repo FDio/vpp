@@ -35,6 +35,38 @@ extern int vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
 
 extern int vnet_proxy_arp_fib_reset (u32 fib_id);
 
+void vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm,
+					     void *address_arg,
+					     uword node_index,
+					     uword type_opaque, uword data);
+
+typedef int (*arp_change_event_cb_t) (u32 pool_index,
+				      const mac_address_t * mac,
+				      u32 sw_if_index,
+				      const ip4_address_t * address);
+
+int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
+				       arp_change_event_cb_t data_callback,
+				       u32 pid,
+				       void *address_arg,
+				       uword node_index,
+				       uword type_opaque,
+				       uword data, int is_add);
+
+void wc_arp_set_publisher_node (uword inode_index, uword event_type);
+
+void ethernet_arp_change_mac (u32 sw_if_index);
+void ethernet_ndp_change_mac (u32 sw_if_index);
+
+void arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
+
+typedef struct
+{
+  u32 sw_if_index;
+  u32 ip4;
+  mac_address_t mac;
+} wc_arp_report_t;
+
 /**
  * call back function when walking the DB of proxy ARPs
  * @return 0 to stop the walk !0 to continue

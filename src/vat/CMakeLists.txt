@@ -30,6 +30,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   json_format.c
 
   LINK_LIBRARIES
+  vnettypes
   vlibmemoryclient
   svm
   vatplugin
