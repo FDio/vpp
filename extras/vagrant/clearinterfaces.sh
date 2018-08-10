@@ -12,6 +12,6 @@ chown vagrant:vagrant ~vagrant/ifconfiga
 for intf in $(ls /sys/class/net) ; do
     if [ -d /sys/class/net/$intf/device ] &&
         [ "$(route --inet --inet6 | grep default | grep $intf)" == "" ] ; then
-        ifconfig $intf down
+        sudo -E ifconfig $intf down
     fi
 done

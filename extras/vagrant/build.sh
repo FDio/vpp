@@ -47,13 +47,13 @@ rm -f build-root/.bootstrap.ok
 if [ $OS_ID == "centos" ]; then
     echo rpm -V apr-devel
     rpm -V apr-devel
-    if [ $? != 0 ]; then sudo yum reinstall -y apr-devel;fi
+    if [ $? != 0 ]; then sudo -E yum reinstall -y apr-devel;fi
     echo rpm -V ganglia-devel
     rpm -V ganglia-devel
-    if [ $? != 0 ]; then sudo yum reinstall -y ganglia-devel;fi
+    if [ $? != 0 ]; then sudo -E yum reinstall -y ganglia-devel;fi
     echo rpm -V libconfuse-devel
     rpm -V libconfuse-devel
-    if [ $? != 0 ]; then sudo yum reinstall -y libconfuse-devel;fi
+    if [ $? != 0 ]; then sudo -E yum reinstall -y libconfuse-devel;fi
 fi
 
 # Build and install packaging
