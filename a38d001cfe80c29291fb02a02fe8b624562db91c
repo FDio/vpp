@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3897090_9be49f49",
+        "filename": "docs/gettingstarted/developers/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T18:18:03Z",
+      "side": 1,
+      "message": "Why are you adding more dashes? The lengths of lines 12 and 13 were the same already.\nI recommend to switch your editor from proportional font to fixed-width one (if proportionality is the cause).",
+      "range": {
+        "startLine": 13,
+        "startChar": 14,
+        "endLine": 13,
+        "endChar": 26
+      },
+      "revId": "a38d001cfe80c29291fb02a02fe8b624562db91c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
