@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b304830c_499a06b1",
+        "filename": "docs/events/Community/TSC/2016_04_28_pariseventproposal.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T08:38:15Z",
+      "side": 1,
+      "message": "2016",
+      "range": {
+        "startLine": 12,
+        "startChar": 39,
+        "endLine": 12,
+        "endChar": 42
+      },
+      "revId": "faa9300867da25cea9c0c610d841d8ce42adf982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f6d6258a_c13c1530",
+        "filename": "docs/events/MeetUps/FDIOVPPTerabit/2017_07_11_fdiouniversalterabitnetwork.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T08:38:15Z",
+      "side": 1,
+      "message": "Many files are missing full stop here. Is this a new style?",
+      "range": {
+        "startLine": 12,
+        "startChar": 42,
+        "endLine": 12,
+        "endChar": 43
+      },
+      "revId": "faa9300867da25cea9c0c610d841d8ce42adf982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f15c0b9_da19424a",
+        "filename": "docs/events/MeetUps/IntelSDN/2017_06_13_clearcontainers.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T08:38:15Z",
+      "side": 1,
+      "message": "13 or 13th? Also affects many files.",
+      "range": {
+        "startLine": 12,
+        "startChar": 35,
+        "endLine": 12,
+        "endChar": 37
+      },
+      "revId": "faa9300867da25cea9c0c610d841d8ce42adf982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a621694_3ba66f9f",
+        "filename": "docs/events/MeetUps/fdioWebinar/2016_05_25_softwaredataplanes.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T08:38:15Z",
+      "side": 1,
+      "message": "Move after day number.",
+      "range": {
+        "startLine": 12,
+        "startChar": 33,
+        "endLine": 12,
+        "endChar": 34
+      },
+      "revId": "faa9300867da25cea9c0c610d841d8ce42adf982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f878cbe0_557b0e96",
+        "filename": "docs/events/Summits/OpensourceSummit/2017_09_13_theuniversalnetworkdataplane.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-10T08:38:15Z",
+      "side": 1,
+      "message": "Move the comma.",
+      "range": {
+        "startLine": 12,
+        "startChar": 39,
+        "endLine": 12,
+        "endChar": 40
+      },
+      "revId": "faa9300867da25cea9c0c610d841d8ce42adf982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
