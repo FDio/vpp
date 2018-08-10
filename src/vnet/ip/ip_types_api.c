@@ -29,6 +29,18 @@
 #include <vnet/vnet_all_api_h.h>
 #undef vl_printfun
 
+void
+ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
+{
+  clib_memcpy (out, in, sizeof (*in));
+}
+
+void
+ip6_address_decode (const vl_api_ip6_address_t in, ip6_address_t * out)
+{
+  clib_memcpy (out, in, sizeof (*out));
+}
+
 static ip46_type_t
 ip_address_union_decode (const vl_api_address_union_t * in,
 			 vl_api_address_family_t af, ip46_address_t * out)

@@ -42,6 +42,7 @@
 
 #include <vlib/buffer.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
@@ -398,8 +399,13 @@ clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
 					  u32 sw_if_index,
 					  ip6_address_t * address);
 
+typedef int (*ip6_nd_change_event_cb_t) (u32 pool_index,
+					 const mac_address_t * new_mac,
+					 u32 sw_if_index,
+					 const ip6_address_t * address);
+
 int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
-				      void *data_callback,
+				      ip6_nd_change_event_cb_t data_callback,
 				      u32 pid,
 				      void *address_arg,
 				      uword node_index,
