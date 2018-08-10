@@ -18,11 +18,13 @@ from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
-from vpp_mac import mactobinary
+from vpp_mac import VppMacAddress
+from vpp_ip import VppIpAddress
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from vpp_papi_provider import SYSLOG_SEVERITY
 from io import BytesIO
+from vpp_papi import VppEnum
 
 
 class MethodHolder(VppTestCase):
@@ -48,12 +50,12 @@ class MethodHolder(VppTestCase):
                 is_add=0)
 
             for intf in [self.pg7, self.pg8]:
-                neighbors = self.vapi.ip_neighbor_dump(intf.sw_if_index)
-                for n in neighbors:
-                    self.vapi.ip_neighbor_add_del(intf.sw_if_index,
-                                                  n.mac_address,
-                                                  n.ip_address,
-                                                  is_add=0)
+                self.vapi.ip_neighbor_add_del(
+                    intf.sw_if_index,
+                    VppMacAddress(intf.remote_mac).encode(),
+                    VppIpAddress(intf.remote_ip4).encode(),
+                    flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                           IP_API_NEIGHBOR_FLAG_STATIC))
 
             if self.pg7.has_ip4_config:
                 self.pg7.unconfig_ip4()
@@ -2914,14 +2916,18 @@ class TestNAT44(MethodHolder):
     def test_dynamic_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address """
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            VppMacAddress(self.pg7.remote_mac).encode(),
+            VppIpAddress(self.pg7.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            VppMacAddress(self.pg8.remote_mac).encode(),
+            VppIpAddress(self.pg8.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,
@@ -2956,14 +2962,18 @@ class TestNAT44(MethodHolder):
     def test_static_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address - 1:1 NAT """
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            VppMacAddress(self.pg7.remote_mac).encode(),
+            VppIpAddress(self.pg7.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            VppMacAddress(self.pg8.remote_mac).encode(),
+            VppIpAddress(self.pg8.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,
@@ -3002,14 +3012,18 @@ class TestNAT44(MethodHolder):
         self.udp_port_out = 30607
         self.icmp_id_out = 30608
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            VppMacAddress(self.pg7.remote_mac).encode(),
+            VppIpAddress(self.pg7.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            VppMacAddress(self.pg8.remote_mac).encode(),
+            VppIpAddress(self.pg8.remote_ip4).encode(),
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,

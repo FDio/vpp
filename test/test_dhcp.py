@@ -8,7 +8,8 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
-from vpp_mac import mactobinary, binarytomac
+from vpp_mac import mactobinary, VppMacAddress
+from vpp_ip import VppIpAddress
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
@@ -1052,8 +1053,7 @@ class TestDHCP(VppTestCase):
         nd_entry = VppNeighbor(self,
                                self.pg1.sw_if_index,
                                self.pg1.remote_hosts[1].mac,
-                               self.pg1.remote_hosts[1].ip6,
-                               af=AF_INET6)
+                               self.pg1.remote_hosts[1].ip6)
         nd_entry.add_vpp_config()
 
         #
@@ -1266,10 +1266,12 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
         # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
+        self.vapi.ip_neighbor_add_del(
+            self.pg3.sw_if_index,
+            VppMacAddress((self.pg3.remote_mac)).encode(),
+            VppIpAddress(self.pg3.remote_ip4).encode(),
+            is_add=0)
+
         #
         # remove the DHCP config
         #
@@ -1422,10 +1424,11 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
         # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
+        self.vapi.ip_neighbor_add_del(
+            self.pg3.sw_if_index,
+            VppMacAddress(self.pg3.remote_mac).encode(),
+            VppIpAddress(self.pg3.remote_ip4).encode(),
+            is_add=0)
 
         #
         # read the DHCP client details from a dump
@@ -1529,10 +1532,11 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
 
         # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
+        self.vapi.ip_neighbor_add_del(
+            self.pg3.sw_if_index,
+            VppMacAddress(self.pg3.remote_mac).encode(),
+            VppIpAddress(self.pg3.remote_ip4).encode(),
+            is_add=0)
 
         #
         # Sleep for the lease time
