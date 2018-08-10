@@ -58,7 +58,8 @@ rte_delay_us_override (unsigned us)
 	  /* Only suspend for the admin_down_process */
 	  vlib_process_t *proc = vlib_get_current_process (vm);
 	  if (!(proc->flags & VLIB_PROCESS_IS_RUNNING) ||
-	      (proc->node_runtime.function != admin_up_down_process))
+	      (proc->node_runtime.node_index !=
+	       admin_up_down_process_node.index))
 	    return 0;
 
 	  f64 delay = 1e-6 * us;

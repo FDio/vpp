@@ -650,7 +650,6 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
   return n_rx_packets;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
@@ -667,7 +666,6 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .error_strings = vhost_user_input_func_error_strings,
 };
 /* *INDENT-ON* */
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

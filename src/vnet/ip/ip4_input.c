@@ -47,7 +47,6 @@ typedef struct
   u8 packet_data[64];
 } ip4_input_trace_t;
 
-#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_ip4_input_trace (u8 * s, va_list * va)
 {
@@ -60,7 +59,6 @@ format_ip4_input_trace (u8 * s, va_list * va)
 
   return s;
 }
-#endif
 
 static_always_inline u32
 ip4_input_set_next (u32 sw_if_index, vlib_buffer_t * b, int arc_enabled)
@@ -312,6 +310,7 @@ char *ip4_error_strings[] = {
   foreach_ip4_error
 #undef _
 };
+#endif
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_node) = {
@@ -356,6 +355,7 @@ ip4_init (vlib_main_t * vm)
   hdlc_register_input_protocol (vm, HDLC_PROTOCOL_ip4, ip4_input_node.index);
 
   {
+    extern vlib_node_registration_t ip4_input_no_checksum_node;
     pg_node_t *pn;
     pn = pg_get_node (ip4_input_node.index);
     pn->unformat_edit = unformat_pg_ip4_header;
@@ -404,8 +404,6 @@ ip4_main_loop_enter (vlib_main_t * vm)
 }
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (ip4_main_loop_enter);
-
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
