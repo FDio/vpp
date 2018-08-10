@@ -36,7 +36,6 @@ typedef enum
     BOND_INPUT_N_ERROR,
 } bond_input_error_t;
 
-#ifndef CLIB_MARCH_VARIANT
 static char *bond_input_error_strings[] = {
 #define _(n,s) s,
   foreach_bond_input_error
@@ -60,8 +59,6 @@ format_bond_input_trace (u8 * s, va_list * args)
 
   return s;
 }
-#endif
-
 
 typedef enum
 {
@@ -360,7 +357,6 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 bond_input_init (vlib_main_t * vm)
 {
@@ -457,7 +453,6 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bond_hw_interface_up_down);
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

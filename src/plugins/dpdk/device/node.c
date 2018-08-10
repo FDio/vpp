@@ -28,13 +28,11 @@
 
 #include <dpdk/device/dpdk_priv.h>
 
-#ifndef CLIB_MARCH_VARIANT
 static char *dpdk_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_error
 #undef _
 };
-#endif
 
 STATIC_ASSERT (VNET_DEVICE_INPUT_NEXT_IP4_INPUT - 1 ==
 	       VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT,
@@ -644,7 +642,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
@@ -661,7 +658,6 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .error_strings = dpdk_error_strings,
 };
 /* *INDENT-ON* */
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

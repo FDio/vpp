@@ -46,7 +46,7 @@ if CC_SUPPORTS_AVX2
 libacl_plugin_avx2_la_SOURCES = $(acl_multiversioning_sources)
 libacl_plugin_avx2_la_CFLAGS =                                 \
         $(AM_CFLAGS)  @CPU_AVX2_FLAGS@                          \
-        -DCLIB_MARCH_VARIANT=avx2
+        -fwhole-program -DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libacl_plugin_avx2.la
 acl_plugin_la_LIBADD += libacl_plugin_avx2.la
 endif
@@ -58,7 +58,7 @@ if CC_SUPPORTS_AVX512
 libacl_plugin_avx512_la_SOURCES = $(acl_multiversioning_sources)
 libacl_plugin_avx512_la_CFLAGS =                               \
         $(AM_CFLAGS) @CPU_AVX512_FLAGS@                         \
-        -DCLIB_MARCH_VARIANT=avx512
+        -fwhole-program -DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libacl_plugin_avx512.la
 acl_plugin_la_LIBADD += libacl_plugin_avx512.la
 endif

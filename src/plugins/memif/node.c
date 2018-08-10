@@ -885,7 +885,6 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
   return n_rx;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
   .name = "memif-input",
@@ -896,7 +895,6 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .n_errors = MEMIF_INPUT_N_ERROR,
   .error_strings = memif_input_error_strings,
 };
-#endif
 
 /* *INDENT-ON* */
 
