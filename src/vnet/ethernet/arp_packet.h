@@ -18,6 +18,8 @@
 #ifndef included_ethernet_arp_packet_h
 #define included_ethernet_arp_packet_h
 
+#include <vnet/ethernet/mac_address.h>
+
 #define foreach_ethernet_arp_hardware_type	\
   _ (0, reserved)				\
   _ (1, ethernet)				\
@@ -119,7 +121,7 @@ typedef enum
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  u8 ethernet[6];
+  mac_address_t mac;
   ip4_address_t ip4;
 }) ethernet_arp_ip4_over_ethernet_address_t;
 /* *INDENT-ON* */
@@ -152,7 +154,7 @@ typedef struct
   u32 sw_if_index;
   ip4_address_t ip4_address;
 
-  u8 ethernet_address[6];
+  mac_address_t mac;
 
   ethernet_arp_entry_flags_t flags;
 

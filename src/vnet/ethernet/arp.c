@@ -64,7 +64,7 @@ typedef struct
   uword type_opaque;
   uword data;
   /* Used for arp event notification only */
-  void *data_callback;
+  arp_change_event_cb_t data_callback;
   u32 pid;
 } pending_resolution_t;
 
@@ -225,9 +225,9 @@ format_ethernet_arp_header (u8 * s, va_list * va)
     {
       s = format (s, "\n%U%U/%U -> %U/%U",
 		  format_white_space, indent,
-		  format_ethernet_address, a->ip4_over_ethernet[0].ethernet,
+		  format_mac_address_t, &a->ip4_over_ethernet[0].mac,
 		  format_ip4_address, &a->ip4_over_ethernet[0].ip4,
-		  format_ethernet_address, a->ip4_over_ethernet[1].ethernet,
+		  format_mac_address_t, &a->ip4_over_ethernet[1].mac,
 		  format_ip4_address, &a->ip4_over_ethernet[1].ip4);
     }
   else
@@ -272,7 +272,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 	      format_vlib_time, vnm->vlib_main, e->time_last_updated,
 	      format_ip4_address, &e->ip4_address,
 	      flags ? (char *) flags : "",
-	      format_ethernet_address, e->ethernet_address,
+	      format_mac_address_t, &e->mac,
 	      format_vnet_sw_interface_name, vnm, si);
 
   vec_free (flags);
@@ -357,8 +357,7 @@ arp_nbr_probe (ip_adjacency_t * adj)
 
   hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
 
-  clib_memcpy (h->ip4_over_ethernet[0].ethernet,
-	       hi->hw_address, sizeof (h->ip4_over_ethernet[0].ethernet));
+  mac_address_from_bytes (&h->ip4_over_ethernet[0].mac, hi->hw_address);
 
   h->ip4_over_ethernet[0].ip4 = src[0];
   h->ip4_over_ethernet[1].ip4 = adj->sub_type.nbr.next_hop.ip4;
@@ -387,7 +386,7 @@ arp_mk_complete (adj_index_t ai, ethernet_arp_ip4_entry_t * e)
     (ai, ADJ_NBR_REWRITE_FLAG_COMPLETE,
      ethernet_build_rewrite (vnet_get_main (),
 			     e->sw_if_index,
-			     adj_get_link_type (ai), e->ethernet_address));
+			     adj_get_link_type (ai), &e->mac));
 }
 
 static void
@@ -644,8 +643,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  if (!is_static && (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC))
 	    {
 	      /* if MAC address match, still check to send event */
-	      if (0 == memcmp (e->ethernet_address,
-			       a->ethernet, sizeof (e->ethernet_address)))
+	      if (mac_address_equal (&e->mac, &a->mac))
 		goto check_customers;
 	      return -2;
 	    }
@@ -673,8 +671,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
       e->sw_if_index = sw_if_index;
       e->ip4_address = a->ip4;
       e->fib_entry_index = FIB_NODE_INDEX_INVALID;
-      clib_memcpy (e->ethernet_address,
-		   a->ethernet, sizeof (e->ethernet_address));
+      mac_address_copy (&e->mac, &a->mac);
 
       if (!is_no_fib_entry)
 	{
@@ -693,16 +690,14 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
        * prevent a DoS attack from the data-plane that
        * spams us with no-op updates to the MAC address
        */
-      if (0 == memcmp (e->ethernet_address,
-		       a->ethernet, sizeof (e->ethernet_address)))
+      if (mac_address_equal (&e->mac, &a->mac))
 	{
 	  e->time_last_updated = vlib_time_now (vm);
 	  goto check_customers;
 	}
 
       /* Update ethernet address. */
-      clib_memcpy (e->ethernet_address, a->ethernet,
-		   sizeof (e->ethernet_address));
+      mac_address_copy (&e->mac, &a->mac);
     }
 
   /* Update time stamp and flags. */
@@ -749,14 +744,12 @@ check_customers:
 
       while (next_index != (u32) ~ 0)
 	{
-	  int (*fp) (u32, u8 *, u32, u32);
 	  int rv = 1;
 	  mc = pool_elt_at_index (am->mac_changes, next_index);
-	  fp = mc->data_callback;
 
 	  /* Call the user's data callback, return 1 to suppress dup events */
-	  if (fp)
-	    rv = (*fp) (mc->data, a->ethernet, sw_if_index, 0);
+	  if (mc->data_callback)
+	    rv = (mc->data_callback) (mc->data, &a->mac, sw_if_index, 0);
 
 	  /*
 	   * Signal the resolver process, as long as the user
@@ -805,7 +798,7 @@ vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm,
 
 int
 vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
-				   void *data_callback,
+				   arp_change_event_cb_t data_callback,
 				   u32 pid,
 				   void *address_arg,
 				   uword node_index,
@@ -834,11 +827,17 @@ vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 	return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
       pool_get (am->mac_changes, mc);
+      /* *INDENT-OFF* */
       *mc = (pending_resolution_t)
       {
-      .next_index = ~0,.node_index = node_index,.type_opaque =
-	  type_opaque,.data = data,.data_callback = data_callback,.pid =
-	  pid,};
+        .next_index = ~0,
+        .node_index = node_index,
+        .type_opaque = type_opaque,
+        .data = data,
+        .data_callback = data_callback,
+        .pid = pid,
+      };
+      /* *INDENT-ON* */
 
       /* Insert new resolution at the end of the list */
       u32 new_idx = mc - am->mac_changes;
@@ -853,9 +852,9 @@ vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       /* Clients may need to clean up pool entries, too */
-      void (*fp) (u32, u8 *) = data_callback;
-      if (fp)
-	(*fp) (mc->data, 0 /* no new mac addrs */ );
+      if (data_callback)
+	/* no new mac addrs */
+	(data_callback) (mc->data, NULL, ~0, NULL);
 
       /* Remove the entry from the list and delete the entry */
       *p = mc->next_index;
@@ -1174,15 +1173,15 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
 	     &&
 	     (!memcmp
-	      (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
+	      (arp0->ip4_over_ethernet[0].mac.bytes, vrrp_prefix,
 	       sizeof (vrrp_prefix))));
 
 	  /* Trash ARP packets whose ARP-level source addresses do not
 	     match their L2-frame-level source addresses, unless it's
 	     a reply from a VRRP virtual router */
-	  if (memcmp
-	      (eth_rx->src_address, arp0->ip4_over_ethernet[0].ethernet,
-	       sizeof (eth_rx->src_address)) && !is_vrrp_reply0)
+	  if (!ethernet_mac_address_equal
+	      (eth_rx->src_address,
+	       arp0->ip4_over_ethernet[0].mac.bytes) && !is_vrrp_reply0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop2;
@@ -1236,8 +1235,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 
-	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
-		       hw_if0->hw_address, 6);
+	  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac,
+				  hw_if0->hw_address);
 	  clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
 	    if_addr0->data_u32;
 
@@ -1474,7 +1473,7 @@ typedef struct
   pg_edit_t opcode;
   struct
   {
-    pg_edit_t ethernet;
+    pg_edit_t mac;
     pg_edit_t ip4;
   } ip4_over_ethernet[2];
 } pg_ethernet_arp_header_t;
@@ -1489,9 +1488,9 @@ pg_ethernet_arp_header_init (pg_ethernet_arp_header_t * p)
   _(n_l2_address_bytes);
   _(n_l3_address_bytes);
   _(opcode);
-  _(ip4_over_ethernet[0].ethernet);
+  _(ip4_over_ethernet[0].mac);
   _(ip4_over_ethernet[0].ip4);
-  _(ip4_over_ethernet[1].ethernet);
+  _(ip4_over_ethernet[1].mac);
   _(ip4_over_ethernet[1].ip4);
 #undef _
 }
@@ -1517,11 +1516,11 @@ unformat_pg_arp_header (unformat_input_t * input, va_list * args)
 		 unformat_pg_edit,
 		 unformat_ethernet_arp_opcode_net_byte_order, &p->opcode,
 		 unformat_pg_edit,
-		 unformat_ethernet_address, &p->ip4_over_ethernet[0].ethernet,
+		 unformat_mac_address_t, &p->ip4_over_ethernet[0].mac,
 		 unformat_pg_edit,
 		 unformat_ip4_address, &p->ip4_over_ethernet[0].ip4,
 		 unformat_pg_edit,
-		 unformat_ethernet_address, &p->ip4_over_ethernet[1].ethernet,
+		 unformat_mac_address_t, &p->ip4_over_ethernet[1].mac,
 		 unformat_pg_edit,
 		 unformat_ip4_address, &p->ip4_over_ethernet[1].ip4))
     {
@@ -1640,7 +1639,7 @@ vnet_arp_wc_publish_internal (vnet_main_t * vnm,
     vlib_process_signal_event_data (vm, ni, et, 1, sizeof *r);
   r->ip4 = args->a.ip4.as_u32;
   r->sw_if_index = args->sw_if_index;
-  memcpy (r->mac, args->a.ethernet, sizeof r->mac);
+  mac_address_copy (&r->mac, &args->a.mac);
 }
 
 void
@@ -1700,7 +1699,7 @@ arp_add_del_interface_address (ip4_main_t * im,
 	  ethernet_arp_ip4_over_ethernet_address_t delme;
 	  e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
 
-	  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
+	  mac_address_copy (&delme.mac, &e->mac);
 	  delme.ip4.as_u32 = e->ip4_address.as_u32;
 
 	  vnet_arp_flush_ip4_over_ethernet (vnet_get_main (),
@@ -1945,7 +1944,7 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
       ethernet_arp_ip4_over_ethernet_address_t delme;
       e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
 
-      clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
+      mac_address_copy (&delme.mac, &e->mac);
       delme.ip4.as_u32 = e->ip4_address.as_u32;
 
       if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
@@ -1981,9 +1980,9 @@ increment_ip4_and_mac_address (ethernet_arp_ip4_over_ethernet_address_t * a)
 
   for (i = 5; i >= 0; i--)
     {
-      old = a->ethernet[i];
-      a->ethernet[i] += 1;
-      if (old < a->ethernet[i])
+      old = a->mac.bytes[i];
+      a->mac.bytes[i] += 1;
+      if (old < a->mac.bytes[i])
 	break;
     }
 }
@@ -2114,7 +2113,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
       if (unformat (input, "%U %U %U",
 		    unformat_vnet_sw_interface, vnm, &sw_if_index,
 		    unformat_ip4_address, &addr.ip4,
-		    unformat_ethernet_address, &addr.ethernet))
+		    unformat_mac_address_t, &addr.mac))
 	addr_valid = 1;
 
       else if (unformat (input, "delete") || unformat (input, "del"))
@@ -2395,13 +2394,14 @@ arp_term_l2bd (vlib_main_t * vm,
 	  /* Trash ARP packets whose ARP-level source addresses do not
 	     match, or if requester address is mcast */
 	  if (PREDICT_FALSE
-	      (memcmp (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
-		       sizeof (eth0->src_address)) ||
-	       ethernet_address_cast (arp0->ip4_over_ethernet[0].ethernet)))
+	      (!ethernet_mac_address_equal (eth0->src_address,
+					    arp0->ip4_over_ethernet[0].
+					    mac.bytes))
+	      || ethernet_address_cast (arp0->ip4_over_ethernet[0].mac.bytes))
 	    {
 	      /* VRRP virtual MAC may be different to SMAC in ARP reply */
-	      if (memcmp (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
-			  sizeof (vrrp_prefix)))
+	      if (!ethernet_mac_address_equal
+		  (arp0->ip4_over_ethernet[0].mac.bytes, vrrp_prefix))
 		{
 		  error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 		  goto drop;
@@ -2440,7 +2440,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 	  arp0->ip4_over_ethernet[0].ip4.as_u32 = ip0;
-	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, macp0, 6);
+	  clib_memcpy (arp0->ip4_over_ethernet[0].mac.bytes, macp0, 6);
 	  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
 	  clib_memcpy (eth0->src_address, macp0, 6);
 	  n_replies_sent += 1;
@@ -2607,10 +2607,8 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
       if (!h)
 	return;
 
-      clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
-		   sizeof (h->ip4_over_ethernet[0].ethernet));
-      clib_memcpy (h->ip4_over_ethernet[1].ethernet, hi->hw_address,
-		   sizeof (h->ip4_over_ethernet[1].ethernet));
+      mac_address_from_bytes (&h->ip4_over_ethernet[0].mac, hi->hw_address);
+      mac_address_from_bytes (&h->ip4_over_ethernet[1].mac, hi->hw_address);
       h->ip4_over_ethernet[0].ip4 = ip4_addr[0];
       h->ip4_over_ethernet[1].ip4 = ip4_addr[0];
 

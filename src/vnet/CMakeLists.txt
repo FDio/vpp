@@ -14,10 +14,29 @@
 add_definitions (-DWITH_LIBSSL=1)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
+unset(VNET_TYPES_SOURCES)
+unset(VNET_TYPES_HEADERS)
 unset(VNET_SOURCES)
 unset(VNET_HEADERS)
 unset(VNET_API_FILES)
 unset(VNET_MULTIARCH_SOURCES)
+
+##############################################################################
+# VNET Types; shared between vnet/vpp and VAT
+##############################################################################
+list(APPEND VNET_TYPES_SOURCES
+  ethernet/ethernet_types_api.c
+  ethernet/mac_address.c
+  ip/ip_types_api.c
+  fib/fib_protocol.c
+)
+
+list(APPEND VNET_TYPES_HEADERS
+  ethernet/ethernet_types_api.h
+  ethernet/mac_address.h
+  ip/ip_types_api.h
+  fib/fib_protocol.h
+)
 
 ##############################################################################
 # Generic stuff
@@ -109,11 +128,9 @@ list(APPEND VNET_API_FILES cop/cop.api)
 # Layer 2 protocol: Ethernet
 ##############################################################################
 list(APPEND VNET_SOURCES
-  ethernet/ethernet_types_api.c
   ethernet/format.c
   ethernet/init.c
   ethernet/interface.c
-  ethernet/mac_address.c
   ethernet/node.c
   ethernet/pg.c
   ethernet/sfp.c
@@ -358,7 +375,6 @@ list(APPEND VNET_SOURCES
   ip/icmp4.c
   ip/icmp6.c
   ip/ip46_cli.c
-  ip/ip_types_api.c
   ip/ip4_format.c
   ip/ip4_forward.c
   ip/ip4_punt_drop.c
@@ -1323,11 +1339,19 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES bier/bier.api)
 
+add_vpp_library(vnettypes
+  SOURCES ${VNET_TYPES_SOURCES}
+  INSTALL_HEADERS ${VNET_TYPES_HEADERS}
+  API_FILES ${VNET_TYPES_API_FILES}
+  LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
+  DEPENDS api_headers
+)
+
 add_vpp_library(vnet
   SOURCES ${VNET_SOURCES}
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
-  LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
+  LINK_LIBRARIES vnettypes vppinfra svm vlib ${OPENSSL_LIBRARIES}
   DEPENDS api_headers
 )

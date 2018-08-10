@@ -23,18 +23,10 @@
 /*
  * arrays of protocol and link names
  */
-static const char* fib_protocol_names[] = FIB_PROTOCOLS;
 static const char* vnet_link_names[] = VNET_LINKS;
 static const char* fib_forw_chain_names[] = FIB_FORW_CHAINS;
 static const char* fib_mpls_lsp_mode_names[] = FIB_MPLS_LSP_MODES;
 
-u8 *
-format_fib_protocol (u8 * s, va_list * ap)
-{
-    fib_protocol_t proto = va_arg(*ap, int); // fib_protocol_t promotion
-
-    return (format (s, "%s", fib_protocol_names[proto]));
-}
 
 u8 *
 format_vnet_link (u8 * s, va_list * ap)
@@ -231,90 +223,6 @@ fib_route_path_cmp (const fib_route_path_t *rpath1,
     }
 
     return (res);
-}
-
-dpo_proto_t
-fib_proto_to_dpo (fib_protocol_t fib_proto)
-{
-    switch (fib_proto)
-    {
-    case FIB_PROTOCOL_IP6:
-        return (DPO_PROTO_IP6);
-    case FIB_PROTOCOL_IP4:
-        return (DPO_PROTO_IP4);
-    case FIB_PROTOCOL_MPLS:
-        return (DPO_PROTO_MPLS);
-    }
-    ASSERT(0);
-    return (0);
-}
-
-fib_protocol_t
-dpo_proto_to_fib (dpo_proto_t dpo_proto)
-{
-    switch (dpo_proto)
-    {
-    case DPO_PROTO_IP6:
-        return (FIB_PROTOCOL_IP6);
-    case DPO_PROTO_IP4:
-        return (FIB_PROTOCOL_IP4);
-    case DPO_PROTO_MPLS:
-        return (FIB_PROTOCOL_MPLS);
-    default:
-	break;
-    }
-    ASSERT(0);
-    return (0);
-}
-
-vnet_link_t
-fib_proto_to_link (fib_protocol_t proto)
-{
-    switch (proto)
-    {
-    case FIB_PROTOCOL_IP4:
-	return (VNET_LINK_IP4);
-    case FIB_PROTOCOL_IP6:
-	return (VNET_LINK_IP6);
-    case FIB_PROTOCOL_MPLS:
-	return (VNET_LINK_MPLS);
-    }
-    ASSERT(0);
-    return (0);
-}
-
-ip46_type_t
-fib_proto_to_ip46 (fib_protocol_t fproto)
-{
-    switch (fproto)
-    {
-    case FIB_PROTOCOL_IP4:
-	return (IP46_TYPE_IP4);
-    case FIB_PROTOCOL_IP6:
-	return (IP46_TYPE_IP6);
-    case FIB_PROTOCOL_MPLS:
-	return (IP46_TYPE_ANY);
-    }
-    ASSERT(0);
-    return (IP46_TYPE_ANY);
-}
-
-fib_protocol_t
-fib_proto_from_ip46 (ip46_type_t iproto)
-{
-    switch (iproto)
-    {
-    case IP46_TYPE_IP4:
-        return FIB_PROTOCOL_IP4;
-    case IP46_TYPE_IP6:
-        return FIB_PROTOCOL_IP6;
-    case IP46_TYPE_ANY:
-        ASSERT(0);
-        return FIB_PROTOCOL_IP4;
-    }
-
-    ASSERT(0);
-    return FIB_PROTOCOL_IP4;
 }
 
 fib_forward_chain_type_t
