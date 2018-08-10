@@ -37,7 +37,6 @@ typedef enum
     DPDK_TX_FUNC_N_ERROR,
 } dpdk_tx_func_error_t;
 
-#ifndef CLIB_MARCH_VARIANT
 static char *dpdk_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_tx_func_error
@@ -65,7 +64,6 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
       return NULL;
     }
 }
-#endif
 
 static struct rte_mbuf *
 dpdk_replicate_packet_mb (vlib_buffer_t * b)
@@ -516,7 +514,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   return tx_pkts;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 static void
 dpdk_clear_hw_interface_counters (u32 instance)
 {
@@ -677,8 +674,6 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
 };
 /* *INDENT-ON* */
 
-#endif
-
 #define UP_DOWN_FLAG_EVENT 1
 
 #ifndef CLIB_MARCH_VARIANT
@@ -724,6 +719,7 @@ admin_up_down_process (vlib_main_t * vm,
     }
   return 0;			/* or not */
 }
+#endif
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (admin_up_down_process_node,static) = {
@@ -733,7 +729,6 @@ VLIB_REGISTER_NODE (admin_up_down_process_node,static) = {
     .process_log2_n_stack_bytes = 17,  // 256KB
 };
 /* *INDENT-ON* */
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

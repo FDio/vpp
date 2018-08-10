@@ -630,7 +630,6 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return /* no error */ 0;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .name = "vhost-user",
@@ -642,8 +641,6 @@ VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .rx_mode_change_function = vhost_user_interface_rx_mode_change,
   .format_tx_trace = format_vhost_trace,
 };
-
-#endif
 
 /* *INDENT-ON* */
 
