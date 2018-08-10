@@ -1180,7 +1180,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
                       if (!addr_only)
                         {
-                          if ((s->out2in.addr.as_u32 != e_addr.as_u32) &&
+                          if ((s->out2in.addr.as_u32 != e_addr.as_u32) ||
                               (clib_net_to_host_u16 (s->out2in.port) != e_port))
                             continue;
                         }
@@ -1465,7 +1465,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       if (!(is_lb_session (s)))
                         continue;
 
-                      if ((s->in2out.addr.as_u32 != local->addr.as_u32) &&
+                      if ((s->in2out.addr.as_u32 != local->addr.as_u32) ||
                           (clib_net_to_host_u16 (s->in2out.port) != local->port))
                         continue;
 
