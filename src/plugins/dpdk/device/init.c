@@ -49,10 +49,6 @@ dpdk_config_main_t dpdk_config_main;
 static struct rte_eth_conf port_conf_template = {
   .rxmode = {
 	     .split_hdr_size = 0,
-	     .header_split = 0,		/**< Header Split disabled */
-	     .hw_ip_checksum = 0,	/**< IP checksum offload disabled */
-	     .hw_vlan_filter = 0,	/**< VLAN filtering disabled */
-	     .hw_strip_crc = 0,		/**< CRC stripped by hardware */
 	     },
   .txmode = {
 	     .mq_mode = ETH_MQ_TX_NONE,
@@ -187,6 +183,18 @@ dpdk_ring_alloc (struct rte_mempool *mp)
   return 0;
 }
 
+static int
+dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
+{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
+  if (xd->port_conf.rxmode.hw_strip_crc)
+#else
+  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)
+#endif
+    return 1;
+  return 0;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -227,11 +235,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   vec_validate_aligned (dm->devices_by_hqos_cpu, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  nports = rte_eth_dev_count ();
-#else
   nports = rte_eth_dev_count_avail ();
-#endif
 
   if (nports < 1)
     {
@@ -277,9 +281,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       rte_eth_link_get_nowait (i, &l);
       rte_eth_dev_info_get (i, &dev_info);
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-      pci_dev = dev_info.pci_dev;
-#else
       if (dev_info.device == 0)
 	{
 	  clib_warning ("DPDK bug: missing device info. Skipping  %s device",
@@ -287,7 +288,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  continue;
 	}
       pci_dev = RTE_DEV_TO_PCI (dev_info.device);
-#endif
 
       if (pci_dev)	/* bonded interface has no pci info */
 	{
@@ -317,11 +317,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  struct rte_eth_dev_info di = { 0 };
 	  struct rte_pci_device *next_pci_dev;
 	  rte_eth_dev_info_get (i + 1, &di);
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-	  next_pci_dev = di.pci_dev;
-#else
 	  next_pci_dev = di.device ? RTE_DEV_TO_PCI (di.device) : 0;
-#endif
 	  if (pci_dev && next_pci_dev &&
 	      pci_addr.as_u32 != last_pci_addr.as_u32 &&
 	      memcmp (&pci_dev->addr, &next_pci_dev->addr,
@@ -349,15 +345,27 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (dm->conf->no_multi_seg)
 	{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
 	  port_conf_template.rxmode.jumbo_frame = 0;
 	  port_conf_template.rxmode.enable_scatter = 0;
+#else
+	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
+	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
+#endif
 	}
       else
 	{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
 	  port_conf_template.rxmode.jumbo_frame = 1;
 	  port_conf_template.rxmode.enable_scatter = 1;
+#else
+	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
+#endif
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
@@ -425,7 +433,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 		  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
+#else
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+#endif
 		  xd->flags |=
 		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
@@ -445,17 +459,29 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
+#else
+	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+#endif
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
+#else
+	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+#endif
 	      break;
 
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.enable_scatter = 0;
+#else
+	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
+#endif
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
@@ -473,7 +499,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
+#else
+	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+#endif
 	      break;
 
 	      /* virtio */
@@ -486,7 +516,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* vmxnet3 */
 	    case VNET_DPDK_PMD_VMXNET3:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
+#else
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+#endif
 	      break;
 
 	    case VNET_DPDK_PMD_AF_PACKET:
@@ -625,7 +659,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	       * MTU calculations. To interop with them increase mru but only
 	       * if the device's settings can support it.
 	       */
-	      if (xd->port_conf.rxmode.hw_strip_crc &&
+	      if (dpdk_port_crc_strip_enabled (xd) &&
 		  (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
 					      sizeof (ethernet_header_t) +
 					      4)))
@@ -638,7 +672,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
 	      mtu = ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
 
-	      if (xd->port_conf.rxmode.hw_strip_crc &&
+	      if (dpdk_port_crc_strip_enabled (xd) &&
 		  (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)))
 		{
 		  max_rx_frame += 4;
@@ -658,7 +692,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      mtu = dev_mtu;
 	      max_rx_frame = mtu + sizeof (ethernet_header_t);
 
-	      if (xd->port_conf.rxmode.hw_strip_crc)
+	      if (dpdk_port_crc_strip_enabled (xd))
 		{
 		  max_rx_frame += 4;
 		}
@@ -740,7 +774,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  int vlan_off;
 	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	  xd->port_conf.rxmode.hw_vlan_strip = vlan_off;
+#else
+          if (vlan_off)
+	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	  else
+	    xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+#endif
 	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) == 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
@@ -1600,11 +1641,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
      *  2. Set up info and register slave link state change callback handling.
      *  3. Set up info for bond interface related CLI support.
      */
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-    int nports = rte_eth_dev_count ();
-#else
     int nports = rte_eth_dev_count_avail ();
-#endif
     if (nports > 0)
       {
 	/* *INDENT-OFF* */

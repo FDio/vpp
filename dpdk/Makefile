@@ -32,8 +32,8 @@ PKG_SUFFIX ?= vpp2
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_18.02.2_TARBALL_MD5_CKSUM := 75ad6d39b513649744e49c9fcbbb9ca5
 DPDK_18.05_TARBALL_MD5_CKSUM := 9fc86367cd9407ff6a8dfea56c4eddc4
+DPDK_18.08_TARBALL_MD5_CKSUM := da5e7fb25ab063c47e53929fb8c58be5
 MACHINE=$(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
@@ -216,6 +216,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
+	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
 	$(call set,RTE_LIBRTE_MLX4_DLOPEN_DEPS,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_DLOPEN_DEPS,$(DPDK_MLX5_PMD))
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))

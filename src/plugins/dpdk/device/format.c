@@ -250,11 +250,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
     }
 
   rte_eth_dev_info_get (i, &dev_info);
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  pci_dev = dev_info.pci_dev;
-#else
   pci_dev = RTE_DEV_TO_PCI (dev_info.device);
-#endif
 
   if (pci_dev && dm->devices[i].port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
     ret = format (s, devname_format, device_name, pci_dev->addr.bus,
@@ -529,11 +525,7 @@ format_dpdk_device (u8 * s, va_list * args)
       retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
       if (retval < 0)
 	clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-      pci = di.pci_dev;
-#else
       pci = RTE_DEV_TO_PCI (di.device);
-#endif
 
       if (pci)
 	s =

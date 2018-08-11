@@ -461,25 +461,11 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   vlib_physmem_region_t *pr;
   dpdk_mempool_private_t priv;
   clib_error_t *error = 0;
-  u32 size, obj_size;
+  size_t min_chunk_size, align;
+  u32 size;
   i32 ret;
   uword i;
 
-  obj_size = rte_mempool_calc_obj_size (elt_size, 0, 0);
-
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  size = rte_mempool_xmem_size (num_elts, obj_size, 21, 0);
-#else
-  size = rte_mempool_calc_mem_size_helper (num_elts, obj_size, 21);
-#endif
-
-  error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
-				     VLIB_PHYSMEM_F_HUGETLB |
-				     VLIB_PHYSMEM_F_SHARED, pri);
-  if (error)
-    return error;
-
-  pr = vlib_physmem_get_region (vm, pri[0]);
 
   mp = rte_mempool_create_empty ((char *) pool_name, num_elts, elt_size,
 				 512, pool_priv_size, numa, 0);
@@ -487,6 +473,20 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
     return clib_error_return (0, "failed to create %s", pool_name);
 
   rte_mempool_set_ops_byname (mp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
+
+  size = rte_mempool_op_calc_mem_size_default (mp, num_elts, 21,
+					       &min_chunk_size, &align);
+
+  error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
+				     VLIB_PHYSMEM_F_HUGETLB |
+				     VLIB_PHYSMEM_F_SHARED, pri);
+  if (error)
+    {
+      rte_mempool_free (mp);
+      return error;
+    }
+
+  pr = vlib_physmem_get_region (vm, pri[0]);
 
   /* Call the mempool priv initializer */
   priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +

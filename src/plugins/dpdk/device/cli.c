@@ -68,11 +68,7 @@ get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
 
   rte_eth_dev_info_get ((*xd)->port_id, &dev_info);
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  pci_dev = dev_info.pci_dev;
-#else
   pci_dev = RTE_DEV_TO_PCI (dev_info.device);
-#endif
 
   if (pci_dev)
     {				/* bonded interface has no pci info */
@@ -1290,11 +1286,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  pci_dev = dev_info.pci_dev;
-#else
   pci_dev = RTE_DEV_TO_PCI (dev_info.device);
-#endif
 
   if (pci_dev)
     {				/* bonded interface has no pci info */
@@ -1489,11 +1481,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-  pci_dev = dev_info.pci_dev;
-#else
   pci_dev = RTE_DEV_TO_PCI (dev_info.device);
-#endif
 
   if (pci_dev)
     {				/* bonded interface has no pci info */
