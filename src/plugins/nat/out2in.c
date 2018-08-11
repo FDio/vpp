@@ -1972,7 +1972,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t *sm,
 
       new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
 
-      u = nat_user_get_or_create (sm, &ip->src_address, m->fib_index,
+      u = nat_user_get_or_create (sm, &m->local_addr, m->fib_index,
                                   thread_index);
       if (!u)
         {
