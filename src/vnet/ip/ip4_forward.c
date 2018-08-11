@@ -88,9 +88,8 @@
       ip_adjacency_t @c adj->lookup_next_index
       (where @c adj is the lookup result adjacency).
 */
-static uword
-ip4_lookup (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_lookup_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return ip4_lookup_inline (vm, node, frame,
 			    /* lookup_for_responses_to_locally_received_packets */
@@ -103,7 +102,6 @@ static u8 *format_ip4_lookup_trace (u8 * s, va_list * args);
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_lookup_node) =
 {
-  .function = ip4_lookup,
   .name = "ip4-lookup",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_lookup_trace,
@@ -112,11 +110,9 @@ VLIB_REGISTER_NODE (ip4_lookup_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup);
-
-static uword
-ip4_load_balance (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
@@ -304,17 +300,14 @@ ip4_load_balance (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_load_balance_node) =
 {
-  .function = ip4_load_balance,
   .name = "ip4-load-balance",
   .vector_size = sizeof (u32),
   .sibling_of = "ip4-lookup",
-  .format_trace =
-  format_ip4_lookup_trace,
+  .format_trace = format_ip4_lookup_trace,
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_load_balance_node, ip4_load_balance);
-
+#ifndef CLIB_MARCH_VARIANT
 /* get first interface address */
 ip4_address_t *
 ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
@@ -710,6 +703,7 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
      }));
   /* *INDENT-ON* */
 }
+#endif
 
 /* Built-in ip4 unicast rx feature path definition */
 /* *INDENT-OFF* */
@@ -905,7 +899,7 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip4_sw_interface_add_del);
 /* Global IP4 main. */
 ip4_main_t ip4_main;
 
-clib_error_t *
+static clib_error_t *
 ip4_lookup_init (vlib_main_t * vm)
 {
   ip4_main_t *im = &ip4_main;
@@ -989,6 +983,7 @@ typedef struct
 }
 ip4_forward_next_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip4_forward_next_trace (u8 * s, va_list * args)
 {
@@ -1001,6 +996,7 @@ format_ip4_forward_next_trace (u8 * s, va_list * args)
 	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
   return s;
 }
+#endif
 
 static u8 *
 format_ip4_lookup_trace (u8 * s, va_list * args)
@@ -1036,6 +1032,7 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /* Common trace function for all ip4-forward next nodes. */
 void
 ip4_forward_next_trace (vlib_main_t * vm,
@@ -1208,6 +1205,7 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 
   return p0->flags;
 }
+#endif
 
 /* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (ip4_local) =
@@ -1602,8 +1600,8 @@ ip4_local_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_local_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip4_local_inline (vm, node, frame, 1 /* head of feature arc */ );
 }
@@ -1611,7 +1609,6 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_local_node) =
 {
-  .function = ip4_local,
   .name = "ip4-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
@@ -1626,26 +1623,22 @@ VLIB_REGISTER_NODE (ip4_local_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local);
 
-static uword
-ip4_local_end_of_arc (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_local_end_of_arc_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return ip4_local_inline (vm, node, frame, 0 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_local_end_of_arc_node,static) = {
-  .function = ip4_local_end_of_arc,
+VLIB_REGISTER_NODE (ip4_local_end_of_arc_node) = {
   .name = "ip4-local-end-of-arc",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_forward_next_trace,
   .sibling_of = "ip4-local",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_end_of_arc_node, ip4_local_end_of_arc)
 
 VNET_FEATURE_INIT (ip4_local_end_of_arc, static) = {
   .arc_name = "ip4-local",
@@ -1654,6 +1647,7 @@ VNET_FEATURE_INIT (ip4_local_end_of_arc, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ip4_register_protocol (u32 protocol, u32 node_index)
 {
@@ -1665,6 +1659,7 @@ ip4_register_protocol (u32 protocol, u32 node_index)
   lm->local_next_by_ip_protocol[protocol] =
     vlib_node_add_next (vm, ip4_local_node.index, node_index);
 }
+#endif
 
 static clib_error_t *
 show_ip_local_command_fn (vlib_main_t * vm,
@@ -1899,14 +1894,14 @@ ip4_arp_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_arp (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_arp_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vlib_frame_t * frame)
 {
   return (ip4_arp_inline (vm, node, frame, 0));
 }
 
-static uword
-ip4_glean (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_glean_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return (ip4_arp_inline (vm, node, frame, 1));
 }
@@ -1923,7 +1918,6 @@ static char *ip4_arp_error_strings[] = {
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_arp_node) =
 {
-  .function = ip4_arp,
   .name = "ip4-arp",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
@@ -1938,7 +1932,6 @@ VLIB_REGISTER_NODE (ip4_arp_node) =
 
 VLIB_REGISTER_NODE (ip4_glean_node) =
 {
-  .function = ip4_glean,
   .name = "ip4-glean",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
@@ -1957,7 +1950,7 @@ _(REQUEST_SENT)                                 \
 _(REPLICATE_DROP)                               \
 _(REPLICATE_FAIL)
 
-clib_error_t *
+static clib_error_t *
 arp_notrace_init (vlib_main_t * vm)
 {
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, ip4_arp_node.index);
@@ -1975,6 +1968,7 @@ arp_notrace_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (arp_notrace_init);
 
 
+#ifndef CLIB_MARCH_VARIANT
 /* Send an ARP request to see if given destination is reachable on given interface. */
 clib_error_t *
 ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
@@ -2083,6 +2077,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
   adj_unlock (ai);
   return /* no error */ 0;
 }
+#endif
 
 typedef enum
 {
@@ -2570,9 +2565,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
     - <code> adj->rewrite_header.next_index </code>
       or @c ip4-drop
 */
-static uword
-ip4_rewrite (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame)
+
+VLIB_NODE_FN (ip4_rewrite_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
@@ -2580,9 +2575,9 @@ ip4_rewrite (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip4_rewrite_bcast (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_rewrite_bcast_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
@@ -2590,9 +2585,9 @@ ip4_rewrite_bcast (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip4_midchain (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_midchain_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip4_rewrite_inline (vm, node, frame, 1, 1, 0);
@@ -2600,9 +2595,9 @@ ip4_midchain (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
-static uword
-ip4_rewrite_mcast (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_rewrite_mcast_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip4_rewrite_inline (vm, node, frame, 1, 0, 1);
@@ -2610,9 +2605,9 @@ ip4_rewrite_mcast (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
-static uword
-ip4_mcast_midchain (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_mcast_midchain_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip4_rewrite_inline (vm, node, frame, 1, 1, 1);
@@ -2622,7 +2617,6 @@ ip4_mcast_midchain (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
-  .function = ip4_rewrite,
   .name = "ip4-rewrite",
   .vector_size = sizeof (u32),
 
@@ -2637,46 +2631,38 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 };
 
 VLIB_REGISTER_NODE (ip4_rewrite_bcast_node) = {
-  .function = ip4_rewrite_bcast,
   .name = "ip4-rewrite-bcast",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_rewrite_trace,
   .sibling_of = "ip4-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_bcast_node, ip4_rewrite_bcast)
 
 VLIB_REGISTER_NODE (ip4_rewrite_mcast_node) = {
-  .function = ip4_rewrite_mcast,
   .name = "ip4-rewrite-mcast",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_rewrite_trace,
   .sibling_of = "ip4-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_mcast_node, ip4_rewrite_mcast)
 
-VLIB_REGISTER_NODE (ip4_mcast_midchain_node, static) = {
-  .function = ip4_mcast_midchain,
+VLIB_REGISTER_NODE (ip4_mcast_midchain_node) = {
   .name = "ip4-mcast-midchain",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_rewrite_trace,
   .sibling_of = "ip4-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mcast_midchain_node, ip4_mcast_midchain)
 
 VLIB_REGISTER_NODE (ip4_midchain_node) = {
-  .function = ip4_midchain,
   .name = "ip4-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
   .sibling_of =  "ip4-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_midchain_node, ip4_midchain);
 /* *INDENT-ON */
 
-int
+static int
 ip4_lookup_validate (ip4_address_t * a, u32 fib_index0)
 {
   ip4_fib_mtrie_t *mtrie0;
@@ -2773,6 +2759,7 @@ VLIB_CLI_COMMAND (lookup_test_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
 {
@@ -2788,6 +2775,7 @@ vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
 
   return 0;
 }
+#endif
 
 static clib_error_t *
 set_ip_flow_hash_command_fn (vlib_main_t * vm,
@@ -2925,6 +2913,7 @@ VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 			     u32 table_index)
@@ -2984,6 +2973,7 @@ vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
   return 0;
 }
+#endif
 
 static clib_error_t *
 set_ip_classify_command_fn (vlib_main_t * vm,
