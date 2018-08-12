@@ -20,8 +20,8 @@
 #include <vnet/fib/fib_types.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/adj/adj.h>
-#include <map/map_dpo.h>
 #include <vnet/dpo/load_balance.h>
+#include "lpm.h"
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
@@ -33,6 +33,9 @@ int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
+int map_if_enable_disable (bool is_enable, u32 sw_if_index,
+			   u8 is_translation);
+
 u8 *format_map_trace (u8 * s, va_list * args);
 
 typedef enum
@@ -71,6 +74,8 @@ typedef enum
 
 #define MAP_IP6_REASS_COUNT_BYTES
 #define MAP_IP4_REASS_COUNT_BYTES
+
+#define MAP_DOMAIN_NO_DOMAIN 0
 
 //#define IP6_MAP_T_OVERRIDE_TOS 0
 
@@ -247,8 +252,6 @@ typedef struct {
   bool sec_check_frag;		/* Inbound security check for (subsequent) fragments */
   bool icmp6_enabled;		/* Send destination unreachable for security check failure */
 
-  bool is_ce;                   /* If this MAP node is a Customer Edge router*/
-
   /* ICMPv6 -> ICMPv4 relay parameters */
   ip4_address_t icmp4_src_address;
   vlib_simple_counter_main_t icmp_relayed;
@@ -300,6 +303,10 @@ typedef struct {
   /* Counters */
   u32 ip6_reass_buffered_counter;
 
+  /* Lookup tables */
+  lpm_t *ip4_prefix_tbl;
+  lpm_t *ip6_prefix_tbl;
+  lpm_t *ip6_src_prefix_tbl;
 } map_main_t;
 
 /*
@@ -409,63 +416,48 @@ map_get_sfx_net (map_domain_t *d, u32 addr, u16 port)
                                           clib_net_to_host_u16(port)));
 }
 
+/* TODO: Verify correct mapping */
 static_always_inline u32
 map_get_ip4 (ip6_address_t *addr, map_domain_flags_e flags)
 {
+  clib_warning("Not implemented yet!!!");
   if (flags & MAP_DOMAIN_RFC6052)
     return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]));
   else
     return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]) >> 16);
 }
 
-/*
- * Get the MAP domain from an IPv4 lookup adjacency.
- */
 static_always_inline map_domain_t *
-ip4_map_get_domain (u32 mdi)
+ip4_map_get_domain (ip4_address_t *addr, u32 *map_domain_index, u8 *error)
 {
   map_main_t *mm = &map_main;
-
+  u32 mdi = mm->ip4_prefix_tbl->lookup(mm->ip4_prefix_tbl, addr, 32);
+  if (mdi == ~0) {
+    *error = MAP_ERROR_NO_DOMAIN;
+    mdi = MAP_DOMAIN_NO_DOMAIN;
+  }
+  *map_domain_index = mdi;
   return pool_elt_at_index(mm->domains, mdi);
 }
 
 /*
- * Get the MAP domain from an IPv6 lookup adjacency.
- * If the IPv6 address or prefix is not shared, no lookup is required.
- * The IPv4 address is used otherwise.
+ * Get the MAP domain from an IPv6 address.
+ * If the IPv6 address or
+ * prefix is shared the IPv4 address must be used.
  */
 static_always_inline map_domain_t *
-ip6_map_get_domain (u32 mdi,
-                    ip4_address_t *addr,
+ip6_map_get_domain (ip6_address_t *addr,
                     u32 *map_domain_index,
                     u8 *error)
 {
   map_main_t *mm = &map_main;
-
-#ifdef TODO
-  /*
-   * Disable direct MAP domain lookup on decap, until the security check is updated to verify IPv4 SA.
-   * (That's done implicitly when MAP domain is looked up in the IPv4 FIB)
-   */
-  //#ifdef MAP_NONSHARED_DOMAIN_ENABLED
-  //#error "How can you be sure this domain is not shared?"
-#endif
-
+  u32 mdi = mm->ip6_src_prefix_tbl->lookup(mm->ip6_src_prefix_tbl, addr, 128);
+  if (mdi == ~0) {
+    *error = MAP_ERROR_NO_DOMAIN;
+    mdi = MAP_DOMAIN_NO_DOMAIN;
+  }
   *map_domain_index = mdi;
   return pool_elt_at_index(mm->domains, mdi);
-
-#ifdef TODO
-  u32 lbi = ip4_fib_forwarding_lookup(0, addr);
-  const dpo_id_t *dpo = load_balance_get_bucket(lbi, 0);
-  if (PREDICT_TRUE(dpo->dpoi_type == map_dpo_type ||
-		   dpo->dpoi_type == map_t_dpo_type))
-    {
-      *map_domain_index = dpo->dpoi_index;
-      return pool_elt_at_index(mm->domains, *map_domain_index);
-    }
-  *error = MAP_ERROR_NO_DOMAIN;
-  return NULL;
-#endif
 }
 
 map_ip4_reass_t *
@@ -530,21 +522,31 @@ int map_ip6_reass_conf_lifetime(u16 lifetime_ms);
 int map_ip6_reass_conf_buffers(u32 buffers);
 #define MAP_IP6_REASS_CONF_BUFFERS_MAX (0xffffffff)
 
+/*
+ * Supports prefix of 96 or 64 (with u-octet)
+ */
 static_always_inline void
 ip4_map_t_embedded_address (map_domain_t *d,
-                                ip6_address_t *ip6, const ip4_address_t *ip4)
+			    ip6_address_t *ip6, const ip4_address_t *ip4)
 {
-  ASSERT(d->ip6_src_len == 96); //No support for other lengths for now
+  ASSERT(d->ip6_src_len == 64 || d->ip6_src_len == 96);
+  u8 offset = d->ip6_src_len == 64 ? 9 : 12;
   ip6->as_u64[0] = d->ip6_src.as_u64[0];
-  ip6->as_u32[2] = d->ip6_src.as_u32[2];
-  ip6->as_u32[3] = ip4->as_u32;
+  ip6->as_u64[1] = d->ip6_src.as_u64[1];
+  clib_memcpy(&ip6->as_u8[offset], ip4, 4);
 }
 
+/*
+ * TODO: Verify correct mapping (RFC6052)
+ */
 static_always_inline u32
 ip6_map_t_embedded_address (map_domain_t *d, ip6_address_t *addr)
 {
-  ASSERT(d->ip6_src_len == 96); //No support for other lengths for now
-  return addr->as_u32[3];
+  ASSERT(d->ip6_src_len == 64 || d->ip6_src_len == 96);
+  u32 x;
+  u8 offset = d->ip6_src_len == 64 ? 9 : 12;
+  clib_memcpy(&x, &addr->as_u8[offset], 4);
+  return x;
 }
 
 static inline void
