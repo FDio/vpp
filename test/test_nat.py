@@ -5704,6 +5704,7 @@ class TestNAT44Out2InDPO(MethodHolder):
                                  '\x00\x00\x00\x00', 0, is_translation=1,
                                  is_rfc6052=1)
 
+    @unittest.skip('Awaiting reimplementation')
     def test_464xlat_ce(self):
         """ Test 464XLAT CE with NAT44 """
 
@@ -5742,6 +5743,7 @@ class TestNAT44Out2InDPO(MethodHolder):
             self.vapi.nat44_add_del_address_range(self.nat_addr_n,
                                                   self.nat_addr_n, is_add=0)
 
+    @unittest.skip('Awaiting reimplementation')
     def test_464xlat_ce_no_nat(self):
         """ Test 464XLAT CE without NAT44 """
 

@@ -54,19 +54,14 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u32 index;
   u8 flags = 0;
 
-  if (mp->is_translation)
-    flags |= MAP_DOMAIN_TRANSLATION;
-
-  if (mp->is_rfc6052)
-    flags |= MAP_DOMAIN_RFC6052;
-
   rv =
-    map_create_domain ((ip4_address_t *) & mp->ip4_prefix, mp->ip4_prefix_len,
-		       (ip6_address_t *) & mp->ip6_prefix, mp->ip6_prefix_len,
-		       (ip6_address_t *) & mp->ip6_src,
-		       mp->ip6_src_prefix_len, mp->ea_bits_len,
-		       mp->psid_offset, mp->psid_length, &index,
-		       ntohs (mp->mtu), flags);
+    map_create_domain ((ip4_address_t *) & mp->ip4_prefix.prefix,
+		       mp->ip4_prefix.len,
+		       (ip6_address_t *) & mp->ip6_prefix.prefix,
+		       mp->ip6_prefix.len,
+		       (ip6_address_t *) & mp->ip6_src.prefix,
+		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
+		       mp->psid_length, &index, ntohs (mp->mtu), flags);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
@@ -97,7 +92,7 @@ vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t * mp)
 
   rv =
     map_add_del_psid (ntohl (mp->index), ntohs (mp->psid),
-		      (ip6_address_t *) mp->ip6_dst, mp->is_add);
+		      (ip6_address_t *) & mp->ip6_dst, mp->is_add);
 
   REPLY_MACRO (VL_API_MAP_ADD_DEL_RULE_REPLY);
 }
@@ -125,18 +120,17 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
     rmp->context = mp->context;
     rmp->domain_index = htonl(d - mm->domains);
-    clib_memcpy(rmp->ip6_prefix, &d->ip6_prefix, sizeof(rmp->ip6_prefix));
-    clib_memcpy(rmp->ip4_prefix, &d->ip4_prefix, sizeof(rmp->ip4_prefix));
-    clib_memcpy(rmp->ip6_src, &d->ip6_src, sizeof(rmp->ip6_src));
-    rmp->ip6_prefix_len = d->ip6_prefix_len;
-    rmp->ip4_prefix_len = d->ip4_prefix_len;
-    rmp->ip6_src_len = d->ip6_src_len;
+    clib_memcpy(&rmp->ip6_prefix.prefix, &d->ip6_prefix, sizeof(rmp->ip6_prefix));
+    clib_memcpy(&rmp->ip4_prefix.prefix, &d->ip4_prefix, sizeof(rmp->ip4_prefix));
+    clib_memcpy(&rmp->ip6_src.prefix, &d->ip6_src, sizeof(rmp->ip6_src));
+    rmp->ip6_prefix.len = d->ip6_prefix_len;
+    rmp->ip4_prefix.len = d->ip4_prefix_len;
+    rmp->ip6_src.len = d->ip6_src_len;
     rmp->ea_bits_len = d->ea_bits_len;
     rmp->psid_offset = d->psid_offset;
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
-    rmp->is_translation = (d->flags & MAP_DOMAIN_TRANSLATION); // Redundant
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));
@@ -178,77 +172,38 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
       clib_memset (rmp, 0, sizeof (*rmp));
       rmp->_vl_msg_id = ntohs (VL_API_MAP_RULE_DETAILS + mm->msg_id_base);
       rmp->psid = htons (i);
-      clib_memcpy (rmp->ip6_dst, &dst, sizeof (rmp->ip6_dst));
+      clib_memcpy (&rmp->ip6_dst.address, &dst, sizeof (rmp->ip6_dst));
       rmp->context = mp->context;
       vl_api_send_msg (reg, (u8 *) rmp);
     }
 }
 
 static void
-vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
+vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
 {
-  vl_api_map_summary_stats_reply_t *rmp;
-  vlib_combined_counter_main_t *cm;
-  vlib_counter_t v;
-  int i, which;
-  u64 total_pkts[VLIB_N_RX_TX];
-  u64 total_bytes[VLIB_N_RX_TX];
   map_main_t *mm = &map_main;
-  vl_api_registration_t *reg;
+  vl_api_map_if_enable_disable_reply_t *rmp;
+  int rv = 0;
 
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
+  VALIDATE_SW_IF_INDEX (mp);
 
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_MAP_SUMMARY_STATS_REPLY + mm->msg_id_base);
-  rmp->context = mp->context;
-  rmp->retval = 0;
+  rv =
+    map_if_enable_disable (mp->is_enable, htonl (mp->sw_if_index),
+			   mp->is_translation);
 
-  if (pool_elts (mm->domains) == 0)
-    {
-      rmp->retval = -1;
-      goto out;
-    }
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_MAP_IF_ENABLE_DISABLE_REPLY);
+}
 
-  clib_memset (total_pkts, 0, sizeof (total_pkts));
-  clib_memset (total_bytes, 0, sizeof (total_bytes));
+static void
+vl_api_map_params_t_handler (vl_api_map_params_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_params_reply_t *rmp;
+  int rv = 0;			/* Used by REPLY_MACRO */
 
-  map_domain_counter_lock (mm);
-  vec_foreach (cm, mm->domain_counters)
-  {
-    which = cm - mm->domain_counters;
-
-    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
-      {
-	vlib_get_combined_counter (cm, i, &v);
-	total_pkts[which] += v.packets;
-	total_bytes[which] += v.bytes;
-      }
-  }
-
-  map_domain_counter_unlock (mm);
-
-  /* Note: in network byte order! */
-  rmp->total_pkts[MAP_DOMAIN_COUNTER_RX] =
-    clib_host_to_net_u64 (total_pkts[MAP_DOMAIN_COUNTER_RX]);
-  rmp->total_bytes[MAP_DOMAIN_COUNTER_RX] =
-    clib_host_to_net_u64 (total_bytes[MAP_DOMAIN_COUNTER_RX]);
-  rmp->total_pkts[MAP_DOMAIN_COUNTER_TX] =
-    clib_host_to_net_u64 (total_pkts[MAP_DOMAIN_COUNTER_TX]);
-  rmp->total_bytes[MAP_DOMAIN_COUNTER_TX] =
-    clib_host_to_net_u64 (total_bytes[MAP_DOMAIN_COUNTER_TX]);
-  rmp->total_bindings = clib_host_to_net_u64 (pool_elts (mm->domains));
-  rmp->total_ip4_fragments = 0;	// Not yet implemented. Should be a simple counter.
-  rmp->total_security_check[MAP_DOMAIN_COUNTER_TX] =
-    clib_host_to_net_u64 (map_error_counter_get
-			  (ip4_map_node.index, MAP_ERROR_ENCAP_SEC_CHECK));
-  rmp->total_security_check[MAP_DOMAIN_COUNTER_RX] =
-    clib_host_to_net_u64 (map_error_counter_get
-			  (ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
-
-out:
-  vl_api_send_msg (reg, (u8 *) rmp);
+  mm->tcp_mss = ntohs (mp->tcp_mss);
+  REPLY_MACRO (VL_API_MAP_PARAMS_REPLY);
 }
 
 #define foreach_map_plugin_api_msg		\
@@ -257,7 +212,8 @@ _(MAP_DEL_DOMAIN, map_del_domain)		\
 _(MAP_ADD_DEL_RULE, map_add_del_rule)		\
 _(MAP_DOMAIN_DUMP, map_domain_dump)		\
 _(MAP_RULE_DUMP, map_rule_dump)			\
-_(MAP_SUMMARY_STATS, map_summary_stats)
+_(MAP_IF_ENABLE_DISABLE, map_if_enable_disable) \
+_(MAP_PARAMS, map_params)
 
 #define vl_msg_name_crc_list
 #include <map/map_all_api_h.h>
