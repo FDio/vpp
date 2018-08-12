@@ -108,42 +108,20 @@ static int
 ip6_to_ip4_set_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 {
   icmp6_to_icmp_ctx_t *ctx = arg;
-  map_main_t *mm = &map_main;
+  u32 ip4_sadr;
 
-  if (mm->is_ce)
-    {
-      u32 ip4_dadr;
+  //Security check
+  //Note that this prevents an intermediate IPv6 router from answering the request
+  ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->flags);
+  if (ip6->src_address.as_u64[0] !=
+      map_get_pfx_net (ctx->d, ip4_sadr, ctx->id)
+      || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr,
+							ctx->id))
+    return -1;
 
-      //Security check
-      //Note that this prevents an intermediate IPv6 router from answering the request
-      ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->flags);
-      if (ip6->dst_address.as_u64[0] !=
-	  map_get_pfx_net (ctx->d, ip4_dadr, ctx->id)
-	  || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_dadr,
-							    ctx->id))
-	return -1;
-
-      ip4->src_address.as_u32 =
-	ip6_map_t_embedded_address (ctx->d, &ip6->src_address);
-      ip4->dst_address.as_u32 = ip4_dadr;
-    }
-  else
-    {
-      u32 ip4_sadr;
-
-      //Security check
-      //Note that this prevents an intermediate IPv6 router from answering the request
-      ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->flags);
-      if (ip6->src_address.as_u64[0] !=
-	  map_get_pfx_net (ctx->d, ip4_sadr, ctx->id)
-	  || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr,
-							    ctx->id))
-	return -1;
-
-      ip4->dst_address.as_u32 =
-	ip6_map_t_embedded_address (ctx->d, &ip6->dst_address);
-      ip4->src_address.as_u32 = ip4_sadr;
-    }
+  ip4->dst_address.as_u32 =
+    ip6_map_t_embedded_address (ctx->d, &ip6->dst_address);
+  ip4->src_address.as_u32 = ip4_sadr;
 
   return 0;
 }
@@ -153,42 +131,21 @@ ip6_to_ip4_set_inner_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 			      void *arg)
 {
   icmp6_to_icmp_ctx_t *ctx = arg;
-  map_main_t *mm = &map_main;
 
-  if (mm->is_ce)
-    {
-      u32 inner_ip4_sadr;
+  u32 inner_ip4_dadr;
 
-      //Security check of inner packet
-      inner_ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->flags);
-      if (ip6->src_address.as_u64[0] !=
-	  map_get_pfx_net (ctx->d, inner_ip4_sadr, ctx->id)
-	  || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d,
-							    inner_ip4_sadr,
-							    ctx->id))
-	return -1;
+  //Security check of inner packet
+  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->flags);
+  if (ip6->dst_address.as_u64[0] !=
+      map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->id)
+      || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d,
+							inner_ip4_dadr,
+							ctx->id))
+    return -1;
 
-      ip4->src_address.as_u32 = inner_ip4_sadr;
-      ip4->dst_address.as_u32 =
-	ip6_map_t_embedded_address (ctx->d, &ip6->dst_address);
-    }
-  else
-    {
-      u32 inner_ip4_dadr;
-
-      //Security check of inner packet
-      inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->flags);
-      if (ip6->dst_address.as_u64[0] !=
-	  map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->id)
-	  || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d,
-							    inner_ip4_dadr,
-							    ctx->id))
-	return -1;
-
-      ip4->dst_address.as_u32 = inner_ip4_dadr;
-      ip4->src_address.as_u32 =
-	ip6_map_t_embedded_address (ctx->d, &ip6->src_address);
-    }
+  ip4->dst_address.as_u32 = inner_ip4_dadr;
+  ip4->src_address.as_u32 =
+    ip6_map_t_embedded_address (ctx->d, &ip6->src_address);
 
   return 0;
 }
@@ -545,13 +502,7 @@ ip6_map_t_classify (vlib_buffer_t * p0, ip6_header_t * ip60,
 		    u8 * error0, ip6_mapt_next_t * next0,
 		    u32 l4_len0, ip6_frag_hdr_t * frag0)
 {
-  map_main_t *mm = &map_main;
-  u32 port_offset;
-
-  if (mm->is_ce)
-    port_offset = 2;
-  else
-    port_offset = 0;
+  u32 port_offset = 0;
 
   if (PREDICT_FALSE (vnet_buffer (p0)->map_t.v6.frag_offset &&
 		     ip6_frag_hdr_offset (frag0)))
@@ -635,7 +586,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_map_t_node.index);
-  map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
   u32 thread_index = vm->thread_index;
 
@@ -675,66 +625,22 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip60 = vlib_buffer_get_current (p0);
 	  ip61 = vlib_buffer_get_current (p1);
 
-	  if (mm->is_ce)
-	    {
-	      u32 daddr0, daddr1;
-	      daddr0 = 0;	/* TODO */
-	      daddr1 = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
+	  d0 = ip6_map_get_domain (&ip60->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
+	  d1 = ip6_map_get_domain (&ip61->dst_address,
+				   &vnet_buffer (p1)->map_t.map_domain_index,
+				   &error1);
+	  u32 saddr0, saddr1;
+	  saddr0 = map_get_ip4 (&ip60->src_address, d0->flags);
+	  saddr1 = map_get_ip4 (&ip61->src_address, d1->flags);
 
-	      daddr0 = map_get_ip4 (&ip60->dst_address, 0 /*TODO*/);
-	      daddr1 = map_get_ip4 (&ip61->dst_address, 0 /*TODO*/);
-	      d0 =
-		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & daddr0,
-				    &vnet_buffer (p0)->map_t.map_domain_index,
-				    &error0);
-	      d1 =
-		ip6_map_get_domain (vnet_buffer (p1)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & daddr1,
-				    &vnet_buffer (p1)->map_t.map_domain_index,
-				    &error1);
-
-	      daddr0 = map_get_ip4 (&ip60->dst_address, d0->flags);
-	      daddr1 = map_get_ip4 (&ip61->dst_address, d1->flags);
-
-	      vnet_buffer (p0)->map_t.v6.daddr = daddr0;
-	      vnet_buffer (p1)->map_t.v6.daddr = daddr1;
-	      vnet_buffer (p0)->map_t.v6.saddr =
-		ip6_map_t_embedded_address (d0, &ip60->src_address);
-	      vnet_buffer (p1)->map_t.v6.saddr =
-		ip6_map_t_embedded_address (d1, &ip61->src_address);
-	    }
-	  else
-	    {
-	      u32 saddr0, saddr1;
-	      saddr0 = 0;	/* TODO */
-	      saddr1 = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
-
-	      saddr0 = map_get_ip4 (&ip60->src_address, 0 /*TODO*/);
-	      saddr1 = map_get_ip4 (&ip61->src_address, 0 /*TODO*/);
-	      d0 =
-		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & saddr0,
-				    &vnet_buffer (p0)->map_t.map_domain_index,
-				    &error0);
-	      d1 =
-		ip6_map_get_domain (vnet_buffer (p1)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & saddr1,
-				    &vnet_buffer (p1)->map_t.map_domain_index,
-				    &error1);
-
-	      saddr0 = map_get_ip4 (&ip60->src_address, d0->flags);
-	      saddr1 = map_get_ip4 (&ip61->src_address, d1->flags);
-
-	      vnet_buffer (p0)->map_t.v6.saddr = saddr0;
-	      vnet_buffer (p1)->map_t.v6.saddr = saddr1;
-	      vnet_buffer (p0)->map_t.v6.daddr =
-		ip6_map_t_embedded_address (d0, &ip60->dst_address);
-	      vnet_buffer (p1)->map_t.v6.daddr =
-		ip6_map_t_embedded_address (d1, &ip61->dst_address);
-	    }
+	  vnet_buffer (p0)->map_t.v6.saddr = saddr0;
+	  vnet_buffer (p1)->map_t.v6.saddr = saddr1;
+	  vnet_buffer (p0)->map_t.v6.daddr =
+	    ip6_map_t_embedded_address (d0, &ip60->dst_address);
+	  vnet_buffer (p1)->map_t.v6.daddr =
+	    ip6_map_t_embedded_address (d1, &ip61->dst_address);
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 	  vnet_buffer (p1)->map_t.mtu = d1->mtu ? d1->mtu : ~0;
@@ -897,54 +803,16 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip60 = vlib_buffer_get_current (p0);
 
-	  if (mm->is_ce)
-	    {
-	      u32 daddr;
-	      //Save daddr in a different variable to not overwrite ip.adj_index
-	      daddr = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
-
-	      daddr = map_get_ip4 (&ip60->dst_address, 0 /*TODO*/);
-	      d0 =
-		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & daddr,
-				    &vnet_buffer (p0)->map_t.map_domain_index,
-				    &error0);
-
-	      daddr = map_get_ip4 (&ip60->dst_address, d0->flags);
-
-	      //FIXME: What if d0 is null
-	      vnet_buffer (p0)->map_t.v6.daddr = daddr;
-	      vnet_buffer (p0)->map_t.v6.saddr =
-		ip6_map_t_embedded_address (d0, &ip60->src_address);
-
-	      port_offset = 2;
-	    }
-	  else
-	    {
-	      u32 saddr;
-	      //Save saddr in a different variable to not overwrite ip.adj_index
-	      saddr = 0;	/* TODO */
-	      /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
-
-	      saddr = map_get_ip4 (&ip60->src_address, 0 /*TODO*/);
-	      d0 =
-		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & saddr,
-				    &vnet_buffer (p0)->map_t.map_domain_index,
-				    &error0);
-
-	      saddr = map_get_ip4 (&ip60->src_address, d0->flags);
-
-	      //FIXME: What if d0 is null
-	      vnet_buffer (p0)->map_t.v6.saddr = saddr;
-	      vnet_buffer (p0)->map_t.v6.daddr =
-		ip6_map_t_embedded_address (d0, &ip60->dst_address);
-
-	      port_offset = 0;
-	    }
-
+	  u32 saddr;
+	  d0 = ip6_map_get_domain (&ip60->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
+	  saddr = map_get_ip4 (&ip60->src_address, d0->flags);
+	  vnet_buffer (p0)->map_t.v6.saddr = saddr;
+	  vnet_buffer (p0)->map_t.v6.daddr =
+	    ip6_map_t_embedded_address (d0, &ip60->dst_address);
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
+	  port_offset = 0;	// Remove CE code
 
 	  if (PREDICT_FALSE (ip6_parse (ip60, p0->current_length,
 					&(vnet_buffer (p0)->map_t.
@@ -954,8 +822,8 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 					&(vnet_buffer (p0)->map_t.
 					  v6.frag_offset))))
 	    {
-	      error0 = MAP_ERROR_MALFORMED;
-	      next0 = IP6_MAPT_NEXT_DROP;
+	      error0 =
+		error0 == MAP_ERROR_NONE ? MAP_ERROR_MALFORMED : error0;
 	    }
 
 	  map_port0 = -1;
@@ -971,8 +839,12 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			     ip6_frag_hdr_offset (frag0)))
 	    {
 	      map_port0 = ip6_map_fragment_get (ip60, frag0, d0);
-	      error0 = (map_port0 != -1) ? error0 : MAP_ERROR_FRAGMENT_MEMORY;
-	      next0 = IP6_MAPT_NEXT_MAPT_FRAGMENTED;
+	      if (map_port0 == -1)
+		error0 =
+		  error0 ==
+		  MAP_ERROR_NONE ? MAP_ERROR_FRAGMENT_MEMORY : error0;
+	      else
+		next0 = IP6_MAPT_NEXT_MAPT_FRAGMENTED;
 	    }
 	  else
 	    if (PREDICT_TRUE
@@ -1035,19 +907,19 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      error0 = MAP_ERROR_BAD_PROTOCOL;
 	    }
 
-	  //Security check
-	  if (PREDICT_FALSE
-	      ((!mm->is_ce) && (map_port0 != -1)
-	       && (ip60->src_address.as_u64[0] !=
-		   map_get_pfx_net (d0, vnet_buffer (p0)->map_t.v6.saddr,
-				    map_port0)
-		   || ip60->src_address.as_u64[1] != map_get_sfx_net (d0,
-								      vnet_buffer
-								      (p0)->map_t.v6.saddr,
-								      map_port0))))
+	  if (PREDICT_FALSE (map_port0 != -1)
+	      && (ip60->src_address.as_u64[0] !=
+		  map_get_pfx_net (d0, vnet_buffer (p0)->map_t.v6.saddr,
+				   map_port0)
+		  || ip60->src_address.as_u64[1] != map_get_sfx_net (d0,
+								     vnet_buffer
+								     (p0)->map_t.
+								     v6.saddr,
+								     map_port0)))
 	    {
 	      //Security check when src_port0 is not zero (non-first fragment, UDP or TCP)
-	      error0 = MAP_ERROR_SEC_CHECK;
+	      error0 =
+		error0 == MAP_ERROR_NONE ? MAP_ERROR_SEC_CHECK : error0;
 	    }
 
 	  //Fragmented first packet needs to be cached for following packets
@@ -1157,6 +1029,13 @@ VLIB_REGISTER_NODE(ip6_map_t_tcp_udp_node) = {
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
+VNET_FEATURE_INIT (ip4_map_t_feature, static) =
+{
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-map-t",
+  .runs_before = VNET_FEATURES ("ip6-flow-classify"),
+};
+
 VLIB_REGISTER_NODE(ip6_map_t_node) = {
   .function = ip6_map_t,
   .name = "ip6-map-t",
