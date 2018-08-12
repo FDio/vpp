@@ -2612,6 +2612,15 @@ class VppPapiProvider(object):
                 'mtu': mtu
             })
 
+    def map_if_enable_disable(self, is_enable, sw_if_index, is_translation):
+        return self.api(
+            self.papi.map_if_enable_disable,
+            {
+                'is_enable': is_enable,
+                'sw_if_index': sw_if_index,
+                'is_translation': is_translation,
+            })
+
     def gtpu_add_del_tunnel(
             self,
             src_addr,

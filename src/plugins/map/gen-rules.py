@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser(description='MAP VPP configuration generator')
 parser.add_argument('-t', action="store", dest="mapmode")
 args = parser.parse_args()
 
+
 #
 # 1:1 Shared IPv4 address, shared BR
 #
@@ -71,7 +72,7 @@ def smallshared11():
 # 1:1 Full IPv4 address
 #
 def full11():
-    ip4_pfx = ipaddress.ip_network('20.0.0.0/16')
+    ip4_pfx = ipaddress.ip_network('20.0.0.0/10')
     ip6_src = ipaddress.ip_network('cccc:bbbb::/64')
     ip6_dst = ipaddress.ip_network('bbbb::/32')
     psid_len = 0
