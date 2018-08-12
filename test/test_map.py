@@ -88,6 +88,9 @@ class TestMAP(VppTestCase):
                                  client_pfx,
                                  16)
 
+        # Enable MAP on interface.
+        self.vapi.map_if_enable_disable(1, self.pg0.sw_if_index, 0)
+
         #
         # Fire in a v4 packet that will be encapped to the BR
         #
@@ -102,6 +105,9 @@ class TestMAP(VppTestCase):
         # Fire in a V6 encapped packet.
         #  expect a decapped packet on the inside ip4 link
         #
+        # Enable MAP on interface.
+        self.vapi.map_if_enable_disable(1, self.pg1.sw_if_index, 0)
+
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
              IPv6(dst=map_src, src="2001::1") /
              IP(dst=self.pg0.remote_ip4, src='192.168.1.1') /
@@ -180,12 +186,11 @@ class TestMAP(VppTestCase):
         ip4_pfx = socket.inet_pton(socket.AF_INET, "192.168.0.0")
 
         self.vapi.map_add_domain(map_dst, 32, map_src, 64, ip4_pfx,
-                                 24, 16, 6, 4, 1)
+                                 24, 16, 0, 8, 1)
 
         # Enable MAP-T on interfaces.
-
-        # self.vapi.map_if_enable_disable(1, self.pg0.sw_if_index, 1)
-        # self.vapi.map_if_enable_disable(1, self.pg1.sw_if_index, 1)
+        self.vapi.map_if_enable_disable(1, self.pg0.sw_if_index, 1)
+        self.vapi.map_if_enable_disable(1, self.pg1.sw_if_index, 1)
 
         map_route = VppIpRoute(self,
                                "2001:db8::",
@@ -205,7 +210,7 @@ class TestMAP(VppTestCase):
 
         p4 = (p_ether / p_ip4 / payload)
         p6_translated = (IPv6(src="1234:5678:90ab:cdef:ac:1001:200:0",
-                              dst="2001:db8:1f0::c0a8:1:f") / payload)
+                              dst="2001:db8:1ab::c0a8:1:ab") / payload)
         p6_translated.hlim -= 1
         rx = self.send_and_expect(self.pg0, p4*1, self.pg1)
         for p in rx:
@@ -213,7 +218,7 @@ class TestMAP(VppTestCase):
 
         # Send back an IPv6 packet that will be "untranslated"
         p_ether6 = Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
-        p_ip6 = IPv6(src='2001:db8:1f0::c0a8:1:f',
+        p_ip6 = IPv6(src='2001:db8:1ab::c0a8:1:ab',
                      dst='1234:5678:90ab:cdef:ac:1001:200:0')
         p6 = (p_ether6 / p_ip6 / payload)
         p4_translated = (IP(src='192.168.0.1',
