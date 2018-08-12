@@ -248,12 +248,12 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  p1 = vlib_get_buffer (vm, pi1);
 	  ip40 = vlib_buffer_get_current (p0);
 	  ip41 = vlib_buffer_get_current (p1);
-	  map_domain_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (map_domain_index0);
-	  map_domain_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
-	  d1 = ip4_map_get_domain (map_domain_index1);
-	  ASSERT (d0);
-	  ASSERT (d1);
+	  d0 =
+	    ip4_map_get_domain (&ip40->dst_address, &map_domain_index0,
+				&error0);
+	  d1 =
+	    ip4_map_get_domain (&ip41->dst_address, &map_domain_index1,
+				&error1);
 
 	  /*
 	   * Shared IPv4 address
@@ -417,9 +417,9 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip40 = vlib_buffer_get_current (p0);
-	  map_domain_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (map_domain_index0);
-	  ASSERT (d0);
+	  d0 =
+	    ip4_map_get_domain (&ip40->dst_address, &map_domain_index0,
+				&error0);
 
 	  /*
 	   * Shared IPv4 address
@@ -549,8 +549,9 @@ ip4_map_reass (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip60 = vlib_buffer_get_current (p0);
 	  ip40 = (ip4_header_t *) (ip60 + 1);
-	  map_domain_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (map_domain_index0);
+	  d0 =
+	    ip4_map_get_domain (&ip40->dst_address, &map_domain_index0,
+				&error0);
 
 	  map_ip4_reass_lock ();
 	  map_ip4_reass_t *r = map_ip4_reass_get (ip40->src_address.as_u32,
@@ -698,6 +699,11 @@ static char *map_error_strings[] = {
   foreach_map_error
 #undef _
 };
+
+VNET_FEATURE_INIT (ip4_map_feature, static) =
+{
+.arc_name = "ip4-unicast",.node_name = "ip4-map",.runs_before =
+    VNET_FEATURES ("ip4-flow-classify"),};
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip4_map_node) = {

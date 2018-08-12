@@ -19,5 +19,5 @@ add_vpp_plugin(map_plugin
   ip6_map_t.c
   map_api.c
   map.c
-  map_dpo.c
+  lpm.c
 )

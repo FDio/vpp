@@ -161,3 +161,12 @@ define map_summary_stats_reply
   u64 total_ip4_fragments;
   u64 total_security_check[2];
 };
+
+autoreply define map_if_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_enable;
+  u8 is_translation; /* 0 - encapsulation, 1 - translation */
+};

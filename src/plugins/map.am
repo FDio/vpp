@@ -22,7 +22,7 @@ map_plugin_la_SOURCES =				\
 	map/ip6_map_t.c				\
 	map/map_api.c				\
 	map/map.c				\
-	map/map_dpo.c
+	map/lpm.c
 
 API_FILES += map/map.api
 
@@ -30,8 +30,8 @@ nobase_apiinclude_HEADERS +=			\
 	map/map_all_api_h.h			\
 	map/map_msg_enum.h			\
 	map/map.api.h				\
-	map/map_dpo.h				\
 	map/map.h
+	map/lpm.h
 
 map_test_plugin_la_SOURCES =			\
 	map/map_test.c
