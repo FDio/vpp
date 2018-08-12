@@ -34,6 +34,7 @@ class BaseTypes():
                       'i32': '>i',
                       'u64': '>Q',
                       'f64': '>d',
+                      'bool': '>?',
                       'header': '>HI'}
 
         if elements > 0 and type == 'u8':
@@ -58,6 +59,7 @@ types['u32'] = BaseTypes('u32')
 types['i32'] = BaseTypes('i32')
 types['u64'] = BaseTypes('u64')
 types['f64'] = BaseTypes('f64')
+types['bool'] = BaseTypes('bool')
 
 
 class FixedList_u8():
