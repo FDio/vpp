@@ -251,13 +251,31 @@ out:
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
+static void
+vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_if_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv =
+    map_if_enable_disable (mp->is_enable, htonl (mp->sw_if_index),
+			   mp->is_translation);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_MAP_IF_ENABLE_DISABLE_REPLY);
+}
+
 #define foreach_map_plugin_api_msg		\
 _(MAP_ADD_DOMAIN, map_add_domain)		\
 _(MAP_DEL_DOMAIN, map_del_domain)		\
 _(MAP_ADD_DEL_RULE, map_add_del_rule)		\
 _(MAP_DOMAIN_DUMP, map_domain_dump)		\
 _(MAP_RULE_DUMP, map_rule_dump)			\
-_(MAP_SUMMARY_STATS, map_summary_stats)
+_(MAP_SUMMARY_STATS, map_summary_stats)		\
+_(MAP_IF_ENABLE_DISABLE, map_if_enable_disable)
 
 #define vl_msg_name_crc_list
 #include <map/map_all_api_h.h>
