@@ -31,20 +31,27 @@ def walk_defs(s):
     for t in s:
         d = []
         d.append(t.name)
-        for b in t.block:
-            f = []
-            if b.type == 'Field':
-                f = [b.fieldtype, b.fieldname]
-            elif b.type == 'Array':
-                if b.lengthfield:
-                    f = [b.fieldtype, b.fieldname, b.length, b.lengthfield]
+        try:
+            if t.typedef_alias == True:
+                f = t.block
+                d.append(f)
+        except:
+            pass
+        if type(t.block) is list:
+            for b in t.block:
+                f = []
+                if b.type == 'Field':
+                    f = [b.fieldtype, b.fieldname]
+                elif b.type == 'Array':
+                    if b.lengthfield:
+                        f = [b.fieldtype, b.fieldname, b.length, b.lengthfield]
+                    else:
+                        f = [b.fieldtype, b.fieldname, b.length]
+                elif b.type == 'Union':
+                    pass
                 else:
-                    f = [b.fieldtype, b.fieldname, b.length]
-            elif b.type == 'Union':
-                print('UNION')
-            else:
-                raise ValueError("Error in processing array type %s" % b)
-            d.append(f)
+                    raise ValueError("Error in processing array type %s" % b)
+                d.append(f)
         if t.crc:
             c = {}
             c['crc'] = "{0:#0{1}x}".format(t.crc, 10)
