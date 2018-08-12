@@ -109,26 +109,12 @@ static int
 ip4_to_ip6_set_icmp_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 {
   icmp_to_icmp6_ctx_t *ctx = arg;
-  map_main_t *mm = &map_main;
 
-  if (mm->is_ce)
-    {
-      ip6->src_address.as_u64[0] =
-	map_get_pfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
-      ip6->src_address.as_u64[1] =
-	map_get_sfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
-      ip4_map_t_embedded_address (ctx->d, &ip6->dst_address,
-				  &ip4->dst_address);
-    }
-  else
-    {
-      ip4_map_t_embedded_address (ctx->d, &ip6->src_address,
-				  &ip4->src_address);
-      ip6->dst_address.as_u64[0] =
-	map_get_pfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
-      ip6->dst_address.as_u64[1] =
-	map_get_sfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
-    }
+  ip4_map_t_embedded_address (ctx->d, &ip6->src_address, &ip4->src_address);
+  ip6->dst_address.as_u64[0] =
+    map_get_pfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
+  ip6->dst_address.as_u64[1] =
+    map_get_sfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
 
   return 0;
 }
@@ -138,30 +124,14 @@ ip4_to_ip6_set_inner_icmp_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 			      void *arg)
 {
   icmp_to_icmp6_ctx_t *ctx = arg;
-  map_main_t *mm = &map_main;
 
-  if (mm->is_ce)
-    {
-      //Note that the destination address is within the domain
-      //while the source address is the one outside the domain
-      ip4_map_t_embedded_address (ctx->d, &ip6->src_address,
-				  &ip4->src_address);
-      ip6->dst_address.as_u64[0] =
-	map_get_pfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
-      ip6->dst_address.as_u64[1] =
-	map_get_sfx_net (ctx->d, ip4->dst_address.as_u32, ctx->id);
-    }
-  else
-    {
-      //Note that the source address is within the domain
-      //while the destination address is the one outside the domain
-      ip4_map_t_embedded_address (ctx->d, &ip6->dst_address,
-				  &ip4->dst_address);
-      ip6->src_address.as_u64[0] =
-	map_get_pfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
-      ip6->src_address.as_u64[1] =
-	map_get_sfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
-    }
+  //Note that the source address is within the domain
+  //while the destination address is the one outside the domain
+  ip4_map_t_embedded_address (ctx->d, &ip6->dst_address, &ip4->dst_address);
+  ip6->src_address.as_u64[0] =
+    map_get_pfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
+  ip6->src_address.as_u64[1] =
+    map_get_sfx_net (ctx->d, ip4->src_address.as_u32, ctx->id);
 
   return 0;
 }
@@ -475,13 +445,7 @@ ip4_map_t_classify (vlib_buffer_t * p0, map_domain_t * d0,
 		    ip4_header_t * ip40, u16 ip4_len0, i32 * dst_port0,
 		    u8 * error0, ip4_mapt_next_t * next0)
 {
-  map_main_t *mm = &map_main;
-  u32 port_offset;
-
-  if (mm->is_ce)
-    port_offset = 0;
-  else
-    port_offset = 2;
+  u32 port_offset = 2;
 
   if (PREDICT_FALSE (ip4_get_fragment_offset (ip40)))
     {
@@ -539,7 +503,6 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
   u32 thread_index = vm->thread_index;
 
@@ -590,12 +553,12 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      next1 = IP4_MAPT_NEXT_DROP;
 	    }
 
-	  vnet_buffer (p0)->map_t.map_domain_index =
-	    vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (vnet_buffer (p0)->map_t.map_domain_index);
-	  vnet_buffer (p1)->map_t.map_domain_index =
-	    vnet_buffer (p1)->ip.adj_index[VLIB_TX];
-	  d1 = ip4_map_get_domain (vnet_buffer (p1)->map_t.map_domain_index);
+	  d0 = ip4_map_get_domain (&ip40->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
+	  d1 = ip4_map_get_domain (&ip41->dst_address,
+				   &vnet_buffer (p1)->map_t.map_domain_index,
+				   &error1);
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 	  vnet_buffer (p1)->map_t.mtu = d1->mtu ? d1->mtu : ~0;
@@ -615,44 +578,18 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  pheader1 = vlib_buffer_get_current (p1);
 
 	  //Save addresses within the packet
-	  if (mm->is_ce)
-	    {
-	      ip4_map_t_embedded_address (d0, &pheader0->daddr,
-					  &ip40->dst_address);
-	      ip4_map_t_embedded_address (d1, &pheader1->daddr,
-					  &ip41->dst_address);
-	      pheader0->saddr.as_u64[0] =
-		map_get_pfx_net (d0, ip40->src_address.as_u32,
-				 (u16) map_port0);
-	      pheader0->saddr.as_u64[1] =
-		map_get_sfx_net (d0, ip40->src_address.as_u32,
-				 (u16) map_port0);
-	      pheader1->saddr.as_u64[0] =
-		map_get_pfx_net (d1, ip41->src_address.as_u32,
-				 (u16) map_port1);
-	      pheader1->saddr.as_u64[1] =
-		map_get_sfx_net (d1, ip41->src_address.as_u32,
-				 (u16) map_port1);
-	    }
-	  else
-	    {
-	      ip4_map_t_embedded_address (d0, &pheader0->saddr,
-					  &ip40->src_address);
-	      ip4_map_t_embedded_address (d1, &pheader1->saddr,
-					  &ip41->src_address);
-	      pheader0->daddr.as_u64[0] =
-		map_get_pfx_net (d0, ip40->dst_address.as_u32,
-				 (u16) map_port0);
-	      pheader0->daddr.as_u64[1] =
-		map_get_sfx_net (d0, ip40->dst_address.as_u32,
-				 (u16) map_port0);
-	      pheader1->daddr.as_u64[0] =
-		map_get_pfx_net (d1, ip41->dst_address.as_u32,
-				 (u16) map_port1);
-	      pheader1->daddr.as_u64[1] =
-		map_get_sfx_net (d1, ip41->dst_address.as_u32,
-				 (u16) map_port1);
-	    }
+	  ip4_map_t_embedded_address (d0, &pheader0->saddr,
+				      &ip40->src_address);
+	  ip4_map_t_embedded_address (d1, &pheader1->saddr,
+				      &ip41->src_address);
+	  pheader0->daddr.as_u64[0] =
+	    map_get_pfx_net (d0, ip40->dst_address.as_u32, (u16) map_port0);
+	  pheader0->daddr.as_u64[1] =
+	    map_get_sfx_net (d0, ip40->dst_address.as_u32, (u16) map_port0);
+	  pheader1->daddr.as_u64[0] =
+	    map_get_pfx_net (d1, ip41->dst_address.as_u32, (u16) map_port1);
+	  pheader1->daddr.as_u64[1] =
+	    map_get_sfx_net (d1, ip41->dst_address.as_u32, (u16) map_port1);
 
 	  if (PREDICT_FALSE
 	      (ip4_is_first_fragment (ip40) && (map_port0 != -1)
@@ -731,9 +668,9 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      next0 = IP4_MAPT_NEXT_DROP;
 	    }
 
-	  vnet_buffer (p0)->map_t.map_domain_index =
-	    vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (vnet_buffer (p0)->map_t.map_domain_index);
+	  d0 = ip4_map_get_domain (&ip40->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
@@ -746,28 +683,12 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  pheader0 = vlib_buffer_get_current (p0);
 
 	  //Save addresses within the packet
-	  if (mm->is_ce)
-	    {
-	      ip4_map_t_embedded_address (d0, &pheader0->daddr,
-					  &ip40->dst_address);
-	      pheader0->saddr.as_u64[0] =
-		map_get_pfx_net (d0, ip40->src_address.as_u32,
-				 (u16) map_port0);
-	      pheader0->saddr.as_u64[1] =
-		map_get_sfx_net (d0, ip40->src_address.as_u32,
-				 (u16) map_port0);
-	    }
-	  else
-	    {
-	      ip4_map_t_embedded_address (d0, &pheader0->saddr,
-					  &ip40->src_address);
-	      pheader0->daddr.as_u64[0] =
-		map_get_pfx_net (d0, ip40->dst_address.as_u32,
-				 (u16) map_port0);
-	      pheader0->daddr.as_u64[1] =
-		map_get_sfx_net (d0, ip40->dst_address.as_u32,
-				 (u16) map_port0);
-	    }
+	  ip4_map_t_embedded_address (d0, &pheader0->saddr,
+				      &ip40->src_address);
+	  pheader0->daddr.as_u64[0] =
+	    map_get_pfx_net (d0, ip40->dst_address.as_u32, (u16) map_port0);
+	  pheader0->daddr.as_u64[1] =
+	    map_get_sfx_net (d0, ip40->dst_address.as_u32, (u16) map_port0);
 
 	  //It is important to cache at this stage because the result might be necessary
 	  //for packets within the same vector.
@@ -869,6 +790,13 @@ VLIB_REGISTER_NODE(ip4_map_t_tcp_udp_node) = {
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
+VNET_FEATURE_INIT (ip4_map_t_feature, static) =
+{
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-map-t",
+  .runs_before = VNET_FEATURES ("ip4-flow-classify"),
+};
+
 VLIB_REGISTER_NODE(ip4_map_t_node) = {
   .function = ip4_map_t,
   .name = "ip4-map-t",
