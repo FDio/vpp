@@ -64,7 +64,6 @@ types['u64'] = BaseTypes('u64')
 types['f64'] = BaseTypes('f64')
 types['bool'] = BaseTypes('bool')
 
-
 def vpp_get_type(name):
     try:
         return types[name]

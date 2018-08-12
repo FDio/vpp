@@ -135,6 +135,10 @@ class Typedef():
         global global_crc
         self.name = name
         self.flags = flags
+        if type(block) is list:
+            self.typedef_alias = False
+        else:
+            self.typedef_alias = True
         self.block = block
         self.crc = binascii.crc32(str(block)) & 0xffffffff
         global_crc = binascii.crc32(str(block), global_crc)
@@ -456,6 +460,10 @@ class VPPAPIParser(object):
     def p_typedef(self, p):
         '''typedef : TYPEDEF ID '{' block_statements_opt '}' ';' '''
         p[0] = Typedef(p[2], [], p[4])
+
+    def p_typedef2(self, p):
+        '''typedef : TYPEDEF type_specifier ID ';' '''
+        p[0] = Typedef(p[3], [], p[2])
 
     def p_block_statements_opt(self, p):
         '''block_statements_opt : block_statements '''
