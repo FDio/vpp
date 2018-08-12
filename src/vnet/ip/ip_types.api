@@ -48,3 +48,13 @@ typedef mprefix {
   vl_api_address_union_t grp_address;
   vl_api_address_union_t src_address;
 };
+
+typedef ip6_prefix {
+  vl_api_ip6_address_t prefix;
+  u8 len;
+};
+
+typedef ip4_prefix {
+  vl_api_ip4_address_t prefix;
+  u8 len;
+};

@@ -187,6 +187,17 @@ class VppIpPrefix():
                             (self, other))
         return False
 
+class VppIp6Prefix():
+    def __init__(self, prefix, prefixlen):
+        self.ip_prefix = ip_address(unicode(prefix))
+        self.prefixlen = prefixlen
+
+    def encode(self):
+        return {'prefix': { 'address' : self.ip_prefix.packed },
+                'len': self.prefixlen}
+
+class VppIp4Prefix(VppIp6Prefix):
+    pass
 
 class VppIpMPrefix():
     def __init__(self, saddr, gaddr, len):
