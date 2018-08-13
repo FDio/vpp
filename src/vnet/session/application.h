@@ -20,6 +20,14 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/application_namespace.h>
 
+#define APP_DEBUG 0
+
+#if APP_DEBUG > 0
+#define APP_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define APP_DBG(_fmt, _args...)
+#endif
+
 typedef struct _stream_session_cb_vft
 {
   /** Notify server of new segment */
@@ -33,7 +41,7 @@ typedef struct _stream_session_cb_vft
   int (*session_accept_callback) (stream_session_t * new_session);
 
   /** Connection request callback */
-  int (*session_connected_callback) (u32 app_index, u32 opaque,
+  int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
 				     stream_session_t * s, u8 code);
 
   /** Notify app that session is closing */
@@ -50,39 +58,20 @@ typedef struct _stream_session_cb_vft
 
 } session_cb_vft_t;
 
-typedef struct _application
+typedef struct app_worker_
 {
-  /** Index in server pool */
-  u32 index;
+  /** Worker index in global worker pool*/
+  u32 wrk_index;
 
-  /** Flags */
-  u32 flags;
+  /** Worker index in app's map pool */
+  u32 wrk_map_index;
 
-  /** Name registered by builtin apps */
-  u8 *name;
-
-  /*
-   * Binary API interface to external app
-   */
-
-  /** Binary API connection index, ~0 if internal */
-  u32 api_client_index;
-
-  /** Namespace the application belongs to */
-  u32 ns_index;
+  /** Index of owning app */
+  u32 app_index;
 
   /** Application listens for events on this svm queue */
   svm_msg_q_t *event_queue;
 
-  /*
-   * Callbacks: shoulder-taps for the server/client
-   */
-
-  session_cb_vft_t cb_fns;
-
-  /*
-   * ssvm (fifo) segment management
-   */
   /** Segment manager used for outgoing connects issued by the app */
   u32 connects_seg_manager;
 
@@ -96,11 +85,6 @@ typedef struct _application
    */
   u32 first_segment_manager;
   u8 first_segment_manager_in_use;
-
-  /** Segment manager properties. Shared by all segment managers */
-  segment_manager_properties_t sm_properties;
-
-  u16 proxied_transports;
 
   /*
    * Local "cut through" connections specific
@@ -118,6 +102,42 @@ typedef struct _application
   /** Hash table of the app's local connects */
   uword *local_connects;
 
+  u8 app_is_builtin;
+} app_worker_t;
+
+typedef struct app_worker_map_
+{
+  u32 wrk_index;
+} app_worker_map_t;
+
+typedef struct application_
+{
+  /** App index in app pool */
+  u32 app_index;
+
+  /** Binary API connection index, ~0 if internal */
+  u32 api_client_index;
+
+  /** Flags */
+  u32 flags;
+
+  /** Callbacks: shoulder-taps for the server/client */
+  session_cb_vft_t cb_fns;
+
+  /** Segment manager properties. Shared by all segment managers */
+  segment_manager_properties_t sm_properties;
+
+  /** Pool of mappings that keep track of workers associated to this app */
+  app_worker_map_t *worker_maps;
+
+  /** Name registered by builtin apps */
+  u8 *name;
+
+  /** Namespace the application belongs to */
+  u32 ns_index;
+
+  u16 proxied_transports;
+
   /*
    * TLS Specific
    */
@@ -132,97 +152,145 @@ typedef struct _application
   u8 tls_engine;
 } application_t;
 
+typedef struct app_main_
+{
+  /**
+   * Pool from which we allocate all applications
+   */
+  application_t *app_pool;
+
+  /**
+   * Pool of workers associated to apps
+   */
+  app_worker_t *workers;
+
+  /**
+   * Hash table of apps by api client index
+   */
+  uword *app_by_api_client_index;
+
+  /**
+   * Hash table of builtin apps by name
+   */
+  uword *app_by_name;
+} app_main_t;
+
+#define foreach_app_init_args			\
+  _(u32, api_client_index)			\
+  _(u8 *, name)					\
+  _(u64 *, options)				\
+  _(u8 *, namespace_id)				\
+  _(session_cb_vft_t *, session_cb_vft)		\
+  _(u32, app_index)				\
+
+typedef struct app_init_args_
+{
+#define _(_type, _name) _type _name;
+  foreach_app_init_args
+#undef _
+} app_init_args_t;
+
+typedef struct _vnet_app_worker_add_del_args
+{
+  u32 app_index;		/**< App for which a new worker is requested */
+  u32 wrk_index;		/**< Index to delete or return value if add */
+  ssvm_private_t *segment;	/**< First segment in segment manager */
+  svm_msg_q_t *evt_q;		/**< Worker message queue */
+  u8 is_add;			/**< Flag set if addition */
+} vnet_app_worker_add_del_args_t;
+
 #define APP_INVALID_INDEX ((u32)~0)
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
-application_t *application_new ();
-int application_init (application_t * app, u32 api_client_index,
-		      u8 * name, u64 * options, session_cb_vft_t * cb_fns);
-void application_del (application_t * app);
+app_worker_t *app_worker_alloc (application_t * app);
+int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
+app_worker_t *app_worker_get (u32 wrk_index);
+app_worker_t *app_worker_get_if_valid (u32 wrk_index);
+void app_worker_free (app_worker_t * app_wrk);
+int app_worker_start_listen (app_worker_t * app,
+			     session_endpoint_t * tep,
+			     session_handle_t * handle);
+int app_worker_stop_listen (session_handle_t handle, u32 app_wrk_index);
+int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
+			     u32 api_context);
+segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
+							  stream_session_t *);
+segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
+int app_worker_alloc_connects_segment_manager (app_worker_t * app);
+int app_worker_add_segment_notify (u32 app_wrk_index, ssvm_private_t * fs);
+u32 app_worker_n_listeners (app_worker_t * app);
+stream_session_t *app_worker_first_listener (app_worker_t * app,
+					     u8 fib_proto,
+					     u8 transport_proto);
+u8 app_worker_application_is_builtin (app_worker_t * app_wrk);
+clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+
+application_t *application_alloc (void);
+int application_alloc_and_init (app_init_args_t * args);
+void application_free (application_t * app);
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
 application_t *application_lookup_name (const u8 * name);
-u32 application_get_index (application_t * app);
-
-int application_start_listen (application_t * app,
-			      session_endpoint_t * tep,
-			      session_handle_t * handle);
-int application_start_local_listen (application_t * server,
-				    session_endpoint_t * sep,
-				    session_handle_t * handle);
-int application_stop_listen (application_t * srv, session_handle_t handle);
-int application_stop_local_listen (application_t * server,
-				   session_handle_t listener_handle);
-int application_open_session (application_t * app, session_endpoint_t * tep,
-			      u32 api_context);
+u32 application_index (application_t * app);
+app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
+app_worker_t *application_get_default_worker (application_t * app);
 int application_api_queue_is_full (application_t * app);
 
-segment_manager_t *application_get_listen_segment_manager (application_t *
-							   app,
-							   stream_session_t *
-							   ls);
-segment_manager_t *application_get_connect_segment_manager (application_t *
-							    app);
-int application_alloc_connects_segment_manager (application_t * app);
 
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
-int application_add_segment_notify (u32 app_index, ssvm_private_t * fs);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
-u8 *application_name_from_index (u32 app_index);
-
+u8 *application_name_from_index (u32 app_wrk_index);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
-u32 application_n_listeners (application_t * app);
-stream_session_t *application_first_listener (application_t * app,
-					      u8 fib_proto,
-					      u8 transport_proto);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
 segment_manager_properties_t *application_get_segment_manager_properties (u32
-									  app_index);
+									  app_wrk_index);
 segment_manager_properties_t
   * application_segment_manager_properties (application_t * app);
 
-local_session_t *application_alloc_local_session (application_t * app);
-void application_free_local_session (application_t * app,
+local_session_t *application_alloc_local_session (app_worker_t * app);
+void application_free_local_session (app_worker_t * app,
 				     local_session_t * ls);
-local_session_t *application_get_local_session (application_t * app,
+local_session_t *application_get_local_session (app_worker_t * app,
 						u32 session_index);
 local_session_t *application_get_local_session_from_handle (session_handle_t
 							    handle);
-int application_local_session_connect (u32 table_index,
-				       application_t * client,
-				       application_t * server,
+int application_start_local_listen (app_worker_t * server,
+				    session_endpoint_t * sep,
+				    session_handle_t * handle);
+int application_stop_local_listen (session_handle_t lh, u32 app_wrk_index);
+int application_local_session_connect (app_worker_t * client,
+				       app_worker_t * server,
 				       local_session_t * ll, u32 opaque);
 int application_local_session_connect_notify (local_session_t * ls);
-int application_local_session_disconnect (u32 app_index,
+int application_local_session_disconnect (u32 app_wrk_index,
 					  local_session_t * ls);
-int application_local_session_disconnect_w_index (u32 app_index,
+int application_local_session_disconnect_w_index (u32 app_wrk_index,
 						  u32 ls_index);
-void application_local_sessions_del (application_t * app);
+void application_local_sessions_free (app_worker_t * app);
 
-int application_send_event (application_t * app, stream_session_t * s,
-			    u8 evt);
-int application_lock_and_send_event (application_t * app,
+int application_send_event (app_worker_t * app, stream_session_t * s, u8 evt);
+int application_lock_and_send_event (app_worker_t * app,
 				     stream_session_t * s, u8 evt_type);
 
 always_inline u32
 local_session_id (local_session_t * ll)
 {
-  ASSERT (ll->app_index < (2 << 16) && ll->session_index < (2 << 16));
-  return ((u32) ll->app_index << 16 | (u32) ll->session_index);
+  ASSERT (ll->app_wrk_index < (2 << 16) && ll->session_index < (2 << 16));
+  return ((u32) ll->app_wrk_index << 16 | (u32) ll->session_index);
 }
 
 always_inline void
-local_session_parse_id (u32 ls_id, u32 * app_index, u32 * session_index)
+local_session_parse_id (u32 ls_id, u32 * app_wrk_index, u32 * session_index)
 {
-  *app_index = ls_id >> 16;
+  *app_wrk_index = ls_id >> 16;
   *session_index = ls_id & 0xFFF;
 }
 
@@ -244,7 +312,7 @@ application_local_session_handle (local_session_t * ls)
 }
 
 always_inline local_session_t *
-application_get_local_listen_session (application_t * app, u32 session_index)
+application_get_local_listen_session (app_worker_t * app, u32 session_index)
 {
   return pool_elt_at_index (app->local_listen_sessions, session_index);
 }
@@ -252,10 +320,10 @@ application_get_local_listen_session (application_t * app, u32 session_index)
 always_inline local_session_t *
 application_get_local_listener_w_handle (session_handle_t handle)
 {
-  u32 server_index, session_index;
-  application_t *app;
-  local_session_parse_handle (handle, &server_index, &session_index);
-  app = application_get (server_index);
+  u32 server_wrk_index, session_index;
+  app_worker_t *app;
+  local_session_parse_handle (handle, &server_wrk_index, &session_index);
+  app = app_worker_get (server_wrk_index);
   return application_get_local_listen_session (app, session_index);
 }
 
@@ -267,11 +335,8 @@ application_local_session_listener_has_transport (local_session_t * ls)
   return (tp != TRANSPORT_PROTO_NONE);
 }
 
-void mq_send_local_session_disconnected_cb (u32 app_index,
+void mq_send_local_session_disconnected_cb (u32 app_wrk_index,
 					    local_session_t * ls);
-
-int application_connect (u32 client_index, u32 api_context,
-			 session_endpoint_t * sep);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 

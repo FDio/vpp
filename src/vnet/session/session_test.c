@@ -212,7 +212,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
   u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u32 server_index, server_st_index, server_local_st_index;
-  u32 dummy_port = 1234, client_index;
+  u32 dummy_port = 1234, client_index, server_wrk_index;
   u32 dummy_api_context = 4321, dummy_client_api_index = 1234;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
@@ -318,6 +318,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
   server = application_get (server_index);
+  server_wrk_index = application_get_default_worker (server)->wrk_index;
   SESSION_TEST ((server->ns_index == 0),
 		"server should be in the default ns");
 
@@ -328,8 +329,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
-		"the server");
+  SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be"
+		" that of the server");
   server_local_st_index = application_local_session_table (server);
   SESSION_TEST ((server_local_st_index == APP_INVALID_INDEX),
 		"server shouldn't have access to local table");
@@ -357,6 +358,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
   server = application_get (server_index);
+  server_wrk_index = application_get_default_worker (server)->wrk_index;
   SESSION_TEST ((server->ns_index == app_namespace_index (app_ns)),
 		"server should be in the right ns");
 
@@ -366,8 +368,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
-		"the server");
+  SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be"
+		" that of the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
   SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
@@ -506,6 +508,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
+  server = application_get (server_index);
+  server_wrk_index = application_get_default_worker (server)->wrk_index;
 
   bind_args.app_index = server_index;
   error = vnet_bind (&bind_args);
@@ -515,8 +519,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   s = session_lookup_listener (server_st_index, &intf_sep);
   SESSION_TEST ((s != 0), "intf listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
-		"the server");
+  SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be "
+		"that of the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
   SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
@@ -1372,7 +1376,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   char *show_listeners = "sh session listeners tcp verbose";
   char *show_local_listeners = "sh app ns table default";
   unformat_input_t tmp_input;
-  u32 server_index, app_index;
+  u32 server_index, app_index, server_wrk_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
   u8 is_filtered = 0;
@@ -1380,6 +1384,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
   app_namespace_t *app_ns;
+  application_t *server;
   int verbose = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1439,6 +1444,8 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
+  server = application_get (server_index);
+  server_wrk_index = application_get_default_worker (server)->wrk_index;
 
   if (verbose)
     {
@@ -1455,8 +1462,8 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
 		"successful");
   s = listen_session_get (tc->s_index);
-  SESSION_TEST ((s->app_index == server_index), "lookup should return the"
-		" server");
+  SESSION_TEST ((s->app_wrk_index == server_wrk_index), "lookup should return"
+		" the server");
 
   tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
 				      TRANSPORT_PROTO_TCP, 0, &is_filtered);
