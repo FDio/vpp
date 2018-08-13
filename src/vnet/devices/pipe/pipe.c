@@ -390,7 +390,7 @@ pipe_rx (vlib_main_t * vm,
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next0);
+					   bi0, bi1, next0, next1);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
