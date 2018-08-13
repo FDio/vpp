@@ -221,7 +221,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   u8 *ns_id = format (0, "appns1");
   app_namespace_t *app_ns;
-  application_t *server;
+  app_worker_t *server;
   stream_session_t *s;
   u64 handle;
   int code;

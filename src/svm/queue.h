@@ -39,12 +39,13 @@ typedef struct _svm_queue
 
 typedef enum
 {
-  SVM_Q_WAIT = 0,	/**< blocking call - must be used only in combination
-			     with condvars */
+  SVM_Q_WAIT = 0,	/**< blocking call - best used in combination with
+			     condvars, for eventfds we don't yield the cpu */
   SVM_Q_NOWAIT,		/**< non-blocking call - works with both condvar and
 			     eventfd signaling */
   SVM_Q_TIMEDWAIT,	/**< blocking call, returns on signal or time-out -
-			     must be used only in combination with condvars */
+			     best used in combination with condvars, with
+			     eventfds we don't yield the cpu */
 } svm_q_conditional_wait_t;
 
 /**

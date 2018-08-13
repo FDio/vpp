@@ -41,9 +41,10 @@ typedef struct _vnet_app_attach_args_t
   /*
    * Results
    */
+  u32 app_index;
+
   ssvm_private_t *segment;
   svm_msg_q_t *app_evt_q;
-  u32 app_index;
 } vnet_app_attach_args_t;
 
 typedef struct _vnet_app_detach_args_t
@@ -60,6 +61,7 @@ typedef struct _vnet_bind_args_t
   };
 
   u32 app_index;
+  u32 app_wrk_index;
 
   /*
    * Results
@@ -75,9 +77,10 @@ typedef struct _vnet_unbind_args_t
   union
   {
     char *uri;
-    u64 handle;
+    u64 handle;			/**< Session handle */
   };
-  u32 app_index;
+  u32 app_index;		/**< Owning application index */
+  u32 app_wrk_index;		/**< App's local pool worker index */
 } vnet_unbind_args_t;
 
 typedef struct _vnet_connect_args
