@@ -518,7 +518,7 @@ alloc_check:
       *fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
 
       if (added_a_segment)
-	rv = application_add_segment_notify (sm->app_index,
+	rv = app_worker_add_segment_notify (sm->app_index,
 					     &fifo_segment->ssvm);
       /* Drop the lock after app is notified */
       segment_manager_segment_reader_unlock (sm);
