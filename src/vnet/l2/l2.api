@@ -459,6 +459,32 @@ autoreply define bd_ip_mac_add_del
   u8 mac_address[6];
 };
 
+/** \brief bridge domain IP to MAC entry details structure
+    @param bd_id - bridge domain table id
+    @param is_ipv6 - if non-zero, ipv6 address, else ipv4 address
+    @param ip_address - ipv4 or ipv6 address
+    @param mac_address - MAC address
+*/
+define bd_ip_mac_details
+{
+  u32 context;
+  u32 bd_id;
+  u8 is_ipv6;
+  u8 ip_address[16];
+  u8 mac_address[6];
+};
+
+/** \brief Dump bridge domain IP to MAC entries
+    @param client_index - opaque cookie to identify the sender
+    @param bd_id - bridge domain identifier
+*/
+define bd_ip_mac_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+};
+
 /** \brief L2 interface ethernet flow point filtering enable/disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
