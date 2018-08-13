@@ -58,6 +58,7 @@ _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
 _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
+_(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static int
 session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
@@ -137,7 +138,8 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
-  strcpy ((char *) mp->segment_name, (char *) fs->name);
+  strncpy ((char *) mp->segment_name, (char *) fs->name,
+	   sizeof (mp->segment_name) - 1);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
@@ -193,14 +195,16 @@ send_app_cut_through_registration_add (u32 api_client_index, u64 mq_addr,
 static int
 send_session_accept_callback (stream_session_t * s)
 {
-  application_t *server = application_get (s->app_index);
+  app_worker_t *server_wrk = app_worker_get (s->app_wrk_index);
   transport_proto_vft_t *tp_vft;
   vl_api_accept_session_t *mp;
   vl_api_registration_t *reg;
   transport_connection_t *tc;
   stream_session_t *listener;
   svm_msg_q_t *vpp_queue;
+  application_t *server;
 
+  server = application_get (server_wrk->app_index);
   reg = vl_mem_api_client_index_to_registration (server->api_client_index);
   if (!reg)
     {
@@ -212,7 +216,7 @@ send_session_accept_callback (stream_session_t * s)
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
-  mp->context = server->index;
+  mp->context = server_wrk->wrk_index;
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
 
@@ -223,8 +227,8 @@ send_session_accept_callback (stream_session_t * s)
       if (application_is_proxy (server))
 	{
 	  listener =
-	    application_first_listener (server, session_get_fib_proto (s),
-					session_get_transport_proto (s));
+	    app_worker_first_listener (server_wrk, session_get_fib_proto (s),
+				       session_get_transport_proto (s));
 	  if (listener)
 	    mp->listener_handle = listen_session_get_handle (listener);
 	}
@@ -249,7 +253,7 @@ send_session_accept_callback (stream_session_t * s)
 	}
       else
 	{
-	  ll = application_get_local_listen_session (server,
+	  ll = application_get_local_listen_session (server_wrk,
 						     ls->listener_index);
 	  if (ll->transport_listener_index != ~0)
 	    {
@@ -273,15 +277,18 @@ send_session_accept_callback (stream_session_t * s)
 }
 
 void
-mq_send_local_session_disconnected_cb (u32 app_index, local_session_t * ls)
+mq_send_local_session_disconnected_cb (u32 app_wrk_index,
+				       local_session_t * ls)
 {
-  application_t *app = application_get (app_index);
+  app_worker_t *app_wrk = app_worker_get (app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_disconnected_msg_t *mp;
   svm_msg_q_t *app_mq;
   session_event_t *evt;
+  application_t *app;
 
-  app_mq = app->event_queue;
+  app = application_get (app_wrk->app_index);
+  app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
   svm_msg_q_unlock (app_mq);
@@ -297,10 +304,12 @@ mq_send_local_session_disconnected_cb (u32 app_index, local_session_t * ls)
 static void
 send_session_disconnect_callback (stream_session_t * s)
 {
-  application_t *app = application_get (s->app_index);
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   vl_api_disconnect_session_t *mp;
   vl_api_registration_t *reg;
+  application_t *app;
 
+  app = application_get (app_wrk->app_index);
   reg = vl_mem_api_client_index_to_registration (app->api_client_index);
   if (!reg)
     {
@@ -319,10 +328,12 @@ send_session_disconnect_callback (stream_session_t * s)
 static void
 send_session_reset_callback (stream_session_t * s)
 {
-  application_t *app = application_get (s->app_index);
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   vl_api_registration_t *reg;
   vl_api_reset_session_t *mp;
+  application_t *app;
 
+  app = application_get (app_wrk->app_index);
   reg = vl_mem_api_client_index_to_registration (app->api_client_index);
   if (!reg)
     {
@@ -338,16 +349,18 @@ send_session_reset_callback (stream_session_t * s)
 }
 
 int
-send_session_connected_callback (u32 app_index, u32 api_context,
+send_session_connected_callback (u32 app_wrk_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail)
 {
   vl_api_connect_session_reply_t *mp;
   transport_connection_t *tc;
   vl_api_registration_t *reg;
   svm_msg_q_t *vpp_queue;
+  app_worker_t *app_wrk;
   application_t *app;
 
-  app = application_get (app_index);
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
   reg = vl_mem_api_client_index_to_registration (app->api_client_index);
   if (!reg)
     {
@@ -410,7 +423,7 @@ static session_cb_vft_t session_cb_vft = {
 static int
 mq_send_session_accepted_cb (stream_session_t * s)
 {
-  application_t *app = application_get (s->app_index);
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
   transport_proto_vft_t *tp_vft;
@@ -418,8 +431,10 @@ mq_send_session_accepted_cb (stream_session_t * s)
   stream_session_t *listener;
   session_accepted_msg_t *mp;
   session_event_t *evt;
+  application_t *app;
 
-  app_mq = app->event_queue;
+  app = application_get (app_wrk->app_index);
+  app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
   svm_msg_q_unlock (app_mq);
@@ -428,7 +443,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
   mp = (session_accepted_msg_t *) evt->data;
-  mp->context = app->index;
+  mp->context = app_wrk->wrk_index;
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
 
@@ -439,8 +454,8 @@ mq_send_session_accepted_cb (stream_session_t * s)
       if (application_is_proxy (app))
 	{
 	  listener =
-	    application_first_listener (app, session_get_fib_proto (s),
-					session_get_transport_proto (s));
+	    app_worker_first_listener (app_wrk, session_get_fib_proto (s),
+				       session_get_transport_proto (s));
 	  if (listener)
 	    mp->listener_handle = listen_session_get_handle (listener);
 	}
@@ -471,7 +486,9 @@ mq_send_session_accepted_cb (stream_session_t * s)
 	}
       else
 	{
-	  ll = application_get_local_listen_session (app, ls->listener_index);
+	  ll =
+	    application_get_local_listen_session (app_wrk,
+						  ls->listener_index);
 	  if (ll->transport_listener_index != ~0)
 	    {
 	      listener = listen_session_get (ll->transport_listener_index);
@@ -498,13 +515,15 @@ mq_send_session_accepted_cb (stream_session_t * s)
 static void
 mq_send_session_disconnected_cb (stream_session_t * s)
 {
-  application_t *app = application_get (s->app_index);
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_disconnected_msg_t *mp;
   svm_msg_q_t *app_mq;
   session_event_t *evt;
+  application_t *app;
 
-  app_mq = app->event_queue;
+  app = application_get (app_wrk->app_index);
+  app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
   svm_msg_q_unlock (app_mq);
@@ -520,7 +539,7 @@ mq_send_session_disconnected_cb (stream_session_t * s)
 static void
 mq_send_session_reset_cb (stream_session_t * s)
 {
-  application_t *app = application_get (s->app_index);
+  app_worker_t *app = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_reset_msg_t *mp;
   svm_msg_q_t *app_mq;
@@ -539,21 +558,23 @@ mq_send_session_reset_cb (stream_session_t * s)
 }
 
 static int
-mq_send_session_connected_cb (u32 app_index, u32 api_context,
+mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 			      stream_session_t * s, u8 is_fail)
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_connected_msg_t *mp;
   svm_msg_q_t *vpp_mq, *app_mq;
   transport_connection_t *tc;
+  app_worker_t *app_wrk;
   session_event_t *evt;
   application_t *app;
 
-  app = application_get (app_index);
-  app_mq = app->event_queue;
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+  app_mq = app_wrk->event_queue;
   if (!app_mq)
     {
-      clib_warning ("app %u with api index: %u not attached", app->index,
+      clib_warning ("app %u with api index: %u not attached", app->app_index,
 		    app->api_client_index);
       return -1;
     }
@@ -753,7 +774,7 @@ vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       rv = vnet_application_detach (a);
     }
 
@@ -783,7 +804,7 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
     {
       memset (a, 0, sizeof (*a));
       a->uri = (char *) mp->uri;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       rv = vnet_bind_uri (a);
     }
   else
@@ -836,7 +857,7 @@ vl_api_unbind_uri_t_handler (vl_api_unbind_uri_t * mp)
   if (app)
     {
       a->uri = (char *) mp->uri;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       rv = vnet_unbind_uri (a);
     }
   else
@@ -868,7 +889,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
     {
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       if ((error = vnet_connect_uri (a)))
 	{
 	  rv = clib_error_get_code (error);
@@ -912,7 +933,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   if (app)
     {
       a->handle = mp->handle;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       rv = vnet_disconnect_session (a);
     }
   else
@@ -943,7 +964,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
   if (app)
     {
       a->handle = mp->handle;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       vnet_disconnect_session (a);
     }
 }
@@ -951,6 +972,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 static void
 vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
 {
+  app_worker_t *app_wrk;
   application_t *app;
   stream_session_t *s;
   u32 index, thread_index;
@@ -961,9 +983,17 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
 
   session_parse_handle (mp->handle, &index, &thread_index);
   s = session_get_if_valid (index, thread_index);
-  if (s == 0 || app->index != s->app_index)
+  if (!s)
     {
       clib_warning ("Invalid session!");
+      return;
+    }
+
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != app->app_index)
+    {
+      clib_warning ("app %u does not own handle 0x%lx", app->app_index,
+		    mp->handle);
       return;
     }
 
@@ -998,7 +1028,7 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
   if (session_handle_is_local (mp->handle))
     {
       ls = application_get_local_session_from_handle (mp->handle);
-      if (!ls || ls->app_index != mp->context)
+      if (!ls || ls->app_wrk_index != mp->context)
 	{
 	  clib_warning ("server %u doesn't own local handle %llu",
 			mp->context, mp->handle);
@@ -1016,7 +1046,7 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 	  clib_warning ("session doesn't exist");
 	  return;
 	}
-      if (s->app_index != mp->context)
+      if (s->app_wrk_index != mp->context)
 	{
 	  clib_warning ("app doesn't own session");
 	  return;
@@ -1066,7 +1096,8 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   a->sep.fib_index = mp->vrf;
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep.transport_proto = mp->proto;
-  a->app_index = app->index;
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
 
   if ((error = vnet_bind (a)))
     {
@@ -1118,7 +1149,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       a->handle = mp->handle;
       if ((error = vnet_unbind (a)))
 	{
@@ -1163,17 +1194,18 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
       if (mp->hostname_len)
 	{
-	  vec_validate (a->sep.hostname, mp->hostname_len - 1);
-	  clib_memcpy (a->sep.hostname, mp->hostname, mp->hostname_len);
+	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
+	  clib_memcpy (a->sep_ext.hostname, mp->hostname, mp->hostname_len);
 	}
       a->api_context = mp->context;
-      a->app_index = app->index;
+      a->app_index = app->app_index;
+      a->wrk_map_index = mp->wrk_index;
       if ((error = vnet_connect (a)))
 	{
 	  rv = clib_error_get_code (error);
 	  clib_error_report (error);
 	}
-      vec_free (a->sep.hostname);
+      vec_free (a->sep_ext.hostname);
     }
   else
     {
@@ -1187,6 +1219,84 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
 done:
   REPLY_MACRO (VL_API_CONNECT_SESSION_REPLY);
+}
+
+static void
+vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
+{
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  vl_api_app_worker_add_del_reply_t *rmp;
+  vl_api_registration_t *reg;
+  clib_error_t *error = 0;
+  application_t *app;
+  u8 fd_flags = 0;
+
+  if (!session_manager_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  app = application_lookup (mp->app_api_index);
+  if (!app)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  vnet_app_worker_add_del_args_t args = {
+    .app_index = app->app_index,
+    .wrk_index = clib_net_to_host_u32 (mp->wrk_index),
+    .is_add = mp->is_add
+  };
+  error = vnet_app_worker_add_del (&args);
+  if (error)
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+      goto done;
+    }
+
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (args.segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = args.segment->fd;
+      n_fds += 1;
+    }
+  if (application_segment_manager_properties (app)->use_mq_eventfd)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (args.evt_q);
+      n_fds += 1;
+    }
+
+  /* *INDENT-OFF* */
+done:
+  REPLY_MACRO2 (VL_API_APP_WORKER_ADD_DEL_REPLY, ({
+    rmp->is_add = mp->is_add;
+    if (!rv)
+      {
+	rmp->wrk_index = clib_host_to_net_u32 (args.wrk_index);
+	if (vec_len (args.segment->name))
+	  {
+	    memcpy (rmp->segment_name, args.segment->name,
+	            vec_len (args.segment->name));
+	    rmp->segment_name_length = vec_len (args.segment->name);
+	  }
+	rmp->app_event_queue_address = pointer_to_uword (args.evt_q);
+	rmp->n_fds = n_fds;
+	rmp->fd_flags = fd_flags;
+      }
+  }));
+  /* *INDENT-ON* */
+
+  if (n_fds)
+    session_send_fds (reg, fds, n_fds);
 }
 
 static void
@@ -1444,7 +1554,7 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
       goto done;
     }
   memset (a, 0, sizeof (*a));
-  a->app_index = app->index;
+  a->app_index = app->app_index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   if (cert_len > 10000)
     {
@@ -1484,7 +1594,7 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       goto done;
     }
   memset (a, 0, sizeof (*a));
-  a->app_index = app->index;
+  a->app_index = app->app_index;
   key_len = clib_net_to_host_u16 (mp->key_len);
   if (key_len > 10000)
     {
@@ -1510,7 +1620,7 @@ application_reaper_cb (u32 client_index)
   vnet_app_detach_args_t _a, *a = &_a;
   if (app)
     {
-      a->app_index = app->index;
+      a->app_index = app->app_index;
       vnet_application_detach (a);
     }
   return 0;

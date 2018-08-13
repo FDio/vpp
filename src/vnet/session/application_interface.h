@@ -23,27 +23,11 @@
 
 typedef struct _vnet_app_attach_args_t
 {
-  /** Binary API client index */
-  u32 api_client_index;
-
-  /** Application name. Used by builtin apps */
-  u8 *name;
-
-  /** Application and segment manager options */
-  u64 *options;
-
-  /** ID of the namespace the app has access to */
-  u8 *namespace_id;
-
-  /** Session to application callback functions */
-  session_cb_vft_t *session_cb_vft;
-
-  /*
-   * Results
-   */
-  ssvm_private_t *segment;
+#define _(_type, _name) _type _name;
+  foreach_app_init_args
+#undef _
+  ssvm_private_t * segment;
   svm_msg_q_t *app_evt_q;
-  u32 app_index;
 } vnet_app_attach_args_t;
 
 typedef struct _vnet_app_detach_args_t
@@ -55,11 +39,13 @@ typedef struct _vnet_bind_args_t
 {
   union
   {
-    char *uri;
+    session_endpoint_extended_t sep_ext;
     session_endpoint_t sep;
+    char *uri;
   };
 
   u32 app_index;
+  u32 wrk_map_index;
 
   /*
    * Results
@@ -75,19 +61,22 @@ typedef struct _vnet_unbind_args_t
   union
   {
     char *uri;
-    u64 handle;
+    u64 handle;			/**< Session handle */
   };
-  u32 app_index;
+  u32 app_index;		/**< Owning application index */
+  u32 app_wrk_index;		/**< App's local pool worker index */
 } vnet_unbind_args_t;
 
 typedef struct _vnet_connect_args
 {
   union
   {
+    session_endpoint_extended_t sep_ext;
+    session_endpoint_t sep;
     char *uri;
-    session_endpoint_extended_t sep;
   };
   u32 app_index;
+  u32 wrk_map_index;
   u32 api_context;
 
   session_handle_t session_handle;

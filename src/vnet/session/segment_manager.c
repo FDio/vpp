@@ -34,7 +34,7 @@ static u32 default_app_evt_queue_size = 128;
 segment_manager_properties_t *
 segment_manager_properties_get (segment_manager_t * sm)
 {
-  return application_get_segment_manager_properties (sm->app_index);
+  return application_get_segment_manager_properties (sm->app_wrk_index);
 }
 
 segment_manager_properties_t *
@@ -50,13 +50,13 @@ segment_manager_properties_init (segment_manager_properties_t * props)
 static u8
 segment_manager_app_detached (segment_manager_t * sm)
 {
-  return (sm->app_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
+  return (sm->app_wrk_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
 }
 
 void
 segment_manager_app_detach (segment_manager_t * sm)
 {
-  sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+  sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
 }
 
 always_inline u32
@@ -369,7 +369,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	if (fifo->master_thread_index == 255)
 	  {
 	    svm_fifo_t *next = fifo->next;
-	    application_local_session_disconnect_w_index (sm->app_index,
+	    application_local_session_disconnect_w_index (sm->app_wrk_index,
 	                                                  fifo->master_session_index);
 	    fifo = next;
 	    continue;
@@ -518,8 +518,8 @@ alloc_check:
       *fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
 
       if (added_a_segment)
-	rv = application_add_segment_notify (sm->app_index,
-					     &fifo_segment->ssvm);
+	rv = app_worker_add_segment_notify (sm->app_wrk_index,
+					    &fifo_segment->ssvm);
       /* Drop the lock after app is notified */
       segment_manager_segment_reader_unlock (sm);
       return rv;
@@ -721,8 +721,8 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
-	vlib_cli_output (vm, "%-10d%=15d%=12d", segment_manager_index(sm),
-			   sm->app_index, pool_elts (sm->segments));
+	vlib_cli_output (vm, "%-10d%=15d%=12d", segment_manager_index (sm),
+			   sm->app_wrk_index, pool_elts (sm->segments));
       }));
       /* *INDENT-ON* */
 
