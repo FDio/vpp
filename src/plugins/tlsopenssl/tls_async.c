@@ -512,11 +512,14 @@ tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		   vlib_frame_t * f)
 {
   u8 thread_index;
+  openssl_async_t *om = &openssl_async_main;
 
   thread_index = vlib_get_thread_index ();
-  openssl_async_polling ();
-
-  tls_resume_from_crypto (thread_index);
+  if (pool_elts (om->evt_pool[thread_index]) > 0)
+    {
+      openssl_async_polling ();
+      tls_resume_from_crypto (thread_index);
+    }
 
   return 0;
 }
