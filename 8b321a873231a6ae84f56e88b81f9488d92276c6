@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e8a72c51_0cbc3c64",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-13T16:47:11Z",
+      "side": 1,
+      "message": "Do we expect to have events if openssl_async_polling () didn\u0027t run?",
+      "range": {
+        "startLine": 523,
+        "startChar": 2,
+        "endLine": 523,
+        "endChar": 24
+      },
+      "revId": "8b321a873231a6ae84f56e88b81f9488d92276c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
