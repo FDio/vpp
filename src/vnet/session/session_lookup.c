@@ -375,12 +375,12 @@ static stream_session_t *
 session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
 				   u8 transport_proto)
 {
-  application_t *app;
+  app_worker_t *app;
   app = application_get_if_valid (app_index);
   if (!app)
     return 0;
 
-  return application_first_listener (app, fib_proto, transport_proto);
+  return app_worker_first_listener (app, fib_proto, transport_proto);
 }
 
 static stream_session_t *
@@ -1307,7 +1307,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
   if (!is_local)
     {
       session = session_get_from_handle (kvp->value);
-      app_name = application_name_from_index (session->app_index);
+      app_name = application_name_from_index (session->app_wrk_index);
       str = format (0, "[%U] %U:%d->%U:%d", format_transport_proto_short,
 		    key->proto, format_ip4_address, &key->src,
 		    clib_net_to_host_u16 (key->src_port), format_ip4_address,
