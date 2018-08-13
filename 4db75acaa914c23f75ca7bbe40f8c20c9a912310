@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aacc118a_70538c02",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 7716,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-08-13T17:30:43Z",
+      "side": 1,
+      "message": "vec_free (ip)",
+      "revId": "4db75acaa914c23f75ca7bbe40f8c20c9a912310",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
