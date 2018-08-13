@@ -137,7 +137,8 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
-  strcpy ((char *) mp->segment_name, (char *) fs->name);
+  strncpy ((char *) mp->segment_name, (char *) fs->name,
+	   sizeof (mp->segment_name) - 1);
 
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
