@@ -380,7 +380,8 @@ session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
   if (!app)
     return 0;
 
-  return application_first_listener (app, fib_proto, transport_proto);
+  return app_worker_first_listener (application_get_default_worker (app),
+				    fib_proto, transport_proto);
 }
 
 static stream_session_t *
@@ -1299,15 +1300,17 @@ u8 *
 format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 {
   clib_bihash_kv_16_8_t *kvp = va_arg (*args, clib_bihash_kv_16_8_t *);
-  u32 is_local = va_arg (*args, u32), app_index, session_index;
+  u32 is_local = va_arg (*args, u32), app_wrk_index, session_index;
+  v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
   u8 *app_name, *str = 0;
   stream_session_t *session;
-  v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
+  app_worker_t *app_wrk;
 
   if (!is_local)
     {
       session = session_get_from_handle (kvp->value);
-      app_name = application_name_from_index (session->app_index);
+      app_wrk = app_worker_get (session->app_wrk_index);
+      app_name = application_name_from_index (app_wrk->app_index);
       str = format (0, "[%U] %U:%d->%U:%d", format_transport_proto_short,
 		    key->proto, format_ip4_address, &key->src,
 		    clib_net_to_host_u16 (key->src_port), format_ip4_address,
@@ -1316,8 +1319,9 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
     }
   else
     {
-      local_session_parse_handle (kvp->value, &app_index, &session_index);
-      app_name = application_name_from_index (app_index);
+      local_session_parse_handle (kvp->value, &app_wrk_index, &session_index);
+      app_wrk = app_worker_get (app_wrk_index);
+      app_name = application_name_from_index (app_wrk->app_index);
       str = format (0, "[%U] %U:%d", format_transport_proto_short, key->proto,
 		    format_ip4_address, &key->src,
 		    clib_net_to_host_u16 (key->src_port));
