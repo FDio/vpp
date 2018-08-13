@@ -63,6 +63,7 @@ _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)       \
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)				\
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)             \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                         \
+_(BD_IP_MAC_DUMP, bd_ip_mac_dump)				\
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                 \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                       \
 _(BRIDGE_FLAGS, bridge_flags)                                   \
@@ -699,6 +700,85 @@ static void
   BAD_BD_ID_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_L2_BRIDGE_REPLY);
+}
+
+static void
+send_bd_ip_mac_entry (vpe_api_main_t * am,
+		      vl_api_registration_t * reg,
+		      u32 bd_id, u8 is_ipv6,
+		      u8 * ip_address, u8 * mac_address, u32 context)
+{
+  vl_api_bd_ip_mac_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_BD_IP_MAC_DETAILS);
+
+  mp->bd_id = ntohl (bd_id);
+
+  clib_memcpy (mp->mac_address, mac_address, 6);
+  mp->is_ipv6 = is_ipv6;
+  clib_memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
+  mp->context = context;
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  bd_main_t *bdm = &bd_main;
+  l2_bridge_domain_t *bd_config;
+  u32 bd_id = ntohl (mp->bd_id);
+  u32 bd_index, start = 1, end;
+  vl_api_registration_t *reg;
+  uword *p;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  end = vec_len (l2input_main.bd_configs);
+
+  /* see bd_id: ~0 means "any" */
+  if (bd_id == ~0)
+    bd_index = ~0;
+  else
+    {
+      p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+      if (p == 0)
+	return;
+
+      bd_index = p[0];
+      vec_validate (l2input_main.bd_configs, bd_index);
+      start = bd_index;
+      end = start + 1;
+    }
+
+  for (bd_index = start; bd_index < end; bd_index++)
+    {
+      bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+      if (bd_is_valid (bd_config))
+	{
+	  ip4_address_t ip4_addr;
+	  ip6_address_t *ip6_addr;
+	  u64 mac_addr;
+	  bd_id = bd_config->bd_id;
+
+         /* *INDENT-OFF* */
+         hash_foreach (ip4_addr.as_u32, mac_addr, bd_config->mac_by_ip4,
+         ({
+            send_bd_ip_mac_entry (am, reg, bd_id, 0, (u8 *) &(ip4_addr.as_u8), (u8 *) &mac_addr, mp->context);
+         }));
+
+         hash_foreach_mem (ip6_addr, mac_addr, bd_config->mac_by_ip6,
+         ({
+            send_bd_ip_mac_entry (am, reg, bd_id, 1, (u8 *) &(ip6_addr->as_u8), (u8 *) &mac_addr, mp->context);
+         }));
+         /* *INDENT-ON* */
+	}
+    }
 }
 
 static void
