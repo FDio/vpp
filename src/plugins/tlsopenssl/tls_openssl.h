@@ -29,13 +29,19 @@ typedef struct tls_ctx_openssl_
   SSL *ssl;
   BIO *rbio;
   BIO *wbio;
+} openssl_ctx_t;
+
+typedef struct tls_listen_ctx_opensl_
+{
   X509 *srvcert;
   EVP_PKEY *pkey;
-} openssl_ctx_t;
+  int ref;
+} openssl_listen_ctx_t;
 
 typedef struct openssl_main_
 {
   openssl_ctx_t ***ctx_pool;
+  openssl_listen_ctx_t listen_ctx;
 
   X509_STORE *cert_store;
   int engine_init;
