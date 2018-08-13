@@ -486,6 +486,16 @@ static void *vl_api_bd_ip_mac_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_bd_ip_mac_dump_t_print
+  (vl_api_bd_ip_mac_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bd_ip_mac_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_tap_connect_t_print
   (vl_api_tap_connect_t * mp, void *handle)
 {

@@ -5684,6 +5684,7 @@ _(IKEV2_INITIATE_DEL_CHILD_SA_REPLY, ikev2_initiate_del_child_sa_reply) \
 _(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply) \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
+_(BD_IP_MAC_DETAILS, bd_ip_mac_details)                                 \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)					\
@@ -7663,6 +7664,100 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
     clib_memcpy (mp->ip_address, &v4addr, sizeof (v4addr));
   clib_memcpy (mp->mac_address, macaddr, 6);
   S (mp);
+  W (ret);
+  return ret;
+}
+
+static void vl_api_bd_ip_mac_details_t_handler
+  (vl_api_bd_ip_mac_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u8 *ip = 0;
+
+  if (!mp->is_ipv6)
+    ip =
+      format (0, "%U", format_ip4_address, (ip4_address_t *) mp->ip_address);
+  else
+    ip =
+      format (0, "%U", format_ip6_address, (ip6_address_t *) mp->ip_address);
+
+  print (vam->ofp,
+	 "\n%-5d %-7s %-20U %-30s",
+	 ntohl (mp->bd_id), mp->is_ipv6 ? "ip6" : "ip4",
+	 format_ethernet_address, mp->mac_address, ip);
+
+  vec_free (ip);
+}
+
+static void vl_api_bd_ip_mac_details_t_handler_json
+  (vl_api_bd_ip_mac_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
+  vat_json_object_add_uint (node, "is_ipv6", ntohl (mp->is_ipv6));
+  vat_json_object_add_string_copy (node, "mac_address",
+				   format (0, "%U", format_ethernet_address,
+					   &mp->mac_address));
+  u8 *ip = 0;
+
+  if (!mp->is_ipv6)
+    ip =
+      format (0, "%U", format_ip4_address, (ip4_address_t *) mp->ip_address);
+  else
+    ip =
+      format (0, "%U", format_ip6_address, (ip6_address_t *) mp->ip_address);
+  vat_json_object_add_string_copy (node, "ip_address", ip);
+  vec_free (ip);
+}
+
+static int
+api_bd_ip_mac_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bd_ip_mac_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 bd_id;
+  u8 bd_id_set = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bd_id %d", &bd_id))
+	{
+	  bd_id_set++;
+	}
+      else
+	break;
+    }
+
+  print (vam->ofp,
+	 "\n%-5s %-7s %-20s %-30s",
+	 "bd_id", "is_ipv6", "mac_address", "ip_address");
+
+  /* Dump Bridge Domain Ip to Mac entries */
+  M (BD_IP_MAC_DUMP, mp);
+
+  if (bd_id_set)
+    mp->bd_id = htonl (bd_id);
+  else
+    mp->bd_id = ~0;
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -23397,6 +23492,7 @@ _(ikev2_initiate_del_child_sa, "<ispi>")                                \
 _(ikev2_initiate_rekey_child_sa, "<ispi>")                              \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
+_(bd_ip_mac_dump, "[bd_id] <id>")                                       \
 _(want_interface_events,  "enable|disable")                             \
 _(want_stats,"enable|disable")                                          \
 _(get_first_msg_id, "client <name>")					\
