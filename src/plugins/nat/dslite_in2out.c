@@ -103,8 +103,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       clib_bihash_add_del_8_8 (&dm->per_thread_data[thread_index].out2in,
 			       &out2in_kv, 0);
       snat_free_outside_address_and_port (dm->addr_pool, thread_index,
-					  &s->out2in,
-					  s->outside_address_index);
+					  &s->out2in);
       s->outside_address_index = ~0;
 
       if (snat_alloc_outside_address_and_port

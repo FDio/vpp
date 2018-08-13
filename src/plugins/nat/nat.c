@@ -190,8 +190,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
   clib_bihash_kv_8_8_t kv;
   nat_ed_ses_key_t ed_key;
   clib_bihash_kv_16_8_t ed_kv;
-  int i;
-  snat_address_t *a;
   snat_main_per_thread_data_t *tsm =
     vec_elt_at_index (sm->per_thread_data, thread_index);
 
@@ -271,18 +269,11 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
   /* Twice NAT address and port for external host */
   if (is_twice_nat_session (s))
     {
-      for (i = 0; i < vec_len (sm->twice_nat_addresses); i++)
-        {
-          key.protocol = s->in2out.protocol;
-          key.port = s->ext_host_nat_port;
-          a = sm->twice_nat_addresses + i;
-          if (a->addr.as_u32 == s->ext_host_nat_addr.as_u32)
-            {
-              snat_free_outside_address_and_port (sm->twice_nat_addresses,
-                                                  thread_index, &key, i);
-              break;
-            }
-        }
+      key.protocol = s->in2out.protocol;
+      key.port = s->ext_host_nat_port;
+      key.addr.as_u32 = s->ext_host_nat_addr.as_u32;
+      snat_free_outside_address_and_port (sm->twice_nat_addresses,
+                                          thread_index, &key);
     }
 
   if (snat_is_session_static (s))
@@ -290,7 +281,7 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
 
   if (s->outside_address_index != ~0)
     snat_free_outside_address_and_port (sm->addresses, thread_index,
-                                        &s->out2in, s->outside_address_index);
+                                        &s->out2in);
 }
 
 snat_user_t *
@@ -2094,11 +2085,17 @@ VLIB_INIT_FUNCTION (snat_init);
 
 void snat_free_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
-                                         snat_session_key_t * k,
-                                         u32 address_index)
+                                         snat_session_key_t * k)
 {
   snat_address_t *a;
+  u32 address_index;
   u16 port_host_byte_order = clib_net_to_host_u16 (k->port);
+
+  for (address_index = 0; address_index < vec_len (addresses); address_index++)
+    {
+      if (addresses[address_index].addr.as_u32 == k->addr.as_u32)
+        break;
+    }
 
   ASSERT (address_index < vec_len (addresses));
 
