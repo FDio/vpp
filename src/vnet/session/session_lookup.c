@@ -375,12 +375,12 @@ static stream_session_t *
 session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
 				   u8 transport_proto)
 {
-  application_t *app;
+  app_worker_t *app;
   app = application_get_if_valid (app_index);
   if (!app)
     return 0;
 
-  return application_first_listener (app, fib_proto, transport_proto);
+  return app_worker_first_listener (app, fib_proto, transport_proto);
 }
 
 static stream_session_t *
