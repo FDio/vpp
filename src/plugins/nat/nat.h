@@ -451,8 +451,7 @@ extern vlib_node_registration_t nat44_ed_out2in_worker_handoff_node;
 
 void snat_free_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
-                                         snat_session_key_t * k,
-                                         u32 address_index);
+                                         snat_session_key_t * k);
 
 int snat_alloc_outside_address_and_port (snat_address_t * addresses,
                                          u32 fib_index,
