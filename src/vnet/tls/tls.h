@@ -41,6 +41,7 @@ typedef CLIB_PACKED (struct tls_cxt_id_
   u32 parent_app_index;
   session_handle_t app_session_handle;
   session_handle_t tls_session_handle;
+  u32 ssl_ctx;
   u32 listener_ctx_index;
   u8 tcp_is_ip4;
   u8 tls_engine_id;
@@ -62,6 +63,7 @@ typedef struct tls_ctx_
 #define listener_ctx_index c_tls_ctx_id.listener_ctx_index
 #define tcp_is_ip4 c_tls_ctx_id.tcp_is_ip4
 #define tls_ctx_engine c_tls_ctx_id.tls_engine_id
+#define tls_ssl_ctx c_tls_ctx_id.ssl_ctx
 #define tls_ctx_handle c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
@@ -99,6 +101,8 @@ typedef struct tls_engine_vft_
   int (*ctx_read) (tls_ctx_t * ctx, stream_session_t * tls_session);
   int (*ctx_write) (tls_ctx_t * ctx, stream_session_t * app_session);
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
+  int (*ctx_start_listen) (tls_ctx_t * ctx);
+  int (*ctx_stop_listen) (tls_ctx_t * ctx);
 } tls_engine_vft_t;
 
 typedef enum tls_engine_type_
