@@ -314,7 +314,7 @@ VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 static int
 clear_session (stream_session_t * s)
 {
-  application_t *server = application_get (s->app_index);
+  app_worker_t *server = application_get (s->app_index);
   server->cb_fns.session_disconnect_callback (s);
   return 0;
 }

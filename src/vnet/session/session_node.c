@@ -70,7 +70,7 @@ session_mq_accepted_reply_handler (void *data)
       s->session_state = SESSION_STATE_READY;
       if (!svm_fifo_is_empty (s->server_rx_fifo))
 	{
-	  application_t *app;
+	  app_worker_t *app;
 	  app = application_get (s->app_index);
 	  application_send_event (app, s, FIFO_EVENT_APP_RX);
 	}
@@ -81,7 +81,7 @@ static void
 session_mq_reset_reply_handler (void *data)
 {
   session_reset_reply_msg_t *mp;
-  application_t *app;
+  app_worker_t *app;
   stream_session_t *s;
   u32 index, thread_index;
 
@@ -92,7 +92,7 @@ session_mq_reset_reply_handler (void *data)
 
   session_parse_handle (mp->handle, &index, &thread_index);
   s = session_get_if_valid (index, thread_index);
-  if (s == 0 || app->index != s->app_index)
+  if (s == 0 || app->wrk_index != s->app_index)
     {
       clib_warning ("Invalid session!");
       return;
@@ -119,13 +119,13 @@ session_mq_disconnected_handler (void *data)
   session_disconnected_msg_t *mp;
   session_event_t *evt;
   stream_session_t *s;
-  application_t *app;
+  app_worker_t *app;
   int rv = 0;
 
   mp = (session_disconnected_msg_t *) data;
   app = application_lookup (mp->client_index);
   s = session_get_from_handle_if_valid (mp->handle);
-  if (!(app && s && s->app_index == app->index))
+  if (!(app && s && s->app_index == app->wrk_index))
     {
       clib_warning ("could not disconnect session: %llu app: %u", mp->handle,
 		    mp->client_index);
@@ -133,7 +133,7 @@ session_mq_disconnected_handler (void *data)
     }
 
   a->handle = mp->handle;
-  a->app_index = app->index;
+  a->app_index = app->wrk_index;
   rv = vnet_disconnect_session (a);
 
   svm_msg_q_lock_and_alloc_msg_w_ring (app->event_queue,
@@ -155,7 +155,7 @@ session_mq_disconnected_reply_handler (void *data)
 {
   session_disconnected_reply_msg_t *mp;
   vnet_disconnect_args_t _a, *a = &_a;
-  application_t *app;
+  app_worker_t *app;
 
   mp = (session_disconnected_reply_msg_t *) data;
 
@@ -171,7 +171,7 @@ session_mq_disconnected_reply_handler (void *data)
   if (app)
     {
       a->handle = mp->handle;
-      a->app_index = app->index;
+      a->app_index = app->wrk_index;
       vnet_disconnect_session (a);
     }
 }
@@ -708,7 +708,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  session_event_t * e,
 				  stream_session_t * s, int *n_tx_pkts)
 {
-  application_t *app;
+  app_worker_t *app;
   app = application_get (s->opaque);
   svm_fifo_unset_event (s->server_tx_fifo);
   return app->cb_fns.builtin_app_tx_callback (s);
@@ -731,7 +731,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   svm_msg_q_msg_t _msg, *msg = &_msg;
   f64 now = vlib_time_now (vm);
   int n_tx_packets = 0, i, rv;
-  application_t *app;
+  app_worker_t *app;
   svm_msg_q_t *mq;
   void (*fp) (void *);
 

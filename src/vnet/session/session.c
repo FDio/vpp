@@ -488,7 +488,7 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 static inline int
 session_enqueue_notify (stream_session_t * s, u8 lock)
 {
-  application_t *app;
+  app_worker_t *app;
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (app == 0))
@@ -513,7 +513,7 @@ session_enqueue_notify (stream_session_t * s, u8 lock)
 int
 session_dequeue_notify (stream_session_t * s)
 {
-  application_t *app;
+  app_worker_t *app;
 
   app = application_get_if_valid (s->app_index);
   if (PREDICT_FALSE (!app))
@@ -596,7 +596,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
   u32 opaque = 0, new_ti, new_si;
   stream_session_t *new_s = 0;
   segment_manager_t *sm;
-  application_t *app;
+  app_worker_t *app;
   u8 alloc_fifos;
   int error = 0;
   u64 handle;
@@ -625,7 +625,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
    */
   if (!is_fail)
     {
-      sm = application_get_connect_segment_manager (app);
+      sm = app_worker_get_connect_segment_manager (app);
       alloc_fifos = !application_is_builtin_proxy (app);
       if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
 	{
@@ -634,7 +634,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 	}
       else
 	{
-	  new_s->app_index = app->index;
+	  new_s->app_index = app->wrk_index;
 	  new_si = new_s->session_index;
 	  new_ti = new_s->thread_index;
 	}
@@ -643,7 +643,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
   /*
    * Notify client application
    */
-  if (app->cb_fns.session_connected_callback (app->index, opaque, new_s,
+  if (app->cb_fns.session_connected_callback (app->wrk_index, opaque, new_s,
 					      is_fail))
     {
       SESSION_DBG ("failed to notify app");
@@ -731,7 +731,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
 void
 stream_session_accept_notify (transport_connection_t * tc)
 {
-  application_t *server;
+  app_worker_t *server;
   stream_session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
@@ -749,7 +749,7 @@ stream_session_accept_notify (transport_connection_t * tc)
 void
 stream_session_disconnect_notify (transport_connection_t * tc)
 {
-  application_t *server;
+  app_worker_t *server;
   stream_session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
@@ -806,7 +806,7 @@ void
 stream_session_reset_notify (transport_connection_t * tc)
 {
   stream_session_t *s;
-  application_t *app;
+  app_worker_t *app;
   s = session_get (tc->s_index, tc->thread_index);
   s->session_state = SESSION_STATE_CLOSED;
   app = application_get (s->app_index);
@@ -820,7 +820,7 @@ int
 stream_session_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 notify)
 {
-  application_t *server;
+  app_worker_t *server;
   stream_session_t *s, *listener;
   segment_manager_t *sm;
   int rv;
@@ -829,11 +829,11 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   listener = listen_session_get (listener_index);
   server = application_get (listener->app_index);
 
-  sm = application_get_listen_segment_manager (server, listener);
+  sm = app_worker_get_listen_segment_manager (server, listener);
   if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
     return rv;
 
-  s->app_index = server->index;
+  s->app_index = server->wrk_index;
   s->listener_index = listener_index;
   s->session_state = SESSION_STATE_ACCEPTING;
 
@@ -853,7 +853,7 @@ session_open_cl (u32 app_index, session_endpoint_t * rmt, u32 opaque)
   transport_endpoint_t *tep;
   segment_manager_t *sm;
   stream_session_t *s;
-  application_t *app;
+  app_worker_t *app;
   int rv;
 
   tep = session_endpoint_to_transport (rmt);
@@ -869,15 +869,15 @@ session_open_cl (u32 app_index, session_endpoint_t * rmt, u32 opaque)
   /* For dgram type of service, allocate session and fifos now.
    */
   app = application_get (app_index);
-  sm = application_get_connect_segment_manager (app);
+  sm = app_worker_get_connect_segment_manager (app);
 
   if (session_alloc_and_init (sm, tc, 1, &s))
     return -1;
-  s->app_index = app->index;
+  s->app_index = app->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
 
   /* Tell the app about the new event fifo for this session */
-  app->cb_fns.session_connected_callback (app->index, opaque, s, 0);
+  app->cb_fns.session_connected_callback (app->wrk_index, opaque, s, 0);
 
   return 0;
 }
@@ -988,7 +988,7 @@ int
 session_listen_cl (stream_session_t * s, session_endpoint_t * sep)
 {
   transport_connection_t *tc;
-  application_t *server;
+  app_worker_t *server;
   segment_manager_t *sm;
   u32 tci;
 
@@ -1009,7 +1009,7 @@ session_listen_cl (stream_session_t * s, session_endpoint_t * sep)
     return -1;
 
   server = application_get (s->app_index);
-  sm = application_get_listen_segment_manager (server, s);
+  sm = app_worker_get_listen_segment_manager (server, s);
   if (session_alloc_fifos (sm, s))
     return -1;
 

@@ -148,27 +148,27 @@ session_endpoint_update_for_app (session_endpoint_t * sep,
 }
 
 static int
-vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
+vnet_bind_i (vnet_bind_args_t * a)
 {
   u64 lh, ll_handle = SESSION_INVALID_HANDLE;
-  application_t *app;
-  u32 table_index;
+  u32 table_index, fib_proto;
+  app_worker_t *app;
   int rv;
 
-  app = application_get_if_valid (app_index);
+  app = application_get_if_valid (a->app_index);
   if (!app)
     {
       SESSION_DBG ("app not attached");
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  session_endpoint_update_for_app (sep, app);
-  if (!session_endpoint_in_ns (sep))
+  session_endpoint_update_for_app (a->sep, app);
+  if (!session_endpoint_in_ns (a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  table_index = application_session_table (app,
-					   session_endpoint_fib_proto (sep));
-  lh = session_lookup_endpoint_listener (table_index, sep, 1);
+  fib_proto = session_endpoint_fib_proto (a->sep);
+  table_index = application_session_table (app, fib_proto);
+  lh = session_lookup_endpoint_listener (table_index, a->sep, 1);
   if (lh != SESSION_INVALID_HANDLE)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
@@ -176,11 +176,11 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
    * Add session endpoint to local session table. Only binds to "inaddr_any"
    * (i.e., zero address) are added to local scope table.
    */
-  if (application_has_local_scope (app) && session_endpoint_is_local (sep))
+  if (application_has_local_scope (app) && session_endpoint_is_local (a->sep))
     {
-      if ((rv = application_start_local_listen (app, sep, handle)))
+      if ((rv = application_start_local_listen (app, a->sep, &a->handle)))
 	return rv;
-      ll_handle = *handle;
+      ll_handle = a->handle;
     }
 
   if (!application_has_global_scope (app))
@@ -191,9 +191,9 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
    */
 
   /* Setup listen path down to transport */
-  rv = application_start_listen (app, sep, handle);
+  rv = app_worker_start_listen (app, a->sep, &a->handle);
   if (rv && ll_handle != SESSION_INVALID_HANDLE)
-    session_lookup_del_session_endpoint (table_index, sep);
+    session_lookup_del_session_endpoint (table_index, a->sep);
 
   /*
    * Store in local table listener the index of the transport layer
@@ -205,7 +205,7 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
       local_session_t *ll;
       stream_session_t *tl;
       ll = application_get_local_listener_w_handle (ll_handle);
-      tl = listen_session_get_from_handle (*handle);
+      tl = listen_session_get_from_handle (a->handle);
       ll->transport_listener_index = tl->session_index;
     }
   return rv;
@@ -214,7 +214,7 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 int
 vnet_unbind_i (u32 app_index, session_handle_t handle)
 {
-  application_t *app;
+  app_worker_t *app;
   int rv;
 
   if (!(app = application_get_if_valid (app_index)))
@@ -233,7 +233,7 @@ vnet_unbind_i (u32 app_index, session_handle_t handle)
    * Clear the global scope table of the listener
    */
   if (application_has_global_scope (app))
-    return application_stop_listen (app, handle);
+    return app_worker_stop_listen (app, handle);
   return 0;
 }
 
@@ -241,7 +241,7 @@ int
 application_connect (u32 client_index, u32 api_context,
 		     session_endpoint_t * sep)
 {
-  application_t *server, *client;
+  app_worker_t *server, *client;
   u32 table_index, server_index, li;
   stream_session_t *listener;
   local_session_t *ll;
@@ -303,15 +303,17 @@ global_scope:
     {
       server = application_get (listener->app_index);
       if (server)
-	return application_local_session_connect (table_index, client, server,
-						  (local_session_t *)
-						  listener, api_context);
+	{
+	  ll = (local_session_t *) listener;
+	  return application_local_session_connect (table_index, client,
+	                                            server, ll, api_context);
+	}
     }
 
   /*
    * Not connecting to a local server, propagate to transport
    */
-  if (application_open_session (client, sep, api_context))
+  if (app_worker_open_session (client, sep, api_context))
     return VNET_API_ERROR_SESSION_CONNECT;
   return 0;
 }
@@ -415,7 +417,7 @@ parse_uri (char *uri, session_endpoint_extended_t * sep)
 }
 
 static int
-session_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
+app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
 {
   app_namespace_t *app_ns;
   if (vec_len (namespace_id) == 0)
@@ -447,7 +449,9 @@ clib_error_t *
 vnet_application_attach (vnet_app_attach_args_t * a)
 {
   svm_fifo_segment_private_t *fs;
+  app_worker_map_t *wrk_map;
   application_t *app = 0;
+  app_worker_t *app_wrk;
   segment_manager_t *sm;
   u32 app_ns_index = 0;
   u64 secret;
@@ -466,17 +470,22 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 				   "app already attached");
 
   secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
-  if ((rv = session_validate_namespace (a->namespace_id, secret,
-					&app_ns_index)))
+  if ((rv = app_validate_namespace (a->namespace_id, secret, &app_ns_index)))
     return clib_error_return_code (0, rv, 0, "namespace validation: %d", rv);
   a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
-  app = application_new ();
-  if ((rv = application_init (app, a->api_client_index, a->name, a->options,
-			      a->session_cb_vft)))
-    return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 
-  a->app_evt_q = app->event_queue;
-  sm = segment_manager_get (app->first_segment_manager);
+  if ((rv = application_alloc_and_init (a)))
+    return clib_error_return_code(0, rv, 0, "app init: %d", rv);
+
+  app = application_get (a->app_index);
+  if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
+    return clib_error_return_code (0, rv, 0, "app default wrk init: %d", rv);
+
+  wrk_map = application_worker_map_alloc ();
+  wrk_map->wrk_index = app_wrk->wrk_index;
+
+  a->app_evt_q = app_wrk->event_queue;
+  sm = segment_manager_get (app_wrk->first_segment_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
   if (application_is_proxy (app))
@@ -484,7 +493,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   ASSERT (vec_len (fs->ssvm.name) <= 128);
   a->segment = &fs->ssvm;
-  a->app_index = app->index;
+  a->app_index = app_wrk->wrk_index;
 
   segment_manager_segment_reader_unlock (sm);
 
@@ -506,7 +515,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  application_del (app);
+  application_free (app);
   return 0;
 }
 
@@ -520,7 +529,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
   if (rv)
     return rv;
 
-  return vnet_bind_i (a->app_index, (session_endpoint_t *) & sep, &a->handle);
+  return vnet_bind_i (a);
 }
 
 int
@@ -608,7 +617,7 @@ clib_error_t *
 vnet_bind (vnet_bind_args_t * a)
 {
   int rv;
-  if ((rv = vnet_bind_i (a->app_index, &a->sep, &a->handle)))
+  if ((rv = vnet_bind_i (a)))
     return clib_error_return_code (0, rv, 0, "bind failed: %d", rv);
   return 0;
 }
