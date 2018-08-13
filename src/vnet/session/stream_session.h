@@ -60,8 +60,8 @@ typedef struct _stream_session_t
   /** Session index in per_thread pool */
   u32 session_index;
 
-  /** stream server pool index */
-  u32 app_index;
+  /** app worker pool index */
+  u32 app_wrk_index;
 
   u8 thread_index;
 
@@ -101,7 +101,7 @@ typedef struct local_session_
   u32 session_index;
 
   /** Server index */
-  u32 app_index;
+  u32 app_wrk_index;
 
   /** Segment index where fifos were allocated */
   u32 svm_segment_index;
@@ -118,7 +118,7 @@ typedef struct local_session_
   /**
    * Client data
    */
-  u32 client_index;
+  u32 client_wrk_index;
   u32 client_opaque;
 
   u64 server_evt_q;
@@ -143,36 +143,36 @@ typedef struct _session_endpoint_extended
 #define _(type, name) type name;
   foreach_session_endpoint_fields
 #undef _
-  u32 app_index;
+  u32 app_wrk_index;
   u32 opaque;
   u8 *hostname;
 } session_endpoint_extended_t;
 
-#define SESSION_IP46_ZERO		\
-{					\
-    .ip6 = {				\
-	{ 0, 0, },			\
-    },					\
+#define SESSION_IP46_ZERO			\
+{						\
+    .ip6 = {					\
+	{ 0, 0, },				\
+    },						\
 }
-#define SESSION_ENDPOINT_NULL 		\
-{					\
+#define SESSION_ENDPOINT_NULL 			\
+{						\
   .sw_if_index = ENDPOINT_INVALID_INDEX,	\
-  .ip = SESSION_IP46_ZERO,		\
-  .fib_index = ENDPOINT_INVALID_INDEX,	\
-  .is_ip4 = 0,				\
-  .port = 0,				\
-  .transport_proto = 0,			\
+  .ip = SESSION_IP46_ZERO,			\
+  .fib_index = ENDPOINT_INVALID_INDEX,		\
+  .is_ip4 = 0,					\
+  .port = 0,					\
+  .transport_proto = 0,				\
 }
-#define SESSION_ENDPOINT_EXT_NULL 	\
-{					\
+#define SESSION_ENDPOINT_EXT_NULL 		\
+{						\
   .sw_if_index = ENDPOINT_INVALID_INDEX,	\
-  .ip = SESSION_IP46_ZERO,		\
-  .fib_index = ENDPOINT_INVALID_INDEX,	\
-  .is_ip4 = 0,				\
-  .port = 0,				\
-  .transport_proto = 0,			\
-  .app_index = ENDPOINT_INVALID_INDEX,	\
-  .opaque = ENDPOINT_INVALID_INDEX,	\
+  .ip = SESSION_IP46_ZERO,			\
+  .fib_index = ENDPOINT_INVALID_INDEX,		\
+  .is_ip4 = 0,					\
+  .port = 0,					\
+  .transport_proto = 0,				\
+  .app_wrk_index = ENDPOINT_INVALID_INDEX,	\
+  .opaque = ENDPOINT_INVALID_INDEX,		\
   .hostname = 0,				\
 }
 

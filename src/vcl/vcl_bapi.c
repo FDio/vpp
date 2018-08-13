@@ -215,7 +215,7 @@ static void
   ctr->peer_mq = uword_to_pointer (mp->peer_evt_q_address, svm_msg_q_t *);
   VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (ctr));
 
-  if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+  if (mp->n_fds && (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD))
     {
       svm_msg_q_set_consumer_eventfd (ctr->mq, fds[0]);
       svm_msg_q_set_producer_eventfd (ctr->peer_mq, fds[1]);
