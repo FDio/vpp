@@ -170,7 +170,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
   server_sep.is_ip4 = 1;
   vnet_bind_args_t bind_args = {
     .sep = server_sep,
-    .app_index = 0,
+    .app_wrk_index = 0,
   };
 
   bind_args.app_index = server_index;
@@ -191,7 +191,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_unbind_args_t unbind_args = {
     .handle = bind4_handle,
-    .app_index = server_index,
+    .app_wrk_index = server_index,
   };
   error = vnet_unbind (&unbind_args);
   SESSION_TEST ((error == 0), "unbind4 should work");
@@ -201,7 +201,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "unbind6 should work");
 
   vnet_app_detach_args_t detach_args = {
-    .app_index = server_index,
+    .app_wrk_index = server_index,
   };
   vnet_application_detach (&detach_args);
   return 0;
@@ -221,7 +221,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   u8 *ns_id = format (0, "appns1");
   app_namespace_t *app_ns;
-  application_t *server;
+  app_worker_t *server;
   stream_session_t *s;
   u64 handle;
   int code;
@@ -243,22 +243,22 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_bind_args_t bind_args = {
     .sep = server_sep,
-    .app_index = 0,
+    .app_wrk_index = 0,
   };
 
   vnet_connect_args_t connect_args = {
-    .app_index = 0,
+    .app_wrk_index = 0,
     .api_context = 0,
   };
   clib_memcpy (&connect_args.sep, &client_sep, sizeof (client_sep));
 
   vnet_unbind_args_t unbind_args = {
     .handle = bind_args.handle,
-    .app_index = 0,
+    .app_wrk_index = 0,
   };
 
   vnet_app_detach_args_t detach_args = {
-    .app_index = 0,
+    .app_wrk_index = 0,
   };
 
   ip4_address_t intf_addr = {
@@ -328,7 +328,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
+  SESSION_TEST ((s->app_wrk_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
   SESSION_TEST ((server_local_st_index == APP_INVALID_INDEX),
@@ -366,7 +366,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
+  SESSION_TEST ((s->app_wrk_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
@@ -515,7 +515,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   s = session_lookup_listener (server_st_index, &intf_sep);
   SESSION_TEST ((s != 0), "intf listener should exist in global table");
-  SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
+  SESSION_TEST ((s->app_wrk_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
@@ -847,7 +847,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_bind_args_t bind_args = {
     .sep = server_sep,
-    .app_index = 0,
+    .app_wrk_index = 0,
   };
 
   /*
@@ -1037,7 +1037,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		" 5.6.7.9/32 4321 in local table should return deny");
 
   vnet_connect_args_t connect_args = {
-    .app_index = attach_args.app_index,
+    .app_wrk_index = attach_args.app_index,
     .api_context = 0,
   };
   clib_memcpy (&connect_args.sep, &sep, sizeof (sep));
@@ -1353,7 +1353,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
    */
   vec_free (args.table_args.tag);
   vnet_app_detach_args_t detach_args = {
-    .app_index = server_index,
+    .app_wrk_index = server_index,
   };
   vnet_application_detach (&detach_args);
 
@@ -1455,7 +1455,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
 		"successful");
   s = listen_session_get (tc->s_index);
-  SESSION_TEST ((s->app_index == server_index), "lookup should return the"
+  SESSION_TEST ((s->app_wrk_index == server_index), "lookup should return the"
 		" server");
 
   tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
@@ -1468,7 +1468,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 		" should work");
 
   vnet_app_detach_args_t detach_args = {
-    .app_index = server_index,
+    .app_wrk_index = server_index,
   };
   vnet_application_detach (&detach_args);
 

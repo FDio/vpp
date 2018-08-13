@@ -60,8 +60,8 @@ typedef struct _stream_session_t
   /** Session index in per_thread pool */
   u32 session_index;
 
-  /** stream server pool index */
-  u32 app_index;
+  /** app worker pool index */
+  u32 app_wrk_index;
 
   u8 thread_index;
 
@@ -101,7 +101,7 @@ typedef struct local_session_
   u32 session_index;
 
   /** Server index */
-  u32 app_index;
+  u32 app_wrk_index;
 
   /** Segment index where fifos were allocated */
   u32 svm_segment_index;
