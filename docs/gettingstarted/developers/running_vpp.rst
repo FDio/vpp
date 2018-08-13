@@ -20,6 +20,13 @@ Running the release image:
    # make run-release
    #
 
+Running the debug image:
+
+.. code-block:: console
+
+   # make run
+   #
+
 With GDB
 _________________________
 

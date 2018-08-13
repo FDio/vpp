@@ -18,6 +18,7 @@ The Developers section covers the following areas:
    building
    running_vpp
    gdb_examples
+   gitreview
    softwarearchitecture
    infrastructure
    vlib

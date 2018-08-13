@@ -4,9 +4,9 @@
 Github Repository
 =================
 
-**The github repository is no longer being used. The gerrit server is being used.**
-
-To use the gerrit repository refer to :ref:`gitreview`.
+**The github repository is only being used as a source for readthedocs.**
+**There should be no reason for the typical developer to use this repository.**
+**It should only be used by a document developer.**
 
 Overview
 ________

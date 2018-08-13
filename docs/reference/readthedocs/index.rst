@@ -1,8 +1,7 @@
 .. _readthedocs:
 
-*******************
-Using Read the Docs
-*******************
+Read The Docs
+=================
 
 `Read the Docs <https://readthedocs.org/>`_ is a website that "simplifies software documentation by automating building, versioning, and hosting of your docs for you". Essentially, it accesses your Github repo to generate the **index.html** file, and then displays it on its own *Read the Docs* webpage so others can view your documentation. 
 
