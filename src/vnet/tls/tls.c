@@ -342,6 +342,7 @@ tls_session_accept_callback (stream_session_t * tls_session)
   ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
   memcpy (ctx, lctx, sizeof (*lctx));
+
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
   tls_session->session_state = SESSION_STATE_READY;
@@ -540,6 +541,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
 
+  tls_vfts[engine_type].ctx_start_listen (lctx);
+
   TLS_DBG (1, "Started listening %d, engine type %d", lctx_index,
 	   engine_type);
   return lctx_index;
@@ -551,9 +554,15 @@ tls_stop_listen (u32 lctx_index)
   tls_main_t *tm = &tls_main;
   application_t *tls_app;
   tls_ctx_t *lctx;
+  tls_engine_type_t engine_type;
+
   lctx = tls_listener_ctx_get (lctx_index);
   tls_app = application_get (tm->app_index);
   application_stop_listen (tls_app, lctx->tls_session_handle);
+
+  engine_type = lctx->tls_ctx_engine;
+  tls_vfts[engine_type].ctx_stop_listen (lctx);
+
   tls_listener_ctx_free (lctx);
   return 0;
 }

@@ -259,6 +259,18 @@ mbedtls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
+mbedtls_start_listen (tls_ctx_t * lctx)
+{
+  return 0;
+}
+
+static int
+mbedtls_stop_listen (tls_ctx_t * lctx)
+{
+  return 0;
+}
+
+static int
 mbedtls_ctx_init_server (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
@@ -530,6 +542,8 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_write = mbedtls_ctx_write,
   .ctx_read = mbedtls_ctx_read,
   .ctx_handshake_is_over = mbedtls_handshake_is_over,
+  .ctx_start_listen = mbedtls_start_listen,
+  .ctx_stop_listen = mbedtls_stop_listen,
 };
 
 int
