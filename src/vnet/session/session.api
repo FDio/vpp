@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.1.0";
+option version = "1.2.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -271,6 +271,7 @@ define reset_session_reply {
 /** \brief Bind to an ip:port pair for a given transport protocol
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param wrk_index - index of worker requesting the bind
     @param vrf - bind namespace
     @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
@@ -281,6 +282,7 @@ define reset_session_reply {
 define bind_sock {
   u32 client_index;
   u32 context;
+  u32 wrk_index;
   u32 vrf;
   u8 is_ip4;
   u8 ip[16];
@@ -303,6 +305,7 @@ autoreply define unbind_sock {
 /** \brief Connect to a remote peer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param wrk_index - worker that requests the connect
     @param client_queue_address - client's API queue address. Non-zero when 
                                   used to perform redirects
     @param options - socket options, fifo sizes, etc. when doing redirects
@@ -318,6 +321,7 @@ autoreply define unbind_sock {
 autoreply define connect_sock {
   u32 client_index;
   u32 context;
+  u32 wrk_index;
   u64 client_queue_address;
   u64 options[16];
   u32 vrf;
@@ -416,6 +420,47 @@ autoreply define app_cut_through_registration_add
   u64 peer_evt_q_address;
   u8 n_fds;
   u8 fd_flags;
+};
+
+/** \brief add/del application worker
+    @param client_index - opaque cookie to identify the sender
+                          client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param app_api_index - explicit client api index
+    @param wrk_index - worker index, if a delete
+    @param is_add - set if an add
+*/
+define app_worker_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 app_api_index;
+  u32 wrk_index;
+  u8 is_add;
+};
+
+/** \brief Reply for app worker add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param wrk_index - worker index, if add
+    @param app_event_queue_address - vpp event queue address of new worker
+    @param n_fds - number of fds exchanged
+    @param fd_flags - set of flags that indicate which fds are to be expected
+    				  over the socket (set only if socket transport available) 
+    @param segment_name_length - length of segment name 
+    @param segment_name - name of segment client needs to attach to
+*/
+define app_worker_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 wrk_index;
+  u64 app_event_queue_address;
+  u8 n_fds;
+  u8 fd_flags;
+  u8 segment_name_length;
+  u8 segment_name[128];
+  u8 is_add;
 };
 
 /** \brief enable/disable session layer
