@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "18ee6f07_ceec10a1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T15:34:30Z",
+      "side": 1,
+      "message": "This is just one per main and has in it the servcert and pkey. Unless I\u0027m missing something, it\u0027s not going to work with multiple listeners!",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 33
+      },
+      "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
