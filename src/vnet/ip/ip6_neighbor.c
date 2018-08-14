@@ -5050,6 +5050,8 @@ send_ip6_na_w_addr (vlib_main_t * vm,
       h->neighbor.target_address = ip6_addr[0];
       h->neighbor.advertisement_flags = clib_host_to_net_u32
 	(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+      h->link_layer_option.header.type =
+	ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
       clib_memcpy (h->link_layer_option.ethernet_address,
 		   hi->hw_address, vec_len (hi->hw_address));
       h->neighbor.icmp.checksum =
