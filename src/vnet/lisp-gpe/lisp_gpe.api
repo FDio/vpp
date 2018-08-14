@@ -64,8 +64,8 @@ manual_print manual_endian define gpe_add_del_fwd_entry
 
 define gpe_add_del_fwd_entry_reply
 {
-  i32 retval;
   u32 context;
+  i32 retval;
   u32 fwd_entry_index;
 };
 
