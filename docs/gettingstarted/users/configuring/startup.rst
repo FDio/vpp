@@ -585,60 +585,93 @@ Here's a full-bore manual placement example:
 "acl-plugin" Parameters
 _______________________
 
-The following parameters should only be set by those that are familiar with the
-interworkings of VPP and the ACL Plugin.
+These parameters change the configuration of the ACL (access control list) plugin,
+such as how the ACL bi-hash tables are initialized.
 
-The first three parameters, *connection hash buckets*, *connection hash memory*, and *connection count max*, set the **connection table per-interface parameters** for modifying how the two bounded-index extensible hash tables for IPv6 (40\*8 bit key and 8\*8 bit value pairs) and IPv4 (16\*8 bit key and 8\*8 bit value pairs) **ACL plugin FA interface sessions** are initialized.
+They should only be set by those that are familiar with the interworkings of VPP
+and the ACL Plugin.
+
+The first three parameters, *connection hash buckets*, *connection hash memory*,
+and *connection count max*, set the **connection table per-interface parameters**
+for modifying how the two bounded-index extensible hash tables for
+IPv6 (40\*8 bit key and 8\*8 bit value pairs) and IPv4
+(16\*8 bit key and 8\*8 bit value pairs) **ACL plugin FA interface sessions**
+are initialized.
 
  * **connection hash buckets <n>**
-     Sets the number of hash buckets (rounded up to a power of 2) in each of the two bi-hash tables. Defaults to 64\*1024 (65536) hash buckets.
+     Sets the number of hash buckets (rounded up to a power of 2) in each
+     of the two bi-hash tables. Defaults to 64\*1024 (65536) hash buckets.
      
      **Example:** connection hash buckets 65536
      
  * **connection hash memory <n>**
-     Sets the number of bytes used for “backing store” allocation in each of the two bi-hash tables. Defaults to 1073741824 bytes.
+     Sets the allocated memory size (in bytes) for each of the two bi-hash tables.
+     Defaults to 1073741824 bytes.
      
      **Example:** connection hash memory 1073741824
      
  * **connection count max <n>**
-     Sets the maximum number of pool elements when allocating each per-worker pool of sessions for both bi-hash tables. Defaults to 500000 elements in each pool.
+     Sets the maximum number of pool elements when allocating each per-worker
+     pool of sessions for both bi-hash tables. Defaults to 500000 elements in each pool.
      
      **Example:** connection count max 500000
      
  * **main heap size <n>G|<n>M|<n>K|<n>**
-     Sets the size of the main memory heap that holds all the ACL module related allocations (other than hash.) Default size is 0, but during ACL heap initialization is equal to *per_worker_size_with_slack * tm->n_vlib_mains + bihash_size + main_slack*. Note that these variables are partially based on the **connection table per-interface parameters** mentioned above.
+     Sets the size of the main memory heap that holds all the ACL module related
+     allocations (other than hash.) Default size is 0, but during
+     ACL heap initialization is equal to
+     *per_worker_size_with_slack * tm->n_vlib_mains + bihash_size + main_slack*.
+     Note that these variables are partially based on the
+     **connection table per-interface parameters** mentioned above.
      
      **Example:** main heap size 3G
 
-The next three parameters, *hash lookup heap size*, *hash lookup hash buckets*, and *hash lookup hash memory*, modify the initialization of the bi-hash lookup table used by the ACL plugin. This table is initialized when attempting to apply an ACL to the existing vector of ACLs looked up during packet processing (but it is found that the table does not exist / has not been initialized yet.)
+The next three parameters, *hash lookup heap size*, *hash lookup hash buckets*,
+and *hash lookup hash memory*, modify the initialization of the bi-hash lookup
+table used by the ACL plugin. This table is initialized when attempting to apply
+an ACL to the existing vector of ACLs looked up during packet processing
+(but it is found that the table does not exist / has not been initialized yet.)
      
  * **hash lookup heap size  <n>G|<n>M|<n>K|<n>**
-     Sets the size of the memory heap that holds all the miscellaneous allocations related to hash-based lookups. Default size is 67108864 bytes.
+     Sets the size of the memory heap that holds all the miscellaneous allocations
+     related to hash-based lookups. Default size is 67108864 bytes.
      
      **Example:** hash lookup heap size 70M
      
  * **hash lookup hash buckets <n>**
-     Sets the number of hash buckets (rounded up to a power of 2) in the bi-hash lookup table. Defaults to 65536 hash buckets.
+     Sets the number of hash buckets (rounded up to a power of 2) in the bi-hash
+     lookup table. Defaults to 65536 hash buckets.
      
      **Example:** hash lookup hash buckets 65536
      
  * **hash lookup hash memory <n>**
-     Sets the number of bytes used for “backing store” allocation in the bi-hash lookup table. Defaults to 67108864 bytes.
+     Sets the allocated memory size (in bytes) for the bi-hash lookup table.
+     Defaults to 67108864 bytes.
      
      **Example:** hash lookup hash memory 67108864
      
  * **use tuple merge <n>**
-     Sets a boolean value indicating whether or not to use TupleMerge for hash ACL's. Defaults to 1 (true), meaning the default implementation of hashing ACL's **does use** TupleMerge.
+     Sets a boolean value indicating whether or not to use TupleMerge
+     for hash ACL's. Defaults to 1 (true), meaning the default implementation
+     of hashing ACL's **does use** TupleMerge.
      
      **Example:** use tuple merge 1
      
  * **tuple merge split threshold <n>**
-     Sets the maximum amount of rules (ACE's) that can collide in a bi-hash lookup table before the table is split into two new tables. Splitting ensures less rule collisions by hashing colliding rules based on their common tuple (usually their maximum common tuple.) Splitting occurs when the *length of the colliding rules vector* is greater than this threshold amount. Defaults to a maximum of 39 rule collisions per table.
+     Sets the maximum amount of rules (ACE's) that can collide in a bi-hash
+     lookup table before the table is split into two new tables. Splitting ensures
+     less rule collisions by hashing colliding rules based on their common tuple
+     (usually their maximum common tuple.) Splitting occurs when the
+     *length of the colliding rules vector* is greater than this threshold amount.
+     Defaults to a maximum of 39 rule collisions per table.
      
      **Example:** tuple merge split threshold 30
      
  * **reclassify sessions <n>**
-     Sets a boolean value indicating whether or not to take the epoch of the session into account when dealing with re-applying ACL's or changing already applied ACL's. Defaults to 0 (false), meaning the default implementation **does NOT** take the epoch of the session into account.
+     Sets a boolean value indicating whether or not to take the epoch of the session
+     into account when dealing with re-applying ACL's or changing already applied ACL's.
+     Defaults to 0 (false), meaning the default implementation **does NOT** take the
+     epoch of the session into account.
      
      **Example:** reclassify sessions 1
 
@@ -796,14 +829,17 @@ value.
 ________________
 
  * **max-cache-size <n>**
-     TBD
+     Set the maximum number of active elements allowed in the pool of
+     dns cache entries. When resolving an expired entry or adding a new
+     static entry and the max number of active entries is reached,
+     a random, non-static entry is deleted. Defaults to 65535 entries.
      
-     **Example:** TBD
+     **Example:** max-cache-size 65535
      
  * **max-ttl <n>**
-     TBD
+     Currently not implemented. Defaults to 86400 seconds (24 hours.)
      
-     **Example:** TBD
+     **Example:** max-ttl 86400
 
 .. _heapsize:
 
@@ -926,20 +962,23 @@ ____________________
 ____________________
 
  * **lookup-table-buckets <n>**
-     TBD
+     Sets the number of hash buckets in the mactime bi-hash lookup table.
+     Defaults to 128 buckets.
      
-     **Example:** TBD
+     **Example:** lookup-table-buckets 128
      
  * **lookup-table-memory <n>G|<n>M|<n>K|<n>**
-     TBD
-      The input value can be set in GB, MB, KB or bytes. The default value is 256KB.
+     Sets the allocated memory size (in bytes) for the mactime bi-hash lookup table.
+     The input value can be set in GB, MB, KB or bytes. The default value is 262144
+     (256 << 10) bytes or roughly 256KB.
      
-     **Example:** TBD
+     **Example:** lookup-table-memory 300K
      
  * **timezone_offset <n>**
-     TBD
+     Sets the timezone offset from UTC. Defaults to an offset of -5 hours
+     from UTC (US EST / EDT.)
      
-     **Example:** TBD
+     **Example:** timezone_offset -5
 
 .. _map:
 
@@ -947,7 +986,9 @@ ____________________
 ________________
 
  * **customer edge**
-     TBD
+     Sets a boolean true to indicate that the MAP node is a Customer Edge (CE)
+     router. The boolean defaults to false, meaning the MAP node is not treated
+     as a CE router.
      
      **Example:** customer edge
 
@@ -1024,30 +1065,54 @@ MC Test Process.
 "nat" Parameters
 ________________
 
+These parameters change the configuration of the NAT (Network address translation)
+plugin, such as how the NAT & NAT64 bi-hash tables are initialized, if the NAT is
+endpoint dependent, or if the NAT is deterministic.
+
+For each NAT per thread data, the following 4 parameters change how certain
+bi-hash tables are initialized.
+
  * **translation hash buckets <n>**
-     TBD
+     Sets the number of hash buckets in each of the two in/out NAT bi-hash lookup
+     tables. Defaults to 1024 buckets.
+
+     If the NAT is indicated to be endpoint dependent, which can be set with the
+     :ref:`endpoint-dependent parameter <endpointLabel>`, then this parameter sets
+     the number of hash buckets in each of the two endpoint dependent sessions
+     NAT bi-hash lookup tables.
      
-     **Example:** TBD
+     **Example:** translation hash buckets 1024
      
  * **translation hash memory <n>**
-     TBD
+     Sets the allocated memory size (in bytes) for each of the two in/out NAT
+     bi-hash tables. Defaults to 134217728 (128 << 20) bytes, which is roughly 128 MB.
+
+     If the NAT is indicated to be endpoint dependent, which can be set with the
+     :ref:`endpoint-dependent parameter <endpointLabel>`, then this parameter sets the
+     allocated memory size for each of the two endpoint dependent sessions NAT bi-hash
+     lookup tables.
      
-     **Example:** TBD
+     **Example:** translation hash memory 134217728
      
  * **user hash buckets <n>**
-     TBD
+     Sets the number of hash buckets in the user bi-hash lookup table
+     (src address lookup for a user.) Defaults to 128 buckets.
      
-     **Example:** TBD
+     **Example:** user hash buckets 128
      
  * **user hash memory <n>**
-     TBD
+     Sets the allocated memory size (in bytes) for the user bi-hash lookup table
+     (src address lookup for a user.) Defaults to 67108864 (64 << 20) bytes,
+     which is roughly 64 MB.
      
-     **Example:** TBD
+     **Example:** user hash memory 67108864
      
  * **max translations per user <n>**
-     TBD
+     Sets the maximum amount of dynamic and/or static NAT sessions each user can have.
+     Defaults to 100. When this limit is reached, the least recently used translation
+     is recycled.
      
-     **Example:** TBD
+     **Example:** max translations per user 50
      
  * **outside VRF id <n>**
      TBD
@@ -1080,29 +1145,36 @@ ________________
      **Example:** connection tracking
      
  * **deterministic**
-     TBD
+     Sets a boolean value to 1 indicating that the NAT is deterministic. Defaults to 0,
+     meaning the NAT is not deterministic.
      
      **Example:** deterministic
      
  * **nat64 bib hash buckets <n>**
-     TBD
+     Sets the number of hash buckets in each of the two in/out NAT64 BIB bi-hash
+     tables. Defaults to 1024 buckets.
      
-     **Example:** TBD
+     **Example:** nat64 bib hash buckets 1024
      
  * **nat64 bib hash memory <n>**
-     TBD
+     Sets the allocated memory size (in bytes) for each of the two in/out NAT64
+     BIB bi-hash tables. Defaults to 134217728 (128 << 20) bytes,
+     which is roughly 128 MB.
      
-     **Example:** TBD
+     **Example:** nat64 bib hash memory 134217728
      
  * **nat64 st hash buckets <n>**
-     TBD
+     Sets the number of hash buckets in each of the two in/out NAT64 session table
+     bi-hash tables. Defaults to 2048 buckets.
      
-     **Example:** TBD
+     **Example:** nat64 st hash buckets 2048
      
  * **nat64 st hash memory <n>**
-     TBD
+     Sets the allocated memory size (in bytes) for each of the two in/out NAT64 session
+     table bi-hash tables. Defaults to 268435456 (256 << 20) bytes, which is roughly
+     256 MB.
      
-     **Example:** TBD
+     **Example:** nat64 st hash memory 268435456
      
  * **out2in dpo**
      TBD
@@ -1114,8 +1186,11 @@ ________________
      
      **Example:** dslite ce
      
+.. _endpointLabel:
+
  * **endpoint-dependent**
-     TBD
+     Sets a boolean value to 1, indicating that the NAT is endpoint dependent.
+     Defaults to 0, meaning the NAT is not endpoint dependent.
      
      **Example:** endpoint-dependent
 
@@ -1142,6 +1217,7 @@ allowed before reporting an oam target down to any registered listener.
 
 "plugins" Parameters
 ____________________
+
 A plugin can be disabled by default. It may still be in an experimental phase
 or only be needed in special circumstances. If this is the case, the plugin can
 be explicitely enabled in *'startup.conf'*. Also, a plugin that is enabled by
@@ -1212,8 +1288,10 @@ set of directories searched for vlib plugins. Supply a colon-separated list of
 "punt" Parameters
 _________________
 
+Configuration parameters for the local TCP/IP stack punt infrastructure.
+
  * **socket <path>**
-     TBD
+     The filesystem pathname of a bound UNIX domain socket to be used with punt.
      
      **Example:** TBD
 
@@ -1334,23 +1412,27 @@ doesn't run.
 ____________________
 
  * **size <n>G|<n>M|<n>K|<n>**
-     TBD
-     The input value can be set in GB, MB, KB or bytes.
+     Sets the size of the memory mapped stats segment object *stat_segment*.
+     The input value can be set in GB, MB, KB or bytes. Defaults to 33554432
+     (32 << 20) bytes or roughly 32 MB.
      
-     **Example:** TBD
+     **Example:** size 32M
      
 .. _tapcli:     
 
 "tapcli" Parameters
 ___________________
 
+Configuration parameters for TAPCLI (dynamic tap interface hookup.)
+
  * **mtu <n>**
-     TBD
+     Sets interface MTU (maximum transmission unit) size in bytes. This size
+     is also related to the number of MTU buffers. Defaults to 1500 bytes.
      
-     **Example:** TBD
+     **Example:** mtu 1500
      
  * **disable**
-     TBD
+     Disables TAPCLI. Default is that TAPCLI is enabled.
      
      **Example:** disable
 
@@ -1359,36 +1441,51 @@ ___________________
 "tcp" Parameters
 ________________
 
+Configuration parameters for TCP host stack utilities. The following
+preallocation parameters are related to the initialization of fixed-size,
+preallocation pools.
+
  * **preallocated-connections <n>**
-     TBD
+     Sets the number of preallocated TCP connections. Defaults to 0.
+     The preallocated connections per thread is related to this value,
+     equal to (preallocated_connections / (num_threads - 1)).
      
-     **Example:** TBD
+     **Example:** preallocated-connections 5
      
  * **preallocated-half-open-connections <n>**
-     TBD
+     Sets the number of preallocated TCP half-open connections. Defaults to 0.
      
-     **Example:** TBD
+     **Example:** preallocated-half-open-connections 5
      
  * **buffer-fail-fraction <n.n>**
-     TBD
+     Sets the TCP buffer fail fraction (a float) used for fault-injection
+     when debugging TCP buffer allocation. Its use is found in *tcp_debug.h*.
+     Defaults to 0.0.
      
-     **Example:** TBD
+     **Example:** buffer-fail-fraction 0.0
 
 .. _tls:
 
 "tls" Parameters
 ________________
 
- * **se-test-cert-in-ca**
-     TBD
+Configures TLS parameters, such as enabling the use of test certificates.
+These parameters affect the tlsmbedtls and tlsopenssl plugins.
+
+ * **use-test-cert-in-ca**
+     Sets a boolean value to 1 to indicate during the initialization of a
+     TLS CA chain to attempt to parse and add test certificates to the chain.
+     Defaults to 0, meaning test certificates are not used.
      
-     **Example:** se-test-cert-in-ca
+     **Example:** use-test-cert-in-ca
      
  * **ca-cert-path <filename>**
-     TBD
-     If not set, the default is set to *'/etc/ssl/certs/ca-certificates.crt'*.
+     Sets the filename path of the location of TLS CA certificates, used when
+     initializing and loading TLS CA certificates during the initialization
+     of a TLS CA chain. If not set, the default filename path is
+     */etc/ssl/certs/ca-certificates.crt*.
      
-     **Example:** TBD
+     **Example:** ca-cert-path /etc/ssl/certs/ca-certificates.crt
 
 .. _tuntap:
 
@@ -1461,18 +1558,26 @@ Vhost-user configuration parameters control the vhost-user driver.
 "vlib" Parameters
 _________________
 
+These parameters configure VLIB, such as allowing you to choose whether to
+enable memory traceback or a post-mortem elog dump.
+
  * **memory-trace**
-     TBD
+     Enables memory trace (mheap traceback.) Defaults to 0, meaning memory
+     trace is disabled.
      
      **Example:** memory-trace
      
  * **elog-events <n>**
-     TBD
+     Sets the number of elements/events (the size) of the event ring
+     (a circular buffer of events.) This number rounds to a power of 2.
+     Defaults to 131072 (128 << 10) elements.
      
-     **Example:** TBD
+     **Example:** elog-events 4096
      
  * **elog-post-mortem-dump**
-     TBD
+     Enables the attempt of a post-mortem elog dump to
+     */tmp/elog_post_mortem.<PID_OF_CALLING_PROCESS>* if os_panic or
+     os_exit is called.
      
      **Example:** elog-post-mortem-dump
  
