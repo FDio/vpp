@@ -1712,13 +1712,13 @@ icmp_get_ed_key(ip4_header_t *ip0, nat_ed_ses_key_t *p_key0)
 
 static int
 next_src_nat (snat_main_t * sm, ip4_header_t * ip, u8 proto, u16 src_port,
-              u16 dst_port, u32 thread_index)
+              u16 dst_port, u32 thread_index, u32 rx_fib_index)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   make_ed_kv (&kv, &ip->src_address, &ip->dst_address, proto,
-              sm->inside_fib_index, src_port, dst_port);
+              rx_fib_index, src_port, dst_port);
   if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &kv, &value))
     return 1;
 
@@ -1870,7 +1870,8 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
           else
             {
               dont_translate = 1;
-              if (next_src_nat(sm, ip, key.proto, key.l_port, key.r_port, thread_index))
+              if (next_src_nat(sm, ip, key.proto, key.l_port, key.r_port,
+                               thread_index, rx_fib_index))
                 {
                   next = NAT44_ED_OUT2IN_NEXT_IN2OUT;
                   goto out;
@@ -2194,7 +2195,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
                         {
                           if (next_src_nat(sm, ip0, ip0->protocol,
                                            udp0->src_port, udp0->dst_port,
-                                           thread_index))
+                                           thread_index, rx_fib_index0))
                             {
                               next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
                               goto trace00;
@@ -2397,7 +2398,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
                         {
                           if (next_src_nat(sm, ip1, ip1->protocol,
                                            udp1->src_port, udp1->dst_port,
-                                           thread_index))
+                                           thread_index, rx_fib_index1))
                             {
                               next1 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
                               goto trace01;
@@ -2632,7 +2633,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
                         {
                           if (next_src_nat(sm, ip0, ip0->protocol,
                                            udp0->src_port, udp0->dst_port,
-                                           thread_index))
+                                           thread_index, rx_fib_index0))
                             {
                               next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
                               goto trace0;

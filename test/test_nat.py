@@ -3972,6 +3972,63 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_next_src_nat(self):
+        """ On way back forward packet to nat44-in2out node. """
+        twice_nat_addr = '10.0.1.3'
+        external_port = 80
+        local_port = 8080
+        post_twice_nat_port = 0
+
+        self.vapi.nat44_forwarding_enable_disable(1)
+        self.nat44_add_address(twice_nat_addr, twice_nat=1)
+        self.nat44_add_static_mapping(self.pg6.remote_ip4, self.pg1.remote_ip4,
+                                      local_port, external_port,
+                                      proto=IP_PROTOS.tcp, out2in_only=1,
+                                      self_twice_nat=1, vrf_id=1)
+        self.vapi.nat44_interface_add_del_feature(self.pg6.sw_if_index,
+                                                  is_inside=0)
+
+        p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
+             IP(src=self.pg6.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=12345, dport=external_port))
+        self.pg6.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg6.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, twice_nat_addr)
+            self.assertNotEqual(tcp.sport, 12345)
+            post_twice_nat_port = tcp.sport
+            self.assertEqual(ip.dst, self.pg6.remote_ip4)
+            self.assertEqual(tcp.dport, local_port)
+            self.assert_packet_checksums_valid(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
+             IP(src=self.pg6.remote_ip4, dst=twice_nat_addr) /
+             TCP(sport=local_port, dport=post_twice_nat_port))
+        self.pg6.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg6.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(tcp.sport, external_port)
+            self.assertEqual(ip.dst, self.pg6.remote_ip4)
+            self.assertEqual(tcp.dport, 12345)
+            self.assert_packet_checksums_valid(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
     def twice_nat_common(self, self_twice_nat=False, same_pg=False, lb=False,
                          client_id=None):
         twice_nat_addr = '10.0.1.3'
