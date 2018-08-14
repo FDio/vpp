@@ -224,8 +224,6 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	return -1;
     }
 
-  nat64_session_reset_timeout (ste, ctx->vm);
-
   ip4->src_address.as_u32 = bibe->out_addr.as_u32;
   udp->src_port = bibe->out_port;
 
@@ -237,11 +235,14 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
       ip_csum_t csum;
       tcp_header_t *tcp = ip6_next_header (ip6);
 
+      nat64_tcp_session_set_state (ste, tcp, 1);
       checksum = &tcp->checksum;
       csum = ip_csum_sub_even (*checksum, sport);
       csum = ip_csum_add_even (csum, udp->src_port);
       *checksum = ip_csum_fold (csum);
     }
+
+  nat64_session_reset_timeout (ste, ctx->vm);
 
   return 0;
 }
@@ -635,6 +636,9 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
       if (!ste)
 	return -1;
     }
+
+  if (proto == IP_PROTOCOL_TCP)
+    nat64_tcp_session_set_state (ste, tcp, 1);
 
   nat64_session_reset_timeout (ste, vm);
 
@@ -1203,6 +1207,7 @@ nat64_in2out_frag_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 	  ip_csum_t csum;
 	  tcp_header_t *tcp = (tcp_header_t *) udp;
 
+	  nat64_tcp_session_set_state (ste, tcp, 1);
 	  checksum = &tcp->checksum;
 	  csum = ip_csum_sub_even (*checksum, tcp->src_port);
 	  csum = ip_csum_sub_even (csum, ip6->src_address.as_u64[0]);
@@ -1262,6 +1267,9 @@ nat64_in2out_frag_hairpinning (vlib_buffer_t * b, ip6_header_t * ip6,
   bibe = nat64_db_bib_entry_by_index (db, ctx->proto, ste->bibe_index);
   if (!bibe)
     return -1;
+
+  if (ctx->proto == IP_PROTOCOL_TCP)
+    nat64_tcp_session_set_state (ste, tcp, 1);
 
   nat64_session_reset_timeout (ste, ctx->vm);
 

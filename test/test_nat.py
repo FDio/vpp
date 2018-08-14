@@ -5943,7 +5943,7 @@ class TestNAT64(MethodHolder):
                                                 self.nat_addr_n)
         self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
-        self.vapi.nat64_set_timeouts(icmp=5)
+        self.vapi.nat64_set_timeouts(icmp=5, tcp_trans=5, tcp_est=5)
 
         pkts = self.create_stream_in_ip6(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -5955,9 +5955,9 @@ class TestNAT64(MethodHolder):
 
         sleep(15)
 
-        # ICMP session after timeout
+        # ICMP and TCP session after timeout
         ses_num_after_timeout = self.nat64_get_ses_num()
-        self.assertNotEqual(ses_num_before_timeout, ses_num_after_timeout)
+        self.assertEqual(ses_num_before_timeout - ses_num_after_timeout, 2)
 
     def test_icmp_error(self):
         """ NAT64 ICMP Error message translation """
