@@ -46,6 +46,30 @@
       "revId": "8b321a873231a6ae84f56e88b81f9488d92276c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "88605ab9_e364b549",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-14T01:31:35Z",
+      "side": 1,
+      "message": "seemly line 523 can be included inside the pool_elts check. If there is no event, #523 can be skipped as well.",
+      "parentUuid": "7b0e4749_901dd527",
+      "range": {
+        "startLine": 523,
+        "startChar": 2,
+        "endLine": 523,
+        "endChar": 24
+      },
+      "revId": "8b321a873231a6ae84f56e88b81f9488d92276c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
