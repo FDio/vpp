@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4d4a979a_8bea6d56",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-14T10:49:12Z",
+      "side": 1,
+      "message": "For beginners, it should be probably noted that this command performs the actual upload to Gerrit (and as it is not a Draft, even the first testing edit will remain visible as long as Gerrit works).",
+      "range": {
+        "startLine": 87,
+        "startChar": 6,
+        "endLine": 87,
+        "endChar": 16
+      },
+      "revId": "758dc46072032b7145a556804a29e87baa602958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f2e5b0b_18162003",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-14T10:49:12Z",
+      "side": 1,
+      "message": "Personally, I always create a local branch before creating/editing, and keep that patch around (rebasing over target branch when needed) while the Change is being reviewed (so I can push new patch sets without \"git review -d\" each time), and I only delete the local branch after the Change is merged (or abandoned).",
+      "range": {
+        "startLine": 95,
+        "startChar": 6,
+        "endLine": 95,
+        "endChar": 16
+      },
+      "revId": "758dc46072032b7145a556804a29e87baa602958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cc8842d8_63d6eff8",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-14T10:49:12Z",
+      "side": 1,
+      "message": "Be sure to mention that the contributor should open the Gerrit URL and look at the edits, noticing all the trailing whitespaces, misalligned lines, and usage of tab instead of spaces (or vice versa).",
+      "range": {
+        "startLine": 136,
+        "startChar": 17,
+        "endLine": 136,
+        "endChar": 24
+      },
+      "revId": "758dc46072032b7145a556804a29e87baa602958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b49499a0_54a331df",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-14T10:49:12Z",
+      "side": 1,
+      "message": "Instead of resetting the temporary branch (created in line 128) before checking out master, I usually checkout first and then \"git branch -D\" the temporary branch.\n\nYour process is leaking the temporary branches.",
+      "range": {
+        "startLine": 140,
+        "startChar": 6,
+        "endLine": 140,
+        "endChar": 15
+      },
+      "revId": "758dc46072032b7145a556804a29e87baa602958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07f177d4_134c3ed4",
+        "filename": "docs/gettingstarted/writingdocs/buildingrst.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-14T10:49:12Z",
+      "side": 1,
+      "message": "The original number of characters was correct.",
+      "range": {
+        "startLine": 5,
+        "startChar": 22,
+        "endLine": 5,
+        "endChar": 26
+      },
+      "revId": "758dc46072032b7145a556804a29e87baa602958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
