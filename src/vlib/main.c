@@ -1547,6 +1547,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      }
 	  }
       }
+      /* Input nodes may have added work to the pending vector.
+         Process pending vector until there is nothing left.
+         All pending vectors will be processed from input -> output. */
+      for (i = 0; i < _vec_len (nm->pending_frames); i++)
+	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
+      /* Reset pending vector for next iteration. */
+      _vec_len (nm->pending_frames) = 0;
 
       if (is_main)
 	{
@@ -1565,7 +1572,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	    {
 	      uword i;
 
-	    processes_timing_wheel_data:
 	      for (i = 0; i < _vec_len (nm->data_from_advancing_timing_wheel);
 		   i++)
 		{
@@ -1608,19 +1614,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      _vec_len (nm->data_from_advancing_timing_wheel) = 0;
 	    }
 	}
-
-      /* Input nodes may have added work to the pending vector.
-         Process pending vector until there is nothing left.
-         All pending vectors will be processed from input -> output. */
-      for (i = 0; i < _vec_len (nm->pending_frames); i++)
-	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
-      /* Reset pending vector for next iteration. */
-      _vec_len (nm->pending_frames) = 0;
-
-      /* Pending internal nodes may resume processes. */
-      if (is_main && _vec_len (nm->data_from_advancing_timing_wheel) > 0)
-	goto processes_timing_wheel_data;
-
       vlib_increment_main_loop_counter (vm);
 
       /* Record time stamp in case there are no enabled nodes and above
