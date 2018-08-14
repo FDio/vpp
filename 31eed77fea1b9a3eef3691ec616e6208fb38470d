@@ -46,6 +46,30 @@
       "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "17006bf5_66ee977b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T16:34:40Z",
+      "side": 1,
+      "message": "Yup. I\u0027m pretty sure at one point we\u0027ll get requests to support multiple certs/keys per app. Hopefully not very soon ... :)\n\nHmm, can\u0027t we go back to adding a key to the tls_ctx_id_t and setting it to the index of the openssl_listen_ctx_t that has been allocated for the listener? Then, in stop_listen you can just use the index to remove the listen ctx from the pool.",
+      "parentUuid": "552046e6_556825ac",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 33
+      },
+      "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
