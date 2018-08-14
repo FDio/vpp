@@ -94,6 +94,30 @@
       "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50e0e52e_d7f29553",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T17:01:18Z",
+      "side": 1,
+      "message": "No, not for now. If we decide to allow listens to come in on any core (might happen at one point but it\u0027s definitely not on my list of priorities) we\u0027ll have to refactor a good deal of the session layer. We might have to take care of tls as well at that time.",
+      "parentUuid": "76864374_9bc33f36",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 33
+      },
+      "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
