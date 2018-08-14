@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "590083ee_fc08543b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 568,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T16:27:05Z",
+      "side": 1,
+      "message": "One could complain about the consistency of the return values of those two alloc functions. Namely, tls_ctx_alloc, does return a handle and openssl_ctx_alloc returns an index. If we wanted them consistent, then they\u0027d all have to return a structure and then have helper functions that compute and return indices/handles. Since they\u0027re not heavily used, I think I prefer simplicity (i.e., less function calls)",
+      "parentUuid": "1d37b682_067ee6e8",
+      "range": {
+        "startLine": 568,
+        "startChar": 2,
+        "endLine": 568,
+        "endChar": 11
+      },
+      "revId": "e124b2d8ec3a0777f6c43943f249554d87ed3664",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c23cd5cc_167b58f8",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -96,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "dcaabd36_0ced2ca7",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T16:27:05Z",
+      "side": 1,
+      "message": "As I commented on your updated patch set: if we have listeners from different apps, or perhaps we decided to support multiple listeners per app with different servcert/pkey, as far as I can tell, having one openssl_listen_ctx_t per main won\u0027t work.\n\nSince the fixed state needs to be per listener, we have two options: \n1) another pool or,\n2) if we expect very little churn in terms of number of listeners being added and removed, we could just clib_mem_alloc () your openssl_listen_ctx_t (and obviously free it when listener goes away). \n\nI\u0027m typically wary of the latter because aggressive use of it fragments the heap. So, I\u0027d go with the first. As long as we can assume that start_listen/stop_listen are called with worker barrier syncs (i.e. over binary api or from cli) we won\u0027t need a lock.",
+      "parentUuid": "e81fd6a2_ac76f2d7",
+      "range": {
+        "startLine": 614,
+        "startChar": 0,
+        "endLine": 614,
+        "endChar": 41
+      },
+      "revId": "e124b2d8ec3a0777f6c43943f249554d87ed3664",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a6d0550_d66335b4",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -131,6 +179,30 @@
       "side": 1,
       "message": "If using a pool_index, then it requires a pool_elt_at_index call, and what\u0027s more, a lock may needed. To make data plane more efficient, I think this data structure can use SSL_CTX * directly, so there is no lock needed.",
       "parentUuid": "3a6d0550_d66335b4",
+      "range": {
+        "startLine": 625,
+        "startChar": 31,
+        "endLine": 625,
+        "endChar": 42
+      },
+      "revId": "e124b2d8ec3a0777f6c43943f249554d87ed3664",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "97e34393_3aa0a53f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-14T16:27:05Z",
+      "side": 1,
+      "message": "That long rant above was meant to clarify that as long as start/stop listen calls come with a worker barrier sync we\u0027re fine. Even if we have to add a lock, don\u0027t we use the openssl_listen_ctx_t only when setting up a session and not while exchanging data?",
+      "parentUuid": "740fa503_00a5d739",
       "range": {
         "startLine": 625,
         "startChar": 31,
