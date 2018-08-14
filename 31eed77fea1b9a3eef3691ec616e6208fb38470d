@@ -22,6 +22,30 @@
       "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "552046e6_556825ac",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-14T15:47:03Z",
+      "side": 1,
+      "message": "this data structure is used to store servcert and pkey. Do you think app-\u003etls_cert and app-\u003etls_key will change for different app? if yes, then I have to use a new pool, such like lctx_pool, and use a chain to store it in \"start_listen\", and delete it when \"stop_listen\" is called, SSL_CTX is the key for searching.",
+      "parentUuid": "18ee6f07_ceec10a1",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 33
+      },
+      "revId": "31eed77fea1b9a3eef3691ec616e6208fb38470d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
