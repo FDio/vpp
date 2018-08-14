@@ -22,6 +22,30 @@
       "revId": "8b321a873231a6ae84f56e88b81f9488d92276c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b0e4749_901dd527",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-14T01:24:29Z",
+      "side": 1,
+      "message": "unlike the polling function, the API will check if there are  available running event inside the function, so no need to duplicate the check here.",
+      "parentUuid": "e8a72c51_0cbc3c64",
+      "range": {
+        "startLine": 523,
+        "startChar": 2,
+        "endLine": 523,
+        "endChar": 24
+      },
+      "revId": "8b321a873231a6ae84f56e88b81f9488d92276c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
