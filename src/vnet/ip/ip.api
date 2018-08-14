@@ -550,8 +550,8 @@ define ip_unnumbered_dump
 
 define ip_details
 {
-  u32 sw_if_index;
   u32 context;
+  u32 sw_if_index;
   u8 is_ipv6;
 };
 
