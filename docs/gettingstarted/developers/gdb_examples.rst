@@ -10,7 +10,7 @@ In this section we have a few useful gdb commands.
 Starting GDB
 ----------------------------
 
-Once at the gdb prompt VPP can be started with the following:
+Once at the gdb prompt, VPP can be started by isuuing the following commands:
 
 .. code-block:: console
 
@@ -25,7 +25,7 @@ Backtrace
 ----------------------------
 
 If you encounter issues when running VPP, such as VPP terminating due to a segfault
-or abort signal, you can run the VPP debug binary and then execute **backtrace** or **bt**.
+or abort signal, then you can run the VPP debug binary and then execute **backtrace** or **bt**.
 
 .. code-block:: console
 
@@ -38,12 +38,12 @@ or abort signal, you can run the VPP debug binary and then execute **backtrace**
 Get to the GDB prompt
 ---------------------------------------
 
-When running VPP is running get to the command prompt with CTRL-c.
+When VPP is running, you can get to the command prompt by entering CTRL-c.
 
 Breakpoints
 ---------------------------------------
 
-When at the GDB prompt set a breakpoint like so:
+When at the GDB prompt, set a breakpoint by using the commands below:
 
 .. code-block:: console
 

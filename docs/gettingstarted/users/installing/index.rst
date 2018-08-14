@@ -12,16 +12,8 @@ existing packages. This guide describes how to pull, install and run the VPP pac
 
 .. toctree::
 
-Package Descriptions
---------------------
-The following is a brief description of the packages to be installed with VPP.
-
-.. toctree::
-
-   packages
-
-Installing VPP Binaries
-----------------------------------
+Installing VPP
+---------------
 
 This section provides directions on how to Install VPP binaries on Ubuntu, Centos,
 and openSUSE platforms.
@@ -49,3 +41,11 @@ The following are instructions on how to install VPP on openSUSE.
 .. toctree::
 
    opensuse
+
+Package Descriptions
+--------------------
+The following is a brief description of the packages to be installed with VPP.
+
+.. toctree::
+
+   packages

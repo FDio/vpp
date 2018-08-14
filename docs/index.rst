@@ -7,8 +7,6 @@
 FD.io VPP
 #########
 
-This is beta VPP Documentation it is not meant to be complete or accurate yet!!!! 
-
 FD.io Vector Packet Processing (VPP) is a fast, scalable and multi-platform network stack. 
 
 FD.io VPP is, at it's core, a scalable layer 2-4 network stack. 

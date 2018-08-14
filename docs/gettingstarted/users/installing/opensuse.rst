@@ -4,8 +4,9 @@
 
 Installing
 ==========
-To install VPP on openSUSE, first install the following release and then execute
-the appropriate commands.
+
+To install VPP on openSUSE, first install the following release, and then execute
+the associated commands.
 
 openSUSE Tumbleweed (rolling release)
 ------------------------------------------------------------
@@ -25,12 +26,16 @@ openSUSE Leap 42.3
 Uninstall
 =========
 
+To uninstall the vpp plugins, run the following command:
+
 .. code-block:: console
 
    sudo zypper remove -u vpp vpp-plugins
 
 openSUSE Tumbleweed (rolling release)
 -------------------------------------
+
+To uninstall the openSUSE Tumbleweed, run the following command:
 
 .. code-block:: console
 

@@ -1,7 +1,7 @@
 .. _writingdocs:
 
 #########################
-VPP Documents
+Writing Documents
 #########################
 
 This section covers the following topics:

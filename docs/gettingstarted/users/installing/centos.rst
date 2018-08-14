@@ -8,7 +8,8 @@ Setup the fd.io Repository - Centos 7
 Update the OS
 -------------
 
-Before starting the repository setup, it is a good idea to first update and upgrade the OS.
+Before starting the repository setup, it is a good idea to first update and upgrade
+the OS; run the following command to update the OS:
 
 .. code-block:: console
 
@@ -18,8 +19,7 @@ Before starting the repository setup, it is a good idea to first update and upgr
 Point to the Repository
 -----------------------
 
-For CentOS based systems, there are two respositories to pull VPP binaries
-from.
+For CentOS based systems, there are two respositories to pull VPP binaries from:
 
 * CentOS NFV SIG Repository
 * Nexus Repository
@@ -28,15 +28,14 @@ from.
 CentOS NFV SIG Repository
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-VPP is not in the official CentOS 7 distro. However, CentOS has Special
+VPP is not in the official CentOS 7 distro; however, CentOS has Special
 Interest Groups (SIG), which are smaller groups within the CentOS community that
 focus on a small set of issues. The CentOS NFV (Network Function Virtualization)
 SIG was created to provide a CentOS-based stack that will serve as a platform
-for the deployment and testing of virtual network functions (VNFs). VPP has been
-included in this SIG.
 
 To install released packages from the CentOS NFV SIG Repository on an updated
-Centos 7 system, first, install the CentOS NFV SIG FIDO repo file:
+Centos 7 system, first, install the CentOS NFV SIG FIDO repo file by running the
+following command:
 
 .. code-block:: console
 
@@ -109,7 +108,7 @@ VPP Latest Release
 """"""""""""""""""
 
 To allow *'yum'* access to the official VPP releases, create the file
-*'/etc/yum.repos.d/fdio-release.repo'* with the following content:
+*'/etc/yum.repos.d/fdio-release.repo'* with the following content.
 
 .. code-block:: console
 
@@ -122,7 +121,7 @@ To allow *'yum'* access to the official VPP releases, create the file
 
 The *'yum install vpp'* command will install the most recent release. To
 install older releases, run the following command to get the list of releases
-provided:
+provided.
 
 .. code-block:: console
 
@@ -133,10 +132,10 @@ sample *'yum --showduplicates list'* output and an example of installing a
 particular version of the RPMs.
 
 VPP Stable Branch
-"""""""""""""""""
+"""""""""""""""""""
 
 To allow *yum* access to the build artifacts for a VPP stable branch, create
-the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content:
+the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content.
 
 .. code-block:: console
 
@@ -164,10 +163,10 @@ particular version of the RPMs.
 
 
 VPP Master Branch
-"""""""""""""""""
+"""""""""""""""""""
 
 To allow *yum* access to the nightly builds from the VPP master branch, create
-the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content:
+the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content.
 
 .. code-block:: console
 
@@ -180,7 +179,7 @@ the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content:
 
 The *'yum install vpp'* command will install the most recent build on the
 branch. Run the following command to get the list of images produce by the
-branch:
+branch.
 
 .. code-block:: console
 
@@ -194,18 +193,18 @@ particular version of the RPMs.
 Install VPP RPMs
 ================
 
-To install the VPP packet engine, run the following:
+To install the VPP packet engine, run the following command:
 
 .. code-block:: console
 
    $ sudo yum install vpp
 
-The **'vpp'** RPM depend on the **'vpp-lib'** and **'vpp-selinux-policy'**
+The *vpp* RPM depends on the *vpp-lib* and *vpp-selinux-policy*
 RPMs, so they will be installed as well.
 
 .. note::
 
-    The **'vpp-selinux-policy'** will not enable SELinux on the system. It
+    The *vpp-selinux-policy* will not enable SELinux on the system. It
     will install a Custom VPP SELinux policy that will be used if SELinux is
     enabled at any time.
 
@@ -221,18 +220,17 @@ Starting VPP
 ============
 
 Once VPP is installed on the system, to run VPP as a systemd service on CentOS,
-run:
+run the following command:
 
 .. code-block:: console
 
    $ sudo systemctl start vpp
 
-Then to enable VPP to start on system reboot:
+Then to enable VPP to start on system reboot, run the following command:
 
 .. code-block:: console
 
    $ sudo systemctl enable vpp
-
 
 Outside of running VPP as a systemd service, VPP can be started manually or
 made to run within GDB for debugging. See :ref:`running` for more details and
@@ -241,6 +239,8 @@ ways to tailor VPP to a specific system.
 
 Uninstall the VPP RPMs
 ======================
+
+To uninstall a VPP RPM, run the following command:
 
 .. code-block:: console
 

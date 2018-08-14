@@ -1,8 +1,8 @@
 .. _links:
 
-#############
-Other Links
-#############
+#############################
+VPP Wiki and Other Links
+#############################
 
 There are several places to find helpful Information regarding FD.io VPP.
 

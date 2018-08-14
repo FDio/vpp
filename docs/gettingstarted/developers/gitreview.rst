@@ -57,20 +57,20 @@ Otherwise, clone with:
     $ git clone ssh://YOUR_GERRIT_USERNAME@gerrit.fd.io:29418/vpp
     $ cd vpp
 
-When attempting to clone the repo it will ask if you want to add the Server Host Key to the list of known hosts. Type **yes** and hit enter.
+When attempting to clone the repo Git will prompt you asking if you want to add the Server Host Key to the list of known hosts. Enter **yes** and press the **Enter** key.
 
 Git Review
 ===========
 
-The VPP documents use the gerrit server and git review for submitting and fetching patches.
+The VPP documents use the gerrit server, and git review for submitting and fetching patches.
 
 
 New patch
 -----------------
 
-When working with new patch use the following to get your patch reviewed.
+When working with a new patch, use the following commands to get your patch reviewed.
 
-Make sure you have modified the correct files with:
+Make sure you have modified the correct files by issuing the following commands:
 
 .. code-block:: console
 
@@ -78,7 +78,7 @@ Make sure you have modified the correct files with:
     $ git diff
 
 Then add and commit the patch. You may want to add a tag to the commit comments.
-For example for document only patches you should add the tag **DOCS:**.
+For example for a document with only patches you should add the tag **DOCS:**.
 
 .. code-block:: console
 
