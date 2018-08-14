@@ -1,17 +1,20 @@
 .. _gettingstarted:
 
 ######################
-Getting Started Guides
+Getting Started
 ######################
 
-The Getting Started Guide is comprised of several different sections; a section for Users,  another for Developers, and a section for Writing VPP documentation.
+The Getting Started Guide is comprised of several different sections; a User section
+that describes a basic installation and configuration of VPP (either manually or using
+a config utility),  another install for Developers, which contains additional code that
+provides tools that are used in a development environment.
 
-The Users section covers basic VPP installation and configuration operations. This section covers the following areas:
+The Users section covers basic VPP installation and configuration operations; this
+section covers the following areas:
 
-* Describes the different types of VPP packages
-* Describes how to install VPP Binaries on different OS platforms (Ubuntu, Centos, openSUSE).
-* Explains how to configure, then use VPP.
-* Explains how to use the Configuration Utility.
+* Describes the different types of VPP packages, which are used in both basic and developer installs.
+* Describes how to manually install VPP Binaries on different OS platforms (Ubuntu, Centos, openSUSE) and then how to configure and use VPP.
+* Explains how to use the Configuration Utility to install, and then configure VPP.
 
 The Developers section covers the following areas:
 

@@ -6,6 +6,7 @@ Building VPP
 ============
 
 To get started developing with VPP you need to get the sources and build the packages.
+For more information on the build system please refer to :ref:`buildsystem`.
 
 .. _setupproxies:
 
@@ -24,7 +25,7 @@ You may run these commands:
 Get the VPP Sources
 -----------------------------------
 
-To get the VPP sources and get ready to build execute the following:
+To get the VPP sources that are used to create the build, run the following commands:
 
 .. code-block:: console
 
@@ -44,8 +45,9 @@ commands:
 
 There should be no output, or packages showing after each of the above commands.
 
-Run these commands to install the dependencies for FD.io VPP. 
-If it hangs during downloading at any point, you may need to set up :ref:`proxies for this to work <setupproxies>`.
+Run the following **make** command to install the dependencies for FD.io VPP. 
+If it hangs at any point during the download, then you may need to set up
+:ref:`proxies for this to work <setupproxies>`.
 
 .. code-block:: console
 
@@ -74,9 +76,9 @@ If it hangs during downloading at any point, you may need to set up :ref:`proxie
 Build VPP (Debug)
 ----------------------------
 
-This build version contains debug symbols which is useful to modify VPP. The command
-below will build debug version of VPP. The binaries when building the debug images
-can be found in /build-root/vpp_debug-native.
+This build version contains debug symbols which are useful for modifying VPP. The
+**make** command below builds a debug version of VPP. The binaries, when building the
+debug images, can be found in /build-root/vpp_debug-native.
 
 .. code-block:: console
 
@@ -105,6 +107,10 @@ Build VPP (Release Version)
 To build the release version of FD.io VPP. This build is optimized and will not create debug symbols.
 The binaries when building the release images can be found in /build-root/vpp-native.
 
+Use the following **make** command below to build the release version of FD.io VPP. This build is
+optimized and will not create debug symbols. When building the release images, the binaries can
+be found in /build-root/vpp-native.
+
 .. code-block:: console
 
     $ make build-release
@@ -113,18 +119,19 @@ The binaries when building the release images can be found in /build-root/vpp-na
 Building Necessary Packages
 --------------------------------------------
 
-To build the debian packages, one of the following commands below depending on the system:
-
 Building Debian Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To build the debian packages, use one of the following commands below, depending on the system:
 
 .. code-block:: console
 
     $ make pkg-deb 
 
-
 Building RPM Packages
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+To build the rpm packages, use one of the following commands below, depending on the system:
 
 .. code-block:: console
 

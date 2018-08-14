@@ -25,8 +25,10 @@ The Developers section covers the following areas:
    plugins
    vnet
    featurearcs
+   multiarch/index.rst
    bihash
    vpp_api_module
    binary_api_support
+   buildsystem/index.rst
    sample_plugin
 

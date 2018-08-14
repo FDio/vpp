@@ -3,8 +3,8 @@
 Configuring VPP
 ==================
 
-There is some basic configuration that is needed to run FD.io VPP.  This section
-describes the basic configuration:
+There is some basic configuration that needs to be performed before running
+FD.io VPP.  This section describes the configuration process:
 
 .. toctree::
    :maxdepth: 2

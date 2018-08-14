@@ -1,9 +1,9 @@
 .. _sample_plugin:
 
-.. toctree::
+Integrating a plugin
+=====================
 
-Integrating a complete plugin with VPP
-======================================
+.. toctree::
 
 Overview
 ________
