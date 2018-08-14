@@ -144,6 +144,30 @@
     },
     {
       "key": {
+        "uuid": "a8f8a1d9_53baf9d8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-14T16:51:06Z",
+      "side": 1,
+      "message": "yes option 1 is also my preferred way. I will add lctx_pool which is used to store pkey and srvcert.",
+      "parentUuid": "dcaabd36_0ced2ca7",
+      "range": {
+        "startLine": 614,
+        "startChar": 0,
+        "endLine": 614,
+        "endChar": 41
+      },
+      "revId": "e124b2d8ec3a0777f6c43943f249554d87ed3664",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a6d0550_d66335b4",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
