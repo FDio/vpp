@@ -34,6 +34,24 @@
       "revId": "e8f94f48e4d6f258e3b768c9ed5bc5a4c3265369",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "25761b1b_de0c37ed",
+        "filename": "src/plugins/nat/nat64_out2in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-08-14T05:25:09Z",
+      "side": 1,
+      "message": "This option should be fine.",
+      "parentUuid": "e6376741_f74e08db",
+      "revId": "e8f94f48e4d6f258e3b768c9ed5bc5a4c3265369",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
