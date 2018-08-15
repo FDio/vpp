@@ -937,7 +937,6 @@ define nat_det_session_dump {
     @param expire - session expiration timestamp
 */
 define nat_det_session_details {
-  u32 client_index;
   u32 context;
   u16 in_port;
   u8 ext_addr[4];

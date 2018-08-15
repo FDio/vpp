@@ -105,7 +105,6 @@ define get_first_msg_id {
 };
 
 define get_first_msg_id_reply {
-    u32 client_index;
     u32 context;
     i32 retval;
     u16 first_msg_id;
@@ -125,7 +124,6 @@ define api_versions {
   u32 context;
 };
 define api_versions_reply {
-  u32 client_index;
   u32 context;
   i32 retval;
   u32 count;
