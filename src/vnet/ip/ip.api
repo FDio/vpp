@@ -287,7 +287,6 @@ autoreply define ip6nd_proxy_add_del
 */
 define ip6nd_proxy_details
 {
-  u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 address[16];
@@ -510,7 +509,6 @@ manual_endian manual_print define ip6_mfib_details
 
 define ip_address_details
 {
-  u32 client_index;
   u32 context;
   u8 ip[16];
   u8 prefix_length;
@@ -532,7 +530,6 @@ define ip_address_dump
 */
 define ip_unnumbered_details
 {
-  u32 client_index;
   u32 context;
   u32 sw_if_index;
   u32 ip_sw_if_index;
@@ -570,7 +567,6 @@ define mfib_signal_dump
 
 define mfib_signal_details
 {
-  u32 client_index;
   u32 context;
   u32 sw_if_index;
   u32 table_id;
@@ -1014,7 +1010,6 @@ define ip_reassembly_get
 
 define ip_reassembly_get_reply
 {
-  u32 client_index;
   u32 context;
   i32 retval;
   u32 timeout_ms;

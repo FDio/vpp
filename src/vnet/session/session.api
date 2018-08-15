@@ -258,14 +258,11 @@ define reset_session {
 };
 
 /** \brief client->vpp reset session reply
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - session handle obtained via accept/connect
 */
 define reset_session_reply {
-  u32 client_index;
   u32 context;
   i32 retval;
   u64 handle;
