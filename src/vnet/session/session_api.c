@@ -955,7 +955,7 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
   stream_session_t *s;
   u32 index, thread_index;
 
-  app = application_lookup (mp->client_index);
+  app = application_lookup (mp->context);
   if (!app)
     return;
 

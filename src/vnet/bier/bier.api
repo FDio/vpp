@@ -96,7 +96,6 @@ define bier_route_dump
 
 define bier_route_details
 {
-  u32 client_index;
   u32 context;
   u16 br_bp;
   vl_api_bier_table_id_t br_tbl_id;
@@ -157,7 +156,6 @@ define bier_imp_dump
 
 define bier_imp_details
 {
-  u32 client_index;
   u32 context;
   vl_api_bier_table_id_t bi_tbl_id;
   u16 bi_src;

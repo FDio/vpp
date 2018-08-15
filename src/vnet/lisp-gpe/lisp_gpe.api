@@ -147,7 +147,6 @@ define gpe_fwd_entry_path_dump
 
 manual_endian manual_print define gpe_fwd_entry_path_details
 {
-  u32 client_index;
   u32 context;
   vl_api_gpe_locator_t lcl_loc;
   vl_api_gpe_locator_t rmt_loc;
