@@ -48,6 +48,7 @@ extern vlib_node_registration_t ip6_frag_node;
 
 typedef enum
 {
+  IP4_FRAG_NEXT_IP4_REWRITE,
   IP4_FRAG_NEXT_IP4_LOOKUP,
   IP4_FRAG_NEXT_IP6_LOOKUP,
   IP4_FRAG_NEXT_ICMP_ERROR,
@@ -59,6 +60,7 @@ typedef enum
 {
   IP6_FRAG_NEXT_IP4_LOOKUP,
   IP6_FRAG_NEXT_IP6_LOOKUP,
+  IP6_FRAG_NEXT_IP6_REWRITE,
   IP6_FRAG_NEXT_DROP,
   IP6_FRAG_N_NEXT
 } ip6_frag_next_t;
