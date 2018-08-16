@@ -318,7 +318,7 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
     vl_set_memory_root_path (chroot_prefix);
 
   if ((rv = vl_client_api_map("/vpe-api"))) {
-    clib_warning ("vl_client_api map rv %d", rv);
+    clib_warning ("vl_client_api_map returned %d", rv);
     return rv;
   }
 
@@ -404,7 +404,7 @@ vac_disconnect (void)
   }
   if (pm->timeout_thread_handle) {
     /* cancel, wake then join the timeout thread */
-    clib_warning("vac_disconnect cnacel");
+    clib_warning("vac_disconnect cancel");
     pm->timeout_loop = 0;
     set_timeout(0);
     pthread_join(pm->timeout_thread_handle, (void **) &junk);
