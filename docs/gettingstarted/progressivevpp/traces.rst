@@ -2,18 +2,28 @@
 
 .. toctree::
 
-Traces 
-======
+Using the trace command 
+========================
+
+Skills to be Learned
+---------------------
+
+#. Setup a 'trace'
+#. View a 'trace'
+#. Clear a 'trace'
+#. Verify using ping from host
+#. Ping from vpp
+#. Examine Arp Table
+#. Examine ip fib
 
 Basic Trace Commands
-~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 Show trace buffer [max COUNT].
 
 .. code-block:: console 
 
   vpp# show trace
-
 
 Clear trace buffer and free memory.
 
@@ -27,26 +37,15 @@ filter trace output - include NODE COUNT | exclude NODE COUNT | none.
 
   vpp# trace filter <include NODE COUNT | exclude NODE COUNT | none>
 
-Skills to be Learned
-~~~~~~~~~~~~~~~~~~~~
-
-#. Setup a 'trace'
-#. View a 'trace'
-#. Clear a 'trace'
-#. Verify using ping from host
-#. Ping from vpp
-#. Examine Arp Table
-#. Examine ip fib
-
 Add Trace
-~~~~~~~~~
+----------
 
 .. code-block:: console 
 
   vpp# trace add af-packet-input 10
 
-Ping from Host to FD.io VPP
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ping from Host to VPP
+----------------------
 
 .. code-block:: console 
 
@@ -59,12 +58,12 @@ Ping from Host to FD.io VPP
   1 packets transmitted, 1 received, 0% packet loss, time 0ms
   rtt min/avg/max/mdev = 0.283/0.283/0.283/0.000 ms
 
-Examine Trace of ping from host to FD.io VPP 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Examine Trace of ping from host to VPP 
+----------------------------------------
 
 .. code-block:: console 
 
-  # vppctl
+  $ sudo vppctl -s /run/vpp/cli-vpp1.sock
   vpp# show trace
   ------------------- Start of thread 0 vpp_main -------------------
   Packet 1
@@ -121,14 +120,14 @@ Examine Trace of ping from host to FD.io VPP
   ICMP echo_reply checksum 0xc843
 
 Clear trace buffer
-~~~~~~~~~~~~~~~~~~
+-------------------
 
 .. code-block:: console 
 
   vpp# clear trace
 
-Ping from FD.io VPP to Host 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ping from VPP to Host 
+-----------------------
 
 .. code-block:: console 
 
@@ -141,8 +140,8 @@ Ping from FD.io VPP to Host
 
   Statistics: 5 sent, 5 received, 0% packet loss
 
-Examine Trace of ping from FD.io VPP to host
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Examine Trace of ping from VPP to host
+---------------------------------------
 
 The output will demonstrate FD.io VPP's trace of ping for all packets.
 
@@ -442,7 +441,7 @@ The output will demonstrate FD.io VPP's trace of ping for all packets.
 After examining the trace, clear it again using vpp# clear trace.
 
 Examine arp tables
-~~~~~~~~~~~~~~~~~~
+-------------------
 
 .. code-block:: console 
 
@@ -451,7 +450,7 @@ Examine arp tables
   1101.5636    10.10.1.1      D    e2:0f:1e:59:ec:f7 host-vpp1out        
 
 Examine routing tables
-~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 .. code-block:: console 
 
