@@ -1,8 +1,8 @@
 .. _gstarteddevel:
 
-##########
-Developers
-##########
+###############
+For Developers
+###############
 
 The Developers section covers the following areas:
 
