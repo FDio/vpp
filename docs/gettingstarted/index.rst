@@ -33,6 +33,7 @@ The Writing VPP Documentation section covers the following topics:
 .. toctree::
    :maxdepth: 2
 
+   progressivevpp/index.rst
    users/index.rst
    developers/index.rst
    writingdocs/index.rst

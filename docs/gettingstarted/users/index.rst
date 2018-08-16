@@ -1,8 +1,8 @@
 .. _users:
 
-########
-Users
-########
+###########
+For Users
+###########
 
 The Users section describe a basic VPP installation and configuration operation.
 The  installation and configuration of VPP can be done either manually, or by
@@ -21,7 +21,7 @@ section covers the following areas:
 .. toctree::
    :maxdepth: 2
 
+   configutil/index.rst
    installing/index.rst
    configuring/index.rst
    running/index.rst
-   configutil/index.rst
