@@ -303,6 +303,7 @@ PLUGIN_ENABLED(acl)
 PLUGIN_ENABLED(avf)
 PLUGIN_ENABLED(cdp)
 PLUGIN_ENABLED(dpdk)
+PLUGIN_ENABLED(dpi)
 PLUGIN_ENABLED(flowprobe)
 PLUGIN_ENABLED(gbp)
 PLUGIN_ENABLED(gtpu)
@@ -412,6 +413,17 @@ AM_COND_IF([WITH_LIBSSL],
   AC_MSG_WARN([openssl not enabled. Disabling tlsopenssl plugin])
   enable_tlsopenssl_plugin=no
   AM_CONDITIONAL(ENABLE_TLSOPENSSL_PLUGIN, false)
+])
+
+AM_COND_IF([ENABLE_DPI_PLUGIN],
+[
+  AC_CHECK_LIB( [hs], [hs_compile],
+    [],
+    [
+      AC_MSG_WARN([Hyperscan library not found. Plugin disabled.])
+      enable_dpi_plugin=no
+      AM_CONDITIONAL(ENABLE_DPI_PLUGIN, false)
+    ])
 ])
 
 ###############################################################################
