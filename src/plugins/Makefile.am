@@ -50,6 +50,10 @@ if ENABLE_DPDK_PLUGIN
 include dpdk.am
 endif
 
+if ENABLE_DPI_PLUGIN
+include dpi.am
+endif
+
 if ENABLE_FLOWPROBE_PLUGIN
 include flowprobe.am
 endif
