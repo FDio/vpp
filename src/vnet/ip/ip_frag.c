@@ -602,6 +602,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
 
   .n_next_nodes = IP4_FRAG_N_NEXT,
   .next_nodes = {
+    [IP4_FRAG_NEXT_IP4_REWRITE] = "ip4-rewrite",
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [IP4_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
@@ -623,6 +624,7 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
 
   .n_next_nodes = IP6_FRAG_N_NEXT,
   .next_nodes = {
+    [IP6_FRAG_NEXT_IP6_REWRITE] = "ip6-rewrite",
     [IP6_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP6_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [IP6_FRAG_NEXT_DROP] = "ip6-drop"
