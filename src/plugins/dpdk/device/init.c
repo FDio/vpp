@@ -387,7 +387,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
 	      ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
 	  else
-	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
+	    {
+	      u64 unsupported_bits;
+	      xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
+	      unsupported_bits = xd->port_conf.rx_adv_conf.rss_conf.rss_hf;
+	      unsupported_bits &= ~dev_info.flow_type_rss_offloads;
+	      if (unsupported_bits)
+		dpdk_log_warn ("Unsupported RSS hash functions: %U",
+			       format_dpdk_rss_hf_name, unsupported_bits);
+	    }
+	  xd->port_conf.rx_adv_conf.rss_conf.rss_hf &=
+	    dev_info.flow_type_rss_offloads;
 	}
       else
 	xd->rx_q_used = 1;

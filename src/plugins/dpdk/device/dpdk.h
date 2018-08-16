@@ -515,6 +515,7 @@ format_function_t format_dpdk_rx_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 format_function_t format_dpdk_flow;
+format_function_t format_dpdk_rss_hf_name;
 unformat_function_t unformat_dpdk_log_level;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 

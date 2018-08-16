@@ -45,22 +45,28 @@
   _ (rx_errors, q_errors)
 
 #define foreach_dpdk_rss_hf                    \
+  _(ETH_RSS_IPV4,               "ipv4")        \
   _(ETH_RSS_FRAG_IPV4,          "ipv4-frag")   \
   _(ETH_RSS_NONFRAG_IPV4_TCP,   "ipv4-tcp")    \
   _(ETH_RSS_NONFRAG_IPV4_UDP,   "ipv4-udp")    \
   _(ETH_RSS_NONFRAG_IPV4_SCTP,  "ipv4-sctp")   \
   _(ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")  \
-  _(ETH_RSS_IPV4,               "ipv4")        \
-  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
+  _(ETH_RSS_IPV6,               "ipv6")        \
   _(ETH_RSS_FRAG_IPV6,          "ipv6-frag")   \
   _(ETH_RSS_NONFRAG_IPV6_TCP,   "ipv6-tcp")    \
   _(ETH_RSS_NONFRAG_IPV6_UDP,   "ipv6-udp")    \
   _(ETH_RSS_NONFRAG_IPV6_SCTP,  "ipv6-sctp")   \
   _(ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")  \
+  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
+  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
   _(ETH_RSS_L2_PAYLOAD,         "l2-payload")  \
   _(ETH_RSS_IPV6_EX,            "ipv6-ex")     \
-  _(ETH_RSS_IPV6,               "ipv6")
+  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
+  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
+  _(ETH_RSS_PORT,               "port")        \
+  _(ETH_RSS_VXLAN,              "vxlan")       \
+  _(ETH_RSS_GENEVE,             "geneve")      \
+  _(ETH_RSS_NVGRE,              "nvgre")
 
 
 #define foreach_dpdk_rx_offload_caps            \
@@ -426,7 +432,7 @@ if (bitmap & v) {                                            \
   s = format(s, "%s ", str);                                 \
 }
 
-static u8 *
+u8 *
 format_dpdk_rss_hf_name (u8 * s, va_list * args)
 {
   u64 bitmap = va_arg (*args, u64);
