@@ -387,9 +387,9 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
        */
       if (PREDICT_FALSE (vec_len (am->vlib_private_rps)))
 	{
-	  vl_mem_api_handle_msg_private (vm, node, private_segment_rotor++);
 	  if (private_segment_rotor >= vec_len (am->vlib_private_rps))
 	    private_segment_rotor = 0;
+	  vl_mem_api_handle_msg_private (vm, node, private_segment_rotor++);
 	}
 
       vlib_process_wait_for_event_or_clock (vm, sleep_time);
