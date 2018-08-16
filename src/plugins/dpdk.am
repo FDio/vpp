@@ -30,7 +30,11 @@ if WITH_LIBNUMA
 dpdk_plugin_la_LDFLAGS += -Wl,-lnuma
 endif
 
+if WITH_DPDK_MLX5_PMD
+dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl,-lmnl
+else
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
+endif
 dpdk_plugin_la_LIBADD =
 
 dpdk_plugin_la_SOURCES =					\

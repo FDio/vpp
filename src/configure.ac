@@ -198,6 +198,7 @@ DISABLE_ARG(svm,	[Disable svm and dependant libs and binaries])
 DISABLE_ARG(papi,	[Disable Python API bindings])
 
 # --with-X
+WITH_ARG(dpdk_mlx5_pmd, [Enable Mellanox DPDK PMD driver])
 
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
