@@ -1,7 +1,5 @@
 .. _installingVboxVagrant:
 
-.. toctree::
-
 Installing Vbox and Vagrant
 ===========================
 
@@ -19,6 +17,8 @@ If you're on Ubuntu, perform:
 
    $ sudo apt-get install virtualbox 
 
+If you want to download a newer version of Virtual Box or one specific to your OS and architecture, go to the `Virtual Box download page <https://www.virtualbox.org/wiki/Downloads>`_.
+
 Installing Vagrant
 __________________
 
@@ -35,4 +35,4 @@ This is a similar command, but on a 64-bit version of Debian:
    $ sudo apt-get install https://releases.hashicorp.com/vagrant/2.1.2/vagrant_2.1.2_x86_64.deb
 
 
-If you want to download a newer version of Vagrant or one specific to your OS and architecture, go to the Vagrant `download page <https://www.vagrantup.com/downloads.html>`_, right-click and copy the link address for your specified version, and replace the above install command for your respective OS and architechure.
+If you want to download a newer version of Vagrant or one specific to your OS and architecture, go to the `Vagrant download page <https://www.vagrantup.com/downloads.html>`_.
