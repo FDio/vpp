@@ -6,7 +6,7 @@ Switching
 =========
 
 Skills to be Learned
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
 #. Associate an interface with a bridge domain
 #. Create a loopback interaface
@@ -14,7 +14,7 @@ Skills to be Learned
 #. Examine a bridge domain
 
 FD.io VPP command learned in this exercise
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------------
 
 #. `show
    bridge <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_l2.html#clicmd_show_bridge-domain>`__
@@ -26,7 +26,7 @@ FD.io VPP command learned in this exercise
    verbose <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_l2.html#clicmd_show_l2fib>`__
 
 Topology
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------
 
 .. figure:: /_images/Switching_Topology.jpg
    :alt: Switching Topology
@@ -34,7 +34,7 @@ Topology
    Switching Topology
 
 Initial state
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------
 
 Unlike previous exercises, for this one you want to start tabula rasa.
 
@@ -46,16 +46,17 @@ To clear existing config from previous exercises run:
 
    $ ps -ef | grep vpp | awk '{print $2}'| xargs sudo kill
    $ sudo ip link del dev vpp1host
+   $ # do the next command if you are cleaing up from this example
    $ sudo ip link del dev vpp1vpp2
 
 Run FD.io VPP instances
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 #. Run a vpp instance named **vpp1**
 #. Run a vpp instance named **vpp2**
 
 Connect vpp1 to host
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 #. Create a veth with one end named vpp1host and the other named
    vpp1out.
@@ -63,7 +64,7 @@ Connect vpp1 to host
 #. Add ip address 10.10.1.1/24 on vpp1host
 
 Connect vpp1 to vpp2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 #. Create a veth with one end named vpp1vpp2 and the other named
    vpp2vpp1.
@@ -71,7 +72,7 @@ Connect vpp1 to vpp2
 #. Connect vpp2vpp1 to vpp2.
 
 Configure Bridge Domain on vpp1
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------
 
 Check to see what bridge domains already exist, and select the first
 bridge domain number not in use:
@@ -128,7 +129,7 @@ Examine bridge domain 1:
         host-vpp1vpp2           2     1    0    -      *                 none
 
 Configure loopback interface on vpp2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------------
 
 .. code-block:: console
 
@@ -139,7 +140,7 @@ Add the ip address 10.10.1.2/24 to vpp2 interface loop0. Set the state
 of interface loop0 on vpp2 to 'up'
 
 Configure bridge domain on vpp2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------
 
 Check to see the first available bridge domain ID (it will be 1 in this
 case)
@@ -160,7 +161,7 @@ Add interface vpp2vpp1 to bridge domain 1
 Examine the bridge domain and interfaces.
 
 Ping from host to vpp and vpp to host
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------
 
 #. Add trace on vpp1 and vpp2
 #. ping from host to 10.10.1.2
@@ -169,7 +170,7 @@ Ping from host to vpp and vpp to host
 #. Examine and clear trace on vpp1 and vpp2
 
 Examine l2 fib
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------
 
 .. code-block:: console
 

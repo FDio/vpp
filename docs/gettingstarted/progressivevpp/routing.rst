@@ -6,7 +6,7 @@ Routing
 =======
 
 Skills to be Learned
-^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 In this exercise you will learn these new skills:
 
@@ -22,14 +22,14 @@ And revisit the old ones:
 #. ping from FD.io VPP to host
 #. Examine and clear trace on vpp1 and vpp2
 
-FD.io VPP command learned in this exercise
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+VPP command learned in this exercise
+-------------------------------------
 
 #. `ip route
    add <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_ip.html#clicmd_ip_route>`__
 
 Topology
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------
 
 .. figure:: /_images/Connecting_two_vpp_instances_with_memif.png
    :alt: Connect two FD.io VPP topology
@@ -37,14 +37,14 @@ Topology
    Connect two FD.io VPP topology
 
 Initial State
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------
 
 The initial state here is presumed to be the final state from the
 exercise `Connecting two FD.io VPP
 instances <VPP/Progressive_VPP_Tutorial#Connecting_two_vpp_instances>`__
 
 Setup host route
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------
 
 .. code-block:: console
 
@@ -56,14 +56,19 @@ Setup host route
    10.10.2.0/24 via 10.10.1.2 dev vpp1host 
 
 Setup return route on vpp2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------
 
 .. code-block:: console
 
+   $ sudo vppctl -s /run/vpp/cli-vpp2.sock
     vpp# ip route add 10.10.1.0/24  via 10.10.2.1
 
 Ping from host through vpp1 to vpp2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------
+
+The connection from vpp1 to vpp2 uses the **memif** driver, the connection to the host
+uses the **af-packet** driver. To trace packets from the host we use **af-packet-input** from
+vpp1 to vpp2 we use **memif-input**.
 
 #. Setup a trace on vpp1 and vpp2
 #. Ping 10.10.2.2 from the host
