@@ -1,4 +1,4 @@
-.. _vppcontainers:
+.. _vppvagrant:
 
 VM's with Vagrant
 =================
@@ -13,5 +13,3 @@ This reference guide will cover using Vagrant to boot a VM (virtual machine).
     boxSetup
     VagrantVMSetup
     vppVagrantfile
-
-

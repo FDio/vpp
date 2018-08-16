@@ -64,7 +64,7 @@ Install the mandatory packages by running the following commands:
 .. code-block:: console
 
   sudo apt-get update
-  sudo apt-get install vpp vpp-lib vpp-plugin
+  sudo apt-get install vpp-lib vpp vpp-plugins
 
 
 Install the Optional Packages
