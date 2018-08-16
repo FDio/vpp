@@ -17,10 +17,6 @@ classification, feeds ipv4-input, ipv6-input, arp-input etc.\] and
 "ipv4-input-no-checksum" \[if hardware can classify, perform ipv4 header
 checksum\].
 
-![image](/_images/VNET_Features.png)
-
-List of features and layer areas that VNET works with:
-
 Effective graph dispatch function coding
 ----------------------------------------
 
