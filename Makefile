@@ -66,6 +66,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python-ply libmbedtls-dev
+DEB_DEPENDS += libmnl-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -87,6 +88,7 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
+RPM_DEPENDS += libmnl-devel
 
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += subunit subunit-devel
