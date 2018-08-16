@@ -82,6 +82,10 @@ else
 	DEB_DEPENDS += libssl-dev
 endif
 
+ifeq ($(OS_VERSION_ID),18.04)
+DEB_DEPENDS += libhyperscan-dev libhyperscan4
+endif
+
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
@@ -112,6 +116,10 @@ else
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
 
+ifeq ($(shell if [ "$(OS_ID)" = "fedora" ]; then test $(OS_VERSION_ID) -gt 27; echo $$?; fi),0)
+	RPM_DEPENDS += hyperscan hyperscan-devel
+endif
+
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
@@ -132,6 +140,7 @@ RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 ifeq ($(OS_ID),opensuse)
 ifeq ($(SUSE_NAME),Tumbleweed)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc
+	RPM_SUSE_DEVEL_DEPS += hyperscan-devel libhs5
 	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
 endif
 ifeq ($(SUSE_ID),15.0)
