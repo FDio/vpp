@@ -59,6 +59,10 @@ if ENABLE_GTPU_PLUGIN
 include gtpu.am
 endif
 
+if ENABLE_HYPERSCAN_PLUGIN
+include hyperscan.am
+endif
+
 if ENABLE_IGMP_PLUGIN
 include igmp.am
 endif
