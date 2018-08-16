@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6ab24b4_2f9f2d59",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-16T14:02:35Z",
+      "side": 1,
+      "message": "Lines 60-61 look identical to lines 64-65. Is that expected?",
+      "range": {
+        "startLine": 60,
+        "startChar": 15,
+        "endLine": 60,
+        "endChar": 16
+      },
+      "revId": "9daf8fb6b36f6e23951d6fe479248c092617c402",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
