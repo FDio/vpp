@@ -156,14 +156,15 @@ tls_notify_app_accept (tls_ctx_t * ctx)
 
   app = application_get (ctx->parent_app_index);
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
-  app_listener = listen_session_get_from_handle (lctx->app_session_handle);
-  sm = application_get_listen_segment_manager (app, app_listener);
 
   app_session = session_alloc (vlib_get_thread_index ());
   app_session->app_index = ctx->parent_app_index;
   app_session->connection_index = ctx->tls_ctx_handle;
+
+  app_listener = listen_session_get_from_handle (lctx->app_session_handle);
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
+  sm = application_get_listen_segment_manager (app, app_listener);
   if ((rv = session_alloc_fifos (sm, app_session)))
     {
       TLS_DBG (1, "failed to allocate fifos");
