@@ -306,6 +306,7 @@ PLUGIN_ENABLED(dpdk)
 PLUGIN_ENABLED(flowprobe)
 PLUGIN_ENABLED(gbp)
 PLUGIN_ENABLED(gtpu)
+PLUGIN_ENABLED(hyperscan)
 PLUGIN_ENABLED(igmp)
 PLUGIN_ENABLED(ila)
 PLUGIN_ENABLED(ioam)
@@ -412,6 +413,17 @@ AM_COND_IF([WITH_LIBSSL],
   AC_MSG_WARN([openssl not enabled. Disabling tlsopenssl plugin])
   enable_tlsopenssl_plugin=no
   AM_CONDITIONAL(ENABLE_TLSOPENSSL_PLUGIN, false)
+])
+
+AM_COND_IF([ENABLE_HYPERSCAN_PLUGIN],
+[
+  AC_CHECK_LIB( [hs], [hs_compile],
+    [],
+    [
+      AC_MSG_WARN([Hyperscan library not found. Plugin disabled.])
+      enable_hyperscan_plugin=no
+      AM_CONDITIONAL(ENABLE_HYPERSCAN_PLUGIN, false)
+    ])
 ])
 
 ###############################################################################
