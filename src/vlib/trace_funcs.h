@@ -40,6 +40,8 @@
 #ifndef included_vlib_trace_funcs_h
 #define included_vlib_trace_funcs_h
 
+extern u8 *vnet_trace_dummy;
+
 always_inline void
 vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 {
@@ -58,6 +60,14 @@ vlib_add_trace (vlib_main_t * vm,
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t *h;
   u32 n_data_words;
+
+  ASSERT (vnet_trace_dummy);
+
+  if (PREDICT_FALSE (tm->trace_enable == 0))
+    {
+      ASSERT (vec_len (vnet_trace_dummy) >= n_data_bytes + sizeof (*h));
+      return vnet_trace_dummy;
+    }
 
   vlib_validate_trace (tm, b);
 
@@ -107,6 +117,9 @@ vlib_trace_buffer (vlib_main_t * vm,
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t **h;
+
+  if (PREDICT_FALSE (tm->trace_enable == 0))
+    return;
 
   /*
    * Apply filter to existing traces to keep number of allocated traces low.
