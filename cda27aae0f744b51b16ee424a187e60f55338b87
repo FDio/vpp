@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9bda5fa9_7c724381",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-17T00:56:31Z",
+      "side": 1,
+      "message": "Does this really need to be fixed position or can we get away with it being a normal pool? \n\nI didn\u0027t like it very much when I had to do this trick with openssl_ctx_t. Because of one of the elements of the struct, I had to make sure those pointers never move, even if the pool moves. I can\u0027t remember now if it\u0027s one from the new listener structure or not :/",
+      "range": {
+        "startLine": 89,
+        "startChar": 9,
+        "endLine": 89,
+        "endChar": 13
+      },
+      "revId": "cda27aae0f744b51b16ee424a187e60f55338b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
