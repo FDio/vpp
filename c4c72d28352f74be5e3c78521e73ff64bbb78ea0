@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7052ed27_80889671",
+        "filename": "docs/gettingstarted/developers/index.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-17T19:00:45Z",
+      "side": 1,
+      "message": "The charachet count was mathing before.",
+      "range": {
+        "startLine": 5,
+        "startChar": 14,
+        "endLine": 5,
+        "endChar": 15
+      },
+      "revId": "c4c72d28352f74be5e3c78521e73ff64bbb78ea0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a5e99a5_04e66d44",
+        "filename": "docs/gettingstarted/progressivevpp/interface.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-17T19:00:45Z",
+      "side": 1,
+      "message": "Personally, I prefer to avoid \u0027\u003d\u0027 as the underlining character. I use (from top to bottom) ^~-_ (with \u0027`\u0027 as a backup).\n\nThe reason is git. When rebasing, and encountering a conflict I need to resulve manually, I usually search for \u003d\u003d\u003d to center on the conficting parts. I could switch to searching for \u003c\u003c\u003c\u003c or \u003e\u003e\u003e\u003e, but why do it when I can attempt to change the whole world by writing a Gerrit comment? :)\n\nAlso, the character count was matching before.",
+      "range": {
+        "startLine": 6,
+        "startChar": 21,
+        "endLine": 6,
+        "endChar": 22
+      },
+      "revId": "c4c72d28352f74be5e3c78521e73ff64bbb78ea0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19840072_7f6b21fb",
+        "filename": "docs/reference/vppvagrant/installingVboxVagrant.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-17T19:00:45Z",
+      "side": 1,
+      "message": "What is the line length we should start wrapping at?",
+      "range": {
+        "startLine": 20,
+        "startChar": 100,
+        "endLine": 20,
+        "endChar": 102
+      },
+      "revId": "c4c72d28352f74be5e3c78521e73ff64bbb78ea0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
