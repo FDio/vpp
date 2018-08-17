@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dfd74ce9_6dbb6d2b",
+        "filename": "src/plugins/hyperscan.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-17T14:54:56Z",
+      "side": 1,
+      "message": "Hardcoding include path and including library without checking for its presence is wrong....",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 48
+      },
+      "revId": "affa13561a34dfdd46519dc144e5d2cfe583ed20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
