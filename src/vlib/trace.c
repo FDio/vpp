@@ -40,6 +40,8 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
+u8 *vnet_trace_dummy;
+
 /* Helper function for nodes which only trace buffer data. */
 void
 vlib_trace_frame_buffers_only (vlib_main_t * vm,
@@ -117,18 +119,14 @@ clear_trace_buffer (void)
   /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
-    void *mainheap;
-
     tm = &this_vlib_main->trace_main;
-    mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
 
-    tm->trace_active_hint = 0;
+    tm->trace_enable = 0;
 
     for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
       if (! pool_is_free_index (tm->trace_buffer_pool, i))
         vec_free (tm->trace_buffer_pool[i]);
     pool_free (tm->trace_buffer_pool);
-    clib_mem_set_heap (mainheap);
   }));
   /* *INDENT-ON* */
 }
@@ -298,14 +296,10 @@ cli_show_trace_buffer (vlib_main_t * vm,
   /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
-    void *mainheap;
-
     fmt = "------------------- Start of thread %d %s -------------------\n";
     s = format (s, fmt, index, vlib_worker_threads[index].name);
 
     tm = &this_vlib_main->trace_main;
-
-    mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
 
     trace_apply_filter(this_vlib_main);
 
@@ -317,7 +311,6 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
     if (vec_len (traces) == 0)
       {
-        clib_mem_set_heap (mainheap);
         s = format (s, "No packets in trace buffer\n");
         goto done;
       }
@@ -334,17 +327,12 @@ cli_show_trace_buffer (vlib_main_t * vm,
             goto done;
           }
 
-        clib_mem_set_heap (mainheap);
-
         s = format (s, "Packet %d\n%U\n\n", i + 1,
                          format_vlib_trace, vm, traces[i]);
-
-        mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
       }
 
   done:
     vec_free (traces);
-    clib_mem_set_heap (mainheap);
 
     index++;
   }));
@@ -377,6 +365,9 @@ cli_add_trace_buffer (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
+  if (vnet_trace_dummy == 0)
+    vec_validate_aligned (vnet_trace_dummy, 2048, CLIB_CACHE_LINE_BYTES);
+
   while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U %d",
@@ -395,15 +386,12 @@ cli_add_trace_buffer (vlib_main_t * vm,
   /* *INDENT-OFF* */
   foreach_vlib_main ((
     {
-      void *oldheap;
       tm = &this_vlib_main->trace_main;
-      tm->trace_active_hint = 1;
       tm->verbose = verbose;
-      oldheap =
-	clib_mem_set_heap (this_vlib_main->heap_base);
       vec_validate (tm->nodes, node_index);
       tn = tm->nodes + node_index;
-      tn->limit += add; clib_mem_set_heap (oldheap);
+      tn->limit += add;
+      tm->trace_enable = 1;
     }));
   /* *INDENT-ON* */
 
@@ -467,7 +455,6 @@ cli_filter_trace (vlib_main_t * vm,
   u32 filter_node_index;
   u32 filter_flag;
   u32 filter_count;
-  void *mainheap;
 
   if (unformat (input, "include %U %d",
 		unformat_vlib_node, vm, &filter_node_index, &filter_count))
@@ -502,11 +489,10 @@ cli_filter_trace (vlib_main_t * vm,
 
     /*
      * Clear the trace limits to stop any in-progress tracing
-     * Prevents runaway trace allocations when the filter changes (or is removed)
+     * Prevents runaway trace allocations when the filter changes
+     * (or is removed)
      */
-    mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
     vec_free (tm->nodes);
-    clib_mem_set_heap (mainheap);
   }));
   /* *INDENT-ON* */
 
