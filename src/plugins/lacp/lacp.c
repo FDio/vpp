@@ -363,10 +363,10 @@ lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 	{
 	  if (sif->lacp_enabled)
 	    {
-	      lacp_init_state_machines (vm, sif);
 	      lacp_init_neighbor (sif, sif->actor_admin.system,
 				  ntohs (sif->actor_admin.port_number),
 				  ntohs (sif->actor_admin.key));
+	      lacp_init_state_machines (vm, sif);
 	    }
 	}
     }
@@ -392,10 +392,10 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	{
 	  if (sif->lacp_enabled)
 	    {
-	      lacp_init_state_machines (vm, sif);
 	      lacp_init_neighbor (sif, sif->actor_admin.system,
 				  ntohs (sif->actor_admin.port_number),
 				  ntohs (sif->actor_admin.key));
+	      lacp_init_state_machines (vm, sif);
 	    }
 	}
     }
