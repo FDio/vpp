@@ -22,6 +22,30 @@
       "revId": "cda27aae0f744b51b16ee424a187e60f55338b87",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ea3ffe14_6e51fb30",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-17T02:23:58Z",
+      "side": 1,
+      "message": "yes, it makes sense. The previous version is to simulate the operation you did, and I can change it to be normal.",
+      "parentUuid": "9bda5fa9_7c724381",
+      "range": {
+        "startLine": 89,
+        "startChar": 9,
+        "endLine": 89,
+        "endChar": 13
+      },
+      "revId": "cda27aae0f744b51b16ee424a187e60f55338b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
