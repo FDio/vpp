@@ -80,7 +80,7 @@ typedef struct
   u32 filter_count;
 
   /* set on trace add, cleared on clear trace */
-  u32 trace_active_hint;
+  u32 trace_enable;
 
   /* Per node trace counts. */
   vlib_trace_node_t *nodes;
