@@ -242,7 +242,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  pkts_encapsulated += 2;
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
-	  len1 = vlib_buffer_length_in_chain (vm, b0);
+	  len1 = vlib_buffer_length_in_chain (vm, b1);
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
 
