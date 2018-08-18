@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-message("-- Looking for Marvell musdk")
 find_path(MUSDK_INCLUDE_DIR NAMES marvell/pp2/pp2.h)
 find_library(MUSDK_LIB NAMES musdk)
 
@@ -26,7 +25,7 @@ if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
     pp2/pp2.c
   )
   include_directories(${MUSDK_INCLUDE_DIR})
-  message("-- Looking for Marvell musdk - found")
+  message(STATUS "Found Marvel MUSDK in ${MUSDK_INCLUDE_DIR}")
 else()
-  message("-- Looking for Marvell musdk - not found - marvell_plugin disabled")
+  message(WARNING "Marvell MUSDK not found - marvell_plugin disabled")
 endif()

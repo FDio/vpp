@@ -18,6 +18,29 @@ project(vpp C)
 include(CheckCCompilerFlag)
 
 ##############################################################################
+# Highlight WARNING and ERROR messages
+##############################################################################
+function(message)
+  list(GET ARGV 0 type)
+  string(ASCII 27 esc)
+  set(red "${esc}[1;31m")
+  set(yellow "${esc}[1;33m")
+  set(reset "${esc}[m")
+  if(type STREQUAL FATAL_ERROR OR type STREQUAL SEND_ERROR)
+    list(REMOVE_AT ARGV 0)
+    _message(${type} "${red}${ARGV}${reset}")
+  elseif(type STREQUAL WARNING)
+    list(REMOVE_AT ARGV 0)
+    _message(STATUS "${yellow}${ARGV}${reset}")
+  elseif(type STREQUAL STATUS)
+    list(REMOVE_AT ARGV 0)
+    _message(STATUS "${ARGV}")
+  else()
+    _message(${ARGV})
+  endif()
+endfunction()
+
+##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")

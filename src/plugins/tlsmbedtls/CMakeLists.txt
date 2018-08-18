@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-message("-- Looking for mbedTLS")
+message(STATUS "Looking for mbedTLS")
 find_path(MBEDTLS_INCLUDE_DIR NAMES mbedtls/ssl.h)
 find_library(MBEDTLS_LIB1 NAMES mbedtls)
 find_library(MBEDTLS_LIB2 NAMES mbedx509)
@@ -23,8 +23,8 @@ if(MBEDTLS_INCLUDE_DIR AND MBEDTLS_LIB)
   include_directories(${MBEDTLS_INCLUDE_DIR})
   add_vpp_plugin(tlsmbedtls_plugin tls_mbedtls.c)
   target_link_libraries(tlsmbedtls_plugin ${MBEDTLS_LIB})
-  message("-- Found mbedTLS in ${MBEDTLS_INCLUDE_DIR}")
+  message(STATUS "Found mbedTLS in ${MBEDTLS_INCLUDE_DIR}")
 else()
-  message("-- mbedTLS not found - tlsmbedtls_plugin disabled")
+  message(WARNING "-- mbedTLS not found - tlsmbedtls_plugin disabled")
 endif()
 
