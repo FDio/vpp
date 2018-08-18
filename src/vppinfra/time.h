@@ -73,7 +73,7 @@ always_inline u64
 clib_cpu_time_now (void)
 {
   u32 a, d;
-  asm volatile ("rdtsc":"=a" (a), "=d" (d));
+  asm volatile ("lfence; rdtsc":"=a" (a), "=d" (d));
   return (u64) a + ((u64) d << (u64) 32);
 }
 
