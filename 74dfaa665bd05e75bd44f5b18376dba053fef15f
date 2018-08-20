@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd6c90c7_335a8bed",
+        "filename": "src/plugins/marvell/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-20T11:35:14Z",
+      "side": 0,
+      "message": "Any reason this line has been deleted (while the analogous line for mbedTLS has not)?",
+      "range": {
+        "startLine": 14,
+        "startChar": 12,
+        "endLine": 14,
+        "endChar": 37
+      },
+      "revId": "74dfaa665bd05e75bd44f5b18376dba053fef15f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
