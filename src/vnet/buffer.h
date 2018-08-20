@@ -364,7 +364,9 @@ typedef struct
   /* Group Based Policy */
   struct
   {
-    u32 src_epg;
+    u8 __unused;
+    u8 flags;
+    u16 src_epg;
   } gbp;
 
   union
