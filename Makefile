@@ -472,7 +472,8 @@ build-vat:
 	$(call make,$(PLATFORM)_debug,vpp-api-test-install)
 
 run-vat:
-	@$(SUDO) $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
+	@$(SUDO) $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test \
+        plugin_path $(BR)/install-$(PLATFORM)_debug-native/vpp/lib64/vpp_api_test_plugins/
 
 pkg-deb:
 	$(call make,$(PLATFORM),install-deb)
