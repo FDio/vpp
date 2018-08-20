@@ -297,6 +297,9 @@ else ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
+else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
+	@sudo -E zypper refresh
+	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else
 	$(error "This option currently works only on Ubuntu, Debian, Centos or openSUSE systems")
 endif
