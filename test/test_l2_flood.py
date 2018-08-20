@@ -78,8 +78,6 @@ class TestL2Flood(VppTestCase):
         for i in self.pg_interfaces[1:12]:
             rx0 = i.get_capture(65, timeout=1)
 
-        self.logger.error(self.vapi.cli("sh trace"))
-
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
         # and pg8->11 (SHG=2)
