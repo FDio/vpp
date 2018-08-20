@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6446a30f_024ac8fe",
+        "filename": "INFO.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-20T19:31:59Z",
+      "side": 1,
+      "message": "I\u0027m definitely not in this time zone....",
+      "range": {
+        "startLine": 56,
+        "startChar": 17,
+        "endLine": 56,
+        "endChar": 36
+      },
+      "revId": "add57839f870745eb88ca02faec17d028f7f8bf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
