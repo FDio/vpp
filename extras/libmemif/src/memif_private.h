@@ -67,10 +67,11 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 
 typedef struct
 {
-  void *shm;
+  void *addr;
   uint32_t region_size;
   uint32_t buffer_offset;
   int fd;
+  uint8_t is_external;
 } memif_region_t;
 
 typedef struct
@@ -133,8 +134,11 @@ typedef struct memif_connection
   uint8_t remote_name[MEMIF_NAME_LEN];
   uint8_t remote_disconnect_string[96];
 
+  uint8_t regions_num;
   memif_region_t *regions;
 
+  uint8_t rx_queues_num;
+  uint8_t tx_queues_num;
   memif_queue_t *rx_queues;
   memif_queue_t *tx_queues;
 
@@ -165,7 +169,13 @@ typedef struct
   uint16_t disconn_slaves;
   uint8_t app_name[MEMIF_NAME_LEN];
 
+  memif_add_external_region_t *add_external_region;
+  memif_get_external_region_addr_t *get_external_region_addr;
+  memif_del_external_region_t *del_external_region;
+  memif_get_external_buffer_offset_t *get_external_buffer_offset;
+
   memif_alloc_t *alloc;
+  memif_realloc_t *realloc;
   memif_free_t *free;
 
   uint16_t control_list_len;
@@ -226,7 +236,7 @@ static inline void *
 memif_get_buffer (memif_connection_t * conn, memif_ring_t * ring,
 		  uint16_t index)
 {
-  return (conn->regions[ring->desc[index].region].shm +
+  return (conn->regions[ring->desc[index].region].addr +
 	  ring->desc[index].offset);
 }
 

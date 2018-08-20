@@ -78,7 +78,15 @@ icmpr_mt_SOURCES = examples/icmp_responder-mt/main.c \
 icmpr_mt_LDADD = libmemif.la -lpthread
 icmpr_mt_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src -I$(top_srcdir)/examples/icmp_responder
 
-noinst_PROGRAMS = icmpr icmpr-epoll icmpr-mt
+#
+# ICMP responder external buffer example
+#
+icmpr_eb_SOURCES = examples/icmp_responder-eb/main.c\
+			examples/icmp_responder/icmp_proto.c
+icmpr_eb_LDADD = libmemif.la -lpthread
+icmpr_eb_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src -I$(top_srcdir)/examples/icmp_responder
+
+noinst_PROGRAMS = icmpr icmpr-epoll icmpr-mt icmpr-eb
 
 include_HEADERS = src/libmemif.h
 

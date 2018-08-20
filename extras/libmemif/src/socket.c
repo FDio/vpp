@@ -112,7 +112,8 @@ memif_msg_send_hello (int fd)
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
 
-  strncpy ((char *) h->name, (char *) lm->app_name, strlen ((char *) lm->app_name));
+  strncpy ((char *) h->name, (char *) lm->app_name,
+	   strlen ((char *) lm->app_name));
 
   /* msg hello is not enqueued but sent directly,
      because it is the first msg to be sent */
@@ -141,7 +142,7 @@ memif_msg_enq_init (memif_connection_t * c)
 
   strncpy ((char *) i->name, (char *) lm->app_name,
 	   strlen ((char *) lm->app_name));
-  if (strlen((char *) c->args.secret) > 0)
+  if (strlen ((char *) c->args.secret) > 0)
     strncpy ((char *) i->secret, (char *) c->args.secret, sizeof (i->secret));
 
   e->next = NULL;
@@ -166,7 +167,6 @@ static_fn int
 memif_msg_enq_add_region (memif_connection_t * c, uint8_t region_index)
 {
   libmemif_main_t *lm = &libmemif_main;
-  /* maybe check if region is valid? */
   memif_region_t *mr = &c->regions[region_index];
 
   memif_msg_queue_elt_t *e =
@@ -424,10 +424,10 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
   strncpy ((char *) c->remote_name, (char *) i->name,
 	   strlen ((char *) i->name));
 
-  if (strlen((char *) c->args.secret) > 0)
+  if (strlen ((char *) c->args.secret) > 0)
     {
       int r;
-      if (strlen((char *) i->secret) > 0)
+      if (strlen ((char *) i->secret) > 0)
 	{
 	  if (strlen ((char *) c->args.secret) != strlen ((char *) i->secret))
 	    {
@@ -484,6 +484,8 @@ static_fn int
 memif_msg_receive_add_region (memif_connection_t * c, memif_msg_t * msg,
 			      int fd)
 {
+  libmemif_main_t *lm = &libmemif_main;
+
   memif_msg_add_region_t *ar = &msg->add_region;
   memif_region_t *mr;
   if (fd < 0)
@@ -493,14 +495,19 @@ memif_msg_receive_add_region (memif_connection_t * c, memif_msg_t * msg,
     return MEMIF_ERR_MAXREG;
 
   mr =
-    (memif_region_t *) realloc (c->regions,
-				sizeof (memif_region_t) * (ar->index + 1));
+    (memif_region_t *) lm->realloc (c->regions,
+				    sizeof (memif_region_t) *
+				    (++c->regions_num));
   if (mr == NULL)
     return memif_syscall_error_handler (errno);
+  memset (mr + ar->index, 0, sizeof (memif_region_t));
   c->regions = mr;
   c->regions[ar->index].fd = fd;
   c->regions[ar->index].region_size = ar->size;
-  c->regions[ar->index].shm = NULL;
+  c->regions[ar->index].addr = NULL;
+
+  if (lm->get_external_region_addr)
+    c->regions[ar->index].is_external = 1;
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
@@ -510,6 +517,8 @@ memif_msg_receive_add_region (memif_connection_t * c, memif_msg_t * msg,
 static_fn int
 memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
 {
+  libmemif_main_t *lm = &libmemif_main;
+
   memif_msg_add_ring_t *ar = &msg->add_ring;
 
   memif_queue_t *mq;
@@ -528,8 +537,9 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
 	return MEMIF_ERR_MAXRING;
 
       mq =
-	(memif_queue_t *) realloc (c->rx_queues,
-				   sizeof (memif_queue_t) * (ar->index + 1));
+	(memif_queue_t *) lm->realloc (c->rx_queues,
+				       sizeof (memif_queue_t) *
+				       (++c->rx_queues_num));
       memset (mq + ar->index, 0, sizeof (memif_queue_t));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
@@ -548,8 +558,9 @@ memif_msg_receive_add_ring (memif_connection_t * c, memif_msg_t * msg, int fd)
 	return MEMIF_ERR_MAXRING;
 
       mq =
-	(memif_queue_t *) realloc (c->tx_queues,
-				   sizeof (memif_queue_t) * (ar->index + 1));
+	(memif_queue_t *) lm->realloc (c->tx_queues,
+				       sizeof (memif_queue_t) *
+				       (++c->tx_queues_num));
       memset (mq + ar->index, 0, sizeof (memif_queue_t));
       if (mq == NULL)
 	return memif_syscall_error_handler (errno);
@@ -718,8 +729,11 @@ memif_msg_receive (int ifd)
 	return err;
       if ((err = memif_msg_enq_init (c)) != MEMIF_ERR_SUCCESS)
 	return err;
-      if ((err = memif_msg_enq_add_region (c, 0)) != MEMIF_ERR_SUCCESS)
-	return err;
+      for (i = 0; i < c->regions_num; i++)
+	{
+	  if ((err = memif_msg_enq_add_region (c, i)) != MEMIF_ERR_SUCCESS)
+	    return err;
+	}
       for (i = 0; i < c->run_args.num_s2m_rings; i++)
 	{
 	  if ((err =
