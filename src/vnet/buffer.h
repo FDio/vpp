@@ -362,11 +362,16 @@ typedef struct
   u8 __unused[1];
 
   /* Group Based Policy */
-  struct
+  union
   {
-    u32 src_epg;
-  } gbp;
-
+    struct
+    {
+      u8 __unused;
+      u8 flags;
+      u16 src_epg;
+    } gbp;
+    u32 gbp_as_u32;
+  };
   union
   {
     struct
