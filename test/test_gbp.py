@@ -161,7 +161,7 @@ class VppGbpSubnet(VppObject):
             self.address_n,
             self.address_len,
             sw_if_index=self.sw_if_index if self.sw_if_index else 0xffffffff,
-            epg_id=self.epg if self.epg else 0xffffffff,
+            epg_id=self.epg if self.epg else 0xffff,
             is_ip6=self.is_ip6)
         self._test.registry.register(self, self._test.logger)
 

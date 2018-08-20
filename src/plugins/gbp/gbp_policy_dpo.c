@@ -248,7 +248,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
 	  key0.gck_dst = gpd0->gpd_epg;
 
-	  if (~0 != key0.gck_src)
+	  if (EPG_INVALID != key0.gck_src)
 	    {
 	      if (PREDICT_FALSE (key0.gck_src == key0.gck_dst))
 		{

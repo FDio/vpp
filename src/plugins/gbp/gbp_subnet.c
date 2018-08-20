@@ -129,7 +129,7 @@ gbp_subnet_fib_table_walk (fib_node_index_t fei, void *arg)
           /* *INDENT-OFF* */
           ctx->cb (table_id, pfx,
                    ~0,	// sw_if_index
-                   ~0,  // epg
+                   EPG_INVALID,  // epg
                    1,   // is_internal
                    ctx->ctx);
           /* *INDENT-ON* */

@@ -657,6 +657,24 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES mpls/mpls.api)
 
 ##############################################################################
+# Tunnel protocol: vxlan-gbp
+##############################################################################
+list(APPEND VNET_SOURCES
+  vxlan-gbp/decap.c
+  vxlan-gbp/encap.c
+  vxlan-gbp/vxlan_gbp_api.c
+  vxlan-gbp/vxlan_gbp.c
+)
+
+list(APPEND VNET_HEADERS
+  vxlan-gbp/vxlan_gbp.h
+  vxlan-gbp/vxlan_gbp_packet.h
+  vxlan-gbp/vxlan_gbp_error.def
+)
+
+list(APPEND VNET_API_FILES vxlan-gbp/vxlan_gbp.api)
+
+##############################################################################
 # Tunnel protocol: vxlan-gpe
 ##############################################################################
 
