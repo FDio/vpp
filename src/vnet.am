@@ -266,6 +266,23 @@ libvnet_multiversioning_sources +=		\
 API_FILES += vnet/vxlan/vxlan.api
 
 ########################################
+# Layer 2 / vxlan-gbp
+########################################
+libvnet_la_SOURCES +=                           \
+  vnet/vxlan-gbp/vxlan_gbp.c                    \
+  vnet/vxlan-gbp/encap.c                        \
+  vnet/vxlan-gbp/decap.c                        \
+  vnet/vxlan-gbp/vxlan_gbp_api.c
+
+nobase_include_HEADERS +=                       \
+  vnet/vxlan-gbp/vxlan_gbp.h                    \
+  vnet/vxlan-gbp/vxlan_gbp_packet.h             \
+  vnet/vxlan-gbp/vxlan_gbp_error.def            \
+  vnet/vxlan-gbp/vxlan_gbp.api.h
+
+API_FILES += vnet/vxlan-gbp/vxlan_gbp.api
+
+########################################
 # Layer 2 / Geneve
 ########################################
 libvnet_la_SOURCES +=				\
