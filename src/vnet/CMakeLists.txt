@@ -422,10 +422,15 @@ set(VNET_SRCS
   vxlan-gpe/vxlan_gpe.c
   vxlan/vxlan_api.c
   vxlan/vxlan.c
+  vxlan-gbp/decap.c
+  vxlan-gbp/encap.c
+  vxlan-gbp/vxlan_gbp_api.c
+  vxlan-gbp/vxlan_gbp.c
 )
 
 vpp_add_api_files(vnet_api_headers
   vxlan-gpe/vxlan_gpe.api
+  vxlan-gbp/vxlan_gbp.api
   ip/ip.api
   ip/rd_cp.api
   ip/ip_types.api

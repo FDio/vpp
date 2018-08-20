@@ -47,6 +47,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_UDP_ENCAP,
     FIB_NODE_TYPE_BIER_FMASK,
     FIB_NODE_TYPE_BIER_ENTRY,
+    FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
     /**
      * Marker. New types before this one. leave the test last.
      */
@@ -74,6 +75,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_UDP_ENCAP] = "udp-encap",			\
     [FIB_NODE_TYPE_BIER_FMASK] = "bier-fmask",			\
     [FIB_NODE_TYPE_BIER_ENTRY] = "bier-entry",			\
+    [FIB_NODE_TYPE_VXLAN_GBP_TUNNEL] = "vxlan-gbp-tunnel"	\
 }
 
 /**
