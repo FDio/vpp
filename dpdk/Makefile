@@ -44,7 +44,7 @@ DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
 endif
 
 NASM_BASE_URL := http://www.nasm.us/pub/nasm/releasebuilds
-NASM_VER := 2.13.01
+NASM_VER := 2.13.03
 NASM_TARBALL := nasm-$(NASM_VER).tar.xz
 NASM_TAR_URL := $(NASM_BASE_URL)/$(NASM_VER)/$(NASM_TARBALL)
 NASM_SOURCE := $(B)/nasm-$(NASM_VER)
