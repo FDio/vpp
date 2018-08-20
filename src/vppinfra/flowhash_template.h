@@ -374,6 +374,7 @@ FVT(flowhash) *FV(flowhash_alloc)(u32 fixed_entries, u32 collision_buckets)
 
   /* Fill free elements list */
   int i;
+  memset(h->entries, 0, sizeof(h->entries[0]) * entries);
   for (i = 1; i <= collision_buckets; i++)
     {
       h->free_buckets_indices[-i] =
@@ -525,9 +526,13 @@ FV(__flowhash_get_chained) (FVT(flowhash) *h, FVT(flowhash_lkey) *k,
 }
 
 static_always_inline void
-FV(flowhash_gc)(FVT(flowhash) *h, u32 time_now)
+FV(flowhash_gc)(FVT(flowhash) *h, u32 time_now,
+    u32 *freed_index, u32 *freed_len)
 {
   u32 ei;
+  if (freed_index)
+    *freed_len = 0;
+
   if (PREDICT_FALSE(h->collision_buckets_mask == (((u32)0) - 1)))
     return;
 
@@ -565,6 +570,12 @@ FV(flowhash_gc)(FVT(flowhash) *h, u32 time_now)
 
       if (!found)
         {
+          /* Tell caller we freed this */
+          if (freed_index)
+            {
+              *freed_index = ei;
+              *freed_len = FLOWHASH_ENTRIES_PER_BUCKETS;
+            }
           /* The bucket is not used. Let's free it. */
           h->free_buckets_position--;
           /* Reset forward link */
