@@ -121,7 +121,7 @@ RPM_DEPENDS += chrpath libffi-devel rpm-build
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make python-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel
@@ -291,7 +291,7 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
-else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
