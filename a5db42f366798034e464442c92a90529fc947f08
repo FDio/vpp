@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "967986c0_8f69ec96",
+        "filename": "docs/gettingstarted/installing/index.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-20T08:07:59Z",
+      "side": 1,
+      "message": "Line length was matching before.",
+      "range": {
+        "startLine": 26,
+        "startChar": 20,
+        "endLine": 26,
+        "endChar": 31
+      },
+      "revId": "a5db42f366798034e464442c92a90529fc947f08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
