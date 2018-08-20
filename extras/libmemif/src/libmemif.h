@@ -106,6 +106,15 @@ typedef void *memif_conn_handle_t;
 */
 typedef void *(memif_alloc_t) (size_t size);
 
+
+/** \brief Memif realloc
+    @param ptr - pointer to memory block
+    @param size - requested allocation size
+
+    custom memory reallocation
+*/
+typedef void *(memif_realloc_t) (void *ptr, size_t size);
+
 /** \brief Memif allocator free
     @param size - requested allocation size
 
@@ -148,6 +157,68 @@ typedef int (memif_connection_update_t) (memif_conn_handle_t conn,
 */
 typedef int (memif_interrupt_t) (memif_conn_handle_t conn, void *private_ctx,
 				 uint16_t qid);
+
+/** @} */
+
+/**
+ * @defgroup EXTERNAL_REGION External region APIs
+ * @ingroup libmemif
+ *
+ * @{
+ */
+
+/** \brief Get external buffer offset (optional)
+    @param private_ctx - private context
+
+    Find unallocated external buffer and return its offset.
+*/
+typedef uint32_t (memif_get_external_buffer_offset_t) (void *private_ctx);
+
+/** \brief Add external region
+    @param[out] addr - region address
+    @param size - requested region size
+    @param fd[out] - file descriptor
+    @param private_ctx - private context
+
+    Called by slave. Add external region created by client.
+*/
+typedef int (memif_add_external_region_t) (void * *addr, uint32_t size,
+					   int *fd, void *private_ctx);
+
+/** \brief Get external region address
+    @param size - requested region size
+    @param fd - file descriptor
+    @param private_ctx - private context
+
+    Called by master. Get region address from client.
+
+   \return region address
+*/
+typedef void *(memif_get_external_region_addr_t) (uint32_t size, int fd,
+						  void *private_ctx);
+
+/** \brief Delete external region
+    @param addr - region address
+    @param size - region size
+    @param fd - file descriptor
+    @param private_ctx - private context
+
+    Delete external region.
+*/
+typedef int (memif_del_external_region_t) (void *addr, uint32_t size, int fd,
+					   void *private_ctx);
+
+/** \brief Register external region
+    @param ar - add external region callback
+    @param gr - get external region addr callback
+    @param dr - delete external region callback
+    @param go - get external buffer offset callback (optional)
+*/
+void memif_register_external_region (memif_add_external_region_t * ar,
+				     memif_get_external_region_addr_t * gr,
+				     memif_del_external_region_t * dr,
+				     memif_get_external_buffer_offset_t * go);
+
 /** @} */
 
 /**
@@ -230,6 +301,7 @@ typedef struct
  */
 
 /** \brief Memif queue details
+    @param region - region index
     @param qid - queue id
     @param ring_size - size of ring buffer in sharem memory
     @param flags - ring flags
@@ -239,6 +311,7 @@ typedef struct
 */
 typedef struct
 {
+  uint8_t region;
   uint8_t qid;
   uint32_t ring_size;
 /** if set queue is in polling mode, else in interrupt mode */
@@ -249,6 +322,22 @@ typedef struct
   uint16_t buffer_size;
 } memif_queue_details_t;
 
+/** \brief Memif region details
+    @param index - region index
+    @param addr - region address
+    @param size - region size
+    @param fd - file descriptor
+    @param is_external - if not zero then region is defined by client
+*/
+typedef struct
+{
+  uint8_t index;
+  void *addr;
+  uint32_t size;
+  int fd;
+  uint8_t is_external;
+} memif_region_details_t;
+
 /** \brief Memif details
     @param if_name - interface name
     @param inst_name - application name
@@ -258,7 +347,9 @@ typedef struct
     @param secret - secret
     @param role - 0 = master, 1 = slave
     @param mode - 0 = ethernet, 1 = ip , 2 = punt/inject
-    @param socket_filename = socket filename
+    @param socket_filename - socket filename
+    @param regions_num - number of regions
+    @param regions - struct containing region details
     @param rx_queues_num - number of receive queues
     @param tx_queues_num - number of transmit queues
     @param rx_queues - struct containing receive queue details
@@ -277,6 +368,8 @@ typedef struct
   uint8_t role;			/* 0 = master, 1 = slave */
   uint8_t mode;			/* 0 = ethernet, 1 = ip, 2 = punt/inject */
   uint8_t *socket_filename;
+  uint8_t regions_num;
+  memif_region_details_t *regions;
   uint8_t rx_queues_num;
   uint8_t tx_queues_num;
   memif_queue_details_t *rx_queues;
@@ -343,6 +436,7 @@ int memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     @param on_control_fd_update - if control fd updates inform user to watch new fd
     @param app_name - application name (will be truncated to 32 chars)
     @param memif_alloc - cutom memory allocator, NULL = default
+    @param memif_realloc - custom memory reallocation, NULL = default
     @param memif_free - custom memory free, NULL = default
 
     if param on_control_fd_update is set to NULL,
@@ -359,7 +453,7 @@ int memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 */
 int memif_init (memif_control_fd_update_t * on_control_fd_update,
 		char *app_name, memif_alloc_t * memif_alloc,
-		memif_free_t * memif_free);
+		memif_realloc_t * memif_realloc, memif_free_t * memif_free);
 
 /** \brief Memif cleanup
 
