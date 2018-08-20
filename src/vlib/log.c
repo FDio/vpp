@@ -199,8 +199,9 @@ syslog:
       if (use_formatted_log_entry)
 	{
 	  syslog (vlib_log_level_to_syslog_priority (level), "%.*s: %.*s",
-		  vec_len (tmp), tmp,
-		  vec_len (s) - (vec_c_string_is_terminated (s) ? 1 : 0), s);
+		  (int) vec_len (tmp), tmp,
+		  (int) (vec_len (s) -
+			 (vec_c_string_is_terminated (s) ? 1 : 0)), s);
 	}
       else
 	{
@@ -209,8 +210,8 @@ syslog:
 	  tmp = va_format (tmp, fmt, &va);
 	  va_end (va);
 	  syslog (vlib_log_level_to_syslog_priority (level), "%.*s",
-		  vec_len (tmp) - (vec_c_string_is_terminated (tmp) ? 1 : 0),
-		  tmp);
+		  (int) (vec_len (tmp) -
+			 (vec_c_string_is_terminated (tmp) ? 1 : 0)), tmp);
 	}
       vec_free (tmp);
     }
