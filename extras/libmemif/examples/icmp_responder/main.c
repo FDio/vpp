@@ -395,7 +395,7 @@ main (int argc, char *argv[])
   /* if valid callback is passed as argument, fd event polling will be done by user
      all file descriptors and events will be passed to user in this callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
-  err = memif_init (NULL, APP_NAME, NULL, NULL);
+  err = memif_init (NULL, APP_NAME, NULL, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_init: %s", memif_strerror (err));
 
