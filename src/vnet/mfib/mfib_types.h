@@ -172,6 +172,7 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_RR,
     MFIB_SOURCE_GENEVE,
     MFIB_SOURCE_IGMP,
+    MFIB_SOURCE_VXLAN_GBP,
     MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
@@ -188,6 +189,7 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_RR] = "Recursive-resolution",     \
     [MFIB_SOURCE_GENEVE] = "Geneve",               \
     [MFIB_SOURCE_IGMP] = "IGMP",                   \
+    [MFIB_SOURCE_VXLAN_GBP] = "VXLAN-GBP",         \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
 

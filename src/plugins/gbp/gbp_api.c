@@ -93,7 +93,7 @@ vl_api_gbp_endpoint_add_del_t_handler (vl_api_gbp_endpoint_add_del_t * mp)
   if (mp->is_add)
     {
       rv =
-	gbp_endpoint_update (sw_if_index, &ip, ntohl (mp->endpoint.epg_id));
+	gbp_endpoint_update (sw_if_index, &ip, ntohs (mp->endpoint.epg_id));
     }
   else
     {
@@ -137,7 +137,7 @@ gbp_endpoint_send_details (gbp_endpoint_t * gbpe, void *args)
 		 &gbpe->ge_key->gek_ip.ip4,
 		 sizeof (gbpe->ge_key->gek_ip.ip4));
 
-  mp->endpoint.epg_id = ntohl (gbpe->ge_epg_id);
+  mp->endpoint.epg_id = ntohs (gbpe->ge_epg_id);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -175,7 +175,7 @@ static void
 
   if (mp->is_add)
     {
-      rv = gbp_endpoint_group_add (ntohl (mp->epg.epg_id),
+      rv = gbp_endpoint_group_add (ntohs (mp->epg.epg_id),
 				   ntohl (mp->epg.bd_id),
 				   ntohl (mp->epg.ip4_table_id),
 				   ntohl (mp->epg.ip6_table_id),
@@ -183,7 +183,7 @@ static void
     }
   else
     {
-      gbp_endpoint_group_delete (ntohl (mp->epg.epg_id));
+      gbp_endpoint_group_delete (ntohs (mp->epg.epg_id));
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -211,7 +211,7 @@ vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t * mp)
   rv = gbp_subnet_add_del (ntohl (mp->subnet.table_id),
 			   &pfx,
 			   ntohl (mp->subnet.sw_if_index),
-			   ntohl (mp->subnet.epg_id),
+			   ntohs (mp->subnet.epg_id),
 			   mp->is_add, mp->subnet.is_internal);
 
   REPLY_MACRO (VL_API_GBP_SUBNET_ADD_DEL_REPLY + GBP_MSG_BASE);
@@ -237,7 +237,7 @@ gbp_subnet_send_details (u32 table_id,
 
   mp->subnet.is_internal = is_internal;
   mp->subnet.sw_if_index = ntohl (sw_if_index);
-  mp->subnet.epg_id = ntohl (epg);
+  mp->subnet.epg_id = ntohs (epg);
   mp->subnet.is_ip6 = (pfx->fp_proto == FIB_PROTOCOL_IP6);
   mp->subnet.address_length = pfx->fp_len;
   mp->subnet.table_id = ntohl (table_id);
@@ -287,7 +287,7 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gepg, void *args)
   mp->context = ctx->context;
 
   mp->epg.uplink_sw_if_index = ntohl (gepg->gepg_uplink_sw_if_index);
-  mp->epg.epg_id = ntohl (gepg->gepg_id);
+  mp->epg.epg_id = ntohs (gepg->gepg_id);
   mp->epg.bd_id = ntohl (gepg->gepg_bd);
   mp->epg.ip4_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP4]);
   mp->epg.ip6_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP6]);
@@ -328,7 +328,7 @@ vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
 
   if (mp->is_add)
     gbp_recirc_add (sw_if_index,
-		    ntohl (mp->recirc.epg_id), mp->recirc.is_ext);
+		    ntohs (mp->recirc.epg_id), mp->recirc.is_ext);
   else
     gbp_recirc_delete (sw_if_index);
 
@@ -352,7 +352,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_RECIRC_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
-  mp->recirc.epg_id = ntohl (gr->gr_epg);
+  mp->recirc.epg_id = ntohs (gr->gr_epg);
   mp->recirc.sw_if_index = ntohl (gr->gr_sw_if_index);
   mp->recirc.is_ext = ntohl (gr->gr_is_ext);
 
@@ -385,12 +385,12 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
   int rv = 0;
 
   if (mp->is_add)
-    gbp_contract_update (ntohl (mp->contract.src_epg),
-			 ntohl (mp->contract.dst_epg),
+    gbp_contract_update (ntohs (mp->contract.src_epg),
+			 ntohs (mp->contract.dst_epg),
 			 ntohl (mp->contract.acl_index));
   else
-    gbp_contract_delete (ntohl (mp->contract.src_epg),
-			 ntohl (mp->contract.dst_epg));
+    gbp_contract_delete (ntohs (mp->contract.src_epg),
+			 ntohs (mp->contract.dst_epg));
 
   REPLY_MACRO (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
@@ -410,8 +410,8 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_CONTRACT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
-  mp->contract.src_epg = ntohl (gbpc->gc_key.gck_src);
-  mp->contract.dst_epg = ntohl (gbpc->gc_key.gck_dst);
+  mp->contract.src_epg = ntohs (gbpc->gc_key.gck_src);
+  mp->contract.dst_epg = ntohs (gbpc->gc_key.gck_dst);
   mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);

@@ -33,7 +33,7 @@ typedef struct gbp_contract_key_t_
       epg_id_t gck_src;
       epg_id_t gck_dst;
     };
-    u64 as_u64;
+    u32 as_u32;
   };
 } gbp_contract_key_t;
 
@@ -102,7 +102,7 @@ gbp_acl_lookup (gbp_contract_key_t * key)
 {
   uword *p;
 
-  p = hash_get (gbp_contract_db.gc_hash, key->as_u64);
+  p = hash_get (gbp_contract_db.gc_hash, key->as_u32);
 
   if (NULL != p)
     return (p[0]);
