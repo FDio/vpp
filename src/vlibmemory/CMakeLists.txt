@@ -11,8 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vpp_generate_api_header(memclnt.api)
-add_custom_target(vlibmemory_api_headers DEPENDS memclnt.api.h)
+vpp_add_api_files(vlibmemory_api_headers
+  memclnt.api
+)
 
 add_library (vlibmemory SHARED
   memory_api.c

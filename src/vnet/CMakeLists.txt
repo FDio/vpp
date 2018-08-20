@@ -424,7 +424,7 @@ set(VNET_SRCS
   vxlan/vxlan.c
 )
 
-set (VNET_API_FILES
+vpp_add_api_files(vnet_api_headers
   vxlan-gpe/vxlan_gpe.api
   ip/ip.api
   ip/rd_cp.api
@@ -474,13 +474,6 @@ set (VNET_API_FILES
   classify/classify.api
   bfd/bfd.api
 )
-
-set(VNET_API_HDRS)
-foreach (file ${VNET_API_FILES})
-  vpp_generate_api_header(${file})
-  list(APPEND VNET_API_HDRS ${file}.h)
-endforeach()
-add_custom_target(vnet_api_headers DEPENDS ${VNET_API_HDRS})
 
 add_library(vnet SHARED ${VNET_SRCS})
 
