@@ -22,6 +22,30 @@
       "revId": "affa13561a34dfdd46519dc144e5d2cfe583ed20",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e68b0ef4_5c0ce2ea",
+        "filename": "src/plugins/hyperscan.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-20T06:21:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dfd74ce9_6dbb6d2b",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 48
+      },
+      "revId": "affa13561a34dfdd46519dc144e5d2cfe583ed20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
