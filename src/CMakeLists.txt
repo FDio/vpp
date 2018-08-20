@@ -136,7 +136,7 @@ endif()
 ##############################################################################
 # API
 ##############################################################################
-function(vpp_generate_api_header file)
+function(vpp_generate_api_c_header file)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.h)
   get_filename_component(output_dir ${output_name} DIRECTORY)
   add_custom_command (OUTPUT ${output_name}
@@ -144,15 +144,32 @@ function(vpp_generate_api_header file)
     COMMAND ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen
     ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --output ${output_name}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
-    COMMENT "Generating API header ${file}.h"
+    COMMENT "Generating API header ${output_name}"
   )
+endfunction()
+
+function(vpp_generate_api_json_header file)
+  set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.json)
+  get_filename_component(output_dir ${output_name} DIRECTORY)
+  add_custom_command (OUTPUT ${output_name}
+    COMMAND mkdir -p ${output_dir}
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen
+    ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --output ${output_name}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    COMMENT "Generating API header ${output_name}"
+  )
+endfunction()
+
+function(vpp_generate_api_header file)
+    vpp_generate_api_c_header (${file})
+    vpp_generate_api_json_header (${file})
 endfunction()
 
 function(vpp_add_api_files target)
   unset(header_files)
   foreach(file ${ARGN})
     vpp_generate_api_header (${file})
-    list (APPEND header_files ${file}.h)
+    list (APPEND header_files ${file}.h ${file}.json)
   endforeach()
   add_custom_target(${target} DEPENDS ${header_files})
 endfunction()
