@@ -90,7 +90,7 @@ gbp_classify_inline (vlib_main_t * vm,
 
 	  if (GBP_SRC_CLASSIFY_NULL == type)
 	    {
-	      src_epg = ~0;
+	      src_epg = EPG_INVALID;
 	      next0 =
 		vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
 				      L2INPUT_FEAT_GBP_NULL_CLASSIFY);

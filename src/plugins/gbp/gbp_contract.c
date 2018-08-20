@@ -45,7 +45,7 @@ gbp_contract_update (epg_id_t src_epg, epg_id_t dst_epg, u32 acl_index)
 	gm->acl_plugin.register_user_module ("GBP ACL", "src-epg", "dst-epg");
     }
 
-  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u32);
   if (p != NULL)
     {
       value.as_u64 = p[0];
@@ -56,7 +56,7 @@ gbp_contract_update (epg_id_t src_epg, epg_id_t dst_epg, u32 acl_index)
 	gm->acl_plugin.get_lookup_context_index (gm->gbp_acl_user_id, src_epg,
 						 dst_epg);
       value.gc_acl_index = acl_index;
-      hash_set (gbp_contract_db.gc_hash, key.as_u64, value.as_u64);
+      hash_set (gbp_contract_db.gc_hash, key.as_u32, value.as_u64);
     }
 
   if (value.gc_lc_index == ~0)
@@ -77,13 +77,13 @@ gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
     .gck_dst = dst_epg,
   };
 
-  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u32);
   if (p != NULL)
     {
       value.as_u64 = p[0];
       gm->acl_plugin.put_lookup_context_index (value.gc_lc_index);
     }
-  hash_unset (gbp_contract_db.gc_hash, key.as_u64);
+  hash_unset (gbp_contract_db.gc_hash, key.as_u32);
 }
 
 void
@@ -93,7 +93,7 @@ gbp_contract_walk (gbp_contract_cb_t cb, void *ctx)
   gbp_contract_value_t value;
 
   /* *INDENT-OFF* */
-  hash_foreach(key.as_u64, value.as_u64, gbp_contract_db.gc_hash,
+  hash_foreach(key.as_u32, value.as_u64, gbp_contract_db.gc_hash,
   ({
     gbp_contract_t gbpc = {
       .gc_key = key,
@@ -174,7 +174,7 @@ gbp_contract_show (vlib_main_t * vm,
   vlib_cli_output (vm, "Contracts:");
 
   /* *INDENT-OFF* */
-  hash_foreach (key.as_u64, value.as_u64, gbp_contract_db.gc_hash,
+  hash_foreach (key.as_u32, value.as_u64, gbp_contract_db.gc_hash,
   {
     vlib_cli_output (vm, "  {%d,%d} -> %d", key.gck_src,
                      key.gck_dst, value.gc_acl_index);

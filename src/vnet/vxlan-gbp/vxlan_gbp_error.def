@@ -12,21 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef __GBP_TYPES_H__
-#define __GBP_TYPES_H__
-
-#include <vnet/vnet.h>
-
-typedef u16 epg_id_t;
-#define EPG_INVALID ((u16)~0)
-
-#endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+vxlan_gbp_error (DECAPSULATED, "good packets decapsulated")
+vxlan_gbp_error (NO_SUCH_TUNNEL, "no such tunnel packets")
+vxlan_gbp_error (BAD_FLAGS, "packets with bad flags field in vxlan gbp header")

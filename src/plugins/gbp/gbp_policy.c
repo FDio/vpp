@@ -110,7 +110,7 @@ gbp_policy (vlib_main_t * vm,
 	  key0.gck_dst = gbp_port_to_epg (sw_if_index0);
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
 
-	  if (~0 != key0.gck_src)
+	  if (EPG_INVALID != key0.gck_src)
 	    {
 	      if (PREDICT_FALSE (key0.gck_src == key0.gck_dst))
 		{
