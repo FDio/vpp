@@ -118,7 +118,16 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-add_definitions(-DHAVE_MEMFD_CREATE -DVPP_API_TEST_BUILTIN=1)
+add_definitions(-DVPP_API_TEST_BUILTIN=1)
+
+check_c_source_compiles("
+  #include <sys/memfd.h>
+  int main() { return memfd_create (\"/dev/false\", 0); }
+" COMPILED_MEMFD_CREATE)
+
+if (COMPILED_MEMFD_CREATE)
+    add_definitions(-DHAVE_MEMFD_CREATE)
+endif()
 
 ##############################################################################
 # API
