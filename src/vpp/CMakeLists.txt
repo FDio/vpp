@@ -78,6 +78,8 @@ install(TARGETS vpp_get_metrics DESTINATION bin)
 ##############################################################################
 add_executable(summary_stats_client api/summary_stats_client.c)
 add_executable(stat_client app/stat_client.c)
+add_dependencies(summary_stats_client api_headers)
+add_dependencies(stat_client api_headers)
 target_link_libraries(summary_stats_client vppinfra svm vlibmemoryclient)
 target_link_libraries(stat_client vppinfra svm vlibmemoryclient)
 
