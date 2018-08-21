@@ -140,6 +140,14 @@ u32x4_hadd (u32x4 v1, u32x4 v2)
   return (u32x4) vpaddq_u32 (v1, v2);
 }
 
+static_always_inline u16
+u8x16_msb_mask (u8x16 v)
+{
+  return u8x16_compare_byte_mask (v);
+}
+
+#define CLIB_HAVE_VEC128_MSB_MASK
+
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
