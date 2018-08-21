@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9ff0ad1_9edf9fb5",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-21T14:43:09Z",
+      "side": 1,
+      "message": "not needed, compiler will do that anyway....",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 225,
+        "endChar": 77
+      },
+      "revId": "08380754820a7ff12e3fd7d770970bb32b435f77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

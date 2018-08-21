@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4c5dd5c_2c8eb6fe",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-21T14:43:09Z",
+      "side": 0,
+      "message": "would prefer that this one is removed.....",
+      "range": {
+        "startLine": 218,
+        "startChar": 25,
+        "endLine": 218,
+        "endChar": 35
+      },
+      "revId": "6604ddea991e64fe0e8e51176eb0583058ebbc35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
