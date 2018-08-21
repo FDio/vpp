@@ -1829,6 +1829,9 @@ static void *vl_api_create_vhost_user_if_t_print
     s = format (s, "server ");
   if (mp->renumber)
     s = format (s, "renumber %d ", ntohl (mp->custom_dev_instance));
+  if (mp->features != ~0)
+    s =
+      format (s, "feature-mask 0x%llx", clib_net_to_host_u64 (mp->features));
   if (mp->tag[0])
     s = format (s, "tag %s", mp->tag);
 
