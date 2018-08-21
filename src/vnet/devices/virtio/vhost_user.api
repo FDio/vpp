@@ -13,7 +13,31 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
+
+/** \brief vhost-user Feature Mask
+ */
+enum fib_path_flags
+{
+  VHOST_USER_API_MASK_NONE = 0,
+  /* merge receive buffers */
+  VHOST_USER_API_F_MRG_RXBUF = 0x000008000,
+  /* Control channel is available */
+  VHOST_USER_API_F_CTRL_VQ = 0x000020000,
+  /* send gratuitous packets */
+  VHOST_USER_API_F_GUEST_ANNOUNCE = 0x000200000,
+  /* multiqueue with automatic receive steering */
+  VHOST_USER_API_F_MQ = 0x000400000,
+  VHOST_USER_API_F_LOG_ALL = 0x004000000,
+  /* device accepts arbitrary descriptor layouts */
+  VHOST_USER_API_F_ANY_LAYOUT = 0x008000000,
+  /* driver can use indirect descriptors */
+  VHOST_USER_API_F_RING_INDIRECT_DESC = 0x010000000,
+  /* check for experimental early versions of virtio */
+  VHOST_USER_API_F_PROTOCOL_FEATURES = 0x040000000,
+  /* indicates compliance with specification */
+  VHOST_USER_API_F_VERSION_1 = 0x100000000,
+};
 
 /** \brief vhost-user interface create request
     @param client_index - opaque cookie to identify the sender
@@ -29,6 +53,7 @@ define create_vhost_user_if
   u8 is_server;
   u8 sock_filename[256];
   u8 renumber;
+  u64 features;
   u32 custom_dev_instance;
   u8 use_custom_mac;
   u8 mac_address[6];
