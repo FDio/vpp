@@ -3729,6 +3729,8 @@ class VppPapiProvider(object):
             is_server,
             sock_filename,
             renumber,
+            disable_mrg_rxbuf,
+            disable_indirect_desc,
             custom_dev_instance,
             use_custom_mac,
             mac_address,
@@ -3737,6 +3739,8 @@ class VppPapiProvider(object):
         :param is_server: is server
         :param sock_filename: socket name
         :param renumber: renumber
+        :param disable_mrg_rxbuf: disable mergable rx buffers
+        :param disable_indirect_desc: disable indirect descriptors
         :param custom_dev_instance: custom dev instance
         :param use_custom_mac: use custom mac
         :param mac_address: mac address
@@ -3747,6 +3751,8 @@ class VppPapiProvider(object):
             {'is_server': is_server,
              'sock_filename': sock_filename,
              'renumber': renumber,
+             'disable_mrg_rxbuf': disable_mrg_rxbuf,
+             'disable_indirect_desc': disable_indirect_desc,
              'custom_dev_instance': custom_dev_instance,
              'use_custom_mac': use_custom_mac,
              'mac_address': mac_address,

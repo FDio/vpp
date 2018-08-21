@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
 /** \brief vhost-user interface create request
     @param client_index - opaque cookie to identify the sender
     @param is_server - our side is socket server
     @param sock_filename - unix socket filename, used to speak with frontend
     @param use_custom_mac - enable or disable the use of the provided hardware address
+    @param disable_mrg_rxbuf - disable the use of merge receive buffers
+    @param disable_indirect_desc - disable the use of indirect descriptors which driver can use
     @param mac_address - hardware address to use if 'use_custom_mac' is set
 */
 define create_vhost_user_if
@@ -29,6 +31,8 @@ define create_vhost_user_if
   u8 is_server;
   u8 sock_filename[256];
   u8 renumber;
+  u8 disable_mrg_rxbuf;
+  u8 disable_indirect_desc;
   u32 custom_dev_instance;
   u8 use_custom_mac;
   u8 mac_address[6];

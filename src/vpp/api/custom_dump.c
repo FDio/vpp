@@ -1982,6 +1982,10 @@ static void *vl_api_create_vhost_user_if_t_print
     s = format (s, "server ");
   if (mp->renumber)
     s = format (s, "renumber %d ", ntohl (mp->custom_dev_instance));
+  if (mp->disable_mrg_rxbuf)
+    s = format (s, "disable_mrg_rxbuf ");
+  if (mp->disable_indirect_desc)
+    s = format (s, "disable_indirect_desc ");
   if (mp->tag[0])
     s = format (s, "tag %s", mp->tag);
 

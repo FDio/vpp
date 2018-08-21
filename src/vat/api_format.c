@@ -14053,6 +14053,8 @@ api_create_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
+  u8 disable_mrg_rxbuf = 0;
+  u8 disable_indirect_desc = 0;
   u8 *tag = 0;
   int ret;
 
@@ -14071,6 +14073,10 @@ api_create_vhost_user_if (vat_main_t * vam)
 	use_custom_mac = 1;
       else if (unformat (i, "server"))
 	is_server = 1;
+      else if (unformat (i, "disable_mrg_rxbuf"))
+	disable_mrg_rxbuf = 1;
+      else if (unformat (i, "disable_indirect_desc"))
+	disable_indirect_desc = 1;
       else if (unformat (i, "tag %s", &tag))
 	;
       else
@@ -14093,6 +14099,8 @@ api_create_vhost_user_if (vat_main_t * vam)
   M (CREATE_VHOST_USER_IF, mp);
 
   mp->is_server = is_server;
+  mp->disable_mrg_rxbuf = disable_mrg_rxbuf;
+  mp->disable_indirect_desc = disable_indirect_desc;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
@@ -14100,6 +14108,7 @@ api_create_vhost_user_if (vat_main_t * vam)
       mp->renumber = 1;
       mp->custom_dev_instance = ntohl (custom_dev_instance);
     }
+
   mp->use_custom_mac = use_custom_mac;
   clib_memcpy (mp->mac_address, hwaddr, 6);
   if (tag)
@@ -23632,6 +23641,7 @@ _(l2_interface_vlan_tag_rewrite,                                        \
   "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
 _(create_vhost_user_if,                                                 \
         "socket <filename> [server] [renumber <dev_instance>] "         \
+        "[disable_mrg_rxbuf] [disable_indirect_desc] "                  \
         "[mac <mac_address>]")                                          \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
