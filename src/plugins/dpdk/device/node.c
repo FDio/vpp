@@ -215,13 +215,14 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
   vlib_buffer_free_list_t *fl;
-  struct rte_mbuf **mb = ptd->mbufs;
+  struct rte_mbuf **mb;
   uword n_bytes = 0;
   i16 off;
   u8 *flags, or_flags = 0;
   u16 *next;
 
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  if (maybe_multiseg)
+    fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   mb = ptd->mbufs;
   flags = ptd->flags;
