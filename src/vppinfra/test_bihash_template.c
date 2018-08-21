@@ -35,6 +35,7 @@ typedef struct
   u32 ncycles;
   u32 report_every_n;
   u32 search_iter;
+  u32 noverwritten;
   int careful_delete_tests;
   int verbose;
   int non_random_keys;
@@ -91,6 +92,44 @@ test_bihash_vec64 (test_main_t * tm)
   for (j = 0; j < vec_len (cum_times); j++)
     fformat (stdout, "Cum time for %d: %.4f (us)\n", (j + 1) * 1000,
 	     cum_times[j] * 1e6);
+
+  return 0;
+}
+
+static int
+stale_cb (BVT (clib_bihash_kv) * kv, void *ctx)
+{
+  test_main_t *tm = ctx;
+
+  tm->noverwritten++;
+
+  return 1;
+}
+
+static clib_error_t *
+test_bihash_stale_overwrite (test_main_t * tm)
+{
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
+  int i;
+  tm->noverwritten = 0;
+
+  h = &tm->hash;
+
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+
+  fformat (stdout, "Add %d items to %d buckets\n", tm->nitems, tm->nbuckets);
+
+  for (i = 0; i < tm->nitems; i++)
+    {
+      kv.key = i;
+      kv.value = 1;
+
+      BV (clib_bihash_add_or_overwrite_stale) (h, &kv, stale_cb, tm);
+    }
+
+  fformat (stdout, "%d items overwritten\n", tm->noverwritten);
+  fformat (stdout, "%U", BV (format_bihash), h, 0);
 
   return 0;
 }
@@ -424,6 +463,8 @@ test_bihash_main (test_main_t * tm)
 	which = 2;
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
+      else if (unformat (i, "stale-overwrite"))
+	which = 3;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, i);
@@ -447,6 +488,10 @@ test_bihash_main (test_main_t * tm)
 
     case 2:
       error = test_bihash_threads (tm);
+      break;
+
+    case 3:
+      error = test_bihash_stale_overwrite (tm);
       break;
 
     default:

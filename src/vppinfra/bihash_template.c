@@ -269,8 +269,9 @@ BV (split_and_rehash_linear)
   return new_values;
 }
 
-int BV (clib_bihash_add_del)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add)
+static inline int BV (clib_bihash_add_del_inline)
+  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add,
+   int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
 {
   u32 bucket_index;
   BVT (clib_bihash_bucket) * b, tmp_b;
@@ -364,6 +365,20 @@ int BV (clib_bihash_add_del)
 	      b->refcnt++;
 	      BV (clib_bihash_unlock_bucket) (b);
 	      return (0);
+	    }
+	}
+      /* look for stale data to overwrite */
+      if (is_stale_cb)
+	{
+	  for (i = 0; i < limit; i++)
+	    {
+	      if (is_stale_cb (&(v->kvp[i]), arg))
+		{
+		  CLIB_MEMORY_BARRIER ();
+		  clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+		  BV (clib_bihash_unlock_bucket) (b);
+		  return (0);
+		}
 	    }
 	}
       /* Out of space in this bucket, split the bucket... */
@@ -482,6 +497,19 @@ expand_ok:
   b->as_u64 = tmp_b.as_u64;
   BV (clib_bihash_alloc_unlock) (h);
   return (0);
+}
+
+int BV (clib_bihash_add_del)
+  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add)
+{
+  return BV (clib_bihash_add_del_inline) (h, add_v, is_add, 0, 0);
+}
+
+int BV (clib_bihash_add_or_overwrite_stale)
+  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+   int (*stale_callback) (BVT (clib_bihash_kv) *, void *), void *arg)
+{
+  return BV (clib_bihash_add_del_inline) (h, add_v, 1, stale_callback, arg);
 }
 
 int BV (clib_bihash_search)
