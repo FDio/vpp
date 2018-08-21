@@ -221,9 +221,9 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
   u8 *flags, or_flags = 0;
   u16 *next;
 
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  if (maybe_multiseg)
+    fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
-  mb = ptd->mbufs;
   flags = ptd->flags;
   next = ptd->next;
 
