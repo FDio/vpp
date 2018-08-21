@@ -157,7 +157,7 @@ This package contains the python bindings for the vpp api
 export VPP_BUILD_USER=suse
 export VPP_BUILD_HOST=SUSE
 
-make V=1 PLATFORM=vpp build-release
+make V=1 PLATFORM=vpp vpp_uses_cmake=no build-release
 
 cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_build}
 
@@ -316,6 +316,8 @@ export NO_BRP_CHECK_RPATH=true
 %files
 %{_unitdir}/vpp.service
 %{_bindir}/vpp*
+%{_bindir}/dpdk-*
+%{_bindir}/test*
 %{_bindir}/svm*
 %{_bindir}/elftool
 %dir %{_sysconfdir}/vpp
