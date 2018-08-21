@@ -117,7 +117,6 @@ API_FILES += vnet/cop/cop.api
 # Layer 2 protocol: Ethernet
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/ethernet/arp.c				\
  vnet/ethernet/format.c				\
  vnet/ethernet/init.c				\
  vnet/ethernet/interface.c			\
@@ -132,7 +131,6 @@ libvnet_multiversioning_sources +=		\
  vnet/l2/l2_output.c
 
 nobase_include_HEADERS +=			\
- vnet/ethernet/arp_packet.h			\
  vnet/ethernet/error.def			\
  vnet/ethernet/ethernet.h			\
  vnet/ethernet/packet.h				\
@@ -421,6 +419,16 @@ API_FILES += 					\
 libvnet_multiversioning_sources +=		\
  vnet/ip/ip4_forward.c				\
  vnet/ip/ip4_input.c
+
+########################################
+# Layer 2/3 ARP
+########################################
+libvnet_la_SOURCES +=               \
+ vnet/ethernet/arp.c
+
+nobase_include_HEADERS +=           \
+ vnet/ethernet/arp_packet.h         \
+ vnet/ethernet/arp.h
 
 ########################################
 # Bidirectional Forwarding Detection
