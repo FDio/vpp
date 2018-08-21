@@ -76,9 +76,12 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   u32 sw_if_index = (u32) ~ 0;
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
+  u64 features = ~0;
+
+  features = clib_net_to_host_u64 (mp->features);
 
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, &sw_if_index, (u64) ~ 0,
+			     mp->is_server, &sw_if_index, features,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
 			     (mp->use_custom_mac) ? mp->mac_address : NULL);
 

@@ -13852,6 +13852,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u8 is_server = 0;
   u8 file_name_set = 0;
   u32 custom_dev_instance = ~0;
+  u64 feature_mask = ~0;
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
   u8 *tag = 0;
@@ -13867,6 +13868,8 @@ api_create_vhost_user_if (vat_main_t * vam)
 	  file_name_set = 1;
 	}
       else if (unformat (i, "renumber %" PRIu32, &custom_dev_instance))
+	;
+      else if (unformat (i, "feature-mask 0x%llx", &feature_mask))
 	;
       else if (unformat (i, "mac %U", unformat_ethernet_address, hwaddr))
 	use_custom_mac = 1;
@@ -13901,6 +13904,11 @@ api_create_vhost_user_if (vat_main_t * vam)
       mp->renumber = 1;
       mp->custom_dev_instance = ntohl (custom_dev_instance);
     }
+  if (feature_mask != ~0)
+    {
+      mp->features = clib_host_to_net_u64 (feature_mask);
+    }
+
   mp->use_custom_mac = use_custom_mac;
   clib_memcpy (mp->mac_address, hwaddr, 6);
   if (tag)
