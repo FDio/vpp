@@ -204,22 +204,6 @@ unformat_ip_prefix (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_mac_address (unformat_input_t * input, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return unformat (input, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3],
-		   &a[4], &a[5]);
-}
-
-u8 *
-format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
-
-uword
 unformat_nsh_address (unformat_input_t * input, va_list * args)
 {
   nsh_t *a = va_arg (*args, nsh_t *);

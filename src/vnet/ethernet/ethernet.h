@@ -339,6 +339,7 @@ void ethernet_register_l2_input (vlib_main_t * vm, u32 node_index);
 void ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index);
 
 /* Formats ethernet address X:X:X:X:X:X */
+u8 *format_mac_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
 u8 *format_ethernet_type (u8 * s, va_list * args);
 u8 *format_ethernet_vlan_tci (u8 * s, va_list * va);
@@ -347,6 +348,7 @@ u8 *format_ethernet_header_with_length (u8 * s, va_list * args);
 
 /* Parse ethernet address in either X:X:X:X:X:X unix or X.X.X cisco format. */
 uword unformat_ethernet_address (unformat_input_t * input, va_list * args);
+uword unformat_mac_address (unformat_input_t * input, va_list * args);
 
 /* Parse ethernet type as 0xXXXX or type name from ethernet/types.def.
    In either host or network byte order. */
