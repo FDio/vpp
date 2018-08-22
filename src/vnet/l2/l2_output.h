@@ -28,8 +28,6 @@
 typedef struct
 {
 
-  u32 feature_bitmap;
-
   /*
    * vlan tag rewrite for ingress and egress
    * ingress vtr is located here because the same config data is used for
@@ -40,9 +38,7 @@ typedef struct
   ptr_config_t input_pbb_vtr;
   ptr_config_t output_pbb_vtr;
 
-  /* some of these flags may get integrated into the feature bitmap */
-  u8 fwd_enable;
-  u8 flood_enable;
+  u32 feature_bitmap;
 
   /* split horizon group */
   u8 shg;

@@ -35,23 +35,18 @@ typedef struct
     u32 output_sw_if_index;	/* for xconnect */
   };
 
+  /* config for which input features are configured on this interface */
+  u32 feature_bitmap;
+
+  /* split horizon group */
+  u8 shg;
+
   /* Interface mode. If both are 0, this interface is in L3 mode */
   u8 xconnect;
   u8 bridge;
 
   /* this is the bvi interface for the bridge-domain */
   u8 bvi;
-
-  /* config for which input features are configured on this interface */
-  u32 feature_bitmap;
-
-  /* some of these flags are also in the feature bitmap */
-  u8 learn_enable;
-  u8 fwd_enable;
-  u8 flood_enable;
-
-  /* split horizon group */
-  u8 shg;
 
 } l2_input_config_t;
 
