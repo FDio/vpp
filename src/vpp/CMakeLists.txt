@@ -28,6 +28,8 @@ add_custom_target(vpp_version_h
   DEPENDS ${CMAKE_BINARY_DIR}/include/vpp/app/version.h
 )
 
+add_definitions(-DVPP_API_TEST_BUILTIN=1)
+
 ##############################################################################
 # vpp binary
 ##############################################################################
