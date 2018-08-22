@@ -3345,6 +3345,9 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
 
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.endpoint_dependent)
+
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -4978,6 +4981,9 @@ class TestNAT44Out2InDPO(MethodHolder):
 
     def test_464xlat_ce(self):
         """ Test 464XLAT CE with NAT44 """
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.out2in_dpo)
 
         self.configure_xlat()
 
@@ -6961,6 +6967,9 @@ class TestDSlite(MethodHolder):
 
     def test_dslite(self):
         """ Test DS-Lite """
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(0, nat_config.dslite_ce)
+
         self.vapi.dslite_add_del_pool_addr_range(self.nat_addr_n,
                                                  self.nat_addr_n)
         aftr_ip4 = '192.0.0.1'
@@ -7120,6 +7129,9 @@ class TestDSliteCE(MethodHolder):
 
     def test_dslite_ce(self):
         """ Test DS-Lite CE """
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.dslite_ce)
 
         b4_ip4 = '192.0.0.2'
         b4_ip4_n = socket.inet_pton(socket.AF_INET, b4_ip4)

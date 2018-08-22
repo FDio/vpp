@@ -2812,6 +2812,18 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 				  format_unformat_error, input);
     }
 
+  if (sm->deterministic && sm->endpoint_dependent)
+    return clib_error_return (
+      0, "deterministic and endpoint-dependent modes are mutually exclusive");
+
+  if (static_mapping_only && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (
+      0, "static mapping only mode available only for simple nat");
+
+  if (sm->out2in_dpo && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (
+      0, "out2in dpo mode available only for simple nat");
+
   /* for show commands, etc. */
   sm->translation_buckets = translation_buckets;
   sm->translation_memory_size = translation_memory_size;
