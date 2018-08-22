@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fab0588b_282598f9",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-08-22T09:09:35Z",
+      "side": 1,
+      "message": "Agreed.\nI considered to do that as you suggested before submitting. I thought that uninitialized variable can\u0027t introduce trouble probably. Think again, your advice is a more safe way without doubt.",
+      "parentUuid": "d6bf225b_47be1acb",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 83,
+        "endChar": 33
+      },
+      "revId": "31ddcae736d80c70fd7536cf5fe51b8d553f275d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "207e43ea_e467dc7b",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-08-22T08:35:21Z",
       "side": 1,
       "message": "i suggest:\n\nif (memcmp(b0-\u003edata, \u0026ether_header, sizeof ether_header)) !\u003d 0)\n         {\n            flow_hash \u003d vnet_l2_compute_flow_hash (b0);\n            clib_memcpy(\u0026ether_header, b0-\u003edata, sizeof ether_header);\n          }\nflow_hash0 \u003d flow_hash;",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 146,
+        "endChar": 11
+      },
+      "revId": "31ddcae736d80c70fd7536cf5fe51b8d553f275d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6b65433a_42b94c71",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-08-22T09:09:35Z",
+      "side": 1,
+      "message": "It looks better. thanks.",
+      "parentUuid": "207e43ea_e467dc7b",
       "range": {
         "startLine": 137,
         "startChar": 0,
