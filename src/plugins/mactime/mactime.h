@@ -104,14 +104,6 @@ extern vlib_node_registration_t mactime_tx_node;
 
 void mactime_send_create_entry_message (u8 * mac_address);
 
-static inline u8 *
-format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
-
 /* Periodic function events */
 #define MACTIME_EVENT1 1
 #define MACTIME_EVENT2 2

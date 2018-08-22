@@ -55,6 +55,12 @@ format_ethernet_address (u8 * s, va_list * args)
 }
 
 u8 *
+format_mac_address (u8 * s, va_list * args)
+{
+  return (format_ethernet_address (s, args));
+}
+
+u8 *
 format_ethernet_type (u8 * s, va_list * args)
 {
   ethernet_type_t type = va_arg (*args, u32);
@@ -230,6 +236,13 @@ unformat_ethernet_address (unformat_input_t * input, va_list * args)
   return (unformat_user (input, unformat_ethernet_address_unix, result)
 	  || unformat_user (input, unformat_ethernet_address_cisco, result));
 }
+
+uword
+unformat_mac_address (unformat_input_t * input, va_list * args)
+{
+  return (unformat_ethernet_address (input, args));
+}
+
 
 /* Returns ethernet type as an int in host byte order. */
 uword

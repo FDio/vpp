@@ -15,6 +15,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vppinfra/error.h>
 #include <sample/sample.h>
 
@@ -26,13 +27,6 @@ typedef struct
   u8 new_dst_mac[6];
 } sample_trace_t;
 
-static u8 *
-format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
 
 /* packet trace format function */
 static u8 *

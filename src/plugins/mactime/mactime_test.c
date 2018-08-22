@@ -19,6 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 #include <vppinfra/time_range.h>
+#include <vnet/ethernet/ethernet.h>
 
 uword vat_unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
@@ -78,22 +79,6 @@ _(mactime_add_del_range_reply)
     }
 foreach_standard_reply_retval_handler;
 #undef _
-
-static u8 *
-format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
-
-static uword
-unformat_mac_address (unformat_input_t * input, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return unformat (input, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3],
-		   &a[4], &a[5]);
-}
 
 /*
  * Table of message reply handlers, must include boilerplate handlers
