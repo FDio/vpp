@@ -16,6 +16,7 @@
 #include "ipip.h"
 #include <vppinfra/error.h>
 #include <vnet/vnet.h>
+#include <vnet/fib/fib_table.h>
 
 static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
                                                    unformat_input_t *input,
@@ -24,6 +25,7 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
   ip46_address_t src = ip46_address_initializer, dst = ip46_address_initializer;
   u32 instance = ~0;
   u32 fib_index = 0;
+  u32 table_id = 0;
   int rv;
   u32 num_m_args = 0;
   u32 sw_if_index;
@@ -49,7 +51,7 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
     } else if (unformat(line_input, "dst %U", unformat_ip6_address, &dst.ip6)) {
       num_m_args++;
       ip6_set = true;
-    } else if (unformat(line_input, "outer-fib-id %d", &fib_index))
+    } else if (unformat(line_input, "outer-table-id %d", &table_id))
       ;
     else {
       error = clib_error_return(0, "unknown input `%U'", format_unformat_error,
@@ -67,15 +69,24 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
     goto done;
   }
 
-  rv = ipip_add_tunnel(ip6_set ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
-		       instance,
-		       &src,
-		       &dst,
-		       fib_index,
-		       0,
-		       &sw_if_index);
+  fib_index = fib_table_find(fib_ip_proto(ip6_set), table_id);
 
-  switch (rv) {
+  if (~0 == fib_index)
+  {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+  }
+  else
+  {
+      rv = ipip_add_tunnel(ip6_set ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
+                           instance,
+                           &src,
+                           &dst,
+                           fib_index,
+                           0,
+                           &sw_if_index);
+    }
+
+    switch (rv) {
   case 0:
     vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(),
                     sw_if_index);
@@ -144,7 +155,7 @@ done:
 VLIB_CLI_COMMAND(create_ipip_tunnel_command, static) = {
     .path = "create ipip tunnel",
     .short_help = "create ipip tunnel src <addr> dst <addr> [instance <n>] "
-                  "[outer-fib-id <fib>]",
+                  "[outer-table-id <ID>]",
     .function = create_ipip_tunnel_command_fn,
 };
 VLIB_CLI_COMMAND(delete_ipip_tunnel_command, static) = {
@@ -158,21 +169,25 @@ static u8 *format_ipip_tunnel(u8 *s, va_list *args) {
   ipip_tunnel_t *t = va_arg(*args, ipip_tunnel_t *);
 
   ip46_type_t type = (t->transport == IPIP_TRANSPORT_IP4) ? IP46_TYPE_IP4 : IP46_TYPE_IP6;
+  u32 table_id;
+
+  table_id = fib_table_get_table_id(t->fib_index,
+                                    fib_proto_from_ip46(type));
   switch (t->mode) {
   case IPIP_MODE_6RD:
-    s = format(s, "[%d] 6rd src %U ip6-pfx %U/%d fib-idx %d sw-if-idx %d ",
+    s = format(s, "[%d] 6rd src %U ip6-pfx %U/%d table-ID %d sw-if-idx %d ",
 	       t->dev_instance,
 	       format_ip46_address, &t->tunnel_src, type,
 	       format_ip6_address, &t->sixrd.ip6_prefix, t->sixrd.ip6_prefix_len,
-	       t->fib_index, t->sw_if_index);
+	       table_id, t->sw_if_index);
     break;
   case IPIP_MODE_P2P:
   default:
-    s = format(s, "[%d] instance %d src %U dst %U fib-idx %d sw-if-idx %d ",
+    s = format(s, "[%d] instance %d src %U dst %U table-ID %d sw-if-idx %d ",
 	       t->dev_instance, t->user_instance,
 	       format_ip46_address, &t->tunnel_src, type,
 	       format_ip46_address, &t->tunnel_dst, type,
-	       t->fib_index, t->sw_if_index);
+	       table_id, t->sw_if_index);
     break;
   }
 
@@ -226,9 +241,11 @@ static clib_error_t *create_sixrd_tunnel_command_fn(vlib_main_t *vm,
   u32 ip6_prefix_len = 0, ip4_prefix_len = 0, sixrd_tunnel_index;
   u32 num_m_args = 0;
   /* Optional arguments */
-  u32 fib_index = 0;
+  u32 ip4_table_id = 0, ip4_fib_index;
+  u32 ip6_table_id = 0, ip6_fib_index;
   clib_error_t *error = 0;
   bool security_check = false;
+  int rv;
 
   /* Get a line of input. */
   if (!unformat_user(input, unformat_line_input, line_input))
@@ -244,7 +261,9 @@ static clib_error_t *create_sixrd_tunnel_command_fn(vlib_main_t *vm,
       num_m_args++;
     else if (unformat(line_input, "ip4-src %U", unformat_ip4_address, &ip4_src))
       num_m_args++;
-    else if (unformat(line_input, "fib-id %d", &fib_index))
+    else if (unformat(line_input, "ip4-table-id %d", &ip4_table_id))
+      ;
+    else if (unformat(line_input, "ip6-table-id %d", &ip6_table_id))
       ;
     else {
       error = clib_error_return(0, "unknown input `%U'", format_unformat_error,
@@ -257,13 +276,31 @@ static clib_error_t *create_sixrd_tunnel_command_fn(vlib_main_t *vm,
     error = clib_error_return(0, "mandatory argument(s) missing");
     goto done;
   }
-  int rv = sixrd_add_tunnel(&ip6_prefix, ip6_prefix_len, &ip4_prefix,
-			    ip4_prefix_len, &ip4_src, security_check,
-			    fib_index, &sixrd_tunnel_index);
-  if (rv)
-    error = clib_error_return(0, "adding tunnel failed %d", rv);
+  ip4_fib_index = fib_table_find(FIB_PROTOCOL_IP4, ip4_table_id);
+  ip6_fib_index = fib_table_find(FIB_PROTOCOL_IP6, ip6_table_id);
 
- done:
+  if (~0 == ip4_fib_index)
+  {
+      error = clib_error_return(0, "No such IP4 table %d", ip4_table_id);
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+  }
+  else if (~0 == ip6_fib_index)
+  {
+      error = clib_error_return(0, "No such IP6 table %d", ip6_table_id);
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+  }
+  else
+  {
+      rv = sixrd_add_tunnel(&ip6_prefix, ip6_prefix_len, &ip4_prefix,
+			    ip4_prefix_len, &ip4_src, security_check,
+			    ip4_fib_index, ip6_fib_index,
+                            &sixrd_tunnel_index);
+
+      if (rv)
+          error = clib_error_return(0, "adding tunnel failed %d", rv);
+  }
+
+done:
   unformat_free(line_input);
 
   return error;
@@ -308,7 +345,7 @@ done:
 VLIB_CLI_COMMAND(create_sixrd_tunnel_command, static) = {
     .path = "create 6rd tunnel",
     .short_help = "create 6rd tunnel ip6-pfx <ip6-pfx> ip4-pfx <ip4-pfx> "
-                  "ip4-src <ip4-addr> [del]",
+                  "ip4-src <ip4-addr> table-id <ID> [del]",
     .function = create_sixrd_tunnel_command_fn,
 };
 VLIB_CLI_COMMAND(delete_sixrd_tunnel_command, static) = {

@@ -51,7 +51,7 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 {
   vl_api_ipip_add_tunnel_reply_t *rmp;
   int rv = 0;
-  u32 sw_if_index = ~0;
+  u32 fib_index, sw_if_index = ~0;
   ip46_address_t src = ip46_address_initializer, dst =
     ip46_address_initializer;
 
@@ -67,13 +67,27 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
       clib_memcpy (&dst.ip4, mp->dst_address, 4);
     }
 
-  rv = ipip_add_tunnel (mp->is_ipv6 ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
-			ntohl (mp->instance), &src, &dst,
-			ntohl (mp->fib_index), mp->tc_tos, &sw_if_index);
+  fib_index =
+    fib_table_find (fib_ip_proto (mp->is_ipv6), ntohl (mp->table_id));
+
+  if (~0 == fib_index)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+    }
+  else
+    {
+      rv = ipip_add_tunnel ((mp->is_ipv6 ?
+			     IPIP_TRANSPORT_IP6 :
+			     IPIP_TRANSPORT_IP4),
+			    ntohl (mp->instance), &src, &dst,
+			    fib_index, mp->tc_tos, &sw_if_index);
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_IPIP_ADD_TUNNEL_REPLY,
-               ({ rmp->sw_if_index = ntohl(sw_if_index); }));
+  ({
+    rmp->sw_if_index = ntohl(sw_if_index);
+  }));
   /* *INDENT-ON* */
 }
 
@@ -153,21 +167,35 @@ static void
 vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
 {
   vl_api_ipip_6rd_add_tunnel_reply_t *rmp;
-  u32 sixrd_tunnel_index;
+  u32 sixrd_tunnel_index, ip4_fib_index, ip6_fib_index;
+  int rv;
 
-  int rv = sixrd_add_tunnel ((ip6_address_t *) & mp->ip6_prefix,
+  ip4_fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->ip4_table_id));
+  ip6_fib_index = fib_table_find (FIB_PROTOCOL_IP6, ntohl (mp->ip6_table_id));
+
+  if (~0 == ip4_fib_index || ~0 == ip6_fib_index)
+
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+    }
+  else
+    {
+      rv = sixrd_add_tunnel ((ip6_address_t *) & mp->ip6_prefix,
 			     mp->ip6_prefix_len,
 			     (ip4_address_t *) & mp->ip4_prefix,
 			     mp->ip4_prefix_len,
 			     (ip4_address_t *) & mp->ip4_src,
 			     mp->security_check,
-			     ntohl (mp->fib_index), &sixrd_tunnel_index);
+			     ip4_fib_index, ip6_fib_index,
+			     &sixrd_tunnel_index);
+    }
 
-  REPLY_MACRO2 (VL_API_IPIP_6RD_ADD_TUNNEL_REPLY, (
-						    {
-						    rmp->sw_if_index =
-						    htonl
-						    (sixrd_tunnel_index);}));
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IPIP_6RD_ADD_TUNNEL_REPLY,
+  ({
+    rmp->sw_if_index = htonl (sixrd_tunnel_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
