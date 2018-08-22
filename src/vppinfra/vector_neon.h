@@ -150,6 +150,12 @@ u32x4_shuffle_2301 (u32x4 v)
   return vrev64q_u32 (vextq_u32 (v, v, 2));
 }
 
+static_always_inline u64x2
+u32x4_extend_to_u64x2 (u32x4 v)
+{
+  return vmovl_u32 (vget_low_u32 (v));
+}
+
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
