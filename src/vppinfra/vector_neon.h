@@ -140,6 +140,12 @@ u32x4_hadd (u32x4 v1, u32x4 v2)
   return (u32x4) vpaddq_u32 (v1, v2);
 }
 
+static_always_inline u32x4
+u32x4_shuffle_2301 (u32x4 v)
+{
+  return vrev64q_u32 (vextq_u32 (v, v, 2));
+}
+
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
