@@ -284,6 +284,23 @@
     },
     {
       "key": {
+        "uuid": "e8994f92_61bb35c7",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 1241
+      },
+      "writtenOn": "2018-08-22T02:10:31Z",
+      "side": 1,
+      "message": "This function too: lb_flush_vip().",
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0dc8d080_80c2cad7",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 13
@@ -366,6 +383,30 @@
       "side": 1,
       "message": "Will submit it with a separate patch.",
       "parentUuid": "b90c10e3_48f7cbc3",
+      "range": {
+        "startLine": 766,
+        "startChar": 0,
+        "endLine": 766,
+        "endChar": 15
+      },
+      "revId": "a1ecfd896364233062e1d1f2fb46fc0645546111",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8bb4e5dd_5e61d48e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 1241
+      },
+      "writtenOn": "2018-08-22T02:10:31Z",
+      "side": 1,
+      "message": "This part: lb_flush_vip_as().",
+      "parentUuid": "e04fdc29_69017361",
       "range": {
         "startLine": 766,
         "startChar": 0,
