@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "245294f2_b383f65c",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Combining ip and port to identify types make code consistent with dpo_type. \ni.e. if (lb_vip_is_gre4_port(vip))\n    dpo_type \u003d lbm-\u003edpo_gre4_port_type;",
+      "parentUuid": "d8eeee9e_8afd0d40",
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ec119dfc_68a09252",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -30,6 +48,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "What about L3DSR without port ?",
+      "range": {
+        "startLine": 173,
+        "startChar": 6,
+        "endLine": 173,
+        "endChar": 45
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e81c69fb_e2978f19",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Have added it in patchset 17.",
+      "parentUuid": "ec119dfc_68a09252",
       "range": {
         "startLine": 173,
         "startChar": 6,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "65dff85b_89c3242c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "617a62cd_d9d305d9",
+      "range": {
+        "startLine": 213,
+        "startChar": 18,
+        "endLine": 213,
+        "endChar": 64
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "290220cc_e6f2d904",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -76,6 +142,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Again. What about l3dsr with no port.\nMaybe it would help clarifying the code a bit if the types were the same with and without port, and the port parameter would be used to distinguish (0 means no port, a different value specifies the port). Just an idea. You decide if it helps.",
+      "range": {
+        "startLine": 224,
+        "startChar": 2,
+        "endLine": 224,
+        "endChar": 46
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "674661cc_7a13d23c",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Have added it in patchset 17.\n\nCombining ip and port make it consistent with dpo_type, i.e. if (lb_vip_is_gre4_port(vip))\n    dpo_type \u003d lbm-\u003edpo_gre4_port_type;",
+      "parentUuid": "290220cc_e6f2d904",
       "range": {
         "startLine": 224,
         "startChar": 2,
@@ -111,6 +201,30 @@
     },
     {
       "key": {
+        "uuid": "49870c48_715d772b",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d163b9da_e3bcb760",
+      "range": {
+        "startLine": 239,
+        "startChar": 42,
+        "endLine": 239,
+        "endChar": 51
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dc023000_f74f4629",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -122,6 +236,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "This code is very redundant with the previous search function. Would it make sense to have a single search function with an additional field to specify the intended behavior ? You can keep the 3 functions but they could just call this single search function. At least it would get rid of code replication.",
+      "range": {
+        "startLine": 544,
+        "startChar": 0,
+        "endLine": 587,
+        "endChar": 1
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ba27d6f_144bfbb5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dc023000_f74f4629",
       "range": {
         "startLine": 544,
         "startChar": 0,
@@ -157,6 +295,30 @@
     },
     {
       "key": {
+        "uuid": "fad90385_25b9fed7",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e5bb391_3734cb8c",
+      "range": {
+        "startLine": 730,
+        "startChar": 16,
+        "endLine": 730,
+        "endChar": 40
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "205226c5_75aa914f",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -168,6 +330,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Take those out of the if-else",
+      "range": {
+        "startLine": 760,
+        "startChar": 16,
+        "endLine": 760,
+        "endChar": 40
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4a0a5815_6327b4c2",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 760,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "205226c5_75aa914f",
       "range": {
         "startLine": 760,
         "startChar": 16,
@@ -203,6 +389,30 @@
     },
     {
       "key": {
+        "uuid": "2ff30135_30b7c555",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 797,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e882821_b46c41b2",
+      "range": {
+        "startLine": 797,
+        "startChar": 28,
+        "endLine": 797,
+        "endChar": 41
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b3f5a818_2c1d0d6e",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -214,6 +424,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Style",
+      "range": {
+        "startLine": 865,
+        "startChar": 7,
+        "endLine": 865,
+        "endChar": 8
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "59a73cdb_836a6cac",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b3f5a818_2c1d0d6e",
       "range": {
         "startLine": 865,
         "startChar": 7,
@@ -249,6 +483,30 @@
     },
     {
       "key": {
+        "uuid": "17bd62ae_5bf711bf",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2430d8f0_b8ba4b5d",
+      "range": {
+        "startLine": 879,
+        "startChar": 6,
+        "endLine": 879,
+        "endChar": 14
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7f0d57f0_762fca1c",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -260,6 +518,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Should be using a clib_bihash",
+      "range": {
+        "startLine": 944,
+        "startChar": 2,
+        "endLine": 944,
+        "endChar": 10
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86d6c24f_a0ca53b9",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 944,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f0d57f0_762fca1c",
       "range": {
         "startLine": 944,
         "startChar": 2,
@@ -295,6 +577,30 @@
     },
     {
       "key": {
+        "uuid": "5e8a4b40_daf7a725",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1017,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "it is for both cases.  For all-port vip case, protocol is set to ~0, and port set to 0 in advance.",
+      "parentUuid": "072766a7_43e203c1",
+      "range": {
+        "startLine": 1017,
+        "startChar": 7,
+        "endLine": 1017,
+        "endChar": 39
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d21c86c1_b05f56a8",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -306,6 +612,24 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "You do 3 search in a single function. Given that the search is linear in complexity, I think we should find a way to have a single search or so...\n\nSo here is what I recommend. Instead of having 3 different searches, let\u0027s just have a single one which takes a port as parameter (0 means all ports) and a \u0027other_port\u0027 boolean which will allow return result for a VIP with the same prefix but a different port.",
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "94f28a1b_46d47854",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1043,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d21c86c1_b05f56a8",
       "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -329,6 +653,24 @@
     },
     {
       "key": {
+        "uuid": "59daaa60_84d36e57",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1048,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b3486b6b_24ee8cdf",
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dee54f6d_bf6249a3",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -340,6 +682,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Again, what about L3DSR for all ports.",
+      "range": {
+        "startLine": 1061,
+        "startChar": 6,
+        "endLine": 1061,
+        "endChar": 41
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6e11401_d02f2521",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1061,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Have added it in patchset 17.",
+      "parentUuid": "dee54f6d_bf6249a3",
       "range": {
         "startLine": 1061,
         "startChar": 6,
@@ -375,6 +741,30 @@
     },
     {
       "key": {
+        "uuid": "465f113d_4544d2e4",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1080,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "976442dc_adcd98a8",
+      "range": {
+        "startLine": 1080,
+        "startChar": 6,
+        "endLine": 1080,
+        "endChar": 25
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4f83a349_52f25e0f",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 14
@@ -386,6 +776,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "How do you make sure this VIP cannot be removed by CLI or API ?\nCould use a special VIP type ? Or have an exception forbidding to remove index 0 ?",
+      "range": {
+        "startLine": 1325,
+        "startChar": 2,
+        "endLine": 1330,
+        "endChar": 41
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b84506f6_f64ced59",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1330,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "add below code in lb_vip_del()\n  /* Does not remove default vip, i.e. vip_index \u003d 0 */\n  if (vip_index \u003d\u003d 0)\n    return 0;",
+      "parentUuid": "4f83a349_52f25e0f",
       "range": {
         "startLine": 1325,
         "startChar": 2,
@@ -421,6 +835,30 @@
     },
     {
       "key": {
+        "uuid": "0107c137_8e5594c0",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "In function lb_vip_add(), when invoking lb_vip_is_ip4, vip still does not exist, and need to be created.",
+      "parentUuid": "dbf356a5_114b3745",
+      "range": {
+        "startLine": 324,
+        "startChar": 22,
+        "endLine": 324,
+        "endChar": 26
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b2dfee59_d1c32b03",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 14
@@ -432,6 +870,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Change this to a bitmap. Use clib_bitmap_set, clib_bitmap_first_clear, etc... from bitmap.h in vppinfra",
+      "range": {
+        "startLine": 471,
+        "startChar": 2,
+        "endLine": 471,
+        "endChar": 26
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab6174e1_9a41f520",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b2dfee59_d1c32b03",
       "range": {
         "startLine": 471,
         "startChar": 2,
@@ -467,6 +929,30 @@
     },
     {
       "key": {
+        "uuid": "2cb91f26_9d7834c5",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c3eeecd4_c0a7d2c6",
+      "range": {
+        "startLine": 242,
+        "startChar": 18,
+        "endLine": 242,
+        "endChar": 26
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3fafc381_d252e4ec",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 14
@@ -478,6 +964,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "Not necessary",
+      "range": {
+        "startLine": 252,
+        "startChar": 2,
+        "endLine": 252,
+        "endChar": 9
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "713da367_d3be5d9f",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3fafc381_d252e4ec",
       "range": {
         "startLine": 252,
         "startChar": 2,
@@ -513,6 +1023,30 @@
     },
     {
       "key": {
+        "uuid": "9527edd1_20cc5a1a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7257686_36bd3229",
+      "range": {
+        "startLine": 288,
+        "startChar": 27,
+        "endLine": 288,
+        "endChar": 31
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "72c8555c_10503623",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 14
@@ -536,6 +1070,30 @@
     },
     {
       "key": {
+        "uuid": "2cf50ad7_f1b496b3",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "72c8555c_10503623",
+      "range": {
+        "startLine": 296,
+        "startChar": 19,
+        "endLine": 296,
+        "endChar": 34
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f1412c0_62a1b482",
         "filename": "src/plugins/lb/node.c",
         "patchSetId": 14
@@ -547,6 +1105,30 @@
       "writtenOn": "2018-08-13T12:34:43Z",
       "side": 1,
       "message": "I dont\u0027 understand this test. Can you tell me what it does ?",
+      "range": {
+        "startLine": 490,
+        "startChar": 22,
+        "endLine": 491,
+        "endChar": 53
+      },
+      "revId": "f8985d8ac80ce6924e1d74456eaada29fe36b9ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02fe737a_35fc4e9a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-22T02:39:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f1412c0_62a1b482",
       "range": {
         "startLine": 490,
         "startChar": 22,
