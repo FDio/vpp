@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "8f627fc7_9f13d978",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-08-22T15:43:16Z",
+      "side": 1,
+      "message": "Just comparing ethernet header is not enough to guarantee the same flow hash. The function vnet_l2_compute_flow_hash() would do L3 5-tupple hash if the payload is IPv4 or IPv6 packet.",
+      "range": {
+        "startLine": 140,
+        "startChar": 14,
+        "endLine": 140,
+        "endChar": 20
+      },
+      "revId": "6cc6b636dfb89410939e4f1db68f7d152b3bf703",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d77401eb_d507af97",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 2
