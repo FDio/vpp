@@ -161,6 +161,7 @@ typedef enum mfib_itf_flags_t_
 typedef enum mfib_source_t_
 {
     MFIB_SOURCE_SPECIAL,
+    MFIB_SOURCE_6RD,
     MFIB_SOURCE_API,
     MFIB_SOURCE_CLI,
     MFIB_SOURCE_VXLAN,
@@ -176,6 +177,7 @@ typedef enum mfib_source_t_
 
 #define MFIB_SOURCE_NAMES {                        \
     [MFIB_SOURCE_SPECIAL] = "Special",             \
+    [MFIB_SOURCE_6RD] = "6RD",                     \
     [MFIB_SOURCE_API] = "API",                     \
     [MFIB_SOURCE_CLI] = "CLI",                     \
     [MFIB_SOURCE_DHCP] = "DHCP",                   \

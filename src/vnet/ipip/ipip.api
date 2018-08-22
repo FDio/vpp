@@ -61,7 +61,7 @@ define ipip_add_tunnel
   u32 instance;		/* If non-~0, specifies a custom dev instance */
   u8 src_address[16];
   u8 dst_address[16];
-  u32 fib_index;
+  u32 table_id;
   u8 tc_tos;		/* If ~0, the TOS/TC value is copied from
 			   inner packet, otherwise set to value */
 };
@@ -90,7 +90,8 @@ define ipip_6rd_add_tunnel
 {
   u32 client_index;
   u32 context;
-  u32 fib_index;
+  u32 ip6_table_id;
+  u32 ip4_table_id;
   u8 ip6_prefix[16];
   u8 ip4_prefix[4];
   u8 ip4_src[4];

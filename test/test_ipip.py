@@ -4,7 +4,7 @@
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
 
 """ Testipip is a subclass of  VPPTestCase classes.
@@ -212,6 +212,21 @@ class TestIPIP(VppTestCase):
             dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0)
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
+
+    def test_ipip_vrf_create(self):
+        """ ipip create / delete interface VRF test """
+
+        t = VppIpTable(self, 20)
+        t.add_vpp_config()
+        rv = self.vapi.ipip_add_tunnel(
+            src_address=inet_pton(AF_INET, '1.2.3.4'),
+            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0,
+            table_id=20)
+        sw_if_index = rv.sw_if_index
+        self.vapi.ipip_del_tunnel(sw_if_index)
+
+    def payload(self, len):
+        return 'x' * len
 
 
 if __name__ == '__main__':
