@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "61cc8989_d25155e3",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-22T15:26:04Z",
+      "side": 1,
+      "message": "I wonder why copying the value first (see lines 357-362) is not used here.",
+      "range": {
+        "startLine": 374,
+        "startChar": 5,
+        "endLine": 374,
+        "endChar": 6
+      },
+      "revId": "828d27ea0edb97280a0164041a286973fa74b5a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
