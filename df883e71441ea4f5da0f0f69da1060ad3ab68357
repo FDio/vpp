@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1090415_d287b245",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 873,
+      "author": {
+        "id": 1240
+      },
+      "writtenOn": "2018-08-22T11:01:58Z",
+      "side": 1,
+      "message": "This should be separated from lb_vip_del_ass().\nlb_vip_del_ass_withlock() should be able to called in the same way of lb_vip_del_ass() for the following cases.\n\ncase1: scheduled maintenance.\nIn this case, operator can wait for the end of TCP (in VPP, flow_table ageout) which client started.\nAfter deleting the member, the traffic to the member should be remained to the member.\nSo, flow_table should not be deleted, lb_vip_del_ass_withlock() should not be called.\nThese steps allowed us to minimize existing traffic impact.\n\ncase2: unscheduled maintenance.\nIn this case, the traffic to the member should be stop and detour to another member immediately.\nlb_vip_del_ass_withlock() allows to this steps, deleting member and flush flow_table.\n\nSo, we need to use lb_vip_del_ass() or lb_vip_del_ass_withlock() depends on these cases.",
+      "revId": "df883e71441ea4f5da0f0f69da1060ad3ab68357",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
