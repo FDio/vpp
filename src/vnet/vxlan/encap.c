@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/packet.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/qos/qos_types.h>
 #include <vnet/adj/rewrite.h>
@@ -79,6 +80,10 @@ vxlan_encap_inline (vlib_main_t * vm,
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
+  ethernet_header_t ether_header;
+  u32 flow_hash = 0;
+
+  memset(&ether_header, 0, sizeof(ethernet_header_t));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -116,8 +121,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  u32 bi0 = to_next[0] = from[0];
@@ -129,8 +134,22 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
 	  vlib_buffer_t * b1 = vlib_get_buffer (vm, bi1);
-          u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
-          u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
+          u32 flow_hash0;
+          u32 flow_hash1;
+
+          if (memcmp(b0->data, &ether_header, sizeof (ethernet_header_t)) != 0)
+          {
+            flow_hash = vnet_l2_compute_flow_hash (b0);
+            clib_memcpy(&ether_header, b0->data, sizeof (ethernet_header_t));
+          }
+          flow_hash0 = flow_hash;
+
+          if (memcmp(b1->data, &ether_header, sizeof (ethernet_header_t)) != 0)
+          {
+            flow_hash = vnet_l2_compute_flow_hash (b1);
+            clib_memcpy(&ether_header, b1->data, sizeof (ethernet_header_t));
+          }
+          flow_hash1 = flow_hash;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
@@ -328,7 +347,14 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
-          u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
+          u32 flow_hash0;
+
+          if (memcmp(b0->data, &ether_header, sizeof (ethernet_header_t)) != 0)
+          {
+            flow_hash = vnet_l2_compute_flow_hash (b0);
+            clib_memcpy(&ether_header, b0->data, sizeof (ethernet_header_t));
+          }
+          flow_hash0 = flow_hash;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
