@@ -97,6 +97,8 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
 {
   vl_api_nat_show_config_reply_t *rmp;
   snat_main_t *sm = &snat_main;
+  dslite_main_t *dm = &dslite_main;
+  nat64_main_t *n64m = &nat64_main;
   int rv = 0;
 
   /* *INDENT-OFF* */
@@ -113,6 +115,13 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
     rmp->deterministic = sm->deterministic;
+    rmp->endpoint_dependent = sm->endpoint_dependent;
+    rmp->out2in_dpo = sm->out2in_dpo;
+    rmp->dslite_ce = dm->is_ce;
+    rmp->nat64_bib_buckets = n64m->bib_buckets;
+    rmp->nat64_bib_memory_size = n64m->bib_memory_size;
+    rmp->nat64_st_buckets = n64m->st_buckets;
+    rmp->nat64_st_memory_size = n64m->st_memory_size;
   }));
   /* *INDENT-ON* */
 }
