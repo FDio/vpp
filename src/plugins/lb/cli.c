@@ -201,6 +201,7 @@ lb_as_command_fn (vlib_main_t * vm,
   u32 port = 0;
   u8 protocol = 0;
   u8 del = 0;
+  u8 flush = 0;
   int ret;
   clib_error_t *error = 0;
 
@@ -219,11 +220,17 @@ lb_as_command_fn (vlib_main_t * vm,
   {
     if (unformat(line_input, "%U", unformat_ip46_address,
                  &as_addr, IP46_TYPE_ANY))
-    {
-      vec_add1(as_array, as_addr);
-    } else if (unformat(line_input, "del")) {
-      del = 1;
-    }
+      {
+        vec_add1(as_array, as_addr);
+      }
+    else if (unformat(line_input, "del"))
+      {
+        del = 1;
+      }
+    else if (unformat(line_input, "flush"))
+      {
+        flush = 1;
+      }
     else if (unformat(line_input, "protocol tcp"))
       {
           protocol = (u8)IP_PROTOCOL_TCP;
@@ -262,7 +269,7 @@ lb_as_command_fn (vlib_main_t * vm,
   clib_warning("vip index is %d", vip_index);
 
   if (del) {
-    if ((ret = lb_vip_del_ass(vip_index, as_array, vec_len(as_array))))
+    if ((ret = lb_vip_del_ass(vip_index, as_array, vec_len(as_array), flush)))
     {
       error = clib_error_return (0, "lb_vip_del_ass error %d", ret);
       goto done;
@@ -286,7 +293,7 @@ VLIB_CLI_COMMAND (lb_as_command, static) =
 {
   .path = "lb as",
   .short_help = "lb as <vip-prefix> [protocol (tcp|udp) port <n>]"
-      " [<address> [<address> [...]]] [del]",
+      " [<address> [<address> [...]]] [del] [flush]",
   .function = lb_as_command_fn,
 };
 
@@ -488,6 +495,109 @@ VLIB_CLI_COMMAND (lb_set_interface_nat6_command, static) = {
   .path = "lb set interface nat6",
   .function = lb_set_interface_nat6_command_fn,
   .short_help = "lb set interface nat6 in <intfc> [del]",
+};
+
+int
+lb_flush_vip (u32 vip_index)
+{
+  u32 thread_index;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  lb_main_t *lbm = &lb_main;
+
+  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
+    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
+    if (h != NULL) {
+        u32 i;
+        lb_hash_bucket_t *b;
+
+        lb_hash_foreach_entry(h, b, i) {
+          if (b->vip[i] == vip_index)
+            {
+              vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
+              vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
+              b->vip[i] = ~0;
+              b->value[i] = ~0;
+            }
+        }
+    }
+  }
+
+  return 0;
+}
+
+static clib_error_t *
+lb_flush_vip_command_fn (vlib_main_t * vm,
+                         unformat_input_t * input,
+                         vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int ret;
+  ip46_address_t vip_prefix;
+  u8 vip_plen;
+  u32 vip_index;
+  u8 protocol = 0;
+  u32 port = 0;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &vip_prefix,
+                &vip_plen, IP46_TYPE_ANY, &vip_plen)) {
+    error = clib_error_return (0, "invalid vip prefix: '%U'",
+                               format_unformat_error, line_input);
+    goto done;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "protocol tcp"))
+      {
+        protocol = (u8)IP_PROTOCOL_TCP;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+        protocol = (u8)IP_PROTOCOL_UDP;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+  }
+
+  if (port == 0)
+    {
+      protocol = ~0;
+    }
+
+  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, protocol,
+                               (u16)port, &vip_index))){
+    error = clib_error_return (0, "lb_vip_find_index error %d", ret);
+    goto done;
+  }
+
+  if ((ret = lb_flush_vip(vip_index)))
+    {
+      error = clib_error_return (0, "lb_flush_vip error %d", ret);
+    }
+  else
+    {
+        vlib_cli_output(vm, "lb_flush_vip ok %d", vip_index);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*
+ * flush lb flowtable as per vip
+ */
+VLIB_CLI_COMMAND (lb_flush_vip_command, static) =
+{
+  .path = "lb flush vip",
+  .short_help = "lb flush vip <prefix> "
+      "[protocol (tcp|udp) port <n>] exec []",
+  .function = lb_flush_vip_command_fn,
 };
 
 static clib_error_t *

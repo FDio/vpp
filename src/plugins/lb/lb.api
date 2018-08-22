@@ -61,6 +61,7 @@ autoreply define lb_add_del_vip {
     @param port - destination port.
     @param as_address - The application server address (IPv4 in lower order 32 bits).
     @param is_del - The AS should be removed.
+    @param is_flush - The sessions related to this AS should be flushed.
 */
 autoreply define lb_add_del_as {
   u32 client_index;
@@ -71,5 +72,6 @@ autoreply define lb_add_del_as {
   u16 port;
   u8 as_address[16];
   u8 is_del;
+  u8 is_flush;
 };
 
