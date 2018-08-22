@@ -97,12 +97,16 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
       u64x4 b0 = u32x4_extend_to_u64x4 (u32x4_load_unaligned (bi));
       /* shift and add to get vlib_buffer_t pointer */
       u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
-#elif defined (CLIB_HAVE_VEC128) && defined (__x86_64__)
+#elif defined (CLIB_HAVE_VEC128)
       u64x2 off = u64x2_splat (buffer_main.buffer_mem_start + offset);
       u32x4 bi4 = u32x4_load_unaligned (bi);
       u64x2 b0 = u32x4_extend_to_u64x2 ((u32x4) bi4);
+#if defined (__aarch64__)
+      u64x2 b1 = u32x4_extend_to_u64x2_high ((u32x4) bi4);
+#else
       bi4 = u32x4_shuffle (bi4, 2, 3, 0, 1);
       u64x2 b1 = u32x4_extend_to_u64x2 ((u32x4) bi4);
+#endif
       u64x2_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
       u64x2_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 2);
 #else
