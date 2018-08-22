@@ -177,8 +177,8 @@ sixrd_tunnel_stack (adj_index_t ai, u32 fib_index)
 				      LOOKUP_UNICAST, LOOKUP_INPUT_DST_ADDR,
 				      LOOKUP_TABLE_FROM_CONFIG, &dpo);
   adj_nbr_midchain_stack (ai, &dpo);
+  dpo_reset (&dpo);
 }
-
 
 static void
 sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
@@ -272,13 +272,10 @@ int
 sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		  ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		  ip4_address_t * ip4_src, bool security_check,
-		  u32 fib_index, u32 * sw_if_index)
+		  u32 ip4_fib_index, u32 ip6_fib_index, u32 * sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
   ipip_tunnel_t *t;
-
-  if (fib_index == ~0)
-    return VNET_API_ERROR_NO_SUCH_FIB;
 
   if ((ip6_prefix_len + 32 - ip4_prefix_len) > 64)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -287,8 +284,9 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   ip46_address_t src = ip46_address_initializer, dst =
     ip46_address_initializer;
   ip_set (&src, ip4_src, true);
-  ipip_tunnel_key_t key = {.transport = IPIP_TRANSPORT_IP4,
-    .fib_index = fib_index,
+  ipip_tunnel_key_t key = {
+    .transport = IPIP_TRANSPORT_IP4,
+    .fib_index = ip4_fib_index,
     .src = src,
     .dst = dst
   };
@@ -308,6 +306,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   t->sixrd.ip4_prefix_len = ip4_prefix_len;
   t->sixrd.ip6_prefix = *ip6_prefix;
   t->sixrd.ip6_prefix_len = ip6_prefix_len;
+  t->sixrd.ip6_fib_index = ip6_fib_index;
   t->tunnel_src = src;
   t->sixrd.security_check = security_check;
   t->sixrd.shift =
@@ -323,7 +322,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   vnet_hw_interface_t *hi =
     vnet_get_hw_interface (vnet_get_main (), hw_if_index);
   t->hw_if_index = hw_if_index;
-  t->fib_index = fib_index;
+  t->fib_index = ip4_fib_index;
   t->sw_if_index = hi->sw_if_index;
   t->dev_instance = t_idx;
   t->user_instance = t_idx;
@@ -340,24 +339,26 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   vnet_sw_interface_set_flags (vnet_get_main (), hi->sw_if_index,
 			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-  ip6_sw_interface_enable_disable (hi->sw_if_index, true);
+  ip6_sw_interface_enable_disable (t->sw_if_index, true);
 
   /* Create IPv6 route/adjacency */
+  /* *INDENT-OFF* */
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
     .fp_addr = {
-		.ip6 = t->sixrd.ip6_prefix,
-		}
-    ,
+      .ip6 = t->sixrd.ip6_prefix,
+    },
   };
+  /* *INDENT-ON* */
 
-  fib_table_entry_update_one_path (fib_index, &pfx6, FIB_SOURCE_CLI,
+  fib_table_lock (ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_6RD);
+  fib_table_entry_update_one_path (ip6_fib_index, &pfx6, FIB_SOURCE_6RD,
 				   FIB_ENTRY_FLAG_ATTACHED, DPO_PROTO_IP6,
-				   &ADJ_BCAST_ADDR, hi->sw_if_index, ~0, 1,
+				   &ADJ_BCAST_ADDR, t->sw_if_index, ~0, 1,
 				   NULL, FIB_ROUTE_PATH_FLAG_NONE);
 
-  *sw_if_index = hi->sw_if_index;
+  *sw_if_index = t->sw_if_index;
 
   if (!gm->ip4_protocol_registered)
     {
@@ -385,15 +386,23 @@ sixrd_del_tunnel (u32 sw_if_index)
       return -1;
     }
 
+  /* *INDENT-OFF* */
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
     .fp_addr = {
-		.ip6 = t->sixrd.ip6_prefix,
-		}
-    ,
+      .ip6 = t->sixrd.ip6_prefix,
+    },
   };
-  fib_table_entry_special_remove (0, &pfx6, FIB_SOURCE_CLI);
+  /* *INDENT-ON* */
+
+  fib_table_entry_path_remove (t->sixrd.ip6_fib_index, &pfx6,
+			       FIB_SOURCE_6RD,
+			       DPO_PROTO_IP6,
+			       &ADJ_BCAST_ADDR, t->sw_if_index, ~0, 1,
+			       FIB_ROUTE_PATH_FLAG_NONE);
+  fib_table_unlock (t->sixrd.ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_6RD);
+
   vnet_sw_interface_set_flags (vnet_get_main (), t->sw_if_index,
 			       0 /* down */ );
   ip6_sw_interface_enable_disable (t->sw_if_index, false);

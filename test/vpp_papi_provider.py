@@ -3431,12 +3431,13 @@ class VppPapiProvider(object):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
 
-    def ipip_6rd_add_tunnel(self, fib_index, ip6_prefix, ip6_prefix_len,
-                            ip4_prefix, ip4_prefix_len, ip4_src,
+    def ipip_6rd_add_tunnel(self, ip6_table_id, ip6_prefix, ip6_prefix_len,
+                            ip4_table_id, ip4_prefix, ip4_prefix_len, ip4_src,
                             security_check):
         """ 6RD tunnel Add """
         return self.api(self.papi.ipip_6rd_add_tunnel,
-                        {'fib_index': fib_index,
+                        {'ip4_table_id': ip4_table_id,
+                         'ip6_table_id': ip6_table_id,
                          'ip6_prefix': ip6_prefix,
                          'ip6_prefix_len': ip6_prefix_len,
                          'ip4_prefix': ip4_prefix,
@@ -3450,14 +3451,14 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index})
 
     def ipip_add_tunnel(self, src_address, dst_address, is_ipv6=1,
-                        instance=0xFFFFFFFF, fib_index=0, tc_tos=0):
+                        instance=0xFFFFFFFF, table_id=0, tc_tos=0):
         """ IPIP tunnel Add/Del """
         return self.api(self.papi.ipip_add_tunnel,
                         {'is_ipv6': is_ipv6,
                          'instance': instance,
                          'src_address': src_address,
                          'dst_address': dst_address,
-                         'fib_index': fib_index,
+                         'table_id': table_id,
                          'tc_tos': tc_tos})
 
     def ipip_del_tunnel(self, sw_if_index):
