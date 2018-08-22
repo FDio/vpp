@@ -218,7 +218,7 @@ vl_api_lb_add_del_as_t_handler
     goto done;
 
   if (mp->is_del)
-    rv = lb_vip_del_ass(vip_index, &as_address, 1);
+    rv = lb_vip_del_ass(vip_index, &as_address, 1, mp->is_flush);
   else
     rv = lb_vip_add_ass(vip_index, &as_address, 1);
 
