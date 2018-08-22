@@ -1482,6 +1482,46 @@ const static char* const * const lookup_dst_from_interface_nodes[DPO_PROTO_NUM] 
     [DPO_PROTO_MPLS] = lookup_dst_from_interface_mpls_nodes,
 };
 
+static clib_error_t *
+lookup_dpo_show (vlib_main_t * vm,
+                 unformat_input_t * input,
+                 vlib_cli_command_t * cmd)
+{
+    index_t lkdi = INDEX_INVALID;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+        if (unformat (input, "%d", &lkdi))
+            ;
+        else
+            break;
+    }
+
+    if (INDEX_INVALID != lkdi)
+    {
+        vlib_cli_output (vm, "%U", format_lookup_dpo, lkdi);
+    }
+    else
+    {
+        lookup_dpo_t *lkd;
+
+        pool_foreach(lkd, lookup_dpo_pool,
+        ({
+            vlib_cli_output (vm, "[@%d] %U",
+                             lookup_dpo_get_index(lkd),
+                             format_lookup_dpo,
+                             lookup_dpo_get_index(lkd));
+        }));
+    }
+
+    return 0;
+}
+
+VLIB_CLI_COMMAND (replicate_show_command, static) = {
+    .path = "show lookup-dpo",
+    .short_help = "show lookup-dpo [<index>]",
+    .function = lookup_dpo_show,
+};
 
 void
 lookup_dpo_module_init (void)
