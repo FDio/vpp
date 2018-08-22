@@ -31,6 +31,7 @@ add_custom_target(vpp_version_h
 ##############################################################################
 # vpp binary
 ##############################################################################
+option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 vpp_add_api_files(vpp_api_headers
   api/vpe.api
@@ -38,7 +39,7 @@ vpp_add_api_files(vpp_api_headers
   oam/oam.api
 )
 
-add_executable (vpp
+set(VPP_SOURCES
   vnet/main.c
   app/vpe_cli.c
   app/version.c
@@ -47,12 +48,21 @@ add_executable (vpp
   stats/stats.c
   stats/stat_segment.c
   api/api.c
-  api/api_main.c
-  api/api_format.c
   api/json_format.c
   api/custom_dump.c
-  api/plugin.c
 )
+
+if(VPP_API_TEST_BUILTIN)
+  list(APPEND VPP_SOURCES
+    api/api_format.c
+    api/api_main.c
+    api/plugin.c
+  )
+  add_definitions(-DVPP_API_TEST_BUILTIN=1)
+endif()
+
+add_executable (vpp ${VPP_SOURCES})
+
 target_link_libraries(vpp svm vlib vppinfra vlibmemory vnet Threads::Threads
 		      ${CMAKE_DL_LIBS})
 add_dependencies(vpp vpp_version_h api_headers)

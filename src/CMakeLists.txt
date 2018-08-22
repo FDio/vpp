@@ -118,8 +118,6 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-add_definitions(-DVPP_API_TEST_BUILTIN=1)
-
 ##############################################################################
 # Check for memfd_create headers and libs
 ##############################################################################
@@ -198,7 +196,7 @@ endfunction()
 ##############################################################################
 # subdirs
 ##############################################################################
-foreach (DIR vppinfra svm vlib vlibmemory vnet vpp vpp-api vcl plugins)
+foreach (DIR vppinfra svm vlib vlibmemory vnet vpp vpp-api vat vcl plugins)
   add_subdirectory(${DIR})
 endforeach ()
 
