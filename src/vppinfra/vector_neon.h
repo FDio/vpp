@@ -121,11 +121,7 @@ foreach_neon_vec128i foreach_neon_vec128u
 static_always_inline u16x8
 u16x8_byte_swap (u16x8 v)
 {
-  const u8 swap_pattern[] = {
-    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
-  };
-  u8x16 swap = vld1q_u8 (swap_pattern);
-  return (u16x8) vqtbl1q_u8 ((u8x16) v, swap);
+  return (u16x8) vrev16q_u8 ((u8x16) v);
 }
 
 static_always_inline u8x16
