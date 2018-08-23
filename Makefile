@@ -21,7 +21,7 @@ STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
-ifeq ($(findstring $(MAKECMDGOALS),verify pkg-deb pkg-rpm test),)
+ifeq ($(findstring $(MAKECMDGOALS),verify pkg-deb pkg-rpm test test-debug),)
 export vpp_uses_cmake?=yes
 endif
 
