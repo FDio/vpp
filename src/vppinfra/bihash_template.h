@@ -84,9 +84,6 @@ typedef struct
   u32 log2_nbuckets;
   u8 *name;
 
-  u64 cache_hits;
-  u64 cache_misses;
-
     BVT (clib_bihash_value) ** freelists;
 
   /*
