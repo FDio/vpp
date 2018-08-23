@@ -137,10 +137,11 @@ bin_stat_client_SOURCES = \
   vpp/app/stat_client.c \
   vpp/app/stat_client.h
 
-bin_stat_client_LDADD = \
-  libvlibmemoryclient.la \
-  libsvm.la \
-  libvppinfra.la \
+bin_stat_client_LDADD =				\
+  libvppapiclient.la				\
+  libvlibmemoryclient.la			\
+  libsvm.la					\
+  libvppinfra.la				\
   -lpthread -lm -lrt
 
 

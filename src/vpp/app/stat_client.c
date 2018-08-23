@@ -17,58 +17,43 @@
  *------------------------------------------------------------------
  */
 
-#include <vpp/app/stat_client.h>
+#include <vpp-api/client/stat_client.h>
+//#include <vpp/app/stat_client.h>
+
+#include <vlib/vlib.h>
+//#include <vppinfra/socket.h>
+//#include <svm/ssvm.h>
+#include <vpp/stats/stats.h>
+
+typedef struct
+{
+  u64 current_epoch;
+
+  /* Cached pointers to scalar quantities, these wont change */
+  f64 *vector_rate_ptr;
+  f64 *input_rate_ptr;
+  f64 *last_runtime_ptr;
+  f64 *last_runtime_stats_clear_ptr;
+
+  volatile int segment_ready;
+
+  /*
+   * Cached pointers to vector quantities,
+   * MUST invalidate when the epoch changes
+   */
+  vlib_counter_t **intfc_rx_counters;
+  vlib_counter_t **intfc_tx_counters;
+  u8 *serialized_nodes;
+
+  u64 *thread_0_error_counts;
+  u64 source_address_match_error_index;
+
+} stat_client_main_t;
+
 
 stat_client_main_t stat_client_main;
 
-static int
-stat_segment_connect (stat_client_main_t * sm)
-{
-  ssvm_private_t *ssvmp = &sm->stat_segment;
-  ssvm_shared_header_t *shared_header;
-  clib_socket_t s = { 0 };
-  clib_error_t *err;
-  int fd = -1, retval;
-
-  s.config = (char *) sm->socket_name;
-  s.flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
-  err = clib_socket_init (&s);
-  if (err)
-    {
-      clib_error_report (err);
-      exit (1);
-    }
-  err = clib_socket_recvmsg (&s, 0, 0, &fd, 1);
-  if (err)
-    {
-      clib_error_report (err);
-      return -1;
-    }
-  clib_socket_close (&s);
-
-  memset (ssvmp, 0, sizeof (*ssvmp));
-  ssvmp->fd = fd;
-
-  /* Note: this closes memfd.fd */
-  retval = ssvm_slave_init_memfd (ssvmp);
-  if (retval)
-    {
-      clib_warning ("WARNING: segment map returned %d", retval);
-      return -1;
-    }
-
-  fformat (stdout, "Stat segment mapped OK...\n");
-
-  ASSERT (ssvmp && ssvmp->sh);
-
-  /* Pick up the segment lock from the shared memory header */
-  shared_header = ssvmp->sh;
-  sm->stat_segment_lockp = (clib_spinlock_t *) (shared_header->opaque[0]);
-  sm->segment_ready = 1;
-
-  return 0;
-}
-
+#if 0
 #define foreach_cached_pointer                                          \
 _(/sys/vector_rate, SCALAR_POINTER, &stat_client_main.vector_rate_ptr)	\
 _(/sys/input_rate, SCALAR_POINTER, &stat_client_main.input_rate_ptr)	\
@@ -81,69 +66,26 @@ _(/err/0/counter_vector, VECTOR_POINTER,                                \
   &stat_client_main.thread_0_error_counts)                              \
 _(serialized_nodes, SERIALIZED_NODES,                                   \
   &stat_client_main.serialized_nodes)
+#endif
 
-typedef struct
+char *stat_client_counters[] =
 {
-  char *name;
-  stat_directory_type_t type;
-  void *valuep;
-} cached_pointer_t;
-
-cached_pointer_t cached_pointers[] = {
-#define _(n,t,p) {#n, STAT_DIR_TYPE_##t, (void *)p},
-  foreach_cached_pointer
-#undef _
+   "/sys/vector_rate",
+   "/if/rx",
+   "/err/ethernet-input/no error",
 };
 
-static void
-maybe_update_cached_pointers (stat_client_main_t * sm,
-			      ssvm_shared_header_t * shared_header)
-{
-  uword *p, *counter_vector_by_name;
-  int i;
-  stat_segment_directory_entry_t *ep;
-  cached_pointer_t *cp;
-  u64 *valuep;
-
-  /* Cached pointers OK? */
-  if (sm->current_epoch ==
-      (u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH])
-    return;
-
-  fformat (stdout, "Updating cached pointers...\n");
-
-  /* Nope, fix them... */
-  counter_vector_by_name = (uword *)
-    shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR];
-
-  for (i = 0; i < ARRAY_LEN (cached_pointers); i++)
-    {
-      cp = &cached_pointers[i];
-
-      p = hash_get_mem (counter_vector_by_name, cp->name);
-
-      if (p == 0)
-	{
-	  clib_warning ("WARN: %s not in directory!", cp->name);
-	  continue;
-	}
-      ep = (stat_segment_directory_entry_t *) (p[0]);
-      ASSERT (ep->type == cp->type);
-      valuep = (u64 *) cp->valuep;
-      *valuep = (u64) ep->value;
-    }
-
-  /* And remember that we did... */
-  sm->current_epoch = (u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH];
-}
 
 static void
 stat_poll_loop (stat_client_main_t * sm)
 {
   struct timespec ts, tsrem;
+#if 0
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
+#endif
   vlib_counter_t *thread0_rx_counters = 0, *thread0_tx_counters = 0;
+#if 0
   vlib_node_t ***nodes_by_thread;
   vlib_node_t **nodes;
   vlib_node_t *n;
@@ -151,18 +93,7 @@ stat_poll_loop (stat_client_main_t * sm)
   u32 len;
   int i, j;
   u32 source_address_match_errors;
-
-  /* Wait until the stats segment is mapped */
-  while (!sm->segment_ready)
-    {
-      ts.tv_sec = 0;
-      ts.tv_nsec = 100000000;
-      while (nanosleep (&ts, &tsrem) < 0)
-	ts = tsrem;
-    }
-
-  shared_header = ssvmp->sh;
-  ASSERT (ssvmp->sh);
+#endif
 
   while (1)
     {
@@ -175,6 +106,10 @@ stat_poll_loop (stat_client_main_t * sm)
       vec_reset_length (thread0_rx_counters);
       vec_reset_length (thread0_tx_counters);
 
+
+      stat_segment_collect();
+
+#if 0      
       /* Grab the stats segment lock */
       clib_spinlock_lock (sm->stat_segment_lockp);
 
@@ -326,17 +261,24 @@ stat_poll_loop (stat_client_main_t * sm)
 	{
 	  fformat (stdout, "serialized nodes NULL?\n");
 	}
-
+#endif
     }
 }
+
+enum stat_client_cmd_e {
+  STAT_CLIENT_CMD_LS,
+  STAT_CLIENT_CMD_POLL,
+  STAT_CLIENT_CMD_DUMP,
+};
 
 int
 main (int argc, char **argv)
 {
   unformat_input_t _argv, *a = &_argv;
   stat_client_main_t *sm = &stat_client_main;
-  u8 *stat_segment_name;
+  u8 *stat_segment_name, *pattern = 0;
   int rv;
+  enum stat_client_cmd_e cmd;
 
   clib_mem_init (0, 128 << 20);
 
@@ -344,28 +286,82 @@ main (int argc, char **argv)
 
   stat_segment_name = (u8 *) STAT_SEGMENT_SOCKET_FILE;
 
-  while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (a, "socket-name %s", &stat_segment_name))
+  while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (a, "socket-name %s", &stat_segment_name))
+      ;
+    else if (unformat (a, "ls")) {
+      cmd = STAT_CLIENT_CMD_LS;
+      if (unformat (a, "%s", &pattern))
 	;
-      else
-	{
-	  fformat (stderr, "%s: usage [socket-name <name>]\n", argv[0]);
-	  exit (1);
-	}
+    } else if (unformat (a, "dump")) {
+      if (unformat (a, "%s", &pattern))
+	cmd = STAT_CLIENT_CMD_DUMP;
+    } else if (unformat (a, "poll")) {
+      if (unformat (a, "%s", &pattern))
+	cmd = STAT_CLIENT_CMD_POLL;
+    } else {
+      fformat (stderr, "%s: usage [socket-name <name>]\n", argv[0]);
+      exit (1);
     }
+  }
 
-  sm->socket_name = stat_segment_name;
-
-  rv = stat_segment_connect (sm);
-  if (rv)
-    {
+  rv = stat_segment_connect ((char *)stat_segment_name);
+  if (rv) {
       fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
 	       stat_segment_name);
       exit (1);
-    }
+  }
 
-  stat_poll_loop (sm);
+  u8 **dir;
+  int i, j;
+  stat_segment_data_t *res;
+
+  dir = stat_segment_ls((char *)pattern);
+
+  switch (cmd) {
+  case STAT_CLIENT_CMD_LS:
+    /* List all counters */
+    for (i = 0; i < vec_len (dir); i++) {
+      printf("%s\n", (char *)dir[i]);
+    }
+    break;
+
+  case STAT_CLIENT_CMD_DUMP:
+    res = stat_segment_dump(dir);
+    for (i = 0; i < vec_len (res); i++) {
+      switch (res[i].type) {
+      case STAT_DIR_TYPE_COUNTER_VECTOR:
+	for (j = 0; j < vec_len (res[i].counter_vec); j++) {
+	  fformat (stdout, "[%d]: %lld packets, %lld bytes %s\n",
+		   j, res[i].counter_vec[j].packets, res[i].counter_vec[j].bytes, dir[i]);
+	}
+	break;
+      case STAT_DIR_TYPE_ERROR_INDEX:
+	fformat(stdout, "%lld %s\n", res[i].error_value, dir[i]);
+	break;
+
+      case STAT_DIR_TYPE_SCALAR_POINTER:
+	fformat(stdout, "%.2f %s\n", dir[i], res[i].scalar_value, dir[i]);
+	break;
+	
+      default:
+	;
+      }
+    }
+    break;
+
+  case STAT_CLIENT_CMD_POLL:
+    rv = stat_segment_register(dir);
+    if (rv) {
+	fformat (stderr, "Couldn't register required counters with stat segment\n");
+	exit (1);
+    }
+    stat_poll_loop (sm);
+    break;
+
+  default:
+    ;
+  }
   exit (0);
 }
 
