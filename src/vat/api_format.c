@@ -5349,6 +5349,7 @@ static void vl_api_flow_classify_details_t_handler_json
 _(sw_interface_set_flags_reply)                         \
 _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_rx_mode_reply)                       \
+_(sw_interface_set_rx_placement_reply)                  \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
@@ -5544,6 +5545,7 @@ _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
 _(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
+_(SW_INTERFACE_SET_RX_PLACEMENT_REPLY, sw_interface_set_rx_placement_reply)	\
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
@@ -6556,6 +6558,57 @@ api_sw_interface_set_rx_mode (vat_main_t * vam)
   /* send it... */
   S (mp);
 
+  /* Wait for a reply, return the good/bad news... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_set_rx_placement (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_rx_placement_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  int ret;
+  u8 is_main = 0;
+  u32 queue_id, thread_index;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "queue %d", &queue_id))
+	;
+      else if (unformat (i, "main"))
+	is_main = 1;
+      else if (unformat (i, "worker %d", &thread_index))
+	;
+      else
+	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  if (is_main)
+    thread_index = 0;
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_RX_PLACEMENT, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->worker_id = ntohl (thread_index);
+  mp->queue_id = ntohl (queue_id);
+  mp->is_main = is_main;
+
+  /* send it... */
+  S (mp);
   /* Wait for a reply, return the good/bad news... */
   W (ret);
   return ret;
@@ -23243,6 +23296,8 @@ _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
 _(sw_interface_set_rx_mode,                                             \
   "<intfc> | sw_if_index <id> [queue <id>] <polling | interrupt | adaptive>") \
+_(sw_interface_set_rx_placement,                                        \
+  "<intfc> | sw_if_index <id> [queue <id>] [worker <id> | main]")       \
 _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
 _(sw_interface_set_mpls_enable,                                         \

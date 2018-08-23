@@ -432,6 +432,24 @@ autoreply define sw_interface_set_rx_mode
     u8 mode;
 };
 
+/** \brief Set an interface's rx-placement
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose rx-placement will be set
+    @param queue_id - the queue number whose rx-placement will be set.
+    @param worker_id - the worker number whom rx-placement will be at.
+    @param is_main - flag to set rx-placement to main thread
+*/
+autoreply define sw_interface_set_rx_placement
+{
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 queue_id;
+    u32 worker_id;
+    u8 is_main;
+};
+
 /* Gross kludge, DGMS */
 autoreply define interface_name_renumber
 {
