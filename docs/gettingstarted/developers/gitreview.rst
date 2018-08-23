@@ -54,7 +54,7 @@ Otherwise, clone with:
 
 .. code-block:: console
 
-    $ git clone ssh://YOUR_GERRIT_USERNAME@gerrit.fd.io:29418/vpp
+    $ git clone ssh://<YOUR_GERRIT_USERNAME>@gerrit.fd.io:29418/vpp
     $ cd vpp
 
 When attempting to clone the repo Git will prompt you asking if you want to add the Server Host Key to the list of known hosts. Enter **yes** and press the **Enter** key.
@@ -78,7 +78,7 @@ Make sure you have modified the correct files by issuing the following commands:
     $ git diff
 
 Then add and commit the patch. You may want to add a tag to the commit comments.
-For example for a document with only patches you should add the tag **DOCS:**.
+For example for a document with only patches you should add the tag **docs:**.
 
 .. code-block:: console
 
@@ -133,7 +133,7 @@ To modify an existing patch, make sure you modified the correct files, and apply
     $ git commit --amend
     $ git review
 
-When you're done viewing or modifying a branch, get back to the master branch with:
+When you're done viewing or modifying a branch, get back to the master branch by entering:
 
 .. code-block:: console
 
@@ -143,10 +143,11 @@ When you're done viewing or modifying a branch, get back to the master branch wi
 Resolving a Conflict
 --------------------------------
 
-If a change has a conflict it should be resolved with the following:git-review -d <Gerrit change #>
+If a change has a conflict it should be resolved by entering:
 
 .. code-block:: console
 
+    $ git-review -d <*Gerrit change #*>
     $ git rebase origin/master
        while (conflicts)
           <fix conflicts>
