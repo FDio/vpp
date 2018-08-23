@@ -45,6 +45,30 @@
       "revId": "6cc6b636dfb89410939e4f1db68f7d152b3bf703",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d563cbe_51915cbb",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-08-23T03:37:38Z",
+      "side": 1,
+      "message": "Ok. I also saw that memcmp consumes +1% cycles for the single core. Maybe your suggestion can help improve this. Thanks!. BTW, it looks that vector version have to add mask operation. Maybe, non-vector version is better, just guess here.",
+      "parentUuid": "d77401eb_d507af97",
+      "range": {
+        "startLine": 352,
+        "startChar": 14,
+        "endLine": 352,
+        "endChar": 20
+      },
+      "revId": "6cc6b636dfb89410939e4f1db68f7d152b3bf703",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
