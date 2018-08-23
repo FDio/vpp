@@ -5,8 +5,8 @@
 Running VPP
 ===========
 
-After building the VPP binaries, you now have several images that you have built.
-These images are useful when you need to run VPP without  installing the packages.
+After building the VPP binaries, you now have several images built.
+These images are useful when you need to run VPP without installing the packages.
 For instance if you want to run VPP with GDB.
 
 Running Without GDB
