@@ -93,6 +93,44 @@ private:
   mac_address_t m_mac;
   boost::asio::ip::address m_ip_addr;
 };
+
+/**
+ * A cmd class that Dumps all arp termination tables
+ */
+class dump_cmd : public dump_cmd<vapi::Bd_ip_mac_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd(uint32_t bd_id);
+  dump_cmd(const dump_cmd& d);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
+
+  /**
+   * The bd_id to get the arp termination table for
+   */
+  uint32_t m_bd;
+};
 };
 };
 
