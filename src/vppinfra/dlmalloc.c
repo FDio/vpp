@@ -4120,6 +4120,10 @@ int mspace_is_heap_object (mspace msp, void *p)
         return 1;
       this_seg = this_seg->next;
     }
+
+  if (pp > ms->least_addr && pp <= ms->least_addr + ms->footprint)
+    return 1;
+
   return 0;
 }
 
