@@ -571,6 +571,15 @@ void session_register_transport (transport_proto_t transport_proto,
 				 const transport_proto_vft_t * vft, u8 is_ip4,
 				 u32 output_node);
 
+always_inline void
+transport_add_tx_event (transport_connection_t * tc)
+{
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
+  if (svm_fifo_has_event (s->server_tx_fifo))
+    return;
+  session_send_io_evt_to_thread (s->server_tx_fifo, FIFO_EVENT_APP_TX);
+}
+
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
 always_inline svm_msg_q_t *
