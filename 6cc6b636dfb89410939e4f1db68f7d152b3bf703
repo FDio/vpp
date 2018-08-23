@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "ab1b4126_5c959992",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-08-23T17:11:37Z",
+      "side": 1,
+      "message": "I suppose one would need to parse the L3 and L4 packet header to extract and cache the 5-tupple value of the packet to compare, using ~0 for the ones that does not apply. I wonder if the process of extracting the 5-tupple and compare would be worth it or not compare with always generating the 5-tupple hash. If you like to try this approach, we should compare the performance for both 5-tupple cache hit and cache miss before and after your patch.",
+      "parentUuid": "3120853d_32600ac0",
+      "range": {
+        "startLine": 140,
+        "startChar": 14,
+        "endLine": 140,
+        "endChar": 20
+      },
+      "revId": "6cc6b636dfb89410939e4f1db68f7d152b3bf703",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d77401eb_d507af97",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 2
