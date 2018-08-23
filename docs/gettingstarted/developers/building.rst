@@ -5,16 +5,16 @@
 Building VPP
 ============
 
-To get started developing with VPP you need to get the sources and build the packages.
-For more information on the build system please refer to :ref:`buildsystem`.
+To get started developing with VPP, you need to get the required VPP sources and then build the packages. 
+For more detailed information on the build system please refer to :ref:`buildsystem`.
 
 .. _setupproxies:
 
 Set up Proxies
 --------------------------
 
-Depending on the environment, proxies may need to be set. 
-You may run these commands:
+Depending on the environment you are operating in, proxies may need to be set. 
+Run these proxy commands to specify the *proxy-server-name* and corresponding *port-number*:
 
 .. code-block:: console
 
@@ -35,19 +35,20 @@ To get the VPP sources that are used to create the build, run the following comm
 Build VPP Dependencies
 --------------------------------------
 
-Before building, make sure there are no FD.io VPP or DPDK packages installed by entering the following
-commands:
+Before building a VPP image, make sure there are no FD.io VPP or DPDK packages
+installed, by entering the following commands:
 
 .. code-block:: console
 
     $ dpkg -l | grep vpp 
     $ dpkg -l | grep DPDK
 
-There should be no output, or packages showing after each of the above commands.
+There should be no output, or no packages shown after the above commands are run.
 
 Run the following **make** command to install the dependencies for FD.io VPP. 
-If it hangs at any point during the download, then you may need to set up
-:ref:`proxies for this to work <setupproxies>`.
+
+If the download hangs at any point, then you may need to 
+:ref:`set up proxies <setupproxies>` for the download to work.
 
 .. code-block:: console
 
@@ -80,6 +81,10 @@ This build version contains debug symbols which are useful for modifying VPP. Th
 **make** command below builds a debug version of VPP. The binaries, when building the
 debug images, can be found in /build-root/vpp_debug-native.
 
+The Debug build version contains debug symbols, which are useful for troubleshooting
+or modifying VPP. The **make** command below, builds a debug version of VPP. The
+binaries used for building the debug image can be found in */build-root/vpp_debug-native*.
+
 .. code-block:: console
 
     $ make build
@@ -104,12 +109,11 @@ debug images, can be found in /build-root/vpp_debug-native.
 Build VPP (Release Version)
 -----------------------------------------
 
-To build the release version of FD.io VPP. This build is optimized and will not create debug symbols.
-The binaries when building the release images can be found in /build-root/vpp-native.
+This section describes how to build the regular release version of FD.io VPP. The
+release build is optimized and does not create any debug symbols.
+The binaries used in building the release images are found in */build-root/vpp-native*.
 
-Use the following **make** command below to build the release version of FD.io VPP. This build is
-optimized and will not create debug symbols. When building the release images, the binaries can
-be found in /build-root/vpp-native.
+Use the following **make** command below to build the release version of FD.io VPP.
 
 .. code-block:: console
 
@@ -119,14 +123,23 @@ be found in /build-root/vpp-native.
 Building Necessary Packages
 --------------------------------------------
 
+The package that needs to be built depends on the type system VPP will be running on:
+
+* The :ref:`Debian package <debianpackages>` is built if VPP is going to run on Ubuntu
+* The :ref:`RPM package <rpmpackages>` is built if VPP is going to run on Centos or Redhat
+
+.. _debianpackages:
+
 Building Debian Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To build the debian packages, use one of the following commands below, depending on the system:
+To build the debian packages, use the following command:
 
 .. code-block:: console
 
     $ make pkg-deb 
+	
+.. _rpmpackages:
 
 Building RPM Packages
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,20 +150,21 @@ To build the rpm packages, use one of the following commands below, depending on
 
     $ make pkg-rpm
 
-Once the packages are builty they can be found in the build-root directory.
+Once the packages are built they can be found in the build-root directory.
 
 .. code-block:: console
     
     $ ls *.deb
 
-    If packages built correctly, this should be the Output
+    If the packages are built correctly, then this should be the corresponding output:
 
     vpp_18.07-rc0~456-gb361076_amd64.deb             vpp-dbg_18.07-rc0~456-gb361076_amd64.deb
     vpp-api-java_18.07-rc0~456-gb361076_amd64.deb    vpp-dev_18.07-rc0~456-gb361076_amd64.deb
     vpp-api-lua_18.07-rc0~456-gb361076_amd64.deb     vpp-lib_18.07-rc0~456-gb361076_amd64.deb
     vpp-api-python_18.07-rc0~456-gb361076_amd64.deb  vpp-plugins_18.07-rc0~456-gb361076_amd64.deb
 
-Finally, the packages can be installed with the following:
+Finally, the created packages can be installed using the following commands. Install
+the package that correspnds to OS that VPP will be running on:
 
 For Ubuntu:
 

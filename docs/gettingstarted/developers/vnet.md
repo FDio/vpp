@@ -3,7 +3,7 @@ VNET (VPP Network Stack)
 ========================
 
 The files associated with the VPP network stack layer are located in the
-./src/vnet folder. The Network Stack Layer is basically an
+*./src/vnet* folder. The Network Stack Layer is basically an
 instantiation of the code in the other layers. This layer has a vnet
 library that provides vectorized layer-2 and 3 networking graph nodes, a
 packet generator, and a packet tracer.
