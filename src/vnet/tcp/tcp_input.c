@@ -453,7 +453,11 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc) || tc->sack_sb.sacked_bytes)
-    goto done;
+    {
+      if (tcp_in_recovery (tc))
+	return 0;
+      goto done;
+    }
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
@@ -479,7 +483,7 @@ done:
   tc->rtt_ts = 0;
 
   /* If we got here something must've been ACKed so make sure boff is 0,
-   * even if mrrt is not valid since we update the rto lower */
+   * even if mrtt is not valid since we update the rto lower */
   tc->rto_boff = 0;
   tcp_update_rto (tc);
 
@@ -1240,7 +1244,10 @@ partial_ack:
    * Legitimate ACK. 1) See if we can exit recovery
    */
   /* XXX limit this only to first partial ack? */
-  tcp_retransmit_timer_update (tc);
+  if (seq_lt (tc->snd_una, tc->snd_congestion))
+    tcp_retransmit_timer_force_update (tc);
+  else
+    tcp_retransmit_timer_update (tc);
 
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
@@ -1272,6 +1279,7 @@ partial_ack:
     {
       tc->cc_algo->rcv_ack (tc);
       tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+      transport_add_tx_event (&tc->connection);
       return;
     }
 
@@ -1322,10 +1330,11 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
       /* When we entered recovery, we reset snd_nxt to snd_una. Seems peer
        * still has the data so accept the ack */
       if (tcp_in_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion)
-	  && seq_geq (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
+	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion))
 	{
-	  tc->snd_una_max = tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
+	    tc->snd_una_max = tc->snd_nxt;
 	  goto process_ack;
 	}
 
