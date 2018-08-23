@@ -771,7 +771,7 @@ show_memory_usage (vlib_main_t * vm,
     /* *INDENT-OFF* */
     foreach_vlib_main (
     ({
-      struct mallinfo mi;
+      struct dlmallinfo mi;
       void *mspace;
       mspace = clib_per_cpu_mheaps[index];
 
