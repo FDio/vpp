@@ -109,9 +109,14 @@ add_vpp_executable(summary_stats_client
   DEPENDS api_headers
 )
 
-add_vpp_executable(stat_client
-  SOURCES app/stat_client.c
-  LINK_LIBRARIES vppinfra svm vlibmemoryclient
+add_vpp_executable(vpp_get_stats
+  SOURCES app/vpp_get_stats.c
+  LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient
   DEPENDS api_headers
 )
 
+add_vpp_executable(vpp_prometheus_export
+  SOURCES app/vpp_prometheus_export.c
+  LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient
+  DEPENDS api_headers
+)

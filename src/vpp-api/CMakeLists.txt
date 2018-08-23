@@ -18,6 +18,7 @@
 add_vpp_library (vppapiclient
   SOURCES
   client/client.c
+  client/stat_client.c
   client/libvppapiclient.map
 
   LINK_LIBRARIES vppinfra vlibmemoryclient svm pthread m rt
@@ -26,6 +27,7 @@ add_dependencies(vppapiclient vpp_version_h api_headers)
 
 add_vpp_headers(vpp-api
   client/vppapiclient.h
+  client/stat_client.h
 )
 
 add_subdirectory(vapi)
