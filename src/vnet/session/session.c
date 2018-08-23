@@ -491,9 +491,9 @@ session_enqueue_notify (stream_session_t * s, u8 lock)
   application_t *app;
 
   app = application_get_if_valid (s->app_index);
-  if (PREDICT_FALSE (app == 0))
+  if (PREDICT_FALSE (!app))
     {
-      clib_warning ("invalid s->app_index = %d", s->app_index);
+      TCP_DBG ("invalid s->app_index = %d", s->app_index);
       return 0;
     }
 

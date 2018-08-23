@@ -330,6 +330,17 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
   if (!tcp_segment_in_rcv_wnd (tc0, vnet_buffer (b0)->tcp.seq_number,
 			       vnet_buffer (b0)->tcp.seq_end))
     {
+      /* Segment not in window but it acknowledges data we've sent prior to
+       * a retransmit pop. Let the ack pass, ignore the data */
+//      if (seq_lt (tc0->snd_una_max, vnet_buffer (b0)->tcp.ack_number)
+//	  && seq_lt (tc0->snd_una_max, tc0->snd_congestion))
+//	{
+//	  vnet_buffer (b0)->tcp.data_len = 0;
+//	  vnet_buffer (b0)->tcp.seq_number = tc0->rcv_nxt;
+//	  vnet_buffer (b0)->tcp.seq_end = tc0->rcv_nxt;
+//	  return 0;
+//	}
+
       *error0 = TCP_ERROR_RCV_WND;
       /* If our window is 0 and the packet is in sequence, let it pass
        * through for ack processing. It should be dropped later. */
@@ -453,7 +464,11 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc) || tc->sack_sb.sacked_bytes)
-    goto done;
+    {
+      if (tcp_in_recovery (tc))
+	return 0;
+      goto done;
+    }
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
@@ -479,7 +494,7 @@ done:
   tc->rtt_ts = 0;
 
   /* If we got here something must've been ACKed so make sure boff is 0,
-   * even if mrrt is not valid since we update the rto lower */
+   * even if mrtt is not valid since we update the rto lower */
   tc->rto_boff = 0;
   tcp_update_rto (tc);
 
@@ -1240,7 +1255,10 @@ partial_ack:
    * Legitimate ACK. 1) See if we can exit recovery
    */
   /* XXX limit this only to first partial ack? */
-  tcp_retransmit_timer_update (tc);
+  if (seq_lt (tc->snd_una, tc->snd_congestion))
+    tcp_retransmit_timer_force_update (tc);
+  else
+    tcp_retransmit_timer_update (tc);
 
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
@@ -1272,6 +1290,7 @@ partial_ack:
     {
       tc->cc_algo->rcv_ack (tc);
       tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+      transport_add_tx_event (&tc->connection);
       return;
     }
 
@@ -1322,12 +1341,18 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
       /* When we entered recovery, we reset snd_nxt to snd_una. Seems peer
        * still has the data so accept the ack */
       if (tcp_in_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion)
-	  && seq_geq (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
+	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion))
 	{
-	  tc->snd_una_max = tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
+	    tc->snd_una_max = tc->snd_nxt;
 	  goto process_ack;
 	}
+
+      clib_warning ("conn: %U", format_tcp_connection, tc, 2);
+      clib_warning ("seq num: %u seq_end %u ack %u", vnet_buffer (b)->tcp.seq_number - tc->irs,
+                    vnet_buffer (b)->tcp.seq_end - tc->irs, vnet_buffer (b)->tcp.ack_number - tc->iss);
+      tcp_send_reset(tc);
 
       /* If we have outstanding data and this is within the window, accept it,
        * probably retransmit has timed out. Otherwise ACK segment and then
