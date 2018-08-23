@@ -131,18 +131,29 @@ bin_summary_stats_client_LDADD = \
    libvppinfra.la \
    -lpthread -lm -lrt
 
-noinst_PROGRAMS += bin/stat_client
+bin_PROGRAMS += bin/vpp_get_stats
 
-bin_stat_client_SOURCES = \
-  vpp/app/stat_client.c \
-  vpp/app/stat_client.h
+bin_vpp_get_stats_SOURCES = \
+  vpp/app/vpp_get_stats.c
 
-bin_stat_client_LDADD = \
-  libvlibmemoryclient.la \
-  libsvm.la \
-  libvppinfra.la \
+bin_vpp_get_stats_LDADD =				\
+  libvppapiclient.la				\
+  libvlibmemoryclient.la			\
+  libsvm.la					\
+  libvppinfra.la				\
   -lpthread -lm -lrt
 
+bin_PROGRAMS += bin/vpp_prometheus_export
+
+bin_vpp_prometheus_export_SOURCES = \
+  vpp/app/vpp_prometheus_export.c
+
+bin_vpp_prometheus_export_LDADD =				\
+  libvppapiclient.la				\
+  libvlibmemoryclient.la			\
+  libsvm.la					\
+  libvppinfra.la				\
+  -lpthread -lm -lrt
 
 
 bin_PROGRAMS += bin/vpp_get_metrics
