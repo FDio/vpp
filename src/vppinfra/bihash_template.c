@@ -43,8 +43,6 @@ void BV (clib_bihash_init)
   h->name = (u8 *) name;
   h->nbuckets = nbuckets;
   h->log2_nbuckets = max_log2 (nbuckets);
-  h->cache_hits = 0;
-  h->cache_misses = 0;
 
   /*
    * Make sure the requested size is rational. The max table
@@ -646,8 +644,6 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
     }
 
   s = format (s, "    %lld linear search buckets\n", linear_buckets);
-  s = format (s, "    %lld cache hits, %lld cache misses\n",
-	      h->cache_hits, h->cache_misses);
   used_bytes = h->alloc_arena_next - h->alloc_arena;
   s = format (s,
 	      "    arena: base %llx, next %llx\n"
