@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f221b338_3e9f424b",
+        "filename": "src/vppinfra/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-08-23T20:29:08Z",
+      "side": 1,
+      "message": "this is probably what I was stuck on...",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 99,
+        "endChar": 15
+      },
+      "revId": "f9596ae8e51ff2325b862e1f9a08d6f1c4228cb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
