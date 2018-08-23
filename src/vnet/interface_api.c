@@ -56,6 +56,7 @@ _(WANT_INTERFACE_EVENTS, want_interface_events)                 \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)   \
 _(SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)           \
+_(SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)	\
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)               \
 _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
@@ -936,6 +937,12 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   VALIDATE_SW_IF_INDEX (mp);
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
   error = set_hw_interface_change_rx_mode (vnm, si->hw_if_index,
 					   mp->queue_id_valid,
 					   ntohl (mp->queue_id), mp->mode);
@@ -949,6 +956,40 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_MODE_REPLY);
+}
+
+static void vl_api_sw_interface_set_rx_placement_t_handler
+  (vl_api_sw_interface_set_rx_placement_t * mp)
+{
+  vl_api_sw_interface_set_rx_placement_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si;
+  clib_error_t *error = 0;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  error = set_hw_interface_rx_placement (si->hw_if_index,
+					 ntohl (mp->queue_id),
+					 ntohl (mp->worker_id), mp->is_main);
+  if (error)
+    {
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      clib_error_report (error);
+      goto out;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_PLACEMENT_REPLY);
 }
 
 static void

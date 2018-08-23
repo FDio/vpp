@@ -117,6 +117,23 @@ static void *vl_api_sw_interface_set_flags_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_rx_placement_t_print
+  (vl_api_sw_interface_set_rx_placement_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: sw_interface_set_rx_placement ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  s = format (s, "queue %d ", ntohl (mp->queue_id));
+  if (mp->is_main)
+    s = format (s, "main ");
+  else
+    s = format (s, "worker %d ", ntohl (mp->worker_id));
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_event_t_print
   (vl_api_sw_interface_event_t * mp, void *handle)
 {
