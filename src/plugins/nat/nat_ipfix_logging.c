@@ -2027,6 +2027,19 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
 	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
+
+      if (sm->endpoint_dependent)
+        {
+          a.rewrite_callback = snat_template_rewrite_max_entries_per_usr;
+          a.flow_data_callback = snat_data_callback_max_entries_per_usr;
+
+          rv = vnet_flow_report_add_del (frm, &a, NULL);
+          if (rv)
+            {
+              clib_warning ("vnet_flow_report_add_del returned %d", rv);
+              return -1;
+            }
+        }
     }
 
   return 0;

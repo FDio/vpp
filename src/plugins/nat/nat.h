@@ -32,10 +32,8 @@
 
 
 #define SNAT_UDP_TIMEOUT 300
-#define SNAT_UDP_TIMEOUT_MIN 120
 #define SNAT_TCP_TRANSITORY_TIMEOUT 240
 #define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
-#define SNAT_TCP_INCOMING_SYN 6
 #define SNAT_ICMP_TIMEOUT 60
 
 #define NAT_FQ_NELTS 64
@@ -133,6 +131,8 @@ typedef enum {
 #define NAT44_SES_O2I_FIN 2
 #define NAT44_SES_I2O_FIN_ACK 4
 #define NAT44_SES_O2I_FIN_ACK 8
+#define NAT44_SES_I2O_SYN 16
+#define NAT44_SES_O2I_SYN 32
 
 #define nat44_is_ses_closed(s) s->state == 0xf
 
@@ -172,7 +172,7 @@ typedef CLIB_PACKED(struct {
   ip4_address_t ext_host_addr;  /* 68-71 */
   u16 ext_host_port;            /* 72-73 */
 
-  /* External hos address and port after translation */
+  /* External host address and port after translation */
   ip4_address_t ext_host_nat_addr; /* 74-77 */
   u16 ext_host_nat_port;           /* 78-79 */
 
@@ -427,6 +427,11 @@ typedef struct snat_main_s {
   api_main_t * api_main;
 } snat_main_t;
 
+typedef struct {
+  u32 thread_index;
+  f64 now;
+} nat44_is_idle_session_ctx_t;
+
 extern snat_main_t snat_main;
 extern vlib_node_registration_t snat_in2out_node;
 extern vlib_node_registration_t snat_in2out_output_node;
@@ -626,8 +631,14 @@ snat_user_t * nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr,
                                       u32 fib_index, u32 thread_index);
 snat_session_t * nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u,
                                                u32 thread_index);
+snat_session_t * nat_ed_session_alloc (snat_main_t *sm, snat_user_t *u,
+                                       u32 thread_index);
 void nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset,
                                        u16 psid_length);
 void nat_set_alloc_addr_and_port_default (void);
+int nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t *kv, void *arg);
+int nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t *kv, void *arg);
+int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
+int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
 
 #endif /* __included_snat_h__ */

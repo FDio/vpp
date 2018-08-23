@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.1.0";
+option version = "4.0.0";
 
 /**
  * @file nat.api
@@ -232,6 +232,49 @@ define nat_reass_details {
   u32 frag_id;
   u8 proto;
   u8 frag_n;
+};
+
+/** \brief Set values of timeouts for NAT sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+autoreply define nat_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Get values of timeouts for NAT sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for NAT sessions reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout
+    @param tcp_established - TCP established timeout
+    @param tcp_transitory - TCP transitory timeout
+    @param icmp - ICMP timeout
+*/
+define nat_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
 };
 
 /*
@@ -849,49 +892,6 @@ define nat_det_map_details {
   u32 ses_num;
 };
 
-/** \brief Set values of timeouts for deterministic NAT (seconds, 0 = default)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param udp - UDP timeout (default 300sec)
-    @param tcp_established - TCP established timeout (default 7440sec)
-    @param tcp_transitory - TCP transitory timeout (default 240sec)
-    @param icmp - ICMP timeout (default 60sec)
-*/
-autoreply define nat_det_set_timeouts {
-  u32 client_index;
-  u32 context;
-  u32 udp;
-  u32 tcp_established;
-  u32 tcp_transitory;
-  u32 icmp;
-};
-
-/** \brief Get values of timeouts for deterministic NAT (seconds)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define nat_det_get_timeouts {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Get values of timeouts for deterministic NAT reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-    @param udp - UDP timeout (default 300sec)
-    @param tcp_established - TCP established timeout (default 7440sec)
-    @param tcp_transitory - TCP transitory timeout (default 240sec)
-    @param icmp - ICMP timeout (default 60sec)
-*/
-define nat_det_get_timeouts_reply {
-  u32 context;
-  i32 retval;
-  u32 udp;
-  u32 tcp_established;
-  u32 tcp_transitory;
-  u32 icmp;
-};
-
 /** \brief Close deterministic NAT session by outside address and port
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1095,53 +1095,6 @@ define nat64_bib_details {
   u8 proto;
   u8 is_static;
   u32 ses_num;
-};
-
-/** \brief Set values of timeouts for NAT64 (seconds, 0 = default)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param udp - UDP timeout (default 300sec)
-    @param icmp - ICMP timeout (default 60sec)
-    @param tcp_trans - TCP transitory timeout (default 240sec)
-    @param tcp_est - TCP established timeout (default 7440sec)
-    @param tcp_incoming_syn - TCP incoming SYN timeout (default 6sec)
-*/
-autoreply define nat64_set_timeouts {
-  u32 client_index;
-  u32 context;
-  u32 udp;
-  u32 icmp;
-  u32 tcp_trans;
-  u32 tcp_est;
-  u32 tcp_incoming_syn;
-};
-
-/** \brief Get values of timeouts for NAT64 (seconds)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define nat64_get_timeouts {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Get values of timeouts for NAT64 reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-    @param udp - UDP timeout
-    @param icmp - ICMP timeout
-    @param tcp_trans - TCP transitory timeout
-    @param tcp_est - TCP established timeout
-    @param tcp_incoming_syn - TCP incoming SYN timeout
-*/
-define nat64_get_timeouts_reply {
-  u32 context;
-  i32 retval;
-  u32 udp;
-  u32 icmp;
-  u32 tcp_trans;
-  u32 tcp_est;
-  u32 tcp_incoming_syn;
 };
 
 /** \brief Dump NAT64 session table

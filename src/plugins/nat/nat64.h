@@ -102,7 +102,6 @@ typedef struct
   u32 icmp_timeout;
   u32 tcp_trans_timeout;
   u32 tcp_est_timeout;
-  u32 tcp_incoming_syn_timeout;
 
   /* Total count of interfaces enabled */
   u32 total_enabled_count;
@@ -256,11 +255,10 @@ u32 nat64_get_icmp_timeout (void);
  *
  * @param trans Transitory timeout in seconds (if 0 reset to default value 240sec).
  * @param est Established timeout in seconds (if 0 reset to default value 7440sec).
- * @param incoming_syn Incoming SYN timeout in seconds (if 0 reset to default value 6sec).
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_set_tcp_timeouts (u32 trans, u32 est, u32 incoming_syn);
+int nat64_set_tcp_timeouts (u32 trans, u32 est);
 
 /**
  * @brief Get TCP transitory timeout.
@@ -275,13 +273,6 @@ u32 nat64_get_tcp_trans_timeout (void);
  * @returns TCP established timeout in seconds.
  */
 u32 nat64_get_tcp_est_timeout (void);
-
-/**
- * @brief Get TCP incoming SYN timeout.
- *
- * @returns TCP incoming SYN timeout in seconds.
- */
-u32 nat64_get_tcp_incoming_syn_timeout (void);
 
 /**
  * @brief Reset NAT64 session timeout.
