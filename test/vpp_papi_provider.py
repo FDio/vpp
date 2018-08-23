@@ -1766,13 +1766,13 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat_det_map_dump, {})
 
-    def nat_det_set_timeouts(
+    def nat_set_timeouts(
             self,
             udp=300,
             tcp_established=7440,
             tcp_transitory=240,
             icmp=60):
-        """Set values of timeouts for deterministic NAT (in seconds)
+        """Set values of timeouts for NAT sessions (in seconds)
 
         :param udp - UDP timeout (Default value = 300)
         :param tcp_established - TCP established timeout (Default value = 7440)
@@ -1780,18 +1780,18 @@ class VppPapiProvider(object):
         :param icmp - ICMP timeout (Default value = 60)
         """
         return self.api(
-            self.papi.nat_det_set_timeouts,
+            self.papi.nat_set_timeouts,
             {'udp': udp,
              'tcp_established': tcp_established,
              'tcp_transitory': tcp_transitory,
              'icmp': icmp})
 
-    def nat_det_get_timeouts(self):
-        """Get values of timeouts for deterministic NAT
+    def nat_get_timeouts(self):
+        """Get values of timeouts for NAT sessions
 
-        :return: Timeouts for deterministic NAT (in seconds)
+        :return: Timeouts for NAT sessions (in seconds)
         """
-        return self.api(self.papi.nat_det_get_timeouts, {})
+        return self.api(self.papi.nat_get_timeouts, {})
 
     def nat_det_close_session_out(
             self,

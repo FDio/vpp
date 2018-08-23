@@ -198,6 +198,11 @@ always_inline int
 nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
 				 tcp_header_t * tcp, u32 thread_index)
 {
+  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
+      (ses->state & NAT44_SES_O2I_SYN))
+    ses->state = 0;
+  if (tcp->flags & TCP_FLAG_SYN)
+    ses->state |= NAT44_SES_I2O_SYN;
   if (tcp->flags & TCP_FLAG_FIN)
     {
       ses->i2o_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
@@ -223,6 +228,11 @@ always_inline int
 nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
 				 tcp_header_t * tcp, u32 thread_index)
 {
+  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
+      (ses->state & NAT44_SES_O2I_SYN))
+    ses->state = 0;
+  if (tcp->flags & TCP_FLAG_SYN)
+    ses->state |= NAT44_SES_O2I_SYN;
   if (tcp->flags & TCP_FLAG_FIN)
     {
       ses->o2i_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
@@ -241,6 +251,29 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
       nat44_delete_session (sm, ses, thread_index);
       return 1;
     }
+  return 0;
+}
+
+always_inline u32
+nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
+{
+  switch (s->in2out.protocol)
+    {
+    case SNAT_PROTOCOL_ICMP:
+      return sm->icmp_timeout;
+    case SNAT_PROTOCOL_UDP:
+      return sm->udp_timeout;
+    case SNAT_PROTOCOL_TCP:
+      {
+	if (s->state)
+	  return sm->tcp_transitory_timeout;
+	else
+	  return sm->tcp_established_timeout;
+      }
+    default:
+      return sm->udp_timeout;
+    }
+
   return 0;
 }
 

@@ -231,7 +231,6 @@ nat64_init (vlib_main_t * vm)
   nm->icmp_timeout = SNAT_ICMP_TIMEOUT;
   nm->tcp_trans_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
-  nm->tcp_incoming_syn_timeout = SNAT_TCP_INCOMING_SYN;
 
   nm->total_enabled_count = 0;
 
@@ -757,8 +756,6 @@ nat64_set_udp_timeout (u32 timeout)
 
   if (timeout == 0)
     nm->udp_timeout = SNAT_UDP_TIMEOUT;
-  else if (timeout < SNAT_UDP_TIMEOUT_MIN)
-    return VNET_API_ERROR_INVALID_VALUE;
   else
     nm->udp_timeout = timeout;
 
@@ -795,7 +792,7 @@ nat64_get_icmp_timeout (void)
 }
 
 int
-nat64_set_tcp_timeouts (u32 trans, u32 est, u32 incoming_syn)
+nat64_set_tcp_timeouts (u32 trans, u32 est)
 {
   nat64_main_t *nm = &nat64_main;
 
@@ -808,11 +805,6 @@ nat64_set_tcp_timeouts (u32 trans, u32 est, u32 incoming_syn)
     nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
   else
     nm->tcp_est_timeout = est;
-
-  if (incoming_syn == 0)
-    nm->tcp_incoming_syn_timeout = SNAT_TCP_INCOMING_SYN;
-  else
-    nm->tcp_incoming_syn_timeout = incoming_syn;
 
   return 0;
 }
@@ -831,14 +823,6 @@ nat64_get_tcp_est_timeout (void)
   nat64_main_t *nm = &nat64_main;
 
   return nm->tcp_est_timeout;
-}
-
-u32
-nat64_get_tcp_incoming_syn_timeout (void)
-{
-  nat64_main_t *nm = &nat64_main;
-
-  return nm->tcp_incoming_syn_timeout;
 }
 
 void

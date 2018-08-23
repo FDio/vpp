@@ -319,8 +319,6 @@ nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr, u32 fib_index,
       /* add user */
       if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
         nat_log_warn ("user_hash keay add failed");
-
-      clib_warning("%U %d", format_ip4_address, addr, fib_index);
     }
   else
     {
@@ -396,6 +394,41 @@ nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u, u32 thread_index)
                           s->per_user_list_head_index,
                           per_user_translation_list_elt - tsm->list_pool);
     }
+
+  return s;
+}
+
+snat_session_t *
+nat_ed_session_alloc (snat_main_t *sm, snat_user_t *u, u32 thread_index)
+{
+  snat_session_t *s;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  dlist_elt_t * per_user_translation_list_elt;
+
+  if ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user)
+    {
+      nat_log_warn ("max translations per user %U", format_ip4_address, &u->addr);
+      snat_ipfix_logging_max_entries_per_user (sm->max_translations_per_user,
+                                               u->addr.as_u32);
+      return 0;
+    }
+
+  pool_get (tsm->sessions, s);
+  memset (s, 0, sizeof (*s));
+  s->outside_address_index = ~0;
+
+  /* Create list elts */
+  pool_get (tsm->list_pool, per_user_translation_list_elt);
+  clib_dlist_init (tsm->list_pool,
+                   per_user_translation_list_elt - tsm->list_pool);
+
+  per_user_translation_list_elt->value = s - tsm->sessions;
+  s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
+  s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+
+  clib_dlist_addtail (tsm->list_pool,
+                      s->per_user_list_head_index,
+                      per_user_translation_list_elt - tsm->list_pool);
 
   return s;
 }
@@ -2456,6 +2489,7 @@ format_snat_protocol (u8 * s, va_list * args)
 }
 
 u8 * format_snat_key (u8 * s, va_list * args);
+u8 * format_static_mapping_key (u8 * s, va_list * args);
 
 u8 *
 format_session_kvp (u8 * s, va_list * args)
@@ -2478,7 +2512,8 @@ format_static_mapping_kvp (u8 * s, va_list * args)
 
   k.as_u64 = v->key;
 
-  s = format (s, "%U static-mapping-index %llu", format_snat_key, &k, v->value);
+  s = format (s, "%U static-mapping-index %llu",
+              format_static_mapping_key, &k, v->value);
 
   return s;
 }
@@ -2969,6 +3004,17 @@ u8 * format_snat_key (u8 * s, va_list * args)
               format_ip4_address, &key->addr,
               format_snat_protocol, key->protocol,
               clib_net_to_host_u16 (key->port), key->fib_index);
+  return s;
+}
+
+u8 * format_static_mapping_key (u8 * s, va_list * args)
+{
+  snat_session_key_t * key = va_arg (*args, snat_session_key_t *);
+
+  s = format (s, "%U proto %U port %d fib %d",
+              format_ip4_address, &key->addr,
+              format_snat_protocol, key->protocol,
+              key->port, key->fib_index);
   return s;
 }
 

@@ -69,7 +69,7 @@ _(nat_set_workers_reply)                         \
 _(nat44_add_del_interface_addr_reply)            \
 _(nat_ipfix_enable_disable_reply)                \
 _(nat_det_add_del_map_reply)                     \
-_(nat_det_set_timeouts_reply)                    \
+_(nat_set_timeouts_reply)                        \
 _(nat_det_close_session_out_reply)               \
 _(nat_det_close_session_in_reply)
 
@@ -118,8 +118,8 @@ _(NAT_DET_ADD_DEL_MAP_REPLY, nat_det_add_del_map_reply)         \
 _(NAT_DET_FORWARD_REPLY, nat_det_forward_reply)                 \
 _(NAT_DET_REVERSE_REPLY, nat_det_reverse_reply)                 \
 _(NAT_DET_MAP_DETAILS, nat_det_map_details)                     \
-_(NAT_DET_SET_TIMEOUTS_REPLY, nat_det_set_timeouts_reply)       \
-_(NAT_DET_GET_TIMEOUTS_REPLY, nat_det_get_timeouts_reply)       \
+_(NAT_SET_TIMEOUTS_REPLY, nat_set_timeouts_reply)               \
+_(NAT_GET_TIMEOUTS_REPLY, nat_get_timeouts_reply)               \
 _(NAT_DET_CLOSE_SESSION_OUT_REPLY,                              \
   nat_det_close_session_out_reply)                              \
 _(NAT_DET_CLOSE_SESSION_IN_REPLY,                               \
@@ -904,10 +904,10 @@ static int api_nat_det_map_dump(vat_main_t * vam)
   return ret;
 }
 
-static int api_nat_det_set_timeouts (vat_main_t * vam)
+static int api_nat_set_timeouts (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_nat_det_set_timeouts_t * mp;
+  vl_api_nat_set_timeouts_t * mp;
   u32 udp = SNAT_UDP_TIMEOUT;
   u32 tcp_established = SNAT_TCP_ESTABLISHED_TIMEOUT;
   u32 tcp_transitory = SNAT_TCP_TRANSITORY_TIMEOUT;
@@ -928,7 +928,7 @@ static int api_nat_det_set_timeouts (vat_main_t * vam)
       return -99;
     }
 
-  M(NAT_DET_SET_TIMEOUTS, mp);
+  M(NAT_SET_TIMEOUTS, mp);
   mp->udp = htonl(udp);
   mp->tcp_established = htonl(tcp_established);
   mp->tcp_transitory = htonl(tcp_transitory);
@@ -939,8 +939,8 @@ static int api_nat_det_set_timeouts (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_nat_det_get_timeouts_reply_t_handler
-  (vl_api_nat_det_get_timeouts_reply_t *mp)
+static void vl_api_nat_get_timeouts_reply_t_handler
+  (vl_api_nat_get_timeouts_reply_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -959,18 +959,18 @@ static void vl_api_nat_det_get_timeouts_reply_t_handler
   vam->result_ready = 1;
 }
 
-static int api_nat_det_get_timeouts(vat_main_t * vam)
+static int api_nat_get_timeouts(vat_main_t * vam)
 {
-  vl_api_nat_det_get_timeouts_t * mp;
+  vl_api_nat_get_timeouts_t * mp;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for nat_show_config");
+      clib_warning ("JSON output not supported for nat_get_timeouts");
       return -99;
     }
 
-  M(NAT_DET_GET_TIMEOUTS, mp);
+  M(NAT_GET_TIMEOUTS, mp);
   S(mp);
   W (ret);
   return ret;
@@ -1110,9 +1110,9 @@ _(nat_det_add_del_map, "in <in_addr>/<in_plen> out "              \
 _(nat_det_forward, "<in_addr>")                                   \
 _(nat_det_reverse, "<out_addr> <out_port>")                       \
 _(nat_det_map_dump, "")                                           \
-_(nat_det_set_timeouts, "[udp <sec> | tcp_established <sec> | "   \
+_(nat_set_timeouts, "[udp <sec> | tcp_established <sec> | "       \
   "tcp_transitory <sec> | icmp <sec>]")                           \
-_(nat_det_get_timeouts, "")                                       \
+_(nat_get_timeouts, "")                                           \
 _(nat_det_close_session_out, "<out_addr>:<out_port> "             \
   "<ext_addr>:<ext_port>")                                        \
 _(nat_det_close_session_in, "<in_addr>:<in_port> "                \
