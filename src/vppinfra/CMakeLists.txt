@@ -43,7 +43,6 @@ set(VPPINFRA_SRCS
   backtrace.c
   cpu.c
   cuckoo_template.c
-  dlmalloc.c
   elf.c
   elf_clib.c
   elog.c
@@ -57,7 +56,6 @@ set(VPPINFRA_SRCS
   longjmp.S
   macros.c
   maplog.c
-  mem_dlmalloc.c
   mhash.c
   pool.c
   ptclosure.c
@@ -89,6 +87,18 @@ set(VPPINFRA_SRCS
   linux/mem.c
   linux/sysfs.c
 )
+
+if(VPP_USE_DLMALLOC)
+  list(APPEND VPPINFRA_SRCS
+    dlmalloc.c
+    mem_dlmalloc.c
+  )
+else(VPP_USE_DLMALLOC)
+  list(APPEND VPPINFRA_SRCS
+    mheap.c
+    mem_mheap.c
+  )
+endif(VPP_USE_DLMALLOC)
 
 add_library(vppinfra SHARED ${VPPINFRA_SRCS})
 target_link_libraries(vppinfra m)
