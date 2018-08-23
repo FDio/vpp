@@ -175,6 +175,7 @@ typedef struct
   f64 *last_runtime_ptr;
   f64 *last_runtime_stats_clear_ptr;
   f64 *vector_rate_ptr;
+  f64 *heartbeat_ptr;
   u64 last_input_packets;
 
   /* Pointers to vector stats maintained by the stat thread */
@@ -209,7 +210,8 @@ typedef enum
   STAT_DIR_TYPE_ILLEGAL = 0,
   STAT_DIR_TYPE_SCALAR_POINTER,
   STAT_DIR_TYPE_VECTOR_POINTER,
-  STAT_DIR_TYPE_COUNTER_VECTOR,
+  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
+  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_SERIALIZED_NODES,
 } stat_directory_type_t;

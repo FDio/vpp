@@ -43,7 +43,7 @@ vlib_stats_push_heap (void)
 }
 
 void
-vlib_stats_pop_heap (void *cm_arg, void *oldheap)
+vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
 {
   vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
   stats_main_t *sm = &stats_main;
@@ -80,7 +80,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap)
 	}
       name_copy = format (0, "%s%c", stat_segment_name, 0);
       ep = clib_mem_alloc (sizeof (*ep));
-      ep->type = STAT_DIR_TYPE_COUNTER_VECTOR;
+      ep->type = type;
       ep->value = cm->counters;
       hash_set_mem (sm->counter_vector_by_name, name_copy, ep);
 
@@ -236,6 +236,7 @@ vlib_map_stat_segment_init (void)
   sm->input_rate_ptr = (scalar_data + 1);
   sm->last_runtime_ptr = (scalar_data + 2);
   sm->last_runtime_stats_clear_ptr = (scalar_data + 3);
+  sm->heartbeat_ptr = (scalar_data + 4);
 
   name = format (0, "/sys/vector_rate%c", 0);
   ep = clib_mem_alloc (sizeof (*ep));
@@ -262,6 +263,13 @@ vlib_map_stat_segment_init (void)
   ep = clib_mem_alloc (sizeof (*ep));
   ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
   ep->value = sm->last_runtime_stats_clear_ptr;
+
+  hash_set_mem (sm->counter_vector_by_name, name, ep);
+
+  name = format (0, "/sys/heartbeat%c", 0);
+  ep = clib_mem_alloc (sizeof (*ep));
+  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
+  ep->value = sm->heartbeat_ptr;
 
   hash_set_mem (sm->counter_vector_by_name, name, ep);
 
@@ -309,7 +317,8 @@ format_stat_dir_entry (u8 * s, va_list * args)
       type_name = "VectorPtr";
       break;
 
-    case STAT_DIR_TYPE_COUNTER_VECTOR:
+    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       type_name = "CMainPtr";
       break;
 
@@ -512,6 +521,9 @@ do_stat_segment_updates (stats_main_t * sm)
 
   if (sm->serialize_nodes)
     update_serialized_nodes (sm);
+
+  /* Heartbeat, so clients detect we're still here */
+  (*sm->heartbeat_ptr)++;
 }
 
 static clib_error_t *
