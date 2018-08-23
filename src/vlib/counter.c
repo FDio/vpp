@@ -81,12 +81,11 @@ vlib_stats_push_heap (void)
   return 0;
 };
 
-void vlib_stats_pop_heap (void *, void *) __attribute__ ((weak));
+void vlib_stats_pop_heap (void *, void *, int) __attribute__ ((weak));
 void
-vlib_stats_pop_heap (void *notused, void *notused2)
+vlib_stats_pop_heap (void *notused, void *notused2, int type)
 {
 };
-
 
 void
 vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
@@ -99,7 +98,8 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
   for (i = 0; i < tm->n_vlib_mains; i++)
     vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
 
-  vlib_stats_pop_heap (cm, oldheap);
+  vlib_stats_pop_heap (cm, oldheap,
+		       3 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */ );
 }
 
 void
@@ -113,7 +113,8 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
   for (i = 0; i < tm->n_vlib_mains; i++)
     vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
 
-  vlib_stats_pop_heap (cm, oldheap);
+  vlib_stats_pop_heap (cm, oldheap,
+		       4 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
 }
 
 u32

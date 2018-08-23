@@ -15,8 +15,9 @@
 # VPP API C wrapper extension
 #
 lib_LTLIBRARIES += libvppapiclient.la
-libvppapiclient_la_SOURCES = \
-  vpp-api/client/client.c \
+libvppapiclient_la_SOURCES =			\
+  vpp-api/client/client.c			\
+  vpp-api/client/stat_client.c			\
   vpp-api/client/libvppapiclient.map
 
 libvppapiclient_la_LIBADD = \

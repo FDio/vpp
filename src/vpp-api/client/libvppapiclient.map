@@ -1,5 +1,5 @@
 
-VPPAPICLIENT_17.07 {
+VPPAPICLIENT_18.10 {
 	global:
 	vac_read;
 	vac_write;
@@ -12,8 +12,14 @@ VPPAPICLIENT_17.07 {
 	vac_rx_resume;
 	vac_free;
 	vac_msg_table_size;
-
 	api_main;
-
+	stat_segment_connect;
+	stat_segment_disconnect;
+	stat_segment_register;
+	stat_segment_collect;
+	stat_segment_ls;
+	stat_segment_dump;
+	stat_segment_data_free;
+	stat_segment_heartbeat;
 	local: *;
 };
