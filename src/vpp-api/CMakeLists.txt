@@ -17,6 +17,7 @@
 
 add_library (vppapiclient SHARED
   client/client.c
+  client/stat_client.c
   client/libvppapiclient.map
 )
 target_link_libraries(vppapiclient vppinfra vlibmemoryclient svm pthread m rt)
@@ -25,4 +26,5 @@ install(TARGETS vppapiclient DESTINATION lib)
 
 vpp_add_header_files(vpp-api
   client/vppapiclient.h
+  client/stat_client.h
 )
