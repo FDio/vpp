@@ -43,7 +43,7 @@ vlib_stats_push_heap (void)
 }
 
 void
-vlib_stats_pop_heap (void *cm_arg, void *oldheap)
+vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
 {
   vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
   stats_main_t *sm = &stats_main;
@@ -80,7 +80,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap)
 	}
       name_copy = format (0, "%s%c", stat_segment_name, 0);
       ep = clib_mem_alloc (sizeof (*ep));
-      ep->type = STAT_DIR_TYPE_COUNTER_VECTOR;
+      ep->type = type;
       ep->value = cm->counters;
       hash_set_mem (sm->counter_vector_by_name, name_copy, ep);
 
@@ -309,7 +309,8 @@ format_stat_dir_entry (u8 * s, va_list * args)
       type_name = "VectorPtr";
       break;
 
-    case STAT_DIR_TYPE_COUNTER_VECTOR:
+    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       type_name = "CMainPtr";
       break;
 
