@@ -731,7 +731,7 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
   bd_main_t *bdm = &bd_main;
   l2_bridge_domain_t *bd_config;
   u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index, start = 1, end;
+  u32 bd_index, start, end;
   vl_api_registration_t *reg;
   uword *p;
 
@@ -739,11 +739,12 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
   if (!reg)
     return;
 
-  end = vec_len (l2input_main.bd_configs);
-
   /* see bd_id: ~0 means "any" */
   if (bd_id == ~0)
-    bd_index = ~0;
+    {
+      start = 1;
+      end = vec_len (l2input_main.bd_configs);
+    }
   else
     {
       p = hash_get (bdm->bd_index_by_bd_id, bd_id);
