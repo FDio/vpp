@@ -1565,47 +1565,20 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+clib_error_t *
+set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
+			       u32 thread_index, u8 is_main)
 {
-  clib_error_t *error = 0;
-  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  vnet_hw_interface_rx_mode mode;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 queue_id = (u32) 0;
-  u32 thread_index = (u32) ~ 0;
+  clib_error_t *error = 0;
+  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
   int rv;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	;
-      else if (unformat (line_input, "queue %d", &queue_id))
-	;
-      else if (unformat (line_input, "main", &thread_index))
-	thread_index = 0;
-      else if (unformat (line_input, "worker %d", &thread_index))
-	thread_index += vdm->first_worker_thread_index;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  return error;
-	}
-    }
-
-  unformat_free (line_input);
-
-  if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+  if (is_main)
+    thread_index = 0;
+  else
+    thread_index += vdm->first_worker_thread_index;
 
   if (thread_index > vdm->last_worker_thread_index)
     return clib_error_return (0,
@@ -1625,7 +1598,53 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 				      thread_index);
   vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
 
-  return 0;
+  return (error);
+}
+
+static clib_error_t *
+set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+  u32 queue_id = (u32) 0;
+  u32 thread_index = (u32) ~ 0;
+  u8 is_main = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "main", &thread_index))
+	is_main = 1;
+      else if (unformat (line_input, "worker %d", &thread_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "please specify valid interface name");
+
+  error = set_hw_interface_rx_placement (hw_if_index, queue_id, thread_index,
+					 is_main);
+
+  return (error);
 }
 
 /*?
