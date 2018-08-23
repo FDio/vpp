@@ -768,14 +768,14 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 
 /* #define HAVE_USR_INCLUDE_MALLOC_H */
 
-#ifdef HAVE_USR_INCLUDE_MALLOC_H
+#if 0 // def HAVE_USR_INCLUDE_MALLOC_H
 #include "/usr/include/malloc.h"
 #else /* HAVE_USR_INCLUDE_MALLOC_H */
 #ifndef STRUCT_MALLINFO_DECLARED
 /* HP-UX (and others?) redefines mallinfo unless _STRUCT_MALLINFO is defined */
 #define _STRUCT_MALLINFO
 #define STRUCT_MALLINFO_DECLARED 1
-struct mallinfo {
+struct dlmallinfo {
   MALLINFO_FIELD_TYPE arena;    /* non-mmapped space allocated from system */
   MALLINFO_FIELD_TYPE ordblks;  /* number of free chunks */
   MALLINFO_FIELD_TYPE smblks;   /* always 0 */
@@ -837,7 +837,7 @@ extern "C" {
 #define dlrealloc_in_place     realloc_in_place
 #define dlvalloc               valloc
 #define dlpvalloc              pvalloc
-#define dlmallinfo             mallinfo
+// #define dlmallinfo             mallinfo
 #define dlmallopt              mallopt
 #define dlmalloc_trim          malloc_trim
 #define dlmalloc_stats         malloc_stats
@@ -1084,7 +1084,7 @@ DLMALLOC_EXPORT void dlmalloc_inspect_all(void(*handler)(void*, void *, size_t, 
   be kept as longs, the reported values may wrap around zero and
   thus be inaccurate.
 */
-DLMALLOC_EXPORT struct mallinfo dlmallinfo(void);
+DLMALLOC_EXPORT struct dlmallinfo dlmallinfo(void);
 #endif /* NO_MALLINFO */
 
 /*
@@ -1401,7 +1401,7 @@ DLMALLOC_EXPORT size_t mspace_max_footprint(mspace msp);
   mspace_mallinfo behaves as mallinfo, but reports properties of
   the given space.
 */
-DLMALLOC_EXPORT struct mallinfo mspace_mallinfo(mspace msp);
+DLMALLOC_EXPORT struct dlmallinfo mspace_mallinfo(mspace msp);
 #endif /* NO_MALLINFO */
 
 /*

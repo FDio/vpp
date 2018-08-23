@@ -382,7 +382,7 @@ format_mheap (u8 * s, va_list * va)
 {
   void *heap = va_arg (*va, u8 *);
   int verbose = va_arg (*va, int);
-  struct mallinfo mi;
+  struct dlmallinfo mi;
   mheap_trace_main_t *tm = &mheap_trace_main;
 
   mi = mspace_mallinfo (heap);

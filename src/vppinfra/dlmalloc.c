@@ -2078,8 +2078,8 @@ static void do_check_malloc_state(mstate m) {
 /* ----------------------------- statistics ------------------------------ */
 
 #if !NO_MALLINFO
-static struct mallinfo internal_mallinfo(mstate m) {
-  struct mallinfo nm = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct dlmallinfo internal_mallinfo(mstate m) {
+  struct dlmallinfo nm = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   ensure_initialization();
   if (!PREACTION(m)) {
     check_malloc_state(m);
@@ -3963,7 +3963,7 @@ size_t dlmalloc_set_footprint_limit(size_t bytes) {
 }
 
 #if !NO_MALLINFO
-struct mallinfo dlmallinfo(void) {
+struct dlmallinfo dlmallinfo(void) {
   return internal_mallinfo(gm);
 }
 #endif /* NO_MALLINFO */
@@ -4781,7 +4781,7 @@ size_t mspace_set_footprint_limit(mspace msp, size_t bytes) {
 }
 
 #if !NO_MALLINFO
-struct mallinfo mspace_mallinfo(mspace msp) {
+struct dlmallinfo mspace_mallinfo(mspace msp) {
   mstate ms = (mstate)msp;
   if (!ok_magic(ms)) {
     USAGE_ERROR_ACTION(ms,ms);
