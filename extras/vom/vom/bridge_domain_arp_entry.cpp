@@ -162,6 +162,32 @@ void
 bridge_domain_arp_entry::event_handler::handle_populate(
   const client_db::key_t& key)
 {
+  /*
+   * dump VPP Bridge domains
+   */
+  std::shared_ptr<bridge_domain_arp_entry_cmds::dump_cmd> cmd =
+    std::make_shared<bridge_domain_arp_entry_cmds::dump_cmd>(~0);
+
+  HW::enqueue(cmd);
+  HW::write();
+
+  for (auto& record : *cmd) {
+    auto& payload = record.get_payload();
+
+    std::shared_ptr<bridge_domain> bd = bridge_domain::find(payload.bd_id);
+    bridge_domain_arp_entry bd_ae(
+      *bd, from_bytes(payload.is_ipv6, payload.ip_address),
+      mac_address_t(payload.mac_address));
+
+    VOM_LOG(log_level_t::DEBUG) << "dump: " << bd_ae.to_string();
+
+    /*
+     * Write each of the discovered bridge-domain arp entry into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, bd_ae);
+  }
 }
 
 dependency_t
