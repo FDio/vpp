@@ -1187,7 +1187,8 @@ tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, /* compute opts */ 0,
 		  /* burst */ 1);
   tc->snd_una_max = tc->snd_nxt;
-  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd));
+  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd
+		   + tcp_fastrecovery_sent_1_smss (tc) * tc->snd_mss));
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
@@ -1451,15 +1452,19 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  return;
 	}
 
-      /* Shouldn't be here */
+      /* Shouldn't be here. This condition is tricky because it has to take
+       * into account boff > 0 due to persist timeout. */
       if ((tc->rto_boff == 0 && tc->snd_una == tc->snd_una_max)
-	  || (tc->rto_boff > 0 && seq_geq (tc->snd_una, tc->snd_congestion)))
+	  || (tc->rto_boff > 0 && seq_geq (tc->snd_una, tc->snd_congestion)
+	      && !tcp_flight_size (tc)))
 	{
-	  tcp_recovery_off (tc);
+	  ASSERT (!tcp_in_recovery (tc));
+	  tc->rto_boff = 0;
 	  return;
 	}
 
-      /* We're not in recovery so make sure rto_boff is 0 */
+      /* We're not in recovery so make sure rto_boff is 0. Can be non 0 due
+       * to persist timer timeout */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
 	{
 	  tc->rto_boff = 0;
@@ -1474,10 +1479,15 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       if (tc->rto_boff == 1)
 	tcp_rxt_timeout_cc (tc);
 
+      /* If we've sent beyond snd_congestion, update it */
+      if (seq_gt (tc->snd_una_max, tc->snd_congestion))
+	tc->snd_congestion = tc->snd_una_max;
+
       tc->snd_una_max = tc->snd_nxt = tc->snd_una;
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      /* Send one segment. Note that n_bytes may be zero due to buffer shortfall  */
+      /* Send one segment. Note that n_bytes may be zero due to buffer
+       * shortfall */
       n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
 
       /* TODO be less aggressive about this */
@@ -1485,7 +1495,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       if (n_bytes == 0)
 	{
-	  tcp_retransmit_timer_set (tc);
+	  tcp_retransmit_timer_force_update (tc);
 	  return;
 	}
 
@@ -1496,7 +1506,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->snd_rxt_ts = tcp_time_now ();
 
       tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
-      tcp_retransmit_timer_update (tc);
+      tcp_retransmit_timer_force_update (tc);
     }
   /* Retransmit for SYN */
   else if (tc->state == TCP_STATE_SYN_SENT)
@@ -1632,7 +1642,10 @@ tcp_timer_persist_handler (u32 index)
    * Try to force the first unsent segment (or buffer)
    */
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
-    return;
+    {
+      tcp_persist_timer_set (tc);
+      return;
+    }
   b = vlib_get_buffer (vm, bi);
   data = tcp_init_buffer (vm, b);
 
