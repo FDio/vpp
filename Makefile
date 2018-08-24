@@ -21,10 +21,6 @@ STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
-ifeq ($(findstring $(MAKECMDGOALS),verify pkg-deb pkg-rpm test test-debug),)
-export vpp_uses_cmake?=yes
-endif
-
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -57,6 +53,7 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+export vpp_uses_cmake?=yes
 PKG=deb
 else ifeq ($(filter rhel centos fedora opensuse opensuse-leap opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 PKG=rpm
@@ -548,6 +545,7 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
+	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif
 
