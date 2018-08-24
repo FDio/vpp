@@ -17,8 +17,8 @@ docker_os="ubuntu"
 vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
 user_gid="$(id -g)"
 vpp_app="vpp"
-sock_srvr_app="sock_test_server"
-sock_clnt_app="sock_test_client"
+sock_srvr_app="bin/sock_test_server"
+sock_clnt_app="bin/sock_test_client"
 sock_srvr_addr="127.0.0.1"
 sock_srvr_port="22000"
 iperf_srvr_app="iperf3 -V4d -s"
@@ -236,16 +236,16 @@ while ! [[ $run_test ]] && (( $# > 0 )) ; do
         "np" | "native-preload")
             run_test="native_preload" ;;
         "nv" | "native-vcl")
-            sock_srvr_app="vcl_test_server"
-            sock_clnt_app="vcl_test_client"
+            sock_srvr_app="bin/vcl_test_server"
+            sock_clnt_app="bin/vcl_test_client"
             run_test="native_vcl" ;;
         "dk" | "docker-kernel")
             run_test="docker_kernel" ;;
         "dp" | "docker-preload")
             run_test="docker_preload" ;;
         "dv" | "docker-vcl")
-            sock_srvr_app="vcl_test_server"
-            sock_clnt_app="vcl_test_client"
+            sock_srvr_app="bin/vcl_test_server"
+            sock_clnt_app="bin/vcl_test_client"
             run_test="docker_vcl" ;;
         *)
             echo "ERROR: Unknown option '$1'!" >&2

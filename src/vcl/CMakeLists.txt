@@ -26,6 +26,15 @@ add_vpp_library(vppcom
   vppinfra svm vlibmemoryclient rt pthread
 )
 
+add_vpp_library(vcl_ldpreload
+  SOURCES
+  ldp_socket_wrapper.c
+  ldp.c
+
+  LINK_LIBRARIES
+  vppinfra svm vlibmemoryclient rt pthread vppcom
+)
+
 add_vpp_headers(vcl
   ldp.h
   vcl_event.h

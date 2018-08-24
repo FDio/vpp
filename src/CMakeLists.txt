@@ -110,3 +110,8 @@ pr("Linker flags" "${CMAKE_LINKER_FLAGS}")
 pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
 pr("Build type" "${CMAKE_BUILD_TYPE}")
 pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
+
+file(READ "/proc/cpuinfo" cpuinfo)
+message(STATUS "=====================================================")
+message(STATUS "${cpuinfo}")
+message(STATUS "=====================================================")

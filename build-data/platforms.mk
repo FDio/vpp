@@ -71,10 +71,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	echo ../../src/scripts/vppctl_completion /etc/bash_completion.d	\
 	   >> deb/debian/vpp.install ;					\
 									\
-	: move dictionary of vppctl commands ;				\
-	echo ../../src/scripts/vppctl-cmd-list /usr/share/vpp		\
-	   >> deb/debian/vpp.install ;					\
-									\
 	: add log directory ;						\
 	echo /var/log/vpp/						\
 	   >> deb/debian/vpp.dirs ;					\
