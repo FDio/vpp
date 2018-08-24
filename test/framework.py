@@ -957,6 +957,7 @@ class VppTestResult(unittest.TestResult):
         self.verbosity = verbosity
         self.result_string = None
         self.printer = TestCasePrinter()
+        self.passed = 0
 
     def addSuccess(self, test):
         """
@@ -970,6 +971,7 @@ class VppTestResult(unittest.TestResult):
                               % (test.__class__.__name__,
                                  test._testMethodName,
                                  test._testMethodDoc))
+        self.passed += 1
         unittest.TestResult.addSuccess(self, test)
         self.result_string = colorize("OK", GREEN)
 
