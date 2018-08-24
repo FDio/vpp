@@ -21,9 +21,7 @@ STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
-ifeq ($(findstring $(MAKECMDGOALS),verify pkg-deb pkg-rpm test test-debug),)
 export vpp_uses_cmake?=yes
-endif
 
 ,:=,
 define disable_plugins
@@ -92,6 +90,7 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
+RPM_DEPENDS += cmake3 ninja-build
 
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += subunit subunit-devel
@@ -548,6 +547,7 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
+	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif
 
