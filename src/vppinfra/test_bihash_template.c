@@ -72,7 +72,13 @@ test_bihash_vec64 (test_main_t * tm)
 
   h = &tm->hash;
 
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_master_init_svm) (h, "test", user_buckets,
+				    0x30000000 /* base_addr */ ,
+				    user_memory_size);
+#else
   BV (clib_bihash_init) (h, "test", user_buckets, user_memory_size);
+#endif
 
   before = clib_time_now (&tm->clib_time);
 
@@ -116,7 +122,13 @@ test_bihash_stale_overwrite (test_main_t * tm)
 
   h = &tm->hash;
 
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
+				    0x30000000 /* base_addr */ ,
+				    tm->hash_memory_size);
+#else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+#endif
 
   fformat (stdout, "Add %d items to %d buckets\n", tm->nitems, tm->nbuckets);
 
@@ -195,7 +207,13 @@ test_bihash_threads (test_main_t * tm)
 
   h = &tm->hash;
 
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
+				    0x30000000 /* base_addr */ ,
+				    tm->hash_memory_size);
+#else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+#endif
 
   tm->thread_barrier = 1;
 
@@ -243,7 +261,13 @@ test_bihash (test_main_t * tm)
 
   h = &tm->hash;
 
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
+				    0x30000000 /* base_addr */ ,
+				    tm->hash_memory_size);
+#else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+#endif
 
   for (acycle = 0; acycle < tm->ncycles; acycle++)
     {
@@ -420,6 +444,9 @@ test_bihash (test_main_t * tm)
   fformat (stdout, "End of run, should be empty...\n");
 
   fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
+
+  BV (clib_bihash_free) (h);
+
   return 0;
 }
 
@@ -431,7 +458,7 @@ test_bihash_main (test_main_t * tm)
   int which = 0;
 
   tm->report_every_n = 1;
-  tm->hash_memory_size = 4095ULL << 20;
+  tm->hash_memory_size = 1ULL << 30;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
