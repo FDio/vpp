@@ -14,17 +14,17 @@ class VCLAppWorker(Worker):
     """ VCL Test Application Worker """
 
     def __init__(self, build_dir, appname, args, logger, env={}):
-        vcl_lib_dir = "%s/vpp/.libs" % build_dir
+        vcl_lib_dir = "%s/vpp/lib" % build_dir
         if "iperf" in appname:
             app = appname
             env.update({'LD_PRELOAD':
-                        "%s/libvcl_ldpreload.so.0.0.0" % vcl_lib_dir})
+                        "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         else:
             app = "%s/%s" % (vcl_lib_dir, appname)
             if not os.path.isfile(app):
                 app = "%s/vpp/%s" % (build_dir, appname)
                 env.update({'LD_PRELOAD':
-                            "%s/libvcl_ldpreload.so.0.0.0" % vcl_lib_dir})
+                            "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         self.args = [app] + args
         super(VCLAppWorker, self).__init__(self.args, logger, env)
 
@@ -241,8 +241,8 @@ class VCLCutThruTestCase(VCLTestCase):
     def test_ldp_cut_thru_echo(self):
         """ run LDP cut thru echo test """
 
-        self.cut_thru_test("sock_test_server", self.server_args,
-                           "sock_test_client", self.client_echo_test_args)
+        self.cut_thru_test("bin/sock_test_server", self.server_args,
+                           "bin/sock_test_client", self.client_echo_test_args)
 
     def test_ldp_cut_thru_iperf3(self):
         """ run LDP cut thru iperf3 test """
@@ -263,8 +263,8 @@ class VCLCutThruTestCase(VCLTestCase):
         """ run LDP cut thru uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.cut_thru_test("sock_test_server", self.server_args,
-                           "sock_test_client",
+        self.cut_thru_test("bin/sock_test_server", self.server_args,
+                           "bin/sock_test_client",
                            self.client_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
@@ -272,23 +272,23 @@ class VCLCutThruTestCase(VCLTestCase):
         """ run LDP cut thru bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.cut_thru_test("sock_test_server", self.server_args,
-                           "sock_test_client",
+        self.cut_thru_test("bin/sock_test_server", self.server_args,
+                           "bin/sock_test_client",
                            self.client_bi_dir_nsock_test_args)
 
     def test_vcl_cut_thru_echo(self):
         """ run VCL cut thru echo test """
 
-        self.cut_thru_test("vcl_test_server", self.server_args,
-                           "vcl_test_client", self.client_echo_test_args)
+        self.cut_thru_test("bin/vcl_test_server", self.server_args,
+                           "bin/vcl_test_client", self.client_echo_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_vcl_cut_thru_uni_dir_nsock(self):
         """ run VCL cut thru uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.cut_thru_test("vcl_test_server", self.server_args,
-                           "vcl_test_client",
+        self.cut_thru_test("bin/vcl_test_server", self.server_args,
+                           "bin/vcl_test_client",
                            self.client_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
@@ -296,8 +296,8 @@ class VCLCutThruTestCase(VCLTestCase):
         """ run VCL cut thru bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.cut_thru_test("vcl_test_server", self.server_args,
-                           "vcl_test_client",
+        self.cut_thru_test("bin/vcl_test_server", self.server_args,
+                           "bin/vcl_test_client",
                            self.client_bi_dir_nsock_test_args)
 
 
@@ -320,20 +320,20 @@ class VCLThruHostStackTestCase(VCLTestCase):
     def test_ldp_thru_host_stack_echo(self):
         """ run LDP thru host stack echo test """
 
-        self.thru_host_stack_test("sock_test_server", self.server_args,
-                                  "sock_test_client",
+        self.thru_host_stack_test("bin/sock_test_server", self.server_args,
+                                  "bin/sock_test_client",
                                   self.client_echo_test_args)
         # TBD: Remove these when VPP thru host teardown config bug is fixed.
-        self.thru_host_stack_test("vcl_test_server", self.server_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server", self.server_args,
+                                  "bin/vcl_test_client",
                                   self.client_echo_test_args)
 
     def test_vcl_thru_host_stack_echo(self):
         """ run VCL thru host stack echo test """
 
         # TBD: Enable this when VPP  thru host teardown config bug is fixed.
-        # self.thru_host_stack_test("vcl_test_server", self.server_args,
-        #                           "vcl_test_client",
+        # self.thru_host_stack_test("bin/vcl_test_server", self.server_args,
+        #                           "bin/vcl_test_client",
         #                           self.client_echo_test_args)
 
     # TBD: Remove VCLThruHostStackExtended*TestCase classes and move
@@ -369,8 +369,8 @@ class VCLThruHostStackExtendedATestCase(VCLTestCase):
         """ run VCL thru host stack bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.thru_host_stack_test("vcl_test_server", self.server_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server", self.server_args,
+                                  "bin/vcl_test_client",
                                   self.client_bi_dir_nsock_test_args)
 
 
@@ -470,8 +470,8 @@ class VCLThruHostStackExtendedDTestCase(VCLTestCase):
         """ run VCL thru host stack uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.thru_host_stack_test("vcl_test_server", self.server_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server", self.server_args,
+                                  "bin/vcl_test_client",
                                   self.client_uni_dir_nsock_test_args)
 
 
@@ -539,9 +539,9 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
     def test_ldp_ipv6_cut_thru_echo(self):
         """ run LDP IPv6 cut thru echo test """
 
-        self.cut_thru_test("sock_test_server",
+        self.cut_thru_test("bin/sock_test_server",
                            self.server_ipv6_args,
-                           "sock_test_client",
+                           "bin/sock_test_client",
                            self.client_ipv6_echo_test_args)
 
     def test_ldp_ipv6_cut_thru_iperf3(self):
@@ -564,8 +564,8 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         """ run LDP IPv6 cut thru uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.cut_thru_test("sock_test_server", self.server_ipv6_args,
-                           "sock_test_client",
+        self.cut_thru_test("bin/sock_test_server", self.server_ipv6_args,
+                           "bin/sock_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
@@ -573,16 +573,16 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.cut_thru_test("sock_test_server", self.server_ipv6_args,
-                           "sock_test_client",
+        self.cut_thru_test("bin/sock_test_server", self.server_ipv6_args,
+                           "bin/sock_test_client",
                            self.client_ipv6_bi_dir_nsock_test_args)
 
     def test_vcl_ipv6_cut_thru_echo(self):
         """ run VCL IPv6 cut thru echo test """
 
-        self.cut_thru_test("vcl_test_server",
+        self.cut_thru_test("bin/vcl_test_server",
                            self.server_ipv6_args,
-                           "vcl_test_client",
+                           "bin/vcl_test_client",
                            self.client_ipv6_echo_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
@@ -590,8 +590,8 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         """ run VCL IPv6 cut thru uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.cut_thru_test("vcl_test_server", self.server_ipv6_args,
-                           "vcl_test_client",
+        self.cut_thru_test("bin/vcl_test_server", self.server_ipv6_args,
+                           "bin/vcl_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
@@ -599,8 +599,8 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         """ run VCL IPv6 cut thru bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.cut_thru_test("vcl_test_server", self.server_ipv6_args,
-                           "vcl_test_client",
+        self.cut_thru_test("bin/vcl_test_server", self.server_ipv6_args,
+                           "bin/vcl_test_client",
                            self.client_ipv6_bi_dir_nsock_test_args)
 
 
@@ -623,19 +623,22 @@ class VCLIpv6ThruHostStackTestCase(VCLTestCase):
     def test_ldp_ipv6_thru_host_stack_echo(self):
         """ run LDP IPv6 thru host stack echo test """
 
-        self.thru_host_stack_test("sock_test_server", self.server_ipv6_args,
-                                  "sock_test_client",
+        self.thru_host_stack_test("bin/sock_test_server",
+                                  self.server_ipv6_args,
+                                  "bin/sock_test_client",
                                   self.client_ipv6_echo_test_args)
         # TBD: Remove these when VPP thru host teardown config bug is fixed.
-        self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server",
+                                  self.server_ipv6_args,
+                                  "bin/vcl_test_client",
                                   self.client_ipv6_echo_test_args)
 
     def test_vcl_ipv6_thru_host_stack_echo(self):
         """ run VCL IPv6 thru host stack echo test """
 
-#        self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-#                                  "vcl_test_client",
+#        self.thru_host_stack_test("bin/vcl_test_server",
+#                                  self.server_ipv6_args,
+#                                  "bin/vcl_test_client",
 #                                  self.client_ipv6_echo_test_args)
 
     # TBD: Remove VCLIpv6ThruHostStackExtended*TestCase classes and move
@@ -672,8 +675,8 @@ class VCLIpv6ThruHostStackExtendedATestCase(VCLTestCase):
         """ run VCL thru host stack bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server", self.server_ipv6_args,
+                                  "bin/vcl_test_client",
                                   self.client_ipv6_bi_dir_nsock_test_args)
 
 
@@ -706,8 +709,9 @@ class VCLIpv6ThruHostStackExtendedBTestCase(VCLTestCase):
         """ run LDP thru host stack bi-directional (multiple sockets) test """
 
         self.timeout = self.client_bi_dir_nsock_timeout
-        self.thru_host_stack_test("sock_test_server", self.server_ipv6_args,
-                                  "sock_test_client",
+        self.thru_host_stack_test("bin/sock_test_server",
+                                  self.server_ipv6_args,
+                                  "bin/sock_test_client",
                                   self.client_ipv6_bi_dir_nsock_test_args)
 
 
@@ -741,8 +745,9 @@ class VCLIpv6ThruHostStackExtendedCTestCase(VCLTestCase):
         """ run LDP thru host stack uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.thru_host_stack_test("sock_test_server", self.server_ipv6_args,
-                                  "sock_test_client",
+        self.thru_host_stack_test("bin/sock_test_server",
+                                  self.server_ipv6_args,
+                                  "bin/sock_test_client",
                                   self.client_ipv6_uni_dir_nsock_test_args)
 
 
@@ -776,8 +781,8 @@ class VCLIpv6ThruHostStackExtendedDTestCase(VCLTestCase):
         """ run VCL thru host stack uni-directional (multiple sockets) test """
 
         self.timeout = self.client_uni_dir_nsock_timeout
-        self.thru_host_stack_test("vcl_test_server", self.server_ipv6_args,
-                                  "vcl_test_client",
+        self.thru_host_stack_test("bin/vcl_test_server", self.server_ipv6_args,
+                                  "bin/vcl_test_client",
                                   self.client_ipv6_uni_dir_nsock_test_args)
 
 
