@@ -16,6 +16,24 @@
       "revId": "06e6463b3b0754ccef7f015555c121339998b462",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d865fa9_ce1b0d82",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1277,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-24T02:43:00Z",
+      "side": 1,
+      "message": "Although we do more now than before, the comment is meant to contrast what is done lower, for fast retransmit. In that regard, it\u0027s still valid because we only make sure we have an outstanding tx event, we don\u0027t try any selective retransmissions.",
+      "parentUuid": "6fb55bf1_6ae32a98",
+      "revId": "06e6463b3b0754ccef7f015555c121339998b462",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
