@@ -147,16 +147,6 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
 }
 
 static void
-vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
-					   mp)
-{
-  if (mp->retval)
-    clib_warning ("VCL<%d>: vpp handle 0x%llx: disconnect session failed: %U",
-		  getpid (), mp->handle, format_api_error,
-		  ntohl (mp->retval));
-}
-
-static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
@@ -229,163 +219,6 @@ static void
 }
 
 static void
-vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
-{
-  uword *p;
-
-  p = hash_get (vcm->session_index_by_vpp_handles, mp->handle);
-  if (p)
-    {
-      int rv;
-      vcl_session_t *session = 0;
-      u32 session_index = p[0];
-
-      VCL_SESSION_LOCK_AND_GET (session_index, &session);
-      session->session_state = STATE_CLOSE_ON_EMPTY;
-
-      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: setting state to 0x%x "
-	    "(%s)", getpid (), mp->handle, session_index,
-	    session->session_state,
-	    vppcom_session_state_str (session->session_state));
-      VCL_SESSION_UNLOCK ();
-      return;
-
-    done:
-      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session lookup failed!",
-	    getpid (), mp->handle, session_index);
-    }
-  else
-    clib_warning ("VCL<%d>: vpp handle 0x%llx: session lookup by "
-		  "handle failed!", getpid (), mp->handle);
-}
-
-static void
-vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
-{
-  vcl_session_t *session = 0;
-  vl_api_reset_session_reply_t *rmp;
-  uword *p;
-  int rv = 0;
-
-  p = hash_get (vcm->session_index_by_vpp_handles, mp->handle);
-  if (p)
-    {
-      int rval;
-      VCL_SESSION_LOCK ();
-      rval = vppcom_session_at_index (p[0], &session);
-      if (PREDICT_FALSE (rval))
-	{
-	  rv = VNET_API_ERROR_INVALID_VALUE_2;
-	  clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-			"session lookup failed! returning %d %U",
-			getpid (), mp->handle, p[0],
-			rv, format_api_error, rv);
-	}
-      else
-	{
-	  /* TBD: should this disconnect immediately and
-	   * flush the fifos?
-	   */
-	  session->session_state = STATE_CLOSE_ON_EMPTY;
-
-	  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: state set to %d "
-		"(%s)!", getpid (), mp->handle, p[0], session->session_state,
-		vppcom_session_state_str (session->session_state));
-	}
-      VCL_SESSION_UNLOCK ();
-    }
-  else
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx: session lookup "
-		    "failed! returning %d %U",
-		    getpid (), mp->handle, rv, format_api_error, rv);
-    }
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_RESET_SESSION_REPLY);
-  rmp->retval = htonl (rv);
-  rmp->handle = mp->handle;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
-}
-
-static void
-vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
-{
-  vcl_session_t *session = 0;
-  u32 session_index;
-  svm_fifo_t *rx_fifo, *tx_fifo;
-  int rv = VPPCOM_OK;
-
-  session_index = mp->context;
-  VCL_SESSION_LOCK_AND_GET (session_index, &session);
-done:
-  if (mp->retval)
-    {
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-		    "connect failed! %U",
-		    getpid (), mp->handle, session_index,
-		    format_api_error, ntohl (mp->retval));
-      if (session)
-	{
-	  session->session_state = STATE_FAILED;
-	  session->vpp_handle = mp->handle;
-	}
-      else
-	{
-	  clib_warning ("[%s] ERROR: vpp handle 0x%llx, sid %u: "
-			"Invalid session index (%u)!",
-			getpid (), mp->handle, session_index);
-	}
-      goto done_unlock;
-    }
-
-  if (rv)
-    goto done_unlock;
-
-  /*
-   * Setup session
-   */
-  if (vcm->session_io_thread.io_sessions_lockp)
-    {
-      // Add this connection to the active io sessions list
-      VCL_IO_SESSIONS_LOCK ();
-      u32 *active_session_index;
-      pool_get (vcm->session_io_thread.active_session_indexes,
-		active_session_index);
-      *active_session_index = session_index;
-      VCL_IO_SESSIONS_UNLOCK ();
-    }
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
-
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session_index;
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  tx_fifo->client_session_index = session_index;
-
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
-  session->vpp_handle = mp->handle;
-  session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (session->transport.rmt_ip));
-  session->transport.lcl_port = mp->lcl_port;
-  session->session_state = STATE_CONNECT;
-
-  /* Add it to lookup table */
-  hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
-
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: connect succeeded! "
-	"session_rx_fifo %p, refcnt %d, session_tx_fifo %p, refcnt %d",
-	getpid (), mp->handle, session_index, session->rx_fifo,
-	session->rx_fifo->refcnt, session->tx_fifo, session->tx_fifo->refcnt);
-done_unlock:
-  VCL_SESSION_UNLOCK ();
-}
-
-static void
 vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
   vcl_session_t *session = 0;
@@ -453,110 +286,10 @@ vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
     VDBG (1, "VCL<%d>: sid %u: unbind succeeded!", getpid (), mp->context);
 }
 
-static void
-vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
-{
-  svm_fifo_t *rx_fifo, *tx_fifo;
-  vcl_session_t *session, *listen_session;
-  u32 session_index;
-  vce_event_connect_request_t *ecr;
-  vce_event_t *ev;
-  int rv;
-  u32 ev_idx;
-  uword elts = 0;
-
-  VCL_SESSION_LOCK ();
-
-  VCL_ACCEPT_FIFO_LOCK ();
-  elts = clib_fifo_free_elts (vcm->client_session_index_fifo);
-  VCL_ACCEPT_FIFO_UNLOCK ();
-
-  if (!elts)
-    {
-      clib_warning ("VCL<%d>: client session queue is full!", getpid ());
-      vppcom_send_accept_session_reply (mp->handle, mp->context,
-					VNET_API_ERROR_QUEUE_FULL);
-      VCL_SESSION_UNLOCK ();
-      return;
-    }
-
-  listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
-  if (!listen_session)
-    {
-      clib_warning ("VCL<%d>: ERROR: couldn't find listen session: "
-		    "unknown vpp listener handle %llx",
-		    getpid (), mp->listener_handle);
-      vppcom_send_accept_session_reply (mp->handle, mp->context,
-					VNET_API_ERROR_INVALID_ARGUMENT);
-      VCL_SESSION_UNLOCK ();
-      return;
-    }
-
-  /* TODO check listener depth and update */
-  /* TODO on "child" fd close, update listener depth */
-
-  /* Allocate local session and set it up */
-  pool_get (vcm->sessions, session);
-  memset (session, 0, sizeof (*session));
-  session_index = (u32) (session - vcm->sessions);
-
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session_index;
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  tx_fifo->client_session_index = session_index;
-
-  session->vpp_handle = mp->handle;
-  session->client_context = mp->context;
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
-  session->session_state = STATE_ACCEPT;
-  session->transport.rmt_port = mp->port;
-  session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy (&session->transport.rmt_ip, mp->ip, sizeof (ip46_address_t));
-
-  /* Add it to lookup table */
-  hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
-  session->transport.lcl_port = listen_session->transport.lcl_port;
-  session->transport.lcl_ip = listen_session->transport.lcl_ip;
-
-  /* Create an event for handlers */
-
-  VCL_EVENTS_LOCK ();
-
-  pool_get (vcm->event_thread.vce_events, ev);
-  ev_idx = (u32) (ev - vcm->event_thread.vce_events);
-  ecr = vce_get_event_data (ev, sizeof (*ecr));
-  ev->evk.eid = VCL_EVENT_CONNECT_REQ_ACCEPTED;
-  listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
-  ev->evk.session_index = (u32) (listen_session - vcm->sessions);
-  ecr->accepted_session_index = session_index;
-
-  VCL_EVENTS_UNLOCK ();
-
-  rv = vce_generate_event (&vcm->event_thread, ev_idx);
-  ASSERT (rv == 0);
-
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: client accept request from %s"
-	" address %U port %d queue %p!", getpid (), mp->handle, session_index,
-	mp->is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->ip,
-	mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (mp->port), session->vpp_evt_q);
-
-  vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
-  VCL_SESSION_UNLOCK ();
-}
-
 #define foreach_sock_msg                                        	\
 _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
-_(ACCEPT_SESSION, accept_session)                               	\
-_(CONNECT_SESSION_REPLY, connect_session_reply)                 	\
-_(DISCONNECT_SESSION, disconnect_session)                      		\
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)           	\
-_(RESET_SESSION, reset_session)                                 	\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
@@ -665,24 +398,6 @@ vppcom_send_connect_sock (vcl_session_t * session, u32 session_index)
   cmp->proto = session->session_type;
   clib_memcpy (cmp->options, session->options, sizeof (cmp->options));
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & cmp);
-}
-
-void
-vppcom_send_disconnect_session_reply (u64 vpp_handle, u32 session_index,
-				      int rv)
-{
-  vl_api_disconnect_session_reply_t *rmp;
-
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect msg",
-	getpid (), vpp_handle, session_index);
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-
-  rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
-  rmp->retval = htonl (rv);
-  rmp->handle = vpp_handle;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
 }
 
 void
