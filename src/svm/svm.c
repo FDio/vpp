@@ -92,7 +92,7 @@ svm_get_global_region_base_va ()
 #endif
 
   /* default value */
-  return 0x30000000;
+  return 0x130000000ULL;
 }
 
 static void
