@@ -3,11 +3,6 @@
 import json
 
 
-def msg_is_reply(name):
-    return name.endswith('_reply') or name.endswith('_details') \
-        or name.endswith('_event') or name.endswith('_counters')
-
-
 class ParseError (Exception):
     pass
 
@@ -24,12 +19,8 @@ def remove_magic(what):
 
 class Field(object):
 
-    def __init__(
-            self,
-            field_name,
-            field_type,
-            array_len=None,
-            nelem_field=None):
+    def __init__(self, field_name, field_type, array_len=None,
+                 nelem_field=None):
         self.name = field_name
         self.type = field_type
         self.len = array_len
@@ -63,20 +54,20 @@ class SimpleType (Type):
         return self.name
 
 
-def get_msg_header_defs(struct_type_class, field_class, typedict, logger):
+def get_msg_header_defs(struct_type_class, field_class, json_parser, logger):
     return [
         struct_type_class(['msg_header1_t',
                            ['u16', '_vl_msg_id'],
                            ['u32', 'context'],
                            ],
-                          typedict, field_class, logger
+                          json_parser, field_class, logger
                           ),
         struct_type_class(['msg_header2_t',
                            ['u16', '_vl_msg_id'],
                            ['u32', 'client_index'],
                            ['u32', 'context'],
                            ],
-                          typedict, field_class, logger
+                          json_parser, field_class, logger
                           ),
     ]
 
@@ -87,15 +78,44 @@ class Struct(object):
         self.name = name
         self.fields = fields
         self.field_names = [n.name for n in self.fields]
+        self.depends = [f.type for f in self.fields]
 
     def __str__(self):
         return "[%s]" % "], [".join([str(f) for f in self.fields])
 
 
+class Enum(SimpleType):
+    def __init__(self, name, value_pairs, enumtype):
+        super(Enum, self).__init__(name)
+        self.type = enumtype
+        self.value_pairs = value_pairs
+
+    def __str__(self):
+        return "Enum(%s, [%s])" % (
+            self.name,
+            "], [" .join(["%s => %s" % (i, j) for i, j in self.value_pairs])
+        )
+
+
+class Union(Type):
+    def __init__(self, name, type_pairs, crc):
+        Type.__init__(self, name)
+        self.crc = crc
+        self.type_pairs = type_pairs
+        self.depends = [t for t, _ in self.type_pairs]
+
+    def __str__(self):
+        return "Union(%s, [%s])" % (
+            self.name,
+            "], [" .join(["%s %s" % (i, j) for i, j in self.type_pairs])
+        )
+
+
 class Message(object):
 
-    def __init__(self, logger, definition, typedict,
-                 struct_type_class, simple_type_class, field_class):
+    def __init__(self, logger, definition, json_parser):
+        struct_type_class = json_parser.struct_type_class
+        field_class = json_parser.field_class
         self.request = None
         self.logger = logger
         m = definition
@@ -105,9 +125,11 @@ class Message(object):
         logger.debug("Message name is `%s'" % name)
         ignore = True
         self.header = None
+        self.is_reply = json_parser.is_reply(self.name)
+        self.is_event = json_parser.is_event(self.name)
         fields = []
         for header in get_msg_header_defs(struct_type_class, field_class,
-                                          typedict, logger):
+                                          json_parser, logger):
             logger.debug("Probing header `%s'" % header.name)
             if header.is_part_of_def(m[1:]):
                 self.header = header
@@ -116,7 +138,7 @@ class Message(object):
                                           field_type=self.header))
                 ignore = False
                 break
-        if ignore and not msg_is_reply(name):
+        if ignore and not self.is_event and not self.is_reply:
             raise ParseError("While parsing message `%s': could not find all "
                              "common header fields" % name)
         for field in m[1:]:
@@ -125,18 +147,7 @@ class Message(object):
                 logger.debug("Found CRC `%s'" % self.crc)
                 continue
             else:
-                field_type = field[0]
-                if field_type in typedict:
-                    field_type = typedict[field_type]
-                else:
-                    mundane_field_type = remove_magic(field_type)
-                    if mundane_field_type in typedict:
-                        field_type = typedict[mundane_field_type]
-                    else:
-                        raise ParseError(
-                            "While parsing message `%s': could not find "
-                            "type by magic name `%s' nor by mundane name "
-                            "`%s'" % (name, field_type, mundane_field_type))
+                field_type = json_parser.lookup_type_like_id(field[0])
                 logger.debug("Parsing message field `%s'" % field)
                 if len(field) == 2:
                     if self.header is not None and\
@@ -178,17 +189,12 @@ class Message(object):
                 logger.debug("Parsed field `%s'" % p)
                 fields.append(p)
         self.fields = fields
-
-    def is_dump(self):
-        return self.name.endswith('_dump')
-
-    def is_reply(self):
-        return msg_is_reply(self.name)
+        self.depends = [f.type for f in self.fields]
 
 
 class StructType (Type, Struct):
 
-    def __init__(self, definition, typedict, field_class, logger):
+    def __init__(self, definition, json_parser, field_class, logger):
         t = definition
         logger.debug("Parsing struct definition `%s'" % t)
         name = t[0]
@@ -197,18 +203,7 @@ class StructType (Type, Struct):
             if len(field) == 1 and 'crc' in field:
                 self.crc = field['crc']
                 continue
-            field_type = field[0]
-            if field_type in typedict:
-                field_type = typedict[field_type]
-            else:
-                mundane_field_type = remove_magic(field_type)
-                if mundane_field_type in typedict:
-                    field_type = typedict[mundane_field_type]
-                else:
-                    raise ParseError(
-                        "While parsing message `%s': could not find "
-                        "type by magic name `%s' nor by mundane name "
-                        "`%s'" % (name, field_type, mundane_field_type))
+            field_type = json_parser.lookup_type_like_id(field[0])
             logger.debug("Parsing type field `%s'" % field)
             if len(field) == 2:
                 p = field_class(field_name=field[1],
@@ -266,9 +261,13 @@ class StructType (Type, Struct):
 
 class JsonParser(object):
     def __init__(self, logger, files, simple_type_class=SimpleType,
+                 enum_class=Enum, union_class=Union,
                  struct_type_class=StructType, field_class=Field,
                  message_class=Message):
+        self.services = {}
         self.messages = {}
+        self.enums = {}
+        self.unions = {}
         self.types = {
             x: simple_type_class(x) for x in [
                 'i8', 'i16', 'i32', 'i64',
@@ -277,7 +276,11 @@ class JsonParser(object):
             ]
         }
 
+        self.replies = set()
+        self.events = set()
         self.simple_type_class = simple_type_class
+        self.enum_class = enum_class
+        self.union_class = union_class
         self.struct_type_class = struct_type_class
         self.field_class = field_class
         self.message_class = message_class
@@ -285,6 +288,8 @@ class JsonParser(object):
         self.exceptions = []
         self.json_files = []
         self.types_by_json = {}
+        self.enums_by_json = {}
+        self.unions_by_json = {}
         self.messages_by_json = {}
         self.logger = logger
         for f in files:
@@ -295,22 +300,75 @@ class JsonParser(object):
         self.logger.info("Parsing json api file: `%s'" % path)
         self.json_files.append(path)
         self.types_by_json[path] = []
+        self.enums_by_json[path] = []
+        self.unions_by_json[path] = []
         self.messages_by_json[path] = {}
         with open(path) as f:
             j = json.load(f)
-            for t in j['types']:
-                try:
-                    type_ = self.struct_type_class(t, self.types,
-                                                   self.field_class,
-                                                   self.logger)
-                    if type_.name in self.types:
-                        raise ParseError("Duplicate type `%s'" % type_.name)
-                except ParseError as e:
-                    self.exceptions.append(e)
-                    continue
-                self.types[type_.name] = type_
-                self.types_by_json[path].append(type_)
-                self.logger.debug("Parsed type: %s" % type_)
+            for k in j['services']:
+                if k in self.services:
+                    raise ParseError("Duplicate service `%s'" % k)
+                self.services[k] = j['services'][k]
+                self.replies.add(self.services[k]["reply"])
+                if "events" in self.services[k]:
+                    for x in self.services[k]["events"]:
+                        self.events.add(x)
+            for e in j['enums']:
+                name = e[0]
+                value_pairs = e[1:-1]
+                enumtype = self.types[e[-1]["enumtype"]]
+                enum = self.enum_class(name, value_pairs, enumtype)
+                self.enums[enum.name] = enum
+                self.logger.debug("Parsed enum: %s" % enum)
+                self.enums_by_json[path].append(enum)
+            exceptions = []
+            progress = 0
+            last_progress = 0
+            while True:
+                for u in j['unions']:
+                    name = u[0]
+                    if name in self.unions:
+                        progress = progress + 1
+                        continue
+                    try:
+                        type_pairs = [[self.lookup_type_like_id(t), n]
+                                      for t, n in u[1:-1]]
+                        crc = u[-1]["crc"]
+                        union = self.union_class(name, type_pairs, crc)
+                        progress = progress + 1
+                    except ParseError as e:
+                        exceptions.append(e)
+                        continue
+                    self.unions[union.name] = union
+                    self.logger.debug("Parsed union: %s" % union)
+                    self.unions_by_json[path].append(union)
+                for t in j['types']:
+                    if t[0] in self.types:
+                        progress = progress + 1
+                        continue
+                    try:
+                        type_ = self.struct_type_class(t, self,
+                                                       self.field_class,
+                                                       self.logger)
+                        if type_.name in self.types:
+                            raise ParseError(
+                                "Duplicate type `%s'" % type_.name)
+                        progress = progress + 1
+                    except ParseError as e:
+                        exceptions.append(e)
+                        continue
+                    self.types[type_.name] = type_
+                    self.types_by_json[path].append(type_)
+                    self.logger.debug("Parsed type: %s" % type_)
+                if not exceptions:
+                    # finished parsing
+                    break
+                if progress <= last_progress:
+                    # cannot make forward progress
+                    self.exceptions.extend(exceptions)
+                exceptions = []
+                last_progress = progress
+                progress = 0
             prev_length = len(self.messages)
             processed = []
             while True:
@@ -319,10 +377,7 @@ class JsonParser(object):
                     if m in processed:
                         continue
                     try:
-                        msg = self.message_class(self.logger, m, self.types,
-                                                 self.struct_type_class,
-                                                 self.simple_type_class,
-                                                 self.field_class)
+                        msg = self.message_class(self.logger, m, self)
                         if msg.name in self.messages:
                             raise ParseError(
                                 "Duplicate message `%s'" % msg.name)
@@ -338,10 +393,32 @@ class JsonParser(object):
                     break
                 prev_length = len(self.messages)
 
+    def lookup_type_like_id(self, name):
+        mundane_name = remove_magic(name)
+        if name in self.types:
+            return self.types[name]
+        elif name in self.enums:
+            return self.enums[name]
+        elif name in self.unions:
+            return self.unions[name]
+        elif mundane_name in self.types:
+            return self.types[mundane_name]
+        elif mundane_name in self.enums:
+            return self.enums[mundane_name]
+        elif mundane_name in self.unions:
+            return self.unions[mundane_name]
+        raise ParseError(
+            "Could not find type, enum or union by magic name `%s' nor by "
+            "mundane name `%s'" % (name, mundane_name))
+
+    def is_reply(self, message):
+        return message in self.replies
+
+    def is_event(self, message):
+        return message in self.events
+
     def get_reply(self, message):
-        if self.messages[message].is_dump():
-            return self.messages["%s_details" % message[:-len("_dump")]]
-        return self.messages["%s_reply" % message]
+        return self.messages[self.services[message]['reply']]
 
     def finalize_parsing(self):
         if len(self.messages) == 0:
@@ -351,9 +428,14 @@ class JsonParser(object):
             remove = []
             for n, m in j.items():
                 try:
-                    if not m.is_reply():
+                    if not m.is_reply and not m.is_event:
                         try:
                             m.reply = self.get_reply(n)
+                            if "stream" in self.services[m.name]:
+                                m.reply_is_stream = \
+                                    self.services[m.name]["stream"]
+                            else:
+                                m.reply_is_stream = False
                             m.reply.request = m
                         except:
                             raise ParseError(

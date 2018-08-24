@@ -4,8 +4,8 @@ import argparse
 import os
 import sys
 import logging
-from vapi_c_gen import CField, CStruct, CSimpleType, CStructType, CMessage, \
-    json_to_c_header_name
+from vapi_c_gen import CField, CEnum, CStruct, CSimpleType, CStructType,\
+    CMessage, json_to_c_header_name
 from vapi_json_parser import JsonParser
 
 
@@ -14,6 +14,10 @@ class CppField(CField):
 
 
 class CppStruct(CStruct):
+    pass
+
+
+class CppEnum(CEnum):
     pass
 
 
@@ -69,7 +73,7 @@ class CppMessage (CMessage):
         return "%s%s" % (self.name[0].upper(), self.name[1:])
 
     def get_req_template_name(self):
-        if self.is_dump():
+        if self.reply_is_stream:
             template = "Dump"
         else:
             template = "Request"
@@ -159,7 +163,7 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
             print("/* m.get_cpp_constructor() */")
         print("%s" % m.get_cpp_constructor())
         print("")
-        if not m.is_reply():
+        if not m.is_reply and not m.is_event:
             if add_debug_comments:
                 print("/* m.get_alloc_template_instantiation() */")
             print("%s" % m.get_alloc_template_instantiation())
@@ -168,7 +172,7 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
             print("/* m.get_msg_class_instantiation() */")
         print("%s" % m.get_msg_class_instantiation())
         print("")
-        if m.is_reply():
+        if m.is_reply or m.is_event:
             if add_debug_comments:
                 print("/* m.get_reply_type_alias() */")
             print("%s" % m.get_reply_type_alias())
@@ -246,6 +250,7 @@ if __name__ == '__main__':
                             simple_type_class=CppSimpleType,
                             struct_type_class=CppStructType,
                             field_class=CppField,
+                            enum_class=CppEnum,
                             message_class=CppMessage)
 
     gen_cpp_headers(jsonparser, logger, args.prefix, args.gen_h_prefix,

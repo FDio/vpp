@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import logging
-from vapi_json_parser import Field, Struct, Message, JsonParser,\
+from vapi_json_parser import Field, Struct, Enum, Union, Message, JsonParser,\
     SimpleType, StructType
 
 
@@ -58,18 +58,11 @@ class CField(Field):
 
 
 class CStruct(Struct):
-    def duplicate_barrier(func):
-        def func_wrapper(self):
-            name = self.get_c_name()
-            return "#ifndef defined_{}\n#define defined_{}\n{}\n#endif".format(name, name, func(self))
-        return func_wrapper
-
-    @duplicate_barrier
     def get_c_def(self):
         return "\n".join([
-            "typedef struct __attribute__((__packed__)) {",
-            "%s;" % ";\n".join(["  %s" % x.get_c_def()
-                                for x in self.fields]),
+            "typedef struct __attribute__((__packed__)) {\n%s;" % (
+                ";\n".join(["  %s" % x.get_c_def()
+                            for x in self.fields])),
             "} %s;" % self.get_c_name()])
 
 
@@ -96,13 +89,17 @@ class CSimpleType (SimpleType):
     def get_swap_to_host_func_name(self):
         return self.swap_to_host_dict[self.name]
 
-    def get_swap_to_be_code(self, struct, var):
+    def get_swap_to_be_code(self, struct, var, cast=None):
         x = "%s%s" % (struct, var)
-        return "%s = %s(%s);" % (x, self.get_swap_to_be_func_name(), x)
+        return "%s = %s%s(%s);" % (x,
+                                   "(%s)" % cast if cast else "",
+                                   self.get_swap_to_be_func_name(), x)
 
-    def get_swap_to_host_code(self, struct, var):
+    def get_swap_to_host_code(self, struct, var, cast=None):
         x = "%s%s" % (struct, var)
-        return "%s = %s(%s);" % (x, self.get_swap_to_host_func_name(), x)
+        return "%s = %s%s(%s);" % (x,
+                                   "(%s)" % cast if cast else "",
+                                   self.get_swap_to_host_func_name(), x)
 
     def needs_byte_swap(self):
         try:
@@ -110,6 +107,41 @@ class CSimpleType (SimpleType):
             return True
         except:
             pass
+        return False
+
+
+class CEnum(Enum):
+    def get_c_name(self):
+        return "vapi_enum_%s" % self.name
+
+    def get_c_def(self):
+        return "typedef enum {\n%s\n} %s;" % (
+            "\n".join(["  %s = %s," % (i, j) for i, j in self.value_pairs]),
+            self.get_c_name()
+        )
+
+    def needs_byte_swap(self):
+        return self.type.needs_byte_swap()
+
+    def get_swap_to_be_code(self, struct, var):
+        return self.type.get_swap_to_be_code(struct, var, self.get_c_name())
+
+    def get_swap_to_host_code(self, struct, var):
+        return self.type.get_swap_to_host_code(struct, var, self.get_c_name())
+
+
+class CUnion(Union):
+    def get_c_name(self):
+        return "vapi_union_%s" % self.name
+
+    def get_c_def(self):
+        return "typedef union {\n%s\n} %s;" % (
+            "\n".join(["  %s %s;" % (i.get_c_name(), j)
+                       for i, j in self.type_pairs]),
+            self.get_c_name()
+        )
+
+    def needs_byte_swap(self):
         return False
 
 
@@ -161,11 +193,8 @@ class CStructType (StructType, CStruct):
 
 
 class CMessage (Message):
-    def __init__(self, logger, definition, typedict,
-                 struct_type_class, simple_type_class, field_class):
-        super(CMessage, self).__init__(logger, definition, typedict,
-                                       struct_type_class, simple_type_class,
-                                       field_class)
+    def __init__(self, logger, definition, json_parser):
+        super(CMessage, self).__init__(logger, definition, json_parser)
         self.payload_members = [
             "  %s" % p.get_c_def()
             for p in self.fields
@@ -260,13 +289,6 @@ class CMessage (Message):
             "}",
         ])
 
-    def duplicate_barrier(func):
-        def func_wrapper(self):
-            name = self.get_payload_struct_name()
-            return "#ifndef defined_{}\n#define defined_{}\n{}\n#endif".format(name, name, func(self))
-        return func_wrapper
-
-    @duplicate_barrier
     def get_c_def(self):
         if self.has_payload():
             return "\n".join([
@@ -415,12 +437,12 @@ class CMessage (Message):
             "  %s(msg);" % self.get_swap_to_be_func_name(),
             ("  if (VAPI_OK == (rv = vapi_send_with_control_ping "
                 "(ctx, msg, req_context))) {"
-                if self.is_dump() else
+                if self.reply_is_stream else
                 "  if (VAPI_OK == (rv = vapi_send (ctx, msg))) {"
              ),
             ("    vapi_store_request(ctx, req_context, %s, "
              "(vapi_cb_t)callback, callback_ctx);" %
-             ("true" if self.is_dump() else "false")),
+             ("true" if self.reply_is_stream else "false")),
             "    if (VAPI_OK != vapi_producer_unlock (ctx)) {",
             "      abort (); /* this really shouldn't happen */",
             "    }",
@@ -441,7 +463,7 @@ class CMessage (Message):
         ])
 
     def get_event_cb_func_decl(self):
-        if not self.is_reply():
+        if not self.is_reply and not self.is_event:
             raise Exception(
                 "Cannot register event callback for non-reply message")
         if self.has_payload():
@@ -465,7 +487,7 @@ class CMessage (Message):
             ])
 
     def get_event_cb_func_def(self):
-        if not self.is_reply():
+        if not self.is_reply and not self.is_event:
             raise Exception(
                 "Cannot register event callback for non-reply function")
         return "\n".join([
@@ -531,6 +553,65 @@ vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
 """
 
 
+def emit_definition(parser, json_file, emitted, o, logger):
+    if o in emitted:
+        return
+    logger.debug("emit definition for %s" % o)
+    if o.name in ("msg_header1_t", "msg_header2_t"):
+        return
+    if hasattr(o, "depends"):
+        for x in o.depends:
+            emit_definition(parser, json_file, emitted, x, logger)
+    if hasattr(o, "reply"):
+        emit_definition(parser, json_file, emitted, o.reply, logger)
+    if hasattr(o, "get_c_def"):
+        if (o not in parser.enums_by_json[json_file] and
+                o not in parser.types_by_json[json_file] and
+                o not in parser.unions_by_json[json_file] and
+                o.name not in parser.messages_by_json[json_file]):
+            return
+        logger.debug("writing def")
+        guard = "defined_%s" % o.get_c_name()
+        print("#ifndef %s" % guard)
+        print("#define %s" % guard)
+        print("%s" % o.get_c_def())
+        print("")
+        function_attrs = "static inline "
+        if o.name in parser.messages_by_json[json_file]:
+            logger.debug("o is %s" % o.name)
+            if o.has_payload():
+                logger.debug("o has payload ")
+                print("%s%s" % (function_attrs,
+                                o.get_swap_payload_to_be_func_def()))
+                print("")
+                print("%s%s" % (function_attrs,
+                                o.get_swap_payload_to_host_func_def()))
+                print("")
+            print("%s%s" % (function_attrs, o.get_swap_to_be_func_def()))
+            print("")
+            print("%s%s" % (function_attrs, o.get_swap_to_host_func_def()))
+            print("")
+            print("%s%s" % (function_attrs, o.get_calc_msg_size_func_def()))
+            print("")
+            if not o.is_reply and not o.is_event:
+                print("%s%s" % (function_attrs, o.get_alloc_func_def()))
+                print("")
+                print("%s%s" % (function_attrs, o.get_op_func_def()))
+                print("")
+            print("%s" % o.get_c_constructor())
+            print("")
+            if o.is_reply and not o.is_event:
+                print("%s%s;" % (function_attrs, o.get_event_cb_func_def()))
+                print("")
+        elif hasattr(o, "get_swap_to_be_func_def"):
+            print("%s%s" % (function_attrs, o.get_swap_to_be_func_def()))
+            print("")
+            print("%s%s" % (function_attrs, o.get_swap_to_host_func_def()))
+            print("")
+        print("#endif")
+    emitted.append(o)
+
+
 def gen_json_unified_header(parser, logger, j, io, name):
     d, f = os.path.split(j)
     logger.info("Generating header `%s'" % name)
@@ -569,57 +650,16 @@ def gen_json_unified_header(parser, logger, j, io, name):
     ]))
     print("")
     print("")
+    emitted = []
+    for e in parser.enums_by_json[j]:
+        emit_definition(parser, j, emitted, e, logger)
+    for u in parser.unions_by_json[j]:
+        emit_definition(parser, j, emitted, u, logger)
     for t in parser.types_by_json[j]:
-        try:
-            print("%s" % t.get_c_def())
-            print("")
-        except:
-            pass
+        emit_definition(parser, j, emitted, t, logger)
     for m in parser.messages_by_json[j].values():
-        print("%s" % m.get_c_def())
-        print("")
+        emit_definition(parser, j, emitted, m, logger)
 
-    print("")
-    function_attrs = "static inline "
-    for t in parser.types_by_json[j]:
-        print("#ifndef defined_inline_%s" % t.get_c_name())
-        print("#define defined_inline_%s" % t.get_c_name())
-        print("%s%s" % (function_attrs, t.get_swap_to_be_func_def()))
-        print("")
-        print("%s%s" % (function_attrs, t.get_swap_to_host_func_def()))
-        print("#endif")
-        print("")
-    for m in parser.messages_by_json[j].values():
-        if m.has_payload():
-            print("%s%s" % (function_attrs,
-                            m.get_swap_payload_to_be_func_def()))
-            print("")
-            print("%s%s" % (function_attrs,
-                            m.get_swap_payload_to_host_func_def()))
-            print("")
-        print("%s%s" % (function_attrs, m.get_calc_msg_size_func_def()))
-        print("")
-        print("%s%s" % (function_attrs, m.get_swap_to_be_func_def()))
-        print("")
-        print("%s%s" % (function_attrs, m.get_swap_to_host_func_def()))
-        print("")
-    for m in parser.messages_by_json[j].values():
-        if m.is_reply():
-            continue
-        print("%s%s" % (function_attrs, m.get_alloc_func_def()))
-        print("")
-        print("%s%s" % (function_attrs, m.get_op_func_def()))
-        print("")
-    print("")
-    for m in parser.messages_by_json[j].values():
-        print("%s" % m.get_c_constructor())
-        print("")
-    print("")
-    for m in parser.messages_by_json[j].values():
-        if not m.is_reply():
-            continue
-        print("%s%s;" % (function_attrs, m.get_event_cb_func_def()))
-        print("")
     print("")
 
     if name == "vpe.api.vapi.h":
@@ -684,6 +724,8 @@ if __name__ == '__main__':
 
     jsonparser = JsonParser(logger, args.files,
                             simple_type_class=CSimpleType,
+                            enum_class=CEnum,
+                            union_class=CUnion,
                             struct_type_class=CStructType,
                             field_class=CField,
                             message_class=CMessage)
