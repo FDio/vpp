@@ -33,6 +33,22 @@
 #error BIHASH_TYPE not defined
 #endif
 
+#ifndef BIHASH_32_64_SVM
+#define BIHASH_32_64_SVM 1
+#endif
+
+#ifdef BIHASH_32_64_SVM
+#include </usr/include/linux/memfd.h>
+#undef HAVE_MEMFD_CREATE
+#include <vppinfra/linux/syscall.h>
+#include <fcntl.h>
+#define F_LINUX_SPECIFIC_BASE 1024
+#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
+#define F_SEAL_SHRINK (2)
+/* Max page size 2**20 */
+#define BIHASH_FREELIST_LENGTH 20
+#endif
+
 #define _bv(a,b) a##b
 #define __bv(a,b) _bv(a,b)
 #define BV(a) __bv(a,BIHASH_TYPE)
@@ -40,6 +56,16 @@
 #define _bvt(a,b) a##b##_t
 #define __bvt(a,b) _bvt(a,b)
 #define BVT(a) __bvt(a,BIHASH_TYPE)
+
+#if _LP64 == 0
+#define OVERFLOW_ASSERT(x) ASSERT(((x) & 0xFFFFFFFF00000000ULL) == 0)
+#define u64_to_pointer(x) (void *)(u32)((x))
+#define pointer_to_u64(x) (u64)(u32)((x))
+#else
+#define OVERFLOW_ASSERT(x)
+#define u64_to_pointer(x) (void *)((x))
+#define pointer_to_u64(x) (u64)((x))
+#endif
 
 typedef struct BV (clib_bihash_value)
 {
@@ -70,9 +96,29 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_bucket), sizeof (u64));
 
+typedef CLIB_PACKED (struct
+		     {
+		     /*
+		      * Backing store allocation. Since bihash manages its own
+		      * freelists, we simple dole out memory at alloc_arena_next.
+		      */
+		     u64 alloc_arena_next;	/* Next VA to allocate, definitely NOT a constant */
+		     u64 alloc_arena_size;	/* Size of the arena */
+		     u64 alloc_arena;	/* Base VA of the arena */
+		     /* Two SVM pointers stored as 8-byte integers */
+		     u64 alloc_lock_as_u64;
+		     u64 buckets_as_u64;
+		     /* freelist list-head arrays/vectors */
+		     u64 freelists_as_u64;
+		     u32 nbuckets;	/* Number of buckets */
+		     /* Set when header valid */
+		     volatile u32 ready; u64 pad;
+		     }) BVT (clib_bihash_shared_header);
+
+STATIC_ASSERT_SIZEOF (BVT (clib_bihash_shared_header), CLIB_CACHE_LINE_BYTES);
+
 typedef struct
 {
-  BVT (clib_bihash_value) * values;
   BVT (clib_bihash_bucket) * buckets;
   volatile u32 *alloc_lock;
 
@@ -86,13 +132,12 @@ typedef struct
 
     BVT (clib_bihash_value) ** freelists;
 
-  /*
-   * Backing store allocation. Since bihash manages its own
-   * freelists, we simple dole out memory at alloc_arena_next.
-   */
-  uword alloc_arena;
-  uword alloc_arena_next;
-  uword alloc_arena_size;
+#if BIHASH_32_64_SVM
+    BVT (clib_bihash_shared_header) * sh;
+  int memfd;
+#else
+    BVT (clib_bihash_shared_header) sh;
+#endif
 
   /**
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump
@@ -100,6 +145,18 @@ typedef struct
   format_function_t *fmt_fn;
 
 } BVT (clib_bihash);
+
+#if BIHASH_32_64_SVM
+#define alloc_arena_next(h) (((h)->sh)->alloc_arena_next)
+#define alloc_arena_size(h) (((h)->sh)->alloc_arena_size)
+#define alloc_arena(h) (((h)->sh)->alloc_arena)
+#define CLIB_BIHASH_READY_MAGIC 0xFEEDFACE
+#else
+#define alloc_arena_next(h) ((h)->sh.alloc_arena_next)
+#define alloc_arena_size(h) ((h)->sh.alloc_arena_size)
+#define alloc_arena(h) ((h)->sh.alloc_arena)
+#define CLIB_BIHASH_READY_MAGIC 0
+#endif
 
 static inline void BV (clib_bihash_alloc_lock) (BVT (clib_bihash) * h)
 {
@@ -139,7 +196,7 @@ static inline void BV (clib_bihash_unlock_bucket)
 static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
 						uword offset)
 {
-  u8 *hp = (u8 *) h->alloc_arena;
+  u8 *hp = (u8 *) alloc_arena (h);
   u8 *vp = hp + offset;
 
   return (void *) vp;
@@ -157,7 +214,7 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 {
   u8 *hp, *vp;
 
-  hp = (u8 *) h->alloc_arena;
+  hp = (u8 *) alloc_arena (h);
   vp = (u8 *) v;
 
   return vp - hp;
@@ -165,6 +222,12 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
+
+#if BIHASH_32_64_SVM
+void BV (clib_bihash_init_svm)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets,
+   u64 base_address, u64 memory_size, int is_master);
+#endif
 
 void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
 					 format_function_t * fmt_fn);
