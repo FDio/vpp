@@ -321,6 +321,25 @@ clib_mem_vm_alloc (uword size)
   return mmap_addr;
 }
 
+/* Allocate virtual address space. */
+always_inline void *
+clib_mem_vm_alloc_at_address (u64 size, u64 base_address)
+{
+  void *mmap_addr;
+  u32 flags = base_address == 0 ? MAP_PRIVATE : MAP_SHARED;
+
+#ifdef MAP_ANONYMOUS
+  flags |= MAP_ANONYMOUS;
+#endif
+
+  mmap_addr = mmap ((void *) base_address, size,
+		    PROT_READ | PROT_WRITE, flags, -1, 0);
+  if (mmap_addr == (void *) -1)
+    mmap_addr = 0;
+
+  return mmap_addr;
+}
+
 always_inline void
 clib_mem_vm_free (void *addr, uword size)
 {

@@ -571,12 +571,13 @@ format_ip6_fib_table_memory (u8 * s, va_list * args)
     uword bytes_inuse;
 
     bytes_inuse = 
-        ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.alloc_arena_next
-        - ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.alloc_arena;
+        alloc_arena_next 
+        (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash))
+        - alloc_arena (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash));
 
     bytes_inuse += 
-        ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.alloc_arena_next
-        - ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.alloc_arena;
+        alloc_arena_next(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash))
+        - alloc_arena(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash));
 
     s = format(s, "%=30s %=6d %=8ld\n",
                "IPv6 unicast",
