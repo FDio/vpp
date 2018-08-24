@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6fb55bf1_6ae32a98",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1277,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-24T02:34:48Z",
+      "side": 1,
+      "message": "should we change the comment as well?",
+      "revId": "06e6463b3b0754ccef7f015555c121339998b462",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
