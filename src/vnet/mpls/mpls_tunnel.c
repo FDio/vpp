@@ -32,11 +32,6 @@
 static mpls_tunnel_t *mpls_tunnel_pool;
 
 /**
- * @brief Pool of free tunnel SW indices - i.e. recycled indices
- */
-static u32 * mpls_tunnel_free_hw_if_indices;
-
-/**
  * @brief DB of SW index to tunnel index
  */
 static u32 *mpls_tunnel_db;
@@ -594,7 +589,8 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
                                    mt->mt_sibling_index);
     dpo_reset(&mt->mt_l2_lb);
 
-    vec_add1 (mpls_tunnel_free_hw_if_indices, mt->mt_hw_if_index);
+    vnet_delete_hw_interface (vnet_get_main(), mt->mt_hw_if_index);
+
     pool_put(mpls_tunnel_pool, mt);
     mpls_tunnel_db[sw_if_index] = ~0;
 }
@@ -622,27 +618,15 @@ vnet_mpls_tunnel_create (u8 l2_only,
         mt->mt_flags |= MPLS_TUNNEL_FLAG_L2;
 
     /*
-     * Create a new, or re=use and old, tunnel HW interface
+     * Create a new tunnel HW interface
      */
-    if (vec_len (mpls_tunnel_free_hw_if_indices) > 0)
-    {
-        mt->mt_hw_if_index =
-            mpls_tunnel_free_hw_if_indices[vec_len(mpls_tunnel_free_hw_if_indices)-1];
-        _vec_len (mpls_tunnel_free_hw_if_indices) -= 1;
-        hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
-        hi->hw_instance = mti;
-        hi->dev_instance = mti;
-    }
-    else
-    {
-        mt->mt_hw_if_index = vnet_register_interface(
-                                 vnm,
-                                 mpls_tunnel_class.index,
-                                 mti,
-                                 mpls_tunnel_hw_interface_class.index,
-                                 mti);
-        hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
-    }
+    mt->mt_hw_if_index = vnet_register_interface(
+        vnm,
+        mpls_tunnel_class.index,
+        mti,
+        mpls_tunnel_hw_interface_class.index,
+        mti);
+    hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
 
     /* Standard default MPLS tunnel MTU. */
     vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
@@ -826,7 +810,11 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 
     if (is_del)
     {
-        if (!vnet_mpls_tunnel_path_remove(sw_if_index, rpaths))
+        if (NULL == rpaths)
+        {
+            vnet_mpls_tunnel_del(sw_if_index);
+        }
+        else if (!vnet_mpls_tunnel_path_remove(sw_if_index, rpaths))
         {
             vnet_mpls_tunnel_del(sw_if_index);
         }
