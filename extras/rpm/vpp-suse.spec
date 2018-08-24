@@ -213,8 +213,6 @@ for file in $(find %{_vpp_install_dir}/vpp/share/vpp/api  -type f -name '*.api.j
 do
         install -p -m 644 $file %{buildroot}%{_datadir}/vpp/api
 done
-install -p -m 644 %{_vpp_build_dir}/../src/scripts/vppctl_completion %{buildroot}%{_sysconfdir}/bash_completion.d
-install -p -m 644 %{_vpp_build_dir}/../src/scripts/vppctl-cmd-list %{buildroot}%{_datadir}/vpp
 
 # Lua bindings
 mkdir -p -m755 %{buildroot}%{_datadir}/doc/vpp/examples/lua/examples/cli
@@ -321,8 +319,6 @@ export NO_BRP_CHECK_RPATH=true
 %dir %{_sysconfdir}/vpp
 %config %{_sysconfdir}/sysctl.d/80-vpp.conf
 %config %{_sysconfdir}/vpp/startup.conf
-%{_sysconfdir}/bash_completion.d/vppctl_completion
-%{_datadir}/vpp/vppctl-cmd-list
 %license LICENSE
 
 %files -n %{lname}
