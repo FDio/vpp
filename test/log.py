@@ -59,6 +59,7 @@ def getLogger(name):
 def get_parallel_logger(stream):
     logger = logging.getLogger('parallel_logger_{}'.format(stream))
     logger.propagate = False
+    logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(stream)
     handler.setFormatter(color_formatter)
     handler.setLevel(log_level)
