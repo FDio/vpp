@@ -1261,6 +1261,9 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
       goto done;
     }
 
+  /* Make coverity happy */
+  ASSERT (args.evt_q && args.segment);
+
   /* Send fifo segment fd if needed */
   if (ssvm_type (args.segment) == SSVM_SEGMENT_MEMFD)
     {

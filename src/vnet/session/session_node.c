@@ -132,12 +132,16 @@ session_mq_disconnected_handler (void *data)
   int rv = 0;
 
   mp = (session_disconnected_msg_t *) data;
-  s = session_get_from_handle_if_valid (mp->handle);
+  if (!(s = session_get_from_handle_if_valid (mp->handle)))
+    {
+      clib_warning ("could not disconnect handle %llu", mp->handle);
+      return;
+    }
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_lookup (mp->client_index);
-  if (!(app_wrk && s && app->app_index == app_wrk->app_index))
+  if (!(app_wrk && app && app->app_index == app_wrk->app_index))
     {
-      clib_warning ("could not disconnect session: %llu app_wrk: %u",
+      clib_warning ("could not disconnect session: %llu app: %u",
 		    mp->handle, mp->client_index);
       return;
     }

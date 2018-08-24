@@ -530,7 +530,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
   rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
-  clib_memcpy (&a->sep, &sep, sizeof (sep));
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
   return vnet_bind_i (a);
 }
 
@@ -568,7 +568,7 @@ vnet_connect_uri (vnet_connect_args_t * a)
   if (rv)
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 
-  clib_memcpy (&a->sep, &sep, sizeof (sep));
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
   if ((rv = application_connect (a)))
     return clib_error_return_code (0, rv, 0, "connect failed");
   return 0;
