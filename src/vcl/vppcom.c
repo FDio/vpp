@@ -248,6 +248,15 @@ vppcom_wait_for_app_state_change (app_state_t app_state)
   return VPPCOM_ETIMEDOUT;
 }
 
+static svm_msg_q_t *
+vcl_session_vpp_evt_q (vcl_session_t * s)
+{
+  if (vcl_session_is_ct (s))
+    return vcm->vpp_event_queues[0];
+  else
+    return vcm->vpp_event_queues[s->tx_fifo->master_thread_index];
+}
+
 static void
 vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
 				 session_handle_t handle, int retval)
@@ -271,6 +280,20 @@ vcl_send_session_disconnected_reply (svm_msg_q_t * mq, u32 context,
   app_alloc_ctrl_evt_to_vpp (mq, app_evt,
 			     SESSION_CTRL_EVT_DISCONNECTED_REPLY);
   rmp = (session_disconnected_reply_msg_t *) app_evt->evt->data;
+  rmp->handle = handle;
+  rmp->context = context;
+  rmp->retval = retval;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+
+static void
+vcl_send_session_reset_reply (svm_msg_q_t * mq, u32 context,
+			      session_handle_t handle, int retval)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_reset_reply_msg_t *rmp;
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_RESET_REPLY);
+  rmp = (session_reset_reply_msg_t *) app_evt->evt->data;
   rmp->handle = handle;
   rmp->context = context;
   rmp->retval = retval;
@@ -442,6 +465,26 @@ done_unlock:
   return session_index;
 }
 
+static u32
+vcl_reset_handler (session_reset_msg_t * reset_msg)
+{
+  vcl_session_t *session;
+  u32 sid;
+
+  sid = vcl_session_get_index_from_handle (reset_msg->handle);
+  session = vcl_session_get (sid);
+  if (!session)
+    {
+      VDBG (0, "request to reset unknown handle 0x%llx", reset_msg->handle);
+      return VCL_INVALID_SESSION_INDEX;
+    }
+  session->session_state = STATE_CLOSE_ON_EMPTY;
+  VDBG (0, "reset handle 0x%llx, sid %u ", reset_msg->handle, sid);
+  vcl_send_session_reset_reply (vcl_session_vpp_evt_q (session),
+				vcm->my_client_index, reset_msg->handle, 0);
+  return sid;
+}
+
 int
 vcl_handle_mq_ctrl_event (session_event_t * e)
 {
@@ -480,8 +523,18 @@ vcl_handle_mq_ctrl_event (session_event_t * e)
       disconnected_msg = (session_disconnected_msg_t *) e->data;
       sid = vcl_session_get_index_from_handle (disconnected_msg->handle);
       session = vcl_session_get (sid);
+      if (!session)
+	{
+	  VDBG (0, "request to disconnect unknown handle 0x%llx",
+		disconnected_msg->handle);
+	  break;
+	}
       session->session_state = STATE_DISCONNECT;
-      VDBG (0, "disconnected %u", sid);
+      VDBG (0, "disconnected handle 0xllx, sid %u", disconnected_msg->handle,
+	    sid);
+      break;
+    case SESSION_CTRL_EVT_RESET:
+      vcl_reset_handler ((session_reset_msg_t *) e->data);
       break;
     default:
       clib_warning ("unhandled %u", e->event_type);
@@ -596,15 +649,6 @@ vppcom_session_unbind (u32 session_index)
 
 done:
   return rv;
-}
-
-static svm_msg_q_t *
-vcl_session_vpp_evt_q (vcl_session_t * s)
-{
-  if (vcl_session_is_ct (s))
-    return vcm->vpp_event_queues[0];
-  else
-    return vcm->vpp_event_queues[s->tx_fifo->master_thread_index];
 }
 
 static int
@@ -1735,6 +1779,14 @@ vcl_select_handle_mq (svm_msg_q_t * mq, unsigned long n_bits,
 	      *bits_set += 1;
 	    }
 	  break;
+	case SESSION_CTRL_EVT_RESET:
+	  sid = vcl_reset_handler ((session_reset_msg_t *) e->data);
+	  if (sid < n_bits && except_map)
+	    {
+	      clib_bitmap_set_no_check (except_map, sid, 1);
+	      *bits_set += 1;
+	    }
+	  break;
 	default:
 	  clib_warning ("unhandled: %u", e->event_type);
 	  break;
@@ -2343,12 +2395,22 @@ vcl_epoll_wait_handle_mq (svm_msg_q_t * mq, struct epoll_event *events,
 	  disconnected_msg = (session_disconnected_msg_t *) e->data;
 	  sid = vcl_session_get_index_from_handle (disconnected_msg->handle);
 	  clib_spinlock_lock (&vcm->sessions_lockp);
-	  session = vcl_session_get (sid);
+	  if (!(session = vcl_session_get (sid)))
+	    break;
 	  add_event = 1;
 	  events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
 	  session_evt_data = session->vep.ev.data.u64;
 	  session_events = session->vep.ev.events;
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
+	  break;
+	case SESSION_CTRL_EVT_RESET:
+	  sid = vcl_reset_handler ((session_reset_msg_t *) e->data);
+	  if (!(session = vcl_session_get (sid)))
+	    break;
+	  add_event = 1;
+	  events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
+	  session_evt_data = session->vep.ev.data.u64;
+	  session_events = session->vep.ev.events;
 	  break;
 	default:
 	  clib_warning ("unhandled: %u", e->event_type);
