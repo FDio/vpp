@@ -989,7 +989,9 @@ application_get_local_session_from_handle (session_handle_t handle)
   application_t *server;
   u32 session_index, server_index;
   local_session_parse_handle (handle, &server_index, &session_index);
-  server = application_get (server_index);
+  server = application_get_if_valid (server_index);
+  if (!server)
+    return 0;
   return application_get_local_session (server, session_index);
 }
 
