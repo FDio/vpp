@@ -13,6 +13,9 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
+list(INSERT CMAKE_PROGRAM_PATH  0 "/opt/rh/devtoolset-7/root/bin/")
+message(STATUS "CMAKE_PROGRAM_PATH: ${CMAKE_PROGRAM_PATH}")
+
 project(vpp C)
 
 include(CheckCCompilerFlag)
