@@ -117,7 +117,7 @@ test_valloc_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_bihash_template_LDADD =	libvppinfra.la
+test_bihash_template_LDADD =	libvppinfra.la -lpthread 
 test_bihash_vec88_LDADD =	libvppinfra.la
 test_cuckoo_template_LDADD =	libvppinfra.la
 test_cuckoo_bihash_LDADD =	libvppinfra.la
