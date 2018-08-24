@@ -42,11 +42,12 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__)
+#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__) \
+  || defined (__i686__)
 #define CLIB_HAVE_VEC64
 #endif
 
-#if defined (__aarch64__) && defined(__ARM_NEON)
+#if defined (__aarch64__) && defined(__ARM_NEON) || defined (__i686__)
 #define CLIB_HAVE_VEC128
 #endif
 
