@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6df94271_e1705dca",
+        "filename": "src/vppinfra/dlmalloc.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 771,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-24T11:49:04Z",
+      "side": 1,
+      "message": "If the new code works, why keep the previous code in comments (applies also to line 840) and in inaccessible branches?",
+      "range": {
+        "startLine": 771,
+        "startChar": 9,
+        "endLine": 771,
+        "endChar": 12
+      },
+      "revId": "af7dd5b32eca5c924695637bd3b922e6793b1d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
