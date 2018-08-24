@@ -21,7 +21,7 @@ STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
-ifeq ($(findstring $(MAKECMDGOALS),verify pkg-deb pkg-rpm test test-debug),)
+ifeq ($(findstring $(MAKECMDGOALS),verify pkg-rpm),)
 export vpp_uses_cmake?=yes
 endif
 
@@ -548,7 +548,8 @@ verify: install-dep $(BR)/.deps.ok dpdk-install-dev
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
-	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	$(call banner,"Running tests")
+	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 vpp_uses_cmake=yes test
 endif
 
 
