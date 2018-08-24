@@ -69,6 +69,11 @@ add_dependencies(vpp vpp_version_h api_headers)
 set_target_properties(vpp PROPERTIES ENABLE_EXPORTS 1)
 install(TARGETS vpp DESTINATION bin)
 
+vpp_add_header_files(vpp
+  api/vpe_msg_enum.h
+  api/vpe_all_api_h.h
+)
+
 ##############################################################################
 # vppctl binary
 ##############################################################################

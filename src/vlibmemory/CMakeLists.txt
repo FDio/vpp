@@ -29,6 +29,17 @@ target_link_libraries (vlibmemory vppinfra svm vlib)
 add_dependencies(vlibmemory vlibmemory_api_headers)
 install (TARGETS vlibmemory DESTINATION lib)
 
+vpp_add_header_files(vlibmemory
+  vl_memory_msg_enum.h
+  memory_shared.h
+  vl_memory_api_h.h
+  socket_client.h
+  memory_api.h
+  api.h
+  memory_client.h
+  socket_api.h
+)
+
 add_library (vlibmemoryclient SHARED
   memory_shared.c
   memory_client.c

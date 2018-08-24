@@ -28,8 +28,14 @@ install(TARGETS vppcom DESTINATION lib)
 # vcl headers
 ##############################################################################
 vpp_add_header_files(vcl
+  ldp.h
   vcl_event.h
+  sock_test.h
+  ldp_glibc_socket.h
+  vcl_test.h
   vppcom.h
+  ldp_socket_wrapper.h
+  sock_test_common.h
 )
 
 ##############################################################################
