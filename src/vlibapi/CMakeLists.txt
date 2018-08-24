@@ -11,18 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-##############################################################################
-# vpp api client library
-##############################################################################
-
-add_library (vppapiclient SHARED
-  client/client.c
-  client/libvppapiclient.map
-)
-target_link_libraries(vppapiclient vppinfra vlibmemoryclient svm pthread m rt)
-add_dependencies(vppapiclient vpp_version_h api_headers)
-install(TARGETS vppapiclient DESTINATION lib)
-
-vpp_add_header_files(vpp-api
-  client/vppapiclient.h
+vpp_add_header_files(vlibapi
+  api_helper_macros.h
+  api.h
+  vat_helper_macros.h
+  api_common.h
 )

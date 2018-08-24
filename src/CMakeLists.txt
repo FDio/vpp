@@ -196,7 +196,7 @@ endfunction()
 ##############################################################################
 # subdirs
 ##############################################################################
-foreach (DIR vppinfra svm vlib vlibmemory vnet vpp vpp-api vat vcl plugins)
+foreach (DIR vppinfra svm vlib vlibmemory vlibapi vnet vpp vpp-api vat vcl plugins)
   add_subdirectory(${DIR})
 endforeach ()
 
