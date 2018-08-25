@@ -200,17 +200,12 @@ typedef struct vppcom_main_t_
   u32 debug;
   int main_cpu;
 
-  /* FIFO for accepted connections - used in epoll/select */
-  clib_spinlock_t session_fifo_lockp;
-  u32 *client_session_index_fifo;
-
   /* vpp input queue */
   svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
   /* Session pool */
-  clib_spinlock_t sessions_lockp;
   vcl_session_t *sessions;
 
   /** Message queues epoll fd. Initialized only if using mqs with eventfds */
@@ -281,36 +276,6 @@ typedef struct vppcom_main_t_
 
 extern vppcom_main_t *vcm;
 
-#define VCL_SESSION_LOCK_AND_GET(I, S)                          \
-do {                                                            \
-  clib_spinlock_lock (&vcm->sessions_lockp);                    \
-  rv = vppcom_session_at_index (I, S);                          \
-  if (PREDICT_FALSE (rv))                                       \
-    {                                                           \
-      clib_spinlock_unlock (&vcm->sessions_lockp);              \
-      clib_warning ("VCL<%d>: ERROR: Invalid ##I (%u)!",        \
-                    getpid (), I);                              \
-      goto done;                                                \
-    }                                                           \
-} while (0)
-
-#define VCL_SESSION_LOCK() clib_spinlock_lock (&(vcm->sessions_lockp))
-#define VCL_SESSION_UNLOCK() clib_spinlock_unlock (&(vcm->sessions_lockp))
-
-#define VCL_IO_SESSIONS_LOCK() \
-  clib_spinlock_lock (&(vcm->session_io_thread.io_sessions_lockp))
-#define VCL_IO_SESSIONS_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->session_io_thread.io_sessions_lockp))
-
-#define VCL_ACCEPT_FIFO_LOCK() clib_spinlock_lock (&(vcm->session_fifo_lockp))
-#define VCL_ACCEPT_FIFO_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->session_fifo_lockp))
-
-#define VCL_EVENTS_LOCK() \
-  clib_spinlock_lock (&(vcm->event_thread.events_lockp))
-#define VCL_EVENTS_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->event_thread.events_lockp))
-
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
 
 static inline vcl_session_t *
@@ -364,21 +329,6 @@ static inline u8
 vcl_session_is_ct (vcl_session_t * s)
 {
   return (s->our_evt_q != 0);
-}
-
-static inline int
-vppcom_session_at_index (u32 session_index, vcl_session_t * volatile *sess)
-{
-  /* Assumes that caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE ((session_index == ~0) ||
-		     pool_is_free_index (vcm->sessions, session_index)))
-    {
-      clib_warning ("VCL<%d>: invalid session, sid (%u) has been closed!",
-		    getpid (), session_index);
-      return VPPCOM_EBADFD;
-    }
-  *sess = pool_elt_at_index (vcm->sessions, session_index);
-  return VPPCOM_OK;
 }
 
 static inline void

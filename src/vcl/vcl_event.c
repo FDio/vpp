@@ -29,6 +29,15 @@
  * Definitions for generic event handling in VCL.
  */
 
+#define VCL_EVENTS_LOCK() \
+  clib_spinlock_lock (&(vcm->event_thread.events_lockp))
+#define VCL_EVENTS_UNLOCK() \
+  clib_spinlock_unlock (&(vcm->event_thread.events_lockp))
+#define VCL_IO_SESSIONS_LOCK() \
+  clib_spinlock_lock (&(vcm->session_io_thread.io_sessions_lockp))
+#define VCL_IO_SESSIONS_UNLOCK() \
+  clib_spinlock_unlock (&(vcm->session_io_thread.io_sessions_lockp))
+
 int
 vce_generate_event (vce_event_thread_t * evt, u32 ev_idx)
 {
@@ -294,7 +303,7 @@ vppcom_session_io_thread_fn (void *arg)
 {
   vppcom_session_io_thread_t *evt = (vppcom_session_io_thread_t *) arg;
   u32 *session_indexes = 0, *session_index;
-  int i, rv;
+  int i;
   u32 bytes = 0;
   vcl_session_t *session;
 
@@ -312,9 +321,10 @@ vppcom_session_io_thread_fn (void *arg)
 	{
 	  for (i = 0; i < vec_len (session_indexes); ++i)
 	    {
-	      VCL_SESSION_LOCK_AND_GET (session_indexes[i], &session);
+	      session = vcl_session_get (session_indexes[i]);
+	      if (!session)
+		return NULL;
 	      bytes = svm_fifo_max_dequeue (session->rx_fifo);
-	      VCL_SESSION_UNLOCK ();
 
 	      if (bytes)
 		{
@@ -334,7 +344,7 @@ vppcom_session_io_thread_fn (void *arg)
 
 		  VCL_EVENTS_UNLOCK ();
 
-		  rv = vce_generate_event (&vcm->event_thread, ev_idx);
+		  vce_generate_event (&vcm->event_thread, ev_idx);
 		}
 	    }
 	}
@@ -343,8 +353,6 @@ vppcom_session_io_thread_fn (void *arg)
       ts.tv_nsec = 1000000;	/* 1 millisecond */
       nanosleep (&ts, NULL);
     }
-done:
-  VCL_SESSION_UNLOCK ();
   return NULL;
 }
 
@@ -394,9 +402,7 @@ vce_registered_listener_connect_handler_fn (void *arg)
   vce_event_connect_request_t *ecr;
   vce_event_t *ev;
   vppcom_endpt_t ep;
-
   vcl_session_t *new_session;
-  int rv;
 
   vppcom_session_listener_t *session_listener =
     (vppcom_session_listener_t *) reg->handler_fn_args;
@@ -405,7 +411,9 @@ vce_registered_listener_connect_handler_fn (void *arg)
   ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
   ecr = vce_get_event_data (ev, sizeof (*ecr));
   VCL_EVENTS_UNLOCK ();
-  VCL_SESSION_LOCK_AND_GET (ecr->accepted_session_index, &new_session);
+  new_session = vcl_session_get (ecr->accepted_session_index);
+  if (!new_session)
+    return;
 
   ep.is_ip4 = new_session->transport.is_ip4;
   ep.port = new_session->transport.rmt_port;
@@ -419,7 +427,6 @@ vce_registered_listener_connect_handler_fn (void *arg)
   vppcom_send_accept_session_reply (new_session->vpp_handle,
 				    new_session->client_context,
 				    0 /* retval OK */ );
-  VCL_SESSION_UNLOCK ();
 
   (session_listener->user_cb) (ecr->accepted_session_index, &ep,
 			       session_listener->user_cb_data);
@@ -438,7 +445,6 @@ vce_registered_listener_connect_handler_fn (void *arg)
   /*TODO - Unregister check in close for this listener */
   return;
 
-done:
   ASSERT (0);			// If we can't get a lock or accepted session fails, lets blow up.
 }
 
@@ -459,12 +465,6 @@ vce_poll_wait_connect_request_handler_fn (void *arg)
   /* Retrieve the VCL_EVENT_CONNECT_REQ_ACCEPTED event */
   ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
   vce_event_connect_request_t *ecr = vce_get_event_data (ev, sizeof (*ecr));
-
-  /* Add the accepted_session_index to the FIFO */
-  VCL_ACCEPT_FIFO_LOCK ();
-  clib_fifo_add1 (vcm->client_session_index_fifo,
-		  ecr->accepted_session_index);
-  VCL_ACCEPT_FIFO_UNLOCK ();
 
   /* Recycling the event. */
   VCL_EVENTS_LOCK ();
