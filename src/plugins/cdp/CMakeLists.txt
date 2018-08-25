@@ -20,10 +20,8 @@ add_vpp_plugin(cdp
 
   API_FILES
   cdp.api
-)
 
-add_vpp_api_test_plugin(cdp_test
-  cdp.api
+  API_TEST_SOURCES
   cdp_test.c
 )
 

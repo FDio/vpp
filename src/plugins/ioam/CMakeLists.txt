@@ -73,30 +73,13 @@ add_vpp_plugin(ioam
   export-vxlan-gpe/vxlan_gpe_ioam_export.api
   ip6/ioam_cache.api
   udp-ping/udp_ping.api
-)
 
-add_vpp_api_test_plugin(ioam_pot_test
-  lib-pot/pot.api
+  API_TEST_SOURCES
+  ioam_test.c
   lib-pot/pot_test.c
-)
-
-add_vpp_api_test_plugin(ioam_export_test
-  export/ioam_export.api
   export/ioam_export_test.c
-)
-
-add_vpp_api_test_plugin(ioam_trace_test
-  lib-trace/trace.api
   lib-trace/trace_test.c
-)
-
-add_vpp_api_test_plugin(ioam_vxlan_gpe_test
-  lib-vxlan-gpe/ioam_vxlan_gpe.api
   lib-vxlan-gpe/vxlan_gpe_test.c
-)
-
-add_vpp_api_test_plugin(ioam_udp_ping_test
-  udp-ping/udp_ping.api
   udp-ping/udp_ping_test.c
 )
 

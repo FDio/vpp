@@ -26,10 +26,8 @@ add_vpp_plugin(lacp
 
   API_FILES
   lacp.api
-)
 
-add_vpp_api_test_plugin(lacp_test
-  lacp.api
+  API_TEST_SOURCES
   lacp_test.c
 )
 

@@ -18,10 +18,7 @@ add_vpp_plugin(mactime
 
   API_FILES
   mactime.api
-)
 
-add_vpp_api_test_plugin(mactime_test
-  mactime.api
+  API_TEST_SOURCES
   mactime_test.c
 )
-

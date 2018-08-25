@@ -18,10 +18,8 @@ add_vpp_plugin(stn
 
   API_FILES
   stn.api
-)
 
-add_vpp_api_test_plugin(stn_test
-  stn.api
+  API_TEST_SOURCES
   stn_test.c
 )
 

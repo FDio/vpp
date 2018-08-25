@@ -18,10 +18,8 @@ add_vpp_plugin(flowprobe
 
   API_FILES
   flowprobe.api
-)
 
-add_vpp_api_test_plugin(flowprobe_test
-  flowprobe.api
+  API_TEST_SOURCES
   flowprobe_test.c
 )
 
