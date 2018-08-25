@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(flowprobe_plugin
-  flowprobe.api
+add_vpp_plugin(flowprobe
+  SOURCES
   flowprobe.c
   node.c
+
+  API_FILES
+  flowprobe.api
 )
 
-add_vpp_api_test_plugin(flowprobe_test_plugin
+add_vpp_api_test_plugin(flowprobe_test
   flowprobe.api
   flowprobe_test.c
 )

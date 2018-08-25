@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(lacp_plugin
-  lacp.api
+add_vpp_plugin(lacp
+  SOURCES
   lacp.c
   lacp_api.c
   selection.c
@@ -23,9 +23,12 @@ add_vpp_plugin(lacp_plugin
   cli.c
   input.c
   node.c
+
+  API_FILES
+  lacp.api
 )
 
-add_vpp_api_test_plugin(lacp_test_plugin
+add_vpp_api_test_plugin(lacp_test
   lacp.api
   lacp_test.c
 )

@@ -21,8 +21,13 @@ set (MBEDTLS_LIB ${MBEDTLS_LIB1} ${MBEDTLS_LIB2} ${MBEDTLS_LIB3})
 
 if(MBEDTLS_INCLUDE_DIR AND MBEDTLS_LIB)
   include_directories(${MBEDTLS_INCLUDE_DIR})
-  add_vpp_plugin(tlsmbedtls_plugin tls_mbedtls.c)
-  target_link_libraries(tlsmbedtls_plugin ${MBEDTLS_LIB})
+  add_vpp_plugin(tlsmbedtls
+    SOURCES
+    tls_mbedtls.c
+
+    LINK_LIBRARIES
+    ${MBEDTLS_LIB}
+  )
   message(STATUS "Found mbedTLS in ${MBEDTLS_INCLUDE_DIR}")
 else()
   message(WARNING "-- mbedTLS not found - tlsmbedtls_plugin disabled")

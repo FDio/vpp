@@ -11,8 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(l2e_plugin
-  l2e.api
+add_vpp_plugin(l2e
+  SOURCES
   l2e_api.c
   l2e.c
+
+  API_FILES
+  l2e.api
 )

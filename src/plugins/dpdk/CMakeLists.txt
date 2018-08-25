@@ -81,7 +81,17 @@ endif()
 ##############################################################################
 if(DPDK_INCLUDE_DIR AND DPDK_LIB)
   include_directories (${DPDK_INCLUDE_DIR})
-  add_vpp_plugin(dpdk_plugin
+
+  message(STATUS "Found DPDK ${DPDK_VERSION} in ${DPDK_INCLUDE_DIR}")
+  get_filename_component(DPDK_LIB_DIR ${DPDK_LIB} DIRECTORY)
+  set(DPDK_LINK_FLAGS "-L${DPDK_LIB_DIR} -Wl,--whole-archive,${DPDK_LIB},--no-whole-archive")
+  if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
+    set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
+    message(STATUS "DPDK depends on IPSec MB library")
+  endif()
+  set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lnuma")
+  add_vpp_plugin(dpdk
+    SOURCES
     buffer.c
     main.c
     thread.c
@@ -100,25 +110,19 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     ipsec/esp_decrypt.c
     ipsec/esp_encrypt.c
     ipsec/ipsec.c
-    api/dpdk.api
-  )
 
-  vpp_library_set_multiarch_sources(dpdk_plugin
+    MULTIARCH_SOURCES
     buffer.c
     device/device.c
     device/node.c
-  )
 
-  message(STATUS "Found DPDK ${DPDK_VERSION} in ${DPDK_INCLUDE_DIR}")
-  get_filename_component(DPDK_LIB_DIR ${DPDK_LIB} DIRECTORY)
-  set(DPDK_LINK_FLAGS "-L${DPDK_LIB_DIR} -Wl,--whole-archive,${DPDK_LIB},--no-whole-archive")
-  if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
-    set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
-    message(STATUS "DPDK depends on IPSec MB library")
-  endif()
-  set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lnuma")
-  set_target_properties(dpdk_plugin PROPERTIES LINK_FLAGS "${DPDK_LINK_FLAGS}")
+    API_FILES
+    api/dpdk.api
+
+    LINK_FLAGS
+    ${DPDK_LINK_FLAGS}
+  )
 else()
-  message(WARNING "DPDK not found - dpdk_plugin disabled")
+  message(WARNING "DPDK not found - dpdk disabled")
 endif()
 

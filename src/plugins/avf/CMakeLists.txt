@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(avf_plugin
+add_vpp_plugin(avf
+  SOURCES
   cli.c
   device.c
   format.c
@@ -19,10 +20,11 @@ add_vpp_plugin(avf_plugin
   output.c
   plugin.c
   avf_api.c
-  avf.api
-)
 
-vpp_library_set_multiarch_sources(avf_plugin
+  MULTIARCH_SOURCES
   input.c
   output.c
+
+  API_FILES
+  avf.api
 )

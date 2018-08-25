@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(nat_plugin
-  nat.api
+add_vpp_plugin(nat
+  SOURCES
   nat.c
   nat_api.c
   in2out.c
@@ -38,4 +38,7 @@ add_vpp_plugin(nat_plugin
   nat66_cli.c
   nat66_in2out.c
   nat66_out2in.c
+
+  API_FILES
+  nat.api
 )

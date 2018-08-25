@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(gbp_plugin
-  gbp.api
+add_vpp_plugin(gbp
+  SOURCES
   gbp_subnet.c
   gbp_contract.c
   gbp_endpoint.c
@@ -24,4 +24,7 @@ add_vpp_plugin(gbp_plugin
   gbp_fwd.c
   gbp_fwd_dpo.c
   gbp_api.c
+
+  API_FILES
+  gbp.api
 )

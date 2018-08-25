@@ -11,16 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(lb_plugin
-  lb.api
+add_vpp_plugin(lb
+  SOURCES
   api.c
   cli.c
   lb.c
   node.c
   util.c
+
+  API_FILES
+  lb.api
 )
 
-add_vpp_api_test_plugin(lb_test_plugin
+add_vpp_api_test_plugin(lb_test
   lb.api
   lb_test.c
 )

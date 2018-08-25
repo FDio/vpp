@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(map_plugin
-  map.api
+add_vpp_plugin(map
+  SOURCES
   ip4_map.c
   ip4_map_t.c
   ip6_map.c
@@ -20,4 +20,7 @@ add_vpp_plugin(map_plugin
   map_api.c
   map.c
   map_dpo.c
+
+  API_FILES
+  map.api
 )

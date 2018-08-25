@@ -11,11 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(acl_plugin
-  acl.api
+add_vpp_plugin(acl
+  SOURCES
   acl.c
   hash_lookup.c
   lookup_context.c
   sess_mgmt_node.c
   dataplane_node.c
+
+  API_FILES
+  acl.api
 )

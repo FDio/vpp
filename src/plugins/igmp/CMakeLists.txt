@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(igmp_plugin
-  igmp.api
+add_vpp_plugin(igmp
+  SOURCES
   igmp.c
   igmp_query.c
   igmp_report.c
@@ -26,4 +26,7 @@ add_vpp_plugin(igmp_plugin
   igmp_pkt.c
   igmp_ssm_range.c
   igmp_format.c
+
+  API_FILES
+  igmp.api
 )

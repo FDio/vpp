@@ -12,7 +12,13 @@
 # limitations under the License.
 
 if(OPENSSL_FOUND)
-  add_vpp_plugin(tlsopenssl_plugin tls_openssl.c tls_async.c)
-  target_link_libraries(tlsopenssl_plugin ${OPENSSL_LIBRARIES})
+  add_vpp_plugin(tlsopenssl
+    SOURCES
+    tls_openssl.c
+    tls_async.c
+
+    LINK_LIBRARIES
+    ${OPENSSL_LIBRARIES}
+  )
 endif()
 

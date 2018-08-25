@@ -11,5 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(ila_plugin ila.c)
+add_vpp_plugin(ila SOURCES ila.c)
 

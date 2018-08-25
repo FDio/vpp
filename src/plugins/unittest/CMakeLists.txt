@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(unittest_plugin
+add_vpp_plugin(unittest
+  SOURCES
   unittest.c
   tcp_test.c
   bihash_test.c

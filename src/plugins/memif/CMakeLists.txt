@@ -11,17 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(memif_plugin
-  memif.api
+add_vpp_plugin(memif
+  SOURCES
   memif.c
   memif_api.c
   cli.c
   node.c
   device.c
   socket.c
-)
 
-vpp_library_set_multiarch_sources(memif_plugin
+  API_FILES
+  memif.api
+
+  MULTIARCH_SOURCES
   device.c
   node.c
 )

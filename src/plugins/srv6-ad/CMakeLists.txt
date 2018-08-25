@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(srv6ad_plugin
+add_vpp_plugin(srv6ad
+  SOURCES
   ad.c
   node.c
 )

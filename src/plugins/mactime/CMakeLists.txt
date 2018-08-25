@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(mactime_plugin
-  mactime.api
+add_vpp_plugin(mactime
+  SOURCES
   mactime.c
   node.c
+
+  API_FILES
+  mactime.api
 )
 
-add_vpp_api_test_plugin(mactime_test_plugin
+add_vpp_api_test_plugin(mactime_test
   mactime.api
   mactime_test.c
 )

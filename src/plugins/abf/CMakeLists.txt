@@ -11,9 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(abf_plugin
-  abf.api
+add_vpp_plugin(abf
+  SOURCES
   abf_api.c
   abf_itf_attach.c
   abf_policy.c
+
+  API_FILES
+  abf.api
 )

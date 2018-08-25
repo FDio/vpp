@@ -11,27 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(ioam_plugin
+add_vpp_plugin(ioam
+  SOURCES
   # iOAM Proof of Transit
-  lib-pot/pot.api
   lib-pot/pot_util.c
   encap/ip6_ioam_pot.c
   lib-pot/pot_api.c
 
   # iOAM trace export for IPv6
-  export/ioam_export.api
   export/ioam_export.c
   export/node.c
   export/ioam_export_thread.c
 
   # iOAM Trace
-  lib-trace/trace.api
   lib-trace/trace_util.c
   encap/ip6_ioam_trace.c
   lib-trace/trace_api.c
 
   # VxLAN-GPE
-  lib-vxlan-gpe/ioam_vxlan_gpe.api
   lib-vxlan-gpe/ioam_encap.c
   lib-vxlan-gpe/ioam_decap.c
   lib-vxlan-gpe/ioam_transit.c
@@ -39,7 +36,6 @@ add_vpp_plugin(ioam_plugin
   lib-vxlan-gpe/vxlan_gpe_api.c
   lib-vxlan-gpe/vxlan_gpe_ioam_trace.c
   lib-vxlan-gpe/vxlan_gpe_ioam.c
-  export-vxlan-gpe/vxlan_gpe_ioam_export.api
   export-vxlan-gpe/vxlan_gpe_ioam_export.c
   export-vxlan-gpe/vxlan_gpe_node.c
   export-vxlan-gpe/vxlan_gpe_ioam_export_thread.c
@@ -59,40 +55,47 @@ add_vpp_plugin(ioam_plugin
   analyse/ioam_summary_export.c
 
   # iOAM record cache and rewrite
-  ip6/ioam_cache.api
   ip6/ioam_cache.c
   ip6/ioam_cache_node.c
   ip6/ioam_cache_tunnel_select_node.c
 
   # udp ping
-  udp-ping/udp_ping.api
   udp-ping/udp_ping_node.c
   udp-ping/udp_ping_util.c
   udp-ping/udp_ping_export.c
   udp-ping/udp_ping_api.c
+
+  API_FILES
+  lib-pot/pot.api
+  export/ioam_export.api
+  lib-trace/trace.api
+  lib-vxlan-gpe/ioam_vxlan_gpe.api
+  export-vxlan-gpe/vxlan_gpe_ioam_export.api
+  ip6/ioam_cache.api
+  udp-ping/udp_ping.api
 )
 
-add_vpp_api_test_plugin(ioam_pot_test_plugin
+add_vpp_api_test_plugin(ioam_pot_test
   lib-pot/pot.api
   lib-pot/pot_test.c
 )
 
-add_vpp_api_test_plugin(ioam_export_test_plugin
+add_vpp_api_test_plugin(ioam_export_test
   export/ioam_export.api
   export/ioam_export_test.c
 )
 
-add_vpp_api_test_plugin(ioam_trace_test_plugin
+add_vpp_api_test_plugin(ioam_trace_test
   lib-trace/trace.api
   lib-trace/trace_test.c
 )
 
-add_vpp_api_test_plugin(ioam_vxlan_gpe_test_plugin
+add_vpp_api_test_plugin(ioam_vxlan_gpe_test
   lib-vxlan-gpe/ioam_vxlan_gpe.api
   lib-vxlan-gpe/vxlan_gpe_test.c
 )
 
-add_vpp_api_test_plugin(ioam_udp_ping_test_plugin
+add_vpp_api_test_plugin(ioam_udp_ping_test
   udp-ping/udp_ping.api
   udp-ping/udp_ping_test.c
 )

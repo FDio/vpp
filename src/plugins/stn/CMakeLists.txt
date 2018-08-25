@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(stn_plugin
-  stn.api
+add_vpp_plugin(stn
+  SOURCES
   stn.c
   stn_api.c
+
+  API_FILES
+  stn.api
 )
 
-add_vpp_api_test_plugin(stn_test_plugin
+add_vpp_api_test_plugin(stn_test
   stn.api
   stn_test.c
 )

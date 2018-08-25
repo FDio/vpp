@@ -11,16 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(pppoe_plugin
-  pppoe.api
+add_vpp_plugin(pppoe
+  SOURCES
   pppoe_api.c
   pppoe.c
   pppoe_cp.c
   pppoe_cp_node.c
   pppoe_decap.c
+
+  API_FILES
+  pppoe.api
 )
 
-add_vpp_api_test_plugin(pppoe_test_plugin
+add_vpp_api_test_plugin(pppoe_test
   pppoe.api
   pppoe_test.c
 )

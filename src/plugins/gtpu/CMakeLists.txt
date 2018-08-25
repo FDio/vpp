@@ -11,15 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(gtpu_plugin
-  gtpu.api
+add_vpp_plugin(gtpu
+  SOURCES
   gtpu.c
   gtpu_api.c
   gtpu_decap.c
   gtpu_encap.c
+
+  API_FILES
+  gtpu.api
 )
 
-add_vpp_api_test_plugin(gtpu_test_plugin
+add_vpp_api_test_plugin(gtpu_test
   gtpu.api
   gtpu_test.c
 )

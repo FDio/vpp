@@ -11,15 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(cdp_plugin
-  cdp.api
+add_vpp_plugin(cdp
+  SOURCES
   cdp.c
   cdp_input.c
   cdp_node.c
   cdp_periodic.c
+
+  API_FILES
+  cdp.api
 )
 
-add_vpp_api_test_plugin(cdp_test_plugin
+add_vpp_api_test_plugin(cdp_test
   cdp.api
   cdp_test.c
 )

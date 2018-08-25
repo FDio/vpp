@@ -15,7 +15,7 @@ find_path(MUSDK_INCLUDE_DIR NAMES marvell/pp2/pp2.h)
 find_library(MUSDK_LIB NAMES musdk)
 
 if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
-  add_vpp_plugin(marvell_plugin
+  add_vpp_plugin(marvell
     marvell.api
     plugin.c
     pp2/cli.c

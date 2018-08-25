@@ -16,19 +16,33 @@ include_directories (
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-macro(add_vpp_plugin plugin_name)
+macro(add_vpp_plugin name)
+  cmake_parse_arguments(PLUGIN
+    ""
+    "LINK_FLAGS"
+    "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES"
+    ${ARGN}
+  )
+  set(plugin_name ${name}_plugin)
   set(api_headers)
-  foreach(f ${ARGN})
-     if(${f} MATCHES ".*\.api$")
-       vpp_generate_api_header(${f} plugins)
-       list(APPEND api_headers ${f}.h ${f}.json)
-     endif()
+  foreach(f ${PLUGIN_API_FILES})
+     vpp_generate_api_header(${f} plugins)
+     list(APPEND api_headers ${f}.h ${f}.json)
   endforeach()
-  add_library(${plugin_name} SHARED ${ARGN} ${api_headers})
+  add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_headers})
   add_dependencies(${plugin_name} vpp_version_h api_headers)
   set_target_properties(${plugin_name} PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_plugins)
+  if(PLUGIN_MULTIARCH_SOURCES)
+    vpp_library_set_multiarch_sources(${plugin_name} ${PLUGIN_MULTIARCH_SOURCES})
+  endif()
+  if(PLUGIN_LINK_LIBRARIES)
+    target_link_libraries(${plugin_name} ${PLUGIN_LINK_LIBRARIES})
+  endif()
+  if(PLUGIN_LINK_FLAGS)
+    set_target_properties(${plugin_name} PROPERTIES LINK_FLAGS "${PLUGIN_LINK_FLAGS}")
+  endif()
   install(TARGETS ${plugin_name} DESTINATION lib/vpp_plugins COMPONENT plugins)
 endmacro()
 
