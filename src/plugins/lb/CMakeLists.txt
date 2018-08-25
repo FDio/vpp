@@ -21,10 +21,8 @@ add_vpp_plugin(lb
 
   API_FILES
   lb.api
-)
 
-add_vpp_api_test_plugin(lb_test
-  lb.api
+  API_TEST_SOURCES
   lb_test.c
 )
 

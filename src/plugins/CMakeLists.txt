@@ -20,7 +20,7 @@ macro(add_vpp_plugin name)
   cmake_parse_arguments(PLUGIN
     ""
     "LINK_FLAGS"
-    "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES"
+    "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES;API_TEST_SOURCES"
     ${ARGN}
   )
   set(plugin_name ${name}_plugin)
@@ -43,25 +43,17 @@ macro(add_vpp_plugin name)
   if(PLUGIN_LINK_FLAGS)
     set_target_properties(${plugin_name} PROPERTIES LINK_FLAGS "${PLUGIN_LINK_FLAGS}")
   endif()
+  if(PLUGIN_API_TEST_SOURCES)
+    set(test_plugin_name ${name}_test_plugin)
+    add_library(${test_plugin_name} SHARED ${PLUGIN_API_TEST_SOURCES} ${api_headers})
+    add_dependencies(${test_plugin_name} api_headers)
+    set_target_properties(${test_plugin_name} PROPERTIES
+      PREFIX ""
+      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_api_test_plugins)
+    install(TARGETS ${test_plugin_name} DESTINATION lib/vpp_api_test_plugins COMPONENT
+	    plugins)
+  endif()
   install(TARGETS ${plugin_name} DESTINATION lib/vpp_plugins COMPONENT plugins)
-endmacro()
-
-macro(add_vpp_api_test_plugin plugin_name)
-  set(api_headers)
-  foreach(f ${ARGN})
-     if(${f} MATCHES ".*\.api$")
-       vpp_generate_api_header(${f} plugins)
-       list(APPEND api_headers ${f}.h)
-     endif()
-  endforeach()
-  add_library(${plugin_name} SHARED ${ARGN} ${api_headers})
-  add_dependencies(${plugin_name} api_headers)
-  set_target_properties(${plugin_name} PROPERTIES PREFIX "")
-  set_target_properties(${plugin_name} PROPERTIES
-    PREFIX ""
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}//vpp_api_test_plugins)
-  install(TARGETS ${plugin_name} DESTINATION lib/vpp_api_test_plugins COMPONENT
-	  plugins)
 endmacro()
 
 ##############################################################################
