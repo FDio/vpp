@@ -242,7 +242,7 @@ udp_ping_test_api_hookup (vat_main_t * vam)
 }
 
 clib_error_t *
-vat_plugin_register (vat_main_t * vam)
+udp_ping_vat_plugin_register (vat_main_t * vam)
 {
   udp_ping_test_main_t *sm = &udp_ping_test_main;
   u8 *name;
