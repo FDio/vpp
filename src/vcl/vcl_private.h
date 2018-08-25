@@ -200,17 +200,12 @@ typedef struct vppcom_main_t_
   u32 debug;
   int main_cpu;
 
-  /* FIFO for accepted connections - used in epoll/select */
-  clib_spinlock_t session_fifo_lockp;
-  u32 *client_session_index_fifo;
-
   /* vpp input queue */
   svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
   /* Session pool */
-  clib_spinlock_t sessions_lockp;
   vcl_session_t *sessions;
 
   /** Message queues epoll fd. Initialized only if using mqs with eventfds */
@@ -280,36 +275,6 @@ typedef struct vppcom_main_t_
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
-
-#define VCL_SESSION_LOCK_AND_GET(I, S)                          \
-do {                                                            \
-  clib_spinlock_lock (&vcm->sessions_lockp);                    \
-  rv = vppcom_session_at_index (I, S);                          \
-  if (PREDICT_FALSE (rv))                                       \
-    {                                                           \
-      clib_spinlock_unlock (&vcm->sessions_lockp);              \
-      clib_warning ("VCL<%d>: ERROR: Invalid ##I (%u)!",        \
-                    getpid (), I);                              \
-      goto done;                                                \
-    }                                                           \
-} while (0)
-
-#define VCL_SESSION_LOCK() clib_spinlock_lock (&(vcm->sessions_lockp))
-#define VCL_SESSION_UNLOCK() clib_spinlock_unlock (&(vcm->sessions_lockp))
-
-#define VCL_IO_SESSIONS_LOCK() \
-  clib_spinlock_lock (&(vcm->session_io_thread.io_sessions_lockp))
-#define VCL_IO_SESSIONS_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->session_io_thread.io_sessions_lockp))
-
-#define VCL_ACCEPT_FIFO_LOCK() clib_spinlock_lock (&(vcm->session_fifo_lockp))
-#define VCL_ACCEPT_FIFO_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->session_fifo_lockp))
-
-#define VCL_EVENTS_LOCK() \
-  clib_spinlock_lock (&(vcm->event_thread.events_lockp))
-#define VCL_EVENTS_UNLOCK() \
-  clib_spinlock_unlock (&(vcm->event_thread.events_lockp))
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
 
