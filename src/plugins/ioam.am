@@ -32,12 +32,6 @@ IOAM_POT_NOINST_HDR =				\
 
 IOAM_POT_API = ioam/lib-pot/pot.api
 
-ioam_pot_test_plugin_la_SOURCES =		\
-	ioam/lib-pot/pot_test.c			\
-	ioam/lib-pot/pot_plugin.api.h
-
-vppapitestplugins_LTLIBRARIES += ioam_pot_test_plugin.la
-
 ########################################
 # iOAM trace export for IPv6
 ########################################
@@ -54,12 +48,6 @@ IOAM_EXPORT_NOINST_HDR =                \
   ioam/export/ioam_export.api.h
 
 IOAM_EXPORT_API = ioam/export/ioam_export.api
-
-ioam_export_test_plugin_la_SOURCES =  \
-  ioam/export/ioam_export_test.c      \
-  ioam/export/ioam_export_plugin.api.h
-
-vppapitestplugins_LTLIBRARIES += ioam_export_test_plugin.la
 
 ########################################
 # iOAM Trace
@@ -118,18 +106,6 @@ IOAM_VXLAN_GPE_NOINST_HDR =                       		\
 
 IOAM_VXLAN_GPE_API  = ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api
 IOAM_VXLAN_GPE_API += ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api
-
-ioam_vxlan_gpe_test_plugin_la_SOURCES =		\
-	ioam/lib-vxlan-gpe/vxlan_gpe_test.c			\
-	ioam/lib-vxlan-gpe/vxlan_gpe_plugin.api.h
-
-vppapitestplugins_LTLIBRARIES += ioam_vxlan_gpe_test_plugin.la
-
-vxlan_gpe_ioam_export_test_plugin_la_SOURCES =          \
-  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_test.c      \
-  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_plugin.api.h
-
-vppapitestplugins_LTLIBRARIES += vxlan_gpe_ioam_export_test_plugin.la
 
 ########################################
 # iOAM E2E
@@ -201,13 +177,6 @@ UDP_PING_NOINST_HDR = 				    \
 	ioam/udp-ping/udp_ping.api.h
 
 UDP_PING_API = ioam/udp-ping/udp_ping.api
-
-udp_ping_test_plugin_la_SOURCES =          	\
-	ioam/udp-ping/udp_ping_test.c			\
-	ioam/udp-ping/udp_ping_plugin.api.h  
-
-vppapitestplugins_LTLIBRARIES += udp_ping_test_plugin.la
- 
 ########################################
 # iOAM plugins
 ########################################
@@ -241,5 +210,24 @@ nobase_apiinclude_HEADERS +=                               \
 		$(UDP_PING_NOINST_HDR)
 
 vppplugins_LTLIBRARIES += ioam_plugin.la
+
+########################################
+# iOAM plugins
+########################################
+
+ioam_test_plugin_la_SOURCES = \
+  ioam/ioam_test.c						\
+  ioam/lib-pot/pot_test.c					\
+  ioam/lib-pot/pot_plugin.api.h					\
+  ioam/export/ioam_export_test.c				\
+  ioam/export/ioam_export_plugin.api.h				\
+  ioam/lib-vxlan-gpe/vxlan_gpe_test.c				\
+  ioam/lib-vxlan-gpe/vxlan_gpe_plugin.api.h			\
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_test.c		\
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_plugin.api.h	\
+  ioam/udp-ping/udp_ping_test.c					\
+  ioam/udp-ping/udp_ping_plugin.api.h
+
+vppapitestplugins_LTLIBRARIES += ioam_test_plugin.la
 
 # vi:syntax=automake
