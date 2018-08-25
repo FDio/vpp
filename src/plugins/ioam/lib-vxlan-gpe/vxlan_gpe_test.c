@@ -521,7 +521,7 @@ vxlan_gpe_vat_api_hookup (vat_main_t * vam)
 }
 
 clib_error_t *
-vat_plugin_register (vat_main_t * vam)
+vxlan_gpe_vat_plugin_register (vat_main_t * vam)
 {
   vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
   u8 *name;
