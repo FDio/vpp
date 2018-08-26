@@ -264,6 +264,8 @@ list(APPEND VNET_HEADERS
   vxlan/vxlan_error.def
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES vxlan/decap.c)
+
 list(APPEND VNET_API_FILES vxlan/vxlan.api)
 
 ##############################################################################
