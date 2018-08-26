@@ -129,8 +129,9 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
     logger.info("Generating header `%s'" % io.name)
     orig_stdout = sys.stdout
     sys.stdout = io
+    d, f = os.path.split(j)
     include_guard = "__included_hpp_%s" % (
-        j.replace(".", "_").replace("/", "_").replace("-", "_"))
+        f.replace(".", "_").replace("/", "_").replace("-", "_"))
     print("#ifndef %s" % include_guard)
     print("#define %s" % include_guard)
     print("")
@@ -192,7 +193,7 @@ def json_to_cpp_header_name(json_name):
     raise Exception("Unexpected json name `%s'!" % json_name)
 
 
-def gen_cpp_headers(parser, logger, prefix, gen_h_prefix,
+def gen_cpp_headers(parser, logger, prefix, gen_h_prefix, remove_path,
                     add_debug_comments=False):
     if prefix == "" or prefix is None:
         prefix = ""
@@ -203,7 +204,11 @@ def gen_cpp_headers(parser, logger, prefix, gen_h_prefix,
     else:
         gen_h_prefix = "%s/" % gen_h_prefix
     for j in parser.json_files:
-        with open('%s%s' % (prefix, json_to_cpp_header_name(j)), "w") as io:
+        if remove_path:
+            d, f = os.path.split(j)
+        else:
+            f = j
+        with open('%s%s' % (prefix, json_to_cpp_header_name(f)), "w") as io:
             gen_json_header(parser, logger, j, io,
                             gen_h_prefix, add_debug_comments)
 
@@ -233,6 +238,8 @@ if __name__ == '__main__':
                            help='path prefix')
     argparser.add_argument('--gen-h-prefix', action='store', default=None,
                            help='generated C header prefix')
+    argparser.add_argument('--remove-path', action='store_true',
+                           help='remove path from filename')
     args = argparser.parse_args()
 
     jsonparser = JsonParser(logger, args.files,
@@ -241,7 +248,8 @@ if __name__ == '__main__':
                             field_class=CppField,
                             message_class=CppMessage)
 
-    gen_cpp_headers(jsonparser, logger, args.prefix, args.gen_h_prefix)
+    gen_cpp_headers(jsonparser, logger, args.prefix, args.gen_h_prefix,
+                    args.remove_path)
 
     for e in jsonparser.exceptions:
-        logger.error(e)
+        logger.warning(e)

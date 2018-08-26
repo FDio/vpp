@@ -33,7 +33,7 @@ macro(add_vpp_library lib)
   endif()
 
   if(ARG_API_FILES)
-    vpp_add_api_files(${lib}_api_headers ${ARG_API_FILES})
+    vpp_add_api_files(${lib} ${ARG_API_FILES})
     foreach(file ${ARG_API_FILES})
       get_filename_component(dir ${file} DIRECTORY)
       install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h DESTINATION include/${lib}/${dir})
