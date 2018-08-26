@@ -27,3 +27,5 @@ add_dependencies(vppapiclient vpp_version_h api_headers)
 add_vpp_headers(vpp-api
   client/vppapiclient.h
 )
+
+add_subdirectory(vapi)
