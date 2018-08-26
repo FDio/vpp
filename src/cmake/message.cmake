@@ -11,19 +11,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories (
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
+##############################################################################
+# Highlight WARNING and ERROR messages
+##############################################################################
+function(message)
+  list(GET ARGV 0 type)
+  string(ASCII 27 esc)
+  set(red "${esc}[1;31m")
+  set(yellow "${esc}[1;33m")
+  set(reset "${esc}[m")
+  if(type STREQUAL FATAL_ERROR OR type STREQUAL SEND_ERROR)
+    list(REMOVE_AT ARGV 0)
+    _message(${type} "${red}${ARGV}${reset}")
+  elseif(type STREQUAL WARNING)
+    list(REMOVE_AT ARGV 0)
+    _message(STATUS "${yellow}${ARGV}${reset}")
+  elseif(type STREQUAL STATUS)
+    list(REMOVE_AT ARGV 0)
+    _message(STATUS "${ARGV}")
+  else()
+    _message(${ARGV})
+  endif()
+endfunction()
 
-##############################################################################
-# find and add all plugin subdirs
-##############################################################################
-FILE(GLOB files RELATIVE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
-)
-foreach (f ${files})
-  get_filename_component(dir ${f} DIRECTORY)
-  add_subdirectory(${dir})
-endforeach()

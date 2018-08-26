@@ -12,6 +12,8 @@
 # limitations under the License.
 
 add_definitions (-DWITH_LIBSSL=1)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
 set(VNET_SRCS
   adj/adj_bfd.c
   adj/adj.c
