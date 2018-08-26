@@ -11,19 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories (
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
-
 ##############################################################################
-# find and add all plugin subdirs
+# DEB Packaging
 ##############################################################################
-FILE(GLOB files RELATIVE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
-)
-foreach (f ${files})
-  get_filename_component(dir ${f} DIRECTORY)
-  add_subdirectory(${dir})
-endforeach()
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "VPP Team")
+set(CPACK_PACKAGE_NAME "vpp")
+set(CPACK_PACKAGE_VENDOR "fd.io")
+set(CPACK_PACKAGE_VERSION "18.08")
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(CPACK_COMPONENTS_IGNORE_GROUPS 1)
+set(CPACK_DEBIAN_VPP_PACKAGE_NAME "vpp")
+set(CPACK_DEBIAN_VPP_FILE_NAME "vpp.deb")
+set(CPACK_DEBIAN_DEV_PACKAGE_NAME "vpp-dev")
+set(CPACK_DEBIAN_DEV_FILE_NAME "vpp-dev.deb")
+set(CPACK_DEBIAN_PLUGINS_PACKAGE_NAME "vpp-plugins")
+set(CPACK_DEBIAN_PLUGINS_FILE_NAME "vpp-plugins.deb")
+include(CPack)

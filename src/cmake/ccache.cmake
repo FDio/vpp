@@ -11,19 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories (
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
-
 ##############################################################################
-# find and add all plugin subdirs
+# ccache
 ##############################################################################
-FILE(GLOB files RELATIVE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
-)
-foreach (f ${files})
-  get_filename_component(dir ${f} DIRECTORY)
-  add_subdirectory(${dir})
-endforeach()
+option(VPP_USE_CCACHE "Use ccache compiler cache." ON)
+if(VPP_USE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
+  message(STATUS "Looking for ccache")
+  if(CCACHE_FOUND)
+    message(STATUS "Looking for ccache - found")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+  else(CCACHE_FOUND)
+    message(STATUS "Looking for ccache - not found")
+  endif(CCACHE_FOUND)
+endif(VPP_USE_CCACHE)
