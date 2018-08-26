@@ -260,6 +260,9 @@ nobase_include_HEADERS +=			\
   vnet/vxlan/vxlan_error.def			\
   vnet/vxlan/vxlan.api.h
 
+libvnet_multiversioning_sources +=		\
+  vnet/vxlan/decap.c
+
 API_FILES += vnet/vxlan/vxlan.api
 
 ########################################
