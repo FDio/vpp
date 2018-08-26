@@ -11,22 +11,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-##############################################################################
-# vpp api client library
-##############################################################################
+find_package(PythonInterp 2.7)
+find_package(PythonLibs 2.7)
 
-add_vpp_library (vppapiclient
-  SOURCES
-  client/client.c
-  client/libvppapiclient.map
-
-  LINK_LIBRARIES vppinfra vlibmemoryclient svm pthread m rt
-)
-add_dependencies(vppapiclient vpp_version_h api_headers)
-
-add_vpp_headers(vpp-api
-  client/vppapiclient.h
-)
-
-add_subdirectory(vapi)
-add_subdirectory(python)
+if(PYTHONINTERP_FOUND)
+  install(
+    CODE "
+    execute_process(
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      COMMAND ${PYTHON_EXECUTABLE} ./setup.py
+	install
+	  --root /
+	  --prefix=${CMAKE_INSTALL_PREFIX}
+	  --single-version-externally-managed
+	  bdist_egg
+	  --dist-dir=${CMAKE_INSTALL_PREFIX}
+      OUTPUT_QUIET
+    )"
+  )
+endif()
