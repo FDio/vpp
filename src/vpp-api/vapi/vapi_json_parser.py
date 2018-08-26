@@ -346,7 +346,7 @@ class JsonParser(object):
     def finalize_parsing(self):
         if len(self.messages) == 0:
             for e in self.exceptions:
-                self.logger.error(e)
+                self.logger.warning(e)
         for jn, j in self.messages_by_json.items():
             remove = []
             for n, m in j.items():

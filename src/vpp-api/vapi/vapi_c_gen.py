@@ -532,6 +532,7 @@ vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
 
 
 def gen_json_unified_header(parser, logger, j, io, name):
+    d, f = os.path.split(j)
     logger.info("Generating header `%s'" % name)
     orig_stdout = sys.stdout
     sys.stdout = io
@@ -561,7 +562,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
         print("extern vapi_msg_id_t %s;" % m.get_msg_id_name())
     print("")
     print("#define DEFINE_VAPI_MSG_IDS_%s\\" %
-          j.replace(".", "_").replace("/", "_").replace("-", "_").upper())
+          f.replace(".", "_").replace("/", "_").replace("-", "_").upper())
     print("\\\n".join([
         "  vapi_msg_id_t %s;" % m.get_msg_id_name()
         for m in parser.messages_by_json[j].values()
@@ -639,15 +640,19 @@ def json_to_c_header_name(json_name):
     raise Exception("Unexpected json name `%s'!" % json_name)
 
 
-def gen_c_unified_headers(parser, logger, prefix):
+def gen_c_unified_headers(parser, logger, prefix, remove_path):
     if prefix == "" or prefix is None:
         prefix = ""
     else:
         prefix = "%s/" % prefix
     for j in parser.json_files:
-        with open('%s%s' % (prefix, json_to_c_header_name(j)), "w") as io:
+        if remove_path:
+            d, f = os.path.split(j)
+        else:
+            f = j
+        with open('%s%s' % (prefix, json_to_c_header_name(f)), "w") as io:
             gen_json_unified_header(
-                parser, logger, j, io, json_to_c_header_name(j))
+                parser, logger, j, io, json_to_c_header_name(f))
 
 
 if __name__ == '__main__':
@@ -673,6 +678,8 @@ if __name__ == '__main__':
                            '(may be specified multiple times)')
     argparser.add_argument('--prefix', action='store', default=None,
                            help='path prefix')
+    argparser.add_argument('--remove-path', action='store_true',
+                           help='remove path from filename')
     args = argparser.parse_args()
 
     jsonparser = JsonParser(logger, args.files,
@@ -686,7 +693,7 @@ if __name__ == '__main__':
     # Damjan), to avoid symbol version issues in .so
     # gen_c_headers_and_code(jsonparser, logger, args.prefix)
 
-    gen_c_unified_headers(jsonparser, logger, args.prefix)
+    gen_c_unified_headers(jsonparser, logger, args.prefix, args.remove_path)
 
     for e in jsonparser.exceptions:
-        logger.error(e)
+        logger.warning(e)

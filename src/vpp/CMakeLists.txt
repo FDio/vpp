@@ -39,7 +39,7 @@ set(VPP_API_FILES
   oam/oam.api
 )
 
-vpp_add_api_files(vpp_api_headers ${VPP_API_FILES})
+vpp_add_api_files(vpp ${VPP_API_FILES})
 
 foreach(file ${VPP_API_FILES})
   get_filename_component(dir ${file} DIRECTORY)
