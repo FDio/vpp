@@ -53,18 +53,10 @@ find_package(OpenSSL REQUIRED)
 
 include(cmake/memfd.cmake)
 include(cmake/api.cmake)
+include(cmake/library.cmake)
+include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
 include(cmake/deb.cmake)
-
-##############################################################################
-# header files
-##############################################################################
-function (vpp_add_header_files path)
-  foreach(file ${ARGN})
-    get_filename_component(dir ${file} DIRECTORY)
-    install(FILES ${file} DESTINATION include/${path}/${dir})
-  endforeach()
-endfunction()
 
 ##############################################################################
 # subdirs

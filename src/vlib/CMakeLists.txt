@@ -24,7 +24,8 @@ install(FILES ${CMAKE_BINARY_DIR}/vlib/config.h DESTINATION include/vlib)
 ##############################################################################
 # vlib shared library
 ##############################################################################
-set(VLIB_SRCS
+add_vpp_library(vlib
+  SOURCES
   buffer.c
   buffer_serialize.c
   cli.c
@@ -53,16 +54,8 @@ set(VLIB_SRCS
   unix/mc_socket.c
   unix/plugin.c
   unix/util.c
-)
 
-add_library(vlib SHARED ${VLIB_SRCS})
-target_link_libraries(vlib vppinfra svm ${CMAKE_DL_LIBS})
-install(TARGETS vlib DESTINATION lib)
-
-##############################################################################
-# vlib headers
-##############################################################################
-vpp_add_header_files(vlib
+  INSTALL_HEADERS
   buffer_funcs.h
   buffer.h
   buffer_node.h
@@ -94,5 +87,6 @@ vpp_add_header_files(vlib
   unix/plugin.h
   unix/unix.h
   vlib.h
-)
 
+  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS}
+)
