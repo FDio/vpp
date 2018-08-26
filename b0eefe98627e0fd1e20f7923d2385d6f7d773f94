@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2558275_be3f0d3e",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-26T16:06:58Z",
+      "side": 1,
+      "message": "You likely want to use CLIB_NODE_FN(), as both vlib_get_buffers and vlib_buffer_enqueue_to_next are using AVX2 / AVX512 but only when multiversioning is enabled.....",
+      "range": {
+        "startLine": 177,
+        "startChar": 0,
+        "endLine": 177,
+        "endChar": 11
+      },
+      "revId": "b0eefe98627e0fd1e20f7923d2385d6f7d773f94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
