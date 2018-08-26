@@ -14,50 +14,48 @@
 ##############################################################################
 # vat plugin shared library
 ##############################################################################
-add_library(vatplugin SHARED plugin_api.c)
-target_link_libraries(vatplugin vppinfra)
-add_dependencies (vatplugin vppinfra)
-install(TARGETS vatplugin DESTINATION lib)
+add_vpp_library(vatplugin
+  SOURCES plugin_api.c
+  LINK_LIBRARIES vppinfra
+)
 
 ##############################################################################
 # vpp_api_test
 ##############################################################################
-add_executable (vpp_api_test
+add_vpp_executable(vpp_api_test ENABLE_EXPORTS
+  SOURCES
   api_format.c
   main.c
   plugin.c
   json_format.c
-  vat.h
-  json_format.h
+
+  LINK_LIBRARIES
+  vlibmemoryclient
+  svm
+  vatplugin
+  vppinfra
+  Threads::Threads
+  rt m dl crypto
 )
-target_link_libraries (vpp_api_test vlibmemoryclient svm vatplugin vppinfra
-                       Threads::Threads rt m dl crypto)
-set_target_properties(vpp_api_test PROPERTIES ENABLE_EXPORTS 1)
-install(TARGETS vpp_api_test DESTINATION bin)
 
 ##############################################################################
 #  vpp_json_test
 ##############################################################################
-add_executable (vpp_json_test
-  json_format.h
-  json_format.c
-  json_test.c)
-target_link_libraries(vpp_json_test vppinfra m)
-set_target_properties(vpp_json_test PROPERTIES ENABLE_EXPORTS 1)
-install(TARGETS vpp_json_test DESTINATION bin)
+add_vpp_executable(vpp_json_test ENABLE_EXPORTS
+  SOURCES json_format.c json_test.c
+  LINK_LIBRARIES vppinfra m
+)
 
 ##############################################################################
 # vat headers
 ##############################################################################
-vpp_add_header_files(vat
-  vat.h
-  json_format.h
-)
+install(FILES vat.h json_format.h DESTINATION include/vat)
 
 ##############################################################################
 # restart
 ##############################################################################
-add_executable (vpp_restart restart.c)
-target_link_libraries (vpp_restart svmdb svm vppinfra pthread rt)
-install(TARGETS vpp_restart DESTINATION bin )
+add_vpp_executable(vpp_restart
+  SOURCES restart.c
+  LINK_LIBRARIES svm svmdb vppinfra Threads::Threads rt
+)
 

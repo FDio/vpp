@@ -14,49 +14,46 @@
 ##############################################################################
 # svm shared library
 ##############################################################################
-add_library(svm SHARED
+add_vpp_library(svm
+  SOURCES
   svm.c
   ssvm.c
   svm_fifo.c
   svm_fifo_segment.c
   queue.c
   message_queue.c
-)
-target_link_libraries(svm vppinfra rt pthread)
-install(TARGETS svm DESTINATION lib)
 
-##############################################################################
-# svmdb shared library
-##############################################################################
-add_library(svmdb SHARED svmdb.c)
-target_link_libraries(svmdb svm vppinfra rt pthread)
-install(TARGETS svmdb DESTINATION lib)
-
-##############################################################################
-# svm headers
-##############################################################################
-vpp_add_header_files(svm
+  INSTALL_HEADERS
   ssvm.h
   svm_common.h
-  svmdb.h
   svm_fifo.h
   svm_fifo_segment.h
   queue.h
   message_queue.h
   svm.h
+  svmdb.h
+
+  LINK_LIBRARIES vppinfra rt pthread
 )
+
+##############################################################################
+# svmdb shared library
+##############################################################################
+add_vpp_library(svmdb
+  SOURCES svmdb.c
+  LINK_LIBRARIES svm vppinfra rt pthread
+  )
 
 ##############################################################################
 # svm tools
 ##############################################################################
 
-add_executable (svmtool svmtool.c)
-target_link_libraries (svmtool vppinfra svm)
-add_executable (svmdbtool svmdbtool.c)
-target_link_libraries (svmdbtool vppinfra svm svmdb)
-
-install(
-  TARGETS svmtool svmdbtool
-  DESTINATION bin
+add_vpp_executable(svmtool
+  SOURCES svmtool.c
+  LINK_LIBRARIES vppinfra svm
 )
 
+add_vpp_executable (svmdbtool
+  SOURCES svmdbtool.c
+  LINK_LIBRARIES vppinfra svm svmdb
+)

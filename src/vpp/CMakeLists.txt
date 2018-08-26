@@ -33,11 +33,21 @@ add_custom_target(vpp_version_h
 ##############################################################################
 option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
-vpp_add_api_files(vpp_api_headers
+set(VPP_API_FILES
   api/vpe.api
   stats/stats.api
   oam/oam.api
 )
+
+vpp_add_api_files(vpp_api_headers ${VPP_API_FILES})
+
+foreach(file ${VPP_API_FILES})
+  get_filename_component(dir ${file} DIRECTORY)
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+    DESTINATION include/vpp/${dir}
+  )
+endforeach()
 
 set(VPP_SOURCES
   vnet/main.c
@@ -61,15 +71,14 @@ if(VPP_API_TEST_BUILTIN)
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()
 
-add_executable (vpp ${VPP_SOURCES})
+add_vpp_executable(vpp
+  ENABLE_EXPORTS
+  SOURCES ${VPP_SOURCES}
+  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS}
+  DEPENDS vpp_version_h api_headers
+)
 
-target_link_libraries(vpp svm vlib vppinfra vlibmemory vnet Threads::Threads
-		      ${CMAKE_DL_LIBS})
-add_dependencies(vpp vpp_version_h api_headers)
-set_target_properties(vpp PROPERTIES ENABLE_EXPORTS 1)
-install(TARGETS vpp DESTINATION bin)
-
-vpp_add_header_files(vpp
+add_vpp_headers(vpp
   api/vpe_msg_enum.h
   api/vpe_all_api_h.h
 )
@@ -77,28 +86,32 @@ vpp_add_header_files(vpp
 ##############################################################################
 # vppctl binary
 ##############################################################################
-add_executable(vppctl app/vppctl.c)
-target_link_libraries(vppctl vppinfra)
-install(TARGETS vppctl DESTINATION bin)
+add_vpp_executable(vppctl
+  SOURCES app/vppctl.c
+  LINK_LIBRARIES vppinfra
+)
 
 ##############################################################################
 # vpp_get_metrics binary
 ##############################################################################
-add_executable (vpp_get_metrics api/vpp_get_metrics.c ${VPP_API_HDRS})
-target_link_libraries (vpp_get_metrics vppinfra svm svmdb)
-install(TARGETS vpp_get_metrics DESTINATION bin)
+add_vpp_executable(vpp_get_metrics
+  SOURCES api/vpp_get_metrics.c
+  LINK_LIBRARIES vppinfra svm svmdb
+  DEPENDS api_headers
+)
 
 ##############################################################################
 # stats binaries
 ##############################################################################
-add_executable(summary_stats_client api/summary_stats_client.c)
-add_executable(stat_client app/stat_client.c)
-add_dependencies(summary_stats_client api_headers)
-add_dependencies(stat_client api_headers)
-target_link_libraries(summary_stats_client vppinfra svm vlibmemoryclient)
-target_link_libraries(stat_client vppinfra svm vlibmemoryclient)
+add_vpp_executable(summary_stats_client
+  SOURCES api/summary_stats_client.c
+  LINK_LIBRARIES vppinfra svm vlibmemoryclient
+  DEPENDS api_headers
+)
 
-##############################################################################
-# install
-##############################################################################
+add_vpp_executable(stat_client
+  SOURCES app/stat_client.c
+  LINK_LIBRARIES vppinfra svm vlibmemoryclient
+  DEPENDS api_headers
+)
 
