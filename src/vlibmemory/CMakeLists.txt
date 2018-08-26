@@ -11,11 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vpp_add_api_files(vlibmemory_api_headers
-  memclnt.api
-)
-
-add_library (vlibmemory SHARED
+add_vpp_library (vlibmemory
+  SOURCES
   memory_api.c
   memory_shared.c
   memory_client.c
@@ -24,12 +21,8 @@ add_library (vlibmemory SHARED
   vlib_api_cli.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
-)
-target_link_libraries (vlibmemory vppinfra svm vlib)
-add_dependencies(vlibmemory vlibmemory_api_headers)
-install (TARGETS vlibmemory DESTINATION lib)
 
-vpp_add_header_files(vlibmemory
+  INSTALL_HEADERS
   vl_memory_msg_enum.h
   memory_shared.h
   vl_memory_api_h.h
@@ -38,16 +31,22 @@ vpp_add_header_files(vlibmemory
   api.h
   memory_client.h
   socket_api.h
-)
 
-add_library (vlibmemoryclient SHARED
+  API_FILES
+  memclnt.api
+
+  LINK_LIBRARIES vppinfra svm vlib
+)
+add_dependencies(vlibmemory vlibmemory_api_headers)
+
+add_vpp_library (vlibmemoryclient
+  SOURCES
   memory_shared.c
   memory_client.c
   socket_client.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
-)
 
-target_link_libraries (vlibmemoryclient vppinfra svm vlib)
+  LINK_LIBRARIES vppinfra svm vlib
+)
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)
-install (TARGETS vlibmemoryclient DESTINATION lib)

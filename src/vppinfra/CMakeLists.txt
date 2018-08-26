@@ -88,26 +88,7 @@ set(VPPINFRA_SRCS
   linux/sysfs.c
 )
 
-if(VPP_USE_DLMALLOC)
-  list(APPEND VPPINFRA_SRCS
-    dlmalloc.c
-    mem_dlmalloc.c
-  )
-else(VPP_USE_DLMALLOC)
-  list(APPEND VPPINFRA_SRCS
-    mheap.c
-    mem_mheap.c
-  )
-endif(VPP_USE_DLMALLOC)
-
-add_library(vppinfra SHARED ${VPPINFRA_SRCS})
-target_link_libraries(vppinfra m)
-install(TARGETS vppinfra DESTINATION lib)
-
-##############################################################################
-# vppinfra headers
-##############################################################################
-vpp_add_header_files(vppinfra
+set(VPPINFRA_HEADERS
   asm_mips.h
   asm_x86.h
   bihash_16_8.h
@@ -200,12 +181,32 @@ vpp_add_header_files(vppinfra
   linux/sysfs.h
 )
 
+
+if(VPP_USE_DLMALLOC)
+  list(APPEND VPPINFRA_SRCS
+    dlmalloc.c
+    mem_dlmalloc.c
+  )
+else(VPP_USE_DLMALLOC)
+  list(APPEND VPPINFRA_SRCS
+    mheap.c
+    mem_mheap.c
+  )
+endif(VPP_USE_DLMALLOC)
+
+add_vpp_library(vppinfra
+  SOURCES ${VPPINFRA_SRCS}
+  LINK_LIBRARIES m
+  INSTALL_HEADERS ${VPPINFRA_HEADERS}
+)
+
+##############################################################################
+# vppinfra headers
+##############################################################################
 option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." OFF)
 if(VPP_BUILD_VPPINFRA_TESTS)
-  set(VPPINFRA_TESTS
-    bihash_template
+  foreach(test
     bihash_vec88
-    cuckoo_bihash
     cuckoo_template
     dlist
     elf
@@ -232,14 +233,18 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     tw_timer
     valloc
     vec
-    vhash
     zvec
   )
-  foreach(test ${VPPINFRA_TESTS})
-    add_executable(test_${test} test_${test}.c)
-    target_link_libraries(test_${test} vppinfra)
+    add_vpp_executable(test_${test}
+      SOURCES test_${test}.c
+      LINK_LIBRARIES vppinfra
+      )
   endforeach()
 
-  target_link_libraries(test_bihash_template Threads::Threads)
-  target_link_libraries(test_cuckoo_bihash Threads::Threads)
+  foreach(test bihash_template cuckoo_bihash)
+    add_vpp_executable(test_${test}
+      SOURCES test_${test}.c
+      LINK_LIBRARIES vppinfra Threads::Threads
+      )
+  endforeach()
 endif(VPP_BUILD_VPPINFRA_TESTS)

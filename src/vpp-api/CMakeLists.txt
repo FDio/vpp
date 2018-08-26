@@ -15,14 +15,15 @@
 # vpp api client library
 ##############################################################################
 
-add_library (vppapiclient SHARED
+add_vpp_library (vppapiclient
+  SOURCES
   client/client.c
   client/libvppapiclient.map
-)
-target_link_libraries(vppapiclient vppinfra vlibmemoryclient svm pthread m rt)
-add_dependencies(vppapiclient vpp_version_h api_headers)
-install(TARGETS vppapiclient DESTINATION lib)
 
-vpp_add_header_files(vpp-api
+  LINK_LIBRARIES vppinfra vlibmemoryclient svm pthread m rt
+)
+add_dependencies(vppapiclient vpp_version_h api_headers)
+
+add_vpp_headers(vpp-api
   client/vppapiclient.h
 )

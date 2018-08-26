@@ -11,13 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-install(
-  FILES
-  api_helper_macros.h
-  api.h
-  vat_helper_macros.h
-  api_common.h
+macro(add_vpp_executable exec)
+  cmake_parse_arguments(ARG
+    "ENABLE_EXPORTS"
+    ""
+    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    ${ARGN}
+  )
 
-  DESTINATION
-  include/vlibapi
-)
+  add_executable(${exec} ${ARG_SOURCES})
+  if(ARG_LINK_LIBRARIES)
+    target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
+  endif()
+  if(ARG_ENABLE_EXPORTS)
+    set_target_properties(${exec} PROPERTIES ENABLE_EXPORTS 1)
+  endif()
+  if(ARG_DEPENDS)
+    add_dependencies(${exec} ${ARG_DEPENDS})
+  endif()
+  install(TARGETS ${exec} DESTINATION bin)
+endmacro()
+
