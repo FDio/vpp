@@ -160,6 +160,66 @@ VLIB_CLI_COMMAND (igmp_listen_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+igmp_enable_cli (vlib_main_t * vm,
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  igmp_mode_t mode = IGMP_MODE_ROUTER;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = NULL;
+  u32 sw_if_index = ~0;
+  u8 enable = 1;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return error;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	enable = 1;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      if (unformat (line_input, "host"))
+	mode = IGMP_MODE_HOST;
+      else if (unformat (line_input, "router"))
+	mode = IGMP_MODE_ROUTER;
+      else if (unformat (line_input, "%U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index));
+      else
+	{
+	  error =
+	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
+			       line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == sw_if_index)
+    {
+      error = clib_error_return (0, "interface must be specified");
+      goto done;
+    }
+
+  rv = igmp_enable_disable (sw_if_index, enable, mode);
+
+  if (0 != rv)
+    error = clib_error_return (0, "result: %d", rv);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (igmp_enable_command, static) = {
+  .path = "igmp",
+  .short_help = "igmp <enable|disable> <host|router> <interface>",
+  .function = igmp_enable_cli,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		      vlib_cli_command_t * cmd)
 {
@@ -173,8 +233,9 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   /* *INDENT-OFF* */
   pool_foreach (config, im->configs,
     ({
-      vlib_cli_output (vm, "interface: %U", format_vnet_sw_if_index_name,
-                     vnm, config->sw_if_index);
+      vlib_cli_output (vm, "interface: %U mode:%U",
+                       format_vnet_sw_if_index_name, vnm, config->sw_if_index,
+                       format_igmp_mode, config->mode);
 
       FOR_EACH_GROUP (group, config,
         ({

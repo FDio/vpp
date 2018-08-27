@@ -30,6 +30,8 @@ extern u8 *format_igmp_query_v3 (u8 * s, va_list * args);
 
 extern u8 *format_igmp_filter_mode (u8 * s, va_list * args);
 
+extern u8 *format_igmp_mode (u8 * s, va_list * args);
+
 extern u8 *format_igmp_src_addr_list (u8 * s, va_list * args);
 
 extern u8 *format_igmp_key (u8 * s, va_list * args);

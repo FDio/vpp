@@ -54,8 +54,7 @@ format_fib_path_ext (u8 * s, va_list * args)
             }
             s = format(s, "]");
         }
-        s = format(s, " labels:[",
-                   path_ext->fpe_path_index);
+        s = format(s, " labels:[");
         for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
         {
             s = format(s, "[%U]",
