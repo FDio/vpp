@@ -159,6 +159,7 @@ STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,
  */
 typedef enum fib_node_bw_flags_t_
 {
+    FIB_NODE_BW_FLAG_NONE = 0,
     /**
      * Force the walk to be synchronous
      */

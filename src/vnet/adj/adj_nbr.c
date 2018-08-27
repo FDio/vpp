@@ -699,7 +699,6 @@ adj_nbr_interface_state_change_one (adj_index_t ai,
      * since this is the walk that provides convergence
      */
     adj_nbr_interface_state_change_ctx_t *ctx = arg;
-
     fib_node_back_walk_ctx_t bw_ctx = {
 	.fnbw_reason = ((ctx->flags & ADJ_NBR_INTERFACE_UP) ?
                         FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
@@ -711,10 +710,15 @@ adj_nbr_interface_state_change_one (adj_index_t ai,
          */
         .fnbw_flags = (!(ctx->flags & ADJ_NBR_INTERFACE_UP) ?
                        FIB_NODE_BW_FLAG_FORCE_SYNC :
-                       0),
+                       FIB_NODE_BW_FLAG_NONE),
     };
+    ip_adjacency_t *adj;
 
+    adj = adj_get(ai);
+
+    adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
     fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+    adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     return (ADJ_WALK_RC_CONTINUE);
 }
@@ -815,8 +819,13 @@ adj_nbr_interface_delete_one (adj_index_t ai,
     fib_node_back_walk_ctx_t bw_ctx = {
 	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
     };
+    ip_adjacency_t *adj;
 
+    adj = adj_get(ai);
+
+    adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
     fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+    adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     return (ADJ_WALK_RC_CONTINUE);
 }
