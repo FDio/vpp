@@ -209,6 +209,22 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_bound_msg_
+{
+  u32 context;
+  u64 handle;
+  i32 retval;
+  u8 lcl_is_ip4;
+  u8 lcl_ip[16];
+  u16 lcl_port;
+  u64 rx_fifo;
+  u64 tx_fifo;
+  u64 vpp_evt_q;
+  u32 segment_size;
+  u8 segment_name_length;
+  u8 segment_name[128];
+} __clib_packed session_bound_msg_t;
+
 typedef struct session_accepted_msg_
 {
   u32 context;
