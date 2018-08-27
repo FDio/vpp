@@ -16,6 +16,7 @@
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
+  set(VPP_LIB_DIR_NAME lib64)
   check_c_compiler_flag("-march=core-avx2" AVX2)
   if(AVX2)
     list(APPEND MARCH_VARIANTS "avx2\;-march=core-avx2 -mtune=core-avx2")
@@ -26,6 +27,9 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   set(CMAKE_C_FLAGS "-march=armv8-a+crc ${CMAKE_C_FLAGS}")
+  set(VPP_LIB_DIR_NAME lib64)
+else()
+  set(VPP_LIB_DIR_NAME lib)
 endif()
 
 macro(vpp_library_set_multiarch_sources lib)

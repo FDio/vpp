@@ -26,7 +26,7 @@ macro(add_vpp_library lib)
     target_link_libraries(${lib} ${ARG_LINK_LIBRARIES})
   endif()
   # install .so
-  install(TARGETS ${lib} DESTINATION lib)
+  install(TARGETS ${lib} DESTINATION ${VPP_LIB_DIR_NAME})
 
   if(ARG_MULTIARCH_SOURCES)
     vpp_library_set_multiarch_sources(${lib} ${ARG_MULTIARCH_SOURCES})

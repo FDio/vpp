@@ -45,9 +45,9 @@ macro(add_vpp_plugin name)
     set_target_properties(${test_plugin_name} PROPERTIES
       PREFIX ""
       LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_api_test_plugins)
-    install(TARGETS ${test_plugin_name} DESTINATION lib/vpp_api_test_plugins COMPONENT
+    install(TARGETS ${test_plugin_name} DESTINATION ${VPP_LIB_DIR_NAME}/vpp_api_test_plugins COMPONENT
 	    plugins)
   endif()
-  install(TARGETS ${plugin_name} DESTINATION lib/vpp_plugins COMPONENT plugins)
+  install(TARGETS ${plugin_name} DESTINATION ${VPP_LIB_DIR_NAME}/vpp_plugins COMPONENT plugins)
 endmacro()
 
