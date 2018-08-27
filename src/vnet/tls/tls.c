@@ -391,23 +391,26 @@ int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 				stream_session_t * tls_session, u8 is_fail)
 {
-  int (*cb_fn) (u32, u32, stream_session_t *, u8);
   tls_ctx_t *ho_ctx, *ctx;
-  app_worker_t *app_wrk;
-  application_t *app;
   u32 ctx_handle;
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
-  app_wrk = app_worker_get (ho_ctx->parent_app_index);
-  app = application_get (app_wrk->app_index);
-  cb_fn = app->cb_fns.session_connected_callback;
 
   if (is_fail)
     {
+      int (*cb_fn) (u32, u32, stream_session_t *, u8);
+      u32 wrk_index, api_context;
+      app_worker_t *app_wrk;
+      application_t *app;
+
+      wrk_index = ho_ctx->parent_app_index;
+      api_context = ho_ctx->c_s_index;
       tls_ctx_half_open_reader_unlock ();
       tls_ctx_half_open_free (ho_ctx_index);
-      return cb_fn (ho_ctx->parent_app_index, ho_ctx->c_s_index, 0,
-		    1 /* failed */ );
+      app_wrk = app_worker_get (ho_ctx->parent_app_index);
+      app = application_get (app_wrk->app_index);
+      cb_fn = app->cb_fns.session_connected_callback;
+      return cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
     }
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
