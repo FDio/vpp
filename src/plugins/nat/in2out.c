@@ -2764,22 +2764,24 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 static_always_inline int
 nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
                                        u8 proto, u16 src_port, u16 dst_port,
-                                       u32 thread_index, u32 sw_if_index)
+                                       u32 thread_index, u32 rx_sw_if_index,
+                                       u32 tx_sw_if_index)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_interface_t *i;
   snat_session_t *s;
-  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+  u32 rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (rx_sw_if_index);
+  u32 tx_fib_index = ip4_fib_table_get_index_for_sw_if_index (tx_sw_if_index);
 
   /* src NAT check */
-  make_ed_kv (&kv, &ip->src_address, &ip->dst_address, proto, fib_index,
+  make_ed_kv (&kv, &ip->src_address, &ip->dst_address, proto, tx_fib_index,
               src_port, dst_port);
   if (!clib_bihash_search_16_8 (&tsm->out2in_ed, &kv, &value))
     return 1;
 
   /* dst NAT check */
-  make_ed_kv (&kv, &ip->dst_address, &ip->src_address, proto, fib_index,
+  make_ed_kv (&kv, &ip->dst_address, &ip->src_address, proto, rx_fib_index,
               dst_port, src_port);
   if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &kv, &value))
   {
@@ -2790,7 +2792,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
     /* hairpinning */
     pool_foreach (i, sm->output_feature_interfaces,
     ({
-      if ((nat_interface_is_inside(i)) && (sw_if_index == i->sw_if_index))
+      if ((nat_interface_is_inside(i)) && (rx_sw_if_index == i->sw_if_index))
         return 0;
     }));
     return 1;
@@ -2838,7 +2840,8 @@ icmp_match_in2out_ed(snat_main_t *sm, vlib_node_runtime_t *node,
       if (vnet_buffer(b)->sw_if_index[VLIB_TX] != ~0)
         {
           if (PREDICT_FALSE(nat44_ed_not_translate_output_feature(sm, ip,
-              key.proto, key.l_port, key.r_port, thread_index, sw_if_index)))
+              key.proto, key.l_port, key.r_port, thread_index, sw_if_index,
+              vnet_buffer(b)->sw_if_index[VLIB_TX])))
             {
               dont_translate = 1;
               goto out;
@@ -3285,7 +3288,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                     {
                       if (PREDICT_FALSE(nat44_ed_not_translate_output_feature(
                           sm, ip0, ip0->protocol, udp0->src_port,
-                          udp0->dst_port, thread_index, sw_if_index0)))
+                          udp0->dst_port, thread_index, sw_if_index0,
+                          vnet_buffer(b0)->sw_if_index[VLIB_TX])))
                         goto trace00;
                     }
                   else
@@ -3468,7 +3472,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                     {
                       if (PREDICT_FALSE(nat44_ed_not_translate_output_feature(
                           sm, ip1, ip1->protocol, udp1->src_port,
-                          udp1->dst_port, thread_index, sw_if_index1)))
+                          udp1->dst_port, thread_index, sw_if_index1,
+                          vnet_buffer(b1)->sw_if_index[VLIB_TX])))
                         goto trace01;
                     }
                   else
@@ -3680,7 +3685,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                     {
                       if (PREDICT_FALSE(nat44_ed_not_translate_output_feature(
                           sm, ip0, ip0->protocol, udp0->src_port,
-                          udp0->dst_port, thread_index, sw_if_index0)))
+                          udp0->dst_port, thread_index, sw_if_index0,
+                          vnet_buffer(b0)->sw_if_index[VLIB_TX])))
                         goto trace0;
                     }
                   else
