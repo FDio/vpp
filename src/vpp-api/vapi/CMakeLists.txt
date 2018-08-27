@@ -42,7 +42,7 @@ foreach(f ${VPP_API_FILES})
     OUTPUT ${output}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_cpp_gen.py
-    ARGS --remove-path ${input}
+    ARGS --gen-h-prefix=vapi --remove-path ${input}
     DEPENDS ${input} vapi_cpp_gen.py vapi_json_parser.py
     COMMENT "Generating VAPI C++ header ${output}"
   )

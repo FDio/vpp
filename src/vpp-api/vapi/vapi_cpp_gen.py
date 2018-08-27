@@ -136,7 +136,7 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
     print("#define %s" % include_guard)
     print("")
     print("#include <vapi/vapi.hpp>")
-    print("#include <%s%s>" % (gen_h_prefix, json_to_c_header_name(j)))
+    print("#include <%s%s>" % (gen_h_prefix, json_to_c_header_name(f)))
     print("")
     print("namespace vapi {")
     print("")
