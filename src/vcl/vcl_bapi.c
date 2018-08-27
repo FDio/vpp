@@ -221,57 +221,9 @@ static void
 static void
 vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
-  vcl_session_t *session = 0;
-  u32 session_index = mp->context;
-  int rv;
-
-  VCL_SESSION_LOCK_AND_GET (session_index, &session);
-done:
-  if (mp->retval)
-    {
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, "
-		    "sid %u: bind failed: %U",
-		    getpid (), mp->handle, session_index,
-		    format_api_error, ntohl (mp->retval));
-      rv = vppcom_session_at_index (session_index, &session);
-      if (rv == VPPCOM_OK)
-	{
-	  session->session_state = STATE_FAILED;
-	  session->vpp_handle = mp->handle;
-	}
-      else
-	{
-	  clib_warning ("[%s] ERROR: vpp handle 0x%llx, sid %u: "
-			"Invalid session index (%u)!",
-			getpid (), mp->handle, session_index);
-	}
-      goto done_unlock;
-    }
-
-  session->vpp_handle = mp->handle;
-  session->transport.is_ip4 = mp->lcl_is_ip4;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (ip46_address_t));
-  session->transport.lcl_port = mp->lcl_port;
-  vppcom_session_table_add_listener (mp->handle, session_index);
-  session->session_state = STATE_LISTEN;
-
-  if (session->is_dgram)
-    {
-      svm_fifo_t *rx_fifo, *tx_fifo;
-      session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
-      rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-      rx_fifo->client_session_index = session_index;
-      tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-      tx_fifo->client_session_index = session_index;
-      session->rx_fifo = rx_fifo;
-      session->tx_fifo = tx_fifo;
-    }
-
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
-	getpid (), mp->handle, mp->context);
-done_unlock:
-  VCL_SESSION_UNLOCK ();
+  /* Expecting a similar message on mq. So ignore this */
+  VDBG (1, "VCL<%d>: bapi msg vpp handle 0x%llx, sid %u: bind retval: %u!",
+	getpid (), mp->handle, mp->context, mp->retval);
 }
 
 static void
@@ -299,8 +251,8 @@ _(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
 void
 vppcom_api_hookup (void)
 {
-#define _(N, n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+#define _(N, n)                                                	\
+    vl_msg_api_set_handlers(VL_API_##N, #n,                    	\
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
