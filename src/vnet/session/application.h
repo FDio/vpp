@@ -247,6 +247,7 @@ u32 application_local_session_table (application_t * app);
 u8 *application_name_from_index (u32 app_wrk_index);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
+u8 application_use_mq_for_ctrl (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 

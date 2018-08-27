@@ -769,6 +769,12 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
+u8
+application_use_mq_for_ctrl (application_t * app)
+{
+  return app->flags & APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
+}
+
 /**
  * Send an API message to the external app, to map new segment
  */
