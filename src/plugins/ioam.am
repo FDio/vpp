@@ -67,12 +67,6 @@ IOAM_TRACE_NOINST_HDR =                 \
 
 IOAM_TRACE_API = ioam/lib-trace/trace.api
 
-ioam_trace_test_plugin_la_SOURCES =		\
-	ioam/lib-trace/trace_test.c		\
-	ioam/lib-trace/trace_plugin.api.h
-
-vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
-
 nobase_include_HEADERS +=                       \
        ioam/lib-trace/trace_util.h		\
        ioam/export-common/ioam_export.h
@@ -219,6 +213,8 @@ ioam_test_plugin_la_SOURCES = \
   ioam/ioam_test.c						\
   ioam/lib-pot/pot_test.c					\
   ioam/lib-pot/pot_plugin.api.h					\
+  ioam/lib-trace/trace_test.c					\
+  ioam/lib-trace/trace_plugin.api.h				\
   ioam/export/ioam_export_test.c				\
   ioam/export/ioam_export_plugin.api.h				\
   ioam/lib-vxlan-gpe/vxlan_gpe_test.c				\
