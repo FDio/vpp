@@ -56,7 +56,7 @@
 #define MPLS_LABEL_POP (MPLS_IETF_MAX_LABEL+2)
 
 #define MPLS_LABEL_IS_REAL(_lbl) \
-    (((_lbl) > MPLS_IETF_MIN_UNRES_LABEL) &&	\
+    (((_lbl) >= MPLS_IETF_MIN_UNRES_LABEL) &&	\
      ((_lbl) <= MPLS_IETF_MAX_UNRES_LABEL))
 
 /**
