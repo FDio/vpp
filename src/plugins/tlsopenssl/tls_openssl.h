@@ -46,6 +46,7 @@ typedef struct openssl_main_
   openssl_listen_ctx_t *lctx_pool;
 
   X509_STORE *cert_store;
+  u8 *ciphers;
   int engine_init;
   int async;
 } openssl_main_t;
