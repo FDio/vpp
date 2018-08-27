@@ -23,4 +23,7 @@ add_vpp_plugin(map
 
   API_FILES
   map.api
+
+  API_TEST_SOURCES
+  map_test.c
 )

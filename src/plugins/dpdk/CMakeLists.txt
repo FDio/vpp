@@ -119,6 +119,9 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     API_FILES
     api/dpdk.api
 
+    API_TEST_SOURCES
+    api/dpdk_test.c
+
     LINK_FLAGS
     ${DPDK_LINK_FLAGS}
   )

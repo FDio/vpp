@@ -21,4 +21,7 @@ add_vpp_plugin(acl
 
   API_FILES
   acl.api
+
+  API_TEST_SOURCES
+  acl_test.c
 )

@@ -41,4 +41,7 @@ add_vpp_plugin(nat
 
   API_FILES
   nat.api
+
+  API_TEST_SOURCES
+  nat_test.c
 )
