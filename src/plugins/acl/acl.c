@@ -3858,7 +3858,7 @@ acl_plugin_show_sessions (acl_main_t * am,
 	  u32 head_session_index = pw->fa_conn_list_head[tt];
 	  vlib_cli_output (vm, "  fa_conn_list_head[%d]: %d", tt,
 			   head_session_index);
-	  if (~0 != head_session_index)
+	  if (FA_SESSION_BOGUS_INDEX != head_session_index)
 	    {
 	      fa_session_t *sess = pw->fa_sessions_pool + head_session_index;
 	      vlib_cli_output (vm, "    last active time: %lu",
@@ -3922,7 +3922,7 @@ acl_show_aclplugin_sessions_fn (vlib_main_t * vm,
 
   u32 show_bihash_verbose = 0;
   u32 show_session_thread_id = ~0;
-  u32 show_session_session_index = ~0;
+  u32 show_session_session_index = FA_SESSION_BOGUS_INDEX;
   (void) unformat (input, "thread %u index %u", &show_session_thread_id,
 		   &show_session_session_index);
   (void) unformat (input, "verbose %u", &show_bihash_verbose);

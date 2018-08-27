@@ -140,7 +140,11 @@ CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), siz
 CT_ASSERT_EQUAL(fa_5tuple_opaque_t_must_match_5tuple, sizeof(fa_5tuple_opaque_t), sizeof(fa_5tuple_t));
 #undef CT_ASSERT_EQUAL
 
-#define FA_SESSION_BOGUS_INDEX ~0
+/*
+ * This was previously ~0.
+ * Rather use 0 and preallocate a dummy session at index 0.
+ */
+#define FA_SESSION_BOGUS_INDEX 0
 
 typedef struct {
   /* The pool of sessions managed by this worker */

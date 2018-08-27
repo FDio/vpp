@@ -108,6 +108,10 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 	   */
 	  pool_init_fixed (pw->fa_sessions_pool,
 			   am->fa_conn_table_max_entries);
+          /* reserve the element with index 0, it is used to signal end of linking, and poison it */
+          fa_session_t *sess;
+          pool_get_aligned (pw->fa_sessions_pool, sess, CLIB_CACHE_LINE_BYTES);
+          memset(sess, 0xae, sizeof(*sess));
 	}
 
       /* ... and the interface session hash table */
