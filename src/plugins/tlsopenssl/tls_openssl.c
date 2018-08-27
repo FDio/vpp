@@ -459,7 +459,6 @@ check_app_fifo:
 static int
 openssl_ctx_init_client (tls_ctx_t * ctx)
 {
-  char *ciphers = "ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH";
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   openssl_main_t *om = &openssl_main;
@@ -490,7 +489,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   if (om->async)
     SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ASYNC);
 #endif
-  rv = SSL_CTX_set_cipher_list (oc->ssl_ctx, (const char *) ciphers);
+  rv = SSL_CTX_set_cipher_list (oc->ssl_ctx, (const char *) om->ciphers);
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set cipher");
@@ -565,11 +564,8 @@ openssl_start_listen (tls_ctx_t * lctx)
   u32 olc_index;
   openssl_listen_ctx_t *olc;
 
-  char *ciphers = "ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH";
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
-#ifdef HAVE_OPENSSL_ASYNC
   openssl_main_t *om = &openssl_main;
-#endif
 
   app = application_get (lctx->parent_app_index);
   if (!app->tls_cert || !app->tls_key)
@@ -595,7 +591,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   SSL_CTX_set_options (ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
 
-  rv = SSL_CTX_set_cipher_list (ssl_ctx, (const char *) ciphers);
+  rv = SSL_CTX_set_cipher_list (ssl_ctx, (const char *) om->ciphers);
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set cipher");
@@ -781,6 +777,27 @@ tls_init_ca_chain (void)
   return (rv < 0 ? -1 : 0);
 }
 
+static int
+tls_openssl_set_ciphers (char *ciphers)
+{
+  openssl_main_t *om = &openssl_main;
+  int i;
+
+  if (!ciphers)
+    {
+      return -1;
+    }
+
+  vec_validate (om->ciphers, strlen (ciphers) - 1);
+  for (i = 0; i < vec_len (om->ciphers); i++)
+    {
+      om->ciphers[i] = toupper (ciphers[i]);
+    }
+
+  return 0;
+
+}
+
 static clib_error_t *
 tls_openssl_init (vlib_main_t * vm)
 {
@@ -809,6 +826,10 @@ tls_openssl_init (vlib_main_t * vm)
 
   om->engine_init = 0;
 
+  /* default ciphers */
+  tls_openssl_set_ciphers
+    ("ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
+
   return 0;
 }
 
@@ -820,6 +841,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   openssl_main_t *om = &openssl_main;
   char *engine_name = NULL;
   char *engine_alg = NULL;
+  char *ciphers = NULL;
   u8 engine_name_set = 0;
   int i;
 
@@ -846,6 +868,10 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  for (i = 0; i < strnlen (engine_alg, MAX_CRYPTO_LEN); i++)
 	    engine_alg[i] = toupper (engine_alg[i]);
+	}
+      else if (unformat (input, "ciphers %s", &ciphers))
+	{
+	  tls_openssl_set_ciphers (ciphers);
 	}
       else
 	return clib_error_return (0, "failed: unknown input `%U'",
