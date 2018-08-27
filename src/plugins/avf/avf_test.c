@@ -93,6 +93,7 @@ api_avf_create (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_avf_create_t *mp;
   avf_create_if_args_t args;
+  uint32_t tmp;
   int ret;
   u32 x[4];
 
@@ -109,10 +110,12 @@ api_avf_create (vat_main_t * vam)
 	}
       else if (unformat (i, "elog"))
 	args.enable_elog = 1;
-      else if (unformat (i, "rx-queue-size %u", &args.rxq_size))
-	;
-      else if (unformat (i, "tx-queue-size %u", &args.txq_size))
-	;
+      else if (unformat (i, "rx-queue-size %u", &tmp))
+	args.rxq_size = tmp;
+      else if (unformat (i, "tx-queue-size %u", &tmp))
+	args.txq_size = tmp;
+      else if (unformat (i, "num-rx-queues %u", &tmp))
+	args.rxq_num = tmp;
       else
 	{
 	  clib_warning ("unknown input '%U'", format_unformat_error, i);
@@ -124,6 +127,7 @@ api_avf_create (vat_main_t * vam)
 
   mp->pci_addr = clib_host_to_net_u32 (args.addr.as_u32);
   mp->enable_elog = clib_host_to_net_u16 (args.enable_elog);
+  mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
 
@@ -194,7 +198,7 @@ api_avf_delete (vat_main_t * vam)
  */
 #define foreach_vpe_api_msg					\
 _(avf_create, "<pci-address> [rx-queue-size <size>] "		\
-              "[tx-queue-size <size>]")				\
+              "[tx-queue-size <size>] [num-rx-queues <size>]")	\
 _(avf_delete, "<sw_if_index>")
 
 static void

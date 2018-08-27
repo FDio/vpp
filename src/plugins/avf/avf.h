@@ -203,6 +203,7 @@ typedef struct
 {
   vlib_pci_addr_t addr;
   int enable_elog;
+  u16 rxq_num;
   u16 rxq_size;
   u16 txq_size;
   /* return */
