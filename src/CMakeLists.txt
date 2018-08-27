@@ -30,6 +30,11 @@ set(CMAKE_C_FLAGS_COMMON "-DFORTIFY_SOURCE=2 -fstack-protector-all -Werror")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${CMAKE_C_FLAGS_COMMON} -DCLIB_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${CMAKE_C_FLAGS_COMMON}")
 
+check_c_compiler_flag("-Wno-address-of-packed-member" compiler_flag_no_address_of_packed_member)
+if (compiler_flag_no_address_of_packed_member)
+  add_definitions(-Wno-address-of-packed-member)
+endif()
+
 ##############################################################################
 # install config
 ##############################################################################

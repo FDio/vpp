@@ -50,7 +50,7 @@ foreach(f ${VPP_API_FILES})
   list(APPEND VAPICLIENT_API_CPP_HEADERS ${output})
 endforeach ()
 
-add_custom_target(all-vapi-headers ALL DEPENDS
+add_custom_target(all-vapi-headers DEPENDS
   ${VAPICLIENT_API_C_HEADERS}
   ${VAPICLIENT_API_CPP_HEADERS}
 )
@@ -61,6 +61,7 @@ add_vpp_library(vapiclient
   libvapiclient.map
 
   LINK_LIBRARIES vppinfra vlibmemoryclient svm pthread m rt
+  DEPENDS all-vapi-headers
 )
 
 install(
