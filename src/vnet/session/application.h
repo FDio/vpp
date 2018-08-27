@@ -247,6 +247,7 @@ u32 application_local_session_table (application_t * app);
 u8 *application_name_from_index (u32 app_wrk_index);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
+u8 application_use_mq_for_ctrl (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
@@ -262,6 +263,8 @@ local_session_t *application_get_local_session (app_worker_t * app,
 						u32 session_index);
 local_session_t *application_get_local_session_from_handle (session_handle_t
 							    handle);
+local_session_t
+  * application_get_local_listen_session_from_handle (session_handle_t lh);
 int application_start_local_listen (app_worker_t * server,
 				    session_endpoint_t * sep,
 				    session_handle_t * handle);
