@@ -62,6 +62,21 @@ format_igmp_filter_mode (u8 * s, va_list * args)
 }
 
 u8 *
+format_igmp_mode (u8 * s, va_list * args)
+{
+  igmp_mode_t mode = va_arg (*args, igmp_mode_t);
+
+  switch (mode)
+    {
+#define _(n,f)  case IGMP_MODE_##f: return (format (s, "%s", #f));
+      foreach_igmp_mode
+#undef _
+    }
+  return (format (s, "unknown:%d", mode));
+
+}
+
+u8 *
 format_igmp_header (u8 * s, va_list * args)
 {
   igmp_header_t *hdr = va_arg (*args, igmp_header_t *);

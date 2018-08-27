@@ -450,6 +450,10 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
       hash_free (config->igmp_group_by_key);
       pool_put (im->configs, config);
     }
+  else
+    {
+      return -1;
+    }
 
   return (0);
 }
