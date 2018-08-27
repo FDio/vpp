@@ -769,6 +769,12 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
+u8
+application_use_mq_for_ctrl (application_t * app)
+{
+  return app->flags & APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
+}
+
 /**
  * Send an API message to the external app, to map new segment
  */
@@ -1161,6 +1167,17 @@ application_get_local_session_from_handle (session_handle_t handle)
   if (!server_wrk)
     return 0;
   return application_get_local_session (server_wrk, session_index);
+}
+
+local_session_t *
+application_get_local_listen_session_from_handle (session_handle_t lh)
+{
+  u32 ll_index, server_wrk_index;
+  app_worker_t *server_wrk;
+
+  local_session_parse_handle (lh, &server_wrk_index, &ll_index);
+  server_wrk = app_worker_get (server_wrk_index);
+  return application_get_local_listen_session (server_wrk, ll_index);
 }
 
 always_inline void
