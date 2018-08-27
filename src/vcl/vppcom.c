@@ -466,7 +466,7 @@ done_unlock:
 }
 
 static u32
-vcl_reset_handler (session_reset_msg_t * reset_msg)
+vcl_session_reset_handler (session_reset_msg_t * reset_msg)
 {
   vcl_session_t *session;
   u32 sid;
@@ -483,6 +483,13 @@ vcl_reset_handler (session_reset_msg_t * reset_msg)
   vcl_send_session_reset_reply (vcl_session_vpp_evt_q (session),
 				vcm->my_client_index, reset_msg->handle, 0);
   return sid;
+}
+
+static u32
+vcl_session_bound_handler (session_bound_msg_t * bound_msg)
+{
+  vcl_session_t *session;
+  u32 sid;
 }
 
 int
@@ -534,7 +541,10 @@ vcl_handle_mq_ctrl_event (session_event_t * e)
 	    sid);
       break;
     case SESSION_CTRL_EVT_RESET:
-      vcl_reset_handler ((session_reset_msg_t *) e->data);
+      vcl_session_reset_handler ((session_reset_msg_t *) e->data);
+      break;
+    case SESSION_CTRL_EVT_BOUND:
+      vcl_session_bound_handler ((session_bound_msg_t *) e->data);
       break;
     default:
       clib_warning ("unhandled %u", e->event_type);
@@ -1780,7 +1790,7 @@ vcl_select_handle_mq (svm_msg_q_t * mq, unsigned long n_bits,
 	    }
 	  break;
 	case SESSION_CTRL_EVT_RESET:
-	  sid = vcl_reset_handler ((session_reset_msg_t *) e->data);
+	  sid = vcl_session_reset_handler ((session_reset_msg_t *) e->data);
 	  if (sid < n_bits && except_map)
 	    {
 	      clib_bitmap_set_no_check (except_map, sid, 1);
@@ -2404,7 +2414,7 @@ vcl_epoll_wait_handle_mq (svm_msg_q_t * mq, struct epoll_event *events,
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  break;
 	case SESSION_CTRL_EVT_RESET:
-	  sid = vcl_reset_handler ((session_reset_msg_t *) e->data);
+	  sid = vcl_session_reset_handler ((session_reset_msg_t *) e->data);
 	  if (!(session = vcl_session_get (sid)))
 	    break;
 	  add_event = 1;

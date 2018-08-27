@@ -636,6 +636,63 @@ done:
   return 0;
 }
 
+static int
+mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
+			 session_handle_t handle, stream_session_t * ls,
+			 int rv)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  svm_msg_q_t *app_mq, *vpp_evt_q;
+  session_bound_msg_t *mp;
+  transport_connection_t *tc;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  application_t *app;
+
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+  app_mq = app_wrk->event_queue;
+  if (!app_mq)
+    {
+      clib_warning ("app %u with api index: %u not attached", app->app_index,
+	            app->api_client_index);
+      return -1;
+    }
+
+  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
+	                               SVM_Q_WAIT, msg);
+  svm_msg_q_unlock (app_mq);
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  memset(evt, 0, sizeof(*evt));
+  evt->event_type = SESSION_CTRL_EVT_BOUND;
+  mp = (session_bound_msg_t *) evt->data;
+  mp->context = api_context;
+
+  if (rv)
+    goto done;
+
+  tc = listen_session_get_transport (ls);
+  mp->handle = handle;
+  mp->lcl_port = tc->lcl_port;
+  mp->lcl_is_ip4 = tc->is_ip4;
+  if (app && application_has_global_scope (app))
+    {
+      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
+      if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+	{
+	  mp->rx_fifo = pointer_to_uword (ls->server_rx_fifo);
+	  mp->tx_fifo = pointer_to_uword (ls->server_tx_fifo);
+	  vpp_evt_q = session_manager_get_vpp_event_queue (0);
+	  mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+	}
+    }
+
+done:
+  mp->retval = rv;
+  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  return 0;
+}
+
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
@@ -791,6 +848,7 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
   stream_session_t *s;
   application_t *app = 0;
   svm_msg_q_t *vpp_evt_q;
+  app_worker_t *app_wrk;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -837,6 +895,12 @@ done:
       }
   }));
   /* *INDENT-ON* */
+
+  /* If app uses mq for control messages, send an mq message as well */
+  app_wrk = application_get_worker (app, 0);
+  if (application_use_mq_for_ctrl (app))
+    mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, s,
+                              rv);
 }
 
 static void
@@ -1070,6 +1134,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   int rv = 0;
   clib_error_t *error;
   application_t *app = 0;
+  app_worker_t *app_wrk;
   stream_session_t *s;
   transport_connection_t *tc = 0;
   ip46_address_t *ip46;
@@ -1129,6 +1194,12 @@ done:
       }
   }));
   /* *INDENT-ON* */
+
+  /* If app uses mq for control messages, send an mq message as well */
+  app_wrk = application_get_worker (app, mp->wrk_index);
+  if (application_use_mq_for_ctrl (app))
+    mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, s,
+                              rv);
 }
 
 static void
