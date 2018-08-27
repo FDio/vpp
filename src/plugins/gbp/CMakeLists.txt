@@ -27,4 +27,9 @@ add_vpp_plugin(gbp
 
   API_FILES
   gbp.api
+
+  INSTALL_HEADERS
+  gbp.h
+  gbp_all_api_h.h
+  gbp_msg_enum.h
 )

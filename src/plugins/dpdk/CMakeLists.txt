@@ -122,6 +122,11 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     API_TEST_SOURCES
     api/dpdk_test.c
 
+    INSTALL_HEADERS
+    device/dpdk.h
+    api/dpdk_all_api_h.h
+    ipsec/ipsec.h
+
     LINK_FLAGS
     ${DPDK_LINK_FLAGS}
   )

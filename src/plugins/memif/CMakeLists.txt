@@ -29,4 +29,9 @@ add_vpp_plugin(memif
   MULTIARCH_SOURCES
   device.c
   node.c
+
+  INSTALL_HEADERS
+  memif.h
+  memif_all_api_h.h
+  memif_msg_enum.h
 )

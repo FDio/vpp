@@ -74,6 +74,37 @@ add_vpp_plugin(ioam
   ip6/ioam_cache.api
   udp-ping/udp_ping.api
 
+  INSTALL_HEADERS
+  lib-pot/pot_all_api_h.h
+  lib-pot/pot_msg_enum.h
+  lib-pot/pot_util.h
+  lib-pot/math64.h
+  export/ioam_export_all_api_h.h
+  export/ioam_export_msg_enum.h
+  lib-trace/trace_all_api_h.h
+  lib-trace/trace_msg_enum.h
+  lib-trace/trace_util.h
+  encap/ip6_ioam_trace.h
+  lib-trace/trace_config.h
+  export-common/ioam_export.h
+  lib-vxlan-gpe/vxlan_gpe_all_api_h.h
+  lib-vxlan-gpe/vxlan_gpe_msg_enum.h
+  lib-vxlan-gpe/vxlan_gpe_ioam_util.h
+  lib-vxlan-gpe/vxlan_gpe_ioam_packet.h
+  lib-vxlan-gpe/vxlan_gpe_ioam.h
+  export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h
+  export-vxlan-gpe/vxlan_gpe_ioam_export_msg_enum.h
+  encap/ip6_ioam_e2e.h
+  encap/ip6_ioam_seqno.h
+  lib-e2e/ioam_seqno_lib.h
+  ip6/ioam_cache_all_api_h.h
+  ip6/ioam_cache_msg_enum.h
+  udp-ping/udp_ping_packet.h
+  udp-ping/udp_ping.h
+  udp-ping/udp_ping_util.h
+  udp-ping/udp_ping_all_api_h.h
+  udp-ping/udp_ping_msg_enum.h
+
   API_TEST_SOURCES
   ioam_test.c
   lib-pot/pot_test.c

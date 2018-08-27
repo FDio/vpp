@@ -15,16 +15,19 @@ macro(add_vpp_plugin name)
   cmake_parse_arguments(PLUGIN
     ""
     "LINK_FLAGS"
-    "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES;API_TEST_SOURCES"
+    "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES"
     ${ARGN}
   )
   set(plugin_name ${name}_plugin)
   set(api_headers)
   file(RELATIVE_PATH rpath ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
   foreach(f ${PLUGIN_API_FILES})
+    get_filename_component(dir ${f} DIRECTORY)
     vpp_generate_api_header(${f} plugins)
     list(APPEND api_headers ${f}.h ${f}.json)
     set_property(GLOBAL APPEND PROPERTY VPP_API_FILES ${rpath}/${f})
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h DESTINATION
+      include/vpp_plugins/${name}/${dir})
   endforeach()
   add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_headers})
   add_dependencies(${plugin_name} vpp_version_h api_headers)
@@ -39,6 +42,12 @@ macro(add_vpp_plugin name)
   endif()
   if(PLUGIN_LINK_FLAGS)
     set_target_properties(${plugin_name} PROPERTIES LINK_FLAGS "${PLUGIN_LINK_FLAGS}")
+  endif()
+  if(PLUGIN_INSTALL_HEADERS)
+    foreach(file ${PLUGIN_INSTALL_HEADERS})
+      get_filename_component(dir ${file} DIRECTORY)
+      install(FILES ${file} DESTINATION include/vpp_plugins/${name}/${dir})
+    endforeach()
   endif()
   if(PLUGIN_API_TEST_SOURCES)
     set(test_plugin_name ${name}_test_plugin)

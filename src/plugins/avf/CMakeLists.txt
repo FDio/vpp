@@ -30,4 +30,8 @@ add_vpp_plugin(avf
 
   API_TEST_SOURCES
   avf_test.c
+
+  INSTALL_HEADERS
+  avf_all_api_h.h
+  avf_msg_enum.h
 )

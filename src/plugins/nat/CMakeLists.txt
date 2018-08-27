@@ -44,4 +44,8 @@ add_vpp_plugin(nat
 
   API_TEST_SOURCES
   nat_test.c
+
+  INSTALL_HEADERS
+  nat_all_api_h.h
+  nat_msg_enum.h
 )

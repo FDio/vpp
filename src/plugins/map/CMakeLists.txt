@@ -26,4 +26,10 @@ add_vpp_plugin(map
 
   API_TEST_SOURCES
   map_test.c
+
+  INSTALL_HEADERS
+  map_all_api_h.h
+  map_msg_enum.h
+  map_dpo.h
+  map.h
 )

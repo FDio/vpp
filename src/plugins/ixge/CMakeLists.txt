@@ -11,4 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(ixge SOURCES ixge.c)
+add_vpp_plugin(ixge
+  SOURCES
+  ixge.c
+
+  INSTALL_HEADERS
+  ixge.h
+)

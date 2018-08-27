@@ -15,4 +15,7 @@ add_vpp_plugin(srv6as
   SOURCES
   as.c
   node.c
+
+  INSTALL_HEADERS
+  as.h
 )

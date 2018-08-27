@@ -24,4 +24,9 @@ add_vpp_plugin(acl
 
   API_TEST_SOURCES
   acl_test.c
+
+  INSTALL_HEADERS
+  acl_all_api_h.h
+  acl_msg_enum.h
+  manual_fns.h
 )

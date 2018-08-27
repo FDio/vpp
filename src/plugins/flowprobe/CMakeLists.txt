@@ -19,6 +19,10 @@ add_vpp_plugin(flowprobe
   API_FILES
   flowprobe.api
 
+  INSTALL_HEADERS
+  flowprobe_all_api_h.h
+  flowprobe_msg_enum.h
+
   API_TEST_SOURCES
   flowprobe_test.c
 )

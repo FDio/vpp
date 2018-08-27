@@ -22,6 +22,11 @@ add_vpp_plugin(lb
   API_FILES
   lb.api
 
+  INSTALL_HEADERS
+  lb.h
+  util.h
+  lbhash.h
+
   API_TEST_SOURCES
   lb_test.c
 )

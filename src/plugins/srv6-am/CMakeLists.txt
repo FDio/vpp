@@ -15,4 +15,7 @@ add_vpp_plugin(srv6am
   SOURCES
   am.c
   node.c
+
+  INSTALL_HEADERS
+  am.h
 )

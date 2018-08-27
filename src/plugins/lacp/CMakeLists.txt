@@ -27,6 +27,16 @@ add_vpp_plugin(lacp
   API_FILES
   lacp.api
 
+  INSTALL_HEADERS
+  machine.h
+  rx_machine.h
+  tx_machine.h
+  mux_machine.h
+  ptx_machine.h
+  node.h
+  lacp_all_api_h.h
+  lacp_msg_enum.h
+
   API_TEST_SOURCES
   lacp_test.c
 )

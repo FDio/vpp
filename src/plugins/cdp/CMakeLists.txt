@@ -23,5 +23,11 @@ add_vpp_plugin(cdp
 
   API_TEST_SOURCES
   cdp_test.c
+
+  INSTALL_HEADERS
+  cdp_all_api_h.h
+  cdp.h
+  cdp_msg_enum.h
+  cdp_protocol.h
 )
 

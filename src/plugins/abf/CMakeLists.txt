@@ -19,4 +19,8 @@ add_vpp_plugin(abf
 
   API_FILES
   abf.api
+
+  INSTALL_HEADERS
+  abf_all_api_h.h
+  abf_msg_enum.h
 )
