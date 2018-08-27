@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d7224e4_97540cf2",
+        "filename": "docs/gettingstarted/developers/eventviewer.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-27T15:59:07Z",
+      "side": 1,
+      "message": "I would say \"do not introduce trailing whitespace\", but this looks like copied from an actual VPP code.",
+      "range": {
+        "startLine": 19,
+        "startChar": 27,
+        "endLine": 19,
+        "endChar": 28
+      },
+      "revId": "2ba9dcf408d5f861738356dfb43c28a803fcd7fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2fa9f6a_8fcf5a73",
+        "filename": "docs/gettingstarted/developers/eventviewer.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-27T15:59:07Z",
+      "side": 1,
+      "message": "On the other hand, I see no excuse for a whitespace like this.",
+      "range": {
+        "startLine": 165,
+        "startChar": 69,
+        "endLine": 165,
+        "endChar": 70
+      },
+      "revId": "2ba9dcf408d5f861738356dfb43c28a803fcd7fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e39462d_2dcf00a0",
+        "filename": "docs/gettingstarted/developers/gdb_examples.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-27T15:59:07Z",
+      "side": 1,
+      "message": "Wikipedia [0] preferred formulation seems to be \"control-C\".\n\n[0] https://en.wikipedia.org/wiki/Ctrl-C",
+      "range": {
+        "startLine": 41,
+        "startChar": 69,
+        "endLine": 41,
+        "endChar": 75
+      },
+      "revId": "2ba9dcf408d5f861738356dfb43c28a803fcd7fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ed5383ef_da40c7bb",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-27T15:59:07Z",
+      "side": 1,
+      "message": "Should we mention this only applies to Changes whose parent has already been merged?\nDescribing how to handle a tree of unmerged Changes is hard, even if all the Changes are from the same contributor.",
+      "range": {
+        "startLine": 151,
+        "startChar": 17,
+        "endLine": 151,
+        "endChar": 30
+      },
+      "revId": "2ba9dcf408d5f861738356dfb43c28a803fcd7fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
