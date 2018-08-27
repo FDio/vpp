@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d4ceed98_5995bb7b",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-27T08:13:47Z",
+      "side": 1,
+      "message": "Do not introduce trailing whitespace please.",
+      "range": {
+        "startLine": 450,
+        "startChar": 55,
+        "endLine": 450,
+        "endChar": 56
+      },
+      "revId": "1553197f9a1a3258b6954adeb9536bbe0191683d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
