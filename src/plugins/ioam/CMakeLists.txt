@@ -78,6 +78,7 @@ add_vpp_plugin(ioam
   ioam_test.c
   lib-pot/pot_test.c
   export/ioam_export_test.c
+  export-vxlan-gpe/vxlan_gpe_ioam_export_test.c
   lib-trace/trace_test.c
   lib-vxlan-gpe/vxlan_gpe_test.c
   udp-ping/udp_ping_test.c

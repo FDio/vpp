@@ -33,7 +33,7 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${CMAKE_C_FLAGS_COMMON}")
 ##############################################################################
 # install config
 ##############################################################################
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIB_DIR_NAME}")
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
