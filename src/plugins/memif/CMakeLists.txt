@@ -23,6 +23,9 @@ add_vpp_plugin(memif
   API_FILES
   memif.api
 
+  API_TEST_SOURCES
+  memif_test.c
+
   MULTIARCH_SOURCES
   device.c
   node.c
