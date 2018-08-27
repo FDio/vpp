@@ -68,6 +68,7 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
 
   args.enable_elog = ntohl (mp->enable_elog);
   args.addr.as_u32 = ntohl (mp->pci_addr);
+  args.rxq_num = ntohs (mp->rxq_num);
   args.rxq_size = ntohs (mp->rxq_size);
   args.txq_size = ntohs (mp->txq_size);
 

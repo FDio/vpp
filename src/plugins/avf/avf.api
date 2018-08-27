@@ -23,6 +23,7 @@ option version = "1.0.0";
     @param pci_addr - pci address as unsigned 32bit integer:
 		      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function 
 		      ddddddddddddddddbbbbbbbbsssssfff
+    @param rxq_num - number of receive queues
     @param rxq_size - receive queue size
     @param txq_size - transmit queue size
 */
@@ -34,6 +35,7 @@ define avf_create
 
   u32 pci_addr;
   i32 enable_elog;
+  u16 rxq_num;
   u16 rxq_size;
   u16 txq_size;
 };

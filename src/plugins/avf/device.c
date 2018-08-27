@@ -497,6 +497,7 @@ clib_error_t *
 avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
 {
   int msg_len = sizeof (virtchnl_rss_lut_t) + ad->rss_lut_size - 1;
+  int i;
   u8 msg[msg_len];
   virtchnl_rss_lut_t *rl;
 
@@ -504,8 +505,30 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
   rl = (virtchnl_rss_lut_t *) msg;
   rl->vsi_id = ad->vsi_id;
   rl->lut_entries = ad->rss_lut_size;
+  for (i = 0; i < ad->rss_lut_size; i++)
+    rl->lut[i] = i % ad->n_rx_queues;
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
+			 0);
+}
+
+clib_error_t *
+avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
+{
+  int msg_len = sizeof (virtchnl_rss_key_t) + ad->rss_key_size - 1;
+  int i;
+  u8 msg[msg_len];
+  virtchnl_rss_key_t *rk;
+
+  memset (msg, 0, msg_len);
+  rk = (virtchnl_rss_key_t *) msg;
+  rk->vsi_id = ad->vsi_id;
+  rk->key_len = ad->rss_key_size;
+  uword seed = random_default_seed ();
+  for (i = 0; i < ad->rss_key_size; i++)
+    rk->key[i] = (u8) random_uword ((u32 *) & seed);
+
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
 			 0);
 }
 
@@ -618,11 +641,15 @@ clib_error_t *
 avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 {
   virtchnl_queue_select_t qs = { 0 };
+  int i;
   qs.vsi_id = ad->vsi_id;
   qs.rx_queues = rx;
   qs.tx_queues = tx;
-  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, 0);
-  avf_reg_write (ad, AVF_QRX_TAIL (0), rxq->n_enqueued);
+  for (i = 0; i < ad->n_rx_queues; i++)
+    {
+      avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
+      avf_reg_write (ad, AVF_QRX_TAIL (i), rxq->n_enqueued);
+    }
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
 			 sizeof (virtchnl_queue_select_t), 0, 0);
 }
@@ -705,7 +732,7 @@ done:
 }
 
 clib_error_t *
-avf_device_init (vlib_main_t * vm, avf_device_t * ad,
+avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 		 avf_create_if_args_t * args)
 {
   virtchnl_version_info_t ver = { 0 };
@@ -767,19 +794,36 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
   if ((error = avf_config_promisc_mode (vm, ad)))
     return error;
 
-  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
-      (error = avf_op_config_rss_lut (vm, ad)))
-    return error;
-
   /*
    * Init Queues
    */
-  if ((error = avf_rxq_init (vm, ad, 0, args->rxq_size)))
-    return error;
+  if (args->rxq_num == 0)
+    {
+      args->rxq_num = 1;
+    }
+  else if (args->rxq_num > ad->num_queue_pairs)
+    {
+      args->rxq_num = ad->num_queue_pairs;
+      vlib_log_warn (am->log_class, "Requested more rx queues than"
+		     "queue pairs available. Using %u rx queues.",
+		     args->rxq_num);
+    }
+
+  for (i = 0; i < args->rxq_num; i++)
+    if ((error = avf_rxq_init (vm, ad, i, args->rxq_size)))
+      return error;
 
   for (i = 0; i < tm->n_vlib_mains; i++)
     if ((error = avf_txq_init (vm, ad, i, args->txq_size)))
       return error;
+
+  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
+      (error = avf_op_config_rss_lut (vm, ad)))
+    return error;
+
+  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
+      (error = avf_op_config_rss_key (vm, ad)))
+    return error;
 
   if ((error = avf_op_config_vsi_queues (vm, ad)))
     return error;
@@ -788,7 +832,8 @@ avf_device_init (vlib_main_t * vm, avf_device_t * ad,
     return error;
 
   avf_irq_0_enable (ad);
-  avf_irq_n_enable (ad, 0);
+  for (i = 0; i < ad->n_rx_queues; i++)
+    avf_irq_n_enable (ad, i);
 
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
@@ -1041,6 +1086,7 @@ avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
   uword pd = vlib_pci_get_private_data (h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
   u16 qid;
+  int i;
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -1065,7 +1111,8 @@ avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
   qid = line - 1;
   if (vec_len (ad->rxqs) > qid && ad->rxqs[qid].int_mode != 0)
     vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, qid);
-  avf_irq_n_enable (ad, 0);
+  for (i = 0; i < vec_len (ad->rxqs); i++)
+    avf_irq_n_enable (ad, i);
 }
 
 void
@@ -1131,6 +1178,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   avf_device_t *ad;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
+  int i;
 
   /* check input args */
   args->rxq_size = (args->rxq_size == 0) ? AVF_RXQ_SZ : args->rxq_size;
@@ -1219,7 +1267,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   /* FIXME detect */
   ad->flags |= AVF_DEVICE_F_IOVA;
 
-  if ((error = avf_device_init (vm, ad, args)))
+  if ((error = avf_device_init (vm, am, ad, args)))
     goto error;
 
   /* create interface */
@@ -1237,7 +1285,9 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
 				    avf_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, 0, ~0);
+
+  for (i = 0; i < ad->n_rx_queues; i++)
+    vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, i, ~0);
 
   if (pool_elts (am->devices) == 1)
     vlib_process_signal_event (vm, avf_process_node.index,

@@ -50,6 +50,8 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.rxq_size = tmp;
       else if (unformat (line_input, "tx-queue-size %u", &tmp))
 	args.txq_size = tmp;
+      else if (unformat (line_input, "num-rx-queues %u", &tmp))
+	args.rxq_num = tmp;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -65,7 +67,8 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (avf_create_command, static) = {
   .path = "create interface avf",
   .short_help = "create interface avf <pci-address> "
-		"[rx-queue-size <size>] [tx-queue-size <size>]",
+		"[rx-queue-size <size>] [tx-queue-size <size>] "
+		"[num-rx-queues <size>]",
   .function = avf_create_command_fn,
 };
 /* *INDENT-ON* */
