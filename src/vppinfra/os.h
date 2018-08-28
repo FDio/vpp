@@ -64,6 +64,12 @@ os_get_thread_index (void)
   return __os_thread_index;
 }
 
+static_always_inline void
+os_set_thread_index (uword thread_index)
+{
+  __os_thread_index = thread_index;
+}
+
 static_always_inline uword
 os_get_cpu_number (void) __attribute__ ((deprecated));
 
