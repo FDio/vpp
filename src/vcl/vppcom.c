@@ -734,9 +734,9 @@ vppcom_app_create (char *app_name)
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
   int rv;
 
-  if (!vcm->init)
+  if (!vcm->is_init)
     {
-      vcm->init = 1;
+      vcm->is_init = 1;
       vppcom_cfg (&vcm->cfg);
       vcl_cfg = &vcm->cfg;
 
