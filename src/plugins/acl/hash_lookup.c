@@ -464,24 +464,46 @@ static void
 vec_del_collision_rule (collision_match_rule_t ** pvec,
                         u32 applied_entry_index)
 {
-  u32 i;
-  for (i = 0; i < vec_len ((*pvec)); i++)
+  u32 i = 0;
+  u32 deleted = 0;
+  while (i < _vec_len ((*pvec)))
     {
       collision_match_rule_t *cr = vec_elt_at_index ((*pvec), i);
       if (cr->applied_entry_index == applied_entry_index)
         {
-          vec_del1 ((*pvec), i);
+          /* vec_del1 ((*pvec), i) would be more efficient but would reorder the elements. */
+          vec_delete((*pvec), 1, i);
+          deleted++;
+          DBG0("vec_del_collision_rule deleting one at index %d", i);
+        }
+      else
+        {
+          i++;
         }
     }
+  ASSERT(deleted > 0);
 }
+
+static void
+acl_plugin_print_pae (vlib_main_t * vm, int j, applied_hash_ace_entry_t * pae);
 
 static void
 del_colliding_rule (applied_hash_ace_entry_t ** applied_hash_aces,
                     u32 head_index, u32 applied_entry_index)
 {
+  DBG0("DEL COLLIDING RULE: head_index %d applied index %d", head_index, applied_entry_index);
+
+
   applied_hash_ace_entry_t *head_pae =
     vec_elt_at_index ((*applied_hash_aces), head_index);
+  if (ACL_HASH_LOOKUP_DEBUG > 0)
+    acl_plugin_print_pae(acl_main.vlib_main, head_index, head_pae);
   vec_del_collision_rule (&head_pae->colliding_rules, applied_entry_index);
+  if (vec_len(head_pae->colliding_rules) == 0) {
+    vec_free(head_pae->colliding_rules);
+  }
+  if (ACL_HASH_LOOKUP_DEBUG > 0)
+    acl_plugin_print_pae(acl_main.vlib_main, head_index, head_pae);
 }
 
 static void
@@ -493,6 +515,9 @@ add_colliding_rule (acl_main_t * am,
     vec_elt_at_index ((*applied_hash_aces), head_index);
   applied_hash_ace_entry_t *pae =
     vec_elt_at_index ((*applied_hash_aces), applied_entry_index);
+  DBG0("ADD COLLIDING RULE: head_index %d applied index %d", head_index, applied_entry_index);
+  if (ACL_HASH_LOOKUP_DEBUG > 0)
+    acl_plugin_print_pae(acl_main.vlib_main, head_index, head_pae);
 
   collision_match_rule_t cr;
 
@@ -502,6 +527,8 @@ add_colliding_rule (acl_main_t * am,
   cr.applied_entry_index = applied_entry_index;
   cr.rule = am->acls[pae->acl_index].rules[pae->ace_index];
   vec_add1 (head_pae->colliding_rules, cr);
+  if (ACL_HASH_LOOKUP_DEBUG > 0)
+    acl_plugin_print_pae(acl_main.vlib_main, head_index, head_pae);
 }
 
 static u32
@@ -754,6 +781,17 @@ move_applied_ace_hash_entry(acl_main_t *am,
 
   /* update the linkage and hash table if necessary */
   applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), old_index);
+  applied_hash_ace_entry_t *new_pae = vec_elt_at_index((*applied_hash_aces), new_index);
+
+  if (ACL_HASH_LOOKUP_DEBUG > 0) {
+    clib_warning("Moving pae from %d to %d", old_index, new_index);
+    acl_plugin_print_pae(am->vlib_main, old_index, pae);
+  }
+
+  if (new_pae->tail_applied_entry_index == old_index) {
+    /* fix-up the tail index if we are the tail and the start */
+    new_pae->tail_applied_entry_index = new_index;
+  }
 
   if (pae->prev_applied_entry_index != ~0) {
     applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
@@ -780,10 +818,35 @@ move_applied_ace_hash_entry(acl_main_t *am,
     ASSERT(head_pae->tail_applied_entry_index == old_index);
     head_pae->tail_applied_entry_index = new_index;
   }
+  if (new_pae->colliding_rules) {
+    /* update the information within the collision rule entry */
+    ASSERT(vec_len(new_pae->colliding_rules) > 0);
+    collision_match_rule_t *cr = vec_elt_at_index (new_pae->colliding_rules, 0);
+    ASSERT(cr->applied_entry_index == old_index);
+    cr->applied_entry_index = new_index;
+  } else {
+    /* find the index in the collision rule entry on the head element */
+    u32 head_index = find_head_applied_ace_index(applied_hash_aces, new_index);
+    ASSERT(head_index != ~0);
+    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+    ASSERT(vec_len(head_pae->colliding_rules) > 0);
+    u32 i;
+    for (i=0; i<vec_len(head_pae->colliding_rules); i++) {
+      collision_match_rule_t *cr = vec_elt_at_index (head_pae->colliding_rules, i);
+      if (cr->applied_entry_index == old_index) {
+        cr->applied_entry_index = new_index;
+      }
+    }
+    if (ACL_HASH_LOOKUP_DEBUG > 0) {
+      clib_warning("Head pae at index %d after adjustment", head_index);
+      acl_plugin_print_pae(am->vlib_main, head_index, head_pae);
+    }
+  }
   /* invalidate the old entry */
   pae->prev_applied_entry_index = ~0;
   pae->next_applied_entry_index = ~0;
   pae->tail_applied_entry_index = ~0;
+  pae->colliding_rules = NULL;
 }
 
 static void
@@ -816,13 +879,14 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
     }
   } else {
     /* It was the first entry. We need either to reset the hash entry or delete it */
+    /* delete our entry from the collision vector first */
+    del_colliding_rule(applied_hash_aces, old_index, old_index);
     if (pae->next_applied_entry_index != ~0) {
       /* the next element becomes the new first one, so needs the tail pointer to be set */
       applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
       ASSERT(pae->tail_applied_entry_index != ~0);
       next_pae->tail_applied_entry_index = pae->tail_applied_entry_index;
       /* Remove ourselves and transfer the ownership of the colliding rules vector */
-      del_colliding_rule(applied_hash_aces, old_index, old_index);
       next_pae->colliding_rules = pae->colliding_rules;
       /* unlink from the next element */
       next_pae->prev_applied_entry_index = ~0;
@@ -909,6 +973,10 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
   _vec_len((*applied_hash_aces)) -= vec_len(ha->rules);
 
   remake_hash_applied_mask_info_vec(am, applied_hash_aces, lc_index);
+
+  if (vec_len((*applied_hash_aces)) == 0) {
+    vec_free((*applied_hash_aces));
+  }
 
   clib_mem_set_heap (oldheap);
 }
@@ -1128,6 +1196,7 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
     }
     vec_free(lc_list_copy);
   }
+  vec_free(ha->lc_index_list);
 
   /* walk the mask types for the ACL about-to-be-deleted, and decrease
    * the reference count, possibly freeing up some of them */
