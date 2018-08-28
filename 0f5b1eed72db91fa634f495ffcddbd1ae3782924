@@ -1,0 +1,291 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2cac23ce_53ee2c90",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "Since you added a dummy VIP at index 0, maybe it would make sense to hide it.",
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cd2f9819_1c0ae641",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "vip-\u003eport !\u003d 0\n\n(To be consistent with other parts of the code)",
+      "range": {
+        "startLine": 167,
+        "startChar": 6,
+        "endLine": 168,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "526ee158_c9eac220",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "s \u003d format (s, \" type:%s port:%u target_port:%u\", \n   (vip-\u003eencap_args.srv_type \u003d\u003d LB_SRV_TYPE_CLUSTERIP)?\"clusterip\":\"nodeport\",\n   ntohs (vip-\u003eport), ntohs (vip-\u003eencap_args.target_port));",
+      "range": {
+        "startLine": 181,
+        "startChar": 6,
+        "endLine": 188,
+        "endChar": 57
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f5787da_e6a57ccf",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "No need for this space",
+      "range": {
+        "startLine": 208,
+        "startChar": 31,
+        "endLine": 208,
+        "endChar": 32
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e4bae802_d74a17d8",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "Also join those two",
+      "range": {
+        "startLine": 236,
+        "startChar": 8,
+        "endLine": 244,
+        "endChar": 57
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "60cfc6bb_ada0d861",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "You don\u0027t need both checks. port \u003d\u003d 0 is enough to check that this is a VIP with all ports.",
+      "range": {
+        "startLine": 546,
+        "startChar": 15,
+        "endLine": 546,
+        "endChar": 34
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08f67f9e_20b84ae6",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "\u0027port !\u003d 0\u0027 is shorter and more readable",
+      "range": {
+        "startLine": 889,
+        "startChar": 6,
+        "endLine": 890,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "84e28d00_172a3b3a",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1002,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "port !\u003d 0",
+      "range": {
+        "startLine": 1001,
+        "startChar": 6,
+        "endLine": 1002,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be39ebec_1b7ee329",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1067,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "When you add an all-port VIP (port \u003d\u003d 0), you also need to check that there is no per-port VIP.",
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6edaa55c_8d0eb158",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1106,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "Why not put vip-\u003eport \u003d 0 ?",
+      "range": {
+        "startLine": 1106,
+        "startChar": 6,
+        "endLine": 1106,
+        "endChar": 29
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7007abb5_303012ca",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1116,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "style (tab)",
+      "range": {
+        "startLine": 1116,
+        "startChar": 0,
+        "endLine": 1116,
+        "endChar": 1
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f610cd09_45ecd513",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "I still think the code would be much much simpler without adding all those _PORT.\nWe already have port !\u003d 0 to test whether port is enabled or not.",
+      "range": {
+        "startLine": 207,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 16
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d37b30da_e8a0f562",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-08-28T08:38:09Z",
+      "side": 1,
+      "message": "It is not in this patch.",
+      "range": {
+        "startLine": 621,
+        "startChar": 0,
+        "endLine": 621,
+        "endChar": 33
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
