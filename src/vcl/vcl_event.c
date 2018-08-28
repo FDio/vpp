@@ -321,7 +321,7 @@ vppcom_session_io_thread_fn (void *arg)
 	{
 	  for (i = 0; i < vec_len (session_indexes); ++i)
 	    {
-	      session = vcl_session_get (session_indexes[i]);
+	      session = vcl_session_get (0, session_indexes[i]);
 	      if (!session)
 		return NULL;
 	      bytes = svm_fifo_max_dequeue (session->rx_fifo);
@@ -411,7 +411,7 @@ vce_registered_listener_connect_handler_fn (void *arg)
   ev = vce_get_event_from_index (&vcm->event_thread, reg->ev_idx);
   ecr = vce_get_event_data (ev, sizeof (*ecr));
   VCL_EVENTS_UNLOCK ();
-  new_session = vcl_session_get (ecr->accepted_session_index);
+  new_session = vcl_session_get (0, ecr->accepted_session_index);
   if (!new_session)
     return;
 
