@@ -408,6 +408,7 @@ define connect_session_reply {
     @param context - sender context, to match reply w/ request
     @param evt_q_address - address of the mq in ssvm segment
     @param peer_evt_q_address - address of peer's mq in ssvm segment
+    @param wrk_index - index of worker to receive the registration
     @param n_fds - number of fds exchanged
     @param fd_flags - flag indicating the fds that will be exchanged over
     				  api socket
@@ -418,6 +419,7 @@ autoreply define app_cut_through_registration_add
   u32 context;
   u64 evt_q_address;
   u64 peer_evt_q_address;
+  u32 wrk_index;
   u8 n_fds;
   u8 fd_flags;
 };
