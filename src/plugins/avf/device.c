@@ -1314,6 +1314,12 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
 }
 
+static char *avf_tx_func_error_strings[] = {
+#define _(n,s) s,
+  foreach_avf_tx_func_error
+#undef _
+};
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (avf_device_class,) =
 {
@@ -1323,6 +1329,8 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
+  .tx_function_n_errors = AVF_TX_N_ERROR,
+  .tx_function_error_strings = avf_tx_func_error_strings,
 };
 /* *INDENT-ON* */
 
