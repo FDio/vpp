@@ -30,6 +30,7 @@ macro(add_vpp_plugin name)
       include/vpp_plugins/${name}/${dir})
   endforeach()
   add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_headers})
+  target_compile_options(${plugin_name} PRIVATE -Wall)
   add_dependencies(${plugin_name} vpp_version_h api_headers)
   set_target_properties(${plugin_name} PROPERTIES
     PREFIX ""
