@@ -182,7 +182,7 @@ class StepHook(PollHook):
         while True:
             print("Enter your choice, if any, and press ENTER to continue "
                   "running the testcase...")
-            choice = sys.stdin.readline()
+            choice = sys.stdin.readline().rstrip('\r\n')
             if choice == "":
                 choice = None
             try:
