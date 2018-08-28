@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb14a6c6_771856df",
+        "filename": "src/tools/perftool/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-28T13:02:26Z",
+      "side": 1,
+      "message": "make it optional -\n\noption(VPP_BUILD_PERFTOOL\"blah\" OFF)\nif (VPP_BUILD_PERFTOOL)\n\u003cindent rest of file)\nendif()",
+      "revId": "9be06f249b5f2736915bb5e2dbdab953afbad2b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9d0762f1_3dd37877",
+        "filename": "src/tools/perftool/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-28T13:02:26Z",
+      "side": 1,
+      "message": "indent 2",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 18
+      },
+      "revId": "9be06f249b5f2736915bb5e2dbdab953afbad2b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ff9c666_1de29a16",
+        "filename": "src/tools/perftool/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-28T13:02:26Z",
+      "side": 1,
+      "message": "just list targets here, it will be shorter than defining dpkg-shlibdeps",
+      "range": {
+        "startLine": 36,
+        "startChar": 60,
+        "endLine": 36,
+        "endChar": 77
+      },
+      "revId": "9be06f249b5f2736915bb5e2dbdab953afbad2b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
