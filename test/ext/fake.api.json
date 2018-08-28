@@ -1,6 +1,18 @@
 {
+    "services": {
+	    "test_fake_msg": {
+		    "reply":"test_fake_msg_reply"
+	    },
+	    "test_fake_dump": {
+		    "reply":"test_fake_details",
+		    "stream":"true"
+	    }
+    },
+    "enums" : [
+    ],
+    "unions" : [
+    ],
     "types" : [
-
     ],
     "messages" : [
         ["test_fake_msg",
