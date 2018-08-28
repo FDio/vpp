@@ -20,6 +20,7 @@ macro(add_vpp_library lib)
   )
 
   add_library(${lib} SHARED ${ARG_SOURCES})
+  target_compile_options(${lib} PRIVATE -Wall)
 
   # library deps
   if(ARG_LINK_LIBRARIES)
