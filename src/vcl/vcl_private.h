@@ -142,7 +142,6 @@ typedef struct
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
   u64 options[16];
-  vce_event_handler_reg_t *poll_reg;
   vcl_session_msg_t *accept_evts_fifo;
 #if VCL_ELOG
   elog_track_t elog_track;
@@ -152,6 +151,7 @@ typedef struct
 typedef struct vppcom_cfg_t_
 {
   u64 heapsize;
+  u32 max_workers;
   u32 vpp_api_q_length;
   u64 segment_baseva;
   u32 segment_size;
@@ -194,17 +194,79 @@ typedef struct vcl_mq_evt_conn_
   int mq_fd;
 } vcl_mq_evt_conn_t;
 
+typedef struct vcl_worker_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* Session pool */
+  vcl_session_t *sessions;
+
+  u32 wrk_index;
+
+  /** Message queues epoll fd. Initialized only if using mqs with eventfds */
+  int mqs_epfd;
+
+  /** Pool of event message queue event connections */
+  vcl_mq_evt_conn_t *mq_evt_conns;
+
+  /** Per worker buffer for receiving mq epoll events */
+  struct epoll_event *mq_events;
+
+  /** Hash table for disconnect processing */
+  uword *session_index_by_vpp_handles;
+
+  /** Select bitmaps */
+  clib_bitmap_t *rd_bitmap;
+  clib_bitmap_t *wr_bitmap;
+  clib_bitmap_t *ex_bitmap;
+
+  /** Our event message queue */
+  svm_msg_q_t *app_event_queue;
+
+  /** VPP workers event message queues */
+  svm_msg_q_t **vpp_event_queues;
+
+  /** For deadman timers */
+  clib_time_t clib_time;
+
+  /** Pool of cut through registrations */
+  vcl_cut_through_registration_t *cut_through_registrations;
+
+  /** Lock for accessing ct registration pool */
+  clib_spinlock_t ct_registration_lock;
+
+  /** Cut-through registration by mq address hash table */
+  uword *ct_registration_by_mq;
+
+  /** Vector acting as buffer for mq messages */
+  svm_msg_q_msg_t *mq_msg_vector;
+} vcl_worker_t;
+
 typedef struct vppcom_main_t_
 {
-  u8 init;
+  u8 is_init;
   u32 debug;
   int main_cpu;
 
-  /* vpp input queue */
+  /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;
 
-  /* API client handle */
+  /** API client handle */
   u32 my_client_index;
+
+  /** State of the connection, shared between msg RX thread and main thread */
+  volatile app_state_t app_state;
+
+  /** VCL configuration */
+  vppcom_cfg_t cfg;
+
+  /** Flag indicating that a new segment is being mounted */
+  volatile u32 mounting_segment;
+
+
+
+
+
   /* Session pool */
   vcl_session_t *sessions;
 
@@ -217,52 +279,21 @@ typedef struct vppcom_main_t_
   /** Per worker buffer for receiving mq epoll events */
   struct epoll_event *mq_events;
 
-  /* Hash table for disconnect processing */
+  /** Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
 
-  /* Select bitmaps */
+  /** Select bitmaps */
   clib_bitmap_t *rd_bitmap;
   clib_bitmap_t *wr_bitmap;
   clib_bitmap_t *ex_bitmap;
 
-  /* Our event queue */
-  svm_msg_q_t *app_event_queue;
 
-  svm_msg_q_t **vpp_event_queues;
 
-  /* unique segment name counter */
-  u32 unique_segment_index;
 
-  /* For deadman timers */
-  clib_time_t clib_time;
 
-  /* State of the connection, shared between msg RX thread and main thread */
-  volatile app_state_t app_state;
 
-  vppcom_cfg_t cfg;
-
-  /* Event thread */
-  vce_event_thread_t event_thread;
-
-  /* IO thread */
-  vppcom_session_io_thread_t session_io_thread;
-
-  /* pool of ctrl msgs */
-  vcl_session_msg_t *ctrl_evt_pool;
-
-  /** Pool of cut through registrations */
-  vcl_cut_through_registration_t *cut_through_registrations;
-
-  /** Lock for accessing ct registration pool */
-  clib_spinlock_t ct_registration_lock;
-
-  /** Cut-through registration by mq address hash table */
-  uword *ct_registration_by_mq;
-
-  svm_msg_q_msg_t *mq_msg_vector;
-
-  /** Flag indicating that a new segment is being mounted */
-  volatile u32 mounting_segment;
+  /** Workers */
+  vcl_worker_t *workers;
 
 #ifdef VCL_ELOG
   /* VPP Event-logger */
@@ -272,6 +303,14 @@ typedef struct vppcom_main_t_
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
+
+  /* Obsolete */
+
+  /* Event thread */
+  vce_event_thread_t event_thread;
+
+  /* IO thread */
+  vppcom_session_io_thread_t session_io_thread;
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
@@ -371,18 +410,21 @@ const char *vppcom_session_state_str (session_state_t state);
 /*
  * Helpers
  */
-vcl_cut_through_registration_t *vcl_ct_registration_lock_and_alloc (void);
-void vcl_ct_registration_del (vcl_cut_through_registration_t * ctr);
-u32 vcl_ct_registration_index (vcl_cut_through_registration_t * ctr);
-void vcl_ct_registration_unlock (void);
-vcl_cut_through_registration_t *vcl_ct_registration_get (u32 ctr_index);
+vcl_cut_through_registration_t *
+vcl_ct_registration_lock_and_alloc (vcl_worker_t *wrk);
+void vcl_ct_registration_del (vcl_worker_t *wrk,
+                              vcl_cut_through_registration_t * ctr);
+u32 vcl_ct_registration_index (vcl_worker_t *wrk,
+                               vcl_cut_through_registration_t * ctr);
+void vcl_ct_registration_unlock (vcl_worker_t *wrk);
 vcl_cut_through_registration_t *vcl_ct_registration_lock_and_lookup (uword);
-void vcl_ct_registration_lookup_add (uword mq_addr, u32 ctr_index);
-void vcl_ct_registration_lookup_del (uword mq_addr);
+void vcl_ct_registration_lookup_add (vcl_worker_t *wrk, uword mq_addr,
+                                     u32 ctr_index);
+void vcl_ct_registration_lookup_del (vcl_worker_t *wrk, uword mq_addr);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_alloc (void);
 u32 vcl_mq_evt_conn_index (vcl_mq_evt_conn_t * mqc);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_get (u32 mq_conn_idx);
-int vcl_mq_epoll_add_evfd (svm_msg_q_t * mq);
+int vcl_mq_epoll_add_evfd (vcl_worker_t *wrk, svm_msg_q_t * mq);
 int vcl_mq_epoll_del_evfd (u32 mqc_index);
 
 /*

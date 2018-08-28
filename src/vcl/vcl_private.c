@@ -16,63 +16,72 @@
 #include <vcl/vcl_private.h>
 
 vcl_cut_through_registration_t *
-vcl_ct_registration_lock_and_alloc (void)
+vcl_ct_registration_lock_and_alloc (vcl_worker_t *wrk)
 {
   vcl_cut_through_registration_t *cr;
-  pool_get (vcm->cut_through_registrations, cr);
-  clib_spinlock_lock (&vcm->ct_registration_lock);
+  clib_spinlock_lock (&wrk->ct_registration_lock);
+  pool_get (wrk->cut_through_registrations, cr);
   memset (cr, 0, sizeof (*cr));
   cr->epoll_evt_conn_index = -1;
   return cr;
 }
 
 u32
-vcl_ct_registration_index (vcl_cut_through_registration_t * ctr)
+vcl_ct_registration_index (vcl_worker_t *wrk,
+                           vcl_cut_through_registration_t * ctr)
 {
-  return (ctr - vcm->cut_through_registrations);
+  return (ctr - wrk->cut_through_registrations);
 }
 
 void
-vcl_ct_registration_unlock (void)
+vcl_ct_registration_lock (vcl_worker_t *wrk)
 {
-  clib_spinlock_unlock (&vcm->ct_registration_lock);
+  clib_spinlock_lock (&wrk->ct_registration_lock);
+}
+
+void
+vcl_ct_registration_unlock (vcl_worker_t *wrk)
+{
+  clib_spinlock_unlock (&wrk->ct_registration_lock);
 }
 
 vcl_cut_through_registration_t *
-vcl_ct_registration_get (u32 ctr_index)
+vcl_ct_registration_get (vcl_worker_t *wrk, u32 ctr_index)
 {
-  if (pool_is_free_index (vcm->cut_through_registrations, ctr_index))
+  if (pool_is_free_index (wrk->cut_through_registrations, ctr_index))
     return 0;
-  return pool_elt_at_index (vcm->cut_through_registrations, ctr_index);
+  return pool_elt_at_index (wrk->cut_through_registrations, ctr_index);
 }
 
 vcl_cut_through_registration_t *
 vcl_ct_registration_lock_and_lookup (uword mq_addr)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   uword *p;
-  clib_spinlock_lock (&vcm->ct_registration_lock);
-  p = hash_get (vcm->ct_registration_by_mq, mq_addr);
+  clib_spinlock_lock (&wrk->ct_registration_lock);
+  p = hash_get (wrk->ct_registration_by_mq, mq_addr);
   if (!p)
     return 0;
-  return vcl_ct_registration_get (p[0]);
+  return vcl_ct_registration_get (wrk, p[0]);
 }
 
 void
-vcl_ct_registration_lookup_add (uword mq_addr, u32 ctr_index)
+vcl_ct_registration_lookup_add (vcl_worker_t *wrk, uword mq_addr, u32 ctr_index)
 {
-  hash_set (vcm->ct_registration_by_mq, mq_addr, ctr_index);
+  hash_set (wrk->ct_registration_by_mq, mq_addr, ctr_index);
 }
 
 void
-vcl_ct_registration_lookup_del (uword mq_addr)
+vcl_ct_registration_lookup_del (vcl_worker_t *wrk, uword mq_addr)
 {
-  hash_unset (vcm->ct_registration_by_mq, mq_addr);
+  hash_unset (wrk->ct_registration_by_mq, mq_addr);
 }
 
 void
-vcl_ct_registration_del (vcl_cut_through_registration_t * ctr)
+vcl_ct_registration_del (vcl_worker_t *wrk,
+                         vcl_cut_through_registration_t * ctr)
 {
-  pool_put (vcm->cut_through_registrations, ctr);
+  pool_put (wrk->cut_through_registrations, ctr);
 }
 
 vcl_mq_evt_conn_t *
@@ -97,7 +106,7 @@ vcl_mq_evt_conn_get (u32 mq_conn_idx)
 }
 
 int
-vcl_mq_epoll_add_evfd (svm_msg_q_t * mq)
+vcl_mq_epoll_add_evfd (vcl_worker_t *wrk, svm_msg_q_t * mq)
 {
   struct epoll_event e = { 0 };
   vcl_mq_evt_conn_t *mqc;
@@ -106,7 +115,7 @@ vcl_mq_epoll_add_evfd (svm_msg_q_t * mq)
 
   mq_fd = svm_msg_q_get_consumer_eventfd (mq);
 
-  if (vcm->mqs_epfd < 0 || mq_fd == -1)
+  if (wrk->mqs_epfd < 0 || mq_fd == -1)
     return -1;
 
   mqc = vcl_mq_evt_conn_alloc ();
