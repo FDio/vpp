@@ -64,9 +64,13 @@ include(cmake/plugin.cmake)
 include(cmake/deb.cmake)
 
 ##############################################################################
-# subdirs
+# subdirs - order matters
 ##############################################################################
-foreach (DIR vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins vpp-api)
+foreach(
+  DIR
+  vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
+  vpp-api tools/vppapigen
+)
   add_subdirectory(${DIR})
-endforeach ()
+endforeach()
 
