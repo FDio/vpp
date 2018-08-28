@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2a7ef8d_fa5424f0",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-08-28T15:43:27Z",
+      "side": 1,
+      "message": "need to change it to vhost_user_feature_flags",
+      "range": {
+        "startLine": 20,
+        "startChar": 5,
+        "endLine": 20,
+        "endChar": 19
+      },
+      "revId": "be8cab0e1defa4191058e779df49742a3e450041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
