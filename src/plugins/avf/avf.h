@@ -288,6 +288,17 @@ typedef struct
   avf_rx_vector_entry_t rxve;
 } avf_input_trace_t;
 
+#define foreach_avf_tx_func_error	       \
+_(NO_FREE_SLOTS, "no free tx slots")
+
+typedef enum
+{
+#define _(f,s) AVF_TX_ERROR_##f,
+  foreach_avf_tx_func_error
+#undef _
+    AVF_TX_N_ERROR,
+} avf_tx_func_error_t;
+
 #endif /* AVF_H */
 
 /*
