@@ -22,6 +22,30 @@
       "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f3affc5e_8ec50f71",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-08-28T15:46:13Z",
+      "side": 1,
+      "message": "reader lock works fine, but the race condition happens at Thread 0 and Thread \u003c~0\u003e, and pool_get can only be called at thread 0, since other threads is using write locker, I don\u0027t know why reader is cheaper?\nFrom the below code it still needs to check writer lock. \n\n  (*p)-\u003en_readers +\u003d 1;\n  if ((*p)-\u003en_readers \u003d\u003d 1)\n    {\n      while (__sync_lock_test_and_set (\u0026(*p)-\u003ewriter_lock, 1))\n\tCLIB_PAUSE ();\n    }\n\nTwo branch here can reduce one lock for \"pool_get_aligned_will_expand\",  since non-0 thread will not call \"pool_get\", so they will never test if expand. \nHow do you think?",
+      "parentUuid": "4fb366a8_d7be7695",
+      "range": {
+        "startLine": 103,
+        "startChar": 18,
+        "endLine": 103,
+        "endChar": 23
+      },
+      "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
