@@ -87,6 +87,7 @@ static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
+  vcl_worker_t *wrk = vcl_worker_get (0);
   u32 n_fds = 0;
   int *fds = 0;
 
@@ -97,7 +98,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  vcm->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
   if (mp->n_fds)
     {
@@ -116,10 +117,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
-	  svm_msg_q_set_consumer_eventfd (vcm->app_event_queue, fds[n_fds]);
-	  if (vcm->mqs_epfd < 0)
-	    clib_unix_warning ("epoll_create() returned");
-	  vcl_mq_epoll_add_evfd (vcm->app_event_queue);
+	  svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+	  vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
 	  n_fds++;
 	}
 
@@ -133,6 +132,68 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   vcm->app_state = STATE_APP_ATTACHED;
+}
+
+static void
+vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
+					   mp)
+{
+  vcl_worker_t *wrk;
+  int n_fds = 0;
+  int *fds = 0;
+
+  if (mp->retval)
+    {
+      clib_warning ("VCL<%d>: add/del worker failed: %U", getpid (),
+		    format_api_error, ntohl (mp->retval));
+      goto failed;
+    }
+  ASSERT (mp->context == mp->wrk_index);
+  if (mp->context != mp->wrk_index)
+    {
+      clib_warning ("VCL<%d>: wrk numbering doesn't match ours: %u, vpp: %u",
+		    getpid (), mp->context, mp->wrk_index);
+      goto failed;
+    }
+  wrk = vcl_worker_get (mp->context);
+  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+					   svm_msg_q_t *);
+
+  if (mp->n_fds)
+    {
+      vec_validate (fds, mp->n_fds);
+      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+
+      if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
+	if (ssvm_segment_attach ("vpp-worker-seg", SSVM_SEGMENT_MEMFD,
+				 fds[n_fds++]))
+	  goto failed;
+
+      if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+	if (ssvm_segment_attach ((char *) mp->segment_name,
+				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	  goto failed;
+
+      if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+	{
+	  svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+	  vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
+	  n_fds++;
+	}
+
+      vec_free (fds);
+    }
+  else
+    {
+      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
+			       -1))
+	goto failed;
+    }
+  vcm->app_state = STATE_APP_READY;
+  return;
+
+failed:
+  vcm->app_state = STATE_APP_FAILED;
 }
 
 static void
@@ -191,6 +252,7 @@ static void
 {
   vcl_cut_through_registration_t *ctr;
   u32 mqc_index = ~0;
+  vcl_worker_t *wrk;
   int *fds = 0;
 
   if (mp->n_fds)
@@ -200,22 +262,23 @@ static void
       vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
     }
 
-  ctr = vcl_ct_registration_lock_and_alloc ();
+  wrk = vcl_worker_get (mp->wrk_index);
+  ctr = vcl_ct_registration_lock_and_alloc (wrk);
   ctr->mq = uword_to_pointer (mp->evt_q_address, svm_msg_q_t *);
   ctr->peer_mq = uword_to_pointer (mp->peer_evt_q_address, svm_msg_q_t *);
-  VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (ctr));
+  VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (wrk, ctr));
 
   if (mp->n_fds && (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD))
     {
       svm_msg_q_set_consumer_eventfd (ctr->mq, fds[0]);
       svm_msg_q_set_producer_eventfd (ctr->peer_mq, fds[1]);
-      mqc_index = vcl_mq_epoll_add_evfd (ctr->mq);
+      mqc_index = vcl_mq_epoll_add_evfd (wrk, ctr->mq);
       ctr->epoll_evt_conn_index = mqc_index;
       vec_free (fds);
     }
-  vcl_ct_registration_lookup_add (mp->evt_q_address,
-				  vcl_ct_registration_index (ctr));
-  vcl_ct_registration_unlock ();
+  vcl_ct_registration_lookup_add (wrk, mp->evt_q_address,
+				  vcl_ct_registration_index (wrk, ctr));
+  vcl_ct_registration_unlock (wrk);
 }
 
 static void
@@ -247,6 +310,7 @@ _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
 _(UNMAP_SEGMENT, unmap_segment)						\
 _(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
+_(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
 void
 vppcom_api_hookup (void)
@@ -333,7 +397,27 @@ vppcom_app_send_detach (void)
 }
 
 void
-vppcom_send_connect_sock (vcl_session_t * session, u32 session_index)
+vcl_send_app_worker_add_del (u8 is_add)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vl_api_app_worker_add_del_t *mp;
+  u32 wrk_index = wrk->wrk_index;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
+  mp->client_index = vcm->my_client_index;
+  mp->context = wrk_index;
+  mp->is_add = is_add;
+  if (!is_add)
+    mp->wrk_index = clib_host_to_net_u32 (wrk_index);
+
+  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & mp);
+}
+
+void
+vppcom_send_connect_sock (vcl_session_t * session)
 {
   vl_api_connect_sock_t *cmp;
 
@@ -342,7 +426,7 @@ vppcom_send_connect_sock (vcl_session_t * session, u32 session_index)
   memset (cmp, 0, sizeof (*cmp));
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK);
   cmp->client_index = vcm->my_client_index;
-  cmp->context = session_index;
+  cmp->context = session->session_index;
 
   cmp->is_ip4 = session->transport.is_ip4;
   clib_memcpy (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
@@ -372,7 +456,7 @@ vppcom_send_disconnect_session (u64 vpp_handle, u32 session_index)
  * of bind and listen locally via vppcom_session_bind() and
  * vppcom_session_listen() */
 void
-vppcom_send_bind_sock (vcl_session_t * session, u32 session_index)
+vppcom_send_bind_sock (vcl_session_t * session)
 {
   vl_api_bind_sock_t *bmp;
 
@@ -382,7 +466,7 @@ vppcom_send_bind_sock (vcl_session_t * session, u32 session_index)
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
   bmp->client_index = vcm->my_client_index;
-  bmp->context = session_index;
+  bmp->context = session->session_index;
   bmp->is_ip4 = session->transport.is_ip4;
   clib_memcpy (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
