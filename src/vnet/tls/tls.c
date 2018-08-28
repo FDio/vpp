@@ -94,13 +94,15 @@ tls_ctx_half_open_alloc (void)
     {
       clib_rwlock_writer_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
+      clib_rwlock_writer_unlock (&tm->half_open_rwlock);
       memset (ctx, 0, sizeof (*ctx));
       ctx_index = ctx - tm->half_open_ctx_pool;
-      clib_rwlock_writer_unlock (&tm->half_open_rwlock);
     }
   else
     {
+      clib_rwlock_writer_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
+      clib_rwlock_writer_unlock (&tm->half_open_rwlock);
       memset (ctx, 0, sizeof (*ctx));
       ctx_index = ctx - tm->half_open_ctx_pool;
     }
