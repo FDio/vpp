@@ -99,6 +99,7 @@ typedef enum
   VPPCOM_ENOTCONN = -ENOTCONN,
   VPPCOM_ECONNREFUSED = -ECONNREFUSED,
   VPPCOM_ETIMEDOUT = -ETIMEDOUT,
+  VPPCOM_EEXIST = -EEXIST
 } vppcom_error_t;
 
 typedef enum
@@ -217,18 +218,18 @@ extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
-extern int vppcom_session_close (uint32_t session_index);
+extern int vppcom_session_close (uint32_t session_handle);
+extern int vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep);
+extern int vppcom_session_listen (uint32_t session_handle, uint32_t q_len);
 
-extern int vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep);
-extern int vppcom_session_listen (uint32_t session_index, uint32_t q_len);
-
-extern int vppcom_session_accept (uint32_t session_index,
+extern int vppcom_session_accept (uint32_t session_handle,
 				  vppcom_endpt_t * client_ep, uint32_t flags);
 
-extern int vppcom_session_connect (uint32_t session_index,
+extern int vppcom_session_connect (uint32_t session_handle,
 				   vppcom_endpt_t * server_ep);
-extern int vppcom_session_read (uint32_t session_index, void *buf, size_t n);
-extern int vppcom_session_write (uint32_t session_index, void *buf, size_t n);
+extern int vppcom_session_read (uint32_t session_handle, void *buf, size_t n);
+extern int vppcom_session_write (uint32_t session_handle, void *buf,
+				 size_t n);
 
 extern int vppcom_select (unsigned long n_bits,
 			  unsigned long *read_map,
@@ -236,22 +237,31 @@ extern int vppcom_select (unsigned long n_bits,
 			  unsigned long *except_map, double wait_for_time);
 
 extern int vppcom_epoll_create (void);
-extern int vppcom_epoll_ctl (uint32_t vep_idx, int op,
-			     uint32_t session_index,
+extern int vppcom_epoll_ctl (uint32_t vep_handle, int op,
+			     uint32_t session_handle,
 			     struct epoll_event *event);
-extern int vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
+extern int vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 			      int maxevents, double wait_for_time);
-extern int vppcom_session_attr (uint32_t session_index, uint32_t op,
+extern int vppcom_session_attr (uint32_t session_handle, uint32_t op,
 				void *buffer, uint32_t * buflen);
-extern int vppcom_session_recvfrom (uint32_t session_index, void *buffer,
+extern int vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
 				    uint32_t buflen, int flags,
 				    vppcom_endpt_t * ep);
-extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
+extern int vppcom_session_sendto (uint32_t session_handle, void *buffer,
 				  uint32_t buflen, int flags,
 				  vppcom_endpt_t * ep);
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
 extern int vppcom_mq_epoll_fd (void);
+extern int vppcom_session_index (uint32_t session_handle);
+
+/**
+ * Request from application to register a new worker
+ *
+ * Expectation is that applications will make use of this after a new pthread
+ * is spawned.
+ */
+extern int vppcom_worker_register (void);
 
 /*
  * VPPCOM Event Functions

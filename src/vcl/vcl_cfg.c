@@ -21,7 +21,7 @@
  */
 static vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
-  .init = 0,
+  .is_init = 0,
   .my_client_index = ~0
 };
 
@@ -33,6 +33,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   ASSERT (vcl_cfg);
 
   vcl_cfg->heapsize = (256ULL << 20);
+  vcl_cfg->max_workers = 16;
   vcl_cfg->vpp_api_q_length = 1024;
   vcl_cfg->segment_baseva = 0x200000000ULL;
   vcl_cfg->segment_size = (256 << 20);
@@ -258,14 +259,15 @@ vppcom_cfg_read_file (char *conf_fname)
 
       if (vc_cfg_input)
 	{
-	  if (unformat (line_input, "heapsize %s", &chroot_path))
+	  if (unformat (line_input, "heapsize %lu", &vcl_cfg->heapsize))
 	    {
-	      vec_terminate_c_string (chroot_path);
-	      VCFG_DBG (0,
-			"VCL<%d>: configured heapsize %s, actual heapsize %ld"
-			" (0x%lx)", getpid (), chroot_path, vcl_cfg->heapsize,
+	      VCFG_DBG (0, "VCL<%d>: configured heapsize %lu", getpid (),
 			vcl_cfg->heapsize);
-	      vec_free (chroot_path);
+	    }
+	  if (unformat (line_input, "max-workers %u", &vcl_cfg->max_workers))
+	    {
+	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
+			vcl_cfg->max_workers);
 	    }
 	  else if (unformat (line_input, "api-prefix %s", &chroot_path))
 	    {
@@ -276,9 +278,8 @@ vppcom_cfg_read_file (char *conf_fname)
 						  chroot_path, 0);
 	      vl_set_memory_root_path ((char *) chroot_path);
 
-	      VCFG_DBG (0,
-			"VCL<%d>: configured api-prefix (%s) and api filename"
-			" (%s)", getpid (), chroot_path,
+	      VCFG_DBG (0, "VCL<%d>: configured api-prefix (%s) and api "
+			"filename (%s)", getpid (), chroot_path,
 			vcl_cfg->vpp_api_filename);
 	      chroot_path = 0;	/* Don't vec_free() it! */
 	    }
