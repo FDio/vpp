@@ -1295,6 +1295,25 @@ avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   return 0;
 }
 
+static void
+avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+			     u32 node_index)
+{
+  avf_main_t *am = &avf_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  avf_device_t *ad = pool_elt_at_index (am->devices, hw->dev_instance);
+
+  /* Shut off redirection */
+  if (node_index == ~0)
+    {
+      ad->per_interface_next_index = node_index;
+      return;
+    }
+
+  ad->per_interface_next_index =
+    vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (avf_device_class,) =
 {
@@ -1303,6 +1322,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .format_device_name = format_avf_device_name,
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
+  .rx_redirect_to_node = avf_set_interface_next_node,
 };
 /* *INDENT-ON* */
 
