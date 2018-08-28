@@ -16,8 +16,8 @@ add_vpp_plugin(nsh
   nsh.c
   nsh_output.c
   nsh_pop.c
-  nsh-md2-ioam/nsh_md2_ioam.c 
-  nsh-md2-ioam/nsh_md2_ioam_api.c 
+  nsh-md2-ioam/nsh_md2_ioam.c
+  nsh-md2-ioam/nsh_md2_ioam_api.c
   nsh-md2-ioam/md2_ioam_transit.c
   nsh-md2-ioam/nsh_md2_ioam_trace.c
   nsh-md2-ioam/export-nsh-md2-ioam/nsh_md2_ioam_export.c
