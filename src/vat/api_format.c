@@ -10836,8 +10836,8 @@ api_sr_localsid_add_del (vat_main_t * vam)
   clib_memcpy (mp->localsid.addr, &localsid, sizeof (mp->localsid));
   if (nexthop_set)
     {
-      clib_memcpy (mp->nh_addr6, &nh_addr4, sizeof (mp->nh_addr6));
-      clib_memcpy (mp->nh_addr4, &nh_addr6, sizeof (mp->nh_addr4));
+      clib_memcpy (mp->nh_addr6, &nh_addr6, sizeof (mp->nh_addr6));
+      clib_memcpy (mp->nh_addr4, &nh_addr4, sizeof (mp->nh_addr4));
     }
   mp->behavior = behavior;
   mp->sw_if_index = ntohl (sw_if_index);
