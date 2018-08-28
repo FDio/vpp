@@ -99,6 +99,7 @@ typedef enum
   VPPCOM_ENOTCONN = -ENOTCONN,
   VPPCOM_ECONNREFUSED = -ECONNREFUSED,
   VPPCOM_ETIMEDOUT = -ETIMEDOUT,
+  VPPCOM_EEXIST = -EEXIST
 } vppcom_error_t;
 
 typedef enum
@@ -252,6 +253,14 @@ extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
 extern int vppcom_mq_epoll_fd (void);
+
+/**
+ * Request from application to register a new worker
+ *
+ * Expectation is that applications will make use of this after a new pthread
+ * is spawned.
+ */
+extern int vppcom_worker_register (void);
 
 /*
  * VPPCOM Event Functions
