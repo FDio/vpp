@@ -22,6 +22,30 @@
       "revId": "d313f9e6f7c6d50aac189668a67bf13b86dd791c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "594368c7_e27d2488",
+        "filename": "src/plugins/nsh/CMakeLists.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-28T12:58:43Z",
+      "side": 1,
+      "message": "Thanks. Will fix it in next patch.",
+      "parentUuid": "ca1a72f9_21ffe9f6",
+      "range": {
+        "startLine": 19,
+        "startChar": 29,
+        "endLine": 19,
+        "endChar": 30
+      },
+      "revId": "d313f9e6f7c6d50aac189668a67bf13b86dd791c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
