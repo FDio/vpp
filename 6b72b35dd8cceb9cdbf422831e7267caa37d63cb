@@ -46,6 +46,30 @@
       "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1de590a7_1c2836cc",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-28T16:01:28Z",
+      "side": 1,
+      "message": "rwlock favors readers. That is, if you have at least one reader in, a new reader won\u0027t have to wait for the lock. The writer on the other hand needs to wait for all readers to exit. \n\nIf threadX wants to do a free while thread0 does a non expandable get, they have to wait for each other (although one is a writer and the other a reader), so the pool internal vector is protected.",
+      "parentUuid": "f3affc5e_8ec50f71",
+      "range": {
+        "startLine": 103,
+        "startChar": 18,
+        "endLine": 103,
+        "endChar": 23
+      },
+      "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
