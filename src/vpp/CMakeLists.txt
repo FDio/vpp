@@ -107,11 +107,13 @@ add_vpp_executable(summary_stats_client
   SOURCES api/summary_stats_client.c
   LINK_LIBRARIES vppinfra svm vlibmemoryclient
   DEPENDS api_headers
+  NO_INSTALL
 )
 
 add_vpp_executable(stat_client
   SOURCES app/stat_client.c
   LINK_LIBRARIES vppinfra svm vlibmemoryclient
   DEPENDS api_headers
+  NO_INSTALL
 )
 
