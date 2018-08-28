@@ -69,7 +69,7 @@ include(cmake/deb.cmake)
 foreach(
   DIR
   vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
-  vpp-api tools/vppapigen tools/g2 tools/elftool
+  vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool
 )
   add_subdirectory(${DIR})
 endforeach()
