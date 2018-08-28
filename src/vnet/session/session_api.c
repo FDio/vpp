@@ -147,7 +147,8 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
 }
 
 static int
-send_app_cut_through_registration_add (u32 api_client_index, u64 mq_addr,
+send_app_cut_through_registration_add (u32 api_client_index,
+				       u32 wrk_map_index, u64 mq_addr,
 				       u64 peer_mq_addr)
 {
   vl_api_app_cut_through_registration_add_t *mp;
@@ -169,6 +170,7 @@ send_app_cut_through_registration_add (u32 api_client_index, u64 mq_addr,
 
   mp->evt_q_address = mq_addr;
   mp->peer_evt_q_address = peer_mq_addr;
+  mp->wrk_index = wrk_map_index;
 
   mq = uword_to_pointer (mq_addr, svm_msg_q_t *);
   peer_mq = uword_to_pointer (peer_mq_addr, svm_msg_q_t *);
@@ -475,6 +477,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
       u8 main_thread = vlib_num_workers ()? 1 : 0;
 
       send_app_cut_through_registration_add (app->api_client_index,
+					     app_wrk->wrk_map_index,
 					     ls->server_evt_q,
 					     ls->client_evt_q);
 
@@ -615,6 +618,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       u8 main_thread = vlib_num_workers ()? 1 : 0;
 
       send_app_cut_through_registration_add (app->api_client_index,
+					     app_wrk->wrk_map_index,
 					     ls->client_evt_q,
 					     ls->server_evt_q);
 
