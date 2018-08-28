@@ -11,18 +11,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(MUSDK_INCLUDE_DIR NAMES marvell/pp2/pp2.h)
+find_path(MUSDK_INCLUDE_DIR NAMES mv_std.h)
 find_library(MUSDK_LIB NAMES musdk)
 
 if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
   add_vpp_plugin(marvell
-    marvell.api
+    SOURCES
     plugin.c
     pp2/cli.c
     pp2/format.c
     pp2/input.c
     pp2/output.c
     pp2/pp2.c
+
+    LINK_LIBRARIES
+    ${MUSDK_LIB}
   )
   include_directories(${MUSDK_INCLUDE_DIR})
   message(STATUS "Found Marvel MUSDK in ${MUSDK_INCLUDE_DIR}")
