@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4fb366a8_d7be7695",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-28T15:21:49Z",
+      "side": 1,
+      "message": "Did you try with a reader lock here since it\u0027s cheaper? If it doesn\u0027t work, I guess we could just keep this branch and remove the rest.",
+      "range": {
+        "startLine": 103,
+        "startChar": 18,
+        "endLine": 103,
+        "endChar": 23
+      },
+      "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
