@@ -553,24 +553,22 @@ vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
 """
 
 
-def emit_definition(parser, json_file, emitted, o, logger):
+def emit_definition(parser, json_file, emitted, o):
     if o in emitted:
         return
-    logger.debug("emit definition for %s" % o)
     if o.name in ("msg_header1_t", "msg_header2_t"):
         return
     if hasattr(o, "depends"):
         for x in o.depends:
-            emit_definition(parser, json_file, emitted, x, logger)
+            emit_definition(parser, json_file, emitted, x)
     if hasattr(o, "reply"):
-        emit_definition(parser, json_file, emitted, o.reply, logger)
+        emit_definition(parser, json_file, emitted, o.reply)
     if hasattr(o, "get_c_def"):
         if (o not in parser.enums_by_json[json_file] and
                 o not in parser.types_by_json[json_file] and
                 o not in parser.unions_by_json[json_file] and
                 o.name not in parser.messages_by_json[json_file]):
             return
-        logger.debug("writing def")
         guard = "defined_%s" % o.get_c_name()
         print("#ifndef %s" % guard)
         print("#define %s" % guard)
@@ -578,9 +576,7 @@ def emit_definition(parser, json_file, emitted, o, logger):
         print("")
         function_attrs = "static inline "
         if o.name in parser.messages_by_json[json_file]:
-            logger.debug("o is %s" % o.name)
             if o.has_payload():
-                logger.debug("o has payload ")
                 print("%s%s" % (function_attrs,
                                 o.get_swap_payload_to_be_func_def()))
                 print("")
@@ -600,7 +596,7 @@ def emit_definition(parser, json_file, emitted, o, logger):
                 print("")
             print("%s" % o.get_c_constructor())
             print("")
-            if o.is_reply and not o.is_event:
+            if o.is_reply or o.is_event:
                 print("%s%s;" % (function_attrs, o.get_event_cb_func_def()))
                 print("")
         elif hasattr(o, "get_swap_to_be_func_def"):
@@ -652,13 +648,13 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("")
     emitted = []
     for e in parser.enums_by_json[j]:
-        emit_definition(parser, j, emitted, e, logger)
+        emit_definition(parser, j, emitted, e)
     for u in parser.unions_by_json[j]:
-        emit_definition(parser, j, emitted, u, logger)
+        emit_definition(parser, j, emitted, u)
     for t in parser.types_by_json[j]:
-        emit_definition(parser, j, emitted, t, logger)
+        emit_definition(parser, j, emitted, t)
     for m in parser.messages_by_json[j].values():
-        emit_definition(parser, j, emitted, m, logger)
+        emit_definition(parser, j, emitted, m)
 
     print("")
 
