@@ -80,6 +80,7 @@ endif
 
 libvom_la_SOURCES = 			\
 	types.cpp			\
+	api_types.cpp			\
 	arp_proxy_binding_cmds.cpp 	\
 	arp_proxy_binding.cpp		\
 	arp_proxy_config_cmds.cpp	\

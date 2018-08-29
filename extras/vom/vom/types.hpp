@@ -289,7 +289,7 @@ std::ostream& operator<<(std::ostream& os, const handle_t& h);
  */
 struct mac_address_t
 {
-  mac_address_t(uint8_t bytes[6]);
+  mac_address_t(const uint8_t bytes[6]);
   mac_address_t(const std::string& str);
   mac_address_t(std::initializer_list<uint8_t> bytes);
   /**

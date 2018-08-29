@@ -109,9 +109,11 @@ list(APPEND VNET_API_FILES cop/cop.api)
 # Layer 2 protocol: Ethernet
 ##############################################################################
 list(APPEND VNET_SOURCES
+  ethernet/ethernet_types_api.c
   ethernet/format.c
   ethernet/init.c
   ethernet/interface.c
+  ethernet/mac_address.c
   ethernet/node.c
   ethernet/pg.c
   ethernet/sfp.c
