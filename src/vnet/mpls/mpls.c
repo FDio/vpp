@@ -312,7 +312,6 @@ vnet_mpls_local_label (vlib_main_t * vm,
   else
   {
       fib_node_index_t fib_index;
-      u32 fi;
 
       if (NULL == rpaths)
       {
@@ -324,24 +323,6 @@ vnet_mpls_local_label (vlib_main_t * vm,
       pfx.fp_len = 21;
       pfx.fp_label = local_label;
       pfx.fp_payload_proto = rpaths[0].frp_proto;
-
-      /*
-       * the CLI parsing stored table Ids, swap to FIB indicies
-       */
-      if (FIB_NODE_INDEX_INVALID == rpath.frp_sw_if_index)
-      {
-	  fi = fib_table_find(dpo_proto_to_fib(pfx.fp_payload_proto),
-                              rpaths[0].frp_fib_index);
-
-	  if (~0 == fi)
-	  {
-	      error = clib_error_return(0 , "%U Via table %d does not exist",
-					format_dpo_proto, pfx.fp_payload_proto,
-					rpaths[0].frp_fib_index);
-	      goto done;
-	  }
-	  rpaths[0].frp_fib_index = fi;
-      }
 
       fib_index = mpls_fib_index_from_table_id(table_id);
 

@@ -17,6 +17,7 @@
 
 #include <vnet/fib/fib_types.h>
 #include <vnet/fib/fib_internal.h>
+#include <vnet/fib/fib_table.h>
 #include <vnet/mpls/mpls.h>
 
 /*
@@ -418,7 +419,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
 {
     fib_route_path_t *rpath = va_arg (*args, fib_route_path_t *);
     u32 *payload_proto = va_arg (*args, u32*);
-    u32 weight, preference, udp_encap_id;
+    u32 weight, preference, udp_encap_id, fi;
     mpls_label_t out_label;
     vnet_main_t *vnm;
 
@@ -460,6 +461,14 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_sw_if_index = ~0;
             rpath->frp_proto = DPO_PROTO_IP4;
+
+            /*
+             * the user enter table-ids, convert to index
+             */
+            fi = fib_table_find (FIB_PROTOCOL_IP4, rpath->frp_fib_index);
+            if (~0 == fi)
+                return 0;
+            rpath->frp_fib_index = fi;
         }
         else if (unformat (input, "%U next-hop-table %d",
                            unformat_ip6_address,
@@ -468,6 +477,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_sw_if_index = ~0;
             rpath->frp_proto = DPO_PROTO_IP6;
+            fi = fib_table_find (FIB_PROTOCOL_IP6, rpath->frp_fib_index);
+            if (~0 == fi)
+                return 0;
+            rpath->frp_fib_index = fi;
         }
         else if (unformat (input, "%U",
                            unformat_ip4_address,
