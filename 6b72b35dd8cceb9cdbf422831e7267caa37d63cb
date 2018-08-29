@@ -94,6 +94,30 @@
       "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4eee80c_e49eb0f8",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-29T03:16:30Z",
+      "side": 1,
+      "message": "The issue you\u0027ve found is that free can be called from other threads and that corrupts the free indices vector because it\u0027s not protected. So the case we need to avoid is, alloc in main thread without writer lock interacting with free in another thread, with writer lock held (note that free does acquire the writer lock).\n\nAs a first solution, you forced another writer lock even on the non-expand branch, and of course that should work. What I\u0027ve asked previously, and I thought you confirmed it worked, is if you could try with a reader lock on that branch, because that should be enough. The reasoning: when free tries to acquire writer lock, it can\u0027t if main thread acquired the reader lock (and vice-versa, main thread when it doesn\u0027t expand pool can\u0027t acquire reader lock if another thread acquired writer lock first). \n\nIf this works, and again, I thought you confirmed it did, then this might be only slightly faster because again, we favor readers: that is, if we have a reader a subsequent reader does not have to wait at all (e.g., say out of N workers, there\u0027s a good chance one just received a connection, did a read and it\u0027s still doing all the processing before freeing the context).\n\nHowever, I feel we\u0027re spending an awful lot of time debating something that at this point is not that important. If the reader lock does not work, then instead of what you\u0027re proposing I\u0027d rather remove the will expand branch entirely, because with a double lock it offers no benefits, and just protect this branch with a writer lock. It\u0027s much cleaner.",
+      "parentUuid": "389faad1_4faaf76a",
+      "range": {
+        "startLine": 103,
+        "startChar": 18,
+        "endLine": 103,
+        "endChar": 23
+      },
+      "revId": "6b72b35dd8cceb9cdbf422831e7267caa37d63cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
