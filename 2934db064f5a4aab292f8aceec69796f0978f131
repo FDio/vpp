@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eaea7be6_a822b48b",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-08-29T10:29:02Z",
+      "side": 1,
+      "message": "How this works? How do you select which fields are taken from packet to calculate key?",
+      "range": {
+        "startLine": 527,
+        "startChar": 0,
+        "endLine": 529,
+        "endChar": 52
+      },
+      "revId": "2934db064f5a4aab292f8aceec69796f0978f131",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
