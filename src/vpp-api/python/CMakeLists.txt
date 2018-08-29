@@ -28,5 +28,6 @@ if(PYTHONINTERP_FOUND)
 	  --dist-dir=${CMAKE_INSTALL_PREFIX}
       OUTPUT_QUIET
     )"
+    COMPONENT vpp-api-python
   )
 endif()

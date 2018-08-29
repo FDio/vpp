@@ -14,7 +14,7 @@
 macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
     ""
-    ""
+    "COMPONENT"
     "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
     ${ARGN}
   )
@@ -27,7 +27,14 @@ macro(add_vpp_library lib)
     target_link_libraries(${lib} ${ARG_LINK_LIBRARIES})
   endif()
   # install .so
-  install(TARGETS ${lib} DESTINATION ${VPP_LIB_DIR_NAME})
+  if(NOT ARG_COMPONENT)
+    set(ARG_COMPONENT vpp)
+  endif()
+  install(
+    TARGETS ${lib}
+    DESTINATION ${VPP_LIB_DIR_NAME}
+    COMPONENT ${ARG_COMPONENT}
+  )
 
   if(ARG_MULTIARCH_SOURCES)
     vpp_library_set_multiarch_sources(${lib} ${ARG_MULTIARCH_SOURCES})
@@ -37,7 +44,11 @@ macro(add_vpp_library lib)
     vpp_add_api_files(${lib} ${ARG_API_FILES})
     foreach(file ${ARG_API_FILES})
       get_filename_component(dir ${file} DIRECTORY)
-      install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h DESTINATION include/${lib}/${dir})
+      install(
+	FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+	DESTINATION include/${lib}/${dir}
+	COMPONENT vpp-dev
+      )
     endforeach()
   endif()
 
@@ -49,7 +60,11 @@ macro(add_vpp_library lib)
   if(ARG_INSTALL_HEADERS)
     foreach(file ${ARG_INSTALL_HEADERS})
       get_filename_component(dir ${file} DIRECTORY)
-      install(FILES ${file} DESTINATION include/${lib}/${dir})
+      install(
+	FILES ${file}
+	DESTINATION include/${lib}/${dir}
+	COMPONENT vpp-dev
+      )
     endforeach()
   endif()
 endmacro()

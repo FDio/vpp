@@ -32,7 +32,7 @@ configure_file(
 install(
   FILES ${CMAKE_BINARY_DIR}/vppinfra/config.h
   DESTINATION include/vppinfra
-  COMPONENT dev
+  COMPONENT vpp-dev
 )
 
 ##############################################################################
@@ -198,6 +198,7 @@ add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
   LINK_LIBRARIES m
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
+  COMPONENT libvppinfra
 )
 
 ##############################################################################
