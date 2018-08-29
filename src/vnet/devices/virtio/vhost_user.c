@@ -73,7 +73,8 @@ get_huge_page_size (int fd)
 static void
 unmap_all_mem_regions (vhost_user_intf_t * vui)
 {
-  int i, r;
+  int i, r, q;
+
   for (i = 0; i < vui->nregions; i++)
     {
       if (vui->region_mmap_addr[i] != MAP_FAILED)
@@ -104,6 +105,14 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
 	}
     }
   vui->nregions = 0;
+
+  for (q = 0; q < VHOST_VRING_MAX_N; q++)
+    {
+      vhost_user_vring_t *txvq = &vui->vrings[q];
+      txvq->avail = 0;
+      txvq->used = 0;
+      txvq->desc = 0;
+    }
 }
 
 static void
