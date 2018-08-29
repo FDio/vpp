@@ -122,6 +122,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   fa_5tuple_t mask;
   u32 refcount;
+  u8 from_tm;
 } ace_mask_type_entry_t;
 
 typedef struct {
