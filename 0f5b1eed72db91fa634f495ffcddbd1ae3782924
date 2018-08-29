@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "4e437183_e942f7a0",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2cac23ce_53ee2c90",
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cd2f9819_1c0ae641",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 17
@@ -30,6 +48,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "vip-\u003eport !\u003d 0\n\n(To be consistent with other parts of the code)",
+      "range": {
+        "startLine": 167,
+        "startChar": 6,
+        "endLine": 168,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "edc5b6c2_bef8e8bd",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cd2f9819_1c0ae641",
       "range": {
         "startLine": 167,
         "startChar": 6,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "82c4f9b7_559929dc",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "526ee158_c9eac220",
+      "range": {
+        "startLine": 181,
+        "startChar": 6,
+        "endLine": 188,
+        "endChar": 57
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f5787da_e6a57ccf",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 17
@@ -76,6 +142,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "No need for this space",
+      "range": {
+        "startLine": 208,
+        "startChar": 31,
+        "endLine": 208,
+        "endChar": 32
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "149edd21_35748bf5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f5787da_e6a57ccf",
       "range": {
         "startLine": 208,
         "startChar": 31,
@@ -111,6 +201,30 @@
     },
     {
       "key": {
+        "uuid": "3546312f_9df5c423",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e4bae802_d74a17d8",
+      "range": {
+        "startLine": 236,
+        "startChar": 8,
+        "endLine": 244,
+        "endChar": 57
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "60cfc6bb_ada0d861",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 17
@@ -122,6 +236,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "You don\u0027t need both checks. port \u003d\u003d 0 is enough to check that this is a VIP with all ports.",
+      "range": {
+        "startLine": 546,
+        "startChar": 15,
+        "endLine": 546,
+        "endChar": 34
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8c3cbcc_c428a406",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "60cfc6bb_ada0d861",
       "range": {
         "startLine": 546,
         "startChar": 15,
@@ -157,6 +295,30 @@
     },
     {
       "key": {
+        "uuid": "134b8568_c4abc01e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "08f67f9e_20b84ae6",
+      "range": {
+        "startLine": 889,
+        "startChar": 6,
+        "endLine": 890,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84e28d00_172a3b3a",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 17
@@ -168,6 +330,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "port !\u003d 0",
+      "range": {
+        "startLine": 1001,
+        "startChar": 6,
+        "endLine": 1002,
+        "endChar": 43
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "71d80995_417960f0",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1002,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "84e28d00_172a3b3a",
       "range": {
         "startLine": 1001,
         "startChar": 6,
@@ -197,6 +383,24 @@
     },
     {
       "key": {
+        "uuid": "b8663b37_e401a79f",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1067,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be39ebec_1b7ee329",
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6edaa55c_8d0eb158",
         "filename": "src/plugins/lb/lb.c",
         "patchSetId": 17
@@ -208,6 +412,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "Why not put vip-\u003eport \u003d 0 ?",
+      "range": {
+        "startLine": 1106,
+        "startChar": 6,
+        "endLine": 1106,
+        "endChar": 29
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55b424d1_ff03d540",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1106,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6edaa55c_8d0eb158",
       "range": {
         "startLine": 1106,
         "startChar": 6,
@@ -243,6 +471,30 @@
     },
     {
       "key": {
+        "uuid": "e546323f_f0b2f45d",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1116,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7007abb5_303012ca",
+      "range": {
+        "startLine": 1116,
+        "startChar": 0,
+        "endLine": 1116,
+        "endChar": 1
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f610cd09_45ecd513",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 17
@@ -266,6 +518,30 @@
     },
     {
       "key": {
+        "uuid": "1bd7f2ca_6a2b7e4b",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Will give it a try to remove _PORT types to see if it works in next patchset.",
+      "parentUuid": "f610cd09_45ecd513",
+      "range": {
+        "startLine": 207,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 16
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d37b30da_e8a0f562",
         "filename": "src/plugins/lb/lb.h",
         "patchSetId": 17
@@ -277,6 +553,30 @@
       "writtenOn": "2018-08-28T08:38:09Z",
       "side": 1,
       "message": "It is not in this patch.",
+      "range": {
+        "startLine": 621,
+        "startChar": 0,
+        "endLine": 621,
+        "endChar": 33
+      },
+      "revId": "0f5b1eed72db91fa634f495ffcddbd1ae3782924",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b35eb34e_c6e18e34",
+        "filename": "src/plugins/lb/lb.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-08-29T02:04:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d37b30da_e8a0f562",
       "range": {
         "startLine": 621,
         "startChar": 0,
