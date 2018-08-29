@@ -1243,6 +1243,7 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=                    \
   vnet/util/radix.c			     \
   vnet/util/refcount.c			 \
+  vnet/util/throttle.c			 \
   vnet/util/trajectory.c
 
 ########################################
