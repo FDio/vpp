@@ -61,7 +61,6 @@ include(cmake/api.cmake)
 include(cmake/library.cmake)
 include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
-include(cmake/deb.cmake)
 
 ##############################################################################
 # subdirs - order matters
@@ -74,3 +73,4 @@ foreach(
   add_subdirectory(${DIR})
 endforeach()
 
+include(cmake/pack.cmake)

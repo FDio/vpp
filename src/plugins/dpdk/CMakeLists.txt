@@ -129,6 +129,9 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
 
     LINK_FLAGS
     ${DPDK_LINK_FLAGS}
+
+    COMPONENT
+    vpp-plugin-dpdk
   )
 else()
   message(WARNING "DPDK not found - dpdk disabled")
