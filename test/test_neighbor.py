@@ -1316,6 +1316,37 @@ class ARPTestCase(VppTestCase):
                                   self.pg1.sw_if_index,
                                   self.pg1.remote_hosts[2].ip4))
 
+    def test_arp_incomplete(self):
+
+        #
+        # ensure that we throttle the ARP requests
+        #
+        self.pg0.generate_remote_hosts(2)
+
+        ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                 [VppRoutePath(self.pg0.remote_hosts[1].ip4,
+                                               self.pg0.sw_if_index,
+                                               labels=[55])])
+        ip_10_0_0_1.add_vpp_config()
+
+        p1 = (Ether(dst=self.pg1.local_mac,
+                    src=self.pg1.remote_mac) /
+              IP(src=self.pg1.remote_ip4,
+                 dst="10.0.0.1") /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+
+        self.pg1.add_stream(p1 * 257)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0._get_capture(1)
+
+        #
+        # how many we get is going to be dependent on the time for packet
+        # processing but it should be small
+        #
+        self.assertTrue(len(rx) < 64)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
