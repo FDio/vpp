@@ -120,6 +120,7 @@ libvnet_la_SOURCES +=				\
  vnet/ethernet/format.c				\
  vnet/ethernet/init.c				\
  vnet/ethernet/interface.c			\
+ vnet/ethernet/mac_address.c			\
  vnet/ethernet/node.c				\
  vnet/ethernet/pg.c				\
  vnet/ethernet/sfp.c				\
@@ -139,7 +140,9 @@ nobase_include_HEADERS +=			\
  vnet/ethernet/p2p_ethernet.api.h		\
  vnet/ethernet/p2p_ethernet.h
 
-API_FILES += vnet/ethernet/p2p_ethernet.api
+API_FILES += \
+ vnet/ethernet/p2p_ethernet.api			\
+ vnet/ethernet/ethernet_types.api
 
 ########################################
 # Layer 2 protocol: Ethernet bridging
