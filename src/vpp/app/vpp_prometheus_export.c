@@ -223,8 +223,10 @@ main (int argc, char **argv)
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   int rv;
+  void *heap_base;
 
-  clib_mem_init (0, 128 << 20);
+  heap_base = clib_mem_vm_map ((void *) 0x10000000ULL, 128 << 20);
+  clib_mem_init (heap_base, 128 << 20);
 
   unformat_init_command_line (a, argv);
 

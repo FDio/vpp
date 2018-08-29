@@ -18,7 +18,20 @@ void
 vlib_stat_segment_lock (void)
 {
   stats_main_t *sm = &stats_main;
-  clib_spinlock_lock (sm->stat_segment_lockp);
+  vlib_main_t *vm = vlib_get_main ();
+  f64 deadman;
+
+  /* 3ms is WAY long enough to be reasonably sure something is wrong */
+  deadman = vlib_time_now (vm) + 3e-3;
+
+  while (__sync_lock_test_and_set (&((*sm->stat_segment_lockp)->lock), 1))
+    {
+      if (vlib_time_now (vm) >= deadman)
+	{
+	  clib_warning ("BUG: stat segment lock held too long...");
+	  break;
+	}
+    }
 }
 
 void
@@ -66,7 +79,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
       stat_segment_name = cm->stat_segment_name ?
 	cm->stat_segment_name : cm->name;
 
-      clib_spinlock_lock (sm->stat_segment_lockp);
+      vlib_stat_segment_lock ();
 
       /* Update hash table. The name must be copied into the segment */
       hp = hash_get_pair (sm->counter_vector_by_name, stat_segment_name);
@@ -91,7 +104,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
       /* Warn clients to refresh any pointers they might be holding */
       shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
 	((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
-      clib_spinlock_unlock (sm->stat_segment_lockp);
+      vlib_stat_segment_unlock ();
     }
   ssvm_pop_heap (oldheap);
 }
@@ -111,8 +124,7 @@ vlib_stats_register_error_index (u8 * name, u64 index)
 
   shared_header = ssvmp->sh;
 
-  clib_spinlock_lock (sm->stat_segment_lockp);
-
+  vlib_stat_segment_lock ();
   /* Update hash table. The name must be copied into the segment */
   hp = hash_get_pair (sm->counter_vector_by_name, name);
   if (hp)
@@ -136,7 +148,7 @@ vlib_stats_register_error_index (u8 * name, u64 index)
   /* Warn clients to refresh any pointers they might be holding */
   shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
     ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
-  clib_spinlock_unlock (sm->stat_segment_lockp);
+  vlib_stat_segment_unlock ();
 }
 
 void
@@ -155,8 +167,7 @@ vlib_stats_pop_heap2 (u64 * counter_vector, u32 thread_index, void *oldheap)
 
   shared_header = ssvmp->sh;
 
-  clib_spinlock_lock (sm->stat_segment_lockp);
-
+  vlib_stat_segment_lock ();
   error_vector_name = format (0, "/err/%d/counter_vector%c", thread_index, 0);
 
   /* Update hash table. The name must be copied into the segment */
@@ -182,7 +193,7 @@ vlib_stats_pop_heap2 (u64 * counter_vector, u32 thread_index, void *oldheap)
   /* Warn clients to refresh any pointers they might be holding */
   shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
     ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
-  clib_spinlock_unlock (sm->stat_segment_lockp);
+  vlib_stat_segment_unlock ();
   ssvm_pop_heap (oldheap);
 }
 
@@ -359,7 +370,7 @@ show_stat_segment_command_fn (vlib_main_t * vm,
   if (unformat (input, "verbose"))
     verbose = 1;
 
-  clib_spinlock_lock (sm->stat_segment_lockp);
+  vlib_stat_segment_lock ();
 
   /* *INDENT-OFF* */
   hash_foreach_pair (p, sm->counter_vector_by_name,
@@ -371,7 +382,7 @@ show_stat_segment_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  clib_spinlock_unlock (sm->stat_segment_lockp);
+  vlib_stat_segment_unlock ();
 
   vec_sort_with_function (show_data, name_sort_cmp);
 
@@ -427,8 +438,7 @@ update_serialized_nodes (stats_main_t * sm)
 
   oldheap = ssvm_push_heap (shared_header);
 
-  clib_spinlock_lock (sm->stat_segment_lockp);
-
+  vlib_stat_segment_lock ();
   vlib_node_get_nodes (0 /* vm, for barrier sync */ ,
 		       (u32) ~ 0 /* all threads */ ,
 		       1 /* include stats */ ,
@@ -471,7 +481,7 @@ update_serialized_nodes (stats_main_t * sm)
 	((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
     }
 
-  clib_spinlock_unlock (sm->stat_segment_lockp);
+  vlib_stat_segment_unlock ();
   ssvm_pop_heap (oldheap);
 }
 
