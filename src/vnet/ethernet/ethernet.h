@@ -46,13 +46,25 @@
 #include <vnet/feature/feature.h>
 
 always_inline u64
-ethernet_mac_address_u64 (u8 * a)
+ethernet_mac_address_u64 (const u8 * a)
 {
   return (((u64) a[0] << (u64) (5 * 8))
 	  | ((u64) a[1] << (u64) (4 * 8))
 	  | ((u64) a[2] << (u64) (3 * 8))
 	  | ((u64) a[3] << (u64) (2 * 8))
 	  | ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
+}
+
+always_inline void
+ethernet_mac_address_from_u64 (u64 u, u8 * a)
+{
+  i8 ii;
+
+  for (ii = 5; ii >= 0; ii--)
+    {
+      a[ii] = u & 0xFF;
+      u = u >> 8;
+    }
 }
 
 static inline int
@@ -62,7 +74,7 @@ ethernet_mac_address_is_multicast_u64 (u64 a)
 }
 
 static inline int
-ethernet_mac_address_is_zero (u8 * mac)
+ethernet_mac_address_is_zero (const u8 * mac)
 {
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
