@@ -259,6 +259,10 @@ vhost_user_if_input (vlib_main_t * vm,
   u16 thread_index = vm->thread_index;
   u16 copy_len = 0;
 
+  /* The descriptor table is not ready yet */
+  if (PREDICT_FALSE (txvq->avail == 0))
+    return 0;
+
   {
     /* do we have pending interrupts ? */
     vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
