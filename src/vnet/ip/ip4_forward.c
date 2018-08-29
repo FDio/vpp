@@ -1719,21 +1719,11 @@ ip4_arp_inline (vlib_main_t * vm,
   uword n_left_from, n_left_to_next_drop, next_index;
   u32 thread_index = vm->thread_index;
   u32 seed;
-  f64 time_now;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  time_now = vlib_time_now (vm);
-  if (time_now - im->arp_throttle_last_seed_change_time[thread_index] > 1e-3)
-    {
-      (void) random_u32 (&im->arp_throttle_seeds[thread_index]);
-      memset (im->arp_throttle_bitmaps[thread_index], 0,
-	      ARP_THROTTLE_BITS / BITS (u8));
-
-      im->arp_throttle_last_seed_change_time[thread_index] = time_now;
-    }
-  seed = im->arp_throttle_seeds[thread_index];
+  seed = throttle_seed (&im->arp_throttle, thread_index, vlib_time_now (vm));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1748,8 +1738,7 @@ ip4_arp_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  u32 pi0, adj_index0, r0, w0, sw_if_index0, drop0;
-	  uword m0;
+	  u32 pi0, adj_index0, r0, sw_if_index0, drop0;
 	  ip_adjacency_t *adj0;
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
@@ -1778,14 +1767,7 @@ ip4_arp_inline (vlib_main_t * vm,
 	      r0 = adj0->sub_type.nbr.next_hop.ip4.data_u32;
 	    }
 
-	  r0 ^= seed;
-	  /* Select bit number */
-	  r0 &= ARP_THROTTLE_BITS - 1;
-	  w0 = r0 / BITS (uword);
-	  m0 = (uword) 1 << (r0 % BITS (uword));
-
-	  drop0 = (im->arp_throttle_bitmaps[thread_index][w0] & m0) != 0;
-	  im->arp_throttle_bitmaps[thread_index][w0] |= m0;
+	  drop0 = throttle_check (&im->arp_throttle, thread_index, r0, seed);
 
 	  from += 1;
 	  n_left_from -= 1;

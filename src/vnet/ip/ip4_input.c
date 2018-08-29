@@ -41,6 +41,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
+#include <vnet/util/throttle.h>
 
 typedef struct
 {
@@ -390,17 +391,10 @@ ip4_main_loop_enter (vlib_main_t * vm)
   ip4_main_t *im = &ip4_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
-  int i;
 
+  throttle_init (&im->arp_throttle, n_vlib_mains, 1e-3);
 
-  vec_validate (im->arp_throttle_bitmaps, n_vlib_mains);
-  vec_validate (im->arp_throttle_seeds, n_vlib_mains);
-  vec_validate (im->arp_throttle_last_seed_change_time, n_vlib_mains);
-
-  for (i = 0; i < n_vlib_mains; i++)
-    vec_validate (im->arp_throttle_bitmaps[i],
-		  (ARP_THROTTLE_BITS / BITS (uword)) - 1);
-  return 0;
+  return (NULL);
 }
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (ip4_main_loop_enter);
