@@ -85,20 +85,21 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
       .frp_local_label = sl[0],
     };
 
-    vec_add (path.frp_label_stack, sl + 1, vec_len (sl) - 1);
+    if (vec_len (sl) - 1)
+      vec_add (path.frp_label_stack, sl + 1, vec_len (sl) - 1);
 
     fib_route_path_t *paths = NULL;
     vec_add1 (paths, path);
 
-		/* *INDENT-OFF* */
-		fib_prefix_t	pfx = {
-			.fp_len = 21,
-			.fp_proto = FIB_PROTOCOL_MPLS,
-			.fp_label = sr_policy->bsid,
-			.fp_eos = eos,
-			.fp_payload_proto = DPO_PROTO_MPLS,
-		};
-		/* *INDENT-ON* */
+    /* *INDENT-OFF* */
+    fib_prefix_t pfx = {
+        .fp_len = 21,
+        .fp_proto = FIB_PROTOCOL_MPLS,
+        .fp_label = sr_policy->bsid,
+        .fp_eos = eos,
+        .fp_payload_proto = DPO_PROTO_MPLS,
+    };
+    /* *INDENT-ON* */
 
     fib_table_entry_path_add2 (0,
 			       &pfx,
