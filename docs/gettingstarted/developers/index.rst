@@ -35,4 +35,4 @@ The Developers section covers the following areas:
    buildsystem/index.rst
    eventviewer
    sample_plugin
-
+   fib20/index.rst
