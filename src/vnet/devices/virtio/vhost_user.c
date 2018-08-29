@@ -555,6 +555,11 @@ vhost_user_socket_read (clib_file_t * uf)
 
 	  vui->nregions++;
 	}
+      for (q = 0; q < VHOST_VRING_MAX_N; q++)
+        {
+          vhost_user_vring_t *txvq = &vui->vrings[q];
+          txvq->enabled = 0;
+        }
       break;
 
     case VHOST_USER_SET_VRING_NUM:

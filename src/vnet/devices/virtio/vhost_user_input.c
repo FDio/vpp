@@ -260,6 +260,8 @@ vhost_user_if_input (vlib_main_t * vm,
   u16 copy_len = 0;
 
   {
+    if ( !txvq->enabled )
+        return 0;
     /* do we have pending interrupts ? */
     vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
     f64 now = vlib_time_now (vm);
