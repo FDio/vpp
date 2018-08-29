@@ -348,7 +348,7 @@ always_inline void *
 clib_mem_vm_map (void *addr, uword size)
 {
   void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED;
+  uword flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
 
   mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
   if (mmap_addr == (void *) -1)
