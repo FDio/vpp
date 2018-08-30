@@ -29,6 +29,18 @@
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
+
+/* directories for certificate authentication */
+#define CA_DIR "/etc/vpp/certs/cacerts/"
+#define CERT_DIR "/etc/vpp/certs/eecerts/"
+#define CRL_DIR "/etc/vpp/certs/crls/"
+
+#define CERTREQ_MD_SIZE 20
 
 #define IKEV2_DEBUG_PAYLOAD 1
 
@@ -234,6 +246,16 @@ typedef struct
   ikev2_id_t i_id;
   ikev2_id_t r_id;
 
+  /* certs */
+
+  //those are currently useless but could become useful in the future
+  //if we want to solve the -only one X509 identity for VPP- problem
+  //X509 *local_cert;
+  //EVP_PKEY *private_key;
+
+  X509 *remote_cert;
+  int certreq_ok;
+
   /* pending deletes */
   ikev2_delete_t *del;
 
@@ -267,6 +289,16 @@ typedef struct
 
 typedef struct
 {
+  X509_STORE *ca_cas;
+  X509_LOOKUP *ca_calookup;
+
+  u8 **certreq;
+  unsigned int certreq_size;
+
+} ca_store_t;
+
+typedef struct
+{
   /* pool of IKEv2 profiles */
   ikev2_profile_t *profiles;
 
@@ -278,6 +310,11 @@ typedef struct
 
   /* local private key */
   EVP_PKEY *pkey;
+  X509 *local_cert;
+
+  /* store of certificate */
+  ca_store_t *ca_store;
+  u8 certs_loaded;		//boolean
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -313,6 +350,19 @@ u8 *ikev2_calc_sign (EVP_PKEY * pkey, u8 * data);
 EVP_PKEY *ikev2_load_cert_file (u8 * file);
 EVP_PKEY *ikev2_load_key_file (u8 * file);
 void ikev2_crypto_init (ikev2_main_t * km);
+int ikev2_serialize_cert (X509 * cert, u8 ** data);
+
+EVP_PKEY *ikev2_load_public_key (X509 * cert);
+
+/* ikev2_certs.c */
+
+int ikev2_load_pki (ikev2_main_t * km);
+ca_store_t *ikev2_init_store ();
+void ikev2_reset_pki (ikev2_main_t * km);
+int ikev2_hash_pubkey (X509 * x509, u8 * md, unsigned int *size);
+X509 *ikev2_load_cert (u8 * file);
+int ikev2_ca_validate_cert (ca_store_t * store, X509 * cert);
+int ikev2_is_digest_in_ca_path (X509 * cert, u8 * md, X509_STORE * ca_store);
 
 /* ikev2_payload.c */
 typedef struct
@@ -336,6 +386,9 @@ void ikev2_payload_add_sa (ikev2_payload_chain_t * c,
 			   ikev2_sa_proposal_t * proposals);
 void ikev2_payload_add_ke (ikev2_payload_chain_t * c, u16 dh_group,
 			   u8 * dh_data);
+void ikev2_payload_add_certreq (ikev2_payload_chain_t * c, u8 * certreq,
+				unsigned int size);
+void ikev2_payload_add_cert (ikev2_payload_chain_t * c, X509 * cert);
 void ikev2_payload_add_nonce (ikev2_payload_chain_t * c, u8 * nonce);
 void ikev2_payload_add_id (ikev2_payload_chain_t * c, ikev2_id_t * id,
 			   u8 type);
@@ -345,6 +398,7 @@ void ikev2_payload_add_ts (ikev2_payload_chain_t * c, ikev2_ts_t * ts,
 void ikev2_payload_add_delete (ikev2_payload_chain_t * c, ikev2_delete_t * d);
 void ikev2_payload_chain_add_padding (ikev2_payload_chain_t * c, int bs);
 void ikev2_parse_vendor_payload (ike_payload_header_t * ikep);
+X509 *ikev2_parse_cert_payload (ike_payload_header_t * ikep);
 ikev2_sa_proposal_t *ikev2_parse_sa_payload (ike_payload_header_t * ikep);
 ikev2_ts_t *ikev2_parse_ts_payload (ike_payload_header_t * ikep);
 ikev2_delete_t *ikev2_parse_delete_payload (ike_payload_header_t * ikep);

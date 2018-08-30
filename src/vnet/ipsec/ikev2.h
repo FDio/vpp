@@ -77,6 +77,26 @@ typedef CLIB_PACKED (struct {
 }) ike_id_payload_header_t;
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 certreq_type;
+  u8 payload[0];
+}) ike_certreq_payload_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 cert_type;
+  u8 payload[0];
+}) ike_cert_payload_header_t;
+/* *INDENT-ON* */
+
 #define IKE_VERSION_2                    0x20
 
 #define IKEV2_EXCHANGE_SA_INIT           34
@@ -95,6 +115,8 @@ typedef CLIB_PACKED (struct {
 #define IKEV2_PAYLOAD_KE        34
 #define IKEV2_PAYLOAD_IDI       35
 #define IKEV2_PAYLOAD_IDR       36
+#define IKEV2_PAYLOAD_CERT	    37
+#define IKEV2_PAYLOAD_CERTREQ	  38
 #define IKEV2_PAYLOAD_AUTH      39
 #define IKEV2_PAYLOAD_NONCE     40
 #define IKEV2_PAYLOAD_NOTIFY    41
@@ -359,8 +381,39 @@ typedef enum
 #undef _
 } ikev2_id_type_t;
 
+#define foreach_ikev2_certreq_type \
+  _(0, RESERVED)             \
+  _(1, PKCS_7_X509)          \
+  _(2, PGP)                  \
+  _(3, DNS_SIGNED_KEY)       \
+  _(4, X509_SIGNATURE)       \
+  _(6, KERBEROS_TOKEN)       \
+  _(7, CRL)                  \
+  _(8, ARL)                  \
+  _(9, SPKI_CERT)            \
+  _(10, X509_ATTRIBUTE) \
+  _(11, RAW_RSA_KEY)         \
+  _(12, HASH_URL_X509_CERT)  \
+  _(13, HASH_URL_X509_BUNDLE)\
+
+typedef enum
+{
+#define _(v,f) IKEV2_CERTREQ_TYPE_##f = v,
+  foreach_ikev2_certreq_type
+#undef _
+} ikev2_certreq_type_t;
+
+typedef enum
+{
+#define _(v,f) IKEV2_CERT_TYPE_##f = v,
+  foreach_ikev2_certreq_type
+#undef _
+} ikev2_cert_type_t;
+
+
 clib_error_t *ikev2_init (vlib_main_t * vm);
 clib_error_t *ikev2_set_local_key (vlib_main_t * vm, u8 * file);
+clib_error_t *ikev2_set_local_cert (vlib_main_t * vm, u8 * file);
 clib_error_t *ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add);
 clib_error_t *ikev2_set_profile_auth (vlib_main_t * vm, u8 * name,
 				      u8 auth_method, u8 * data,

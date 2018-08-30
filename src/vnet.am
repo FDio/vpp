@@ -472,6 +472,7 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec/ah_encrypt.c			\
  vnet/ipsec/ikev2.c				\
  vnet/ipsec/ikev2_crypto.c			\
+ vnet/ipsec/ikev2_certs.c			\
  vnet/ipsec/ikev2_cli.c				\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c			\

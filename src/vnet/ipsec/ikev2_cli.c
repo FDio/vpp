@@ -45,6 +45,72 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
   return s;
 }
 
+static clib_error_t *
+show_ikev2_certs_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+
+  STACK_OF (X509_OBJECT) * h;
+  X509_OBJECT *xo;
+  X509 *cert;
+  int i;
+
+  ikev2_main_t *km = &ikev2_main;
+
+  if (!(km->certs_loaded))
+    {
+      vlib_cli_output (vm, "Certificate authentication not supported");
+      return 0;
+    }
+
+  if (km->ca_store->ca_cas != NULL)
+    {
+      h = km->ca_store->ca_cas->objs;
+
+      vlib_cli_output (vm, " %d CAs loaded:", sk_X509_OBJECT_num (h));
+
+      for (i = 0; i < sk_X509_OBJECT_num (h); i++)
+	{
+
+	  xo = sk_X509_OBJECT_value (h, i);
+	  cert = xo->data.x509;
+	  vlib_cli_output (vm, "  %s", cert->name);
+
+	}
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_ikev2_certs_command, static) = {
+    .path = "show ikev2 certs",
+    .short_help = "show ikev2 certs",
+    .function = show_ikev2_certs_command_fn,
+};
+/* *INDENT-ON* */
+
+
+
+static clib_error_t *
+ikev2_reload_pki_fn (vlib_main_t * vm,
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+
+  ikev2_main_t *km = &ikev2_main;
+
+  ikev2_reset_pki (km);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ikev2_reload_pki, static) = {
+    .path = "ikev2 reload pki",
+    .short_help = "ikev2 reload pki",
+    .function = ikev2_reload_pki_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 show_ikev2_sa_command_fn (vlib_main_t * vm,
@@ -232,6 +298,14 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	{
 	  r =
 	    ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG, data,
+				    0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U auth cert",
+			 unformat_token, valid_chars, &name, &data))
+	{
+	  r =
+	    ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG, NULL,
 				    0);
 	  goto done;
 	}
@@ -520,6 +594,47 @@ VLIB_CLI_COMMAND (set_ikev2_local_key_command, static) = {
 };
 /* *INDENT-ON* */
 
+
+static clib_error_t *
+set_ikev2_local_cert_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *r = 0;
+  u8 *data = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%s", &data))
+	{
+	  r = ikev2_set_local_cert (vm, data);
+	  goto done;
+	}
+      else
+	break;
+    }
+
+  r = clib_error_return (0, "parse error: '%U'",
+			 format_unformat_error, line_input);
+
+done:
+  vec_free (data);
+  unformat_free (line_input);
+  return r;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_ikev2_local_cert_command, static) = {
+    .path = "set ikev2 local cert",
+    .short_help =
+    "set ikev2 local cert <file>",
+    .function = set_ikev2_local_cert_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 ikev2_initiate_command_fn (vlib_main_t * vm,

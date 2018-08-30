@@ -297,6 +297,9 @@ ikev2_sa_free_all_vec (ikev2_sa_t * sa)
   if (sa->r_auth.key)
     EVP_PKEY_free (sa->r_auth.key);
 
+  if (sa->remote_cert)
+    X509_free (sa->remote_cert);
+
   vec_free (sa->del);
 
   ikev2_sa_free_all_child_sa (&sa->childs);
@@ -632,6 +635,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 			    ike_header_t * ike)
 {
   int p = 0;
+  ikev2_main_t *km = &ikev2_main;
   u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
 
@@ -667,6 +671,44 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	      ikev2_set_state (sa, IKEV2_STATE_SA_INIT);
 	      ike->msgid =
 		clib_host_to_net_u32 (clib_net_to_host_u32 (ike->msgid) + 1);
+	    }
+	}
+      else if (payload == IKEV2_PAYLOAD_CERTREQ)	/* 38 */
+	{
+	  clib_warning ("received payload CERTREQ, len %u", plen);
+
+	  ike_certreq_payload_header_t *hr =
+	    (ike_certreq_payload_header_t *) ikep;
+	  u32 plen = clib_net_to_host_u16 (ikep->length);
+	  u32 size = plen - sizeof (*hr);
+
+	  sa->certreq_ok = 0;
+	  int i;
+
+	  // check if the format of the payload is good
+	  if (size % CERTREQ_MD_SIZE == 0)
+	    {
+	      //for each digest received
+	      for (i = 0; i < size; i += CERTREQ_MD_SIZE)
+		{
+		  //if the digest is in the ca_path of loaded cert -> ok
+		  if (ikev2_is_digest_in_ca_path
+		      (km->local_cert, hr->payload + i,
+		       km->ca_store->ca_cas) == 0)
+		    {
+		      clib_warning
+			("local cert is compliant with received certreq");
+		      sa->certreq_ok = 1;
+		      break;
+		    }
+
+		}
+	      if (!(sa->certreq_ok))
+		clib_warning ("local cert does not match received certreq");
+	    }
+	  else
+	    {
+	      clib_warning ("malformed certreq payload");
 	    }
 	}
       else if (payload == IKEV2_PAYLOAD_KE)
@@ -815,6 +857,7 @@ static void
 ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 {
   ikev2_child_sa_t *first_child_sa;
+  ikev2_main_t *km = &ikev2_main;
   int p = 0;
   u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
@@ -899,6 +942,93 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 
 	  clib_warning ("received payload IDr len %u id_type %u",
 			plen - sizeof (*id), id->id_type);
+	}
+      else if (payload == IKEV2_PAYLOAD_CERT)	/* 37 */
+	{
+	  clib_warning ("received payload CERT %u flags %x length %u",
+			payload, ikep->flags, plen);
+	  if (km->certs_loaded)
+	    {
+	      // should be verified first
+	      sa->remote_cert = ikev2_parse_cert_payload (ikep);
+	      if (sa->remote_cert == NULL)
+		{
+		  clib_warning ("Unable to parse received certificate");
+		}
+	      else
+		{
+		  if (ikev2_ca_validate_cert (km->ca_store, sa->remote_cert)
+		      == 0)
+		    {
+		      clib_warning ("Remote certificate %s is verified",
+				    sa->remote_cert->name);
+
+		      if (sa->is_initiator)
+			{
+			  sa->r_auth.key =
+			    ikev2_load_public_key (sa->remote_cert);
+			}
+		      else
+			{
+			  sa->i_auth.key =
+			    ikev2_load_public_key (sa->remote_cert);
+			}
+		    }
+		  else
+		    {
+		      clib_warning ("Remote certificate %s validation FAILED",
+				    sa->remote_cert->name);
+		    }
+		}
+	    }
+	  else
+	    {
+	      clib_warning ("received cert payload but no pki is loaded");
+	      if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
+		{
+		  ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
+		  sa->unsupported_cp = payload;
+		  return;
+		}
+	    }
+	}
+      else if (payload == IKEV2_PAYLOAD_CERTREQ)	/* 38 */
+	{
+	  clib_warning ("received payload CERTREQ, len %u", plen);
+
+	  ike_certreq_payload_header_t *hr =
+	    (ike_certreq_payload_header_t *) ikep;
+	  u32 plen = clib_net_to_host_u16 (ikep->length);
+	  u32 size = plen - sizeof (*hr);
+
+	  sa->certreq_ok = 0;
+	  int i;
+
+	  // check if the format of the payload is good
+	  if (size % CERTREQ_MD_SIZE == 0)
+	    {
+	      //for each digest received
+	      for (i = 0; i < size; i += CERTREQ_MD_SIZE)
+		{
+		  //if the digest is in the ca_path of loaded cert -> ok
+		  if (ikev2_is_digest_in_ca_path
+		      (km->local_cert, hr->payload + i,
+		       km->ca_store->ca_cas) == 0)
+		    {
+		      clib_warning
+			("local cert is compliant with received certreq");
+		      sa->certreq_ok = 1;
+		      break;
+		    }
+
+		}
+	      if (!(sa->certreq_ok))
+		clib_warning ("local cert does not match received certreq");
+	    }
+	  else
+	    {
+	      clib_warning ("malformed certreq payload");
+	    }
 	}
       else if (payload == IKEV2_PAYLOAD_AUTH)	/* 39 */
 	{
@@ -1375,12 +1505,23 @@ ikev2_sa_auth (ikev2_sa_t * sa)
         if (p->auth.method != IKEV2_AUTH_METHOD_RSA_SIG)
           continue;
 
-        if (ikev2_verify_sign(p->auth.key, sa_auth->data, authmsg) == 1)
+        if(sa_auth->key== NULL){
+          clib_warning("currently using static public key, not suitable for rela X509 authentication");
+          sa_auth->key=p->auth.key;
+        }else {
+          clib_warning("using X509 authentication properly");
+        }
+
+        if (ikev2_verify_sign(sa_auth->key, sa_auth->data, authmsg) == 1)
           {
             ikev2_set_state(sa, IKEV2_STATE_AUTHENTICATED);
             sel_p = p;
             break;
+          } else {
+            clib_warning("verifying authentication payload failed");
           }
+
+        //should probably copy p->local_key to sa_auth->key for the other side
       }
 
     vec_free(auth);
@@ -1450,14 +1591,15 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
 
   key_pad = format (0, "%s", IKEV2_KEY_PAD);
   authmsg = ikev2_sa_generate_authmsg (sa, 0);
-  psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
-  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
-
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
+      psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
+      auth = ikev2_calc_prf (tr_prf, psk, authmsg);
       sa->i_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
+      vec_free (auth);
+      vec_free (psk);
     }
   else if (sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
     {
@@ -1465,9 +1607,7 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
     }
 
-  vec_free (psk);
   vec_free (key_pad);
-  vec_free (auth);
   vec_free (authmsg);
 }
 
@@ -1650,7 +1790,8 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 }
 
 static u32
-ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
+ikev2_generate_message (ikev2_main_t * km, ikev2_sa_t * sa,
+			ike_header_t * ike, void *user)
 {
   v8 *integ = 0;
   ike_payload_header_t *ph;
@@ -1708,6 +1849,11 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
 	  ikev2_payload_add_sa (chain, sa->r_proposals);
 	  ikev2_payload_add_ke (chain, sa->dh_group, sa->r_dh_data);
 	  ikev2_payload_add_nonce (chain, sa->r_nonce);
+	  if (km->certs_loaded)
+	    {
+	      ikev2_payload_add_certreq (chain, *(km->ca_store->certreq),
+					 km->ca_store->certreq_size);
+	    }
 	}
     }
   else if (ike->exchange == IKEV2_EXCHANGE_IKE_AUTH)
@@ -1715,6 +1861,17 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
       if (sa->state == IKEV2_STATE_AUTHENTICATED)
 	{
 	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
+	  // should verify that certreq was received and compliant
+	  if (km->certs_loaded
+	      && sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG
+	      && sa->certreq_ok)
+	    {
+	      ikev2_payload_add_cert (chain, km->local_cert);
+	    }
+	  else if (sa->certreq_ok == 0)
+	    {
+	      clib_warning ("error: certreq not received or not compliant");
+	    }
 	  ikev2_payload_add_auth (chain, &sa->r_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
@@ -1756,6 +1913,13 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
       else if (sa->state == IKEV2_STATE_SA_INIT)
 	{
 	  ikev2_payload_add_id (chain, &sa->i_id, IKEV2_PAYLOAD_IDI);
+	  //need to add cert and certreq payload
+	  if (km->certs_loaded)
+	    {
+	      ikev2_payload_add_cert (chain, km->local_cert);
+	      ikev2_payload_add_certreq (chain, *(km->ca_store->certreq),
+					 km->ca_store->certreq_size);
+	    }
 	  ikev2_payload_add_auth (chain, &sa->i_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].i_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
@@ -2142,7 +2306,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		      if (sa0->state == IKEV2_STATE_SA_INIT
 			  || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
 			{
-			  len = ikev2_generate_message (sa0, ike0, 0);
+			  len = ikev2_generate_message (km, sa0, ike0, 0);
 			}
 
 		      if (sa0->state == IKEV2_STATE_SA_INIT)
@@ -2179,7 +2343,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			  ikev2_complete_sa_data (sa0, sai);
 			  ikev2_calc_keys (sa0);
 			  ikev2_sa_auth_init (sa0);
-			  len = ikev2_generate_message (sa0, ike0, 0);
+			  len = ikev2_generate_message (km, sa0, ike0, 0);
 			}
 		    }
 
@@ -2251,7 +2415,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      len = ikev2_generate_message (sa0, ike0, 0);
+		      len = ikev2_generate_message (km, sa0, ike0, 0);
 		    }
 		}
 	    }
@@ -2317,7 +2481,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 		  if (!sa0->is_initiator)
 		    {
-		      len = ikev2_generate_message (sa0, ike0, 0);
+		      len = ikev2_generate_message (km, sa0, ike0, 0);
 		    }
 		}
 	    }
@@ -2369,7 +2533,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			}
 		      else
 			{
-			  len = ikev2_generate_message (sa0, ike0, 0);
+			  len = ikev2_generate_message (km, sa0, ike0, 0);
 			}
 		    }
 		}
@@ -2663,6 +2827,18 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
 }
 
 clib_error_t *
+ikev2_set_local_cert (vlib_main_t * vm, u8 * file)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  km->local_cert = ikev2_load_cert (file);
+  if (km->local_cert == NULL)
+    return clib_error_return (0, "load local cert '%s' failed", file);
+
+  return 0;
+}
+
+clib_error_t *
 ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 {
   ikev2_main_t *km = &ikev2_main;
@@ -2712,7 +2888,7 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
   p->auth.data = vec_dup (auth_data);
   p->auth.hex = data_hex_format;
 
-  if (auth_method == IKEV2_AUTH_METHOD_RSA_SIG)
+  if (auth_method == IKEV2_AUTH_METHOD_RSA_SIG && auth_data != NULL)
     {
       vec_add1 (p->auth.data, 0);
       if (p->auth.key)
@@ -2897,6 +3073,7 @@ ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
   return 0;
 }
 
+//called when VPP is used as a initiator
 clib_error_t *
 ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 {
@@ -3072,7 +3249,7 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   sa->del->spi = csa->i_proposals->spi;
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
   sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-  len = ikev2_generate_message (sa, ike0, 0);
+  len = ikev2_generate_message (km, sa, ike0, 0);
 
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len);
 
@@ -3172,7 +3349,7 @@ ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi)
     fsa->del->spi = ispi;
     ike0->msgid = clib_host_to_net_u32 (fsa->last_init_msg_id + 1);
     fsa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-    len = ikev2_generate_message (fsa, ike0, 0);
+    len = ikev2_generate_message (km, fsa, ike0, 0);
 
     ikev2_send_ike (vm, &fsa->iaddr, &fsa->raddr, bi0, len);
   }
@@ -3203,6 +3380,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
 {
   /* Create the Initiator request for create child SA */
   ike_header_t *ike0;
+  ikev2_main_t *km = &ikev2_main;
   u32 bi0 = 0;
   int len;
 
@@ -3226,7 +3404,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   RAND_bytes ((u8 *) & proposals[0].spi, sizeof (proposals[0].spi));
   rekey->spi = proposals[0].spi;
   rekey->ispi = csa->i_proposals->spi;
-  len = ikev2_generate_message (sa, ike0, proposals);
+  len = ikev2_generate_message (km, sa, ike0, proposals);
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len);
   vec_free (proposals);
 }
@@ -3283,7 +3461,15 @@ ikev2_init (vlib_main_t * vm)
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
 
+  km->certs_loaded = 0;
+
   ikev2_crypto_init (km);
+  km->ca_store = ikev2_init_store ();
+
+  if (ikev2_load_pki (km) != (-1))
+    {
+      km->certs_loaded = 1;
+    }
 
   mhash_init_vec_string (&km->profile_index_by_name, sizeof (uword));
 
