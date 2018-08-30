@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f555980f_850d069a",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-30T06:50:32Z",
+      "side": 1,
+      "message": "Instead of passing vm, you can get the total length by doing:\n\n  data_len \u003d b-\u003ecurren_length;\n  if (PREDICT_FALSE (b-\u003eflags \u0026 VLIB_BUFFER_NEXT_PRESENT))\n    data_len +\u003d b-\u003etotal_length_not_including_first_buffer;",
+      "range": {
+        "startLine": 254,
+        "startChar": 22,
+        "endLine": 254,
+        "endChar": 38
+      },
+      "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
