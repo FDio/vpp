@@ -54,6 +54,7 @@ define mpls_tunnel_add_del
   u8 mt_next_hop_preference;
   u8 mt_next_hop[16];
   u8 mt_next_hop_n_out_labels;
+  u32 mt_next_hop_via_label;
   u32 mt_next_hop_sw_if_index;
   u32 mt_next_hop_table_id;
   vl_api_fib_mpls_label_t mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
