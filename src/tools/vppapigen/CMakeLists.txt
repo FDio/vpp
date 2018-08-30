@@ -11,5 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-install(FILES vppapigen.py RENAME vppapigen DESTINATION bin)
+install(
+  FILES vppapigen.py
+  RENAME vppapigen
+  DESTINATION bin
+  PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+)
+
 install(FILES C.py JSON.py DESTINATION share/vpp)
