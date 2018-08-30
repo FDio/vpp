@@ -23,6 +23,7 @@ from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
+from vpp_papi.vpp_stats import VPPStats
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     getLogger, colorize
 from vpp_object import VppObjectRegistry
@@ -279,6 +280,8 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "cpu", "{", "main-core", str(cpu_core_number), "}",
+                           "stats", "{", "socket-name",
+                           cls.tempdir + "/stats.sock", "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
                            "disable", "}", "plugin", "unittest_plugin.so",
                            "{", "enable", "}", "}", ]
@@ -387,6 +390,7 @@ class VppTestCase(unittest.TestCase):
             else:
                 hook = PollHook(cls)
             cls.vapi.register_hook(hook)
+            cls.statistics = VPPStats(socketname=cls.tempdir+'/stats.sock')
             cls.sleep(0.1, "after vpp startup, before initial poll")
             try:
                 hook.poll_vpp()
@@ -498,7 +502,7 @@ class VppTestCase(unittest.TestCase):
             self.logger.debug(self.vapi.cli("show trace"))
             self.logger.info(self.vapi.ppcli("show interface"))
             self.logger.info(self.vapi.ppcli("show hardware"))
-            self.logger.info(self.vapi.ppcli("show error"))
+            self.logger.info(self.statistics.set_errors_str())
             self.logger.info(self.vapi.ppcli("show run"))
             self.logger.info(self.vapi.ppcli("show log"))
             self.registry.remove_vpp_config(self.logger)
