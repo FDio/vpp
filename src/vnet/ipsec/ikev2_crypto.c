@@ -339,6 +339,15 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 
   r = vec_new (u8, tr->key_len);
 
+  if (tr->md == EVP_sha1 ())
+    {
+      clib_warning ("integrity checking with sha1");
+    }
+  else if (tr->md == EVP_sha256 ())
+    {
+      clib_warning ("integrity checking with sha256");
+    }
+
   /* verify integrity of data */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   hctx = HMAC_CTX_new ();
@@ -780,6 +789,9 @@ ikev2_crypto_init (ikev2_main_t * km)
   ikev2_sa_transform_t *tr;
 
   /* vector of supported transforms - in order of preference */
+
+  //Encryption
+
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC;
@@ -801,9 +813,60 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_128_cbc ();
 
+  //PRF
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_PRF;
+  tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256;
+  tr->key_len = 256 / 8;
+  tr->key_trunc = 256 / 8;
+  tr->md = EVP_sha256 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_PRF;
+  tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_384;
+  tr->key_len = 384 / 8;
+  tr->key_trunc = 384 / 8;
+  tr->md = EVP_sha384 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_PRF;
+  tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_512;
+  tr->key_len = 512 / 8;
+  tr->key_trunc = 512 / 8;
+  tr->md = EVP_sha512 ();
+
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA1;
+  tr->key_len = 160 / 8;
+  tr->key_trunc = 160 / 8;
+  tr->md = EVP_sha1 ();
+
+  //Integrity
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128;
+  tr->key_len = 256 / 8;
+  tr->key_trunc = 128 / 8;
+  tr->md = EVP_sha256 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192;
+  tr->key_len = 384 / 8;
+  tr->key_trunc = 192 / 8;
+  tr->md = EVP_sha384 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256;
+  tr->key_len = 512 / 8;
+  tr->key_trunc = 256 / 8;
+  tr->md = EVP_sha512 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_160;
   tr->key_len = 160 / 8;
   tr->key_trunc = 160 / 8;
   tr->md = EVP_sha1 ();
@@ -814,6 +877,7 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 160 / 8;
   tr->key_trunc = 96 / 8;
   tr->md = EVP_sha1 ();
+
 
 #if defined(OPENSSL_NO_CISCO_FECDH)
   vec_add2 (km->supported_transforms, tr, 1);
