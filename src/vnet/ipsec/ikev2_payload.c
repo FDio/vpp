@@ -244,6 +244,45 @@ ikev2_payload_add_nonce (ikev2_payload_chain_t * c, u8 * nonce)
 }
 
 void
+ikev2_payload_add_certreq (ikev2_payload_chain_t * c, u8 * certreq, unsigned int size)
+{
+  ike_certreq_payload_header_t * certreq_hdr;
+  certreq_hdr =
+    (ike_certreq_payload_header_t *) ikev2_payload_add_hdr (c, IKEV2_PAYLOAD_CERTREQ,
+			 sizeof (*certreq_hdr));
+  certreq_hdr->certreq_type = IKEV2_CERTREQ_TYPE_X509_SIGNATURE ;
+  u8 * data = vec_new(u8,size);
+  clib_memcpy (data, certreq, size);
+  ikev2_payload_add_data (c,data);
+  vec_free(data);
+}
+
+void
+ikev2_payload_add_cert (ikev2_payload_chain_t * c, X509 * cert){
+  ike_cert_payload_header_t * cert_hdr;
+  cert_hdr =
+    (ike_cert_payload_header_t *) ikev2_payload_add_hdr (c, IKEV2_PAYLOAD_CERT,
+			 sizeof (*cert_hdr));
+
+  cert_hdr->cert_type = IKEV2_CERT_TYPE_X509_SIGNATURE ;
+
+  unsigned char * buf = NULL ;
+  int size = i2d_X509(cert,&buf);
+
+  clib_warning("size of serizlized cert: %d",size);
+
+	  clib_warning ("cert payload length %u data %u",
+			size,
+			format_hex_bytes, buf, size);
+
+
+  u8 * data = vec_new(u8,size);
+  clib_memcpy (data, buf, size);
+  ikev2_payload_add_data (c,data);
+  vec_free(data);
+}
+
+void
 ikev2_payload_add_id (ikev2_payload_chain_t * c, ikev2_id_t * id, u8 type)
 {
   ike_id_payload_header_t *idp;
@@ -508,6 +547,41 @@ ikev2_parse_vendor_payload (ike_payload_header_t * ikep)
 	   is_string ? format_ascii_bytes : format_hex_bytes,
 	   ikep->payload, plen - sizeof (*ikep));
 }
+
+X509 * ikev2_parse_cert_payload (ike_payload_header_t * ikep)
+{
+
+  X509* remote_cert = NULL;
+
+  clib_warning("parsing cert payload");
+
+  ike_cert_payload_header_t * hr = (ike_cert_payload_header_t *) ikep;
+  u32 plen = clib_net_to_host_u16 (ikep->length);
+
+  if(hr->cert_type!=IKEV2_CERT_TYPE_X509_SIGNATURE){
+    clib_warning("unsupported cert type");
+    return NULL;
+  }
+
+  u8 * serialized_cert;
+  serialized_cert = hr->payload;
+  int size = plen - sizeof(*hr);
+
+  // To display the payload
+  /*DBG_PLD ("cert len : %d data : %U ",
+	   size,
+	   format_hex_bytes, serialized_cert , size);
+  */
+  remote_cert = d2i_X509(NULL, (const unsigned char **) &serialized_cert , size );
+
+  if(remote_cert != NULL){
+    clib_warning("Received cert : %s",remote_cert->name);
+  }else{
+    clib_warning("error parsing received cert");
+  }
+  return remote_cert;
+}
+
 
 ikev2_delete_t *
 ikev2_parse_delete_payload (ike_payload_header_t * ikep)

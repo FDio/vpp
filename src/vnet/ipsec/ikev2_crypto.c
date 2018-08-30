@@ -762,6 +762,26 @@ end:
 }
 
 EVP_PKEY *
+ikev2_load_public_key (X509 * cert)
+{
+
+  EVP_PKEY *pkey = NULL;
+
+  if (cert == NULL)
+    {
+      clib_warning ("given certificate is null");
+      goto end;
+    }
+
+  pkey = X509_get_pubkey (cert);
+  if (pkey == NULL)
+    clib_warning ("get pubkey %s failed", cert->name);
+
+end:
+  return pkey;
+}
+
+EVP_PKEY *
 ikev2_load_key_file (u8 * file)
 {
   FILE *fp;
