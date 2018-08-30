@@ -118,6 +118,21 @@ acl_set_heap (acl_main_t * am)
 {
   if (0 == am->acl_mheap)
     {
+      if (0 == am->acl_session_mheap_size)
+        {
+          am->acl_session_mheap_size = 100000000LL;
+        }
+      am->acl_session_mheap = mheap_alloc (0 /* use VM */ , am->acl_session_mheap_size);
+      if (0 == am->acl_session_mheap)
+	{
+	  clib_error
+	    ("ACL plugin failed to allocate session heap of %U bytes, abort",
+	     format_memory_size, am->acl_session_mheap_size);
+	}
+      {
+        mheap_t *h = mheap_header (am->acl_session_mheap);
+        h->flags |= MHEAP_FLAG_THREAD_SAFE;
+      }
       if (0 == am->acl_mheap_size)
 	{
 	  vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -3742,6 +3757,15 @@ acl_show_aclplugin_memory_fn (vlib_main_t * vm,
   if (am->acl_mheap)
     {
       vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
+    }
+  else
+    {
+      vlib_cli_output (vm, " Not initialized\n");
+    }
+  vlib_cli_output (vm, "ACL session lookup support heap statistics:\n");
+  if (am->acl_session_mheap)
+    {
+      vlib_cli_output (vm, " %U\n", format_mheap, am->acl_session_mheap, 1);
     }
   else
     {

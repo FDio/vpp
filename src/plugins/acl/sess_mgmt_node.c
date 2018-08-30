@@ -110,6 +110,8 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 			   am->fa_conn_table_max_entries);
 	}
 
+      void *oldheap = clib_mem_set_heap (am->acl_session_mheap);
+
       /* ... and the interface session hash table */
       clib_bihash_init_40_8 (&am->fa_ip6_sessions_hash,
 			     "ACL plugin FA IPv6 session bihash",
@@ -124,6 +126,7 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 			     am->fa_conn_table_hash_memory_size);
       clib_bihash_set_kvp_format_fn_16_8 (&am->fa_ip4_sessions_hash,
 					  format_ip4_session_bihash_kv);
+      clib_mem_set_heap(oldheap);
 
       am->fa_sessions_hash_is_initialized = 1;
     }
