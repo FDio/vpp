@@ -22,6 +22,30 @@
       "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4102c74_fea4fa77",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1313
+      },
+      "writtenOn": "2018-08-30T07:13:30Z",
+      "side": 1,
+      "message": "The function vlib_buffer_length_in_chain (vm, b) contains solutions for one-buffer/buffer chains. No need to write another. Is it possible to tell me the reason that you don\u0027t want to pass vm?",
+      "parentUuid": "f555980f_850d069a",
+      "range": {
+        "startLine": 254,
+        "startChar": 22,
+        "endLine": 254,
+        "endChar": 38
+      },
+      "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
