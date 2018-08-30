@@ -52,14 +52,14 @@ StreamQueueManager.register('Queue', StreamQueue)
 
 
 def test_runner_wrapper(suite, keep_alive_pipe, result_pipe, stdouterr_queue,
-                        logger):
+                        partial_result_queue, logger):
     sys.stdout = stdouterr_queue
     sys.stderr = stdouterr_queue
     VppTestCase.logger = logger
-    unittest.installHandler()
     result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
                            descriptions=descriptions,
                            verbosity=verbose,
+                           results_pipe=partial_result_queue,
                            failfast=failfast).run(suite)
     result_pipe.send(result)
     result_pipe.close()
@@ -71,13 +71,15 @@ class TestCaseWrapper(object):
         self.keep_alive_parent_end, self.keep_alive_child_end = Pipe(
             duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
+        self.partial_result_parent_end, self.partial_result_child_end = Pipe(
+            duplex=False)
         self.testcase_suite = testcase_suite
         self.stdouterr_queue = manager.Queue()
         self.logger = get_parallel_logger(self.stdouterr_queue)
         self.child = Process(target=test_runner_wrapper,
                              args=(testcase_suite, self.keep_alive_child_end,
                                    self.result_child_end, self.stdouterr_queue,
-                                   self.logger)
+                                   self.partial_result_child_end, self.logger)
                              )
         self.child.start()
         self.pid = self.child.pid
@@ -88,14 +90,15 @@ class TestCaseWrapper(object):
         self.last_heard = time.time()
         self.core_detected_at = None
         self.failed_tests = []
-        self.fail = False
-        self.fail_addressed = False
+        self.partial_result = None
 
     def close_pipes(self):
         self.keep_alive_child_end.close()
         self.result_child_end.close()
+        self.partial_result_child_end.close()
         self.keep_alive_parent_end.close()
         self.result_parent_end.close()
+        self.partial_result_parent_end.close()
 
 
 def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
@@ -151,7 +154,8 @@ def run_forked(testcases):
         for wrapped_testcase_suite in wrapped_testcase_suites:
             readable = select.select(
                 [wrapped_testcase_suite.keep_alive_parent_end.fileno(),
-                 wrapped_testcase_suite.result_parent_end.fileno()],
+                 wrapped_testcase_suite.result_parent_end.fileno(),
+                 wrapped_testcase_suite.partial_result_parent_end.fileno()],
                 [], [], 1)[0]
             if wrapped_testcase_suite.result_parent_end.fileno() in readable:
                 results.append(
@@ -159,6 +163,13 @@ def run_forked(testcases):
                      wrapped_testcase_suite.result_parent_end.recv()))
                 finished_testcase_suites.add(wrapped_testcase_suite)
                 continue
+
+            if wrapped_testcase_suite.partial_result_parent_end.fileno() \
+                    in readable:
+                while wrapped_testcase_suite.partial_result_parent_end.poll():
+                    wrapped_testcase_suite.partial_result = \
+                        wrapped_testcase_suite.partial_result_parent_end.recv()
+                    wrapped_testcase_suite.last_heard = time.time()
 
             if wrapped_testcase_suite.keep_alive_parent_end.fileno() \
                     in readable:
@@ -170,48 +181,44 @@ def run_forked(testcases):
                         wrapped_testcase_suite.keep_alive_parent_end.recv()
                 wrapped_testcase_suite.last_heard = time.time()
 
-            if not wrapped_testcase_suite.fail:
-                if wrapped_testcase_suite.last_heard + \
-                        test_timeout < time.time() and \
-                        not os.path.isfile(
-                                    "%s/_core_handled" %
-                                    wrapped_testcase_suite.last_test_temp_dir):
-                    wrapped_testcase_suite.fail = True
-                    wrapped_testcase_suite.logger.critical(
-                        "Timeout while waiting for child test "
-                        "runner process (last test running was "
-                        "`%s' in `%s')!" %
-                        (wrapped_testcase_suite.last_test,
-                         wrapped_testcase_suite.last_test_temp_dir))
-                elif not wrapped_testcase_suite.child.is_alive():
-                    wrapped_testcase_suite.fail = True
-                    wrapped_testcase_suite.logger.critical(
-                        "Child python process unexpectedly died "
-                        "(last test running was `%s' in `%s')!" %
-                        (wrapped_testcase_suite.last_test,
-                         wrapped_testcase_suite.last_test_temp_dir))
-                elif wrapped_testcase_suite.last_test_temp_dir and \
-                        wrapped_testcase_suite.last_test_vpp_binary:
-                    core_path = "%s/core" % \
-                                wrapped_testcase_suite.last_test_temp_dir
-                    if os.path.isfile(core_path):
-                        if wrapped_testcase_suite.core_detected_at is None:
-                            wrapped_testcase_suite.core_detected_at = \
-                                time.time()
-                        elif wrapped_testcase_suite.core_detected_at + \
-                                core_timeout < time.time():
-                            if not os.path.isfile(
-                                            "%s/_core_handled" %
-                                            wrapped_testcase_suite.
-                                            last_test_temp_dir):
-                                wrapped_testcase_suite.logger.critical(
-                                    "Child python process unresponsive and "
-                                    "core-file exists in test temporary "
-                                    "directory!")
-                                wrapped_testcase_suite.fail = True
+            fail = False
+            if wrapped_testcase_suite.last_heard + test_timeout < time.time() \
+                    and not os.path.isfile(
+                                "%s/_core_handled" %
+                                wrapped_testcase_suite.last_test_temp_dir):
+                fail = True
+                wrapped_testcase_suite.logger.critical(
+                    "Timeout while waiting for child test "
+                    "runner process (last test running was "
+                    "`%s' in `%s')!" %
+                    (wrapped_testcase_suite.last_test,
+                     wrapped_testcase_suite.last_test_temp_dir))
+            elif not wrapped_testcase_suite.child.is_alive():
+                fail = True
+                wrapped_testcase_suite.logger.critical(
+                    "Child python process unexpectedly died "
+                    "(last test running was `%s' in `%s')!" %
+                    (wrapped_testcase_suite.last_test,
+                     wrapped_testcase_suite.last_test_temp_dir))
+            elif wrapped_testcase_suite.last_test_temp_dir and \
+                    wrapped_testcase_suite.last_test_vpp_binary:
+                core_path = "%s/core" % \
+                            wrapped_testcase_suite.last_test_temp_dir
+                if os.path.isfile(core_path):
+                    if wrapped_testcase_suite.core_detected_at is None:
+                        wrapped_testcase_suite.core_detected_at = time.time()
+                    elif wrapped_testcase_suite.core_detected_at + \
+                            core_timeout < time.time():
+                        if not os.path.isfile(
+                                        "%s/_core_handled" %
+                                        wrapped_testcase_suite.
+                                        last_test_temp_dir):
+                            wrapped_testcase_suite.logger.critical(
+                                "Child python process unresponsive and core-"
+                                "file exists in test temporary directory!")
+                            fail = True
 
-            if wrapped_testcase_suite.fail and not \
-                    wrapped_testcase_suite.fail_addressed:
+            if fail:
                 failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
                 lttd = os.path.basename(
                     wrapped_testcase_suite.last_test_temp_dir)
@@ -255,7 +262,7 @@ def run_forked(testcases):
                             spawn_gdb(
                                 wrapped_testcase_suite.last_test_vpp_binary,
                                 core_path, wrapped_testcase_suite.logger)
-                os.kill(wrapped_testcase_suite.child.pid, signal.SIGINT)
+                wrapped_testcase_suite.child.terminate()
                 try:
                     # terminating the child process tends to leave orphan
                     # VPP process around
@@ -263,7 +270,9 @@ def run_forked(testcases):
                 except OSError:
                     # already dead
                     pass
-                wrapped_testcase_suite.fail_addressed = True
+                results.append((wrapped_testcase_suite.testcase_suite,
+                                wrapped_testcase_suite.partial_result))
+                finished_testcase_suites.add(wrapped_testcase_suite)
 
         for finished_testcase in finished_testcase_suites:
             finished_testcase.child.join()

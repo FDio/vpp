@@ -1015,6 +1015,12 @@ class VppTestResult(unittest.TestResult):
                 if logger:
                     logger.error(e)
 
+    def send_results_through_pipe(self):
+        if hasattr(self, 'test_framework_results_pipe'):
+            pipe = self.test_framework_results_pipe
+            if pipe:
+                pipe.send(self)
+
     def addFailure(self, test, err):
         """
         Record a test failed result
@@ -1087,7 +1093,7 @@ class VppTestResult(unittest.TestResult):
 
     def stopTest(self, test):
         """
-        Stop a test
+        Called when the given test has been run
 
         :param test:
 
@@ -1101,6 +1107,7 @@ class VppTestResult(unittest.TestResult):
         else:
             self.stream.writeln("%-73s%s" % (self.getDescription(test),
                                              self.result_string))
+        self.send_results_through_pipe()
 
     def printErrors(self):
         """
@@ -1137,7 +1144,8 @@ class VppTestRunner(unittest.TextTestRunner):
         return VppTestResult
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
-                 failfast=False, buffer=False, resultclass=None):
+                 results_pipe=None, failfast=False, buffer=False,
+                 resultclass=None):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
@@ -1145,6 +1153,8 @@ class VppTestRunner(unittest.TextTestRunner):
                                             resultclass)
         reporter = KeepAliveReporter()
         reporter.pipe = keep_alive_pipe
+
+        VppTestResult.test_framework_results_pipe = results_pipe
 
     def run(self, test):
         """
