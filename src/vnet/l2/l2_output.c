@@ -25,7 +25,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
-
+#include <vlib/unix/cj.h>
 
 #ifndef CLIB_MARCH_VARIANT
 /* Feature graph node names */
@@ -296,6 +296,8 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   sw_if_index = sw_if_indices;
   cdo = cur_data_offsets;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   /* extract data from buffer metadata */
   while (n_left >= 8)
     {
@@ -426,6 +428,8 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   vlib_node_increment_counter (vm, l2output_node.index,
 			       L2OUTPUT_ERROR_L2OUTPUT, frame->n_vectors);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   return frame->n_vectors;
 }

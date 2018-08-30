@@ -36,6 +36,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
+#include <vlib/unix/cj.h>
 
 /**
  * @file
@@ -284,6 +285,8 @@ l2input_node_inline (vlib_main_t * vm,
   n_left_from = frame->n_vectors;	/* number of packets to process */
   next_index = node->cached_next_index;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -441,6 +444,8 @@ l2input_node_inline (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, l2input_node.index,
 			       L2INPUT_ERROR_L2INPUT, frame->n_vectors);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   return frame->n_vectors;
 }

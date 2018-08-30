@@ -25,6 +25,7 @@
 #include <vnet/devices/virtio/vhost_user.h>
 
 #include <vnet/vnet_msg_enum.h>
+#include <vlib/unix/cj.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -77,10 +78,14 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, (u64) ~ 0,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
 			     (mp->use_custom_mac) ? mp->mac_address : NULL);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -101,6 +106,8 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -132,7 +139,11 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate();
   rv = vhost_user_delete_if (vnm, vm, sw_if_index);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate();
 
   REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
   if (!rv)
@@ -141,8 +152,14 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
       if (!reg)
 	return;
 
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate();
       vnet_clear_sw_interface_tag (vnm, sw_if_index);
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate();
       send_sw_interface_event_deleted (vam, reg, sw_if_index);
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate();
     }
 }
 
@@ -155,6 +172,8 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   vl_api_sw_interface_vhost_user_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
@@ -171,6 +190,8 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
 	   (char *) vui->if_name, ARRAY_LEN (mp->interface_name) - 1);
 
   vl_api_send_msg (reg, (u8 *) mp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -189,15 +210,23 @@ static void
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (rv)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vec_foreach (vuid, ifaces)
   {
     send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
   }
   vec_free (ifaces);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 /*

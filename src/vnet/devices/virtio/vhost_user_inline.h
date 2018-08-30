@@ -16,6 +16,8 @@
 #define __VIRTIO_VHOST_USER_INLINE_H__
 /* vhost-user inline functions */
 
+#include <vlib/unix/cj.h>
+
 static_always_inline void *
 map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 {
@@ -239,7 +241,11 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
   int fd = UNIX_GET_FD (vq->callfd_idx);
   int rv;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = write (fd, &x, sizeof (x));
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (rv <= 0)
     {
       clib_unix_warning
@@ -247,8 +253,12 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
       return;
     }
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vq->n_since_last_int = 0;
   vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 #endif

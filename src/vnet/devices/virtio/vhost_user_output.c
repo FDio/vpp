@@ -41,6 +41,7 @@
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vlib/unix/cj.h>
 
 /*
  * On the transmit side, we keep processing the buffers from vlib in the while
@@ -244,6 +245,8 @@ CLIB_MULTIARCH_FN (vhost_user_tx) (vlib_main_t * vm,
   u16 copy_len;
   u16 tx_headers_len;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (PREDICT_FALSE (!vui->admin_up))
     {
       error = VHOST_USER_TX_FUNC_ERROR_DOWN;
@@ -549,6 +552,8 @@ done3:
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return frame->n_vectors;
 }
 

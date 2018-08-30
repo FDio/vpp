@@ -41,6 +41,7 @@
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vlib/unix/cj.h>
 
 /**
  * @file
@@ -389,6 +390,8 @@ vhost_user_socket_read (clib_file_t * uf)
   clib_file_t template = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vui = pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   char control[CMSG_SPACE (VHOST_MEMORY_MAX_NREGIONS * sizeof (int))];
@@ -413,6 +416,8 @@ vhost_user_socket_read (clib_file_t * uf)
   /* Stop workers to avoid end of the world */
   vlib_worker_thread_barrier_sync (vlib_get_main ());
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (n != VHOST_USER_MSG_HDR_SZ)
     {
       if (n == -1)
@@ -879,12 +884,16 @@ vhost_user_socket_read (clib_file_t * uf)
 
   vhost_user_update_iface_state (vui);
   vlib_worker_thread_barrier_release (vlib_get_main ());
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return 0;
 
 close_socket:
   vhost_user_if_disconnect (vui);
   vhost_user_update_iface_state (vui);
   vlib_worker_thread_barrier_release (vlib_get_main ());
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return 0;
 }
 
@@ -897,10 +906,14 @@ vhost_user_socket_error (clib_file_t * uf)
     pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   DBG_SOCK ("socket error on if %d", vui->sw_if_index);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
   vhost_user_rx_thread_placement ();
   vlib_worker_thread_barrier_release (vm);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return 0;
 }
 
@@ -923,6 +936,8 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
   if (client_fd < 0)
     return clib_error_return_unix (0, "accept");
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (vui->clib_file_index != ~0)
     {
       DBG_SOCK ("Close client socket for vhost interface %d, fd %d",
@@ -937,6 +952,8 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
   template.file_descriptor = client_fd;
   template.private_data = vui - vhost_user_main.vhost_user_interfaces;
   vui->clib_file_index = clib_file_add (&file_main, &template);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return 0;
 }
 
@@ -1002,6 +1019,8 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  (timeout > vum->coalesce_time))
 	timeout = vum->coalesce_time;
 
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate ();
       now = vlib_time_now (vm);
       switch (event_type)
 	{
@@ -1058,6 +1077,8 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	timeout = 1e-3;
       if (stop_timer)
 	timeout = 3153600000.0;
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate ();
     }
   return 0;
 }

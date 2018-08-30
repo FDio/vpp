@@ -162,7 +162,7 @@ typedef struct
 
 /* Without vector instructions don't bother with small object cache. */
 #ifdef CLIB_HAVE_VEC128
-#define MHEAP_HAVE_SMALL_OBJECT_CACHE 1
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
 #else
 #define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
 #endif

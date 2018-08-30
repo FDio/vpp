@@ -25,6 +25,7 @@
 #include <vppinfra/lb_hash_hash.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vlib/unix/cj.h>
 
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
@@ -450,6 +451,8 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Number of buffers / pkts */
   n_left_from = frame->n_vectors;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   while (n_left_from > 0)
     {
       while (n_left_from >= 4)
@@ -699,6 +702,8 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 bif->sw_if_index, frame->n_vectors);
 
   clib_spinlock_unlock_if_init (&bif->lockp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return frame->n_vectors;
 }
 

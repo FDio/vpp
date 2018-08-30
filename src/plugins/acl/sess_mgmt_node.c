@@ -110,6 +110,8 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 			   am->fa_conn_table_max_entries);
 	}
 
+      void *oldheap = clib_mem_set_heap (am->acl_session_mheap);
+
       /* ... and the interface session hash table */
       clib_bihash_init_40_8 (&am->fa_ip6_sessions_hash,
 			     "ACL plugin FA IPv6 session bihash",
@@ -124,6 +126,7 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 			     am->fa_conn_table_hash_memory_size);
       clib_bihash_set_kvp_format_fn_16_8 (&am->fa_ip4_sessions_hash,
 					  format_ip4_session_bihash_kv);
+      clib_mem_set_heap(oldheap);
 
       am->fa_sessions_hash_is_initialized = 1;
     }
@@ -179,7 +182,7 @@ static int
 acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  fa_full_session_id_t fsid;
+  fa_full_session_id_t volatile fsid;
   fsid.thread_index = thread_index;
   int total_expired = 0;
 
@@ -206,7 +209,9 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 	      }
 	    vec_add1 (pw->expired, fsid.session_index);
 	    n_expired++;
+            clib_mem_validate ();
 	    acl_fa_conn_list_delete_session (am, fsid, now);
+            clib_mem_validate ();
 	  }
       }
     for (tt = 0; tt < ACL_N_TIMEOUTS; tt++)
@@ -387,6 +392,9 @@ acl_fa_worker_conn_cleaner_process (vlib_main_t * vm,
   u16 thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   int num_expired;
+
+  clib_mem_validate ();
+
   elog_acl_maybe_trace_X1 (am,
 			   "acl_fa_worker_conn_cleaner interrupt: now %lu",
 			   "i8", now);
@@ -454,6 +462,7 @@ acl_fa_worker_conn_cleaner_process (vlib_main_t * vm,
 	}
     }
   num_expired = acl_fa_check_idle_sessions (am, thread_index, now);
+  clib_mem_validate ();
   // clib_warning("WORKER-CLEAR: checked %d sessions (clear_in_progress: %d)", num_expired, pw->clear_in_process);
   elog_acl_maybe_trace_X2 (am,
 			   "acl_fa_worker_conn_cleaner: checked %d sessions (clear_in_process: %d)",
@@ -650,7 +659,8 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    }
 		}
 	    }
-	    acl_log_err
+            if (am->trace_sessions)
+	      acl_log_err
 	      ("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX bitmap: %U, clear_all: %u",
 	       format_bitmap_hex, clear_sw_if_index_bitmap, clear_all);
 	    vec_foreach (pw0, am->per_worker_data)
@@ -688,10 +698,11 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		      pw0->pending_clear_sw_if_index_bitmap =
 			clib_bitmap_dup (clear_sw_if_index_bitmap);
 		    }
-		  acl_log_err
-		    ("ACL_FA_CLEANER: thread %u, pending clear bitmap: %U",
-		     (am->per_worker_data - pw0), format_bitmap_hex,
-		     pw0->pending_clear_sw_if_index_bitmap);
+                  if (am->trace_sessions)
+		    acl_log_err
+		      ("ACL_FA_CLEANER: thread %u, pending clear bitmap: %U",
+		       (am->per_worker_data - pw0), format_bitmap_hex,
+		       pw0->pending_clear_sw_if_index_bitmap);
 		  pw0->clear_in_process = 1;
 		}
 	    }
@@ -699,7 +710,8 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    send_interrupts_to_workers (vm, am);
 
 	    /* now wait till they all complete */
-	    acl_log_err ("CLEANER mains len: %u per-worker len: %d",
+            if (am->trace_sessions)
+	      acl_log_err ("CLEANER mains len: %u per-worker len: %d",
 			 vec_len (vlib_mains), vec_len (am->per_worker_data));
 	    vec_foreach (pw0, am->per_worker_data)
 	    {
@@ -719,7 +731,8 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    }
 		}
 	    }
-	    acl_log_err ("ACL_FA_NODE_CLEAN: cleaning done");
+            if (am->trace_sessions)
+	      acl_log_err ("ACL_FA_NODE_CLEAN: cleaning done");
 	    clib_bitmap_free (clear_sw_if_index_bitmap);
 	  }
 	  am->fa_cleaner_cnt_delete_by_sw_index_ok++;

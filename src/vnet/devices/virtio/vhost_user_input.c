@@ -41,6 +41,7 @@
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vlib/unix/cj.h>
 
 /*
  * When an RX queue is down but active, received packets
@@ -304,6 +305,8 @@ vhost_user_if_input (vlib_main_t * vm,
   if (PREDICT_FALSE (n_left == 0))
     return 0;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (PREDICT_FALSE (!vui->admin_up || !(txvq->enabled)))
     {
       /*
@@ -315,6 +318,8 @@ vhost_user_if_input (vlib_main_t * vm,
        */
       vhost_user_rx_discard_packet (vm, vui, txvq,
 				    VHOST_USER_DOWN_DISCARD_COUNT);
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate ();
       return 0;
     }
 
@@ -624,6 +629,8 @@ vhost_user_if_input (vlib_main_t * vm,
      vlib_get_thread_index (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   return n_rx_packets;
 }
