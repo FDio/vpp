@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a36548cf_800e3737",
+        "filename": "docs/gettingstarted/developers/fib20/arpentries.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-30T15:23:55Z",
+      "side": 1,
+      "message": "Do not introduce trailing spaces, please.",
+      "range": {
+        "startLine": 32,
+        "startChar": 65,
+        "endLine": 32,
+        "endChar": 66
+      },
+      "revId": "0923a2376fcdc07fc298b9422233f4a5c1777e7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15d90ed3_fec97c66",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-30T15:23:55Z",
+      "side": 1,
+      "message": "Wrap long lines please.",
+      "range": {
+        "startLine": 37,
+        "startChar": 86,
+        "endLine": 37,
+        "endChar": 87
+      },
+      "revId": "0923a2376fcdc07fc298b9422233f4a5c1777e7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
