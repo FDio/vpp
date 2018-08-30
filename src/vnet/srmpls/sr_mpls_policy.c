@@ -61,6 +61,7 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
   mpls_sr_sl_t *segment_list;
+  u32 ii;
 
   pool_get (sm->sid_lists, segment_list);
   memset (segment_list, 0, sizeof (*segment_list));
@@ -85,8 +86,24 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
       .frp_local_label = sl[0],
     };
 
-    if (vec_len (sl) - 1)
-      vec_add (path.frp_label_stack, sl + 1, vec_len (sl) - 1);
+    if (vec_len (sl) > 1)
+      {
+	vec_validate (path.frp_label_stack, vec_len (sl) - 2);
+	for (ii = 1; ii < vec_len (sl); ii++)
+	  {
+	    path.frp_label_stack[ii - 1].fml_value = sl[ii];
+	  }
+      }
+    else
+      {
+	/*
+	 * add an impliciet NULL label to allow non-eos recursion
+	 */
+	fib_mpls_label_t lbl = {
+	  .fml_value = MPLS_IETF_IMPLICIT_NULL_LABEL,
+	};
+	vec_add1 (path.frp_label_stack, lbl);
+      }
 
     fib_route_path_t *paths = NULL;
     vec_add1 (paths, path);
