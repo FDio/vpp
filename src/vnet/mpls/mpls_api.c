@@ -306,6 +306,7 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   u32 tunnel_sw_if_index;
   int ii;
   fib_route_path_t rpath, *rpaths = NULL;
+  u32 next_hop_via_label;
 
   memset (&rpath, 0, sizeof (rpath));
 
@@ -325,6 +326,14 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
     }
   rpath.frp_sw_if_index = ntohl (mp->mt_next_hop_sw_if_index);
   rpath.frp_weight = 1;
+
+  next_hop_via_label = ntohl (mp->mt_next_hop_via_label);
+  if ((MPLS_LABEL_INVALID != next_hop_via_label) && (0 != next_hop_via_label))
+    {
+      rpath.frp_proto = DPO_PROTO_MPLS;
+      rpath.frp_local_label = next_hop_via_label;
+      rpath.frp_eos = MPLS_NON_EOS;
+    }
 
   if (mp->mt_is_add)
     {

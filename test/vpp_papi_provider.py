@@ -1345,6 +1345,7 @@ class VppPapiProvider(object):
              'mt_next_hop_n_out_labels': next_hop_n_out_labels,
              'mt_next_hop_sw_if_index': next_hop_sw_if_index,
              'mt_next_hop_table_id': next_hop_table_id,
+             'mt_next_hop_via_label': next_hop_via_label,
              'mt_next_hop_out_label_stack': next_hop_out_label_stack})
 
     def nat44_interface_add_del_feature(
@@ -2714,6 +2715,18 @@ class VppPapiProvider(object):
                          'client_ip': client_ip,
                          'decap_vrf_id': decap_vrf_id,
                          'client_mac': client_mac})
+
+    def sr_mpls_policy_add(self, bsid, weight, type, segments):
+        return self.api(self.papi.sr_mpls_policy_add,
+                        {'bsid': bsid,
+                         'weight': weight,
+                         'type': type,
+                         'n_segments': len(segments),
+                         'segments': segments})
+
+    def sr_mpls_policy_del(self, bsid):
+        return self.api(self.papi.sr_mpls_policy_del,
+                        {'bsid': bsid})
 
     def sr_localsid_add_del(self,
                             localsid,
