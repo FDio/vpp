@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed3ca3b8_be92ea99",
+        "filename": "src/vppinfra/mem.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-30T17:32:55Z",
+      "side": 1,
+      "message": "Just an FYI: not really sure why this is not set by default, or if we depend in some place on it not being set. As an alternative we have clib_mem_vm_ext_map, which does take flags.",
+      "range": {
+        "startLine": 351,
+        "startChar": 42,
+        "endLine": 351,
+        "endChar": 55
+      },
+      "revId": "1428a1b417bbd76eaa92df6fd6a219311551cf58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
