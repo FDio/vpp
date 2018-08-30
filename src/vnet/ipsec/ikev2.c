@@ -1480,6 +1480,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   ikev2_sa_transform_t *tr;
   ikev2_sa_proposal_t *proposals;
   u8 encr_type = 0;
+  u8 integ_type = 0;
 
   if (!child->r_proposals)
     {
@@ -1550,8 +1551,21 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
   if (tr)
     {
-      if (tr->integ_type != IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96)
+      switch (tr->integ_type)
 	{
+	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
+	  integ_type = IPSEC_INTEG_ALG_SHA_256_128;
+	  break;
+	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192:
+	  integ_type = IPSEC_INTEG_ALG_SHA_384_192;
+	  break;
+	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256:
+	  integ_type = IPSEC_INTEG_ALG_SHA_512_256;
+	  break;
+	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96:
+	  integ_type = IPSEC_INTEG_ALG_SHA1_96;
+	  break;
+	default:
 	  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
 	  return 1;
 	}
@@ -1580,7 +1594,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       rem_ckey = child->sk_ei;
     }
 
-  a.integ_alg = IPSEC_INTEG_ALG_SHA1_96;
+  a.integ_alg = integ_type;
   a.local_integ_key_len = vec_len (loc_ikey);
   clib_memcpy (a.local_integ_key, loc_ikey, a.local_integ_key_len);
   a.remote_integ_key_len = vec_len (rem_ikey);
@@ -2043,6 +2057,7 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
     }
 }
 
+
 static uword
 ikev2_node_fn (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -2163,7 +2178,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			}
 		    }
 		}
-	      else
+	      else		//received sa_init without initiator flag
 		{
 		  ikev2_process_sa_init_resp (vm, sa0, ike0);
 
@@ -2458,7 +2473,7 @@ VLIB_REGISTER_NODE (ikev2_node,static) = {
 };
 /* *INDENT-ON* */
 
-
+// set ikev2 proposals when vpp is used as initiator
 static clib_error_t *
 ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
 			       ikev2_transforms_set * ts,
@@ -2476,7 +2491,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
   vec_foreach (td, km->supported_transforms)
   {
     if (td->type == IKEV2_TRANSFORM_TYPE_ENCR
-	&& td->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC
+	&& td->encr_type == ts->crypto_alg
 	&& td->key_len == ts->crypto_key_size / 8)
       {
 	u16 attr[2];
@@ -2501,7 +2516,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
   vec_foreach (td, km->supported_transforms)
   {
     if (td->type == IKEV2_TRANSFORM_TYPE_INTEG
-	&& td->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96)
+	&& td->integ_type == ts->integ_alg)
       {
 	vec_add1 (proposal->transforms, *td);
 	error = 0;
@@ -2510,6 +2525,8 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
   }
   if (error)
     {
+      clib_warning
+	("Didn't find any supported algorithm for IKEV2_TRANSFORM_TYPE_INTEG");
       r = clib_error_return (0, "Unsupported algorithm");
       return r;
     }
@@ -2521,7 +2538,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
       vec_foreach (td, km->supported_transforms)
       {
 	if (td->type == IKEV2_TRANSFORM_TYPE_PRF
-	    && td->prf_type == IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA1)
+	    && td->prf_type == IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256)
 	  {
 	    vec_add1 (proposal->transforms, *td);
 	    error = 0;
