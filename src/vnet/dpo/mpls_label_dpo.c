@@ -205,7 +205,7 @@ format_mpls_label_dpo (u8 *s, va_list *args)
     }
 
     mld = mpls_label_dpo_get(index);
-    s = format(s, "mpls-label[%U%d]:",
+    s = format(s, "mpls-label[%U@%d]:",
                format_mpls_label_dpo_flags,
                (int) mld->mld_flags, index);
 
