@@ -254,12 +254,15 @@ always_inline void *
 vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
 {
   udp_header_t *uh;
+  u16 udp_len = sizeof (udp_header_t) + b->current_length;
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    udp_len += b->total_length_not_including_first_buffer;
 
   uh = vlib_buffer_push_uninit (b, sizeof (udp_header_t));
   uh->src_port = sp;
   uh->dst_port = dp;
   uh->checksum = 0;
-  uh->length = clib_host_to_net_u16 (b->current_length);
+  uh->length = clib_host_to_net_u16 (udp_len);
   if (offload_csum)
     {
       b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
