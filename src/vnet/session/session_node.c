@@ -307,7 +307,10 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 
 	      hdr->data_offset += n_bytes_read;
 	      if (hdr->data_offset == hdr->data_length)
-		svm_fifo_dequeue_drop (f, hdr->data_length);
+		{
+		  u32 offset = hdr->data_length + SESSION_CONN_HDR_LEN;
+		  svm_fifo_dequeue_drop (f, offset);
+		}
 	    }
 	  else
 	    n_bytes_read = svm_fifo_dequeue_nowait (ctx->s->server_tx_fifo,
