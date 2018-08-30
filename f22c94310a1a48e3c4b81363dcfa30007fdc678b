@@ -46,6 +46,30 @@
       "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5223219f_fa99a795",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-30T14:01:36Z",
+      "side": 1,
+      "message": "Because the session layer sets the total_length_not_including_first_buffer so you don\u0027t ever have to take the slow path to compute the buffer length which obviously is slower. As a benefit, you don\u0027t have to push around pointers to vm, if they\u0027re not needed.",
+      "parentUuid": "f4102c74_fea4fa77",
+      "range": {
+        "startLine": 254,
+        "startChar": 22,
+        "endLine": 254,
+        "endChar": 38
+      },
+      "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
