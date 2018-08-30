@@ -251,7 +251,8 @@ void udp_unregister_dst_port (vlib_main_t * vm,
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
 always_inline void *
-vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
+vlib_buffer_push_udp (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
+		      u8 offload_csum)
 {
   udp_header_t *uh;
 
@@ -259,7 +260,7 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
   uh->src_port = sp;
   uh->dst_port = dp;
   uh->checksum = 0;
-  uh->length = clib_host_to_net_u16 (b->current_length);
+  uh->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
   if (offload_csum)
     {
       b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
