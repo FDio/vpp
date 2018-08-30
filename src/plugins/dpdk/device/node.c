@@ -27,6 +27,7 @@
 #include <vnet/feature/feature.h>
 
 #include <dpdk/device/dpdk_priv.h>
+#include <vlib/unix/cj.h>
 
 #ifndef CLIB_MARCH_VARIANT
 static char *dpdk_error_strings[] = {
@@ -468,6 +469,8 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   if (n_rx_packets == 0)
     return 0;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   /* Update buffer template */
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = xd->sw_if_index;
   bt->error = node->errors[DPDK_ERROR_NONE];
@@ -615,6 +618,8 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   return n_rx_packets;
 }
 

@@ -42,6 +42,7 @@
 
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/bonding/node.h>
+#include <vlib/unix/cj.h>
 
 #define foreach_bond_api_msg                     \
 _(BOND_CREATE, bond_create)                      \
@@ -79,7 +80,11 @@ vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
   unix_shared_memory_queue_t *q;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = bond_delete_if (vm, sw_if_index);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -93,7 +98,13 @@ vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 
   if (!rv)
-    bond_send_sw_interface_event_deleted (vam, q, sw_if_index);
+    {
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate ();
+      bond_send_sw_interface_event_deleted (vam, q, sw_if_index);
+      cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+      clib_mem_validate ();
+    }
 }
 
 static void
@@ -106,15 +117,20 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   memset (ap, 0, sizeof (*ap));
 
+  cj_log (1, 0, 0);
   if (mp->use_custom_mac)
     {
       clib_memcpy (ap->hw_addr, mp->mac_address, 6);
       ap->hw_addr_set = 1;
     }
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   ap->mode = mp->mode;
   ap->lb = mp->lb;
   bond_create_if (vm, ap);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -129,6 +145,8 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
   rmp->sw_if_index = ntohl (ap->sw_if_index);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -146,7 +164,11 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   ap->is_passive = mp->is_passive;
   ap->is_long_timeout = mp->is_long_timeout;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   bond_enslave (vm, ap);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -158,6 +180,8 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   rmp->retval = ntohl (ap->rv);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -171,7 +195,11 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
   memset (ap, 0, sizeof (*ap));
 
   ap->slave = ntohl (mp->sw_if_index);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   bond_detach_slave (vm, ap);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -183,6 +211,8 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
   rmp->retval = htonl (ap->rv);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -193,6 +223,8 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
 {
   vl_api_sw_interface_bond_details_t *mp;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_BOND_DETAILS);
@@ -207,6 +239,8 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -222,16 +256,24 @@ vl_api_sw_interface_bond_dump_t_handler (vl_api_sw_interface_bond_dump_t * mp)
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = bond_dump_ifs (&bondifs);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (rv)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vec_foreach (bond_if, bondifs)
   {
     bond_send_sw_interface_details (am, reg, bond_if, mp->context);
   }
 
   vec_free (bondifs);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -270,16 +312,24 @@ vl_api_sw_interface_slave_dump_t_handler (vl_api_sw_interface_slave_dump_t *
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = bond_dump_slave_ifs (&slaveifs, ntohl (mp->sw_if_index));
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (rv)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   vec_foreach (slave_if, slaveifs)
   {
     bond_send_sw_interface_slave_details (am, reg, slave_if, mp->context);
   }
 
   vec_free (slaveifs);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 #define vl_msg_name_crc_list

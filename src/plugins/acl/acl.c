@@ -25,6 +25,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlib/unix/cj.h>
 
 /* define message IDs */
 #include <acl/acl_msg_enum.h>
@@ -118,6 +119,23 @@ acl_set_heap (acl_main_t * am)
 {
   if (0 == am->acl_mheap)
     {
+      if (0 == am->acl_session_mheap_size)
+        {
+          am->acl_session_mheap_size = 100000000LL;
+        }
+      am->acl_session_mheap = mheap_alloc (0 /* use VM */ , am->acl_session_mheap_size);
+      if (0 == am->acl_session_mheap)
+	{
+	  clib_error
+	    ("ACL plugin failed to allocate session heap of %U bytes, abort",
+	     format_memory_size, am->acl_session_mheap_size);
+	}
+      {
+        mheap_t *h = mheap_header (am->acl_session_mheap);
+        h->flags |= MHEAP_FLAG_THREAD_SAFE;
+        h->flags |= MHEAP_FLAG_VALIDATE;
+        h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
+      }
       if (0 == am->acl_mheap_size)
 	{
 	  vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -148,6 +166,8 @@ acl_set_heap (acl_main_t * am)
 	}
       mheap_t *h = mheap_header (am->acl_mheap);
       h->flags |= MHEAP_FLAG_THREAD_SAFE;
+      h->flags |= MHEAP_FLAG_VALIDATE;
+      h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
     }
   void *oldheap = clib_mem_set_heap (am->acl_mheap);
   return oldheap;
@@ -2415,6 +2435,8 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
   u32 acl_count = ntohl (mp->count);
   u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (verify_message_len (mp, expected_len, "acl_add_replace"))
     {
       rv = acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
@@ -2430,6 +2452,8 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
     rmp->acl_index = htonl(acl_list_index);
   }));
   /* *INDENT-ON* */
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2439,9 +2463,13 @@ vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
   vl_api_acl_del_reply_t *rmp;
   int rv;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rv = acl_del_list (ntohl (mp->acl_index));
 
   REPLY_MACRO (VL_API_ACL_DEL_REPLY);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2453,6 +2481,8 @@ vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
   vl_api_acl_interface_add_del_reply_t *rmp;
   int rv = -1;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
   else
@@ -2461,6 +2491,8 @@ vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
 				       mp->is_input, ntohl (mp->acl_index));
 
   REPLY_MACRO (VL_API_ACL_INTERFACE_ADD_DEL_REPLY);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2474,6 +2506,8 @@ static void
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
   else
@@ -2513,6 +2547,8 @@ static void
     }
 
   REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ACL_LIST_REPLY);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2585,6 +2621,8 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (mp->acl_index == ~0)
     {
     /* *INDENT-OFF* */
@@ -2605,6 +2643,8 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
 	}
     }
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (rv == -1)
     {
       /* FIXME API: should we signal an error here at all ? */
@@ -2674,6 +2714,8 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (mp->sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
@@ -2689,6 +2731,8 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
       if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
 	send_acl_interface_list_details (am, reg, sw_if_index, mp->context);
     }
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 /* MACIP ACL API handlers */
@@ -2703,6 +2747,8 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
   u32 acl_count = ntohl (mp->count);
   u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (verify_message_len (mp, expected_len, "macip_acl_add"))
     {
       rv = macip_acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
@@ -2718,6 +2764,8 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
     rmp->acl_index = htonl(acl_list_index);
   }));
   /* *INDENT-ON* */
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2730,6 +2778,8 @@ vl_api_macip_acl_add_replace_t_handler (vl_api_macip_acl_add_replace_t * mp)
   u32 acl_count = ntohl (mp->count);
   u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (verify_message_len (mp, expected_len, "macip_acl_add_replace"))
     {
       rv = macip_acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
@@ -2745,6 +2795,8 @@ vl_api_macip_acl_add_replace_t_handler (vl_api_macip_acl_add_replace_t * mp)
     rmp->acl_index = htonl(acl_list_index);
   }));
   /* *INDENT-ON* */
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2769,6 +2821,8 @@ static void
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
   else
@@ -2777,6 +2831,8 @@ static void
 				       ntohl (mp->acl_index));
 
   REPLY_MACRO (VL_API_MACIP_ACL_INTERFACE_ADD_DEL_REPLY);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2841,6 +2897,8 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (mp->acl_index == ~0)
     {
       /* Just dump all ACLs for now, with sw_if_index = ~0 */
@@ -2862,6 +2920,8 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
 	  send_macip_acl_details (am, reg, acl, mp->context);
 	}
     }
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2879,6 +2939,8 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   rmp = vl_msg_api_alloc (msg_size);
   memset (rmp, 0, msg_size);
   rmp->_vl_msg_id =
@@ -2891,6 +2953,8 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
     }
 
   vl_api_send_msg (reg, (u8 *) rmp);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2929,6 +2993,8 @@ static void
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (sw_if_index == ~0)
     {
       vec_foreach_index (sw_if_index, am->macip_acl_by_sw_if_index)
@@ -2951,6 +3017,8 @@ static void
 						 [sw_if_index], mp->context);
 	}
     }
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -2966,6 +3034,8 @@ static void
   u16 *vec_in = 0, *vec_out = 0;
   void *oldheap = acl_set_heap (am);
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
   else
@@ -2982,6 +3052,8 @@ static void
 
   clib_mem_set_heap (oldheap);
   REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ETYPE_WHITELIST_REPLY);
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 static void
@@ -3057,6 +3129,8 @@ static void
   if (!reg)
     return;
 
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
   if (mp->sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
@@ -3073,6 +3147,8 @@ static void
 	send_acl_interface_etype_whitelist_details (am, reg, sw_if_index,
 						    mp->context);
     }
+  cj_log (vlib_get_thread_index (), (void *) __FUNCTION__, (void *) __LINE__);
+  clib_mem_validate ();
 }
 
 
@@ -3742,6 +3818,15 @@ acl_show_aclplugin_memory_fn (vlib_main_t * vm,
   if (am->acl_mheap)
     {
       vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
+    }
+  else
+    {
+      vlib_cli_output (vm, " Not initialized\n");
+    }
+  vlib_cli_output (vm, "ACL session lookup support heap statistics:\n");
+  if (am->acl_session_mheap)
+    {
+      vlib_cli_output (vm, " %U\n", format_mheap, am->acl_session_mheap, 1);
     }
   else
     {

@@ -130,6 +130,9 @@ typedef struct {
   void *acl_mheap;
   uword acl_mheap_size;
 
+  void *acl_session_mheap;
+  uword acl_session_mheap_size;
+
   /* API message ID base */
   u16 msg_id_base;
 
