@@ -21,5 +21,7 @@ VPPAPICLIENT_18.10 {
 	stat_segment_dump;
 	stat_segment_data_free;
 	stat_segment_heartbeat;
+	stat_segment_string_vector;
+	stat_segment_vec_len;
 	local: *;
 };

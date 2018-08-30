@@ -112,7 +112,7 @@ stat_segment_register (u8 * stats[])
       p = hash_get_mem (sm->counter_vector_by_name, stats[i]);
       if (p == 0)
 	{
-	  fprintf (stderr, "WARN: %s not in directory!", stats[i]);
+	  fprintf (stderr, "WARN: %s not in directory!\n", stats[i]);
 	  continue;
 	}
       vec_add2 (cached_pointer_vec, cp, 1);
@@ -183,7 +183,7 @@ maybe_update_cached_pointers (stat_segment_cached_pointer_t * cached_pointers)
       p = hash_get_mem (sm->counter_vector_by_name, cp->name);
       if (p == 0)
 	{
-	  fprintf (stderr, "WARN: %s not in directory!", cp->name);
+	  fprintf (stderr, "WARN: %s not in directory!\n", cp->name);
 	  continue;
 	}
       cp->ep = (stat_segment_directory_entry_t *) (p[0]);
@@ -351,7 +351,7 @@ stat_segment_dump (u8 * stats[])
       p = hash_get_mem (sm->counter_vector_by_name, stats[i]);
       if (p == 0)
 	{
-	  fprintf (stderr, "WARN: %s not in directory!", stats[i]);
+	  fprintf (stderr, "WARN: %s not in directory!\n", stats[i]);
 	  continue;
 	}
       /* Collect counter */
@@ -361,6 +361,23 @@ stat_segment_dump (u8 * stats[])
   clib_spinlock_unlock (sm->stat_segment_lockp);
 
   return res;
+}
+
+/* Wrapper for accessing vectors from other languages */
+int
+stat_segment_vec_len (void *vec)
+{
+  return vec_len (vec);
+}
+
+/* Create a vector from a string (or add to existing) */
+u8 **
+stat_segment_string_vector (u8 ** string_vector, char *string)
+{
+  u8 *name = 0;
+  name = vec_dup ((u8 *) string);
+  vec_add1 (string_vector, (u8 *) name);
+  return string_vector;
 }
 
 /*

@@ -42,16 +42,15 @@ typedef struct
 
 int stat_segment_connect (char *socket_name);
 void stat_segment_disconnect (void);
-
 u8 **stat_segment_ls (u8 ** pattern);
 stat_segment_data_t *stat_segment_dump (u8 ** counter_vec);
-
 stat_segment_cached_pointer_t *stat_segment_register (u8 ** counter_vec);
-stat_segment_data_t *stat_segment_collect (stat_segment_cached_pointer_t *);	/* Collects registered counters */
-
+/* Collects registered counters */
+stat_segment_data_t *stat_segment_collect (stat_segment_cached_pointer_t *);
 void stat_segment_data_free (stat_segment_data_t * res);
-
 f64 stat_segment_heartbeat (void);
+u8 **stat_segment_string_vector (u8 ** string_vector, char *string);
+int stat_segment_vec_len (void *vec);
 
 #endif /* included_stat_client_h */
 
