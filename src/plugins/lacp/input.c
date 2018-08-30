@@ -149,6 +149,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       return LACP_ERROR_DISABLED;
     }
 
+  clib_mem_validate ();
   /* Handle marker protocol */
   marker = (marker_pdu_t *) (b0->data + b0->current_data);
   if (marker->subtype == MARKER_SUBTYPE)
@@ -158,6 +159,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       vec_validate (sif->last_marker_pkt,
 		    vlib_buffer_length_in_chain (vm, b0) - 1);
       nbytes = vlib_buffer_contents (vm, bi0, sif->last_marker_pkt);
+      clib_mem_validate ();
       ASSERT (nbytes <= vec_len (sif->last_marker_pkt));
       if (nbytes < sizeof (lacp_pdu_t))
 	return LACP_ERROR_TOO_SMALL;
@@ -187,9 +189,11 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 
   if (nbytes < sizeof (lacp_pdu_t))
     {
+      clib_mem_validate ();
       return LACP_ERROR_TOO_SMALL;
     }
 
+  clib_mem_validate ();
   last_packet_signature =
     hash_memory (sif->last_rx_pkt, vec_len (sif->last_rx_pkt), 0xd00b);
 
@@ -212,6 +216,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 
   if (sif->last_rx_pkt)
     _vec_len (sif->last_rx_pkt) = 0;
+  clib_mem_validate ();
 
   return e;
 }

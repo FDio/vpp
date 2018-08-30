@@ -264,6 +264,7 @@ vhost_user_if_input (vlib_main_t * vm,
     return 0;
 
   {
+    clib_mem_validate ();
     /* do we have pending interrupts ? */
     vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
     f64 now = vlib_time_now (vm);
@@ -274,6 +275,7 @@ vhost_user_if_input (vlib_main_t * vm,
     if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
       vhost_user_send_call (vm, rxvq);
   }
+  clib_mem_validate ();
 
   /*
    * For adaptive mode, it is optimized to reduce interrupts.
@@ -315,6 +317,7 @@ vhost_user_if_input (vlib_main_t * vm,
        */
       vhost_user_rx_discard_packet (vm, vui, txvq,
 				    VHOST_USER_DOWN_DISCARD_COUNT);
+      clib_mem_validate ();
       return 0;
     }
 
@@ -624,6 +627,7 @@ vhost_user_if_input (vlib_main_t * vm,
      vlib_get_thread_index (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  clib_mem_validate ();
 
   return n_rx_packets;
 }

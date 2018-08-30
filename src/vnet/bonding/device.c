@@ -450,6 +450,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Number of buffers / pkts */
   n_left_from = frame->n_vectors;
 
+  clib_mem_validate ();
   while (n_left_from > 0)
     {
       while (n_left_from >= 4)
@@ -699,6 +700,7 @@ bond_tx_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 bif->sw_if_index, frame->n_vectors);
 
   clib_spinlock_unlock_if_init (&bif->lockp);
+  clib_mem_validate ();
   return frame->n_vectors;
 }
 

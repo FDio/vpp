@@ -244,6 +244,7 @@ CLIB_MULTIARCH_FN (vhost_user_tx) (vlib_main_t * vm,
   u16 copy_len;
   u16 tx_headers_len;
 
+  clib_mem_validate ();
   if (PREDICT_FALSE (!vui->admin_up))
     {
       error = VHOST_USER_TX_FUNC_ERROR_DOWN;
@@ -549,6 +550,7 @@ done3:
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+  clib_mem_validate ();
   return frame->n_vectors;
 }
 

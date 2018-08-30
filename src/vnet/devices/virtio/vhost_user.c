@@ -389,6 +389,7 @@ vhost_user_socket_read (clib_file_t * uf)
   clib_file_t template = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
 
+  clib_mem_validate ();
   vui = pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   char control[CMSG_SPACE (VHOST_MEMORY_MAX_NREGIONS * sizeof (int))];
@@ -408,6 +409,7 @@ vhost_user_socket_read (clib_file_t * uf)
   mh.msg_control = control;
   mh.msg_controllen = sizeof (control);
 
+  clib_mem_validate ();
   n = recvmsg (uf->file_descriptor, &mh, 0);
 
   /* Stop workers to avoid end of the world */
@@ -879,12 +881,14 @@ vhost_user_socket_read (clib_file_t * uf)
 
   vhost_user_update_iface_state (vui);
   vlib_worker_thread_barrier_release (vlib_get_main ());
+  clib_mem_validate ();
   return 0;
 
 close_socket:
   vhost_user_if_disconnect (vui);
   vhost_user_update_iface_state (vui);
   vlib_worker_thread_barrier_release (vlib_get_main ());
+  clib_mem_validate ();
   return 0;
 }
 
@@ -897,10 +901,12 @@ vhost_user_socket_error (clib_file_t * uf)
     pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   DBG_SOCK ("socket error on if %d", vui->sw_if_index);
+  clib_mem_validate ();
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
   vhost_user_rx_thread_placement ();
   vlib_worker_thread_barrier_release (vm);
+  clib_mem_validate ();
   return 0;
 }
 
@@ -1002,6 +1008,7 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  (timeout > vum->coalesce_time))
 	timeout = vum->coalesce_time;
 
+      clib_mem_validate ();
       now = vlib_time_now (vm);
       switch (event_type)
 	{
@@ -1058,6 +1065,7 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	timeout = 1e-3;
       if (stop_timer)
 	timeout = 3153600000.0;
+      clib_mem_validate ();
     }
   return 0;
 }
@@ -1095,6 +1103,7 @@ vhost_user_process (vlib_main_t * vm,
 
       timeout = 3.0;
 
+      clib_mem_validate ();
       /* *INDENT-OFF* */
       pool_foreach (vui, vum->vhost_user_interfaces, {
 
@@ -1165,6 +1174,7 @@ vhost_user_process (vlib_main_t * vm,
 	  }
       });
       /* *INDENT-ON* */
+      clib_mem_validate ();
     }
   return 0;
 }

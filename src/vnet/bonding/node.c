@@ -199,6 +199,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   next = nexts;
   sw_if_index = sw_if_indices;
 
+  clib_mem_validate ();
   while (n_left >= 4)
     {
       u32 x = 0;
@@ -356,6 +357,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   vlib_node_increment_counter (vm, bond_input_node.index,
 			       BOND_INPUT_ERROR_NONE, frame->n_vectors);
+  clib_mem_validate ();
 
   return frame->n_vectors;
 }
@@ -400,6 +402,7 @@ bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   slave_if_t *sif;
   vlib_main_t *vm = bm->vlib_main;
 
+  clib_mem_validate ();
   sif = bond_get_slave_by_sw_if_index (sw_if_index);
   if (sif)
     {
@@ -419,6 +422,7 @@ bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 	    }
 	}
     }
+  clib_mem_validate ();
 
   return 0;
 }
@@ -433,6 +437,7 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   vnet_sw_interface_t *sw;
   vlib_main_t *vm = bm->vlib_main;
 
+  clib_mem_validate ();
   sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
   sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
   if (sif)
@@ -452,6 +457,7 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	    }
 	}
     }
+  clib_mem_validate ();
 
   return 0;
 }

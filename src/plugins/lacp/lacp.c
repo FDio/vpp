@@ -140,6 +140,7 @@ lacp_periodic (vlib_main_t * vm)
   lacp_main_t *lm = &lacp_main;
   slave_if_t *sif;
 
+  clib_mem_validate ();
   /* *INDENT-OFF* */
   pool_foreach (sif, bm->neighbors,
   ({
@@ -168,6 +169,7 @@ lacp_periodic (vlib_main_t * vm)
       }
   }));
   /* *INDENT-ON* */
+  clib_mem_validate ();
 }
 
 static void
@@ -355,6 +357,7 @@ lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   slave_if_t *sif;
   vlib_main_t *vm = lm->vlib_main;
 
+  clib_mem_validate ();
   sif = bond_get_slave_by_sw_if_index (sw_if_index);
   if (sif)
     {
@@ -370,6 +373,7 @@ lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 	    }
 	}
     }
+  clib_mem_validate ();
 
   return 0;
 }
@@ -384,7 +388,8 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   vnet_sw_interface_t *sw;
   vlib_main_t *vm = lm->vlib_main;
 
-  sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
+ clib_mem_validate ();
+ sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
   sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
   if (sif)
     {
@@ -400,6 +405,7 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	}
     }
 
+  clib_mem_validate ();
   return 0;
 }
 
