@@ -100,6 +100,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   next = nexts;
 
   n_left = frame->n_vectors;
+  clib_mem_validate();
   while (n_left > 0)
     {
       u32 next0 = 0;
@@ -152,7 +153,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       if (acl_fa_ifc_has_sessions (am, sw_if_index0))
 	{
-	  u64 value_sess = ~0ULL;
+	  volatile u64 value_sess = ~0ULL;
 	  if (acl_fa_find_session
 	      (am, is_ip6, sw_if_index0, &fa_5tuple, &value_sess)
 	      && (value_sess != ~0ULL))
@@ -312,6 +313,7 @@ acl_fa_node_fn (vlib_main_t * vm,
       b++;
       pkts_acl_checked += 1;
     }
+  clib_mem_validate();
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 

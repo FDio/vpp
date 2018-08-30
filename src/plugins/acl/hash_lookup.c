@@ -606,6 +606,8 @@ hash_acl_set_heap(acl_main_t *am)
     }
     mheap_t *h = mheap_header (am->hash_lookup_mheap);
     h->flags |= MHEAP_FLAG_THREAD_SAFE;
+    h->flags |= MHEAP_FLAG_VALIDATE;
+    h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
@@ -670,8 +672,10 @@ check_collision_count_and_maybe_split(acl_main_t *am, u32 lc_index, int is_ip6, 
 {
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
   applied_hash_ace_entry_t *first_pae = vec_elt_at_index((*applied_hash_aces), first_index);
+  clib_mem_validate();
   if (vec_len(first_pae->colliding_rules) > am->tuple_merge_split_threshold) {
     split_partition(am, first_index, lc_index, is_ip6);
+    clib_mem_validate();
   }
 }
 
@@ -680,6 +684,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
 {
   int i;
 
+  clib_mem_validate();
   DBG0("HASH ACL apply: lc_index %d acl %d", lc_index, acl_index);
   if (!am->acl_lookup_hash_initialized) {
     BV (clib_bihash_init) (&am->acl_lookup_hash, "ACL plugin rule lookup bihash",
@@ -688,6 +693,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   }
 
   void *oldheap = hash_acl_set_heap(am);
+  clib_mem_validate();
   vec_validate(am->hash_entry_vec_by_lc_index, lc_index);
   vec_validate(am->hash_acl_infos, acl_index);
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
@@ -757,7 +763,9 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   }
   remake_hash_applied_mask_info_vec(am, applied_hash_aces, lc_index);
 done:
+  clib_mem_validate();
   clib_mem_set_heap (oldheap);
+  clib_mem_validate();
 }
 
 static u32
@@ -772,7 +780,9 @@ find_head_applied_ace_index(applied_hash_ace_entry_t **applied_hash_aces, u32 cu
   applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
   while(head_pae->prev_applied_entry_index != ~0) {
     an_index = head_pae->prev_applied_entry_index;
-    ASSERT(an_index != ~0);
+    if(an_index > vec_len((*applied_hash_aces))) {
+      clib_error("find_head_applied_ace_index: index %d longer than the max %d", an_index, vec_len((*applied_hash_aces)));
+    }
     head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
   }
   return an_index;
@@ -786,6 +796,10 @@ move_applied_ace_hash_entry(acl_main_t *am,
 {
   ASSERT(old_index != ~0);
   ASSERT(new_index != ~0);
+  if (old_index == ~0 || new_index == ~0) {
+    clib_error("One of the indices is ~0: old: %d new: %d", old_index, new_index);
+  }
+  clib_mem_validate();
   /* move the entry */
   *vec_elt_at_index((*applied_hash_aces), new_index) = *vec_elt_at_index((*applied_hash_aces), old_index);
 
@@ -866,6 +880,7 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
                             u32 old_index)
 {
   applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), old_index);
+  clib_mem_validate();
   DBG("UNAPPLY DEACTIVATE: lc_index %d applied index %d", lc_index, old_index);
   if (ACL_HASH_LOOKUP_DEBUG > 0) {
     clib_warning("Deactivating pae at index %d", old_index);
@@ -921,6 +936,7 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
   pae->tail_applied_entry_index = ~0;
   /* always has to be 0 */
   pae->colliding_rules = NULL;
+  clib_mem_validate();
 }
 
 
@@ -928,6 +944,7 @@ void
 hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
 {
   int i;
+  clib_mem_validate();
 
   DBG0("HASH ACL unapply: lc_index %d acl %d", lc_index, acl_index);
   applied_hash_acl_info_t **applied_hash_acls = &am->applied_hash_acl_info_by_lc_index;
@@ -974,7 +991,9 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
     return;
   }
 
+  clib_mem_validate();
   void *oldheap = hash_acl_set_heap(am);
+  clib_mem_validate();
   int base_offset = i;
   int tail_offset = base_offset + vec_len(ha->rules);
   int tail_len = vec_len((*applied_hash_aces)) - tail_offset;
@@ -999,7 +1018,9 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
     vec_free((*applied_hash_aces));
   }
 
+  clib_mem_validate();
   clib_mem_set_heap (oldheap);
+  clib_mem_validate();
 }
 
 /*
@@ -1018,6 +1039,7 @@ hash_acl_reapply(acl_main_t *am, u32 lc_index, int acl_index)
   u32 **applied_acls = &acontext->acl_indices;
   int i;
   int start_index = vec_search((*applied_acls), acl_index);
+  clib_mem_validate();
 
   DBG0("Start index for acl %d in lc_index %d is %d", acl_index, lc_index, start_index);
   /*
@@ -1033,6 +1055,7 @@ hash_acl_reapply(acl_main_t *am, u32 lc_index, int acl_index)
   for(i = start_index; i < vec_len(*applied_acls); i++) {
     hash_acl_apply(am, lc_index, *vec_elt_at_index(*applied_acls, i), i);
   }
+  clib_mem_validate();
 }
 
 static void
@@ -1151,7 +1174,9 @@ int hash_acl_exists(acl_main_t *am, int acl_index)
 
 void hash_acl_add(acl_main_t *am, int acl_index)
 {
+  clib_mem_validate();
   void *oldheap = hash_acl_set_heap(am);
+  clib_mem_validate();
   DBG("HASH ACL add : %d", acl_index);
   int i;
   acl_list_t *a = &am->acls[acl_index];
@@ -1187,12 +1212,16 @@ void hash_acl_add(acl_main_t *am, int acl_index)
       hash_acl_reapply(am, *lc_index, acl_index);
     }
   }
+  clib_mem_validate();
   clib_mem_set_heap (oldheap);
+  clib_mem_validate();
 }
 
 void hash_acl_delete(acl_main_t *am, int acl_index)
 {
+  clib_mem_validate();
   void *oldheap = hash_acl_set_heap(am);
+  clib_mem_validate();
   DBG0("HASH ACL delete : %d", acl_index);
   /*
    * If the ACL is applied somewhere, remove the references of it (call hash_acl_unapply)
@@ -1227,7 +1256,9 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
   }
   ha->hash_acl_exists = 0;
   vec_free(ha->rules);
+  clib_mem_validate();
   clib_mem_set_heap (oldheap);
+  clib_mem_validate();
 }
 
 

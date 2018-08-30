@@ -119,11 +119,13 @@ fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
 always_inline fa_session_t *
 get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
 {
+  u32 volatile session_index_copy = session_index;
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  if (session_index >= vec_len (pw->fa_sessions_pool))
+  if (session_index_copy >= vec_len (pw->fa_sessions_pool))
     return 0;
+  clib_mem_validate();
 
-  return pool_elt_at_index (pw->fa_sessions_pool, session_index);
+  return pool_elt_at_index (pw->fa_sessions_pool, session_index_copy);
 }
 
 always_inline int
@@ -144,6 +146,7 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
   u8 list_id =
     sess->deleted ? ACL_TIMEOUT_PURGATORY : fa_session_get_timeout_type (am,
 									 sess);
+  clib_mem_validate();
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   /* the retrieved session thread index must be necessarily the same as the one in the key */
@@ -156,11 +159,13 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
   sess->link_prev_idx = pw->fa_conn_list_tail[list_id];
   if (FA_SESSION_BOGUS_INDEX != pw->fa_conn_list_tail[list_id])
     {
-      fa_session_t *prev_sess =
+      fa_session_t volatile *prev_sess =
 	get_session_ptr (am, thread_index, pw->fa_conn_list_tail[list_id]);
       prev_sess->link_next_idx = sess_id.session_index;
       /* We should never try to link with a session on another thread */
-      ASSERT (prev_sess->thread_index == sess->thread_index);
+      if (prev_sess->thread_index != sess->thread_index) {
+        clib_error("Attempting to link session by thread %d with session by thread %d", sess->thread_index, prev_sess->thread_index);
+      }
     }
   pw->fa_conn_list_tail[list_id] = sess_id.session_index;
 
@@ -179,12 +184,14 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
       pw->fa_conn_list_head_expiry_time[list_id] =
 	now + fa_session_get_timeout (am, sess);
     }
+  clib_mem_validate();
 }
 
 static int
 acl_fa_conn_list_delete_session (acl_main_t * am,
 				 fa_full_session_id_t sess_id, u64 now)
 {
+  clib_mem_validate();
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   if (thread_index != sess_id.thread_index)
@@ -232,6 +239,7 @@ acl_fa_conn_list_delete_session (acl_main_t * am,
     {
       pw->fa_conn_list_tail[sess->link_list_id] = sess->link_prev_idx;
     }
+  clib_mem_validate();
   return 1;
 }
 
@@ -239,9 +247,12 @@ always_inline int
 acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
 				  fa_full_session_id_t sess_id)
 {
+  clib_mem_validate();
   if (acl_fa_conn_list_delete_session (am, sess_id, now))
     {
+      clib_mem_validate();
       acl_fa_conn_list_add_session (am, sess_id, now);
+      clib_mem_validate();
       return 1;
     }
   else
@@ -393,7 +404,16 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
 {
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
-  ASSERT (sess->thread_index == os_get_thread_index ());
+  clib_mem_validate();
+  if (sess_id.thread_index != os_get_thread_index ())
+    {
+      clib_error
+	("Attempting to deactivate session belonging to thread %d by thread %d",
+	 sess_id.thread_index, os_get_thread_index ());
+    }
+  void *oldheap = clib_mem_set_heap (am->acl_session_mheap);
+  clib_mem_validate();
+
   if (sess->is_ip6)
     {
       clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash,
@@ -402,13 +422,18 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
     }
   else
     {
+      clib_mem_validate();
       clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash,
 				&sess->info.kv_16_8, 0);
+      clib_mem_validate();
       reverse_session_add_del_ip4 (am, &sess->info.kv_16_8, 0);
     }
 
+  clib_mem_validate();
   sess->deleted = 1;
   clib_smp_atomic_add (&am->fa_session_total_deactivations, 1);
+  clib_mem_set_heap (oldheap);
+  clib_mem_validate();
 }
 
 always_inline void
@@ -421,13 +446,17 @@ acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
 	("Attempting to delete session belonging to thread %d by thread %d",
 	 sess_id.thread_index, os_get_thread_index ());
     }
+  clib_mem_validate();
   void *oldheap = clib_mem_set_heap (am->acl_mheap);
+  clib_mem_validate();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
+  clib_mem_validate();
   clib_mem_set_heap (oldheap);
+  clib_mem_validate();
   clib_smp_atomic_add (&pw->fa_session_dels_by_sw_if_index[sw_if_index], 1);
   clib_smp_atomic_add (&am->fa_session_total_dels, 1);
 }
@@ -469,6 +498,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   fa_full_session_id_t volatile sess_id;
   int n_recycled = 0;
+  clib_mem_validate();
 
   /* clean up sessions from purgatory, if we can */
   sess_id.session_index = pw->fa_conn_list_head[ACL_TIMEOUT_PURGATORY];
@@ -498,6 +528,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
       /* this goes to purgatory list */
       acl_fa_conn_list_add_session (am, sess_id, now);
     }
+  clib_mem_validate();
 }
 
 
@@ -508,7 +539,9 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 {
   fa_full_session_id_t f_sess_id;
   uword thread_index = os_get_thread_index ();
+  clib_mem_validate();
   void *oldheap = clib_mem_set_heap (am->acl_mheap);
+  clib_mem_validate();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   f_sess_id.thread_index = thread_index;
@@ -519,6 +552,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
       clib_error ("Adding session with invalid value");
     }
 
+  clib_mem_validate();
   pool_get_aligned (pw->fa_sessions_pool, sess, CLIB_CACHE_LINE_BYTES);
   f_sess_id.session_index = sess - pw->fa_sessions_pool;
   f_sess_id.intf_policy_epoch = current_policy_epoch;
@@ -551,6 +585,8 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 
+  void *oldheap2 = clib_mem_set_heap (am->acl_session_mheap);
+
   ASSERT (am->fa_sessions_hash_is_initialized == 1);
   if (is_ip6)
     {
@@ -564,6 +600,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
       clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash,
 				&sess->info.kv_16_8, 1);
     }
+  clib_mem_set_heap (oldheap2);
 
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
@@ -574,12 +611,14 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 
 always_inline int
 acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
-		     fa_5tuple_t * p5tuple, u64 * pvalue_sess)
+		     fa_5tuple_t * p5tuple, u64 volatile * pvalue_sess)
 {
   int res = 0;
+  clib_mem_validate();
   if (is_ip6)
     {
       clib_bihash_kv_40_8_t kv_result;
+      kv_result.value = 0;
       res = (clib_bihash_search_inline_2_40_8
 	     (&am->fa_ip6_sessions_hash, &p5tuple->kv_40_8, &kv_result) == 0);
       *pvalue_sess = kv_result.value;
@@ -587,10 +626,12 @@ acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
   else
     {
       clib_bihash_kv_16_8_t kv_result;
+      kv_result.value = 0;
       res = (clib_bihash_search_inline_2_16_8
 	     (&am->fa_ip4_sessions_hash, &p5tuple->kv_16_8, &kv_result) == 0);
       *pvalue_sess = kv_result.value;
     }
+  clib_mem_validate();
   return res;
 }
 
