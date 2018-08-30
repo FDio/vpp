@@ -30,7 +30,7 @@ foreach(f ${VPP_API_FILES})
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_c_gen.py
     ARGS --remove-path ${input}
-    DEPENDS ${input} vapi_c_gen.py vapi_json_parser.py
+    DEPENDS ${input} vapi_c_gen.py vapi_json_parser.py api_headers
     COMMENT "Generating VAPI C header ${output}"
   )
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${output} DESTINATION include/vapi)
@@ -43,7 +43,7 @@ foreach(f ${VPP_API_FILES})
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_cpp_gen.py
     ARGS --gen-h-prefix=vapi --remove-path ${input}
-    DEPENDS ${input} vapi_cpp_gen.py vapi_json_parser.py
+    DEPENDS ${input} vapi_cpp_gen.py vapi_json_parser.py api_headers
     COMMENT "Generating VAPI C++ header ${output}"
   )
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${output} DESTINATION include/vapi)
