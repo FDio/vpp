@@ -60,6 +60,8 @@ typedef struct _stream_session_cb_vft
 
 typedef struct app_worker_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /** Worker index in global worker pool*/
   u32 wrk_index;
 
@@ -110,6 +112,13 @@ typedef struct app_worker_map_
   u32 wrk_index;
 } app_worker_map_t;
 
+typedef struct app_listener_
+{
+  clib_bitmap_t *workers;	/**< workers accepting connections */
+  u32 accept_rotor;		/**< last worker to accept a connection */
+  u32 al_index;
+} app_listener_t;
+
 typedef struct application_
 {
   /** App index in app pool */
@@ -138,6 +147,12 @@ typedef struct application_
 
   u16 proxied_transports;
 
+  /** Pool of listeners for the app */
+  app_listener_t *listeners;
+
+  /** Pool of local listeners for app */
+  app_listener_t *local_listeners;
+
   /*
    * TLS Specific
    */
@@ -150,6 +165,7 @@ typedef struct application_
 
   /** Preferred tls engine */
   u8 tls_engine;
+
 } application_t;
 
 typedef struct app_main_
@@ -207,11 +223,12 @@ app_worker_t *app_worker_alloc (application_t * app);
 int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
+application_t *app_worker_get_app (u32 wrk_index);
 void app_worker_free (app_worker_t * app_wrk);
-int app_worker_start_listen (app_worker_t * app,
-			     session_endpoint_t * tep,
-			     session_handle_t * handle);
-int app_worker_stop_listen (session_handle_t handle, u32 app_wrk_index);
+int application_start_listen (application_t * app,
+                              session_endpoint_extended_t * tep,
+                              session_handle_t * handle);
+int application_stop_listen (session_handle_t handle, u32 app_wrk_index);
 int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
@@ -257,7 +274,7 @@ segment_manager_properties_t
   * application_segment_manager_properties (application_t * app);
 
 local_session_t *application_alloc_local_session (app_worker_t * app);
-void application_free_local_session (app_worker_t * app,
+void application_local_session_free (app_worker_t * app,
 				     local_session_t * ls);
 local_session_t *application_get_local_session (app_worker_t * app,
 						u32 session_index);

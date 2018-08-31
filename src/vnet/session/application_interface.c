@@ -147,8 +147,8 @@ session_endpoint_update_for_app (session_endpoint_t * sep,
     }
 }
 
-static int
-vnet_bind_i (vnet_bind_args_t * a)
+static inline int
+vnet_bind_inline (vnet_bind_args_t * a)
 {
   u64 lh, ll_handle = SESSION_INVALID_HANDLE;
   u32 table_index, fib_proto;
@@ -163,16 +163,11 @@ vnet_bind_i (vnet_bind_args_t * a)
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
   app_wrk = application_get_worker (app, a->wrk_map_index);
+  a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
   session_endpoint_update_for_app (&a->sep, app);
   if (!session_endpoint_in_ns (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
-
-  fib_proto = session_endpoint_fib_proto (&a->sep);
-  table_index = application_session_table (app, fib_proto);
-  lh = session_lookup_endpoint_listener (table_index, &a->sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    return VNET_API_ERROR_ADDRESS_IN_USE;
 
   /*
    * Add session endpoint to local session table. Only binds to "inaddr_any"
@@ -181,8 +176,8 @@ vnet_bind_i (vnet_bind_args_t * a)
   if (application_has_local_scope (app)
       && session_endpoint_is_local (&a->sep))
     {
-      if ((rv =
-	   application_start_local_listen (app_wrk, &a->sep, &a->handle)))
+      if ((rv = application_start_local_listen (app, &a->sep,
+                                                &a->handle)))
 	return rv;
       ll_handle = a->handle;
     }
@@ -195,9 +190,12 @@ vnet_bind_i (vnet_bind_args_t * a)
    */
 
   /* Setup listen path down to transport */
-  rv = app_worker_start_listen (app_wrk, &a->sep, &a->handle);
+  rv = application_start_listen (app, &a->sep_ext, &a->handle);
   if (rv && ll_handle != SESSION_INVALID_HANDLE)
-    session_lookup_del_session_endpoint (table_index, &a->sep);
+    {
+      application_stop_local_listen (ll_handle, app->app_index);
+      return rv;
+    }
 
   /*
    * Store in local table listener the index of the transport layer
@@ -237,7 +235,7 @@ vnet_unbind_i (u32 app_index, session_handle_t handle)
    * Clear the global scope table of the listener
    */
   if (application_has_global_scope (app))
-    return app_worker_stop_listen (handle, app_index);
+    return application_stop_listen (handle, app_index);
   return 0;
 }
 
@@ -531,7 +529,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
   if (rv)
     return rv;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-  return vnet_bind_i (a);
+  return vnet_bind_inline (a);
 }
 
 int
@@ -620,7 +618,7 @@ clib_error_t *
 vnet_bind (vnet_bind_args_t * a)
 {
   int rv;
-  if ((rv = vnet_bind_i (a)))
+  if ((rv = vnet_bind_inline (a)))
     return clib_error_return_code (0, rv, 0, "bind failed: %d", rv);
   return 0;
 }
