@@ -24,7 +24,7 @@
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
-#define SESSION_PROXY_LISTENER_INDEX ((u32)~0 - 1)
+#define SESSION_PROXY_LISTENER_INDEX ((u8)~0 - 1)
 #define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
 
 /* TODO decide how much since we have pre-data as well */
@@ -550,8 +550,8 @@ void stream_session_reset_notify (transport_connection_t * tc);
 int stream_session_accept (transport_connection_t * tc, u32 listener_index,
 			   u8 notify);
 int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
-int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
-int stream_session_stop_listen (stream_session_t * s);
+int session_listen (stream_session_t * s, session_endpoint_extended_t * sep);
+int session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_disconnect_transport (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);

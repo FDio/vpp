@@ -262,7 +262,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   };
 
   ip4_address_t intf_addr = {
-    .as_u32 = clib_host_to_net_u32 (0x06000105),
+    .as_u32 = clib_host_to_net_u32 (0x07000105),
   };
 
   intf_sep.ip.ip4 = intf_addr;
@@ -1376,7 +1376,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   char *show_listeners = "sh session listeners tcp verbose";
   char *show_local_listeners = "sh app ns table default";
   unformat_input_t tmp_input;
-  u32 server_index, app_index, server_wrk_index;
+  u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
   u8 is_filtered = 0;
@@ -1384,7 +1384,6 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
   app_namespace_t *app_ns;
-  application_t *server;
   int verbose = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1444,8 +1443,6 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
-  server = application_get (server_index);
-  server_wrk_index = application_get_default_worker (server)->wrk_index;
 
   if (verbose)
     {
@@ -1462,7 +1459,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
 		"successful");
   s = listen_session_get (tc->s_index);
-  SESSION_TEST ((s->app_wrk_index == server_wrk_index), "lookup should return"
+  SESSION_TEST ((s->app_index == server_index), "lookup should return"
 		" the server");
 
   tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
