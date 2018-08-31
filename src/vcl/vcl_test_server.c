@@ -43,7 +43,7 @@ typedef struct
 {
   uint32_t port;
   uint32_t address_ip6;
-  uint32_t transport_udp;
+  u8 proto;
 } sock_server_cfg_t;
 
 #define SOCK_SERVER_MAX_TEST_CONN  10
@@ -65,6 +65,26 @@ typedef struct
 } sock_server_main_t;
 
 sock_server_main_t sock_server_main;
+
+#define vtfail(_fn, _rv)						\
+{									\
+  errno = -_rv;								\
+  perror ("ERROR when calling " _fn);					\
+  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -rv);\
+  exit (1);								\
+}
+
+#define vterr(_fn, _rv)							\
+{									\
+  errno = -_rv;								\
+  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -rv);\
+}
+
+#define vtwrn(_fmt, _args...)						\
+  fprintf (stderr, "\nSERVER ERROR: " _fmt "\n", ##_args)		\
+
+#define vtinf(_fmt, _args...)						\
+  fprintf (stdout, "\n" _fmt "\n", ##_args)				\
 
 static inline void
 conn_pool_expand (size_t expand_size)
@@ -230,6 +250,28 @@ stream_test_server (sock_server_conn_t * conn, int rx_bytes)
     }
 }
 
+static void
+vcl_test_server_echo (sock_server_conn_t *conn, int rx_bytes)
+{
+  int tx_bytes, nbytes, pos;
+
+  /* If it looks vaguely like a string,
+   * make sure it's terminated
+   */
+  pos = rx_bytes < conn->buf_size ? rx_bytes : conn->buf_size - 1;
+  ((char *) conn->buf)[pos] = 0;
+  vtinf ("(fd %d): RX (%d bytes) - '%s'", conn->fd, rx_bytes, conn->buf);
+
+  if (conn->cfg.verbose)
+    vtinf ("(fd %d): Echoing back", conn->fd);
+
+  nbytes = strlen ((const char *) conn->buf) + 1;
+  tx_bytes = vcl_test_write (conn->fd, conn->buf, nbytes, &conn->stats,
+	                     conn->cfg.verbose);
+  if (tx_bytes >= 0)
+    vtinf ("(fd %d): TX (%d bytes) - '%s'", conn->fd, tx_bytes, conn->buf);
+}
+
 static inline void
 new_client (void)
 {
@@ -295,23 +337,12 @@ print_usage_and_exit (void)
   exit (1);
 }
 
-int
-main (int argc, char **argv)
+void
+vcl_test_server_process_opts (sock_server_main_t *ssm, int argc, char **argv, u16 *port)
 {
-  sock_server_main_t *ssm = &sock_server_main;
-  int client_fd, rv, main_rv = 0;
-  int tx_bytes, rx_bytes, nbytes;
-  sock_server_conn_t *conn;
-  sock_test_cfg_t *rx_cfg;
-  uint32_t xtra = 0;
-  uint64_t xtra_bytes = 0;
-  struct sockaddr_storage servaddr;
-  int errno_val;
-  int c, v, i;
-  uint16_t port = SOCK_TEST_SERVER_PORT;
-  vppcom_endpt_t endpt;
+  int v, c;
 
-  clib_mem_init_thread_safe (0, 64 << 20);
+  ssm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
   while ((c = getopt (argc, argv, "6D")) != -1)
@@ -322,7 +353,7 @@ main (int argc, char **argv)
 	break;
 
       case 'D':
-	ssm->cfg.transport_udp = 1;
+	ssm->cfg.proto = VPPCOM_PROTO_UDP;
 	break;
 
       case '?':
@@ -349,42 +380,21 @@ main (int argc, char **argv)
     }
 
   if (sscanf (argv[optind], "%d", &v) == 1)
-    port = (uint16_t) v;
+    *port = (uint16_t) v;
   else
     {
       fprintf (stderr, "SERVER: ERROR: Invalid port (%s)!\n", argv[optind]);
       print_usage_and_exit ();
     }
+}
 
-  conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
-
-  rv = vppcom_app_create ("vcl_test_server");
-  if (rv)
-    {
-      errno_val = errno = -rv;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: vppcom_app_create() failed "
-	       "(errno = %d)!\n", errno_val);
-      return -1;
-    }
-  else
-    {
-      ssm->listen_fd = vppcom_session_create (ssm->cfg.transport_udp ?
-					      VPPCOM_PROTO_UDP :
-					      VPPCOM_PROTO_TCP,
-					      0 /* is_nonblocking */ );
-    }
-  if (ssm->listen_fd < 0)
-    {
-      errno_val = errno = -ssm->listen_fd;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: vppcom_session_create() failed "
-	       "(errno = %d)!\n", errno_val);
-      return -1;
-    }
+static void
+vcl_test_init_endpoint_addr (sock_server_main_t *ssm, u16 port,
+                             vppcom_endpt_t *endpt)
+{
+  struct sockaddr_storage servaddr;
 
   memset (&servaddr, 0, sizeof (servaddr));
-
   if (ssm->cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
@@ -403,64 +413,122 @@ main (int argc, char **argv)
   if (ssm->cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
-      endpt.is_ip4 = 0;
-      endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      endpt.port = (uint16_t) server_addr->sin6_port;
+      endpt->is_ip4 = 0;
+      endpt->ip = (uint8_t *) & server_addr->sin6_addr;
+      endpt->port = (uint16_t) server_addr->sin6_port;
     }
   else
     {
       struct sockaddr_in *server_addr = (struct sockaddr_in *) &servaddr;
-      endpt.is_ip4 = 1;
-      endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      endpt.port = (uint16_t) server_addr->sin_port;
+      endpt->is_ip4 = 1;
+      endpt->ip = (uint8_t *) & server_addr->sin_addr;
+      endpt->port = (uint16_t) server_addr->sin_port;
+    }
+}
+
+int
+vcl_test_server_handle_cfg (sock_server_main_t *ssm, sock_test_cfg_t *rx_cfg,
+                            sock_server_conn_t *conn, int rx_bytes)
+{
+  if (rx_cfg->verbose)
+    {
+      vtinf ("(fd %d): Received a cfg msg!", conn->fd);
+      sock_test_cfg_dump (rx_cfg, 0 /* is_client */);
     }
 
-  rv = vppcom_session_bind (ssm->listen_fd, &endpt);
-  if (rv < 0)
+  if (rx_bytes != sizeof(*rx_cfg))
     {
-      errno_val = errno = -rv;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: bind failed (errno = %d)!\n",
-	       errno_val);
+      vtinf ("(fd %d): Invalid cfg msg size %d expected %lu!", conn->fd,
+             rx_bytes, sizeof(*rx_cfg));
+      conn->cfg.rxbuf_size = 0;
+      conn->cfg.num_writes = 0;
+      if (conn->cfg.verbose)
+	{
+	  vtinf ("(fd %d): Replying to cfg msg", conn->fd);
+	  sock_test_cfg_dump (rx_cfg, 0 /* is_client */);
+	}
+      vcl_test_write (conn->fd, (uint8_t *) &conn->cfg,
+	              sizeof(conn->cfg), NULL,
+	              conn->cfg.verbose);
       return -1;
     }
 
-  if (!ssm->cfg.transport_udp)
+  switch (rx_cfg->test)
+    {
+    case SOCK_TEST_TYPE_NONE:
+    case SOCK_TEST_TYPE_ECHO:
+      sync_config_and_reply (conn, rx_cfg);
+      break;
+
+    case SOCK_TEST_TYPE_BI:
+    case SOCK_TEST_TYPE_UNI:
+      stream_test_server_start_stop (conn, rx_cfg);
+      break;
+
+    case SOCK_TEST_TYPE_EXIT:
+      vtinf ("Have a great day conn %d!", conn->fd);
+      vppcom_session_close (conn->fd);
+      conn_pool_free (conn);
+      vtinf ("Closed client fd %d", conn->fd);
+      ssm->nfds--;
+      break;
+
+    default:
+      vtwrn ("Unknown test type %d", rx_cfg->test);
+      sock_test_cfg_dump (rx_cfg, 0 /* is_client */);
+      break;
+    }
+
+  return 0;
+}
+
+int
+main (int argc, char **argv)
+{
+  sock_server_main_t *ssm = &sock_server_main;
+  uint16_t port = SOCK_TEST_SERVER_PORT;
+  int rv, main_rv = 0, i, rx_bytes;
+  sock_server_conn_t *conn;
+  sock_test_cfg_t *rx_cfg;
+  vppcom_endpt_t endpt;
+
+  clib_mem_init_thread_safe (0, 64 << 20);
+  vcl_test_server_process_opts (ssm, argc, argv, &port);
+  vcl_test_init_endpoint_addr (ssm, port, &endpt);
+  conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
+
+  rv = vppcom_app_create ("vcl_test_server");
+  if (rv)
+    vtfail ("vppcom_app_create()", rv);
+
+  ssm->listen_fd = vppcom_session_create (ssm->cfg.proto,
+	                                  0 /* is_nonblocking */);
+  if (ssm->listen_fd < 0)
+    vtfail ("vppcom_session_create()", ssm->listen_fd);
+
+  rv = vppcom_session_bind (ssm->listen_fd, &endpt);
+  if (rv < 0)
+    vtfail ("vppcom_session_bind()", rv);
+
+  if (!(ssm->cfg.proto == VPPCOM_PROTO_UDP))
     {
       rv = vppcom_session_listen (ssm->listen_fd, 10);
       if (rv < 0)
-	{
-	  errno_val = errno = -rv;
-	  perror ("ERROR in main()");
-	  fprintf (stderr, "SERVER: ERROR: listen failed "
-		   "(errno = %d)!\n", errno_val);
-	  return -1;
-	}
+	vtfail ("vppcom_session_listen()", rv);
     }
 
   ssm->epfd = vppcom_epoll_create ();
   if (ssm->epfd < 0)
-    {
-      errno_val = errno = -ssm->epfd;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: epoll_create failed (errno = %d)!\n",
-	       errno_val);
-      return -1;
-    }
+    vtfail ("vppcom_epoll_create()", ssm->epfd);
 
   ssm->listen_ev.events = EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
   rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd,
 			 &ssm->listen_ev);
   if (rv < 0)
-    {
-      errno_val = errno = -rv;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: epoll_ctl failed "
-	       "(errno = %d)!\n", errno_val);
-      return -1;
-    }
-  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
+    vtfail ("vppcom_epoll_ctl", rv);
+
+  vtinf ("Waiting for a client to connect on port %d ...", port);
 
   while (1)
     {
@@ -468,17 +536,15 @@ main (int argc, char **argv)
       num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
 				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60000.0);
       if (num_ev < 0)
+
 	{
-	  errno = -num_ev;
-	  perror ("epoll_wait()");
-	  fprintf (stderr, "\nSERVER: ERROR: epoll_wait() "
-		   "failed -- aborting!\n");
+	  vterr ("vppcom_epoll_wait()", num_ev);
 	  main_rv = -1;
 	  goto done;
 	}
       else if (num_ev == 0)
 	{
-	  fprintf (stderr, "\nSERVER: epoll_wait() timeout!\n");
+	  vtinf ("vppcom_epoll_wait() timeout!");
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
@@ -494,145 +560,48 @@ main (int argc, char **argv)
 	      new_client ();
 	      continue;
 	    }
-	  client_fd = conn->fd;
 
 	  if (EPOLLIN & ssm->wait_events[i].events)
 	    {
-	      rx_bytes = vcl_test_read (client_fd, conn->buf,
+	      rx_bytes = vcl_test_read (conn->fd, conn->buf,
 					conn->buf_size, &conn->stats);
-	      if (rx_bytes > 0)
-		{
-		  rx_cfg = (sock_test_cfg_t *) conn->buf;
-		  if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
-		    {
-		      if (rx_cfg->verbose)
-			{
-			  printf ("SERVER (fd %d): Received a cfg message!\n",
-				  client_fd);
-			  sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			}
 
-		      if (rx_bytes != sizeof (*rx_cfg))
-			{
-			  printf ("SERVER (fd %d): Invalid cfg message "
-				  "size (%d)!\n  Should be %lu bytes.\n",
-				  client_fd, rx_bytes, sizeof (*rx_cfg));
-			  conn->cfg.rxbuf_size = 0;
-			  conn->cfg.num_writes = 0;
-			  if (conn->cfg.verbose)
-			    {
-			      printf ("SERVER (fd %d): Replying to "
-				      "cfg message!\n", client_fd);
-			      sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			    }
-			  vcl_test_write (client_fd, (uint8_t *) & conn->cfg,
-					  sizeof (conn->cfg), NULL,
-					  conn->cfg.verbose);
-			  continue;
-			}
-
-		      switch (rx_cfg->test)
-			{
-			case SOCK_TEST_TYPE_NONE:
-			case SOCK_TEST_TYPE_ECHO:
-			  sync_config_and_reply (conn, rx_cfg);
-			  break;
-
-			case SOCK_TEST_TYPE_BI:
-			case SOCK_TEST_TYPE_UNI:
-			  stream_test_server_start_stop (conn, rx_cfg);
-			  break;
-
-			case SOCK_TEST_TYPE_EXIT:
-			  printf ("SERVER: Have a great day, "
-				  "connection %d!\n", client_fd);
-			  vppcom_session_close (client_fd);
-			  conn_pool_free (conn);
-			  printf ("SERVER: Closed client fd %d\n", client_fd);
-			  ssm->nfds--;
-			  if (!ssm->nfds)
-			    {
-			      printf ("SERVER: All client connections "
-				      "closed.\n\nSERVER: "
-				      "May the force be with you!\n\n");
-			      goto done;
-			    }
-			  break;
-
-			default:
-			  fprintf (stderr,
-				   "SERVER: ERROR: Unknown test type!\n");
-			  sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			  break;
-			}
-		      continue;
-		    }
-
-		  else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI) ||
-			   (conn->cfg.test == SOCK_TEST_TYPE_BI))
-		    {
-		      stream_test_server (conn, rx_bytes);
-		      continue;
-		    }
-
-		  else if (isascii (conn->buf[0]))
-		    {
-		      /* If it looks vaguely like a string,
-		       * make sure it's terminated.
-		       */
-		      ((char *) conn->buf)[rx_bytes <
-					   conn->buf_size ? rx_bytes :
-					   conn->buf_size - 1] = 0;
-		      printf ("SERVER (fd %d): RX (%d bytes) - '%s'\n",
-			      conn->fd, rx_bytes, conn->buf);
-		    }
-		}
-	      else		// rx_bytes < 0
+	      if (rx_bytes <= 0)
 		{
 		  if (errno == ECONNRESET)
 		    {
-		      printf ("\nSERVER: Connection reset by remote peer.\n"
-			      "  Y'all have a great day now!\n\n");
+		      vtinf ("Connection reset by remote peer.\n");
 		      break;
 		    }
 		  else
 		    continue;
 		}
 
-	      if (isascii (conn->buf[0]))
+	      rx_cfg = (sock_test_cfg_t *) conn->buf;
+	      if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
 		{
-		  /* If it looks vaguely like a string,
-		   * make sure it's terminated
-		   */
-		  ((char *) conn->buf)[rx_bytes <
-				       conn->buf_size ? rx_bytes :
-				       conn->buf_size - 1] = 0;
-		  if (xtra)
-		    fprintf (stderr, "SERVER: ERROR: "
-			     "FIFO not drained in previous test!\n"
-			     "       extra chunks %u (0x%x)\n"
-			     "        extra bytes %lu (0x%lx)\n",
-			     xtra, xtra, xtra_bytes, xtra_bytes);
-
-		  xtra = 0;
-		  xtra_bytes = 0;
-
-		  if (conn->cfg.verbose)
-		    printf ("SERVER (fd %d): Echoing back\n", client_fd);
-
-		  nbytes = strlen ((const char *) conn->buf) + 1;
-
-		  tx_bytes = vcl_test_write (client_fd, conn->buf,
-					     nbytes, &conn->stats,
-					     conn->cfg.verbose);
-		  if (tx_bytes >= 0)
-		    printf ("SERVER (fd %d): TX (%d bytes) - '%s'\n",
-			    conn->fd, tx_bytes, conn->buf);
+		  vcl_test_server_handle_cfg (ssm, rx_cfg, conn, rx_bytes);
+		  if (!ssm->nfds)
+		    {
+		      vtinf ("All client connections closed\n");
+		      vtinf ("May the force be with you!\n");
+		      goto done;
+		    }
+		  continue;
 		}
-	      else		// Extraneous read data from non-echo tests???
+	      else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
+			|| (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		{
-		  xtra++;
-		  xtra_bytes += rx_bytes;
+		  stream_test_server (conn, rx_bytes);
+		  continue;
+		}
+	      else if (isascii (conn->buf[0]))
+		{
+		  vcl_test_server_echo (conn, rx_bytes);
+		}
+	      else
+		{
+		  vtwrn ("FIFO not drained! extra bytes %d", rx_bytes);
 		}
 	    }
 	}
