@@ -472,10 +472,9 @@ vcl_test_server_handle_cfg (vcl_test_server_worker_t * wrk,
       break;
 
     case SOCK_TEST_TYPE_EXIT:
-      vtinf ("Have a great day conn %d!", conn->fd);
+      vtinf ("Have a great day conn %d (closing)!", conn->fd);
       vppcom_session_close (conn->fd);
       conn_pool_free (conn);
-      vtinf ("Closed client fd %d", conn->fd);
       wrk->nfds--;
       break;
 
@@ -644,6 +643,7 @@ main (int argc, char **argv)
   clib_mem_init_thread_safe (0, 64 << 20);
   ssm->cfg.port = SOCK_TEST_SERVER_PORT;
   ssm->cfg.workers = 1;
+  ssm->active_workers = 1;
   vcl_test_server_process_opts (ssm, argc, argv);
 
   rv = vppcom_app_create ("vcl_test_server");
@@ -661,7 +661,7 @@ main (int argc, char **argv)
     }
   vcl_test_server_worker_loop (&ssm->workers[0]);
 
-  while (ssm->active_workers)
+  while (ssm->active_workers > 0)
     ;
 
   vppcom_app_destroy ();

@@ -147,11 +147,10 @@ session_endpoint_update_for_app (session_endpoint_t * sep,
     }
 }
 
-static int
-vnet_bind_i (vnet_bind_args_t * a)
+static inline int
+vnet_bind_inline (vnet_bind_args_t * a)
 {
-  u64 lh, ll_handle = SESSION_INVALID_HANDLE;
-  u32 table_index, fib_proto;
+  u64 ll_handle = SESSION_INVALID_HANDLE;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
@@ -163,16 +162,11 @@ vnet_bind_i (vnet_bind_args_t * a)
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
   app_wrk = application_get_worker (app, a->wrk_map_index);
+  a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
   session_endpoint_update_for_app (&a->sep, app);
   if (!session_endpoint_in_ns (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
-
-  fib_proto = session_endpoint_fib_proto (&a->sep);
-  table_index = application_session_table (app, fib_proto);
-  lh = session_lookup_endpoint_listener (table_index, &a->sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    return VNET_API_ERROR_ADDRESS_IN_USE;
 
   /*
    * Add session endpoint to local session table. Only binds to "inaddr_any"
@@ -181,8 +175,8 @@ vnet_bind_i (vnet_bind_args_t * a)
   if (application_has_local_scope (app)
       && session_endpoint_is_local (&a->sep))
     {
-      if ((rv =
-	   application_start_local_listen (app_wrk, &a->sep, &a->handle)))
+      if ((rv = application_start_local_listen (app, &a->sep_ext,
+						&a->handle)))
 	return rv;
       ll_handle = a->handle;
     }
@@ -195,13 +189,17 @@ vnet_bind_i (vnet_bind_args_t * a)
    */
 
   /* Setup listen path down to transport */
-  rv = app_worker_start_listen (app_wrk, &a->sep, &a->handle);
+  rv = application_start_listen (app, &a->sep_ext, &a->handle);
   if (rv && ll_handle != SESSION_INVALID_HANDLE)
-    session_lookup_del_session_endpoint (table_index, &a->sep);
+    {
+      application_stop_local_listen (a->app_index, a->wrk_map_index,
+				     ll_handle);
+      return rv;
+    }
 
   /*
    * Store in local table listener the index of the transport layer
-   * listener. We'll need local listeners are hit and we need to
+   * listener. We'll need if if local listeners are hit and we need to
    * return global handle
    */
   if (ll_handle != SESSION_INVALID_HANDLE)
@@ -210,18 +208,19 @@ vnet_bind_i (vnet_bind_args_t * a)
       stream_session_t *tl;
       ll = application_get_local_listener_w_handle (ll_handle);
       tl = listen_session_get_from_handle (a->handle);
-      ll->transport_listener_index = tl->session_index;
+      if (ll->transport_listener_index == ~0)
+	ll->transport_listener_index = tl->session_index;
     }
   return rv;
 }
 
-int
-vnet_unbind_i (u32 app_index, session_handle_t handle)
+static inline int
+vnet_unbind_inline (vnet_unbind_args_t * a)
 {
   application_t *app;
   int rv;
 
-  if (!(app = application_get_if_valid (app_index)))
+  if (!(app = application_get_if_valid (a->app_index)))
     {
       SESSION_DBG ("app (%d) not attached", wrk_map_index);
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
@@ -229,7 +228,8 @@ vnet_unbind_i (u32 app_index, session_handle_t handle)
 
   if (application_has_local_scope (app))
     {
-      if ((rv = application_stop_local_listen (handle, app_index)))
+      if ((rv = application_stop_local_listen (a->app_index,
+					       a->wrk_map_index, a->handle)))
 	return rv;
     }
 
@@ -237,7 +237,8 @@ vnet_unbind_i (u32 app_index, session_handle_t handle)
    * Clear the global scope table of the listener
    */
   if (application_has_global_scope (app))
-    return app_worker_stop_listen (handle, app_index);
+    return application_stop_listen (a->app_index, a->wrk_map_index,
+				    a->handle);
   return 0;
 }
 
@@ -247,7 +248,7 @@ application_connect (vnet_connect_args_t * a)
   app_worker_t *server_wrk, *client_wrk;
   u32 table_index, server_index, li;
   stream_session_t *listener;
-  application_t *client;
+  application_t *client, *server;
   local_session_t *ll;
   u8 fib_proto;
   u64 lh;
@@ -283,8 +284,11 @@ application_connect (vnet_connect_args_t * a)
        */
       if (server_index != a->app_index)
 	{
-	  server_wrk = app_worker_get (server_index);
-	  ll = application_get_local_listen_session (server_wrk, li);
+	  server = application_get (server_index);
+	  ll = application_get_local_listen_session (server, li);
+	  listener = (stream_session_t *) ll;
+	  server_wrk = application_listener_select_worker (listener,
+							   1 /* is_local */ );
 	  return application_local_session_connect (client_wrk,
 						    server_wrk, ll,
 						    a->api_context);
@@ -308,13 +312,11 @@ global_scope:
   listener = session_lookup_listener (table_index, &a->sep);
   if (listener)
     {
-      server_wrk = app_worker_get (listener->app_wrk_index);
-      if (server_wrk)
-	{
-	  ll = (local_session_t *) listener;
-	  return application_local_session_connect (client_wrk, server_wrk,
-						    ll, a->api_context);
-	}
+      server_wrk = application_listener_select_worker (listener,
+						       0 /* is_local */ );
+      ll = (local_session_t *) listener;
+      return application_local_session_connect (client_wrk, server_wrk, ll,
+						a->api_context);
     }
 
   /*
@@ -531,7 +533,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
   if (rv)
     return rv;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-  return vnet_bind_i (a);
+  return vnet_bind_inline (a);
 }
 
 int
@@ -553,8 +555,8 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 				      (session_endpoint_t *) & sep);
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
-
-  return vnet_unbind_i (a->app_index, listen_session_get_handle (listener));
+  a->handle = listen_session_get_handle (listener);
+  return vnet_unbind_inline (a);
 }
 
 clib_error_t *
@@ -592,13 +594,6 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
       if (!(ls = application_get_local_session_from_handle (a->handle)))
 	return 0;
 
-      if (ls->app_wrk_index != a->app_index
-	  && ls->client_wrk_index != a->app_index)
-	{
-	  clib_warning ("app %u is neither client nor server for session %u",
-			a->app_index, a->app_index);
-	  return VNET_API_ERROR_INVALID_VALUE;
-	}
       return application_local_session_disconnect (a->app_index, ls);
     }
   else
@@ -620,7 +615,7 @@ clib_error_t *
 vnet_bind (vnet_bind_args_t * a)
 {
   int rv;
-  if ((rv = vnet_bind_i (a)))
+  if ((rv = vnet_bind_inline (a)))
     return clib_error_return_code (0, rv, 0, "bind failed: %d", rv);
   return 0;
 }
@@ -629,7 +624,7 @@ clib_error_t *
 vnet_unbind (vnet_unbind_args_t * a)
 {
   int rv;
-  if ((rv = vnet_unbind_i (a->app_index, a->handle)))
+  if ((rv = vnet_unbind_inline (a)))
     return clib_error_return_code (0, rv, 0, "unbind failed: %d", rv);
   return 0;
 }

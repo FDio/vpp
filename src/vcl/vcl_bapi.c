@@ -138,9 +138,9 @@ static void
 vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
+  int n_fds = 0, *fds = 0;
   vcl_worker_t *wrk;
-  int n_fds = 0;
-  int *fds = 0;
+  u32 wrk_index;
 
   if (mp->retval)
     {
@@ -148,14 +148,14 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    format_api_error, ntohl (mp->retval));
       goto failed;
     }
-  ASSERT (mp->context == mp->wrk_index);
-  if (mp->context != mp->wrk_index)
+  wrk_index = clib_net_to_host_u32 (mp->wrk_index);
+  if (mp->context != wrk_index)
     {
       clib_warning ("VCL<%d>: wrk numbering doesn't match ours: %u, vpp: %u",
-		    getpid (), mp->context, mp->wrk_index);
+		    getpid (), mp->context, wrk_index);
       goto failed;
     }
-  wrk = vcl_worker_get (mp->context);
+  wrk = vcl_worker_get (wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
 
@@ -301,10 +301,31 @@ vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
     VDBG (1, "VCL<%d>: sid %u: unbind succeeded!", getpid (), mp->context);
 }
 
+static void
+vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
+					   mp)
+{
+  if (mp->retval)
+    clib_warning ("VCL<%d>: ERROR: sid %u: disconnect failed: %U",
+		  getpid (), mp->context, format_api_error,
+		  ntohl (mp->retval));
+}
+
+static void
+vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
+{
+  if (mp->retval)
+    clib_warning ("VCL<%d>: ERROR: sid %u: connect failed: %U",
+		  getpid (), mp->context, format_api_error,
+		  ntohl (mp->retval));
+}
+
 #define foreach_sock_msg                                        	\
 _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
+_(CONNECT_SOCK_REPLY, connect_sock_reply)                         	\
+_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
@@ -421,13 +442,12 @@ vppcom_send_connect_sock (vcl_session_t * session)
 {
   vl_api_connect_sock_t *cmp;
 
-  /* Assumes caller as acquired the spinlock: vcm->sessions_lockp */
   cmp = vl_msg_api_alloc (sizeof (*cmp));
   memset (cmp, 0, sizeof (*cmp));
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK);
   cmp->client_index = vcm->my_client_index;
   cmp->context = session->session_index;
-
+  cmp->wrk_index = vcl_get_worker_index ();
   cmp->is_ip4 = session->transport.is_ip4;
   clib_memcpy (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
   cmp->port = session->transport.rmt_port;
@@ -437,12 +457,9 @@ vppcom_send_connect_sock (vcl_session_t * session)
 }
 
 void
-vppcom_send_disconnect_session (u64 vpp_handle, u32 session_index)
+vppcom_send_disconnect_session (u64 vpp_handle)
 {
   vl_api_disconnect_session_t *dmp;
-
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect msg",
-	getpid (), vpp_handle, session_index);
 
   dmp = vl_msg_api_alloc (sizeof (*dmp));
   memset (dmp, 0, sizeof (*dmp));
@@ -467,6 +484,7 @@ vppcom_send_bind_sock (vcl_session_t * session)
   bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
   bmp->client_index = vcm->my_client_index;
   bmp->context = session->session_index;
+  bmp->wrk_index = vcl_get_worker_index ();
   bmp->is_ip4 = session->transport.is_ip4;
   clib_memcpy (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
@@ -485,6 +503,7 @@ vppcom_send_unbind_sock (u64 vpp_handle)
 
   ump->_vl_msg_id = ntohs (VL_API_UNBIND_SOCK);
   ump->client_index = vcm->my_client_index;
+  ump->wrk_index = vcl_get_worker_index ();
   ump->handle = vpp_handle;
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & ump);
 }

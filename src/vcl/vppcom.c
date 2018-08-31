@@ -614,13 +614,13 @@ vppcom_app_attach (void)
 }
 
 static int
-vppcom_session_unbind (u32 session_index)
+vppcom_session_unbind (u32 session_handle)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
   u64 vpp_handle;
 
-  session = vcl_session_get (wrk, session_index);
+  session = vcl_session_get_w_handle (wrk, session_handle);
   if (!session)
     return VPPCOM_EBADFD;
 
@@ -630,7 +630,7 @@ vppcom_session_unbind (u32 session_index)
   session->session_state = STATE_DISCONNECT;
 
   VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending unbind msg! new state"
-	" 0x%x (%s)", getpid (), vpp_handle, session_index, STATE_DISCONNECT,
+	" 0x%x (%s)", getpid (), vpp_handle, session_handle, STATE_DISCONNECT,
 	vppcom_session_state_str (STATE_DISCONNECT));
   vcl_evt (VCL_EVT_UNBIND, session);
   vppcom_send_unbind_sock (vpp_handle);
@@ -639,7 +639,7 @@ vppcom_session_unbind (u32 session_index)
 }
 
 static int
-vppcom_session_disconnect (u32 session_index)
+vppcom_session_disconnect (u32 session_handle)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   svm_msg_q_t *vpp_evt_q;
@@ -647,18 +647,18 @@ vppcom_session_disconnect (u32 session_index)
   session_state_t state;
   u64 vpp_handle;
 
-  session = vcl_session_get (wrk, session_index);
+  session = vcl_session_get_w_handle (wrk, session_handle);
   vpp_handle = session->vpp_handle;
   state = session->session_state;
 
   VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u state 0x%x (%s)", getpid (),
-	vpp_handle, session_index, state, vppcom_session_state_str (state));
+	vpp_handle, session_handle, state, vppcom_session_state_str (state));
 
   if (PREDICT_FALSE (state & STATE_LISTEN))
     {
       clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
 		    "Cannot disconnect a listen socket!",
-		    getpid (), vpp_handle, session_index);
+		    getpid (), vpp_handle, session_handle);
       return VPPCOM_EBADFD;
     }
 
@@ -668,13 +668,13 @@ vppcom_session_disconnect (u32 session_index)
       vcl_send_session_disconnected_reply (vpp_evt_q, vcm->my_client_index,
 					   vpp_handle, 0);
       VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect "
-	    "REPLY...", getpid (), vpp_handle, session_index);
+	    "REPLY...", getpid (), vpp_handle, session_handle);
     }
   else
     {
       VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending disconnect...",
-	    getpid (), vpp_handle, session_index);
-      vppcom_send_disconnect_session (vpp_handle, session_index);
+	    getpid (), vpp_handle, session_handle);
+      vppcom_send_disconnect_session (vpp_handle);
     }
 
   return VPPCOM_OK;
@@ -1142,7 +1142,7 @@ handle:
   vcl_evt (VCL_EVT_ACCEPT, client_session, listen_session,
 	   client_session_index);
 
-  return client_session_index;
+  return vcl_session_handle (client_session);
 }
 
 int
@@ -1653,6 +1653,12 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	    }
 	  break;
 	case SESSION_IO_EVT_CT_TX:
+	  if (svm_fifo_is_empty (e->fifo))
+	    {
+	      svm_fifo_unset_event (e->fifo);
+	      if (svm_fifo_is_empty (e->fifo))
+		break;
+	    }
 	  session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
 	  sid = session->session_index;
 	  if (sid < n_bits && read_map)
@@ -1977,7 +1983,7 @@ vppcom_epoll_create (void)
   VDBG (0, "VCL<%d>: Created vep_idx %u / sid %u!",
 	getpid (), vep_session->session_index, vep_session->session_index);
 
-  return (vep_session->session_index);
+  return vcl_session_handle (vep_session);
 }
 
 int
@@ -2037,7 +2043,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       if (vep_session->vep.next_sh != ~0)
 	{
 	  vcl_session_t *next_session;
-	  next_session = vcl_session_get (wrk, vep_session->vep.next_sh);
+	  next_session = vcl_session_get_w_handle (wrk,
+						   vep_session->vep.next_sh);
 	  if (PREDICT_FALSE (!next_session))
 	    {
 	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_ADD: Invalid "
@@ -2121,7 +2128,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       else
 	{
 	  vcl_session_t *prev_session;
-	  prev_session = vcl_session_get (wrk, session->vep.prev_sh);
+	  prev_session = vcl_session_get_w_handle (wrk, session->vep.prev_sh);
 	  if (PREDICT_FALSE (!prev_session))
 	    {
 	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_DEL: Invalid "
@@ -2135,7 +2142,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       if (session->vep.next_sh != ~0)
 	{
 	  vcl_session_t *next_session;
-	  next_session = vcl_session_get (wrk, session->vep.next_sh);
+	  next_session = vcl_session_get_w_handle (wrk, session->vep.next_sh);
 	  if (PREDICT_FALSE (!next_session))
 	    {
 	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_DEL: Invalid "
@@ -2314,7 +2321,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  session_events = session->vep.ev.events;
 	  break;
 	default:
-	  clib_warning ("unhandled: %u", e->event_type);
+	  VDBG (0, "unhandled: %u", e->event_type);
 	  svm_msg_q_free_msg (mq, msg);
 	  continue;
 	}
