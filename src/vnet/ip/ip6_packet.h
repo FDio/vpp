@@ -347,6 +347,18 @@ ip6_is_solicited_node_multicast_address (const ip6_address_t * a)
 	  && a->as_u8[12] == 0xff);
 }
 
+always_inline u32
+ip6_address_hash_to_u32 (const ip6_address_t * a)
+{
+  return (a->as_u32[0] ^ a->as_u32[1] ^ a->as_u32[2] ^ a->as_u32[3]);
+}
+
+always_inline u64
+ip6_address_hash_to_u64 (const ip6_address_t * a)
+{
+  return (a->as_u64[0] ^ a->as_u64[1]);
+}
+
 typedef struct
 {
   /* 4 bit version, 8 bit traffic class and 20 bit flow label. */
