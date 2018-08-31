@@ -49,6 +49,7 @@
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 #include <vnet/util/radix.h>
+#include <vnet/util/throttle.h>
 
 /*
  * Default size of the ip6 fib hash table
@@ -220,10 +221,7 @@ typedef struct ip6_main_t
   u8 hbh_enabled;
 
   /** ND throttling */
-  uword **nd_throttle_bitmaps;
-  u64 *nd_throttle_seeds;
-  f64 *nd_throttle_last_seed_change_time;
-
+  throttle_t nd_throttle;
 } ip6_main_t;
 
 #define ND_THROTTLE_BITS 512

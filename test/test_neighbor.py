@@ -6,11 +6,12 @@ from socket import AF_INET, AF_INET6, inet_pton
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
-    VppIpTable
+    VppIpTable, DpoProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 
@@ -1321,20 +1322,50 @@ class ARPTestCase(VppTestCase):
         """ Incomplete Entries """
 
         #
-        # ensure that we throttle the ARP requests
+        # ensure that we throttle the ARP and ND requests
         #
         self.pg0.generate_remote_hosts(2)
 
+        #
+        # IPv4/ARP
+        #
         ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
                                  [VppRoutePath(self.pg0.remote_hosts[1].ip4,
-                                               self.pg0.sw_if_index,
-                                               labels=[55])])
+                                               self.pg0.sw_if_index)])
         ip_10_0_0_1.add_vpp_config()
 
         p1 = (Ether(dst=self.pg1.local_mac,
                     src=self.pg1.remote_mac) /
               IP(src=self.pg1.remote_ip4,
                  dst="10.0.0.1") /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+
+        self.pg1.add_stream(p1 * 257)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0._get_capture(1)
+
+        #
+        # how many we get is going to be dependent on the time for packet
+        # processing but it should be small
+        #
+        self.assertTrue(len(rx) < 64)
+
+        #
+        # IPv6/ND
+        #
+        ip_10_1 = VppIpRoute(self, "10::1", 128,
+                             [VppRoutePath(self.pg0.remote_hosts[1].ip6,
+                                           self.pg0.sw_if_index,
+                                           proto=DpoProto.DPO_PROTO_IP6)],
+                             is_ip6=1)
+        ip_10_1.add_vpp_config()
+
+        p1 = (Ether(dst=self.pg1.local_mac,
+                    src=self.pg1.remote_mac) /
+              IPv6(src=self.pg1.remote_ip6,
+                   dst="10::1") /
               UDP(sport=1234, dport=1234) /
               Raw())
 

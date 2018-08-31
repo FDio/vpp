@@ -17,6 +17,7 @@
 #define __THROTTLE_H__
 
 #include <vlib/vlib.h>
+#include <vppinfra/xxhash.h>
 
 /**
  * @brief A throttle
@@ -28,7 +29,7 @@ typedef struct throttle_t_
 {
   f64 time;
   uword **bitmaps;
-  u32 *seeds;
+  u64 *seeds;
   f64 *last_seed_change_time;
 } throttle_t;
 
@@ -36,12 +37,12 @@ typedef struct throttle_t_
 
 extern void throttle_init (throttle_t * t, u32 n_threads, f64 time);
 
-always_inline u32
+always_inline u64
 throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
 {
   if (time_now - t->last_seed_change_time[thread_index] > t->time)
     {
-      (void) random_u32 (&t->seeds[thread_index]);
+      (void) random_u64 (&t->seeds[thread_index]);
       clib_memset (t->bitmaps[thread_index], 0, THROTTLE_BITS / BITS (u8));
 
       t->last_seed_change_time[thread_index] = time_now;
@@ -50,13 +51,14 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
 }
 
 always_inline int
-throttle_check (throttle_t * t, u32 thread_index, u32 hash, u32 seed)
+throttle_check (throttle_t * t, u32 thread_index, u64 hash, u64 seed)
 {
   int drop;
   uword m;
   u32 w;
 
-  hash ^= seed;
+  hash = clib_xxhash (hash ^ seed);
+
   /* Select bit number */
   hash &= THROTTLE_BITS - 1;
   w = hash / BITS (uword);
