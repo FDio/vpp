@@ -34,3 +34,18 @@ function(message)
   endif()
 endfunction()
 
+##############################################################################
+# aligned config output
+##############################################################################
+function(pr desc val)
+  string(ASCII 27 esc)
+  set(reset "${esc}[m")
+  set(cyan "${esc}[36m")
+
+  string(LENGTH ${desc} len)
+  while (len LESS 20)
+    set (desc "${desc} ")
+    string(LENGTH ${desc} len)
+  endwhile()
+  _message("${cyan}${desc}${reset}: ${val}")
+endfunction()

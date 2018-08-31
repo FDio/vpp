@@ -16,10 +16,21 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(vpp C)
 
 include(CheckCCompilerFlag)
-
 include(cmake/message.cmake)
 include(cmake/cpu.cmake)
 include(cmake/ccache.cmake)
+
+##############################################################################
+# VPP Version
+##############################################################################
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND scripts/version
+  OUTPUT_VARIABLE VPP_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
+list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
 
 ##############################################################################
 # build config
@@ -40,10 +51,6 @@ endif()
 ##############################################################################
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIB_DIR_NAME}")
 set(CMAKE_INSTALL_MESSAGE NEVER)
-
-message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
-message(STATUS "We are on a ${CMAKE_SYSTEM_NAME} system")
-message(STATUS "The host processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 include_directories (
 	${CMAKE_SOURCE_DIR}
@@ -74,3 +81,32 @@ foreach(
 endforeach()
 
 include(cmake/pack.cmake)
+##############################################################################
+# detect if we are inside git repo and add configure dependency
+##############################################################################
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND git rev-parse --show-toplevel
+  OUTPUT_VARIABLE VPP_GIT_TOPLEVEL_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if (VPP_GIT_TOPLEVEL_DIR)
+  set_property(
+    DIRECTORY APPEND PROPERTY
+    CMAKE_CONFIGURE_DEPENDS ${VPP_GIT_TOPLEVEL_DIR}/.git/index
+  )
+endif()
+
+##############################################################################
+# print configuration
+##############################################################################
+message(STATUS "Configuration:")
+pr("VPP version" "${VPP_VERSION}")
+pr("VPP library version" "${VPP_LIB_VERSION}")
+pr("GIT toplevel dir" "${VPP_GIT_TOPLEVEL_DIR}")
+pr("C flags" "${CMAKE_C_FLAGS}")
+pr("Linker flags" "${CMAKE_LINKER_FLAGS}")
+pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
+pr("Build type" "${CMAKE_BUILD_TYPE}")
+pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
