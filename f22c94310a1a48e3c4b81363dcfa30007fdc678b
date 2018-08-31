@@ -94,6 +94,30 @@
       "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8051a802_09d74627",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-08-31T01:34:35Z",
+      "side": 1,
+      "message": "Session layer sets both, i.e., one can\u0027t be set without the other. So either one works for me.",
+      "parentUuid": "2d59d4e0_a3745f0e",
+      "range": {
+        "startLine": 254,
+        "startChar": 22,
+        "endLine": 254,
+        "endChar": 38
+      },
+      "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
