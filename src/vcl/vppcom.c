@@ -2314,7 +2314,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  session_events = session->vep.ev.events;
 	  break;
 	default:
-	  clib_warning ("unhandled: %u", e->event_type);
+	  VDBG (0, "unhandled: %u", e->event_type);
 	  svm_msg_q_free_msg (mq, msg);
 	  continue;
 	}

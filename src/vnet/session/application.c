@@ -516,6 +516,17 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   return 0;
 }
 
+application_t *
+app_worker_get_app (u32 wrk_index)
+{
+  app_worker_t *app_wrk;
+  app_wrk = app_worker_get_if_valid (wrk_index);
+  if (!app_wrk)
+    return 0;
+  return application_get_if_valid (app_wrk->app_index);
+}
+
+
 static segment_manager_t *
 application_alloc_segment_manager (app_worker_t * app_wrk)
 {
@@ -548,13 +559,13 @@ app_worker_start_listen (app_worker_t * app_wrk, session_endpoint_t * sep,
 			 session_handle_t * res)
 {
   segment_manager_t *sm;
-  stream_session_t *s;
+  stream_session_t *ls;
   session_handle_t handle;
   session_type_t sst;
 
   sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
-  s = listen_session_new (0, sst);
-  s->app_wrk_index = app_wrk->wrk_index;
+  ls = listen_session_new (0, sst);
+  ls->app_wrk_index = app_wrk->wrk_index;
 
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager. */
@@ -563,10 +574,10 @@ app_worker_start_listen (app_worker_t * app_wrk, session_endpoint_t * sep,
 
   /* Add to app's listener table. Useful to find all child listeners
    * when app goes down, although, just for unbinding this is not needed */
-  handle = listen_session_get_handle (s);
+  handle = listen_session_get_handle (ls);
   hash_set (app_wrk->listeners_table, handle, segment_manager_index (sm));
 
-  if (stream_session_listen (s, sep))
+  if (stream_session_listen (ls, sep))
     {
       segment_manager_del (sm);
       hash_unset (app_wrk->listeners_table, handle);
@@ -577,7 +588,7 @@ app_worker_start_listen (app_worker_t * app_wrk, session_endpoint_t * sep,
   return 0;
 
 err:
-  listen_session_del (s);
+  listen_session_del (ls);
   return -1;
 }
 
@@ -702,6 +713,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       a->segment = &fs->ssvm;
       segment_manager_segment_reader_unlock (sm);
       a->evt_q = app_wrk->event_queue;
+      a->wrk_index = app_wrk->wrk_map_index;
     }
   else
     {

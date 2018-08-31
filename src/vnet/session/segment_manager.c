@@ -34,7 +34,8 @@ static u32 default_app_evt_queue_size = 128;
 segment_manager_properties_t *
 segment_manager_properties_get (segment_manager_t * sm)
 {
-  return application_get_segment_manager_properties (sm->app_wrk_index);
+  app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
+  return application_get_segment_manager_properties (app_wrk->app_index);
 }
 
 segment_manager_properties_t *

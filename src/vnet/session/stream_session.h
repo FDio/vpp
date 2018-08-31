@@ -60,8 +60,14 @@ typedef struct _stream_session_t
   /** Session index in per_thread pool */
   u32 session_index;
 
-  /** app worker pool index */
-  u32 app_wrk_index;
+  union
+  {
+    /** app worker pool index for established */
+    u32 app_wrk_index;
+
+    /** app index for vc listeners */
+    u32 app_index;
+  };
 
   u8 thread_index;
 
