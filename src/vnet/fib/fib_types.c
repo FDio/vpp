@@ -527,6 +527,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = DPO_PROTO_IP4;
             *payload_proto = DPO_PROTO_IP4;
+            fi = fib_table_find (FIB_PROTOCOL_IP4, rpath->frp_fib_index);
+            if (~0 == fi)
+                return 0;
+            rpath->frp_fib_index = fi;
         }
         else if (unformat (input,
                            "ip6-lookup-in-table %d",
@@ -534,6 +538,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = DPO_PROTO_IP6;
             *payload_proto = DPO_PROTO_IP6;
+            fi = fib_table_find (FIB_PROTOCOL_IP6, rpath->frp_fib_index);
+            if (~0 == fi)
+                return 0;
+            rpath->frp_fib_index = fi;
         }
         else if (unformat (input,
                            "mpls-lookup-in-table %d",
@@ -541,6 +549,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = DPO_PROTO_MPLS;
             *payload_proto = DPO_PROTO_MPLS;
+            fi = fib_table_find (FIB_PROTOCOL_MPLS, rpath->frp_fib_index);
+            if (~0 == fi)
+                return 0;
+            rpath->frp_fib_index = fi;
         }
         else if (unformat (input, "src-lookup"))
         {
