@@ -277,16 +277,9 @@ ip6_main_loop_enter (vlib_main_t * vm)
 {
   ip6_main_t *im = &ip6_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
-  u32 n_vlib_mains = tm->n_vlib_mains;
-  int i;
 
-  vec_validate (im->nd_throttle_bitmaps, n_vlib_mains);
-  vec_validate (im->nd_throttle_seeds, n_vlib_mains);
-  vec_validate (im->nd_throttle_last_seed_change_time, n_vlib_mains);
+  throttle_init (&im->nd_throttle, tm->n_vlib_mains, 1e-3);
 
-  for (i = 0; i < n_vlib_mains; i++)
-    vec_validate (im->nd_throttle_bitmaps[i],
-		  (ND_THROTTLE_BITS / BITS (uword)) - 1);
   return 0;
 }
 

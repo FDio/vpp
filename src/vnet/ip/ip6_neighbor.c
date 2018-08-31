@@ -3163,7 +3163,6 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   ip_lookup_main_t *lm = &im->lookup_main;
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop;
-  f64 time_now;
   u64 seed;
   u32 thread_index = vm->thread_index;
   int bogus_length;
@@ -3172,16 +3171,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  time_now = vlib_time_now (vm);
-  if (time_now - im->nd_throttle_last_seed_change_time[thread_index] > 1e-3)
-    {
-      (void) random_u64 (&im->nd_throttle_seeds[thread_index]);
-      clib_memset (im->nd_throttle_bitmaps[thread_index], 0,
-		   ND_THROTTLE_BITS / BITS (u8));
-
-      im->nd_throttle_last_seed_change_time[thread_index] = time_now;
-    }
-  seed = im->nd_throttle_seeds[thread_index];
+  seed = throttle_seed (&im->nd_throttle, thread_index, vlib_time_now (vm));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -3193,15 +3183,12 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  vlib_buffer_t *p0;
-	  ip6_header_t *ip0;
-	  u32 pi0, adj_index0, w0, sw_if_index0, drop0;
-	  u64 r0;
-	  uword m0;
-	  ip_adjacency_t *adj0;
+	  u32 pi0, adj_index0, sw_if_index0, drop0, r0, next0;
 	  vnet_hw_interface_t *hw_if0;
 	  ip6_radv_t *radv_info;
-	  u32 next0;
+	  ip_adjacency_t *adj0;
+	  vlib_buffer_t *p0;
+	  ip6_header_t *ip0;
 
 	  pi0 = from[0];
 
@@ -3224,18 +3211,10 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  /* Compute the ND throttle bitmap hash */
-	  r0 = ip0->dst_address.as_u64[0] ^ ip0->dst_address.as_u64[1] ^ seed;
+	  /* combine the address and interface for a hash */
+	  r0 = ip6_address_hash_to_u64 (&ip0->dst_address) ^ sw_if_index0;
 
-	  /* Find the word and bit */
-	  r0 &= ND_THROTTLE_BITS - 1;
-	  w0 = r0 / BITS (uword);
-	  m0 = (uword) 1 << (r0 % BITS (uword));
-
-	  /* If the bit is set, drop the ND request */
-	  drop0 = (im->nd_throttle_bitmaps[thread_index][w0] & m0) != 0;
-	  /* (unconditionally) mark the bit "inuse" */
-	  im->nd_throttle_bitmaps[thread_index][w0] |= m0;
+	  drop0 = throttle_check (&im->nd_throttle, thread_index, r0, seed);
 
 	  from += 1;
 	  n_left_from -= 1;
