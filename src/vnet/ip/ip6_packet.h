@@ -108,8 +108,8 @@ to_ip46 (u32 is_ipv6, u8 * buf)
 
 
 always_inline void
-ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
-		   u32 fib_index)
+ip6_addr_fib_init (ip6_address_fib_t * addr_fib,
+		   const ip6_address_t * address, u32 fib_index)
 {
   addr_fib->ip6_addr = *address;
   addr_fib->fib_index = fib_index;
@@ -155,13 +155,13 @@ typedef enum
 } ip6_multicast_link_local_group_id_t;
 
 always_inline uword
-ip6_address_is_multicast (ip6_address_t * a)
+ip6_address_is_multicast (const ip6_address_t * a)
 {
   return a->as_u8[0] == 0xff;
 }
 
 always_inline uword
-ip46_address_is_multicast (ip46_address_t * a)
+ip46_address_is_multicast (const ip46_address_t * a)
 {
   return ip46_address_is_ip4 (a) ? ip4_address_is_multicast (&a->ip4) :
     ip6_address_is_multicast (&a->ip6);
@@ -191,7 +191,7 @@ ip6_set_solicited_node_multicast_address (ip6_address_t * a, u32 id)
 
 always_inline void
 ip6_link_local_address_from_ethernet_address (ip6_address_t * a,
-					      u8 * ethernet_address)
+					      const u8 * ethernet_address)
 {
   a->as_u64[0] = a->as_u64[1] = 0;
   a->as_u16[0] = clib_host_to_net_u16 (0xfe80);
@@ -218,7 +218,7 @@ ip6_multicast_ethernet_address (u8 * ethernet_address, u32 group_id)
 }
 
 always_inline uword
-ip6_address_is_equal (ip6_address_t * a, ip6_address_t * b)
+ip6_address_is_equal (const ip6_address_t * a, const ip6_address_t * b)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
@@ -228,8 +228,9 @@ ip6_address_is_equal (ip6_address_t * a, ip6_address_t * b)
 }
 
 always_inline uword
-ip6_address_is_equal_masked (ip6_address_t * a, ip6_address_t * b,
-			     ip6_address_t * mask)
+ip6_address_is_equal_masked (const ip6_address_t * a,
+			     const ip6_address_t * b,
+			     const ip6_address_t * mask)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
@@ -245,7 +246,7 @@ ip6_address_is_equal_masked (ip6_address_t * a, ip6_address_t * b,
 }
 
 always_inline void
-ip6_address_mask (ip6_address_t * a, ip6_address_t * mask)
+ip6_address_mask (ip6_address_t * a, const ip6_address_t * mask)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
@@ -276,7 +277,7 @@ ip6_address_mask_from_width (ip6_address_t * a, u32 width)
 }
 
 always_inline uword
-ip6_address_is_zero (ip6_address_t * a)
+ip6_address_is_zero (const ip6_address_t * a)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
@@ -287,21 +288,18 @@ ip6_address_is_zero (ip6_address_t * a)
 
 /* Check for unspecified address ::0 */
 always_inline uword
-ip6_address_is_unspecified (ip6_address_t * a)
+ip6_address_is_unspecified (const ip6_address_t * a)
 {
   return ip6_address_is_zero (a);
 }
 
 /* Check for loopback address ::1 */
 always_inline uword
-ip6_address_is_loopback (ip6_address_t * a)
+ip6_address_is_loopback (const ip6_address_t * a)
 {
-  uword is_loopback;
-  u8 save = a->as_u8[15];
-  a->as_u8[15] = save ^ 1;
-  is_loopback = ip6_address_is_zero (a);
-  a->as_u8[15] = save;
-  return is_loopback;
+  return (a->as_u64[0] == 0 &&
+	  a->as_u32[2] == 0 &&
+	  a->as_u16[6] == 0 && a->as_u8[14] == 0 && a->as_u8[15] == 1);
 }
 
 /* Check for link local unicast fe80::/10. */
@@ -313,21 +311,21 @@ ip6_address_is_link_local_unicast (const ip6_address_t * a)
 
 /* Check for unique local unicast fc00::/7. */
 always_inline uword
-ip6_address_is_local_unicast (ip6_address_t * a)
+ip6_address_is_local_unicast (const ip6_address_t * a)
 {
   return (a->as_u8[0] & 0xfe) == 0xfc;
 }
 
 /* Check for unique global unicast 2000::/3. */
 always_inline uword
-ip6_address_is_global_unicast (ip6_address_t * a)
+ip6_address_is_global_unicast (const ip6_address_t * a)
 {
   return (a->as_u8[0] & 0xe0) == 0x20;
 }
 
 /* Check for solicited node multicast 0xff02::1:ff00:0/104 */
 always_inline uword
-ip6_is_solicited_node_multicast_address (ip6_address_t * a)
+ip6_is_solicited_node_multicast_address (const ip6_address_t * a)
 {
   return (a->as_u32[0] == clib_host_to_net_u32 (0xff020000)
 	  && a->as_u32[1] == 0

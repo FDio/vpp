@@ -64,8 +64,8 @@ typedef struct
 } ip4_address_fib_t;
 
 always_inline void
-ip4_addr_fib_init (ip4_address_fib_t * addr_fib, ip4_address_t * address,
-		   u32 fib_index)
+ip4_addr_fib_init (ip4_address_fib_t * addr_fib,
+		   const ip4_address_t * address, u32 fib_index)
 {
   clib_memcpy (&addr_fib->ip4_addr, address, sizeof (addr_fib->ip4_addr));
   addr_fib->fib_index = fib_index;
@@ -84,7 +84,7 @@ typedef struct
 
 /* If address is a valid netmask, return length of mask. */
 always_inline uword
-ip4_address_netmask_length (ip4_address_t * a)
+ip4_address_netmask_length (const ip4_address_t * a)
 {
   uword result = 0;
   uword i;
@@ -196,27 +196,27 @@ typedef union
 #define IP4_ROUTER_ALERT_OPTION 20
 
 always_inline int
-ip4_get_fragment_offset (ip4_header_t * i)
+ip4_get_fragment_offset (const ip4_header_t * i)
 {
   return clib_net_to_host_u16 (i->flags_and_fragment_offset) & 0x1fff;
 }
 
 always_inline int
-ip4_get_fragment_more (ip4_header_t * i)
+ip4_get_fragment_more (const ip4_header_t * i)
 {
   return clib_net_to_host_u16 (i->flags_and_fragment_offset) &
     IP4_HEADER_FLAG_MORE_FRAGMENTS;
 }
 
 always_inline int
-ip4_is_fragment (ip4_header_t * i)
+ip4_is_fragment (const ip4_header_t * i)
 {
   return (i->flags_and_fragment_offset &
 	  clib_net_to_host_u16 (0x1fff | IP4_HEADER_FLAG_MORE_FRAGMENTS));
 }
 
 always_inline int
-ip4_is_first_fragment (ip4_header_t * i)
+ip4_is_first_fragment (const ip4_header_t * i)
 {
   return (i->flags_and_fragment_offset &
 	  clib_net_to_host_u16 (0x1fff | IP4_HEADER_FLAG_MORE_FRAGMENTS)) ==
@@ -225,13 +225,13 @@ ip4_is_first_fragment (ip4_header_t * i)
 
 /* Fragment offset in bytes. */
 always_inline int
-ip4_get_fragment_offset_bytes (ip4_header_t * i)
+ip4_get_fragment_offset_bytes (const ip4_header_t * i)
 {
   return 8 * ip4_get_fragment_offset (i);
 }
 
 always_inline int
-ip4_header_bytes (ip4_header_t * i)
+ip4_header_bytes (const ip4_header_t * i)
 {
   return sizeof (u32) * (i->ip_version_and_header_length & 0xf);
 }
@@ -314,7 +314,7 @@ do {									\
 } while (0)
 
 always_inline uword
-ip4_address_is_multicast (ip4_address_t * a)
+ip4_address_is_multicast (const ip4_address_t * a)
 {
   return (a->data[0] & 0xf0) == 0xe0;
 }
@@ -328,9 +328,10 @@ ip4_multicast_address_set_for_group (ip4_address_t * a,
 }
 
 always_inline void
-ip4_multicast_ethernet_address (u8 * ethernet_address, ip4_address_t * a)
+ip4_multicast_ethernet_address (u8 * ethernet_address,
+				const ip4_address_t * a)
 {
-  u8 *d = a->as_u8;
+  const u8 *d = a->as_u8;
 
   ethernet_address[0] = 0x01;
   ethernet_address[1] = 0x00;
