@@ -516,6 +516,17 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   return 0;
 }
 
+application_t *
+app_worker_get_app (u32 wrk_index)
+{
+  app_worker_t *app_wrk;
+  app_wrk = app_worker_get_if_valid (wrk_index);
+  if (!app_wrk)
+    return 0;
+  return application_get_if_valid (app_wrk->app_index);
+}
+
+
 static segment_manager_t *
 application_alloc_segment_manager (app_worker_t * app_wrk)
 {
@@ -702,6 +713,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       a->segment = &fs->ssvm;
       segment_manager_segment_reader_unlock (sm);
       a->evt_q = app_wrk->event_queue;
+      a->wrk_index = app_wrk->wrk_map_index;
     }
   else
     {

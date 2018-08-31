@@ -147,6 +147,21 @@ session_endpoint_update_for_app (session_endpoint_t * sep,
     }
 }
 
+static u8
+app_multiple_bind (application_t *app, session_handle_t lh)
+{
+  app_worker_t *app_wrk;
+  application_t *owner;
+  stream_session_t *listener;
+  listener = listen_session_get_from_handle (lh);
+  owner = app_worker_get_app (listener->app_wrk_index);
+  if (owner->app_index != app->app_index)
+    return -1;
+  return 0;
+
+  return VNET_API_ERROR_ADDRESS_IN_USE;
+}
+
 static int
 vnet_bind_i (vnet_bind_args_t * a)
 {
@@ -172,7 +187,7 @@ vnet_bind_i (vnet_bind_args_t * a)
   table_index = application_session_table (app, fib_proto);
   lh = session_lookup_endpoint_listener (table_index, &a->sep, 1);
   if (lh != SESSION_INVALID_HANDLE)
-    return VNET_API_ERROR_ADDRESS_IN_USE;
+    return app_multiple_bind (app, lh);
 
   /*
    * Add session endpoint to local session table. Only binds to "inaddr_any"
@@ -181,8 +196,8 @@ vnet_bind_i (vnet_bind_args_t * a)
   if (application_has_local_scope (app)
       && session_endpoint_is_local (&a->sep))
     {
-      if ((rv =
-	   application_start_local_listen (app_wrk, &a->sep, &a->handle)))
+      if ((rv = application_start_local_listen (app_wrk, &a->sep,
+                                                &a->handle)))
 	return rv;
       ll_handle = a->handle;
     }

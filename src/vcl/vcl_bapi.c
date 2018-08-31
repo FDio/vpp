@@ -138,9 +138,9 @@ static void
 vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
+  int n_fds = 0, *fds = 0;
   vcl_worker_t *wrk;
-  int n_fds = 0;
-  int *fds = 0;
+  u32 wrk_index;
 
   if (mp->retval)
     {
@@ -148,14 +148,14 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    format_api_error, ntohl (mp->retval));
       goto failed;
     }
-  ASSERT (mp->context == mp->wrk_index);
-  if (mp->context != mp->wrk_index)
+  wrk_index = clib_net_to_host_u32 (mp->wrk_index);
+  if (mp->context != wrk_index)
     {
       clib_warning ("VCL<%d>: wrk numbering doesn't match ours: %u, vpp: %u",
-		    getpid (), mp->context, mp->wrk_index);
+		    getpid (), mp->context, wrk_index);
       goto failed;
     }
-  wrk = vcl_worker_get (mp->context);
+  wrk = vcl_worker_get (wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
 
@@ -467,6 +467,7 @@ vppcom_send_bind_sock (vcl_session_t * session)
   bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
   bmp->client_index = vcm->my_client_index;
   bmp->context = session->session_index;
+  bmp->wrk_index = vcl_get_worker_index ();
   bmp->is_ip4 = session->transport.is_ip4;
   clib_memcpy (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
