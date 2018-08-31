@@ -505,9 +505,9 @@ session_enqueue_notify (stream_session_t * s, u8 lock)
   /* *INDENT-ON* */
 
   if (lock)
-    return application_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
+    return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
 
-  return application_send_event (app, s, FIFO_EVENT_APP_RX);
+  return app_worker_send_event (app, s, FIFO_EVENT_APP_RX);
 }
 
 int
@@ -520,9 +520,9 @@ session_dequeue_notify (stream_session_t * s)
     return -1;
 
   if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
-    return application_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
+    return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
 
-  return application_send_event (app, s, FIFO_EVENT_APP_TX);
+  return app_worker_send_event (app, s, FIFO_EVENT_APP_TX);
 }
 
 /**
@@ -971,103 +971,35 @@ session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   return session_open_srv_fns[tst] (app_wrk_index, rmt, opaque);
 }
 
-int
-session_listen_vc (stream_session_t * s, session_endpoint_t * sep)
-{
-  transport_connection_t *tc;
-  u32 tci;
-
-  /* Transport bind/listen  */
-  tci = tp_vfts[sep->transport_proto].bind (s->session_index,
-					    session_endpoint_to_transport
-					    (sep));
-
-  if (tci == (u32) ~ 0)
-    return -1;
-
-  /* Attach transport to session */
-  s->connection_index = tci;
-  tc = tp_vfts[sep->transport_proto].get_listener (tci);
-
-  /* Weird but handle it ... */
-  if (tc == 0)
-    return -1;
-
-  /* Add to the main lookup table */
-  session_lookup_add_connection (tc, s->session_index);
-  return 0;
-}
-
-int
-session_listen_cl (stream_session_t * s, session_endpoint_t * sep)
-{
-  transport_connection_t *tc;
-  app_worker_t *server;
-  segment_manager_t *sm;
-  u32 tci;
-
-  /* Transport bind/listen  */
-  tci = tp_vfts[sep->transport_proto].bind (s->session_index,
-					    session_endpoint_to_transport
-					    (sep));
-
-  if (tci == (u32) ~ 0)
-    return -1;
-
-  /* Attach transport to session */
-  s->connection_index = tci;
-  tc = tp_vfts[sep->transport_proto].get_listener (tci);
-
-  /* Weird but handle it ... */
-  if (tc == 0)
-    return -1;
-
-  server = app_worker_get (s->app_wrk_index);
-  sm = app_worker_get_listen_segment_manager (server, s);
-  if (session_alloc_fifos (sm, s))
-    return -1;
-
-  /* Add to the main lookup table */
-  session_lookup_add_connection (tc, s->session_index);
-  return 0;
-}
-
-int
-session_listen_app (stream_session_t * s, session_endpoint_t * sep)
-{
-  session_endpoint_extended_t esep;
-  clib_memcpy (&esep, sep, sizeof (*sep));
-  esep.app_wrk_index = s->app_wrk_index;
-
-  return tp_vfts[sep->transport_proto].bind (s->session_index,
-					     (transport_endpoint_t *) & esep);
-}
-
-typedef int (*session_listen_service_fn) (stream_session_t *,
-					  session_endpoint_t *);
-
-/* *INDENT-OFF* */
-static session_listen_service_fn
-session_listen_srv_fns[TRANSPORT_N_SERVICES] = {
-  session_listen_vc,
-  session_listen_cl,
-  session_listen_app,
-};
-/* *INDENT-ON* */
-
 /**
- * Ask transport to listen on local transport endpoint.
+ * Ask transport to listen on session endpoint.
  *
  * @param s Session for which listen will be called. Note that unlike
  * 	    established sessions, listen sessions are not associated to a
  * 	    thread.
- * @param tep Local endpoint to be listened on.
+ * @param sep Local endpoint to be listened on.
  */
 int
-stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
+session_listen (stream_session_t * ls, session_endpoint_extended_t * sep)
 {
-  transport_service_type_t tst = tp_vfts[sep->transport_proto].service_type;
-  return session_listen_srv_fns[tst] (s, sep);
+  transport_connection_t *tc;
+  transport_endpoint_t *tep;
+  u32 tc_index;
+
+  /* Transport bind/listen */
+  tep = session_endpoint_to_transport (sep);
+  tc_index = tp_vfts[sep->transport_proto].bind (ls->session_index, tep);
+
+  if (tc_index == (u32) ~ 0)
+    return -1;
+
+  /* Attach transport to session */
+  ls->connection_index = tc_index;
+
+  /* Add to the main lookup table after transport was initialized */
+  tc = tp_vfts[sep->transport_proto].get_listener (tc_index);
+  session_lookup_add_connection (tc, ls->session_index);
+  return 0;
 }
 
 /**
@@ -1076,7 +1008,7 @@ stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
  * @param s Session to stop listening on. It must be in state LISTENING.
  */
 int
-stream_session_stop_listen (stream_session_t * s)
+session_stop_listen (stream_session_t * s)
 {
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *tc;

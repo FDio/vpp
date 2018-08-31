@@ -43,10 +43,19 @@ session_mq_accepted_reply_handler (void *data)
 
   if (session_handle_is_local (mp->handle))
     {
+      app_worker_t *app_wrk;
+      application_t *app;
       ls = application_get_local_session_from_handle (mp->handle);
-      if (!ls || ls->app_wrk_index != mp->context)
+      if (!ls)
 	{
-	  clib_warning ("server %u doesn't own local handle %llu",
+	  clib_warning ("unknown local handle 0x%lx", mp->handle);
+	  return;
+	}
+      app_wrk = app_worker_get (ls->app_wrk_index);
+      app = application_get (app_wrk->app_index);
+      if (app->app_index != mp->context)
+	{
+	  clib_warning ("server %u doesn't own local handle 0x%lx",
 			mp->context, mp->handle);
 	  return;
 	}
@@ -72,7 +81,7 @@ session_mq_accepted_reply_handler (void *data)
 	{
 	  app_worker_t *app;
 	  app = app_worker_get (s->app_wrk_index);
-	  application_send_event (app, s, FIFO_EVENT_APP_RX);
+	  app_worker_send_event (app, s, FIFO_EVENT_APP_RX);
 	}
     }
 }
@@ -726,7 +735,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  stream_session_t * s, int *n_tx_pkts)
 {
   application_t *app;
-  app = application_get (s->opaque);
+  app = application_get (s->t_app_index);
   svm_fifo_unset_event (s->server_tx_fifo);
   return app->cb_fns.builtin_app_tx_callback (s);
 }

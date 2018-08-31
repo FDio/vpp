@@ -49,7 +49,7 @@ tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type)
 static inline int
 tls_add_app_q_evt (app_worker_t * app, stream_session_t * app_session)
 {
-  return application_send_event (app, app_session, FIFO_EVENT_APP_RX);
+  return app_worker_send_event (app, app_session, FIFO_EVENT_APP_RX);
 }
 
 u32
@@ -168,7 +168,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
   sm = app_worker_get_listen_segment_manager (app_wrk, app_listener);
-  app_session->opaque = tls_main.app_index;
+  app_session->t_app_index = tls_main.app_index;
 
   if ((rv = session_alloc_fifos (sm, app_session)))
     {
@@ -202,7 +202,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
-  app_session->opaque = tls_main.app_index;
+  app_session->t_app_index = tls_main.app_index;
 
   if (session_alloc_fifos (sm, app_session))
     goto failed;
@@ -522,7 +522,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
 u32
 tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
-  app_worker_t *tls_app_wrk, *app_wrk;
+  app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_handle;
   session_endpoint_extended_t *sep;
@@ -547,10 +547,9 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 
   /* TODO hide this by calling vnet_bind() */
   tls_app = application_get (tm->app_index);
-  tls_app_wrk = application_get_default_worker (tls_app);
+//  tls_app_wrk = application_get_default_worker (tls_app);
   sep->transport_proto = TRANSPORT_PROTO_TCP;
-  if (app_worker_start_listen (tls_app_wrk, (session_endpoint_t *) sep,
-			       &tls_handle))
+  if (application_start_listen (tls_app, sep, &tls_handle))
     return ~0;
 
   tls_listener = listen_session_get_from_handle (tls_handle);
@@ -580,7 +579,8 @@ tls_stop_listen (u32 lctx_index)
   tls_engine_type_t engine_type;
 
   lctx = tls_listener_ctx_get (lctx_index);
-  app_worker_stop_listen (lctx->tls_session_handle, tm->app_index);
+  /* TODO use unbind */
+  application_stop_listen (tm->app_index, 0, lctx->tls_session_handle);
   engine_type = lctx->tls_ctx_engine;
   tls_vfts[engine_type].ctx_stop_listen (lctx);
 

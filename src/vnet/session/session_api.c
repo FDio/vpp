@@ -255,7 +255,7 @@ send_session_accept_callback (stream_session_t * s)
 	}
       else
 	{
-	  ll = application_get_local_listen_session (server_wrk,
+	  ll = application_get_local_listen_session (server,
 						     ls->listener_index);
 	  if (ll->transport_listener_index != ~0)
 	    {
@@ -445,7 +445,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
   mp = (session_accepted_msg_t *) evt->data;
-  mp->context = app_wrk->wrk_index;
+  mp->context = app->app_index;
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
 
@@ -489,9 +489,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
 	}
       else
 	{
-	  ll =
-	    application_get_local_listen_session (app_wrk,
-						  ls->listener_index);
+	  ll = application_get_local_listen_session (app, ls->listener_index);
 	  if (ll->transport_listener_index != ~0)
 	    {
 	      listener = listen_session_get (ll->transport_listener_index);
@@ -687,7 +685,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   else
     {
       local_session_t *local;
-      local = application_get_local_listen_session_from_handle (handle);
+      local = application_get_local_listener_w_handle (handle);
       mp->lcl_port = local->port;
       mp->lcl_is_ip4 = session_type_is_ip4 (local->session_type);
     }
@@ -1239,6 +1237,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
     {
       a->app_index = app->app_index;
       a->handle = mp->handle;
+      a->wrk_map_index = mp->wrk_index;
       if ((error = vnet_unbind (a)))
 	{
 	  rv = clib_error_get_code (error);
@@ -1255,7 +1254,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 {
   vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
-  application_t *app;
+  application_t *app = 0;
   clib_error_t *error = 0;
   int rv = 0;
 
@@ -1307,6 +1306,12 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
 done:
   REPLY_MACRO (VL_API_CONNECT_SESSION_REPLY);
+
+  if (app && application_use_mq_for_ctrl (app))
+    {
+      app_worker_t *app_wrk = application_get_worker (app, mp->wrk_index);
+      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, 1);
+    }
 }
 
 static void

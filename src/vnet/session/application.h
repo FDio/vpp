@@ -60,6 +60,8 @@ typedef struct _stream_session_cb_vft
 
 typedef struct app_worker_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /** Worker index in global worker pool*/
   u32 wrk_index;
 
@@ -93,9 +95,6 @@ typedef struct app_worker_
   /** Segment manager used for incoming "cut through" connects */
   u32 local_segment_manager;
 
-  /** Pool of local listen sessions */
-  local_session_t *local_listen_sessions;
-
   /** Pool of local sessions the app owns (as a server) */
   local_session_t *local_sessions;
 
@@ -109,6 +108,13 @@ typedef struct app_worker_map_
 {
   u32 wrk_index;
 } app_worker_map_t;
+
+typedef struct app_listener_
+{
+  clib_bitmap_t *workers;	/**< workers accepting connections */
+  u32 accept_rotor;		/**< last worker to accept a connection */
+  u32 al_index;
+} app_listener_t;
 
 typedef struct application_
 {
@@ -138,6 +144,15 @@ typedef struct application_
 
   u16 proxied_transports;
 
+  /** Pool of listeners for the app */
+  app_listener_t *listeners;
+
+  /** Pool of local listeners for app */
+  app_listener_t *local_listeners;
+
+  /** Pool of local listen sessions */
+  local_session_t *local_listen_sessions;
+
   /*
    * TLS Specific
    */
@@ -150,6 +165,7 @@ typedef struct application_
 
   /** Preferred tls engine */
   u8 tls_engine;
+
 } application_t;
 
 typedef struct app_main_
@@ -207,11 +223,8 @@ app_worker_t *app_worker_alloc (application_t * app);
 int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
+application_t *app_worker_get_app (u32 wrk_index);
 void app_worker_free (app_worker_t * app_wrk);
-int app_worker_start_listen (app_worker_t * app,
-			     session_endpoint_t * tep,
-			     session_handle_t * handle);
-int app_worker_stop_listen (session_handle_t handle, u32 app_wrk_index);
 int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
@@ -224,7 +237,16 @@ stream_session_t *app_worker_first_listener (app_worker_t * app,
 					     u8 fib_proto,
 					     u8 transport_proto);
 u8 app_worker_application_is_builtin (app_worker_t * app_wrk);
+int app_worker_send_event (app_worker_t * app, stream_session_t * s, u8 evt);
+int app_worker_lock_and_send_event (app_worker_t * app, stream_session_t * s,
+				    u8 evt_type);
 clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+
+int application_start_listen (application_t * app,
+			      session_endpoint_extended_t * tep,
+			      session_handle_t * handle);
+int application_stop_listen (u32 app_index, u32 app_wrk_index,
+			     session_handle_t handle);
 
 application_t *application_alloc (void);
 int application_alloc_and_init (app_init_args_t * args);
@@ -236,8 +258,10 @@ application_t *application_lookup_name (const u8 * name);
 u32 application_index (application_t * app);
 app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
-int application_api_queue_is_full (application_t * app);
+app_worker_t *application_listener_select_worker (stream_session_t * ls,
+						  u8 is_local);
 
+int application_api_queue_is_full (application_t * app);
 
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
@@ -252,12 +276,17 @@ void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
 segment_manager_properties_t *application_get_segment_manager_properties (u32
-									  app_wrk_index);
+									  app_index);
+
 segment_manager_properties_t
   * application_segment_manager_properties (application_t * app);
 
-local_session_t *application_alloc_local_session (app_worker_t * app);
-void application_free_local_session (app_worker_t * app,
+/*
+ * Local session
+ */
+
+local_session_t *application_local_session_alloc (app_worker_t * app);
+void application_local_session_free (app_worker_t * app,
 				     local_session_t * ls);
 local_session_t *application_get_local_session (app_worker_t * app,
 						u32 session_index);
@@ -265,29 +294,39 @@ local_session_t *application_get_local_session_from_handle (session_handle_t
 							    handle);
 local_session_t
   * application_get_local_listen_session_from_handle (session_handle_t lh);
-int application_start_local_listen (app_worker_t * server,
-				    session_endpoint_t * sep,
+int application_start_local_listen (application_t * server,
+				    session_endpoint_extended_t * sep,
 				    session_handle_t * handle);
-int application_stop_local_listen (session_handle_t lh, u32 app_wrk_index);
+int application_stop_local_listen (u32 app_index, u32 app_wrk_index,
+				   session_handle_t lh);
 int application_local_session_connect (app_worker_t * client,
 				       app_worker_t * server,
-				       local_session_t * ll, u32 opaque);
+				       local_session_t * ls, u32 opaque);
 int application_local_session_connect_notify (local_session_t * ls);
 int application_local_session_disconnect (u32 app_wrk_index,
 					  local_session_t * ls);
 int application_local_session_disconnect_w_index (u32 app_wrk_index,
 						  u32 ls_index);
-void application_local_sessions_free (app_worker_t * app);
-
-int application_send_event (app_worker_t * app, stream_session_t * s, u8 evt);
-int application_lock_and_send_event (app_worker_t * app,
-				     stream_session_t * s, u8 evt_type);
+void app_worker_local_sessions_free (app_worker_t * app);
 
 always_inline u32
-local_session_id (local_session_t * ll)
+local_session_id (local_session_t * ls)
 {
-  ASSERT (ll->app_wrk_index < (2 << 16) && ll->session_index < (2 << 16));
-  return ((u32) ll->app_wrk_index << 16 | (u32) ll->session_index);
+  ASSERT (ls->session_index < (2 << 16));
+  u32 app_or_wrk_index;
+
+  if (ls->session_state == SESSION_STATE_LISTENING)
+    {
+      ASSERT (ls->app_index < (2 << 16));
+      app_or_wrk_index = ls->app_index;
+    }
+  else
+    {
+      ASSERT (ls->app_wrk_index < (2 << 16));
+      app_or_wrk_index = ls->app_wrk_index;
+    }
+
+  return ((u32) app_or_wrk_index << 16 | (u32) ls->session_index);
 }
 
 always_inline void
@@ -315,7 +354,7 @@ application_local_session_handle (local_session_t * ls)
 }
 
 always_inline local_session_t *
-application_get_local_listen_session (app_worker_t * app, u32 session_index)
+application_get_local_listen_session (application_t * app, u32 session_index)
 {
   return pool_elt_at_index (app->local_listen_sessions, session_index);
 }
@@ -323,10 +362,10 @@ application_get_local_listen_session (app_worker_t * app, u32 session_index)
 always_inline local_session_t *
 application_get_local_listener_w_handle (session_handle_t handle)
 {
-  u32 server_wrk_index, session_index;
-  app_worker_t *app;
-  local_session_parse_handle (handle, &server_wrk_index, &session_index);
-  app = app_worker_get (server_wrk_index);
+  u32 server_index, session_index;
+  application_t *app;
+  local_session_parse_handle (handle, &server_index, &session_index);
+  app = application_get (server_index);
   return application_get_local_listen_session (app, session_index);
 }
 

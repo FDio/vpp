@@ -60,7 +60,7 @@ typedef struct _stream_session_t
   /** Session index in per_thread pool */
   u32 session_index;
 
-  /** app worker pool index */
+  /** App worker pool index */
   u32 app_wrk_index;
 
   u8 thread_index;
@@ -78,6 +78,19 @@ typedef struct _stream_session_t
   {
     /** Parent listener session if the result of an accept */
     u32 listener_index;
+
+    /** Application index if a listener */
+    u32 app_index;
+  };
+
+  union
+  {
+    /** Transport app index for apps acting as transports */
+    u32 t_app_index;
+
+    /** Index in listener app's listener db */
+    u32 listener_db_index;
+
     /** Opaque, for general use */
     u32 opaque;
   };
@@ -103,17 +116,25 @@ typedef struct local_session_
   /** Server index */
   u32 app_wrk_index;
 
+  /** Port for connection. Overlaps thread_index/enqueue_epoch */
+  u16 port;
+
   /** Segment index where fifos were allocated */
   u32 svm_segment_index;
 
-  u32 listener_index;
+  /** Transport listener index. Overlaps connection index */
+  u32 transport_listener_index;
 
-  /** Port for connection */
-  u16 port;
+  union
+  {
+    u32 listener_index;
+    u32 app_index;
+  };
+
+  u32 listener_db_index;
 
   /** Has transport embedded when listener not purely local */
   session_type_t listener_session_type;
-  u32 transport_listener_index;
 
   /**
    * Client data
