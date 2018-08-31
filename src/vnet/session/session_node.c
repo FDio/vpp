@@ -726,7 +726,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  stream_session_t * s, int *n_tx_pkts)
 {
   application_t *app;
-  app = application_get (s->opaque);
+  app = application_get (s->t_app_index);
   svm_fifo_unset_event (s->server_tx_fifo);
   return app->cb_fns.builtin_app_tx_callback (s);
 }
