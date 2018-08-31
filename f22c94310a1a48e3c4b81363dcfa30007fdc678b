@@ -70,6 +70,30 @@
       "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d59d4e0_a3745f0e",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1313
+      },
+      "writtenOn": "2018-08-31T01:09:51Z",
+      "side": 1,
+      "message": "The flags might be VLIB_BUFFER_TOTAL_LENGTH_VALID? like this:\n  if (PREDICT_FALSE (b-\u003eflags \u0026 VLIB_BUFFER_TOTAL_LENGTH_VALID))\nbecause VLIB_BUFFER_TOTAL_LENGTH_VALID means that b-\u003etotal_length_not_including_first_buffer is valid.",
+      "parentUuid": "5223219f_fa99a795",
+      "range": {
+        "startLine": 254,
+        "startChar": 22,
+        "endLine": 254,
+        "endChar": 38
+      },
+      "revId": "f22c94310a1a48e3c4b81363dcfa30007fdc678b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
