@@ -137,7 +137,6 @@ echo_test_client ()
       FD_SET (tsock->fd, &rd_fdset);
       sidx = vppcom_session_index (tsock->fd);
       nfds = sidx > nfds ? sidx : nfds;
-//      nfds = ((tsock->fd + 1) > nfds) ? (tsock->fd + 1) : nfds;
     }
 
   nfds++;
@@ -256,10 +255,8 @@ stream_test_client (sock_test_t test)
   sock_client_main_t *scm = &sock_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_socket_t *tsock;
-  int tx_bytes;
-  uint32_t i, n;
-  int rv;
-  int nfds = 0;
+  int tx_bytes, rv, nfds = 0;
+  uint32_t i, n, sidx;
   fd_set wr_fdset, rd_fdset;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = (test == SOCK_TEST_TYPE_BI) ? &_rfdset : 0;
@@ -297,7 +294,8 @@ stream_test_client (sock_test_t test)
       memset (&tsock->stats, 0, sizeof (tsock->stats));
       FD_SET (tsock->fd, &wr_fdset);
       FD_SET (tsock->fd, &rd_fdset);
-      nfds = ((tsock->fd + 1) > nfds) ? (tsock->fd + 1) : nfds;
+      sidx = vppcom_session_index (tsock->fd);
+      nfds = sidx > nfds ? sidx : nfds;
     }
 
   nfds++;
@@ -327,7 +325,7 @@ stream_test_client (sock_test_t test)
 	    continue;
 
 	  if ((test == SOCK_TEST_TYPE_BI) &&
-	      FD_ISSET (tsock->fd, rfdset) &&
+	      FD_ISSET (vppcom_session_index (tsock->fd), rfdset) &&
 	      (tsock->stats.rx_bytes < ctrl->cfg.total_bytes))
 	    {
 	      (void) vcl_test_read (tsock->fd,
@@ -335,7 +333,7 @@ stream_test_client (sock_test_t test)
 				    tsock->rxbuf_size, &tsock->stats);
 	    }
 
-	  if (FD_ISSET (tsock->fd, wfdset)
+	  if (FD_ISSET (vppcom_session_index (tsock->fd), wfdset)
 	      && (tsock->stats.tx_bytes < ctrl->cfg.total_bytes))
 	    {
 	      tx_bytes = vcl_test_write (tsock->fd, (uint8_t *) tsock->txbuf,

@@ -59,7 +59,7 @@ if(VPP_BUILD_VCL_TESTS)
     test_vcl_listener_server
     test_vcl_listener_client
   )
-    add_vpp_executable(${test} SOURCES ${test}.c LINK_LIBRARIES vppcom
+    add_vpp_executable(${test} SOURCES ${test}.c LINK_LIBRARIES vppcom pthread
 		       NO_INSTALL)
   endforeach()
 endif(VPP_BUILD_VCL_TESTS)
