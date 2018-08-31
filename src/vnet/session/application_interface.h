@@ -64,7 +64,7 @@ typedef struct _vnet_unbind_args_t
     u64 handle;			/**< Session handle */
   };
   u32 app_index;		/**< Owning application index */
-  u32 app_wrk_index;		/**< App's local pool worker index */
+  u32 wrk_map_index;		/**< App's local pool worker index */
 } vnet_unbind_args_t;
 
 typedef struct _vnet_connect_args
