@@ -1750,7 +1750,7 @@ ip4_arp_inline (vlib_main_t * vm,
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop, next_index;
   u32 thread_index = vm->thread_index;
-  u32 seed;
+  u64 seed;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
@@ -1770,10 +1770,11 @@ ip4_arp_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  u32 pi0, adj_index0, r0, sw_if_index0, drop0;
+	  u32 pi0, adj_index0, sw_if_index0, drop0;
 	  ip_adjacency_t *adj0;
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
+	  u64 r0;
 
 	  pi0 = from[0];
 
@@ -1798,6 +1799,9 @@ ip4_arp_inline (vlib_main_t * vm,
 	    {
 	      r0 = adj0->sub_type.nbr.next_hop.ip4.data_u32;
 	    }
+	  /* combine the address and interface for the hash key */
+	  r0 = r0 << 32;
+	  r0 |= sw_if_index0;
 
 	  drop0 = throttle_check (&im->arp_throttle, thread_index, r0, seed);
 
