@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f7230e61_2ff01aa0",
+        "filename": "docs/featuresbyrelease/vpp16.06.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-31T07:50:34Z",
+      "side": 1,
+      "message": "Comma.",
+      "range": {
+        "startLine": 9,
+        "startChar": 162,
+        "endLine": 9,
+        "endChar": 163
+      },
+      "revId": "d9b2fcebef0f2acd350511e949a2543513cc7bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "170126c7_0e3c6bd3",
+        "filename": "docs/featuresbyrelease/vpp18.07.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-08-31T07:50:34Z",
+      "side": 1,
+      "message": "And switched to 18.05 before release.",
+      "range": {
+        "startLine": 12,
+        "startChar": 7,
+        "endLine": 12,
+        "endChar": 14
+      },
+      "revId": "d9b2fcebef0f2acd350511e949a2543513cc7bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
