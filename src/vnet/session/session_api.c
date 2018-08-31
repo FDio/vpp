@@ -1239,6 +1239,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
     {
       a->app_index = app->app_index;
       a->handle = mp->handle;
+      a->wrk_map_index = mp->wrk_index;
       if ((error = vnet_unbind (a)))
 	{
 	  rv = clib_error_get_code (error);
