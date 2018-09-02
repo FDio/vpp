@@ -12,6 +12,41 @@
 # limitations under the License.
 
 ##############################################################################
+# Cache line size detection
+##############################################################################
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
+  file(READ "/proc/cpuinfo" cpuinfo)
+  string(REPLACE "\n" ";" cpuinfo ${cpuinfo})
+  foreach(l ${cpuinfo})
+    string(REPLACE ":" ";" l ${l})
+    list(GET l 0 name)
+    list(GET l 1 value)
+    string(STRIP ${name} name)
+    string(STRIP ${value} value)
+    if(${name} STREQUAL "CPU implementer")
+      set(CPU_IMPLEMENTER ${value})
+     endif()
+    if(${name} STREQUAL "CPU part")
+      set(CPU_PART ${value})
+     endif()
+  endforeach()
+  # Implementer 0x0a1 - Cavium
+  #  Part 0x0a1 - ThunderX
+  if (${CPU_IMPLEMENTER} STREQUAL "0x43" AND ${CPU_PART} STREQUAL "0x0a1")
+    set(VPP_LOG2_CACHE_LINE_SIZE 7)
+  else()
+    set(VPP_LOG2_CACHE_LINE_SIZE 6)
+  endif()
+  math(EXPR VPP_CACHE_LINE_SIZE "1 << ${VPP_LOG2_CACHE_LINE_SIZE}")
+  message(STATUS "ARM AArch64 CPU implementer ${CPU_IMPLEMENTER} part ${CPU_PART} cacheline size ${VPP_CACHE_LINE_SIZE}")
+else()
+  set(VPP_LOG2_CACHE_LINE_SIZE 6)
+endif()
+
+set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
+    CACHE STRING "Target CPU cache line size (power of 2)")
+
+##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")

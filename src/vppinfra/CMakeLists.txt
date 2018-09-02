@@ -16,7 +16,7 @@ enable_language(ASM)
 ##############################################################################
 # Generate vppinfra/config.h
 ##############################################################################
-set(LOG2_CACHE_LINE_BYTES 6)
+set(LOG2_CACHE_LINE_BYTES ${VPP_LOG2_CACHE_LINE_SIZE})
 option(VPP_USE_DLMALLOC "Use dlmalloc memory allocator." ON)
 if(VPP_USE_DLMALLOC)
   set(DLMALLOC 1)
