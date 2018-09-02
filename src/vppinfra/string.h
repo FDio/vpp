@@ -324,8 +324,8 @@ clib_memset_u8 (void *p, u8 val, uword count)
 static_always_inline uword
 clib_count_equal_u64 (u64 * data, uword max_count)
 {
-  uword count = 0;
-  u64 first = data[0];
+  uword count = 1;
+  u64 first = *data++;
 
 #if defined(CLIB_HAVE_VEC512)
   while (u64x8_is_all_equal (u64x8_load_unaligned (data), first))
@@ -365,8 +365,8 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 static_always_inline uword
 clib_count_equal_u32 (u32 * data, uword max_count)
 {
-  uword count = 0;
-  u32 first = data[0];
+  uword count = 1;
+  u32 first = *data++;
 
 #if defined(CLIB_HAVE_VEC512)
   while (u32x16_is_all_equal (u32x16_load_unaligned (data), first))
@@ -406,8 +406,8 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 static_always_inline uword
 clib_count_equal_u16 (u16 * data, uword max_count)
 {
-  uword count = 0;
-  u16 first = data[0];
+  uword count = 1;
+  u16 first = *data++;
 
 #if defined(CLIB_HAVE_VEC512)
   while (count + 32 <= max_count &&
@@ -444,8 +444,8 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 static_always_inline u32
 clib_count_equal_u8 (u32 * data, uword max_count)
 {
-  uword count = 0;
-  u8 first = data[0];
+  uword count = 1;
+  u8 first = *data++;
 
 #if defined(CLIB_HAVE_VEC512)
   while (count + 64 <= max_count &&
