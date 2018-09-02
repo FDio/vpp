@@ -260,8 +260,12 @@ l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 feature_bitmap = config->feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT;
   if (config->shg == 0 && feature_bitmap == 0)
-    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
-				   l2_efp, l2_vtr, l2_pbb, 0, 0);
+    {
+      if ((l2_efp | l2_vtr | l2_pbb) == 0)
+	return;
+      l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+				     l2_efp, l2_vtr, l2_pbb, 0, 0);
+    }
   else if (config->shg == 0)
     l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
 				   l2_efp, l2_vtr, l2_pbb, 0, 1);
