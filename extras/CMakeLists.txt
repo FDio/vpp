@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2018 Cisco and/or its affiliates.
+# Copyright (c) 2018 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -11,14 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vom_configure_depend = vpp-install
-vom_source = extras
-vom_configure = \
-  cd $(PACKAGE_BUILD_DIR) && \
-  cmake -G Ninja \
-    -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR) \
-    -DCMAKE_CXX_FLAGS=$(call installed_includes_fn, vpp) \
-    $(call find_source_fn,$(PACKAGE_SOURCE))
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-vom_build = cmake --build $(PACKAGE_BUILD_DIR)
-vom_install = cmake --build $(PACKAGE_BUILD_DIR) -- install
+project(extras)
+
+include(CheckCCompilerFlag)
+
+include(../src/cmake/cpu.cmake)
+
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIB_DIR_NAME}")
+
+find_package(Threads REQUIRED)
+
+add_subdirectory(vom/vom)
