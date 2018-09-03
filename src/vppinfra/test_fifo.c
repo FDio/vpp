@@ -127,6 +127,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int r;
 
+  clib_mem_init (0, 3ULL << 30);
+
   unformat_init_command_line (&i, argv);
   r = test_fifo_main (&i);
   unformat_free (&i);

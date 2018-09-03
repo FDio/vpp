@@ -146,6 +146,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   clib_error_t *error = 0;
 
+  clib_mem_init (0, 3ULL << 30);
+
   memset (tm, 0, sizeof (tm[0]));
 
   unformat_init_command_line (&i, argv);

@@ -32,6 +32,8 @@ main (int argc, char *argv[])
   u32 *tp = 0;
   u32 *junk;
 
+  clib_mem_init (0, 3ULL << 30);
+
   for (i = 0; i < 70; i++)
     {
       pool_get (tp, junk);

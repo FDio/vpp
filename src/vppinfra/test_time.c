@@ -86,6 +86,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int ret;
 
+  clib_mem_init (0, 3ULL << 30);
+
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);
   ret = test_time_main (&i);
