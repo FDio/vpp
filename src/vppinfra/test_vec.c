@@ -1173,8 +1173,6 @@ main (int argc, char *argv[])
 
   clib_mem_init (0, 3ULL << 30);
 
-  //  mheap_alloc (0, (uword) 10ULL << 30);
-
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);
   ret = test_vec_main (&i);

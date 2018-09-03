@@ -413,7 +413,11 @@ elog_time_now (elog_time_stamp_t * et)
 #ifdef CLIB_UNIX
   {
 #include <sys/syscall.h>
+#ifdef __APPLE__
+    clock_gettime (CLOCK_REALTIME, &ts);
+#else
     syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
+#endif
     cpu_time_now = clib_cpu_time_now ();
     /* Subtract 3/30/2017's worth of seconds to retain precision */
     os_time_now_nsec = 1e9 * (ts.tv_sec - 1490885108) + ts.tv_nsec;

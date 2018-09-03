@@ -117,6 +117,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int r;
 
+  clib_mem_init (0, 64ULL << 20);
+
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);
   r = test_socket_main (&i);

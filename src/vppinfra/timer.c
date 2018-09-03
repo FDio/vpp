@@ -46,6 +46,10 @@
 #include <vppinfra/timer.h>
 #include <vppinfra/error.h>
 
+#ifndef HZ
+#define HZ 1000
+#endif
+
 typedef struct
 {
   f64 time;
@@ -112,14 +116,14 @@ timer_interrupt (int signum)
          vector of pending timers. */
       t = vec_end (timers) - 1;
 
-      ASSERT (now >= 0 && finite (now));
+      ASSERT (now >= 0 && isfinite (now));
 
       /* Time difference between when timer goes off and now. */
       dt = t->time - now;
 
       /* If timer is within threshold of going off
          call user's callback. */
-      if (dt <= time_resolution && finite (dt))
+      if (dt <= time_resolution && isfinite (dt))
 	{
 	  _vec_len (timers) -= 1;
 	  (*t->func) (t->arg, -dt);

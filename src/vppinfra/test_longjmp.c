@@ -112,6 +112,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int res;
 
+  clib_mem_init (0, 64 << 20);
+
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);
   res = test_longjmp_main (&i);

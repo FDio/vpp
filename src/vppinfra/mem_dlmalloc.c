@@ -354,7 +354,7 @@ format_mheap_trace (u8 * s, va_list * va)
 	  {
 	    if (i > 0)
 	      s = format (s, "%U", format_white_space, indent);
-#ifdef CLIB_UNIX
+#if defined(CLIB_UNIX) && !defined(__APPLE__)
 	    /* $$$$ does this actually work? */
 	    s =
 	      format (s, " %U\n", format_clib_elf_symbol_with_address,
