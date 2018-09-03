@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b0d06888_cf428954",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-03T10:26:21Z",
+      "side": 1,
+      "message": "Why not re-use i?",
+      "range": {
+        "startLine": 110,
+        "startChar": 7,
+        "endLine": 110,
+        "endChar": 8
+      },
+      "revId": "6b4b20318b4c96a79a79e5057c4ba77813050d7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
