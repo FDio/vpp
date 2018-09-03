@@ -34,12 +34,21 @@
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-	
+
+#if defined(__APPLE__)
+# define cdecl(s) _##s
+#else
+# define cdecl(s) s
+#endif
+
 #if defined(__x86_64__)
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, @function
-clib_setjmp:
+#ifndef __APPLE__
+	.type cdecl(clib_setjmp), @function
+#endif
+
+cdecl(clib_setjmp):
 	movq %rbx, 8*0(%rdi)
 	movq %rbp, 8*1(%rdi)
 	movq %r12, 8*2(%rdi)
@@ -59,10 +68,12 @@ clib_setjmp:
 	movq %rsi, %rax
 	ret
 	
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, @function
-clib_longjmp:	
+#ifndef __APPLE__
+	.type cdecl(clib_longjmp), @function
+#endif
+cdecl(clib_longjmp):	
         /* Restore regs. */
 	movq 8*0(%rdi), %rbx
 	movq 8*1(%rdi), %rbp
@@ -79,10 +90,12 @@ clib_longjmp:
 	/* Away we go. */
 	jmpq *%rdx	
 	
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, @function
-clib_calljmp:
+#ifndef __APPLE__
+	.type cdecl(clib_calljmp), @function
+#endif
+cdecl(clib_calljmp):
 	/* Make sure stack is 16-byte aligned. */
 	movq %rdx, %rax
 	andq $0xf, %rax
@@ -118,10 +131,10 @@ clib_calljmp:
 	jmpq *%rdx
 
 #elif defined(i386)
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, @function
-clib_setjmp:
+	.type cdecl(clib_setjmp), @function
+cdecl(clib_setjmp):
 	movl 4(%esp), %ecx
 	
 	movl %ebp, 4*0(%ecx)
@@ -141,10 +154,10 @@ clib_setjmp:
 	movl 8(%esp), %eax
 	ret
 	
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, @function
-clib_longjmp:	
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):	
 	movl 4(%esp), %ecx
 	
 	/* Give back user's return value. */
@@ -161,10 +174,10 @@ clib_longjmp:
 	/* Away we go. */
 	jmp *%edx	
 	
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, @function
-clib_calljmp:	
+	.type cdecl(clib_calljmp), @function
+cdecl(clib_calljmp):	
 	/* Get new stack pointer. */
 	movl 12(%esp), %edx
 	
@@ -224,7 +237,7 @@ _ (26, 6) _ (27, 7) _ (28, 8) _ (29, 9) _ (30, 10) _ (31, 11)
 #define CLIB_POWERPC_ALTIVEC_N_REGS 0
 #endif
 
-_prologue (clib_setjmp)
+_prologue (cdecl(clib_setjmp))
 	mflr 0
 	std 0, 8*0(3)
 	std 1, 8*1(3)
@@ -257,7 +270,7 @@ _prologue (clib_setjmp)
 	
 	blr
 	
-_prologue (clib_longjmp)
+_prologue (cdecl(clib_longjmp))
 	ld 0, 8*0(3)
 	mtlr 0
 	ld 1, 8*1(3)
@@ -290,14 +303,14 @@ _prologue (clib_longjmp)
 	
 	blr
 
-	.globl clib_calljmp
+	.globl cdecl(clib_calljmp)
 	.section	".opd","aw"
 	.align 3
-clib_calljmp:
-	.quad	.L.clib_calljmp,.TOC.@tocbase,0
+cdecl(clib_calljmp):
+	.quad	.L.cdecl(clib_calljmp),.TOC.@tocbase,0
 	.previous
-	.type	clib_calljmp, @function
-.L.clib_calljmp:
+	.type	cdecl(clib_calljmp), @function
+.L.cdecl(clib_calljmp):
 	mflr 0
 	mr 9,3
 	std 0,16(1)
@@ -325,7 +338,7 @@ clib_calljmp:
 	blr
 	.long 0
 	.byte 0,0,0,1,128,0,0,0
-	.size	clib_calljmp,.-.L.clib_calljmp
+	.size	cdecl(clib_calljmp),.-.L.cdecl(clib_calljmp)
 	
 #elif defined(__powerpc__)
 	
@@ -344,10 +357,10 @@ _ (26, 6) _ (27, 7) _ (28, 8) _ (29, 9) _ (30, 10) _ (31, 11)
 #define CLIB_POWERPC_ALTIVEC_N_REGS 0
 #endif
 
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, @function
-clib_setjmp:
+	.type cdecl(clib_setjmp), @function
+cdecl(clib_setjmp):
 	mflr 0
 	stw 0, 4*0(3)
 	stw 1, 4*1(3)
@@ -380,10 +393,10 @@ clib_setjmp:
 	
 	blr
 	
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, @function
-clib_longjmp:	
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):	
 	
 	lwz 0, 4*0(3)
 	mtlr 0
@@ -417,10 +430,10 @@ clib_longjmp:
 	
 	blr
 
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, @function
-clib_calljmp:	
+	.type cdecl(clib_calljmp), @function
+cdecl(clib_calljmp):	
 	/* Make sure stack is 16 byte aligned. */
 	andi. 0, 5, 0xf
 	sub  5, 5, 0
@@ -458,10 +471,10 @@ clib_calljmp:
 	
 #elif defined(__arm__)
 	
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, %function
-clib_setjmp:
+	.type cdecl(clib_setjmp), %function
+cdecl(clib_setjmp):
 	mov ip, r0		/* jmp buffer */
 
 	/* Save integer registers */
@@ -481,10 +494,10 @@ clib_setjmp:
 	mov r0, r1
 	bx lr
 	
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, %function
-clib_longjmp:	
+	.type cdecl(clib_longjmp), %function
+cdecl(clib_longjmp):	
 	mov ip, r0		/* jmp buffer */
 
 	/* Restore integer registers. */
@@ -504,10 +517,10 @@ clib_longjmp:
 	mov r0, r1
 	bx lr
 
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, %function
-clib_calljmp:	
+	.type cdecl(clib_calljmp), %function
+cdecl(clib_calljmp):	
 	/* Make sure stack is 8 byte aligned. */
 	bic r2, r2, #7
 	
@@ -541,51 +554,51 @@ clib_calljmp:
 #elif defined(__xtensa__)
 	
 	/* FIXME implement if needed. */
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, %function
-clib_setjmp:
+	.type cdecl(clib_setjmp), %function
+cdecl(clib_setjmp):
 1:	j 1b
 
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, @function
-clib_longjmp:	
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):	
 1:	j 1b
 	
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, %function
-clib_calljmp:	
+	.type cdecl(clib_calljmp), %function
+cdecl(clib_calljmp):	
 1:	j 1b
 	
 #elif defined(__TMS320C6X__)
 	
 	/* FIXME implement if needed. */
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 4
-	.type clib_setjmp, %function
-clib_setjmp:
+	.type cdecl(clib_setjmp), %function
+cdecl(clib_setjmp):
 1:	B	.S1     1b
 
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 4
-	.type clib_longjmp, @function
-clib_longjmp:	
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):	
 1:	B	.S1     1b
 	
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 4
-	.type clib_calljmp, %function
-clib_calljmp:	
+	.type cdecl(clib_calljmp), %function
+cdecl(clib_calljmp):	
 1:	B	.S1     1b
 	
 #elif defined(_mips) && __mips == 64
 
-	.global clib_setjmp
+	.global cdecl(clib_setjmp)
 	.align 8
-	.type clib_setjmp, %function
-clib_setjmp:
+	.type cdecl(clib_setjmp), %function
+cdecl(clib_setjmp):
 	sd $ra, 0($a0)
 	sd $sp, 8($a0)
 	sd $gp, 16($a0)
@@ -602,10 +615,10 @@ clib_setjmp:
 	jr $ra
 	nop
 
-	.global clib_longjmp
+	.global cdecl(clib_longjmp)
 	.align 8
-	.type clib_longjmp, @function
-clib_longjmp:
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):
 	move $v0, $a1
 	bne $v0, $0, 1f
 	nop
@@ -626,10 +639,10 @@ clib_longjmp:
 	jr $ra
 	nop
 
-	.global clib_calljmp
+	.global cdecl(clib_calljmp)
 	.align 8
-	.type clib_calljmp, %function
-clib_calljmp:
+	.type cdecl(clib_calljmp), %function
+cdecl(clib_calljmp):
 	/* Force 16 byte alignment of the new stack */
 	li $t1, -16
 	and $t0, $a2, $t1
@@ -693,10 +706,10 @@ clib_calljmp:
 	REG_PAIR (d10, d11, 128);	\
 	REG_PAIR (d12, d13, 144);	\
 	REG_PAIR (d14, d15, 160);
-// int clib_setjmp (jmp_buf)
-	.global	clib_setjmp
-	.type	clib_setjmp, %function
-clib_setjmp:
+// int cdecl(clib_setjmp) (jmp_buf)
+	.global	cdecl(clib_setjmp)
+	.type	cdecl(clib_setjmp), %function
+cdecl(clib_setjmp):
 	mov	x16, sp
 #define REG_PAIR(REG1, REG2, OFFS)	stp REG1, REG2, [x0, OFFS]
 #define REG_ONE(REG1, OFFS)		str REG1, [x0, OFFS]
@@ -706,11 +719,11 @@ clib_setjmp:
 #undef REG_ONE
 	mov	x0, x1
 	ret
-	.size	clib_setjmp, .-clib_setjmp
-// void clib_longjmp (jmp_buf, int) __attribute__ ((noreturn))
-	.global	clib_longjmp
-	.type	clib_longjmp, %function
-clib_longjmp:
+	.size	cdecl(clib_setjmp), .-cdecl(clib_setjmp)
+// void cdecl(clib_longjmp) (jmp_buf, int) __attribute__ ((noreturn))
+	.global	cdecl(clib_longjmp)
+	.type	cdecl(clib_longjmp), %function
+cdecl(clib_longjmp):
 #define REG_PAIR(REG1, REG2, OFFS)	ldp REG1, REG2, [x0, OFFS]
 #define REG_ONE(REG1, OFFS)		ldr REG1, [x0, OFFS]
 	GPR_LAYOUT
@@ -723,13 +736,13 @@ clib_longjmp:
 	// cinc	w0, w1, eq
 	// use br not ret, as ret is guaranteed to mispredict
 	br	x30
-	.size	clib_longjmp, .-clib_longjmp
+	.size	cdecl(clib_longjmp), .-cdecl(clib_longjmp)
 
 
-// void clib_calljmp (x0=function, x1=arg, x2=new_stack)
-	.global	clib_calljmp
-	.type	clib_calljmp, %function
-clib_calljmp:
+// void cdecl(clib_calljmp) (x0=function, x1=arg, x2=new_stack)
+	.global	cdecl(clib_calljmp)
+	.type	cdecl(clib_calljmp), %function
+cdecl(clib_calljmp):
 	// save fn ptr
 	mov     x3, x0
 	// set up fn arg
@@ -756,9 +769,11 @@ clib_calljmp:
 	ldr     x30,[x4, #8]
         mov     sp, x3
 	ret
-	.size	clib_calljmp, .-clib_calljmp
+	.size	cdecl(clib_calljmp), .-cdecl(clib_calljmp)
 #else
 #error "unknown machine"
 #endif	
 
+#ifndef __APPLE__
 .section .note.GNU-stack,"",%progbits
+#endif

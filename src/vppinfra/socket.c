@@ -309,12 +309,16 @@ static clib_error_t *
 default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
 			int fds[], int num_fds)
 {
+#ifdef __linux__
   char ctl[CMSG_SPACE (sizeof (int) * num_fds) +
 	   CMSG_SPACE (sizeof (struct ucred))];
+  struct ucred *cr = 0;
+#else
+  char ctl[CMSG_SPACE (sizeof (int) * num_fds)];
+#endif
   struct msghdr mh = { 0 };
   struct iovec iov[1];
   ssize_t size;
-  struct ucred *cr = 0;
   struct cmsghdr *cmsg;
 
   iov[0].iov_base = msg;
@@ -340,6 +344,7 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
     {
       if (cmsg->cmsg_level == SOL_SOCKET)
 	{
+#ifdef __linux__
 	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
 	    {
 	      cr = (struct ucred *) CMSG_DATA (cmsg);
@@ -347,7 +352,9 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
 	      s->gid = cr->gid;
 	      s->pid = cr->pid;
 	    }
-	  else if (cmsg->cmsg_type == SCM_RIGHTS)
+	  else
+#endif
+	  if (cmsg->cmsg_type == SCM_RIGHTS)
 	    {
 	      clib_memcpy (fds, CMSG_DATA (cmsg), num_fds * sizeof (int));
 	    }
@@ -436,6 +443,7 @@ clib_socket_init (clib_socket_t * s)
 	  clib_unix_warning ("setsockopt SO_REUSEADDR fails");
       }
 
+#if __linux__
       if (addr.sa.sa_family == PF_LOCAL && s->flags & CLIB_SOCKET_F_PASSCRED)
 	{
 	  int x = 1;
@@ -447,6 +455,7 @@ clib_socket_init (clib_socket_t * s)
 	      goto done;
 	    }
 	}
+#endif
 
       if (need_bind && bind (s->fd, &addr.sa, addr_len) < 0)
 	{

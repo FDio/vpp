@@ -47,6 +47,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int ret;
 
+  clib_mem_init (0, 64ULL << 20);
+
   unformat_init_command_line (&i, argv);
   ret = test_macros_main (&i);
   unformat_free (&i);

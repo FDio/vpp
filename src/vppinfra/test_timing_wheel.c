@@ -367,6 +367,8 @@ main (int argc, char *argv[])
   unformat_input_t i;
   clib_error_t *error;
 
+  clib_mem_init (0, 64ULL << 20);
+
   unformat_init_command_line (&i, argv);
   error = test_timing_wheel_main (&i);
   unformat_free (&i);

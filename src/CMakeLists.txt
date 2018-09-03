@@ -61,7 +61,6 @@ set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "vpp")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
 
 include(cmake/memfd.cmake)
 include(cmake/api.cmake)
@@ -72,11 +71,18 @@ include(cmake/plugin.cmake)
 ##############################################################################
 # subdirs - order matters
 ##############################################################################
-foreach(
-  DIR
-  vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
-  vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool
-)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  find_package(OpenSSL REQUIRED)
+  set(SUBDIRS
+    vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
+    vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+  set(SUBDIRS vppinfra)
+else()
+  message(FATAL_ERROR "Unsupported system: ${CMAKE_SYSTEM_NAME}")
+endif()
+
+foreach(DIR ${SUBDIRS})
   add_subdirectory(${DIR})
 endforeach()
 

@@ -37,10 +37,16 @@
 
 #ifdef __KERNEL__
 
+#if __linux__
 # include <linux/unistd.h>
 # include <linux/signal.h>
+#endif
 
 #else /* ! __KERNEL__ */
+
+#ifdef __APPLE__
+#define _XOPEN_SOURCE
+#endif
 
 #define _GNU_SOURCE		/* to get REG_* in ucontext.h */
 #include <ucontext.h>
@@ -57,11 +63,13 @@
 #include <math.h>
 
 #include <vppinfra/time.h>
+#if __linux__
 #include <vppinfra/linux/syscall.h>
 
 #ifdef AF_NETLINK
 #include <linux/types.h>
 #include <linux/netlink.h>
+#endif
 #endif
 
 #endif /* ! __KERNEL__ */
@@ -277,6 +285,7 @@ u8 * format_sockaddr (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef __APPLE__
 u8 * format_tcp4_packet (u8 * s, va_list * args)
 {
   u8 * p = va_arg (*args, u8 *);
@@ -832,6 +841,7 @@ u8 * format_timeval (u8 * s, va_list * args)
 
   return s;
 }
+#endif
 
 u8 * format_time_float (u8 * s, va_list * args)
 {
