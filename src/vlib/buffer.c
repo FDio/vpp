@@ -581,8 +581,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
     {
       int j;
 
-      vlib_buffer_add_to_free_list (vm, fl, bi,
-				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
+      vlib_buffer_add_to_free_list (vm, fl, bi, 1);
       for (j = 0; j < vec_len (vm->buffer_announce_list); j++)
 	{
 	  if (fl == vm->buffer_announce_list[j])
@@ -594,28 +593,25 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
     }
   else
     {
-      if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
+      u32 flags, next;
+
+      do
 	{
-	  u32 flags, next;
-
-	  do
+	  vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
+	  flags = nb->flags;
+	  next = nb->next_buffer;
+	  if (nb->n_add_refs)
+	    nb->n_add_refs--;
+	  else
 	    {
-	      vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
-	      flags = nb->flags;
-	      next = nb->next_buffer;
-	      if (nb->n_add_refs)
-		nb->n_add_refs--;
-	      else
-		{
-		  vlib_buffer_validate_alloc_free (vm, &bi, 1,
-						   VLIB_BUFFER_KNOWN_ALLOCATED);
-		  vlib_buffer_add_to_free_list (vm, fl, bi, 1);
-		}
-	      bi = next;
+	      vlib_buffer_validate_alloc_free (vm, &bi, 1,
+					       VLIB_BUFFER_KNOWN_ALLOCATED);
+	      vlib_buffer_add_to_free_list (vm, fl, bi, 1);
 	    }
-	  while (follow_buffer_next && (flags & VLIB_BUFFER_NEXT_PRESENT));
-
+	  bi = next;
 	}
+      while (follow_buffer_next && (flags & VLIB_BUFFER_NEXT_PRESENT));
+
     }
 }
 
