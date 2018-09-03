@@ -1594,6 +1594,7 @@ class VppPapiProvider(object):
             self_twice_nat=0,
             out2in_only=0,
             tag='',
+            affinity=0,
             local_num=0,
             locals=[],
             is_add=1):
@@ -1601,6 +1602,7 @@ class VppPapiProvider(object):
 
         :param twice_nat: 1 if translate external host address and port
         :param tag: Opaque string tag
+        :param affinity: if 0 disabled, otherwise client IP affinity timeout
         :param is_add - 1 if add, 0 if delete
         """
         return self.api(
@@ -1613,6 +1615,7 @@ class VppPapiProvider(object):
              'self_twice_nat': self_twice_nat,
              'out2in_only': out2in_only,
              'tag': tag,
+             'affinity': affinity,
              'local_num': local_num,
              'locals': locals})
 

@@ -22,6 +22,7 @@
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_affinity.h>
 #include <vnet/fib/fib_table.h>
 
 #define UNSUPPORTED_IN_DET_MODE_STR \
@@ -165,6 +166,7 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
+  nat_affinity_main_t *nam = &nat_affinity_main;
   int i;
   int verbose = 0;
 
@@ -198,6 +200,9 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->user_hash, verbose);
   }
 
+  if (sm->endpoint_dependent)
+    vlib_cli_output (vm, "%U", format_bihash_16_8, &nam->affinity_hash,
+		     verbose);
   return 0;
 }
 
@@ -741,7 +746,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr;
-  u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0;
+  u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0, affinity = 0;
   int is_add = 1;
   int rv;
   snat_protocol_t proto;
@@ -793,6 +798,8 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	out2in_only = 1;
       else if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "affinity %u", &affinity))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -814,7 +821,8 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
     }
 
   rv = nat44_add_del_lb_static_mapping (e_addr, (u16) e_port, proto, locals,
-					is_add, twice_nat, out2in_only, 0);
+					is_add, twice_nat, out2in_only, 0,
+					affinity);
 
   switch (rv)
     {
@@ -1788,7 +1796,8 @@ VLIB_CLI_COMMAND (add_lb_static_mapping_command, static) = {
   .short_help =
     "nat44 add load-balancing static mapping protocol tcp|udp "
     "external <addr>:<port> local <addr>:<port> [vrf <table-id>] "
-    "probability <n> [twice-nat|self-twice-nat] [out2in-only] [del]",
+    "probability <n> [twice-nat|self-twice-nat] [out2in-only] "
+    "[affinity <timeout-seconds>] [del]",
 };
 
 /*?
