@@ -26,8 +26,7 @@
 
 #define foreach_dpdk_tx_func_error			\
   _(BAD_RETVAL, "DPDK tx function returned an error")	\
-  _(PKT_DROP, "Tx packet drops (dpdk tx failure)")	\
-  _(REPL_FAIL, "Tx packet drops (replication failure)")
+  _(PKT_DROP, "Tx packet drops (dpdk tx failure)")
 
 typedef enum
 {
@@ -63,48 +62,6 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
       vec_add (xd->default_mac_address, address, sizeof (address));
       return NULL;
     }
-}
-
-static struct rte_mbuf *
-dpdk_replicate_packet_mb (vlib_buffer_t * b)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  struct rte_mbuf **mbufs = 0, *s, *d;
-  u8 nb_segs;
-  unsigned socket_id = rte_socket_id ();
-  int i;
-
-  ASSERT (dm->pktmbuf_pools[socket_id]);
-  s = rte_mbuf_from_vlib_buffer (b);
-  nb_segs = s->nb_segs;
-  vec_validate (mbufs, nb_segs - 1);
-
-  if (rte_pktmbuf_alloc_bulk (dm->pktmbuf_pools[socket_id], mbufs, nb_segs))
-    {
-      vec_free (mbufs);
-      return 0;
-    }
-
-  d = mbufs[0];
-  d->nb_segs = s->nb_segs;
-  d->data_len = s->data_len;
-  d->pkt_len = s->pkt_len;
-  d->data_off = s->data_off;
-  clib_memcpy (d->buf_addr, s->buf_addr, RTE_PKTMBUF_HEADROOM + s->data_len);
-
-  for (i = 1; i < nb_segs; i++)
-    {
-      d->next = mbufs[i];
-      d = mbufs[i];
-      s = s->next;
-      d->data_len = s->data_len;
-      clib_memcpy (d->buf_addr, s->buf_addr,
-		   RTE_PKTMBUF_HEADROOM + s->data_len);
-    }
-
-  d = mbufs[0];
-  vec_free (mbufs);
-  return d;
 }
 
 static void
@@ -264,29 +221,6 @@ dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
   CLIB_PREFETCH (mb, 2 * CLIB_CACHE_LINE_BYTES, STORE);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
-}
-
-static_always_inline void
-dpdk_buffer_recycle (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_buffer_t * b, u32 bi, struct rte_mbuf **mbp)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  struct rte_mbuf *mb_new;
-
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_RECYCLE) == 0)
-    return;
-
-  mb_new = dpdk_replicate_packet_mb (b);
-  if (PREDICT_FALSE (mb_new == 0))
-    {
-      vlib_error_count (vm, node->node_index,
-			DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-      b->flags |= VLIB_BUFFER_REPL_FAIL;
-    }
-  else
-    *mbp = mb_new;
-
-  vec_add1 (dm->recycle[vm->thread_index], bi);
 }
 
 static_always_inline void
@@ -454,29 +388,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       n_left--;
     }
 
-  /* run inly if we have buffers to recycle */
-  if (PREDICT_FALSE (all_or_flags & VLIB_BUFFER_RECYCLE))
-    {
-      struct rte_mbuf **mb_old;
-      from = vlib_frame_vector_args (f);
-      n_left = n_packets;
-      mb_old = mb = ptd->mbufs;
-      while (n_left > 0)
-	{
-	  b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-	  dpdk_buffer_recycle (vm, node, b[0], from[0], &mb_old[0]);
-
-	  /* in case of REPL_FAIL we need to shift data */
-	  mb[0] = mb_old[0];
-
-	  if (PREDICT_TRUE ((b[0]->flags & VLIB_BUFFER_REPL_FAIL) == 0))
-	    mb++;
-	  mb_old++;
-	  from++;
-	  n_left--;
-	}
-    }
-
   /* transmit as many packets as possible */
   tx_pkts = n_packets = mb - ptd->mbufs;
   n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets);
@@ -502,14 +413,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left - 1]);
       }
   }
-
-  /* Recycle replicated buffers */
-  if (PREDICT_FALSE (vec_len (dm->recycle[thread_index])))
-    {
-      vlib_buffer_free (vm, dm->recycle[thread_index],
-			vec_len (dm->recycle[thread_index]));
-      _vec_len (dm->recycle[thread_index]) = 0;
-    }
 
   return tx_pkts;
 }

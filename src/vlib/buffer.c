@@ -573,50 +573,26 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 {
   vlib_buffer_free_list_t *fl;
   vlib_buffer_free_list_index_t fi;
+  u32 flags, next;
+
   fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
-  /* The only current use of this callback:
-   * multicast recycle */
-  if (PREDICT_FALSE (fl->buffers_added_to_freelist_function != 0))
+  do
     {
-      int j;
-
-      vlib_buffer_add_to_free_list (vm, fl, bi,
-				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
-      for (j = 0; j < vec_len (vm->buffer_announce_list); j++)
+      vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
+      flags = nb->flags;
+      next = nb->next_buffer;
+      if (nb->n_add_refs)
+	nb->n_add_refs--;
+      else
 	{
-	  if (fl == vm->buffer_announce_list[j])
-	    goto already_announced;
+	  vlib_buffer_validate_alloc_free (vm, &bi, 1,
+					   VLIB_BUFFER_KNOWN_ALLOCATED);
+	  vlib_buffer_add_to_free_list (vm, fl, bi, 1);
 	}
-      vec_add1 (vm->buffer_announce_list, fl);
-    already_announced:
-      ;
+      bi = next;
     }
-  else
-    {
-      if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
-	{
-	  u32 flags, next;
-
-	  do
-	    {
-	      vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
-	      flags = nb->flags;
-	      next = nb->next_buffer;
-	      if (nb->n_add_refs)
-		nb->n_add_refs--;
-	      else
-		{
-		  vlib_buffer_validate_alloc_free (vm, &bi, 1,
-						   VLIB_BUFFER_KNOWN_ALLOCATED);
-		  vlib_buffer_add_to_free_list (vm, fl, bi, 1);
-		}
-	      bi = next;
-	    }
-	  while (follow_buffer_next && (flags & VLIB_BUFFER_NEXT_PRESENT));
-
-	}
-    }
+  while (follow_buffer_next && (flags & VLIB_BUFFER_NEXT_PRESENT));
 }
 
 static_always_inline void
@@ -672,17 +648,6 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       recycle_or_free (vm, bm, buffers[i], b0, follow_buffer_next);
       i++;
-    }
-
-  if (vec_len (vm->buffer_announce_list))
-    {
-      vlib_buffer_free_list_t *fl;
-      for (i = 0; i < vec_len (vm->buffer_announce_list); i++)
-	{
-	  fl = vm->buffer_announce_list[i];
-	  fl->buffers_added_to_freelist_function (vm, fl);
-	}
-      _vec_len (vm->buffer_announce_list) = 0;
     }
 }
 

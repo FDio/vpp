@@ -23,7 +23,6 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_bvi.h>
-#include <vnet/replication.h>
 #include <vnet/l2/l2_fib.h>
 
 #include <vppinfra/error.h>

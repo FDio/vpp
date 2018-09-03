@@ -404,9 +404,6 @@ typedef struct
   dpdk_device_and_queue_t **devices_by_hqos_cpu;
   dpdk_per_thread_data_t *per_thread_data;
 
-  /* per-thread recycle lists */
-  u32 **recycle;
-
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
 
