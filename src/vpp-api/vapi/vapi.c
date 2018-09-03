@@ -306,6 +306,10 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
     {
       return VAPI_EINVAL;
     }
+  if (!clib_mem_get_per_cpu_heap () && !clib_mem_init (0, 1024 * 1024 * 32))
+    {
+      return VAPI_ENOMEM;
+    }
   ctx->requests_size = max_outstanding_requests;
   const size_t size = ctx->requests_size * sizeof (*ctx->requests);
   void *tmp = realloc (ctx->requests, size);
