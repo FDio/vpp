@@ -22,6 +22,30 @@
       "revId": "02e0343654eb2723c401139607d9e20cee9a70fe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "afaa59a9_45d4a999",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-09-03T11:19:32Z",
+      "side": 1,
+      "message": "it\u0027s nested in\nif (config-\u003eshg \u003d\u003d 0 \u0026\u0026 feature_bitmap \u003d\u003d 0)",
+      "parentUuid": "43736a34_bb344f5c",
+      "range": {
+        "startLine": 146,
+        "startChar": 0,
+        "endLine": 152,
+        "endChar": 2
+      },
+      "revId": "02e0343654eb2723c401139607d9e20cee9a70fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
