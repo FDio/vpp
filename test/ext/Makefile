@@ -18,7 +18,7 @@ endif
 
 FLAGS = -g -Wall -lstdc++ -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
 CFLAGS = -std=gnu99 $(FLAGS)
-CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras/vom
+CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras
 
 all: $(VAPI_CBIN) $(VAPI_CPPBIN) $(VOM_BIN)
 
