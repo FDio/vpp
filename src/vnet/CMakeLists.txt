@@ -37,7 +37,6 @@ list(APPEND VNET_SOURCES
   interface_output.c
   interface_stats.c
   misc.c
-  replication.c
 )
 
 list(APPEND VNET_HEADERS
@@ -56,7 +55,6 @@ list(APPEND VNET_HEADERS
   l3_types.h
   plugin/plugin.h
   pipeline.h
-  replication.h
   vnet.h
   vnet_all_api_h.h
   vnet_msg_enum.h

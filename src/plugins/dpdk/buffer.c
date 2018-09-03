@@ -290,8 +290,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
     {
       int j;
 
-      vlib_buffer_add_to_free_list (vm, fl, bi,
-				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
+      vlib_buffer_add_to_free_list (vm, fl, bi, 1);
 
       for (j = 0; j < vec_len (vm->buffer_announce_list); j++)
 	{
@@ -302,7 +301,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
     already_announced:
       ;
     }
-  else if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
+  else
     dpdk_rte_pktmbuf_free (vm, thread_index, b, 1);
 }
 
@@ -314,7 +313,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   vlib_buffer_t *bufp[n_buffers], **b = bufp;
   u32 thread_index = vlib_get_thread_index ();
   int i = 0;
-  u32 simple_mask = (VLIB_BUFFER_NON_DEFAULT_FREELIST | VLIB_BUFFER_RECYCLE |
+  u32 simple_mask = (VLIB_BUFFER_NON_DEFAULT_FREELIST |
 		     VLIB_BUFFER_NEXT_PRESENT);
   u32 n_left, *bi;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
