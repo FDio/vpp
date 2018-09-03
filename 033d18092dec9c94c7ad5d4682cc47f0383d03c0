@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3bfa4902_96a1163e",
+        "filename": "extras/vom/vom/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-03T18:43:33Z",
+      "side": 1,
+      "message": "you are not linking against this so file so this is not needed....\nIf your cpp files are depending on headers, then use find_file()",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 41
+      },
+      "revId": "033d18092dec9c94c7ad5d4682cc47f0383d03c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
