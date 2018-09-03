@@ -1463,7 +1463,8 @@ static void
     nat44_add_del_lb_static_mapping (e_addr,
 				     clib_net_to_host_u16 (mp->external_port),
 				     proto, locals, mp->is_add, twice_nat,
-				     mp->out2in_only, tag);
+				     mp->out2in_only, tag,
+				     clib_net_to_host_u32 (mp->affinity));
 
   vec_free (locals);
   vec_free (tag);

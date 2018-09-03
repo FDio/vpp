@@ -3741,6 +3741,67 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_lb_affinity(self):
+        """ NAT44 local service load balancing affinity """
+        external_addr_n = socket.inet_pton(socket.AF_INET, self.nat_addr)
+        external_port = 80
+        local_port = 8080
+        server1 = self.pg0.remote_hosts[0]
+        server2 = self.pg0.remote_hosts[1]
+
+        locals = [{'addr': server1.ip4n,
+                   'port': local_port,
+                   'probability': 50,
+                   'vrf_id': 0},
+                  {'addr': server2.ip4n,
+                   'port': local_port,
+                   'probability': 50,
+                   'vrf_id': 0}]
+
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
+                                                  external_port,
+                                                  IP_PROTOS.tcp,
+                                                  affinity=10800,
+                                                  local_num=len(locals),
+                                                  locals=locals)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=1025, dport=external_port))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        backend = capture[0][IP].dst
+
+        sessions = self.vapi.nat44_user_session_dump(
+            socket.inet_pton(socket.AF_INET, backend), 0)
+        self.assertEqual(len(sessions), 1)
+        self.assertTrue(sessions[0].ext_host_valid)
+        self.vapi.nat44_del_session(
+            sessions[0].inside_ip_address,
+            sessions[0].inside_port,
+            sessions[0].protocol,
+            ext_host_address=sessions[0].ext_host_address,
+            ext_host_port=sessions[0].ext_host_port)
+
+        pkts = []
+        for port in range(1030, 1100):
+            p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+                 IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+                 TCP(sport=port, dport=external_port))
+            pkts.append(p)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for p in capture:
+            self.assertEqual(p[IP].dst, backend)
+
     def test_unknown_proto(self):
         """ NAT44 translate packet with unknown protocol """
         self.nat44_add_address(self.nat_addr)

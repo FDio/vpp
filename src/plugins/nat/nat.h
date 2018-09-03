@@ -142,6 +142,7 @@ typedef enum {
 #define SNAT_SESSION_FLAG_TWICE_NAT            8
 #define SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT   16
 #define SNAT_SESSION_FLAG_FWD_BYPASS           32
+#define SNAT_SESSION_FLAG_AFFINITY             64
 
 #define NAT_INTERFACE_FLAG_IS_INSIDE 1
 #define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
@@ -241,6 +242,12 @@ typedef enum {
   TWICE_NAT_SELF,
 } twice_nat_type_t;
 
+typedef enum {
+  NO_LB_NAT,
+  LB_NAT,
+  AFFINITY_LB_NAT,
+} lb_nat_type_t;
+
 typedef struct {
   ip4_address_t local_addr;
   ip4_address_t external_addr;
@@ -252,9 +259,11 @@ typedef struct {
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
+  u32 affinity;
   u32 *workers;
   u8 *tag;
   nat44_lb_addr_port_t *locals;
+  u32 affinity_per_service_list_head_index;
 } snat_static_mapping_t;
 
 typedef struct {
@@ -472,7 +481,8 @@ int snat_static_mapping_match (snat_main_t * sm,
                                u8 by_external,
                                u8 *is_addr_only,
                                twice_nat_type_t *twice_nat,
-                               u8 *lb);
+                               lb_nat_type_t *lb,
+                               ip4_address_t * ext_host_addr);
 
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
                                u8 p_len,
@@ -525,6 +535,12 @@ typedef struct {
     @return 1 if NAT session is endpoint dependent
 */
 #define is_ed_session(s) (s->flags & SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT)
+
+/** \brief Check if NAT session has affinity record.
+    @param s NAT session
+    @return 1 if NAT session has affinity record
+*/
+#define is_affinity_sessions(s) (s->flags & SNAT_SESSION_FLAG_AFFINITY)
 
 #define nat_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
 #define nat_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
@@ -619,7 +635,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
                                      twice_nat_type_t twice_nat, u8 out2in_only,
-                                     u8 *tag);
+                                     u8 *tag, u32 affinity);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
 int nat44_del_ed_session (snat_main_t *sm, ip4_address_t *addr, u16 port,

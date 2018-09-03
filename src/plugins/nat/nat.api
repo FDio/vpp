@@ -668,6 +668,8 @@ typeonly manual_endian define nat44_lb_addr_port {
                             local address of internal host
     @param out2in_only - if 1 rule match only out2in direction
     @param tag - opaque string tag
+    @param affinity - if 0 disabled, otherwise client IP affinity sticky time
+                      in seconds
     @param local_num - number of local network nodes
     @param locals - local network nodes
 */
@@ -682,6 +684,7 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u8 self_twice_nat;
   u8 out2in_only;
   u8 tag[64];
+  u32 affinity;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
@@ -707,6 +710,8 @@ define nat44_lb_static_mapping_dump {
                             local address of internal host
     @param out2in_only - if 1 rule match only out2in direction
     @param tag - opaque string tag
+    @param affinity - if 0 disabled, otherwise client IP affinity sticky time
+                      in seconds
     @param local_num - number of local network nodes
     @param locals - local network nodes
 */
@@ -719,6 +724,7 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 self_twice_nat;
   u8 out2in_only;
   u8 tag[64];
+  u32 affinity;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };

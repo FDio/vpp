@@ -38,6 +38,7 @@ add_vpp_plugin(nat
   nat66_cli.c
   nat66_in2out.c
   nat66_out2in.c
+  nat_affinity.c
 
   API_FILES
   nat.api
