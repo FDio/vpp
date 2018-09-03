@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43736a34_bb344f5c",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-03T11:14:49Z",
+      "side": 1,
+      "message": "Is it ok to skip this if (l2_efp | l2_vtr | l2_pbb) \u003d\u003d 0 ?",
+      "range": {
+        "startLine": 146,
+        "startChar": 0,
+        "endLine": 152,
+        "endChar": 2
+      },
+      "revId": "02e0343654eb2723c401139607d9e20cee9a70fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
