@@ -280,30 +280,9 @@ static_always_inline void
 recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 		 vlib_buffer_t * b)
 {
-  vlib_buffer_free_list_t *fl;
   u32 thread_index = vlib_get_thread_index ();
-  vlib_buffer_free_list_index_t fi;
-  fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
-  /* The only current use of this callback: multicast recycle */
-  if (PREDICT_FALSE (fl->buffers_added_to_freelist_function != 0))
-    {
-      int j;
-
-      vlib_buffer_add_to_free_list (vm, fl, bi,
-				    (b->flags & VLIB_BUFFER_RECYCLE) == 0);
-
-      for (j = 0; j < vec_len (vm->buffer_announce_list); j++)
-	{
-	  if (fl == vm->buffer_announce_list[j])
-	    goto already_announced;
-	}
-      vec_add1 (vm->buffer_announce_list, fl);
-    already_announced:
-      ;
-    }
-  else if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
-    dpdk_rte_pktmbuf_free (vm, thread_index, b, 1);
+  dpdk_rte_pktmbuf_free (vm, thread_index, b, 1);
 }
 
 static_always_inline void
@@ -314,7 +293,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   vlib_buffer_t *bufp[n_buffers], **b = bufp;
   u32 thread_index = vlib_get_thread_index ();
   int i = 0;
-  u32 simple_mask = (VLIB_BUFFER_NON_DEFAULT_FREELIST | VLIB_BUFFER_RECYCLE |
+  u32 simple_mask = (VLIB_BUFFER_NON_DEFAULT_FREELIST |
 		     VLIB_BUFFER_NEXT_PRESENT);
   u32 n_left, *bi;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
@@ -378,16 +357,6 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       bi += 1;
       b += 1;
       n_left -= 1;
-    }
-  if (vec_len (vm->buffer_announce_list))
-    {
-      vlib_buffer_free_list_t *fl;
-      for (i = 0; i < vec_len (vm->buffer_announce_list); i++)
-	{
-	  fl = vm->buffer_announce_list[i];
-	  fl->buffers_added_to_freelist_function (vm, fl);
-	}
-      _vec_len (vm->buffer_announce_list) = 0;
     }
 }
 

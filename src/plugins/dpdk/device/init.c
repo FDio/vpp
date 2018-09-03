@@ -1790,7 +1790,6 @@ dpdk_init (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
   clib_error_t *error = 0;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /* verify that structs are cacheline aligned */
   STATIC_ASSERT (offsetof (dpdk_device_t, cacheline0) == 0,
@@ -1810,8 +1809,6 @@ dpdk_init (vlib_main_t * vm)
   dm->conf->nchannels = 4;
   dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
-
-  vec_validate (dm->recycle, tm->n_thread_stacks - 1);
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =

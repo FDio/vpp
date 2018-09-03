@@ -67,11 +67,8 @@ typedef u8 vlib_buffer_free_list_index_t;
   _( 0, NON_DEFAULT_FREELIST, "non-default-fl")		\
   _( 1, IS_TRACED, 0)					\
   _( 2, NEXT_PRESENT, 0)				\
-  _( 3, IS_RECYCLED, "is-recycled")			\
-  _( 4, TOTAL_LENGTH_VALID, 0)				\
-  _( 5, REPL_FAIL, "repl-fail")				\
-  _( 6, RECYCLE, "recycle")				\
-  _( 7, EXT_HDR_VALID, "ext-hdr-valid")
+  _( 3, TOTAL_LENGTH_VALID, 0)				\
+  _( 4, EXT_HDR_VALID, "ext-hdr-valid")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */
@@ -113,8 +110,6 @@ typedef struct
                 <br> VLIB_BUFFER_IS_TRACED: trace this buffer.
                 <br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
                 <br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
-                <br> VLIB_BUFFER_REPL_FAIL: packet replication failure
-                <br> VLIB_BUFFER_RECYCLE: as it says
                 <br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
                 set to avoid adding it to a flow report
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
@@ -369,11 +364,6 @@ typedef struct vlib_buffer_free_list_t
   void (*buffer_init_function) (struct vlib_main_t * vm,
 				struct vlib_buffer_free_list_t * fl,
 				u32 * buffers, u32 n_buffers);
-
-  /* Callback function to announce that buffers have been
-     added to the freelist */
-  void (*buffers_added_to_freelist_function)
-    (struct vlib_main_t * vm, struct vlib_buffer_free_list_t * fl);
 
   uword buffer_init_function_opaque;
 } __attribute__ ((aligned (16))) vlib_buffer_free_list_t;
