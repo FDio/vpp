@@ -2348,7 +2348,6 @@ static clib_error_t *
 stats_socket_accept_ready (clib_file_t * uf)
 {
   stats_main_t *sm = &stats_main;
-  ssvm_private_t *ssvmp = &sm->stat_segment;
   clib_error_t *err;
   clib_socket_t client = { 0 };
 
@@ -2360,7 +2359,7 @@ stats_socket_accept_ready (clib_file_t * uf)
     }
 
   /* Send the fd across and close */
-  err = clib_socket_sendmsg (&client, 0, 0, &ssvmp->fd, 1);
+  err = clib_socket_sendmsg (&client, 0, 0, &sm->memfd, 1);
   if (err)
     clib_error_report (err);
   clib_socket_close (&client);

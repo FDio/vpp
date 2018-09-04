@@ -17,8 +17,9 @@
 #ifndef included_stat_client_h
 #define included_stat_client_h
 
-#include <vlib/vlib.h>
-#include <vpp/stats/stats.h>
+#include <stdint.h>
+#include <vpp/stats/stat_segment.h>
+#include <vlib/counter_types.h>
 
 typedef struct
 {
@@ -26,31 +27,25 @@ typedef struct
   stat_directory_type_t type;
   union
   {
-    f64 scalar_value;
-    u64 error_value;
-    u64 *vector_pointer;
+    double scalar_value;
+    uint64_t error_value;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
   };
 } stat_segment_data_t;
 
-typedef struct
-{
-  char *name;
-  stat_segment_directory_entry_t *ep;
-} stat_segment_cached_pointer_t;
-
 int stat_segment_connect (char *socket_name);
 void stat_segment_disconnect (void);
-u8 **stat_segment_ls (u8 ** pattern);
-stat_segment_data_t *stat_segment_dump (u8 ** counter_vec);
-stat_segment_cached_pointer_t *stat_segment_register (u8 ** counter_vec);
-/* Collects registered counters */
-stat_segment_data_t *stat_segment_collect (stat_segment_cached_pointer_t *);
-void stat_segment_data_free (stat_segment_data_t * res);
-f64 stat_segment_heartbeat (void);
-u8 **stat_segment_string_vector (u8 ** string_vector, char *string);
+uint8_t **stat_segment_string_vector (uint8_t ** string_vector, char *string);
 int stat_segment_vec_len (void *vec);
+uint32_t *stat_segment_ls (uint8_t ** pattern);
+stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
+stat_segment_data_t *stat_segment_dump_entry (uint32_t index);
+void stat_segment_data_free (stat_segment_data_t * res);
+
+double stat_segment_heartbeat (void);
+
+char *stat_segment_index_to_name (uint32_t index);
 
 #endif /* included_stat_client_h */
 
