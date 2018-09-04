@@ -13,44 +13,42 @@ typedef struct {
 
 typedef enum {
   STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_POINTER,
-  STAT_DIR_TYPE_VECTOR_POINTER,
+  STAT_DIR_TYPE_SCALAR_INDEX,
   STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
-  STAT_DIR_TYPE_SERIALIZED_NODES,
 } stat_directory_type_t;
 
-typedef struct {
-  stat_directory_type_t type;
-  void *value;
-} stat_segment_directory_entry_t;
-
-typedef struct {
-  char *name;
+typedef struct
+{
   stat_directory_type_t type;
   union {
+    uint64_t offset;
+    uint64_t index;
+    uint64_t value;
+  };
+  uint64_t offset_vector;
+  char name[128]; // TODO change this to pointer to "somewhere"
+} stat_segment_directory_entry_t;
+
+typedef struct
+{
+  char *name;
+  stat_directory_type_t type;
+  union
+  {
     double scalar_value;
     uint64_t error_value;
-    uint64_t *vector_pointer;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
   };
 } stat_segment_data_t;
 
-typedef struct {
-  char *name;
-  stat_segment_directory_entry_t *ep;
-} stat_segment_cached_pointer_t;
-
 int stat_segment_connect (char *socket_name);
 void stat_segment_disconnect (void);
 
-uint8_t  **stat_segment_ls (uint8_t **pattern);
-stat_segment_data_t *stat_segment_dump (uint8_t ** counter_vec);
-/* Collects registered counters */
-stat_segment_cached_pointer_t *stat_segment_register (uint8_t ** counter_vec);
-stat_segment_data_t *stat_segment_collect (stat_segment_cached_pointer_t *);
+uint32_t *stat_segment_ls (uint8_t ** pattern);
+stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
 void stat_segment_data_free (stat_segment_data_t * res);
 double stat_segment_heartbeat (void);
 int stat_segment_vec_len(void *vec);
@@ -100,11 +98,15 @@ def combined_counter_vec_list(api, e):
 
 
 def stat_entry_to_python(api, e):
+    # Scalar index
+    if e.type == 1:
+        return e.scalar_value
+        return None
+    if e.type == 2:
+        return simple_counter_vec_list(api, e.simple_counter_vec)
     if e.type == 3:
-        return simple_counter_vec_list(e.simple_counter_vec)
-    if e.type == 4:
         return combined_counter_vec_list(api, e.combined_counter_vec)
-    if e.type == 5:
+    if e.type == 4:
         return e.error_value
     return None
 
@@ -129,12 +131,12 @@ class VPPStats:
         for i in range(rv_len):
             n = ffi.string(rv[i].name)
             e = stat_entry_to_python(self.api, rv[i])
-            if e:
-                stats[n] = e
+            stats[n] = e
         return stats
 
-    def dump_str(self, counters_str):
-        return self.dump(make_string_vector(self.api, counters_str))
+    def get_counter(self, name):
+        dir = self.ls(name)
+        return self.dump(dir).values()[0]
 
     def disconnect(self):
         self.api.stat_segment_disconnect()
@@ -153,9 +155,3 @@ class VPPStats:
         for k in sorted(error_counters):
             s += '{:<60}{:>10}\n'.format(k, error_counters[k])
         return s
-
-    def register(self):
-        raise NotImplemented
-
-    def collect(self):
-        raise NotImplemented
