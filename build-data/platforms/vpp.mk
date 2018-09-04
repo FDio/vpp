@@ -19,32 +19,8 @@ vpp_arch = native
 ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
 endif
-vpp_native_tools = vppapigen
-
-vpp_uses_dpdk = yes
-
-# Uncoment to enable building unit tests
-# vpp_enable_tests = yes
 
 vpp_root_packages = vpp vom japi
-
-# DPDK configuration parameters
-# vpp_uses_dpdk_mlx4_pmd = yes
-# vpp_uses_dpdk_mlx5_pmd = yes
-# vpp_uses_external_dpdk = yes
-# vpp_dpdk_inc_dir = /usr/include/dpdk
-# vpp_dpdk_lib_dir = /usr/lib
-# vpp_dpdk_shared_lib = yes
-
-# Use '--without-libnuma' for non-numa aware architecture
-# Use '--enable-dlmalloc' to use dlmalloc instead of mheap
-vpp_configure_args_vpp = --enable-dlmalloc
-sample-plugin_configure_args_vpp = --enable-dlmalloc
-
-# load balancer plugin is not portable on 32 bit platform
-ifeq ($(MACHINE),i686)
-vpp_configure_args_vpp += --disable-lb-plugin
-endif
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror
