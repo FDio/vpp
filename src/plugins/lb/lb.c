@@ -232,7 +232,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
              format_white_space, indent);
   u32 i;
   for (i=0; i<LB_N_VIP_COUNTERS; i++)
-    s = format(s, "%U    %s: %d\n",
+    s = format(s, "%U    %s: %u\n",
                format_white_space, indent,
                lbm->vip_counters[i].name,
                vlib_get_simple_counter(&lbm->vip_counters[i], vip - lbm->vips));
