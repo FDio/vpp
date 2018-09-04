@@ -22,6 +22,30 @@
       "revId": "033d18092dec9c94c7ad5d4682cc47f0383d03c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2f1b43c_6cc6c97a",
+        "filename": "extras/vom/vom/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-04T09:14:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3bfa4902_96a1163e",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 41
+      },
+      "revId": "033d18092dec9c94c7ad5d4682cc47f0383d03c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
