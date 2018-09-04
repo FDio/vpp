@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5ab4380_8473571f",
+        "filename": "src/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-04T11:38:40Z",
+      "side": 1,
+      "message": "~0 is the accepted convention rather than 0xffffffff",
+      "revId": "4bb611d221a661800815dc53b0b02af597cf75ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47de8431_badd4aec",
+        "filename": "src/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-04T11:38:40Z",
+      "side": 1,
+      "message": "update the comment",
+      "revId": "4bb611d221a661800815dc53b0b02af597cf75ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
