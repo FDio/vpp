@@ -19,7 +19,7 @@ More than 533 commits since the 18.04 release.
 ## Features
 
 ### Infrastructure
-- DPDK 18.02.1
+- DPDK 18.05
   - Complete rework of the dpdk-input node
   - Display rx/tx burst function name in "show hardware detail"
   - Improve buffer alloc perfomance
