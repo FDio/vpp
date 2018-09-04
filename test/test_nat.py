@@ -138,6 +138,7 @@ class MethodHolder(VppTestCase):
         self.vapi.nat_set_reass(is_ip6=1)
         self.verify_no_nat44_user()
         self.vapi.nat_set_timeouts()
+        self.vapi.nat_set_addr_and_port_alloc_alg()
 
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
@@ -3098,8 +3099,10 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
-        self.vapi.cli("nat addr-port-assignment-alg map-e psid 10 "
-                      "psid-offset 6 psid-len 6")
+        self.vapi.nat_set_addr_and_port_alloc_alg(alg=1,
+                                                  psid_offset=6,
+                                                  psid_length=6,
+                                                  psid=10)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3121,6 +3124,31 @@ class TestNAT44(MethodHolder):
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
+
+    def test_port_range(self):
+        """ External address port range """
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat_set_addr_and_port_alloc_alg(alg=2,
+                                                  start_port=1025,
+                                                  end_port=1027)
+
+        pkts = []
+        for port in range(0, 5):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=1125 + port))
+            pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(3)
+        for p in capture:
+            tcp = p[TCP]
+            self.assertGreaterEqual(tcp.sport, 1025)
+            self.assertLessEqual(tcp.sport, 1027)
 
     def test_ipfix_max_frags(self):
         """ IPFIX logging maximum fragments pending reassembly exceeded """
@@ -3290,7 +3318,8 @@ class TestNAT44(MethodHolder):
             self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
             self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
             self.logger.info(self.vapi.cli("show nat timeouts"))
-            self.vapi.cli("nat addr-port-assignment-alg default")
+            self.logger.info(
+                self.vapi.cli("show nat addr-port-assignment-alg"))
             self.clear_nat44()
             self.vapi.cli("clear logging")
 

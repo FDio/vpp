@@ -277,6 +277,61 @@ define nat_get_timeouts_reply {
   u32 icmp;
 };
 
+/** \brief Set address and port assignment algorithm
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param alg - address and port assignment algorithm:
+                 0 - default, 1 - MAP-E, 2 - port range
+                 (see nat_addr_and_port_alloc_alg_t in nat.h)
+    @param psid_offset - number of offset bits (valid only for MAP-E alg)
+    @param psid_length - length of PSID (valid only for MAP-E alg)
+    @param psid - Port Set Identifier (PSID) value (valid only for MAP-E alg)
+    @param start_port - beginning of the port range
+    @param end_port - end of the port range
+*/
+autoreply define nat_set_addr_and_port_alloc_alg {
+  u32 client_index;
+  u32 context;
+  u8 alg;
+  u8 psid_offset;
+  u8 psid_length;
+  u16 psid;
+  u16 start_port;
+  u16 end_port;
+};
+
+/** \brief Get address and port assignment algorithm
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_get_addr_and_port_alloc_alg {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get address and port assignment algorithm reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param alg - address and port assignment algorithm:
+                 0 - default, 1 - MAP-E, 2 - port range
+                 (see nat_addr_and_port_alloc_alg_t in nat.h)
+    @param psid_offset - number of offset bits (valid only for MAP-E alg)
+    @param psid_length - length of PSID (valid only for MAP-E alg)
+    @param psid - Port Set Identifier (PSID) value (valid only for MAP-E alg)
+    @param start_port - beginning of the port range
+    @param end_port - end of the port range
+*/
+define nat_get_addr_and_port_alloc_alg_reply {
+  u32 context;
+  i32 retval;
+  u8 alg;
+  u8 psid_offset;
+  u8 psid_length;
+  u16 psid;
+  u16 start_port;
+  u16 end_port;
+};
+
 /*
  * NAT44 APIs
  */

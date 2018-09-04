@@ -214,7 +214,7 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
-  u32 psid, psid_offset, psid_length;
+  u32 psid, psid_offset, psid_length, port_start, port_end;
 
   if (sm->deterministic)
     return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
@@ -234,6 +234,20 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 	nat_set_alloc_addr_and_port_mape ((u16) psid, (u16) psid_offset,
 					  (u16) psid_length);
       else
+	if (unformat
+	    (line_input, "port-range %d - %d", &port_start, &port_end))
+	{
+	  if (port_end <= port_start)
+	    {
+	      error =
+		clib_error_return (0,
+				   "The end-port must be greater than start-port");
+	      goto done;
+	    }
+	  nat_set_alloc_addr_and_port_range ((u16) port_start,
+					     (u16) port_end);
+	}
+      else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
 				     format_unformat_error, line_input);
@@ -246,6 +260,36 @@ done:
 
   return error;
 };
+
+static clib_error_t *
+nat44_show_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
+					       unformat_input_t * input,
+					       vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (sm->deterministic)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+
+  vlib_cli_output (vm, "NAT address and port: %U",
+		   format_nat_addr_and_port_alloc_alg,
+		   sm->addr_and_port_alloc_alg);
+  switch (sm->addr_and_port_alloc_alg)
+    {
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_MAPE:
+      vlib_cli_output (vm, "  psid %d psid-offset %d psid-len %d", sm->psid,
+		       sm->psid_offset, sm->psid_length);
+      break;
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_RANGE:
+      vlib_cli_output (vm, "  start-port %d end-port %d", sm->start_port,
+		       sm->end_port);
+      break;
+    default:
+      break;
+    }
+
+  return 0;
+}
 
 static clib_error_t *
 add_address_command_fn (vlib_main_t * vm,
@@ -1634,6 +1678,8 @@ VLIB_CLI_COMMAND (snat_ipfix_logging_enable_disable_command, static) = {
  * Set address and port assignment algorithm
  * For the MAP-E CE limit port choice based on PSID use:
  *  vpp# nat addr-port-assignment-alg map-e psid 10 psid-offset 6 psid-len 6
+ * For port range use:
+ *  vpp# nat addr-port-assignment-alg port-range <start-port> - <end-port>
  * To set standard (default) address and port assignment algorithm use:
  *  vpp# nat addr-port-assignment-alg default
  * @cliexend
@@ -1642,6 +1688,18 @@ VLIB_CLI_COMMAND (nat44_set_alloc_addr_and_port_alg_command, static) = {
     .path = "nat addr-port-assignment-alg",
     .short_help = "nat addr-port-assignment-alg <alg-name> [<alg-params>]",
     .function = nat44_set_alloc_addr_and_port_alg_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show nat addr-port-assignment-alg}
+ * Show address and port assignment algorithm
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_show_alloc_addr_and_port_alg_command, static) = {
+    .path = "show nat addr-port-assignment-alg",
+    .short_help = "show nat addr-port-assignment-alg",
+    .function = nat44_show_alloc_addr_and_port_alg_command_fn,
 };
 
 /*?

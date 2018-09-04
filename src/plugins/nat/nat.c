@@ -2062,6 +2062,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
+  sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
   sm->log_class = vlib_log_register_class ("nat", 0);
   error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
@@ -2466,6 +2467,57 @@ exhausted:
   return 1;
 }
 
+static int
+nat_alloc_addr_and_port_range (snat_address_t * addresses,
+                               u32 fib_index,
+                               u32 thread_index,
+                               snat_session_key_t * k,
+                               u32 * address_indexp,
+                               u16 port_per_thread,
+                               u32 snat_thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_address_t *a = addresses;
+  u16 portnum, ports;
+
+  ports = sm->end_port - sm->start_port + 1;
+
+  if (!vec_len (addresses))
+    goto exhausted;
+
+  switch (k->protocol)
+    {
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      if (a->busy_##n##_ports < ports) \
+        { \
+          while (1) \
+            { \
+              portnum = snat_random_port(sm->start_port, sm->end_port); \
+              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                continue; \
+              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+              a->busy_##n##_ports++; \
+              k->addr = a->addr; \
+              k->port = clib_host_to_net_u16 (portnum); \
+              *address_indexp = i; \
+              return 0; \
+            } \
+        } \
+      break;
+      foreach_snat_protocol
+#undef _
+    default:
+      nat_log_info ("unknown protocol");
+      return 1;
+    }
+
+exhausted:
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted(0);
+  return 1;
+}
+
 void
 nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add)
 {
@@ -2513,6 +2565,25 @@ format_snat_protocol (u8 * s, va_list * args)
     {
 #define _(N, j, n, str) case SNAT_PROTOCOL_##N: t = (u8 *) str; break;
       foreach_snat_protocol
+#undef _
+    default:
+      s = format (s, "unknown");
+      return s;
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
+u8 *
+format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(v, N, s) case NAT_ADDR_AND_PORT_ALLOC_ALG_##N: t = (u8 *) s; break;
+      foreach_nat_addr_and_port_alloc_alg
 #undef _
     default:
       s = format (s, "unknown");
@@ -3550,6 +3621,7 @@ nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset, u16 psid_length)
 {
   snat_main_t *sm = &snat_main;
 
+  sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_MAPE;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_mape;
   sm->psid = psid;
   sm->psid_offset = psid_offset;
@@ -3557,10 +3629,22 @@ nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset, u16 psid_length)
 }
 
 void
+nat_set_alloc_addr_and_port_range (u16 start_port, u16 end_port)
+{
+  snat_main_t *sm = &snat_main;
+
+  sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_RANGE;
+  sm->alloc_addr_and_port = nat_alloc_addr_and_port_range;
+  sm->start_port = start_port;
+  sm->end_port = end_port;
+}
+
+void
 nat_set_alloc_addr_and_port_default (void)
 {
   snat_main_t *sm = &snat_main;
 
+  sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
 }
 
