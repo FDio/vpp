@@ -447,10 +447,11 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return clib_error_return (0, "Interface not initialized");
 
+  u32 hw_flags = hif->flags;
   if (is_up)
     {
-      vnet_hw_interface_set_flags (vnm, xd->hw_if_index,
-				   VNET_HW_INTERFACE_FLAG_LINK_UP);
+      hw_flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, hw_flags);
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
 	dpdk_device_start (xd);
       xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
@@ -460,7 +461,8 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     }
   else
     {
-      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, 0);
+      hw_flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, hw_flags);
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0)
 	dpdk_device_stop (xd);
       xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
