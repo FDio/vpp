@@ -66,6 +66,7 @@ add_vpp_library(vlib
   cli_funcs.h
   cli.h
   counter.h
+  counter_types.h
   defs.h
   error_funcs.h
   error.h
