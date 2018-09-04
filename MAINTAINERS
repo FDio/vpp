@@ -184,6 +184,12 @@ M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
 F:	src/plugins/srv6_as.am
 
+Plugin - Load Balancer
+M:      Pierre Pfister <ppfister@cisco.com>
+M:      Hongjun Ni <hongjun.ni@intel.com>
+F:      src/plugins/lb/
+F:      src/plugins/lb.am
+
 Plugin - NSH
 M:      Hongjun Ni <hongjun.ni@intel.com>
 M:      Keith Burns <alagalah@gmail.com>
