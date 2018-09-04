@@ -232,7 +232,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
              format_white_space, indent);
   u32 i;
   for (i=0; i<LB_N_VIP_COUNTERS; i++)
-    s = format(s, "%U    %s: %d\n",
+    s = format(s, "%U    %s: %Lu\n",
                format_white_space, indent,
                lbm->vip_counters[i].name,
                vlib_get_simple_counter(&lbm->vip_counters[i], vip - lbm->vips));
@@ -253,7 +253,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 *as_index;
   pool_foreach(as_index, vip->as_indexes, {
       as = &lbm->ass[*as_index];
-      s = format(s, "%U    %U %d buckets   %d flows  dpo:%u %s\n",
+      s = format(s, "%U    %U %u buckets   %Lu flows  dpo:%u %s\n",
                    format_white_space, indent,
                    format_ip46_address, &as->address, IP46_TYPE_ANY,
                    count[as - lbm->ass],

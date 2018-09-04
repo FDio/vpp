@@ -593,7 +593,7 @@ format_dpdk_device (u8 * s, va_list * args)
   {
 #define _(N, V)							\
     if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {       \
-      s = format (s, "\n%U%-40U%16Ld",                         \
+      s = format (s, "\n%U%-40U%16Lu",                         \
                   format_white_space, indent + 2,              \
                   format_c_identifier, #N,                     \
                   xd->stats.V - xd->last_cleared_stats.V);     \
@@ -625,7 +625,7 @@ format_dpdk_device (u8 * s, va_list * args)
         {
           /* format_c_identifier doesn't like c strings inside vector */
           u8 * name = format(0,"%s", xstat_names[i].name);
-          xs = format(xs, "\n%U%-38U%16Ld",
+          xs = format(xs, "\n%U%-38U%16Lu",
                       format_white_space, indent + 4,
                       format_c_identifier, name, delta);
           vec_free(name);
