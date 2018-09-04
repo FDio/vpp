@@ -450,8 +450,6 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (is_up)
     {
-      vnet_hw_interface_set_flags (vnm, xd->hw_if_index,
-				   VNET_HW_INTERFACE_FLAG_LINK_UP);
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
 	dpdk_device_start (xd);
       xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
