@@ -145,9 +145,9 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_reply)
 
-        err = '/err/ipip4-input/packets decapsulated'
-        cnt = self.statistics.dump_str(err)
-        self.assertEqual(cnt[err], 10)
+        err = self.statistics.get_counter(
+            '/err/ipip4-input/packets decapsulated')
+        self.assertEqual(err, 10)
 
         # IPv4 tunnel to IPv6
         p_ip6 = IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
@@ -159,8 +159,9 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p6_reply)
 
-        cnt = self.statistics.dump_str(err)
-        self.assertEqual(cnt[err], 20)
+        err = self.statistics.get_counter(
+            '/err/ipip4-input/packets decapsulated')
+        self.assertEqual(err, 20)
 
         #
         # Fragmentation / Reassembly and Re-fragmentation
@@ -182,8 +183,9 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_reply)
 
-        cnt = self.statistics.dump_str(err)
-        self.assertEqual(cnt[err], 1020)
+        err = self.statistics.get_counter(
+            '/err/ipip4-input/packets decapsulated')
+        self.assertEqual(err, 1020)
 
         f = []
         r = []

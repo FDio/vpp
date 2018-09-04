@@ -26,11 +26,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
 #include <vlibapi/api_helper_macros.h>
-#include <svm/queue.h>
-#include <svm/ssvm.h>
-
-/* Default socket to exchange segment fd */
-#define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
+#include <vpp/stats/stat_segment.h>
 
 typedef struct
 {
@@ -99,7 +95,6 @@ typedef struct
 
 } vpe_client_stats_registration_t;
 
-
 typedef struct
 {
   void *mheap;
@@ -162,32 +157,18 @@ typedef struct
   vpe_client_registration_t **clients_tmp;
 
   /* statistics segment */
-  ssvm_private_t stat_segment;
-  uword *counter_vector_by_name;
+  uword *directory_vector_by_name;
+  stat_segment_directory_entry_t *directory_vector;
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;
-  uword memory_size;
-  u8 serialize_nodes;
+  ssize_t memory_size;
+  u8 node_counters_enabled;
+  void *heap;
+  stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
+  int memfd;
 
-  /* Pointers to scalar stats maintained by the stat thread */
-  f64 *input_rate_ptr;
-  f64 *last_runtime_ptr;
-  f64 *last_runtime_stats_clear_ptr;
-  f64 *vector_rate_ptr;
-  f64 *heartbeat_ptr;
   u64 last_input_packets;
-
-  /* Pointers to vector stats maintained by the stat thread */
-  u8 *serialized_nodes;
-  vlib_main_t **stat_vms;
-  vlib_node_t ***node_dups;
-
-  f64 *vectors_per_node;
-  f64 *vector_rate_in;
-  f64 *vector_rate_out;
-  f64 *vector_rate_drop;
-  f64 *vector_rate_punt;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -197,30 +178,6 @@ typedef struct
 } stats_main_t;
 
 extern stats_main_t stats_main;
-
-/* Default stat segment 32m */
-#define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
-
-#define STAT_SEGMENT_OPAQUE_LOCK	0
-#define STAT_SEGMENT_OPAQUE_DIR		1
-#define STAT_SEGMENT_OPAQUE_EPOCH	2
-
-typedef enum
-{
-  STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_POINTER,
-  STAT_DIR_TYPE_VECTOR_POINTER,
-  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
-  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
-  STAT_DIR_TYPE_SERIALIZED_NODES,
-} stat_directory_type_t;
-
-typedef struct
-{
-  stat_directory_type_t type;
-  void *value;
-} stat_segment_directory_entry_t;
 
 void do_stat_segment_updates (stats_main_t * sm);
 
