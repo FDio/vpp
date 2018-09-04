@@ -1797,6 +1797,36 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat_get_timeouts, {})
 
+    def nat_set_addr_and_port_alloc_alg(
+            self,
+            alg=0,
+            psid_offset=0,
+            psid_length=0,
+            psid=0,
+            start_port=0,
+            end_port=0):
+        """Set address and port assignment algorithm
+
+        :param alg: algorithm: 0 - default, 1 - MAP-E, 2 - port range
+        :param psid_offset: number of offset bits (valid only for MAP-E alg)
+        :param psid_length: length of PSID (valid only for MAP-E alg)
+        :param psid: Port Set Identifier value (valid only for MAP-E alg)
+        :param start_port: beginning of the port range
+        :param end_port: end of the port range
+        """
+        return self.api(
+            self.papi.nat_set_addr_and_port_alloc_alg,
+            {'alg': alg,
+             'psid_offset': psid_offset,
+             'psid_length': psid_length,
+             'psid': psid,
+             'start_port': start_port,
+             'end_port': end_port})
+
+    def nat_get_addr_and_port_alloc_alg(self):
+        """Get address and port assignment algorithm"""
+        return self.api(self.papi.nat_get_addr_and_port_alloc_alg, {})
+
     def nat_det_close_session_out(
             self,
             out_addr,

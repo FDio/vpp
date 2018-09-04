@@ -96,6 +96,16 @@ typedef struct {
   };
 } snat_user_key_t;
 
+#define foreach_nat_addr_and_port_alloc_alg \
+  _(0, DEFAULT, "default")         \
+  _(1, MAPE, "map-e")              \
+  _(2, RANGE, "port-range")
+
+typedef enum {
+#define _(v, N, s) NAT_ADDR_AND_PORT_ALLOC_ALG_##N = v,
+  foreach_nat_addr_and_port_alloc_alg
+#undef _
+} nat_addr_and_port_alloc_alg_t;
 
 #define foreach_snat_protocol \
   _(UDP, 0, udp, "udp")       \
@@ -361,10 +371,17 @@ typedef struct snat_main_s {
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
+  /* Address and port allocation function */
   nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
+  /* Address and port allocation type */
+  nat_addr_and_port_alloc_alg_t addr_and_port_alloc_alg;
+  /* Port set parameters (MAP-E) */
   u8 psid_offset;
   u8 psid_length;
   u16 psid;
+  /* Port range parameters */
+  u16 start_port;
+  u16 end_port;
 
   /* vector of outside fibs */
   nat_outside_fib_t * outside_fibs;
@@ -631,6 +648,7 @@ int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del,
                                u8 twice_nat);
 uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
 u8 * format_snat_protocol(u8 * s, va_list * args);
+u8 * format_nat_addr_and_port_alloc_alg(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
@@ -651,6 +669,7 @@ snat_session_t * nat_ed_session_alloc (snat_main_t *sm, snat_user_t *u,
                                        u32 thread_index);
 void nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset,
                                        u16 psid_length);
+void nat_set_alloc_addr_and_port_range (u16 start_port, u16 end_port);
 void nat_set_alloc_addr_and_port_default (void);
 int nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t *kv, void *arg);
 int nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t *kv, void *arg);

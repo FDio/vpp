@@ -484,6 +484,95 @@ vl_api_nat_get_timeouts_t_print (vl_api_nat_get_timeouts_t * mp, void *handle)
   FINISH;
 }
 
+static void
+  vl_api_nat_set_addr_and_port_alloc_alg_t_handler
+  (vl_api_nat_set_addr_and_port_alloc_alg_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_addr_and_port_alloc_alg_reply_t *rmp;
+  int rv = 0;
+  u16 port_start, port_end;
+
+  if (sm->deterministic)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
+  switch (mp->alg)
+    {
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT:
+      nat_set_alloc_addr_and_port_default ();
+      break;
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_MAPE:
+      nat_set_alloc_addr_and_port_mape (ntohs (mp->psid), mp->psid_offset,
+					mp->psid_length);
+      break;
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_RANGE:
+      port_start = ntohs (mp->start_port);
+      port_end = ntohs (mp->end_port);
+      if (port_end <= port_start)
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto send_reply;
+	}
+      nat_set_alloc_addr_and_port_range (port_start, port_end);
+      break;
+    default:
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      break;
+    }
+
+send_reply:
+  REPLY_MACRO (VL_API_NAT_SET_ADDR_AND_PORT_ALLOC_ALG_REPLY);
+}
+
+static void *vl_api_nat_set_addr_and_port_alloc_alg_t_print
+  (vl_api_nat_set_addr_and_port_alloc_alg_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_set_addr_and_port_alloc_alg ");
+  s = format (s, "alg %d psid_offset %d psid_length %d psid %d start_port %d "
+	      "end_port %d\n",
+	      ntohl (mp->alg), ntohl (mp->psid_offset),
+	      ntohl (mp->psid_length), ntohs (mp->psid),
+	      ntohs (mp->start_port), ntohs (mp->end_port));
+
+  FINISH;
+}
+
+static void
+  vl_api_nat_get_addr_and_port_alloc_alg_t_handler
+  (vl_api_nat_get_addr_and_port_alloc_alg_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_get_addr_and_port_alloc_alg_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT_GET_ADDR_AND_PORT_ALLOC_ALG_REPLY,
+  ({
+    rmp->alg = sm->addr_and_port_alloc_alg;
+    rmp->psid_offset = sm->psid_offset;
+    rmp->psid_length = sm->psid_length;
+    rmp->psid = htons (sm->psid);
+    rmp->start_port = htons (sm->start_port);
+    rmp->end_port = htons (sm->end_port);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *vl_api_nat_get_addr_and_port_alloc_alg_t_print
+  (vl_api_nat_get_addr_and_port_alloc_alg_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_get_addr_and_port_alloc_alg");
+
+  FINISH;
+}
+
 /*************/
 /*** NAT44 ***/
 /*************/
@@ -2990,8 +3079,10 @@ _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_REASS, nat_set_reass)                                         \
 _(NAT_GET_REASS, nat_get_reass)                                         \
 _(NAT_REASS_DUMP, nat_reass_dump)                                       \
-_(NAT_SET_TIMEOUTS, nat_set_timeouts)                           \
-_(NAT_GET_TIMEOUTS, nat_get_timeouts)                           \
+_(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \
+_(NAT_GET_TIMEOUTS, nat_get_timeouts)                                   \
+_(NAT_SET_ADDR_AND_PORT_ALLOC_ALG, nat_set_addr_and_port_alloc_alg)     \
+_(NAT_GET_ADDR_AND_PORT_ALLOC_ALG, nat_get_addr_and_port_alloc_alg)     \
 _(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
 _(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \
