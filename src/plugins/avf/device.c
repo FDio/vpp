@@ -524,9 +524,9 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
   rk = (virtchnl_rss_key_t *) msg;
   rk->vsi_id = ad->vsi_id;
   rk->key_len = ad->rss_key_size;
-  uword seed = random_default_seed ();
+  u32 seed = random_default_seed ();
   for (i = 0; i < ad->rss_key_size; i++)
-    rk->key[i] = (u8) random_uword ((u32 *) & seed);
+    rk->key[i] = (u8) random_uword (&seed);
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
 			 0);
