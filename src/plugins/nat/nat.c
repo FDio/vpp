@@ -816,6 +816,17 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
   rp->is_add = is_add;
   rp->tag = vec_dup (tag);
 }
+                                       
+static u32 get_thread_idx_by_port(u16 e_port)
+{
+    snat_main_t * sm = &snat_main;
+    u32 thread_idx = sm->num_workers;
+    if (sm->num_workers > 1)
+    {
+        thread_idx = sm->first_worker_index + sm->workers[(e_port - 1024) / sm->port_per_thread];
+    }      
+    return thread_idx;
+}
 
 /**
  * @brief Add static mapping.
@@ -1003,7 +1014,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]++; \
+                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]++; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -1148,7 +1159,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]--; \
+                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]--; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -1320,7 +1331,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]++; \
+                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]++; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -1423,7 +1434,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]--; \
+                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]--; \
                         } \
                       break;
                       foreach_snat_protocol
