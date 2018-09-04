@@ -30,7 +30,6 @@
 #include <sys/socket.h>
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
-#include <vpp/stats/stats.h>
 #include <ctype.h>
 
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
@@ -50,12 +49,22 @@ prom_string (char *s)
 }
 
 static void
-dump_metrics (FILE * stream, stat_segment_cached_pointer_t * cp)
+dump_metrics (FILE * stream, u8 ** patterns)
 {
   stat_segment_data_t *res;
   int i, j, k;
+  static u32 *stats = 0;
 
-  res = stat_segment_collect (cp);
+retry:
+  res = stat_segment_dump (stats);
+  if (res == 0)
+    {				/* Memory layout has changed */
+      if (stats)
+	vec_free (stats);
+      stats = stat_segment_ls (patterns);
+      goto retry;
+    }
+
   for (i = 0; i < vec_len (res); i++)
     {
       switch (res[i].type)
@@ -93,7 +102,7 @@ dump_metrics (FILE * stream, stat_segment_cached_pointer_t * cp)
 		   prom_string (res[i].name), res[i].error_value);
 	  break;
 
-	case STAT_DIR_TYPE_SCALAR_POINTER:
+	case STAT_DIR_TYPE_SCALAR_INDEX:
 	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
 	  fformat (stream, "%s %.2f\n", prom_string (res[i].name),
 		   res[i].scalar_value);
@@ -113,7 +122,7 @@ dump_metrics (FILE * stream, stat_segment_cached_pointer_t * cp)
 #define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
 
 static void
-http_handler (FILE * stream, stat_segment_cached_pointer_t * cp)
+http_handler (FILE * stream, u8 ** patterns)
 {
   char status[80] = { 0 };
   if (fgets (status, sizeof (status) - 1, stream) == 0)
@@ -165,7 +174,7 @@ http_handler (FILE * stream, stat_segment_cached_pointer_t * cp)
       return;
     }
   fputs ("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n", stream);
-  dump_metrics (stream, cp);
+  dump_metrics (stream, patterns);
 }
 
 static int
@@ -223,10 +232,9 @@ main (int argc, char **argv)
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   int rv;
-  void *heap_base;
 
-  heap_base = clib_mem_vm_map ((void *) 0x10000000ULL, 128 << 20);
-  clib_mem_init (heap_base, 128 << 20);
+  /* Allocating 32MB heap */
+  clib_mem_init (0, 32 << 20);
 
   unformat_init_command_line (a, argv);
 
@@ -257,18 +265,6 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  u8 **dir;
-  stat_segment_cached_pointer_t *cp;
-
-  dir = stat_segment_ls (patterns);
-  cp = stat_segment_register (dir);
-  if (!cp)
-    {
-      fformat (stderr,
-	       "Couldn't register required counters with stat segment\n");
-      exit (1);
-    }
-
   int fd = start_listen (SERVER_PORT);
   if (fd < 0)
     {
@@ -291,8 +287,8 @@ main (int argc, char **argv)
 	  if (inet_ntop
 	      (AF_INET6, &clientaddr.sin6_addr, address, sizeof (address)))
 	    {
-	      printf ("Client address is [%s]:%d\n", address,
-		      ntohs (clientaddr.sin6_port));
+	      fprintf (stderr, "Client address is [%s]:%d\n", address,
+		       ntohs (clientaddr.sin6_port));
 	    }
 	}
 
@@ -304,7 +300,7 @@ main (int argc, char **argv)
 	  continue;
 	}
       /* Single reader at the moment */
-      http_handler (stream, cp);
+      http_handler (stream, patterns);
       fclose (stream);
     }
 
