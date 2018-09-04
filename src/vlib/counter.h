@@ -40,6 +40,8 @@
 #ifndef included_vlib_counter_h
 #define included_vlib_counter_h
 
+#include <vlib/counter_types.h>
+
 /** \file
 
     Optimized thread-safe counters.
@@ -49,9 +51,6 @@
 
     The idea is to drastically eliminate atomic operations.
 */
-
-/** 64bit counters */
-typedef u64 counter_t;
 
 /** A collection of simple counters */
 
@@ -134,14 +133,6 @@ vlib_zero_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
       my_counters[index] = 0;
     }
 }
-
-/** Combined counter to hold both packets and byte differences.
- */
-typedef struct
-{
-  counter_t packets;			/**< packet counter */
-  counter_t bytes;			/**< byte counter  */
-} vlib_counter_t;
 
 /** Add two combined counters, results in the first counter
     @param [in,out] a - (vlib_counter_t *) dst counter

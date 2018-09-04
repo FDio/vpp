@@ -20,8 +20,7 @@ add_vpp_library (vppapiclient
   client/client.c
   client/stat_client.c
   client/libvppapiclient.map
-
-  LINK_LIBRARIES vppinfra vlibmemoryclient svm pthread m rt
+  LINK_LIBRARIES vppinfra vlibmemoryclient pthread
 )
 add_dependencies(vppapiclient vpp_version_h api_headers)
 

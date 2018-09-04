@@ -15,8 +15,6 @@ VPPAPICLIENT_18.10 {
 	api_main;
 	stat_segment_connect;
 	stat_segment_disconnect;
-	stat_segment_register;
-	stat_segment_collect;
 	stat_segment_ls;
 	stat_segment_dump;
 	stat_segment_data_free;

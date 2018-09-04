@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <vpp/stats/stats.h>
 
 void
@@ -55,6 +56,57 @@ vlib_stats_push_heap (void)
   return ssvm_push_heap (shared_header);
 }
 
+static u64
+get_offset (void *start, void *data)
+{
+  return (char *) data - (char *) start;
+}
+
+static void *
+get_pointer (void *start, u64 offset)
+{
+  return ((char *) start + offset);
+}
+
+/* Name to vector index hash */
+static u32
+lookup_or_create_hash_index (void *oldheap, char *name, u32 next_vector_index)
+{
+  stats_main_t *sm = &stats_main;
+  ssvm_private_t *ssvmp = &sm->stat_segment;
+  ssvm_shared_header_t *shared_header;
+  u32 index;
+  ASSERT (ssvmp && ssvmp->sh);
+  shared_header = ssvmp->sh;
+
+  hash_pair_t *hp;
+
+  ssvm_pop_heap (oldheap);	/* Exit stats segment */
+
+  hp = hash_get_pair (sm->counter_vector_by_name, name);
+  if (!hp)
+    {
+      hash_set (sm->counter_vector_by_name, name, next_vector_index);
+      index = next_vector_index;
+    }
+  else
+    {
+      index = hp->value[0];
+    }
+
+  /* Back to stats segment */
+  //oldheap = ssvm_push_heap (shared_header);
+  ssvm_push_heap (shared_header);	/* Re-enter stat segment */
+  return index;
+}
+
+static void
+refresh_epoch (ssvm_shared_header_t * shared_header)
+{
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
+    ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+}
+
 void
 vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
 {
@@ -63,136 +115,108 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
   char *stat_segment_name;
-  stat_segment_directory_entry_t *ep;
-  uword *p;
-
-  ASSERT (ssvmp && ssvmp->sh);
-
-  shared_header = ssvmp->sh;
+  stat_segment_directory_entry_t e = { 0 };
 
   /* Not all counters have names / hash-table entries */
-  if (cm->name || cm->stat_segment_name)
+  if (!cm->name && !cm->stat_segment_name)
     {
-      hash_pair_t *hp;
-      u8 *name_copy;
-
-      stat_segment_name = cm->stat_segment_name ?
-	cm->stat_segment_name : cm->name;
-
-      vlib_stat_segment_lock ();
-
-      /* Update hash table. The name must be copied into the segment */
-      hp = hash_get_pair (sm->counter_vector_by_name, stat_segment_name);
-      if (hp)
-	{
-	  name_copy = (u8 *) hp->key;
-	  ep = (stat_segment_directory_entry_t *) (hp->value[0]);
-	  hash_unset_mem (sm->counter_vector_by_name, stat_segment_name);
-	  vec_free (name_copy);
-	  clib_mem_free (ep);
-	}
-      name_copy = format (0, "%s%c", stat_segment_name, 0);
-      ep = clib_mem_alloc (sizeof (*ep));
-      ep->type = type;
-      ep->value = cm->counters;
-      hash_set_mem (sm->counter_vector_by_name, name_copy, ep);
-
-      /* Reset the client hash table pointer, since it WILL change! */
-      shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR]
-	= sm->counter_vector_by_name;
-
-      /* Warn clients to refresh any pointers they might be holding */
-      shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
-	((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
-      vlib_stat_segment_unlock ();
+      ssvm_pop_heap (oldheap);
+      return;
     }
+
+  ASSERT (ssvmp && ssvmp->sh);
+  shared_header = ssvmp->sh;
+
+  /* Lookup hash-table is on the main heap */
+  stat_segment_name =
+    cm->stat_segment_name ? cm->stat_segment_name : cm->name;
+  u32 next_vector_index = vec_len (sm->counter_vector);
+  u32 vector_index = lookup_or_create_hash_index (oldheap, stat_segment_name,
+						  next_vector_index);
+
+  vlib_stat_segment_lock ();
+
+  /* Update the vector */
+  if (vector_index == next_vector_index)
+    {				/* New */
+      strncpy (e.name, stat_segment_name, 128 - 1);
+      e.type = type;
+      vec_add1 (sm->counter_vector, e);
+      vector_index++;
+    }
+
+  stat_segment_directory_entry_t *ep = &sm->counter_vector[vector_index];
+  ep->offset = get_offset (shared_header, cm->counters);	/* Vector of threads of vectors of counters */
+  u64 *offset_vector =
+    ep->offset_vector ? get_pointer (shared_header, ep->offset_vector) : 0;
+
+  /* Update the 2nd dimension offset vector */
+  int i;
+  vec_validate (offset_vector, vec_len (cm->counters) - 1);
+  for (i = 0; i < vec_len (cm->counters); i++)
+    offset_vector[i] = get_offset (shared_header, cm->counters[i]);
+  ep->offset_vector = get_offset (shared_header, offset_vector);
+  sm->counter_vector[vector_index].offset =
+    get_offset (shared_header, cm->counters);
+
+  /* Reset the client hash table pointer, since it WILL change! */
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_OFFSET] =
+    (void *) get_offset (shared_header, sm->counter_vector);
+
+  /* Warn clients to refresh any pointers they might be holding */
+  refresh_epoch (shared_header);
+
+  vlib_stat_segment_unlock ();
   ssvm_pop_heap (oldheap);
 }
 
 void
-vlib_stats_register_error_index (u8 * name, u64 index)
+vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
 {
   stats_main_t *sm = &stats_main;
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *ep;
+  stat_segment_directory_entry_t e;
   hash_pair_t *hp;
-  u8 *name_copy;
-  uword *p;
 
   ASSERT (ssvmp && ssvmp->sh);
-
   shared_header = ssvmp->sh;
 
   vlib_stat_segment_lock ();
-  /* Update hash table. The name must be copied into the segment */
-  hp = hash_get_pair (sm->counter_vector_by_name, name);
-  if (hp)
-    {
-      name_copy = (u8 *) hp->key;
-      ep = (stat_segment_directory_entry_t *) (hp->value[0]);
-      hash_unset_mem (sm->counter_vector_by_name, name);
-      vec_free (name_copy);
-      clib_mem_free (ep);
-    }
 
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_ERROR_INDEX;
-  ep->value = (void *) index;
-
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
-
-  /* Reset the client hash table pointer, since it WILL change! */
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR] = sm->counter_vector_by_name;
+  memcpy (e.name, name, vec_len (name));
+  e.name[vec_len (name)] = '\0';
+  e.type = STAT_DIR_TYPE_ERROR_INDEX;
+  e.offset = index;
+  vec_add1 (sm->counter_vector, e);
 
   /* Warn clients to refresh any pointers they might be holding */
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
-    ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+  refresh_epoch (shared_header);
+
   vlib_stat_segment_unlock ();
 }
 
 void
-vlib_stats_pop_heap2 (u64 * counter_vector, u32 thread_index, void *oldheap)
+vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap)
 {
   stats_main_t *sm = &stats_main;
   ssvm_private_t *ssvmp = &sm->stat_segment;
   ssvm_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *ep;
-  hash_pair_t *hp;
-  u8 *error_vector_name;
-  u8 *name_copy;
-  uword *p;
 
   ASSERT (ssvmp && ssvmp->sh);
 
   shared_header = ssvmp->sh;
 
   vlib_stat_segment_lock ();
-  error_vector_name = format (0, "/err/%d/counter_vector%c", thread_index, 0);
-
-  /* Update hash table. The name must be copied into the segment */
-  hp = hash_get_pair (sm->counter_vector_by_name, error_vector_name);
-  if (hp)
-    {
-      name_copy = (u8 *) hp->key;
-      ep = (stat_segment_directory_entry_t *) (hp->value[0]);
-      hash_unset_mem (sm->counter_vector_by_name, error_vector_name);
-      vec_free (name_copy);
-      clib_mem_free (ep);
-    }
-
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_VECTOR_POINTER;
-  ep->value = counter_vector;
-
-  hash_set_mem (sm->counter_vector_by_name, error_vector_name, ep);
 
   /* Reset the client hash table pointer, since it WILL change! */
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR] = sm->counter_vector_by_name;
-
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_ERROR_OFFSET] = (void *)
+    get_offset (shared_header, error_vector);
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_OFFSET] = (void *)
+    get_offset (shared_header, sm->counter_vector);
   /* Warn clients to refresh any pointers they might be holding */
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
-    ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+  refresh_epoch (shared_header);
+
   vlib_stat_segment_unlock ();
   ssvm_pop_heap (oldheap);
 }
@@ -231,12 +255,13 @@ vlib_map_stat_segment_init (void)
 
   /* Set up the name to counter-vector hash table */
   sm->counter_vector_by_name = hash_create_string (0, sizeof (uword));
+  sm->counter_vector = 0;
 
   sm->stat_segment_lockp = clib_mem_alloc (sizeof (clib_spinlock_t));
 
-  /* Save the hash table address in the shared segment, for clients */
   clib_spinlock_init (sm->stat_segment_lockp);
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_LOCK] = sm->stat_segment_lockp;
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_LOCK] =
+    (void *) get_offset (shared_header, *sm->stat_segment_lockp);
   shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *) 1;
 
   /* Set up a few scalar stats */
@@ -249,61 +274,47 @@ vlib_map_stat_segment_init (void)
   sm->last_runtime_stats_clear_ptr = (scalar_data + 3);
   sm->heartbeat_ptr = (scalar_data + 4);
 
-  name = format (0, "/sys/vector_rate%c", 0);
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
-  ep->value = sm->vector_rate_ptr;
+  stat_segment_directory_entry_t e;
 
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
+  e.type = STAT_DIR_TYPE_SCALAR_POINTER;
+  strcpy (e.name, "/sys/vector_rate");
+  e.offset = get_offset (shared_header, sm->vector_rate_ptr);
+  vec_add1 (sm->counter_vector, e);
 
-  name = format (0, "/sys/input_rate%c", 0);
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
-  ep->value = sm->input_rate_ptr;
+  e.type = STAT_DIR_TYPE_SCALAR_POINTER;
+  strcpy (e.name, "/sys/input_rate");
+  e.offset = get_offset (shared_header, sm->input_rate_ptr);
+  vec_add1 (sm->counter_vector, e);
 
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
+  e.type = STAT_DIR_TYPE_SCALAR_POINTER;
+  strcpy (e.name, "/sys/last_update");
+  e.offset = get_offset (shared_header, sm->last_runtime_ptr);
+  vec_add1 (sm->counter_vector, e);
 
-  name = format (0, "/sys/last_update%c", 0);
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
-  ep->value = sm->last_runtime_ptr;
+  e.type = STAT_DIR_TYPE_SCALAR_POINTER;
+  strcpy (e.name, "/sys/last_stats_clear");
+  e.offset = get_offset (shared_header, sm->last_runtime_stats_clear_ptr);
+  vec_add1 (sm->counter_vector, e);
 
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
+  e.type = STAT_DIR_TYPE_SCALAR_POINTER;
+  strcpy (e.name, "/sys/heartbeat");
+  e.offset = get_offset (shared_header, sm->heartbeat_ptr);
+  vec_add1 (sm->counter_vector, e);
 
-  name = format (0, "/sys/last_stats_clear%c", 0);
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
-  ep->value = sm->last_runtime_stats_clear_ptr;
-
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
-
-  name = format (0, "/sys/heartbeat%c", 0);
-  ep = clib_mem_alloc (sizeof (*ep));
-  ep->type = STAT_DIR_TYPE_SCALAR_POINTER;
-  ep->value = sm->heartbeat_ptr;
-
-  hash_set_mem (sm->counter_vector_by_name, name, ep);
-
-
-  /* Publish the hash table */
-  shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR] = sm->counter_vector_by_name;
+  /* Save the vector offset in the shared segment, for clients */
+  shared_header->opaque[STAT_SEGMENT_OPAQUE_OFFSET] =
+    (void *) get_offset (shared_header, sm->counter_vector);
 
   ssvm_pop_heap (oldheap);
 
   return 0;
 }
 
-typedef struct
-{
-  u8 *name;
-  stat_segment_directory_entry_t *dir_entry;
-} show_stat_segment_t;
-
 static int
 name_sort_cmp (void *a1, void *a2)
 {
-  show_stat_segment_t *n1 = a1;
-  show_stat_segment_t *n2 = a2;
+  stat_segment_directory_entry_t *n1 = a1;
+  stat_segment_directory_entry_t *n2 = a2;
 
   return strcmp ((char *) n1->name, (char *) n2->name);
 }
@@ -316,16 +327,12 @@ format_stat_dir_entry (u8 * s, va_list * args)
   char *type_name;
   char *format_string;
 
-  format_string = "%-10s %20llx";
+  format_string = "%-74s %-10s %10lld";
 
   switch (ep->type)
     {
     case STAT_DIR_TYPE_SCALAR_POINTER:
       type_name = "ScalarPtr";
-      break;
-
-    case STAT_DIR_TYPE_VECTOR_POINTER:
-      type_name = "VectorPtr";
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -339,7 +346,6 @@ format_stat_dir_entry (u8 * s, va_list * args)
 
     case STAT_DIR_TYPE_ERROR_INDEX:
       type_name = "ErrIndex";
-      format_string = "%-10s %20lld";
       break;
 
     default:
@@ -347,7 +353,7 @@ format_stat_dir_entry (u8 * s, va_list * args)
       break;
     }
 
-  return format (s, format_string, type_name, ep->value);
+  return format (s, format_string, ep->name, type_name, ep->offset);
 }
 
 static clib_error_t *
@@ -360,9 +366,8 @@ show_stat_segment_command_fn (vlib_main_t * vm,
   ssvm_shared_header_t *shared_header;
   counter_t *counter;
   hash_pair_t *p;
-  show_stat_segment_t *show_data = 0;
-  show_stat_segment_t *this;
-  int i;
+  stat_segment_directory_entry_t *show_data, *this;
+  int i, j;
 
   int verbose = 0;
   u8 *s;
@@ -371,29 +376,17 @@ show_stat_segment_command_fn (vlib_main_t * vm,
     verbose = 1;
 
   vlib_stat_segment_lock ();
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, sm->counter_vector_by_name,
-  ({
-    vec_add2 (show_data, this, 1);
-
-    this->name = (u8 *) (p->key);
-    this->dir_entry = (stat_segment_directory_entry_t *)(p->value[0]);
-  }));
-  /* *INDENT-ON* */
-
+  show_data = vec_dup (sm->counter_vector);
   vlib_stat_segment_unlock ();
 
   vec_sort_with_function (show_data, name_sort_cmp);
 
-  vlib_cli_output (vm, "%-60s %10s %20s", "Name", "Type", "Value");
+  vlib_cli_output (vm, "%-74s %10s %10s", "Name", "Type", "Value");
 
   for (i = 0; i < vec_len (show_data); i++)
     {
-      this = vec_elt_at_index (show_data, i);
-
-      vlib_cli_output (vm, "%-60s %31U",
-		       this->name, format_stat_dir_entry, this->dir_entry);
+      vlib_cli_output (vm, "%-100U", format_stat_dir_entry,
+		       vec_elt_at_index (show_data, i));
     }
 
   if (verbose)
@@ -421,6 +414,8 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 static inline void
 update_serialized_nodes (stats_main_t * sm)
 {
+#if 0
+
   int i;
   vlib_main_t *vm = vlib_mains[0];
   ssvm_private_t *ssvmp = &sm->stat_segment;
@@ -460,8 +455,7 @@ update_serialized_nodes (stats_main_t * sm)
 	{
 	  ep->value = sm->serialized_nodes;
 	  /* Warn clients to refresh any pointers they might be holding */
-	  shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
-	    ((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+	  refresh_epoch (shared_header);
 	}
     }
   else
@@ -472,17 +466,13 @@ update_serialized_nodes (stats_main_t * sm)
       ep->value = sm->serialized_nodes;
       hash_set_mem (sm->counter_vector_by_name, name_copy, ep);
 
-      /* Reset the client hash table pointer */
-      shared_header->opaque[STAT_SEGMENT_OPAQUE_DIR]
-	= sm->counter_vector_by_name;
-
       /* Warn clients to refresh any pointers they might be holding */
-      shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] = (void *)
-	((u64) shared_header->opaque[STAT_SEGMENT_OPAQUE_EPOCH] + 1);
+      refresh_epoch (shared_header);
     }
 
   vlib_stat_segment_unlock ();
   ssvm_pop_heap (oldheap);
+#endif
 }
 
 /*
