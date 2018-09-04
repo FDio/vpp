@@ -47,6 +47,6 @@ add_vpp_library (vlibmemoryclient
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
 
-  LINK_LIBRARIES vppinfra svm vlib
+  LINK_LIBRARIES vppinfra svm
 )
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)

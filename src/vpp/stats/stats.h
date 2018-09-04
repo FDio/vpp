@@ -28,9 +28,7 @@
 #include <vlibapi/api_helper_macros.h>
 #include <svm/queue.h>
 #include <svm/ssvm.h>
-
-/* Default socket to exchange segment fd */
-#define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
+#include <vpp/stats/stat_segment.h>
 
 typedef struct
 {
@@ -99,7 +97,6 @@ typedef struct
 
 } vpe_client_stats_registration_t;
 
-
 typedef struct
 {
   void *mheap;
@@ -164,6 +161,7 @@ typedef struct
   /* statistics segment */
   ssvm_private_t stat_segment;
   uword *counter_vector_by_name;
+  stat_segment_directory_entry_t *counter_vector;
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;
@@ -197,30 +195,6 @@ typedef struct
 } stats_main_t;
 
 extern stats_main_t stats_main;
-
-/* Default stat segment 32m */
-#define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
-
-#define STAT_SEGMENT_OPAQUE_LOCK	0
-#define STAT_SEGMENT_OPAQUE_DIR		1
-#define STAT_SEGMENT_OPAQUE_EPOCH	2
-
-typedef enum
-{
-  STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_POINTER,
-  STAT_DIR_TYPE_VECTOR_POINTER,
-  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
-  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
-  STAT_DIR_TYPE_SERIALIZED_NODES,
-} stat_directory_type_t;
-
-typedef struct
-{
-  stat_directory_type_t type;
-  void *value;
-} stat_segment_directory_entry_t;
 
 void do_stat_segment_updates (stats_main_t * sm);
 

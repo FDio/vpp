@@ -99,7 +99,7 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
     vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
 
   vlib_stats_pop_heap (cm, oldheap,
-		       3 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */ );
+		       2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */ );
 }
 
 void
@@ -114,7 +114,7 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
     vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
 
   vlib_stats_pop_heap (cm, oldheap,
-		       4 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
 }
 
 u32
