@@ -164,6 +164,10 @@ vxlan_gpe_encap (vlib_main_t * vm,
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
+      u32 sw_if_index0 = ~0, sw_if_index1 = ~0, len0, len1;
+      vnet_hw_interface_t *hi0, *hi1;
+      vxlan_gpe_tunnel_t *t0 = NULL, *t1 = NULL;
+      u8 is_ip4_0 = 0, is_ip4_1 = 0;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
@@ -172,10 +176,6 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0, next1;
-	  u32 sw_if_index0, sw_if_index1, len0, len1;
-	  vnet_hw_interface_t *hi0, *hi1;
-	  vxlan_gpe_tunnel_t *t0, *t1;
-	  u8 is_ip4_0, is_ip4_1;
 
 	  next0 = next1 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
 
@@ -205,23 +205,39 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  /* 1-wide cache? */
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	  hi0 =
-	    vnet_get_sup_hw_interface (vnm,
-				       vnet_buffer (b0)->sw_if_index
-				       [VLIB_TX]);
-	  hi1 =
-	    vnet_get_sup_hw_interface (vnm,
-				       vnet_buffer (b1)->sw_if_index
-				       [VLIB_TX]);
+	  /* get the flag "is_ip4" */
+	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
+	    {
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      hi0 =
+		vnet_get_sup_hw_interface (vnm,
+					   vnet_buffer (b0)->sw_if_index
+					   [VLIB_TX]);
+	      t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
+	      is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+	    }
 
-	  t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
-	  t1 = pool_elt_at_index (ngm->tunnels, hi1->dev_instance);
-
-	  is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
-	  is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+	  /* get the flag "is_ip4" */
+	  if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
+	    {
+	      if (sw_if_index0 == vnet_buffer (b1)->sw_if_index[VLIB_TX])
+		{
+		  sw_if_index1 = sw_if_index0;
+		  hi1 = hi0;
+		  t1 = t0;
+		  is_ip4_1 = is_ip4_0;
+		}
+	      else
+		{
+		  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+		  hi1 =
+		    vnet_get_sup_hw_interface (vnm,
+					       vnet_buffer (b1)->sw_if_index
+					       [VLIB_TX]);
+		  t1 = pool_elt_at_index (ngm->tunnels, hi1->dev_instance);
+		  is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+		}
+	    }
 
 	  if (PREDICT_TRUE (is_ip4_0 == is_ip4_1))
 	    {
@@ -305,10 +321,6 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
-	  u32 sw_if_index0, len0;
-	  vnet_hw_interface_t *hi0;
-	  vxlan_gpe_tunnel_t *t0;
-	  u8 is_ip4_0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -319,16 +331,19 @@ vxlan_gpe_encap (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  /* 1-wide cache? */
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  hi0 =
-	    vnet_get_sup_hw_interface (vnm,
-				       vnet_buffer (b0)->sw_if_index
-				       [VLIB_TX]);
+	  /* get the flag "is_ip4" */
+	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
+	    {
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      hi0 =
+		vnet_get_sup_hw_interface (vnm,
+					   vnet_buffer (b0)->sw_if_index
+					   [VLIB_TX]);
 
-	  t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
+	      t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
 
-	  is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+	      is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+	    }
 
 	  vxlan_gpe_encap_one_inline (ngm, b0, t0, &next0, is_ip4_0);
 
