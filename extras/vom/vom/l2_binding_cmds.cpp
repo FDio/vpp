@@ -44,7 +44,8 @@ bind_cmd::issue(connection& con)
   payload.rx_sw_if_index = m_itf.value();
   payload.bd_id = m_bd;
   payload.shg = 0;
-  payload.bvi = m_is_bvi;
+  payload.port_type =
+    (m_is_bvi ? L2_API_PORT_TYPE_BVI : L2_API_PORT_TYPE_NORMAL);
   payload.enable = 1;
 
   VAPI_CALL(req.execute());
@@ -89,7 +90,8 @@ unbind_cmd::issue(connection& con)
   payload.rx_sw_if_index = m_itf.value();
   payload.bd_id = m_bd;
   payload.shg = 0;
-  payload.bvi = m_is_bvi;
+  payload.port_type =
+    (m_is_bvi ? L2_API_PORT_TYPE_BVI : L2_API_PORT_TYPE_NORMAL);
   payload.enable = 0;
 
   VAPI_CALL(req.execute());

@@ -43,6 +43,21 @@ class QOS_SOURCE:
     IP = 3
 
 
+class L2_PORT_TYPE:
+    NORMAL = 0
+    BVI = 1
+    UU_FWD = 2
+
+
+class BRIDGE_FLAGS:
+    NONE = 0
+    LEARN = 1
+    FWD = 2
+    FLOOD = 4
+    UU_FLOOD = 8
+    ARP_TERM = 16
+
+
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
     pass
@@ -627,7 +642,8 @@ class VppPapiProvider(object):
         return self.api(self.papi.l2fib_flush_all, {})
 
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
-                                   shg=0, bvi=0, enable=1):
+                                   shg=0, port_type=L2_PORT_TYPE.NORMAL,
+                                   enable=1):
         """Add/remove interface to/from bridge domain.
 
         :param int sw_if_index: Software interface index of the interface.
@@ -641,7 +657,7 @@ class VppPapiProvider(object):
                         {'rx_sw_if_index': sw_if_index,
                          'bd_id': bd_id,
                          'shg': shg,
-                         'bvi': bvi,
+                         'port_type': port_type,
                          'enable': enable})
 
     def bridge_flags(self, bd_id, is_set, feature_bitmap):
@@ -650,7 +666,7 @@ class VppPapiProvider(object):
 
         :param int bd_id: Bridge domain ID.
         :param int is_set: Set to 1 to enable, set to 0 to disable the feature.
-        :param int feature_bitmap: Bitmap value of the feature to be set:
+        :param int flags: Bitmap value of the feature to be set:
             - learn (1 << 0),
             - forward (1 << 1),
             - flood (1 << 2),
@@ -660,7 +676,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.bridge_flags,
                         {'bd_id': bd_id,
                          'is_set': is_set,
-                         'feature_bitmap': feature_bitmap})
+                         'flags': feature_bitmap})
 
     def bridge_domain_dump(self, bd_id=0):
         """
