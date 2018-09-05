@@ -3097,7 +3097,7 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
-        self.vapi.nat_set_reass(max_frag=0)
+        self.vapi.nat_set_reass(max_frag=1)
         self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4n,
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
@@ -3112,7 +3112,8 @@ class TestNAT44(MethodHolder):
                                        self.tcp_port_in,
                                        20,
                                        data)
-        self.pg0.add_stream(pkts[-1])
+        pkts.reverse()
+        self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
@@ -3135,7 +3136,7 @@ class TestNAT44(MethodHolder):
         for p in capture:
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
-                self.verify_ipfix_max_fragments_ip4(data, 0,
+                self.verify_ipfix_max_fragments_ip4(data, 1,
                                                     self.pg0.remote_ip4n)
 
     def test_multiple_outside_vrf(self):
@@ -6729,7 +6730,7 @@ class TestNAT64(MethodHolder):
                                                 self.nat_addr_n)
         self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
-        self.vapi.nat_set_reass(max_frag=0, is_ip6=1)
+        self.vapi.nat_set_reass(max_frag=1, is_ip6=1)
         self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4n,
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
@@ -6740,7 +6741,8 @@ class TestNAT64(MethodHolder):
         data = 'a' * 200
         pkts = self.create_stream_frag_ip6(self.pg0, self.pg1.remote_ip4,
                                            self.tcp_port_in, 20, data)
-        self.pg0.add_stream(pkts[-1])
+        pkts.reverse()
+        self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
@@ -6763,7 +6765,7 @@ class TestNAT64(MethodHolder):
         for p in capture:
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
-                self.verify_ipfix_max_fragments_ip6(data, 0,
+                self.verify_ipfix_max_fragments_ip6(data, 1,
                                                     self.pg0.remote_ip6n)
 
     def test_ipfix_bib_ses(self):

@@ -249,6 +249,13 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 			      srm->ip4_reass_head_index,
 			      reass->lru_list_index);
 	}
+
+      if (reass->flags && NAT_REASS_FLAG_MAX_FRAG_DROP)
+	{
+	  reass = 0;
+	  goto unlock;
+	}
+
       goto unlock;
     }
 
@@ -326,7 +333,8 @@ unlock:
 }
 
 int
-nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi)
+nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi,
+			    u32 ** bi_to_drop)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   dlist_elt_t *elt;
@@ -336,6 +344,8 @@ nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi)
     {
       nat_ipfix_logging_max_fragments_ip4 (srm->ip4_max_frag,
 					   &reass->key.src);
+      reass->flags |= NAT_REASS_FLAG_MAX_FRAG_DROP;
+      nat_ip4_reass_get_frags_inline (reass, bi_to_drop);
       return -1;
     }
 
@@ -446,6 +456,13 @@ nat_ip6_reass_find_or_create (ip6_address_t src, ip6_address_t dst,
 			      srm->ip6_reass_head_index,
 			      reass->lru_list_index);
 	}
+
+      if (reass->flags && NAT_REASS_FLAG_MAX_FRAG_DROP)
+	{
+	  reass = 0;
+	  goto unlock;
+	}
+
       goto unlock;
     }
 
@@ -522,7 +539,8 @@ unlock:
 }
 
 int
-nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi)
+nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi,
+			    u32 ** bi_to_drop)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   dlist_elt_t *elt;
@@ -532,6 +550,8 @@ nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi)
     {
       nat_ipfix_logging_max_fragments_ip6 (srm->ip6_max_frag,
 					   &reass->key.src);
+      reass->flags |= NAT_REASS_FLAG_MAX_FRAG_DROP;
+      nat_ip6_reass_get_frags_inline (reass, bi_to_drop);
       return -1;
     }
 
