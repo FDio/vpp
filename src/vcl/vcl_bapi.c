@@ -312,7 +312,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 }
 
 static void
-vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
+vl_api_connect_session_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 {
   if (mp->retval)
     clib_warning ("VCL<%d>: ERROR: sid %u: connect failed: %U",
@@ -324,7 +324,7 @@ vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
-_(CONNECT_SOCK_REPLY, connect_sock_reply)                         	\
+_(CONNECT_SESSION_REPLY, connect_session_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
