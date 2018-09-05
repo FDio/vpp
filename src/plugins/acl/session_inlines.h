@@ -394,6 +394,7 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   ASSERT (sess->thread_index == os_get_thread_index ());
+  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   if (sess->is_ip6)
     {
       clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash,
@@ -409,6 +410,7 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
 
   sess->deleted = 1;
   clib_smp_atomic_add (&am->fa_session_total_deactivations, 1);
+  clib_mem_set_heap (oldheap);
 }
 
 always_inline void
