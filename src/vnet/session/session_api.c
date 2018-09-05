@@ -1354,8 +1354,8 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
       goto done;
     }
 
-  /* Make coverity happy */
-  ASSERT (args.evt_q && args.segment);
+  if (!mp->is_add)
+    goto done;
 
   /* Send fifo segment fd if needed */
   if (ssvm_type (args.segment) == SSVM_SEGMENT_MEMFD)
@@ -1375,7 +1375,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
 done:
   REPLY_MACRO2 (VL_API_APP_WORKER_ADD_DEL_REPLY, ({
     rmp->is_add = mp->is_add;
-    if (!rv)
+    if (!rv && mp->is_add)
       {
 	rmp->wrk_index = clib_host_to_net_u32 (args.wrk_index);
 	if (vec_len (args.segment->name))
