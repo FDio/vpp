@@ -16,6 +16,23 @@
       "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "71ee0045_35299386",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T11:34:06Z",
+      "side": 1,
+      "message": "h-\u003eflags_sclass_as_u32 \u003d 0;\nwould be preferable.",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
