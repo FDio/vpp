@@ -78,26 +78,6 @@ static __thread int __wrk_index = 0;
 
 static vcl_test_server_main_t sock_server_main;
 
-#define vtfail(_fn, _rv)						\
-{									\
-  errno = -_rv;								\
-  perror ("ERROR when calling " _fn);					\
-  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -_rv);\
-  exit (1);								\
-}
-
-#define vterr(_fn, _rv)							\
-{									\
-  errno = -_rv;								\
-  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -_rv);\
-}
-
-#define vtwrn(_fmt, _args...)						\
-  fprintf (stderr, "\nSERVER ERROR: " _fmt "\n", ##_args)		\
-
-#define vtinf(_fmt, _args...)						\
-  fprintf (stdout, "\nvts<w%u>: " _fmt "\n", __wrk_index, ##_args)	\
-
 static inline void
 conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 {
@@ -171,9 +151,8 @@ sync_config_and_reply (vcl_test_server_conn_t * conn,
 }
 
 static void
-stream_test_server_start_stop (vcl_test_server_worker_t * wrk,
-			       vcl_test_server_conn_t * conn,
-			       sock_test_cfg_t * rx_cfg)
+vts_server_start_stop (vcl_test_server_worker_t * wrk,
+                       vcl_test_server_conn_t * conn, sock_test_cfg_t * rx_cfg)
 {
   int client_fd = conn->fd;
   sock_test_t test = rx_cfg->test;
@@ -241,9 +220,8 @@ stream_test_server_start_stop (vcl_test_server_worker_t * wrk,
     }
 }
 
-
 static inline void
-stream_test_server (vcl_test_server_conn_t * conn, int rx_bytes)
+vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 {
   int client_fd = conn->fd;
   sock_test_t test = conn->cfg.test;
@@ -253,13 +231,11 @@ stream_test_server (vcl_test_server_conn_t * conn, int rx_bytes)
 			   conn->cfg.verbose);
 
   if (conn->stats.rx_bytes >= conn->cfg.total_bytes)
-    {
-      clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
-    }
+    clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
 }
 
 static void
-vcl_test_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
+vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
 {
   int tx_bytes, nbytes, pos;
 
@@ -281,7 +257,7 @@ vcl_test_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
 }
 
 static inline void
-vcl_test_server_new_client (vcl_test_server_worker_t * wrk)
+vts_new_client (vcl_test_server_worker_t * wrk)
 {
   int client_fd;
   vcl_test_server_conn_t *conn;
@@ -370,7 +346,7 @@ vcl_test_init_endpoint_addr (vcl_test_server_main_t * ssm)
     }
 }
 
-void
+static void
 vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
 			      char **argv)
 {
@@ -403,11 +379,9 @@ vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
 	  {
 	  default:
 	    if (isprint (optopt))
-	      fprintf (stderr, "SERVER: ERROR: Unknown "
-		       "option `-%c'.\n", optopt);
+	      vtwrn ("Unknown option `-%c'.", optopt);
 	    else
-	      fprintf (stderr, "SERVER: ERROR: Unknown "
-		       "option character `\\x%x'.\n", optopt);
+	      vtwrn ("Unknown option character `\\x%x'.", optopt);
 	  }
 	/* fall thru */
       case 'h':
@@ -433,9 +407,8 @@ vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
 }
 
 int
-vcl_test_server_handle_cfg (vcl_test_server_worker_t * wrk,
-			    sock_test_cfg_t * rx_cfg,
-			    vcl_test_server_conn_t * conn, int rx_bytes)
+vts_handle_cfg (vcl_test_server_worker_t * wrk, sock_test_cfg_t * rx_cfg,
+                vcl_test_server_conn_t * conn, int rx_bytes)
 {
   if (rx_cfg->verbose)
     {
@@ -468,7 +441,7 @@ vcl_test_server_handle_cfg (vcl_test_server_worker_t * wrk,
 
     case SOCK_TEST_TYPE_BI:
     case SOCK_TEST_TYPE_UNI:
-      stream_test_server_start_stop (wrk, conn, rx_cfg);
+      vts_server_start_stop (wrk, conn, rx_cfg);
       break;
 
     case SOCK_TEST_TYPE_EXIT:
@@ -488,7 +461,7 @@ vcl_test_server_handle_cfg (vcl_test_server_worker_t * wrk,
 }
 
 static void
-vcl_test_server_worker_init (vcl_test_server_worker_t * wrk)
+vts_worker_init (vcl_test_server_worker_t * wrk)
 {
   vcl_test_server_main_t *ssm = &sock_server_main;
   struct epoll_event listen_ev;
@@ -533,7 +506,7 @@ vcl_test_server_worker_init (vcl_test_server_worker_t * wrk)
 }
 
 static void *
-vcl_test_server_worker_loop (void *arg)
+vts_worker_loop (void *arg)
 {
   vcl_test_server_main_t *ssm = &sock_server_main;
   vcl_test_server_worker_t *wrk = arg;
@@ -542,7 +515,7 @@ vcl_test_server_worker_loop (void *arg)
   sock_test_cfg_t *rx_cfg;
 
   if (wrk->wrk_index)
-    vcl_test_server_worker_init (wrk);
+    vts_worker_init (wrk);
 
   while (1)
     {
@@ -568,7 +541,7 @@ vcl_test_server_worker_loop (void *arg)
 	    }
 	  if (wrk->wait_events[i].data.u32 == ~0)
 	    {
-	      vcl_test_server_new_client (wrk);
+	      vts_new_client (wrk);
 	      continue;
 	    }
 
@@ -591,7 +564,7 @@ vcl_test_server_worker_loop (void *arg)
 	      rx_cfg = (sock_test_cfg_t *) conn->buf;
 	      if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
 		{
-		  vcl_test_server_handle_cfg (wrk, rx_cfg, conn, rx_bytes);
+		  vts_handle_cfg (wrk, rx_cfg, conn, rx_bytes);
 		  if (!wrk->nfds)
 		    {
 		      vtinf ("All client connections closed\n");
@@ -603,12 +576,12 @@ vcl_test_server_worker_loop (void *arg)
 	      else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
 		       || (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		{
-		  stream_test_server (conn, rx_bytes);
+		  vts_server_rx (conn, rx_bytes);
 		  continue;
 		}
 	      else if (isascii (conn->buf[0]))
 		{
-		  vcl_test_server_echo (conn, rx_bytes);
+		  vts_server_echo (conn, rx_bytes);
 		}
 	      else
 		{
@@ -637,37 +610,36 @@ done:
 int
 main (int argc, char **argv)
 {
-  vcl_test_server_main_t *ssm = &sock_server_main;
+  vcl_test_server_main_t *vsm = &sock_server_main;
   int rv, i;
 
   clib_mem_init_thread_safe (0, 64 << 20);
-  ssm->cfg.port = SOCK_TEST_SERVER_PORT;
-  ssm->cfg.workers = 1;
-  ssm->active_workers = 1;
-  vcl_test_server_process_opts (ssm, argc, argv);
+  vsm->cfg.port = SOCK_TEST_SERVER_PORT;
+  vsm->cfg.workers = 1;
+  vsm->active_workers = 1;
+  vcl_test_server_process_opts (vsm, argc, argv);
 
   rv = vppcom_app_create ("vcl_test_server");
   if (rv)
     vtfail ("vppcom_app_create()", rv);
 
-  ssm->workers = calloc (ssm->cfg.workers, sizeof (*ssm->workers));
-  vcl_test_server_worker_init (&ssm->workers[0]);
-  for (i = 1; i < ssm->cfg.workers; i++)
+  vsm->workers = calloc (vsm->cfg.workers, sizeof (*vsm->workers));
+  vts_worker_init (&vsm->workers[0]);
+  for (i = 1; i < vsm->cfg.workers; i++)
     {
-      ssm->workers[i].wrk_index = i;
-      rv = pthread_create (&ssm->workers[i].thread_handle, NULL,
-			   vcl_test_server_worker_loop,
-			   (void *) &ssm->workers[i]);
+      vsm->workers[i].wrk_index = i;
+      rv = pthread_create (&vsm->workers[i].thread_handle, NULL,
+			   vts_worker_loop, (void *) &vsm->workers[i]);
     }
-  vcl_test_server_worker_loop (&ssm->workers[0]);
+  vts_worker_loop (&vsm->workers[0]);
 
-  while (ssm->active_workers > 0)
+  while (vsm->active_workers > 0)
     ;
 
   vppcom_app_destroy ();
-  free (ssm->workers);
+  free (vsm->workers);
 
-  return ssm->worker_fails;
+  return vsm->worker_fails;
 }
 
 /*
