@@ -1424,7 +1424,8 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 	      ctx0.first_frag = 0;
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
-		  if (nat_ip6_reass_add_fragment (reass0, bi0))
+		  if (nat_ip6_reass_add_fragment
+		      (reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT64_IN2OUT_ERROR_MAX_FRAG];
 		      next0 = NAT64_IN2OUT_NEXT_DROP;

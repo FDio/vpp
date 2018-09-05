@@ -30,6 +30,8 @@
 #define NAT_MAX_FRAG_DEFAULT 5
 #define NAT_REASS_HT_LOAD_FACTOR (0.75)
 
+#define NAT_REASS_FLAG_MAX_FRAG_DROP 1
+
 typedef struct
 {
   union
@@ -57,6 +59,7 @@ typedef CLIB_PACKED(struct
   f64 last_heard;
   u32 frags_per_reass_list_head_index;
   u8 frag_n;
+  u8 flags;
 }) nat_reass_ip4_t;
 /* *INDENT-ON* */
 
@@ -86,6 +89,7 @@ typedef CLIB_PACKED(struct
   f64 last_heard;
   u32 frags_per_reass_list_head_index;
   u8 frag_n;
+  u8 flags;
 }) nat_reass_ip6_t;
 /* *INDENT-ON* */
 
@@ -222,10 +226,12 @@ nat_reass_ip4_t *nat_ip4_reass_find_or_create (ip4_address_t src,
  *
  * @param reass Reassembly data.
  * @param bi Buffer index.
+ * @param bi_to_drop Fragments to drop.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi);
+int nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi,
+				u32 ** bi_to_drop);
 
 /**
  * @brief Get cached fragments.
@@ -271,10 +277,12 @@ nat_reass_ip6_t *nat_ip6_reass_find_or_create (ip6_address_t src,
  *
  * @param reass Reassembly data.
  * @param bi Buffer index.
+ * @param bi_to_drop Fragments to drop.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi);
+int nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi,
+				u32 ** bi_to_drop);
 
 /**
  * @brief Get cached fragments.
