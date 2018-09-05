@@ -1635,6 +1635,8 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	case FIFO_EVENT_APP_RX:
 	  sid = e->fifo->client_session_index;
 	  session = vcl_session_get (wrk, sid);
+	  if (!session)
+	    break;
 	  if (sid < n_bits && read_map)
 	    {
 	      clib_bitmap_set_no_check (read_map, sid, 1);
@@ -1660,6 +1662,8 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 		break;
 	    }
 	  session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
+	  if (!session)
+	    break;
 	  sid = session->session_index;
 	  if (sid < n_bits && read_map)
 	    {
@@ -1669,9 +1673,9 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  break;
 	case SESSION_IO_EVT_CT_RX:
 	  session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
-	  sid = session->session_index;
 	  if (!session)
 	    break;
+	  sid = session->session_index;
 	  if (sid < n_bits && write_map)
 	    {
 	      clib_bitmap_set_no_check (write_map, sid, 1);
@@ -2417,6 +2421,9 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
     }
 
   vep_session = vcl_session_get_w_handle (wrk, vep_handle);
+  if (!vep_session)
+    return VPPCOM_EBADFD;
+
   if (PREDICT_FALSE (!vep_session->is_vep))
     {
       clib_warning ("VCL<%d>: ERROR: vep_idx (%u) is not a vep!",

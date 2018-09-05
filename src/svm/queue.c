@@ -122,7 +122,7 @@ svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
     {
       int __clib_unused rv, fd;
       u64 data = 1;
-      ASSERT (q->consumer_evtfd != -1);
+      ASSERT (q->consumer_evtfd > 0 && q->producer_evtfd > 0);
       fd = is_prod ? q->producer_evtfd : q->consumer_evtfd;
       rv = write (fd, &data, sizeof (data));
     }
