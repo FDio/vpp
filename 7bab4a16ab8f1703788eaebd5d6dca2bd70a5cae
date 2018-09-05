@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc24b7d8_cc2c652d",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-09-05T15:12:55Z",
+      "side": 1,
+      "message": "Probably not the best of places, but I\u0027ve been \"accumulating\" ip functions under ip.h. I think we should group them in one file but I don\u0027t really have strong opinions where. Nonetheless, somehow to me ip6_packet.h doesn\u0027t sound like the right place for ip46 utility functions ..",
+      "range": {
+        "startLine": 99,
+        "startChar": 0,
+        "endLine": 99,
+        "endChar": 17
+      },
+      "revId": "7bab4a16ab8f1703788eaebd5d6dca2bd70a5cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6153a82_0d09e49b",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-09-05T15:12:55Z",
+      "side": 1,
+      "message": "Irrelevant for this patch but, do you trust this? Say you do a-\u003eas_8[15] \u003d 1 and all of the rest is 0 (i.e., ::1). Isn\u0027t that wrongly assumed to be v4?",
+      "range": {
+        "startLine": 115,
+        "startChar": 10,
+        "endLine": 115,
+        "endChar": 29
+      },
+      "revId": "7bab4a16ab8f1703788eaebd5d6dca2bd70a5cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
