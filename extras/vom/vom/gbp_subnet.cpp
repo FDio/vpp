@@ -14,6 +14,7 @@
  */
 
 #include "vom/gbp_subnet.hpp"
+#include "vom/api_types.hpp"
 #include "vom/gbp_subnet_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -190,8 +191,7 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
-    route::prefix_t pfx(payload.subnet.is_ip6, payload.subnet.address,
-                        payload.subnet.address_length);
+    route::prefix_t pfx = from_api(payload.subnet.prefix);
     std::shared_ptr<route_domain> rd =
       route_domain::find(payload.subnet.table_id);
 
