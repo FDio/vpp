@@ -48,21 +48,46 @@
   _(QOS_EGRESS_MAP_UPDATE, qos_egress_map_update)                       \
   _(QOS_MARK_ENABLE_DISABLE, qos_mark_enable_disable)
 
+static int
+qos_source_decode (vl_api_qos_source_t v, qos_source_t * q)
+{
+  v = ntohl (v);
+
+  switch (v)
+    {
+    case QOS_API_SOURCE_EXT:
+      *q = QOS_SOURCE_EXT;
+      return 0;
+    case QOS_API_SOURCE_VLAN:
+      *q = QOS_SOURCE_VLAN;
+      return 0;
+    case QOS_API_SOURCE_MPLS:
+      *q = QOS_SOURCE_MPLS;
+      return 0;
+    case QOS_API_SOURCE_IP:
+      *q = QOS_SOURCE_IP;
+      return 0;
+    }
+
+  return (VNET_API_ERROR_INVALID_VALUE);
+}
+
 void
 vl_api_qos_record_enable_disable_t_handler (vl_api_qos_record_enable_disable_t
 					    * mp)
 {
   vl_api_qos_record_enable_disable_reply_t *rmp;
+  qos_source_t qs;
   int rv = 0;
 
-  if (mp->input_source >= QOS_N_SOURCES)
-    rv = VNET_API_ERROR_INVALID_VALUE;
-  else
+  rv = qos_source_decode (mp->input_source, &qs);
+
+  if (0 == rv)
     {
       if (mp->enable)
-	rv = qos_record_enable (ntohl (mp->sw_if_index), mp->input_source);
+	rv = qos_record_enable (ntohl (mp->sw_if_index), qs);
       else
-	rv = qos_record_disable (ntohl (mp->sw_if_index), mp->input_source);
+	rv = qos_record_disable (ntohl (mp->sw_if_index), qs);
     }
 
   REPLY_MACRO (VL_API_QOS_RECORD_ENABLE_DISABLE_REPLY);
@@ -99,17 +124,18 @@ void
   (vl_api_qos_mark_enable_disable_t * mp)
 {
   vl_api_qos_mark_enable_disable_reply_t *rmp;
+  qos_source_t qs;
   int rv = 0;
 
-  if (mp->output_source >= QOS_N_SOURCES)
-    rv = VNET_API_ERROR_INVALID_VALUE;
-  else
+  rv = qos_source_decode (mp->output_source, &qs);
+
+  if (0 == rv)
     {
       if (mp->enable)
-	rv = qos_mark_enable (ntohl (mp->sw_if_index),
-			      mp->output_source, ntohl (mp->map_id));
+	rv =
+	  qos_mark_enable (ntohl (mp->sw_if_index), qs, ntohl (mp->map_id));
       else
-	rv = qos_mark_disable (ntohl (mp->sw_if_index), mp->output_source);
+	rv = qos_mark_disable (ntohl (mp->sw_if_index), qs);
     }
 
   REPLY_MACRO (VL_API_QOS_MARK_ENABLE_DISABLE_REPLY);
