@@ -1334,7 +1334,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   if (!reg)
     return;
 
-  app = application_lookup (mp->app_api_index);
+  app = application_lookup (clib_net_to_host_u32 (mp->app_api_index));
   if (!app)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
