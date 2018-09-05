@@ -87,6 +87,7 @@ class TestCaseWrapper(object):
         self.last_test_vpp_binary = None
         self.last_test = None
         self.result = None
+        self.vpp_pid = None
         self.last_heard = time.time()
         self.core_detected_at = None
         self.failed_tests = []
@@ -122,7 +123,7 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             read_testcase = None
 
 
-def run_forked(testcases):
+def run_forked(testcase_suites):
     wrapped_testcase_suites = set()
 
     # suites are unhashable, need to use list
@@ -133,8 +134,9 @@ def run_forked(testcases):
     manager = StreamQueueManager()
     manager.start()
     for i in range(concurrent_tests):
-        if len(testcases) > 0:
-            wrapped_testcase_suite = TestCaseWrapper(testcases.pop(0), manager)
+        if len(testcase_suites) > 0:
+            wrapped_testcase_suite = TestCaseWrapper(testcase_suites.pop(0),
+                                                     manager)
             wrapped_testcase_suites.add(wrapped_testcase_suite)
             unread_testcases.add(wrapped_testcase_suite)
             # time.sleep(1)
@@ -220,13 +222,17 @@ def run_forked(testcases):
 
             if fail:
                 failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
-                lttd = os.path.basename(
-                    wrapped_testcase_suite.last_test_temp_dir)
+                if wrapped_testcase_suite.last_test_temp_dir:
+                    lttd = os.path.basename(
+                        wrapped_testcase_suite.last_test_temp_dir)
+                else:
+                    lttd = None
                 link_path = '%s%s-FAILED' % (failed_dir, lttd)
                 wrapped_testcase_suite.logger.error(
                     "Creating a link to the failed test: %s -> %s" %
                     (link_path, lttd))
-                if not os.path.exists(link_path):
+                if not os.path.exists(link_path) \
+                        and wrapped_testcase_suite.last_test_temp_dir:
                     os.symlink(wrapped_testcase_suite.last_test_temp_dir,
                                link_path)
                 api_post_mortem_path = "/tmp/api_post_mortem.%d" % \
@@ -280,8 +286,8 @@ def run_forked(testcases):
             wrapped_testcase_suites.remove(finished_testcase)
             finished_unread_testcases.add(finished_testcase)
             finished_testcase.stdouterr_queue.put(None)
-            if len(testcases) > 0:
-                new_testcase = TestCaseWrapper(testcases.pop(0), manager)
+            if len(testcase_suites) > 0:
+                new_testcase = TestCaseWrapper(testcase_suites.pop(0), manager)
                 wrapped_testcase_suites.add(new_testcase)
                 unread_testcases.add(new_testcase)
 
@@ -385,14 +391,15 @@ class FilterByTestOption:
 
 
 class FilterByClassList:
-    def __init__(self, class_list):
-        self.class_list = class_list
+    def __init__(self, classes_with_filenames):
+        self.classes_with_filenames = classes_with_filenames
 
     def __call__(self, file_name, class_name, func_name):
-        return class_name in self.class_list
+        return '.'.join([file_name, class_name]) in self.classes_with_filenames
 
 
 def suite_from_failed(suite, failed):
+    failed = {x.rsplit('.', 1)[0] for x in failed}
     filter_cb = FilterByClassList(failed)
     suite = filter_tests(suite, filter_cb)
     return suite
@@ -442,11 +449,11 @@ class NonPassedResults(dict):
 
     def add_result(self, testcase_suite, result):
         retval = 0
-        self.all_testcases += result.testsRun
-        self.passed += result.passed
         if result:
-            # suite finished properly
-            if not result.wasSuccessful():
+            self.all_testcases += result.testsRun
+            self.passed += len(result.passed)
+            if not len(result.passed) + len(result.skipped) \
+                    == testcase_suite.countTestCases():
                 retval = 1
 
             self.add_results(result.failures, self.failures_id)
@@ -456,16 +463,22 @@ class NonPassedResults(dict):
                              self.expectedFailures_id)
             self.add_results(result.unexpectedSuccesses,
                              self.unexpectedSuccesses_id)
+        else:
+            retval = -1
 
         if retval != 0:
             if concurrent_tests == 1:
                 if result:
-                    rerun_classes = {x[0].__class__.__name__ for
-                                     x in result.errors}
-                    rerun_classes.update({x[0].__class__.__name__ for
-                                          x in result.failures})
-                    self.rerun.append(suite_from_failed(testcase_suite,
-                                                        rerun_classes))
+                    rerun_ids = set([])
+                    skipped = [x.id() for (x, _) in result.skipped]
+                    for testcase in testcase_suite:
+                        tc_id = testcase.id()
+                        if tc_id not in result.passed and \
+                                tc_id not in skipped:
+                            rerun_ids.add(tc_id)
+                    if len(rerun_ids) > 0:
+                        self.rerun.append(suite_from_failed(testcase_suite,
+                                                            rerun_ids))
                 else:
                     self.rerun.append(testcase_suite)
             else:
@@ -648,7 +661,7 @@ if __name__ == '__main__':
     if concurrent_tests == 1:
         new_suite = unittest.TestSuite()
         for suite in suites:
-            new_suite.addTest(suite)
+            new_suite.addTests(suite)
 
         suites = [new_suite]
 
