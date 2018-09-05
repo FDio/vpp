@@ -713,8 +713,8 @@ int vnet_vxlan_gpe_add_del_tunnel
       vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */ );
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, t->sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
-      set_int_l2_mode (ngm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0, 0, 0,
-		       0);
+      set_int_l2_mode (ngm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
+		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
       vec_add1 (ngm->free_vxlan_gpe_tunnel_hw_if_indices, t->hw_if_index);
 
       ngm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;

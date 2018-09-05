@@ -154,6 +154,7 @@ list(APPEND VNET_SOURCES
   l2/l2_in_out_acl.c
   l2/l2_patch.c
   l2/l2_rw.c
+  l2/l2_uu_fwd.c
   l2/l2_vtr.c
   l2/l2_xcrw.c
 )

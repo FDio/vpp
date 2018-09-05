@@ -5,6 +5,7 @@ import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_papi_provider import L2_PORT_TYPE, BRIDGE_FLAGS
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -58,7 +59,8 @@ class TestL2Flood(VppTestCase):
         for i in self.pg_interfaces[8:12]:
             self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2)
         for i in self.lo_interfaces:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2, bvi=1)
+            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2,
+                                                 port_type=L2_PORT_TYPE.BVI)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src="00:00:de:ad:be:ef") /
@@ -137,7 +139,112 @@ class TestL2Flood(VppTestCase):
             self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
         for i in self.lo_interfaces:
             self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2,
-                                                 bvi=1, enable=0)
+                                                 port_type=L2_PORT_TYPE.BVI,
+                                                 enable=0)
+
+        self.vapi.bridge_domain_add_del(1, is_add=0)
+
+    def test_uu_fwd(self):
+        """ UU Flood """
+
+        #
+        # Create a single bridge Domain
+        #
+        self.vapi.bridge_domain_add_del(1, uu_flood=1)
+
+        #
+        # add each interface to the BD. 3 interfaces per split horizon group
+        #
+        for i in self.pg_interfaces[0:4]:
+            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
+
+        #
+        # an unknown unicast packet
+        #
+        p_uu = (Ether(dst="00:00:00:c1:5c:00",
+                      src="00:00:de:ad:be:ef") /
+                IP(src="10.10.10.10", dst="1.1.1.1") /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100))
+
+        #
+        # input on pg0, expected copies on pg1->4
+        #
+        self.pg0.add_stream(p_uu*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in self.pg_interfaces[1:4]:
+            rx0 = i.get_capture(65, timeout=1)
+
+        #
+        # use pg8 as the uu-fwd interface
+        #
+        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
+                                             port_type=L2_PORT_TYPE.UU_FWD)
+
+        #
+        # expect the UU packet on the uu-fwd interface and not be flooded
+        #
+        self.pg0.add_stream(p_uu*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg8.get_capture(65, timeout=1)
+
+        for i in self.pg_interfaces[0:4]:
+            i.assert_nothing_captured(remark="UU not flooded")
+
+        #
+        # remove the uu-fwd interface and expect UU to be flooded again
+        #
+        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
+                                             port_type=L2_PORT_TYPE.UU_FWD,
+                                             enable=0)
+
+        self.pg0.add_stream(p_uu*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in self.pg_interfaces[1:4]:
+            rx0 = i.get_capture(65, timeout=1)
+
+        #
+        # change the BD config to not support UU-flood
+        #
+        self.vapi.bridge_flags(1, 0, BRIDGE_FLAGS.UU_FLOOD)
+
+        self.send_and_assert_no_replies(self.pg0, p_uu)
+
+        #
+        # re-add the uu-fwd interface
+        #
+        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
+                                             port_type=L2_PORT_TYPE.UU_FWD)
+        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+
+        self.pg0.add_stream(p_uu*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg8.get_capture(65, timeout=1)
+
+        for i in self.pg_interfaces[0:4]:
+            i.assert_nothing_captured(remark="UU not flooded")
+
+        #
+        # remove the uu-fwd interface
+        #
+        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
+                                             port_type=L2_PORT_TYPE.UU_FWD,
+                                             enable=0)
+        self.send_and_assert_no_replies(self.pg0, p_uu)
+
+        #
+        # cleanup
+        #
+        for i in self.pg_interfaces[:4]:
+            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
 
         self.vapi.bridge_domain_add_del(1, is_add=0)
 

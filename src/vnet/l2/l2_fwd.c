@@ -211,7 +211,8 @@ l2fwd_process (vlib_main_t * vm,
        * lookup miss, so flood which is typically the next feature
        * unless some other feature is inserted before uu_flood
        */
-      if (vnet_buffer (b0)->l2.feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
+      if (vnet_buffer (b0)->l2.feature_bitmap &
+	  (L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_UU_FWD))
 	{
 	  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
 					 L2INPUT_FEAT_FWD);
@@ -223,7 +224,6 @@ l2fwd_process (vlib_main_t * vm,
 	  *next0 = L2FWD_NEXT_DROP;
 	}
     }
-
 }
 
 
