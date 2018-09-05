@@ -4,10 +4,12 @@
 Extensible and Modular Design
 =============================
 
-* Pluggable, easy to understand & extend
-* Mature graph node architecture
-* Full control to reorganize the pipeline
-* Fast, plugins are equal citizens
+This section describes how VPP:
+
+* Is pluggable, easy to understand and extend
+* Has mature graph node architecture
+* Has full control to reorganize the pipeline
+* Is fast, plugins are equal citizens
 
 **Modular, Flexible, and Extensible**
 
@@ -24,15 +26,15 @@ Low-Level API.
 
 At runtime, the FD.io VPP platform assembles a vector of packets from RX rings,
 typically up to 256 packets in a single vector. The packet processing graph is
-then applied, node by node (including plugins) to the entire packet vector. The
+then applied, node by node (including plugins), to the entire packet vector. The
 received packets typically traverse the packet processing graph nodes in the
-vector, when the network processing represented by each graph node is applied to
+vector when the network processing, represented by each graph node, is applied to
 each packet in turn.  Graph nodes are small and modular, and loosely
 coupled. This makes it easy to introduce new graph nodes and rewire existing
 graph nodes.
 
 Plugins are `shared libraries <https://en.wikipedia.org/wiki/Library_(computing)>`_ 
-and are loaded at runtime by VPP. VPP find plugins by searching the plugin path 
+and are loaded at runtime by VPP. VPP finds plugins by searching the plugin path 
 for libraries, and then dynamically loads each one in turn on startup. 
 A plugin can introduce new graph nodes or rearrange the packet processing graph. 
 You can build a plugin completely independently of the FD.io VPP source tree,
