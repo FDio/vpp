@@ -35,6 +35,7 @@ typedef enum
   MEMIF_ERR_SUCCESS = 0,	/*!< success */
 /* SYSCALL ERRORS */
   MEMIF_ERR_SYSCALL,		/*!< other syscall error */
+  MEMIF_ERR_CONNREFUSED,	/*!< connection refused */
   MEMIF_ERR_ACCES,		/*!< permission denied */
   MEMIF_ERR_NO_FILE,		/*!< file does not exist */
   MEMIF_ERR_FILE_LIMIT,		/*!< system open file limit */
@@ -354,6 +355,7 @@ typedef struct
     @param tx_queues_num - number of transmit queues
     @param rx_queues - struct containing receive queue details
     @param tx_queues - struct containing transmit queue details
+    @param error - error string
     @param link_up_down - 1 = up (connected), 2 = down (disconnected)
 */
 typedef struct
@@ -375,6 +377,7 @@ typedef struct
   memif_queue_details_t *rx_queues;
   memif_queue_details_t *tx_queues;
 
+  uint8_t *error;
   uint8_t link_up_down;		/* 1 = up, 0 = down */
 } memif_details_t;
 /** @} */
