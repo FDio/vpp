@@ -36,6 +36,23 @@
     },
     {
       "key": {
+        "uuid": "e40229d1_1f82be2f",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T11:49:19Z",
+      "side": 1,
+      "message": "i\u0027d also prefer if the naming scheme for these functions was:\n  vxlan_gbp_header_get_bla()\nand\n  vxlan_gbp_header_set_bla()",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a5a374d4_4926163a",
         "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
         "patchSetId": 5
