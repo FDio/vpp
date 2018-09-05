@@ -22,6 +22,30 @@
       "revId": "be8cab0e1defa4191058e779df49742a3e450041",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e992afc_c274650c",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 76
+      },
+      "writtenOn": "2018-09-05T12:29:01Z",
+      "side": 1,
+      "message": "Is this aligned to\nhttps://github.com/qemu/qemu/blob/master/hw/net/vhost_net.c#L60 ?\nIf so, can all of them be added?",
+      "parentUuid": "e2a7ef8d_fa5424f0",
+      "range": {
+        "startLine": 20,
+        "startChar": 5,
+        "endLine": 20,
+        "endChar": 19
+      },
+      "revId": "be8cab0e1defa4191058e779df49742a3e450041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
