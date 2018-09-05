@@ -212,7 +212,10 @@ print_memif_details ()
       if (md.link_up_down)
 	printf ("up\n");
       else
-	printf ("down\n");
+	{
+	  printf ("down\n");
+	  printf ("\treason: %s\n", md.error);
+	}
     }
   free (buf);
 }
