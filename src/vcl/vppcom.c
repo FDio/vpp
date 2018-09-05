@@ -3156,7 +3156,7 @@ vppcom_session_index (uint32_t session_handle)
 int
 vppcom_worker_register (void)
 {
-  if (!vcl_worker_alloc_and_init ())
+  if (vcl_worker_alloc_and_init ())
     return VPPCOM_OK;
   return VPPCOM_EEXIST;
 }
