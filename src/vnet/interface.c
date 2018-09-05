@@ -650,10 +650,11 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
     {
       config = vec_elt_at_index (l2input_main.configs, sw_if_index);
       if (config->xconnect)
-	set_int_l2_mode (vm, vnm, MODE_L3, config->output_sw_if_index, 0, 0,
-			 0, 0);
+	set_int_l2_mode (vm, vnm, MODE_L3, config->output_sw_if_index, 0,
+			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
       if (config->xconnect || config->bridge)
-	set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
+	set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0,
+			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
     }
   vnet_clear_sw_interface_tag (vnm, sw_if_index);
 

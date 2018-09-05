@@ -9,6 +9,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 
 from vpp_ip import *
 from vpp_mac import *
+from vpp_papi_provider import L2_PORT_TYPE
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -585,9 +586,11 @@ class TestGBP(VppTestCase):
             # epg[1] shares the same BVI to epg[0]
             if epg != epgs[1] and epg != epgs[4]:
                 # BVI in BD
-                self.vapi.sw_interface_set_l2_bridge(epg.bvi.sw_if_index,
-                                                     epg.bd,
-                                                     bvi=1)
+                self.vapi.sw_interface_set_l2_bridge(
+                    epg.bvi.sw_if_index,
+                    epg.bd,
+                    port_type=L2_PORT_TYPE.BVI)
+
                 # BVI L2 FIB entry
                 self.vapi.l2fib_add_del(self.router_mac,
                                         epg.bd,

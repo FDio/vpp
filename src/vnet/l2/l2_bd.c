@@ -52,8 +52,9 @@ bd_validate (l2_bridge_domain_t * bd_config)
 {
   if (bd_is_valid (bd_config))
     return;
-  bd_config->feature_bitmap = ~L2INPUT_FEAT_ARP_TERM;
+  bd_config->feature_bitmap = ~(L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_UU_FWD);
   bd_config->bvi_sw_if_index = ~0;
+  bd_config->uu_fwd_sw_if_index = ~0;
   bd_config->members = 0;
   bd_config->flood_count = 0;
   bd_config->tun_master_count = 0;
@@ -240,7 +241,7 @@ VLIB_INIT_FUNCTION (l2bd_init);
     Return 0 if ok, non-zero if for an error.
 */
 u32
-bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
+bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
 {
 
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
@@ -894,7 +895,7 @@ VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
 };
 /* *INDENT-ON* */
 
-u8 *
+static u8 *
 format_vtr (u8 * s, va_list * args)
 {
   u32 vtr_op = va_arg (*args, u32);
@@ -927,6 +928,20 @@ format_vtr (u8 * s, va_list * args)
     default:
       return format (s, "none");
     }
+}
+
+static u8 *
+format_uu_cfg (u8 * s, va_list * args)
+{
+  l2_bridge_domain_t *bd_config = va_arg (*args, l2_bridge_domain_t *);
+
+  if (bd_config->feature_bitmap & L2INPUT_FEAT_UU_FWD)
+    return (format (s, "%U", format_vnet_sw_if_index_name_with_NA,
+		    vnet_get_main (), bd_config->uu_fwd_sw_if_index));
+  else if (bd_config->feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
+    return (format (s, "flood"));
+  else
+    return (format (s, "drop"));
 }
 
 /**
@@ -1002,10 +1017,10 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	    {
 	      printed = 1;
 	      vlib_cli_output (vm,
-			       "%=8s %=7s %=4s %=9s %=9s %=9s %=9s %=9s %=9s %=9s",
+			       "%=8s %=7s %=4s %=9s %=9s %=9s %=11s %=9s %=9s %=11s",
 			       "BD-ID", "Index", "BSN", "Age(min)",
-			       "Learning", "U-Forwrd", "UU-Flood", "Flooding",
-			       "ARP-Term", "BVI-Intf");
+			       "Learning", "U-Forwrd", "UU-Flood",
+			       "Flooding", "ARP-Term", "BVI-Intf");
 	    }
 
 	  if (bd_config->mac_age)
@@ -1013,14 +1028,13 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	  else
 	    as = format (as, "off");
 	  vlib_cli_output (vm,
-			   "%=8d %=7d %=4d %=9v %=9s %=9s %=9s %=9s %=9s %=9U",
+			   "%=8d %=7d %=4d %=9v %=9s %=9s %=11U %=9s %=9s %=11U",
 			   bd_config->bd_id, bd_index, bd_config->seq_num, as,
 			   bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ?
 			   "on" : "off",
 			   bd_config->feature_bitmap & L2INPUT_FEAT_FWD ?
 			   "on" : "off",
-			   bd_config->feature_bitmap & L2INPUT_FEAT_UU_FLOOD ?
-			   "on" : "off",
+			   format_uu_cfg, bd_config,
 			   bd_config->feature_bitmap & L2INPUT_FEAT_FLOOD ?
 			   "on" : "off",
 			   bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM ?
@@ -1055,6 +1069,13 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 				 "-", i < bd_config->flood_count ? "*" : "-",
 				 format_vtr, vtr_opr, dot1q, tag1, tag2);
 	      }
+	      if (~0 != bd_config->uu_fwd_sw_if_index)
+		vlib_cli_output (vm, "%=30U%=7d%=5d%=5d%=5s%=9s%=30s",
+				 format_vnet_sw_if_index_name, vnm,
+				 bd_config->uu_fwd_sw_if_index,
+				 bd_config->uu_fwd_sw_if_index,
+				 0, 0, "uu", "-", "None");
+
 	    }
 
 	  if ((detail || arp) &&
@@ -1150,7 +1171,7 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
 	return VNET_API_ERROR_BD_ID_EXCEED_MAX;
       bd_index = bd_add_bd_index (bdm, a->bd_id);
 
-      u32 enable_flags = 0, disable_flags = 0;
+      bd_flags_t enable_flags = 0, disable_flags = 0;
       if (a->flood)
 	enable_flags |= L2_FLOOD;
       else

@@ -104,6 +104,7 @@ l2input_bd_config (u32 bd_index)
  _(FLOOD,         "l2-flood")                   \
  _(ARP_TERM,      "arp-term-l2bd")              \
  _(UU_FLOOD,      "l2-flood")                   \
+ _(UU_FWD,        "l2-uu-fwd")                  \
  _(GBP_FWD,       "gbp-fwd")                    \
  _(FWD,           "l2-fwd")                     \
  _(RW,            "l2-rw")                      \
@@ -213,7 +214,8 @@ u32 set_int_l2_mode (vlib_main_t * vm,
 		     vnet_main_t * vnet_main,
 		     u32 mode,
 		     u32 sw_if_index,
-		     u32 bd_index, u32 bvi, u32 shg, u32 xc_sw_if_index);
+		     u32 bd_index, l2_bd_port_type_t port_type,
+		     u32 shg, u32 xc_sw_if_index);
 
 static inline void
 vnet_update_l2_len (vlib_buffer_t * b)
