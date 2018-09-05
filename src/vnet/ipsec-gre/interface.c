@@ -204,7 +204,8 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
       ip4_sw_interface_enable_disable (sw_if_index, 0);
       vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
       /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode (igm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
+      set_int_l2_mode (igm->vlib_main, vnm, MODE_L3, sw_if_index, 0,
+		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
       vec_add1 (igm->free_ipsec_gre_tunnel_hw_if_indices, t->hw_if_index);
       igm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 

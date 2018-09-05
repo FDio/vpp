@@ -7115,14 +7115,16 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_l2_bridge_t *mp;
+  vl_api_l2_port_type_t port_type;
   u32 rx_sw_if_index;
   u8 rx_sw_if_index_set = 0;
   u32 bd_id;
   u8 bd_id_set = 0;
-  u8 bvi = 0;
   u32 shg = 0;
   u8 enable = 1;
   int ret;
+
+  port_type = L2_API_PORT_TYPE_NORMAL;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7138,7 +7140,9 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
       else if (unformat (i, "shg %d", &shg))
 	;
       else if (unformat (i, "bvi"))
-	bvi = 1;
+	port_type = L2_API_PORT_TYPE_BVI;
+      else if (unformat (i, "uu-fwd"))
+	port_type = L2_API_PORT_TYPE_UU_FWD;
       else if (unformat (i, "enable"))
 	enable = 1;
       else if (unformat (i, "disable"))
@@ -7164,7 +7168,7 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
   mp->rx_sw_if_index = ntohl (rx_sw_if_index);
   mp->bd_id = ntohl (bd_id);
   mp->shg = (u8) shg;
-  mp->bvi = bvi;
+  mp->port_type = ntohl (port_type);
   mp->enable = enable;
 
   S (mp);
@@ -7610,7 +7614,7 @@ api_bridge_flags (vat_main_t * vam)
   u32 bd_id;
   u8 bd_id_set = 0;
   u8 is_set = 1;
-  u32 flags = 0;
+  bd_flags_t flags = 0;
   int ret;
 
   /* Parse args required to build the message */
@@ -7619,15 +7623,15 @@ api_bridge_flags (vat_main_t * vam)
       if (unformat (i, "bd_id %d", &bd_id))
 	bd_id_set = 1;
       else if (unformat (i, "learn"))
-	flags |= L2_LEARN;
+	flags |= BRIDGE_API_FLAG_LEARN;
       else if (unformat (i, "forward"))
-	flags |= L2_FWD;
+	flags |= BRIDGE_API_FLAG_FWD;
       else if (unformat (i, "flood"))
-	flags |= L2_FLOOD;
+	flags |= BRIDGE_API_FLAG_FLOOD;
       else if (unformat (i, "uu-flood"))
-	flags |= L2_UU_FLOOD;
+	flags |= BRIDGE_API_FLAG_UU_FLOOD;
       else if (unformat (i, "arp-term"))
-	flags |= L2_ARP_TERM;
+	flags |= BRIDGE_API_FLAG_ARP_TERM;
       else if (unformat (i, "off"))
 	is_set = 0;
       else if (unformat (i, "disable"))
@@ -7645,7 +7649,7 @@ api_bridge_flags (vat_main_t * vam)
   M (BRIDGE_FLAGS, mp);
 
   mp->bd_id = ntohl (bd_id);
-  mp->feature_bitmap = ntohl (flags);
+  mp->flags = ntohl (flags);
   mp->is_set = is_set;
 
   S (mp);
