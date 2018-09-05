@@ -4,7 +4,8 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP, ICMP

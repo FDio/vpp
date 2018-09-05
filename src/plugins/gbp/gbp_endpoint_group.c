@@ -209,7 +209,7 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_endpoint_group_cli_node, static) = {
   .path = "gbp endpoint-group",
-  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> <interface>",
+  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> <interface>",
   .function = gbp_endpoint_group_cli,
 };
 

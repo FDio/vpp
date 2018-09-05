@@ -18,86 +18,110 @@
 
 #include <plugins/gbp/gbp_types.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ethernet/mac_address.h>
+
+#include <vppinfra/bihash_16_8.h>
+#include <vppinfra/bihash_template.h>
+#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_template.h>
 
 /**
- * The key for an Endpoint
+ * Flags for each endpoint
  */
-typedef struct gbp_endpoint_key_t_
+typedef enum gbp_endpoint_flags_t_
 {
-  /**
-   * The interface on which the EP is connected
-   */
-  u32 gek_sw_if_index;
-
-  /**
-   * The IP[46] address of the endpoint
-   */
-  ip46_address_t gek_ip;
-} gbp_endpoint_key_t;
+  GBP_ENDPOINT_FLAG_NONE = 0,
+  GBP_ENDPOINT_FLAG_BOUNCE = (1 << 0),
+  GBP_ENDPOINT_FLAG_DYNAMIC = (1 << 1),
+} gbp_endpoint_flags_t;
 
 /**
  * A Group Based Policy Endpoint.
- * This is typcially a VM on the local compute node for which policy must be
- * locally applied
+ * This is typcially a VM or container. If the endpoint is local (i.e. on
+ * the smae compute node as VPP) then there is one interface per-endpoint.
+ * If the EP is remote,e.g. reachable onver a [vxlan] tunnel, then there
+ * will be multiple EPs reachable over the tunnel and they can be distingusihed
+ * via either their MAC or IP Address[es].
  */
 typedef struct gbp_endpoint_t_
 {
   /**
-   * The endpoint's interface and IP address
+   * The interface on which the EP is connected
    */
-  gbp_endpoint_key_t *ge_key;
+  u32 ge_sw_if_index;
+
+  /**
+   * A vector of ip addresses that below to the endpoint
+   */
+  ip46_address_t *ge_ips;
+
+  /**
+   * MAC address of the endpoint
+   */
+  mac_address_t ge_mac;
 
   /**
    * The endpoint's designated EPG
    */
   epg_id_t ge_epg_id;
+
+  /**
+   * Endpoint flags
+   */
+  gbp_endpoint_flags_t ge_flags;
 } gbp_endpoint_t;
 
-/**
- * Result of a interface to EPG mapping.
- * multiple Endpoints can occur on the same interface, so this
- * mapping needs to be reference counted.
- */
-typedef struct gbp_itf_t_
-{
-  epg_id_t gi_epg;
-  u32 gi_ref_count;
-} gbp_itf_t;
+extern u8 *format_gbp_endpoint (u8 * s, va_list * args);
 
 /**
  * Interface to source EPG DB - a per-interface vector
  */
-typedef struct gbp_itf_to_epg_db_t_
+typedef struct gbp_ep_by_itf_db_t_
 {
-  gbp_itf_t *gte_vec;
-} gbp_itf_to_epg_db_t;
+  index_t *gte_vec;
+} gbp_ep_by_itf_db_t;
+
+typedef struct gbp_ep_by_ip_itf_db_t_
+{
+  clib_bihash_24_8_t gte_table;
+} gbp_ep_by_ip_itf_db_t;
+
+typedef struct gbp_ep_by_mac_itf_db_t_
+{
+  clib_bihash_16_8_t gte_table;
+} gbp_ep_by_mac_itf_db_t;
 
 extern int gbp_endpoint_update (u32 sw_if_index,
-				const ip46_address_t * ip, epg_id_t epg_id);
-extern void gbp_endpoint_delete (u32 sw_if_index, const ip46_address_t * ip);
+				const ip46_address_t * ip,
+				const mac_address_t * mac,
+				epg_id_t epg_id, u32 * handle);
+extern void gbp_endpoint_delete (u32 handle);
 
-typedef int (*gbp_endpoint_cb_t) (gbp_endpoint_t * gbpe, void *ctx);
+typedef walk_rc_t (*gbp_endpoint_cb_t) (gbp_endpoint_t * gbpe, void *ctx);
 extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
 
-/**
- * Port to EPG mapping management
- */
-extern void gbp_itf_epg_update (u32 sw_if_index, epg_id_t src_epg,
-				u8 do_policy);
-extern void gbp_itf_epg_delete (u32 sw_if_index);
 
 /**
  * DP functions and databases
  */
-extern gbp_itf_to_epg_db_t gbp_itf_to_epg_db;
+extern gbp_ep_by_itf_db_t gbp_ep_by_itf_db;
+extern gbp_ep_by_mac_itf_db_t gbp_ep_by_mac_itf_db;
+extern gbp_ep_by_ip_itf_db_t gbp_ep_by_ip_itf_db;
+extern gbp_endpoint_t *gbp_endpoint_pool;
 
 /**
- * Get the source EPG for a port/interface
+ * Get the endpoint from a port/interface
  */
-always_inline u32
-gbp_port_to_epg (u32 sw_if_index)
+always_inline gbp_endpoint_t *
+gbp_endpoint_get (index_t gbpei)
 {
-  return (gbp_itf_to_epg_db.gte_vec[sw_if_index].gi_epg);
+  return (pool_elt_at_index (gbp_endpoint_pool, gbpei));
+}
+
+always_inline gbp_endpoint_t *
+gbp_endpoint_get_itf (u32 sw_if_index)
+{
+  return (gbp_endpoint_get (gbp_ep_by_itf_db.gte_vec[sw_if_index]));
 }
 
 #endif

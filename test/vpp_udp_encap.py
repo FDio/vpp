@@ -12,10 +12,8 @@ def find_udp_encap(test, ue):
     encaps = test.vapi.udp_encap_dump()
     for e in encaps:
         if ue.id == e.udp_encap.id \
-           and compare_ip_address(e.udp_encap.src_ip.un,
-                                  ue.src_ip.addr.ip_addr) \
-           and compare_ip_address(e.udp_encap.dst_ip.un,
-                                  ue.dst_ip.addr.ip_addr) \
+           and ue.src_ip == e.udp_encap.src_ip \
+           and ue.dst_ip == e.udp_encap.dst_ip \
            and e.udp_encap.dst_port == ue.dst_port \
            and e.udp_encap.src_port == ue.src_port:
             return True

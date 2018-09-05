@@ -6,7 +6,8 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
 
 """ Test6rd is a subclass of  VPPTestCase classes.

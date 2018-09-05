@@ -85,7 +85,8 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
 	   * the external EPG, these are classified to the NAT EPG
 	   * based on its port
 	   */
-	  gbp_itf_epg_update (gr->gr_sw_if_index, gr->gr_epg, 0);
+	  gbp_endpoint_update (gr->gr_sw_if_index,
+			       NULL, NULL, gr->gr_epg, &gr->gr_ep);
 	  vnet_feature_enable_disable ("ip4-unicast",
 				       "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
@@ -128,7 +129,7 @@ gbp_recirc_delete (u32 sw_if_index)
 
       if (gr->gr_is_ext)
 	{
-	  gbp_itf_epg_delete (gr->gr_sw_if_index);
+	  gbp_endpoint_delete (gr->gr_ep);
 	  vnet_feature_enable_disable ("ip4-unicast",
 				       "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);
