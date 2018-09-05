@@ -36,6 +36,23 @@
     },
     {
       "key": {
+        "uuid": "a5a374d4_4926163a",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T11:46:42Z",
+      "side": 1,
+      "message": "this is not a single u32 integer.\ni\u0027d suggest you remove this and use the individual field accessors instead.",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "71ee0045_35299386",
         "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
         "patchSetId": 5
