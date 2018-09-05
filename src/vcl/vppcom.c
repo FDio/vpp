@@ -1580,6 +1580,14 @@ vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq)
   return n_msgs;
 }
 
+#define vcl_fifo_rx_evt_valid_or_break(_fifo)			\
+if (PREDICT_FALSE (svm_fifo_is_empty (_fifo)))			\
+  {								\
+    svm_fifo_unset_event (_fifo);				\
+    if (svm_fifo_is_empty (_fifo))				\
+	break;							\
+  }								\
+
 static int
 vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 		      unsigned long n_bits, unsigned long *read_map,
@@ -1633,6 +1641,7 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
+	  vcl_fifo_rx_evt_valid_or_break (e->fifo);
 	  sid = e->fifo->client_session_index;
 	  session = vcl_session_get (wrk, sid);
 	  if (!session)
@@ -1655,12 +1664,7 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	    }
 	  break;
 	case SESSION_IO_EVT_CT_TX:
-	  if (svm_fifo_is_empty (e->fifo))
-	    {
-	      svm_fifo_unset_event (e->fifo);
-	      if (svm_fifo_is_empty (e->fifo))
-		break;
-	    }
+	  vcl_fifo_rx_evt_valid_or_break (e->fifo);
 	  session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
 	  if (!session)
 	    break;
@@ -2228,6 +2232,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
+	  vcl_fifo_rx_evt_valid_or_break (e->fifo);
 	  sid = e->fifo->client_session_index;
 	  session = vcl_session_get (wrk, sid);
 	  session_events = session->vep.ev.events;
@@ -2248,6 +2253,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  session_evt_data = session->vep.ev.data.u64;
 	  break;
 	case SESSION_IO_EVT_CT_TX:
+	  vcl_fifo_rx_evt_valid_or_break (e->fifo);
 	  session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
 	  sid = session->session_index;
 	  session_events = session->vep.ev.events;
@@ -3156,7 +3162,7 @@ vppcom_session_index (uint32_t session_handle)
 int
 vppcom_worker_register (void)
 {
-  if (!vcl_worker_alloc_and_init ())
+  if (vcl_worker_alloc_and_init ())
     return VPPCOM_OK;
   return VPPCOM_EEXIST;
 }
