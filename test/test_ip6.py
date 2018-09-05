@@ -7,9 +7,10 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
+from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, DpoProto, VppMplsTable, VppIpTable
+    VppMplsRoute, VppMplsTable, VppIpTable
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw

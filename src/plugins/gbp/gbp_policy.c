@@ -85,6 +85,7 @@ gbp_policy (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  const gbp_endpoint_t *gep0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
 	  gbp_contract_value_t value0 = {
@@ -107,7 +108,8 @@ gbp_policy (vlib_main_t * vm,
 	   * determine the src and dst EPG
 	   */
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  key0.gck_dst = gbp_port_to_epg (sw_if_index0);
+	  gep0 = gbp_endpoint_get_itf (sw_if_index0);
+	  key0.gck_dst = gep0->ge_epg_id;
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
 
 	  if (EPG_INVALID != key0.gck_src)

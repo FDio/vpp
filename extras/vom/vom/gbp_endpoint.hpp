@@ -17,6 +17,7 @@
 #define __VOM_GBP_ENDPOINT_H__
 
 #include <ostream>
+#include <vector>
 
 #include "vom/gbp_endpoint_group.hpp"
 #include "vom/interface.hpp"
@@ -32,13 +33,13 @@ public:
   /**
    * The key for a GBP endpoint; interface and IP
    */
-  typedef std::pair<interface::key_t, boost::asio::ip::address> key_t;
+  typedef std::pair<interface::key_t, mac_address_t> key_t;
 
   /**
    * Construct a GBP endpoint
    */
   gbp_endpoint(const interface& itf,
-               const boost::asio::ip::address& ip_addr,
+               const std::vector<boost::asio::ip::address>& ip_addr,
                const mac_address_t& mac,
                const gbp_endpoint_group& epg);
 
@@ -151,7 +152,7 @@ private:
   /**
    * HW configuration for the result of creating the endpoint
    */
-  HW::item<bool> m_hw;
+  HW::item<handle_t> m_hdl;
 
   /**
    * The interface the endpoint is attached to.
@@ -161,7 +162,7 @@ private:
   /**
    * The IP address of the endpoint
    */
-  boost::asio::ip::address m_ip;
+  std::vector<boost::asio::ip::address> m_ips;
 
   /**
    * The MAC address of the endpoint
