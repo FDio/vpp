@@ -5,7 +5,8 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP
 from scapy.all import fragment, RandShort
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
 import StringIO
 

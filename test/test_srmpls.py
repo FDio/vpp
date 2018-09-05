@@ -4,10 +4,9 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
+from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable, \
-    VppMplsLabel, MplsLspMode
+    VppIpTable, VppMplsTable, VppMplsLabel
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw

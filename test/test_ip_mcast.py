@@ -3,8 +3,9 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
+from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, DpoProto
+    MRouteItfFlags, MRouteEntryFlags, VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

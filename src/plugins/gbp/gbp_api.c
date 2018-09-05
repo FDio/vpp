@@ -20,6 +20,8 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 #include <vpp/app/version.h>
 
 #include <gbp/gbp.h>
@@ -52,7 +54,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_gbp_api_msg                                 \
-  _(GBP_ENDPOINT_ADD_DEL, gbp_endpoint_add_del)             \
+  _(GBP_ENDPOINT_ADD, gbp_endpoint_add)                     \
+  _(GBP_ENDPOINT_DEL, gbp_endpoint_del)                     \
   _(GBP_ENDPOINT_DUMP, gbp_endpoint_dump)                   \
   _(GBP_SUBNET_ADD_DEL, gbp_subnet_add_del)                 \
   _(GBP_SUBNET_DUMP, gbp_subnet_dump)                       \
@@ -70,39 +73,55 @@ static u16 msg_id_base;
 #define GBP_MSG_BASE msg_id_base
 
 static void
-vl_api_gbp_endpoint_add_del_t_handler (vl_api_gbp_endpoint_add_del_t * mp)
+vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
 {
-  vl_api_gbp_endpoint_add_del_reply_t *rmp;
-  ip46_address_t ip = { };
-  u32 sw_if_index;
-  int rv = 0;
+  vl_api_gbp_endpoint_add_reply_t *rmp;
+  u32 sw_if_index, handle;
+  ip46_address_t *ips;
+  mac_address_t mac;
+  int rv = 0, ii;
+
+  VALIDATE_SW_IF_INDEX (&(mp->endpoint));
 
   sw_if_index = ntohl (mp->endpoint.sw_if_index);
-  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
-    goto bad_sw_if_index;
 
-  if (mp->endpoint.is_ip6)
-    {
-      clib_memcpy (&ip.ip6, mp->endpoint.address, sizeof (ip.ip6));
-    }
-  else
-    {
-      clib_memcpy (&ip.ip4, mp->endpoint.address, sizeof (ip.ip4));
-    }
+  ips = NULL;
 
-  if (mp->is_add)
+  if (mp->endpoint.n_ips)
     {
-      rv =
-	gbp_endpoint_update (sw_if_index, &ip, ntohs (mp->endpoint.epg_id));
+      vec_validate (ips, mp->endpoint.n_ips - 1);
+
+      vec_foreach_index (ii, ips)
+      {
+	ip_address_decode (&mp->endpoint.ips[ii], &ips[ii]);
+      }
     }
-  else
-    {
-      gbp_endpoint_delete (sw_if_index, &ip);
-    }
+  mac_address_decode (&mp->endpoint.mac, &mac);
+
+  rv = gbp_endpoint_update (sw_if_index, ips, &mac,
+			    ntohs (mp->endpoint.epg_id), &handle);
+
+  vec_free (ips);
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (VL_API_GBP_ENDPOINT_ADD_DEL_REPLY + GBP_MSG_BASE);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_GBP_ENDPOINT_ADD_REPLY + GBP_MSG_BASE,
+  ({
+    rmp->handle = htonl (handle);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t * mp)
+{
+  vl_api_gbp_endpoint_del_reply_t *rmp;
+  int rv = 0;
+
+  gbp_endpoint_delete (ntohl (mp->handle));
+
+  REPLY_MACRO (VL_API_GBP_ENDPOINT_DEL_REPLY + GBP_MSG_BASE);
 }
 
 typedef struct gbp_walk_ctx_t_
@@ -111,14 +130,16 @@ typedef struct gbp_walk_ctx_t_
   u32 context;
 } gbp_walk_ctx_t;
 
-static int
+static walk_rc_t
 gbp_endpoint_send_details (gbp_endpoint_t * gbpe, void *args)
 {
   vl_api_gbp_endpoint_details_t *mp;
   gbp_walk_ctx_t *ctx;
+  u8 n_ips, ii;
 
   ctx = args;
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  n_ips = vec_len (gbpe->ge_ips);
+  mp = vl_msg_api_alloc (sizeof (*mp) + (sizeof (*mp->endpoint.ips) * n_ips));
   if (!mp)
     return 1;
 
@@ -126,22 +147,20 @@ gbp_endpoint_send_details (gbp_endpoint_t * gbpe, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
-  mp->endpoint.sw_if_index = ntohl (gbpe->ge_key->gek_sw_if_index);
-  mp->endpoint.is_ip6 = !ip46_address_is_ip4 (&gbpe->ge_key->gek_ip);
-  if (mp->endpoint.is_ip6)
-    clib_memcpy (&mp->endpoint.address,
-		 &gbpe->ge_key->gek_ip.ip6,
-		 sizeof (gbpe->ge_key->gek_ip.ip6));
-  else
-    clib_memcpy (&mp->endpoint.address,
-		 &gbpe->ge_key->gek_ip.ip4,
-		 sizeof (gbpe->ge_key->gek_ip.ip4));
-
+  mp->endpoint.sw_if_index = ntohl (gbpe->ge_sw_if_index);
   mp->endpoint.epg_id = ntohs (gbpe->ge_epg_id);
+  mp->endpoint.n_ips = n_ips;
+  mac_address_encode (&gbpe->ge_mac, &mp->endpoint.mac);
+
+  vec_foreach_index (ii, gbpe->ge_ips)
+  {
+    ip_address_encode (&gbpe->ge_ips[ii], IP46_TYPE_ANY,
+		       &mp->endpoint.ips[ii]);
+  }
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
-  return (1);
+  return (WALK_CONTINUE);
 }
 
 static void
@@ -195,18 +214,10 @@ static void
 vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t * mp)
 {
   vl_api_gbp_subnet_add_del_reply_t *rmp;
+  fib_prefix_t pfx;
   int rv = 0;
-  fib_prefix_t pfx = {
-    .fp_len = mp->subnet.address_length,
-    .fp_proto = (mp->subnet.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
-  };
 
-  if (mp->subnet.is_ip6)
-    clib_memcpy (&pfx.fp_addr.ip6, mp->subnet.address,
-		 sizeof (pfx.fp_addr.ip6));
-  else
-    clib_memcpy (&pfx.fp_addr.ip4, mp->subnet.address,
-		 sizeof (pfx.fp_addr.ip4));
+  ip_prefix_decode (&mp->subnet.prefix, &pfx);
 
   rv = gbp_subnet_add_del (ntohl (mp->subnet.table_id),
 			   &pfx,
@@ -238,16 +249,8 @@ gbp_subnet_send_details (u32 table_id,
   mp->subnet.is_internal = is_internal;
   mp->subnet.sw_if_index = ntohl (sw_if_index);
   mp->subnet.epg_id = ntohs (epg);
-  mp->subnet.is_ip6 = (pfx->fp_proto == FIB_PROTOCOL_IP6);
-  mp->subnet.address_length = pfx->fp_len;
   mp->subnet.table_id = ntohl (table_id);
-  if (mp->subnet.is_ip6)
-    clib_memcpy (&mp->subnet.address,
-		 &pfx->fp_addr.ip6, sizeof (pfx->fp_addr.ip6));
-  else
-    clib_memcpy (&mp->subnet.address,
-		 &pfx->fp_addr.ip4, sizeof (pfx->fp_addr.ip4));
-
+  ip_prefix_encode (pfx, &mp->subnet.prefix);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

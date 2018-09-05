@@ -14,6 +14,7 @@
  */
 
 #include "vom/gbp_subnet_cmds.hpp"
+#include "vom/api_types.hpp"
 
 namespace VOM {
 namespace gbp_subnet_cmds {
@@ -52,8 +53,7 @@ create_cmd::issue(connection& con)
   payload.subnet.table_id = m_rd;
   payload.subnet.sw_if_index = m_itf.value();
   payload.subnet.epg_id = m_epg_id;
-  m_prefix.to_vpp(&payload.subnet.is_ip6, payload.subnet.address,
-                  &payload.subnet.address_length);
+  payload.subnet.prefix = to_api(m_prefix);
 
   VAPI_CALL(req.execute());
 
@@ -94,8 +94,7 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
   payload.subnet.table_id = m_rd;
-  m_prefix.to_vpp(&payload.subnet.is_ip6, payload.subnet.address,
-                  &payload.subnet.address_length);
+  payload.subnet.prefix = to_api(m_prefix);
 
   payload.subnet.is_internal = 0;
   payload.subnet.sw_if_index = ~0;

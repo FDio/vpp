@@ -3432,15 +3432,20 @@ class VppPapiProvider(object):
                          'enable_ip6': 1 if enable_ip6 else 0,
                          })
 
-    def gbp_endpoint_add_del(self, is_add, sw_if_index, addr, is_ip6, epg):
-        """ GBP endpoint Add/Del """
-        return self.api(self.papi.gbp_endpoint_add_del,
-                        {'is_add': is_add,
-                         'endpoint': {
-                             'is_ip6': is_ip6,
-                             'sw_if_index': sw_if_index,
-                             'address': addr,
-                             'epg_id': epg}})
+    def gbp_endpoint_add(self, sw_if_index, ips, mac, epg):
+        """ GBP endpoint Add """
+        return self.api(self.papi.gbp_endpoint_add,
+                        {'endpoint': {
+                            'sw_if_index': sw_if_index,
+                            'ips': ips,
+                            'n_ips': len(ips),
+                            'mac': mac,
+                            'epg_id': epg}})
+
+    def gbp_endpoint_del(self, handle):
+        """ GBP endpoint Del """
+        return self.api(self.papi.gbp_endpoint_del,
+                        {'handle': handle})
 
     def gbp_endpoint_dump(self):
         """ GBP endpoint Dump """
@@ -3479,7 +3484,7 @@ class VppPapiProvider(object):
 
     def gbp_subnet_add_del(self, is_add, table_id,
                            is_internal,
-                           addr, addr_len,
+                           prefix,
                            sw_if_index=0xffffffff,
                            epg_id=0xffff,
                            is_ip6=False):
@@ -3491,8 +3496,7 @@ class VppPapiProvider(object):
                              'is_ip6': is_ip6,
                              'sw_if_index': sw_if_index,
                              'epg_id': epg_id,
-                             'address': addr,
-                             'address_length': addr_len,
+                             'prefix': prefix,
                              'table_id': table_id}})
 
     def gbp_subnet_dump(self):

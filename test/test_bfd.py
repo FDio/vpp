@@ -20,7 +20,8 @@ from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_lo_interface import VppLoInterface
 from util import ppp
 from vpp_papi_provider import UnexpectedApiReturnValueError
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 USEC_IN_SEC = 1000000
 

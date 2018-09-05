@@ -16,9 +16,8 @@
 #ifndef __VOM_PREFIX_H__
 #define __VOM_PREFIX_H__
 
-#include <boost/asio/ip/address.hpp>
-
 #include "vom/enum_base.hpp"
+#include <boost/asio/ip/address.hpp>
 
 namespace VOM {
 /**
@@ -111,10 +110,12 @@ public:
    * Constructor with string and length
    */
   prefix_t(const std::string& s, uint8_t len);
+
   /**
    * Copy Constructor
    */
   prefix_t(const prefix_t&);
+
   /**
    * Constructor with VPP API prefix representation
    */
