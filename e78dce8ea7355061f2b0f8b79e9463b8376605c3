@@ -88,6 +88,24 @@
     },
     {
       "key": {
+        "uuid": "cf202a62_b3658996",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T12:48:39Z",
+      "side": 1,
+      "message": "but it doesn\u0027t fill it correctly because you are byte swapping two u8s and a u16 as if it\u0027s a single u32",
+      "parentUuid": "5bb4029d_39a2feaa",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "71ee0045_35299386",
         "filename": "src/vnet/vxlan-gbp/vxlan_gbp_packet.h",
         "patchSetId": 5
