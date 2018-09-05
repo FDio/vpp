@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "9a2170b2_efae3177",
+        "filename": "src/vnet/vxlan-gbp/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T11:37:55Z",
+      "side": 1,
+      "message": "sclass not traced",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58f1cda1_17fc4cbd",
         "filename": "src/vnet/vxlan-gbp/vxlan_gbp.api",
         "patchSetId": 5
