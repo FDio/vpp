@@ -6,6 +6,7 @@
 
 from vpp_object import *
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+from vpp_ip import *
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -27,15 +28,6 @@ class MRouteEntryFlags:
     MFIB_ENTRY_FLAG_DROP = 2
     MFIB_ENTRY_FLAG_CONNECTED = 4
     MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
-
-
-class DpoProto:
-    DPO_PROTO_IP4 = 0
-    DPO_PROTO_IP6 = 1
-    DPO_PROTO_MPLS = 2
-    DPO_PROTO_ETHERNET = 3
-    DPO_PROTO_BIER = 4
-    DPO_PROTO_NSH = 5
 
 
 class MplsLspMode:

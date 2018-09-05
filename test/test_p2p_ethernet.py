@@ -11,7 +11,8 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 from util import mactobinary
 
 

@@ -14,6 +14,7 @@
  */
 
 #include "vom/gbp_endpoint.hpp"
+#include "vom/api_types.hpp"
 #include "vom/gbp_endpoint_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -23,22 +24,23 @@ singular_db<gbp_endpoint::key_t, gbp_endpoint> gbp_endpoint::m_db;
 
 gbp_endpoint::event_handler gbp_endpoint::m_evh;
 
-gbp_endpoint::gbp_endpoint(const interface& itf,
-                           const boost::asio::ip::address& ip_addr,
-                           const mac_address_t& mac,
-                           const gbp_endpoint_group& epg)
-  : m_hw(false)
+gbp_endpoint::gbp_endpoint(
+  const interface& itf,
+  const std::vector<boost::asio::ip::address>& ip_addrs,
+  const mac_address_t& mac,
+  const gbp_endpoint_group& epg)
+  : m_hdl(handle_t::INVALID)
   , m_itf(itf.singular())
-  , m_ip(ip_addr)
+  , m_ips(ip_addrs)
   , m_mac(mac)
   , m_epg(epg.singular())
 {
 }
 
 gbp_endpoint::gbp_endpoint(const gbp_endpoint& gbpe)
-  : m_hw(gbpe.m_hw)
+  : m_hdl(gbpe.m_hdl)
   , m_itf(gbpe.m_itf)
-  , m_ip(gbpe.m_ip)
+  , m_ips(gbpe.m_ips)
   , m_mac(gbpe.m_mac)
   , m_epg(gbpe.m_epg)
 {
@@ -53,7 +55,7 @@ gbp_endpoint::~gbp_endpoint()
 const gbp_endpoint::key_t
 gbp_endpoint::key() const
 {
-  return (std::make_pair(m_itf->key(), m_ip));
+  return (std::make_pair(m_itf->key(), m_mac));
 }
 
 bool
@@ -65,8 +67,8 @@ gbp_endpoint::operator==(const gbp_endpoint& gbpe) const
 void
 gbp_endpoint::sweep()
 {
-  if (m_hw) {
-    HW::enqueue(new gbp_endpoint_cmds::delete_cmd(m_hw, m_itf->handle(), m_ip));
+  if (m_hdl) {
+    HW::enqueue(new gbp_endpoint_cmds::delete_cmd(m_hdl));
   }
   HW::write();
 }
@@ -74,8 +76,8 @@ gbp_endpoint::sweep()
 void
 gbp_endpoint::replay()
 {
-  if (m_hw) {
-    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hw, m_itf->handle(), m_ip,
+  if (m_hdl) {
+    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hdl, m_itf->handle(), m_ips,
                                                   m_mac, m_epg->id()));
   }
 }
@@ -84,8 +86,12 @@ std::string
 gbp_endpoint::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint:[" << m_itf->to_string() << ", " << m_ip.to_string()
-    << ", " << m_mac.to_string() << ", epg:" << m_epg->to_string() << "]";
+  s << "gbp-endpoint:[" << m_itf->to_string() << ", ips:[";
+
+  for (auto ip : m_ips)
+    s << ip.to_string();
+
+  s << "], " << m_mac.to_string() << ", epg:" << m_epg->to_string() << "]";
 
   return (s.str());
 }
@@ -93,8 +99,8 @@ gbp_endpoint::to_string() const
 void
 gbp_endpoint::update(const gbp_endpoint& r)
 {
-  if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hw, m_itf->handle(), m_ip,
+  if (rc_t::OK != m_hdl.rc()) {
+    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hdl, m_itf->handle(), m_ips,
                                                   m_mac, m_epg->id()));
   }
 }
@@ -147,18 +153,20 @@ gbp_endpoint::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
-    boost::asio::ip::address address =
-      from_bytes(payload.endpoint.is_ip6, payload.endpoint.address);
+    std::vector<boost::asio::ip::address> addresses;
+
+    for (uint8_t n = 0; n < payload.endpoint.n_ips; n++)
+      addresses.push_back(from_api(payload.endpoint.ips[n]));
     std::shared_ptr<interface> itf =
       interface::find(payload.endpoint.sw_if_index);
     std::shared_ptr<gbp_endpoint_group> epg =
       gbp_endpoint_group::find(payload.endpoint.epg_id);
-    mac_address_t mac(payload.endpoint.mac);
+    mac_address_t mac = from_api(payload.endpoint.mac);
 
     VOM_LOG(log_level_t::DEBUG) << "data: " << payload.endpoint.sw_if_index;
 
     if (itf && epg) {
-      gbp_endpoint gbpe(*itf, address, mac, *epg);
+      gbp_endpoint gbpe(*itf, addresses, mac, *epg);
       OM::commit(key, gbpe);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
@@ -177,6 +185,15 @@ gbp_endpoint::event_handler::show(std::ostream& os)
 {
   db_dump(m_db, os);
 }
+
+std::ostream&
+operator<<(std::ostream& os, const gbp_endpoint::key_t& key)
+{
+  os << key.first << "," << key.second;
+
+  return os;
+}
+
 } // namespace VOM
 
 /*
