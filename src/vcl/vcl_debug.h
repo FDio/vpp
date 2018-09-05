@@ -22,7 +22,7 @@
 
 #define VDBG(_lvl, _fmt, _args...) 					\
   if (vcm->debug > _lvl)						\
-    clib_warning ("vcl<w%u>: " _fmt, __vcl_worker_index, ##_args)
+    clib_warning ("vcl<w%d>: " _fmt, __vcl_worker_index, ##_args)
 
 #define foreach_vcl_dbg_evt						\
   _(INIT, "vcl init track")						\
