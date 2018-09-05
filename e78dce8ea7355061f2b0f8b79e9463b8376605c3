@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "58f1cda1_17fc4cbd",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-05T09:32:07Z",
+      "side": 1,
+      "message": "the sclass is not a property of the tunnel. It\u0027s a property of the payload that the tunnel carries.",
+      "revId": "e78dce8ea7355061f2b0f8b79e9463b8376605c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
