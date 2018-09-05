@@ -116,8 +116,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  u32 bi0 = to_next[0] = from[0];
@@ -292,10 +292,18 @@ vxlan_encap_inline (vlib_main_t * vm,
                 udp1->checksum = 0xffff;
             }
 
+	if (sw_if_index0 == sw_if_index1)
+	{
+          vlib_increment_combined_counter (tx_counter, thread_index,
+              sw_if_index0, 2, len0 + len1);
+	}
+	else
+	{
           vlib_increment_combined_counter (tx_counter, thread_index,
               sw_if_index0, 1, len0);
           vlib_increment_combined_counter (tx_counter, thread_index,
               sw_if_index1, 1, len1);
+	}
           pkts_encapsulated += 2;
 
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
