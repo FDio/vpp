@@ -14,20 +14,21 @@
  */
 
 #include "vom/gbp_endpoint_cmds.hpp"
+#include "vom/api_types.hpp"
 
 DEFINE_VAPI_MSG_IDS_GBP_API_JSON;
 
 namespace VOM {
 namespace gbp_endpoint_cmds {
 
-create_cmd::create_cmd(HW::item<bool>& item,
+create_cmd::create_cmd(HW::item<handle_t>& item,
                        const handle_t& itf,
-                       const boost::asio::ip::address& ip_addr,
+                       const std::vector<boost::asio::ip::address>& ip_addrs,
                        const mac_address_t& mac,
                        epg_id_t epg_id)
   : rpc_cmd(item)
   , m_itf(itf)
-  , m_ip_addr(ip_addr)
+  , m_ip_addrs(ip_addrs)
   , m_mac(mac)
   , m_epg_id(epg_id)
 {
@@ -36,25 +37,50 @@ create_cmd::create_cmd(HW::item<bool>& item,
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
-  return ((m_itf == other.m_itf) && (m_ip_addr == other.m_ip_addr) &&
+  return ((m_itf == other.m_itf) && (m_ip_addrs == other.m_ip_addrs) &&
           (m_mac == other.m_mac) && (m_epg_id == other.m_epg_id));
 }
 
 rc_t
 create_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), std::ref(*this));
+  msg_t req(con.ctx(), m_ip_addrs.size() * sizeof(vapi_type_address),
+            std::ref(*this));
+  uint8_t n;
 
   auto& payload = req.get_request().get_payload();
-  payload.is_add = 1;
   payload.endpoint.sw_if_index = m_itf.value();
   payload.endpoint.epg_id = m_epg_id;
-  to_bytes(m_ip_addr, &payload.endpoint.is_ip6, payload.endpoint.address);
-  m_mac.to_bytes(payload.endpoint.mac, 6);
+  payload.endpoint.n_ips = m_ip_addrs.size();
+
+  for (n = 0; n < payload.endpoint.n_ips; n++) {
+    payload.endpoint.ips[n] = to_api(m_ip_addrs[n]);
+  }
+  payload.endpoint.mac = to_api(m_mac);
 
   VAPI_CALL(req.execute());
 
   return (wait());
+}
+
+vapi_error_e
+create_cmd::operator()(vapi::Gbp_endpoint_add& reply)
+{
+  int handle = reply.get_response().get_payload().handle;
+  int retval = reply.get_response().get_payload().retval;
+
+  VOM_LOG(log_level_t::DEBUG) << this->to_string() << " " << retval;
+
+  rc_t rc = rc_t::from_vpp_retval(retval);
+  handle_t hdl = handle_t::INVALID;
+
+  if (rc_t::OK == rc) {
+    hdl = handle;
+  }
+
+  this->fulfill(HW::item<handle_t>(hdl, rc));
+
+  return (VAPI_OK);
 }
 
 std::string
@@ -62,24 +88,25 @@ create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-endpoint-create: " << m_hw_item.to_string() << " itf:" << m_itf
-    << " ip:" << m_ip_addr.to_string() << " epg-id:" << m_epg_id;
+    << " ips:[";
+  for (auto ip : m_ip_addrs)
+    s << ip.to_string();
+
+  s << "] mac:" << m_mac;
+  s << " epg-id:" << m_epg_id;
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item,
-                       const handle_t& itf,
-                       const boost::asio::ip::address& ip_addr)
+delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : rpc_cmd(item)
-  , m_itf(itf)
-  , m_ip_addr(ip_addr)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return ((m_itf == other.m_itf) && (m_ip_addr == other.m_ip_addr));
+  return (m_hw_item == other.m_hw_item);
 }
 
 rc_t
@@ -88,10 +115,7 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.is_add = 0;
-  payload.endpoint.sw_if_index = m_itf.value();
-  payload.endpoint.epg_id = ~0;
-  to_bytes(m_ip_addr, &payload.endpoint.is_ip6, payload.endpoint.address);
+  payload.handle = m_hw_item.data().value();
 
   VAPI_CALL(req.execute());
 
@@ -102,8 +126,7 @@ std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-delete: " << m_hw_item.to_string() << " itf:" << m_itf
-    << " ip:" << m_ip_addr.to_string();
+  s << "gbp-endpoint-delete: " << m_hw_item.to_string();
 
   return (s.str());
 }

@@ -2,7 +2,8 @@
 
 from framework import VppTestCase, VppTestRunner
 from vpp_udp_encap import *
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, DpoProto
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP

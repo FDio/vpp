@@ -14,28 +14,44 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Endpoint
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
 
-typeonly define gbp_endpoint
+typedef gbp_endpoint
 {
   u32 sw_if_index;
   u16 epg_id;
-  u8  is_ip6;
-  u8  address[16];
-  u8  mac[6];
+  vl_api_mac_address_t mac;
+  u8 n_ips;
+  vl_api_address_t ips[n_ips];
 };
 
-autoreply define gbp_endpoint_add_del
+define gbp_endpoint_add
 {
   u32 client_index;
   u32 context;
-  u8  is_add;
   vl_api_gbp_endpoint_t endpoint;
+};
+
+define gbp_endpoint_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 handle;
+};
+
+autoreply define gbp_endpoint_del
+{
+  u32 client_index;
+  u32 context;
+  u32 handle;
 };
 
 define gbp_endpoint_dump
@@ -111,10 +127,8 @@ typeonly define gbp_subnet
   u32 table_id;
   u32 sw_if_index;
   u16 epg_id;
-  u8  is_ip6;
   u8  is_internal;
-  u8  address_length;
-  u8  address[16];
+  vl_api_prefix_t prefix;
 };
 
 autoreply define gbp_subnet_add_del

@@ -11,7 +11,8 @@ from util import ppp, fragment_rfc791, fragment_rfc8200
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 test_packet_count = 257
 

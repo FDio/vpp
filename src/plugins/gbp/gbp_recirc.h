@@ -44,6 +44,10 @@ typedef struct gpb_recirc_t_
    */
   u32 gr_sw_if_index;
 
+  /**
+   * The endpoint created to represent the reric interface
+   */
+  index_t gr_ep;
 } gbp_recirc_t;
 
 extern int gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext);

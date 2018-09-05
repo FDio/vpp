@@ -75,6 +75,7 @@ gbp_classify_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 next0, bi0, src_epg, sw_if_index0;
+	  const gbp_endpoint_t *gep0;
 	  vlib_buffer_t *b0;
 
 	  bi0 = from[0];
@@ -97,7 +98,8 @@ gbp_classify_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      src_epg = gbp_port_to_epg (sw_if_index0);
+	      gep0 = gbp_endpoint_get_itf (sw_if_index0);
+	      src_epg = gep0->ge_epg_id;
 	      if (is_l3)
 		{
 		  /*
