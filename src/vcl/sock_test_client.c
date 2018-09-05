@@ -44,13 +44,13 @@ typedef struct
   uint8_t dump_cfg;
 } sock_client_main_t;
 
-sock_client_main_t sock_client_main;
+sock_client_main_t vcl_client_main;
 
 
 static int
 sock_test_cfg_sync (sock_test_socket_t * socket)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_cfg_t *rl_cfg = (sock_test_cfg_t *) socket->rxbuf;
   int rx_bytes, tx_bytes;
@@ -117,7 +117,7 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
 static void
 echo_test_client ()
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_socket_t *tsock;
   int rx_bytes, tx_bytes, nbytes;
@@ -361,7 +361,7 @@ echo_test_client ()
 static void
 stream_test_client (sock_test_t test)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_socket_t *tsock;
   int tx_bytes;
@@ -536,7 +536,7 @@ stream_test_client (sock_test_t test)
 static void
 exit_client (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_socket_t *tsock;
   int i;
@@ -578,7 +578,7 @@ exit_client (void)
 static int
 sock_test_connect_test_sockets (uint32_t num_test_sockets)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_socket_t *tsock;
   int i, rv, errno_val;
@@ -711,7 +711,7 @@ dump_help (void)
 static void
 cfg_txbuf_size_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_TXBUF_SIZE);
   uint64_t txbuf_size = strtoull ((const char *) p, NULL, 10);
@@ -733,7 +733,7 @@ cfg_txbuf_size_set (void)
 static void
 cfg_num_writes_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_NUM_WRITES);
   uint32_t num_writes = strtoul ((const char *) p, NULL, 10);
@@ -753,7 +753,7 @@ cfg_num_writes_set (void)
 static void
 cfg_num_test_sockets_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_NUM_TEST_SCKTS);
   uint32_t num_test_sockets = strtoul ((const char *) p, NULL, 10);
@@ -777,7 +777,7 @@ cfg_num_test_sockets_set (void)
 static void
 cfg_rxbuf_size_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_RXBUF_SIZE);
   uint64_t rxbuf_size = strtoull ((const char *) p, NULL, 10);
@@ -798,7 +798,7 @@ cfg_rxbuf_size_set (void)
 static void
 cfg_verbose_toggle (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
 
   ctrl->cfg.verbose = ctrl->cfg.verbose ? 0 : 1;
@@ -809,7 +809,7 @@ cfg_verbose_toggle (void)
 static sock_test_t
 parse_input ()
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   sock_test_t rv = SOCK_TEST_TYPE_NONE;
 
@@ -884,7 +884,7 @@ print_usage_and_exit (void)
 int
 main (int argc, char **argv)
 {
-  sock_client_main_t *scm = &sock_client_main;
+  sock_client_main_t *scm = &vcl_client_main;
   sock_test_socket_t *ctrl = &scm->ctrl_socket;
   int c, rv, errno_val;
   sock_test_t post_test = SOCK_TEST_TYPE_NONE;

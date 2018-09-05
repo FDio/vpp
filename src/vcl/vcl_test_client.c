@@ -26,6 +26,16 @@
 
 typedef struct
 {
+  uint16_t port;
+  uint32_t address_ip6;
+  u8 proto;
+  u8 workers;
+  vppcom_endpt_t endpt;
+} vcl_test_cfg_t;
+
+typedef struct
+{
+  vcl_test_cfg_t cfg;
   vppcom_endpt_t server_endpt;
   struct sockaddr_storage server_addr;
   uint32_t server_addr_size;
@@ -34,23 +44,23 @@ typedef struct
   sock_test_socket_t *test_socket;
   uint32_t num_test_sockets;
   uint8_t dump_cfg;
-} sock_client_main_t;
+  sock_test_t post_test;
+} vcl_test_client_main_t;
 
-sock_client_main_t sock_client_main;
-
+vcl_test_client_main_t vcl_client_main;
 
 static int
 sock_test_cfg_sync (sock_test_socket_t * socket)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_cfg_t *rl_cfg = (sock_test_cfg_t *) socket->rxbuf;
   int rx_bytes, tx_bytes;
 
   if (socket->cfg.verbose)
     sock_test_cfg_dump (&socket->cfg, 1 /* is_client */ );
 
-  ctrl->cfg.seq_num = ++scm->cfg_seq_num;
+  ctrl->cfg.seq_num = ++vcm->cfg_seq_num;
   if (socket->cfg.verbose)
     {
       printf ("CLIENT (fd %d): Sending config sent to server.\n", socket->fd);
@@ -109,8 +119,8 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
 static void
 echo_test_client ()
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_socket_t *tsock;
   int rv, nfds = 0, rx_bytes, tx_bytes, nbytes;
   uint32_t i, n, sidx;
@@ -124,7 +134,7 @@ echo_test_client ()
   ctrl->cfg.total_bytes = nbytes = strlen (ctrl->txbuf) + 1;
   for (n = 0; n != ctrl->cfg.num_test_sockets; n++)
     {
-      tsock = &scm->test_socket[n];
+      tsock = &vcm->test_socket[n];
       tsock->cfg = ctrl->cfg;
       sock_test_socket_buf_alloc (tsock);
       if (sock_test_cfg_sync (tsock))
@@ -160,7 +170,7 @@ echo_test_client ()
 
       for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
 	{
-	  tsock = &scm->test_socket[i];
+	  tsock = &vcm->test_socket[i];
 	  if (!((tsock->stats.stop.tv_sec == 0) &&
 		(tsock->stats.stop.tv_nsec == 0)))
 	    continue;
@@ -209,7 +219,7 @@ echo_test_client ()
 
   for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
     {
-      tsock = &scm->test_socket[i];
+      tsock = &vcm->test_socket[i];
       tsock->stats.start = ctrl->stats.start;
 
       if (ctrl->cfg.verbose)
@@ -252,8 +262,8 @@ echo_test_client ()
 static void
 stream_test_client (sock_test_t test)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_socket_t *tsock;
   int tx_bytes, rv, nfds = 0;
   uint32_t i, n, sidx;
@@ -280,7 +290,7 @@ stream_test_client (sock_test_t test)
   memset (&ctrl->stats, 0, sizeof (ctrl->stats));
   for (n = 0; n != ctrl->cfg.num_test_sockets; n++)
     {
-      tsock = &scm->test_socket[n];
+      tsock = &vcm->test_socket[n];
       tsock->cfg = ctrl->cfg;
       sock_test_socket_buf_alloc (tsock);
       printf ("CLIENT (fd %d): Sending config to server on "
@@ -319,7 +329,7 @@ stream_test_client (sock_test_t test)
 
       for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
 	{
-	  tsock = &scm->test_socket[i];
+	  tsock = &vcm->test_socket[i];
 	  if (!((tsock->stats.stop.tv_sec == 0) &&
 		(tsock->stats.stop.tv_nsec == 0)))
 	    continue;
@@ -370,7 +380,7 @@ stream_test_client (sock_test_t test)
 
   for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
     {
-      tsock = &scm->test_socket[i];
+      tsock = &vcm->test_socket[i];
 
       if (ctrl->cfg.verbose)
 	{
@@ -417,14 +427,14 @@ stream_test_client (sock_test_t test)
 static void
 exit_client (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_socket_t *tsock;
   int i;
 
   for (i = 0; i < ctrl->cfg.num_test_sockets; i++)
     {
-      tsock = &scm->test_socket[i];
+      tsock = &vcm->test_socket[i];
       tsock->cfg.test = SOCK_TEST_TYPE_EXIT;
 
       /* coverity[COPY_PASTE_ERROR] */
@@ -454,8 +464,8 @@ exit_client (void)
 static int
 sock_test_connect_test_sockets (uint32_t num_test_sockets)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_socket_t *tsock;
   int i, rv, errno_val;
 
@@ -465,20 +475,20 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       return -1;
     }
 
-  if (num_test_sockets < scm->num_test_sockets)
+  if (num_test_sockets < vcm->num_test_sockets)
     {
-      for (i = scm->num_test_sockets - 1; i >= num_test_sockets; i--)
+      for (i = vcm->num_test_sockets - 1; i >= num_test_sockets; i--)
 	{
-	  tsock = &scm->test_socket[i];
+	  tsock = &vcm->test_socket[i];
 	  vppcom_session_close (tsock->fd);
 	  free (tsock->txbuf);
 	  free (tsock->rxbuf);
 	}
     }
 
-  else if (num_test_sockets > scm->num_test_sockets)
+  else if (num_test_sockets > vcm->num_test_sockets)
     {
-      tsock = realloc (scm->test_socket,
+      tsock = realloc (vcm->test_socket,
 		       sizeof (sock_test_socket_t) * num_test_sockets);
       if (!tsock)
 	{
@@ -489,13 +499,13 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	  return -1;
 	}
 
-      if (!scm->test_socket)
+      if (!vcm->test_socket)
 	memset (tsock, 0, sizeof (*tsock));
 
-      scm->test_socket = tsock;
-      for (i = scm->num_test_sockets; i < num_test_sockets; i++)
+      vcm->test_socket = tsock;
+      for (i = vcm->num_test_sockets; i < num_test_sockets; i++)
 	{
-	  tsock = &scm->test_socket[i];
+	  tsock = &vcm->test_socket[i];
 	  tsock->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
 					     VPPCOM_PROTO_UDP :
 					     VPPCOM_PROTO_TCP,
@@ -514,7 +524,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	      return tsock->fd;
 	    }
 
-	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
+	  rv = vppcom_session_connect (tsock->fd, &vcm->server_endpt);
 	  if (rv)
 	    {
 	      errno = -rv;
@@ -537,8 +547,8 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	}
     }
 
-  scm->num_test_sockets = num_test_sockets;
-  printf ("CLIENT: All sockets (%d) connected!\n", scm->num_test_sockets + 1);
+  vcm->num_test_sockets = num_test_sockets;
+  printf ("CLIENT: All sockets (%d) connected!\n", vcm->num_test_sockets + 1);
   return 0;
 }
 
@@ -571,8 +581,8 @@ dump_help (void)
 static void
 cfg_txbuf_size_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_TXBUF_SIZE);
   uint64_t txbuf_size = strtoull ((const char *) p, NULL, 10);
 
@@ -593,8 +603,8 @@ cfg_txbuf_size_set (void)
 static void
 cfg_num_writes_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_NUM_WRITES);
   uint32_t num_writes = strtoul ((const char *) p, NULL, 10);
 
@@ -613,8 +623,8 @@ cfg_num_writes_set (void)
 static void
 cfg_num_test_sockets_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_NUM_TEST_SCKTS);
   uint32_t num_test_sockets = strtoul ((const char *) p, NULL, 10);
 
@@ -637,8 +647,8 @@ cfg_num_test_sockets_set (void)
 static void
 cfg_rxbuf_size_set (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (SOCK_TEST_TOKEN_RXBUF_SIZE);
   uint64_t rxbuf_size = strtoull ((const char *) p, NULL, 10);
 
@@ -658,8 +668,8 @@ cfg_rxbuf_size_set (void)
 static void
 cfg_verbose_toggle (void)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
 
   ctrl->cfg.verbose = ctrl->cfg.verbose ? 0 : 1;
   sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
@@ -669,8 +679,8 @@ cfg_verbose_toggle (void)
 static sock_test_t
 parse_input ()
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_t rv = SOCK_TEST_TYPE_NONE;
 
   if (!strncmp (SOCK_TEST_TOKEN_EXIT, ctrl->txbuf,
@@ -683,7 +693,7 @@ parse_input ()
 
   else if (!strncmp (SOCK_TEST_TOKEN_SHOW_CFG, ctrl->txbuf,
 		     strlen (SOCK_TEST_TOKEN_SHOW_CFG)))
-    scm->dump_cfg = 1;
+    vcm->dump_cfg = 1;
 
   else if (!strncmp (SOCK_TEST_TOKEN_VERBOSE, ctrl->txbuf,
 		     strlen (SOCK_TEST_TOKEN_VERBOSE)))
@@ -741,23 +751,21 @@ print_usage_and_exit (void)
   exit (1);
 }
 
-int
-main (int argc, char **argv)
+static void
+vcl_test_client_process_opts (vcl_test_client_main_t * vcm, int argc,
+			      char **argv)
 {
-  sock_client_main_t *scm = &sock_client_main;
-  sock_test_socket_t *ctrl = &scm->ctrl_socket;
-  int c, rv, errno_val;
-  sock_test_t post_test = SOCK_TEST_TYPE_NONE;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
+  int c;
 
-  sock_test_cfg_init (&ctrl->cfg);
-  sock_test_socket_buf_alloc (ctrl);
+  vcm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
   while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6D")) != -1)
     switch (c)
       {
       case 'c':
-	scm->dump_cfg = 1;
+	vcm->dump_cfg = 1;
 	break;
 
       case 's':
@@ -784,7 +792,7 @@ main (int argc, char **argv)
 	break;
 
       case 'X':
-	post_test = SOCK_TEST_TYPE_EXIT;
+	vcm->post_test = SOCK_TEST_TYPE_EXIT;
 	break;
 
       case 'E':
@@ -930,24 +938,30 @@ main (int argc, char **argv)
       fprintf (stderr, "CLIENT: ERROR: Insufficient number of arguments!\n");
       print_usage_and_exit ();
     }
+}
 
-  ctrl->fd = vppcom_app_create ("vcl_test_client");
+int
+main (int argc, char **argv)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
+  int rv, errno_val;
+
+  sock_test_cfg_init (&ctrl->cfg);
+  sock_test_socket_buf_alloc (ctrl);
+  vcl_test_client_process_opts (vcm, argc, argv);
+
+  rv = vppcom_app_create ("vcl_test_client");
+  if (rv < 0)
+    vtfail ("vppcom_app_create()", rv);
+
+  ctrl->fd = vppcom_session_create (
+      ctrl->cfg.transport_udp ? VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP,
+      0 /* is_nonblocking */);
   if (ctrl->fd < 0)
     {
       errno = -ctrl->fd;
       ctrl->fd = -1;
-    }
-  else
-    {
-      ctrl->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
-					VPPCOM_PROTO_UDP :
-					VPPCOM_PROTO_TCP,
-					0 /* is_nonblocking */ );
-      if (ctrl->fd < 0)
-	{
-	  errno = -ctrl->fd;
-	  ctrl->fd = -1;
-	}
     }
 
   if (ctrl->fd < 0)
@@ -959,12 +973,12 @@ main (int argc, char **argv)
       return ctrl->fd;
     }
 
-  memset (&scm->server_addr, 0, sizeof (scm->server_addr));
+  memset (&vcm->server_addr, 0, sizeof (vcm->server_addr));
   if (ctrl->cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr =
-	(struct sockaddr_in6 *) &scm->server_addr;
-      scm->server_addr_size = sizeof (*server_addr);
+	(struct sockaddr_in6 *) &vcm->server_addr;
+      vcm->server_addr_size = sizeof (*server_addr);
       server_addr->sin6_family = AF_INET6;
       inet_pton (AF_INET6, argv[optind++], &(server_addr->sin6_addr));
       server_addr->sin6_port = htons (atoi (argv[optind]));
@@ -972,8 +986,8 @@ main (int argc, char **argv)
   else
     {
       struct sockaddr_in *server_addr =
-	(struct sockaddr_in *) &scm->server_addr;
-      scm->server_addr_size = sizeof (*server_addr);
+	(struct sockaddr_in *) &vcm->server_addr;
+      vcm->server_addr_size = sizeof (*server_addr);
       server_addr->sin_family = AF_INET;
       inet_pton (AF_INET, argv[optind++], &(server_addr->sin_addr));
       server_addr->sin_port = htons (atoi (argv[optind]));
@@ -982,25 +996,25 @@ main (int argc, char **argv)
   if (ctrl->cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr =
-	(struct sockaddr_in6 *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 0;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin6_port;
+	(struct sockaddr_in6 *) &vcm->server_addr;
+      vcm->server_endpt.is_ip4 = 0;
+      vcm->server_endpt.ip = (uint8_t *) & server_addr->sin6_addr;
+      vcm->server_endpt.port = (uint16_t) server_addr->sin6_port;
     }
   else
     {
       struct sockaddr_in *server_addr =
-	(struct sockaddr_in *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 1;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin_port;
+	(struct sockaddr_in *) &vcm->server_addr;
+      vcm->server_endpt.is_ip4 = 1;
+      vcm->server_endpt.ip = (uint8_t *) & server_addr->sin_addr;
+      vcm->server_endpt.port = (uint16_t) server_addr->sin_port;
     }
 
   do
     {
       printf ("\nCLIENT: Connecting to server...\n");
 
-      rv = vppcom_session_connect (ctrl->fd, &scm->server_endpt);
+      rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
       if (rv)
 	{
 	  errno = -rv;
@@ -1024,10 +1038,10 @@ main (int argc, char **argv)
 
   while (ctrl->cfg.test != SOCK_TEST_TYPE_EXIT)
     {
-      if (scm->dump_cfg)
+      if (vcm->dump_cfg)
 	{
 	  sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
-	  scm->dump_cfg = 0;
+	  vcm->dump_cfg = 0;
 	}
 
       switch (ctrl->cfg.test)
@@ -1048,7 +1062,7 @@ main (int argc, char **argv)
 	default:
 	  break;
 	}
-      switch (post_test)
+      switch (vcm->post_test)
 	{
 	case SOCK_TEST_TYPE_EXIT:
 	  switch (ctrl->cfg.test)

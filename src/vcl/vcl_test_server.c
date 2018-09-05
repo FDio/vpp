@@ -78,26 +78,6 @@ static __thread int __wrk_index = 0;
 
 static vcl_test_server_main_t sock_server_main;
 
-#define vtfail(_fn, _rv)						\
-{									\
-  errno = -_rv;								\
-  perror ("ERROR when calling " _fn);					\
-  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -_rv);\
-  exit (1);								\
-}
-
-#define vterr(_fn, _rv)							\
-{									\
-  errno = -_rv;								\
-  fprintf (stderr, "\nSERVER ERROR: " _fn " failed (errno = %d)!\n", -_rv);\
-}
-
-#define vtwrn(_fmt, _args...)						\
-  fprintf (stderr, "\nSERVER ERROR: " _fmt "\n", ##_args)		\
-
-#define vtinf(_fmt, _args...)						\
-  fprintf (stdout, "\nvts<w%u>: " _fmt "\n", __wrk_index, ##_args)	\
-
 static inline void
 conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 {
@@ -171,9 +151,9 @@ sync_config_and_reply (vcl_test_server_conn_t * conn,
 }
 
 static void
-stream_test_server_start_stop (vcl_test_server_worker_t * wrk,
-			       vcl_test_server_conn_t * conn,
-			       sock_test_cfg_t * rx_cfg)
+vcl_test_server_start_stop (vcl_test_server_worker_t * wrk,
+                            vcl_test_server_conn_t * conn,
+                            sock_test_cfg_t * rx_cfg)
 {
   int client_fd = conn->fd;
   sock_test_t test = rx_cfg->test;
@@ -241,9 +221,8 @@ stream_test_server_start_stop (vcl_test_server_worker_t * wrk,
     }
 }
 
-
 static inline void
-stream_test_server (vcl_test_server_conn_t * conn, int rx_bytes)
+vcl_test_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 {
   int client_fd = conn->fd;
   sock_test_t test = conn->cfg.test;
@@ -253,9 +232,7 @@ stream_test_server (vcl_test_server_conn_t * conn, int rx_bytes)
 			   conn->cfg.verbose);
 
   if (conn->stats.rx_bytes >= conn->cfg.total_bytes)
-    {
-      clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
-    }
+    clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
 }
 
 static void
@@ -370,7 +347,7 @@ vcl_test_init_endpoint_addr (vcl_test_server_main_t * ssm)
     }
 }
 
-void
+static void
 vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
 			      char **argv)
 {
@@ -468,7 +445,7 @@ vcl_test_server_handle_cfg (vcl_test_server_worker_t * wrk,
 
     case SOCK_TEST_TYPE_BI:
     case SOCK_TEST_TYPE_UNI:
-      stream_test_server_start_stop (wrk, conn, rx_cfg);
+      vcl_test_server_start_stop (wrk, conn, rx_cfg);
       break;
 
     case SOCK_TEST_TYPE_EXIT:
@@ -603,7 +580,7 @@ vcl_test_server_worker_loop (void *arg)
 	      else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
 		       || (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		{
-		  stream_test_server (conn, rx_bytes);
+		  vcl_test_server_rx (conn, rx_bytes);
 		  continue;
 		}
 	      else if (isascii (conn->buf[0]))
