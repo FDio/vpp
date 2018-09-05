@@ -43,6 +43,13 @@ class MplsLspMode:
     UNIFORM = 1
 
 
+def ip_to_dpo_proto(addr):
+    if addr.version is 6:
+        return DpoProto.DPO_PROTO_IP6
+    else:
+        return DpoProto.DPO_PROTO_IP4
+
+
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     if inet == AF_INET:
         s = 4

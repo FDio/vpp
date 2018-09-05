@@ -27,15 +27,15 @@ namespace gbp_endpoint_cmds {
 /**
 * A command class that creates or updates the GBP endpoint
 */
-class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_add_del>
+class create_cmd : public rpc_cmd<HW::item<handle_t>, vapi::Gbp_endpoint_add>
 {
 public:
   /**
    * Constructor
    */
-  create_cmd(HW::item<bool>& item,
+  create_cmd(HW::item<handle_t>& item,
              const handle_t& itf,
-             const boost::asio::ip::address& ip_addr,
+             const std::vector<boost::asio::ip::address>& ip_addrs,
              const mac_address_t& mac,
              epg_id_t epg_id);
 
@@ -49,6 +49,8 @@ public:
    */
   std::string to_string() const;
 
+  virtual vapi_error_e operator()(vapi::Gbp_endpoint_add& reply);
+
   /**
    * Comparison operator - only used for UT
    */
@@ -56,7 +58,7 @@ public:
 
 private:
   const handle_t m_itf;
-  const boost::asio::ip::address m_ip_addr;
+  const std::vector<boost::asio::ip::address> m_ip_addrs;
   const mac_address_t m_mac;
   const epg_id_t m_epg_id;
 };
@@ -64,15 +66,13 @@ private:
 /**
  * A cmd class that deletes a GBP endpoint
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_add_del>
+class delete_cmd : public rpc_cmd<HW::item<handle_t>, vapi::Gbp_endpoint_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item,
-             const handle_t& itf,
-             const boost::asio::ip::address& ip_addr);
+  delete_cmd(HW::item<handle_t>& item);
 
   /**
    * Issue the command to VPP/HW
@@ -90,8 +90,7 @@ public:
   bool operator==(const delete_cmd& i) const;
 
 private:
-  const handle_t m_itf;
-  const boost::asio::ip::address m_ip_addr;
+  const handle_t m_hdl;
 };
 
 /**
