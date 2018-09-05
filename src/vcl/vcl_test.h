@@ -23,6 +23,29 @@
 #include <vcl/vppcom.h>
 #include <vcl/sock_test_common.h>
 
+#define vtfail(_fn, _rv)						\
+{									\
+  errno = -_rv;								\
+  perror ("ERROR when calling " _fn);					\
+  fprintf (stderr, "\nERROR: " _fn " failed (errno = %d)!\n", -_rv);	\
+  exit (1);								\
+}
+
+#define vterr(_fn, _rv)							\
+{									\
+  errno = -_rv;								\
+  fprintf (stderr, "\nERROR: " _fn " failed (errno = %d)!\n", -_rv);	\
+}
+
+#define vtwrn(_fmt, _args...)						\
+  fprintf (stderr, "\nERROR: " _fmt "\n", ##_args)			\
+
+#define vtinf(_fmt, _args...)						\
+  fprintf (stdout, "vt<w%u>: " _fmt "\n", __wrk_index, ##_args)
+
+#define vt_atomic_add(_ptr, _val) 					\
+  __atomic_fetch_add (_ptr, _val, __ATOMIC_RELEASE)
+
 static inline int
 vcl_test_read (int fd, uint8_t *buf, uint32_t nbytes,
                 sock_test_stats_t *stats)
