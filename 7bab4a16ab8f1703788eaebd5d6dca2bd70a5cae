@@ -141,6 +141,30 @@
       "revId": "7bab4a16ab8f1703788eaebd5d6dca2bd70a5cae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f1d7571_6cb8eccf",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-09-05T21:01:17Z",
+      "side": 1,
+      "message": "ip46_address_is_ip4 is not correct. It will say \"yes, this is an ip4 address\" given the ip6 address ::dead:beef or similar. We should delete it and admonish people never to be caught writing something like it ever again!",
+      "parentUuid": "c021389f_d8cfa166",
+      "range": {
+        "startLine": 115,
+        "startChar": 10,
+        "endLine": 115,
+        "endChar": 29
+      },
+      "revId": "7bab4a16ab8f1703788eaebd5d6dca2bd70a5cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
