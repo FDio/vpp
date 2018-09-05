@@ -81,7 +81,7 @@ geneve_encap_inline (vlib_main_t * vm,
   u16 old_l0 = 0, old_l1 = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
-  u32 sw_if_index0 = 0, sw_if_index1 = 0;
+  u32 sw_if_index0 = ~0, sw_if_index1 = ~0;
   u32 next0 = 0, next1 = 0;
   vnet_hw_interface_t *hi0, *hi1;
   geneve_tunnel_t *t0 = NULL, *t1 = NULL;
