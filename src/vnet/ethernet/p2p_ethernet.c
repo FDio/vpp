@@ -153,7 +153,8 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	    }
 	  p2pm->p2p_ethernet_by_sw_if_index[parent_if_index]++;
 	  /* set the interface mode */
-	  set_int_l2_mode (vm, vnm, MODE_L3, p2pe_subif_id, 0, 0, 0, 0);
+	  set_int_l2_mode (vm, vnm, MODE_L3, p2pe_subif_id, 0,
+			   L2_BD_PORT_TYPE_NORMAL, 0, 0);
 	  return 0;
 	}
       return VNET_API_ERROR_SUBIF_ALREADY_EXISTS;

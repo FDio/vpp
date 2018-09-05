@@ -4,7 +4,7 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_papi_provider import L2_VTR_OP
+from vpp_papi_provider import L2_VTR_OP, L2_PORT_TYPE
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -88,7 +88,8 @@ class TestDVR(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index, 1)
         self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index, 1)
         self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index, 1, bvi=1)
+        self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index, 1,
+                                             port_type=L2_PORT_TYPE.BVI)
 
         self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg2.sw_if_index,
                                                   L2_VTR_OP.L2_POP_1,
@@ -208,7 +209,8 @@ class TestDVR(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index,
                                              1, enable=0)
         self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index,
-                                             1, bvi=1, enable=0)
+                                             1, port_type=L2_PORT_TYPE.BVI,
+                                             enable=0)
 
         #
         # Do a FIB dump to make sure the paths are correctly reported as DVR

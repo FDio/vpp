@@ -302,8 +302,12 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
 
   if (mp->enable)
     {
-      s = format (s, "bd_id %d shg %d %senable ", ntohl (mp->bd_id),
-		  mp->shg, ((mp->bvi) ? "bvi " : " "));
+      s = format (s, "bd_id %d shg %d ", ntohl (mp->bd_id), mp->shg);
+      if (L2_API_PORT_TYPE_BVI == ntohl (mp->port_type))
+	s = format (s, "bvi ");
+      if (L2_API_PORT_TYPE_UU_FWD == ntohl (mp->port_type))
+	s = format (s, "uu-fwd ");
+      s = format (s, "enable");
     }
   else
     s = format (s, "disable ");
@@ -458,21 +462,21 @@ static void *vl_api_bridge_flags_t_print
   (vl_api_bridge_flags_t * mp, void *handle)
 {
   u8 *s;
-  u32 flags = ntohl (mp->feature_bitmap);
+  u32 flags = ntohl (mp->flags);
 
   s = format (0, "SCRIPT: bridge_flags ");
 
   s = format (s, "bd_id %d ", ntohl (mp->bd_id));
 
-  if (flags & L2_LEARN)
+  if (flags & BRIDGE_API_FLAG_LEARN)
     s = format (s, "learn ");
-  if (flags & L2_FWD)
+  if (flags & BRIDGE_API_FLAG_FWD)
     s = format (s, "forward ");
-  if (flags & L2_FLOOD)
+  if (flags & BRIDGE_API_FLAG_FLOOD)
     s = format (s, "flood ");
-  if (flags & L2_UU_FLOOD)
+  if (flags & BRIDGE_API_FLAG_UU_FLOOD)
     s = format (s, "uu-flood ");
-  if (flags & L2_ARP_TERM)
+  if (flags & BRIDGE_API_FLAG_ARP_TERM)
     s = format (s, "arp-term ");
 
   if (mp->is_set == 0)

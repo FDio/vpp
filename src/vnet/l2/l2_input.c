@@ -552,7 +552,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 		 u32 mode,	/* One of L2 modes or back to L3 mode        */
 		 u32 sw_if_index,	/* sw interface index                */
 		 u32 bd_index,	/* for bridged interface                     */
-		 u32 bvi,	/* the bridged interface is the BVI          */
+		 l2_bd_port_type_t port_type,	/* port_type */
 		 u32 shg,	/* the bridged interface split horizon group */
 		 u32 xc_sw_if_index)	/* peer interface for xconnect       */
 {
@@ -591,6 +591,11 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  /* since this is a no longer BVI interface do not to flood to it */
 	  si = vnet_get_sw_interface (vnm, sw_if_index);
 	  si->flood_class = VNET_FLOOD_CLASS_NO_FLOOD;
+	}
+      if (bd_config->uu_fwd_sw_if_index == sw_if_index)
+	{
+	  bd_config->uu_fwd_sw_if_index = ~0;
+	  bd_config->feature_bitmap &= ~L2INPUT_FEAT_UU_FWD;
 	}
 
       /* Clear MACs learned on the interface */
@@ -636,6 +641,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
       if (mode == MODE_L2_BRIDGE)
 	{
+	  u8 member_flags;
+
 	  /*
 	   * Remove a check that the interface must be an Ethernet.
 	   * Specifically so we can bridge to L3 tunnel interfaces.
@@ -655,8 +662,12 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	   * Enable forwarding, flooding, learning and ARP termination by default
 	   * (note that ARP term is disabled on BD feature bitmap by default)
 	   */
-	  config->feature_bitmap |= L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD |
-	    L2INPUT_FEAT_FLOOD | L2INPUT_FEAT_LEARN | L2INPUT_FEAT_ARP_TERM;
+	  config->feature_bitmap |= (L2INPUT_FEAT_FWD |
+				     L2INPUT_FEAT_UU_FLOOD |
+				     L2INPUT_FEAT_UU_FWD |
+				     L2INPUT_FEAT_FLOOD |
+				     L2INPUT_FEAT_LEARN |
+				     L2INPUT_FEAT_ARP_TERM);
 
 	  /* Make sure last-chance drop is configured */
 	  config->feature_bitmap |= L2INPUT_FEAT_DROP;
@@ -671,7 +682,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  /* TODO: think: add l2fib entry even for non-bvi interface? */
 
 	  /* Do BVI interface initializations */
-	  if (bvi)
+	  if (L2_BD_PORT_TYPE_BVI == port_type)
 	    {
 	      vnet_sw_interface_t *si;
 
@@ -692,16 +703,29 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	      /* since this is a BVI interface we want to flood to it */
 	      si = vnet_get_sw_interface (vnm, sw_if_index);
 	      si->flood_class = VNET_FLOOD_CLASS_BVI;
+	      member_flags = L2_FLOOD_MEMBER_BVI;
+	    }
+	  else if (L2_BD_PORT_TYPE_UU_FWD == port_type)
+	    {
+	      bd_config->uu_fwd_sw_if_index = sw_if_index;
+	      bd_config->feature_bitmap |= L2INPUT_FEAT_UU_FWD;
+	    }
+	  else
+	    {
+	      member_flags = L2_FLOOD_MEMBER_NORMAL;
 	    }
 
-	  /* Add interface to bridge-domain flood vector */
-	  l2_flood_member_t member = {
-	    .sw_if_index = sw_if_index,
-	    .flags = bvi ? L2_FLOOD_MEMBER_BVI : L2_FLOOD_MEMBER_NORMAL,
-	    .shg = shg,
-	  };
-	  bd_add_member (bd_config, &member);
-
+	  if (L2_BD_PORT_TYPE_NORMAL == port_type ||
+	      L2_BD_PORT_TYPE_BVI == port_type)
+	    {
+	      /* Add interface to bridge-domain flood vector */
+	      l2_flood_member_t member = {
+		.sw_if_index = sw_if_index,
+		.flags = member_flags,
+		.shg = shg,
+	      };
+	      bd_add_member (bd_config, &member);
+	    }
 	}
       else if (mode == MODE_L2_XC)
 	{
@@ -804,10 +828,10 @@ int_l2_bridge (vlib_main_t * vm,
 	       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  l2_bd_port_type_t port_type;
   clib_error_t *error = 0;
   u32 bd_index, bd_id;
   u32 sw_if_index;
-  u32 bvi;
   u32 rc;
   u32 shg;
 
@@ -834,7 +858,11 @@ int_l2_bridge (vlib_main_t * vm,
   bd_index = bd_find_or_add_bd_index (&bd_main, bd_id);
 
   /* optional bvi  */
-  bvi = unformat (input, "bvi");
+  port_type = L2_BD_PORT_TYPE_NORMAL;
+  if (unformat (input, "bvi"))
+    port_type = L2_BD_PORT_TYPE_BVI;
+  if (unformat (input, "uu-fwd"))
+    port_type = L2_BD_PORT_TYPE_UU_FWD;
 
   /* optional split horizon group */
   shg = 0;
@@ -842,8 +870,8 @@ int_l2_bridge (vlib_main_t * vm,
 
   /* set the interface mode */
   if ((rc =
-       set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE, sw_if_index, bd_index, bvi,
-			shg, 0)))
+       set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE, sw_if_index, bd_index,
+			port_type, shg, 0)))
     {
       if (rc == MODE_ERROR_ETH)
 	{
@@ -897,7 +925,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_bridge_cli, static) = {
   .path = "set interface l2 bridge",
-  .short_help = "set interface l2 bridge <interface> <bridge-domain-id> [bvi] [shg]",
+  .short_help = "set interface l2 bridge <interface> <bridge-domain-id> [bvi|uu-fwd] [shg]",
   .function = int_l2_bridge,
 };
 /* *INDENT-ON* */
@@ -933,7 +961,8 @@ int_l2_xc (vlib_main_t * vm,
 
   /* set the interface mode */
   if (set_int_l2_mode
-      (vm, vnm, MODE_L2_XC, sw_if_index, 0, 0, 0, xc_sw_if_index))
+      (vm, vnm, MODE_L2_XC, sw_if_index, 0, L2_BD_PORT_TYPE_NORMAL,
+       0, xc_sw_if_index))
     {
       error = clib_error_return (0, "invalid configuration for interface",
 				 format_unformat_error, input);
@@ -987,7 +1016,8 @@ int_l3 (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
     }
 
   /* set the interface mode */
-  if (set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0))
+  if (set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0,
+		       L2_BD_PORT_TYPE_NORMAL, 0, 0))
     {
       error = clib_error_return (0, "invalid configuration for interface",
 				 format_unformat_error, input);

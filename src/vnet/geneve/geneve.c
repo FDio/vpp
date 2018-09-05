@@ -581,8 +581,8 @@ int vnet_geneve_add_del_tunnel
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
 
       /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0, 0, 0,
-		       0);
+      set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
+		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
       vec_add1 (vxm->free_geneve_tunnel_hw_if_indices, t->hw_if_index);
 
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;

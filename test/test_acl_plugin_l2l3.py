@@ -36,6 +36,7 @@ from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
 from framework import VppTestCase, VppTestRunner
+from vpp_papi_provider import L2_PORT_TYPE
 import time
 
 
@@ -70,7 +71,8 @@ class TestIpIrb(VppTestCase):
 
         # Create BD with MAC learning enabled and put interfaces to this BD
         cls.vapi.sw_interface_set_l2_bridge(
-            cls.loop0.sw_if_index, bd_id=cls.bd_id, bvi=1)
+            cls.loop0.sw_if_index, bd_id=cls.bd_id,
+            port_type=L2_PORT_TYPE.BVI)
         cls.vapi.sw_interface_set_l2_bridge(
             cls.pg0.sw_if_index, bd_id=cls.bd_id)
         cls.vapi.sw_interface_set_l2_bridge(

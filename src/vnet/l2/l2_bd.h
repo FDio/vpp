@@ -21,6 +21,13 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
+typedef enum l2_bd_port_type_t_
+{
+  L2_BD_PORT_TYPE_NORMAL = 0,
+  L2_BD_PORT_TYPE_BVI = 1,
+  L2_BD_PORT_TYPE_UU_FWD = 2,
+} l2_bd_port_type_t;
+
 typedef struct
 {
   /* hash bd_id -> bd_index */
@@ -53,15 +60,22 @@ typedef struct
 
 typedef struct
 {
-  u32 feature_bitmap;
   /*
    * Contains bit enables for flooding, learning, and forwarding.
    * All other feature bits should always be set.
-   *
+   */
+  u32 feature_bitmap;
+  /*
    * identity of the bridge-domain's BVI interface
    * set to ~0 if there is no BVI
    */
   u32 bvi_sw_if_index;
+
+  /*
+   * identity of the bridge-domain's UU flood interface
+   * set to ~0 if there is no such configuration
+   */
+  u32 uu_fwd_sw_if_index;
 
   /* bridge domain id, not to be confused with bd_index */
   u32 bd_id;
@@ -128,14 +142,18 @@ bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member);
 
 u32 bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index);
 
+typedef enum bd_flags_t_
+{
+  L2_NONE = 0,
+  L2_LEARN = (1 << 0),
+  L2_FWD = (1 << 1),
+  L2_FLOOD = (1 << 2),
+  L2_UU_FLOOD = (1 << 3),
+  L2_ARP_TERM = (1 << 4),
+} bd_flags_t;
 
-#define L2_LEARN   (1<<0)
-#define L2_FWD     (1<<1)
-#define L2_FLOOD   (1<<2)
-#define L2_UU_FLOOD (1<<3)
-#define L2_ARP_TERM (1<<4)
-
-u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable);
+u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,
+		  u32 enable);
 void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
 int bd_add_del (l2_bridge_domain_add_del_args_t * args);
 

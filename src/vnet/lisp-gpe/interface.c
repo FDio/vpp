@@ -700,7 +700,7 @@ lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
 
   /* we're ready. add iface to l2 bridge domain */
   set_int_l2_mode (lgm->vlib_main, vnm, MODE_L2_BRIDGE, hi->sw_if_index,
-		   bd_index, 0, 0, 0);
+		   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
 
   return (hi->sw_if_index);
 }
@@ -736,7 +736,7 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
   /* Remove interface from bridge .. by enabling L3 mode */
   hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
   set_int_l2_mode (lgm->vlib_main, lgm->vnet_main, MODE_L3, hi->sw_if_index,
-		   0, 0, 0, 0);
+		   0, L2_BD_PORT_TYPE_NORMAL, 0, 0);
   lisp_gpe_remove_iface (lgm, hip[0], bd_index, &lgm->l2_ifaces);
 }
 

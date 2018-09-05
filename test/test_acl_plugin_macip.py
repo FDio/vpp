@@ -16,6 +16,7 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import L2_VTR_OP
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_papi_provider import L2_PORT_TYPE
 
 
 class MethodHolder(VppTestCase):
@@ -90,7 +91,8 @@ class MethodHolder(VppTestCase):
 
             # Create BD with MAC learning enabled and put interfaces to this BD
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.loop0.sw_if_index, bd_id=cls.bd_id, bvi=1)
+                cls.loop0.sw_if_index, bd_id=cls.bd_id,
+                port_type=L2_PORT_TYPE.BVI)
             cls.vapi.sw_interface_set_l2_bridge(
                 cls.pg0.sw_if_index, bd_id=cls.bd_id)
             cls.vapi.sw_interface_set_l2_bridge(

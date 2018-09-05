@@ -6,6 +6,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, DpoProto
+from vpp_papi_provider import L2_PORT_TYPE
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -611,7 +612,7 @@ class TestGBP(VppTestCase):
                 # BVI in BD
                 self.vapi.sw_interface_set_l2_bridge(epg.bvi.sw_if_index,
                                                      epg.bd,
-                                                     bvi=1)
+                                                     port_type=L2_PORT_TYPE.BVI)
                 # BVI L2 FIB entry
                 self.vapi.l2fib_add_del(self.router_mac,
                                         epg.bd,
