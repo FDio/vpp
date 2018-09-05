@@ -34,7 +34,7 @@
 #include <ctype.h>
 
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
-#define SERVER_PORT 9477
+#define SERVER_PORT 9482
 
 static char *
 prom_string (char *s)
