@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "5480bf6c_1f6fa654",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T20:57:27Z",
+      "side": 1,
+      "message": "For the case when we are taking a port our of L2 mode, port type is actually not used or don\u0027t care. I wonder if it may be better to leave the parameter as 0?  This also applied to quite a few other files as well.",
+      "range": {
+        "startLine": 582,
+        "startChar": 9,
+        "endLine": 582,
+        "endChar": 31
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6bdecbca_b4d3ca27",
         "filename": "src/vnet/l2/l2_bd.c",
         "patchSetId": 1
