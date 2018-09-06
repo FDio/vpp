@@ -42,6 +42,24 @@
     },
     {
       "key": {
+        "uuid": "af538ee1_d037598b",
+        "filename": "src/plugins/nat/nat_reass.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2018-09-06T13:10:37Z",
+      "side": 1,
+      "message": "it is used with static mappings for a reassembly state when we still didn\u0027t get first fragment and do a classification",
+      "parentUuid": "e909d6ce_358cbc9b",
+      "revId": "0649434d8c468f5d590bde89d2251a57118f21fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5b1f0fb0_fc41f6b3",
         "filename": "src/plugins/nat/nat_reass.h",
         "patchSetId": 7
