@@ -28,13 +28,21 @@ class Field(object):
 
     def __str__(self):
         if self.len is None:
-            return "name: %s, type: %s" % (self.name, self.type)
+            return "Field(name: %s, type: %s)" % (self.name, self.type)
         elif self.len > 0:
-            return "name: %s, type: %s, length: %s" % (self.name, self.type,
-                                                       self.len)
+            return "Field(name: %s, type: %s, length: %s)" % (self.name,
+                                                              self.type,
+                                                              self.len)
         else:
-            return ("name: %s, type: %s, variable length stored in: %s" %
-                    (self.name, self.type, self.nelem_field))
+            return (
+                "Field(name: %s, type: %s, variable length stored in: %s)" %
+                (self.name, self.type, self.nelem_field))
+
+    def is_vla(self):
+        return self.nelem_field is not None
+
+    def has_vla(self):
+        return self.is_vla() or self.type.has_vla()
 
 
 class Type(object):
@@ -52,6 +60,9 @@ class SimpleType (Type):
 
     def __str__(self):
         return self.name
+
+    def has_vla(self):
+        return False
 
 
 def get_msg_header_defs(struct_type_class, field_class, json_parser, logger):
@@ -83,6 +94,12 @@ class Struct(object):
     def __str__(self):
         return "[%s]" % "], [".join([str(f) for f in self.fields])
 
+    def has_vla(self):
+        for f in self.fields:
+            if f.has_vla():
+                return True
+        return False
+
 
 class Enum(SimpleType):
     def __init__(self, name, value_pairs, enumtype):
@@ -109,6 +126,9 @@ class Union(Type):
             self.name,
             "], [" .join(["%s %s" % (i, j) for i, j in self.type_pairs])
         )
+
+    def has_vla(self):
+        return False
 
 
 class Message(object):
@@ -190,6 +210,13 @@ class Message(object):
                 fields.append(p)
         self.fields = fields
         self.depends = [f.type for f in self.fields]
+        logger.debug("Parsed message: %s" % self)
+
+    def __str__(self):
+        return "Message(%s, [%s], {crc: %s}" % \
+            (self.name,
+             "], [".join([str(f) for f in self.fields]),
+             self.crc)
 
 
 class StructType (Type, Struct):
