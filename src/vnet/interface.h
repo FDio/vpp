@@ -69,7 +69,8 @@ typedef clib_error_t *(vnet_subif_add_del_function_t)
 
 /* Interface set mac address callback. */
 typedef clib_error_t *(vnet_interface_set_mac_address_function_t)
-  (struct vnet_hw_interface_t * hi, char *address);
+  (struct vnet_hw_interface_t * hi,
+   const u8 * old_address, const u8 * new_address);
 
 /* Interface set rx mode callback. */
 typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)

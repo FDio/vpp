@@ -26,6 +26,7 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/l2/feat_bitmap.h>
 
 /**
  * @file

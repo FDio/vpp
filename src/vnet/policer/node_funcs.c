@@ -22,6 +22,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/l2/feat_bitmap.h>
+#include <vnet/l2/l2_input.h>
 
 
 /* Dispatch functions meant to be instantiated elsewhere */
