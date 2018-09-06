@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6bdecbca_b4d3ca27",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T20:37:00Z",
+      "side": 1,
+      "message": "We ideally should not have separate UU-flood and UU-fwd columns simultaneously since they are mutually exclusive.  What about just display an UU-forward column (with %\u003d11s format) whose value would be one of \"drop\", \"flood\" or uu-fwd interface name?",
+      "range": {
+        "startLine": 1008,
+        "startChar": 49,
+        "endLine": 1008,
+        "endChar": 50
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fc63f647_8a677d99",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1042,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T20:37:00Z",
+      "side": 1,
+      "message": "We should ideally also display the uu-flood interface at the end of the member list, it become more important if the interface name does not fit in the 11 spaces in the \"show bridge\" summary output.",
+      "range": {
+        "startLine": 1042,
+        "startChar": 7,
+        "endLine": 1042,
+        "endChar": 24
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "610c1275_de40b7ff",
+        "filename": "src/vnet/l2/l2_fwd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T20:37:00Z",
+      "side": 1,
+      "message": "This may be more efficient?\nif (vnet_buffer (b0)-\u003el2.feature_bitmap \u0026 \n    (L2INPUT_FEAT_UU_FLOOD + L2INPUT_FEAT_UU_FWD))",
+      "range": {
+        "startLine": 210,
+        "startChar": 24,
+        "endLine": 210,
+        "endChar": 38
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6daeae2_7c8316e2",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T20:37:00Z",
+      "side": 1,
+      "message": "Since we don\u0027t care about member_flags for UU_FWD port type, perhaps the original way to setup memeber.flags is fine without using the new member_fags variable here?",
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
