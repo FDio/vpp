@@ -132,7 +132,7 @@ l2learn_process (vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (check == 0))
 	return;			/* MAC entry up to date */
-      if (result0->fields.age_not)
+      if (l2fib_entry_result_is_set_AGE_NOT (result0))
 	return;			/* Static MAC always age_not */
       if (msm->global_learn_count > msm->global_learn_limit)
 	return;			/* Above learn limit - do not update */
@@ -171,12 +171,15 @@ l2learn_process (vlib_node_runtime_t * node,
       msm->global_learn_count++;
       result0->raw = 0;		/* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
-      result0->fields.lrn_evt = (msm->client_pid != 0);
+      if (msm->client_pid != 0)
+	l2fib_entry_result_set_LRN_EVT (result0);
+      else
+	l2fib_entry_result_clear_LRN_EVT (result0);
     }
   else
     {
       /* Entry in L2FIB with different sw_if_index - mac move or filter */
-      if (result0->fields.filter)
+      if (l2fib_entry_result_is_set_FILTER (result0))
 	{
 	  ASSERT (result0->fields.sw_if_index == ~0);
 	  /* drop packet because lookup matched a filter mac entry */
@@ -185,7 +188,7 @@ l2learn_process (vlib_node_runtime_t * node,
 	  return;
 	}
 
-      if (result0->fields.static_mac)
+      if (l2fib_entry_result_is_set_STATIC (result0))
 	{
 	  /*
 	   * Don't overwrite a static mac
@@ -201,13 +204,20 @@ l2learn_process (vlib_node_runtime_t * node,
        * TODO: check global/bridge domain/interface learn limits
        */
       result0->fields.sw_if_index = sw_if_index0;
-      if (result0->fields.age_not)	/* The mac was provisioned */
+      if (l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
+	  /* The mac was provisioned */
 	  msm->global_learn_count++;
-	  result0->fields.age_not = 0;
+	  l2fib_entry_result_clear_AGE_NOT (result0);
 	}
-      result0->fields.lrn_evt = (msm->client_pid != 0);
-      result0->fields.lrn_mov = (msm->client_pid != 0);
+      if (msm->client_pid != 0)
+	l2fib_entry_result_set_bits (result0,
+				     (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT |
+				      L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
+      else
+	l2fib_entry_result_clear_bits (result0,
+				       (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT |
+					L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
       counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
     }
 
