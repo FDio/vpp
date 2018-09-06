@@ -684,7 +684,9 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	      config->bvi = 1;
 
 	      /* create the l2fib entry for the bvi interface */
-	      l2fib_add_fwd_entry (hi->hw_address, bd_index, sw_if_index, 1, 1);	/* static + bvi */
+	      l2fib_add_entry (hi->hw_address, bd_index, sw_if_index,
+			       L2FIB_ENTRY_RESULT_FLAG_BVI |
+			       L2FIB_ENTRY_RESULT_FLAG_STATIC);
 
 	      /* Disable learning by default. no use since l2fib entry is static. */
 	      config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;

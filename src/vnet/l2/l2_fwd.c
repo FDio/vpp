@@ -145,7 +145,7 @@ l2fwd_process (vlib_main_t * vm,
       int l2fib_seq_num_valid = 1;
 
       /* check l2fib seq num for stale entries */
-      if (!result0->fields.age_not)
+      if (!l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
 	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
 	  l2fib_seq_num_t expected_sn = {
@@ -168,13 +168,13 @@ l2fwd_process (vlib_main_t * vm,
 	  *next0 = L2FWD_NEXT_DROP;
 	}
       /* perform filter check */
-      else if (PREDICT_FALSE (result0->fields.filter))
+      else if (PREDICT_FALSE (l2fib_entry_result_is_set_FILTER (result0)))
 	{
 	  b0->error = node->errors[L2FWD_ERROR_FILTER_DROP];
 	  *next0 = L2FWD_NEXT_DROP;
 	}
       /* perform BVI check */
-      else if (PREDICT_FALSE (result0->fields.bvi))
+      else if (PREDICT_FALSE (l2fib_entry_result_is_set_BVI (result0)))
 	{
 	  u32 rc;
 	  rc = l2_to_bvi (vm,
