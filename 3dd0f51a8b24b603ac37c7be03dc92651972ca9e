@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8319e19f_21ea2473",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-09-06T21:43:56Z",
+      "side": 1,
+      "message": "We should be able to set or clear both LRN_EVT and LRN_MOV bits together with one bitwise OR/AND operation. Do you think the compiler can optimize this code sequence to achieve the same?",
+      "range": {
+        "startLine": 214,
+        "startChar": 31,
+        "endLine": 214,
+        "endChar": 32
+      },
+      "revId": "3dd0f51a8b24b603ac37c7be03dc92651972ca9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
