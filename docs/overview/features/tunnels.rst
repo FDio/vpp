@@ -4,6 +4,8 @@
 Tunnels
 =======
 
+This section identifies the features associated with Tunnels:
+
 Layer 2
 -------
 * L2TP

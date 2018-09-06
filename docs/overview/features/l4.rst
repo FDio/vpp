@@ -3,3 +3,12 @@
 =======
 Layer 4
 =======
+
+This section identifies the features associated with Layer 4:
+
+* Session: 
+   - connectionless transports
+   - datagram reception and transmission
+* TCP: congestion control 
+* UDP: datagram mode
+* TLS async support

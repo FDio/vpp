@@ -4,6 +4,8 @@
 Layer 2
 =======
 
+This section identifies the features associated with Layer 2:
+
 MAC Layer
 ---------
 * Ethernet
