@@ -142,9 +142,9 @@ send_l2fib_table_entry (vpe_api_main_t * am,
 
   clib_memcpy (mp->mac, l2fe_key->fields.mac, 6);
   mp->sw_if_index = ntohl (l2fe_res->fields.sw_if_index);
-  mp->static_mac = l2fe_res->fields.static_mac;
-  mp->filter_mac = l2fe_res->fields.filter;
-  mp->bvi_mac = l2fe_res->fields.bvi;
+  mp->static_mac = l2fib_entry_result_is_set_STATIC (l2fe_res);
+  mp->filter_mac = l2fib_entry_result_is_set_FILTER (l2fe_res);
+  mp->bvi_mac = l2fib_entry_result_is_set_BVI (l2fe_res);
   mp->context = context;
 
   vl_api_send_msg (reg, (u8 *) mp);
@@ -215,6 +215,7 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 	l2fib_add_filter_entry (mac, bd_index);
       else
 	{
+	  l2fib_entry_result_flags_t flags = L2FIB_ENTRY_RESULT_FLAG_NONE;
 	  u32 sw_if_index = ntohl (mp->sw_if_index);
 	  VALIDATE_SW_IF_INDEX (mp);
 	  if (vec_len (l2im->configs) <= sw_if_index)
@@ -232,10 +233,11 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 		  goto bad_sw_if_index;
 		}
 	    }
-	  u8 static_mac = mp->static_mac ? 1 : 0;
-	  u8 bvi_mac = mp->bvi_mac ? 1 : 0;
-	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac,
-			       bvi_mac);
+	  if (mp->static_mac)
+	    flags |= L2FIB_ENTRY_RESULT_FLAG_STATIC;
+	  if (mp->bvi_mac)
+	    flags |= L2FIB_ENTRY_RESULT_FLAG_BVI;
+	  l2fib_add_entry (mac, bd_index, sw_if_index, flags);
 	}
     }
   else
