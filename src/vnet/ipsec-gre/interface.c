@@ -27,6 +27,7 @@
 #include <vnet/ipsec-gre/ipsec_gre.h>
 #include <vnet/ip/format.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/l2/l2_input.h>
 
 #include <vnet/ipsec/esp.h>
 

@@ -16,6 +16,8 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/feat_bitmap.h>
 
 typedef enum gbp_src_classify_type_t_
 {

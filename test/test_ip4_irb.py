@@ -31,6 +31,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
+from util import mactobinary
 
 
 class TestIpIrb(VppTestCase):
@@ -238,25 +239,35 @@ class TestIpIrb(VppTestCase):
 
         self.assertListEqual(rcvd1.res, rcvd2.res)
 
-    def test_ip4_irb_2(self):
-        """ IPv4 IRB test 2
-
-        Test scenario:
-            - ip traffic from pg0 and pg1 ends on pg2
-        """
-
+    def send_and_verify_l2_to_ip(self):
         stream1 = self.create_stream_l2_to_ip(
             self.pg0, self.loop0, self.pg2, self.pg_if_packet_sizes)
         stream2 = self.create_stream_l2_to_ip(
             self.pg1, self.loop0, self.pg2, self.pg_if_packet_sizes)
+        self.vapi.cli("clear trace")
         self.pg0.add_stream(stream1)
         self.pg1.add_stream(stream2)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rcvd = self.pg2.get_capture()
+        rcvd = self.pg2.get_capture(514)
         self.verify_capture_l2_to_ip(self.pg2, self.loop0, rcvd)
+
+    def test_ip4_irb_2(self):
+        """ IPv4 IRB test 2
+
+        Test scenario:
+            - ip traffic from pg0 and pg1 ends on pg2
+        """
+        self.send_and_verify_l2_to_ip()
+
+        # change the BVI's mac and resed traffic
+        self.loop0.set_mac("00:00:00:11:11:33")
+
+        self.send_and_verify_l2_to_ip()
+        # check it wasn't flooded
+        self.pg1.assert_nothing_captured(remark="UU Flood")
 
 
 if __name__ == '__main__':

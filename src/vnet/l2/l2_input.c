@@ -539,6 +539,27 @@ l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value)
   return bd_config->feature_bitmap;
 }
 
+void
+l2input_interface_mac_change (u32 sw_if_index,
+			      const u8 * old_address, const u8 * new_address)
+{
+  /* check if the sw_if_index passed is a BVI in a BD */
+  l2_bridge_domain_t *bd_config;
+
+  vec_foreach (bd_config, l2input_main.bd_configs)
+  {
+    if (bd_config->bvi_sw_if_index == sw_if_index)
+      {
+	u32 bd_index = bd_config - l2input_main.bd_configs;
+
+	/* delete and re-addl2fib entry for the bvi interface */
+	l2fib_del_entry (old_address, bd_index, sw_if_index);
+	l2fib_add_fwd_entry (new_address, bd_index, sw_if_index, 1, 1);
+	break;
+      }
+  }
+}
+
 /**
  * Set the subinterface to run in l2 or l3 mode.
  * For L3 mode, just the sw_if_index is specified.

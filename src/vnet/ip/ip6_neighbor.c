@@ -25,6 +25,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/l2/l2_input.h>
 
 /**
  * @file
