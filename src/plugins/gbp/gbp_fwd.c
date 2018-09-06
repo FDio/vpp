@@ -14,6 +14,7 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <vnet/l2/l2_input.h>
 
 /**
  * Grouping of global data for the GBP source EPG classification feature

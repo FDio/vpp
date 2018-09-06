@@ -19,6 +19,9 @@
 #include <plugins/gbp/gbp_endpoint_group.h>
 
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/feat_bitmap.h>
 
 /**
  * IP4 destintion address to destination EPG mapping table

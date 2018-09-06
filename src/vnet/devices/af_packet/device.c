@@ -278,7 +278,7 @@ af_packet_subif_add_del_function (vnet_main_t * vnm,
 }
 
 static clib_error_t *af_packet_set_mac_address_function
-  (struct vnet_hw_interface_t *hi, char *address)
+  (struct vnet_hw_interface_t *hi, const u8 * old_address, const u8 * address)
 {
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif =

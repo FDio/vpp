@@ -24,6 +24,7 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/l2/l2_input.h>
 
 static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
 

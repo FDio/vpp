@@ -25,6 +25,7 @@
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/l2/l2_fwd.h>
 #include <vnet/l2/l2_fib.h>
+#include <vnet/l2/feat_bitmap.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>

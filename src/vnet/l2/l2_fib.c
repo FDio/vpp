@@ -376,7 +376,7 @@ l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
  * If the entry already exists then overwrite it
  */
 void
-l2fib_add_entry (u8 * mac, u32 bd_index,
+l2fib_add_entry (const u8 * mac, u32 bd_index,
 		 u32 sw_if_index, l2fib_entry_result_flags_t flags)
 {
   l2fib_entry_key_t key;
@@ -660,7 +660,7 @@ VLIB_CLI_COMMAND (l2fib_test_command, static) = {
  * sw_if_index is non-zero and does not match that in the entry.
  */
 u32
-l2fib_del_entry (u8 * mac, u32 bd_index, u32 sw_if_index)
+l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
 {
   l2fib_entry_result_t result;
   l2fib_main_t *mp = &l2fib_main;

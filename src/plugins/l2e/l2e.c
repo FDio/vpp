@@ -18,6 +18,7 @@
 
 #include <plugins/l2e/l2e.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/feat_bitmap.h>
 
 /**
  * Grouping of global data for the L2 emulation feature

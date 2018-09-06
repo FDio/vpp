@@ -20,6 +20,8 @@
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/feat_bitmap.h>
 
 /**
  * Pool of GBP endpoint_groups
