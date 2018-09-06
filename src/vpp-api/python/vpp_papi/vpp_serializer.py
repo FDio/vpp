@@ -48,7 +48,7 @@ class BaseTypes():
         return self.packer.pack(data)
 
     def unpack(self, data, offset, result=None):
-        return self.packer.unpack_from(data, offset)[0]
+        return self.packer.unpack_from(data, offset)[0], self.packer.size
 
 
 types = {}
@@ -102,15 +102,18 @@ class FixedList():
     def unpack(self, data, offset=0, result=None):
         # Return a list of arguments
         result = []
+        total = 0
         for e in range(self.num):
-            x = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset)
             result.append(x)
-            offset += self.packer.size
-        return result
+            offset += size
+            total += size
+        return result, total
 
 
 class VLAList():
     def __init__(self, name, field_type, len_field_name, index):
+        self.name = name
         self.index = index
         self.packer = types[field_type]
         self.size = self.packer.size
@@ -132,21 +135,22 @@ class VLAList():
 
     def unpack(self, data, offset=0, result=None):
         # Return a list of arguments
+        total = 0
 
         # u8 array
         if self.packer.size == 1:
             if result[self.index] == 0:
-                return b''
+                return b'', 0
             p = BaseTypes('u8', result[self.index])
-            r = p.unpack(data, offset)
-            return r
+            return p.unpack(data, offset)
 
         r = []
         for e in range(result[self.index]):
-            x = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset)
             r.append(x)
-            offset += self.packer.size
-        return r
+            offset += size
+            total += size
+        return r, total
 
 
 class VLAList_legacy():
@@ -164,16 +168,18 @@ class VLAList_legacy():
         return b
 
     def unpack(self, data, offset=0, result=None):
+        total = 0
         # Return a list of arguments
         if (len(data) - offset) % self.packer.size:
             raise ValueError('Legacy Variable Length Array length mismatch.')
         elements = int((len(data) - offset) / self.packer.size)
         r = []
         for e in range(elements):
-            x = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset)
             r.append(x)
             offset += self.packer.size
-        return r
+            total += size
+        return r, total
 
 
 class VPPEnumType():
@@ -198,8 +204,8 @@ class VPPEnumType():
         return types['u32'].pack(data, kwargs)
 
     def unpack(self, data, offset=0, result=None):
-        x = types['u32'].unpack(data, offset)
-        return self.enum(x)
+        x, size = types['u32'].unpack(data, offset)
+        return self.enum(x), size
 
 
 class VPPUnionType():
@@ -239,9 +245,13 @@ class VPPUnionType():
 
     def unpack(self, data, offset=0, result=None):
         r = []
+        maxsize = 0
         for k, p in self.packers.items():
-            r.append(p.unpack(data, offset))
-        return self.tuple._make(r)
+            x, size = p.unpack(data, offset)
+            if size > maxsize:
+                maxsize = size
+            r.append(x)
+        return self.tuple._make(r), maxsize
 
 
 class VPPType():
@@ -310,13 +320,16 @@ class VPPType():
     def unpack(self, data, offset=0, result=None):
         # Return a list of arguments
         result = []
+        total = 0
         for p in self.packers:
-            x = p.unpack(data, offset, result)
+            x, size = p.unpack(data, offset, result)
             if type(x) is tuple and len(x) == 1:
                 x = x[0]
             result.append(x)
-            offset += p.size
-        return self.tuple._make(result)
+            offset += size
+            total += size
+        t = self.tuple._make(result)
+        return t, total
 
 
 class VPPMessage(VPPType):

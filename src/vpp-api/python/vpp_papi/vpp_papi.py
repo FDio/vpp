@@ -523,8 +523,7 @@ class VPP():
         if not msg:
             self.logger.warning('vpp_api.read failed')
             return
-
-        i, ci = self.header.unpack(msg, 0)
+        (i, ci), size = self.header.unpack(msg, 0)
         if self.id_names[i] == 'rx_thread_exit':
             return
 
@@ -535,8 +534,7 @@ class VPP():
         if not msgobj:
             raise IOError(2, 'Reply message undefined')
 
-        r = msgobj.unpack(msg)
-
+        r, size = msgobj.unpack(msg)
         return r
 
     def msg_handler_async(self, msg):

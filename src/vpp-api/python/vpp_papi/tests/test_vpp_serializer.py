@@ -16,8 +16,8 @@ class TestAddType(unittest.TestCase):
                            ['u32', 'is_int']])
 
         b = un.pack({'is_int': 0x12345678})
-        self.assertEqual(len(b), 4)
-        nt = un.unpack(b)
+        nt, size = un.unpack(b)
+        self.assertEqual(len(b), size)
         self.assertEqual(nt.is_bool, 0x12)
         self.assertEqual(nt.is_int, 0x12345678)
 
@@ -31,12 +31,23 @@ class TestAddType(unittest.TestCase):
                      [["vl_api_ip4_address_t", "ip4"],
                       ["vl_api_ip6_address_t", "ip6"]])
 
-        address = VPPType('address', [['vl_api_address_family_t', 'af'],
-                                      ['vl_api_address_union_t', 'un']])
+        address = VPPType('vl_api_address_t',
+                          [['vl_api_address_family_t', 'af'],
+                           ['vl_api_address_union_t', 'un']])
+
+        va_address_list = VPPType('list_addresses',
+                                  [['u8', 'count'],
+                                   ['vl_api_address_t', 'addresses',
+                                    0, 'count']])
+
+        message_with_va_address_list = VPPType('msg_with_vla',
+                                               [['list_addresses',
+                                                 'vla_address'],
+                                                ['u8', 'is_cool']])
 
         b = ip4.pack({'address': inet_pton(AF_INET, '1.1.1.1')})
         self.assertEqual(len(b), 4)
-        nt = ip4.unpack(b)
+        nt, size = ip4.unpack(b)
         self.assertEqual(nt.address, inet_pton(AF_INET, '1.1.1.1'))
 
         b = ip6.pack({'address': inet_pton(AF_INET6, '1::1')})
@@ -48,12 +59,35 @@ class TestAddType(unittest.TestCase):
                            {'address': inet_pton(AF_INET, '2.2.2.2')}}})
         self.assertEqual(len(b), 20)
 
-        nt = address.unpack(b)
+        nt, size = address.unpack(b)
         self.assertEqual(nt.af, af.ADDRESS_IP4)
         self.assertEqual(nt.un.ip4.address,
                          inet_pton(AF_INET, '2.2.2.2'))
         self.assertEqual(nt.un.ip6.address,
                          inet_pton(AF_INET6, '0202:0202::'))
+
+        # List of addresses
+        address_list = []
+        for i in range(4):
+            address_list.append({'af': af.ADDRESS_IP4,
+                                 'un':
+                                 {'ip4':
+                                  {'address': inet_pton(AF_INET, '2.2.2.2')}}})
+        b = va_address_list.pack({'count': len(address_list),
+                                  'addresses': address_list})
+        self.assertEqual(len(b), 81)
+
+        nt, size = va_address_list.unpack(b)
+        self.assertEqual(nt.addresses[0].un.ip4.address,
+                         inet_pton(AF_INET, '2.2.2.2'))
+
+        b = message_with_va_address_list.pack({'vla_address':
+                                               {'count': len(address_list),
+                                                'addresses': address_list},
+                                               'is_cool': 100})
+        self.assertEqual(len(b), 82)
+        nt, size = message_with_va_address_list.unpack(b)
+        self.assertEqual(nt.is_cool, 100)
 
     def test_arrays(self):
         # Test cases
@@ -61,6 +95,9 @@ class TestAddType(unittest.TestCase):
         # 2. Fixed list of variable length sub type
         # 3. Variable length type
         #
+        s = VPPType('str', [['u32', 'length'],
+                            ['u8', 'string', 0, 'length']])
+
         ip4 = VPPType('ip4_address', [['u8', 'address', 4]])
         listip4 = VPPType('list_ip4_t', [['ip4_address', 'addresses', 4]])
         valistip4 = VPPType('list_ip4_t',
@@ -76,25 +113,38 @@ class TestAddType(unittest.TestCase):
             addresses.append({'address': inet_pton(AF_INET, '2.2.2.2')})
         b = listip4.pack({'addresses': addresses})
         self.assertEqual(len(b), 16)
-        nt = listip4.unpack(b)
-
+        nt, size = listip4.unpack(b)
         self.assertEqual(nt.addresses[0].address,
                          inet_pton(AF_INET, '2.2.2.2'))
 
         b = valistip4.pack({'count': len(addresses), 'addresses': addresses})
         self.assertEqual(len(b), 17)
 
-        nt = valistip4.unpack(b)
+        nt, size = valistip4.unpack(b)
         self.assertEqual(nt.count, 4)
         self.assertEqual(nt.addresses[0].address,
                          inet_pton(AF_INET, '2.2.2.2'))
 
         b = valistip4_legacy.pack({'foo': 1, 'addresses': addresses})
         self.assertEqual(len(b), 17)
-        nt = valistip4_legacy.unpack(b)
+        nt, size = valistip4_legacy.unpack(b)
         self.assertEqual(len(nt.addresses), 4)
         self.assertEqual(nt.addresses[0].address,
                          inet_pton(AF_INET, '2.2.2.2'))
+
+        string = 'foobar foobar'
+        b = s.pack({'length': len(string), 'string': string})
+        nt, size = s.unpack(b)
+        self.assertEqual(len(b), size)
+
+    def test_string(self):
+        s = VPPType('str', [['u32', 'length'],
+                            ['u8', 'string', 0, 'length']])
+
+        string = ''
+        b = s.pack({'length': len(string), 'string': string})
+        nt, size = s.unpack(b)
+        self.assertEqual(len(b), size)
 
     def test_message(self):
         foo = VPPMessage('foo', [['u16', '_vl_msg_id'],
@@ -103,8 +153,8 @@ class TestAddType(unittest.TestCase):
                                  {"crc": "0x559b9f3c"}])
         b = foo.pack({'_vl_msg_id': 1, 'client_index': 5,
                       'something': 200})
-        self.assertEqual(len(b), 4)
-        nt = foo.unpack(b)
+        nt, size = foo.unpack(b)
+        self.assertEqual(len(b), size)
         self.assertEqual(nt.something, 200)
 
     def test_abf(self):
@@ -189,7 +239,7 @@ class TestAddType(unittest.TestCase):
                                      '_vl_msg_id': 1066,
                                      'policy': policy})
 
-        nt = abf_policy_add_del.unpack(b)
+        nt, size = abf_policy_add_del.unpack(b)
         self.assertEqual(nt.policy.paths[0].next_hop,
                          b'\x10\x02\x02\xac\x00\x00\x00\x00'
                          b'\x00\x00\x00\x00\x00\x00\x00\x00')
