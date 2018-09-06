@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b687db1e_682c2e35",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-06T09:22:43Z",
+      "side": 1,
+      "message": "this is unused",
+      "revId": "eac9116551e91d149937d94f2f008a2a96750dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
