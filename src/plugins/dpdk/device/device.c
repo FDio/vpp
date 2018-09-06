@@ -43,7 +43,8 @@ static char *dpdk_tx_func_error_strings[] = {
 };
 
 static clib_error_t *
-dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
+dpdk_set_mac_address (vnet_hw_interface_t * hi,
+		      const u8 * old_address, const u8 * address)
 {
   int error;
   dpdk_main_t *dm = &dpdk_main;

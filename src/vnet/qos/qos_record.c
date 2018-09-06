@@ -18,6 +18,8 @@
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/feature/feature.h>
 #include <vnet/qos/qos_types.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/feat_bitmap.h>
 
 /**
  * Per-interface, per-protocol vector of feature on/off configurations

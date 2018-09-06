@@ -218,7 +218,7 @@ l2fib_compute_hash_bucket (l2fib_entry_key_t * key)
  * l2fib_make_key() does read those two Bytes but does not use them.
  */
 always_inline u64 __attribute__ ((no_sanitize_address))
-l2fib_make_key (u8 * mac_address, u16 bd_index)
+l2fib_make_key (const u8 * mac_address, u16 bd_index)
 {
   u64 temp;
 
@@ -440,19 +440,19 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
 void l2fib_clear_table (void);
 
 void
-l2fib_add_entry (u8 * mac,
+l2fib_add_entry (const u8 * mac,
 		 u32 bd_index,
 		 u32 sw_if_index, l2fib_entry_result_flags_t flags);
 
 static inline void
-l2fib_add_filter_entry (u8 * mac, u32 bd_index)
+l2fib_add_filter_entry (const u8 * mac, u32 bd_index)
 {
   l2fib_add_entry (mac, bd_index, ~0,
 		   (L2FIB_ENTRY_RESULT_FLAG_FILTER |
 		    L2FIB_ENTRY_RESULT_FLAG_STATIC));
 }
 
-u32 l2fib_del_entry (u8 * mac, u32 bd_index, u32 sw_if_index);
+u32 l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index);
 
 void l2fib_start_ager_scan (vlib_main_t * vm);
 

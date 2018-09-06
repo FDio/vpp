@@ -42,6 +42,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/l2/l2_input.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -1501,12 +1502,14 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 
   if (hi->hw_address)
     {
+      u8 *old_address = vec_dup (hi->hw_address);
       vnet_device_class_t *dev_class =
 	vnet_get_device_class (vnm, hi->dev_class_index);
       if (dev_class->mac_addr_change_function)
 	{
 	  error =
-	    dev_class->mac_addr_change_function (hi, (char *) mac_address);
+	    dev_class->mac_addr_change_function (hi, old_address,
+						 mac_address);
 	}
       if (!error)
 	{
@@ -1515,7 +1518,7 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 	  hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
 
 	  if (NULL != hw_class->mac_addr_change_function)
-	    hw_class->mac_addr_change_function (hi, (char *) mac_address);
+	    hw_class->mac_addr_change_function (hi, old_address, mac_address);
 	}
       else
 	{
@@ -1523,6 +1526,7 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 	    clib_error_return (0,
 			       "MAC Address Change is not supported on this interface");
 	}
+      vec_free (old_address);
     }
   else
     {

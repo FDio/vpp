@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 import socket
 
-from util import Host, mk_ll_addr
+from util import Host, mk_ll_addr, mactobinary
 
 
 class VppInterface(object):
@@ -169,6 +169,13 @@ class VppInterface(object):
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
         self._hosts_by_ip6 = {}
+
+    def set_mac(self, mac):
+        self._local_mac = mac
+        self._local_ip6_ll = mk_ll_addr(mac)
+        self.test.vapi.sw_interface_set_mac_address(
+            self.sw_if_index,
+            mactobinary(self._local_mac))
 
     def set_sw_if_index(self, sw_if_index):
         self._sw_if_index = sw_if_index

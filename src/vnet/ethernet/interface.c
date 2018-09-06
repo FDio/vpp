@@ -42,6 +42,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_bd.h>
 #include <vnet/adj/adj.h>
 
 /**
@@ -218,7 +219,8 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 }
 
 static clib_error_t *
-ethernet_mac_change (vnet_hw_interface_t * hi, char *mac_address)
+ethernet_mac_change (vnet_hw_interface_t * hi,
+		     const u8 * old_address, const u8 * mac_address)
 {
   ethernet_interface_t *ei;
   ethernet_main_t *em;
@@ -633,12 +635,23 @@ simulated_ethernet_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return 0;
 }
 
+static clib_error_t *
+simulated_ethernet_mac_change (vnet_hw_interface_t * hi,
+			       const u8 * old_address, const u8 * mac_address)
+{
+  l2input_interface_mac_change (hi->sw_if_index, old_address, mac_address);
+
+  return (NULL);
+}
+
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .name = "Loopback",
   .format_device_name = format_simulated_ethernet_name,
   .tx_function = simulated_ethernet_interface_tx,
   .admin_up_down_function = simulated_ethernet_admin_up_down,
+  .mac_addr_change_function = simulated_ethernet_mac_change,
 };
 /* *INDENT-ON* */
 

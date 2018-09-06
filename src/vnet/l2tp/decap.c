@@ -21,6 +21,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2tp/l2tp.h>
+#include <vnet/l2/l2_input.h>
 
 /* Statistics (not really errors) */
 #define foreach_l2t_decap_error                                 \
