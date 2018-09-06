@@ -553,7 +553,7 @@ matched:
 
 // Compare two ethernet macs. Return 1 if they are the same, 0 if different
 always_inline u32
-eth_mac_equal (u8 * mac1, u8 * mac2)
+eth_mac_equal (const u8 * mac1, const u8 * mac2)
 {
   return (*((u32 *) (mac1 + 0)) == *((u32 *) (mac2 + 0)) &&
 	  *((u32 *) (mac1 + 2)) == *((u32 *) (mac2 + 2)));
