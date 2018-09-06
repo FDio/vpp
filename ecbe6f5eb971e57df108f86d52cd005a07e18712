@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c1fa262_cc660280",
+        "filename": "docs/gettingstarted/developers/buildsystem/cmakeandninja.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-06T15:59:33Z",
+      "side": 1,
+      "message": "The longer the trailing whitespace is, the worse it looks in Gerrit.",
+      "range": {
+        "startLine": 155,
+        "startChar": 21,
+        "endLine": 155,
+        "endChar": 83
+      },
+      "revId": "ecbe6f5eb971e57df108f86d52cd005a07e18712",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "907986c4_069f171c",
+        "filename": "docs/gettingstarted/developers/buildsystem/index.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-06T15:59:33Z",
+      "side": 1,
+      "message": "I think these filenames would look better with underscores:\n  cmake_and_ninja",
+      "range": {
+        "startLine": 13,
+        "startChar": 4,
+        "endLine": 13,
+        "endChar": 17
+      },
+      "revId": "ecbe6f5eb971e57df108f86d52cd005a07e18712",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
