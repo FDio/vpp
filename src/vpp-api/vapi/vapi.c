@@ -249,6 +249,9 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
 vapi_error_e
 vapi_ctx_alloc (vapi_ctx_t * result)
 {
+  uword cpu;
+  void *heap;
+  
   vapi_ctx_t ctx = calloc (1, sizeof (struct vapi_ctx_s));
   if (!ctx)
     {
@@ -270,6 +273,14 @@ vapi_ctx_alloc (vapi_ctx_t * result)
       goto fail;
     }
   pthread_mutex_init (&ctx->requests_mutex, NULL);
+
+  cpu = os_get_thread_index ();
+  heap = clib_per_cpu_mheaps[cpu];
+  if (heap == NULL)
+  {
+  	clib_mem_init_thread_safe (0, 64 << 20);
+  }
+
   *result = ctx;
   return VAPI_OK;
 fail:
