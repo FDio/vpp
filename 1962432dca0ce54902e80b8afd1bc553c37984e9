@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9fc19cb5_ee5b57e6",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-09-06T12:12:10Z",
+      "side": 1,
+      "message": "What\u0027s the plan here?",
+      "revId": "1962432dca0ce54902e80b8afd1bc553c37984e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
