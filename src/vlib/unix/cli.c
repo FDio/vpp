@@ -2772,8 +2772,8 @@ unix_cli_listen_read_ready (clib_file_t * uf)
 
   /* Disable Nagle, ignore any errors doing so eg on PF_LOCAL socket */
   one = 1;
-  setsockopt (client.fd, IPPROTO_TCP, TCP_NODELAY,
-	      (void *) &one, sizeof (one));
+  (void) setsockopt (client.fd, IPPROTO_TCP, TCP_NODELAY,
+		     (void *) &one, sizeof (one));
 
   client_name = (char *) format (0, "%U%c", format_sockaddr, &client.peer, 0);
 
