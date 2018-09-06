@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60dffff9_3debbc29",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 601,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T16:51:19Z",
+      "side": 1,
+      "message": "add here some comments, it is not clear what each step/condition do",
+      "range": {
+        "startLine": 500,
+        "startChar": 0,
+        "endLine": 601,
+        "endChar": 13
+      },
+      "revId": "451e1b2d805fac4fb934ffe533bea5f2eaef2b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9a64601_c7107b3a",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 694,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T16:51:19Z",
+      "side": 1,
+      "message": "add here some comments, it is not clear what each step/condition do",
+      "range": {
+        "startLine": 626,
+        "startChar": 0,
+        "endLine": 694,
+        "endChar": 31
+      },
+      "revId": "451e1b2d805fac4fb934ffe533bea5f2eaef2b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
