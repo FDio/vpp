@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "359d144f_e6447737",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 3123,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T12:21:00Z",
+      "side": 1,
+      "message": "why?",
+      "range": {
+        "startLine": 3123,
+        "startChar": 0,
+        "endLine": 3123,
+        "endChar": 5
+      },
+      "revId": "0649434d8c468f5d590bde89d2251a57118f21fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e909d6ce_358cbc9b",
+        "filename": "src/plugins/nat/nat_reass.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T12:21:00Z",
+      "side": 1,
+      "message": "do you need this one?",
+      "revId": "0649434d8c468f5d590bde89d2251a57118f21fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b1f0fb0_fc41f6b3",
+        "filename": "src/plugins/nat/nat_reass.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T12:21:00Z",
+      "side": 1,
+      "message": "what is difference between these two?",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 69,
+        "endChar": 23
+      },
+      "revId": "0649434d8c468f5d590bde89d2251a57118f21fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "40e78301_8e55c19f",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2061,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T12:21:00Z",
+      "side": 1,
+      "message": "remove additional empty line",
+      "revId": "0649434d8c468f5d590bde89d2251a57118f21fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

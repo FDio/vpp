@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c849c681_5d54ce1e",
+        "filename": "test/test_nat.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2941,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-06T12:21:00Z",
+      "side": 0,
+      "message": "why you remove reassembly tests? They are needed in both TestNAT44 and TestNAT44EndpointDependent because each have different code path",
+      "revId": "060c3a7e5a2d23189a8c6348e767cd2018a58dd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
