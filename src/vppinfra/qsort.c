@@ -111,7 +111,15 @@ qsort (void *base, uword n, uword size,
    */
   for (min = base; (hi = min += q->qsz) < max;)
     {
-      while ((*q->qcmp) (hi -= q->qsz, min) > 0);
+      while (1)
+        {
+          if ((uword)(hi -= q->qsz) < (uword)base){
+              break;
+            }
+          if ((*q->qcmp) (hi, min) <= 0){
+              break;
+            }
+        }
       if ((hi += q->qsz) != min)
 	{
 	  for (lo = min + q->qsz; --lo >= min;)
