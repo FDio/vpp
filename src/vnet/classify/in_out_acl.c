@@ -15,6 +15,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/classify/in_out_acl.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/l2_input.h>
 
 in_out_acl_main_t in_out_acl_main;
 

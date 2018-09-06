@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <vnet/classify/policer_classify.h>
+#include <vnet/l2/l2_input.h>
 
 policer_classify_main_t policer_classify_main;
 

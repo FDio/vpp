@@ -197,6 +197,9 @@ u32 l2input_intf_bitmap_enable (u32 sw_if_index,
 /* Sets modifies flags from a bridge domain */
 u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);
 
+void l2input_interface_mac_change (u32 sw_if_index,
+				   const u8 * old_address,
+				   const u8 * new_address);
 
 #define MODE_L3        0
 #define MODE_L2_BRIDGE 1
