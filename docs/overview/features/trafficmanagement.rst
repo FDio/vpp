@@ -4,6 +4,8 @@
 Traffic Management
 ==================
 
+This section identifies the features associated with Traffic Management:
+
 IP Layer Input Checks
 ---------------------
 * Source Reverse Path Forwarding
@@ -51,5 +53,5 @@ COP
 
 MAC/IP Pairing
 --------------
-(security feature).
+Security feature
 

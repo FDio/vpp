@@ -4,6 +4,8 @@
 Layer 3
 =======
 
+This section identifies the features associated with Layer 3:
+
 IP Layer
 --------
 * ICMP
