@@ -22,6 +22,30 @@
       "revId": "d0673ab5bf32bbfd98190773c4d09253a2fbb83d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c135d4b0_6788a445",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-06T14:06:46Z",
+      "side": 1,
+      "message": "Forget about this comment...",
+      "parentUuid": "e7fd45af_b73ef24e",
+      "range": {
+        "startLine": 35,
+        "startChar": 8,
+        "endLine": 35,
+        "endChar": 23
+      },
+      "revId": "d0673ab5bf32bbfd98190773c4d09253a2fbb83d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
