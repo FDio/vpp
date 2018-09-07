@@ -20431,9 +20431,9 @@ vl_api_ip_fib_details_t_handler (vl_api_ip_fib_details_t * mp)
   int i;
 
   print (vam->ofp,
-	 "table-id %d, prefix %U/%d",
+	 "table-id %d, prefix %U/%d stats-index %d",
 	 ntohl (mp->table_id), format_ip4_address, mp->address,
-	 mp->address_length);
+	 mp->address_length, ntohl (mp->stats_index));
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
@@ -20643,9 +20643,9 @@ vl_api_ip6_fib_details_t_handler (vl_api_ip6_fib_details_t * mp)
   int i;
 
   print (vam->ofp,
-	 "table-id %d, prefix %U/%d",
+	 "table-id %d, prefix %U/%d stats-index %d",
 	 ntohl (mp->table_id), format_ip6_address, mp->address,
-	 mp->address_length);
+	 mp->address_length, ntohl (mp->stats_index));
   fp = mp->path;
   for (i = 0; i < count; i++)
     {

@@ -212,6 +212,8 @@ send_ip_fib_details (vpe_api_main_t * am,
 	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
   mp->address_length = pfx->fp_len;
   memcpy (mp->address, &pfx->fp_addr.ip4, sizeof (pfx->fp_addr.ip4));
+  mp->stats_index =
+    htonl (fib_table_entry_get_stats_index (table->ft_index, pfx));
 
   mp->count = htonl (path_count);
   fp = mp->path;
@@ -309,6 +311,8 @@ send_ip6_fib_details (vpe_api_main_t * am,
   memcpy (mp->address, &pfx->fp_addr.ip6, sizeof (pfx->fp_addr.ip6));
   memcpy (mp->table_name, table->ft_desc,
 	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
+  mp->stats_index =
+    htonl (fib_table_entry_get_stats_index (table->ft_index, pfx));
 
   mp->count = htonl (path_count);
   fp = mp->path;
@@ -962,7 +966,8 @@ add_del_route_check (fib_protocol_t table_proto,
 }
 
 static int
-ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
+ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
+			     u32 * stats_index)
 {
   u32 fib_index, next_hop_fib_index;
   fib_mpls_label_t *label_stack = NULL;
@@ -1006,32 +1011,37 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 	}
     }
 
-  return (add_del_route_t_handler (mp->is_multipath,
-				   mp->is_add,
-				   mp->is_drop,
-				   mp->is_unreach,
-				   mp->is_prohibit,
-				   mp->is_local, 0,
-				   mp->is_classify,
-				   mp->classify_table_index,
-				   mp->is_resolve_host,
-				   mp->is_resolve_attached, 0, 0,
-				   mp->is_dvr,
-				   mp->is_source_lookup,
-				   mp->is_udp_encap,
-				   fib_index, &pfx, DPO_PROTO_IP4,
-				   &nh,
-				   ntohl (mp->next_hop_id),
-				   ntohl (mp->next_hop_sw_if_index),
-				   next_hop_fib_index,
-				   mp->next_hop_weight,
-				   mp->next_hop_preference,
-				   ntohl (mp->next_hop_via_label),
-				   label_stack));
+  rv = add_del_route_t_handler (mp->is_multipath,
+				mp->is_add,
+				mp->is_drop,
+				mp->is_unreach,
+				mp->is_prohibit,
+				mp->is_local, 0,
+				mp->is_classify,
+				mp->classify_table_index,
+				mp->is_resolve_host,
+				mp->is_resolve_attached, 0, 0,
+				mp->is_dvr,
+				mp->is_source_lookup,
+				mp->is_udp_encap,
+				fib_index, &pfx, DPO_PROTO_IP4,
+				&nh,
+				ntohl (mp->next_hop_id),
+				ntohl (mp->next_hop_sw_if_index),
+				next_hop_fib_index,
+				mp->next_hop_weight,
+				mp->next_hop_preference,
+				ntohl (mp->next_hop_via_label), label_stack);
+
+  if (mp->is_add && 0 == rv)
+    *stats_index = fib_table_entry_get_stats_index (fib_index, &pfx);
+
+  return (rv);
 }
 
 static int
-ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
+ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
+			     u32 * stats_index)
 {
   fib_mpls_label_t *label_stack = NULL;
   u32 fib_index, next_hop_fib_index;
@@ -1075,46 +1085,57 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 	}
     }
 
-  return (add_del_route_t_handler (mp->is_multipath,
-				   mp->is_add,
-				   mp->is_drop,
-				   mp->is_unreach,
-				   mp->is_prohibit,
-				   mp->is_local, 0,
-				   mp->is_classify,
-				   mp->classify_table_index,
-				   mp->is_resolve_host,
-				   mp->is_resolve_attached, 0, 0,
-				   mp->is_dvr,
-				   mp->is_source_lookup,
-				   mp->is_udp_encap,
-				   fib_index, &pfx, DPO_PROTO_IP6,
-				   &nh, ntohl (mp->next_hop_id),
-				   ntohl (mp->next_hop_sw_if_index),
-				   next_hop_fib_index,
-				   mp->next_hop_weight,
-				   mp->next_hop_preference,
-				   ntohl (mp->next_hop_via_label),
-				   label_stack));
+  rv = add_del_route_t_handler (mp->is_multipath,
+				mp->is_add,
+				mp->is_drop,
+				mp->is_unreach,
+				mp->is_prohibit,
+				mp->is_local, 0,
+				mp->is_classify,
+				mp->classify_table_index,
+				mp->is_resolve_host,
+				mp->is_resolve_attached, 0, 0,
+				mp->is_dvr,
+				mp->is_source_lookup,
+				mp->is_udp_encap,
+				fib_index, &pfx, DPO_PROTO_IP6,
+				&nh, ntohl (mp->next_hop_id),
+				ntohl (mp->next_hop_sw_if_index),
+				next_hop_fib_index,
+				mp->next_hop_weight,
+				mp->next_hop_preference,
+				ntohl (mp->next_hop_via_label), label_stack);
+
+  if (mp->is_add && 0 == rv)
+    *stats_index = fib_table_entry_get_stats_index (fib_index, &pfx);
+
+  return (rv);
 }
 
 void
 vl_api_ip_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 {
   vl_api_ip_add_del_route_reply_t *rmp;
+  u32 stats_index;
   int rv;
   vnet_main_t *vnm = vnet_get_main ();
 
   vnm->api_errno = 0;
+  stats_index = ~0;
 
   if (mp->is_ipv6)
-    rv = ip6_add_del_route_t_handler (mp);
+    rv = ip6_add_del_route_t_handler (mp, &stats_index);
   else
-    rv = ip4_add_del_route_t_handler (mp);
+    rv = ip4_add_del_route_t_handler (mp, &stats_index);
 
   rv = (rv == 0) ? vnm->api_errno : rv;
 
-  REPLY_MACRO (VL_API_IP_ADD_DEL_ROUTE_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IP_ADD_DEL_ROUTE_REPLY,
+  ({
+    rmp->stats_index = htonl (stats_index);
+  }))
+  /* *INDENT-ON* */
 }
 
 void
@@ -1401,6 +1422,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       }));
       /* *INDENT-ON* */
     }
+
   BAD_SW_IF_INDEX_LABEL;
 }
 

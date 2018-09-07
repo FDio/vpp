@@ -53,7 +53,16 @@ load_balance_t *load_balance_pool;
 /**
  * The one instance of load-balance main
  */
-load_balance_main_t load_balance_main;
+load_balance_main_t load_balance_main = {
+    .lbm_to_counters = {
+        .name = "route-to",
+        .stat_segment_name = "/net/route/to",
+    },
+    .lbm_via_counters = {
+        .name = "route-via",
+        .stat_segment_name = "/net/route/via",
+    }
+};
 
 f64
 load_balance_get_multipath_tolerance (void)
