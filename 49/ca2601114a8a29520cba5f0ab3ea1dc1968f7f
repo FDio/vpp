@@ -1,0 +1,9 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Yusuke Tatsumi <ytatsumi@yahoo-corp.jp>
+Code-Review+1: Naoyuki Mori <naoyuki.mori@intel.com>
+Code-Review+2: Marco Varlese <marco.varlese@suse.de>
+Submitted-by: Marco Varlese <marco.varlese@suse.de>
+Submitted-at: Fri, 07 Sep 2018 07:33:32 +0000
+Reviewed-on: https://gerrit.fd.io/r/14402
+Project: vpp
+Branch: refs/heads/master
