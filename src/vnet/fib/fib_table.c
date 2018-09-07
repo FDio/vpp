@@ -886,8 +886,8 @@ fib_table_entry_delete_index (fib_node_index_t fib_entry_index,
 }
 
 u32
-fib_table_entry_get_stats_index(u32 fib_index,
-                                const fib_prefix_t *prefix)
+fib_table_entry_get_stats_index (u32 fib_index,
+                                 const fib_prefix_t *prefix)
 {
     return (fib_entry_get_stats_index(
                 fib_table_lookup_exact_match(fib_index, prefix)));

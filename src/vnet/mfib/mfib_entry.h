@@ -132,6 +132,7 @@ extern void mfib_entry_get_prefix(fib_node_index_t fib_entry_index,
 extern u32 mfib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                  mfib_source_t source);
+extern u32 mfib_entry_get_stats_index(fib_node_index_t fib_entry_index);
 
 extern const dpo_id_t*mfib_entry_contribute_ip_forwarding(
     fib_node_index_t mfib_entry_index);

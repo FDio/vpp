@@ -1106,6 +1106,16 @@ mfib_entry_last_lock_gone (fib_node_t *node)
     pool_put(mfib_entry_pool, mfib_entry);
 }
 
+u32
+mfib_entry_get_stats_index (fib_node_index_t fib_entry_index)
+{
+    mfib_entry_t *mfib_entry;
+
+    mfib_entry = mfib_entry_get(fib_entry_index);
+
+    return (mfib_entry->mfe_rep.dpoi_index);
+}
+
 /*
  * mfib_entry_back_walk_notify
  *
