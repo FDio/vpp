@@ -467,7 +467,8 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 
   conn_pool_expand (wrk, SOCK_SERVER_MAX_TEST_CONN + 1);
   if (wrk->wrk_index)
-    vppcom_worker_register ();
+    if (vppcom_worker_register ())
+      vtfail ("vppcom_worker_register()", 1);
 
   wrk->listen_fd = vppcom_session_create (ssm->cfg.proto,
 					  0 /* is_nonblocking */ );
