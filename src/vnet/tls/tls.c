@@ -522,6 +522,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
 u32
 tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
+  vnet_bind_args_t _bargs, *args = &_bargs;
   app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_handle;
@@ -529,7 +530,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   stream_session_t *tls_listener;
   stream_session_t *app_listener;
   tls_engine_type_t engine_type;
-  application_t *app, *tls_app;
+  application_t *app;
   tls_ctx_t *lctx;
   u32 lctx_index;
 
@@ -543,15 +544,15 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
       return -1;
     }
 
-  lctx_index = tls_listener_ctx_alloc ();
-
-  /* TODO hide this by calling vnet_bind() */
-  tls_app = application_get (tm->app_index);
-//  tls_app_wrk = application_get_default_worker (tls_app);
   sep->transport_proto = TRANSPORT_PROTO_TCP;
-  if (application_start_listen (tls_app, sep, &tls_handle))
-    return ~0;
+  memset (args, 0, sizeof (*args));
+  args->app_index = tm->app_index;
+  args->sep_ext = *sep;
+  if (vnet_bind (args))
+    return -1;
 
+  tls_handle = args->handle;
+  lctx_index = tls_listener_ctx_alloc ();
   tls_listener = listen_session_get_from_handle (tls_handle);
   tls_listener->opaque = lctx_index;
 
