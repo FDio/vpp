@@ -72,6 +72,7 @@ vac_main_t vac_main;
 vac_callback_t vac_callback;
 u16 read_timeout = 0;
 bool rx_is_running = false;
+bool timeout_thread_cancelled = false;
 
 /* Set to true to enable memory tracing */
 bool mem_trace = false;
@@ -248,7 +249,7 @@ vac_timeout_thread_fn (void *arg)
       rv = pthread_cond_timedwait (&pm->timeout_cancel_cv,
 				   &pm->timeout_lock, &ts);
       pthread_mutex_unlock(&pm->timeout_lock);
-      if (rv == ETIMEDOUT)
+      if (rv == ETIMEDOUT && !timeout_thread_cancelled)
 	{
 	  ep = vl_msg_api_alloc (sizeof (*ep));
 	  ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_READ_TIMEOUT);
@@ -404,8 +405,8 @@ vac_disconnect (void)
   }
   if (pm->timeout_thread_handle) {
     /* cancel, wake then join the timeout thread */
-    clib_warning("vac_disconnect cancel");
     pm->timeout_loop = 0;
+    timeout_thread_cancelled = true;
     set_timeout(0);
     pthread_join(pm->timeout_thread_handle, (void **) &junk);
   }
@@ -451,14 +452,11 @@ vac_read (char **p, int *l, u16 timeout)
     u16 msg_id = ntohs(*((u16 *)msg));
     switch (msg_id) {
     case VL_API_RX_THREAD_EXIT:
-      printf("Received thread exit\n");
       vl_msg_api_free((void *) msg);
       return -1;
     case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
-      printf("Received thread suspend\n");
       goto error;
     case VL_API_MEMCLNT_READ_TIMEOUT:
-      printf("Received read timeout %ds\n", timeout);
       goto error;
     case VL_API_MEMCLNT_KEEPALIVE:
       /* Handle an alive-check ping from vpp. */
@@ -480,7 +478,7 @@ vac_read (char **p, int *l, u16 timeout)
       msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
       *l = ntohl(msgbuf->data_len);
       if (*l == 0) {
-	printf("Unregistered API message: %d\n", msg_id);
+	fprintf(stderr, "Unregistered API message: %d\n", msg_id);
 	goto error;
       }
     }
@@ -490,7 +488,7 @@ vac_read (char **p, int *l, u16 timeout)
     unset_timeout();
 
   } else {
-    printf("Read failed with %d\n", rv);
+    fprintf(stderr, "Read failed with %d\n", rv);
   }
   return (rv);
 
@@ -532,7 +530,7 @@ vac_write (char *p, int l)
   q = am->shmem_hdr->vl_input_queue;
   rv = svm_queue_add(q, (u8 *)&mp, 0);
   if (rv != 0) {
-    clib_warning("vpe_api_write fails: %d\n", rv);
+    fprintf(stderr, "vpe_api_write fails: %d\n", rv);
     /* Clear message */
     vac_free(mp);
   }
