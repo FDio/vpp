@@ -839,26 +839,6 @@ add_del_route_t_handler (u8 is_multipath,
 
   path.frp_flags = path_flags;
 
-  if (is_multipath)
-    {
-      stats_dslock_with_hint (1 /* release hint */ , 10 /* tag */ );
-
-
-      vec_add1 (paths, path);
-
-      if (is_add)
-	fib_table_entry_path_add2 (fib_index,
-				   prefix,
-				   FIB_SOURCE_API, entry_flags, paths);
-      else
-	fib_table_entry_path_remove2 (fib_index,
-				      prefix, FIB_SOURCE_API, paths);
-
-      vec_free (paths);
-      stats_dsunlock ();
-      return 0;
-    }
-
   stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
 
   if (is_drop || is_local || is_classify || is_unreach || is_prohibit)
@@ -913,6 +893,20 @@ add_del_route_t_handler (u8 is_multipath,
 	{
 	  fib_table_entry_special_remove (fib_index, prefix, FIB_SOURCE_API);
 	}
+    }
+  else if (is_multipath)
+    {
+      vec_add1 (paths, path);
+
+      if (is_add)
+	fib_table_entry_path_add2 (fib_index,
+				   prefix,
+				   FIB_SOURCE_API, entry_flags, paths);
+      else
+	fib_table_entry_path_remove2 (fib_index,
+				      prefix, FIB_SOURCE_API, paths);
+
+      vec_free (paths);
     }
   else
     {

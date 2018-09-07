@@ -758,11 +758,24 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->is_multipath)
     s = format (s, "multipath ");
 
-  if (mp->is_multipath)
-    s = format (s, "multipath ");
-
   if (mp->next_hop_table_id)
     s = format (s, "lookup-in-vrf %d ", ntohl (mp->next_hop_table_id));
+
+  FINISH;
+}
+
+static void *vl_api_ip_table_add_del_t_print
+  (vl_api_ip_table_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_table_add_del ");
+  if (!mp->is_add)
+    s = format (s, "del ");
+  if (mp->is_ipv6)
+    s = format (s, "ip6 ");
+  if (mp->table_id != 0)
+    s = format (s, "vrf %d ", ntohl (mp->table_id));
 
   FINISH;
 }
@@ -3560,6 +3573,7 @@ _(TAP_CREATE_V2, tap_create_v2)                                         \
 _(TAP_DELETE_V2, tap_delete_v2)                                         \
 _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
+_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \

@@ -223,7 +223,7 @@ class VppIpRoute(VppObject):
 
     def __init__(self, test, dest_addr,
                  dest_addr_len, paths, table_id=0, is_ip6=0, is_local=0,
-                 is_unreach=0, is_prohibit=0):
+                 is_unreach=0, is_prohibit=0, is_drop=0):
         self._test = test
         self.paths = paths
         self.dest_addr_len = dest_addr_len
@@ -232,6 +232,7 @@ class VppIpRoute(VppObject):
         self.is_local = is_local
         self.is_unreach = is_unreach
         self.is_prohibit = is_prohibit
+        self.is_drop = is_drop
         self.dest_addr_p = dest_addr
         if is_ip6:
             self.dest_addr = inet_pton(AF_INET6, dest_addr)
@@ -246,7 +247,8 @@ class VppIpRoute(VppObject):
         self.is_prohibit = is_prohibit
 
     def add_vpp_config(self):
-        if self.is_local or self.is_unreach or self.is_prohibit:
+        if self.is_local or self.is_unreach or \
+           self.is_prohibit or self.is_drop:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
@@ -255,6 +257,7 @@ class VppIpRoute(VppObject):
                 is_local=self.is_local,
                 is_unreach=self.is_unreach,
                 is_prohibit=self.is_prohibit,
+                is_drop=self.is_drop,
                 table_id=self.table_id,
                 is_ipv6=self.is_ip6)
         else:
@@ -282,7 +285,8 @@ class VppIpRoute(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        if self.is_local or self.is_unreach or self.is_prohibit:
+        if self.is_local or self.is_unreach or \
+           self.is_prohibit or self.is_drop:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
