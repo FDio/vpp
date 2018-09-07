@@ -440,7 +440,7 @@ define ip_add_del_route_reply
     @param next_hop_afi - Use dpo_proto_t
     FIXME
 */
-autoreply define ip_mroute_add_del
+define ip_mroute_add_del
 {
   u32 client_index;
   u32 context;
@@ -458,6 +458,13 @@ autoreply define ip_mroute_add_del
   u8 grp_address[16];
   u8 src_address[16];
   u8 nh_address[16];
+};
+
+define ip_mroute_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 /** \brief Dump IP multicast fib table
@@ -487,6 +494,7 @@ manual_endian manual_print define ip_mfib_details
   u8  grp_address[4];
   u8  src_address[4];
   u32 count;
+  u32 stats_index;
   vl_api_fib_path_t path[count];
 };
 

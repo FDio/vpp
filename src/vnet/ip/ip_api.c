@@ -1203,7 +1203,7 @@ add_del_mroute_check (fib_protocol_t table_proto,
   return (0);
 }
 
-static int
+static fib_node_index_t
 mroute_add_del_handler (u8 is_add,
 			u8 is_local,
 			u32 fib_index,
@@ -1214,6 +1214,8 @@ mroute_add_del_handler (u8 is_add,
 			u32 next_hop_sw_if_index,
 			ip46_address_t * nh, u32 itf_flags, u32 bier_imp)
 {
+  fib_node_index_t mfib_entry_index = ~0;
+
   stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
 
   fib_route_path_t path = {
@@ -1232,15 +1234,17 @@ mroute_add_del_handler (u8 is_add,
     }
   else if (!is_local && ~0 == next_hop_sw_if_index)
     {
-      mfib_table_entry_update (fib_index, prefix,
-			       MFIB_SOURCE_API, rpf_id, entry_flags);
+      mfib_entry_index = mfib_table_entry_update (fib_index, prefix,
+						  MFIB_SOURCE_API,
+						  rpf_id, entry_flags);
       goto done;
     }
 
   if (is_add)
     {
-      mfib_table_entry_path_update (fib_index, prefix,
-				    MFIB_SOURCE_API, &path, itf_flags);
+      mfib_entry_index = mfib_table_entry_path_update (fib_index, prefix,
+						       MFIB_SOURCE_API,
+						       &path, itf_flags);
     }
   else
     {
@@ -1250,12 +1254,14 @@ mroute_add_del_handler (u8 is_add,
 
 done:
   stats_dsunlock ();
-  return (0);
+  return (mfib_entry_index);
 }
 
 static int
-api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
+api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
+			      u32 * stats_index)
 {
+  fib_node_index_t mfib_entry_index;
   fib_protocol_t fproto;
   dpo_proto_t nh_proto;
   ip46_address_t nh;
@@ -1295,32 +1301,43 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
       clib_memcpy (&nh.ip6, mp->nh_address, sizeof (nh.ip6));
     }
 
-  return (mroute_add_del_handler (mp->is_add,
-				  mp->is_local,
-				  fib_index, &pfx,
-				  nh_proto,
-				  ntohl (mp->entry_flags),
-				  ntohl (mp->rpf_id),
-				  ntohl (mp->next_hop_sw_if_index),
-				  &nh,
-				  ntohl (mp->itf_flags),
-				  ntohl (mp->bier_imp)));
+  mfib_entry_index = mroute_add_del_handler (mp->is_add,
+					     mp->is_local,
+					     fib_index, &pfx,
+					     nh_proto,
+					     ntohl (mp->entry_flags),
+					     ntohl (mp->rpf_id),
+					     ntohl (mp->next_hop_sw_if_index),
+					     &nh,
+					     ntohl (mp->itf_flags),
+					     ntohl (mp->bier_imp));
+
+  if (~0 != mfib_entry_index)
+    *stats_index = mfib_entry_get_stats_index (mfib_entry_index);
+
+  return (rv);
 }
 
 void
 vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 {
   vl_api_ip_mroute_add_del_reply_t *rmp;
+  vnet_main_t *vnm;
+  u32 stats_index;
   int rv;
-  vnet_main_t *vnm = vnet_get_main ();
 
+  vnm = vnet_get_main ();
   vnm->api_errno = 0;
+  stats_index = ~0;
 
-  rv = api_mroute_add_del_t_handler (mp);
+  rv = api_mroute_add_del_t_handler (mp, &stats_index);
 
-  rv = (rv == 0) ? vnm->api_errno : rv;
-
-  REPLY_MACRO (VL_API_IP_MROUTE_ADD_DEL_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IP_MROUTE_ADD_DEL_REPLY,
+  ({
+    rmp->stats_index = htonl (stats_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
