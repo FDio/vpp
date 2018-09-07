@@ -1150,14 +1150,12 @@ class VppPapiProvider(object):
         )
 
     def udp_encap_add(self,
-                      id,
                       src_ip,
                       dst_ip,
                       src_port,
                       dst_port,
                       table_id=0):
         """ Add a GRE tunnel
-        :param id: user provided ID
         :param src_ip:
         :param dst_ip:
         :param src_port:
@@ -1169,7 +1167,6 @@ class VppPapiProvider(object):
             self.papi.udp_encap_add,
             {
                 'udp_encap': {
-                    'id': id,
                     'src_ip': src_ip,
                     'dst_ip': dst_ip,
                     'src_port': src_port,

@@ -571,7 +571,7 @@ class TestBier(VppTestCase):
                                             labels=[VppMplsLabel(2001)])])
         ip_route.add_vpp_config()
 
-        udp_encap = VppUdpEncap(self, 4,
+        udp_encap = VppUdpEncap(self,
                                 self.pg0.local_ip4,
                                 nh1,
                                 330, 8138)
@@ -582,7 +582,7 @@ class TestBier(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           is_udp_encap=1,
-                          next_hop_id=4)])
+                          next_hop_id=udp_encap.id)])
         bier_route.add_vpp_config()
 
         #
@@ -632,7 +632,7 @@ class TestBier(VppTestCase):
         self.assertEqual(rx[0][IP].dst, nh1)
         self.assertEqual(rx[0][UDP].sport, 330)
         self.assertEqual(rx[0][UDP].dport, 8138)
-        self.assertEqual(rx[0][BIFT].bsl, 2)
+        self.assertEqual(rx[0][BIFT].bsl, BIERLength.BIER_LEN_256)
         self.assertEqual(rx[0][BIFT].sd, 1)
         self.assertEqual(rx[0][BIFT].set, 0)
         self.assertEqual(rx[0][BIFT].ttl, 64)
