@@ -389,6 +389,8 @@ class TestMPLS(VppTestCase):
         self.verify_capture_labelled(self.pg0, rx, tx,
                                      [VppMplsLabel(33, ttl=31, exp=1)])
 
+        self.assertEqual(route_32_eos.get_stats_to()['packets'], 257)
+
         #
         # A simple MPLS xconnect - non-eos label in label out
         #
@@ -409,6 +411,7 @@ class TestMPLS(VppTestCase):
         self.verify_capture_labelled(self.pg0, rx, tx,
                                      [VppMplsLabel(33, ttl=20, exp=7),
                                       VppMplsLabel(99)])
+        self.assertEqual(route_32_neos.get_stats_to()['packets'], 257)
 
         #
         # A simple MPLS xconnect - non-eos label in label out, uniform mode
@@ -575,6 +578,9 @@ class TestMPLS(VppTestCase):
                                       VppMplsLabel(44),
                                       VppMplsLabel(45, ttl=2)])
 
+        self.assertEqual(route_34_eos.get_stats_to()['packets'], 257)
+        self.assertEqual(route_32_neos.get_stats_via()['packets'], 257)
+
         #
         # A recursive EOS x-connect, which resolves through another x-connect
         # in uniform mode
@@ -635,6 +641,7 @@ class TestMPLS(VppTestCase):
                                           VppMplsLabel(44),
                                           VppMplsLabel(46),
                                           VppMplsLabel(55)])
+        self.assertEqual(ip_10_0_0_1.get_stats_to()['packets'], 257)
 
         ip_10_0_0_1.remove_vpp_config()
         route_34_neos.remove_vpp_config()
@@ -782,6 +789,8 @@ class TestMPLS(VppTestCase):
                                          [VppMplsLabel(32),
                                           VppMplsLabel(44)])
 
+        self.assertEqual(route_11_0_0_1.get_stats_to()['packets'], 257)
+
         #
         # add a recursive path, with 2 labels, via the 3 label route
         #
@@ -804,6 +813,18 @@ class TestMPLS(VppTestCase):
                                           VppMplsLabel(34),
                                           VppMplsLabel(44),
                                           VppMplsLabel(45)])
+
+        self.assertEqual(route_11_0_0_2.get_stats_to()['packets'], 257)
+
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        self.verify_capture_labelled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(32),
+                                          VppMplsLabel(33),
+                                          VppMplsLabel(34),
+                                          VppMplsLabel(44),
+                                          VppMplsLabel(45)])
+
+        self.assertEqual(route_11_0_0_2.get_stats_to()['packets'], 514)
 
         #
         # cleanup

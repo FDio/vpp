@@ -244,7 +244,7 @@ class VppIpRoute(VppObject):
     def add_vpp_config(self):
         if self.is_local or self.is_unreach or \
            self.is_prohibit or self.is_drop:
-            self._test.vapi.ip_add_del_route(
+            r = self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
                 inet_pton(AF_INET6, "::"),
@@ -259,7 +259,7 @@ class VppIpRoute(VppObject):
             for path in self.paths:
                 lstack = path.encode_labels()
 
-                self._test.vapi.ip_add_del_route(
+                r = self._test.vapi.ip_add_del_route(
                     self.dest_addr,
                     self.dest_addr_len,
                     path.nh_addr,
@@ -277,6 +277,7 @@ class VppIpRoute(VppObject):
                     is_source_lookup=path.is_source_lookup,
                     is_udp_encap=path.is_udp_encap,
                     is_multipath=1 if len(self.paths) > 1 else 0)
+        self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -324,6 +325,14 @@ class VppIpRoute(VppObject):
                 % (self.table_id,
                    self.dest_addr_p,
                    self.dest_addr_len))
+
+    def get_stats_to(self):
+        c = self._test.statistics.get_counter("/net/route/to")
+        return c[0][self.stats_index]
+
+    def get_stats_via(self):
+        c = self._test.statistics.get_counter("/net/route/via")
+        return c[0][self.stats_index]
 
 
 class VppIpMRoute(VppObject):
@@ -581,7 +590,7 @@ class VppMplsRoute(VppObject):
         for path in self.paths:
             lstack = path.encode_labels()
 
-            self._test.vapi.mpls_route_add_del(
+            r = self._test.vapi.mpls_route_add_del(
                 self.local_label,
                 self.eos_bit,
                 path.proto,
@@ -596,6 +605,7 @@ class VppMplsRoute(VppObject):
                 next_hop_n_out_labels=len(lstack),
                 next_hop_via_label=path.nh_via_label,
                 next_hop_table_id=path.nh_table_id)
+        self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -626,3 +636,11 @@ class VppMplsRoute(VppObject):
                 % (self.table_id,
                    self.local_label,
                    20+self.eos_bit))
+
+    def get_stats_to(self):
+        c = self._test.statistics.get_counter("/net/route/to")
+        return c[0][self.stats_index]
+
+    def get_stats_via(self):
+        c = self._test.statistics.get_counter("/net/route/via")
+        return c[0][self.stats_index]

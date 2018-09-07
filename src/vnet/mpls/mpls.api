@@ -142,7 +142,7 @@ autoreply define mpls_table_add_del
     @param mr_next_hop_out_label_stack - the next-hop output label stack, outer most first
     @param next_hop_via_label - The next-hop is a resolved via a local label
 */
-autoreply define mpls_route_add_del
+define mpls_route_add_del
 {
   u32 client_index;
   u32 context;
@@ -167,6 +167,13 @@ autoreply define mpls_route_add_del
   u32 mr_next_hop_table_id;
   u32 mr_next_hop_via_label;
   vl_api_fib_mpls_label_t mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+};
+
+define mpls_route_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 /** \brief Dump MPLS fib table
