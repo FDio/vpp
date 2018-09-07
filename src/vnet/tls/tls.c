@@ -714,6 +714,7 @@ tls_init (vlib_main_t * vm)
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
 
   if (vnet_application_attach (a))
     {
