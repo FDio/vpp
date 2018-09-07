@@ -75,18 +75,15 @@ extern void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
 
 extern int vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 					   u32 sw_if_index,
-					   ip6_address_t * a,
-					   u8 * link_layer_address,
+					   const ip6_address_t * a,
+					   const u8 * link_layer_address,
 					   uword n_bytes_link_layer_address,
 					   int is_static,
 					   int is_no_fib_entry);
 
 extern int vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 					     u32 sw_if_index,
-					     ip6_address_t * a,
-					     u8 * link_layer_address,
-					     uword
-					     n_bytes_link_layer_address);
+					     const ip6_address_t * a);
 
 extern int ip6_neighbor_proxy_add_del (u32 sw_if_index,
 				       ip6_address_t * addr, u8 is_add);
