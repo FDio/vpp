@@ -93,12 +93,6 @@ typedef struct udp_encap_t_
   fib_node_t ue_fib_node;
 
   /**
-   * The ID given by the user/client.
-   * This ID is used by the client for modifications.
-   */
-  u32 ue_id;
-
-  /**
    * Tracking information for the IP destination
    */
   fib_node_index_t ue_fib_entry_index;
@@ -110,8 +104,7 @@ typedef struct udp_encap_t_
   index_t ue_fib_index;
 } udp_encap_t;
 
-extern index_t udp_encap_add_and_lock (u32 id,
-				       fib_protocol_t proto,
+extern index_t udp_encap_add_and_lock (fib_protocol_t proto,
 				       index_t fib_index,
 				       const ip46_address_t * src_ip,
 				       const ip46_address_t * dst_ip,
@@ -119,12 +112,10 @@ extern index_t udp_encap_add_and_lock (u32 id,
 				       u16 dst_port,
 				       udp_encap_fixup_flags_t flags);
 
-extern index_t udp_encap_find (u32 id);
-extern void udp_encap_lock (u32 id);
-extern void udp_encap_unlock (u32 id);
+extern void udp_encap_lock (index_t uei);
+extern void udp_encap_unlock (index_t uei);
 extern u8 *format_udp_encap (u8 * s, va_list * args);
-extern void udp_encap_unlock_w_index (index_t uei);
-extern void udp_encap_contribute_forwarding (u32 id,
+extern void udp_encap_contribute_forwarding (index_t uei,
 					     dpo_proto_t proto,
 					     dpo_id_t * dpo);
 
