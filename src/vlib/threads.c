@@ -1466,9 +1466,21 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
 
   /* Enforce minimum barrier open time to minimize packet loss */
   ASSERT (vm->barrier_no_close_before <= (now + BARRIER_MINIMUM_OPEN_LIMIT));
-  while ((now = vlib_time_now (vm)) < vm->barrier_no_close_before)
-    ;
 
+  while (1)
+    {
+      now = vlib_time_now (vm);
+      /* Barrier hold-down timer expired? */
+      if (now >= vm->barrier_no_close_before)
+	break;
+      if ((vm->barrier_no_close_before - now)
+	  > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+	{
+	  clib_warning ("clock change: would have waited for %.4f seconds",
+			(vm->barrier_no_close_before - now));
+	  break;
+	}
+    }
   /* Record time of closure */
   t_open = now - vm->barrier_epoch;
   vm->barrier_epoch = now;
