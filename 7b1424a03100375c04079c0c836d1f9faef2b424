@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8eeb096c_4c1029ad",
+        "filename": "src/vnet/udp/udp_encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-09-07T21:16:07Z",
+      "side": 1,
+      "message": "In the spirit of a bit of hierarchy? Where would this fit?\nIs it an interface counter and could go under /if/ ?\nIs it a sort of tunnel so it could go under /if/tunnelX/udp-encap?",
+      "range": {
+        "startLine": 42,
+        "startChar": 2,
+        "endLine": 42,
+        "endChar": 36
+      },
+      "revId": "7b1424a03100375c04079c0c836d1f9faef2b424",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
