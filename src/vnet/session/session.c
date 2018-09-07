@@ -984,21 +984,23 @@ session_listen (stream_session_t * ls, session_endpoint_extended_t * sep)
 {
   transport_connection_t *tc;
   transport_endpoint_t *tep;
-  u32 tc_index;
+  u32 tc_index, s_index;
 
   /* Transport bind/listen */
   tep = session_endpoint_to_transport (sep);
-  tc_index = tp_vfts[sep->transport_proto].bind (ls->session_index, tep);
+  s_index = ls->session_index;
+  tc_index = tp_vfts[sep->transport_proto].bind (s_index, tep);
 
   if (tc_index == (u32) ~ 0)
     return -1;
 
   /* Attach transport to session */
+  ls = listen_session_get (s_index);
   ls->connection_index = tc_index;
 
   /* Add to the main lookup table after transport was initialized */
   tc = tp_vfts[sep->transport_proto].get_listener (tc_index);
-  session_lookup_add_connection (tc, ls->session_index);
+  session_lookup_add_connection (tc, s_index);
   return 0;
 }
 

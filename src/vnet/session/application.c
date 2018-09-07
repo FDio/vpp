@@ -762,10 +762,12 @@ application_start_listen (application_t * app,
 					sep_ext->is_ip4);
   ls = listen_session_new (0, sst);
   ls->app_index = app->app_index;
-
+  lh = listen_session_get_handle (ls);
   if (session_listen (ls, sep_ext))
     goto err;
 
+
+  ls = listen_session_get_from_handle (lh);
   app_listener = app_listener_alloc (app);
   ls->listener_db_index = app_listener->al_index;
 
@@ -779,7 +781,7 @@ application_start_listen (application_t * app,
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);
 
-  *res = listen_session_get_handle (ls);
+  *res = lh;
   return 0;
 
 err:
@@ -1924,9 +1926,10 @@ format_app_worker_listener (u8 * s, va_list * args)
 
   if (verbose)
     {
-      s = format (s, "%-40s%-25s%=10u%-15u%-15u%-10u", str, app_name,
-		  app_wrk->wrk_map_index, app->api_client_index, handle,
-		  sm_index);
+      char buf[32];
+      sprintf (buf, "%u(%u)", app_wrk->wrk_map_index, app_wrk->wrk_index);
+      s = format (s, "%-40s%-25s%=10s%-15u%-15u%-10u", str, app_name,
+		  buf, app->api_client_index, handle, sm_index);
     }
   else
     s = format (s, "%-40s%-25s%=10u", str, app_name, app_wrk->wrk_map_index);
