@@ -391,7 +391,6 @@ class VppTestCase(unittest.TestCase):
                 hook = PollHook(cls)
             cls.vapi.register_hook(hook)
             cls.sleep(0.1, "after vpp startup, before initial poll")
-            cls.statistics = VPPStats(socketname=cls.tempdir+'/stats.sock')
             try:
                 hook.poll_vpp()
             except VppDiedError:
@@ -412,6 +411,14 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
+            try:
+                cls.statistics = VPPStats(socketname=cls.tempdir+'/stats.sock')
+            except Exception:
+                cls.logger.critical(
+                    "Could not connect to VPP statistics segment, "
+                    " output to standard error for possible cause")
+                raise
+
         except Exception:
             try:
                 cls.quit()

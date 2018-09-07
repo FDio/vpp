@@ -114,7 +114,8 @@ class VPPStats:
         self.api = ffi.dlopen('libvppapiclient.so')
         rv = self.api.stat_segment_connect(socketname)
         if rv != 0:
-            raise IOError()
+            raise IOError('Cannot connect to VPP stat socket {}'.
+                          format(socketname))
 
     def heartbeat(self):
         return self.api.stat_segment_heartbeat()
