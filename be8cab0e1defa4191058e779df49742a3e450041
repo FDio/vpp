@@ -46,6 +46,30 @@
       "revId": "be8cab0e1defa4191058e779df49742a3e450041",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3bc1561_ac78653c",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-07T10:08:34Z",
+      "side": 1,
+      "message": "These are aligned to virtio specifications. Feature bits represent features supported in host as well as in guest. I am not sure if full set of features are supported in vpp vhost-user driver especially checksum offload which requires for TSO for both guest and host.\nIs there any particular feature in the above list do you want to be in VPP? and Why?",
+      "parentUuid": "1e992afc_c274650c",
+      "range": {
+        "startLine": 20,
+        "startChar": 5,
+        "endLine": 20,
+        "endChar": 19
+      },
+      "revId": "be8cab0e1defa4191058e779df49742a3e450041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
