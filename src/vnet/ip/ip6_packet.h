@@ -93,6 +93,8 @@ typedef CLIB_PACKED (union {
 #define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
 #define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
                                          && ((a1)->as_u64[1] == (a2)->as_u64[1]))
+#define ip46_address_initializer {{{ 0 }}}
+
 static_always_inline void
 ip46_address_copy (ip46_address_t * dst, const ip46_address_t * src)
 {
@@ -100,7 +102,12 @@ ip46_address_copy (ip46_address_t * dst, const ip46_address_t * src)
   dst->as_u64[1] = src->as_u64[1];
 }
 
-#define ip46_address_initializer {{{ 0 }}}
+static_always_inline void
+ip46_address_set_ip6 (ip46_address_t * dst, const ip6_address_t * src)
+{
+  dst->as_u64[0] = src->as_u64[0];
+  dst->as_u64[1] = src->as_u64[1];
+}
 
 always_inline ip46_address_t
 to_ip46 (u32 is_ipv6, u8 * buf)

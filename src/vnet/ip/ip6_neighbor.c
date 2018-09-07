@@ -414,8 +414,9 @@ static void ip6_neighbor_set_unset_rpc_callback
 static void set_unset_ip6_neighbor_rpc
   (vlib_main_t * vm,
    u32 sw_if_index,
-   ip6_address_t * a, u8 * link_layer_address, int is_add, int is_static,
-   int is_no_fib_entry)
+   const ip6_address_t * a,
+   const u8 * link_layer_address,
+   int is_add, int is_static, int is_no_fib_entry)
 {
   ip6_neighbor_set_unset_rpc_args_t args;
   void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
@@ -772,8 +773,8 @@ force_reuse_neighbor_entry (void)
 int
 vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 				u32 sw_if_index,
-				ip6_address_t * a,
-				u8 * link_layer_address,
+				const ip6_address_t * a,
+				const u8 * link_layer_address,
 				uword n_bytes_link_layer_address,
 				int is_static, int is_no_fib_entry)
 {
@@ -895,7 +896,7 @@ check_customers:
 	  pool_put (nm->pending_resolutions, pr);
 	}
 
-      mhash_unset (&nm->pending_resolutions_by_address, a, 0);
+      mhash_unset (&nm->pending_resolutions_by_address, (void *) a, 0);
     }
 
   /* Customer(s) requesting ND event for this address? */
@@ -914,7 +915,8 @@ check_customers:
 	  /* Call the user's data callback, return 1 to suppress dup events */
 	  if (fp)
 	    rv =
-	      (*fp) (mc->data, link_layer_address, sw_if_index, &ip6a_zero);
+	      (*fp) (mc->data, (u8 *) link_layer_address, sw_if_index,
+		     &ip6a_zero);
 	  /*
 	   * Signal the resolver process, as long as the user
 	   * says they want to be notified
@@ -931,10 +933,7 @@ check_customers:
 
 int
 vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
-				  u32 sw_if_index,
-				  ip6_address_t * a,
-				  u8 * link_layer_address,
-				  uword n_bytes_link_layer_address)
+				  u32 sw_if_index, const ip6_address_t * a)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   ip6_neighbor_key_t k;
@@ -944,7 +943,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 
   if (vlib_get_thread_index ())
     {
-      set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
+      set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, NULL,
 				  0 /* unset */ , 0, 0);
       return 0;
     }
@@ -983,8 +982,7 @@ static void ip6_neighbor_set_unset_rpc_callback
 				    a->link_layer_address, 6, a->is_static,
 				    a->is_no_fib_entry);
   else
-    vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr,
-				      a->link_layer_address, 6);
+    vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr);
 }
 
 static int
@@ -1122,8 +1120,7 @@ set_ip6_neighbor (vlib_main_t * vm,
 				    mac_address, sizeof (mac_address),
 				    is_static, is_no_fib_entry);
   else
-    vnet_unset_ip6_ethernet_neighbor (vm, sw_if_index, &addr,
-				      mac_address, sizeof (mac_address));
+    vnet_unset_ip6_ethernet_neighbor (vm, sw_if_index, &addr);
   return 0;
 }
 
@@ -4928,8 +4925,7 @@ ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, u8 is_del)
 				   sw_if_index,
 				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
       /* flush the ND cache of this address if it's there */
-      vnet_unset_ip6_ethernet_neighbor (vlib_get_main (),
-					sw_if_index, addr, NULL, 0);
+      vnet_unset_ip6_ethernet_neighbor (vlib_get_main (), sw_if_index, addr);
     }
   else
     {
