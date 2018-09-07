@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c656741e_4dcc6afb",
+        "filename": "docs/overview/features/index.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-07T09:40:32Z",
+      "side": 1,
+      "message": "Wrap long lines please.",
+      "range": {
+        "startLine": 7,
+        "startChar": 72,
+        "endLine": 7,
+        "endChar": 73
+      },
+      "revId": "d9668e7153d92cfeee3eee08848426f762aa02a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b73c51ca_c3913d47",
+        "filename": "docs/overview/features/l4.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-07T09:40:32Z",
+      "side": 1,
+      "message": "Do not introduce trailing spaces please.",
+      "range": {
+        "startLine": 9,
+        "startChar": 10,
+        "endLine": 9,
+        "endChar": 11
+      },
+      "revId": "d9668e7153d92cfeee3eee08848426f762aa02a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
