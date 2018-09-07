@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "339b2e08_b3fad2ed",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-07T10:21:12Z",
+      "side": 1,
+      "message": "how about instead of passing an array where first element is ip4 and second is ip6 address just take two variables? having it as a multidimensional array and remembering which index is which is ugly and hard to maintain",
+      "revId": "1c524bfef5ec87381317efbcbb352617fa61993f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "61748c20_808e5f79",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-07T10:21:12Z",
+      "side": 1,
+      "message": "could we make these compare functions member functions of the appropriate objects?\n\nI think that\n\nx \u003d VppIpAddress(..)\ny \u003d \u003c..\u003e\n\nx \u003d\u003d y\n\nreads better than\n\ncompare_ip_address(x, y)\n\nalso, the former has code \"closer\" to data structure\n\nthis is done by implementing __eq__, __ne__ (or __cmp__), etc.\n\nplease take a look at \n\nhttps://docs.python.org/2/reference/datamodel.html#object.__eq__",
+      "range": {
+        "startLine": 18,
+        "startChar": 4,
+        "endLine": 18,
+        "endChar": 28
+      },
+      "revId": "1c524bfef5ec87381317efbcbb352617fa61993f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2e1c4a8_e0267aff",
+        "filename": "test/vpp_ip_route.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-07T10:21:12Z",
+      "side": 1,
+      "message": "could this also be a member function?",
+      "revId": "1c524bfef5ec87381317efbcbb352617fa61993f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
