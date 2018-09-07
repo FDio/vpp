@@ -26,7 +26,7 @@ function(vpp_generate_api_c_header file)
   )
 endfunction()
 
-function(vpp_generate_api_json_header file dir)
+function(vpp_generate_api_json_header file dir component)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.json)
   get_filename_component(output_dir ${output_name} DIRECTORY)
   add_custom_command (OUTPUT ${output_name}
@@ -36,7 +36,11 @@ function(vpp_generate_api_json_header file dir)
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )
-  install(FILES ${output_name} DESTINATION share/vpp/api/${dir}/)
+  install(
+    FILES ${output_name}
+    DESTINATION share/vpp/api/${dir}/
+    COMPONENT ${component}
+  )
 endfunction()
 
 ##############################################################################
@@ -45,9 +49,9 @@ endfunction()
 #  @param dir  - the install directory under ROOT/share/vpp/api to place the
 #                generated .json file
 ##############################################################################
-function(vpp_generate_api_header file dir)
+function(vpp_generate_api_header file dir component)
     vpp_generate_api_c_header (${file})
-    vpp_generate_api_json_header (${file} ${dir})
+    vpp_generate_api_json_header (${file} ${dir} ${component})
 endfunction()
 
 function(vpp_add_api_files name)
@@ -55,7 +59,7 @@ function(vpp_add_api_files name)
   set(target ${name}_api_headers)
   file(RELATIVE_PATH rpath ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
   foreach(file ${ARGN})
-    vpp_generate_api_header (${file} core)
+    vpp_generate_api_header (${file} core vpp)
     list(APPEND header_files ${file}.h ${file}.json)
     set_property(GLOBAL APPEND PROPERTY VPP_API_FILES ${rpath}/${file})
   endforeach()

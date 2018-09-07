@@ -22,7 +22,7 @@ add_vpp_library(vatplugin
 ##############################################################################
 # vpp_api_test
 ##############################################################################
-add_vpp_executable(vpp_api_test ENABLE_EXPORTS
+add_vpp_executable(vpp_api_test ENABLE_EXPORTS NO_INSTALL
   SOURCES
   api_format.c
   main.c
@@ -41,7 +41,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
 ##############################################################################
 #  vpp_json_test
 ##############################################################################
-add_vpp_executable(vpp_json_test ENABLE_EXPORTS
+add_vpp_executable(vpp_json_test ENABLE_EXPORTS NO_INSTALL
   SOURCES json_format.c json_test.c
   LINK_LIBRARIES vppinfra m
 )
@@ -49,7 +49,11 @@ add_vpp_executable(vpp_json_test ENABLE_EXPORTS
 ##############################################################################
 # vat headers
 ##############################################################################
-install(FILES vat.h json_format.h DESTINATION include/vat)
+install(
+  FILES vat.h json_format.h
+  DESTINATION include/vat
+  COMPONENT vpp-dev
+)
 
 ##############################################################################
 # restart

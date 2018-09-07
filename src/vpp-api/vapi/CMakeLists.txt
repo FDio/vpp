@@ -33,7 +33,11 @@ foreach(f ${VPP_API_FILES})
     DEPENDS ${input} vapi_c_gen.py vapi_json_parser.py api_headers
     COMMENT "Generating VAPI C header ${output}"
   )
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${output} DESTINATION include/vapi)
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${output}
+    DESTINATION include/vapi
+    COMPONENT vpp-dev
+  )
   list(APPEND VAPICLIENT_API_CPP_HEADERS ${output})
 
   # C++ VAPI Headers
@@ -46,7 +50,11 @@ foreach(f ${VPP_API_FILES})
     DEPENDS ${input} vapi_cpp_gen.py vapi_json_parser.py api_headers
     COMMENT "Generating VAPI C++ header ${output}"
   )
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${output} DESTINATION include/vapi)
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${output}
+    DESTINATION include/vapi
+    COMPONENT vpp-dev
+  )
   list(APPEND VAPICLIENT_API_CPP_HEADERS ${output})
 endforeach ()
 
@@ -73,4 +81,5 @@ install(
   vapi_internal.h
 
   DESTINATION include/vapi
+  COMPONENT vpp-dev
 )
