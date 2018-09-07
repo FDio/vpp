@@ -59,7 +59,12 @@ replicate_t *replicate_pool;
 /**
  * The one instance of replicate main
  */
-replicate_main_t replicate_main;
+replicate_main_t replicate_main = {
+    .repm_counters = {
+        .name = "mroutes",
+        .stat_segment_name = "/net/mroute",
+    },
+};
 
 static inline index_t
 replicate_get_index (const replicate_t *rep)

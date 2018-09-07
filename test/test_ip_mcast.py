@@ -273,6 +273,9 @@ class TestIPMcast(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
+        self.assertEqual(route_1_1_1_1_232_1_1_1.get_stats()['packets'],
+                         len(tx))
+
         # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
@@ -298,6 +301,9 @@ class TestIPMcast(VppTestCase):
         # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
+
+        self.assertEqual(route_1_1_1_1_232_1_1_1.get_stats()['packets'],
+                         2*len(tx))
 
         # no replications on Pg0
         self.pg0.assert_nothing_captured(
@@ -339,6 +345,7 @@ class TestIPMcast(VppTestCase):
 
         # We expect replications on Pg1 only
         self.verify_capture_ip4(self.pg1, tx)
+        self.assertEqual(route_232.get_stats()['packets'], len(tx))
 
         # no replications on Pg0, Pg2 not Pg3
         self.pg0.assert_nothing_captured(

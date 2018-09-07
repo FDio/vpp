@@ -362,18 +362,19 @@ class VppIpMRoute(VppObject):
 
     def add_vpp_config(self):
         for path in self.paths:
-            self._test.vapi.ip_mroute_add_del(self.src_addr,
-                                              self.grp_addr,
-                                              self.grp_addr_len,
-                                              self.e_flags,
-                                              path.proto,
-                                              path.nh_itf,
-                                              path.nh_addr,
-                                              path.nh_i_flags,
-                                              bier_imp=path.bier_imp,
-                                              rpf_id=self.rpf_id,
-                                              table_id=self.table_id,
-                                              is_ipv6=self.is_ip6)
+            r = self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                                  self.grp_addr,
+                                                  self.grp_addr_len,
+                                                  self.e_flags,
+                                                  path.proto,
+                                                  path.nh_itf,
+                                                  path.nh_addr,
+                                                  path.nh_i_flags,
+                                                  bier_imp=path.bier_imp,
+                                                  rpf_id=self.rpf_id,
+                                                  table_id=self.table_id,
+                                                  is_ipv6=self.is_ip6)
+            self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -458,6 +459,10 @@ class VppIpMRoute(VppObject):
                        inet_ntop(AF_INET, self.src_addr),
                        inet_ntop(AF_INET, self.grp_addr),
                        self.grp_addr_len))
+
+    def get_stats(self):
+        c = self._test.statistics.get_counter("/net/mroute")
+        return c[0][self.stats_index]
 
 
 class VppMFibSignal(object):
