@@ -2154,11 +2154,9 @@ udp_encap_stats_walk_cb (index_t uei, void *arg)
   vl_api_udp_encap_counter_t *stat;
   udp_encap_t *ue;
 
-  ue = udp_encap_get (uei);
   vec_add2 (ctx->stats, stat, 1);
 
-  stat->id = ue->ue_id;
-  udp_encap_get_stats (ue->ue_id, &stat->packets, &stat->bytes);
+  udp_encap_get_stats (uei, &stat->packets, &stat->bytes);
 
   return (WALK_CONTINUE);
 }

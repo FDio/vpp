@@ -903,7 +903,7 @@ fib_path_unresolve (fib_path_t *path)
         adj_unlock(path->fp_dpo.dpoi_index);
         break;
     case FIB_PATH_TYPE_UDP_ENCAP:
-	udp_encap_unlock_w_index(path->fp_dpo.dpoi_index);
+	udp_encap_unlock(path->fp_dpo.dpoi_index);
         break;
     case FIB_PATH_TYPE_EXCLUSIVE:
 	dpo_reset(&path->exclusive.fp_ex_dpo);
