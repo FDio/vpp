@@ -46,6 +46,7 @@ foreach(file ${VPP_API_FILES})
   install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
     DESTINATION include/vpp/${dir}
+    COMPONENT vpp-dev
   )
 endforeach()
 

@@ -19,7 +19,11 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/vlib/config.h.in
   ${CMAKE_BINARY_DIR}/vlib/config.h
 )
-install(FILES ${CMAKE_BINARY_DIR}/vlib/config.h DESTINATION include/vlib)
+install(
+  FILES ${CMAKE_BINARY_DIR}/vlib/config.h
+  DESTINATION include/vlib
+  COMPONENT vpp-dev
+)
 
 ##############################################################################
 # vlib shared library

@@ -76,6 +76,10 @@ endmacro()
 function (add_vpp_headers path)
   foreach(file ${ARGN})
     get_filename_component(dir ${file} DIRECTORY)
-    install(FILES ${file} DESTINATION include/${path}/${dir})
+    install(
+      FILES ${file}
+      DESTINATION include/${path}/${dir}
+      COMPONENT vpp-dev
+    )
   endforeach()
 endfunction()

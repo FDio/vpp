@@ -20,4 +20,6 @@ install(
 
   DESTINATION
   include/vlibapi
+
+  COMPONENT vpp-dev
 )
