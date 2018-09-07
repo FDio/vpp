@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "f41dcffc_ceb66485",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-07T06:44:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8aa83a09_3a1c3044",
+      "range": {
+        "startLine": 7,
+        "startChar": 20,
+        "endLine": 7,
+        "endChar": 21
+      },
+      "revId": "dd95f4d71d0e1715db8a24507a6ac47f6aa77f3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7b1f3f64_1eeaaa45",
         "filename": "src/vnet/l2/l2_input.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-09-06T22:03:18Z",
       "side": 1,
       "message": "Instead of loop through all BDs, it is easier to find the BD of the interface through calling l2input_intf_config(sw_if_index) and then check if it is BVI of the BD.",
+      "range": {
+        "startLine": 549,
+        "startChar": 39,
+        "endLine": 549,
+        "endChar": 49
+      },
+      "revId": "dd95f4d71d0e1715db8a24507a6ac47f6aa77f3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "af227fa7_f64c1b9d",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-07T06:44:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b1f3f64_1eeaaa45",
       "range": {
         "startLine": 549,
         "startChar": 39,
