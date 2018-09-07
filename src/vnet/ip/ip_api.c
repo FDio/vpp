@@ -653,48 +653,31 @@ static void
 vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 				      vlib_main_t * vm)
 {
+  ip46_address_t ip = ip46_address_initializer;
   vl_api_ip_neighbor_add_del_reply_t *rmp;
-  vnet_main_t *vnm = vnet_get_main ();
+  ip_neighbor_flags_t flags;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
   stats_dslock_with_hint (1 /* release hint */ , 7 /* tag */ );
 
-  /*
-   * there's no validation here of the ND/ARP entry being added.
-   * The expectation is that the FIB will ensure that nothing bad
-   * will come of adding bogus entries.
-   */
+  flags = IP_NEIGHBOR_FLAG_NODE;
+  if (mp->is_static)
+    flags |= IP_NEIGHBOR_FLAG_STATIC;
+  if (mp->is_no_adj_fib)
+    flags |= IP_NEIGHBOR_FLAG_NO_ADJ_FIB;
+
   if (mp->is_ipv6)
-    {
-      if (mp->is_add)
-	rv = vnet_set_ip6_ethernet_neighbor
-	  (vm, ntohl (mp->sw_if_index),
-	   (ip6_address_t *) (mp->dst_address),
-	   mp->mac_address, sizeof (mp->mac_address), mp->is_static,
-	   mp->is_no_adj_fib);
-      else
-	rv = vnet_unset_ip6_ethernet_neighbor
-	  (vm, ntohl (mp->sw_if_index),
-	   (ip6_address_t *) (mp->dst_address),
-	   mp->mac_address, sizeof (mp->mac_address));
-    }
+    clib_memcpy (&ip.ip6, mp->dst_address, 16);
   else
-    {
-      ethernet_arp_ip4_over_ethernet_address_t a;
+    clib_memcpy (&ip.ip4, mp->dst_address, 4);
 
-      clib_memcpy (&a.ethernet, mp->mac_address, 6);
-      clib_memcpy (&a.ip4, mp->dst_address, 4);
-
-      if (mp->is_add)
-	rv = vnet_arp_set_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index),
-					     &a, mp->is_static,
-					     mp->is_no_adj_fib);
-      else
-	rv =
-	  vnet_arp_unset_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index), &a);
-    }
+  if (mp->is_add)
+    rv = ip_neighbor_add (&ip, mp->is_ipv6, mp->mac_address,
+			  ntohl (mp->sw_if_index), flags);
+  else
+    rv = ip_neighbor_del (&ip, mp->is_ipv6, ntohl (mp->sw_if_index));
 
   stats_dsunlock ();
 

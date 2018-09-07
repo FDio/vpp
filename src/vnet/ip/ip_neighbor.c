@@ -47,6 +47,69 @@ typedef struct
 
 static ip_neighbor_scan_config_t ip_neighbor_scan_conf;
 
+int
+ip_neighbor_add (const ip46_address_t * ip,
+		 u8 is_ip6,
+		 const u8 * mac, u32 sw_if_index, ip_neighbor_flags_t flags)
+{
+  int rv;
+
+  /*
+   * there's no validation here of the ND/ARP entry being added.
+   * The expectation is that the FIB will ensure that nothing bad
+   * will come of adding bogus entries.
+   */
+  if (is_ip6)
+    {
+      rv = vnet_set_ip6_ethernet_neighbor (vlib_get_main (),
+					   sw_if_index, &ip->ip6, mac, 6,
+					   (flags & IP_NEIGHBOR_FLAG_STATIC),
+					   (flags &
+					    IP_NEIGHBOR_FLAG_NO_ADJ_FIB));
+
+    }
+  else
+    {
+      ethernet_arp_ip4_over_ethernet_address_t a = {
+	.ip4 = ip->ip4,
+      };
+
+      clib_memcpy (&a.ethernet, mac, 6);
+
+      rv = vnet_arp_set_ip4_over_ethernet (vnet_get_main (),
+					   sw_if_index,
+					   &a,
+					   (flags & IP_NEIGHBOR_FLAG_STATIC),
+					   (flags &
+					    IP_NEIGHBOR_FLAG_NO_ADJ_FIB));
+    }
+
+  return (rv);
+}
+
+int
+ip_neighbor_del (const ip46_address_t * ip, u8 is_ip6, u32 sw_if_index)
+{
+  int rv;
+
+  if (is_ip6)
+    {
+      rv = vnet_unset_ip6_ethernet_neighbor (vlib_get_main (),
+					     sw_if_index, &ip->ip6);
+    }
+  else
+    {
+      ethernet_arp_ip4_over_ethernet_address_t a = {
+	.ip4 = ip->ip4,
+      };
+
+      rv =
+	vnet_arp_unset_ip4_over_ethernet (vnet_get_main (), sw_if_index, &a);
+    }
+
+  return (rv);
+}
+
 void
 ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg)
 {
@@ -134,8 +197,7 @@ ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
 	  else
 	    {
 	      vnet_unset_ip6_ethernet_neighbor
-		(vm, n6->key.sw_if_index, &n6->key.ip6_address,
-		 n6->link_layer_address, 6);
+		(vm, n6->key.sw_if_index, &n6->key.ip6_address);
 	    }
 	}
       else if (delta >= cfg->scan_interval)

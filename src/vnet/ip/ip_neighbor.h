@@ -35,6 +35,21 @@ typedef struct
 
 void ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg);
 
+typedef enum ip_neighbor_flags_t_
+{
+  IP_NEIGHBOR_FLAG_NODE = 0,
+  IP_NEIGHBOR_FLAG_STATIC = (1 << 0),
+  IP_NEIGHBOR_FLAG_NO_ADJ_FIB = (1 << 1),
+} ip_neighbor_flags_t;
+
+extern int ip_neighbor_add (const ip46_address_t * ip,
+			    u8 is_ip6,
+			    const u8 * mac,
+			    u32 sw_if_index, ip_neighbor_flags_t flags);
+
+extern int ip_neighbor_del (const ip46_address_t * ip,
+			    u8 is_ip6, u32 sw_if_index);
+
 #endif /* included_ip_neighbor_h */
 
 /*
