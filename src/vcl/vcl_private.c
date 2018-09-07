@@ -224,7 +224,6 @@ static void
 vcl_worker_cleanup (void *arg)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-
   VDBG (0, "cleaning up worker %u", wrk->wrk_index);
   vcl_send_app_worker_add_del (0 /* is_add */ );
   close (wrk->mqs_epfd);
@@ -246,6 +245,13 @@ vcl_worker_alloc_and_init ()
   if (vcl_get_worker_index () != ~0)
     return 0;
 
+  if (pool_elts (vcm->workers) == vcm->cfg.max_workers)
+    {
+      VDBG (0, "max-workers %u limit reached", vcm->cfg.max_workers);
+      return 0;
+    }
+
+  clib_spinlock_lock (&vcm->workers_lock);
   wrk = vcl_worker_alloc ();
   vcl_set_worker_index (wrk->wrk_index);
 
@@ -269,10 +275,11 @@ vcl_worker_alloc_and_init ()
   vec_reset_length (wrk->mq_msg_vector);
 
   if (wrk->wrk_index == 0)
-    return wrk;
+    {
+      clib_spinlock_unlock (&vcm->workers_lock);
+      return wrk;
+    }
 
-  while (vcm->app_state == STATE_APP_ADDING_WORKER)
-    ;
   vcm->app_state = STATE_APP_ADDING_WORKER;
   vcl_send_app_worker_add_del (1 /* is_add */ );
   if (vcl_wait_for_app_state_change (STATE_APP_READY))
@@ -283,6 +290,8 @@ vcl_worker_alloc_and_init ()
 
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup))
     clib_warning ("failed to add pthread cleanup function");
+
+  clib_spinlock_unlock (&vcm->workers_lock);
 
   VDBG (0, "added worker %u", wrk->wrk_index);
 

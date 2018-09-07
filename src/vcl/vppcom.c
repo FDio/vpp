@@ -700,6 +700,7 @@ vppcom_app_create (char *app_name)
       svm_fifo_segment_main_init (vcl_cfg->segment_baseva,
 				  20 /* timeout in secs */ );
       pool_init_fixed (vcm->workers, vcl_cfg->max_workers);
+      clib_spinlock_init (&vcm->workers_lock);
       vcl_worker_alloc_and_init ();
     }
 

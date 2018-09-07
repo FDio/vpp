@@ -283,6 +283,9 @@ typedef struct vppcom_main_t_
   /** Workers */
   vcl_worker_t *workers;
 
+  /** Lock to protect worker registrations */
+  clib_spinlock_t workers_lock;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
