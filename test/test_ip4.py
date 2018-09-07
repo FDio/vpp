@@ -552,7 +552,7 @@ class TestIPNull(VppTestCase):
         super(TestIPNull, self).setUp()
 
         # create 2 pg interfaces
-        self.create_pg_interfaces(range(1))
+        self.create_pg_interfaces(range(2))
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -623,6 +623,32 @@ class TestIPNull(VppTestCase):
         self.assertEqual(icmpcodes[icmp.type][icmp.code], "host-prohibited")
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, "10.0.0.2")
+
+    def test_ip_drop(self):
+        """ IP Drop Routes """
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst="1.1.1.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        r1 = VppIpRoute(self, "1.1.1.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      self.pg1.sw_if_index)])
+        r1.add_vpp_config()
+
+        rx = self.send_and_expect(self.pg0, p * 65, self.pg1)
+
+        #
+        # insert a more specific as a drop
+        #
+        r2 = VppIpRoute(self, "1.1.1.1", 32, [], is_drop=1)
+        r2.add_vpp_config()
+
+        self.send_and_assert_no_replies(self.pg0, p * 65, "Drop Route")
+        r2.remove_vpp_config()
+        rx = self.send_and_expect(self.pg0, p * 65, self.pg1)
 
 
 class TestIPDisabled(VppTestCase):
