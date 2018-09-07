@@ -197,6 +197,7 @@ clib_time_verify_frequency (clib_time_t * c)
   f64 dtr = now_reference - c->last_verify_reference_time;
   f64 dtr_max;
   u64 dtc = c->last_cpu_time - c->last_verify_cpu_time;
+  f64 new_clocks_per_second, delta;
   f64 round_units = 100e5;
 
   c->last_verify_cpu_time = c->last_cpu_time;
@@ -213,6 +214,25 @@ clib_time_verify_frequency (clib_time_t * c)
 
   if (dtr <= 0.0 || dtr > dtr_max)
     {
+      c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second;
+      return;
+    }
+
+  /*
+   * Reject large frequency changes, another consequence of
+   * system clock changes particularly with old kernels.
+   */
+  new_clocks_per_second =
+    flt_round_nearest ((f64) dtc / (dtr * round_units)) * round_units;
+
+  delta = new_clocks_per_second - c->clocks_per_second;
+  if (delta < 0.0)
+    delta = -delta;
+
+  if (PREDICT_FALSE ((delta / c->clocks_per_second) > .01))
+    {
+      clib_warning ("Rejecting large frequency change of %.2f%%",
+		    (delta / c->clocks_per_second) * 100.0);
       c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second;
       return;
     }
