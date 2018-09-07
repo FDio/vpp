@@ -1495,6 +1495,16 @@ fib_entry_set_flow_hash_config (fib_node_index_t fib_entry_index,
     }
 }
 
+u32
+fib_entry_get_stats_index (fib_node_index_t fib_entry_index)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    return (fib_entry->fe_lb.dpoi_index);
+}
+
 static int
 fib_ip4_address_compare (const ip4_address_t * a1,
                          const ip4_address_t * a2)

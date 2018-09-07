@@ -1,5 +1,6 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -70,6 +71,7 @@ manual_endian manual_print define ip_fib_details
   u8  address_length;
   u8  address[4];
   u32 count;
+  u32 stats_index;
   vl_api_fib_path_t path[count];
 };
 
@@ -97,6 +99,7 @@ manual_endian manual_print define ip6_fib_details
   u8  address_length;
   u8  address[16];
   u32 count;
+  u32 stats_index;
   vl_api_fib_path_t path[count];
 };
 
@@ -389,7 +392,7 @@ autoreply define sw_interface_ip6_set_link_local_address
     @param next_hop_out_label_stack - the next-hop output label stack, outer most first
     @param next_hop_via_label - The next-hop is a resolved via a local label
 */
-autoreply define ip_add_del_route
+define ip_add_del_route
 {
   u32 client_index;
   u32 context;
@@ -420,6 +423,13 @@ autoreply define ip_add_del_route
   u8 next_hop_n_out_labels;
   u32 next_hop_via_label;
   vl_api_fib_mpls_label_t next_hop_out_label_stack[next_hop_n_out_labels];
+};
+
+define ip_add_del_route_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 /** \brief Add / del route request

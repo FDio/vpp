@@ -596,6 +596,17 @@ extern void fib_table_entry_delete_index(fib_node_index_t entry_index,
 
 /**
  * @brief
+ *  Return the stats index for a FIB entry
+ * @param fib_index
+ *  The table's FIB index
+ * @param prefix
+ *  The entry's prefix's
+ */
+extern u32 fib_table_entry_get_stats_index(u32 fib_index,
+                                           const fib_prefix_t *prefix);
+
+/**
+ * @brief
  *  Flush all entries from a table for the source
  *
  * @param fib_index
