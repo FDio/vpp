@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13d154a6_cb342bc5",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 18
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-07T08:35:35Z",
+      "side": 1,
+      "message": "instead of explaining what hyperscan library is i would like to see explanation what DPI plugin does, i.e. sample use case...",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 41
+      },
+      "revId": "f57431d14bf82a75f222bf95cb0c6ec125c5fa82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e20ae063_15c1fc1c",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 18
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-07T08:35:35Z",
+      "side": 1,
+      "message": "why hs if this is dpi plugin?",
+      "range": {
+        "startLine": 42,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 3
+      },
+      "revId": "f57431d14bf82a75f222bf95cb0c6ec125c5fa82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
