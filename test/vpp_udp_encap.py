@@ -25,14 +25,12 @@ class VppUdpEncap(VppObject):
 
     def __init__(self,
                  test,
-                 id,
                  src_ip,
                  dst_ip,
                  src_port,
                  dst_port,
                  table_id=0):
         self._test = test
-        self.id = id
         self.table_id = table_id
         self.src_ip_s = src_ip
         self.dst_ip_s = dst_ip
@@ -42,13 +40,13 @@ class VppUdpEncap(VppObject):
         self.dst_port = dst_port
 
     def add_vpp_config(self):
-        self._test.vapi.udp_encap_add(
-            self.id,
+        r = self._test.vapi.udp_encap_add(
             self.src_ip.encode(),
             self.dst_ip.encode(),
             self.src_port,
             self.dst_port,
             self.table_id)
+        self.id = r.id
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -62,3 +60,7 @@ class VppUdpEncap(VppObject):
 
     def object_id(self):
         return ("udp-encap-%d" % self.id)
+
+    def get_stats(self):
+        c = self._test.statistics.get_counter("/net/udp-encap")
+        return c[0][self.id]

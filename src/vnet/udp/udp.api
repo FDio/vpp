@@ -33,16 +33,16 @@ import "vnet/ip/ip_types.api";
  * @param src_ip - Encap source address
  * @param dst_port - Encap destination port
  * @param src_port - Encap source port
- * @param id - The ID assigned to this encap object by the caller
+ * @param id - VPP assigned id; ignored in add message, set in dump
  */
 typedef udp_encap
 {
-  u32 id;
   u32 table_id;
   u16 src_port;
   u16 dst_port;
   vl_api_address_t src_ip;
   vl_api_address_t dst_ip;
+  u32 id;
 };
 
 /**
@@ -51,11 +51,25 @@ typedef udp_encap
  * @param context - sender context, to match reply w/ request
  * @param udp_encap - UDP encap description
  */
-autoreply define udp_encap_add
+define udp_encap_add
 {
   u32 client_index;
   u32 context;
   vl_api_udp_encap_t udp_encap;
+};
+
+/**
+ * @brief Add UDP encap reply
+ * @param context - sender context, to match reply w/ request
+ * @param retval - success/failure return value
+ * @param id - The ID of the encap object that should be used on delete
+ *             and when reading stats from the stats segment.
+ */
+define udp_encap_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 id;
 };
 
 /**

@@ -86,7 +86,7 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 
   mp->udp_encap.table_id =
     htonl (fib_table_get_table_id (ue->ue_fib_index, ue->ue_ip_proto));
-  mp->udp_encap.id = htonl (ue->ue_id);
+  mp->udp_encap.id = htonl (ue - udp_encap_pool);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -115,12 +115,12 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
 {
   vl_api_udp_encap_add_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
-  u32 fib_index, table_id, ue_id;
+  u32 fib_index, table_id;
   fib_protocol_t fproto;
   ip46_type_t itype;
+  index_t uei;
   int rv = 0;
 
-  ue_id = ntohl (mp->udp_encap.id);
   table_id = ntohl (mp->udp_encap.table_id);
 
   itype = ip_address_decode (&mp->udp_encap.src_ip, &src_ip);
@@ -134,14 +134,20 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
       goto done;
     }
 
-  udp_encap_add_and_lock (ue_id, fproto, fib_index,
-			  &src_ip, &dst_ip,
-			  ntohs (mp->udp_encap.src_port),
-			  ntohs (mp->udp_encap.dst_port),
-			  UDP_ENCAP_FIXUP_NONE);
+  uei = udp_encap_add_and_lock (fproto, fib_index,
+				&src_ip, &dst_ip,
+				ntohs (mp->udp_encap.src_port),
+				ntohs (mp->udp_encap.dst_port),
+				UDP_ENCAP_FIXUP_NONE);
 
 done:
-  REPLY_MACRO (VL_API_UDP_ENCAP_ADD_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_UDP_ENCAP_ADD_REPLY,
+  ({
+    rmp->id = ntohl (uei);
+  }));
+  /* *INDENT-ON* */
+
 }
 
 static void
