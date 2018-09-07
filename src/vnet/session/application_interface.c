@@ -130,11 +130,25 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 }
 
 static void
-session_endpoint_update_for_app (session_endpoint_t * sep,
+session_endpoint_update_for_app (session_endpoint_extended_t * sep,
 				 application_t * app)
 {
   app_namespace_t *app_ns;
-  app_ns = app_namespace_get (app->ns_index);
+  u32 ns_index;
+
+  ns_index = app->ns_index;
+
+  /* App is a transport proto, so fetch the calling app's ns */
+  if (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP)
+    {
+      app_worker_t *owner_wrk;
+      application_t *owner_app;
+
+      owner_wrk = app_worker_get (sep->app_wrk_index);
+      owner_app = application_get (owner_wrk->app_index);
+      ns_index = owner_app->ns_index;
+    }
+  app_ns = app_namespace_get (ns_index);
   if (app_ns)
     {
       /* Ask transport and network to bind to/connect using local interface
@@ -164,7 +178,7 @@ vnet_bind_inline (vnet_bind_args_t * a)
   app_wrk = application_get_worker (app, a->wrk_map_index);
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
-  session_endpoint_update_for_app (&a->sep, app);
+  session_endpoint_update_for_app (&a->sep_ext, app);
   if (!session_endpoint_in_ns (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
@@ -257,7 +271,7 @@ application_connect (vnet_connect_args_t * a)
     return VNET_API_ERROR_INVALID_VALUE;
 
   client = application_get (a->app_index);
-  session_endpoint_update_for_app (&a->sep, client);
+  session_endpoint_update_for_app (&a->sep_ext, client);
   client_wrk = application_get_worker (client, a->wrk_map_index);
 
   /*
