@@ -24,11 +24,6 @@
 dpo_type_t udp_encap_dpo_types[FIB_PROTOCOL_MAX];
 
 /**
- * Hash DB to map from client ID to VPP index.
- */
-uword *udp_encap_db;
-
-/**
  * Pool of encaps
  */
 udp_encap_t *udp_encap_pool;
@@ -36,23 +31,16 @@ udp_encap_t *udp_encap_pool;
 /**
  * Stats for each UDP encap object
  */
-vlib_combined_counter_main_t udp_encap_counters;
-
-static udp_encap_t *
-udp_encap_get_w_id (u32 id)
-{
-  udp_encap_t *ue = NULL;
-  index_t uei;
-
-  uei = udp_encap_find (id);
-
-  if (INDEX_INVALID != uei)
-    {
-      ue = udp_encap_get (uei);
-    }
-
-  return (ue);
-}
+vlib_combined_counter_main_t udp_encap_counters = {
+  /**
+   * The counter collection's name.
+   */
+  .name = "udp-encap",
+  /**
+   * Name in stat segment directory
+   */
+  .stat_segment_name = "/net/udp-encap",
+};
 
 static void
 udp_encap_restack (udp_encap_t * ue)
@@ -64,8 +52,7 @@ udp_encap_restack (udp_encap_t * ue)
 }
 
 index_t
-udp_encap_add_and_lock (u32 id,
-			fib_protocol_t proto,
+udp_encap_add_and_lock (fib_protocol_t proto,
 			index_t fib_index,
 			const ip46_address_t * src_ip,
 			const ip46_address_t * dst_ip,
@@ -73,102 +60,80 @@ udp_encap_add_and_lock (u32 id,
 			u16 dst_port, udp_encap_fixup_flags_t flags)
 {
   udp_encap_t *ue;
+  u8 pfx_len = 0;
   index_t uei;
 
-  uei = udp_encap_find (id);
+  pool_get_aligned (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
+  uei = ue - udp_encap_pool;
 
-  if (INDEX_INVALID == uei)
+  vlib_validate_combined_counter (&(udp_encap_counters), uei);
+  vlib_zero_combined_counter (&(udp_encap_counters), uei);
+
+  fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
+  fib_node_lock (&ue->ue_fib_node);
+  ue->ue_fib_index = fib_index;
+  ue->ue_flags = flags;
+  ue->ue_ip_proto = proto;
+
+  switch (proto)
     {
-      u8 pfx_len = 0;
+    case FIB_PROTOCOL_IP4:
+      pfx_len = 32;
+      ue->ue_hdrs.ip4.ue_ip4.ip_version_and_header_length = 0x45;
+      ue->ue_hdrs.ip4.ue_ip4.ttl = 254;
+      ue->ue_hdrs.ip4.ue_ip4.protocol = IP_PROTOCOL_UDP;
+      ue->ue_hdrs.ip4.ue_ip4.src_address.as_u32 = src_ip->ip4.as_u32;
+      ue->ue_hdrs.ip4.ue_ip4.dst_address.as_u32 = dst_ip->ip4.as_u32;
+      ue->ue_hdrs.ip4.ue_ip4.checksum =
+	ip4_header_checksum (&ue->ue_hdrs.ip4.ue_ip4);
+      ue->ue_hdrs.ip4.ue_udp.src_port = clib_host_to_net_u16 (src_port);
+      ue->ue_hdrs.ip4.ue_udp.dst_port = clib_host_to_net_u16 (dst_port);
 
-      pool_get_aligned (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
-      uei = ue - udp_encap_pool;
+      break;
+    case FIB_PROTOCOL_IP6:
+      pfx_len = 128;
+      ue->ue_hdrs.ip6.ue_ip6.ip_version_traffic_class_and_flow_label =
+	clib_host_to_net_u32 (6 << 28);
+      ue->ue_hdrs.ip6.ue_ip6.hop_limit = 255;
+      ue->ue_hdrs.ip6.ue_ip6.protocol = IP_PROTOCOL_UDP;
+      ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[0] = src_ip->ip6.as_u64[0];
+      ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[1] = src_ip->ip6.as_u64[1];
+      ue->ue_hdrs.ip6.ue_ip6.dst_address.as_u64[0] = dst_ip->ip6.as_u64[0];
+      ue->ue_hdrs.ip6.ue_ip6.dst_address.as_u64[1] = dst_ip->ip6.as_u64[1];
+      ue->ue_hdrs.ip6.ue_udp.src_port = clib_host_to_net_u16 (src_port);
+      ue->ue_hdrs.ip6.ue_udp.dst_port = clib_host_to_net_u16 (dst_port);
 
-      vlib_validate_combined_counter (&(udp_encap_counters), uei);
-      vlib_zero_combined_counter (&(udp_encap_counters), uei);
-
-      hash_set (udp_encap_db, id, uei);
-
-      fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
-      fib_node_lock (&ue->ue_fib_node);
-      ue->ue_fib_index = fib_index;
-      ue->ue_flags = flags;
-      ue->ue_id = id;
-      ue->ue_ip_proto = proto;
-
-      switch (proto)
-	{
-	case FIB_PROTOCOL_IP4:
-	  pfx_len = 32;
-	  ue->ue_hdrs.ip4.ue_ip4.ip_version_and_header_length = 0x45;
-	  ue->ue_hdrs.ip4.ue_ip4.ttl = 254;
-	  ue->ue_hdrs.ip4.ue_ip4.protocol = IP_PROTOCOL_UDP;
-	  ue->ue_hdrs.ip4.ue_ip4.src_address.as_u32 = src_ip->ip4.as_u32;
-	  ue->ue_hdrs.ip4.ue_ip4.dst_address.as_u32 = dst_ip->ip4.as_u32;
-	  ue->ue_hdrs.ip4.ue_ip4.checksum =
-	    ip4_header_checksum (&ue->ue_hdrs.ip4.ue_ip4);
-	  ue->ue_hdrs.ip4.ue_udp.src_port = clib_host_to_net_u16 (src_port);
-	  ue->ue_hdrs.ip4.ue_udp.dst_port = clib_host_to_net_u16 (dst_port);
-
-	  break;
-	case FIB_PROTOCOL_IP6:
-	  pfx_len = 128;
-	  ue->ue_hdrs.ip6.ue_ip6.ip_version_traffic_class_and_flow_label =
-	    clib_host_to_net_u32 (6 << 28);
-	  ue->ue_hdrs.ip6.ue_ip6.hop_limit = 255;
-	  ue->ue_hdrs.ip6.ue_ip6.protocol = IP_PROTOCOL_UDP;
-	  ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[0] =
-	    src_ip->ip6.as_u64[0];
-	  ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[1] =
-	    src_ip->ip6.as_u64[1];
-	  ue->ue_hdrs.ip6.ue_ip6.dst_address.as_u64[0] =
-	    dst_ip->ip6.as_u64[0];
-	  ue->ue_hdrs.ip6.ue_ip6.dst_address.as_u64[1] =
-	    dst_ip->ip6.as_u64[1];
-	  ue->ue_hdrs.ip6.ue_udp.src_port = clib_host_to_net_u16 (src_port);
-	  ue->ue_hdrs.ip6.ue_udp.dst_port = clib_host_to_net_u16 (dst_port);
-
-	  break;
-	default:
-	  ASSERT (0);
-	}
-
-      /*
-       * track the destination address
-       */
-      fib_prefix_t dst_pfx = {
-	.fp_proto = proto,
-	.fp_len = pfx_len,
-	.fp_addr = *dst_ip,
-      };
-
-      ue->ue_fib_entry_index =
-	fib_table_entry_special_add (fib_index,
-				     &dst_pfx,
-				     FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-      ue->ue_fib_sibling =
-	fib_entry_child_add (ue->ue_fib_entry_index,
-			     FIB_NODE_TYPE_UDP_ENCAP, uei);
-
-      udp_encap_restack (ue);
+      break;
+    default:
+      ASSERT (0);
     }
-  else
-    {
-      /*
-       * existing entry. updates not supported yet
-       */
-      uei = INDEX_INVALID;
-    }
+
+  /*
+   * track the destination address
+   */
+  fib_prefix_t dst_pfx = {
+    .fp_proto = proto,
+    .fp_len = pfx_len,
+    .fp_addr = *dst_ip,
+  };
+
+  ue->ue_fib_entry_index =
+    fib_table_entry_special_add (fib_index,
+				 &dst_pfx,
+				 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
+  ue->ue_fib_sibling =
+    fib_entry_child_add (ue->ue_fib_entry_index,
+			 FIB_NODE_TYPE_UDP_ENCAP, uei);
+
+  udp_encap_restack (ue);
+
   return (uei);
 }
 
 void
-udp_encap_contribute_forwarding (u32 id, dpo_proto_t proto, dpo_id_t * dpo)
+udp_encap_contribute_forwarding (index_t uei, dpo_proto_t proto,
+				 dpo_id_t * dpo)
 {
-  index_t uei;
-
-  uei = udp_encap_find (id);
-
   if (INDEX_INVALID == uei)
     {
       dpo_copy (dpo, drop_dpo_get (proto));
@@ -183,25 +148,12 @@ udp_encap_contribute_forwarding (u32 id, dpo_proto_t proto, dpo_id_t * dpo)
     }
 }
 
-index_t
-udp_encap_find (u32 id)
-{
-  uword *p;
-
-  p = hash_get (udp_encap_db, id);
-
-  if (NULL != p)
-    return p[0];
-
-  return INDEX_INVALID;
-}
-
 void
-udp_encap_lock (u32 id)
+udp_encap_lock (index_t uei)
 {
   udp_encap_t *ue;
 
-  ue = udp_encap_get_w_id (id);
+  ue = udp_encap_get (uei);
 
   if (NULL != ue)
     {
@@ -210,7 +162,7 @@ udp_encap_lock (u32 id)
 }
 
 void
-udp_encap_unlock_w_index (index_t uei)
+udp_encap_unlock (index_t uei)
 {
   udp_encap_t *ue;
 
@@ -220,19 +172,6 @@ udp_encap_unlock_w_index (index_t uei)
     }
 
   ue = udp_encap_get (uei);
-
-  if (NULL != ue)
-    {
-      fib_node_unlock (&ue->ue_fib_node);
-    }
-}
-
-void
-udp_encap_unlock (u32 id)
-{
-  udp_encap_t *ue;
-
-  ue = udp_encap_get_w_id (id);
 
   if (NULL != ue)
     {
@@ -272,8 +211,7 @@ format_udp_encap_i (u8 * s, va_list * args)
   ue = udp_encap_get (uei);
 
   // FIXME
-  s = format (s, "udp-ecap:[%d]: id:%d ip-fib-index:%d ",
-	      uei, ue->ue_id, ue->ue_fib_index);
+  s = format (s, "udp-ecap:[%d]: ip-fib-index:%d ", uei, ue->ue_fib_index);
   if (FIB_PROTOCOL_IP4 == ue->ue_ip_proto)
     {
       s = format (s, "ip:[src:%U, dst:%U] udp:[src:%d, dst:%d]",
@@ -331,16 +269,8 @@ format_udp_encap_dpo (u8 * s, va_list * args)
 u8 *
 format_udp_encap (u8 * s, va_list * args)
 {
-  u32 id = va_arg (*args, u32);
+  index_t uei = va_arg (*args, u32);
   u32 details = va_arg (*args, u32);
-  index_t uei;
-
-  uei = udp_encap_find (id);
-
-  if (INDEX_INVALID == uei)
-    {
-      return (format (s, "Invalid udp-encap ID: %d", id));
-    }
 
   return (format (s, "%U", format_udp_encap_i, uei, 0, details));
 }
@@ -391,7 +321,6 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
      * reset the stacked DPO to unlock it
      */
   dpo_reset (&ue->ue_dpo);
-  hash_unset (udp_encap_db, ue->ue_id);
 
   fib_entry_child_remove (ue->ue_fib_entry_index, ue->ue_fib_sibling);
   fib_table_entry_delete_index (ue->ue_fib_entry_index, FIB_SOURCE_RR);
@@ -473,8 +402,6 @@ const static dpo_vft_t udp_encap_dpo_vft = {
 clib_error_t *
 udp_encap_init (vlib_main_t * vm)
 {
-  udp_encap_db = hash_create (0, sizeof (index_t));
-
   fib_node_register_type (FIB_NODE_TYPE_UDP_ENCAP, &udp_encap_fib_vft);
 
   udp_encap_dpo_types[FIB_PROTOCOL_IP4] =
@@ -494,10 +421,10 @@ udp_encap_cli (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
   ip46_address_t src_ip, dst_ip;
-  u32 table_id, ue_id;
-  u32 src_port, dst_port;
+  u32 table_id, src_port, dst_port;
   udp_encap_fixup_flags_t flags;
   fib_protocol_t fproto;
+  index_t uei;
   u8 is_del;
 
   is_del = 0;
@@ -505,7 +432,7 @@ udp_encap_cli (vlib_main_t * vm,
   flags = UDP_ENCAP_FIXUP_NONE;
   fproto = FIB_PROTOCOL_MAX;
   dst_port = 0;
-  ue_id = ~0;
+  uei = ~0;
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -513,7 +440,7 @@ udp_encap_cli (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "id %d", &ue_id))
+      if (unformat (line_input, "index %d", &uei))
 	;
       else if (unformat (line_input, "add"))
 	is_del = 0;
@@ -542,13 +469,6 @@ udp_encap_cli (vlib_main_t * vm,
 	}
     }
 
-  if (~0 == ue_id)
-    {
-      error =
-	clib_error_return (0, "An ID for the UDP encap instance is required");
-      goto done;
-    }
-
   if (!is_del && fproto != FIB_PROTOCOL_MAX)
     {
       u32 fib_index;
@@ -562,28 +482,24 @@ udp_encap_cli (vlib_main_t * vm,
 	  goto done;
 	}
 
-      uei = udp_encap_add_and_lock (ue_id, fproto, fib_index,
+      uei = udp_encap_add_and_lock (fproto, fib_index,
 				    &src_ip, &dst_ip,
 				    src_port, dst_port, flags);
 
-      if (INDEX_INVALID == uei)
-	{
-	  error =
-	    clib_error_return (0, "update to existing encap not supported %d",
-			       ue_id);
-	  goto done;
-	}
+      vlib_cli_output (vm, "udp-encap: %d\n", uei);
     }
   else if (is_del)
     {
-      udp_encap_unlock (ue_id);
+      if (INDEX_INVALID == uei)
+	{
+	  error = clib_error_return (0, "specify udp-encap object index");
+	  goto done;
+	}
+      udp_encap_unlock (uei);
     }
   else
     {
-      error =
-	clib_error_return (0,
-			   "Some IP addresses would be usefull, don't you think?",
-			   ue_id);
+      error = clib_error_return (0, "specify some IP addresses");
     }
 
 done:
@@ -609,34 +525,32 @@ clib_error_t *
 udp_encap_show (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 ue_id;
+  index_t uei;
 
-  ue_id = ~0;
+  uei = INDEX_INVALID;
 
   /* Get a line of input. */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%d", &ue_id))
+      if (unformat (input, "%d", &uei))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  if (~0 == ue_id)
+  if (INDEX_INVALID == uei)
     {
-      udp_encap_t *ue;
-
       /* *INDENT-OFF* */
-      pool_foreach(ue, udp_encap_pool,
+      pool_foreach_index(uei, udp_encap_pool,
       ({
-        vlib_cli_output(vm, "%U", format_udp_encap, ue->ue_id, 0);
+        vlib_cli_output(vm, "%U", format_udp_encap, uei, 0);
       }));
       /* *INDENT-ON* */
     }
   else
     {
-      vlib_cli_output (vm, "%U", format_udp_encap, ue_id, 1);
+      vlib_cli_output (vm, "%U", format_udp_encap, uei, 1);
     }
 
   return NULL;

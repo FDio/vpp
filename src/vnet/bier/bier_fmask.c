@@ -181,7 +181,11 @@ bier_fmask_init (bier_fmask_t *bfm,
     btid = bier_table_get_id(bfm->bfm_id->bfmi_bti);
     bier_fmask_bits_init(&bfm->bfm_bits, btid->bti_hdr_len);
 
-    if (ip46_address_is_zero(&(bfm->bfm_id->bfmi_nh)))
+    if (rpath->frp_flags & FIB_ROUTE_PATH_UDP_ENCAP)
+    {
+        bfm->bfm_id->bfmi_nh_type = BIER_NH_UDP;
+    }
+    else if (ip46_address_is_zero(&(bfm->bfm_id->bfmi_nh)))
     {
         bfm->bfm_flags |= BIER_FMASK_FLAG_DISP;
     }

@@ -58,6 +58,7 @@ typedef struct bier_output_trace_t_
 {
     u32 next_index;
     index_t bfm_index;
+    mpls_label_t bfm_label;
 } bier_output_trace_t;
 
 static uword
@@ -163,6 +164,7 @@ bier_output (vlib_main_t * vm,
                 tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
                 tr->next_index = next0;
                 tr->bfm_index = bfmi0;
+                tr->bfm_label = bfm0->bfm_label;
             }
 
             vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -186,8 +188,8 @@ format_bier_output_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     bier_output_trace_t * t = va_arg (*args, bier_output_trace_t *);
 
-    s = format (s, " next [%d], BFM index %d",
-                t->next_index, t->bfm_index);
+    s = format (s, " next [%d], BFM index %d label:%x",
+                t->next_index, t->bfm_index, t->bfm_label);
     return s;
 }
 

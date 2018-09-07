@@ -80,7 +80,7 @@ typedef struct bier_fmask_id_t_ {
     bier_hdr_type_t bfmi_hdr_type;
 
     /**
-     * Union discriminatrr
+     * Union discriminator
      */
     bier_nh_type_t bfmi_nh_type;
 } __attribute__((packed)) bier_fmask_id_t;

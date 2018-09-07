@@ -87,21 +87,21 @@ class TestUdpEncap(VppTestCase):
         # construct a UDP encap object through each of the peers
         # v4 through the first two peears, v6 through the second.
         #
-        udp_encap_0 = VppUdpEncap(self, 0,
+        udp_encap_0 = VppUdpEncap(self,
                                   self.pg0.local_ip4,
                                   self.pg0.remote_ip4,
                                   330, 440)
-        udp_encap_1 = VppUdpEncap(self, 1,
+        udp_encap_1 = VppUdpEncap(self,
                                   self.pg1.local_ip4,
                                   self.pg1.remote_ip4,
                                   331, 441,
                                   table_id=1)
-        udp_encap_2 = VppUdpEncap(self, 2,
+        udp_encap_2 = VppUdpEncap(self,
                                   self.pg2.local_ip6,
                                   self.pg2.remote_ip6,
                                   332, 442,
                                   table_id=2)
-        udp_encap_3 = VppUdpEncap(self, 3,
+        udp_encap_3 = VppUdpEncap(self,
                                   self.pg3.local_ip6,
                                   self.pg3.remote_ip6,
                                   333, 443,
@@ -125,23 +125,23 @@ class TestUdpEncap(VppTestCase):
                                [VppRoutePath("0.0.0.0",
                                              0xFFFFFFFF,
                                              is_udp_encap=1,
-                                             next_hop_id=0)])
+                                             next_hop_id=udp_encap_0.id)])
         route_4o6 = VppIpRoute(self, "1.1.2.1", 32,
                                [VppRoutePath("0.0.0.0",
                                              0xFFFFFFFF,
                                              is_udp_encap=1,
-                                             next_hop_id=2)])
+                                             next_hop_id=udp_encap_2.id)])
         route_6o4 = VppIpRoute(self, "2001::1", 128,
                                [VppRoutePath("0.0.0.0",
                                              0xFFFFFFFF,
                                              is_udp_encap=1,
-                                             next_hop_id=1)],
+                                             next_hop_id=udp_encap_1.id)],
                                is_ip6=1)
         route_6o6 = VppIpRoute(self, "2001::3", 128,
                                [VppRoutePath("0.0.0.0",
                                              0xFFFFFFFF,
                                              is_udp_encap=1,
-                                             next_hop_id=3)],
+                                             next_hop_id=udp_encap_3.id)],
                                is_ip6=1)
         route_4o4.add_vpp_config()
         route_4o6.add_vpp_config()
