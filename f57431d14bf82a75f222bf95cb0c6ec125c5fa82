@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b93da48e_07f3468e",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 18
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-08T00:31:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "13d154a6_cb342bc5",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 41
+      },
+      "revId": "f57431d14bf82a75f222bf95cb0c6ec125c5fa82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e20ae063_15c1fc1c",
         "filename": "src/plugins/dpi/dpi_plugin_doc.md",
         "patchSetId": 18
@@ -36,6 +60,30 @@
       "writtenOn": "2018-09-07T08:35:35Z",
       "side": 1,
       "message": "why hs if this is dpi plugin?",
+      "range": {
+        "startLine": 42,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 3
+      },
+      "revId": "f57431d14bf82a75f222bf95cb0c6ec125c5fa82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30325ac6_f6b87436",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 18
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-08T00:31:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e20ae063_15c1fc1c",
       "range": {
         "startLine": 42,
         "startChar": 1,
