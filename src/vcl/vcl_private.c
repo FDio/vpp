@@ -15,7 +15,7 @@
 
 #include <vcl/vcl_private.h>
 
-pthread_key_t vcl_worker_stop_key;
+static pthread_key_t vcl_worker_stop_key;
 
 static const char *
 vppcom_app_state_str (app_state_t state)
@@ -224,6 +224,7 @@ static void
 vcl_worker_cleanup (void *arg)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+
   VDBG (0, "cleaning up worker %u", wrk->wrk_index);
   vcl_send_app_worker_add_del (0 /* is_add */ );
   close (wrk->mqs_epfd);
@@ -290,6 +291,9 @@ vcl_worker_alloc_and_init ()
 
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup))
     clib_warning ("failed to add pthread cleanup function");
+  if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
+    clib_warning ("failed to setup key value");
+  wrk->thread_id = pthread_self ();
 
   clib_spinlock_unlock (&vcm->workers_lock);
 

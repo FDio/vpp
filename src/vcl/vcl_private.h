@@ -257,6 +257,9 @@ typedef struct vcl_worker_
 
   /** Vector acting as buffer for mq messages */
   svm_msg_q_msg_t *mq_msg_vector;
+
+  /** Used also as a thread stop key buffer */
+  pthread_t thread_id;
 } vcl_worker_t;
 
 typedef struct vppcom_main_t_

@@ -155,6 +155,9 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    getpid (), mp->context, wrk_index);
       goto failed;
     }
+  if (!mp->is_add)
+    return;
+
   wrk = vcl_worker_get (wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
