@@ -340,6 +340,7 @@ vtc_worker_loop (void *arg)
 exit:
   if (wrk->wrk_index)
     vt_atomic_add (&vcm->active_workers, -1);
+
   return 0;
 }
 
