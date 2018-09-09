@@ -271,7 +271,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 next0, next1, next2, next3;
 	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
-	  ethernet_header_t *h0, *h1, *h2, *h3;
+	  const ethernet_header_t *h0, *h1, *h2, *h3;
 	  l2fib_entry_key_t key0, key1, key2, key3;
 	  l2fib_entry_result_t result0, result1, result2, result3;
 	  u32 bucket0, bucket1, bucket2, bucket3;
@@ -285,15 +285,15 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    vlib_prefetch_buffer_header (p4, LOAD);
-	    vlib_prefetch_buffer_header (p5, LOAD);
-	    vlib_prefetch_buffer_header (p6, LOAD);
-	    vlib_prefetch_buffer_header (p7, LOAD);
+	    vlib_prefetch_buffer_header (p4, STORE);
+	    vlib_prefetch_buffer_header (p5, STORE);
+	    vlib_prefetch_buffer_header (p6, STORE);
+	    vlib_prefetch_buffer_header (p7, STORE);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
