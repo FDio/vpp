@@ -22,6 +22,30 @@
       "revId": "7b1424a03100375c04079c0c836d1f9faef2b424",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9bb535e0_299886d2",
+        "filename": "src/vnet/udp/udp_encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-09T10:34:29Z",
+      "side": 1,
+      "message": "i\u0027m all for hierarchy. this is not an interface. It is like a tunnel in so far as it\u0027s encap (but no decap). the index into the array is not a sw_if_index. if you think this qualifies it to go in /if/udp-encap i\u0027ll move it.\nor maybe; /encap/udp should there be more encap only types at a later date?",
+      "parentUuid": "8eeb096c_4c1029ad",
+      "range": {
+        "startLine": 42,
+        "startChar": 2,
+        "endLine": 42,
+        "endChar": 36
+      },
+      "revId": "7b1424a03100375c04079c0c836d1f9faef2b424",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
