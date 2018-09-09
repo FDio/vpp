@@ -29,7 +29,9 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 
+#ifndef CLIB_MARCH_VARIANT
 l2learn_main_t l2learn_main;
+#endif
 
 /**
  * @file
@@ -271,7 +273,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 next0, next1, next2, next3;
 	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
-	  ethernet_header_t *h0, *h1, *h2, *h3;
+	  const ethernet_header_t *h0, *h1, *h2, *h3;
 	  l2fib_entry_key_t key0, key1, key2, key3;
 	  l2fib_entry_result_t result0, result1, result2, result3;
 	  u32 bucket0, bucket1, bucket2, bucket3;
@@ -285,15 +287,17 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
+	    /* buffer header is read and written, so use LOAD
+	     * prefetch */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
@@ -465,9 +469,8 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-l2learn_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2learn_node) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return l2learn_node_inline (vm, node, frame, 1 /* do_trace */ );
@@ -476,7 +479,6 @@ l2learn_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2learn_node,static) = {
-  .function = l2learn_node_fn,
   .name = "l2-learn",
   .vector_size = sizeof (u32),
   .format_trace = format_l2learn_trace,
@@ -495,8 +497,9 @@ VLIB_REGISTER_NODE (l2learn_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2learn_node, l2learn_node_fn)
-     clib_error_t *l2learn_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+l2learn_init (vlib_main_t * vm)
 {
   l2learn_main_t *mp = &l2learn_main;
 
@@ -598,6 +601,8 @@ l2learn_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (l2learn_config, "l2learn");
+
+#endif
 
 
 /*

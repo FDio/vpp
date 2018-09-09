@@ -120,7 +120,7 @@ list(APPEND VNET_SOURCES
   ethernet/p2p_ethernet_api.c
 )
 
-list(APPEND VNET_MULTIARCH_SOURCES ethernet/node.c l2/l2_output.c)
+list(APPEND VNET_MULTIARCH_SOURCES ethernet/node.c)
 
 list(APPEND VNET_HEADERS
   ethernet/error.def
@@ -157,6 +157,8 @@ list(APPEND VNET_SOURCES
   l2/l2_vtr.c
   l2/l2_xcrw.c
 )
+
+list(APPEND VNET_MULTIARCH_SOURCES l2/l2_output.c l2/l2_learn.c)
 
 list(APPEND VNET_HEADERS
   l2/feat_bitmap.h
