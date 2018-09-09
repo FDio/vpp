@@ -49,7 +49,7 @@ tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type)
 static inline int
 tls_add_app_q_evt (app_worker_t * app, stream_session_t * app_session)
 {
-  return app_worker_send_event (app, app_session, FIFO_EVENT_APP_RX);
+  return app_worker_lock_and_send_event (app, app_session, FIFO_EVENT_APP_RX);
 }
 
 u32
