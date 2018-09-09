@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2015 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -11,14 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-install(
-  FILES vppapigen.py
-  RENAME vppapigen
-  DESTINATION bin
-  PERMISSIONS
-    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-    WORLD_READ WORLD_EXECUTE
-  COMPONENT vpp-dev
-)
+dist_bin_SCRIPTS += tools/vppapigen/vppapigen
 
-install(FILES C_plugin.py JSON_plugin.py DESTINATION share/vpp)
+dist_pkgdata_SCRIPTS = tools/vppapigen/C_OUTPUT.py \
+                       tools/vppapigen/JSON_OUTPUT.py
+# vi:syntax=automake
