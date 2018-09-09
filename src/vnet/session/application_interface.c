@@ -612,9 +612,14 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
     }
   else
     {
+      app_worker_t *app_wrk;
       stream_session_t *s;
+
       s = session_get_from_handle_if_valid (a->handle);
-      if (!s || s->app_wrk_index != a->app_index)
+      if (!s)
+	return VNET_API_ERROR_INVALID_VALUE;
+      app_wrk = app_worker_get (s->app_wrk_index);
+      if (app_wrk->app_index != a->app_index)
 	return VNET_API_ERROR_INVALID_VALUE;
 
       /* We're peeking into another's thread pool. Make sure */

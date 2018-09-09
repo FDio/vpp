@@ -29,6 +29,7 @@ session_mq_accepted_reply_handler (void *data)
 {
   session_accepted_reply_msg_t *mp = (session_accepted_reply_msg_t *) data;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  app_worker_t *app_wrk;
   local_session_t *ls;
   stream_session_t *s;
 
@@ -43,8 +44,6 @@ session_mq_accepted_reply_handler (void *data)
 
   if (session_handle_is_local (mp->handle))
     {
-      app_worker_t *app_wrk;
-      application_t *app;
       ls = application_get_local_session_from_handle (mp->handle);
       if (!ls)
 	{
@@ -52,8 +51,7 @@ session_mq_accepted_reply_handler (void *data)
 	  return;
 	}
       app_wrk = app_worker_get (ls->app_wrk_index);
-      app = application_get (app_wrk->app_index);
-      if (app->app_index != mp->context)
+      if (app_wrk->app_index != mp->context)
 	{
 	  clib_warning ("server %u doesn't own local handle 0x%lx",
 			mp->context, mp->handle);
@@ -71,18 +69,15 @@ session_mq_accepted_reply_handler (void *data)
 	  clib_warning ("session doesn't exist");
 	  return;
 	}
-      if (s->app_wrk_index != mp->context)
+      app_wrk = app_worker_get (s->app_wrk_index);
+      if (app_wrk->app_index != mp->context)
 	{
 	  clib_warning ("app doesn't own session");
 	  return;
 	}
       s->session_state = SESSION_STATE_READY;
       if (!svm_fifo_is_empty (s->server_rx_fifo))
-	{
-	  app_worker_t *app;
-	  app = app_worker_get (s->app_wrk_index);
-	  app_worker_send_event (app, s, FIFO_EVENT_APP_RX);
-	}
+	app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
     }
 }
 
