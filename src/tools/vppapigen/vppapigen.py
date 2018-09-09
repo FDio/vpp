@@ -785,14 +785,14 @@ def main():
                     '/../share/vpp/')
         for c in cand:
             c += '/'
-            if os.path.isfile(c + args.output_module + '.py'):
+            if os.path.isfile(c + args.output_module + '_OUTPUT.py'):
                 pluginpath = c
                 break
     else:
         pluginpath = args.pluginpath + '/'
     if pluginpath == '':
         raise Exception('Output plugin not found')
-    module_path = pluginpath + args.output_module + '.py'
+    module_path = pluginpath + args.output_module + '_OUTPUT.py'
 
     try:
         plugin = imp.load_source(args.output_module, module_path)
