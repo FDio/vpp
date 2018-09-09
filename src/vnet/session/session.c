@@ -486,7 +486,7 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
  * @return 0 on success or negative number if failed to send notification.
  */
 static inline int
-session_enqueue_notify (stream_session_t * s, u8 lock)
+session_enqueue_notify (stream_session_t * s)
 {
   app_worker_t *app;
 
@@ -504,10 +504,7 @@ session_enqueue_notify (stream_session_t * s, u8 lock)
   }));
   /* *INDENT-ON* */
 
-  if (lock)
-    return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
-
-  return app_worker_send_event (app, s, FIFO_EVENT_APP_RX);
+  return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
 }
 
 int
@@ -519,10 +516,7 @@ session_dequeue_notify (stream_session_t * s)
   if (PREDICT_FALSE (!app))
     return -1;
 
-  if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
-    return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_RX);
-
-  return app_worker_send_event (app, s, FIFO_EVENT_APP_TX);
+  return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_TX);
 }
 
 /**
@@ -537,14 +531,11 @@ int
 session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
-  transport_service_type_t tp_service;
-  int i, errors = 0, lock;
   stream_session_t *s;
+  int i, errors = 0;
   u32 *indices;
 
   indices = smm->session_to_enqueue[transport_proto][thread_index];
-  tp_service = transport_protocol_service_type (transport_proto);
-  lock = tp_service == TRANSPORT_SERVICE_CL;
 
   for (i = 0; i < vec_len (indices); i++)
     {
@@ -554,7 +545,7 @@ session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  errors++;
 	  continue;
 	}
-      if (PREDICT_FALSE (session_enqueue_notify (s, lock)))
+      if (PREDICT_FALSE (session_enqueue_notify (s)))
 	errors++;
     }
 
@@ -838,7 +829,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   /* Find the server */
   listener = listen_session_get (listener_index);
-  app_wrk = app_worker_get (listener->app_wrk_index);
+  app_wrk = application_listener_select_worker (listener, 0);
 
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
   if ((rv = session_alloc_and_init (sm, tc, 1, &s)))

@@ -233,7 +233,6 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
 	  vtwrn ("failed to register worker");
 	  return -1;
 	}
-
       vt_atomic_add (&vcm->active_workers, 1);
     }
   rv = vtc_connect_test_sessions (wrk);
@@ -257,6 +256,64 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
     }
 
   return 0;
+}
+
+static int stats_lock = 0;
+
+static void
+vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
+		      sock_test_socket_t * ctrl)
+{
+  sock_test_socket_t *tsock;
+  static char buf[64];
+  int i, show_rx = 0;
+
+  while (__sync_lock_test_and_set (&stats_lock, 1))
+    ;
+
+  if (ctrl->cfg.test == SOCK_TEST_TYPE_BI
+      || ctrl->cfg.test == SOCK_TEST_TYPE_ECHO)
+    show_rx = 1;
+
+  for (i = 0; i < wrk->cfg.num_test_sockets; i++)
+    {
+      tsock = &wrk->sessions[i];
+      tsock->stats.start = ctrl->stats.start;
+
+      if (ctrl->cfg.verbose > 1)
+	{
+	  sprintf (buf, "CLIENT (fd %d) RESULTS", tsock->fd);
+	  sock_test_stats_dump (buf, &tsock->stats, show_rx, 1 /* show tx */ ,
+				ctrl->cfg.verbose);
+	}
+
+      sock_test_stats_accumulate (&ctrl->stats, &tsock->stats);
+    }
+
+  __sync_lock_release (&stats_lock);
+}
+
+static void
+vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
+  sock_test_socket_t *tsock;
+  int i, verbose = ctrl->cfg.verbose;
+
+  for (i = 0; i < wrk->cfg.num_test_sockets; i++)
+    {
+      tsock = &wrk->sessions[i];
+      tsock->cfg.test = SOCK_TEST_TYPE_EXIT;
+
+      if (verbose)
+	{
+	  vtinf ("(fd %d): Sending exit cfg to server...", tsock->fd);
+	  sock_test_cfg_dump (&tsock->cfg, 1 /* is_client */ );
+	}
+      (void) vcl_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
+			     sizeof (tsock->cfg), &tsock->stats, verbose);
+    }
 }
 
 static void *
@@ -338,37 +395,13 @@ vtc_worker_loop (void *arg)
 	}
     }
 exit:
+  vtinf ("Worker %d done ...", wrk->wrk_index);
+  vtc_accumulate_stats (wrk, ctrl);
+  sleep (1);
+  vtc_worker_sessions_exit (wrk);
   if (wrk->wrk_index)
     vt_atomic_add (&vcm->active_workers, -1);
   return 0;
-}
-
-static void
-vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
-		      sock_test_socket_t * ctrl)
-{
-  sock_test_socket_t *tsock;
-  static char buf[64];
-  int i, show_rx = 0;
-
-  if (ctrl->cfg.test == SOCK_TEST_TYPE_BI
-      || ctrl->cfg.test == SOCK_TEST_TYPE_ECHO)
-    show_rx = 1;
-
-  for (i = 0; i < wrk->cfg.num_test_sockets; i++)
-    {
-      tsock = &wrk->sessions[i];
-      tsock->stats.start = ctrl->stats.start;
-
-      if (ctrl->cfg.verbose > 1)
-	{
-	  sprintf (buf, "CLIENT (fd %d) RESULTS", tsock->fd);
-	  sock_test_stats_dump (buf, &tsock->stats, show_rx, 1 /* show tx */ ,
-				ctrl->cfg.verbose);
-	}
-
-      sock_test_stats_accumulate (&ctrl->stats, &tsock->stats);
-    }
 }
 
 static void
@@ -488,50 +521,12 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
       return;
     }
 
-  for (i = 0; i < vcm->n_workers; i++)
-    vtc_accumulate_stats (&vcm->workers[i], ctrl);
   vtc_print_stats (ctrl);
 
   ctrl->cfg.test = SOCK_TEST_TYPE_ECHO;
   ctrl->cfg.total_bytes = 0;
   if (vtc_cfg_sync (ctrl))
     vtwrn ("post-test cfg sync failed!");
-}
-
-static void
-vtc_client_exit (void)
-{
-  vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_client_worker_t *wrk = &vcm->workers[0];
-  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
-  sock_test_socket_t *tsock;
-  int i, verbose;
-
-  verbose = ctrl->cfg.verbose;
-  for (i = 0; i < wrk->cfg.num_test_sockets; i++)
-    {
-      tsock = &wrk->sessions[i];
-      tsock->cfg.test = SOCK_TEST_TYPE_EXIT;
-
-      if (verbose)
-	{
-	  vtinf ("(fd %d): Sending exit cfg to server...", tsock->fd);
-	  sock_test_cfg_dump (&tsock->cfg, 1 /* is_client */ );
-	}
-      (void) vcl_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
-			     sizeof (tsock->cfg), &tsock->stats, verbose);
-    }
-
-  ctrl->cfg.test = SOCK_TEST_TYPE_EXIT;
-  if (verbose)
-    {
-      vtinf ("(fd %d): Sending exit cfg to server...", ctrl->fd);
-      sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
-    }
-  (void) vcl_test_write (ctrl->fd, (uint8_t *) & ctrl->cfg,
-			 sizeof (ctrl->cfg), &ctrl->stats, verbose);
-  vtinf ("So long and thanks for all the fish!\n\n");
-  sleep (1);
 }
 
 static void
@@ -954,6 +949,25 @@ vtc_read_user_input (sock_test_socket_t * ctrl)
     }
 }
 
+static void
+vtc_ctrl_session_exit (void)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  sock_test_socket_t *ctrl = &vcm->ctrl_socket;
+  int verbose = ctrl->cfg.verbose;
+
+  ctrl->cfg.test = SOCK_TEST_TYPE_EXIT;
+  if (verbose)
+    {
+      vtinf ("(fd %d): Sending exit cfg to server...", ctrl->fd);
+      sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+    }
+  (void) vcl_test_write (ctrl->fd, (uint8_t *) & ctrl->cfg,
+			 sizeof (ctrl->cfg), &ctrl->stats, verbose);
+  vtinf ("So long and thanks for all the fish!\n\n");
+  sleep (1);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1046,7 +1060,7 @@ main (int argc, char **argv)
       vtc_read_user_input (ctrl);
     }
 
-  vtc_client_exit ();
+  vtc_ctrl_session_exit ();
   vppcom_session_close (ctrl->fd);
   vppcom_app_destroy ();
   free (vcm->workers);

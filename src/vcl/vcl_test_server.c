@@ -497,6 +497,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
   if (rv < 0)
     vtfail ("vppcom_epoll_ctl", rv);
 
+  ssm->active_workers += 1;
   vtinf ("Waiting for a client to connect on port %d ...", ssm->cfg.port);
 }
 
@@ -532,6 +533,12 @@ vts_worker_loop (void *arg)
 	  if (wrk->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
 	      vppcom_session_close (conn->fd);
+	      wrk->nfds -= 1;
+	      if (!wrk->nfds)
+		{
+		  vtinf ("All client connections closed\n");
+		  goto done;
+		}
 	      continue;
 	    }
 	  if (wrk->wait_events[i].data.u32 == ~0)
@@ -542,6 +549,7 @@ vts_worker_loop (void *arg)
 
 	  if (EPOLLIN & wrk->wait_events[i].events)
 	    {
+	    read_again:
 	      rx_bytes = vcl_test_read (conn->fd, conn->buf,
 					conn->buf_size, &conn->stats);
 
@@ -563,7 +571,6 @@ vts_worker_loop (void *arg)
 		  if (!wrk->nfds)
 		    {
 		      vtinf ("All client connections closed\n");
-		      vtinf ("May the force be with you!\n");
 		      goto done;
 		    }
 		  continue;
@@ -572,6 +579,9 @@ vts_worker_loop (void *arg)
 		       || (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		{
 		  vts_server_rx (conn, rx_bytes);
+		  if (vppcom_session_attr (conn->fd, VPPCOM_ATTR_GET_NREAD, 0,
+					   0) > 0)
+		    goto read_again;
 		  continue;
 		}
 	      else if (isascii (conn->buf[0]))
