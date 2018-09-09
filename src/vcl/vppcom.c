@@ -285,6 +285,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
       vcl_wait_for_memory (session->vpp_evt_q);
       rx_fifo->master_session_index = session->session_index;
       tx_fifo->master_session_index = session->session_index;
+      rx_fifo->master_thread_index = vcl_get_worker_index ();
+      tx_fifo->master_thread_index = vcl_get_worker_index ();
       vec_validate (wrk->vpp_event_queues, 0);
       evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
       wrk->vpp_event_queues[0] = evt_q;
@@ -295,7 +297,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 					     svm_msg_q_t *);
       rx_fifo->client_session_index = session->session_index;
       tx_fifo->client_session_index = session->session_index;
-
+      rx_fifo->client_thread_index = vcl_get_worker_index ();
+      tx_fifo->client_thread_index = vcl_get_worker_index ();
       vpp_wrk_index = tx_fifo->master_thread_index;
       vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
       wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
@@ -349,8 +352,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   if (mp->retval)
     {
       clib_warning ("VCL<%d>: ERROR: sid %u: connect failed! %U", getpid (),
-		    mp->handle, session_index, format_api_error,
-		    ntohl (mp->retval));
+		    session_index, format_api_error, ntohl (mp->retval));
       session->session_state = STATE_FAILED;
       session->vpp_handle = mp->handle;
       return session_index;
@@ -361,6 +363,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   vcl_wait_for_memory (rx_fifo);
   rx_fifo->client_session_index = session_index;
   tx_fifo->client_session_index = session_index;
+  rx_fifo->client_thread_index = vcl_get_worker_index ();
+  tx_fifo->client_thread_index = vcl_get_worker_index ();
 
   if (mp->client_event_queue_address)
     {
@@ -648,6 +652,9 @@ vppcom_session_disconnect (u32 session_handle)
   u64 vpp_handle;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+
   vpp_handle = session->vpp_handle;
   state = session->session_state;
 
@@ -2233,6 +2240,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
+	  ASSERT (e->fifo->client_thread_index == vcl_get_worker_index ());
 	  vcl_fifo_rx_evt_valid_or_break (e->fifo);
 	  sid = e->fifo->client_session_index;
 	  session = vcl_session_get (wrk, sid);
