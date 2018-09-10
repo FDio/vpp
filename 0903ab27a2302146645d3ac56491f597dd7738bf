@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59defa4e_a20b8403",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-10T18:08:01Z",
+      "side": 1,
+      "message": "This is not correct, vlib_buffer_get_current() few lines bellow reads data from buffer header.",
+      "range": {
+        "startLine": 288,
+        "startChar": 0,
+        "endLine": 291,
+        "endChar": 45
+      },
+      "revId": "0903ab27a2302146645d3ac56491f597dd7738bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
