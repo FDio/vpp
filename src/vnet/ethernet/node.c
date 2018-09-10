@@ -768,25 +768,25 @@ ethernet_input_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-ethernet_input (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
 {
   return ethernet_input_inline (vm, node, from_frame,
 				ETHERNET_INPUT_VARIANT_ETHERNET);
 }
 
-static uword
-ethernet_input_type (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ethernet_input_type_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
 {
   return ethernet_input_inline (vm, node, from_frame,
 				ETHERNET_INPUT_VARIANT_ETHERNET_TYPE);
 }
 
-static uword
-ethernet_input_not_l2 (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ethernet_input_not_l2_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * from_frame)
 {
   return ethernet_input_inline (vm, node, from_frame,
 				ETHERNET_INPUT_VARIANT_NOT_L2);
@@ -980,7 +980,7 @@ done:
   return subint;
 }
 
-clib_error_t *
+static clib_error_t *
 ethernet_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   subint_config_t *subint;
@@ -1009,6 +1009,7 @@ done:
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ethernet_sw_interface_up_down);
 
 
+#ifndef CLIB_MARCH_VARIANT
 // Set the L2/L3 mode for the subinterface
 void
 ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
@@ -1096,6 +1097,7 @@ ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
 done:
   return;
 }
+#endif
 
 static clib_error_t *
 ethernet_sw_interface_add_del (vnet_main_t * vnm,
@@ -1155,7 +1157,6 @@ static char *ethernet_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ethernet_input_node) = {
-  .function = ethernet_input,
   .name = "ethernet-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1171,15 +1172,8 @@ VLIB_REGISTER_NODE (ethernet_input_node) = {
   .format_trace = format_ethernet_input_trace,
   .unformat_buffer = unformat_ethernet_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_node, ethernet_input)
-/* *INDENT-ON* */
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ethernet_input_type_node, static) = {
-  .function = ethernet_input_type,
+VLIB_REGISTER_NODE (ethernet_input_type_node) = {
   .name = "ethernet-input-type",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1190,15 +1184,8 @@ VLIB_REGISTER_NODE (ethernet_input_type_node, static) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_type_node, ethernet_input_type)
-/* *INDENT-ON* */
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ethernet_input_not_l2_node, static) = {
-  .function = ethernet_input_not_l2,
+VLIB_REGISTER_NODE (ethernet_input_not_l2_node) = {
   .name = "ethernet-input-not-l2",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1211,13 +1198,7 @@ VLIB_REGISTER_NODE (ethernet_input_not_l2_node, static) = {
 };
 /* *INDENT-ON* */
 
-
-/* *INDENT-OFF* */
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_not_l2_node,
-			      ethernet_input_not_l2)
-/* *INDENT-ON* */
-
-
+#ifndef CLIB_MARCH_VARIANT
 void
 ethernet_set_rx_redirect (vnet_main_t * vnm,
 			  vnet_hw_interface_t * hi, u32 enable)
@@ -1418,6 +1399,7 @@ ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
 
   ASSERT (i == em->redirect_l3_next);
 }
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
