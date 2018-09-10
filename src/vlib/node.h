@@ -244,6 +244,8 @@ typedef struct
   u64 calls, vectors, clocks, suspends;
   u64 max_clock;
   u64 max_clock_n;
+  u64 perf_counter_ticks;
+  u64 perf_counter_vectors;
 } vlib_node_stats_t;
 
 #define foreach_vlib_node_state					\
@@ -487,6 +489,9 @@ typedef struct vlib_node_runtime_t
 
   u32 vectors_since_last_overflow;	/**< Number of vector elements
 					  processed by this node. */
+
+  u32 perf_counter_ticks_since_last_overflow; /**< Perf counter ticks */
+  u32 perf_counter_vectors_since_last_overflow;	/**< Perf counter vectors */
 
   u32 next_frame_index;			/**< Start of next frames for this
 					  node. */
