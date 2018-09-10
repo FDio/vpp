@@ -120,7 +120,7 @@ list(APPEND VNET_SOURCES
   ethernet/p2p_ethernet_api.c
 )
 
-list(APPEND VNET_MULTIARCH_SOURCES l2/l2_output.c)
+list(APPEND VNET_MULTIARCH_SOURCES ethernet/node.c l2/l2_output.c)
 
 list(APPEND VNET_HEADERS
   ethernet/error.def
