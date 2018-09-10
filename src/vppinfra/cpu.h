@@ -183,6 +183,96 @@ clib_cpu_march_priority_avx2 ()
   return -1;
 }
 
+static inline u32
+clib_cpu_implementer ()
+{
+  char buf[128];
+  static u32 implementer = -1;
+
+  if (-1 != implementer)
+    return implementer;
+
+  FILE *fp = fopen ("/proc/cpuinfo", "r");
+  if (!fp)
+    return implementer;
+
+  while (!feof (fp))
+    {
+      if (!fgets (buf, sizeof (buf), fp))
+	break;
+      buf[127] = '\0';
+      if (strstr (buf, "CPU implementer"))
+	implementer = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
+      if (-1 != implementer)
+	break;
+    }
+  fclose (fp);
+
+  return implementer;
+}
+
+static inline u32
+clib_cpu_part ()
+{
+  char buf[128];
+  static u32 part = -1;
+
+  if (-1 != part)
+    return part;
+
+  FILE *fp = fopen ("/proc/cpuinfo", "r");
+  if (!fp)
+    return part;
+
+  while (!feof (fp))
+    {
+      if (!fgets (buf, sizeof (buf), fp))
+	break;
+      buf[127] = '\0';
+      if (strstr (buf, "CPU part"))
+	part = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
+      if (-1 != part)
+	break;
+    }
+  fclose (fp);
+
+  return part;
+}
+
+#define AARCH64_CPU_IMPLEMENTER_THUNERDERX2 0x43
+#define AARCH64_CPU_PART_THUNERDERX2        0x0af
+#define AARCH64_CPU_IMPLEMENTER_QDF24XX     0x51
+#define AARCH64_CPU_PART_QDF24XX            0xc00
+#define AARCH64_CPU_IMPLEMENTER_CORTEXA72   0x41
+#define AARCH64_CPU_PART_CORTEXA72          0xd08
+
+static inline int
+clib_cpu_march_priority_thunderx2t99 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_THUNERDERX2 == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_THUNERDERX2 == clib_cpu_part ()))
+    return 20;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_qdf24xx ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_QDF24XX == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_QDF24XX == clib_cpu_part ()))
+    return 20;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_cortexa72 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_CORTEXA72 == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_CORTEXA72 == clib_cpu_part ()))
+    return 10;
+  return -1;
+}
+
 #ifdef CLIB_MARCH_VARIANT
 #define CLIB_MARCH_FN_PRIORITY() CLIB_MARCH_SFX(clib_cpu_march_priority)()
 #else

@@ -59,6 +59,11 @@
 #define CLIB_CACHE_LINE_BYTES (1 << CLIB_LOG2_CACHE_LINE_BYTES)
 #define CLIB_CACHE_LINE_ALIGN_MARK(mark) u8 mark[0] __attribute__((aligned(CLIB_CACHE_LINE_BYTES)))
 
+/* Default cache line fill buffers. */
+#ifndef CLIB_N_PREFETCHES
+#define CLIB_N_PREFETCHES 16
+#endif
+
 /* Read/write arguments to __builtin_prefetch. */
 #define CLIB_PREFETCH_READ 0
 #define CLIB_PREFETCH_LOAD 0	/* alias for read */
