@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b5d671d_9189fbff",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-10T09:42:45Z",
+      "side": 1,
+      "message": "Sorry, from this explanation I still don\u0027t see how to use this plugin.\n\nImagine I\u0027m ordinary user, and want to block HTTP traffic. How can I configure that?",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 69
+      },
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
