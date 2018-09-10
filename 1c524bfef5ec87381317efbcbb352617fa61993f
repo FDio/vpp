@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "148c50f2_70e2d1b4",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-10T12:45:29Z",
+      "side": 1,
+      "message": "fixed in next revision",
+      "parentUuid": "339b2e08_b3fad2ed",
+      "revId": "1c524bfef5ec87381317efbcbb352617fa61993f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "61748c20_808e5f79",
         "filename": "test/vpp_ip.py",
         "patchSetId": 2
