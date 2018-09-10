@@ -46,6 +46,7 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
+#include <vppinfra/pmc.h>
 
 #include <pthread.h>
 
@@ -80,6 +81,11 @@ typedef struct vlib_main_t
      (main_loop_count >> VLIB_LOG2_INPUT_VECTORS_PER_MAIN_LOOP). */
   u32 vector_counts_per_main_loop[2];
   u32 node_counts_per_main_loop[2];
+
+  /* Main loop hw / sw performance counters */
+  u64 (*vlib_node_runtime_perf_counter_cb)(struct vlib_main_t *);
+  int perf_counter_id;
+  int perf_counter_fd;
 
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
@@ -191,6 +197,9 @@ typedef struct vlib_main_t
   volatile u32 api_queue_nonempty;
   void (*queue_signal_callback) (struct vlib_main_t *);
   u8 **argv;
+
+  /* Top of (worker) dispatch loop callback */
+  volatile void (*worker_thread_main_loop_callback) (struct vlib_main_t *);
 
   /* debugging */
   volatile int parked_at_barrier;
