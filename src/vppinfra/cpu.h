@@ -183,6 +183,68 @@ clib_cpu_march_priority_avx2 ()
   return -1;
 }
 
+static inline int
+clib_cpu_supports_implements (const u32 implid, const u32 partid)
+{
+  char buf[128];
+  u32 implementer = -1, part = -1;
+  FILE *fp = fopen ("/proc/cpuinfo", "r");
+  if (!fp)
+    return 0;
+  while (!feof (fp))
+    {
+      if (!fgets (buf, sizeof (buf), fp))
+	break;
+      buf[127] = '\0';
+      if (strstr (buf, "CPU implementer"))
+	implementer = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
+      if (strstr (buf, "CPU part"))
+	part = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
+      if ((-1 != implementer) && (-1 != part))
+	break;
+    }
+  fclose (fp);
+
+  if ((implid == implementer) && (partid == part))
+    return 1;
+  else
+    return 0;
+}
+
+#define AARCH64_CPU_IMPLEMENTER_THUNERDERX2 0x43
+#define AARCH64_CPU_PART_THUNERDERX2        0x0af
+#define AARCH64_CPU_IMPLEMENTER_QDF24XX     0x51
+#define AARCH64_CPU_PART_QDF24XX            0xc00
+#define AARCH64_CPU_IMPLEMENTER_CORTEXA72   0x41
+#define AARCH64_CPU_PART_CORTEXA72          0xd08
+
+static inline int
+clib_cpu_march_priority_thunderx2t99 ()
+{
+  if (clib_cpu_supports_implements (AARCH64_CPU_IMPLEMENTER_THUNERDERX2,
+				    AARCH64_CPU_PART_THUNERDERX2))
+    return 20;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_qdf24xx ()
+{
+  if (clib_cpu_supports_implements (AARCH64_CPU_IMPLEMENTER_QDF24XX,
+				    AARCH64_CPU_PART_QDF24XX))
+    return 20;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_cortexa72 ()
+{
+  if (clib_cpu_supports_implements (AARCH64_CPU_IMPLEMENTER_CORTEXA72,
+				    AARCH64_CPU_PART_CORTEXA72))
+    return 10;
+  return -1;
+}
+
 #ifdef CLIB_MARCH_VARIANT
 #define CLIB_MARCH_FN_PRIORITY() CLIB_MARCH_SFX(clib_cpu_march_priority)()
 #else
