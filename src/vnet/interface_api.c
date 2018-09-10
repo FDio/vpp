@@ -56,6 +56,7 @@ _(WANT_INTERFACE_EVENTS, want_interface_events)                 \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)   \
 _(SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)           \
+_(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump) \
 _(SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)	\
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)               \
 _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
@@ -956,6 +957,98 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_MODE_REPLY);
+}
+
+static void
+send_interface_rx_placement_details (vpe_api_main_t * am,
+				     vl_api_registration_t * rp,
+				     u32 sw_if_index, u32 worker_id,
+				     u32 queue_id, u8 mode, u32 context)
+{
+  vl_api_sw_interface_rx_placement_details_t *mp;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_RX_PLACEMENT_DETAILS);
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->queue_id = htonl (queue_id);
+  mp->worker_id = htonl (worker_id);
+  mp->mode = mode;
+  mp->context = context;
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+static void vl_api_sw_interface_rx_placement_dump_t_handler
+  (vl_api_sw_interface_rx_placement_dump_t * mp)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vpe_api_main_t *am = &vpe_api_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (sw_if_index == ~0)
+    {
+      vnet_device_input_runtime_t *rt;
+      vnet_device_and_queue_t *dq;
+      vlib_node_t *pn = vlib_get_node_by_name (am->vlib_main,
+					       (u8 *) "device-input");
+      uword si;
+      int index = 0;
+
+      /* *INDENT-OFF* */
+      foreach_vlib_main (({
+        clib_bitmap_foreach (si, pn->sibling_bitmap,
+        ({
+          rt = vlib_node_get_runtime_data (this_vlib_main, si);
+          vec_foreach (dq, rt->devices_and_queues)
+            {
+              vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm,
+                                                             dq->hw_if_index);
+              send_interface_rx_placement_details (am, reg, hw->sw_if_index, index,
+                                          dq->queue_id, dq->mode, mp->context);
+            }
+        }));
+        index++;
+      }));
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      int i;
+      vnet_sw_interface_t *si;
+
+      if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+	{
+	  clib_warning ("sw_if_index %u does not exist", sw_if_index);
+	  goto bad_sw_if_index;
+	}
+
+      si = vnet_get_sw_interface (vnm, sw_if_index);
+      if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+	{
+	  clib_warning ("interface type is not HARDWARE! P2P, PIPE and SUB"
+			" interfaces are not supported");
+	  goto bad_sw_if_index;
+	}
+
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, si->hw_if_index);
+
+      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+	{
+	  send_interface_rx_placement_details (am, reg, hw->sw_if_index,
+					       hw->input_node_thread_index_by_queue
+					       [i], i,
+					       hw->rx_mode_by_queue[i],
+					       mp->context);
+	}
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
 }
 
 static void vl_api_sw_interface_set_rx_placement_t_handler
