@@ -134,6 +134,20 @@ static void *vl_api_sw_interface_set_rx_placement_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_rx_placement_dump_t_print
+  (vl_api_sw_interface_rx_placement_dump_t * mp, void *handle)
+{
+  u8 *s;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  s = format (0, "SCRIPT: sw_interface_rx_placement_dump ");
+
+  if (sw_if_index != ~0)
+    s = format (s, "sw_if_index %d ", sw_if_index);
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_event_t_print
   (vl_api_sw_interface_event_t * mp, void *handle)
 {
