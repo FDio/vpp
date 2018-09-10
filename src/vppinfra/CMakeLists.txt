@@ -136,6 +136,7 @@ set(VPPINFRA_HEADERS
   os.h
   pipeline.h
   pool.h
+  pmc.h
   ptclosure.h
   random_buffer.h
   random.h
