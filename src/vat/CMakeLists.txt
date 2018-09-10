@@ -22,7 +22,7 @@ add_vpp_library(vatplugin
 ##############################################################################
 # vpp_api_test
 ##############################################################################
-add_vpp_executable(vpp_api_test ENABLE_EXPORTS NO_INSTALL
+add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   SOURCES
   api_format.c
   main.c
