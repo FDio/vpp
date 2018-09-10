@@ -151,5 +151,6 @@ VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Data Plane Development Kit (DPDK)",
     .early_init = "dpdk_early_init",
+    .default_disabled = 1,
 };
 /* *INDENT-ON* */
