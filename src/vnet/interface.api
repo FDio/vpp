@@ -433,6 +433,9 @@ autoreply define sw_interface_set_rx_mode
 };
 
 /** \brief Set an interface's rx-placement
+    Rx-Queue placement on specific thread is operational for only hardware
+    interface. It will not set queue - thread placement for sub-interfaces,
+    p2p and pipe interfaces.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - the interface whose rx-placement will be set
@@ -448,6 +451,41 @@ autoreply define sw_interface_set_rx_placement
     u32 queue_id;
     u32 worker_id;
     u8 is_main;
+};
+
+/** \brief show the interface's queue - thread placement
+    This api is used to display the interface and queue worker
+    thread placement.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose rx-placement will be dumped
+    @param queue_id - the queue id
+    @param worker_id - the worker id on which queue_id is placed if is_main = 0
+    @param is_main - flag to show placement is on main thread if is_main = 1
+    @param mode - polling=1, interrupt=2, adaptive=3
+*/
+define sw_interface_rx_placement_details
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 queue_id;
+  u8 is_main;
+  u32 worker_id;
+  u8 mode;
+};
+
+/** \brief dump the rx queue placement of interface(s)
+    @param sw_if_index - optional interface index for which queue placement to
+      be requested. sw_if_index = ~0 will dump placement information for all
+      interfaces. It will only dump the interfaces with type HARDWARE. It will
+      not dump information related to sub-interfaces, p2p and pipe interfaces.
+*/
+define sw_interface_rx_placement_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
 };
 
 /* Gross kludge, DGMS */
