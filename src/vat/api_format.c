@@ -5549,6 +5549,7 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
 _(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
 _(SW_INTERFACE_SET_RX_PLACEMENT_REPLY, sw_interface_set_rx_placement_reply)	\
+_(SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)	\
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
@@ -6616,6 +6617,82 @@ api_sw_interface_set_rx_placement (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for a reply, return the good/bad news... */
+  W (ret);
+  return ret;
+}
+
+static void vl_api_sw_interface_rx_placement_details_t_handler
+  (vl_api_sw_interface_rx_placement_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 worker_id = ntohl (mp->worker_id);
+
+  print (vam->ofp,
+	 "\n%-11d %-11s %-6d %-5d %-9s",
+	 ntohl (mp->sw_if_index), (worker_id == 0) ? "main" : "worker",
+	 worker_id, ntohl (mp->queue_id),
+	 (mp->mode ==
+	  1) ? "polling" : ((mp->mode == 2) ? "interrupt" : "adaptive"));
+}
+
+static void vl_api_sw_interface_rx_placement_details_t_handler_json
+  (vl_api_sw_interface_rx_placement_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "worker_id", ntohl (mp->worker_id));
+  vat_json_object_add_uint (node, "queue_id", ntohl (mp->queue_id));
+  vat_json_object_add_uint (node, "mode", mp->mode);
+}
+
+static int
+api_sw_interface_rx_placement_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_rx_placement_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set++;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set++;
+      else
+	break;
+    }
+
+  print (vam->ofp,
+	 "\n%-11s %-11s %-6s %-5s %-4s",
+	 "sw_if_index", "main/worker", "thread", "queue", "mode");
+
+  /* Dump Interface rx placement */
+  M (SW_INTERFACE_RX_PLACEMENT_DUMP, mp);
+
+  if (sw_if_index_set)
+    mp->sw_if_index = htonl (sw_if_index);
+  else
+    mp->sw_if_index = ~0;
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -23469,6 +23546,8 @@ _(sw_interface_set_rx_mode,                                             \
   "<intfc> | sw_if_index <id> [queue <id>] <polling | interrupt | adaptive>") \
 _(sw_interface_set_rx_placement,                                        \
   "<intfc> | sw_if_index <id> [queue <id>] [worker <id> | main]")       \
+_(sw_interface_rx_placement_dump,                                       \
+  "[<intfc> | sw_if_index <id>]")                                         \
 _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
 _(sw_interface_set_mpls_enable,                                         \
