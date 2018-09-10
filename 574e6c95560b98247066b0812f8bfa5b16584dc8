@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b75319d9_0f06e574",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-10T18:26:00Z",
+      "side": 1,
+      "message": "This is mainly notes on the documentation.  I have to use these functions and the documentation is the only way I know what they do...\n\nIf \u0027details\u0027 is the reply and \u0027dump\u0027 is the request, simply putting them the other way up in the file is helpful.\n\nWhat the brief description says is already readable in the name of the message, and doesn\u0027t help clarify it unless you know what \u0027rx-placement\u0027 means.  How about \u0027show which thread an interface is bound to\u0027.\n\nAm I expecting one details message per interface, or one details message per interface queue?  If it\u0027s one per queue, then that could be a lot of messages (which has been known to stall VPP until the client clears up the message queue).\n\nDoes this only work for sw interfaces (not HW ones)?  If so, that would be useful to know.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "223250c8_4c428d6e",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-10T18:26:00Z",
+      "side": 1,
+      "message": "Messages have no defaults, so I would reword as\n\nsw_if_index \u003d ~0 will dump placement information for all interfaces.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7eaf6e6f_12b428c9",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 974,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-10T18:26:00Z",
+      "side": 1,
+      "message": "ntoh?  network-to-host?  Really?  Since this is an output I think you mean hton for the functions in here.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6c0e5cc_87b2402d",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1035,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-10T18:26:00Z",
+      "side": 1,
+      "message": "I\u0027m not quite sure what counts as \u0027hardware\u0027 here and what interfaces are not \u0027hardware\u0027, but I think I would be confused from an API perspective why for some interfaces I don\u0027t get any pinning details.\n\nIf that will ever happen, document it in the .api file so that an API user knows what to expect.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
