@@ -148,19 +148,25 @@ format_vlib_node_stats (u8 * s, va_list * va)
   f64 maxc, maxcn;
   u32 maxn;
   u32 indent;
+  u64 pmc_ticks;
+  f64 pmc_ticks_per_packet;
 
   if (!n)
     {
       if (max)
-	return format (s,
-		       "%=30s%=17s%=16s%=16s%=16s%=16s",
-		       "Name", "Max Node Clocks", "Vectors at Max",
-		       "Max Clocks", "Avg Clocks", "Avg Vectors/Call");
+	s = format (s,
+		    "%=30s%=17s%=16s%=16s%=16s%=16s",
+		    "Name", "Max Node Clocks", "Vectors at Max",
+		    "Max Clocks", "Avg Clocks", "Avg Vectors/Call");
       else
-	return format (s,
-		       "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
-		       "Name", "State", "Calls", "Vectors", "Suspends",
-		       "Clocks", "Vectors/Call");
+	s = format (s,
+		    "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
+		    "Name", "State", "Calls", "Vectors", "Suspends",
+		    "Clocks", "Vectors/Call");
+      if (vm->perf_counter_id)
+	s = format (s, "%=16s", "Perf Ticks");
+
+      return s;
     }
 
   indent = format_get_indent (s);
@@ -175,6 +181,13 @@ format_vlib_node_stats (u8 * s, va_list * va)
     maxcn = (f64) n->stats_total.max_clock / (f64) maxn;
   else
     maxcn = 0.0;
+
+  pmc_ticks = n->stats_total.perf_counter_ticks -
+    n->stats_last_clear.perf_counter_ticks;
+  if (p > 0)
+    pmc_ticks_per_packet = (f64) pmc_ticks / (f64) p;
+  else
+    pmc_ticks_per_packet = 0.0;
 
   /* Clocks per packet, per call or per suspend. */
   x = 0;
@@ -207,6 +220,9 @@ format_vlib_node_stats (u8 * s, va_list * va)
   else
     s = format (s, "%-30v%=12U%16Ld%16Ld%16Ld%16.2e%16.2f", ns,
 		format_vlib_node_state, vm, n, c, p, d, x, v);
+
+  if (pmc_ticks_per_packet > 0.0)
+    s = format (s, "%16.2e", pmc_ticks_per_packet);
 
   if (ns != n->name)
     vec_free (ns);
@@ -401,6 +417,53 @@ VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
+#if defined (__x86_64__)
+static clib_error_t *
+set_pmc_command_fn (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  int perf_counter_id = 0;
+  vlib_main_t *pm_vm;
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "need counter name or 'disable'...");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "disable"))
+	break;
+      else if (unformat (line_input, "cpu-ticks"))
+	/* $$$ should be equivalent to RDTSC */
+	perf_counter_id = (1 << 30) + 2;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  /* Across all threads... */
+  for (i = 0; i < vec_len (vlib_mains); i++)
+    {
+      pm_vm = vlib_mains[i];
+      /* enable the new counter, or not */
+      pm_vm->perf_counter_id = perf_counter_id;
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_pmc_command, static) =
+{
+  .path = "set pmc",
+  .short_help = "set pmc <counter-name> | disable ",
+  .function = set_pmc_command_fn,
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+#endif /* __x86_64__ */
 
 static clib_error_t *
 clear_node_runtime (vlib_main_t * vm,

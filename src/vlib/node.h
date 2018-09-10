@@ -244,6 +244,7 @@ typedef struct
   u64 calls, vectors, clocks, suspends;
   u64 max_clock;
   u64 max_clock_n;
+  u64 perf_counter_ticks;
 } vlib_node_stats_t;
 
 #define foreach_vlib_node_state					\
@@ -500,6 +501,9 @@ typedef struct vlib_node_runtime_t
 					  dispatch of this node. */
 
   u32 main_loop_vector_stats[2];
+
+  u64 perf_counter_ticks_before;      /**< Perf counter before node fn call  */
+  u64 perf_counter_ticks_since_last_overflow; /**< Perf counter ticks */
 
   u16 flags;				/**< Copy of main node flags. */
 

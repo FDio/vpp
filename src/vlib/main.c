@@ -546,12 +546,15 @@ vlib_node_runtime_sync_stats (vlib_main_t * vm,
   n->stats_total.calls += n_calls + r->calls_since_last_overflow;
   n->stats_total.vectors += n_vectors + r->vectors_since_last_overflow;
   n->stats_total.clocks += n_clocks + r->clocks_since_last_overflow;
+  n->stats_total.perf_counter_ticks +=
+    r->perf_counter_ticks_since_last_overflow;
   n->stats_total.max_clock = r->max_clock;
   n->stats_total.max_clock_n = r->max_clock_n;
 
   r->calls_since_last_overflow = 0;
   r->vectors_since_last_overflow = 0;
   r->clocks_since_last_overflow = 0;
+  r->perf_counter_ticks_since_last_overflow = 0ULL;
 }
 
 always_inline void __attribute__ ((unused))
@@ -637,6 +640,23 @@ vlib_node_runtime_update_stats (vlib_main_t * vm,
     }
 
   return r;
+}
+
+always_inline void
+vlib_node_runtime_perf_counter_before (vlib_main_t * vm,
+				       vlib_node_runtime_t * node)
+{
+  if (PREDICT_FALSE (vm->perf_counter_id))
+    node->perf_counter_ticks_before = clib_rdpmc (vm->perf_counter_id);
+}
+
+always_inline void
+vlib_node_runtime_perf_counter_after (vlib_main_t * vm,
+				      vlib_node_runtime_t * node)
+{
+  if (PREDICT_FALSE (vm->perf_counter_id))
+    node->perf_counter_ticks_since_last_overflow
+      += (clib_rdpmc (vm->perf_counter_id) - node->perf_counter_ticks_before);
 }
 
 always_inline void
@@ -967,6 +987,8 @@ dispatch_node (vlib_main_t * vm,
 				 frame ? frame->n_vectors : 0,
 				 /* is_after */ 0);
 
+      vlib_node_runtime_perf_counter_before (stat_vm, node);
+
       /*
        * Turn this on if you run into
        * "bad monkey" contexts, and you want to know exactly
@@ -986,6 +1008,8 @@ dispatch_node (vlib_main_t * vm,
 	}
       else
 	n = node->function (vm, node, frame);
+
+      vlib_node_runtime_perf_counter_after (stat_vm, node);
 
       t = clib_cpu_time_now ();
 
