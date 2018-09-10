@@ -28,6 +28,11 @@ do
     fi
 done        
 
+# Perf monitor .json files
+for i in $(find ${1}/vpp/share/vpp/plugins/perfmon -name *.json -type f -print); do
+    echo ../${i} /usr/share/vpp/plugins/perfmon >> ${2}
+done
+
 # sample plugin
 paths=`(cd ..; find src/examples/sample-plugin -type f -print | grep -v autom4te)`
 

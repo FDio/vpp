@@ -540,29 +540,38 @@ vlib_put_next_frame (vlib_main_t * vm,
 never_inline void
 vlib_node_runtime_sync_stats (vlib_main_t * vm,
 			      vlib_node_runtime_t * r,
-			      uword n_calls, uword n_vectors, uword n_clocks)
+			      uword n_calls, uword n_vectors, uword n_clocks,
+			      uword n_ticks)
 {
   vlib_node_t *n = vlib_get_node (vm, r->node_index);
 
   n->stats_total.calls += n_calls + r->calls_since_last_overflow;
   n->stats_total.vectors += n_vectors + r->vectors_since_last_overflow;
   n->stats_total.clocks += n_clocks + r->clocks_since_last_overflow;
+  n->stats_total.perf_counter_ticks += n_ticks +
+    r->perf_counter_ticks_since_last_overflow;
+  n->stats_total.perf_counter_vectors += n_vectors +
+    r->perf_counter_vectors_since_last_overflow;
   n->stats_total.max_clock = r->max_clock;
   n->stats_total.max_clock_n = r->max_clock_n;
 
   r->calls_since_last_overflow = 0;
   r->vectors_since_last_overflow = 0;
   r->clocks_since_last_overflow = 0;
+  r->perf_counter_ticks_since_last_overflow = 0ULL;
+  r->perf_counter_vectors_since_last_overflow = 0ULL;
 }
 
 always_inline void __attribute__ ((unused))
 vlib_process_sync_stats (vlib_main_t * vm,
 			 vlib_process_t * p,
-			 uword n_calls, uword n_vectors, uword n_clocks)
+			 uword n_calls, uword n_vectors, uword n_clocks,
+			 uword n_ticks)
 {
   vlib_node_runtime_t *rt = &p->node_runtime;
   vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-  vlib_node_runtime_sync_stats (vm, rt, n_calls, n_vectors, n_clocks);
+  vlib_node_runtime_sync_stats (vm, rt, n_calls, n_vectors, n_clocks,
+				n_ticks);
   n->stats_total.suspends += p->n_suspends;
   p->n_suspends = 0;
 }
@@ -588,7 +597,7 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
       vec_elt_at_index (vm->node_main.nodes_by_type[n->type],
 			n->runtime_index);
 
-  vlib_node_runtime_sync_stats (vm, rt, 0, 0, 0);
+  vlib_node_runtime_sync_stats (vm, rt, 0, 0, 0, 0);
 
   /* Sync up runtime next frame vector counters with main node structure. */
   {
@@ -608,45 +617,67 @@ always_inline u32
 vlib_node_runtime_update_stats (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				uword n_calls,
-				uword n_vectors, uword n_clocks)
+				uword n_vectors, uword n_clocks,
+				uword n_ticks)
 {
   u32 ca0, ca1, v0, v1, cl0, cl1, r;
+  u32 ptick0, ptick1, pvec0, pvec1;
 
   cl0 = cl1 = node->clocks_since_last_overflow;
   ca0 = ca1 = node->calls_since_last_overflow;
   v0 = v1 = node->vectors_since_last_overflow;
+  ptick0 = ptick1 = node->perf_counter_ticks_since_last_overflow;
+  pvec0 = pvec1 = node->perf_counter_vectors_since_last_overflow;
 
   ca1 = ca0 + n_calls;
   v1 = v0 + n_vectors;
   cl1 = cl0 + n_clocks;
+  ptick1 = ptick0 + n_ticks;
+  pvec1 = pvec0 + n_vectors;
 
   node->calls_since_last_overflow = ca1;
   node->clocks_since_last_overflow = cl1;
   node->vectors_since_last_overflow = v1;
+  node->perf_counter_ticks_since_last_overflow = ptick1;
+  node->perf_counter_vectors_since_last_overflow = pvec1;
+
   node->max_clock_n = node->max_clock > n_clocks ?
     node->max_clock_n : n_vectors;
   node->max_clock = node->max_clock > n_clocks ? node->max_clock : n_clocks;
 
   r = vlib_node_runtime_update_main_loop_vector_stats (vm, node, n_vectors);
 
-  if (PREDICT_FALSE (ca1 < ca0 || v1 < v0 || cl1 < cl0))
+  if (PREDICT_FALSE (ca1 < ca0 || v1 < v0 || cl1 < cl0) || (ptick1 < ptick0)
+      || (pvec1 < pvec0))
     {
       node->calls_since_last_overflow = ca0;
       node->clocks_since_last_overflow = cl0;
       node->vectors_since_last_overflow = v0;
-      vlib_node_runtime_sync_stats (vm, node, n_calls, n_vectors, n_clocks);
+      node->perf_counter_ticks_since_last_overflow = ptick0;
+      node->perf_counter_vectors_since_last_overflow = pvec0;
+
+      vlib_node_runtime_sync_stats (vm, node, n_calls, n_vectors, n_clocks,
+				    n_ticks);
     }
 
   return r;
 }
 
+static inline u64 vlib_node_runtime_perf_counter (vlib_main_t * vm)
+{
+  if (PREDICT_FALSE (vm->vlib_node_runtime_perf_counter_cb != 0))
+    return ((*vm->vlib_node_runtime_perf_counter_cb)(vm));
+  return 0ULL;
+}
+
 always_inline void
 vlib_process_update_stats (vlib_main_t * vm,
 			   vlib_process_t * p,
-			   uword n_calls, uword n_vectors, uword n_clocks)
+			   uword n_calls, uword n_vectors, uword n_clocks,
+			   uword n_ticks)
 {
   vlib_node_runtime_update_stats (vm, &p->node_runtime,
-				  n_calls, n_vectors, n_clocks);
+				  n_calls, n_vectors, n_clocks, n_ticks);
 }
 
 static clib_error_t *
@@ -959,14 +990,18 @@ dispatch_node (vlib_main_t * vm,
 
   if (1 /* || vm->thread_index == node->thread_index */ )
     {
-      vlib_main_t *stat_vm;
-
-      stat_vm = /* vlib_mains ? vlib_mains[0] : */ vm;
+      u64 pmc_before, pmc_delta;
 
       vlib_elog_main_loop_event (vm, node->node_index,
 				 last_time_stamp,
 				 frame ? frame->n_vectors : 0,
 				 /* is_after */ 0);
+
+      /*
+       * To validate accounting: pmc_before = last_time_stamp
+       * perf ticks should equal clocks/pkt...
+       */
+      pmc_before = vlib_node_runtime_perf_counter (vm);
 
       /*
        * Turn this on if you run into
@@ -990,16 +1025,23 @@ dispatch_node (vlib_main_t * vm,
 
       t = clib_cpu_time_now ();
 
+      /*
+       * To validate accounting: pmc_delta = t - pmc_before;
+       * perf ticks should equal clocks/pkt...
+       */
+      pmc_delta = vlib_node_runtime_perf_counter (vm) - pmc_before;
+
       vlib_elog_main_loop_event (vm, node->node_index, t, n,	/* is_after */
 				 1);
 
       vm->main_loop_vectors_processed += n;
       vm->main_loop_nodes_processed += n > 0;
 
-      v = vlib_node_runtime_update_stats (stat_vm, node,
+      v = vlib_node_runtime_update_stats (vm, node,
 					  /* n_calls */ 1,
 					  /* n_vectors */ n,
-					  /* n_clocks */ t - last_time_stamp);
+					  /* n_clocks */ t - last_time_stamp,
+					  pmc_delta /* PMC ticks */ );
 
       /* When in interrupt mode and vector rate crosses threshold switch to
          polling mode. */
@@ -1338,7 +1380,8 @@ dispatch_process (vlib_main_t * vm,
   vlib_process_update_stats (vm, p,
 			     /* n_calls */ !is_suspend,
 			     /* n_vectors */ n_vectors,
-			     /* n_clocks */ t - last_time_stamp);
+			     /* n_clocks */ t - last_time_stamp,
+			     /* pmc_ticks */ 0ULL);
 
   return t;
 }
@@ -1421,7 +1464,8 @@ dispatch_suspended_process (vlib_main_t * vm,
   vlib_process_update_stats (vm, p,
 			     /* n_calls */ !is_suspend,
 			     /* n_vectors */ n_vectors,
-			     /* n_clocks */ t - last_time_stamp);
+			     /* n_clocks */ t - last_time_stamp,
+			     /* pmc_ticks */ 0ULL);
 
   return t;
 }
@@ -1471,6 +1515,9 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   if (!nm->interrupt_threshold_vector_length)
     nm->interrupt_threshold_vector_length = 5;
 
+  /* Make sure the performance monitor counter is disabled */
+  vm->perf_counter_id = ~0;
+
   /* Start all processes. */
   if (is_main)
     {
@@ -1493,6 +1540,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  vlib_worker_thread_barrier_check ();
 	  vec_foreach (fqm, tm->frame_queue_mains)
 	    vlib_frame_queue_dequeue (vm, fqm);
+	  if (PREDICT_FALSE (vm->worker_thread_main_loop_callback != 0))
+	    vm->worker_thread_main_loop_callback (vm);
 	}
 
       /* Process pre-input nodes. */
