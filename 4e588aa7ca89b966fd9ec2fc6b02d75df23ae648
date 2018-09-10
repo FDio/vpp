@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "81145051_14dec913",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-10T15:41:09Z",
+      "side": 0,
+      "message": "ETH_TXQ_FLAGS_NOXSUMS is defined as\n  #define ETH_TXQ_FLAGS_NOXSUMS \\\n                  (ETH_TXQ_FLAGS_NOXSUMSCTP | ETH_TXQ_FLAGS_NOXSUMUDP | \\\n                   ETH_TXQ_FLAGS_NOXSUMTCP)\n\nSo please fix the sae thing on older dpdk versions :)",
+      "range": {
+        "startLine": 447,
+        "startChar": 30,
+        "endLine": 447,
+        "endChar": 51
+      },
+      "revId": "4e588aa7ca89b966fd9ec2fc6b02d75df23ae648",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
