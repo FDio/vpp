@@ -539,29 +539,35 @@ vlib_put_next_frame (vlib_main_t * vm,
 never_inline void
 vlib_node_runtime_sync_stats (vlib_main_t * vm,
 			      vlib_node_runtime_t * r,
-			      uword n_calls, uword n_vectors, uword n_clocks)
+			      uword n_calls, uword n_vectors, uword n_clocks,
+			      uword n_ticks)
 {
   vlib_node_t *n = vlib_get_node (vm, r->node_index);
 
   n->stats_total.calls += n_calls + r->calls_since_last_overflow;
   n->stats_total.vectors += n_vectors + r->vectors_since_last_overflow;
   n->stats_total.clocks += n_clocks + r->clocks_since_last_overflow;
+  n->stats_total.perf_counter_ticks += n_ticks +
+    r->perf_counter_ticks_since_last_overflow;
   n->stats_total.max_clock = r->max_clock;
   n->stats_total.max_clock_n = r->max_clock_n;
 
   r->calls_since_last_overflow = 0;
   r->vectors_since_last_overflow = 0;
   r->clocks_since_last_overflow = 0;
+  r->perf_counter_ticks_since_last_overflow = 0;
 }
 
 always_inline void __attribute__ ((unused))
 vlib_process_sync_stats (vlib_main_t * vm,
 			 vlib_process_t * p,
-			 uword n_calls, uword n_vectors, uword n_clocks)
+			 uword n_calls, uword n_vectors, uword n_clocks,
+			 uword n_ticks)
 {
   vlib_node_runtime_t *rt = &p->node_runtime;
   vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-  vlib_node_runtime_sync_stats (vm, rt, n_calls, n_vectors, n_clocks);
+  vlib_node_runtime_sync_stats (vm, rt, n_calls, n_vectors, n_clocks,
+				n_ticks);
   n->stats_total.suspends += p->n_suspends;
   p->n_suspends = 0;
 }
@@ -587,7 +593,7 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
       vec_elt_at_index (vm->node_main.nodes_by_type[n->type],
 			n->runtime_index);
 
-  vlib_node_runtime_sync_stats (vm, rt, 0, 0, 0);
+  vlib_node_runtime_sync_stats (vm, rt, 0, 0, 0, 0);
 
   /* Sync up runtime next frame vector counters with main node structure. */
   {
@@ -607,45 +613,60 @@ always_inline u32
 vlib_node_runtime_update_stats (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				uword n_calls,
-				uword n_vectors, uword n_clocks)
+				uword n_vectors, uword n_clocks,
+				uword n_ticks)
 {
-  u32 ca0, ca1, v0, v1, cl0, cl1, r;
+  u32 ca0, ca1, v0, v1, cl0, cl1, r, tick0, tick1;
 
   cl0 = cl1 = node->clocks_since_last_overflow;
   ca0 = ca1 = node->calls_since_last_overflow;
   v0 = v1 = node->vectors_since_last_overflow;
+  tick0 = tick1 = node->perf_counter_ticks_since_last_overflow;
 
   ca1 = ca0 + n_calls;
   v1 = v0 + n_vectors;
   cl1 = cl0 + n_clocks;
+  tick1 = tick1 + n_ticks;
 
   node->calls_since_last_overflow = ca1;
   node->clocks_since_last_overflow = cl1;
   node->vectors_since_last_overflow = v1;
+  node->perf_counter_ticks_since_last_overflow = tick1;
   node->max_clock_n = node->max_clock > n_clocks ?
     node->max_clock_n : n_vectors;
   node->max_clock = node->max_clock > n_clocks ? node->max_clock : n_clocks;
 
   r = vlib_node_runtime_update_main_loop_vector_stats (vm, node, n_vectors);
 
-  if (PREDICT_FALSE (ca1 < ca0 || v1 < v0 || cl1 < cl0))
+  if (PREDICT_FALSE (ca1 < ca0 || v1 < v0 || cl1 < cl0 || tick1 < tick0))
     {
       node->calls_since_last_overflow = ca0;
       node->clocks_since_last_overflow = cl0;
       node->vectors_since_last_overflow = v0;
-      vlib_node_runtime_sync_stats (vm, node, n_calls, n_vectors, n_clocks);
+      node->perf_counter_ticks_since_last_overflow = tick0;
+      vlib_node_runtime_sync_stats (vm, node, n_calls, n_vectors, n_clocks,
+				    n_ticks);
     }
 
   return r;
 }
 
+always_inline u64
+vlib_node_runtime_perf_counter (vlib_main_t * vm)
+{
+  if (PREDICT_FALSE (vm->perf_counter_id != ~0))
+    return clib_rdpmc (vm->perf_counter_id);
+  return 0ULL;
+}
+
 always_inline void
 vlib_process_update_stats (vlib_main_t * vm,
 			   vlib_process_t * p,
-			   uword n_calls, uword n_vectors, uword n_clocks)
+			   uword n_calls, uword n_vectors, uword n_clocks,
+			   uword n_ticks)
 {
   vlib_node_runtime_update_stats (vm, &p->node_runtime,
-				  n_calls, n_vectors, n_clocks);
+				  n_calls, n_vectors, n_clocks, n_ticks);
 }
 
 static clib_error_t *
@@ -959,6 +980,7 @@ dispatch_node (vlib_main_t * vm,
   if (1 /* || vm->thread_index == node->thread_index */ )
     {
       vlib_main_t *stat_vm;
+      u64 pmc_before, pmc_delta;
 
       stat_vm = /* vlib_mains ? vlib_mains[0] : */ vm;
 
@@ -966,6 +988,12 @@ dispatch_node (vlib_main_t * vm,
 				 last_time_stamp,
 				 frame ? frame->n_vectors : 0,
 				 /* is_after */ 0);
+
+      /*
+       * To validate accounting: pmc_before = last_time_stamp
+       * perf ticks should equal clocks/pkt...
+       */
+      pmc_before = vlib_node_runtime_perf_counter (stat_vm);
 
       /*
        * Turn this on if you run into
@@ -989,6 +1017,12 @@ dispatch_node (vlib_main_t * vm,
 
       t = clib_cpu_time_now ();
 
+      /*
+       * To validate accounting: pmc_delta = t - pmc_before;
+       * perf ticks should equal clocks/pkt...
+       */
+      pmc_delta = vlib_node_runtime_perf_counter (stat_vm) - pmc_before;
+
       vlib_elog_main_loop_event (vm, node->node_index, t, n,	/* is_after */
 				 1);
 
@@ -998,7 +1032,8 @@ dispatch_node (vlib_main_t * vm,
       v = vlib_node_runtime_update_stats (stat_vm, node,
 					  /* n_calls */ 1,
 					  /* n_vectors */ n,
-					  /* n_clocks */ t - last_time_stamp);
+					  /* n_clocks */ t - last_time_stamp,
+					  pmc_delta /* PMC ticks */ );
 
       /* When in interrupt mode and vector rate crosses threshold switch to
          polling mode. */
@@ -1337,7 +1372,8 @@ dispatch_process (vlib_main_t * vm,
   vlib_process_update_stats (vm, p,
 			     /* n_calls */ !is_suspend,
 			     /* n_vectors */ n_vectors,
-			     /* n_clocks */ t - last_time_stamp);
+			     /* n_clocks */ t - last_time_stamp,
+			     /* pmc_ticks */ 0ULL);
 
   return t;
 }
@@ -1420,7 +1456,8 @@ dispatch_suspended_process (vlib_main_t * vm,
   vlib_process_update_stats (vm, p,
 			     /* n_calls */ !is_suspend,
 			     /* n_vectors */ n_vectors,
-			     /* n_clocks */ t - last_time_stamp);
+			     /* n_clocks */ t - last_time_stamp,
+			     /* pmc_ticks */ 0ULL);
 
   return t;
 }
@@ -1469,6 +1506,9 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
     nm->polling_threshold_vector_length = 10;
   if (!nm->interrupt_threshold_vector_length)
     nm->interrupt_threshold_vector_length = 5;
+
+  /* Make sure the performance monitor counter is disabled */
+  vm->perf_counter_id = ~0;
 
   /* Start all processes. */
   if (is_main)

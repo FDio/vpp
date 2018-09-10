@@ -46,6 +46,7 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
+#include <vppinfra/pmc.h>
 
 #include <pthread.h>
 
@@ -80,6 +81,8 @@ typedef struct vlib_main_t
      (main_loop_count >> VLIB_LOG2_INPUT_VECTORS_PER_MAIN_LOOP). */
   u32 vector_counts_per_main_loop[2];
   u32 node_counts_per_main_loop[2];
+
+  int perf_counter_id;
 
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
