@@ -39,5 +39,6 @@ vom_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
   $(CMAKE) -G Ninja $(vom_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)
 
-vom_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- -j 8
+vom_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
+
 vom_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install
