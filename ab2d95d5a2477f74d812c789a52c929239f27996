@@ -22,6 +22,57 @@
       "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "667a9ffe_c27f48c6",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-10T09:52:56Z",
+      "side": 1,
+      "message": "Completely agree with Damjan. Can we have an example (helped with configuration steps) to achieve what you\u0027re describing here and below?",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "10cdd585_64a1acbe",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-10T09:52:56Z",
+      "side": 1,
+      "message": "It\u0027s also available for SUSE rolling-release Tumbleweed. Can you call that out?",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "36d6c219_b9d556d7",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-10T09:52:56Z",
+      "side": 1,
+      "message": "Apparently, latest stable is v5.0.0\nAny reasons why we shall use an older version (e.g. 4.7)?",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
