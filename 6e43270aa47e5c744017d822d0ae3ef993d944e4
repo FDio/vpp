@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c34a730_1cb2f170",
+        "filename": "src/vppinfra/vector_neon.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-11T15:14:18Z",
+      "side": 1,
+      "message": "This change is already been merged by Damjan. I suppose you added this change to make it work in your env. Just double check this.",
+      "range": {
+        "startLine": 124,
+        "startChar": 3,
+        "endLine": 124,
+        "endChar": 40
+      },
+      "revId": "6e43270aa47e5c744017d822d0ae3ef993d944e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7620e814_d9b76fe4",
+        "filename": "src/vppinfra/vector_neon.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-11T15:14:18Z",
+      "side": 1,
+      "message": "already been merged. Just double check this.",
+      "range": {
+        "startLine": 142,
+        "startChar": 3,
+        "endLine": 142,
+        "endChar": 38
+      },
+      "revId": "6e43270aa47e5c744017d822d0ae3ef993d944e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
