@@ -1339,6 +1339,10 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES bier/bier.api)
 
+##############################################################################
+# VNET Library
+##############################################################################
+
 add_vpp_library(vnet
   SOURCES ${VNET_SOURCES}
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
@@ -1347,3 +1351,18 @@ add_vpp_library(vnet
   LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
   DEPENDS api_headers
 )
+
+##############################################################################
+# Test apps
+##############################################################################
+
+add_vpp_executable(tcp_echo NO_INSTALL
+  SOURCES ../tests/vnet/session/tcp_echo.c
+  LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
+  )
+add_vpp_executable(udp_echo NO_INSTALL
+  SOURCES ../tests/vnet/session/udp_echo.c
+  LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
+  )
+
+##############################################################################

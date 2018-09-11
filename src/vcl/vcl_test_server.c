@@ -575,8 +575,8 @@ vts_worker_loop (void *arg)
 		    }
 		  continue;
 		}
-	      else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
-		       || (conn->cfg.test == SOCK_TEST_TYPE_BI))
+	      if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
+		  || (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		{
 		  vts_server_rx (conn, rx_bytes);
 		  if (vppcom_session_attr (conn->fd, VPPCOM_ATTR_GET_NREAD, 0,
@@ -584,7 +584,7 @@ vts_worker_loop (void *arg)
 		    goto read_again;
 		  continue;
 		}
-	      else if (isascii (conn->buf[0]))
+	      if (isascii (conn->buf[0]))
 		{
 		  vts_server_echo (conn, rx_bytes);
 		}
