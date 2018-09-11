@@ -119,7 +119,7 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_mempool_private_t *privp;
       uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
 						       xd->hw_if_index, j);
-      unsigned lcore = vlib_worker_threads[tidx].lcore_id;
+      unsigned lcore = vlib_worker_threads[tidx].cpu_id;
       u16 socket_id = rte_lcore_to_socket_id (lcore);
 
       rv =

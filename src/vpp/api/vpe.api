@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /* 
  * Note: API placement cleanup in progress
@@ -191,6 +191,54 @@ define show_version_reply
   u8 version[32];
   u8 build_date[32];
   u8 build_directory[256];
+};
+
+
+/** \brief show_threads display the information about vpp
+    threads running on system along with their process id,
+    cpu id, physical core and cpu socket.
+*/
+define show_threads
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief thread data
+    @param id - thread index
+    @param name - thread name i.e. vpp_main or vpp_wk_0
+    @param type - thread type i.e. workers or stats
+    @param pid - thread Process Id
+    @param cpu_id - thread pinned to cpu.
+    "CPUs or Logical cores are the number of physical cores times
+    the number of threads that can run on each core through
+    the use of hyperthreading." (from unix.stackexchange.com)
+    @param core - thread pinned to actual physical core.
+    @param cpu_socket - thread is running on which cpu socket.
+*/
+typeonly define thread_data
+{
+  u32 id;
+  u8 name[64];
+  u8 type[64];
+  u32 pid;
+  u32 cpu_id;
+  u32 core;
+  u32 cpu_socket;
+};
+
+/** \brief show_threads_reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param count - number of threads in thread_data array
+    @param thread_data - array of thread data
+*/
+define show_threads_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_thread_data_t thread_data[count];
 };
 
 define get_node_graph
