@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a758ae6e_f6b2bd3a",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-11T05:41:17Z",
+      "side": 1,
+      "message": "Ok now I got it. Sirshak, Don\u0027t you think this change should as part of 14606? I would prefer that way",
+      "range": {
+        "startLine": 100,
+        "startChar": 30,
+        "endLine": 100,
+        "endChar": 32
+      },
+      "revId": "95dd859ba4cf70137b464935247fae859dd85cb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
