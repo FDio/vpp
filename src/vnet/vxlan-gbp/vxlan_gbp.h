@@ -185,15 +185,14 @@ typedef struct
   u8 is_ip6;
   u32 instance;
   ip46_address_t src, dst;
-  u16 sclass;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;
-} vnet_vxlan_gbp_add_del_tunnel_args_t;
+} vnet_vxlan_gbp_tunnel_add_del_args_t;
 
-int vnet_vxlan_gbp_add_del_tunnel
-  (vnet_vxlan_gbp_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+int vnet_vxlan_gbp_tunnel_add_del
+  (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp);
 
 void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6,
 				     u8 is_enable);

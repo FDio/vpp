@@ -37,6 +37,10 @@ class VppIpAddressUnion():
     def address(self):
         return self.addr
 
+    @property
+    def bytes(self):
+        return self.ip_addr.packed
+
     def encode(self):
         if self.ip_addr.version is 6:
             return {
@@ -71,6 +75,10 @@ class VppIpAddress():
     @property
     def address(self):
         return self.addr.address
+
+    @property
+    def bytes(self):
+        return self.addr.bytes
 
 
 class VppIpPrefix():
