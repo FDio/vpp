@@ -99,7 +99,6 @@ typedef CLIB_PACKED (struct {
    */
   u64 alloc_arena_next;	/* Next VA to allocate, definitely NOT a constant */
   u64 alloc_arena_size;	/* Size of the arena */
-  u64 alloc_arena;	/* Base VA of the arena */
   /* Two SVM pointers stored as 8-byte integers */
   u64 alloc_lock_as_u64;
   u64 buckets_as_u64;
@@ -108,7 +107,7 @@ typedef CLIB_PACKED (struct {
   u32 nbuckets;	/* Number of buckets */
   /* Set when header valid */
   volatile u32 ready;
-  u64 pad;
+  u64 pad[2];
 }) BVT (clib_bihash_shared_header);
 /* *INDENT-ON* */
 
@@ -136,6 +135,8 @@ typedef struct
     BVT (clib_bihash_shared_header) sh;
 #endif
 
+  u64 alloc_arena;		/* Base of the allocation arena */
+
   /**
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump
     */
@@ -150,7 +151,7 @@ typedef struct
 #undef CLIB_BIHASH_READY_MAGIC
 #define alloc_arena_next(h) (((h)->sh)->alloc_arena_next)
 #define alloc_arena_size(h) (((h)->sh)->alloc_arena_size)
-#define alloc_arena(h) (((h)->sh)->alloc_arena)
+#define alloc_arena(h) ((h)->alloc_arena)
 #define CLIB_BIHASH_READY_MAGIC 0xFEEDFACE
 #else
 #undef alloc_arena_next
@@ -159,7 +160,7 @@ typedef struct
 #undef CLIB_BIHASH_READY_MAGIC
 #define alloc_arena_next(h) ((h)->sh.alloc_arena_next)
 #define alloc_arena_size(h) ((h)->sh.alloc_arena_size)
-#define alloc_arena(h) ((h)->sh.alloc_arena)
+#define alloc_arena(h) ((h)->alloc_arena)
 #define CLIB_BIHASH_READY_MAGIC 0
 #endif
 
@@ -230,8 +231,7 @@ void BV (clib_bihash_init)
 
 #if BIHASH_32_64_SVM
 void BV (clib_bihash_master_init_svm)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets,
-   u64 base_address, u64 memory_size);
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, u64 memory_size);
 void BV (clib_bihash_slave_init_svm)
   (BVT (clib_bihash) * h, char *name, int fd);
 #endif

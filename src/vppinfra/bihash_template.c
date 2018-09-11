@@ -29,7 +29,7 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
   if (rv >= (alloc_arena (h) + alloc_arena_size (h)))
     os_out_of_memory ();
 
-  return (void *) rv;
+  return (void *) (uword) (rv + alloc_arena (h));
 }
 
 
@@ -53,7 +53,7 @@ void BV (clib_bihash_init)
   ASSERT (memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
 
   alloc_arena (h) = (uword) clib_mem_vm_alloc (memory_size);
-  alloc_arena_next (h) = alloc_arena (h);
+  alloc_arena_next (h) = 0;
   alloc_arena_size (h) = memory_size;
 
   bucket_size = nbuckets * sizeof (h->buckets[0]);
@@ -71,17 +71,14 @@ void BV (clib_bihash_init)
 #endif
 
 void BV (clib_bihash_master_init_svm)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets,
-   u64 base_address, u64 memory_size)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, u64 memory_size)
 {
   uword bucket_size;
   u8 *mmap_addr;
   vec_header_t *freelist_vh;
   int fd;
 
-  ASSERT (base_address);
-  ASSERT (base_address + memory_size < (1ULL << 32));
-
+  ASSERT (memory_size < (1ULL << 32));
   /* Set up for memfd sharing */
   if ((fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
     {
@@ -99,9 +96,8 @@ void BV (clib_bihash_master_init_svm)
   if ((fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
     clib_unix_warning ("fcntl (F_ADD_SEALS)");
 
-  mmap_addr = mmap (u64_to_pointer (base_address), memory_size,
-		    PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd,
-		    0 /* offset */ );
+  mmap_addr = mmap (0, memory_size,
+		    PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 /* offset */ );
 
   if (mmap_addr == MAP_FAILED)
     {
@@ -118,23 +114,27 @@ void BV (clib_bihash_master_init_svm)
   h->log2_nbuckets = max_log2 (nbuckets);
 
   alloc_arena (h) = (u64) (uword) mmap_addr;
-  alloc_arena_next (h) = alloc_arena (h) + CLIB_CACHE_LINE_BYTES;
+  alloc_arena_next (h) = CLIB_CACHE_LINE_BYTES;
   alloc_arena_size (h) = memory_size;
 
   bucket_size = nbuckets * sizeof (h->buckets[0]);
   h->buckets = BV (alloc_aligned) (h, bucket_size);
-  h->sh->buckets_as_u64 = (u64) (uword) h->buckets;
+  h->sh->buckets_as_u64 = (u64) BV (clib_bihash_get_offset) (h, h->buckets);
 
   h->alloc_lock = BV (alloc_aligned) (h, CLIB_CACHE_LINE_BYTES);
   h->alloc_lock[0] = 0;
 
-  h->sh->alloc_lock_as_u64 = (u64) (uword) (h->alloc_lock);
-  freelist_vh = BV (alloc_aligned) (h, sizeof (vec_header_t) +
-				    BIHASH_FREELIST_LENGTH * sizeof (u64));
+  h->sh->alloc_lock_as_u64 =
+    (u64) BV (clib_bihash_get_offset) (h, (void *) h->alloc_lock);
+  freelist_vh =
+    BV (alloc_aligned) (h,
+			sizeof (vec_header_t) +
+			BIHASH_FREELIST_LENGTH * sizeof (u64));
   freelist_vh->len = BIHASH_FREELIST_LENGTH;
   freelist_vh->dlmalloc_header_offset = 0xDEADBEEF;
-  h->sh->freelists_as_u64 = (u64) (uword) freelist_vh->vector_data;
-  h->freelists = (void *) (uword) (h->sh->freelists_as_u64);
+  h->sh->freelists_as_u64 =
+    (u64) BV (clib_bihash_get_offset) (h, freelist_vh->vector_data);
+  h->freelists = (void *) (freelist_vh->vector_data);
 
   h->fmt_fn = NULL;
 }
@@ -143,10 +143,10 @@ void BV (clib_bihash_slave_init_svm)
   (BVT (clib_bihash) * h, char *name, int fd)
 {
   u8 *mmap_addr;
-  u64 base_address, memory_size;
+  u64 memory_size;
   BVT (clib_bihash_shared_header) * sh;
 
-  /* Trial mapping, to place the segment */
+  /* Trial mapping, to learn the segment size */
   mmap_addr = mmap (0, 4096, PROT_READ, MAP_SHARED, fd, 0 /* offset */ );
   if (mmap_addr == MAP_FAILED)
     {
@@ -156,15 +156,13 @@ void BV (clib_bihash_slave_init_svm)
 
   sh = (BVT (clib_bihash_shared_header) *) mmap_addr;
 
-  base_address = sh->alloc_arena;
   memory_size = sh->alloc_arena_size;
 
   munmap (mmap_addr, 4096);
 
-  /* Actual mapping, at the required address */
-  mmap_addr = mmap (u64_to_pointer (base_address), memory_size,
-		    PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd,
-		    0 /* offset */ );
+  /* Actual mapping, at the required size */
+  mmap_addr = mmap (0, memory_size,
+		    PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 /* offset */ );
 
   if (mmap_addr == MAP_FAILED)
     {
@@ -175,15 +173,16 @@ void BV (clib_bihash_slave_init_svm)
   (void) close (fd);
 
   h->sh = (void *) mmap_addr;
+  alloc_arena (h) = (u64) (uword) mmap_addr;
   h->memfd = -1;
 
   h->name = (u8 *) name;
-  h->buckets = u64_to_pointer (h->sh->buckets_as_u64);
+  h->buckets = BV (clib_bihash_get_value) (h, h->sh->buckets_as_u64);
   h->nbuckets = h->sh->nbuckets;
   h->log2_nbuckets = max_log2 (h->nbuckets);
 
-  h->alloc_lock = u64_to_pointer (h->sh->alloc_lock_as_u64);
-  h->freelists = u64_to_pointer (h->sh->freelists_as_u64);
+  h->alloc_lock = BV (clib_bihash_get_value) (h, h->sh->alloc_lock_as_u64);
+  h->freelists = BV (clib_bihash_get_value) (h, h->sh->freelists_as_u64);
   h->fmt_fn = NULL;
 }
 #endif /* BIHASH_32_64_SVM */
@@ -225,7 +224,7 @@ BV (value_alloc) (BVT (clib_bihash) * h, u32 log2_pages)
       rv = BV (alloc_aligned) (h, (sizeof (*rv) * (1 << log2_pages)));
       goto initialize;
     }
-  rv = (void *) (uword) h->freelists[log2_pages];
+  rv = BV (clib_bihash_get_value) (h, (uword) h->freelists[log2_pages]);
   h->freelists[log2_pages] = rv->next_free_as_u64;
 
 initialize:
@@ -251,7 +250,7 @@ BV (value_free) (BVT (clib_bihash) * h, BVT (clib_bihash_value) * v,
     memset (v, 0xFE, sizeof (*v) * (1 << log2_pages));
 
   v->next_free_as_u64 = (u64) h->freelists[log2_pages];
-  h->freelists[log2_pages] = (u64) (uword) v;
+  h->freelists[log2_pages] = (u64) BV (clib_bihash_get_offset) (h, v);
 }
 
 static inline void
@@ -767,12 +766,13 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
     {
       u32 nfree = 0;
       BVT (clib_bihash_value) * free_elt;
+      u64 free_elt_as_u64 = h->freelists[i];
 
-      free_elt = (void *) (uword) h->freelists[i];
-      while (free_elt)
+      while (free_elt_as_u64)
 	{
+	  free_elt = BV (clib_bihash_get_value) (h, free_elt_as_u64);
 	  nfree++;
-	  free_elt = (void *) (uword) free_elt->next_free_as_u64;
+	  free_elt_as_u64 = free_elt->next_free_as_u64;
 	}
 
       if (nfree || verbose)
@@ -780,7 +780,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
     }
 
   s = format (s, "    %lld linear search buckets\n", linear_buckets);
-  used_bytes = alloc_arena_next (h) - alloc_arena (h);
+  used_bytes = alloc_arena_next (h);
   s = format (s,
 	      "    arena: base %llx, next %llx\n"
 	      "           used %lld b (%lld Mbytes) of %lld b (%lld Mbytes)\n",
