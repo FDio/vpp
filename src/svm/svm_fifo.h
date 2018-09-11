@@ -140,22 +140,26 @@ svm_fifo_has_ooo_data (svm_fifo_t * f)
 /**
  * Sets fifo event flag.
  *
+ * Also acts as a release barrier.
+ *
  * @return 1 if flag was not set.
  */
 always_inline u8
 svm_fifo_set_event (svm_fifo_t * f)
 {
-  /* Probably doesn't need to be atomic. Still, better avoid surprises */
-  return __sync_lock_test_and_set (&f->has_event, 1) == 0;
+//  return __sync_lock_test_and_set (&f->has_event, 1) == 0;
+//  return __sync_bool_compare_and_swap (&f->has_event, 0, 1);
+  return !__atomic_exchange_n (&f->has_event, 1, __ATOMIC_RELEASE);
 }
 
 /**
  * Unsets fifo event flag.
+ *
+ * Also acts as a release barrier.
  */
 always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
 {
-  /* Probably doesn't need to be atomic. Still, better avoid surprises */
   __sync_lock_release (&f->has_event);
 }
 

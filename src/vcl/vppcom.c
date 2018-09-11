@@ -1268,7 +1268,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   svm_msg_q_msg_t msg;
   session_event_t *e;
   svm_msg_q_t *mq;
-  u8 is_full;
+  u8 is_ct;
 
   if (PREDICT_FALSE (!buf))
     return VPPCOM_EINVAL;
@@ -1299,18 +1299,19 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
       return rv;
     }
 
-  mq = vcl_session_is_ct (s) ? s->our_evt_q : wrk->app_event_queue;
-  svm_fifo_unset_event (rx_fifo);
-  is_full = svm_fifo_is_full (rx_fifo);
+  is_ct = vcl_session_is_ct (s);
+  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
 
   if (svm_fifo_is_empty (rx_fifo))
     {
       if (is_nonblocking)
 	{
+	  svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_OK;
 	}
-      while (1)
+      while (svm_fifo_is_empty (rx_fifo))
 	{
+	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_lock (mq);
 	  if (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
@@ -1318,20 +1319,16 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	  svm_msg_q_sub_w_lock (mq, &msg);
 	  e = svm_msg_q_msg_data (mq, &msg);
 	  svm_msg_q_unlock (mq);
-	  if (!vcl_is_rx_evt_for_session (e, s->session_index,
-					  s->our_evt_q != 0))
+	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
 	    {
 	      vcl_handle_mq_ctrl_event (wrk, e);
 	      svm_msg_q_free_msg (mq, &msg);
 	      continue;
 	    }
-	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_free_msg (mq, &msg);
+
 	  if (PREDICT_FALSE (s->session_state == STATE_CLOSE_ON_EMPTY))
 	    return 0;
-	  if (svm_fifo_is_empty (rx_fifo))
-	    continue;
-	  break;
 	}
     }
 
@@ -1340,7 +1337,10 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   else
     n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
-  if (vcl_session_is_ct (s) && is_full)
+  if (svm_fifo_is_empty (rx_fifo))
+    svm_fifo_unset_event (rx_fifo);
+
+  if (is_ct && n_read + svm_fifo_max_dequeue (rx_fifo) == rx_fifo->nitems)
     {
       /* If the peer is not polling send notification */
       if (!svm_fifo_has_event (s->rx_fifo))
@@ -1593,7 +1593,7 @@ if (PREDICT_FALSE (svm_fifo_is_empty (_fifo)))			\
   {								\
     svm_fifo_unset_event (_fifo);				\
     if (svm_fifo_is_empty (_fifo))				\
-	break;							\
+      break;							\
   }								\
 
 static int
