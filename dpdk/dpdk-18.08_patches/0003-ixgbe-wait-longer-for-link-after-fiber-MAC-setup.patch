@@ -1,0 +1,39 @@
+From ba9b381c532fe57c726752b7db0ab45ab7726c90 Mon Sep 17 00:00:00 2001
+From: Matthew Smith <mgsmith@netgate.com>
+Date: Fri, 13 Jul 2018 16:35:57 -0500
+Subject: [PATCH] ixgbe: wait longer for link after fiber MAC setup
+
+After setting up the link on a fiber port, the maximum wait time for
+the link to come up is 500 ms in ixgbe_setup_mac_link_multispeed_fiber().
+On an x550 SFP+ port, this is often not sufficiently long for the link
+to come up. This can result in never being able to retrieve accurate
+link status for the port using rte_eth_link_get_nowait().
+
+Increase the maximum wait time in ixgbe_setup_mac_link_multispeed_fiber()
+to 1 s.
+
+Bugzilla ID: 69
+Fixes: f3430431abaf ("ixgbe/base: add SFP+ dual-speed support")
+Cc: stable@dpdk.org
+
+Signed-off-by: Matthew Smith <mgsmith@netgate.com>
+---
+ drivers/net/ixgbe/base/ixgbe_common.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ixgbe/base/ixgbe_common.c b/drivers/net/ixgbe/base/ixgbe_common.c
+index e7e9256e5..2fb0a072c 100644
+--- a/drivers/net/ixgbe/base/ixgbe_common.c
++++ b/drivers/net/ixgbe/base/ixgbe_common.c
+@@ -5296,7 +5296,7 @@ s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
+ 		 * Section 73.10.2, we may have to wait up to 500ms if KR is
+ 		 * attempted.  82599 uses the same timing for 10g SFI.
+ 		 */
+-		for (i = 0; i < 5; i++) {
++		for (i = 0; i < 10; i++) {
+ 			/* Wait for the link partner to also set speed */
+ 			msec_delay(100);
+ 
+-- 
+2.15.2 (Apple Git-101.1)
+
