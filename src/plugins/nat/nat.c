@@ -742,6 +742,7 @@ int snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
 #define _(N, i, n, s) \
   clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535); \
   ap->busy_##n##_ports = 0; \
+  ap->busy_##n##_ports_per_thread = 0;\
   vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
   foreach_snat_protocol
 #undef _
@@ -1606,6 +1607,12 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
           vec_free (ses_to_be_removed);
        }
     }
+
+#define _(N, i, n, s) \
+  clib_bitmap_free (a->busy_##n##_port_bitmap); \
+  vec_free (a->busy_##n##_ports_per_thread);
+  foreach_snat_protocol
+#undef _
 
   if (twice_nat)
     {
