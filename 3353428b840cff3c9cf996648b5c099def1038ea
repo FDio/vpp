@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1edeefe5_dd3b1ef7",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-11T05:43:52Z",
+      "side": 1,
+      "message": "In order to make this patch complete, bring change 14609 here itself",
+      "range": {
+        "startLine": 100,
+        "startChar": 36,
+        "endLine": 100,
+        "endChar": 56
+      },
+      "revId": "3353428b840cff3c9cf996648b5c099def1038ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
