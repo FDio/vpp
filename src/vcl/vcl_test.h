@@ -77,11 +77,43 @@ vcl_test_read (int fd, uint8_t *buf, uint32_t nbytes,
   
   if (rx_bytes < 0)
     {
-      errno_val = errno;
-      perror ("ERROR in sock_test_read()");
-      fprintf (stderr, "SOCK_TEST: ERROR: socket read "
-               "failed (errno = %d)!\n", errno_val);
-      errno = errno_val;
+      vterr ("vppcom_session_read()", -errno);
+    }
+  else if (stats)
+    stats->rx_bytes += rx_bytes;
+
+  return (rx_bytes);
+}
+
+static inline int
+vcl_test_read_ds (int fd, vppcom_data_segments_t ds, sock_test_stats_t *stats)
+{
+  int rx_bytes, errno_val;
+
+  do
+    {
+      if (stats)
+        stats->rx_xacts++;
+      rx_bytes = vppcom_session_read_segments (fd, ds);
+
+      if (rx_bytes < 0)
+        {
+          errno = -rx_bytes;
+          rx_bytes = -1;
+        }
+      if (stats)
+        {
+          if ((rx_bytes == 0) ||
+              ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+            stats->rx_eagain++;
+        }
+    }
+  while ((rx_bytes == 0) ||
+         ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
+
+  if (rx_bytes < 0)
+    {
+      vterr ("vppcom_session_read()", -errno);
     }
   else if (stats)
     stats->rx_bytes += rx_bytes;

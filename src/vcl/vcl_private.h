@@ -139,6 +139,7 @@ do {                                            \
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 #define _(type, name) type name;
   foreach_app_session_field
 #undef _

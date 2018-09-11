@@ -85,6 +85,12 @@ typedef enum
   SVM_FIFO_FULL = -2,
 } svm_fifo_err_t;
 
+typedef struct svm_fifo_segment_
+{
+  u8 *data;
+  u32 len;
+} svm_fifo_segment_t;
+
 #if SVM_FIFO_TRACE
 #define svm_fifo_trace_add(_f, _s, _l, _t)		\
 {							\
@@ -147,8 +153,8 @@ svm_fifo_has_ooo_data (svm_fifo_t * f)
 always_inline u8
 svm_fifo_set_event (svm_fifo_t * f)
 {
-//  return __sync_lock_test_and_set (&f->has_event, 1) == 0;
-//  return __sync_bool_compare_and_swap (&f->has_event, 0, 1);
+  /* return __sync_lock_test_and_set (&f->has_event, 1) == 0;
+     return __sync_bool_compare_and_swap (&f->has_event, 0, 1); */
   return !__atomic_exchange_n (&f->has_event, 1, __ATOMIC_RELEASE);
 }
 
@@ -175,6 +181,8 @@ int svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here);
 int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 max_bytes, u8 * copy_here);
 int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
+int svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs);
+void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs);
 u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
