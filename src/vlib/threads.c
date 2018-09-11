@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <math.h>
 #include <vppinfra/format.h>
+#include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
@@ -305,7 +306,7 @@ vlib_thread_init (vlib_main_t * vm)
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
-  w->lcore_id = tm->main_lcore;
+  w->cpu_id = tm->main_lcore;
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
@@ -600,21 +601,42 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   return rv;
 }
 
+static void
+vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id)
+{
+  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
+  u8 *p = 0;
+  int core_id = -1, socket_id = -1;
+
+  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
+  clib_sysfs_read ((char *) p, "%d", &core_id);
+  vec_reset_length (p);
+  p =
+    format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, cpu_id,
+	    0);
+  clib_sysfs_read ((char *) p, "%d", &socket_id);
+  vec_free (p);
+
+  w->core_id = core_id;
+  w->socket_id = socket_id;
+}
+
 static clib_error_t *
-vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
+vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   void *(*fp_arg) (void *) = fp;
 
-  w->lcore_id = lcore_id;
+  w->cpu_id = cpu_id;
+  vlib_get_thread_core_socket (w, cpu_id);
   if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
-    return tm->cb.vlib_launch_thread_cb (fp, (void *) w, lcore_id);
+    return tm->cb.vlib_launch_thread_cb (fp, (void *) w, cpu_id);
   else
     {
       pthread_t worker;
       cpu_set_t cpuset;
       CPU_ZERO (&cpuset);
-      CPU_SET (lcore_id, &cpuset);
+      CPU_SET (cpu_id, &cpuset);
 
       if (pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w))
 	return clib_error_return_unix (0, "pthread_create");

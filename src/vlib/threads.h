@@ -108,7 +108,9 @@ typedef struct
   volatile u32 *node_reforks_required;
 
   long lwp;
-  int lcore_id;
+  int cpu_id;
+  int core_id;
+  int socket_id;
   pthread_t thread_id;
 } vlib_worker_thread_t;
 
@@ -270,8 +272,8 @@ typedef enum
 typedef struct
 {
   clib_error_t *(*vlib_launch_thread_cb) (void *fp, vlib_worker_thread_t * w,
-					  unsigned lcore_id);
-  clib_error_t *(*vlib_thread_set_lcore_cb) (u32 thread, u16 lcore);
+					  unsigned cpu_id);
+  clib_error_t *(*vlib_thread_set_lcore_cb) (u32 thread, u16 cpu);
 } vlib_thread_callbacks_t;
 
 typedef struct

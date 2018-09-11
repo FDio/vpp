@@ -2154,6 +2154,16 @@ static void *vl_api_show_version_t_print
   FINISH;
 }
 
+static void *vl_api_show_threads_t_print
+  (vl_api_show_threads_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: show_threads ");
+
+  FINISH;
+}
+
 static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
   (vl_api_vxlan_gpe_add_del_tunnel_t * mp, void *handle)
 {

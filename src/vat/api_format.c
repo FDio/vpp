@@ -1319,6 +1319,76 @@ static void vl_api_show_version_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_show_threads_reply_t_handler
+  (vl_api_show_threads_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  int i, count = 0;
+
+  if (retval >= 0)
+    count = ntohl (mp->count);
+
+  for (i = 0; i < count; i++)
+    print (vam->ofp,
+	   "\n%-2d %-11s %-11s %-5d %-6d %-4d %-6d",
+	   ntohl (mp->thread_data[i].id), mp->thread_data[i].name,
+	   mp->thread_data[i].type, ntohl (mp->thread_data[i].pid),
+	   ntohl (mp->thread_data[i].cpu_id), ntohl (mp->thread_data[i].core),
+	   ntohl (mp->thread_data[i].cpu_socket));
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void vl_api_show_threads_reply_t_handler_json
+  (vl_api_show_threads_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  vl_api_thread_data_t *td;
+  int i, count = ntohl (mp->count);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "count", count);
+
+  for (i = 0; i < count; i++)
+    {
+      td = &mp->thread_data[i];
+      vat_json_object_add_uint (&node, "id", ntohl (td->id));
+      vat_json_object_add_string_copy (&node, "name", td->name);
+      vat_json_object_add_string_copy (&node, "type", td->type);
+      vat_json_object_add_uint (&node, "pid", ntohl (td->pid));
+      vat_json_object_add_int (&node, "cpu_id", ntohl (td->cpu_id));
+      vat_json_object_add_int (&node, "core", ntohl (td->id));
+      vat_json_object_add_int (&node, "cpu_socket", ntohl (td->cpu_socket));
+    }
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static int
+api_show_threads (vat_main_t * vam)
+{
+  vl_api_show_threads_t *mp;
+  int ret;
+
+  print (vam->ofp,
+	 "\n%-2s %-11s %-11s %-5s %-6s %-4s %-6s",
+	 "ID", "Name", "Type", "LWP", "cpu_id", "Core", "Socket");
+
+  M (SHOW_THREADS, mp);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static void
 vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
 {
@@ -5655,6 +5725,7 @@ _(CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)               \
 _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
+_(SHOW_THREADS_REPLY, show_threads_reply)                               \
 _(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
 _(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
 _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
@@ -23742,6 +23813,7 @@ _(modify_vhost_user_if,                                                 \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
+_(show_threads, "")                                                     \
 _(vxlan_gpe_add_del_tunnel,                                             \
   "local <addr> remote <addr>  | group <mcast-ip-addr>\n"               \
   "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
