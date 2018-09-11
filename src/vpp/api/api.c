@@ -2,7 +2,7 @@
  *------------------------------------------------------------------
  * api.c - message handler registration
  *
- * Copyright (c) 2010-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2010-2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -16,6 +16,7 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +45,7 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+#include <vppinfra/linux/sysfs.h>
 
 #include <vnet/api_errno.h>
 #include <vnet/vnet.h>
@@ -80,6 +82,7 @@ _(CLI_INBAND, cli_inband)						\
 _(GET_NODE_INDEX, get_node_index)                                       \
 _(ADD_NODE_NEXT, add_node_next)						\
 _(SHOW_VERSION, show_version)						\
+_(SHOW_THREADS, show_threads)						\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 
@@ -252,6 +255,111 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
              ARRAY_LEN(rmp->build_date)-1);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+get_thread_data (vl_api_thread_data_t * td, int index)
+{
+  vlib_worker_thread_t *w = vlib_worker_threads + index;
+  td->id = htonl (index);
+  if (w->name)
+    strncpy ((char *) td->name, w->name, ARRAY_LEN (td->name) - 1);
+  if (w->registration)
+    strncpy ((char *) td->type, w->registration->name,
+	     ARRAY_LEN (td->type) - 1);
+  td->pid = htonl (w->lwp);
+
+  int lcore = -1, core_id = -1, socket_id = -1;
+  cpu_set_t cpuset;
+  CPU_ZERO (&cpuset);
+  int ret = -1;
+
+  ret = pthread_getaffinity_np (w->thread_id, sizeof (cpu_set_t), &cpuset);
+  if (!ret)
+    {
+      int c;
+      for (c = 0; c < CPU_SETSIZE; c++)
+	if (CPU_ISSET (c, &cpuset))
+	  {
+	    if (lcore > -1)
+	      {
+		lcore = -2;
+		break;
+	      }
+	    lcore = c;
+	  }
+    }
+  else
+    {
+      lcore = w->lcore_id;
+    }
+
+  td->lcore = htonl (lcore);
+
+  if (lcore > -1)
+    {
+      const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
+      u8 *p = 0;
+
+      p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, lcore, 0);
+      clib_sysfs_read ((char *) p, "%d", &core_id);
+
+      vec_reset_length (p);
+      p =
+	format (p,
+		"%s%u/topology/physical_package_id%c",
+		sys_cpu_path, lcore, 0);
+      clib_sysfs_read ((char *) p, "%d", &socket_id);
+      vec_free (p);
+    }
+  td->core = htonl (core_id);
+  td->cpu_socket = htonl (socket_id);
+}
+
+static void
+vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0, count = 0;
+
+#if !defined(__powerpc64__)
+  vl_api_registration_t *reg;
+  vl_api_show_threads_reply_t *rmp;
+  vl_api_thread_data_t *td;
+  int i, msg_size = 0;
+  count = vec_len (vlib_worker_threads);
+  if (!count)
+    return;
+
+  msg_size = sizeof (*rmp) + sizeof (rmp->thread_data[0]) * count;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = htons (VL_API_SHOW_THREADS_REPLY);
+  rmp->context = mp->context;
+  rmp->count = htonl (count);
+  td = rmp->thread_data;
+  for (i = 0; i < count; i++)
+    {
+      get_thread_data (&td[i], i);
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+#else
+
+  /* unimplemented support */
+  rv = -9;
+  clib_warning ("power pc does not support show threads api");
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SHOW_THREADS_REPLY,
+  ({
+    rmp->count = htons(count);
+  }));
+  /* *INDENT-ON* */
+#endif
 }
 
 static void
