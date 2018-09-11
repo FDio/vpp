@@ -129,6 +129,23 @@ api_mactime_enable_disable (vat_main_t * vam)
   return ret;
 }
 
+/* These two ought to be in a library somewhere but they aren't */
+static uword
+my_unformat_mac_address (unformat_input_t * input, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return unformat (input, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3],
+		   &a[4], &a[5]);
+}
+
+static u8 *
+my_format_mac_address (u8 * s, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
+		 a[0], a[1], a[2], a[3], a[4], a[5]);
+}
+
 static int
 api_mactime_add_del_range (vat_main_t * vam)
 {
@@ -163,7 +180,7 @@ api_mactime_add_del_range (vat_main_t * vam)
 	allow = 1;
       else if (unformat (i, "drop-static"))
 	drop = 1;
-      else if (unformat (i, "mac %U", unformat_mac_address, mac_address))
+      else if (unformat (i, "mac %U", my_unformat_mac_address, mac_address))
 	mac_set = 1;
       else if (unformat (i, "del"))
 	is_add = 0;
@@ -200,7 +217,7 @@ api_mactime_add_del_range (vat_main_t * vam)
   /* Cough up a device name if none set */
   if (name_set == 0)
     {
-      device_name = format (0, "mac %U%c", format_mac_address,
+      device_name = format (0, "mac %U%c", my_format_mac_address,
 			    mac_address, 0);
     }
 
