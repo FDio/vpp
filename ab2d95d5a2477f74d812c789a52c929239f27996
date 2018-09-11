@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "08c02ef5_4a4e0109",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-11T08:12:24Z",
+      "side": 1,
+      "message": "Add a \"action\" field and please see below for a configuration example in latest patchset. \nFor example:\nTo block all HTTP traffic in Web Application Firewall, configure as below:\n\n  dpi compile mode block flags is patterns HTTP action drop",
+      "parentUuid": "7b5d671d_9189fbff",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 69
+      },
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "667a9ffe_c27f48c6",
         "filename": "src/plugins/dpi/dpi_plugin_doc.md",
         "patchSetId": 22
@@ -36,6 +60,24 @@
       "writtenOn": "2018-09-10T09:52:56Z",
       "side": 1,
       "message": "Completely agree with Damjan. Can we have an example (helped with configuration steps) to achieve what you\u0027re describing here and below?",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "374aa00e_d65d7008",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-11T08:12:24Z",
+      "side": 1,
+      "message": "Add a \"action\" field and please see below for a configuration example in latest patchset. \nFor example:\nTo block all HTTP traffic in Web Application Firewall, configure as below:\n\n  dpi compile mode block flags is patterns HTTP action drop\n\nFor Policy based routing, will add this feature in following patches.",
+      "parentUuid": "667a9ffe_c27f48c6",
       "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -59,6 +101,24 @@
     },
     {
       "key": {
+        "uuid": "589df593_38c9d1c3",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-11T08:12:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "10cdd585_64a1acbe",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "36d6c219_b9d556d7",
         "filename": "src/plugins/dpi/dpi_plugin_doc.md",
         "patchSetId": 22
@@ -70,6 +130,24 @@
       "writtenOn": "2018-09-10T09:52:56Z",
       "side": 1,
       "message": "Apparently, latest stable is v5.0.0\nAny reasons why we shall use an older version (e.g. 4.7)?",
+      "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "54cc2f81_1fad7305",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 22
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-11T08:12:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36d6c219_b9d556d7",
       "revId": "ab2d95d5a2477f74d812c789a52c929239f27996",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
