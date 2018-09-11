@@ -345,9 +345,9 @@ show_node_runtime (vlib_main_t * vm,
 	      if (j > 0)
 		vlib_cli_output (vm, "---------------");
 
-	      if (w->lcore_id > -1)
+	      if (w->cpu_id > -1)
 		vlib_cli_output (vm, "Thread %d %s (lcore %u)", j, w->name,
-				 w->lcore_id);
+				 w->cpu_id);
 	      else
 		vlib_cli_output (vm, "Thread %d %s", j, w->name);
 	    }
