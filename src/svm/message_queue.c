@@ -173,8 +173,7 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   svm_msg_q_ring_t *ring;
 
-  if (vec_len (mq->rings) <= msg->ring_index)
-    return;
+  ASSERT (vec_len (mq->rings) > msg->ring_index);
   ring = &mq->rings[msg->ring_index];
   if (msg->elt_index == ring->head)
     {
@@ -182,6 +181,7 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
     }
   else
     {
+      clib_warning ("message out of order");
       /* for now, expect messages to be processed in order */
       ASSERT (0);
     }

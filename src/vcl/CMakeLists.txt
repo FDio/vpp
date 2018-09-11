@@ -24,6 +24,9 @@ add_vpp_library(vppcom
 
   LINK_LIBRARIES
   vppinfra svm vlibmemoryclient rt pthread
+
+  DEPENDS
+  api_headers
 )
 
 add_vpp_library(vcl_ldpreload
