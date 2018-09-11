@@ -1,0 +1,164 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "255f7fde_252776d4",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "no need for parenthesis",
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5cf5e64b_f1f19a11",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "no need for parenthesis",
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3bcea78b_7f5fae3e",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "no need for parenthesis",
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "762e3e6e_9976253c",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "return self.ip_addr.packed \u003d\u003d other.ip4.address",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 72,
+        "endChar": 31
+      },
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08e8abe0_5be053d5",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "return self.ip_addr.packed \u003d\u003d other.ip6.address",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 31
+      },
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3befff87_fdabef09",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "same coments apply here",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 20
+      },
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f9e72bf_f5f225cb",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "raise Exception here (ideally with description which contains both objects, e.g. \"Comparing prefix `%s` with unknown type `%s`\" % (self, other), don\u0027t print",
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "00175a23_5d2aeb72",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-11T08:08:31Z",
+      "side": 1,
+      "message": "please remove confusing parenthesis",
+      "range": {
+        "startLine": 175,
+        "startChar": 1,
+        "endLine": 183,
+        "endChar": 59
+      },
+      "revId": "0b3b0cacd5fe02b165429d5baf18e0b4e30f0ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
