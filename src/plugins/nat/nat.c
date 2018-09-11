@@ -1607,6 +1607,12 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
        }
     }
 
+#define _(N, i, n, s) \
+  clib_bitmap_free (a->busy_##n##_port_bitmap); \
+  vec_free (a->busy_##n##_ports_per_thread);
+  foreach_snat_protocol
+#undef _
+
   if (twice_nat)
     {
       vec_del1 (sm->twice_nat_addresses, i);
