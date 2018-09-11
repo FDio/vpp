@@ -1267,9 +1267,10 @@ app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
   evt->fifo = s->server_rx_fifo;
   evt->event_type = FIFO_EVENT_APP_RX;
 
+  (void) svm_fifo_set_event (s->server_rx_fifo);
+
   if (app_enqueue_evt (mq, &msg, lock))
     return -1;
-  (void) svm_fifo_set_event (s->server_rx_fifo);
   return 0;
 }
 
