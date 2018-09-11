@@ -38,6 +38,7 @@ typedef struct
   sock_test_stats_t stats;
   vppcom_endpt_t endpt;
   uint8_t ip[16];
+  vppcom_data_segments_t ds;
 } vcl_test_server_conn_t;
 
 typedef struct
@@ -72,6 +73,7 @@ typedef struct
   struct sockaddr_storage servaddr;
   volatile int worker_fails;
   volatile int active_workers;
+  u8 use_ds;
 } vcl_test_server_main_t;
 
 static __thread int __wrk_index = 0;
@@ -196,6 +198,7 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
       sync_config_and_reply (conn, rx_cfg);
       vtinf ("(fd %d): %s-directional Stream Test Complete!\n"
 	     SOCK_TEST_BANNER_STRING "\n", conn->fd, is_bi ? "Bi" : "Uni");
+      memset (&conn->stats, 0, sizeof (conn->stats));
     }
   else
     {
@@ -217,12 +220,27 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 static inline void
 vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 {
+  vcl_test_server_main_t *vts = &sock_server_main;
   int client_fd = conn->fd;
-  sock_test_t test = conn->cfg.test;
 
-  if (test == SOCK_TEST_TYPE_BI)
-    (void) vcl_test_write (client_fd, conn->buf, rx_bytes, &conn->stats,
-			   conn->cfg.verbose);
+  if (conn->cfg.test == SOCK_TEST_TYPE_BI)
+    {
+      if (vts->use_ds)
+	{
+	  (void) vcl_test_write (client_fd, conn->ds[0].data, conn->ds[0].len,
+				 &conn->stats, conn->cfg.verbose);
+	  if (conn->ds[1].len)
+	    (void) vcl_test_write (client_fd, conn->ds[1].data,
+				   conn->ds[1].len, &conn->stats,
+				   conn->cfg.verbose);
+	}
+      else
+	(void) vcl_test_write (client_fd, conn->buf, rx_bytes, &conn->stats,
+			       conn->cfg.verbose);
+    }
+
+  if (vts->use_ds)
+    vppcom_session_free_segments (conn->fd, conn->ds);
 
   if (conn->stats.rx_bytes >= conn->cfg.total_bytes)
     clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
@@ -231,11 +249,13 @@ vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 static void
 vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
 {
+  vcl_test_server_main_t *vts = &sock_server_main;
   int tx_bytes, nbytes, pos;
 
-  /* If it looks vaguely like a string,
-   * make sure it's terminated
-   */
+  if (vts->use_ds)
+    vppcom_data_segment_copy (conn->buf, conn->ds, rx_bytes);
+
+  /* If it looks vaguely like a string, make sure it's terminated */
   pos = rx_bytes < conn->buf_size ? rx_bytes : conn->buf_size - 1;
   ((char *) conn->buf)[pos] = 0;
   vtinf ("(fd %d): RX (%d bytes) - '%s'", conn->fd, rx_bytes, conn->buf);
@@ -349,7 +369,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
   ssm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6Dw:")) != -1)
+  while ((c = getopt (argc, argv, "6Dsw:")) != -1)
     switch (c)
       {
       case '6':
@@ -367,7 +387,9 @@ vcl_test_server_process_opts (vcl_test_server_main_t * ssm, int argc,
 	else
 	  vtwrn ("Invalid number of workers %d", v);
 	break;
-
+      case 's':
+	ssm->use_ds = 1;
+	break;
       case '?':
 	switch (optopt)
 	  {
@@ -501,6 +523,53 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
   vtinf ("Waiting for a client to connect on port %d ...", ssm->cfg.port);
 }
 
+static int
+vts_conn_expect_config (vcl_test_server_conn_t * conn)
+{
+  if (conn->cfg.test == SOCK_TEST_TYPE_ECHO)
+    return 1;
+
+  return (conn->stats.rx_bytes < 128
+	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
+}
+
+static sock_test_cfg_t *
+vts_conn_read_config (vcl_test_server_conn_t * conn)
+{
+  vcl_test_server_main_t *vts = &sock_server_main;
+
+  if (vts->use_ds)
+    {
+      /* We could avoid the copy if the first segment is big enough but this
+       * just simplifies things */
+      vppcom_data_segment_copy (conn->buf, conn->ds,
+				sizeof (sock_test_cfg_t));
+      vppcom_session_free_segments (conn->fd, conn->ds);
+    }
+  return (sock_test_cfg_t *) conn->buf;
+}
+
+static inline int
+vts_conn_read (vcl_test_server_conn_t * conn)
+{
+  vcl_test_server_main_t *vts = &sock_server_main;
+  if (vts->use_ds)
+    return vcl_test_read_ds (conn->fd, conn->ds, &conn->stats);
+  else
+    return vcl_test_read (conn->fd, conn->buf, conn->buf_size, &conn->stats);
+}
+
+static inline int
+vts_conn_has_ascii (vcl_test_server_conn_t * conn)
+{
+  vcl_test_server_main_t *vts = &sock_server_main;
+
+  if (vts->use_ds)
+    return isascii (conn->ds[0].data[0]);
+  else
+    return isascii (conn->buf[0]);
+}
+
 static void *
 vts_worker_loop (void *arg)
 {
@@ -550,8 +619,7 @@ vts_worker_loop (void *arg)
 	  if (EPOLLIN & wrk->wait_events[i].events)
 	    {
 	    read_again:
-	      rx_bytes = vcl_test_read (conn->fd, conn->buf,
-					conn->buf_size, &conn->stats);
+	      rx_bytes = vts_conn_read (conn);
 
 	      if (rx_bytes <= 0)
 		{
@@ -564,16 +632,19 @@ vts_worker_loop (void *arg)
 		    continue;
 		}
 
-	      rx_cfg = (sock_test_cfg_t *) conn->buf;
-	      if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
+	      if (vts_conn_expect_config (conn))
 		{
-		  vts_handle_cfg (wrk, rx_cfg, conn, rx_bytes);
-		  if (!wrk->nfds)
+		  rx_cfg = vts_conn_read_config (conn);
+		  if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
 		    {
-		      vtinf ("All client connections closed\n");
-		      goto done;
+		      vts_handle_cfg (wrk, rx_cfg, conn, rx_bytes);
+		      if (!wrk->nfds)
+			{
+			  vtinf ("All client connections closed\n");
+			  goto done;
+			}
+		      continue;
 		    }
-		  continue;
 		}
 	      if ((conn->cfg.test == SOCK_TEST_TYPE_UNI)
 		  || (conn->cfg.test == SOCK_TEST_TYPE_BI))
@@ -584,7 +655,7 @@ vts_worker_loop (void *arg)
 		    goto read_again;
 		  continue;
 		}
-	      if (isascii (conn->buf[0]))
+	      if (vts_conn_has_ascii (conn))
 		{
 		  vts_server_echo (conn, rx_bytes);
 		}
@@ -621,7 +692,7 @@ main (int argc, char **argv)
   clib_mem_init_thread_safe (0, 64 << 20);
   vsm->cfg.port = SOCK_TEST_SERVER_PORT;
   vsm->cfg.workers = 1;
-  vsm->active_workers = 1;
+  vsm->active_workers = 0;
   vcl_test_server_process_opts (vsm, argc, argv);
 
   rv = vppcom_app_create ("vcl_test_server");

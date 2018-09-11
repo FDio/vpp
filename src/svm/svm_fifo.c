@@ -835,6 +835,53 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
   __sync_fetch_and_sub (&f->cursize, f->cursize);
 }
 
+int
+svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs)
+{
+  u32 cursize, nitems;
+
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
+  if (PREDICT_FALSE (cursize == 0))
+    return -2;
+
+  nitems = f->nitems;
+
+  fs[0].len = ((nitems - f->head) < cursize) ? (nitems - f->head) : cursize;
+  fs[0].data = f->data + f->head;
+
+  if (fs[0].len < cursize)
+    {
+      fs[1].len = cursize - fs[0].len;
+      fs[1].data = f->data;
+    }
+  else
+    {
+      fs[1].len = 0;
+      fs[1].data = 0;
+    }
+  return cursize;
+}
+
+void
+svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs)
+{
+  u32 total_drop_bytes;
+
+  ASSERT (fs[0].data == f->data + f->head);
+  if (fs[1].len)
+    {
+      f->head = fs[1].len;
+      total_drop_bytes = fs[0].len + fs[1].len;
+    }
+  else
+    {
+      f->head = (f->head + fs[0].len) % f->nitems;
+      total_drop_bytes = fs[0].len;
+    }
+  __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
+}
+
 u32
 svm_fifo_number_ooo_segments (svm_fifo_t * f)
 {

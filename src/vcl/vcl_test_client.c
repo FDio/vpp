@@ -314,6 +314,7 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
       (void) vcl_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
 			     sizeof (tsock->cfg), &tsock->stats, verbose);
     }
+  wrk->n_sessions = 0;
 }
 
 static void *
@@ -322,10 +323,10 @@ vtc_worker_loop (void *arg)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   vcl_test_client_worker_t *wrk = arg;
+  uint32_t n_active_sessions, n_bytes;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = &_rfdset;
   sock_test_socket_t *tsock;
-  uint32_t n_active_sessions;
   int i, rv, check_rx = 0;
 
   rv = vtc_worker_init (wrk);
@@ -374,8 +375,11 @@ vtc_worker_loop (void *arg)
 	  if (FD_ISSET (vppcom_session_index (tsock->fd), wfdset)
 	      && tsock->stats.tx_bytes < tsock->cfg.total_bytes)
 	    {
+	      n_bytes = tsock->cfg.txbuf_size;
+	      if (tsock->cfg.test == SOCK_TEST_TYPE_ECHO)
+		n_bytes = strlen (ctrl->txbuf) + 1;
 	      rv = vcl_test_write (tsock->fd, (uint8_t *) tsock->txbuf,
-				   tsock->cfg.txbuf_size, &tsock->stats,
+				   n_bytes, &tsock->stats,
 				   tsock->cfg.verbose);
 	      if (rv < 0)
 		{
@@ -396,7 +400,8 @@ vtc_worker_loop (void *arg)
     }
 exit:
   vtinf ("Worker %d done ...", wrk->wrk_index);
-  vtc_accumulate_stats (wrk, ctrl);
+  if (tsock->cfg.test != SOCK_TEST_TYPE_ECHO)
+    vtc_accumulate_stats (wrk, ctrl);
   sleep (1);
   vtc_worker_sessions_exit (wrk);
   if (wrk->wrk_index)
@@ -462,9 +467,11 @@ vtc_echo_client (vcl_test_client_main_t * vcm)
 
   vtc_worker_loop (wrk);
 
-  clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
-  vtc_accumulate_stats (wrk, ctrl);
-  vtc_print_stats (ctrl);
+  /* Not relevant for echo test
+     clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
+     vtc_accumulate_stats (wrk, ctrl);
+     vtc_print_stats (ctrl);
+   */
 }
 
 static void

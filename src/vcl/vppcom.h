@@ -147,6 +147,14 @@ typedef struct _vcl_poll
   short *revents;
 } vcl_poll_t;
 
+typedef struct vppcom_data_segment_
+{
+  unsigned char *data;
+  uint32_t len;
+} vppcom_data_segment_t;
+
+typedef vppcom_data_segment_t vppcom_data_segments_t[2];
+
 /*
  * VPPCOM Public API Functions
  */
@@ -254,6 +262,13 @@ extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
 extern int vppcom_mq_epoll_fd (void);
 extern int vppcom_session_index (uint32_t session_handle);
+
+extern int vppcom_session_read_segments (uint32_t session_handle,
+					 vppcom_data_segments_t ds);
+extern void vppcom_session_free_segments (uint32_t session_handle,
+					  vppcom_data_segments_t ds);
+extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
+				     uint32_t max_bytes);
 
 /**
  * Request from application to register a new worker
