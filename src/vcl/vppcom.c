@@ -1269,6 +1269,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   session_event_t *e;
   svm_msg_q_t *mq;
   u8 is_full;
+  u32 n_bytes;
 
   if (PREDICT_FALSE (!buf))
     return VPPCOM_EINVAL;
@@ -1300,17 +1301,22 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     }
 
   mq = vcl_session_is_ct (s) ? s->our_evt_q : wrk->app_event_queue;
-  svm_fifo_unset_event (rx_fifo);
-  is_full = svm_fifo_is_full (rx_fifo);
+  n_bytes = svm_fifo_max_dequeue(rx_fifo);
+  is_full = n_bytes == rx_fifo->nitems;
 
-  if (svm_fifo_is_empty (rx_fifo))
+  if (!n_bytes)
     {
       if (is_nonblocking)
 	{
+	      svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_OK;
 	}
       while (1)
 	{
+//	      clib_warning ("here fd 0x%lx", session_handle);
+//	      if (session_handle == 3)
+//	      os_panic ();
+
 	  svm_msg_q_lock (mq);
 	  if (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
@@ -1325,20 +1331,31 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	      svm_msg_q_free_msg (mq, &msg);
 	      continue;
 	    }
-	  svm_fifo_unset_event (rx_fifo);
+	  svm_msg_q_unlock (mq);
+//	  if (!svm_fifo_has_event (rx_fifo))
+//	    os_panic ();
+	  n_bytes = svm_fifo_max_dequeue(rx_fifo);
+//	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_free_msg (mq, &msg);
 	  if (PREDICT_FALSE (s->session_state == STATE_CLOSE_ON_EMPTY))
 	    return 0;
 	  if (svm_fifo_is_empty (rx_fifo))
-	    continue;
+	    {
+	      svm_fifo_unset_event (rx_fifo);
+//	      os_panic ();
+	      continue;
+	    }
 	  break;
 	}
     }
 
+  n = clib_min (n_bytes, n);
   if (s->is_dgram)
     n_read = app_recv_dgram_raw (rx_fifo, buf, n, &s->transport, 0, peek);
   else
     n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
+
+  svm_fifo_unset_event (rx_fifo);
 
   if (vcl_session_is_ct (s) && is_full)
     {
@@ -1593,7 +1610,7 @@ if (PREDICT_FALSE (svm_fifo_is_empty (_fifo)))			\
   {								\
     svm_fifo_unset_event (_fifo);				\
     if (svm_fifo_is_empty (_fifo))				\
-	break;							\
+      break;							\
   }								\
 
 static int

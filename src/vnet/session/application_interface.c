@@ -546,6 +546,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
   rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
+  sep.app_wrk_index = 0;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
   return vnet_bind_inline (a);
 }
