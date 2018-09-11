@@ -964,6 +964,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
+      memset (a, 0, sizeof (*a));
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
       a->app_index = app->app_index;
