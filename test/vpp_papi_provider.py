@@ -2723,14 +2723,14 @@ class VppPapiProvider(object):
                          'protocol': protocol,
                          'vni': vni})
 
-    def vxlan_gbp_add_del_tunnel(
+    def vxlan_gbp_tunnel_add_del(
             self,
-            src_addr,
-            dst_addr,
+            src,
+            dst,
             mcast_sw_if_index=0xFFFFFFFF,
             is_add=1,
             is_ipv6=0,
-            encap_vrf_id=0,
+            encap_table_id=0,
             decap_next_index=0xFFFFFFFF,
             vni=0,
             instance=0xFFFFFFFF):
@@ -2740,23 +2740,27 @@ class VppPapiProvider(object):
         :param src_addr:
         :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
-        :param encap_vrf_id:  (Default value = 0)
+        :param encap_table_id:  (Default value = 0)
         :param decap_next_index:  (Default value = 0xFFFFFFFF)
         :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
         :param vni:  (Default value = 0)
         :param instance:  (Default value = 0xFFFFFFFF)
 
         """
-        return self.api(self.papi.vxlan_gbp_add_del_tunnel,
+        return self.api(self.papi.vxlan_gbp_tunnel_add_del,
                         {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
-                         'src_address': src_addr,
-                         'dst_address': dst_addr,
-                         'mcast_sw_if_index': mcast_sw_if_index,
-                         'encap_vrf_id': encap_vrf_id,
-                         'decap_next_index': decap_next_index,
-                         'vni': vni,
-                         'instance': instance})
+                         'tunnel': {
+                             'src': src,
+                             'dst': dst,
+                             'mcast_sw_if_index': mcast_sw_if_index,
+                             'encap_table_id': encap_table_id,
+                             'decap_next_index': decap_next_index,
+                             'vni': vni,
+                             'instance': instance}})
+
+    def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
+        return self.api(self.papi.vxlan_gbp_tunnel_dump,
+                        {'sw_if_index': sw_if_index})
 
     def pppoe_add_del_session(
             self,

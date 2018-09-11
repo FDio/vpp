@@ -352,8 +352,8 @@ mcast_shared_remove (ip46_address_t * dst)
   hash_unset_mem_free (&vxlan_gbp_main.mcast_shared, dst);
 }
 
-int vnet_vxlan_gbp_add_del_tunnel
-  (vnet_vxlan_gbp_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
+int vnet_vxlan_gbp_tunnel_add_del
+  (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vxlan_gbp_tunnel_t *t = 0;
@@ -654,7 +654,7 @@ unformat_decap_next (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-vxlan_gbp_add_del_tunnel_command_fn (vlib_main_t * vm,
+vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 				     unformat_input_t * input,
 				     vlib_cli_command_t * cmd)
 {
@@ -763,7 +763,7 @@ vxlan_gbp_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (vni >> 24)
     return clib_error_return (0, "vni %d out of range", vni);
 
-  vnet_vxlan_gbp_add_del_tunnel_args_t a = {
+  vnet_vxlan_gbp_tunnel_add_del_args_t a = {
     .is_add = is_add,
     .is_ip6 = ipv6_set,
     .instance = instance,
@@ -773,7 +773,7 @@ vxlan_gbp_add_del_tunnel_command_fn (vlib_main_t * vm,
   };
 
   u32 tunnel_sw_if_index;
-  int rv = vnet_vxlan_gbp_add_del_tunnel (&a, &tunnel_sw_if_index);
+  int rv = vnet_vxlan_gbp_tunnel_add_del (&a, &tunnel_sw_if_index);
 
   switch (rv)
     {
@@ -794,7 +794,7 @@ vxlan_gbp_add_del_tunnel_command_fn (vlib_main_t * vm,
 
     default:
       return clib_error_return
-	(0, "vnet_vxlan_gbp_add_del_tunnel returned %d", rv);
+	(0, "vnet_vxlan_gbp_tunnel_add_del returned %d", rv);
     }
 
   return 0;
@@ -832,7 +832,7 @@ VLIB_CLI_COMMAND (create_vxlan_gbp_tunnel_command, static) = {
   " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
   " [instance <id>]"
   " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
-  .function = vxlan_gbp_add_del_tunnel_command_fn,
+  .function = vxlan_gbp_tunnel_add_del_command_fn,
 };
 /* *INDENT-ON* */
 
