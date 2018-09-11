@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f8fee79_a5bed2bb",
+        "filename": "src/vnet/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 1352,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-11T17:23:06Z",
+      "side": 1,
+      "message": "please use NO_INSTALL unless this really needs to be part of rpm/deb packaging....",
+      "range": {
+        "startLine": 1346,
+        "startChar": 0,
+        "endLine": 1352,
+        "endChar": 59
+      },
+      "revId": "41d418609da7dad151102a33ddc3f8286882852d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5438223b_afdad79e",
+        "filename": "src/vnet/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 1355,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-11T17:23:06Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "range": {
+        "startLine": 1355,
+        "startChar": 40,
+        "endLine": 1355,
+        "endChar": 41
+      },
+      "revId": "41d418609da7dad151102a33ddc3f8286882852d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
