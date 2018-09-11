@@ -688,6 +688,49 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   return rv;
 }
 
+static inline void
+clib_sysfs_read_int (char *filename, int *value)
+{
+  FILE *fp = 0;
+  fp = fopen (filename, "r");
+  if (fp != NULL)
+    {
+      u8 *buffer = 0;
+      vec_validate (buffer, 256 - 1);
+      if (fgets ((char *) buffer, 256, fp))
+	{
+	  unformat_input_t in;
+	  unformat_init_string (&in, (char *) buffer,
+				strlen ((char *) buffer));
+	  if (unformat (&in, "%d", value) != 1)
+	    clib_warning ("failed to read sysfs int value");
+	  unformat_free (&in);
+	}
+      vec_free (buffer);
+      fclose (fp);
+    }
+}
+
+static inline void
+vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned lcore_id)
+{
+  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
+  u8 *p = 0;
+  int core_id = -1, socket_id = -1;
+
+  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, lcore_id, 0);
+  clib_sysfs_read_int ((char *) p, &core_id);
+  vec_reset_length (p);
+  p =
+    format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, lcore_id,
+	    0);
+  clib_sysfs_read_int ((char *) p, &socket_id);
+  vec_free (p);
+
+  w->core_id = core_id;
+  w->socket_id = socket_id;
+}
+
 static clib_error_t *
 vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
 {
@@ -695,6 +738,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
   void *(*fp_arg) (void *) = fp;
 
   w->lcore_id = lcore_id;
+  vlib_get_thread_core_socket (w, lcore_id);
   if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
     return tm->cb.vlib_launch_thread_cb (fp, (void *) w, lcore_id);
   else

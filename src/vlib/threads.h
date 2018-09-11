@@ -126,6 +126,8 @@ typedef struct
 
   long lwp;
   int lcore_id;
+  int core_id;
+  int socket_id;
   pthread_t thread_id;
 } vlib_worker_thread_t;
 
