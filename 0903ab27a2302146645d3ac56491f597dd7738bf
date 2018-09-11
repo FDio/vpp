@@ -46,6 +46,30 @@
       "revId": "0903ab27a2302146645d3ac56491f597dd7738bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3a49c32_fea35443",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-11T08:56:51Z",
+      "side": 1,
+      "message": "STORE prefetch only makes sense when you just blindly write without consuming any data from that cacheline.\n\nAlso STORE prefetch was not existing on x86 before skylake, so majority of vpp code (all code which is not *_avx512) will do load prefetch even if you say STORE.\n\nAs l2-learn node code is not using new multiversioning, either you say load or store, compiled code will do load prefetch...",
+      "parentUuid": "b845dd60_71a2bb17",
+      "range": {
+        "startLine": 288,
+        "startChar": 0,
+        "endLine": 291,
+        "endChar": 45
+      },
+      "revId": "0903ab27a2302146645d3ac56491f597dd7738bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
