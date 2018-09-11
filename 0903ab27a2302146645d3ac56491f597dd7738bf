@@ -70,6 +70,30 @@
       "revId": "0903ab27a2302146645d3ac56491f597dd7738bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eb277b81_4f467f95",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-11T09:23:42Z",
+      "side": 1,
+      "message": "thanks for the explanation. Should I change the node to use the new multiversioning while I\u0027m here?",
+      "parentUuid": "d3a49c32_fea35443",
+      "range": {
+        "startLine": 288,
+        "startChar": 0,
+        "endLine": 291,
+        "endChar": 45
+      },
+      "revId": "0903ab27a2302146645d3ac56491f597dd7738bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
