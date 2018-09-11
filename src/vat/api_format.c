@@ -7757,7 +7757,7 @@ static void vl_api_bd_ip_mac_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_uint (node, "is_ipv6", ntohl (mp->is_ipv6));
+  vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6);
   vat_json_object_add_string_copy (node, "mac_address",
 				   format (0, "%U", format_ethernet_address,
 					   &mp->mac_address));
