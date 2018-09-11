@@ -206,7 +206,7 @@ send_nat_worker_details (u32 worker_index, vl_api_registration_t * reg,
   rmp->_vl_msg_id = ntohs (VL_API_NAT_WORKER_DETAILS + sm->msg_id_base);
   rmp->context = context;
   rmp->worker_index = htonl (worker_index);
-  rmp->lcore_id = htonl (w->lcore_id);
+  rmp->lcore_id = htonl (w->cpu_id);
   strncpy ((char *) rmp->name, (char *) w->name, ARRAY_LEN (rmp->name) - 1);
 
   vl_api_send_msg (reg, (u8 *) rmp);
