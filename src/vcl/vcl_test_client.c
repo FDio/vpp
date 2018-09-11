@@ -314,6 +314,7 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
       (void) vcl_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
 			     sizeof (tsock->cfg), &tsock->stats, verbose);
     }
+  wrk->n_sessions = 0;
 }
 
 static void *
