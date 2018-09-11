@@ -1269,6 +1269,9 @@ fib_table_lock (u32 fib_index,
     fib_table_t *fib_table;
 
     fib_table = fib_table_get(fib_index, proto);
+
+    ASSERT(fib_table->ft_locks[source] < (0xffff - 1));
+
     fib_table->ft_locks[source]++;
     fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]++;
 }
