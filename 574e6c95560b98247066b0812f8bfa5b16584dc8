@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f9f19ef2_2922b5cd",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-11T10:56:36Z",
+      "side": 1,
+      "message": "Dump/Details messages are different from request/reply. In latter case, response will be exact one message from VPP. While in dump/details case, one or multiple responses will be sent to API users (clients). Usually a control_ping is used to determine when the dump message response has been ended.\n\nYes, It is one queue per message. Currently, detail responses are working like this. If we need to change it. Then it should be separated from this patch and fix it from all the places where it has been used this way. Surely it requires extra cycles.",
+      "parentUuid": "b75319d9_0f06e574",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "223250c8_4c428d6e",
         "filename": "src/vnet/interface.api",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2018-09-10T18:26:00Z",
       "side": 1,
       "message": "Messages have no defaults, so I would reword as\n\nsw_if_index \u003d ~0 will dump placement information for all interfaces.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4bafed50_7a94057d",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-11T10:56:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "223250c8_4c428d6e",
       "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "34e54f4e_14e01404",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 974,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-11T10:56:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7eaf6e6f_12b428c9",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b6c0e5cc_87b2402d",
         "filename": "src/vnet/interface_api.c",
         "patchSetId": 1
@@ -64,6 +118,24 @@
       "writtenOn": "2018-09-10T18:26:00Z",
       "side": 1,
       "message": "I\u0027m not quite sure what counts as \u0027hardware\u0027 here and what interfaces are not \u0027hardware\u0027, but I think I would be confused from an API perspective why for some interfaces I don\u0027t get any pinning details.\n\nIf that will ever happen, document it in the .api file so that an API user knows what to expect.",
+      "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9e11040d_6fcf27a2",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1035,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-11T10:56:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b6c0e5cc_87b2402d",
       "revId": "574e6c95560b98247066b0812f8bfa5b16584dc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
