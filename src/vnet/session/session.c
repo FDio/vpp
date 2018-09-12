@@ -390,7 +390,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 	{
 	  s->enqueue_epoch = enqueue_epoch;
 	  vec_add1 (smm->session_to_enqueue[tc->proto][thread_index],
-		    s - smm->sessions[thread_index]);
+		    s->session_index);
 	}
     }
 
@@ -431,7 +431,7 @@ session_enqueue_dgram_connection (stream_session_t * s,
 	{
 	  s->enqueue_epoch = enqueue_epoch;
 	  vec_add1 (smm->session_to_enqueue[proto][thread_index],
-		    s - smm->sessions[thread_index]);
+		    s->session_index);
 	}
     }
   return enqueued;
