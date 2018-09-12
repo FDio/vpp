@@ -175,6 +175,8 @@ test_bihash_threads (bihash_test_main_t * tm)
 		delta >
 		0.0 ? ((f64) ((u64) tm->nthreads * (u64) tm->nitems)) /
 		delta : 0.0);
+
+  BV (clib_bihash_free) (h);
   return 0;
 }
 
@@ -381,6 +383,11 @@ test_bihash (bihash_test_main_t * tm)
 
   /* ASSERTs if any items remain */
   BV (clib_bihash_foreach_key_value_pair) (h, count_items, 0);
+
+  BV (clib_bihash_free) (h);
+
+  vec_free (tm->keys);
+  hash_free (tm->key_hash);
 
   return 0;
 }
