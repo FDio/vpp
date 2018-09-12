@@ -383,7 +383,6 @@ static void lb_vip_update_new_flow_table(lb_vip_t *vip)
   lb_new_flow_entry_t *new_flow_table = 0;
   lb_as_t *as;
   lb_pseudorand_t *pr, *sort_arr = 0;
-  u32 count;
 
   ASSERT (lbm->writer_lock[0]); //We must have the lock
 
@@ -408,7 +407,6 @@ out:
   }
 
   //First, let's sort the ASs
-  sort_arr = 0;
   vec_alloc(sort_arr, pool_elts(vip->as_indexes));
 
   i = 0;
@@ -463,16 +461,8 @@ out:
     }
   }
 
-  vec_free(sort_arr);
-
 finished:
-
-//Count number of changed entries
-  count = 0;
-  for (i=0; i<vec_len(new_flow_table); i++)
-    if (vip->new_flow_table == 0 ||
-        new_flow_table[i].as_index != vip->new_flow_table[i].as_index)
-      count++;
+  vec_free(sort_arr);
 
   old_table = vip->new_flow_table;
   vip->new_flow_table = new_flow_table;
