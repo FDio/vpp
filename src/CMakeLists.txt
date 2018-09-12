@@ -75,7 +75,8 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   find_package(OpenSSL REQUIRED)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
-    vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool)
+    vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool cmake
+  )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   set(SUBDIRS vppinfra)
 else()

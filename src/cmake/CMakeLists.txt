@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2018 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -11,21 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vppapitestplugins_LTLIBRARIES += sample_test_plugin.la
-vppplugins_LTLIBRARIES += sample_plugin.la
+install(
+  FILES
+  api.cmake
+  cpu.cmake
+  library.cmake
+  plugin.cmake
+  VPPConfig.cmake
 
-sample_plugin_la_SOURCES =		\
-	sample/sample.c				\
-	sample/node.c				\
-	sample/sample_plugin.api.h
+  DESTINATION
+  lib/cmake/vpp
 
-API_FILES += sample/sample.api
-
-nobase_apiinclude_HEADERS +=			\
-  sample/sample_all_api_h.h				\
-  sample/sample_msg_enum.h				\
-  sample/sample.api.h
-
-sample_test_plugin_la_SOURCES = sample/sample_test.c sample/sample_plugin.api.h
-
-# vi:syntax=automake
+  COMPONENT vpp-dev
+)
