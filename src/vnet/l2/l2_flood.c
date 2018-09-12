@@ -155,11 +155,12 @@ l2flood_node_fn (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 next0, sw_if_index0, bi0, ci0;
 	  u16 n_clones, n_cloned, clone0;
 	  l2_bridge_domain_t *bd_config;
+	  u32 sw_if_index0, bi0, ci0;
 	  l2_flood_member_t *member;
 	  vlib_buffer_t *b0, *c0;
+	  u16 next0;
 	  u8 in_shg;
 	  i32 mi;
 
