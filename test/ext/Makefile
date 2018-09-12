@@ -9,7 +9,7 @@ VAPI_CPPBIN=
 endif
 
 VAPI_LIBS = \
-  -L$(VPP_TEST_INSTALL_PATH)/vpp/lib64 \
+  -L$(VPP_TEST_INSTALL_PATH)/vpp/lib \
   -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lcheck -lrt -lm -lvapiclient
 
 ifneq ($(filter centos opensuse opensuse-tumbleweed opensuse-leap,$(OS_ID)),$(OS_ID))
@@ -55,7 +55,7 @@ $(VOM_BINDIR):
 
 LIB_VOM = -lvom
 VOM_LIBS = \
-	-L$(VPP_TEST_INSTALL_PATH)/vom/lib64 \
+	-L$(VPP_TEST_INSTALL_PATH)/vom/lib \
 	-lvom						\
 	-lboost_thread					\
 	-lboost_system					\
@@ -69,7 +69,7 @@ VOM_CPPFLAGS = \
 	$(CPPFLAGS)
 
 $(VOM_BIN): $(VOM_CPPSRC) $(VOM_BINDIR)
-	$(CXX) -o $@ $(VOM_CPPFLAGS) -O0 -g $(VOM_CPPSRC) $(VOM_LIBS) -Wl,-rpath,$(VPP_TEST_INSTALL_PATH)/vom/lib64
+	$(CXX) -o $@ $(VOM_CPPFLAGS) -O0 -g $(VOM_CPPSRC) $(VOM_LIBS) -Wl,-rpath,$(VPP_TEST_INSTALL_PATH)/vom/lib
 
 $(VOM_BIN).d: $(VOM_CPPSRC) $(VOM_BINDIR)
 	$(CXX) -o $@ $(VOM_CPPFLAGS) -MM -MT '$(VOM_BIN)' $(VOM_CPPSRC) > $@

@@ -33,7 +33,7 @@ fi
 if [ -z "$VCL_LDPRELOAD_LIB_DIR" ] ; then
     echo "ERROR: VCL_LDPRELOAD_LIB_DIR environment variable not set!" >&2
     echo "       Please set VCL_LDPRELOAD_LIB_DIR to " >&2
-    echo "       $WS_ROOT/build-root/install-vpp[_debug]-native/vpp/lib64." >&2
+    echo "       $WS_ROOT/build-root/install-vpp[_debug]-native/vpp/lib." >&2
     exit 1
 fi
 
@@ -76,7 +76,7 @@ else
         echo "docker run --rm --name $vpp_dk_name -v $LDP_TEST_DIR/common/nginx_welcome.html:/usr/share/nginx/html/index.html:ro -d nginx"
         docker run --rm --name $vpp_dk_name -v $LDP_TEST_DIR/common/nginx_welcome.html:/usr/share/nginx/html/index.html:ro -d nginx
         
-        export LD_LIBRARY_PATH="$WS_ROOT/build-root/install-vpp${debug}-native/vpp/lib64/:$LDP_DIR/src/.libs:"
+        export LD_LIBRARY_PATH="$WS_ROOT/build-root/install-vpp${debug}-native/vpp/lib/:$LDP_DIR/src/.libs:"
 
         # Extract nginx IPv4 address from docker bridge
         #

@@ -1225,7 +1225,7 @@ only the plugins that are desired.
  * **path <path>**
      Adjust the plugin path depending on where the VPP plugins are installed.
      
-     **Example:** path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+     **Example:** path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
      
  * **name-filter <filter-name>**
      TBD
@@ -1277,7 +1277,7 @@ Alternate syntax to choose plugin path. Plugin_path configuration controls the
 set of directories searched for vlib plugins. Supply a colon-separated list of
 (absolute) directory names: plugin_path dir1:dir2:...:dirN
 
-    **Example:** plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+    **Example:** plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
 
 .. _punt:
 

@@ -16,7 +16,7 @@ fi
 
 LDP_DIR="${WS_ROOT}/extras/vcl-ldpreload"
 LDP_TEST_DIR="${LDP_TEST_DIR:-${LDP_DIR}/test}"
-VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-${WS_ROOT}/build-root/install-vpp_debug-native/vpp/lib64}"
+VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-${WS_ROOT}/build-root/install-vpp_debug-native/vpp/lib}"
 
 TEST_APP="${TEST_APP:-curl}"
 source $LDP_TEST_DIR/common/nginx_test.sh

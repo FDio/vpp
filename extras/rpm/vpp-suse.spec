@@ -18,7 +18,7 @@
 
 %define _vpp_build_dir       %{buildroot}/../../BUILD/vpp-%{version}/build-root
 %define _vpp_install_dir     %{_vpp_build_dir}/install-vpp-native/
-%define _vpp_plugins_lib_dir %{_vpp_install_dir}/vpp/lib64
+%define _vpp_plugins_lib_dir %{_vpp_install_dir}/vpp/lib
 
 %define lname libvpp0
 

@@ -23,8 +23,7 @@ vpp_cmake_args ?=
 vpp_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 vpp_cmake_args += -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)"
 vpp_cmake_args += -DCMAKE_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
-vpp_cmake_args += -DDPDK_INCLUDE_DIR_HINT="$(PACKAGE_INSTALL_DIR)/../dpdk/include"
-vpp_cmake_args += -DDPDK_LIB_DIR_HINT="$(PACKAGE_INSTALL_DIR)/../dpdk/lib"
+vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../dpdk"
 
 # Use devtoolset on centos 7
 ifneq ($(wildcard /opt/rh/devtoolset-7/enable),)
