@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1753a73f_5d24c3be",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 827,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-12T08:24:02Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 827,
+        "startChar": 5,
+        "endLine": 827,
+        "endChar": 11
+      },
+      "revId": "58f50f1bb64e962e5628e2c1867e07f238036c7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
