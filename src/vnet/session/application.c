@@ -1271,6 +1271,7 @@ app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
 
   if (app_enqueue_evt (mq, &msg, lock))
     return -1;
+
   return 0;
 }
 

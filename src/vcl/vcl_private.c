@@ -274,6 +274,8 @@ vcl_worker_alloc_and_init ()
   vec_validate (wrk->mq_events, 64);
   vec_validate (wrk->mq_msg_vector, 128);
   vec_reset_length (wrk->mq_msg_vector);
+  vec_validate (wrk->unhandled_evts_vector, 128);
+  vec_reset_length (wrk->unhandled_evts_vector);
 
   if (wrk->wrk_index == 0)
     {

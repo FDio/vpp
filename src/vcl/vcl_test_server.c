@@ -570,6 +570,8 @@ vts_conn_has_ascii (vcl_test_server_conn_t * conn)
     return isascii (conn->buf[0]);
 }
 
+static volatile int again;
+
 static void *
 vts_worker_loop (void *arg)
 {
@@ -618,6 +620,7 @@ vts_worker_loop (void *arg)
 
 	  if (EPOLLIN & wrk->wait_events[i].events)
 	    {
+	      again = 0;
 	    read_again:
 	      rx_bytes = vts_conn_read (conn);
 
@@ -652,7 +655,10 @@ vts_worker_loop (void *arg)
 		  vts_server_rx (conn, rx_bytes);
 		  if (vppcom_session_attr (conn->fd, VPPCOM_ATTR_GET_NREAD, 0,
 					   0) > 0)
-		    goto read_again;
+		    {
+		      again = 1;
+		      goto read_again;
+		    }
 		  continue;
 		}
 	      if (vts_conn_has_ascii (conn))
