@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4105cee5_473e200c",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-12T16:48:37Z",
+      "side": 0,
+      "message": "Thank you for removing the trailing space.",
+      "range": {
+        "startLine": 285,
+        "startChar": 1,
+        "endLine": 285,
+        "endChar": 2
+      },
+      "revId": "350155329c6075cef48b2d6934329a7ad75cf5c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
