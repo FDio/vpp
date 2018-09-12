@@ -1,6 +1,6 @@
 # JSON generation
-import json
-
+import json 
+print json.__file__
 
 def walk_enums(s):
     r = []
