@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9d39def0_83cfbb37",
+        "filename": "src/plugins/dpi/CMakeLists.txt",
+        "patchSetId": 24
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-12T13:13:44Z",
+      "side": 1,
+      "message": "For your current implementation of the plugin, do you require a specific version of the HS api (e.g. header) or anything would work? Am asking since there\u0027re various versions of HS and possibly we may hit compilation issues with one vs another...",
+      "revId": "ea4a1f848abf711b654d4dad5256ff4a74c6e13e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
