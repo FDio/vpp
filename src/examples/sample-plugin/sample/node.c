@@ -45,7 +45,7 @@ format_sample_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t sample_node;
+extern vlib_node_registration_t sample_node;
 
 #define foreach_sample_error \
 _(SWAPPED, "Mac swap packets processed")
@@ -87,9 +87,8 @@ _(3)                                            \
 _(4)                                            \
 _(5)
 
-static uword
-sample_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   sample_next_t next_index;
@@ -285,9 +284,8 @@ sample_node_fn (vlib_main_t * vm,
  * Node costs about 17 clocks/pkt at a vector size of 26
  */
 #ifdef VERSION_2
-static uword
-sample_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   sample_next_t next_index;
@@ -475,9 +473,8 @@ sample_node_fn (vlib_main_t * vm,
 /* This would normally be a stack local, but since it's a constant... */
 static const u16 nexts[VLIB_FRAME_SIZE] = { 0 };
 
-static uword
-sample_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
 {
   u32 n_left_from, *from;
   u32 pkts_swapped = 0;
@@ -605,7 +602,6 @@ sample_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sample_node) =
 {
-  .function = sample_node_fn,
   .name = "sample",
   .vector_size = sizeof (u32),
   .format_trace = format_sample_trace,
@@ -622,8 +618,6 @@ VLIB_REGISTER_NODE (sample_node) =
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (sample_node, sample_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
