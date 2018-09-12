@@ -78,9 +78,9 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: dev package needs a couple of additions ;			\
 	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/bin/vppapigen /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/C.py /usr/share/vpp  \
+	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/vppapigen_c.py /usr/share/vpp  \
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/JSON.py /usr/share/vpp \
+	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/vppapigen_json.py /usr/share/vpp \
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../../extras/japi/java/jvpp/gen/jvpp_gen.py /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
