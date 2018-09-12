@@ -21,4 +21,4 @@ install(
   COMPONENT vpp-dev
 )
 
-install(FILES C.py JSON.py DESTINATION share/vpp COMPONENT vpp-dev)
+install(FILES vppapigen_c.py vppapigen_json.py DESTINATION share/vpp COMPONENT vpp-dev)
