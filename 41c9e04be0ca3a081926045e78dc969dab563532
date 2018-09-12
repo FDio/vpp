@@ -22,6 +22,30 @@
       "revId": "41c9e04be0ca3a081926045e78dc969dab563532",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1457e95e_7698cbd0",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-09-12T15:14:03Z",
+      "side": 1,
+      "message": "They are alternatives to the the builtin used lower with different memory orderings. I have not removed them, for now, just because it may turn out that the less restrictive barrier I\u0027m using may not be enough under circumstances that I haven\u0027t yet encountered in my testing. \n\nIf you\u0027re asking why I\u0027ve removed the previous comment, that\u0027s because it\u0027s not accurate anymore, since the function is now expected to acts as a release barrier, as the updated comment suggests.",
+      "parentUuid": "ce3d168f_603c9594",
+      "range": {
+        "startLine": 150,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 2
+      },
+      "revId": "41c9e04be0ca3a081926045e78dc969dab563532",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
