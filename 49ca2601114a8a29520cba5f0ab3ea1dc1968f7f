@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "03fabc4f_fdafdd70",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-12T14:29:20Z",
+      "side": 1,
+      "message": "I deleted this code in last patchset. Not sure why it is here. Will delete it.",
+      "parentUuid": "3c35c065_62adef68",
+      "range": {
+        "startLine": 501,
+        "startChar": 0,
+        "endLine": 501,
+        "endChar": 28
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ffd5adc3_e13771e6",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 5
@@ -36,6 +60,30 @@
       "writtenOn": "2018-09-12T14:03:10Z",
       "side": 1,
       "message": "Called without owning the writer lock.",
+      "range": {
+        "startLine": 577,
+        "startChar": 13,
+        "endLine": 577,
+        "endChar": 25
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ec538ee3_0838540b",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-12T14:29:20Z",
+      "side": 1,
+      "message": "Will delete this command.",
+      "parentUuid": "ffd5adc3_e13771e6",
       "range": {
         "startLine": 577,
         "startChar": 13,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "db86656e_bdccd541",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-12T14:29:20Z",
+      "side": 1,
+      "message": "Will delete this command.",
+      "parentUuid": "02e5ab89_82363f19",
+      "range": {
+        "startLine": 583,
+        "startChar": 8,
+        "endLine": 583,
+        "endChar": 61
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6d91b1c5_8f68a400",
         "filename": "src/plugins/lb/cli.c",
         "patchSetId": 5
@@ -82,6 +154,30 @@
       "writtenOn": "2018-09-12T14:03:10Z",
       "side": 1,
       "message": "What is this ?",
+      "range": {
+        "startLine": 599,
+        "startChar": 37,
+        "endLine": 599,
+        "endChar": 44
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "688abe34_f5eb39d1",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-12T14:29:20Z",
+      "side": 1,
+      "message": "I deleted this command in last patchset. Not sure why it is here. Will delete it.",
+      "parentUuid": "6d91b1c5_8f68a400",
       "range": {
         "startLine": 599,
         "startChar": 37,
