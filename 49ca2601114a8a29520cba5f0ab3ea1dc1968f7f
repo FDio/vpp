@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c35c065_62adef68",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Why would this function be in cli.c ? It should be part of lb.c.",
+      "range": {
+        "startLine": 501,
+        "startChar": 0,
+        "endLine": 501,
+        "endChar": 28
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffd5adc3_e13771e6",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Called without owning the writer lock.",
+      "range": {
+        "startLine": 577,
+        "startChar": 13,
+        "endLine": 577,
+        "endChar": 25
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02e5ab89_82363f19",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Why is this needed ?",
+      "range": {
+        "startLine": 583,
+        "startChar": 8,
+        "endLine": 583,
+        "endChar": 61
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d91b1c5_8f68a400",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "What is this ?",
+      "range": {
+        "startLine": 599,
+        "startChar": 37,
+        "endLine": 599,
+        "endChar": 44
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c5de1fa_1678eba5",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "This is almost exactly the same function as in cli.c\nThere should not be such duplicates.",
+      "range": {
+        "startLine": 766,
+        "startChar": 0,
+        "endLine": 766,
+        "endChar": 15
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31f919d3_00601681",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 780,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Why is this a || ? It should be a \u0026\u0026",
+      "range": {
+        "startLine": 780,
+        "startChar": 14,
+        "endLine": 780,
+        "endChar": 42
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fbe7b4c6_e2b563ae",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 822,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Whta is the idea here ? That the last added index be saved in as_index so the caller know what is the last added ?\nThis function can add many ASs in a single call. If something has to be returned, it should be an array.\nI don\u0027t find this approach (returning the index to be flushed by the caller) very elegant though.",
+      "range": {
+        "startLine": 822,
+        "startChar": 22,
+        "endLine": 822,
+        "endChar": 31
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02cc35f9_4a7fe445",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 855,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-12T14:03:10Z",
+      "side": 1,
+      "message": "Why is this out of the writer lock ?\nYou can\u0027t have a thread playing around with the flow table while another is reading it.\nNot only is it dangerous for the node processing the packets, there also is concurrent accesses to the ref counters...",
+      "range": {
+        "startLine": 851,
+        "startChar": 2,
+        "endLine": 855,
+        "endChar": 5
+      },
+      "revId": "49ca2601114a8a29520cba5f0ab3ea1dc1968f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
