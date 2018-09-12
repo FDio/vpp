@@ -263,8 +263,8 @@ for i in $(ls %{_mu_build_dir}/../extras/japi/java/jvpp/gen/jvppgen/*.py); do
    install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
 done;
 
-install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/C.py %{buildroot}/usr/share/vpp
-install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/JSON.py %{buildroot}/usr/share/vpp
+install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/vppapigen_c.py %{buildroot}/usr/share/vpp
+install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/vppapigen_json.py %{buildroot}/usr/share/vpp
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
