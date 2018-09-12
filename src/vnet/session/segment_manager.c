@@ -193,7 +193,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
     {
       seg_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
-      alloc_size = segment_size + rnd_margin;
+      alloc_size = (uword) segment_size + rnd_margin;
       baseva = clib_valloc_alloc (&smm->va_allocator, alloc_size, 0);
       if (!baseva)
 	{
@@ -253,8 +253,7 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 {
   u32 rx_fifo_size, tx_fifo_size, pair_size;
   u32 rx_rounded_data_size, tx_rounded_data_size;
-  u64 approx_total_size, max_seg_size =
-    ((u64) 1 << 32) - clib_mem_get_page_size ();
+  u64 approx_total_size, max_seg_size = ((u64) 1 << 32) - (128 << 10);
   segment_manager_properties_t *props;
   svm_fifo_segment_private_t *segment;
   u32 approx_segment_count;
