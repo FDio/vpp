@@ -38,7 +38,7 @@ static_always_inline u32
 l2_to_bvi (vlib_main_t * vlib_main,
 	   vnet_main_t * vnet_main,
 	   vlib_buffer_t * b0,
-	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u32 * next0)
+	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u16 * next0)
 {
   /* Perform L3 my-mac filter */
   ethernet_header_t *e0 = vlib_buffer_get_current (b0);

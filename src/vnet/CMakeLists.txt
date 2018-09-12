@@ -158,7 +158,11 @@ list(APPEND VNET_SOURCES
   l2/l2_xcrw.c
 )
 
-list(APPEND VNET_MULTIARCH_SOURCES l2/l2_output.c l2/l2_learn.c)
+list(APPEND VNET_MULTIARCH_SOURCES
+  l2/l2_fwd.c
+  l2/l2_learn.c
+  l2/l2_output.c
+)
 
 list(APPEND VNET_HEADERS
   l2/feat_bitmap.h
