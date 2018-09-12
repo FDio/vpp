@@ -76,7 +76,7 @@ format_ethernet_input_trace (u8 * s, va_list * va)
   return s;
 }
 
-vlib_node_registration_t ethernet_input_node;
+extern vlib_node_registration_t ethernet_input_node;
 
 typedef enum
 {
