@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9fae883_a6563aad",
+        "filename": "src/plugins/gbp/gbp_endpoint.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-12T08:49:53Z",
+      "side": 1,
+      "message": "Why are these commented-out functions kept in this file?\nAre they related to fixmes in lines 290 and 301?",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 10
+      },
+      "revId": "c0a93143412b4be7bba087bf633855aeeaee7c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6cf879a6_0bc6e3dc",
+        "filename": "src/plugins/gbp/gbp_endpoint.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-12T08:49:53Z",
+      "side": 1,
+      "message": "Why is this code commented-out?",
+      "range": {
+        "startLine": 142,
+        "startChar": 2,
+        "endLine": 142,
+        "endChar": 4
+      },
+      "revId": "c0a93143412b4be7bba087bf633855aeeaee7c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf018929_7e1297b4",
+        "filename": "src/plugins/gbp/gbp_endpoint.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-12T08:49:53Z",
+      "side": 1,
+      "message": "over",
+      "range": {
+        "startLine": 42,
+        "startChar": 38,
+        "endLine": 42,
+        "endChar": 43
+      },
+      "revId": "c0a93143412b4be7bba087bf633855aeeaee7c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
