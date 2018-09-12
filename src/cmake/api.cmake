@@ -17,9 +17,12 @@
 function(vpp_generate_api_c_header file)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.h)
   get_filename_component(output_dir ${output_name} DIRECTORY)
+  if(NOT VPP_APIGEN)
+     set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
+  endif()
   add_custom_command (OUTPUT ${output_name}
     COMMAND mkdir -p ${output_dir}
-    COMMAND ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen
+    COMMAND ${VPP_APIGEN}
     ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --output ${output_name}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
@@ -29,9 +32,12 @@ endfunction()
 function(vpp_generate_api_json_header file dir component)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.json)
   get_filename_component(output_dir ${output_name} DIRECTORY)
+  if(NOT VPP_APIGEN)
+     set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
+  endif()
   add_custom_command (OUTPUT ${output_name}
     COMMAND mkdir -p ${output_dir}
-    COMMAND ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen
+    COMMAND ${VPP_APIGEN}
     ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --output ${output_name}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"

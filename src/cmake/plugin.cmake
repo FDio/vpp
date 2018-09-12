@@ -19,7 +19,7 @@ macro(add_vpp_plugin name)
     ${ARGN}
   )
   set(plugin_name ${name}_plugin)
-  set(api_headers)
+  set(api_includes)
   if(NOT PLUGIN_COMPONENT)
     set(PLUGIN_COMPONENT vpp-plugin-misc)
   endif()
@@ -27,7 +27,7 @@ macro(add_vpp_plugin name)
   foreach(f ${PLUGIN_API_FILES})
     get_filename_component(dir ${f} DIRECTORY)
     vpp_generate_api_header(${f} plugins ${PLUGIN_COMPONENT})
-    list(APPEND api_headers ${f}.h ${f}.json)
+    list(APPEND api_includes ${f}.h ${f}.json)
     set_property(GLOBAL APPEND PROPERTY VPP_API_FILES ${rpath}/${f})
     install(
       FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
@@ -35,9 +35,11 @@ macro(add_vpp_plugin name)
       COMPONENT vpp-dev
     )
   endforeach()
-  add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_headers})
+  add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_includes})
   target_compile_options(${plugin_name} PRIVATE -Wall)
-  add_dependencies(${plugin_name} vpp_version_h api_headers)
+  if(NOT VPP_EXTERNAL_PROJECT)
+    add_dependencies(${plugin_name} vpp_version_h api_headers)
+  endif()
   set_target_properties(${plugin_name} PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_plugins)
@@ -62,8 +64,11 @@ macro(add_vpp_plugin name)
   endif()
   if(PLUGIN_API_TEST_SOURCES)
     set(test_plugin_name ${name}_test_plugin)
-    add_library(${test_plugin_name} SHARED ${PLUGIN_API_TEST_SOURCES} ${api_headers})
-    add_dependencies(${test_plugin_name} api_headers)
+    add_library(${test_plugin_name} SHARED ${PLUGIN_API_TEST_SOURCES}
+		${api_includes})
+    if(NOT VPP_EXTERNAL_PROJECT)
+      add_dependencies(${test_plugin_name} api_headers)
+    endif()
     set_target_properties(${test_plugin_name} PROPERTIES
       PREFIX ""
       LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_api_test_plugins)
