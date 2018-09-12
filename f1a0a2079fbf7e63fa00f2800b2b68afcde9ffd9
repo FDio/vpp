@@ -45,6 +45,29 @@
       "revId": "f1a0a2079fbf7e63fa00f2800b2b68afcde9ffd9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "af3b86b9_e4b99f50",
+        "filename": "src/tools/vppapigen/JSON_OUTPUT.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-09-12T11:47:54Z",
+      "side": 1,
+      "message": "Leftover debug message?",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 19
+      },
+      "revId": "f1a0a2079fbf7e63fa00f2800b2b68afcde9ffd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
