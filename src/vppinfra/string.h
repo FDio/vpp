@@ -327,33 +327,37 @@ clib_count_equal_u64 (u64 * data, uword max_count)
   uword count = 0;
   u64 first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
-  while (u64x8_is_all_equal (u64x8_load_unaligned (data), first))
+  if (data[0] != data[1])
+    return 1;
+
+#if defined(CLIB_HAVE_VEC256)
+  u64x4 splat = u64x4_splat (first);
+  while (1)
     {
-      data += 8;
-      count += 8;
+      u64 bmp;
+      bmp = u8x32_msb_mask ((u8x32) (u64x4_load_unaligned (data) == splat));
+      if (bmp != 0xffffffff)
+	{
+	  count += count_trailing_zeros (~bmp) / 8;
+	  return clib_min (count, max_count);
+	}
+
+      data += 4;
+      count += 4;
+
       if (count >= max_count)
 	return max_count;
     }
 #endif
-#if defined(CLIB_HAVE_VEC256)
-  while (u64x4_is_all_equal (u64x4_load_unaligned (data), first))
+  count += 2;
+  data += 2;
+  while (count < max_count - 3 &&
+	 ((data[0] ^ first) | (data[1] ^ first) |
+	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
-      if (count >= max_count)
-	return max_count;
     }
-#endif
-#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
-  while (u64x2_is_all_equal (u64x2_load_unaligned (data), first))
-    {
-      data += 2;
-      count += 2;
-      if (count >= max_count)
-	return max_count;
-    }
-#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -368,33 +372,55 @@ clib_count_equal_u32 (u32 * data, uword max_count)
   uword count = 0;
   u32 first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
-  while (u32x16_is_all_equal (u32x16_load_unaligned (data), first))
-    {
-      data += 16;
-      count += 16;
-      if (count >= max_count)
-	return max_count;
-    }
-#endif
+  if (data[0] != data[1])
+    return 1;
+
 #if defined(CLIB_HAVE_VEC256)
-  while (u32x8_is_all_equal (u32x8_load_unaligned (data), first))
+  u32x8 splat = u32x8_splat (first);
+  while (1)
     {
+      u64 bmp;
+      bmp = u8x32_msb_mask ((u8x32) (u32x8_load_unaligned (data) == splat));
+      if (bmp != 0xffffffff)
+	{
+	  count += count_trailing_zeros (~bmp) / 4;
+	  return clib_min (count, max_count);
+	}
+
       data += 8;
       count += 8;
+
+      if (count >= max_count)
+	return max_count;
+    }
+#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
+  u32x4 splat = u32x4_splat (first);
+  while (1)
+    {
+      u64 bmp;
+      bmp = u8x16_msb_mask ((u8x16) (u32x4_load_unaligned (data) == splat));
+      if (bmp != 0xffff)
+	{
+	  count += count_trailing_zeros (~bmp) / 4;
+	  return clib_min (count, max_count);
+	}
+
+      data += 4;
+      count += 4;
+
       if (count >= max_count)
 	return max_count;
     }
 #endif
-#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
-  while (u32x4_is_all_equal (u32x4_load_unaligned (data), first))
+  count += 2;
+  data += 2;
+  while (count < max_count - 3 &&
+	 ((data[0] ^ first) | (data[1] ^ first) |
+	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
-      if (count >= max_count)
-	return max_count;
     }
-#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -409,30 +435,55 @@ clib_count_equal_u16 (u16 * data, uword max_count)
   uword count = 0;
   u16 first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
-  while (count + 32 <= max_count &&
-	 u16x32_is_all_equal (u16x32_load_unaligned (data), first))
-    {
-      data += 32;
-      count += 32;
-    }
-#endif
+  if (data[0] != data[1])
+    return 1;
+
 #if defined(CLIB_HAVE_VEC256)
-  while (count + 16 <= max_count &&
-	 u16x16_is_all_equal (u16x16_load_unaligned (data), first))
+  u16x16 splat = u16x16_splat (first);
+  while (1)
     {
+      u64 bmp;
+      bmp = u8x32_msb_mask ((u8x32) (u16x16_load_unaligned (data) == splat));
+      if (bmp != 0xffffffff)
+	{
+	  count += count_trailing_zeros (~bmp) / 2;
+	  return clib_min (count, max_count);
+	}
+
       data += 16;
       count += 16;
+
+      if (count >= max_count)
+	return max_count;
     }
-#endif
-#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
-  while (count + 8 <= max_count &&
-	 u16x8_is_all_equal (u16x8_load_unaligned (data), first))
+#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
+  u16x8 splat = u16x8_splat (first);
+  while (1)
     {
+      u64 bmp;
+      bmp = u8x16_msb_mask ((u8x16) (u16x8_load_unaligned (data) == splat));
+      if (bmp != 0xffff)
+	{
+	  count += count_trailing_zeros (~bmp) / 2;
+	  return clib_min (count, max_count);
+	}
+
       data += 8;
       count += 8;
+
+      if (count >= max_count)
+	return max_count;
     }
 #endif
+  count += 2;
+  data += 2;
+  while (count < max_count - 3 &&
+	 ((data[0] ^ first) | (data[1] ^ first) |
+	  (data[2] ^ first) | (data[3] ^ first)) == 0)
+    {
+      data += 4;
+      count += 4;
+    }
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -441,36 +492,61 @@ clib_count_equal_u16 (u16 * data, uword max_count)
   return count;
 }
 
-static_always_inline u32
-clib_count_equal_u8 (u32 * data, uword max_count)
+static_always_inline uword
+clib_count_equal_u8 (u8 * data, uword max_count)
 {
   uword count = 0;
   u8 first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
-  while (count + 64 <= max_count &&
-	 u8x64_is_all_equal (u8x64_load_unaligned (data), first))
-    {
-      data += 64;
-      count += 64;
-    }
-#endif
+  if (data[0] != data[1])
+    return 1;
+
 #if defined(CLIB_HAVE_VEC256)
-  while (count + 32 <= max_count &&
-	 u8x32_is_all_equal (u8x32_load_unaligned (data), first))
+  u8x32 splat = u8x32_splat (first);
+  while (1)
     {
+      u64 bmp;
+      bmp = u8x32_msb_mask ((u8x32) (u8x32_load_unaligned (data) == splat));
+      if (bmp != 0xffffffff)
+	{
+	  count += count_trailing_zeros (~bmp);
+	  return clib_min (count, max_count);
+	}
+
       data += 32;
       count += 32;
+
+      if (count >= max_count)
+	return max_count;
+    }
+#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
+  u8x16 splat = u8x16_splat (first);
+  while (1)
+    {
+      u64 bmp;
+      bmp = u8x16_msb_mask ((u8x16) (u8x16_load_unaligned (data) == splat));
+      if (bmp != 0xffff)
+	{
+	  count += count_trailing_zeros (~bmp);
+	  return clib_min (count, max_count);
+	}
+
+      data += 16;
+      count += 16;
+
+      if (count >= max_count)
+	return max_count;
     }
 #endif
-#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
-  while (count + 16 <= max_count &&
-	 u8x16_is_all_equal (u8x16_load_unaligned (data), first))
+  count += 2;
+  data += 2;
+  while (count < max_count - 3 &&
+	 ((data[0] ^ first) | (data[1] ^ first) |
+	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
     }
-#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
