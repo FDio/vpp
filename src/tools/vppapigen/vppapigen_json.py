@@ -1,6 +1,5 @@
 # JSON generation
-import json
-
+import json 
 
 def walk_enums(s):
     r = []
