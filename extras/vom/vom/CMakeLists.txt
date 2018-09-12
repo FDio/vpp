@@ -19,8 +19,8 @@ unset (GBP_FILE)
 unset (VOM_SOURCES)
 unset (VOM_HEADERS)
 
-find_library(VAPICLIENT_LIB NAMES vapiclient REQUIRED HINTS ${VPP_LIB_DIR_HINT})
-find_path(VAPICLIENT_INCLUDE_DIR NAMES vapi/vapi.hpp HINTS ${VPP_INCLUDE_DIR_HINT})
+find_library(VAPICLIENT_LIB NAMES vapiclient REQUIRED)
+find_path(VAPICLIENT_INCLUDE_DIR NAMES vapi/vapi.hpp)
 
 if(NOT VAPICLIENT_INCLUDE_DIR OR NOT VAPICLIENT_LIB)
   message(FATAL_ERROR "Cannot find vapiclient library and/or headers")
@@ -29,10 +29,10 @@ endif()
 include_directories(${VAPICLIENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
-find_file(ACL_FILE NAMES acl.api.vapi.hpp PATH_SUFFIXES vapi HINTS ${VPP_INCLUDE_DIR_HINT})
-find_file(NAT_FILE NAMES nat.api.vapi.hpp PATH_SUFFIXES vapi HINTS ${VPP_INCLUDE_DIR_HINT})
-find_file(L2E_FILE NAMES l2e.api.vapi.hpp PATH_SUFFIXES vapi HINTS ${VPP_INCLUDE_DIR_HINT})
-find_file(GBP_FILE NAMES gbp.api.vapi.hpp PATH_SUFFIXES vapi HINTS ${VPP_INCLUDE_DIR_HINT})
+find_file(ACL_FILE NAMES acl.api.vapi.hpp PATH_SUFFIXES vapi)
+find_file(NAT_FILE NAMES nat.api.vapi.hpp PATH_SUFFIXES vapi)
+find_file(L2E_FILE NAMES l2e.api.vapi.hpp PATH_SUFFIXES vapi)
+find_file(GBP_FILE NAMES gbp.api.vapi.hpp PATH_SUFFIXES vapi)
 
 if(ACL_FILE)
   list(APPEND VOM_SOURCES
@@ -232,7 +232,7 @@ add_library(vom SHARED ${VOM_SOURCES})
 target_link_libraries(vom ${VAPICLIENT_LIB} Threads::Threads boost_thread
   ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt)
 add_definitions(-Wall -Werror -std=gnu++11)
-install(TARGETS vom DESTINATION ${VOM_LIB_DIR_NAME})
+install(TARGETS vom DESTINATION lib)
 
 foreach(file ${VOM_HEADERS})
   install(FILES ${file} DESTINATION include/vom)

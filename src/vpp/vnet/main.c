@@ -58,16 +58,10 @@ vpp_find_plugin_path ()
   *p = 0;
 
   s = format (0, "%s/lib/vpp_plugins", path);
-#if uword_bits == 64
-  s = format (s, ":%s/lib64/vpp_plugins", path);
-#endif
   vec_add1 (s, 0);
   vlib_plugin_path = (char *) s;
 
   s = format (0, "%s/lib/vpp_api_test_plugins", path);
-#if uword_bits == 64
-  s = format (s, ":%s/lib64/vpp_api_test_plugins", path);
-#endif
   vec_add1 (s, 0);
   vat_plugin_path = (char *) s;
 }

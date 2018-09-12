@@ -15,11 +15,11 @@
 
 rm -f $2
 
-for i in ${1}/vpp/lib64/vpp_plugins/*.so; do
+for i in ${1}/vpp/lib/vpp_plugins/*.so; do
 	echo ../${i} /usr/lib/vpp_plugins >> ${2}
 done
 
-for i in ${1}/vpp/lib64/vpp_api_test_plugins/*.so; do
+for i in ${1}/vpp/lib/vpp_api_test_plugins/*.so; do
 	echo ../${i} /usr/lib/vpp_api_test_plugins >> ${2}
 done
 

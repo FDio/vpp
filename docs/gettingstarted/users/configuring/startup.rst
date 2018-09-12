@@ -1225,7 +1225,7 @@ only the plugins that are desired.
  * **path <path>**
      Adjust the plugin path depending on where the VPP plugins are installed.
      
-     **Example:** path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+     **Example:** path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
      
  * **name-filter <filter-name>**
      TBD
