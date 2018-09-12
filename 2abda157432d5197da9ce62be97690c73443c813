@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7149923f_84af9116",
+        "filename": "src/vpp/api/api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-12T15:13:59Z",
+      "side": 1,
+      "message": "instead of calling pthread_getaffinity_np from api code, i would prefer that you use data from vlib_thread_main. If data is missing, make suree it is stored by code in vlib/threads.c\n\nAlso please note that in future we might want to have threads which float across multiple cores....",
+      "range": {
+        "startLine": 277,
+        "startChar": 8,
+        "endLine": 277,
+        "endChar": 30
+      },
+      "revId": "2abda157432d5197da9ce62be97690c73443c813",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
