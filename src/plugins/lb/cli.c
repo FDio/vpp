@@ -375,16 +375,25 @@ static clib_error_t *
 lb_show_vips_command_fn (vlib_main_t * vm,
               unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  unformat_input_t line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
   u8 verbose = 0;
 
-  if (!unformat_user (input, unformat_line_input, &line_input))
-      return 0;
-
-  if (unformat(&line_input, "verbose"))
-    verbose = 1;
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      if (unformat(line_input, "verbose"))
+        verbose = 1;
+      else
+        {
+          clib_error_t *error = clib_error_return (0, "parse error: '%U'",
+                                                   format_unformat_error,
+                                                   line_input);
+          unformat_free (line_input);
+          return error;
+        }
+      unformat_free (line_input);
+    }
 
   /* Hide dummy VIP */
   pool_foreach(vip, lbm->vips, {
@@ -393,7 +402,6 @@ lb_show_vips_command_fn (vlib_main_t * vm,
     }
   });
 
-  unformat_free (&line_input);
   return NULL;
 }
 
