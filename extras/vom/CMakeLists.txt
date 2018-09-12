@@ -18,16 +18,8 @@ project(vom)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  set(VOM_LIB_DIR_NAME lib64)
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  set(VOM_LIB_DIR_NAME lib64)
-else()
-  set(VOM_LIB_DIR_NAME lib)
-endif()
-
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${VOM_LIB_DIR_NAME})
+set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 find_package(Threads REQUIRED)

@@ -18,7 +18,7 @@ Once at the gdb prompt, VPP can be started by running the following commands:
    Starting program: /scratch/vpp-master/build-root/install-vpp_debug-native/vpp/bin/vpp -c /etc/vpp/startup.conf
     [Thread debugging using libthread_db enabled]
     Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
-    vlib_plugin_early_init:361: plugin path /scratch/vpp-master/build-root/install-vpp_debug-native/vpp/lib/vpp_plugins:/scratch/vpp-master/build-root/install-vpp_debug-native/vpp/lib64/vpp_plugins
+    vlib_plugin_early_init:361: plugin path /scratch/vpp-master/build-root/install-vpp_debug-native/vpp/lib/vpp_plugins:/scratch/vpp-master/build-root/install-vpp_debug-native/vpp/lib/vpp_plugins
     ....
 
 Backtrace

@@ -114,10 +114,10 @@ dpdk {{
 # Adjusting the plugin path depending on where the VPP plugins are:
 #plugins
 #{{
-#	path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+#	path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
 #}}
 
 # Alternate syntax to choose plugin path
-#plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+#plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
 
 {tcp}

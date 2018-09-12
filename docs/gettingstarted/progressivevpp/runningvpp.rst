@@ -20,7 +20,7 @@ Using the files we created in setup we will start VPP.
 .. code-block:: console
 
    $ sudo /usr/bin/vpp -c startup1.conf
-   vlib_plugin_early_init:361: plugin path /usr/lib/vpp_plugins:/usr/lib64/vpp_plugins
+   vlib_plugin_early_init:361: plugin path /usr/lib/vpp_plugins:/usr/lib/vpp_plugins
    load_one_plugin:189: Loaded plugin: abf_plugin.so (ACL based Forwarding)
    load_one_plugin:189: Loaded plugin: acl_plugin.so (Access Control Lists)
    load_one_plugin:189: Loaded plugin: avf_plugin.so (Intel Adaptive Virtual Function (AVF) Device Plugin)

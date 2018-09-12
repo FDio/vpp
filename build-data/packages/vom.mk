@@ -25,10 +25,7 @@ vom_cmake_args ?=
 vom_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 vom_cmake_args += -DCMAKE_CXX_FLAGS="$($(TAG)_TAG_CPPFLAGS)"
 vom_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
-vom_cmake_args += -DVPP_INCLUDE_DIR_HINT="$(PACKAGE_INSTALL_DIR)/../vpp/include"
-vom_cmake_args += -DVPP_LIB_DIR_HINT="$(PACKAGE_INSTALL_DIR)/../vpp/lib64"
-vom_cmake_args += -DCMAKE_INCLUDE_PATH="$(call installed_includes_fn, vpp)"
-vom_cmake_args += -DCMAKE_LIBRARY_PATH="$(call installed_libs_fn, vpp)"
+vom_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 
 # Use devtoolset on centos 7
 ifneq ($(wildcard /opt/rh/devtoolset-7/enable),)

@@ -14,9 +14,8 @@
 ##############################################################################
 # Find lib and include files
 ##############################################################################
-find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h HINTS
-	  ${DPDK_INCLUDE_DIR_HINT})
-find_library(DPDK_LIB NAMES libdpdk.a HINTS ${DPDK_LIB_DIR_HINT})
+find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h)
+find_library(DPDK_LIB NAMES libdpdk.a)
 
 ##############################################################################
 # Find DPDK Version
