@@ -377,6 +377,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      sum0 =
 		ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
 				length);
+	      mss_clamping (&snat_main, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else

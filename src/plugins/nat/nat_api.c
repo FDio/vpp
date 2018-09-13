@@ -573,6 +573,63 @@ static void *vl_api_nat_get_addr_and_port_alloc_alg_t_print
   FINISH;
 }
 
+static void
+vl_api_nat_set_mss_clamping_t_handler (vl_api_nat_set_mss_clamping_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_mss_clamping_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable)
+    {
+      sm->mss_clamping = ntohs (mp->mss_value);
+      sm->mss_value_net = mp->mss_value;
+    }
+  else
+    sm->mss_clamping = 0;
+
+  REPLY_MACRO (VL_API_NAT_SET_MSS_CLAMPING_REPLY);
+}
+
+static void *
+vl_api_nat_set_mss_clamping_t_print (vl_api_nat_set_mss_clamping_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_set_mss_clamping enable %d mss_value %d\n",
+	      mp->enable, ntohs (mp->mss_value));
+
+  FINISH;
+}
+
+static void
+vl_api_nat_get_mss_clamping_t_handler (vl_api_nat_get_mss_clamping_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_get_mss_clamping_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT_GET_MSS_CLAMPING_REPLY,
+  ({
+    rmp->enable = sm->mss_clamping ? 1 : 0;
+    rmp->mss_value = htons (sm->mss_clamping);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_nat_get_mss_clamping_t_print (vl_api_nat_get_mss_clamping_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_get_mss_clamping");
+
+  FINISH;
+}
+
 /*************/
 /*** NAT44 ***/
 /*************/
@@ -3083,6 +3140,8 @@ _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \
 _(NAT_GET_TIMEOUTS, nat_get_timeouts)                                   \
 _(NAT_SET_ADDR_AND_PORT_ALLOC_ALG, nat_set_addr_and_port_alloc_alg)     \
 _(NAT_GET_ADDR_AND_PORT_ALLOC_ALG, nat_get_addr_and_port_alloc_alg)     \
+_(NAT_SET_MSS_CLAMPING, nat_set_mss_clamping)                           \
+_(NAT_GET_MSS_CLAMPING, nat_get_mss_clamping)                           \
 _(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
 _(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \

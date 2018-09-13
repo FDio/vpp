@@ -439,6 +439,10 @@ typedef struct snat_main_s {
   u32 tcp_transitory_timeout;
   u32 icmp_timeout;
 
+  /* TCP MSS clamping */
+  u16 mss_clamping;
+  u16 mss_value_net;
+
   /* API message ID base */
   u16 msg_id_base;
 

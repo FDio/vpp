@@ -239,6 +239,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
       checksum = &tcp->checksum;
       csum = ip_csum_sub_even (*checksum, sport);
       csum = ip_csum_add_even (csum, udp->src_port);
+      mss_clamping (nm->sm, tcp, &csum);
       *checksum = ip_csum_fold (csum);
     }
 

@@ -328,6 +328,54 @@ make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
   kv->value = ~0ULL;
 }
 
+always_inline void
+mss_clamping (snat_main_t * sm, tcp_header_t * tcp, ip_csum_t * sum)
+{
+  u8 *data;
+  u8 opt_len, opts_len, kind;
+  u16 mss;
+
+  if (!(sm->mss_clamping && tcp_syn (tcp)))
+    return;
+
+  opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  data = (u8 *) (tcp + 1);
+  for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
+    {
+      kind = data[0];
+
+      if (kind == TCP_OPTION_EOL)
+	break;
+      else if (kind == TCP_OPTION_NOOP)
+	{
+	  opt_len = 1;
+	  continue;
+	}
+      else
+	{
+	  if (opts_len < 2)
+	    return;
+	  opt_len = data[1];
+
+	  if (opt_len < 2 || opt_len > opts_len)
+	    return;
+	}
+
+      if (kind == TCP_OPTION_MSS)
+	{
+	  mss = *(u16 *) (data + 2);
+	  if (clib_net_to_host_u16 (mss) > sm->mss_clamping)
+	    {
+	      *sum =
+		ip_csum_update (*sum, mss, sm->mss_value_net, ip4_header_t,
+				length);
+	      clib_memcpy (data + 2, &sm->mss_value_net, 2);
+	    }
+	  return;
+	}
+    }
+}
+
 #endif /* __included_nat_inlines_h__ */
 
 /*

@@ -292,6 +292,56 @@ nat44_show_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
+nat_set_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  snat_main_t *sm = &snat_main;
+  clib_error_t *error = 0;
+  u32 mss;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "disable"))
+	sm->mss_clamping = 0;
+      else if (unformat (line_input, "%d", &mss))
+	{
+	  sm->mss_clamping = (u16) mss;
+	  sm->mss_value_net = clib_host_to_net_u16 (sm->mss_clamping);
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+nat_show_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (sm->mss_clamping)
+    vlib_cli_output (vm, "mss-clamping %d", sm->mss_clamping);
+  else
+    vlib_cli_output (vm, "mss-clamping disabled");
+
+  return 0;
+}
+
+static clib_error_t *
 add_address_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -1700,6 +1750,32 @@ VLIB_CLI_COMMAND (nat44_show_alloc_addr_and_port_alg_command, static) = {
     .path = "show nat addr-port-assignment-alg",
     .short_help = "show nat addr-port-assignment-alg",
     .function = nat44_show_alloc_addr_and_port_alg_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat mss-clamping}
+ * Set TCP MSS rewriting configuration
+ * To enable TCP MSS rewriting use:
+ *  vpp# nat mss-clamping 1452
+ * To disbale TCP MSS rewriting use:
+ *  vpp# nat mss-clamping disable
+?*/
+VLIB_CLI_COMMAND (nat_set_mss_clamping_command, static) = {
+    .path = "nat mss-clamping",
+    .short_help = "nat mss-clamping <mss-value>|disable",
+    .function = nat_set_mss_clamping_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat mss-clamping}
+ * Show TCP MSS rewriting configuration
+?*/
+VLIB_CLI_COMMAND (nat_show_mss_clamping_command, static) = {
+    .path = "show nat mss-clamping",
+    .short_help = "show nat mss-clamping",
+    .function = nat_show_mss_clamping_command_fn,
 };
 
 /*?

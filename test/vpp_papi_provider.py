@@ -1827,6 +1827,20 @@ class VppPapiProvider(object):
         """Get address and port assignment algorithm"""
         return self.api(self.papi.nat_get_addr_and_port_alloc_alg, {})
 
+    def nat_set_mss_clamping(self, enable=0, mss_value=1500):
+        """Set TCP MSS rewriting configuration
+
+        :param enable: disable(0)/enable(1) MSS rewriting feature
+        :param mss_value: MSS value to be used for MSS rewriting
+        """
+        return self.api(
+            self.papi.nat_set_mss_clamping,
+            {'enable': enable, 'mss_value': mss_value})
+
+    def nat_get_mss_clamping(self):
+        """Get TCP MSS rewriting configuration"""
+        return self.api(self.papi.nat_get_mss_clamping, {})
+
     def nat_det_close_session_out(
             self,
             out_addr,

@@ -1336,6 +1336,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               sum0 = ip_csum_update (sum0, old_port0, new_port0,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
             }
           else
@@ -1496,6 +1497,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               sum1 = ip_csum_update (sum1, old_port1, new_port1,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp1, &sum1);
               tcp1->checksum = ip_csum_fold(sum1);
             }
           else
@@ -1693,6 +1695,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               sum0 = ip_csum_update (sum0, old_port0, new_port0,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
             }
           else
@@ -3354,6 +3357,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                   tcp0->dst_port = s0->ext_host_port;
                   ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
                 }
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
               if (nat44_set_tcp_session_state_i2o (sm, s0, tcp0, thread_index))
                 goto trace00;
@@ -3539,6 +3543,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                   ip1->dst_address.as_u32 = s1->ext_host_addr.as_u32;
                 }
               tcp1->checksum = ip_csum_fold(sum1);
+              mss_clamping (sm, tcp1, &sum1);
               if (nat44_set_tcp_session_state_i2o (sm, s1, tcp1, thread_index))
                 goto trace01;
             }
@@ -3751,6 +3756,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
                   tcp0->dst_port = s0->ext_host_port;
                   ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
                 }
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
               if (nat44_set_tcp_session_state_i2o (sm, s0, tcp0, thread_index))
                 goto trace0;
@@ -4122,6 +4128,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
               sum0 = ip_csum_update (sum0, old_port0, new_port0,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
             }
           else
@@ -4272,6 +4279,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
               sum1 = ip_csum_update (sum1, old_port1, new_port1,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp1, &sum1);
               tcp1->checksum = ip_csum_fold(sum1);
             }
           else
@@ -4458,6 +4466,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
               sum0 = ip_csum_update (sum0, old_port0, new_port0,
                                      ip4_header_t /* cheat */,
                                      length /* changed member */);
+              mss_clamping (sm, tcp0, &sum0);
               tcp0->checksum = ip_csum_fold(sum0);
             }
           else
@@ -5354,6 +5363,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
                   sum0 = ip_csum_update (sum0, old_port0, new_port0,
                                          ip4_header_t /* cheat */,
                                          length /* changed member */);
+                  mss_clamping (sm, tcp0, &sum0);
                   tcp0->checksum = ip_csum_fold(sum0);
                 }
               else
@@ -5371,6 +5381,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
                   sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
                                          ip4_header_t,
                                          dst_address /* changed member */);
+                  mss_clamping (sm, tcp0, &sum0);
                   tcp0->checksum = ip_csum_fold(sum0);
                 }
             }

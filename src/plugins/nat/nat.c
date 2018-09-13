@@ -2078,6 +2078,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->log_class = vlib_log_register_class ("nat", 0);
   error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = error_drop_node->index;
+  sm->mss_clamping = 0;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)

@@ -332,6 +332,41 @@ define nat_get_addr_and_port_alloc_alg_reply {
   u16 end_port;
 };
 
+/** \brief Set TCP MSS rewriting configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mss_value - MSS value to be used for MSS rewriting
+    @param enable - disable(0)/enable(1) MSS rewriting feature
+*/
+autoreply define nat_set_mss_clamping {
+  u32 client_index;
+  u32 context;
+  u16 mss_value;
+  u8 enable;
+};
+
+/** \brief Get TCP MSS rewriting configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_get_mss_clamping {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get TCP MSS rewriting configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param mss_value - MSS value to be used for MSS rewriting
+    @param enable - disable(0)/enable(1) MSS rewriting feature
+*/
+define nat_get_mss_clamping_reply {
+  u32 context;
+  i32 retval;
+  u16 mss_value;
+  u8 enable;
+};
+
 /*
  * NAT44 APIs
  */
