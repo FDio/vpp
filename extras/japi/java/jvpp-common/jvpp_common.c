@@ -14,6 +14,7 @@
  */
 #define _GNU_SOURCE /* for strcasestr(3) */
 
+#include <stddef.h>
 #include <vnet/api_errno.h>
 #include "jvpp_common.h"
 
