@@ -29,4 +29,6 @@ add_vpp_plugin(sample
 
   API_TEST_SOURCES
   sample_test.c
+
+  COMPONENT vpp-plugin-sample
 )
